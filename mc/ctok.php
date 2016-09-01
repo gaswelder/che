@@ -3,7 +3,7 @@
 // Second stage parser that returns CPOM objects
 
 function trace( $m, $s = null ) {
-	fwrite( STDERR, "--- $m		$s\n" );
+	//fwrite( STDERR, "--- $m		$s\n" );
 }
 
 function put( $s ) {
@@ -19,10 +19,6 @@ class ctok extends toksbasech
 		parent::__construct($s);
 		$this->s = $s;
 		$this->path = $path;
-	}
-
-	function pos() {
-		return $this->path . ': ' . $this->upstream->pos();
 	}
 
 	protected function read()
@@ -584,8 +580,6 @@ trace( "read_if", $this->context() );
 		$this->expect( '(' );
 		$expr = $this->expr();
 		$this->expect( ')' );
-
-		put( "---- " . $this->context() );
 
 		$body = $this->read_body_or_part();
 
