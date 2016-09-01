@@ -510,10 +510,11 @@ trace( "expr_follows" );
 		while( !$s->ended() && $s->peek()->type != ';' )
 		{
 			$t = $s->peek();
-			if( $t->type == '(' || $this->is_op( $t ) ) {
+			if( $t->type == '(' || $this->is_op( $t ) || $t->type == '[' ) {
 				$op = true;
 				break;
 			}
+
 			if( $t->type == 'word' ) {
 				$words++;
 			}
