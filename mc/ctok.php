@@ -354,21 +354,14 @@ trace( "obj_der" );
 				continue;
 			}
 
+			// "[" <expr> "]"
 			if( $ch == '[' )
 			{
 				$conv = '[';
-
-				$t = $this->s->get();
-				if( $t->type == 'word' || $t->type == 'num' ) {
-					$conv .= $t->content;
-					$t = $s->get();
-				}
-
-				if( $t->type != ']' ) {
-					return $this->error( "] expected" );
-				}
-
+				$conv .= $this->expr()->format();
+				$this->expect( ']' );
 				$conv .= ']';
+
 				$right[] = array( $conv, $mod * 2 );
 				continue;
 			}
