@@ -19,6 +19,13 @@ class ctok1 extends toksbase
 		'{', '}', ';', '[', ']', '(', ')', '.', '?'
 	);
 
+	private static $keywords = array(
+		'typedef', 'struct',
+		'const', 'static',
+		'if', 'else', 'for', 'while', 'return', 'switch', 'case',
+		'sizeof'
+	);
+
 	private $newline = true;
 
 	function error( $msg ) {
@@ -100,6 +107,10 @@ class ctok1 extends toksbase
 					continue;
 				}
 				break;
+			}
+
+			if( in_array( $word, self::$keywords ) ) {
+				return tok( $word );
 			}
 			return tok( 'word', $word );
 		}

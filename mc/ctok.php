@@ -36,13 +36,13 @@ class ctok extends toksbasech
 		}
 
 		// <typedef>?
-		if( $t->type == 'word' && $t->content == 'typedef' ) {
+		if( $t->type == 'typedef' ) {
 			$def = $this->read_typedef();
 			return $def;
 		}
 
 		// <struct-def>?
-		if( $t->type == 'word' && $t->content == 'struct' ) {
+		if( $t->type == 'struct' ) {
 			if( $s->peek(1)->type == 'word' && $s->peek(2)->type == '{' ) {
 				$def = $this->struct_def();
 				return $def;
@@ -96,7 +96,7 @@ class ctok extends toksbasech
 	private function read_typedef()
 	{
 trace( "read_typedef" );
-		$this->expect( 'word', 'typedef' );
+		$this->expect( 'typedef' );
 		$form = $this->read_nameform();
 		$this->expect( ';' );
 		return new c_typedef( $form->name, $form->type );
@@ -106,7 +106,7 @@ trace( "read_typedef" );
 	private function struct_def()
 	{
 trace( "struct_def" );
-		$this->expect( 'word', 'struct' );
+		$this->expect( 'struct' );
 		$name = $this->expect( 'word' )->content;
 		$def = new c_structdef( $name );
 
@@ -136,7 +136,7 @@ trace( "read_object", $this->context() );
 		// <stor>
 		$stor = [];
 		$t = $s->peek();
-		if( $t->type == 'word' && $t->content == 'static' ) {
+		if( $t->type == 'static' ) {
 			$stor[] = 'static';
 			$s->get();
 		}
@@ -208,7 +208,7 @@ trace( "read_nameform" );
 
 		// "const"?
 		$t = $s->peek();
-		if( $t->type == 'word' && $t->content == 'const' ) {
+		if( $t->type == 'const' ) {
 			$cast[] = 'const';
 			$s->get();
 		}
@@ -233,9 +233,9 @@ trace( "read_nameform" );
 trace( "type" );
 		$s = $this->s;
 
-		$t = $this->expect( 'word' );
+		$t = $s->get();
 
-		if( $t->content == 'struct' )
+		if( $t->type == 'struct' )
 		{
 			// "struct" <name>?
 			if( $s->peek()->type == 'word' ) {
@@ -463,9 +463,8 @@ trace( "body_part", $this->context() );
 		}
 
 		// <construct>?
-		if( $t->type == 'word' &&
-			in_array( $t->content, self::$constructs ) ) {
-			$func = 'read_' . $t->content;
+		if( in_array( $t->type, self::$constructs ) ) {
+			$func = 'read_' . $t->type;
 			return $this->$func();
 		}
 
@@ -569,6 +568,12 @@ trace( "expr_follows" );
 	{
 trace( "type_follows" );
 		$t = $this->s->peek();
+
+		$type_keywords = array( 'struct', 'const', 'static' );
+		if( in_array( $t->type, $type_keywords ) ) {
+			return true;
+		}
+
 		if( $t->type != 'word' ) {
 			return false;
 		}
@@ -602,7 +607,7 @@ trace( "type_follows" );
 	private function read_if()
 	{
 trace( "read_if", $this->context() );
-		$this->expect( 'word', 'if' );
+		$this->expect( 'if' );
 		$this->expect( '(' );
 		$expr = $this->expr();
 		$this->expect( ')' );
@@ -610,7 +615,7 @@ trace( "read_if", $this->context() );
 		$body = $this->read_body_or_part();
 
 		$t = $this->s->peek();
-		if( $t->type == 'word' && $t->content == 'else' ) {
+		if( $t->type == 'else' ) {
 			$this->s->get();
 			$else = $body = $this->read_body_or_part();
 		}
@@ -635,7 +640,7 @@ trace( "read_if", $this->context() );
 	private function read_for()
 	{
 trace( "read_for" );
-		$this->expect( 'word', 'for' );
+		$this->expect( 'for' );
 		$this->expect( '(' );
 
 		$init = $this->expr();
@@ -653,7 +658,7 @@ trace( "read_for" );
 	private function read_while()
 	{
 trace( "read_while" );
-		$this->expect( 'word', 'while' );
+		$this->expect( 'while' );
 		$this->expect( '(' );
 		$cond = $this->expr();
 		$this->expect( ')' );
@@ -667,7 +672,7 @@ trace( "read_while" );
 	private function read_return()
 	{
 trace( "read_return" );
-		$this->expect( 'word', 'return' );
+		$this->expect( 'return' );
 		$expr = $this->expr();
 		$this->expect( ';' );
 		return new c_return( $expr->parts );
@@ -677,7 +682,7 @@ trace( "read_return" );
 	private function read_switch()
 	{
 trace( "read_switch" );
-		$this->expect( 'word', 'switch' );
+		$this->expect( 'switch' );
 		$this->expect( '(' );
 		$cond = $this->expr();
 		$this->expect( ')' );
@@ -700,7 +705,7 @@ trace( "read_switch" );
 trace( "read_case", $this->context() );
 		$s = $this->s;
 
-		$this->expect( 'word', 'case' );
+		$this->expect( 'case' );
 
 		// <id> | <literal>
 		$p = $s->peek();
@@ -719,7 +724,7 @@ trace( "read_case", $this->context() );
 		while( !$s->ended() )
 		{
 			$t = $s->peek();
-			if( $t->type == 'word' && $t->content == 'case' ) {
+			if( $t->type == 'case' ) {
 				break;
 			}
 			if( $t->type == '}' ) {
@@ -789,7 +794,7 @@ trace( "atom" );
 		}
 
 		// <sizeof>?
-		if( $p->type == 'word' && $p->content == 'sizeof' ) {
+		if( $p->type == 'sizeof' ) {
 			$ops[] = array( 'sizeof', $this->read_sizeof() );
 			return $ops;
 		}
@@ -904,7 +909,7 @@ trace( "read_sizeof", $this->context() );
 		$s = $this->s;
 		$parts = [];
 
-		$this->expect( 'word', 'sizeof' );
+		$this->expect( 'sizeof' );
 
 		$brace = false;
 		if( $s->peek()->type == '(' ) {
