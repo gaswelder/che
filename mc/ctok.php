@@ -485,11 +485,23 @@ trace( "body_part", $this->context() );
 		return $this->read_object();
 	}
 
+	private function expr_follows()
+	{
+		$b = $this->_expr_follows();
+		return $b;
+
+		$r = $b ? '+' : 'nope';
+		$c = $this->context();
+		put("$r	$c");
+
+		return $b;
+	}
+
 	/*
 	 * If what follows until ';' has at least one operator or brace,
 	 * and there is less than two "words" before it, it's an expression.
 	 */
-	private function expr_follows()
+	private function _expr_follows()
 	{
 trace( "expr_follows" );
 		if( $this->type_follows() ) {
@@ -520,6 +532,8 @@ trace( "expr_follows" );
 		while( !empty( $buf ) ) {
 			$s->unget( array_pop( $buf ) );
 		}
+
+
 		return $op && $words < 2;
 	}
 
@@ -540,6 +554,18 @@ trace( "expr_follows" );
 	}
 
 	private function type_follows()
+	{
+		$b = $this->_type_follows();
+		return $b;
+
+		$r = $b ? '+' : '';
+		$c = $this->context();
+		put("$r	$c");
+
+		return $b;
+	}
+
+	private function _type_follows()
 	{
 trace( "type_follows" );
 		$t = $this->s->peek();
