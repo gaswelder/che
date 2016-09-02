@@ -77,19 +77,19 @@ class c_nameform extends c_element {
 
 			if( is_array( $mod ) && $mod[0] == 'call' )
 			{
-				$s .= '(';
-				$k = count( $mod );
-				for( $j = 1; $j < $k; $j++ )
-				{
-					if( $j > 1 ) $s .= ', ';
-					if( $mod[$j] == '...' ) {
-						$s .= '...';
+				$args = array_slice( $mod, 1 );
+				$str = '(';
+				foreach( $args as $j => $arg ) {
+					if( $j > 0 ) $str .= ', ';
+					if( $arg == '...' ) {
+						$str .= '...';
 					}
 					else {
-						$s .= $mod[$j]->format();
+						$str .= $arg->format();
 					}
 				}
-				$s .= ')';
+				$str .= ')';
+				$s = $s . $str;
 				continue;
 			}
 
@@ -509,10 +509,13 @@ class c_while {
 	}
 }
 
-class c_func extends c_element {
+class c_func extends c_element
+{
 	public $proto;
 	public $body;
-	function __construct( $proto, $body ) {
+
+	function __construct( $proto, $body )
+	{
 		$this->proto = $proto;
 		$this->body = $body;
 	}
