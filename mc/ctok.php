@@ -621,7 +621,7 @@ trace( "read_if", $this->context() );
 		$t = $this->s->peek();
 		if( $t->type == 'else' ) {
 			$this->s->get();
-			$else = $body = $this->read_body_or_part();
+			$else = $this->read_body_or_part();
 		}
 		else {
 			$else = null;
@@ -633,12 +633,12 @@ trace( "read_if", $this->context() );
 	private function read_body_or_part()
 	{
 		if( $this->s->peek()->type == '{' ) {
-			$body = $this->read_body();
+			return $this->read_body();
 		}
-		else {
-			$body = $this->body_part();
-		}
-		return $body;
+
+		$b = new c_body();
+		$b->add( $this->body_part() );
+		return $b;
 	}
 
 	private function read_for()
@@ -714,7 +714,7 @@ trace( "read_case", $this->context() );
 		// <id> | <literal>
 		$p = $s->peek();
 		if( $p->type == 'word' ) {
-			$val = $s->get();
+			$val = new c_literal( $s->get()->content );
 		}
 		else {
 			$val = $this->literal();
@@ -724,7 +724,7 @@ trace( "read_case", $this->context() );
 		$this->expect( ':' );
 
 		// <body-part>...
-		$parts = array();
+		$body = new c_body();
 		while( !$s->ended() )
 		{
 			$t = $s->peek();
@@ -734,9 +734,9 @@ trace( "read_case", $this->context() );
 			if( $t->type == '}' ) {
 				break;
 			}
-			$parts[] = $this->body_part();
+			$body->add( $this->body_part() );
 		}
-		return array( $val, $parts );
+		return array( $val, $body );
 	}
 
 	// <expr>: <atom> [<op> <atom>]...

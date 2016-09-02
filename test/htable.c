@@ -6,7 +6,7 @@ struct list_element;
 struct element
 {
 	//char key[MAX_KEY];
-	int64 key;
+	int64_t key;
 	int value;
 	struct element *next;
 };
@@ -19,7 +19,9 @@ struct hash_table
 	struct element **buckets; /* Array of lists */
 };
 
-int hash_int64( int64 n )
+typedef struct hash_table htable;
+
+int hash_int64( int64_t n )
 {
 	return n;
 }
@@ -36,7 +38,7 @@ int hash_string( char *s )
 
 
 /* Element creation */
-struct element *create_element( int64 key, int value )
+struct element *create_element( int64_t key, int value )
 {
 	struct element *e;
 	
@@ -124,7 +126,7 @@ void resize_table( htable *t )
 
 
 /* Finds the element for the given key. */
-struct element *get_element( htable *t, int64 key, bool create )
+struct element *get_element( htable *t, int64_t key, bool create )
 {
 	struct element *e;
 	struct element *prev;
@@ -166,7 +168,7 @@ struct element *get_element( htable *t, int64 key, bool create )
 
 
 /* Insert or update the value with the given key. */
-void ht_set( htable *t, int64 key, int value )
+void ht_set( htable *t, int64_t key, int value )
 {
 	struct element *e;
 	
@@ -179,13 +181,13 @@ void ht_set( htable *t, int64 key, int value )
 }
 
 /* Tells if the given key exists. */
-int ht_isset( htable *t, int64 key )
+int ht_isset( htable *t, int64_t key )
 {
 	return get_element( t, key, false ) ? 1 : 0;
 }
 
 /* Returns value at the given key. */
-int ht_get( htable *t, int64 key )
+int ht_get( htable *t, int64_t key )
 {
 	struct element *e;
 	
@@ -194,7 +196,7 @@ int ht_get( htable *t, int64 key )
 }
 
 void ht_foreach( htable *t,
-	int (*f)( int64 key, int value )
+	int (*f)( int64_t key, int value )
 )
 {
 	struct element *e;
@@ -225,11 +227,11 @@ void ht_print( htable *t )
 	
 	for( i = 0; i < t->size; i++ )
 	{
-		printf( "[%d]\n", i );
+		printf( "[%zd]\n", i );
 		cell = t->buckets[i];
 		while( cell )
 		{
-			printf( "\t%I64d = %d\n", cell->key, cell->value );
+			printf( "\t%I64d = %ld\n", cell->key, cell->value );
 			cell = cell->next;
 		}
 	}

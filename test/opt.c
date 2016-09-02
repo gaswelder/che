@@ -1,13 +1,5 @@
 // License: MIT (https://opensource.org/licenses/MIT)
 
-#include <ctype.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <unistd.h>
-
-#include "opt.h"
-
 /*
  * Twice as much as a borderline sane program would need.
  */

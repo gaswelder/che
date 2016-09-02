@@ -208,7 +208,8 @@ class c_prototype extends c_nameform
 	}
 };
 
-class c_structdef extends c_element {
+class c_structdef extends c_element
+{
 	public $name;
 	public $fields = array(); // array of nameforms
 
@@ -224,7 +225,7 @@ class c_structdef extends c_element {
 	function format() {
 		$s = "struct $this->name";
 		if( empty( $this->fields ) ) {
-			$s .= ";";
+			$s .= ";\n";
 			return $s;
 		}
 
@@ -232,7 +233,7 @@ class c_structdef extends c_element {
 		foreach( $this->fields as $form ) {
 			$s .= "\t" . $form->format() . ";\n";
 		}
-		$s .= "}";
+		$s .= "};\n";
 		return $s;
 	}
 }
@@ -465,13 +466,15 @@ class c_switch
 
 		foreach( $this->cases as $case )
 		{
-			$s .= $pref . "case $case[0]:\n";
-			foreach( $case[1] as $part ) {
-				$s .= $part->format( $tab );
+			$s .= $pref . "case ";
+			$s .= $case[0]->content . ":\n";
+			if( !empty( $case[1]->parts ) ) {
+				$s .= $case[1]->format( $tab );
 			}
 		}
 
 		$s .= "}\n";
+		return $s;
 	}
 }
 

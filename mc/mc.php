@@ -10,11 +10,12 @@ require $dir . '/parsers/main.php';
 require $dir . '/ctok1.php';
 require $dir . '/ctok.php';
 require $dir . '/cpom.php';
+require $dir . '/stdc.php';
 
 function c_parse( $path )
 {
 	$src = array();
-	
+
 	$f = new fstream( fopen( $path, 'rb' ) );
 	$t1 = new ctok1( $f );
 	$s = new ctok( $t1, $path );
