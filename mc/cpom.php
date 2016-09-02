@@ -34,7 +34,7 @@ class c_define extends c_element {
 	}
 
 	function format() {
-		return "#define $this->name $this->value";
+		return "#define $this->name $this->value\n";
 	}
 }
 
@@ -45,7 +45,7 @@ class c_include extends c_element {
 	}
 
 	function format() {
-		return "#include $this->path";
+		return "#include $this->path\n";
 	}
 }
 
