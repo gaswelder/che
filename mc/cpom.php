@@ -124,9 +124,87 @@ class c_typedef extends c_nameform {
 		return 'typedef ' . parent::format() . ';';
 	}
 };
-class c_prototype extends c_nameform {
-	function format( $tab = 0 ) {
-		return parent::format( $tab ) . ';';
+
+class c_prototype extends c_nameform
+{
+	public $type;
+	public $name;
+	public $args;
+
+	function __construct( $rettype, $name, $args ) {
+		$this->type = $rettype;
+		$this->name = $name;
+		$this->args = $args;
+	}
+
+	function format( $tab = 0 )
+	{
+		$pref = str_repeat( "\t", $tab );
+
+		$s = $this->format_type() . ' ' . $this->name;
+		$s .= $this->format_args();
+		$s .= ';';
+		return $s;
+		//return parent::format( $tab ) . ';';
+	}
+
+	private function format_type()
+	{
+		$n = count( $this->type );
+		$i = 0;
+		$s = '';
+		while( $i < $n )
+		{
+			$mod = $this->type[$i++];
+			if( $mod == '*' ) {
+				$s = $mod . $s;
+				continue;
+			}
+
+			if( is_string( $mod ) && strlen( $mod ) > 1 && $mod[0] == '[' ) {
+				$s = $s . $mod;
+				continue;
+			}
+
+			if( $mod == 'struct' ) {
+				$mod = $this->type[$i++];
+				if( is_string( $mod ) ) {
+					$s = "struct $mod $s";
+					continue;
+				}
+			}
+
+			if( is_string( $mod ) ) {
+				$s = "$mod $s";
+				continue;
+			}
+
+			echo '-----------------', "\n";
+			var_dump( $mod );
+			echo '-----------------', "\n";
+			var_dump( $this->type );
+			echo '-----------------', "\n";
+			exit;
+		}
+
+		return $s;
+	}
+
+	private function format_args()
+	{
+		$s = '(';
+		foreach( $this->args as $i => $arg )
+		{
+			if( $i > 0 ) $s .= ', ';
+			if( $arg == '...' ) {
+				$s .= '...';
+			}
+			else {
+				$s .= $arg->format();
+			}
+		}
+		$s .= ')';
+		return $s;
 	}
 };
 

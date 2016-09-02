@@ -159,7 +159,11 @@ trace( "read_object", $this->context() );
 			return $def;
 		}
 
-		$proto = new c_prototype( $form->name, $form->type );
+		$type = $form->type;
+		$args = array_shift( $type );
+		assert( $args[0] == 'call' );
+		array_shift( $args );
+		$proto = new c_prototype( $type, $form->name, $args );
 
 		$t = $s->get();
 		if( $t->type == ';' ) {
