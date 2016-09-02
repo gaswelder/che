@@ -391,7 +391,8 @@ class c_return extends c_expr {
 };
 
 class c_body {
-	public $parts; // whatever
+	public $parts = array();
+
 	function add( $p ) {
 		$this->parts[] = $p;
 	}
@@ -422,11 +423,14 @@ class c_comment extends c_literal {
 	}
 };
 
-class c_if {
+class c_if
+{
 	public $cond; // c_expr
 	public $body; // c_body
 	public $else;
-	function __construct( $cond, $body, $else ) {
+
+	function __construct( $cond, $body, $else )
+	{
 		$this->cond = $cond;
 		$this->body = $body;
 		$this->else = $else;
@@ -444,9 +448,10 @@ class c_if {
 	}
 }
 
-class c_switch {
-	private $cond;
-	private $cases;
+class c_switch
+{
+	public $cond;
+	public $cases;
 
 	function __construct( $cond, $cases ) {
 		$this->cond = $cond;
