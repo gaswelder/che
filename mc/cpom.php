@@ -17,11 +17,11 @@ class c_macro extends c_element {
 		$this->arg = $arg;
 	}
 	function format() {
-		$s = $this->type;
+		$s = '#' . $this->type;
 		if( $this->arg !== null ) {
 			$s .= " $this->arg";
 		}
-		return $s;
+		return $s . "\n";
 	}
 }
 

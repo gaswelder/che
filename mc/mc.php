@@ -12,62 +12,73 @@ require $dir . '/ctok.php';
 require $dir . '/cpom.php';
 require $dir . '/stdc.php';
 
-function c_parse( $path )
-{
-	$src = array();
-
-	$f = new fstream( fopen( $path, 'rb' ) );
-	$t1 = new ctok1( $f );
-	$s = new ctok( $t1, $path );
-
-	while( !$s->ended() ) {
-		$t = $s->get();
-		//echo $t, "\n";
-		//echo $f->pos(), ', ', $t1->pos(), ', ', $s->pos(), "\n";
-		$src[] = $t;
-
-
-		//echo $t->format(), "\n";
-	}
-	return $src;
-}
-
 class mc
 {
-	static function rewrite( $path )
+	/*
+	 * Parses given file and returns array of code elements
+	 */
+	static function parse( $path )
 	{
-		$body = "";
-		$headers = array();
-		$prototypes = '';
-		$types = '';
+		$code = array();
 
-		$src = c_parse( $path );
+		$f = new fstream( fopen( $path, 'rb' ) );
+		$t1 = new ctok1( $f );
+		$s = new ctok( $t1, $path );
+
+		while( !$s->ended() ) {
+			$t = $s->get();
+			$code[] = $t;
+		}
+		return $code;
+	}
+
+	/*
+	 * Formats the code as text
+	 */
+	static function format( $code )
+	{
+		$out = '';
+		foreach( $code as $element ) {
+			$out .= $element->format() . "\n";
+		}
+		return $out;
+	}
+
+	/*
+	 * Takes parsed code tree and adds
+	 * forward declarations and headers.
+	 */
+	static function add_declarations( $src )
+	{
+		$prototypes = array();
+		$types = array();
+		$body = array();
+		$headers = array();
+
 		foreach( $src as $element )
 		{
 			if( $element instanceof c_typedef ) {
-				$types .= $element->format() . "\n";
+				$types[] = $element;
 				continue;
 			}
 
 			if( $element instanceof c_func ) {
 				self::rewrite_func( $element, $headers );
-				$prototypes .= $element->proto->format() . "\n";
+				$prototypes[] = $element->proto;
 			}
-			$body .= $element->format();
+
+			$body[] = $element;
 		}
 
-		$out = "// mc\n";
+		$out = array();
 
 		$headers = array_keys( $headers );
 		sort( $headers );
 		foreach( $headers as $h ) {
-			$out .= "#include <$h.h>\n";
+			$out[] = new c_macro( 'include', "<$h.h>" );
 		}
-		$out .= "\n";
 
-		$out .= $types . "\n";
-		$out .= $prototypes . "\n";
-		$out .= $body;
+		$out = array_merge( $out, $types, $prototypes, $body );
 		return $out;
 	}
 
