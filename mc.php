@@ -24,7 +24,7 @@ function compile( $pipeline )
 		 */
 		$path = array_shift( $pipeline );
 		$code = mc::parse( $path );
-		$code = mc::add_declarations( $code );
+		$code = mc_headers::convert( $code );
 
 		/*
 		 * Save the converted C source and add it to
