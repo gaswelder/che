@@ -517,33 +517,46 @@ $this->trace( "expr_follows" );
 			return false;
 		}
 
-
 		$s = $this->s;
 
-		$op = false;
-		$words = 0;
 
 		$buf = array();
-		while( !$s->ended() && $s->peek()->type != ';' )
-		{
-			$t = $s->peek();
-			if( $t->type == '(' || $this->is_op( $t ) || $t->type == '[' ) {
-				$op = true;
-				break;
-			}
+		$n = -1;
+		while( !$s->ended() && $s->peek()->type != ';' ) {
+			$buf[] = $s->get();
+			$n++;
+		}
+		while( $n >= 0 ) {
+			$s->unget( $buf[$n] );
+			$n--;
+		}
 
-			if( $t->type == 'word' ) {
+		$op = 0;
+		$eq = 0;
+		$words = 0;
+		foreach( $buf as $t )
+		{
+			if( $t->type == '=' ) {
+				$eq++;
+			}
+			else if( $t->type == '(' || $this->is_op( $t )
+				|| $t->type == '[' ) {
+				$op++;
+			}
+			else if( $t->type == 'word' ) {
 				$words++;
 			}
-			$buf[] = $s->get();
+
+			if( $eq == 1 && $op > 0 ) {
+				return false;
+			}
+
+			if( ($op + $eq) == 1 && $words < 2 ) {
+				return true;
+			}
 		}
 
-		while( !empty( $buf ) ) {
-			$s->unget( array_pop( $buf ) );
-		}
-
-
-		return $op && $words < 2;
+		return ($op + $eq > 0) && $words < 2;
 	}
 
 	private static $type_names = array(
