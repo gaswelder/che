@@ -3,7 +3,7 @@
 // Second stage parser that returns CPOM objects
 
 function trace( $m, $s = null ) {
-	//fwrite( STDERR, "--- $m		$s\n" );
+	fwrite( STDERR, "--- $m		$s\n" );
 }
 
 function put( $s ) {
@@ -19,6 +19,12 @@ class ctok extends toksbasech
 		parent::__construct($s);
 		$this->s = $s;
 		$this->path = $path;
+	}
+
+	private function trace( $m ) {
+		return;
+		$s = $this->context();
+		fwrite( STDERR, "--- $m\t$s\n" );
 	}
 
 	protected function read()
@@ -95,7 +101,7 @@ class ctok extends toksbasech
 	// <typedef>: "typedef" <nameform> ";"
 	private function read_typedef()
 	{
-trace( "read_typedef" );
+$this->trace( "read_typedef" );
 		$this->expect( 'typedef' );
 		$form = $this->read_nameform();
 		$this->expect( ';' );
@@ -105,7 +111,7 @@ trace( "read_typedef" );
 	// <struct-def>: "struct" <name> [<struct-fields>] ";"
 	private function struct_def()
 	{
-trace( "struct_def" );
+$this->trace( "struct_def" );
 		$this->expect( 'struct' );
 		$name = $this->expect( 'word' )->content;
 		$def = new c_structdef( $name );
@@ -130,7 +136,7 @@ trace( "struct_def" );
 	// or <stor> <nameform/func> <body>
 	private function read_object()
 	{
-trace( "read_object", $this->context() );
+$this->trace( "read_object" );
 		$s = $this->s;
 
 		// <stor>
@@ -184,7 +190,7 @@ trace( "read_object", $this->context() );
 	// <struct-fields>: "{" [<nameform> ";"]... "}"
 	private function struct_fields()
 	{
-trace( "struct fields" );
+$this->trace( "struct fields" );
 		$s = $this->s;
 		$fields = array();
 		$this->expect( '{' );
@@ -205,7 +211,7 @@ trace( "struct fields" );
 	// <nameform>: "const"? <type> <obj-der>
 	private function read_nameform()
 	{
-trace( "read_nameform" );
+$this->trace( "read_nameform" );
 		$s = $this->s;
 
 		$cast = [];
@@ -234,7 +240,7 @@ trace( "read_nameform" );
 	//	or <type-mod>...
 	private function type()
 	{
-trace( "type" );
+$this->trace( "type" );
 		$s = $this->s;
 
 		$t = $s->get();
@@ -268,7 +274,7 @@ trace( "type" );
 	//	or	<left-mod>... "(" <der> ")" <right-mod>... <call-signature>
 	private function obj_der()
 	{
-trace( "obj_der" );
+$this->trace( "obj_der" );
 		$s = $this->s;
 		/*
 		 * Priorities:
@@ -400,7 +406,7 @@ trace( "obj_der" );
 	// <call-signature>: "(" <nameform> [",", <nameform>]... ")"
 	private function call_signature()
 	{
-trace( "call_signature" );
+$this->trace( "call_signature" );
 		$s = $this->s;
 
 		$this->expect( '(' );
@@ -427,7 +433,7 @@ trace( "call_signature" );
 
 	private function is_function( c_nameform $f )
 	{
-trace( "is_function" );
+$this->trace( "is_function" );
 		return !empty( $f->type )
 			&& is_array( $f->type[0] ) && $f->type[0][0] == 'call';
 	}
@@ -435,7 +441,7 @@ trace( "is_function" );
 	// <body>: "{" <body-part>... "}"
 	private function read_body()
 	{
-trace( "read_body" );
+$this->trace( "read_body" );
 		$s = $this->s;
 		$body = new c_body();
 
@@ -456,7 +462,7 @@ trace( "read_body" );
 	// 	| (<expr> ";") | <body> )...
 	private function body_part()
 	{
-trace( "body_part", $this->context() );
+$this->trace( "body_part" );
 		$s = $this->s;
 		$t = $s->peek();
 
@@ -506,7 +512,7 @@ trace( "body_part", $this->context() );
 	 */
 	private function _expr_follows()
 	{
-trace( "expr_follows" );
+$this->trace( "expr_follows" );
 		if( $this->type_follows() ) {
 			return false;
 		}
@@ -570,7 +576,7 @@ trace( "expr_follows" );
 
 	private function _type_follows()
 	{
-trace( "type_follows" );
+$this->trace( "type_follows" );
 		$t = $this->s->peek();
 
 		$type_keywords = array( 'struct', 'const', 'static' );
@@ -610,7 +616,7 @@ trace( "type_follows" );
 
 	private function read_if()
 	{
-trace( "read_if", $this->context() );
+$this->trace( "read_if" );
 		$this->expect( 'if' );
 		$this->expect( '(' );
 		$expr = $this->expr();
@@ -643,7 +649,7 @@ trace( "read_if", $this->context() );
 
 	private function read_for()
 	{
-trace( "read_for" );
+$this->trace( "read_for" );
 		$this->expect( 'for' );
 		$this->expect( '(' );
 
@@ -661,7 +667,7 @@ trace( "read_for" );
 
 	private function read_while()
 	{
-trace( "read_while" );
+$this->trace( "read_while" );
 		$this->expect( 'while' );
 		$this->expect( '(' );
 		$cond = $this->expr();
@@ -675,7 +681,7 @@ trace( "read_while" );
 	// <return>: "return" <expr> ";"
 	private function read_return()
 	{
-trace( "read_return" );
+$this->trace( "read_return" );
 		$this->expect( 'return' );
 		$expr = $this->expr();
 		$this->expect( ';' );
@@ -685,7 +691,7 @@ trace( "read_return" );
 	// <switch>: "switch" "(" <expr> ")" "{" <switch-case>... "}"
 	private function read_switch()
 	{
-trace( "read_switch" );
+$this->trace( "read_switch" );
 		$this->expect( 'switch' );
 		$this->expect( '(' );
 		$cond = $this->expr();
@@ -706,7 +712,7 @@ trace( "read_switch" );
 	// <switch-case>: "case" <literal>|<id> ":" <body-part>...
 	private function read_case()
 	{
-trace( "read_case", $this->context() );
+$this->trace( "read_case" );
 		$s = $this->s;
 
 		$this->expect( 'case' );
@@ -742,7 +748,7 @@ trace( "read_case", $this->context() );
 	// <expr>: <atom> [<op> <atom>]...
 	private function expr()
 	{
-trace( "expr", $this->context() );
+$this->trace( "expr" );
 		$s = $this->s;
 
 		$e = new c_expr();
@@ -775,7 +781,7 @@ trace( "expr", $this->context() );
 	// )
 	private function atom()
 	{
-trace( "atom" );
+$this->trace( "atom" );
 		$s = $this->s;
 		$p = $s->peek();
 
@@ -909,7 +915,7 @@ trace( "atom" );
 	// <sizeof-arg>: ("(" (<expr> | <type>) ")") | <expr> | <type>
 	private function read_sizeof()
 	{
-trace( "read_sizeof", $this->context() );
+$this->trace( "read_sizeof" );
 		$s = $this->s;
 		$parts = [];
 
@@ -939,7 +945,7 @@ trace( "read_sizeof", $this->context() );
 
 	private function literal()
 	{
-trace( "literal", $this->context() );
+$this->trace( "literal" );
 		$t = $this->s->get();
 
 		if( $t->type == 'num' ) {
@@ -964,7 +970,7 @@ trace( "literal", $this->context() );
 
 	private function array_literal()
 	{
-trace( "array_literal" );
+$this->trace( "array_literal" );
 		$s = $this->s;
 
 		$elements = array();
