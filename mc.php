@@ -26,6 +26,27 @@ function compile( $pipeline )
 		$code = mc::parse( $path );
 		$code = mc_headers::convert( $code );
 
+		$n = count( $code );
+		for( $i = 0; $i < $n; $i++ ) {
+			if( !($code[$i] instanceof c_import) ) {
+				continue;
+			}
+
+			/*
+			 * Replace the import with imported declarations
+			 */
+			$imppath = $code[$i]->path . ".c";
+			$decls = mc::import( $imppath );
+			array_splice( $code, $i, 1, $decls );
+			$i--;
+			$n += count( $decls ) - 1;
+
+			/*
+			 * Add the imported module to the processing
+			 */
+			$pipeline[] = $imppath;
+		}
+
 		/*
 		 * Save the converted C source and add it to
 		 * the compiler's command

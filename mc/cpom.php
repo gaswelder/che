@@ -9,6 +9,18 @@ class c_element {
 	}
 }
 
+class c_import extends c_element
+{
+	public $path;
+	public function __construct( $path ) {
+		$this->path = $path;
+	}
+
+	function format() {
+		return "import $this->path";
+	}
+}
+
 class c_macro extends c_element {
 	public $type;
 	public $arg = null;

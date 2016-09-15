@@ -61,6 +61,12 @@ class ctok extends toksbasech
 			return new c_comment( $t->content );
 		}
 
+		if( $t->type == 'import' ) {
+			$this->s->get();
+			$path = $this->s->get();
+			return new c_import( $path->content );
+		}
+
 		// <obj-def>
 		return $this->read_object();
 	}

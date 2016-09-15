@@ -43,6 +43,26 @@ class mc
 		}
 		return $out;
 	}
+
+	static function import( $path )
+	{
+		$code = self::parse( $path );
+		$decls = array();
+		foreach( $code as $element )
+		{
+			$cn = get_class( $element );
+			switch( $cn ) {
+				case 'c_typedef':
+				case 'c_structdef':
+					$decls[] = $element;
+					break;
+				case 'c_func':
+					$decls[] = $element->proto;
+					break;
+			}
+		}
+		return $decls;
+	}
 }
 
 

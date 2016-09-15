@@ -1,1 +1,2 @@
-php mc.php test/hw.c
+cd test
+php ../mc.php hw.c
