@@ -55,6 +55,11 @@ class ctok extends toksbasech
 			}
 		}
 
+		// <enum-def>?
+		if( $t->type == 'enum' ) {
+			return $this->read_enumdef();
+		}
+
 		// comment?
 		if( $t->type == 'comment' ) {
 			$this->s->get();

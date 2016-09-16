@@ -137,6 +137,33 @@ class c_typedef extends c_nameform {
 	}
 };
 
+class c_enum extends c_element
+{
+	public $values = array();
+	function add( $name, $val ) {
+		$this->values[$name] = $val;
+	}
+
+	function format() {
+		$s = "enum {\n";
+		$n = count( $this->values );
+		$i = 0;
+		foreach( $this->values as $name => $val ) {
+			$s .= "\t$name";
+			if( $val !== null ) {
+				$s .= " = " . $val->format();
+			}
+			$i++;
+			if( $i < $n ) {
+				$s .= ",";
+			}
+			$s .= "\n";
+		}
+		$s .= "};\n";
+		return $s;
+	}
+}
+
 class c_prototype extends c_nameform
 {
 	public $type;
@@ -265,6 +292,9 @@ class c_literal extends c_element {
 	public $content;
 	function __construct( $s ) {
 		$this->content = $s;
+	}
+	function format() {
+		return $this->content;
 	}
 }
 

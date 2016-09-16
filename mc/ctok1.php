@@ -20,7 +20,7 @@ class ctok1 extends toksbase
 	);
 
 	private static $keywords = array(
-		'typedef', 'struct', 'import',
+		'typedef', 'struct', 'import', 'enum',
 		'const', 'static',
 		'if', 'else', 'for', 'while', 'return', 'switch', 'case',
 		'sizeof'
