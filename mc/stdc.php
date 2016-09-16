@@ -237,6 +237,11 @@ class mc_headers
 		'time' => '
 			CLOCKS_PER_SEC clock_t time_t clock difftime mktime
 			time asctime ctime gmtime localtime strftime
+		',
+
+		'unistd' => '
+			chdir close getcwd getopt sleep optarg opterr
+			optind optopt
 		'
 	);
 }
