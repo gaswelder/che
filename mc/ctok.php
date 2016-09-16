@@ -525,7 +525,6 @@ $this->trace( "expr_follows" );
 
 		$s = $this->s;
 
-
 		$buf = array();
 		$n = -1;
 		while( !$s->ended() && $s->peek()->type != ';' ) {

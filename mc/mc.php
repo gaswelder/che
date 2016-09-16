@@ -27,6 +27,7 @@ class mc
 
 		while( !$s->ended() ) {
 			$t = $s->get();
+			//echo $t, "\n";
 			$code[] = $t;
 		}
 		return $code;
