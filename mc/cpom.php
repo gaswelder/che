@@ -479,7 +479,7 @@ class c_switch
 		foreach( $this->cases as $case )
 		{
 			$s .= $pref . "case ";
-			$s .= $case[0]->content . ":\n";
+			$s .= $case[0]->format() . ":\n";
 			if( !empty( $case[1]->parts ) ) {
 				$s .= $case[1]->format( $tab );
 			}
