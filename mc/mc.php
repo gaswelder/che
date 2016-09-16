@@ -58,9 +58,11 @@ class mc
 		foreach( $code as $element )
 		{
 			$cn = get_class( $element );
+
 			switch( $cn ) {
 				case 'c_typedef':
 				case 'c_structdef':
+				case 'c_enum':
 					$decls[] = $element;
 					break;
 				case 'c_func':
