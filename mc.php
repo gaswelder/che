@@ -57,7 +57,10 @@ function compile( $pipeline )
 		 * Save the converted C source and add it to
 		 * the compiler's command
 		 */
-		$name = basename( $path ) . '.c';
+		$name = "mcbuild/" . basename( $path ) . ".c";
+		if( !file_exists( "mcbuild" ) && !mkdir( "mcbuild" ) ) {
+			exit(1);
+		}
 		file_put_contents( $name, mc::format( $code ) );
 		$sources[] = $name;
 	}
