@@ -136,6 +136,33 @@ $this->trace( "struct_def" );
 		return $def;
 	}
 
+	// <enum-def>: "enum" "{" <id> ["=" <literal>] [,]... "}" ";"
+	private function read_enumdef()
+	{
+		$s = $this->s;
+		$this->expect( 'enum' );
+		$this->expect( '{' );
+
+		$enum = new c_enum();
+		while( 1 ) {
+			$id = $this->expect( 'word' )->content;
+			$val = null;
+			if( $s->peek()->type == '=' ) {
+				$s->get();
+				$val = $this->literal();
+			}
+			$enum->add( $id, $val );
+			if( $s->peek()->type == ',' ) {
+				$s->get();
+			} else {
+				break;
+			}
+		}
+		$this->expect( '}' );
+		$this->expect( ';' );
+		return $enum;
+	}
+
 	// <object-def>:
 	// <stor> <nameform> [= <expr>] ";"
 	// or <stor> <nameform/func> ";"
@@ -815,8 +842,7 @@ $this->trace( "atom" );
 		}
 
 		// <literal>?
-		if( $p->type == 'num' || $p->type == 'string' || $p->type == 'char'
-			|| $p->type == '{' ) {
+		if( $this->literal_follows() ) {
 			$ops[] = array( 'literal', $this->literal() );
 			return $ops;
 		}
@@ -961,6 +987,19 @@ $this->trace( "read_sizeof" );
 		return new c_sizeof( $arg );
 	}
 
+	private function literal_follows()
+	{
+		$s = $this->s;
+		$t = $s->peek()->type;
+		return (
+			$t == 'num' ||
+			$t == 'string' ||
+			$t == 'char' ||
+			($t == '-' && $s->peek(1)->type == 'num') ||
+			$t == '{'
+		);
+	}
+
 	private function literal()
 	{
 $this->trace( "literal" );
@@ -976,6 +1015,11 @@ $this->trace( "literal" );
 
 		if( $t->type == 'char' ) {
 			return new c_char( $t->content );
+		}
+
+		if( $t->type == '-' ) {
+			$n = $this->expect( 'num' );
+			return new c_number( '-'.$n->content );
 		}
 
 		if( $t->type == '{' ) {
