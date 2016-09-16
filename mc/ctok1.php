@@ -121,11 +121,8 @@ class ctok1 extends toksbase
 		$p1 = $s->get();
 		$p2 = $s->peek();
 		$s->unget( $p1 );
-		if( ctype_digit( $p1 ) || $p1 == '-' && ctype_digit( $p2 ) ) {
+		if( ctype_digit( $p1 ) ) {
 			$num = '';
-			if( $p1 == '-' ) {
-				$num = $s->get();
-			}
 			$num .= $s->read_set( '0123456789' );
 			if( $s->peek() == 'L' ) {
 				$num .= $s->get();
