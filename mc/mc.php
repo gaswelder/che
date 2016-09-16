@@ -64,7 +64,10 @@ class mc
 					$decls[] = $element;
 					break;
 				case 'c_func':
-					$decls[] = $element->proto;
+					$dec = $element->proto;
+					if( !in_array( 'static', $dec->type ) ) {
+						$decls[] = $dec;
+					}
 					break;
 			}
 		}

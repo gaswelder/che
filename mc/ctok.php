@@ -177,14 +177,6 @@ $this->trace( "struct_def" );
 $this->trace( "read_object" );
 		$s = $this->s;
 
-		// <stor>
-		$stor = [];
-		$t = $s->peek();
-		if( $t->type == 'static' ) {
-			$stor[] = 'static';
-			$s->get();
-		}
-
 		// <nameform>
 		$form = $this->read_nameform();
 
@@ -254,8 +246,16 @@ $this->trace( "read_nameform" );
 
 		$cast = [];
 
-		// "const"?
 		$t = $s->peek();
+
+		// "static"?
+		if( $t->type == 'static' ) {
+			$cast[] = 'static';
+			$s->get();
+			$t = $s->peek();
+		}
+
+		// "const"?
 		if( $t->type == 'const' ) {
 			$cast[] = 'const';
 			$s->get();
