@@ -1,12 +1,11 @@
-import "neumann_rand"
+import "prng/neumann"
 
 int main() {
-	nrg *c = neumann_init(time(NULL));
+	int16_t n = (int16_t)(time(NULL));
 
 	int i;
 	for(i = 0; i < 100; i++) {
-		printf("%d\n", neumann_next(c));
+		n = nrg_next(n);
+		printf("%d\n", n);
 	}
-
-	neumann_free(c);
 }

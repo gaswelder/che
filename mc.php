@@ -1,4 +1,5 @@
 <?php
+define( 'MCDIR', '.' );
 require 'mc/mc.php';
 
 exit(main($argv));
@@ -35,7 +36,12 @@ function compile( $pipeline )
 			/*
 			 * Replace the import with imported declarations
 			 */
-			$imppath = $code[$i]->path . ".c";
+			$mod = $code[$i]->path;
+			$imppath = find_import( $mod );
+			if( !$imppath ) {
+				fwrite( STDERR, "Could not find module: $mod\n" );
+				exit(1);
+			}
 			$decls = mc::import( $imppath );
 			array_splice( $code, $i, 1, $decls );
 			$i--;
@@ -58,6 +64,23 @@ function compile( $pipeline )
 
 	exec( 'pc ' . implode( ' ', $sources ) . ' -o a.out', $output, $ret );
 	var_dump( $output, $ret );
+}
+
+/*
+ * Returns path to the specified module.
+ */
+function find_import( $name )
+{
+	$p = array(
+		$name . ".c",
+		MCDIR . "/lib/$name.c"
+	);
+	foreach( $p as $path ) {
+		if( file_exists( $path ) ) {
+			return $path;
+		}
+	}
+	return null;
 }
 
 ?>
