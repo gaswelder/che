@@ -136,18 +136,16 @@ class ctok1 extends toksbase
 		/*
 		 * String.
 		 */
-		if( $s->peek() == '"' ) {
-			$s->get();
+		if( $s->peek() == '"' )
+		{
 			$str = '';
-			while( !$s->ended() && $s->peek() != '"' ) {
-				$ch = $s->get();
-				$str .= $ch;
-				if( $ch == '\\' ) {
-					$str .= $s->get();
-				}
-			}
-			if( $s->get() != '"' ) {
-				return $this->error( "Double quote expected" );
+			/*
+			 * A string literal may be split into parts,
+			 * so concatenate it.
+			 */
+			while( $s->peek() == '"' ) {
+				$str .= $this->read_string();
+				$s->read_set( self::spaces );
 			}
 			return tok( 'string', $str );
 		}
@@ -181,6 +179,25 @@ class ctok1 extends toksbase
 
 		$ch = $s->peek();
 		return $this->error( "Unexpected character: '$ch'" );
+	}
+
+	private function read_string()
+	{
+		$s = $this->upstream;
+
+		$s->get();
+		$str = '';
+		while( !$s->ended() && $s->peek() != '"' ) {
+			$ch = $s->get();
+			$str .= $ch;
+			if( $ch == '\\' ) {
+				$str .= $s->get();
+			}
+		}
+		if( $s->get() != '"' ) {
+			return $this->error( "Double quote expected" );
+		}
+		return $str;
 	}
 }
 
