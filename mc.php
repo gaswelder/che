@@ -15,6 +15,14 @@ function main( $args )
 function compile( $pipeline )
 {
 	/*
+	 * Executable name
+	 */
+	$outname = basename( $pipeline[0] );
+	if( $p = strrpos( $outname, '.' ) ) {
+		$outname = substr( $outname, 0, $p );
+	}
+
+	/*
 	 * C files that will be passed to the C compiler
 	 */
 	$sources = array();
@@ -65,7 +73,7 @@ function compile( $pipeline )
 		$sources[] = $name;
 	}
 
-	exec( 'pc ' . implode( ' ', $sources ) . ' -o a.out', $output, $ret );
+	exec( 'pc ' . implode( ' ', $sources ) . ' -o '.$outname, $output, $ret );
 	var_dump( $output, $ret );
 }
 
