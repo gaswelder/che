@@ -38,9 +38,15 @@ class mc
 	 */
 	static function format( $code )
 	{
+		$term = array( 'c_vardef' );
 		$out = '';
 		foreach( $code as $element ) {
-			$out .= $element->format() . "\n";
+			$out .= $element->format();
+			$cn = get_class( $element );
+			if( in_array( $cn, $term ) ) {
+				$out .= ';';
+			}
+			$out .= "\n";
 		}
 		return $out;
 	}
