@@ -33,7 +33,7 @@ class c_macro extends c_element {
 		if( $this->arg !== null ) {
 			$s .= " $this->arg";
 		}
-		return $s . "\n";
+		return $s;
 	}
 }
 
