@@ -75,8 +75,9 @@ function compile( $pipeline )
 		$sources[] = $name;
 	}
 
-	exec( 'pc ' . implode( ' ', $sources ) . ' -o '.$outname, $output, $ret );
-	var_dump( $output, $ret );
+	exec( 'pc -g ' . implode( ' ', $sources ) . ' -o '.$outname, $output, $ret );
+	//var_dump( $output, $ret );
+	exit($ret);
 }
 
 /*
