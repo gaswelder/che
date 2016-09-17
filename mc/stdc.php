@@ -16,8 +16,15 @@ class mc_headers
 		foreach( $code as $element )
 		{
 			if( $element instanceof c_typedef ) {
+				self::type( $element->type, $headers );
 				$types[] = $element;
 				continue;
+			}
+
+			if( $element instanceof c_structdef ) {
+				foreach( $element->fields as $form ) {
+					self::type( $form->type, $headers );
+				}
 			}
 
 			if( $element instanceof c_func ) {
