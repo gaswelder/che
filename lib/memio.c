@@ -1,0 +1,112 @@
+
+struct mem {
+	char *data;
+	size_t pos; // current position, <= datalen
+	size_t datalen; // actual data size, <= size
+	size_t size; // allocated buffer size
+};
+
+typedef struct mem MEM;
+
+/*
+ * Creates a memory buffer.
+ * 'name' and 'mode' are ignored.
+ */
+MEM *memopen(const char *name, const char *mode) {
+	(void) name;
+	(void) mode;
+	MEM *m = calloc( 1, sizeof(struct mem) );
+	return m;
+}
+
+/*
+ * Closes the buffer.
+ */
+void memclose(MEM *mem) {
+	if(mem->data) {
+		free(mem->data);
+	}
+	free( mem );
+}
+
+/*
+ * Write 'count' pieces of size 'size' from the buffer 'buf'.
+ */
+size_t memwrite(void *buf, size_t size, size_t count, MEM *m)
+{
+	if(count >= SIZE_MAX/size) {
+		puts("Size overflow");
+		return 0;
+	}
+
+	size_t total = size * count;
+
+	if( !makespace(m, total) ) {
+		puts("No memory");
+		return 0;
+	}
+
+	size_t i;
+	char *p = (char *) buf;
+	for(i = 0; i < total; i++) {
+		m->data[m->pos++] = *p++;
+	}
+
+	/*
+	 * Update the datalen. We do it this way because
+	 * 'pos' could be reset far below the data size.
+	 */
+	if(m->pos > m->datalen) {
+		m->datalen = m->pos;
+	}
+	return total;
+}
+
+/*
+ * Resets the position to zero.
+ */
+void memrewind(MEM *m) {
+	m->pos = 0;
+}
+
+/*
+ * Returns next character of EOF.
+ */
+int memgetc(MEM *m) {
+	if(m->pos >= m->datalen) {
+		return EOF;
+	}
+	int c = m->data[m->pos];
+	m->pos++;
+	return c;
+}
+
+/*
+ * Makes sure there is space for data of the additional given size.
+ * Returns 0 if there is no space and additional memory couldn't be
+ * allocated.
+ */
+static int makespace(MEM *mem, size_t size)
+{
+	size_t need = mem->pos + size;
+
+	if( need <= mem->size ) {
+		return 1;
+	}
+
+	size_t next = mem->size;
+	if( !next ) next = 32;
+	while( next < need ) {
+		next *= 2;
+	}
+
+	char *tmp = realloc(mem->data, next);
+	if( !tmp ) {
+		fprintf( stderr, "realloc failed\n" );
+		return 0;
+	}
+
+	mem->data = tmp;
+	mem->size = next;
+	return 1;
+}
