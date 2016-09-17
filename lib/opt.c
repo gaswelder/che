@@ -207,7 +207,7 @@ void opt_usage(void)
 	int i;
 	for(i = 0; i < flags_num; i++)
 	{
-		fprintf( stderr, "-%s", specs[i].name );
+		fprintf( stderr, "\t-%s", specs[i].name );
 		switch( specs[i].type )
 		{
 			case OPT_STR:
@@ -220,7 +220,7 @@ void opt_usage(void)
 				fprintf( stderr, " integer > 0" );
 				break;
 		}
-		fprintf( stderr, "\n   %s\n", specs[i].desc );
+		fprintf( stderr, "\t%s\n", specs[i].desc );
 	}
 }
 
