@@ -1027,12 +1027,52 @@ $this->trace( "literal" );
 			return new c_number( '-'.$n->content );
 		}
 
-		if( $t->type == '{' ) {
+		if( $t->type == '{' )
+		{
+			$p = $this->s->peek();
 			$this->s->unget( $t );
-			return $this->array_literal();
+
+			if( $p->type == '.' ) {
+				return $this->struct_literal();
+			}
+			else {
+				return $this->array_literal();
+			}
+		}
+
+		if( $t->type == 'word' ) {
+			return new c_literal( $t->content );
 		}
 
 		return $this->error( "Unexpected $t" );
+	}
+
+	// <struct-literal>: "{" "." <id> "=" <literal> [, ...] "}"
+	private function struct_literal()
+	{
+$this->trace( "struct_literal" );
+		$s = $this->s;
+
+		$struct = new c_struct_literal();
+
+		$this->expect( '{' );
+		while( !$s->ended() )
+		{
+			$this->expect( '.' );
+			$id = $this->expect( 'word' )->content;
+			$this->expect( '=' );
+			$val = $this->literal();
+
+			$struct->add( $id, $val );
+
+			if( $s->peek()->type == ',' ) {
+				$s->get();
+			} else {
+				break;
+			}
+		}
+		$this->expect( '}' );
+		return $struct;
 	}
 
 	private function array_literal()

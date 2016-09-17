@@ -333,6 +333,33 @@ class c_array extends c_literal{
 		return $s;
 	}
 };
+
+class c_struct_literal extends c_element
+{
+	private $vals = array();
+
+	function add( $name, $val ) {
+		$this->vals[$name] = $val;
+	}
+
+	function format()
+	{
+		$s = "{\n";
+		$i = 0;
+		$n = count( $this->vals );
+		foreach( $this->vals as $name => $val ) {
+			$s .= "\t.$name = " . $val->format();
+			$i++;
+			if( $i < $n ) {
+				$s .= ",";
+			}
+			$s .= "\n";
+		}
+		$s .= "}\n";
+		return $s;
+	}
+}
+
 class c_sizeof extends c_literal{
 	function format() {
 		$s = 'sizeof (';
