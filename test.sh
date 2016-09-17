@@ -1,2 +1,4 @@
-php mc.php test/hw.c &&
-php mc.php test/stat.c
+for i in test/*; do
+	echo $i
+	php mc.php $i || exit 1
+done
