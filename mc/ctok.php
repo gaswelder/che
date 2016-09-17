@@ -728,12 +728,16 @@ $this->trace( "read_while" );
 		return new c_while( $cond, $body );
 	}
 
-	// <return>: "return" <expr> ";"
+	// <return>: "return" [<expr>] ";"
 	private function read_return()
 	{
 $this->trace( "read_return" );
 		$this->expect( 'return' );
-		$expr = $this->expr();
+		if( $this->s->peek()->type != ';' ) {
+			$expr = $this->expr();
+		} else {
+			$expr = new c_expr( array() );
+		}
 		$this->expect( ';' );
 		return new c_return( $expr->parts );
 	}
