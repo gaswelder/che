@@ -6,7 +6,7 @@ error_reporting( -1 );
 
 $dir = dirname( __FILE__ );
 
-require $dir . '/parsers/main.php';
+require $dir . '/buf.php';
 require $dir . '/ctok1.php';
 require $dir . '/ctok.php';
 require $dir . '/cpom.php';
@@ -21,9 +21,7 @@ class mc
 	{
 		$code = array();
 
-		$f = new fstream( fopen( $path, 'rb' ) );
-		$t1 = new ctok1( $f );
-		$s = new ctok( $t1, $path );
+		$s = new ctok( $path );
 
 		while( !$s->ended() ) {
 			$t = $s->get();

@@ -2,9 +2,84 @@
 
 // First stage parser
 
-class ctok1 extends toksbase
+class ctok1
 {
 	const spaces = "\r\n\t ";
+
+	private $s;
+
+	/*
+	 * Buffer for returned tokens.
+	 */
+	protected $buffer = array();
+
+	function __construct( $path ) {
+		$this->s = new buf(file_get_contents($path));
+	}
+
+	function ended() {
+		return $this->peek() == null;
+	}
+
+	function get() {
+		$t = $this->_get();
+		return $t;
+	}
+
+	/*
+	 * Returns next token, removing it from the stream.
+	 */
+	function _get()
+	{
+		if( !empty( $this->buffer ) ) {
+			return array_pop( $this->buffer );
+		}
+
+		$t = $this->read();
+		while( $t && $t->type == 'comment' ) {
+			$t = $this->read();
+		}
+		return $t;
+	}
+
+	/*
+	 * Pushes a token back to the stream.
+	 */
+	function unget( $t ) {
+		array_push( $this->buffer, $t );
+	}
+
+	/*
+	 * Returns next token without removing it from the stream.
+	 * Returns null if there is no next token.
+	 */
+	function peek( $n = 0 )
+	{
+		$buf = array();
+		while( $n >= 0 )
+		{
+			$t = $this->get();
+			if( $t === null ) {
+				break;
+			}
+
+			$buf[] = $t;
+			$n--;
+		}
+
+		if( $n == -1 ) {
+			$r = $buf[count($buf)-1];
+		}
+		else {
+			$r = null;
+		}
+
+		while( !empty( $buf ) ) {
+			$this->unget( array_pop( $buf ) );
+		}
+
+		return $r;
+	}
 
 	/*
 	 * Sorted by the length, longest first.
@@ -29,20 +104,11 @@ class ctok1 extends toksbase
 	private $newline = true;
 
 	function error( $msg ) {
-		$pos = $this->upstream->pos();
-		$str = $this->upstream->context( 20 );
+		$pos = $this->s->pos();
+		$str = $this->s->context(10);
 		//fwrite( STDERR, "$msg at $pos: \"$str...\"\n" );
 		trigger_error( "$msg at $pos: \"$str...\"" );
 		exit;
-	}
-
-	function get() {
-		$t = parent::get();
-		while( $t && $t->type == 'comment' ) {
-			$t = parent::get();
-		}
-		//put( "Get: $t" );
-		return $t;
 	}
 
 	protected function _read() {
@@ -53,7 +119,7 @@ class ctok1 extends toksbase
 
 	protected function read()
 	{
-		$s = $this->upstream;
+		$s = $this->s;
 
 		$sp = $s->read_set( self::spaces );
 		if( strpos( $sp, "\n" ) !== false ) {
@@ -180,7 +246,7 @@ class ctok1 extends toksbase
 
 	private function read_string()
 	{
-		$s = $this->upstream;
+		$s = $this->s;
 
 		$s->get();
 		$str = '';

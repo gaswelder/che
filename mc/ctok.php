@@ -10,15 +10,69 @@ function put( $s ) {
 	fwrite( STDERR, "$s\n" );
 }
 
-class ctok extends toksbasech
+class token {
+	public $type;
+	public $content;
+
+	function __construct( $type, $content = null ) {
+		$this->type = $type;
+		$this->content = $content;
+	}
+
+	function __toString()
+	{
+		if( $this->content === null ) {
+			return '[' . $this->type . ']';
+		}
+
+		$n = 40;
+		if( mb_strlen( $this->content ) > $n ) {
+			$c = mb_substr( $this->content, 0, $n-3 ) . '...';
+		}
+		else $c = $this->content;
+		$c = str_replace( array( "\r", "\n", "\t" ),
+			array( "\\r", "\\n", "\\t" ), $c );
+		return "[$this->type, $c]";
+	}
+}
+
+function tok( $type, $data = null ) {
+	return new token( $type, $data );
+}
+
+class ctok
 {
 	private $s;
-	private $path;
 
-	function __construct( ctok1 $s, $path ) {
-		parent::__construct($s);
-		$this->s = $s;
-		$this->path = $path;
+	function __construct( $path ) {
+		$this->s = new ctok1( $path );
+	}
+
+	function ended() {
+		return $this->s->ended();
+	}
+
+	/*
+	 * Buffer for returned tokens.
+	 */
+	protected $buffer = array();
+
+	/*
+	 * Returns next token, removing it from the stream.
+	 */
+	function get()
+	{
+		if( !empty( $this->buffer ) ) {
+			return array_pop( $this->buffer );
+		}
+		return $this->read();
+	}
+
+	/*
+	 * Pushes a token back to the stream.
+	 */
+	function unget( $t ) {
+		array_push( $this->buffer, $t );
 	}
 
 	private function trace( $m ) {
@@ -29,11 +83,12 @@ class ctok extends toksbasech
 
 	protected function read()
 	{
-		if( $this->s->ended() ) {
+		$s = $this->s;
+
+		if( $s->ended() ) {
 			return null;
 		}
 
-		$s = $this->s;
 		$t = $this->s->peek();
 
 		// <macro>?
