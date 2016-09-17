@@ -2,7 +2,37 @@
 
 // First stage parser
 
-class ctok1
+class token {
+	public $type;
+	public $content;
+
+	function __construct( $type, $content = null ) {
+		$this->type = $type;
+		$this->content = $content;
+	}
+
+	function __toString()
+	{
+		if( $this->content === null ) {
+			return '[' . $this->type . ']';
+		}
+
+		$n = 40;
+		if( mb_strlen( $this->content ) > $n ) {
+			$c = mb_substr( $this->content, 0, $n-3 ) . '...';
+		}
+		else $c = $this->content;
+		$c = str_replace( array( "\r", "\n", "\t" ),
+			array( "\\r", "\\n", "\\t" ), $c );
+		return "[$this->type, $c]";
+	}
+}
+
+function tok( $type, $data = null ) {
+	return new token( $type, $data );
+}
+
+class mctok
 {
 	const spaces = "\r\n\t ";
 

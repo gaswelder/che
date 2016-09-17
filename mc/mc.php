@@ -7,10 +7,18 @@ error_reporting( -1 );
 $dir = dirname( __FILE__ );
 
 require $dir . '/buf.php';
-require $dir . '/ctok1.php';
-require $dir . '/ctok.php';
-require $dir . '/cpom.php';
+require $dir . '/tokens.php';
+require $dir . '/parser.php';
+require $dir . '/objects.php';
 require $dir . '/stdc.php';
+
+function trace( $m, $s = null ) {
+	fwrite( STDERR, "--- $m		$s\n" );
+}
+
+function put( $s ) {
+	fwrite( STDERR, "$s\n" );
+}
 
 class mc
 {
@@ -21,7 +29,7 @@ class mc
 	{
 		$code = array();
 
-		$s = new ctok( $path );
+		$s = new parser( $path );
 
 		while( !$s->ended() ) {
 			$t = $s->get();

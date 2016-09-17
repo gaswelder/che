@@ -2,50 +2,12 @@
 
 // Second stage parser that returns CPOM objects
 
-function trace( $m, $s = null ) {
-	fwrite( STDERR, "--- $m		$s\n" );
-}
-
-function put( $s ) {
-	fwrite( STDERR, "$s\n" );
-}
-
-class token {
-	public $type;
-	public $content;
-
-	function __construct( $type, $content = null ) {
-		$this->type = $type;
-		$this->content = $content;
-	}
-
-	function __toString()
-	{
-		if( $this->content === null ) {
-			return '[' . $this->type . ']';
-		}
-
-		$n = 40;
-		if( mb_strlen( $this->content ) > $n ) {
-			$c = mb_substr( $this->content, 0, $n-3 ) . '...';
-		}
-		else $c = $this->content;
-		$c = str_replace( array( "\r", "\n", "\t" ),
-			array( "\\r", "\\n", "\\t" ), $c );
-		return "[$this->type, $c]";
-	}
-}
-
-function tok( $type, $data = null ) {
-	return new token( $type, $data );
-}
-
-class ctok
+class parser
 {
 	private $s;
 
 	function __construct( $path ) {
-		$this->s = new ctok1( $path );
+		$this->s = new mctok( $path );
 	}
 
 	function ended() {
