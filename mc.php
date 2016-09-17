@@ -33,7 +33,7 @@ function compile( $pipeline )
 		 */
 		$path = array_shift( $pipeline );
 		$code = mc::parse( $path );
-		$code = mc_headers::convert( $code );
+
 
 		$n = count( $code );
 		for( $i = 0; $i < $n; $i++ ) {
@@ -60,6 +60,8 @@ function compile( $pipeline )
 			 */
 			$pipeline[] = $imppath;
 		}
+
+		$code = mc_headers::convert( $code );
 
 		/*
 		 * Save the converted C source and add it to
