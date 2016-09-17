@@ -249,6 +249,14 @@ class mc_headers
 		'unistd' => '
 			chdir close getcwd getopt sleep optarg opterr
 			optind optopt
+		',
+
+		'sys/socket' => '
+			connect SOCK_STREAM SOL_SOCKET socklen_t
+		',
+
+		'netdb' => '
+			getaddrinfo
 		'
 	);
 }
