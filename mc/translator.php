@@ -1,23 +1,33 @@
 <?php
 
-class mc_headers
+class mc_trans
 {
 	/*
-	 * Takes parsed code tree and adds
-	 * forward declarations and headers.
+	 * Translates MC code into C code
 	 */
-	static function convert( $code )
+	static function translate( $code )
 	{
 		$prototypes = array();
 		$types = array();
 		$body = array();
 		$headers = array();
 
-		foreach( $code as $element )
+		$n = count($code);
+		for($i = 0; $i < $n; $i++)
 		{
+			$element = $code[$i];
+
 			if( $element instanceof c_typedef ) {
 				self::type( $element->type, $headers );
 				$types[] = $element;
+				continue;
+			}
+
+			if($element instanceof c_import) {
+				$imp = get_import($element->path);
+				array_splice($code, $i, 1, $imp->code);
+				$i--;
+				$n = count($code);
 				continue;
 			}
 

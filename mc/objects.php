@@ -375,20 +375,22 @@ class c_sizeof extends c_literal{
 };
 
 
-class c_expr extends c_element {
+class c_expr extends c_element
+{
 	public $parts;
-	function __construct( $parts = array() ) {
-		if( !is_array( $parts ) ) {
-			var_dump( $parts );
-			trigger_error( "Not an array" );
-		}
+
+	function __construct($parts = array()) {
 		$this->parts = $parts;
 	}
-	function add( $p ) {
+
+	function add($p)
+	{
+		assert($p != null);
 		$this->parts[] = $p;
 	}
 
-	function format( $tab = 0 ) {
+	function format( $tab = 0 )
+	{
 		$p = str_repeat( "\t", $tab );
 		$n = count( $this->parts );
 		$i = 0;

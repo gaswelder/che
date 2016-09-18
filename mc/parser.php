@@ -6,12 +6,29 @@ class parser
 {
 	private $s;
 
+	private $type_names = array(
+		'struct', 'enum',
+		'void', 'char', 'short', 'int',
+		'long', 'float', 'double', 'unsigned',
+		'bool', 'va_list', 'FILE',
+		'ptrdiff_t', 'size_t', 'wchar_t',
+		'int8_t', 'int16_t', 'int32_t', 'int64_t',
+		'uint8_t', 'uint16_t', 'uint32_t', 'uint64_t',
+		'clock_t', 'time_t'
+	);
+
 	function __construct( $path ) {
 		$this->s = new mctok( $path );
 	}
 
 	function ended() {
 		return $this->s->ended();
+	}
+
+	function error($msg) {
+		fwrite(STDERR, "$msg\n");
+		fwrite(STDERR, $this->context()."\n");
+		exit(1);
 	}
 
 	/*
@@ -43,6 +60,11 @@ class parser
 		fwrite( STDERR, "--- $m\t$s\n" );
 	}
 
+	function add_type($name) {
+		//trace("New type: $name");
+		$this->type_names[] = $name;
+	}
+
 	protected function read()
 	{
 		$s = $this->s;
@@ -61,6 +83,7 @@ class parser
 		// <typedef>?
 		if( $t->type == 'typedef' ) {
 			$def = $this->read_typedef();
+			$this->add_type($def->name);
 			return $def;
 		}
 
@@ -83,7 +106,8 @@ class parser
 			return new c_comment( $t->content );
 		}
 
-		if( $t->type == 'import' ) {
+		if( $t->type == 'import' )
+		{
 			$this->s->get();
 			$path = $this->s->get();
 			return new c_import( $path->content );
@@ -613,20 +637,9 @@ $this->trace( "expr_follows" );
 		return ($op + $eq > 0) && $words < 2;
 	}
 
-	private static $type_names = array(
-		'struct', 'enum',
-		'void', 'char', 'short', 'int', 'long', 'float', 'double',
-		'unsigned',
-		'bool', 'va_list', 'FILE',
-		'ptrdiff_t', 'size_t', 'wchar_t',
-		'int8_t', 'int16_t', 'int32_t', 'int64_t',
-		'uint8_t', 'uint16_t', 'uint32_t', 'uint64_t',
-		'clock_t', 'time_t'
-	);
-
 	private function is_typename( $word )
 	{
-		return in_array( $word, self::$type_names );
+		return in_array( $word, $this->type_names );
 	}
 
 	private function type_follows()
@@ -659,7 +672,7 @@ $this->trace( "type_follows" );
 
 	function context( $n = 4 )
 	{
-		$s = $this->upstream;
+		$s = $this->s;
 
 		$buf = array();
 		while( $n-- > 0 && !$s->ended() ) {
@@ -753,7 +766,7 @@ $this->trace( "read_return" );
 		if( $this->s->peek()->type != ';' ) {
 			$expr = $this->expr();
 		} else {
-			$expr = new c_expr( array() );
+			$expr = new c_expr();
 		}
 		$this->expect( ';' );
 		return new c_return( $expr->parts );
@@ -854,7 +867,7 @@ $this->trace( "expr" );
 	{
 $this->trace( "atom" );
 		$s = $this->s;
-		$p = $s->peek();
+
 
 		$ops = array();
 
@@ -874,7 +887,7 @@ $this->trace( "atom" );
 		}
 
 		// <sizeof>?
-		if( $p->type == 'sizeof' ) {
+		if( $s->peek()->type == 'sizeof' ) {
 			$ops[] = array( 'sizeof', $this->read_sizeof() );
 			return $ops;
 		}
@@ -886,17 +899,17 @@ $this->trace( "atom" );
 		}
 
 		// "(" <expr> ")" / <name>
-		$t = $s->get();
-		if( $t->type == '(' ) {
-			$ops[] = array( 'expr', $this->expr() );
-			$this->expect( ')' );
+		if($s->peek()->type == '(') {
+			$this->expect('(');
+			$ops[] = array('expr', $this->expr());
+			$this->expect(')');
 		}
 		else {
-			if( $t->type != 'word' ) {
-				return $this->error( "Identifier expected, got $t" );
-			}
-			$ops[] = array( 'id', $t->content );
+			$t = $this->expect('word');
+			$ops[] = array('id', $t->content);
 		}
+
+		//var_dump($ops);
 
 		while( !$s->ended() )
 		{
