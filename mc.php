@@ -39,10 +39,7 @@ function compile( $pipeline )
 		/*
 		 * Save the translated version and update the sources list
 		 */
-		$tmppath = "mcbuild/" . basename( $path ) . ".c";
-		if( !file_exists( "mcbuild" ) && !mkdir( "mcbuild" ) ) {
-			exit(1);
-		}
+		$tmppath = tmppath($path);
 		file_put_contents($tmppath, mc::format($code));
 		$sources[] = $tmppath;
 		$pipeline = array_merge($pipeline, $mod->deps);
@@ -51,6 +48,15 @@ function compile( $pipeline )
 	exec( 'pc -g ' . implode( ' ', $sources ) . ' -o '.$outname, $output, $ret );
 	//var_dump( $output, $ret );
 	exit($ret);
+}
+
+function tmppath($path)
+{
+	$dir = 'mcbuild';
+	if( !file_exists($dir) && !mkdir($dir) ) {
+		exit(1);
+	}
+	return $dir.'/'.basename($path).'-'.md5($path).'.c';
 }
 
 class module {
