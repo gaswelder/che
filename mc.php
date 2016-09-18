@@ -81,6 +81,12 @@ class import {
  */
 function parse_module($path)
 {
+	static $mods = array();
+
+	if(isset($mods[$path])) {
+		return $mods[$path];
+	}
+
 	$mod = new module();
 
 	$s = new parser($path);
@@ -108,6 +114,7 @@ function parse_module($path)
 		$mod->code[] = $t;
 	}
 
+	$mods[$path] = $mod;
 	return $mod;
 }
 
