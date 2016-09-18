@@ -63,6 +63,27 @@ size_t memwrite(void *buf, size_t size, size_t count, MEM *m)
 }
 
 /*
+ * Read up to 'count' pieces of size 'size' to the buffer 'buf'.
+ * Returns the number of pieces read.
+ */
+size_t memread(void *buf, size_t size, size_t count, MEM *m)
+{
+	size_t i;
+	char *p = (char *) buf;
+	for(i = 0; i < count; i++)
+	{
+		if(m->pos + size > m->datalen) {
+			break;
+		}
+		size_t j;
+		for(j = 0; j < size; j++) {
+			*p++ = m->data[m->pos++];
+		}
+	}
+	return i;
+}
+
+/*
  * Resets the position to zero.
  */
 void memrewind(MEM *m) {
