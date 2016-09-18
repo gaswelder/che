@@ -1,10 +1,10 @@
 import "zio"
+import "cli"
 
 int main(int argc, char **argv)
 {
 	if(argc != 2) {
-		fprintf(stderr, "Usage: %s <filepath>\n", argv[0]);
-		return 1;
+		fatal("Usage: %s <filepath>", argv[0]);
 	}
 
 	zio *m = zopen("mem", "", "");
@@ -14,15 +14,13 @@ int main(int argc, char **argv)
 	while(1) {
 		int len = zread(f, buf, 16);
 		if( len < 0 ) {
-			puts("read error");
-			return 1;
+			fatal("read error");
 		}
 		if(len == 0) {
 			break;
 		}
 		if( zwrite(m, buf, len) < len ) {
-			puts("write error");
-			return 1;
+			fatal("write error");
 		}
 	}
 
@@ -33,8 +31,7 @@ int main(int argc, char **argv)
 	while(1) {
 		int len = zread(m, buf, 16);
 		if(len < 0) {
-			puts("read error");
-			return 1;
+			fatal("read error");
 		}
 		if(len == 0) {
 			break;

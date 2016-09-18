@@ -1,3 +1,4 @@
+import "cli"
 
 int usage()
 {
@@ -30,8 +31,7 @@ int main(int argc, char **argv)
 
 		arg++;
 		if( strlen(arg) != 1 ) {
-			fprintf(stderr, "Invalid argument: %s\n", arg);
-			return 1;
+			fatal("Invalid argument: %s", arg);
 		}
 
 		int i;
@@ -42,20 +42,18 @@ int main(int argc, char **argv)
 			case 'n':
 				for(i = 0; i < ncols; i++) {
 					if(cols[i] == arg[0]) {
-						fprintf(stderr, "Duplicate -%c argument\n", arg[0]);
-						return 1;
+						fatal("Duplicate -%c argument", arg[0]);
 					}
 				}
 				cols[ncols++] = arg[0];
 				break;
 			default:
-				fprintf(stderr, "Unknown flag: -%c\n", arg[0]);
-				return 1;
+				fatal("Unknown flag: -%c", arg[0]);
 		}
 	}
 
 	if( *argv ) {
-		fprintf(stderr, "Unknown argument: %s\n", *argv);
+		err("Unknown argument: %s", *argv);
 		return usage();
 	}
 
@@ -89,8 +87,7 @@ int process(char *cols, int ncols, bool header)
 			break;
 		}
 		if( r != 1 ) {
-			fprintf(stderr, "scanf error\n");
-			exit(1);
+			fatal("scanf error");
 		}
 
 		sum += x;
@@ -122,8 +119,7 @@ int process(char *cols, int ncols, bool header)
 					name = "num";
 					break;
 				default:
-					fprintf(stderr, "Unknown column: %c\n", cols[i]);
-					exit(1);
+					fatal("Unknown column: %c", cols[i]);
 			}
 
 			printf("%s", name);
@@ -147,8 +143,7 @@ int process(char *cols, int ncols, bool header)
 				printf("%d", num);
 				break;
 			default:
-				fprintf(stderr, "Unknown column: %c\n", cols[i]);
-				exit(1);
+				fatal("Unknown column: %c", cols[i]);
 		}
 	}
 	putchar('\n');

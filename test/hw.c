@@ -1,5 +1,6 @@
 import "prng/neumann"
 import "opt"
+import "cli"
 
 int main(int argc, char **argv)
 {
@@ -9,13 +10,11 @@ int main(int argc, char **argv)
 
 	argv = opt_parse(argc, argv);
 	if(*argv) {
-		fprintf(stderr, "Unknown argument: %s\n", *argv);
-		return 1;
+		fatal("Unknown argument: %s", *argv);
 	}
 
 	if(n < 0) {
-		fprintf(stderr, "Negative number\n");
-		return 1;
+		fatal("Negative number");
 	}
 
 	int16_t x = (int16_t)(time(NULL));

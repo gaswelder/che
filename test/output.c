@@ -1,4 +1,5 @@
 import "memio"
+import "cli"
 
 /*
  * A test program that copies a file into a MEM buffer
@@ -8,20 +9,17 @@ import "memio"
 int main(int argc, char **argv)
 {
 	if(argc != 2) {
-		puts("Usage: output <filename>");
-		return 1;
+		fatal("Usage: output <filename>");
 	}
 
 	FILE *f = fopen(argv[1], "rb");
 	if(!f) {
-		puts("fopen failed");
-		return 1;
+		fatal("fopen failed");
 	}
 
 	MEM *m = memopen("foo", "bar");
 	if(!m) {
-		puts("failed");
-		return 1;
+		fatal("memopen failed");
 	}
 
 	/*
@@ -35,7 +33,7 @@ int main(int argc, char **argv)
 		}
 		size_t r = memwrite(buf, 1, len, m);
 		if(r < len) {
-			puts("memwrite failed");
+			err("memwrite failed");
 			break;
 		}
 	}

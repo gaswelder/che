@@ -1,5 +1,6 @@
 import "zio"
 import "opt"
+import "cli"
 
 int main(int argc, char **argv)
 {
@@ -12,7 +13,7 @@ int main(int argc, char **argv)
 	argv = opt_parse(argc, argv);
 
 	if(!*argv || !*(argv + 1)) {
-		fprintf(stderr, "Missing argument\n");
+		err("Missing argument");
 		opt_usage();
 		return 1;
 	}
@@ -20,14 +21,14 @@ int main(int argc, char **argv)
 	const char *from = *argv++;
 	const char *to = *argv++;
 	if(*argv) {
-		fprintf(stderr, "Unexpected argument: %s\n", *argv);
+		err("Unexpected argument: %s\n", *argv);
 		opt_usage();
 		return 1;
 	}
 
 	zio *n = zopen("tcp", addr, "");
 	if( !n ) {
-		puts("connect failed");
+		err("connect failed");
 		exit(1);
 	}
 
@@ -87,7 +88,7 @@ void expect(zio *n, int code)
 	char buf[256];
 	int len = zread(n, buf, 255);
 	if( len < 0 ) {
-		printf("net_read error\n");
+		err("net_read error");
 		_error = 1;
 		return;
 	}
