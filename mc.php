@@ -59,7 +59,9 @@ function tmppath($path)
 
 function c99($sources, $name)
 {
-	$cmd = 'pc -g ' . implode(' ', $sources);
+	$cmd = 'c99 -Wall -Wextra -pedantic -pedantic-errors';
+	$cmd .= ' -fmax-errors=10 -D _XOPEN_SOURCE=700';
+	$cmd .= ' -g ' . implode(' ', $sources);
 	$cmd .= ' -o '.$name;
 	exec($cmd, $output, $ret);
 	return $ret;
