@@ -45,9 +45,7 @@ function compile( $pipeline )
 		$pipeline = array_merge($pipeline, $mod->deps);
 	}
 
-	exec( 'pc -g ' . implode( ' ', $sources ) . ' -o '.$outname, $output, $ret );
-	//var_dump( $output, $ret );
-	exit($ret);
+	exit(c99($sources, $outname));
 }
 
 function tmppath($path)
@@ -57,6 +55,14 @@ function tmppath($path)
 		exit(1);
 	}
 	return $dir.'/'.basename($path).'-'.md5($path).'.c';
+}
+
+function c99($sources, $name)
+{
+	$cmd = 'pc -g ' . implode(' ', $sources);
+	$cmd .= ' -o '.$name;
+	exec($cmd, $output, $ret);
+	return $ret;
 }
 
 class module {
