@@ -562,79 +562,15 @@ $this->trace( "body_part" );
 			return $this->body();
 		}
 
-		// <expr>?
-		if( $this->expr_follows() ) {
-			$expr = $this->expr();
-			$this->expect( ';' );
-			return $expr;
+		// <obj-def>?
+		if($this->type_follows()) {
+			return $this->read_object();
 		}
 
-		// <obj-def>
-		return $this->read_object();
-	}
-
-	private function expr_follows()
-	{
-		$b = $this->_expr_follows();
-		return $b;
-
-		$r = $b ? '+' : 'nope';
-		$c = $this->context();
-		put("$r	$c");
-
-		return $b;
-	}
-
-	/*
-	 * If what follows until ';' has at least one operator or brace,
-	 * and there is less than two "words" before it, it's an expression.
-	 */
-	private function _expr_follows()
-	{
-$this->trace( "expr_follows" );
-		if( $this->type_follows() ) {
-			return false;
-		}
-
-		$s = $this->s;
-
-		$buf = array();
-		$n = -1;
-		while( !$s->ended() && $s->peek()->type != ';' ) {
-			$buf[] = $s->get();
-			$n++;
-		}
-		while( $n >= 0 ) {
-			$s->unget( $buf[$n] );
-			$n--;
-		}
-
-		$op = 0;
-		$eq = 0;
-		$words = 0;
-		foreach( $buf as $t )
-		{
-			if( $t->type == '=' ) {
-				$eq++;
-			}
-			else if( $t->type == '(' || $this->is_op( $t )
-				|| $t->type == '[' ) {
-				$op++;
-			}
-			else if( $t->type == 'word' ) {
-				$words++;
-			}
-
-			if( $eq == 1 && $op > 0 ) {
-				return false;
-			}
-
-			if( ($op + $eq) == 1 && $words < 2 ) {
-				return true;
-			}
-		}
-
-		return ($op + $eq > 0) && $words < 2;
+		// <expr>
+		$expr = $this->expr();
+		$this->expect( ';' );
+		return $expr;
 	}
 
 	private function is_typename( $word )
