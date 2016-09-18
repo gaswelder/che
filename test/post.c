@@ -1,19 +1,18 @@
-import "net"
+import "zio"
 
 int main()
 {
-	conn_t *n = net_conn("tcp", "127.0.0.1:2525");
+	zio *n = zopen("tcp", "127.0.0.1:2525", "");
 	if( !n ) {
-		printf("%s\n", net_error());
+		puts("connect failed");
 		exit(1);
 	}
 
 	sendm(n);
-
-	net_close(n);
+	zclose(n);
 }
 
-int sendm(conn_t *n)
+int sendm(zio *n)
 {
 	expect(n, 220);
 	writeline(n, "HELO sofa");
@@ -53,13 +52,13 @@ int senderror() {
 	return _error;
 }
 
-void expect(conn_t *n, int code)
+void expect(zio *n, int code)
 {
 	(void) code;
 	if(_error) return;
-	
+
 	char buf[256];
-	int len = (int) net_read(n, buf, 255);
+	int len = zread(n, buf, 255);
 	if( len < 0 ) {
 		printf("net_read error\n");
 		_error = 1;
@@ -69,15 +68,15 @@ void expect(conn_t *n, int code)
 	printf("response: %s\n", buf);
 }
 
-void writeline(conn_t *n, const char *str)
+void writeline(zio *n, const char *str)
 {
 	if(_error) return;
-	net_write(n, str, strlen(str));
-	net_write(n, "\r\n", 2);
+	zwrite(n, str, strlen(str));
+	zwrite(n, "\r\n", 2);
 }
 
-void writestr(conn_t *n, const char *s)
+void writestr(zio *n, const char *s)
 {
 	if(_error) return;
-	net_write(n, s, strlen(s));
+	zwrite(n, s, strlen(s));
 }
