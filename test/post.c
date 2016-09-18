@@ -1,46 +1,73 @@
 import "zio"
+import "opt"
 
-int main()
+int main(int argc, char **argv)
 {
-	zio *n = zopen("tcp", "127.0.0.1:2525", "");
+	const char *addr = "127.0.0.1:25";
+	const char *subj = "";
+
+	opt_summary("post [-a addr] [-s subject] <from> <to>");
+	opt(OPT_STR, "a", "SMTP server address", &addr);
+	opt(OPT_STR, "s", "Mail subject", &subj);
+	argv = opt_parse(argc, argv);
+
+	if(!*argv || !*(argv + 1)) {
+		fprintf(stderr, "Missing argument\n");
+		opt_usage();
+		return 1;
+	}
+
+	const char *from = *argv++;
+	const char *to = *argv++;
+	if(*argv) {
+		fprintf(stderr, "Unexpected argument: %s\n", *argv);
+		opt_usage();
+		return 1;
+	}
+
+	zio *n = zopen("tcp", addr, "");
 	if( !n ) {
 		puts("connect failed");
 		exit(1);
 	}
 
-	sendm(n);
+	sendm(n, from, to, subj);
 	zclose(n);
 }
 
-int sendm(zio *n)
+int sendm(zio *n, const char *from, const char *to, const char *subj)
 {
 	expect(n, 220);
-	writeline(n, "HELO sofa");
 
+	zprintf(n, "HELO %s\r\n", "sofa");
 	expect(n, 250);
+	if(senderror()) return 0;
 
-	writeline(n, "MAIL FROM:<nobody@localhost>");
+	zprintf(n, "MAIL FROM:<%s>\r\n", from);
 	expect(n, 250);
+	if(senderror()) return 0;
 
-	writeline(n, "RCPT TO:<bob@localhost>");
+	zprintf(n, "RCPT TO:<%s>\r\n", to);
 	expect(n, 250);
+	if(senderror()) return 0;
 
-	writeline(n, "DATA");
+	zprintf(n, "DATA\r\n");
 	expect(n, 354);
+	if(senderror()) return 0;
 
-	writeline(n, "Subject: test");
-	writeline(n, "From: <nobody@localhost>");
-	writeline(n, "To: <bob@localhost>");
-	writeline(n, "");
+	zprintf(n, "Subject: %s\r\n", subj);
+	zprintf(n, "From: <%s>\r\n", from);
+	zprintf(n, "To: <%s>\r\n", to);
+	zprintf(n, "\r\n");
+
 	char buf[4096];
 	while( fgets(buf, 4096, stdin) ) {
-		writestr(n, buf);
+		zprintf(n, "%s", buf);
 	}
-	writeline(n, ".");
+	zprintf(n, ".\r\n");
 	expect(n, 250);
 
-
-	writeline(n, "QUIT");
+	zprintf(n, "QUIT\r\n");
 	expect(n, 221);
 
 	return !senderror();
@@ -66,17 +93,4 @@ void expect(zio *n, int code)
 	}
 	buf[len] = 0;
 	printf("response: %s\n", buf);
-}
-
-void writeline(zio *n, const char *str)
-{
-	if(_error) return;
-	zwrite(n, str, strlen(str));
-	zwrite(n, "\r\n", 2);
-}
-
-void writestr(zio *n, const char *s)
-{
-	if(_error) return;
-	zwrite(n, s, strlen(s));
 }

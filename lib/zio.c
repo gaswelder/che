@@ -115,3 +115,49 @@ int zrewind(zio *s)
 	}
 	return 0;
 }
+
+int zprintf(zio *s, const char *fmt, ...)
+{
+	va_list args;
+
+	/*
+	 * Find out how long the string will be
+	 */
+	va_start(args, fmt);
+	int len = vsnprintf(NULL, 0, fmt, args);
+	va_end(args);
+	if(len < 0) return -1;
+
+	/*
+	 * Format the string
+	 */
+	char buf[len + 1];
+	va_start(args, fmt);
+	len = vsnprintf(buf, len + 1, fmt, args);
+	va_end(args);
+
+	/*
+	 * Write the string
+	 */
+	int n;
+	switch(s->type) {
+		case S_FILE:
+			n = fwrite(buf, 1, len, s->h);
+			break;
+		case S_MEM:
+			n = memwrite(buf, 1, len, s->h);
+			break;
+		case S_TCP:
+			n = net_write(s->h, buf, len);
+			break;
+		default:
+			puts("Unknown zio type");
+	}
+
+	if(n < len) {
+		fprintf(stderr, "zprintf write error: len=%d, n=%d\n", len, n);
+		exit(1);
+	}
+
+	return len;
+}
