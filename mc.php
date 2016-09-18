@@ -156,8 +156,8 @@ function get_import($modname)
 function find_import( $name )
 {
 	$p = array(
-		$name . ".c",
-		MCDIR . "/lib/$name.c"
+		MCDIR . "/lib/$name.c",
+		$name . ".c"
 	);
 	foreach( $p as $path ) {
 		if( file_exists( $path ) ) {
