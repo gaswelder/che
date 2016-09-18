@@ -73,7 +73,7 @@ int zread(zio *s, char *buf, int size)
 	return -1;
 }
 
-int zwrite(zio *s, char *buf, int len)
+int zwrite(zio *s, const char *buf, int len)
 {
 	switch(s->type) {
 		case S_FILE:

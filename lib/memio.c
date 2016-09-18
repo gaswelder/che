@@ -32,7 +32,7 @@ void memclose(MEM *mem) {
 /*
  * Write 'count' pieces of size 'size' from the buffer 'buf'.
  */
-size_t memwrite(void *buf, size_t size, size_t count, MEM *m)
+size_t memwrite(const void *buf, size_t size, size_t count, MEM *m)
 {
 	if(count >= SIZE_MAX/size) {
 		puts("Size overflow");
