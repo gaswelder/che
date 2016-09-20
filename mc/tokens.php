@@ -5,10 +5,12 @@
 class token {
 	public $type;
 	public $content;
+	public $pos;
 
-	function __construct( $type, $content = null ) {
+	function __construct( $type, $content, $pos ) {
 		$this->type = $type;
 		$this->content = $content;
+		$this->pos = $pos;
 	}
 
 	function __toString()
@@ -28,8 +30,8 @@ class token {
 	}
 }
 
-function tok( $type, $data = null ) {
-	return new token( $type, $data );
+function tok( $type, $data, $pos ) {
+	return new token( $type, $data, $pos );
 }
 
 class mctok
@@ -61,8 +63,8 @@ class mctok
 	 */
 	function _get()
 	{
-		if( !empty( $this->buffer ) ) {
-			return array_pop( $this->buffer );
+		if( !empty($this->buffer) ) {
+			return array_pop($this->buffer);
 		}
 
 		$t = $this->read();
@@ -160,11 +162,13 @@ class mctok
 			return null;
 		}
 
+		$pos = $this->s->pos();
+
 		/*
 		 * If we are on a new line and '#' follows, read it as a macro.
 		 */
 		if( $this->newline && $s->peek() == '#' ) {
-			return tok( 'macro', $s->skip_until( "\n" ) );
+			return tok( 'macro', $s->skip_until( "\n" ), $pos );
 		}
 
 		$this->newline = false;
@@ -178,7 +182,7 @@ class mctok
 			if( !$s->skip_literal( '*/' ) ) {
 				return $this->error( "*/ expected" );
 			}
-			return tok( 'comment', $comment );
+			return tok( 'comment', $comment, $pos );
 		}
 
 		/*
@@ -186,7 +190,7 @@ class mctok
 		 */
 		if( $s->skip_literal( '//' ) ) {
 			$comment = $s->skip_until( "\n" );
-			return tok( 'comment', $comment );
+			return tok( 'comment', $comment, $pos );
 		}
 
 		/*
@@ -206,9 +210,9 @@ class mctok
 			}
 
 			if( in_array( $word, self::$keywords ) ) {
-				return tok( $word );
+				return tok( $word, null, $pos );
 			}
-			return tok( 'word', $word );
+			return tok( 'word', $word, $pos );
 		}
 
 		/*
@@ -223,7 +227,7 @@ class mctok
 			if( $s->peek() == 'L' ) {
 				$num .= $s->get();
 			}
-			return tok( 'num', $num );
+			return tok( 'num', $num, $pos );
 		}
 
 		/*
@@ -240,7 +244,7 @@ class mctok
 				$str .= $this->read_string();
 				$s->read_set( self::spaces );
 			}
-			return tok( 'string', $str );
+			return tok( 'string', $str, $pos );
 		}
 
 		/*
@@ -258,7 +262,7 @@ class mctok
 			if( $s->get() != "'" ) {
 				return $this->error( "Single quote expected" );
 			}
-			return tok( 'char', $str );
+			return tok( 'char', $str, $pos );
 		}
 
 		/*
@@ -266,7 +270,7 @@ class mctok
 		 */
 		foreach( self::$symbols as $sym ) {
 			if( $s->skip_literal( $sym ) ) {
-				return tok( $sym );
+				return tok( $sym, null, $pos );
 			}
 		}
 

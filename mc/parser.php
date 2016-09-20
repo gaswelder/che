@@ -17,7 +17,10 @@ class parser
 		'clock_t', 'time_t'
 	);
 
+	private $path;
+
 	function __construct( $path ) {
+		$this->path = $path;
 		$this->s = new mctok( $path );
 	}
 
@@ -26,7 +29,8 @@ class parser
 	}
 
 	function error($msg) {
-		fwrite(STDERR, "$msg\n");
+		$pos = $this->path . ':'.$this->s->peek()->pos;
+		fwrite(STDERR, "$pos: $msg\n");
 		fwrite(STDERR, $this->context()."\n");
 		exit(1);
 	}
@@ -1067,7 +1071,7 @@ $this->trace( "array_literal" );
 	private function expect( $ch, $content = null ) {
 		$t = $this->s->get();
 		if( $t->type != $ch ) {
-			$this->error( "$ch expected, got $t" );
+			$this->error( "'$ch' expected, got $t" );
 		}
 		if( $content !== null && $t->content !== $content ) {
 			$this->error( "[$ch, $content] expected, got $t" );
