@@ -38,8 +38,13 @@ class mc_trans
 			}
 
 			if( $element instanceof c_func ) {
-				self::func( $element, $headers );
+				self::proto($element->proto, $headers);
+				self::body( $element->body, $headers );
 				$prototypes[] = $element->proto;
+			}
+
+			if($element instanceof c_prototype) {
+				self::proto($element, $headers);
 			}
 
 			$body[] = $element;
@@ -57,15 +62,14 @@ class mc_trans
 		return $out;
 	}
 
-	private static function func( $func, &$headers )
+	private static function proto($p, &$headers)
 	{
-		$args = $func->proto->args;
-		foreach( $args as $arg ) {
+		$args = $p->args;
+		foreach($args as $arg) {
 			if( !($arg instanceof c_nameform) ) continue;
 			self::type( $arg->type, $headers );
 		}
-
-		self::body( $func->body, $headers );
+		self::type($p->type, $headers);
 	}
 
 	private static function body( $body, &$headers )
