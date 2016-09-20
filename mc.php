@@ -9,42 +9,65 @@ function main( $args )
 	array_shift( $args );
 	$path = array_shift( $args );
 
-	compile( array( $path ) );
+	compile($path);
 }
 
-function compile( $pipeline )
+function compile($main)
 {
 	/*
-	 * Executable name
+	 * The modules list starts with the main source file.
+	 * Parse the modules, adding newly discovered
+	 * dependencies to the end of the list.
 	 */
-	$outname = basename( $pipeline[0] );
+	$list = array($main);
+	$n = count($list);
+	for($i = 0; $i < $n; $i++)
+	{
+		$mod = parse_module($list[$i]);
+		foreach($mod->deps as $path) {
+			$list[] = $path;
+			$n++;
+		}
+	}
+
+	/*
+	 * After all the dependencies have been parsed, the list may contain
+	 * duplicate names due to common dependencies. The duplicates have
+	 * to be removed leaving ones closer to the end of the list, so that
+	 * [main, a, b, a, c] would become [main, b, a, c].
+	 */
+	$rev = array_reverse($list);
+	$list = array();
+	foreach($rev as $name) {
+		if(!in_array($name, $list)) {
+			$list[] = $name;
+		}
+	}
+	$list = array_reverse($list);
+
+	/*
+	 * Translate the modules to C
+	 */
+	$sources = array();
+	foreach($list as $path) {
+		$mod = parse_module($path);
+		$code = mc_trans::translate($mod->code);
+		$tmppath = tmppath($path);
+		file_put_contents($tmppath, mc::format($code));
+		$sources[] = $tmppath;
+	}
+
+	/*
+	 * Derive executable name from the main module
+	 */
+	$outname = basename($list[0]);
 	if( $p = strrpos( $outname, '.' ) ) {
 		$outname = substr( $outname, 0, $p );
 	}
 
 	/*
-	 * C files that will be passed to the C compiler
+	 * Run the compiler
 	 */
-	$sources = array();
-
-	while( !empty( $pipeline ) )
-	{
-		/*
-		 * Parse the module and translate it to C
-		 */
-		$path = array_shift($pipeline);
-		$mod = parse_module($path);
-		$code = mc_trans::translate($mod->code);
-
-		/*
-		 * Save the translated version and update the sources list
-		 */
-		$tmppath = tmppath($path);
-		file_put_contents($tmppath, mc::format($code));
-		$sources[] = $tmppath;
-		$pipeline = array_merge($pipeline, $mod->deps);
-	}
-
 	exit(c99($sources, $outname));
 }
 
