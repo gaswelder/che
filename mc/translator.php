@@ -213,6 +213,10 @@ class mc_trans
 			islower isprint ispunct isspace isupper isxdigit tolower
 			toupper',
 
+		'limits' => '
+			INT_MAX INT_MIN UINT_MAX
+		',
+
 		'stdarg' => '
 			va_list va_arg va_end va_start va_copy',
 
