@@ -32,6 +32,7 @@ class mc_trans
 			}
 
 			if( $element instanceof c_structdef ) {
+				$types[] = new c_structdef($element->name);
 				foreach( $element->fields as $form ) {
 					self::type( $form->type, $headers );
 				}

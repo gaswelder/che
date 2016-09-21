@@ -39,6 +39,21 @@ the prototypes automatically, so this example will work:
 	}
 
 
+## No forward declarations
+
+There is no need to add forward declarations to make the following
+example compile:
+
+	struct a {
+		struct b foo;
+		struct a *next;
+	};
+
+	struct b {
+		int foo;
+	};
+
+
 ## Modules
 
 Some time ago a single C source file used to be called a "module". It
