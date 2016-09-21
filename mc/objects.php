@@ -360,15 +360,17 @@ class c_struct_literal extends c_element
 	}
 }
 
-class c_sizeof extends c_literal{
+class c_sizeof extends c_element
+{
+	private $arg;
+
+	function __construct($arg) {
+		$this->arg = $arg;
+	}
+
 	function format() {
 		$s = 'sizeof (';
-		if( $this->content[0] == 'type' ) {
-			$s .= implode( ' ', $this->content[1] );
-		}
-		else {
-			$s .= $this->content[1]->format();
-		}
+		$s .= $this->arg->format();
 		$s .= ')';
 		return $s;
 	}

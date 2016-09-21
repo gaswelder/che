@@ -951,19 +951,18 @@ $this->trace( "read_sizeof" );
 		}
 
 		if( $this->type_follows() ) {
-			$nf = $this->read_nameform();
-			assert( $nf->name == '' );
-			$arg = array( 'type', $nf->type );
+			$arg = $this->read_nameform();
+			assert( $arg->name == '' );
 		}
 		else {
-			$arg = array( 'expr', $this->expr() );
+			$arg = $this->expr();
 		}
 
 		if( $brace ) {
 			$this->expect( ')' );
 		}
 
-		return new c_sizeof( $arg );
+		return new c_sizeof($arg);
 	}
 
 	private function literal_follows()
