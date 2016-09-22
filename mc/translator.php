@@ -213,6 +213,14 @@ class mc_trans
 	private static $init = false;
 
 	private static $lib = array(
+		'arpa/inet' => '
+			inet_ntop inet_ntoa
+		',
+
+		'netinet/in' => '
+			sockaddr_in
+		',
+
 		'assert' => '
 			assert',
 
@@ -220,6 +228,10 @@ class mc_trans
 			isalnum isalpha isblank iscntrl isdigit isgraph
 			islower isprint ispunct isspace isupper isxdigit tolower
 			toupper',
+
+		'errno' => '
+			errno
+		',
 
 		'limits' => '
 			INT_MAX INT_MIN UINT_MAX
@@ -275,6 +287,10 @@ class mc_trans
 		'unistd' => '
 			chdir close getcwd getopt sleep optarg opterr
 			optind optopt
+		',
+
+		'sys/select' => '
+			fd_set
 		',
 
 		'sys/socket' => '
