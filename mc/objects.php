@@ -440,11 +440,7 @@ class c_expr extends c_element
 					break;
 				case 'cast':
 					$s .= '(';
-					$list = array_reverse( $i[1] );
-					foreach( $list as $k => $cast ) {
-						if( $k > 0 ) $s .= ' ';
-						$s .= $cast;
-					}
+					$s .= $i[1]->format();
 					$s .= ')';
 					break;
 				case 'expr':

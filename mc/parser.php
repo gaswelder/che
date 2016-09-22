@@ -817,7 +817,7 @@ $this->trace( "atom" );
 			$this->expect( '(' );
 			$t = $this->read_nameform();
 			$this->expect( ')' );
-			$ops[] = array( 'cast', $t->type );
+			$ops[] = array( 'cast', $t );
 		}
 
 		// <literal>?
