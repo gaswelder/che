@@ -107,6 +107,31 @@ void net_close(struct conn *c)
 	free(c);
 }
 
+/*
+ * Returns true if there is data to be read
+ * from the given connection.
+ */
+int net_incoming(conn_t *c)
+{
+	fd_set read;
+	FD_ZERO(&read);
+	FD_SET(c->sock, &read);
+
+	struct timeval t;
+	memset(&t, 0, sizeof(struct timeval));
+
+	if(select(c->sock + 1, &read, NULL, NULL, &t) == -1) {
+		error = "select error";
+		return 0;
+	}
+
+	if(FD_ISSET(c->sock, &read)) {
+		return 1;
+	}
+
+	return 0;
+}
+
 static struct conn *newconn(const char *proto, const char *addr)
 {
 	/*
