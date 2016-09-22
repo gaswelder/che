@@ -32,22 +32,8 @@ conn_t *net_conn(const char *proto, const char *addr)
 		return NULL;
 	}
 
-	struct conn *c = calloc(1, sizeof(struct conn));
-	if( !c ) {
-		error = "malloc failed";
-		return NULL;
-	}
-
-	/*
-	 * Split the address into a hostname and a portname
-	 */
-	if( !parseaddr( c, addr ) ) {
-		free( c );
-		return NULL;
-	}
-
-	if( !getsock(c) ) {
-		free(c);
+	struct conn *c = newsock(addr);
+	if(!c) {
 		return NULL;
 	}
 
@@ -68,6 +54,59 @@ void net_close(struct conn *c)
 {
 	close(c->sock);
 	free(c);
+}
+
+static struct conn *newsock(const char *addr)
+{
+	struct conn *c = calloc(1, sizeof(struct conn));
+	if( !c ) {
+		error = "malloc failed";
+		return NULL;
+	}
+
+	if( !getsock(c, addr) ) {
+		free(c);
+		return NULL;
+	}
+	return c;
+}
+
+static int getsock(struct conn *c, const char *addr)
+{
+	/*
+	 * Split the address into a hostname and a portname
+	 */
+	if(!parseaddr(c, addr)) {
+		return 0;
+	}
+
+	struct addrinfo query = {
+		.ai_socktype = SOCK_STREAM,
+		.ai_protocol = IPPROTO_TCP
+	};
+	struct addrinfo *result;
+	if(getaddrinfo(c->host, c->port, &query, &result) != 0) {
+		error = "getaddrinfo error";
+		return 0;
+	}
+
+	struct addrinfo *i;
+	for(i = result; i != NULL; i = i->ai_next)
+	{
+		c->sock = socket( i->ai_family, i->ai_socktype, i->ai_protocol );
+		if( c->sock > 0 ) {
+			memcpy(&(c->ai_addr), i->ai_addr, sizeof(struct sockaddr));
+			c->addrlen = i->ai_addrlen;
+			break;
+		}
+	}
+
+	freeaddrinfo( result );
+	if( c->sock <= 0 ) {
+		error = "no suitable addrinfo";
+		return 0;
+	}
+	return 1;
 }
 
 static int parseaddr(struct conn *c, const char *addr)
@@ -98,36 +137,5 @@ static int parseaddr(struct conn *c, const char *addr)
 		c->port[i++] = *p++;
 	}
 	c->port[i] = '\0';
-	return 1;
-}
-
-static int getsock(struct conn *c)
-{
-	struct addrinfo query = {
-		.ai_socktype = SOCK_STREAM,
-		.ai_protocol = IPPROTO_TCP
-	};
-	struct addrinfo *result;
-	if(getaddrinfo(c->host, c->port, &query, &result) != 0) {
-		error = "getaddrinfo error";
-		return 0;
-	}
-
-	struct addrinfo *i;
-	for(i = result; i != NULL; i = i->ai_next)
-	{
-		c->sock = socket( i->ai_family, i->ai_socktype, i->ai_protocol );
-		if( c->sock > 0 ) {
-			memcpy(&(c->ai_addr), i->ai_addr, sizeof(struct sockaddr));
-			c->addrlen = i->ai_addrlen;
-			break;
-		}
-	}
-
-	freeaddrinfo( result );
-	if( c->sock <= 0 ) {
-		error = "no suitable addrinfo";
-		return 0;
-	}
 	return 1;
 }
