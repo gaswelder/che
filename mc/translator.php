@@ -99,7 +99,14 @@ class mc_trans
 					break;
 
 				case 'c_for':
-					self::expr( $part->init, $headers );
+					if($part->init instanceof c_vardef) {
+						$def = $part->init;
+						self::type($def->type, $headers);
+						self::expr($def->init, $headers);
+					}
+					else {
+						self::expr( $part->init, $headers );
+					}
 					self::expr( $part->cond, $headers );
 					self::expr( $part->act, $headers );
 					self::body( $part->body, $headers );

@@ -675,7 +675,16 @@ $this->trace( "read_for" );
 		$this->expect( 'for' );
 		$this->expect( '(' );
 
-		$init = $this->expr();
+		if($this->type_follows()) {
+			$form = $this->read_nameform();
+			$def = new c_vardef($form->name, $form->type);
+			$this->expect('=');
+			$def->init = $this->expr();
+			$init = $def;
+		}
+		else {
+			$init = $this->expr();
+		}
 		$this->expect( ';' );
 		$cond = $this->expr();
 		$this->expect( ';' );
