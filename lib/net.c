@@ -4,14 +4,21 @@ struct conn {
 	int sock;
 	char host[256];
 	char port[16];
+
+	int ai_family;
 	struct sockaddr ai_addr;
 	socklen_t addrlen;
+	char addrstr[300];
 };
 
 typedef struct conn conn_t;
 
 const char *net_error() {
 	return error;
+}
+
+const char *net_addr(conn_t *c) {
+	return c->addrstr;
 }
 
 int net_read(conn_t *c, char *buf, size_t size) {
@@ -24,29 +31,73 @@ int net_write(conn_t *c, const char *buf, size_t n) {
 
 conn_t *net_conn(const char *proto, const char *addr)
 {
-	/*
-	 * Only TCP is implemented
-	 */
-	if( strcmp(proto, "tcp") != 0 ) {
-		error = "Unknown protocol";
-		return NULL;
-	}
-
-	struct conn *c = newsock(addr);
+	struct conn *c = newconn(proto, addr);
 	if(!c) {
 		return NULL;
 	}
 
-	/*
-	 * Connect
-	 */
 	if( connect( c->sock, &(c->ai_addr), c->addrlen ) == -1 ) {
 		error = "connect failed";
 		free(c);
 		return NULL;
 	}
-	puts("3");
 
+	return c;
+}
+
+conn_t *net_listen(const char *proto, const char *addr)
+{
+	struct conn *c = newconn(proto, addr);
+	if(!c) {
+		return NULL;
+	}
+
+	int yes = 1;
+	if(setsockopt(c->sock, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(int)) != 0) {
+		error = "setsockopt failed";
+		free(c);
+		return NULL;
+	}
+
+	if(bind(c->sock, &(c->ai_addr), c->addrlen) != 0) {
+		error = "bind failed";
+		free(c);
+		return NULL;
+	}
+
+	if(listen(c->sock, 16) != 0) {
+		error = "listen failed";
+		free(c);
+		return NULL;
+	}
+
+	return c;
+}
+
+conn_t *net_accept(conn_t *l)
+{
+	struct conn *c = calloc(1, sizeof(struct conn));
+	if(!c) {
+		error = "no memory for new socket";
+		return NULL;
+	}
+
+	socklen_t size = sizeof(struct sockaddr);
+	int s = accept(l->sock, &(c->ai_addr), &size);
+	if(s == -1) {
+		error = "accept failed";
+		free(c);
+		return NULL;
+	}
+
+	if(!format_address(&(c->ai_addr), c->addrstr, sizeof(c->addrstr))) {
+		error = "couldn't format address";
+		free(c);
+		close(s);
+		return NULL;
+	}
+
+	c->sock = s;
 	return c;
 }
 
@@ -56,13 +107,27 @@ void net_close(struct conn *c)
 	free(c);
 }
 
-static struct conn *newsock(const char *addr)
+static struct conn *newconn(const char *proto, const char *addr)
 {
+	/*
+	 * Only TCP is implemented
+	 */
+	if(strcmp(proto, "tcp") != 0) {
+		error = "Unknown protocol";
+		return NULL;
+	}
+
 	struct conn *c = calloc(1, sizeof(struct conn));
 	if( !c ) {
 		error = "malloc failed";
 		return NULL;
 	}
+
+	if(strlen(addr) > sizeof(c->addrstr)) {
+		error = "address string too long";
+		return NULL;
+	}
+	strcpy(c->addrstr, addr);
 
 	if( !getsock(c, addr) ) {
 		free(c);
@@ -97,6 +162,7 @@ static int getsock(struct conn *c, const char *addr)
 		if( c->sock > 0 ) {
 			memcpy(&(c->ai_addr), i->ai_addr, sizeof(struct sockaddr));
 			c->addrlen = i->ai_addrlen;
+			c->ai_family = i->ai_family;
 			break;
 		}
 	}
@@ -138,4 +204,21 @@ static int parseaddr(struct conn *c, const char *addr)
 	}
 	c->port[i] = '\0';
 	return 1;
+}
+
+static int format_address(struct sockaddr *a, char *buf, size_t n)
+{
+	if(a->sa_family != AF_INET) {
+		error = "unknown sa_family";
+		return 0;
+	}
+	struct sockaddr_in *ai = (struct sockaddr_in *) a;
+	int r = snprintf( buf, n, "%s:%u",
+		inet_ntoa( ai->sin_addr ),
+		ntohs( ai->sin_port )
+	);
+	/*
+	 * If r == n, then the string has been trimmed.
+	 */
+	return r > 0 && (size_t) r < n;
 }
