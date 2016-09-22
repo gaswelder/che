@@ -4,13 +4,16 @@
 
 import "net"
 import "cli"
+import "log"
 
 int main()
 {
-	conn_t *l = net_listen("tcp", "0.0.0.0:7000");
+	const char *addr = "0.0.0.0:7000";
+	conn_t *l = net_listen("tcp", addr);
 	if(!l) {
 		fatal("listen failed: %s", net_error());
 	}
+	logmsg("listening at %s", addr);
 
 	while(1) {
 		conn_t *s = net_accept(l);
@@ -27,7 +30,7 @@ int main()
 
 void *process_client(conn_t *c)
 {
-	printf("%s connected\n", net_addr(c));
+	logmsg("%s connected", net_addr(c));
 	char buf[256];
 
 	while(1) {
@@ -45,7 +48,7 @@ void *process_client(conn_t *c)
 			break;
 		}
 	}
-	printf("%s disconnected\n", net_addr(c));
+	logmsg("%s disconnected", net_addr(c));
 	net_close(c);
 	return NULL;
 }
