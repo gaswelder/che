@@ -151,7 +151,7 @@ function get_import($modname)
 {
 	$path = find_import($modname);
 	if(!$path) {
-		fwrite( STDERR, "Could not find module: $mod\n" );
+		fwrite( STDERR, "Could not find module: $modname\n" );
 		exit(1);
 	}
 
