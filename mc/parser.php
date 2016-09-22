@@ -447,7 +447,9 @@ $this->trace( "obj_der" );
 			if( $ch == '[' )
 			{
 				$conv = '[';
-				$conv .= $this->expr()->format();
+				if($this->s->peek()->type != ']') {
+					$conv .= $this->expr()->format();
+				}
 				$this->expect( ']' );
 				$conv .= ']';
 
