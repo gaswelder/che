@@ -218,16 +218,8 @@ class mctok
 		/*
 		 * Number
 		 */
-		$p1 = $s->get();
-		$p2 = $s->peek();
-		$s->unget( $p1 );
-		if( ctype_digit( $p1 ) ) {
-			$num = '';
-			$num .= $s->read_set( '0123456789' );
-			if( $s->peek() == 'L' ) {
-				$num .= $s->get();
-			}
-			return tok( 'num', $num, $pos );
+		if(ctype_digit($s->peek())) {
+			return $this->read_number();
 		}
 
 		/*
@@ -276,6 +268,31 @@ class mctok
 
 		$ch = $s->peek();
 		return $this->error( "Unexpected character: '$ch'" );
+	}
+
+	private function read_number()
+	{
+		$s = $this->s;
+		$pos = $s->pos();
+
+		$p1 = $s->get();
+		$p2 = $s->peek();
+		$s->unget( $p1 );
+
+		if($p1 == '0' && $p2 == 'x') {
+			$num = '0x';
+			$s->get();
+			$s->get();
+			$num .= $s->read_set("0123456789ABCDEFabcdef");
+		}
+		else {
+			$num = '';
+			$num .= $s->read_set( '0123456789' );
+		}
+		if( $s->peek() == 'L' ) {
+			$num .= $s->get();
+		}
+		return tok( 'num', $num, $pos );
 	}
 
 	private function read_string()
