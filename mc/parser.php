@@ -1029,6 +1029,11 @@ $this->trace( "literal" );
 			return new c_literal( $t->content );
 		}
 
+		if($t->type == '&') {
+			$this->s->unget($t);
+			return $this->addr_literal();
+		}
+
 		return $this->error( "Unexpected $t" );
 	}
 
@@ -1077,6 +1082,16 @@ $this->trace( "array_literal" );
 		$this->expect( '}' );
 
 		return new c_array( $elements );
+	}
+
+	private function addr_literal()
+	{
+$this->trace("addr_literal");
+		$s = $this->s;
+		$str = '&';
+		$this->expect('&');
+		$str .= $this->expect('word')->content;
+		return new c_literal($str);
 	}
 
 	private function expect( $ch, $content = null ) {
