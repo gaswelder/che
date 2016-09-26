@@ -87,3 +87,14 @@ module. This is exactly what C programmers do, except they put the
 declarations into a separate file and include it. The translator will
 also track all the referenced files and put them to the C compiler's
 command line.
+
+Modules are searched first in the internal modules library, and then in
+current working directory. If import name begins with "./", the module
+is searched relatively to the directory of the importing module.
+
+A module can be put into its own directory. The directory name is then
+the module's name, and file "main" will be imported from it. For
+example, if "foo" is a directory, then `import "foo"` will be
+equivalent to `import "foo/main"`. The "main" source can use the "./"
+rule to import its neighbours in it. This allows creating packages that
+can be treated as single modules.

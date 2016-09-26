@@ -23,7 +23,7 @@ function compile($main)
 	$n = count($list);
 	for($i = 0; $i < $n; $i++)
 	{
-		$mod = parse_module($list[$i]);
+		$mod = parse_module($list[$i], getcwd());
 		foreach($mod->deps as $path) {
 			$list[] = $path;
 			$n++;
@@ -124,7 +124,7 @@ function parse_module($path)
 			 * Update the parser's types list
 			 * from the references module
 			 */
-			$imp = get_import($t->path);
+			$imp = get_import($t->path, $t->dir);
 			foreach($imp->code as $decl) {
 				if($decl instanceof c_typedef) {
 					$s->add_type($decl->name);
@@ -147,9 +147,9 @@ function parse_module($path)
  * Finds the given module, parses it
  * and returns an 'import' object.
  */
-function get_import($modname)
+function get_import($modname, $refdir)
 {
-	$path = find_import($modname);
+	$path = find_import($modname, $refdir);
 	if(!$path) {
 		fwrite( STDERR, "Could not find module: $modname\n" );
 		exit(1);
@@ -185,12 +185,22 @@ function get_import($modname)
 /*
  * Returns path to the specified module.
  */
-function find_import( $name )
+function find_import($name, $refdir)
 {
-	$p = array(
-		MCDIR . "/lib/$name.c",
-		$name . ".c"
-	);
+	if($name[0] == '.') {
+		$name = substr($name, 1);
+		$p = array(
+			$refdir.$name.".c"
+		);
+	}
+	else {
+		$p = array(
+			MCDIR . "/lib/$name.c",
+			MCDIR . "/lib/$name/main.c",
+			$name . ".c",
+			"$name/main.c"
+		);
+	}
 	foreach( $p as $path ) {
 		if( file_exists( $path ) ) {
 			return $path;

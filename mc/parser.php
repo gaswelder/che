@@ -115,7 +115,9 @@ class parser
 		{
 			$this->s->get();
 			$path = $this->s->get();
-			return new c_import( $path->content );
+			$dir = dirname(realpath($this->path));
+
+			return new c_import($path->content, $dir);
 		}
 
 		// <obj-def>

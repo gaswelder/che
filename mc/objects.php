@@ -12,8 +12,11 @@ class c_element {
 class c_import extends c_element
 {
 	public $path;
-	public function __construct( $path ) {
+	public $dir;
+
+	public function __construct($path, $dir) {
 		$this->path = $path;
+		$this->dir = $dir;
 	}
 
 	function format() {
