@@ -161,3 +161,23 @@ int zprintf(zio *s, const char *fmt, ...)
 
 	return len;
 }
+
+int zgetc(zio *s)
+{
+	switch(s->type) {
+		case S_FILE:
+			return fgetc(s->h);
+		case S_MEM:
+			return memgetc(s->h);
+		case S_TCP:
+			char c;
+			int n = net_read(s->h, &c, 1);
+			if(n <= 0) {
+				return EOF;
+			}
+			return c;
+		default:
+			puts("Unknown zio type");
+	}
+	return EOF;
+}
