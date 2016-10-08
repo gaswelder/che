@@ -133,8 +133,6 @@ class mctok
 		'sizeof'
 	);
 
-	private $newline = true;
-
 	function error( $msg ) {
 		$pos = $this->s->pos();
 		$str = $this->s->context(10);
@@ -153,10 +151,7 @@ class mctok
 	{
 		$s = $this->s;
 
-		$sp = $s->read_set( self::spaces );
-		if( strpos( $sp, "\n" ) !== false ) {
-			$this->newline = true;
-		}
+		$s->read_set( self::spaces );
 
 		if( $s->ended() ) {
 			return null;
@@ -167,11 +162,9 @@ class mctok
 		/*
 		 * If we are on a new line and '#' follows, read it as a macro.
 		 */
-		if( $this->newline && $s->peek() == '#' ) {
+		if( $s->peek() == '#' ) {
 			return tok( 'macro', $s->skip_until( "\n" ), $pos );
 		}
-
-		$this->newline = false;
 
 		/*
 		 * Multiple-line comments.
