@@ -144,6 +144,156 @@ class c_typedef extends c_nameform {
 	}
 };
 
+/*
+ * Variable declarations list like "int a, *b, c()"
+ */
+class c_varlist
+{
+	public $type;
+	public $forms;
+	public $values;
+
+	function __construct(c_type $type)
+	{
+		$this->type = $type;
+		$this->forms = array();
+ 	}
+	
+	function add(c_form $f, c_expr $e = null)
+	{
+		$this->forms[] = $f;
+		$this->values[] = $e;
+	}
+
+	function format()
+	{
+		$s = $this->type->format();
+		foreach($this->forms as $i => $f) {
+			if($i > 0) {
+				$s .= ', ';
+			}
+			else {
+				$s .= ' ';
+			}
+			$s .= $f->format();
+			if($this->values[$i] !== null) {
+				$s .= ' = ' . $this->values[$i]->format();
+			}
+		}
+		return $s;
+	}
+}
+
+/*
+ * Form, an object description like *foo[42] or myfunc(int, int).
+ */
+class c_form
+{
+	public $name;
+	private $ops;
+
+	function __construct($name, $ops)
+	{
+		$this->name = $name;
+		$this->ops = $ops;
+	}
+
+	function format()
+	{
+		$s = $this->name;
+		$n = count($this->ops);
+		$i = 0;
+		while( $i < $n )
+		{
+			$mod = $this->ops[$i++];
+
+			if( $mod == '*' ) {
+				$s = $mod . $s;
+				continue;
+			}
+
+			if( is_string( $mod ) && strlen( $mod ) > 1 && $mod[0] == '[' ) {
+				$s = $s . $mod;
+				continue;
+			}
+
+			if( is_array( $mod ) && $mod[0] == 'call' )
+			{
+				$args = array_slice( $mod, 1 );
+				$str = '(';
+				foreach( $args as $j => $arg ) {
+					if( $j > 0 ) $str .= ', ';
+					if( $arg == '...' ) {
+						$str .= '...';
+					}
+					else {
+						$str .= $arg->format();
+					}
+				}
+				$str .= ')';
+				$s = $s . $str;
+				continue;
+			}
+
+			if( $mod == 'struct' ) {
+				$mod = $this->type[$i++];
+
+				if( is_string( $mod ) ) {
+					$s = "struct $mod $s";
+					continue;
+				}
+				var_dump( $mod );
+				exit;
+			}
+
+			if( is_string( $mod ) ) {
+				$s = "$mod $s";
+				continue;
+			}
+
+			echo '-----objects.php------------', "\n";
+			var_dump( $mod );
+			echo '-----------------', "\n";
+			var_dump( $this->type );
+			echo '-----------------', "\n";
+			exit;
+		}
+
+		return $s;
+	}
+}
+
+/*
+ * Type, a list of type modifiers like 'int' or 'struct {...}'.
+ */
+class c_type
+{
+	private $l;
+	function __construct($list) {
+		$this->l = $list;
+	}
+
+	function format() {
+		return implode(' ', $this->l);
+	}
+}
+
+class c_typedef extends c_element
+{
+	public $form;
+	public $type;
+
+	function __construct(c_type $type, c_form $form) {
+		$this->type = $type;
+		$this->form = $form;
+	}
+
+	function format() {
+		return sprintf("typedef %s %s",
+			$this->type->format(), $this->form->format());
+	}
+}
+
 class c_enum extends c_element
 {
 	public $values = array();

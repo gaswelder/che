@@ -80,6 +80,9 @@ class mc_trans
 			$cn = get_class( $part );
 			switch( $cn )
 			{
+				case 'c_varlist':
+					self::type( $part->type, $headers );
+					break;
 				case 'c_vardef':
 					self::type( $part->type, $headers );
 					self::expr( $part->init, $headers );

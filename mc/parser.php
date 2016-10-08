@@ -321,6 +321,12 @@ $this->trace( "read_nameform" );
 		return new c_nameform( $name, $type );
 	}
 
+	private function _type()
+	{
+		$t = $this->type();
+		return new c_type($t);
+	}
+
 	// <type>: "struct" <name>
 	//	or "struct" <struct-fields>
 	//	or <type-mod>...
@@ -354,6 +360,12 @@ $this->trace( "type" );
 			$t = $s->peek();
 		}
 		return $type;
+	}
+
+	private function form()
+	{
+		$f = $this->obj_der();
+		return new c_form($f['name'], $f['ops']);
 	}
 
 	// <der>: <left-mod>... <name> <right-mod>...
@@ -571,15 +583,58 @@ $this->trace( "body_part" );
 			return $this->body();
 		}
 
-		// <obj-def>?
+		// <varlist>?
 		if($this->type_follows()) {
-			return $this->read_object();
+			$list = $this->read_varlist();
+			$this->expect(';');
+			return $list;
 		}
 
 		// <expr>
 		$expr = $this->expr();
 		$this->expect( ';' );
 		return $expr;
+	}
+
+	private function read_varlist()
+	{
+$this->trace( "read_varlist" );
+		$s = $this->s;
+
+		$type = $this->_type();
+		$list = new c_varlist($type);
+
+		$f = $this->form();
+		$e = null;
+		if($s->peek()->type == '=') {
+			$s->get();
+			$e = $this->expr();
+		}
+		$list->add($f, $e);
+
+		while($s->peek()->type == ',') {
+			$comma = $s->get();
+
+			if(!$this->form_follows()) {
+				$s->unget($comma);
+				break;
+			}
+			$f = $this->form();
+			$e = null;
+			if($s->peek()->type == '=') {
+				$s->get();
+				$e = $this->expr();
+			}
+			$list->add($f, $e);
+		}
+		return $list;
+	}
+
+	private function form_follows()
+	{
+		if($this->type_follows()) return false;
+		$t = $this->s->peek()->type;
+		return $t == '*' || $t == 'word';
 	}
 
 	private function is_typename( $word )
