@@ -1,5 +1,6 @@
 /*
- * The core of MD5 routine. Defines two main operations: init and feed.
+ * The core routine of the MD5.
+ * Defines two main operations: init and feed.
  */
 
 /*

@@ -64,15 +64,18 @@ class c_include extends c_element {
 	}
 }
 
-class c_nameform extends c_element {
+class c_nameform extends c_element
+{
 	public $name;
 	public $type;
+
 	function __construct( $name, $type ) {
 		$this->name = $name;
 		$this->type = $type;
 	}
 
-	function format( $tab = 0 ) {
+	function format( $tab = 0 )
+	{
 		$s = $this->name;
 
 		$n = count( $this->type );
@@ -80,12 +83,13 @@ class c_nameform extends c_element {
 		while( $i < $n )
 		{
 			$mod = $this->type[$i++];
+
 			if( $mod == '*' ) {
 				$s = $mod . $s;
 				continue;
 			}
 
-			if( is_string( $mod) && strlen( $mod ) > 1 && $mod[0] == '[' ) {
+			if( is_string( $mod ) && strlen( $mod ) > 1 && $mod[0] == '[' ) {
 				$s = $s . $mod;
 				continue;
 			}

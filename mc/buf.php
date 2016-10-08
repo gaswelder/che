@@ -1,11 +1,16 @@
 <?php
-
+/*
+ * A string buffer with functions for parsing
+ */
 class buf
 {
 	private $str;
 	private $pos;
 	private $len;
 
+	/*
+	 * Line and column counters
+	 */
 	private $line = 1;
 	private $col = 1;
 	private $linelengths = array();
