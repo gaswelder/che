@@ -64,86 +64,6 @@ class c_include extends c_element {
 	}
 }
 
-class c_nameform extends c_element
-{
-	public $name;
-	public $type;
-
-	function __construct( $name, $type ) {
-		$this->name = $name;
-		$this->type = $type;
-	}
-
-	function format( $tab = 0 )
-	{
-		$s = $this->name;
-
-		$n = count( $this->type );
-		$i = 0;
-		while( $i < $n )
-		{
-			$mod = $this->type[$i++];
-
-			if( $mod == '*' ) {
-				$s = $mod . $s;
-				continue;
-			}
-
-			if( is_string( $mod ) && strlen( $mod ) > 1 && $mod[0] == '[' ) {
-				$s = $s . $mod;
-				continue;
-			}
-
-			if( is_array( $mod ) && $mod[0] == 'call' )
-			{
-				$args = array_slice( $mod, 1 );
-				$str = '(';
-				foreach( $args as $j => $arg ) {
-					if( $j > 0 ) $str .= ', ';
-					if( $arg == '...' ) {
-						$str .= '...';
-					}
-					else {
-						$str .= $arg->format();
-					}
-				}
-				$str .= ')';
-				$s = $s . $str;
-				continue;
-			}
-
-			if( $mod == 'struct' ) {
-				$mod = $this->type[$i++];
-				if( is_string( $mod ) ) {
-					$s = "struct $mod $s";
-					continue;
-				}
-			}
-
-			if( is_string( $mod ) ) {
-				$s = "$mod $s";
-				continue;
-			}
-
-			echo '-----------------', "\n";
-			var_dump( $mod );
-			echo '-----------------', "\n";
-			var_dump( $this->type );
-			echo '-----------------', "\n";
-			exit;
-		}
-
-		$p = str_repeat( "\t", $tab );
-		return $p . $s;
-	}
-}
-
-class c_typedef extends c_nameform {
-	function format( $tab = 0 ) {
-		return 'typedef ' . parent::format() . ';';
-	}
-};
-
 /*
  * Variable declarations list like "int a, *b, c()"
  */
@@ -157,8 +77,8 @@ class c_varlist
 	{
 		$this->type = $type;
 		$this->forms = array();
- 	}
-	
+	}
+
 	function add(c_form $f, c_expr $e = null)
 	{
 		$this->forms[] = $f;
@@ -190,7 +110,7 @@ class c_varlist
 class c_form
 {
 	public $name;
-	private $ops;
+	public $ops;
 
 	function __construct($name, $ops)
 	{
@@ -268,13 +188,35 @@ class c_form
  */
 class c_type
 {
-	private $l;
+	public $l;
 	function __construct($list) {
 		$this->l = $list;
 	}
 
 	function format() {
-		return implode(' ', $this->l);
+		$s = array();
+		foreach($this->l as $t) {
+			if(!is_string($t)) $t = $t->format();
+			$s[] = $t;
+		}
+		return implode(' ', $s);
+	}
+}
+
+/*
+ * A combination of type and form, like in "(struct foo *[])".
+ */
+class c_typeform
+{
+	public $type;
+	public $form;
+	function __construct($type, $form) {
+		$this->type = $type;
+		$this->form = $form;
+	}
+
+	function format() {
+		return $this->type->format() . ' ' . $this->form->format();
 	}
 }
 
@@ -321,126 +263,87 @@ class c_enum extends c_element
 	}
 }
 
-class c_prototype extends c_nameform
+class c_prototype
 {
 	public $type;
-	public $name;
+	public $form;
 	public $args;
 
-	function __construct( $rettype, $name, $args ) {
-		$this->type = $rettype;
-		$this->name = $name;
+	function __construct(c_type $type, c_form $form, c_formal_args $args)
+	{
+		assert($form->name != "");
+		$this->type = $type;
+		$this->form = $form;
 		$this->args = $args;
 	}
 
-	function format( $tab = 0 )
+	function format()
 	{
-		$pref = str_repeat( "\t", $tab );
+		return sprintf("%s %s%s;",
+			$this->type->format(),
+			$this->form->format(),
+			$this->args->format());
+	}
+}
 
-		$s = $this->format_type() . ' ' . $this->name;
-		$s .= $this->format_args();
-		$s .= ';';
-		return $s;
-		//return parent::format( $tab ) . ';';
+/*
+ * Formal arguments list for a function prototype, like '(int a, int *b)'.
+ */
+class c_formal_args
+{
+	public $lists = array(); // array of varlists
+	public $more = false; // true if the list ends with '...'
+
+	function add(c_varlist $l) {
+		$this->lists[] = $l;
 	}
 
-	private function format_type()
-	{
-		$n = count( $this->type );
-		$i = 0;
-		$s = '';
-		while( $i < $n )
-		{
-			$mod = $this->type[$i++];
-			if( $mod == '*' ) {
-				$s = $mod . $s;
-				continue;
-			}
-
-			if( is_string( $mod ) && strlen( $mod ) > 1 && $mod[0] == '[' ) {
-				$s = $s . $mod;
-				continue;
-			}
-
-			if( $mod == 'struct' ) {
-				$mod = $this->type[$i++];
-				if( is_string( $mod ) ) {
-					$s = "struct $mod $s";
-					continue;
-				}
-			}
-
-			if( is_string( $mod ) ) {
-				$s = "$mod $s";
-				continue;
-			}
-
-			echo '-----------------', "\n";
-			var_dump( $mod );
-			echo '-----------------', "\n";
-			var_dump( $this->type );
-			echo '-----------------', "\n";
-			exit;
-		}
-
-		return $s;
-	}
-
-	private function format_args()
-	{
+	function format() {
 		$s = '(';
-		foreach( $this->args as $i => $arg )
-		{
-			if( $i > 0 ) $s .= ', ';
-			if( $arg == '...' ) {
-				$s .= '...';
+		$i = 0;
+		foreach($this->lists as $l) {
+			foreach($l->forms as $f) {
+				if($i > 0) $s .= ', ';
+				$i++;
+				$s .= $l->type->format();
+				$s .= ' ' . $f->format();
 			}
-			else {
-				$s .= $arg->format();
-			}
+		}
+		if($this->more) {
+			$s .= ', ...';
 		}
 		$s .= ')';
 		return $s;
 	}
-};
+}
 
 class c_structdef extends c_element
 {
 	public $name;
-	public $fields = array(); // array of nameforms
+	public $fields = array(); // array of varlists
 
 	function __construct( $name ) {
 		$this->name = $name;
 	}
 
-	function add( c_nameform $form ) {
-		$name = $form->name;
-		$this->fields[] = $form;
+	function add( c_varlist $list ) {
+		$this->fields[] = $list;
 	}
 
 	function format() {
 		$s = "struct $this->name";
 		if( empty( $this->fields ) ) {
-			$s .= ";\n";
 			return $s;
 		}
 
 		$s .= " {\n";
-		foreach( $this->fields as $form ) {
-			$s .= "\t" . $form->format() . ";\n";
+		foreach( $this->fields as $list ) {
+			foreach($list->forms as $f) {
+				$s .= sprintf("\t%s %s;\n",
+					$list->type->format(), $f->format());
+			}
 		}
-		$s .= "};\n";
-		return $s;
-	}
-}
-
-class c_vardef extends c_nameform {
-	public $init;
-	function format( $tab = 0 ) {
-		$s = parent::format( $tab );
-		if( $this->init ) {
-			$s .= ' = ' . $this->init->format();
-		}
+		$s .= "}";
 		return $s;
 	}
 }

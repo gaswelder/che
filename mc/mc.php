@@ -27,7 +27,11 @@ class mc
 	 */
 	static function format( $code )
 	{
-		$term = array( 'c_vardef' );
+		$term = array(
+			'c_typedef',
+			'c_structdef',
+			'c_varlist'
+		);
 		$out = '';
 		foreach( $code as $element ) {
 			$out .= $element->format();

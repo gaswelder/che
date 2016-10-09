@@ -122,12 +122,12 @@ function parse_module($path)
 		{
 			/*
 			 * Update the parser's types list
-			 * from the references module
+			 * from the referenced module
 			 */
 			$imp = get_import($t->path, $t->dir);
 			foreach($imp->code as $decl) {
 				if($decl instanceof c_typedef) {
-					$s->add_type($decl->name);
+					$s->add_type($decl->form->name);
 				}
 			}
 			/*
@@ -167,13 +167,15 @@ function get_import($modname, $refdir)
 
 		switch( $cn ) {
 			case 'c_typedef':
+				$imp->code[] = $element;
+				break;
 			case 'c_structdef':
 			case 'c_enum':
 				$imp->code[] = $element;
 				break;
 			case 'c_func':
 				$dec = $element->proto;
-				if( !in_array( 'static', $dec->type ) ) {
+				if($dec->type->l[0] != 'static') {
 					$imp->code[] = $dec;
 				}
 				break;

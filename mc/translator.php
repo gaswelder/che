@@ -33,8 +33,8 @@ class mc_trans
 
 			if( $element instanceof c_structdef ) {
 				$types[] = new c_structdef($element->name);
-				foreach( $element->fields as $form ) {
-					self::type( $form->type, $headers );
+				foreach( $element->fields as $list ) {
+					self::varlist($list, $headers );
 				}
 			}
 
@@ -63,12 +63,11 @@ class mc_trans
 		return $out;
 	}
 
-	private static function proto($p, &$headers)
+	private static function proto(c_prototype $p, &$headers)
 	{
 		$args = $p->args;
-		foreach($args as $arg) {
-			if( !($arg instanceof c_nameform) ) continue;
-			self::type( $arg->type, $headers );
+		foreach($args->lists as $list) {
+			self::varlist($list, $headers);
 		}
 		self::type($p->type, $headers);
 	}
@@ -81,11 +80,7 @@ class mc_trans
 			switch( $cn )
 			{
 				case 'c_varlist':
-					self::type( $part->type, $headers );
-					break;
-				case 'c_vardef':
-					self::type( $part->type, $headers );
-					self::expr( $part->init, $headers );
+					self::varlist($part, $headers);
 					break;
 
 				case 'c_if':
@@ -102,10 +97,8 @@ class mc_trans
 					break;
 
 				case 'c_for':
-					if($part->init instanceof c_vardef) {
-						$def = $part->init;
-						self::type($def->type, $headers);
-						self::expr($def->init, $headers);
+					if($part->init instanceof c_varlist) {
+						self::varlist($part->init, $headers);
 					}
 					else {
 						self::expr( $part->init, $headers );
@@ -129,14 +122,22 @@ class mc_trans
 
 				default:
 					var_dump( "1706", $part );
-					exit;
+					exit(1);
 			}
 		}
 	}
 
-	private static function type( $type, &$headers )
+	private static function varlist(c_varlist $l, &$headers)
 	{
-		foreach( $type as $cast ) {
+		self::type($l->type, $headers);
+		foreach($l->values as $e) {
+			self::expr($e, $headers);
+		}
+	}
+
+	private static function type(c_type $type, &$headers )
+	{
+		foreach( $type->l as $cast ) {
 			if( !is_string( $cast ) ) continue;
 			self::id( $cast, $headers );
 		}
@@ -174,7 +175,7 @@ class mc_trans
 						break;
 
 					case 'cast':
-						self::type( $op[1], $headers );
+						self::type( $op[1]->type, $headers );
 						break;
 
 					case 'literal':

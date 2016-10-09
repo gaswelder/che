@@ -98,3 +98,30 @@ example, if "foo" is a directory, then `import "foo"` will be
 equivalent to `import "foo/main"`. The "main" source can use the "./"
 rule to import its neighbours in it. This allows creating packages that
 can be treated as single modules.
+
+
+## Declaration lists
+
+In C it is possible to declare multiple variables with a common type
+like this:
+
+	int a, b, c;
+
+In MC is is also possible to do that with struct members and function
+declarations:
+
+	struct vec {
+		int x, y, x;
+	};
+
+	struct vec sum(struct vec a, b) {
+		...
+	}
+
+The original C rules still apply: pointer and array notations "stick"
+to the identifiers, no the type, so in the following example the
+structure `foo` has `char` member 'a' and `char *` member b:
+
+	struct foo {
+		char a, *b;
+	};

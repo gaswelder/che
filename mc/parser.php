@@ -88,7 +88,7 @@ class parser
 		// <typedef>?
 		if( $t->type == 'typedef' ) {
 			$def = $this->read_typedef();
-			$this->add_type($def->name);
+			$this->add_type($def->form->name);
 			return $def;
 		}
 
@@ -157,35 +157,44 @@ class parser
 		}
 	}
 
-	// <typedef>: "typedef" <nameform> ";"
+	// <typedef>: "typedef" <type> <form> ";"
 	private function read_typedef()
 	{
 $this->trace( "read_typedef" );
 		$this->expect( 'typedef' );
-		$form = $this->read_nameform();
+		$type = $this->_type();
+		$form = $this->form();
 		$this->expect( ';' );
-		return new c_typedef( $form->name, $form->type );
+		return new c_typedef($type, $form);
 	}
 
 	// <struct-def>: "struct" <name> [<struct-fields>] ";"
 	private function struct_def()
 	{
 $this->trace( "struct_def" );
+		$s = $this->s;
 		$this->expect( 'struct' );
-		$name = $this->expect( 'word' )->content;
+		if($s->peek()->type == 'word') {
+			$name = $s->get()->content;
+		}
+		else {
+			$name = '';
+		}
 		$def = new c_structdef( $name );
 
-		if( $this->s->peek()->type == ';' ) {
-			$this->s->get();
+		if($s->peek()->type != '{') {
 			return $def;
 		}
 
-		$fields = $this->struct_fields();
-		foreach( $fields as $f ) {
-			$def->add( $f );
+		$s->get();
+		while(!$s->ended() && $s->peek()->type != '}') {
+			$list = $this->read_varlist();
+			$def->add($list);
+			$this->expect(';');
 		}
-
+		$this->expect('}');
 		$this->expect( ';' );
+
 		return $def;
 	}
 
@@ -217,37 +226,35 @@ $this->trace( "struct_def" );
 	}
 
 	// <object-def>:
-	// <stor> <nameform> [= <expr>] ";"
-	// or <stor> <nameform/func> ";"
-	// or <stor> <nameform/func> <body>
+	// <stor> <type> <form> [= <expr>] ";"
+	// or <stor> <type> <form> ";"
+	// or <stor> <type> <func> ";"
+	// or <stor> <type> <func> <body>
 	private function read_object()
 	{
 $this->trace( "read_object" );
 		$s = $this->s;
 
-		// <nameform>
-		$form = $this->read_nameform();
+		$type = $this->_type();
+		$form = $this->form();
 
-		if( !$this->is_function( $form ) )
-		{
-			$def = new c_vardef( $form->name, $form->type );
-
-			// [= <expr>] ";"
-			if( $s->peek()->type == '=' ) {
+		/*
+		 * If not a function, return as a varlist.
+		 */
+		if(empty($form->ops) || !($form->ops[0] instanceof c_formal_args)) {
+			$expr = null;
+			if($s->peek()->type == '=') {
 				$s->get();
 				$expr = $this->expr();
-				$def->init = $expr;
 			}
-
-			$this->expect( ';' );
-			return $def;
+			$this->expect(';');
+			$list = new c_varlist($type);
+			$list->add($form, $expr);
+			return $list;
 		}
 
-		$type = $form->type;
-		$args = array_shift( $type );
-		assert( $args[0] == 'call' );
-		array_shift( $args );
-		$proto = new c_prototype( $type, $form->name, $args );
+		$args = array_shift($form->ops);
+		$proto = new c_prototype( $type, $form, $args );
 
 		$t = $s->get();
 		if( $t->type == ';' ) {
@@ -265,65 +272,15 @@ $this->trace( "read_object" );
 
 	//--
 
-	// <struct-fields>: "{" [<nameform> ";"]... "}"
-	private function struct_fields()
-	{
-$this->trace( "struct fields" );
-		$s = $this->s;
-		$fields = array();
-		$this->expect( '{' );
-		while( !$s->ended() && $s->peek()->type != '}' )
-		{
-			$form = $this->read_nameform();
-			if( !$form || !$form->name || !$form->type ) {
-				return $this->error( "Invalid nameform" );
-			}
-			$this->expect( ';' );
-
-			$fields[] = new c_nameform( $form->name, $form->type );
-		}
-		$this->expect( '}' );
-		return $fields;
-	}
-
-	// <nameform>: "const"? <type> <obj-der>
-	private function read_nameform()
-	{
-$this->trace( "read_nameform" );
-		$s = $this->s;
-
-		$cast = [];
-
-		$t = $s->peek();
-
-		// "static"?
-		if( $t->type == 'static' ) {
-			$cast[] = 'static';
-			$s->get();
-			$t = $s->peek();
-		}
-
-		// "const"?
-		if( $t->type == 'const' ) {
-			$cast[] = 'const';
-			$s->get();
-		}
-
-		// <type>
-		$cast = array_merge( $cast, $this->type() );
-
-		// <obj-der>
-		$der = $this->obj_der();
-
-		$type = array_merge( $der['ops'], array_reverse( $cast ) );
-		$name = $der['name'];
-
-		return new c_nameform( $name, $type );
-	}
-
 	private function _type()
 	{
-		$t = $this->type();
+$this->trace("_type");
+		$stor = array();
+		if($this->s->peek()->type == 'static') {
+			$stor[] = 'static';
+			$this->s->get();
+		}
+		$t = array_merge( $stor, $this->type() );
 		return new c_type($t);
 	}
 
@@ -335,23 +292,22 @@ $this->trace( "read_nameform" );
 $this->trace( "type" );
 		$s = $this->s;
 
-		$t = $s->get();
+		$type = array();
 
-		if( $t->type == 'struct' )
-		{
-			// "struct" <name>?
-			if( $s->peek()->type == 'word' ) {
-				$t = $s->get();
-				return array( $t->content, 'struct' );
-			}
-
-			// "struct" <struct-fields>
-			return array( $this->struct_fields(), 'struct' );
+		/*
+		 * If 'const', add it.
+		 */
+		if($s->peek()->type == 'const') {
+			$type[] = 'const';
+			$s->get();
 		}
 
-		// <type-mod>...
-		$type = array();
-		$type[] = $t->content;
+		if( $s->peek()->type == 'struct' )
+		{
+			$type[] = $this->struct_def();
+			return $type;
+		}
+
 
 		$t = $s->peek();
 		while( $t->type == 'word' && $this->is_typename( $t->content ) ) {
@@ -503,39 +459,32 @@ $this->trace( "obj_der" );
 		return array( 'name' => $name, 'ops' => $mods );
 	}
 
-	// <call-signature>: "(" <nameform> [",", <nameform>]... ")"
 	private function call_signature()
 	{
-$this->trace( "call_signature" );
-		$s = $this->s;
+$this->trace("call_signature");
+		$args = new c_formal_args();
 
-		$this->expect( '(' );
-
-		$args = ['call'];
-
-		while( !$s->ended() && $s->peek()->type != ')' )
+		$this->expect('(');
+		if($this->type_follows())
 		{
-			if( $s->peek()->type == '...' ) {
-				$args[] = '...';
-				$s->get();
-				break;
-			}
+			while($this->type_follows()) {
+				$l = $this->read_varlist();
+				$args->add($l);
 
-			$args[] = $this->read_nameform();
+				if($this->s->peek()->type != ',') {
+					break;
+				}
 
-			if( $s->peek()->type == ',' ) {
 				$this->s->get();
+				if($this->s->peek()->type == '...') {
+					$this->s->get();
+					$args->more = true;
+					break;
+				}
 			}
 		}
-		$this->expect( ')' );
+		$this->expect(')');
 		return $args;
-	}
-
-	private function is_function( c_nameform $f )
-	{
-$this->trace( "is_function" );
-		return !empty( $f->type )
-			&& is_array( $f->type[0] ) && $f->type[0][0] == 'call';
 	}
 
 	// <body>: "{" <body-part>... "}"
@@ -734,11 +683,7 @@ $this->trace( "read_for" );
 		$this->expect( '(' );
 
 		if($this->type_follows()) {
-			$form = $this->read_nameform();
-			$def = new c_vardef($form->name, $form->type);
-			$this->expect('=');
-			$def->init = $this->expr();
-			$init = $def;
+			$init = $this->read_varlist();
 		}
 		else {
 			$init = $this->expr();
@@ -884,9 +829,9 @@ $this->trace( "atom" );
 		if( $this->cast_follows() )
 		{
 			$this->expect( '(' );
-			$t = $this->read_nameform();
+			$tf = $this->read_typeform();
 			$this->expect( ')' );
-			$ops[] = array( 'cast', $t );
+			$ops[] = array( 'cast', $tf );
 		}
 
 		// <literal>?
@@ -968,6 +913,13 @@ $this->trace( "atom" );
 		return $ops;
 	}
 
+	private function read_typeform()
+	{
+		$t = $this->_type();
+		$f = $this->form();
+		return new c_typeform($t, $f);
+	}
+
 	private function cast_follows()
 	{
 		$s = $this->s;
@@ -1020,8 +972,7 @@ $this->trace( "read_sizeof" );
 		}
 
 		if( $this->type_follows() ) {
-			$arg = $this->read_nameform();
-			assert( $arg->name == '' );
+			$arg = $this->read_typeform();
 		}
 		else {
 			$arg = $this->expr();
