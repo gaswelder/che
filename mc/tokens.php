@@ -282,8 +282,18 @@ class mctok
 			$num = '';
 			$num .= $s->read_set( '0123456789' );
 		}
+
+		if($s->peek() == 'U') {
+			$num .= $s->get();
+		}
+
 		if( $s->peek() == 'L' ) {
 			$num .= $s->get();
+		}
+
+		if(!$s->ended() && ctype_alpha($s->peek())) {
+			$c = $s->peek();
+			return $this->error("Unexpected character: '$c'");
 		}
 		return tok( 'num', $num, $pos );
 	}
