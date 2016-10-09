@@ -275,12 +275,24 @@ $this->trace( "read_object" );
 	private function _type()
 	{
 $this->trace("_type");
-		$stor = array();
-		if($this->s->peek()->type == 'static') {
-			$stor[] = 'static';
-			$this->s->get();
+		$static = false;
+		$s = $this->s;
+		if($s->peek()->type == 'static') {
+			$static = true;
+			$s->get();
 		}
-		$t = array_merge( $stor, $this->type() );
+		$t = $this->type();
+		if(empty($t)) {
+			if($s->peek()->type == 'word') {
+				$id = $s->peek()->content;
+				return $this->error("Unknown type name: $id");
+			}
+			return $this->error("Type name expected, got ".$s->peek());
+		}
+
+		if($static) {
+			array_unshift($t, 'static');
+		}
 		return new c_type($t);
 	}
 
