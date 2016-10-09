@@ -1,11 +1,16 @@
 <?php
-define( 'MCDIR', '.' );
 require 'mc/mc.php';
 
 exit(main($argv));
 
 function main( $args )
 {
+	$home = getenv('CHE_HOME');
+	if($home === false) {
+		$home = '.';
+	}
+	define('MCDIR', $home);
+
 	array_shift( $args );
 	$path = array_shift( $args );
 
@@ -152,6 +157,9 @@ function get_import($modname, $refdir)
 	$path = find_import($modname, $refdir);
 	if(!$path) {
 		fwrite( STDERR, "Could not find module: $modname\n" );
+		if($modname[0] != '.' && MCDIR == '.') {
+			fwrite(STDERR, "CHE_HOME environment variable is not defined\n");
+		}
 		exit(1);
 	}
 
