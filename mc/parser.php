@@ -30,7 +30,9 @@ class parser
 	}
 
 	function error($msg) {
-		$pos = $this->path . ':'.$this->s->peek()->pos;
+		$p = $this->s->peek();
+		$pos = $p ? $p->pos : "EOF";
+		$pos = $this->path . ':'.$pos;
 		fwrite(STDERR, "$pos: $msg\n");
 		fwrite(STDERR, $this->context()."\n");
 		exit(1);
