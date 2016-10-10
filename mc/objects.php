@@ -162,8 +162,6 @@ class c_form
 					$s = "struct $mod $s";
 					continue;
 				}
-				var_dump( $mod );
-				exit;
 			}
 
 			if( is_string( $mod ) ) {
@@ -526,7 +524,7 @@ class c_expr extends c_element
 					break;
 				default:
 					var_dump( $i );
-					exit;
+					exit(1);
 			}
 		}
 		return $s;

@@ -62,7 +62,7 @@ class parser
 	private function trace( $m ) {
 		return;
 		$s = $this->context();
-		fwrite( STDERR, "--- $m\t$s\n" );
+		fwrite( STDERR, "--- $m\t|\t$s\n" );
 	}
 
 	function add_type($name) {
@@ -354,7 +354,6 @@ $this->trace( "type" );
 			return $type;
 		}
 
-
 		$t = $s->peek();
 		while( $t->type == 'word' && $this->is_typename( $t->content ) ) {
 			$type[] = $t->content;
@@ -417,30 +416,6 @@ $this->trace( "obj_der" );
 		else {
 			$name = '';
 		}
-
-
-		/*
-		// <left-mod>...
-		while( !$s->ended() && $s->peek()->type != 'word' )
-		{
-			$t = $this->s->get();
-
-			if( $t->type == '(' ) {
-				$mod *= 10;
-				continue;
-			}
-
-			if( $t->type == '*' ) {
-				$left[] = array( '*', 1 * $mod );
-				continue;
-			}
-
-			return $this->error( "Unexpected $t" );
-		}
-
-		// <name>
-		$name = $this->expect( 'word' )->content;
-		*/
 
 		// <right-mod>
 		while( !$s->ended() )
@@ -909,8 +884,6 @@ $this->trace( "atom" );
 			$ops[] = array('id', $t->content);
 		}
 
-		//var_dump($ops);
-
 		while( !$s->ended() )
 		{
 			$p = $s->peek();
@@ -984,21 +957,6 @@ $this->trace( "atom" );
 
 		$s->unget($t);
 		return true;
-
-/*
-		$n = 0;
-		while( !$s->ended() && $n < 3 ) {
-			$n++;
-			$buf[] = $s->get();
-		}
-
-		$ok = ( $n == 3 && $buf[0]->type == '(' && $buf[1]->type == 'word'
-			&& $buf[2]->type == ')' );
-		while( $n > 0 ) {
-			$n--;
-			$s->unget( array_pop( $buf ) );
-		}
-		return $ok; */
 	}
 
 	// <sizeof>: "sizeof" <sizeof-arg>
