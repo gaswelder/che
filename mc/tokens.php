@@ -127,7 +127,7 @@ class mctok
 	);
 
 	private static $keywords = array(
-		'typedef', 'struct', 'import', 'enum',
+		'typedef', 'struct', 'union', 'import', 'enum',
 		'const', 'static',
 		'if', 'else', 'for', 'while', 'return', 'switch', 'case',
 		'sizeof'

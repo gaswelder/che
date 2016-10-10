@@ -348,6 +348,24 @@ class c_structdef extends c_element
 	}
 }
 
+class c_union
+{
+	public $fields = array(); // c_varlist[]
+
+	function add(c_varlist $list) {
+		$this->fields[] = $list;
+	}
+
+	function format() {
+		$s = "union {\n";
+		foreach($this->fields as $list) {
+			$s .= "\t" . $list->format() . ";\n";
+		}
+		$s .= "}\n";
+		return $s;
+	}
+}
+
 class c_literal extends c_element {
 	public $content;
 	function __construct( $s ) {

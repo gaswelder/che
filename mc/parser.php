@@ -7,7 +7,7 @@ class parser
 	private $s;
 
 	private $type_names = array(
-		'struct', 'enum',
+		'struct', 'enum', 'union',
 		'void', 'char', 'short', 'int',
 		'long', 'float', 'double', 'unsigned',
 		'bool', 'va_list', 'FILE',
@@ -187,8 +187,21 @@ $this->trace( "struct_def" );
 		}
 
 		$s->get();
-		while(!$s->ended() && $s->peek()->type != '}') {
-			$list = $this->read_varlist();
+		while(!$s->ended() && $s->peek()->type != '}')
+		{
+			if($s->peek()->type == 'union') {
+				$u = $this->read_union();
+				$name = $this->expect('word')->content;
+
+				$type = new c_type(array($u));
+				$form = new c_form($name, array());
+
+				$list = new c_varlist($type);
+				$list->add($form);
+			}
+			else {
+				$list = $this->read_varlist();
+			}
 			$def->add($list);
 			$this->expect(';');
 		}
@@ -196,6 +209,27 @@ $this->trace( "struct_def" );
 		$this->expect( ';' );
 
 		return $def;
+	}
+
+	private function read_union()
+	{
+$this->trace( "read_union" );
+		$s = $this->s;
+		$this->expect( 'union' );
+		$this->expect( '{' );
+
+		$u = new c_union();
+
+		while(!$s->ended() && $s->peek()->type != '}') {
+			$type = $this->_type();
+			$form = $this->form();
+			$list = new c_varlist($type);
+			$list->add($form);
+			$u->add($list);
+			$this->expect( ';' );
+		}
+		$this->expect( '}' );
+		return $u;
 	}
 
 	// <enum-def>: "enum" "{" <id> ["=" <literal>] [,]... "}" ";"
