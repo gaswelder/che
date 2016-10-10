@@ -38,29 +38,6 @@ class parser
 		exit(1);
 	}
 
-	/*
-	 * Buffer for returned tokens.
-	 */
-	protected $buffer = array();
-
-	/*
-	 * Returns next token, removing it from the stream.
-	 */
-	function get()
-	{
-		if( !empty( $this->buffer ) ) {
-			return array_pop( $this->buffer );
-		}
-		return $this->read();
-	}
-
-	/*
-	 * Pushes a token back to the stream.
-	 */
-	function unget( $t ) {
-		array_push( $this->buffer, $t );
-	}
-
 	private function trace( $m ) {
 		return;
 		$s = $this->context();
@@ -72,7 +49,10 @@ class parser
 		$this->type_names[] = $name;
 	}
 
-	protected function read()
+	/*
+	 * Returns next token, removing it from the stream.
+	 */
+	function get()
 	{
 		$s = $this->s;
 
