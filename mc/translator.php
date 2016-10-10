@@ -301,6 +301,10 @@ class mc_trans
 			connect SOCK_STREAM SOL_SOCKET socklen_t
 		',
 
+		'sys/types' => '
+			ssize_t
+		',
+
 		'netdb' => '
 			getaddrinfo
 		'

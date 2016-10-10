@@ -15,7 +15,7 @@ class parser
 		'int8_t', 'int16_t', 'int32_t', 'int64_t',
 		'uint8_t', 'uint16_t', 'uint32_t', 'uint64_t',
 		'clock_t', 'time_t',
-		'fd_set', 'socklen_t'
+		'fd_set', 'socklen_t', 'ssize_t'
 	);
 
 	private $path;
