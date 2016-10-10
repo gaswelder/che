@@ -268,27 +268,40 @@ class mctok
 		$s = $this->s;
 		$pos = $s->pos();
 
+		/*
+		 * Peek at next 2 characters.
+		 */
 		$p1 = $s->get();
 		$p2 = $s->peek();
 		$s->unget( $p1 );
 
+		$hex = false;
+		$alpha = '0123456789';
+		$num = '';
+
+		/*
+		 * If '0x' follows, read a hexademical constant.
+		 */
 		if($p1 == '0' && $p2 == 'x') {
-			$num = '0x';
-			$s->get();
-			$s->get();
-			$num .= $s->read_set("0123456789ABCDEFabcdef");
+			$hex = true;
+			$num .= $s->get();
+			$num .= $s->get();
+			$alpha = '0123456789ABCDEFabcdef';
+		}
+		$num .= $s->read_set($alpha);
+
+		if(!$hex && $s->peek() == '.') {
+			$num .= $s->get();
+			$num .= $s->read_set($alpha);
 		}
 		else {
-			$num = '';
-			$num .= $s->read_set( '0123456789' );
-		}
+			if($s->peek() == 'U') {
+				$num .= $s->get();
+			}
 
-		if($s->peek() == 'U') {
-			$num .= $s->get();
-		}
-
-		if( $s->peek() == 'L' ) {
-			$num .= $s->get();
+			if( $s->peek() == 'L' ) {
+				$num .= $s->get();
+			}
 		}
 
 		if(!$s->ended() && ctype_alpha($s->peek())) {
