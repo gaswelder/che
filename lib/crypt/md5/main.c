@@ -5,6 +5,7 @@ import "zio"
  * Data type for the MD5 message digest.
  */
 typedef uint32_t md5sum[4];
+typedef char md5str[33];
 
 /*
  * Computes digest for the file located at 'path' and puts
@@ -50,6 +51,19 @@ void md5_print(uint32_t buf[4])
 		for(int j = 0; j < 4; j++) {
 			uint8_t b = (w >> (j * 8)) & 0xFF;
 			printf("%02x", b);
+		}
+	}
+}
+
+void md5_sprint(md5sum s, md5str buf)
+{
+	char *p = buf;
+	for(int i = 0; i < 4; i++) {
+		uint32_t w = s[i];
+		for(int j = 0; j < 4; j++) {
+			uint8_t b = (w >> (j * 8)) & 0xFF;
+			sprintf(p, "%02x", b);
+			p += 2;
 		}
 	}
 }
