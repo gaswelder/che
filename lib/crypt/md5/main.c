@@ -44,6 +44,19 @@ bool md5_buf(const char *buf, size_t len, uint32_t md[4])
 	return true;
 }
 
+/*
+ * Returns true if message digests 'a' and 'b' are equal.
+ */
+bool md5_eq(md5sum a, md5sum b)
+{
+	for(int i = 0; i < 4; i++) {
+		if(a[i] != b[i]) {
+			return false;
+		}
+	}
+	return true;
+}
+
 void md5_print(uint32_t buf[4])
 {
 	for(int i = 0; i < 4; i++) {
