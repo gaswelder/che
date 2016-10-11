@@ -144,7 +144,7 @@ class parser
 	{
 $this->trace( "read_typedef" );
 		$this->expect( 'typedef' );
-		$type = $this->_type();
+		$type = $this->type();
 		$form = $this->form();
 		$this->expect( ';' );
 		return new c_typedef($type, $form);
@@ -203,7 +203,7 @@ $this->trace( "read_union" );
 		$u = new c_union();
 
 		while(!$s->ended() && $s->peek()->type != '}') {
-			$type = $this->_type();
+			$type = $this->type();
 			$form = $this->form();
 			$list = new c_varlist($type);
 			$list->add($form);
@@ -251,7 +251,7 @@ $this->trace( "read_union" );
 $this->trace( "read_object" );
 		$s = $this->s;
 
-		$type = $this->_type();
+		$type = $this->type();
 		$form = $this->form();
 
 		/*
@@ -288,52 +288,27 @@ $this->trace( "read_object" );
 
 	//--
 
-	private function _type()
-	{
-$this->trace("_type");
-		$static = false;
-		$s = $this->s;
-		if($s->peek()->type == 'static') {
-			$static = true;
-			$s->get();
-		}
-		$t = $this->type();
-		if(empty($t)) {
-			if($s->peek()->type == 'word') {
-				$id = $s->peek()->content;
-				return $this->error("Unknown type name: $id");
-			}
-			return $this->error("Type name expected, got ".$s->peek());
-		}
-
-		if($static) {
-			array_unshift($t, 'static');
-		}
-		return new c_type($t);
-	}
-
-	// <type>: "struct" <name>
-	//	or "struct" <struct-fields>
-	//	or <type-mod>...
 	private function type()
 	{
 $this->trace( "type" );
 		$s = $this->s;
 
-		$type = array();
-
-		/*
-		 * If 'const', add it.
-		 */
+		$mods = array();
+		if($s->peek()->type == 'static') {
+			$mods[] = 'static';
+			$s->get();
+		}
 		if($s->peek()->type == 'const') {
-			$type[] = 'const';
+			$mods[] = 'const';
 			$s->get();
 		}
 
-		if( $s->peek()->type == 'struct' )
-		{
+		$type = array();
+
+		// "struct" <struct-fields>?
+		if( $s->peek()->type == 'struct' ) {
 			$type[] = $this->struct_def();
-			return $type;
+			return new c_type(array_merge($mods, $type));
 		}
 
 		$t = $s->peek();
@@ -342,7 +317,16 @@ $this->trace( "type" );
 			$s->get();
 			$t = $s->peek();
 		}
-		return $type;
+
+		if(empty($type)) {
+			if($s->peek()->type == 'word') {
+				$id = $s->peek()->content;
+				return $this->error("Unknown type name: $id");
+			}
+			return $this->error("Type name expected, got ".$s->peek());
+		}
+
+		return new c_type(array_merge($mods, $type));
 	}
 
 	private function form()
@@ -553,7 +537,7 @@ $this->trace( "body_part" );
 $this->trace( "read_varlist" );
 		$s = $this->s;
 
-		$type = $this->_type();
+		$type = $this->type();
 		$list = new c_varlist($type);
 
 		$f = $this->form();
@@ -916,7 +900,7 @@ $this->trace( "atom" );
 
 	private function read_typeform()
 	{
-		$t = $this->_type();
+		$t = $this->type();
 		$f = $this->form();
 		return new c_typeform($t, $f);
 	}
