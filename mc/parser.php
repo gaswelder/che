@@ -173,10 +173,8 @@ $this->trace( "struct_def" );
 		{
 			if($s->peek()->type == 'union') {
 				$u = $this->read_union();
-				$name = $this->expect('word')->content;
-
 				$type = new c_type(array($u));
-				$form = new c_form($name, array());
+				$form = $this->form();
 
 				$list = new c_varlist($type);
 				$list->add($form);
