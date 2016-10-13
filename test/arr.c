@@ -14,11 +14,14 @@ int main()
 	size_t n = arr_len(a);
 	printf("%zu\n", n);
 
-	for(size_t i = 0; i < arr_len(a); i++) {
-		printf("%d ", arr_geti(a, i));
+	arr_t *c = arr_copy(a);
+	arr_free(a);
+
+	for(size_t i = 0; i < arr_len(c); i++) {
+		printf("%d ", arr_geti(c, i));
 	}
 	putchar('\n');
 
-	arr_free(a);
+	arr_free(c);
 }
 

@@ -37,6 +37,26 @@ size_t arr_len(arr_t *a)
 }
 
 /*
+ * Returns a new copy of the array
+ */
+arr_t *arr_copy(arr_t *a)
+{
+	arr_t *c = calloc(1, sizeof(arr_t));
+	if(!c) return NULL;
+
+	c->vals = malloc(a->maxlen * sizeof(*c->vals));
+	if(!c->vals) {
+		free(c);
+		return NULL;
+	}
+	c->maxlen = a->maxlen;
+
+	memcpy(c->vals, a->vals, a->len * sizeof(*a->vals));
+	c->len = a->len;
+	return c;
+}
+
+/*
  * Adds 'val' to the end of the array 'a'.
  * Returns false on failure.
  */
