@@ -1,12 +1,12 @@
 # Che - modified C
 
-This is a modified variant of C. The main goal is to get rid of many
+This is a modified variant of C. The main goal is to get rid of the
 manual hassle the standard C has: forward declarations, meddling with
 headers, composing the command line in the right order and other
 annoyances like that.
 
 This is a translator that converts Che to C99 and uses the `c99`
-command installed in the system to produce an executable.
+command installed in the system to produce the executable.
 [`c99`](http://pubs.opengroup.org/onlinepubs/9699919799//utilities/c99.html)
 is a command specified by POSIX, and typically GCC or Clang packages
 have this binding installed. If not, it is easy to create manually for
@@ -46,7 +46,7 @@ the prototypes automatically, so this example will work:
 		func2();
 	}
 
-	static void func2() {
+	void func2() {
 		puts("Howdy, Globe!");
 	}
 
@@ -58,7 +58,7 @@ example compile:
 
 	struct a {
 		struct b foo;
-		struct a \*next;
+		struct a *next;
 	};
 
 	struct b {
@@ -74,7 +74,7 @@ and functions and variables declared 'static' can be used only inside
 that module. But to connect modules programmers have to do two things
 manually: create and include "header files" (which is really a
 semi-automated copy-paste mechanism for prototypes and typedefs) and
-put the modules in the compiler's command line. The MC translator does
+put the modules in the compiler's command line. The Che translator does
 that automatically:
 
 	// main.c:
@@ -94,10 +94,9 @@ that automatically:
 
 The translator will replace every import statement with type
 declarations and function prototypes extracted from the referenced
-module. This is exactly what C programmers do, except they put the
-declarations into a separate file and include it. The translator will
-also track all the referenced modules and put them to the C compiler's
-command line.
+module. This is what C programmers do, except they put the declarations
+into a separate file and include it. The translator will also track all
+the referenced modules and put them to the C compiler's command line.
 
 Modules are searched first in the internal modules library, and then in
 current working directory. If import name begins with "./", the module
@@ -118,7 +117,7 @@ like this:
 
 	int a, b, c;
 
-In Che is is also possible to do that with struct members and function
+In Che it is also possible to do that with struct members and function
 parameters:
 
 	struct vec {
@@ -131,10 +130,10 @@ parameters:
 
 The original C rules still apply: pointer and array notations "stick"
 to the identifiers, not the type, so in the following example the
-structure `foo` has `char` member 'a' and `char *` member b:
+structure `foo` has `char` member 'a' and `char *` member 'b':
 
 	struct foo {
-		char a, \*b;
+		char a, *b;
 	};
 
 
