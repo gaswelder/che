@@ -1,10 +1,22 @@
-# MC - modified C
+# Che - modified C
 
-This program translates a slightly modified variant of C to the
-standard C and compiles the result using the c99 compiler installed in
-the system. This is an attempt to see what C might be if some manual
-hassle was removed: copying function prototypes, meddling with headers
-and composing the command line.
+This is a modified variant of C. The main goal is to get rid of many
+manual hassle the standard C has: forward declarations, meddling with
+headers, composing the command line in the right order and other
+annoyances like that.
+
+This is a translator that converts Che to C99 and uses the `c99`
+command installed in the system to produce an executable.
+[`c99`](http://pubs.opengroup.org/onlinepubs/9699919799//utilities/c99.html)
+is a command specified by POSIX, and typically GCC or Clang packages
+have this binding installed. If not, it is easy to create manually for
+any compiler that supports C99.
+
+Currently the translator is drafted in PHP, and the syntax is still
+changing. Some bundled libraries (for example, [net](lib/net.c)) depend
+on POSIX, so not everything can be compiled on Windows.
+
+The language differences are outlined below.
 
 
 ## No include headers
@@ -46,7 +58,7 @@ example compile:
 
 	struct a {
 		struct b foo;
-		struct a *next;
+		struct a \*next;
 	};
 
 	struct b {
@@ -60,10 +72,10 @@ Some time ago a single C source file used to be called a "module". It
 is true in that sense that such a file can be compiled independently,
 and functions and variables declared 'static' can be used only inside
 that module. But to connect modules programmers have to do two things
-manually: create and include "header files" (which is really an
-automated copy-paste mechanism for prototypes and typedefs) and put the
-modules in the compiler's command line. The MC translator does that
-automatically:
+manually: create and include "header files" (which is really a
+semi-automated copy-paste mechanism for prototypes and typedefs) and
+put the modules in the compiler's command line. The MC translator does
+that automatically:
 
 	// main.c:
 	import "module2"
@@ -72,20 +84,19 @@ automatically:
 		foo();
 	}
 
-
 	// module2.c:
-	void foo() {
+	pub void foo() {
 		puts("Howdy, Globe!");
 	}
 
 	// command line:
-	$ mc main.c
+	$ che main.c
 
 The translator will replace every import statement with type
 declarations and function prototypes extracted from the referenced
 module. This is exactly what C programmers do, except they put the
 declarations into a separate file and include it. The translator will
-also track all the referenced files and put them to the C compiler's
+also track all the referenced modules and put them to the C compiler's
 command line.
 
 Modules are searched first in the internal modules library, and then in
@@ -107,8 +118,8 @@ like this:
 
 	int a, b, c;
 
-In MC is is also possible to do that with struct members and function
-declarations:
+In Che is is also possible to do that with struct members and function
+parameters:
 
 	struct vec {
 		int x, y, x;
@@ -119,11 +130,11 @@ declarations:
 	}
 
 The original C rules still apply: pointer and array notations "stick"
-to the identifiers, no the type, so in the following example the
+to the identifiers, not the type, so in the following example the
 structure `foo` has `char` member 'a' and `char *` member b:
 
 	struct foo {
-		char a, *b;
+		char a, \*b;
 	};
 
 
@@ -138,8 +149,8 @@ are used only to define constants.
 
 In C, in order to make functions private to the module, they have to be
 declared as `static`. But more often than not it is more convenient to
-assume they all are private and explicitly mark the "public" ones. Thus
-`static` is gone, and `pub` is introduced:
+assume they all are private and explicitly mark only the "public" ones.
+Thus `static` is gone, and `pub` is introduced:
 
 	// f1 will get imported, but f2 will not.
 	pub int f1() {...}
@@ -152,12 +163,12 @@ world" still is:
 		puts("Howdy, Globe!");
 	}
 
-In C variables can be `static` two. There are two kinds. One is
+In C variables can be `static` too. There are two kinds of those. One is
 function-local, the other is module-local:
 
 	// *** This is C, mind you ***
 	// module-local variable
-	static long seed;
+	static long seed = 42;
 
 	int count() {
 		// function-local variable
@@ -177,9 +188,9 @@ something like `current_count`, and deal only with module-local
 variables. And those, just like functions, can be assumed private to
 the module, so the result will be:
 
-	// Note that these variables will still be initialized to zero
+	// Note that current_count will still be initialized to zero
 	// just like in C.
-	long seed;
+	long seed = 42;
 	int current_count;
 
 	int count() {
