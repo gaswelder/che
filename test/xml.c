@@ -27,7 +27,7 @@ int main()
 	xml_close(x);
 }
 
-static void process_dir(xml *x)
+void process_dir(xml *x)
 {
 	while(xml_nodename(x)) {
 		assert(strcmp(xml_nodename(x), "file") == 0);

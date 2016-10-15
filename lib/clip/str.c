@@ -7,19 +7,19 @@ struct __str {
 
 typedef struct __str str;
 
-str *str_new()
+pub str *str_new()
 {
 	str *s = calloc(1, sizeof(*s));
 	return s;
 }
 
-void str_free(str *s)
+pub void str_free(str *s)
 {
 	free(s->data);
 	free(s);
 }
 
-bool str_addc(str *s, int ch)
+pub bool str_addc(str *s, int ch)
 {
 	if(s->len + 1 >= s->max) {
 		if(!grow(s)) {
@@ -31,7 +31,7 @@ bool str_addc(str *s, int ch)
 	return true;
 }
 
-bool str_adds(str *s, const char *a)
+pub bool str_adds(str *s, const char *a)
 {
 	const char *c = a;
 	while(*c) {
@@ -43,17 +43,17 @@ bool str_adds(str *s, const char *a)
 	return true;
 }
 
-char *str_raw(str *s)
+pub char *str_raw(str *s)
 {
 	return s->data;
 }
 
-size_t str_len(str *s)
+pub size_t str_len(str *s)
 {
 	return s->len;
 }
 
-static bool grow(str *s)
+bool grow(str *s)
 {
 	if(s->max > SIZE_MAX/2) {
 		return false;

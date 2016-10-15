@@ -12,7 +12,7 @@ typedef struct __arr arr_t;
 /*
  * Creates new array
  */
-arr_t *arr_new()
+pub arr_t *arr_new()
 {
 	return calloc(1, sizeof(arr_t));
 }
@@ -20,7 +20,7 @@ arr_t *arr_new()
 /*
  * Deletes the array
  */
-void arr_free(arr_t *a)
+pub void arr_free(arr_t *a)
 {
 	if(a->len > 0) {
 		free(a->vals);
@@ -31,7 +31,7 @@ void arr_free(arr_t *a)
 /*
  * Returns number of elements stored in the array
  */
-size_t arr_len(arr_t *a)
+pub size_t arr_len(arr_t *a)
 {
 	return a->len;
 }
@@ -39,7 +39,7 @@ size_t arr_len(arr_t *a)
 /*
  * Returns a new copy of the array
  */
-arr_t *arr_copy(arr_t *a)
+pub arr_t *arr_copy(arr_t *a)
 {
 	arr_t *c = calloc(1, sizeof(arr_t));
 	if(!c) return NULL;
@@ -60,7 +60,7 @@ arr_t *arr_copy(arr_t *a)
  * Adds 'val' to the end of the array 'a'.
  * Returns false on failure.
  */
-bool arr_push(arr_t *a, void *val)
+pub bool arr_push(arr_t *a, void *val)
 {
 	if(a->len >= a->maxlen && !grow(a)) {
 		return false;
@@ -74,7 +74,7 @@ bool arr_push(arr_t *a, void *val)
  * Adds 'val' to the end of the array 'a'.
  * Returns false on failure.
  */
-bool arr_pushi(arr_t *a, int val)
+pub bool arr_pushi(arr_t *a, int val)
 {
 	if(a->len >= a->maxlen && !grow(a)) {
 		return false;
@@ -87,7 +87,7 @@ bool arr_pushi(arr_t *a, int val)
 /*
  * Returns value at index 'i'.
  */
-void *arr_get(arr_t *a, size_t i)
+pub void *arr_get(arr_t *a, size_t i)
 {
 	return a->vals[i].v;
 }
@@ -95,7 +95,7 @@ void *arr_get(arr_t *a, size_t i)
 /*
  * Returns value at index 'i'.
  */
-int arr_geti(arr_t *a, size_t i)
+pub int arr_geti(arr_t *a, size_t i)
 {
 	return a->vals[i].i;
 }
@@ -104,7 +104,7 @@ int arr_geti(arr_t *a, size_t i)
  * Allocates more memory for the contents.
  * Returns false on failure.
  */
-static bool grow(struct __arr *a)
+bool grow(struct __arr *a)
 {
 	size_t newlen = a->len * 2;
 	if(!newlen) newlen = 16;

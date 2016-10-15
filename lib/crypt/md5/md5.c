@@ -12,7 +12,7 @@
 /*
  * 4294967296 * fabs(sin(i)) for i=1..64
  */
-static uint32_t T[64] = {
+uint32_t T[64] = {
 	0xd76aa478, 0xe8c7b756, 0x242070db, 0xc1bdceee,
 	0xf57c0faf, 0x4787c62a, 0xa8304613, 0xfd469501,
 	0x698098d8, 0x8b44f7af, 0xffff5bb1, 0x895cd7be,
@@ -34,7 +34,7 @@ static uint32_t T[64] = {
 /*
  * Initializes the digest
  */
-void md5_init(uint32_t md[4])
+pub void md5_init(uint32_t md[4])
 {
 	md[0] = 0x67452301;
 	md[1] = 0xEFCDAB89;
@@ -45,7 +45,7 @@ void md5_init(uint32_t md[4])
 /*
  * Feeds next block into the digest
  */
-void md5_feed(uint32_t buf[4], uint32_t block[16]) {
+pub void md5_feed(uint32_t buf[4], uint32_t block[16]) {
 	// tmp = buf
 	uint32_t tmp[4];
 	tmp[0] = buf[0];
@@ -131,19 +131,19 @@ void md5_feed(uint32_t buf[4], uint32_t block[16]) {
 	buf[3] += tmp[3];
 }
 
-static uint32_t F(uint32_t x, uint32_t y, uint32_t z) {
+uint32_t F(uint32_t x, uint32_t y, uint32_t z) {
 	return (x & y) | ((~x) & z);
 }
-static uint32_t G(uint32_t x, uint32_t y, uint32_t z) {
+uint32_t G(uint32_t x, uint32_t y, uint32_t z) {
 	return (x & z) | (y & (~z));
 }
-static uint32_t H(uint32_t x, uint32_t y, uint32_t z) {
+uint32_t H(uint32_t x, uint32_t y, uint32_t z) {
 	return x ^ y ^ z;
 }
-static uint32_t I(uint32_t x, uint32_t y, uint32_t z) {
+uint32_t I(uint32_t x, uint32_t y, uint32_t z) {
 	return y ^ (x | (~z));
 }
 
-static uint32_t rotate(uint32_t value, int bits) {
+uint32_t rotate(uint32_t value, int bits) {
 	return (value << bits) | (value >> (32-bits));
 }

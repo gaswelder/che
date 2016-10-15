@@ -39,10 +39,11 @@ int main()
 	return 0;
 }
 
-static void genword(char *buffer, int size)
+char *consonants = "bcdfghjklmnprstvwxz";
+char *vowels = "aeiou";
+
+void genword(char *buffer, int size)
 {
-	static char *consonants = "bcdfghjklmnprstvwxz";
-	static char *vowels = "aeiou";
 	int i;
 
 	for(i = 0; i < size-1; i++)

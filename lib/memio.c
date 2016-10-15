@@ -12,7 +12,7 @@ typedef struct mem MEM;
  * Creates a memory buffer.
  * 'name' and 'mode' are ignored.
  */
-MEM *memopen(const char *name, const char *mode) {
+pub MEM *memopen(const char *name, const char *mode) {
 	(void) name;
 	(void) mode;
 	MEM *m = calloc( 1, sizeof(struct mem) );
@@ -22,7 +22,7 @@ MEM *memopen(const char *name, const char *mode) {
 /*
  * Closes the buffer.
  */
-void memclose(MEM *mem) {
+pub void memclose(MEM *mem) {
 	if(mem->data) {
 		free(mem->data);
 	}
@@ -32,7 +32,7 @@ void memclose(MEM *mem) {
 /*
  * Write 'count' pieces of size 'size' from the buffer 'buf'.
  */
-size_t memwrite(const void *buf, size_t size, size_t count, MEM *m)
+pub size_t memwrite(const void *buf, size_t size, size_t count, MEM *m)
 {
 	if(count >= SIZE_MAX/size) {
 		puts("Size overflow");
@@ -66,7 +66,7 @@ size_t memwrite(const void *buf, size_t size, size_t count, MEM *m)
  * Read up to 'count' pieces of size 'size' to the buffer 'buf'.
  * Returns the number of pieces read.
  */
-size_t memread(void *buf, size_t size, size_t count, MEM *m)
+pub size_t memread(void *buf, size_t size, size_t count, MEM *m)
 {
 	size_t i;
 	char *p = (char *) buf;
@@ -86,14 +86,14 @@ size_t memread(void *buf, size_t size, size_t count, MEM *m)
 /*
  * Resets the position to zero.
  */
-void memrewind(MEM *m) {
+pub void memrewind(MEM *m) {
 	m->pos = 0;
 }
 
 /*
  * Returns next character of EOF.
  */
-int memgetc(MEM *m) {
+pub int memgetc(MEM *m) {
 	if(m->pos >= m->datalen) {
 		return EOF;
 	}
@@ -107,7 +107,7 @@ int memgetc(MEM *m) {
  * Returns 0 if there is no space and additional memory couldn't be
  * allocated.
  */
-static int makespace(MEM *mem, size_t size)
+int makespace(MEM *mem, size_t size)
 {
 	size_t need = mem->pos + size;
 

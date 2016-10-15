@@ -48,6 +48,13 @@ class mc_trans
 				self::proto($element, $headers);
 			}
 
+			/*
+			 * Mark module-global variables as static.
+			 */
+			if($element instanceof c_varlist) {
+				$element->stat = true;
+			}
+
 			$body[] = $element;
 		}
 

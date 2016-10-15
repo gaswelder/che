@@ -5,7 +5,7 @@ import "./block"
  * http://csrc.nist.gov/publications/fips/fips180-4/fips-180-4.pdf
  */
 
-void sha1(zio *data, uint32_t sum[5])
+pub void sha1(zio *data, uint32_t sum[5])
 {
 	sum[0] = 0x67452301;
 	sum[1] = 0xefcdab89;
@@ -22,7 +22,7 @@ void sha1(zio *data, uint32_t sum[5])
 	}
 }
 
-static void sha1_feed(uint32_t block[16], uint32_t sum[5])
+void sha1_feed(uint32_t block[16], uint32_t sum[5])
 {
 	/*
 	 * Prepare message schedule W[t]
@@ -63,7 +63,7 @@ static void sha1_feed(uint32_t block[16], uint32_t sum[5])
 /*
  * Logical functions f[t]: f0, f1, ..., f79
  */
-static uint32_t f(int t, uint32_t x, y, z)
+uint32_t f(int t, uint32_t x, y, z)
 {
 	if(t < 20) {
 		return (x & y) | ((~x) & z);
@@ -80,7 +80,7 @@ static uint32_t f(int t, uint32_t x, y, z)
 /*
  * Constants K[i]: K0, K1, ..., K79
  */
-static uint32_t K(int t)
+uint32_t K(int t)
 {
 	if(t < 20) {
 		return 0x5a827999;
@@ -97,7 +97,7 @@ static uint32_t K(int t)
 /*
  * Rotate-left function
  */
-static uint32_t ROTL(int bits, uint32_t value)
+uint32_t ROTL(int bits, uint32_t value)
 {
 	return (value << bits) | (value >> (32 - bits));
 }

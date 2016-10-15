@@ -240,7 +240,7 @@ $this->trace( "read_union" );
 	}
 
 	// <object-def>:
-	// <stor> <type> <form> [= <expr>] ";"
+	// "pub"? <type> <form> [= <expr>] ";"
 	// or <stor> <type> <form> ";"
 	// or <stor> <type> <func> ";"
 	// or <stor> <type> <func> <body>
@@ -249,6 +249,13 @@ $this->trace( "read_union" );
 $this->trace( "read_object" );
 		$s = $this->s;
 
+		$pub = false;
+
+		if($s->peek()->type == 'pub') {
+			$s->get();
+			$pub = true;
+		}
+
 		$type = $this->type();
 		$form = $this->form();
 
@@ -256,6 +263,9 @@ $this->trace( "read_object" );
 		 * If not a function, return as a varlist.
 		 */
 		if(empty($form->ops) || !($form->ops[0] instanceof c_formal_args)) {
+			if($pub) {
+				return $this->error("varlist can't be declared 'pub'");
+			}
 			$expr = null;
 			if($s->peek()->type == '=') {
 				$s->get();
@@ -269,6 +279,7 @@ $this->trace( "read_object" );
 
 		$args = array_shift($form->ops);
 		$proto = new c_prototype( $type, $form, $args );
+		$proto->pub = $pub;
 
 		$t = $s->get();
 		if( $t->type == ';' ) {
@@ -292,10 +303,7 @@ $this->trace( "type" );
 		$s = $this->s;
 
 		$mods = array();
-		if($s->peek()->type == 'static') {
-			$mods[] = 'static';
-			$s->get();
-		}
+
 		if($s->peek()->type == 'const') {
 			$mods[] = 'const';
 			$s->get();
@@ -593,7 +601,7 @@ $this->trace( "read_varlist" );
 $this->trace( "type_follows" );
 		$t = $this->s->peek();
 
-		$type_keywords = array( 'struct', 'const', 'static' );
+		$type_keywords = array( 'struct', 'const' );
 		if( in_array( $t->type, $type_keywords ) ) {
 			return true;
 		}

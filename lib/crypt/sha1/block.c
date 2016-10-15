@@ -29,7 +29,7 @@ struct _src {
 	bool more;
 };
 
-void src_init(struct _src *s, zio *data)
+pub void src_init(struct _src *s, zio *data)
 {
 	s->stream = data;
 	s->length = 0;
@@ -37,7 +37,7 @@ void src_init(struct _src *s, zio *data)
 	s->more = true;
 }
 
-bool fill_block(struct _src *s, uint32_t block[16])
+pub bool fill_block(struct _src *s, uint32_t block[16])
 {
 	if(!s->more) return false;
 	for(int i = 0; i < 16; i++) {
@@ -46,7 +46,7 @@ bool fill_block(struct _src *s, uint32_t block[16])
 	return true;
 }
 
-static uint32_t next_word(struct _src *s)
+uint32_t next_word(struct _src *s)
 {
 	uint32_t word = 0;
 	for(int i = 0; i < 4; i++) {
@@ -57,7 +57,7 @@ static uint32_t next_word(struct _src *s)
 	return word;
 }
 
-static uint8_t next_byte(struct _src *s)
+uint8_t next_byte(struct _src *s)
 {
 	if(s->more_data) {
 		int c = zgetc(s->stream);
@@ -100,7 +100,7 @@ static uint8_t next_byte(struct _src *s)
 	return b;
 }
 
-static void init_padding(struct _src *s)
+void init_padding(struct _src *s)
 {
 	/*
 	 * Now we know 'b' (data length in bits), so we can create the

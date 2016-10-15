@@ -29,14 +29,14 @@ struct __item {
 
 typedef struct __map map;
 
-map *map_new()
+pub map *map_new()
 {
 	map *m = alloc(1, sizeof(*m));
 	m->t = create_table(16);
 	return m;
 }
 
-void map_free(map *m)
+pub void map_free(map *m)
 {
 	free_table(m->t);
 	free(m);
@@ -45,7 +45,7 @@ void map_free(map *m)
 /*
  * Returns true if given key exists
  */
-bool map_exists(map *m, const char *key)
+pub bool map_exists(map *m, const char *key)
 {
 	struct __item *i = find(m->t, key);
 	return i ? true : false;
@@ -54,13 +54,13 @@ bool map_exists(map *m, const char *key)
 /*
  * Returns value from given key
  */
-void *map_get(map *m, const char *key)
+pub void *map_get(map *m, const char *key)
 {
 	struct __item *i = find(m->t, key);
 	return i->value;
 }
 
-int map_geti(map *m, const char *key)
+pub int map_geti(map *m, const char *key)
 {
 	struct __item *i = find(m->t, key);
 	return i->intval;
@@ -69,7 +69,7 @@ int map_geti(map *m, const char *key)
 /*
  * Assigns value to given key
  */
-void map_set(map *m, const char *key, void *val)
+pub void map_set(map *m, const char *key, void *val)
 {
 	struct __item *i = find(m->t, key);
 	/*
@@ -88,7 +88,7 @@ void map_set(map *m, const char *key, void *val)
 	insert(m->t, key, val, 0);
 }
 
-void map_seti(map *m, const char *key, int val)
+pub void map_seti(map *m, const char *key, int val)
 {
 	struct __item *i = find(m->t, key);
 	if(i) {
@@ -106,7 +106,7 @@ void map_seti(map *m, const char *key, int val)
 /*
  * Grows the table
  */
-static void grow(map *m)
+void grow(map *m)
 {
 	struct __table *old = m->t;
 
@@ -130,7 +130,7 @@ static void grow(map *m)
 /*
  * Finds an item in a single bucket
  */
-static struct __item *find(struct __table *t, const char *key)
+struct __item *find(struct __table *t, const char *key)
 {
 	struct __item *i = t->buckets[hash(key) % t->nbuckets];
 	while(i) {
@@ -143,7 +143,7 @@ static struct __item *find(struct __table *t, const char *key)
 	return NULL;
 }
 
-static void insert(struct __table *t, const char *key, void *val, int intval)
+void insert(struct __table *t, const char *key, void *val, int intval)
 {
 	if(strlen(key) >= MAXKEY) {
 		fatal("Key too long: %s", key);
@@ -162,7 +162,7 @@ static void insert(struct __table *t, const char *key, void *val, int intval)
 	t->nitems++;
 }
 
-static struct __table *create_table(int size)
+struct __table *create_table(int size)
 {
 	struct __table *t = alloc(1, sizeof(*t));
 	t->buckets = alloc(size, sizeof(struct __bucket *));
@@ -170,7 +170,7 @@ static struct __table *create_table(int size)
 	return t;
 }
 
-static void free_table(struct __table *t)
+void free_table(struct __table *t)
 {
 	int k;
 	for(k = 0; k < t->nbuckets; k++) {
@@ -189,7 +189,7 @@ static void free_table(struct __table *t)
 /*
  * Home-made hash function for strings
  */
-static int hash(const char *s)
+int hash(const char *s)
 {
 	unsigned long h = 0;
 	while(*s) {
@@ -199,7 +199,7 @@ static int hash(const char *s)
 	return h;
 }
 
-static void *alloc(size_t n, size_t size)
+void *alloc(size_t n, size_t size)
 {
 	void *m = calloc(n, size);
 	if(!m) {

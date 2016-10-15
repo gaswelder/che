@@ -2,7 +2,7 @@
  * Reads file at 'path' and returns a pointer to the file's
  * contents in memory. The contents size is put into 'size'.
  */
-char *readfile(const char *path, size_t *size)
+pub char *readfile(const char *path, size_t *size)
 {
 	FILE *f = fopen(path, "rb");
 	if( !f ) {
@@ -36,7 +36,7 @@ char *readfile(const char *path, size_t *size)
 /*
  * Reads file 'path' and returns its contents as string.
  */
-char *readfile_str(const char *path)
+pub char *readfile_str(const char *path)
 {
 	size_t len;
 	char *data = readfile(path, &len);
@@ -52,7 +52,7 @@ char *readfile_str(const char *path)
 	return new;
 }
 
-static int fsize(FILE *f, size_t *s)
+int fsize(FILE *f, size_t *s)
 {
 	if(fseek(f, 0, SEEK_END) != 0) {
 		return 0;
@@ -71,7 +71,7 @@ static int fsize(FILE *f, size_t *s)
 	return 1;
 }
 
-static int readf( FILE *f, char *data, size_t size)
+int readf( FILE *f, char *data, size_t size)
 {
 	int c;
 	while( size > 0 ) {

@@ -74,7 +74,7 @@ int sendm(zio *n, const char *from, const char *to, const char *subj)
 	return !senderror();
 }
 
-static int _error = 0;
+int _error = 0;
 
 int senderror() {
 	return _error;

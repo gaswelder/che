@@ -32,7 +32,7 @@ struct __kv {
 
 typedef struct __json_node json_node;
 
-const char *json_err(json_node *n)
+pub const char *json_err(json_node *n)
 {
 	if(n == NULL) {
 		return "No memory";
@@ -43,19 +43,19 @@ const char *json_err(json_node *n)
 	return NULL;
 }
 
-static json_node *newnode(int type) {
+json_node *newnode(int type) {
 	json_node *n = calloc(1, sizeof(*n));
 	if(!n) return NULL;
 	n->type = type;
 	return n;
 }
 
-const char *json_typename(json_node *n)
+pub const char *json_typename(json_node *n)
 {
 	return typename(n->type);
 }
 
-char *json_format(json_node *n)
+pub char *json_format(json_node *n)
 {
 	zio *z = zopen("mem", "", "");
 	json_write(z, n);
@@ -73,7 +73,7 @@ char *json_format(json_node *n)
 	return str;
 }
 
-static void json_write(zio *z, json_node *n)
+void json_write(zio *z, json_node *n)
 {
 	switch(json_type(n))
 	{
@@ -120,7 +120,7 @@ static void json_write(zio *z, json_node *n)
 	}
 }
 
-static const char *typename(int type) {
+const char *typename(int type) {
 	switch(type) {
 		case JSON_UND:
 			return "und";
@@ -142,7 +142,7 @@ static const char *typename(int type) {
 	return "?";
 }
 
-static json_node *json_newerror(const char *s) {
+json_node *json_newerror(const char *s) {
 	json_node *n = newnode(JSON_ERR);
 	if(!n) return NULL;
 	n->val.str = strdup(s);
@@ -156,7 +156,7 @@ static json_node *json_newerror(const char *s) {
 /*
  * Returns a new node of type "object".
  */
-json_node *json_newobj()
+pub json_node *json_newobj()
 {
 	json_node *n = newnode(JSON_OBJ);
 	if(!n) return NULL;
@@ -172,7 +172,7 @@ json_node *json_newobj()
 /*
  * Returns a new node of type "array".
  */
-json_node *json_newarr()
+pub json_node *json_newarr()
 {
 	json_node *n = newnode(JSON_ARR);
 	if(!n) return NULL;
@@ -189,7 +189,7 @@ json_node *json_newarr()
  * Returns a new node of type "string" with a copy of
  * the given string as the contents.
  */
-json_node *json_newstr(const char *s)
+pub json_node *json_newstr(const char *s)
 {
 	json_node *obj = newnode(JSON_STR);
 	if( !obj ) return NULL;
@@ -208,7 +208,7 @@ json_node *json_newstr(const char *s)
  * Returns a new node of type "number" with the given value
  * as the content.
  */
-json_node *json_newnum(double val)
+pub json_node *json_newnum(double val)
 {
 	json_node *obj = newnode(JSON_NUM);
 	if( !obj ) return NULL;
@@ -219,7 +219,7 @@ json_node *json_newnum(double val)
 /*
  * Returns a new node of type "null".
  */
-json_node *json_newnull()
+pub json_node *json_newnull()
 {
 	return newnode(JSON_NULL);
 }
@@ -227,7 +227,7 @@ json_node *json_newnull()
 /*
  * Returns a new node of type "bool" with the given value.
  */
-json_node *json_newbool(bool val)
+pub json_node *json_newbool(bool val)
 {
 	json_node *o = newnode(JSON_BOOL);
 	if(!o) return NULL;
@@ -240,7 +240,7 @@ json_node *json_newbool(bool val)
 /*
  * Returns type of the given node.
  */
-int json_type( json_node *obj )
+pub int json_type( json_node *obj )
 {
 	if( !obj ) {
 		return JSON_UND;
@@ -251,7 +251,7 @@ int json_type( json_node *obj )
 /*
  * Returns number of keys in an object node.
  */
-size_t json_size(json_node *n)
+pub size_t json_size(json_node *n)
 {
 	if(!n || n->type != JSON_OBJ) {
 		return 0;
@@ -262,7 +262,7 @@ size_t json_size(json_node *n)
 /*
  * Returns i-th key in the object node n.
  */
-const char *json_key(json_node *n, size_t i)
+pub const char *json_key(json_node *n, size_t i)
 {
 	if(!n || n->type != JSON_OBJ) {
 		return NULL;
@@ -277,7 +277,7 @@ const char *json_key(json_node *n, size_t i)
 /*
  * Returns value stored under i-th key in the object node n.
  */
-json_node *json_val(json_node *n, size_t i)
+pub json_node *json_val(json_node *n, size_t i)
 {
 	if(!n || n->type != JSON_OBJ) {
 		return NULL;
@@ -294,7 +294,7 @@ json_node *json_val(json_node *n, size_t i)
  * Returns NULL if the given node is not an object or there is no
  * such key in it.
  */
-json_node *json_get(json_node *n, const char *key)
+pub json_node *json_get(json_node *n, const char *key)
 {
 	if(!n || n->type != JSON_OBJ) {
 		return NULL;
@@ -316,7 +316,7 @@ json_node *json_get(json_node *n, const char *key)
  * Returns NULL if the given node is not an array or the given
  * index is out of bounds.
  */
-json_node *json_at( json_node *n, int index )
+pub json_node *json_at( json_node *n, int index )
 {
 	if( !n || n->type != JSON_ARR ) {
 		return NULL;
@@ -332,7 +332,7 @@ json_node *json_at( json_node *n, int index )
  * Returns length of the array object. Returns 0 if the object
  * is not an array.
  */
-int json_len( json_node *obj )
+pub int json_len( json_node *obj )
 {
 	if( !obj || obj->type != JSON_ARR ) {
 		return 0;
@@ -343,7 +343,7 @@ int json_len( json_node *obj )
 /*
  * Free the object.
  */
-void json_free( json_node *node )
+pub void json_free( json_node *node )
 {
 	if( !node ) return;
 
@@ -378,7 +378,7 @@ void json_free( json_node *node )
 /*
  * Create a copy of an object.
  */
-json_node *json_copy( json_node *obj )
+pub json_node *json_copy( json_node *obj )
 {
 	if( !obj ) return NULL;
 
@@ -428,7 +428,7 @@ json_node *json_copy( json_node *obj )
 /*
  * Get wrapped values.
  */
-const char *json_getstr( json_node *obj, const char *key )
+pub const char *json_getstr( json_node *obj, const char *key )
 {
 	json_node *v = json_get( obj, key );
 	if( !v || v->type != JSON_STR ) {
@@ -437,7 +437,7 @@ const char *json_getstr( json_node *obj, const char *key )
 	return v->val.str;
 }
 
-double json_getdbl( json_node *obj, const char *key )
+pub double json_getdbl( json_node *obj, const char *key )
 {
 	json_node *v = json_get( obj, key );
 	if( !v || v->type != JSON_NUM ) {
@@ -446,7 +446,7 @@ double json_getdbl( json_node *obj, const char *key )
 	return v->val.num;
 }
 
-bool json_bool(json_node *n)
+pub bool json_bool(json_node *n)
 {
 	if(n && n->type == JSON_BOOL) {
 		return n->val.boolval;
@@ -454,7 +454,7 @@ bool json_bool(json_node *n)
 	return false;
 }
 
-const char *json_str(json_node *n)
+pub const char *json_str(json_node *n)
 {
 	if(n && n->type == JSON_STR) {
 		return n->val.str;
@@ -462,7 +462,7 @@ const char *json_str(json_node *n)
 	return "";
 }
 
-double json_dbl(json_node *n)
+pub double json_dbl(json_node *n)
 {
 	if(n && n->type == JSON_NUM) {
 		return n->val.num;
@@ -471,7 +471,7 @@ double json_dbl(json_node *n)
 }
 
 
-bool json_put( json_node *n, const char *key, json_node *val )
+pub bool json_put( json_node *n, const char *key, json_node *val )
 {
 	if(!n || n->type != JSON_OBJ) {
 		return false;
@@ -512,7 +512,7 @@ bool json_put( json_node *n, const char *key, json_node *val )
  * Pushes given value to the end of the given array node.
  * Returns false if the given node is not an array and in case of error.
  */
-bool json_push( json_node *n, json_node *val )
+pub bool json_push( json_node *n, json_node *val )
 {
 	if( !n || n->type != JSON_ARR ) {
 		return false;
@@ -521,7 +521,7 @@ bool json_push( json_node *n, json_node *val )
 	return arr_push(n->val.arr, val);
 }
 
-static void *mcopy( const void *src, size_t size )
+void *mcopy( const void *src, size_t size )
 {
 	void *copy = malloc( size );
 	if( !copy ) {
@@ -584,7 +584,7 @@ struct __parser {
 /*
  * Returns type of the next token
  */
-static int peek(struct __parser *p)
+int peek(struct __parser *p)
 {
 	if(p->next.type == EOF && buf_more(p->buf)) {
 		read(p, &(p->next));
@@ -592,7 +592,7 @@ static int peek(struct __parser *p)
 	return p->next.type;
 }
 
-static void get(struct __parser *p, struct _token *t)
+void get(struct __parser *p, struct _token *t)
 {
 	/*
 	 * Read next value into the cache if necessary.
@@ -614,7 +614,7 @@ static void get(struct __parser *p, struct _token *t)
 	p->next.type = EOF;
 }
 
-static void read(struct __parser *p, struct _token *t)
+void read(struct __parser *p, struct _token *t)
 {
 	/*
 	 * Skip spaces
@@ -655,7 +655,7 @@ static void read(struct __parser *p, struct _token *t)
 	error(p, "Unexpected character: %c", c);
 }
 
-static void readstr(struct __parser *p, struct _token *t)
+void readstr(struct __parser *p, struct _token *t)
 {
 	assert(expectch(p, '"'));
 	str *s = str_new();
@@ -707,7 +707,7 @@ static void readstr(struct __parser *p, struct _token *t)
 	t->str = copy;
 }
 
-static bool expectch(struct __parser *p, char c)
+bool expectch(struct __parser *p, char c)
 {
 	char g = buf_get(p->buf);
 	if(g != c) {
@@ -717,7 +717,7 @@ static bool expectch(struct __parser *p, char c)
 	return true;
 }
 
-static void readkw(struct __parser *p, struct _token *t)
+void readkw(struct __parser *p, struct _token *t)
 {
 	char kw[8];
 	int i = 0;
@@ -746,7 +746,7 @@ static void readkw(struct __parser *p, struct _token *t)
 /*
  * number = [ minus ] int [ frac ] [ exp ]
  */
-static void readnum(struct __parser *p, struct _token *t)
+void readnum(struct __parser *p, struct _token *t)
 {
 	bool minus = false;
 	double num = 0.0;
@@ -832,7 +832,7 @@ static void readnum(struct __parser *p, struct _token *t)
  * Puts a formatted error message to the parser's
  * context and returns NULL.
  */
-static void *error(struct __parser *p, const char *fmt, ...)
+void *error(struct __parser *p, const char *fmt, ...)
 {
 	va_list args;
 	va_start(args, fmt);
@@ -845,7 +845,7 @@ static void *error(struct __parser *p, const char *fmt, ...)
 /*
  * Parses given JSON string and returns a json_node object.
  */
-json_node *json_parse(const char *s)
+pub json_node *json_parse(const char *s)
 {
 	struct __parser p;
 
@@ -887,7 +887,7 @@ json_node *json_parse(const char *s)
  * Reads one node and returns it.
  * Returns NULL in case of error.
  */
-static json_node *read_node(struct __parser *p)
+json_node *read_node(struct __parser *p)
 {
 	switch(peek(p)) {
 		case EOF:
@@ -917,7 +917,7 @@ static json_node *read_node(struct __parser *p)
 	return NULL;
 }
 
-static json_node *read_array(struct __parser *p)
+json_node *read_array(struct __parser *p)
 {
 	if(!expect(p, '[')) {
 		return NULL;
@@ -949,7 +949,7 @@ static json_node *read_array(struct __parser *p)
 	return a;
 }
 
-static json_node *read_dict(struct __parser *p)
+json_node *read_dict(struct __parser *p)
 {
 	if(!expect(p, '{')) {
 		return NULL;
@@ -1006,7 +1006,7 @@ static json_node *read_dict(struct __parser *p)
 	return o;
 }
 
-static bool expect(struct __parser *p, int toktype)
+bool expect(struct __parser *p, int toktype)
 {
 	struct _token t;
 	get(p, &t);

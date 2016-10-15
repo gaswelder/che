@@ -1,6 +1,6 @@
 import "cli"
 
-void logmsg(const char *fmt, ...)
+pub void logmsg(const char *fmt, ...)
 {
 	char timestamp[64];
 	if(!date(timestamp, sizeof(timestamp), "%F %T")) {
@@ -16,7 +16,7 @@ void logmsg(const char *fmt, ...)
 	fputc('\n', stderr);
 }
 
-static int date(char *buf, size_t size, const char *fmt)
+int date(char *buf, size_t size, const char *fmt)
 {
 	time_t t = time(NULL);
 	struct tm *ts = localtime(&t);

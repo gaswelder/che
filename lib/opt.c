@@ -27,11 +27,11 @@ struct optspec {
 /*
  * List of defined options.
  */
-static struct optspec specs[MAX_FLAGS];
-static int flags_num = 0;
+struct optspec specs[MAX_FLAGS];
+int flags_num = 0;
 
-static const char *progname = "progname";
-static const char *summary = NULL;
+const char *progname = "progname";
+const char *summary = NULL;
 
 /*
  * Declares an option.
@@ -40,7 +40,7 @@ static const char *summary = NULL;
  * 'desc' is text description.
  * 'value_pointer' is a pointer to save the flag value at.
  */
-void opt(int type, const char *name, const char *desc, void *value_pointer)
+pub void opt(int type, const char *name, const char *desc, void *value_pointer)
 {
 	if( strlen(name) > 1 ) {
 		fprintf(stderr, "Only one-letter flags supported\n" );
@@ -80,7 +80,7 @@ void opt(int type, const char *name, const char *desc, void *value_pointer)
  * Parses the given arguments using the information defined
  * with previous 'opt' function calls.
  */
-char **opt_parse( int argc, char **argv )
+pub char **opt_parse( int argc, char **argv )
 {
 	opterr = 0;
 	progname = argv[0];
@@ -192,11 +192,11 @@ char **opt_parse( int argc, char **argv )
 	return argv;
 }
 
-void opt_summary(const char *s) {
+pub void opt_summary(const char *s) {
 	summary = s;
 }
 
-void opt_usage(void)
+pub void opt_usage(void)
 {
 	if( summary ) {
 		fprintf( stderr, "Usage: %s\n", summary );
@@ -224,7 +224,7 @@ void opt_usage(void)
 	}
 }
 
-static int is_numeric(const char *s)
+int is_numeric(const char *s)
 {
 	const char *p = s;
 

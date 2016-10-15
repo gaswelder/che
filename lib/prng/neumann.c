@@ -6,7 +6,7 @@
 /*
  * The numbers produced are 4-digit.
  */
-int16_t nrg_next(int16_t n)
+pub int16_t nrg_next(int16_t n)
 {
 	/*
 	 * Square the current value

@@ -2,7 +2,7 @@
 /*
  * Print a formatted message to stderr and exit with non-zero status.
  */
-void fatal(const char *fmt, ...)
+pub void fatal(const char *fmt, ...)
 {
 	va_list l;
 	va_start(l, fmt);
@@ -15,7 +15,7 @@ void fatal(const char *fmt, ...)
 /*
  * Print a formatter message to stderr.
  */
-void err(const char *fmt, ...)
+pub void err(const char *fmt, ...)
 {
 	va_list l;
 	va_start(l, fmt);

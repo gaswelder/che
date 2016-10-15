@@ -1,4 +1,4 @@
-static const char *error = "no error";
+const char *error = "no error";
 
 struct conn {
 	int sock;
@@ -13,23 +13,23 @@ struct conn {
 
 typedef struct conn conn_t;
 
-const char *net_error() {
+pub const char *net_error() {
 	return error;
 }
 
-const char *net_addr(conn_t *c) {
+pub const char *net_addr(conn_t *c) {
 	return c->addrstr;
 }
 
-int net_read(conn_t *c, char *buf, size_t size) {
+pub int net_read(conn_t *c, char *buf, size_t size) {
 	return recv(c->sock, buf, size, 0);
 }
 
-int net_write(conn_t *c, const char *buf, size_t n) {
+pub int net_write(conn_t *c, const char *buf, size_t n) {
 	return send(c->sock, buf, n, 0);
 }
 
-conn_t *net_conn(const char *proto, const char *addr)
+pub conn_t *net_conn(const char *proto, const char *addr)
 {
 	struct conn *c = newconn(proto, addr);
 	if(!c) {
@@ -45,7 +45,7 @@ conn_t *net_conn(const char *proto, const char *addr)
 	return c;
 }
 
-conn_t *net_listen(const char *proto, const char *addr)
+pub conn_t *net_listen(const char *proto, const char *addr)
 {
 	struct conn *c = newconn(proto, addr);
 	if(!c) {
@@ -74,7 +74,7 @@ conn_t *net_listen(const char *proto, const char *addr)
 	return c;
 }
 
-conn_t *net_accept(conn_t *l)
+pub conn_t *net_accept(conn_t *l)
 {
 	struct conn *c = calloc(1, sizeof(struct conn));
 	if(!c) {
@@ -101,7 +101,7 @@ conn_t *net_accept(conn_t *l)
 	return c;
 }
 
-void net_close(struct conn *c)
+pub void net_close(struct conn *c)
 {
 	close(c->sock);
 	free(c);
@@ -111,7 +111,7 @@ void net_close(struct conn *c)
  * Returns true if there is data to be read
  * from the given connection.
  */
-int net_incoming(conn_t *c)
+pub int net_incoming(conn_t *c)
 {
 	fd_set read;
 	FD_ZERO(&read);
@@ -132,7 +132,7 @@ int net_incoming(conn_t *c)
 	return 0;
 }
 
-static struct conn *newconn(const char *proto, const char *addr)
+struct conn *newconn(const char *proto, const char *addr)
 {
 	/*
 	 * Only TCP is implemented
@@ -161,7 +161,7 @@ static struct conn *newconn(const char *proto, const char *addr)
 	return c;
 }
 
-static int getsock(struct conn *c, const char *addr)
+int getsock(struct conn *c, const char *addr)
 {
 	/*
 	 * Split the address into a hostname and a portname
@@ -200,7 +200,7 @@ static int getsock(struct conn *c, const char *addr)
 	return 1;
 }
 
-static int parseaddr(struct conn *c, const char *addr)
+int parseaddr(struct conn *c, const char *addr)
 {
 	int i = 0;
 	const char *p = addr;
@@ -231,7 +231,7 @@ static int parseaddr(struct conn *c, const char *addr)
 	return 1;
 }
 
-static int format_address(struct sockaddr *a, char *buf, size_t n)
+int format_address(struct sockaddr *a, char *buf, size_t n)
 {
 	if(a->sa_family != AF_INET) {
 		error = "unknown sa_family";

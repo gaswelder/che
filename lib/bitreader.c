@@ -10,7 +10,7 @@ typedef struct bitstream bits_t;
 /*
  * Returns new bitreader for file 'f'.
  */
-bits_t *bits_new(FILE *f)
+pub bits_t *bits_new(FILE *f)
 {
 	bits_t *b = calloc(1, sizeof(bits_t));
 	if(!b) return NULL;
@@ -22,7 +22,7 @@ bits_t *bits_new(FILE *f)
 /*
  * Frees memory used by the reader.
  */
-void bits_free(bits_t *b)
+pub void bits_free(bits_t *b)
 {
 	free(b);
 }
@@ -31,7 +31,7 @@ void bits_free(bits_t *b)
  * Returns value of the next bit.
  * Returns -1 if there is no next bit.
  */
-int bits_get(bits_t *s)
+pub int bits_get(bits_t *s)
 {
 	if(s->bytepos < 0) {
 		int c = fgetc(s->f);
@@ -48,7 +48,7 @@ int bits_get(bits_t *s)
  * Returns value of next 'n' bits.
  * Returns -1 if there is not enough bits in the stream.
  */
-int bits_getn(bits_t *s, int n)
+pub int bits_getn(bits_t *s, int n)
 {
 	int r = 0;
 	for(int i = 0; i < n; i++) {

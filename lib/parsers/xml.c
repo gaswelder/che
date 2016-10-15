@@ -62,7 +62,7 @@ typedef struct __xml xml;
 /*
  * Creates a parser that reads from the given file
  */
-xml *xml_open(const char *path)
+pub xml *xml_open(const char *path)
 {
 	FILE *f = fopen(path, "rb");
 	if(!f) {
@@ -106,7 +106,7 @@ xml *xml_open(const char *path)
 /*
  * Closes a parser
  */
-void xml_close(xml *x)
+pub void xml_close(xml *x)
 {
 	fclose(x->f);
 	free(x);
@@ -115,7 +115,7 @@ void xml_close(xml *x)
 /*
  * Returns name of the current node
  */
-const char *xml_nodename(xml *x)
+pub const char *xml_nodename(xml *x)
 {
 	if(x->error[0]) {
 		return NULL;
@@ -130,7 +130,7 @@ const char *xml_nodename(xml *x)
  * Returns value of given attribute of the current node.
  * Returns NULL if there is no such attribute or current node.
  */
-const char *xml_attr(xml *x, const char *name)
+pub const char *xml_attr(xml *x, const char *name)
 {
 	if(x->error[0]) {
 		return NULL;
@@ -152,7 +152,7 @@ const char *xml_attr(xml *x, const char *name)
 /*
  * Enter the current node tree
  */
-bool xml_enter(xml *x)
+pub bool xml_enter(xml *x)
 {
 	if(x->error[0]) {
 		return false;
@@ -198,7 +198,7 @@ bool xml_enter(xml *x)
 /*
  * Go to the next sibling in the current tree
  */
-void xml_next(xml *x)
+pub void xml_next(xml *x)
 {
 	if(x->error[0]) {
 		return;
@@ -246,7 +246,7 @@ void xml_next(xml *x)
 /*
  * Leave current node tree and get to the next sibling
  */
-void xml_leave(xml *x)
+pub void xml_leave(xml *x)
 {
 	if(x->error[0]) {
 		return;
@@ -291,7 +291,7 @@ void xml_leave(xml *x)
 /*
  * Push current tag name on the stack.
  */
-static void pushparent(xml *x)
+void pushparent(xml *x)
 {
 	if(x->pathlen >= MAXSTACK) {
 		fatal("Reached max stack depth: %d", MAXSTACK);
@@ -303,7 +303,7 @@ static void pushparent(xml *x)
 /*
  * Consume the following tag and set it as current node
  */
-static void shift(xml *x)
+void shift(xml *x)
 {
 	// cur = next
 	memcpy(&(x->node), next_tag(x), sizeof(struct __tag));
@@ -315,7 +315,7 @@ static void shift(xml *x)
 /*
  * Returns a pointer to the next tag from the file.
  */
-static struct __tag *next_tag(xml *x)
+struct __tag *next_tag(xml *x)
 {
 	read_tag(x);
 	return &(x->next_tag);
@@ -324,7 +324,7 @@ static struct __tag *next_tag(xml *x)
 /*
  * Reads next tag from the file, if necessary
  */
-static void read_tag(xml *x)
+void read_tag(xml *x)
 {
 	struct __tag *t = &(x->next_tag);
 	if(t->type != T_NULL) {
@@ -412,7 +412,7 @@ static void read_tag(xml *x)
 	expect(x, '>');
 }
 
-static int get(xml *x) {
+int get(xml *x) {
 	int c = fgetc(x->f);
 	if(c == '\n') {
 		x->line++;
@@ -424,14 +424,14 @@ static int get(xml *x) {
 	return c;
 }
 
-static void discard_spaces(xml *x)
+void discard_spaces(xml *x)
 {
 	while(isspace(fpeek(x->f))) {
 		get(x);
 	}
 }
 
-static void expect(xml *x, int ch)
+void expect(xml *x, int ch)
 {
 	int next = get(x);
 	if(next != ch) {
@@ -439,7 +439,7 @@ static void expect(xml *x, int ch)
 	}
 }
 
-static void error(xml *x, const char *fmt, ...)
+void error(xml *x, const char *fmt, ...)
 {
 	va_list l;
 	va_start(l, fmt);
@@ -453,7 +453,7 @@ static void error(xml *x, const char *fmt, ...)
 	printf(" at %d:%d\n", x->line, x->col);
 }
 
-static int fpeek(FILE *f) {
+int fpeek(FILE *f) {
 	int c = fgetc(f);
 	if(c != EOF) {
 		ungetc(c, f);
@@ -461,7 +461,7 @@ static int fpeek(FILE *f) {
 	return c;
 }
 
-static bool streq(const char *s1, const char *s2) {
+bool streq(const char *s1, const char *s2) {
 	assert(s1 && s2);
 	return strcmp(s1, s2) == 0;
 }

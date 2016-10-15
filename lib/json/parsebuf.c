@@ -11,7 +11,7 @@ typedef struct __parsebuf parsebuf;
  * the given string as the contents. The string must not be
  * deallocated before the buffer is.
  */
-parsebuf *buf_new(const char *s)
+pub parsebuf *buf_new(const char *s)
 {
 	parsebuf *b = calloc(1, sizeof(parsebuf));
 	if(!b) return NULL;
@@ -23,7 +23,7 @@ parsebuf *buf_new(const char *s)
 /*
  * Frees the memory used by the buffer.
  */
-void buf_free(parsebuf *b)
+pub void buf_free(parsebuf *b)
 {
 	free(b);
 }
@@ -32,7 +32,7 @@ void buf_free(parsebuf *b)
  * Returns the next character in the buffer.
  * Returns EOF if there is no next character.
  */
-int buf_peek(parsebuf *b)
+pub int buf_peek(parsebuf *b)
 {
 	if(b->pos >= b->len) {
 		return EOF;
@@ -40,7 +40,7 @@ int buf_peek(parsebuf *b)
 	return b->s[b->pos];
 }
 
-void buf_fcontext(parsebuf *b, char *buf, size_t len)
+pub void buf_fcontext(parsebuf *b, char *buf, size_t len)
 {
 	if(len > b->len - b->pos) {
 		len = b->len - b->pos;
@@ -57,7 +57,7 @@ void buf_fcontext(parsebuf *b, char *buf, size_t len)
  * Returns the next character in the buffer and removes
  * it from the stream. Returns EOF if there is no next character.
  */
-int buf_get(parsebuf *b)
+pub int buf_get(parsebuf *b)
 {
 	if(b->pos >= b->len) {
 		return EOF;
@@ -71,7 +71,7 @@ int buf_get(parsebuf *b)
  * Returns true if there is at least one more character
  * in the stream.
  */
-bool buf_more(parsebuf *b)
+pub bool buf_more(parsebuf *b)
 {
 	return b->pos < b->len;
 }

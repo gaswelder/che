@@ -31,7 +31,7 @@ struct __src {
 /*
  * Process the stream and put the digest in 'digest'.
  */
-void md5(zio *stream, uint32_t digest[4])
+pub void md5(zio *stream, uint32_t digest[4])
 {
 	struct __src s = {
 		.stream = stream,
@@ -57,7 +57,7 @@ void md5(zio *stream, uint32_t digest[4])
 }
 
 /*
-static void print_block(uint32_t b[16])
+void print_block(uint32_t b[16])
 {
 	for(int i = 0; i < 16; i++) {
 		printf("%08x (%u)", b[i], b[i]);
@@ -73,7 +73,7 @@ static void print_block(uint32_t b[16])
  *   |->|->|->|->|->|->|->|->|
  *   |<----------|<----------|
  */
-static uint32_t next_word(struct __src *s)
+uint32_t next_word(struct __src *s)
 {
 	uint32_t word = 0;
 	int pos = 0;
@@ -88,7 +88,7 @@ static uint32_t next_word(struct __src *s)
 	return word;
 }
 
-static uint8_t next_byte(struct __src *s)
+uint8_t next_byte(struct __src *s)
 {
 	if(s->more_data) {
 		int c = zgetc(s->stream);
@@ -131,7 +131,7 @@ static uint8_t next_byte(struct __src *s)
 	return b;
 }
 
-static void init_padding(struct __src *s)
+void init_padding(struct __src *s)
 {
 	/*
 	 * Now we know 'b' (data length in bits), so we can create the

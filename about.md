@@ -132,3 +132,63 @@ structure `foo` has `char` member 'a' and `char *` member b:
 There is no preprocessor, so almost all macros are gone. `#define`
 statements are processed by the same parser as the normal language and
 are used only to define constants.
+
+
+## The `pub` keyword
+
+In C, in order to make functions private to the module, they have to be
+declared as `static`. But more often than not it is more convenient to
+assume they all are private and explicitly mark the "public" ones. Thus
+`static` is gone, and `pub` is introduced:
+
+	// f1 will get imported, but f2 will not.
+	pub int f1() {...}
+	int f2() {...}
+
+There is an exception for `main`: it's always assumed public, so "hello
+world" still is:
+
+	int main() {
+		puts("Howdy, Globe!");
+	}
+
+In C variables can be `static` two. There are two kinds. One is
+function-local, the other is module-local:
+
+	// *** This is C, mind you ***
+	// module-local variable
+	static long seed;
+
+	int count() {
+		// function-local variable
+		static int n;
+		n++;
+		return n;
+	}
+
+	long foo() {
+		return seed++ * count();
+	}
+
+Function-local variables are usually caches of some kind, and they are
+the same as the module-local ones, only can't be seen by other
+functions. We always can move `n` out, possibly renaming it to
+something like `current_count`, and deal only with module-local
+variables. And those, just like functions, can be assumed private to
+the module, so the result will be:
+
+	// Note that these variables will still be initialized to zero
+	// just like in C.
+	long seed;
+	int current_count;
+
+	int count() {
+		current_count++;
+		return current_count;
+	}
+
+	pub long foo() {
+		return seed++ * count();
+	}
+
+There is no `pub` for variables.

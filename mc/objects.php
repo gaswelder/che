@@ -69,6 +69,7 @@ class c_include extends c_element {
  */
 class c_varlist
 {
+	public $stat = false;
 	public $type;
 	public $forms;
 	public $values;
@@ -99,6 +100,10 @@ class c_varlist
 			if($this->values[$i] !== null) {
 				$s .= ' = ' . $this->values[$i]->format();
 			}
+		}
+
+		if($this->stat) {
+			$s = 'static '.$s;
 		}
 		return $s;
 	}
@@ -263,6 +268,7 @@ class c_enum extends c_element
 
 class c_prototype
 {
+	public $pub = false;
 	public $type;
 	public $form;
 	public $args;
@@ -277,10 +283,14 @@ class c_prototype
 
 	function format()
 	{
-		return sprintf("%s %s%s;",
+		$s = sprintf("%s %s%s;",
 			$this->type->format(),
 			$this->form->format(),
 			$this->args->format());
+		if(!$this->pub && $this->form->name != 'main') {
+			$s = 'static '.$s;
+		}
+		return $s;
 	}
 }
 

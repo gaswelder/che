@@ -72,18 +72,18 @@ void *process_client(struct client *c)
 	return NULL;
 }
 
+char linechars[] =
+	"!\"#$%&'()*+,-./0123456789:;<=>?@"
+	"ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`"
+	"abcdefghijklmnopqrstuvwxyz{|}~ ";
+
 bool send_line(struct client *c)
 {
-	static char chars[] =
-		"!\"#$%&'()*+,-./0123456789:;<=>?@"
-		"ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`"
-		"abcdefghijklmnopqrstuvwxyz{|}~ ";
-
 	for(int i = 0; i < 72; i++) {
-		if(zputc(chars[c->charpos++], &(c->out)) == EOF) {
+		if(zputc(linechars[c->charpos++], &(c->out)) == EOF) {
 			return false;
 		}
-		if(c->charpos == sizeof(chars)) {
+		if(c->charpos == sizeof(linechars)) {
 			c->charpos = 0;
 		}
 	}

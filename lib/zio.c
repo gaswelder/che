@@ -16,7 +16,7 @@ struct __zio {
 typedef struct __zio zio;
 
 
-zio *zopen(const char *type, const char *name, const char *mode)
+pub zio *zopen(const char *type, const char *name, const char *mode)
 {
 	int t = S_UNKNOWN;
 	void *h = NULL;
@@ -49,7 +49,7 @@ zio *zopen(const char *type, const char *name, const char *mode)
 	return s;
 }
 
-void zclose(zio *s)
+pub void zclose(zio *s)
 {
 	switch(s->type) {
 		case S_FILE:
@@ -68,7 +68,7 @@ void zclose(zio *s)
 	free(s);
 }
 
-int zread(zio *s, char *buf, int size)
+pub int zread(zio *s, char *buf, int size)
 {
 	switch(s->type) {
 		case S_FILE:
@@ -84,7 +84,7 @@ int zread(zio *s, char *buf, int size)
 	return -1;
 }
 
-int zwrite(zio *s, const char *buf, int len)
+pub int zwrite(zio *s, const char *buf, int len)
 {
 	switch(s->type) {
 		case S_FILE:
@@ -99,7 +99,7 @@ int zwrite(zio *s, const char *buf, int len)
 	return -1;
 }
 
-int zrewind(zio *s)
+pub int zrewind(zio *s)
 {
 	switch(s->type) {
 		case S_FILE:
@@ -116,7 +116,7 @@ int zrewind(zio *s)
 	return 0;
 }
 
-int zprintf(zio *s, const char *fmt, ...)
+pub int zprintf(zio *s, const char *fmt, ...)
 {
 	va_list args;
 
@@ -162,7 +162,7 @@ int zprintf(zio *s, const char *fmt, ...)
 	return len;
 }
 
-int zgetc(zio *s)
+pub int zgetc(zio *s)
 {
 	switch(s->type) {
 		case S_FILE:

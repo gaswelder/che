@@ -49,13 +49,13 @@
 #define UPPER_MASK 0x80000000UL /* most significant w-r bits */
 #define LOWER_MASK 0x7fffffffUL /* least significant r bits */
 
-static uint32_t mt[N]; /* the array for the state vector  */
-static int mti=N+1; /* mti==N+1 means mt[N] is not initialized */
+uint32_t mt[N]; /* the array for the state vector  */
+int mti=N+1; /* mti==N+1 means mt[N] is not initialized */
 
 /*
  * Initializes the generator with the given seed.
  */
-void mt_seed(uint32_t s)
+pub void mt_seed(uint32_t s)
 {
     mt[0]= s & 0xffffffffUL;
     for (mti=1; mti<N; mti++) {
@@ -102,13 +102,15 @@ void init_by_array(uint32_t init_key[], int key_length)
 }
 */
 
+uint32_t mag01[2]={0x0UL, MATRIX_A};
+
 /*
  * Returns a random number from the interval [0,0xffffffff].
  */
-uint32_t mt_rand32(void)
+pub uint32_t mt_rand32(void)
 {
     uint32_t y;
-    static uint32_t mag01[2]={0x0UL, MATRIX_A};
+    
     /* mag01[x] = x * MATRIX_A  for x=0,1 */
 
     if (mti >= N) { /* generate N words at one time */
@@ -146,7 +148,7 @@ uint32_t mt_rand32(void)
 /*
  * Returns a random number from the interval [0.0,1.0].
  */
-double mt_randf(void)
+pub double mt_randf(void)
 {
     return mt_rand32()*(1.0/4294967295.0);
     /* divided by 2^32-1 */

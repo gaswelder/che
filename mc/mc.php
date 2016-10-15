@@ -229,7 +229,7 @@ function get_import($modname, $refdir)
 				break;
 			case 'c_func':
 				$dec = $element->proto;
-				if($dec->type->l[0] != 'static') {
+				if($dec->pub) {
 					$imp->code[] = $dec;
 				}
 				break;
