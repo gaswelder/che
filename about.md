@@ -125,3 +125,10 @@ structure `foo` has `char` member 'a' and `char *` member b:
 	struct foo {
 		char a, *b;
 	};
+
+
+## No preprocessor
+
+There is no preprocessor, so almost all macros are gone. `#define`
+statements are processed by the same parser as the normal language and
+are used only to define constants.

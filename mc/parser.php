@@ -50,7 +50,7 @@ class parser
 	}
 
 	/*
-	 * Returns next token, removing it from the stream.
+	 * Reads next program object from the source.
 	 */
 	function get()
 	{
