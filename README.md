@@ -116,25 +116,18 @@ In C it is possible to declare multiple variables with a common type
 like this:
 
 	int a, b, c;
-
-In Che it is also possible to do that with struct members and function
-parameters:
-
 	struct vec {
 		int x, y, x;
 	};
+
+In Che it is also possible to do that with sfunction parameters:
 
 	struct vec sum(struct vec a, b) {
 		...
 	}
 
 The original C rules still apply: pointer and array notations "stick"
-to the identifiers, not the type, so in the following example the
-structure `foo` has `char` member 'a' and `char *` member 'b':
-
-	struct foo {
-		char a, *b;
-	};
+to the identifiers, not the type.
 
 
 ## No preprocessor
