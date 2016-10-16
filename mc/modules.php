@@ -83,10 +83,6 @@ function get_import($modname, $refdir)
 				$imp->code[] = $element;
 				break;
 			case 'c_structdef':
-				if(substr($element->name, 0, 2) != '__') {
-					$imp->code[] = $element;
-				}
-				break;
 			case 'c_enum':
 				if($element->pub) {
 					$imp->code[] = $element;

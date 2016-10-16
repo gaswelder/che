@@ -74,14 +74,6 @@ class parser
 			return $def;
 		}
 
-		// <struct-def>?
-		if( $t->type == 'struct' ) {
-			if( $s->peek(1)->type == 'word' && $s->peek(2)->type == '{' ) {
-				$def = $this->struct_def();
-				return $def;
-			}
-		}
-
 		// comment?
 		if( $t->type == 'comment' ) {
 			$this->s->get();
@@ -101,16 +93,30 @@ class parser
 		 * If 'pub' follows, look at the token after that.
 		 */
 		if($t->type == 'pub') {
-			$s->get();
-			$next = $s->peek();
-			$s->unget($t);
-			$t = $next;
+			$t1 = $s->peek(1);
+			$t2 = $s->peek(2);
+			$t3 = $s->peek(3);
+		}
+		else {
+			$t1 = $s->peek(0);
+			$t2 = $s->peek(1);
+			$t3 = $s->peek(2);
 		}
 
 		// <enum-def>?
-		if( $t->type == 'enum' ) {
+		if( $t1->type == 'enum' ) {
 			return $this->read_enumdef();
 		}
+
+		// <struct-def>?
+		if( $t1->type == 'struct' ) {
+			if( $t2->type == 'word' && $t3->type == '{' ) {
+				$def = $this->read_structdef();
+				return $def;
+			}
+		}
+
+
 
 		// <obj-def>
 		return $this->read_object();
@@ -160,11 +166,18 @@ $this->trace( "read_typedef" );
 		return new c_typedef($type, $form);
 	}
 
-	// <struct-def>: "struct" <name> [<struct-fields>] ";"
-	private function struct_def()
+	// <struct-def>: "pub"? "struct" <name> [<struct-fields>] ";"
+	private function read_structdef()
 	{
-$this->trace( "struct_def" );
+$this->trace( "structdef" );
 		$s = $this->s;
+
+		$pub = false;
+		if($s->peek()->type == 'pub') {
+			$pub = true;
+			$s->get();
+		}
+
 		$this->expect( 'struct' );
 		if($s->peek()->type == 'word') {
 			$name = $s->get()->content;
@@ -173,6 +186,7 @@ $this->trace( "struct_def" );
 			$name = '';
 		}
 		$def = new c_structdef( $name );
+		$def->pub = $pub;
 
 		if($s->peek()->type != '{') {
 			return $def;
@@ -331,7 +345,7 @@ $this->trace( "type" );
 
 		// "struct" <struct-fields>?
 		if( $s->peek()->type == 'struct' ) {
-			$type[] = $this->struct_def();
+			$type[] = $this->read_structdef();
 			return new c_type(array_merge($mods, $type));
 		}
 

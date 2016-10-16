@@ -16,7 +16,7 @@ import "zio"
  * The number of zeros 'z' is such that end of stream happens to be at
  * a length mark that is a multiple of 512 bits (64 bytes).
  */
-struct _src {
+pub struct _src {
 	zio *stream; // data stream
 
 	uint64_t length; // current message length in bits

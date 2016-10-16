@@ -329,6 +329,7 @@ class c_formal_args
 
 class c_structdef extends c_element
 {
+	public $pub;
 	public $name;
 	public $fields = array(); // array of varlists
 
