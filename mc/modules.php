@@ -88,7 +88,9 @@ function get_import($modname, $refdir)
 				}
 				break;
 			case 'c_enum':
-				$imp->code[] = $element;
+				if($element->pub) {
+					$imp->code[] = $element;
+				}
 				break;
 			case 'c_func':
 				$dec = $element->proto;

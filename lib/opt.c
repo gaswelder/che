@@ -6,7 +6,7 @@
 /*
  * Option value types for use in the 'opt' function
  */
-enum {
+pub enum {
 	OPT_STR = 's',
 	OPT_INT = 'i',
 	OPT_UINT = 'u',

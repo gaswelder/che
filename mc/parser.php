@@ -82,11 +82,6 @@ class parser
 			}
 		}
 
-		// <enum-def>?
-		if( $t->type == 'enum' ) {
-			return $this->read_enumdef();
-		}
-
 		// comment?
 		if( $t->type == 'comment' ) {
 			$this->s->get();
@@ -100,6 +95,21 @@ class parser
 			$dir = dirname(realpath($this->path));
 
 			return new c_import($path->content, $dir);
+		}
+
+		/*
+		 * If 'pub' follows, look at the token after that.
+		 */
+		if($t->type == 'pub') {
+			$s->get();
+			$next = $s->peek();
+			$s->unget($t);
+			$t = $next;
+		}
+
+		// <enum-def>?
+		if( $t->type == 'enum' ) {
+			return $this->read_enumdef();
 		}
 
 		// <obj-def>
@@ -212,14 +222,22 @@ $this->trace( "read_union" );
 		return $u;
 	}
 
-	// <enum-def>: "enum" "{" <id> ["=" <literal>] [,]... "}" ";"
+	// <enum-def>: "pub"? "enum" "{" <id> ["=" <literal>] [,]... "}" ";"
 	private function read_enumdef()
 	{
 		$s = $this->s;
+
+		$pub = false;
+		if($s->peek()->type == 'pub') {
+			$pub = true;
+			$s->get();
+		}
+
 		$this->expect( 'enum' );
 		$this->expect( '{' );
 
 		$enum = new c_enum();
+		$enum->pub = $pub;
 		while( 1 ) {
 			$id = $this->expect( 'word' )->content;
 			$val = null;

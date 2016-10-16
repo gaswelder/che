@@ -195,3 +195,6 @@ the module, so the result will be:
 	}
 
 There is no `pub` for variables.
+
+Enums may be marked `pub` to become importable. By default all `enum`
+declarations are private.

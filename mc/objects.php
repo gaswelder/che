@@ -241,7 +241,9 @@ class c_typedef extends c_element
 
 class c_enum extends c_element
 {
+	public $pub = false;
 	public $values = array();
+
 	function add( $name, $val ) {
 		$this->values[$name] = $val;
 	}
