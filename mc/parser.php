@@ -240,6 +240,7 @@ $this->trace( "read_union" );
 	private function read_enumdef()
 	{
 		$s = $this->s;
+$this->trace("enumdef");
 
 		$pub = false;
 		if($s->peek()->type == 'pub') {
@@ -369,6 +370,7 @@ $this->trace( "type" );
 
 	private function form()
 	{
+$this->trace("form");
 		$f = $this->obj_der();
 		return new c_form($f['name'], $f['ops']);
 	}
@@ -692,6 +694,7 @@ $this->trace( "read_if" );
 
 	private function read_body_or_part()
 	{
+$this->trace("read_body_or_part");
 		if( $this->s->peek()->type == '{' ) {
 			return $this->read_body();
 		}
