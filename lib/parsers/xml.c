@@ -10,14 +10,10 @@
 
 import "cli"
 
-/*
- */
-
-
 #define MAXNAME 16 // max name length
 #define MAXSTACK 4 // max nesting level
-#define MAXATTRS 4 // max attributes count
-#define MAXVALUE 256 // max attribute value length
+#define MAXATTRS 64 // max attributes count
+#define MAXVALUE 4096 // max attribute value length
 
 // tag types
 enum {
