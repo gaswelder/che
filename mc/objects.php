@@ -142,21 +142,8 @@ class c_form
 				continue;
 			}
 
-			if( is_array( $mod ) && $mod[0] == 'call' )
-			{
-				$args = array_slice( $mod, 1 );
-				$str = '(';
-				foreach( $args as $j => $arg ) {
-					if( $j > 0 ) $str .= ', ';
-					if( $arg == '...' ) {
-						$str .= '...';
-					}
-					else {
-						$str .= $arg->format();
-					}
-				}
-				$str .= ')';
-				$s = $s . $str;
+			if($mod instanceof c_formal_args) {
+				$s .= $mod->format();
 				continue;
 			}
 
@@ -175,6 +162,7 @@ class c_form
 			}
 
 			echo '-----objects.php------------', "\n";
+			echo "form $this->name\n";
 			var_dump( $mod );
 			echo '-----------------', "\n";
 			var_dump( $this->type );
