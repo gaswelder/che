@@ -49,6 +49,8 @@ struct __xml {
 	int line;
 	int col;
 
+	int nextchar;
+
 	// lookahead cache
 	struct __tag next_tag;
 };
@@ -69,6 +71,7 @@ pub xml *xml_open(const char *path)
 	x->f = f;
 	x->line = 1;
 	x->col = 1;
+	x->nextchar = EOF;
 
 	/*
 	 * Discard the xml header
@@ -76,7 +79,7 @@ pub xml *xml_open(const char *path)
 	discard_spaces(x);
 	expect(x, '<');
 	expect(x, '?');
-	while(fpeek(x->f) != EOF && fpeek(x->f) != '>') {
+	while(peek(x) != EOF && peek(x) != '>') {
 		get(x);
 	}
 	expect(x, '>');
@@ -334,13 +337,13 @@ void read_tag(xml *x)
 	}
 
 	expect(x, '<');
-	if(fpeek(x->f) == '/') {
+	if(peek(x) == '/') {
 		t->type = T_CLOSE;
 		get(x);
 	}
 
 	int len = 0;
-	while(isalpha(fpeek(x->f))) {
+	while(isalpha(peek(x))) {
 		if(len >= MAXNAME-1) {
 			error(x, "name too long");
 			return;
@@ -361,7 +364,7 @@ void read_tag(xml *x)
 	t->nattrs = 0;
 	while(1) {
 		discard_spaces(x);
-		if(!isalpha(fpeek(x->f))) {
+		if(!isalpha(peek(x))) {
 			break;
 		}
 
@@ -372,7 +375,7 @@ void read_tag(xml *x)
 
 		// name
 		int len = 0;
-		while(isalpha(fpeek(x->f))) {
+		while(isalpha(peek(x))) {
 			if(len >= MAXNAME-1) {
 				fatal("attrname too long: %s", a->name);
 			}
@@ -386,7 +389,7 @@ void read_tag(xml *x)
 		// val
 		expect(x, '"');
 		len = 0;
-		while(fpeek(x->f) != EOF && fpeek(x->f) != '"') {
+		while(peek(x) != EOF && peek(x) != '"') {
 			if(len >= MAXVALUE-1) {
 				fatal("attrvalue too long: %s", a->value);
 			}
@@ -397,7 +400,7 @@ void read_tag(xml *x)
 		expect(x, '"');
 	}
 
-	if(fpeek(x->f) == '/') {
+	if(peek(x) == '/') {
 		t->type = T_MONO;
 		get(x);
 	}
@@ -408,8 +411,25 @@ void read_tag(xml *x)
 	expect(x, '>');
 }
 
-int get(xml *x) {
-	int c = fgetc(x->f);
+int peek(struct __xml *x)
+{
+	if(x->nextchar == EOF) {
+		x->nextchar = fgetc(x->f);
+	}
+	return x->nextchar;
+}
+
+int get(xml *x)
+{
+	int c;
+	if(x->nextchar != EOF) {
+		c = x->nextchar;
+		x->nextchar = EOF;
+	}
+	else {
+		c = fgetc(x->f);
+	}
+
 	if(c == '\n') {
 		x->line++;
 		x->col = 1;
@@ -422,7 +442,7 @@ int get(xml *x) {
 
 void discard_spaces(xml *x)
 {
-	while(isspace(fpeek(x->f))) {
+	while(isspace(peek(x))) {
 		get(x);
 	}
 }
@@ -447,14 +467,6 @@ void error(xml *x, const char *fmt, ...)
 	va_end(l);
 
 	printf(" at %d:%d\n", x->line, x->col);
-}
-
-int fpeek(FILE *f) {
-	int c = fgetc(f);
-	if(c != EOF) {
-		ungetc(c, f);
-	}
-	return c;
 }
 
 bool streq(const char *s1, const char *s2) {
