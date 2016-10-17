@@ -52,6 +52,20 @@ pub char *readfile_str(const char *path)
 	return new;
 }
 
+/*
+ * Puts size of the file at 'path' and return true.
+ * Returns false on failure.
+ */
+pub bool filesize(const char *path, size_t *size)
+{
+	struct stat s;
+	if(stat(path, &s) < 0) {
+		return false;
+	}
+	*size = (size_t) s.st_size;
+	return true;
+}
+
 int fsize(FILE *f, size_t *s)
 {
 	if(fseek(f, 0, SEEK_END) != 0) {

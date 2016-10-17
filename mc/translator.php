@@ -312,6 +312,10 @@ class mc_trans
 			ssize_t
 		',
 
+		'sys/stat' => '
+			stat
+		',
+
 		'netdb' => '
 			getaddrinfo
 		'
