@@ -286,6 +286,13 @@ pub void xml_leave(xml *x)
 	}
 }
 
+/*
+ * Returns current position in the file
+ */
+pub long xml_filepos(xml *x)
+{
+	return ftell(x->f);
+}
 
 /*
  * Push current tag name on the stack.
