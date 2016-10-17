@@ -55,8 +55,12 @@ function mc_main($args)
 	define('MCDIR', $home);
 
 	array_shift( $args );
-	$path = array_shift( $args );
+	if(count($args) != 1) {
+		fprintf(STDERR, "Usage: che <main file>\n");
+		return 1;
+	}
 
+	$path = array_shift($args);
 	compile($path);
 }
 
