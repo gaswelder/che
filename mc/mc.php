@@ -21,31 +21,6 @@ function put( $s ) {
 	fwrite( STDERR, "$s\n" );
 }
 
-class mc
-{
-	/*
-	 * Formats the code as text
-	 */
-	static function format( $code )
-	{
-		$term = array(
-			'c_typedef',
-			'c_structdef',
-			'c_varlist'
-		);
-		$out = '';
-		foreach( $code as $element ) {
-			$out .= $element->format();
-			$cn = get_class( $element );
-			if( in_array( $cn, $term ) ) {
-				$out .= ';';
-			}
-			$out .= "\n";
-		}
-		return $out;
-	}
-}
-
 function mc_main($args)
 {
 	$home = getenv('CHE_HOME');
@@ -105,7 +80,7 @@ function compile($main)
 		$mod = parse_module($path);
 		$code = mc_trans::translate($mod->code);
 		$tmppath = tmppath($path);
-		file_put_contents($tmppath, mc::format($code));
+		file_put_contents($tmppath, format_che($code));
 		$sources[] = $tmppath;
 	}
 
@@ -140,6 +115,28 @@ function c99($sources, $name)
 	$cmd .= ' -o '.$name;
 	exec($cmd, $output, $ret);
 	return $ret;
+}
+
+/*
+ * Formats given Che code as text.
+ */
+function format_che($code)
+{
+	$term = array(
+		'c_typedef',
+		'c_structdef',
+		'c_varlist'
+	);
+	$out = '';
+	foreach( $code as $element ) {
+		$out .= $element->format();
+		$cn = get_class( $element );
+		if( in_array( $cn, $term ) ) {
+			$out .= ';';
+		}
+		$out .= "\n";
+	}
+	return $out;
 }
 
 ?>
