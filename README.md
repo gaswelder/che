@@ -198,3 +198,60 @@ There is no `pub` for variables.
 
 Enums and structs may be marked `pub` to become importable. By default
 all `enum` and `struct` declarations are private.
+
+
+## The `defer` statement
+
+Borrowed from Go, this statement probably eliminates the last excuse
+for `goto` statements: arranging cleanup code. So instead of this:
+
+	bool foo() {
+		FILE *f = fopen("foo", "rb");
+		if(!f)
+			return false;
+
+		bool r = true;
+
+		char *buf = malloc(42);
+		if(!buf) {
+			r = false;
+			goto cleanup;
+		}
+
+		for(int i = 0; i < 42; i++) {
+			if(!bar(buf[i])) {
+				r = false;
+				goto cleanup;
+			}
+		}
+
+		cleanup:
+			free(buf);
+			fclose(f);
+
+		return r;
+	}
+
+we can write this:
+
+	bool foo() {
+		FILE *f = fopen("foo", "rb");
+		if(!f) {
+			return false;
+		}
+		defer fclose(f);
+
+		char *buf = malloc(42);
+		if(!buf) {
+			return false;
+		}
+		defer free(buf);
+
+		for(int i = 0; i < 42; i++) {
+			if(!bar(buf[i])) {
+				return false;
+			}
+		}
+
+		return true;
+	}

@@ -531,6 +531,20 @@ class c_expr extends c_element
 		return $s;
 	}
 }
+
+class c_defer
+{
+	public $expr;
+
+	function __construct(c_expr $e) {
+		$this->expr = $e;
+	}
+
+	function format() {
+		return "defer " . $this->expr->format();
+	}
+}
+
 class c_return extends c_expr {
 	function format($tab = 0) {
 		return str_repeat( "\t", $tab ) . 'return ' . parent::format();

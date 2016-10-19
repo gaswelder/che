@@ -3,7 +3,7 @@
 class mc_trans
 {
 	/*
-	 * Translates MC code into C code
+	 * Translates Che code into C code
 	 */
 	static function translate( $code )
 	{
@@ -39,6 +39,7 @@ class mc_trans
 			}
 
 			if( $element instanceof c_func ) {
+				$element = self::rewrite_func($element);
 				self::proto($element->proto, $headers);
 				self::body( $element->body, $headers );
 				$prototypes[] = $element->proto;
@@ -68,6 +69,59 @@ class mc_trans
 
 		$out = array_merge( $out, $types, $prototypes, $body );
 		return $out;
+	}
+
+	private static function rewrite_func(c_func $f)
+	{
+		$n = count($f->body->parts);
+		if(!$n) return $f;
+
+		/*
+		 * Make sure that every function's body ends with a return
+		 * statement so that the deferred statements will be written
+		 * there.
+		 */
+		if(!($f->body->parts[$n-1] instanceof c_return)) {
+			$f->body->parts[] = new c_return();
+		}
+
+		$f->body = self::rewrite_body($f->body);
+		return $f;
+	}
+
+	private static function rewrite_body(c_body $b, $defer = array())
+	{
+		$c = new c_body();
+
+		foreach($b->parts as $part)
+		{
+			if($part instanceof c_defer) {
+				$defer[] = $part->expr;
+				continue;
+			}
+
+			if($part instanceof c_if
+			|| $part instanceof c_for
+			|| $part instanceof c_while) {
+				$part = clone $part;
+				$part->body = self::rewrite_body($part->body, $defer);
+			}
+			else if($part instanceof c_switch) {
+				$part = clone $part;
+				foreach($part->cases as $i => $case) {
+					$part->cases[$i][1] = self::rewrite_body(
+						$part->cases[$i][1], $defer);
+				}
+			}
+			else if($part instanceof c_return) {
+				foreach($defer as $e) {
+					$c->parts[] = $e;
+				}
+			}
+			$c->parts[] = $part;
+		}
+
+		return $c;
 	}
 
 	private static function proto(c_prototype $p, &$headers)

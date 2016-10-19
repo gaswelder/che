@@ -535,7 +535,7 @@ $this->trace( "read_body" );
 	);
 
 	// <body-part>: (comment | <obj-def> | <construct>
-	// 	| (<expr> ";") | <body> )...
+	// 	| (<expr> ";") | (<defer> ";") | <body> )...
 	private function body_part()
 	{
 $this->trace( "body_part" );
@@ -564,6 +564,13 @@ $this->trace( "body_part" );
 			$list = $this->read_varlist();
 			$this->expect(';');
 			return $list;
+		}
+
+		// <defer>?
+		if($t->type == 'defer') {
+			$d = $this->read_defer();
+			$this->expect(';');
+			return $d;
 		}
 
 		// <expr>
@@ -826,6 +833,15 @@ $this->trace( "expr" );
 		}
 
 		return $e;
+	}
+
+	// <defer>: "defer" <expr>
+	private function read_defer()
+	{
+$this->trace("defer");
+		$s = $this->s;
+		$this->expect('defer');
+		return new c_defer($this->expr());
 	}
 
 	private function is_op( $t )
