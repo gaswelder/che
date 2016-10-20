@@ -1,6 +1,6 @@
 import "clip/arr"
 import "clip/str"
-import "./parsebuf"
+import "parsebuf"
 import "zio"
 
 enum {
