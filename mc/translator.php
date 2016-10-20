@@ -81,7 +81,8 @@ class mc_trans
 		 * statement so that the deferred statements will be written
 		 * there.
 		 */
-		if(!($f->body->parts[$n-1] instanceof c_return)) {
+		if($f->proto->form->name != 'main'
+			&& !($f->body->parts[$n-1] instanceof c_return)) {
 			$f->body->parts[] = new c_return();
 		}
 
