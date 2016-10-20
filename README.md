@@ -66,7 +66,92 @@ example compile:
 	};
 
 
-## Modules
+## Declaration lists
+
+In C it is possible to declare multiple variables with a common type
+like this:
+
+	int a, b, c;
+	struct vec {
+		int x, y, x;
+	};
+
+In Che it is also possible to do that with function parameters:
+
+	struct vec sum(struct vec a, b) {
+		...
+	}
+
+The original C rules still apply: pointer and array notations "stick"
+to the identifiers, not the type.
+
+
+## No preprocessor
+
+There is no preprocessor, so all macros are gone. `#define` statements
+are processed by the same parser as the normal language and are used
+only to define constants.
+
+
+## The `defer` statement
+
+Borrowed from Go, this statement probably eliminates the last excuse
+for using `goto` statements: arranging cleanup code. So instead of
+this:
+
+	bool foo() {
+		FILE *f = fopen("foo", "rb");
+		if(!f)
+			return false;
+
+		bool r = true;
+
+		char *buf = malloc(42);
+		if(!buf) {
+			r = false;
+			goto cleanup;
+		}
+
+		for(int i = 0; i < 42; i++) {
+			if(!bar(buf[i])) {
+				r = false;
+				goto cleanup;
+			}
+		}
+
+		cleanup:
+			free(buf);
+			fclose(f);
+
+		return r;
+	}
+
+we can write this:
+
+	bool foo() {
+		FILE *f = fopen("foo", "rb");
+		if(!f) {
+			return false;
+		}
+		defer fclose(f);
+
+		char *buf = malloc(42);
+		if(!buf) {
+			return false;
+		}
+		defer free(buf);
+
+		for(int i = 0; i < 42; i++) {
+			if(!bar(buf[i])) {
+				return false;
+			}
+		}
+
+		return true;
+	}
+
+
+## Modules and packages
 
 Some time ago a single C source file used to be called a "module". It
 is true in that sense that such a file can be compiled independently,
@@ -102,9 +187,6 @@ Modules are searched first in the internal modules library, and then in
 current working directory. If import name begins with "./", the module
 is searched relatively to the directory of the importing module.
 
-
-## Packages
-
 A module can be split into several files to better organize the code.
 In this case the containing folder must be named in the import
 statement. The separate files are then not treated as modules, but as
@@ -125,39 +207,11 @@ following package pak:
 		}
 
 would be compiled as if it was a single module:
+
 	*:
 		typedef int foo_t;
 		pub int foo(foo_t x) {...}
 		int bar(foo_t x) {...}
-
-
-
-
-## Declaration lists
-
-In C it is possible to declare multiple variables with a common type
-like this:
-
-	int a, b, c;
-	struct vec {
-		int x, y, x;
-	};
-
-In Che it is also possible to do that with sfunction parameters:
-
-	struct vec sum(struct vec a, b) {
-		...
-	}
-
-The original C rules still apply: pointer and array notations "stick"
-to the identifiers, not the type.
-
-
-## No preprocessor
-
-There is no preprocessor, so almost all macros are gone. `#define`
-statements are processed by the same parser as the normal language and
-are used only to define constants.
 
 
 ## The `pub` keyword
@@ -221,60 +275,3 @@ There is no `pub` for variables.
 
 Enums and structs may be marked `pub` to become importable. By default
 all `enum` and `struct` declarations are private.
-
-
-## The `defer` statement
-
-Borrowed from Go, this statement probably eliminates the last excuse
-for `goto` statements: arranging cleanup code. So instead of this:
-
-	bool foo() {
-		FILE *f = fopen("foo", "rb");
-		if(!f)
-			return false;
-
-		bool r = true;
-
-		char *buf = malloc(42);
-		if(!buf) {
-			r = false;
-			goto cleanup;
-		}
-
-		for(int i = 0; i < 42; i++) {
-			if(!bar(buf[i])) {
-				r = false;
-				goto cleanup;
-			}
-		}
-
-		cleanup:
-			free(buf);
-			fclose(f);
-
-		return r;
-	}
-
-we can write this:
-
-	bool foo() {
-		FILE *f = fopen("foo", "rb");
-		if(!f) {
-			return false;
-		}
-		defer fclose(f);
-
-		char *buf = malloc(42);
-		if(!buf) {
-			return false;
-		}
-		defer free(buf);
-
-		for(int i = 0; i < 42; i++) {
-			if(!bar(buf[i])) {
-				return false;
-			}
-		}
-
-		return true;
-	}
