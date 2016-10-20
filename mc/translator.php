@@ -23,6 +23,13 @@ class mc_trans
 				continue;
 			}
 
+			if($element instanceof c_structdef
+				|| $element instanceof c_enum
+				|| $element instanceof c_define) {
+				$types[] = $element;
+				continue;
+			}
+
 			if($element instanceof c_import) {
 				$imp = get_import($element->path, $element->dir);
 				array_splice($code, $i, 1, $imp->code);

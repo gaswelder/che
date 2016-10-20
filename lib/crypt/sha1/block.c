@@ -16,7 +16,7 @@ import "zio"
  * The number of zeros 'z' is such that end of stream happens to be at
  * a length mark that is a multiple of 512 bits (64 bytes).
  */
-pub struct _src {
+struct _src {
 	zio *stream; // data stream
 
 	uint64_t length; // current message length in bits
@@ -29,7 +29,7 @@ pub struct _src {
 	bool more;
 };
 
-pub void src_init(struct _src *s, zio *data)
+void src_init(struct _src *s, zio *data)
 {
 	s->stream = data;
 	s->length = 0;
@@ -37,7 +37,7 @@ pub void src_init(struct _src *s, zio *data)
 	s->more = true;
 }
 
-pub bool fill_block(struct _src *s, uint32_t block[16])
+bool fill_block(struct _src *s, uint32_t block[16])
 {
 	if(!s->more) return false;
 	for(int i = 0; i < 16; i++) {

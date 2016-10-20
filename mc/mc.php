@@ -12,6 +12,7 @@ require $dir . '/parser.php';
 require $dir . '/objects.php';
 require $dir . '/translator.php';
 require $dir . '/modules.php';
+require $dir . '/packages.php';
 
 function trace( $m, $s = null ) {
 	fwrite( STDERR, "--- $m		$s\n" );

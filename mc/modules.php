@@ -10,11 +10,52 @@ class import {
 	public $code = array();
 }
 
+class modules
+{
+	static function parse($path, $typenames = array())
+	{
+		$mod = new module();
+
+		$s = new parser($path);
+
+		foreach($typenames as $name) {
+			$s->add_type($name);
+		}
+
+		while(!$s->ended())
+		{
+			$t = $s->get();
+			if($t instanceof c_import)
+			{
+				/*
+				 * Update the parser's types list
+				 * from the referenced module
+				 */
+				$imp = get_import($t->path, $t->dir);
+				foreach($imp->code as $decl) {
+					if($decl instanceof c_typedef) {
+						$s->add_type($decl->form->name);
+					}
+				}
+				/*
+				 * Add the module's path to the dependencies list
+				 */
+				$mod->deps[] = $imp->path;
+			}
+
+			$mod->code[] = $t;
+		}
+
+		$mods[$path] = $mod;
+		return $mod;
+	}
+}
+
 /*
  * Parses a module at given path
  * and returns a 'module' object
  */
-function parse_module($path)
+function parse_module($path, $typenames = array())
 {
 	static $mods = array();
 
@@ -22,31 +63,11 @@ function parse_module($path)
 		return $mods[$path];
 	}
 
-	$mod = new module();
-
-	$s = new parser($path);
-	while(!$s->ended())
-	{
-		$t = $s->get();
-		if($t instanceof c_import)
-		{
-			/*
-			 * Update the parser's types list
-			 * from the referenced module
-			 */
-			$imp = get_import($t->path, $t->dir);
-			foreach($imp->code as $decl) {
-				if($decl instanceof c_typedef) {
-					$s->add_type($decl->form->name);
-				}
-			}
-			/*
-			 * Add the module's path to the dependencies list
-			 */
-			$mod->deps[] = $imp->path;
-		}
-
-		$mod->code[] = $t;
+	if(is_dir($path)) {
+		$mod = packages::parse($path);
+	}
+	else {
+		$mod = modules::parse($path, $typenames);
 	}
 
 	$mods[$path] = $mod;
@@ -107,19 +128,22 @@ function find_import($name, $refdir)
 	if($name[0] == '.') {
 		$name = substr($name, 1);
 		$p = array(
-			$refdir.$name.".c"
+			$refdir.$name
 		);
 	}
 	else {
 		$p = array(
-			MCDIR . "/lib/$name.c",
-			MCDIR . "/lib/$name/main.c",
-			$name . ".c",
-			"$name/main.c"
+			MCDIR . "/lib/$name",
+			"$refdir/$name",
+			$name
 		);
 	}
 	foreach( $p as $path ) {
 		if( file_exists( $path ) ) {
+			return $path;
+		}
+		$path .= ".c";
+		if(file_exists($path)) {
 			return $path;
 		}
 	}

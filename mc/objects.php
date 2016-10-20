@@ -217,6 +217,9 @@ class c_typedef extends c_element
 	public $type;
 
 	function __construct(c_type $type, c_form $form) {
+		if(!$form->name) {
+			trigger_error("typedef: empty type name");
+		}
 		$this->type = $type;
 		$this->form = $form;
 	}

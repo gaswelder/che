@@ -1,11 +1,10 @@
 import "zio"
-import "./block"
 
 /*
  * http://csrc.nist.gov/publications/fips/fips180-4/fips-180-4.pdf
  */
 
-pub void sha1(zio *data, uint32_t sum[5])
+void sha1(zio *data, uint32_t sum[5])
 {
 	sum[0] = 0x67452301;
 	sum[1] = 0xefcdab89;

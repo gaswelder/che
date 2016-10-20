@@ -34,7 +34,7 @@ uint32_t T[64] = {
 /*
  * Initializes the digest
  */
-pub void md5_init(uint32_t md[4])
+void md5_init(uint32_t md[4])
 {
 	md[0] = 0x67452301;
 	md[1] = 0xEFCDAB89;
@@ -45,7 +45,7 @@ pub void md5_init(uint32_t md[4])
 /*
  * Feeds next block into the digest
  */
-pub void md5_feed(uint32_t buf[4], uint32_t block[16]) {
+void md5_feed(uint32_t buf[4], uint32_t block[16]) {
 	// tmp = buf
 	uint32_t tmp[4];
 	tmp[0] = buf[0];

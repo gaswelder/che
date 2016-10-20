@@ -45,6 +45,13 @@ class parser
 	}
 
 	function add_type($name) {
+		if(!$name) {
+			trigger_error("add_type: empty type name");
+		}
+
+		if(in_array($name, $this->type_names)) {
+			trigger_error("add_type: redefinition of type $name");
+		}
 		//trace("New type: $name");
 		$this->type_names[] = $name;
 	}
@@ -622,6 +629,9 @@ $this->trace( "read_varlist" );
 
 	private function is_typename( $word )
 	{
+		$ok = in_array($word, $this->type_names);
+$this->trace("is_typename($word) = " . ($ok ? "yes" : "no"));
+		return $ok;
 		return in_array( $word, $this->type_names );
 	}
 

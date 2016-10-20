@@ -1,5 +1,5 @@
 import "zio"
-import "./md5"
+
 /*
  * The internal "machinery" processes a stream of 64-byte blocks.
  * The message itself is put in the base of that stream, followed by
@@ -31,7 +31,7 @@ struct __src {
 /*
  * Process the stream and put the digest in 'digest'.
  */
-pub void md5(zio *stream, uint32_t digest[4])
+void md5(zio *stream, uint32_t digest[4])
 {
 	struct __src s = {
 		.stream = stream,

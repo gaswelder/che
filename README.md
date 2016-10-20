@@ -102,12 +102,35 @@ Modules are searched first in the internal modules library, and then in
 current working directory. If import name begins with "./", the module
 is searched relatively to the directory of the importing module.
 
-A module can be put into its own directory. The directory name is then
-the module's name, and file "main" will be imported from it. For
-example, if "foo" is a directory, then `import "foo"` will be
-equivalent to `import "foo/main"`. The "main" source can use the "./"
-rule to import its neighbours in it. This allows creating packages that
-can be treated as single modules.
+
+## Packages
+
+A module can be split into several files to better organize the code.
+In this case the containing folder must be named in the import
+statement. The separate files are then not treated as modules, but as
+incomplete module files. When importing, these files will be merged to
+obtain the module which will finally be imported and compiled. So, the
+following package pak:
+
+	pak/a.c:
+		typedef int foo_t;
+
+		pub int foo(foo_t x) {
+			return bar(2*x);
+		}
+
+	pak/b.c:
+		int bar(foo_t x) {
+			return x*x;
+		}
+
+would be compiled as if it was a single module:
+	*:
+		typedef int foo_t;
+		pub int foo(foo_t x) {...}
+		int bar(foo_t x) {...}
+
+
 
 
 ## Declaration lists
