@@ -50,7 +50,7 @@ function compile($main)
 	$n = count($list);
 	for($i = 0; $i < $n; $i++)
 	{
-		$mod = parse_module($list[$i], getcwd());
+		$mod = parse_module($list[$i]);
 		foreach($mod->deps as $path) {
 			$list[] = $path;
 			$n++;
