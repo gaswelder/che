@@ -53,6 +53,20 @@ class c_define extends c_element {
 	}
 }
 
+/*
+ * A #link directive
+ */
+class c_link
+{
+	public $name;
+	function __construct($name) {
+		$this->name = $name;
+	}
+	function format() {
+		return "";
+	}
+}
+
 class c_include extends c_element {
 	public $path;
 	function __construct( $path ) {

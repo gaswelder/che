@@ -149,6 +149,10 @@ class parser
 				$value = strtok( "\n" );
 				return new c_define( $name, $value );
 
+			case '#link':
+				$name = strtok("\n");
+				return new c_link($name);
+
 			case '#ifdef':
 			case '#ifndef':
 				$id = trim( strtok( "\n" ) );

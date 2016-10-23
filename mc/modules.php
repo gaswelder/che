@@ -3,6 +3,7 @@
 class module {
 	public $code = array();
 	public $deps = array();
+	public $link = array();
 }
 
 class import {
@@ -41,6 +42,9 @@ class modules
 				 * Add the module's path to the dependencies list
 				 */
 				$mod->deps[] = $imp->path;
+			}
+			if($t instanceof c_link) {
+				$mod->link[] = $t->name;
 			}
 
 			$mod->code[] = $t;
