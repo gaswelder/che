@@ -310,6 +310,16 @@ class mc_trans
 			INT_MAX INT_MIN UINT_MAX
 		',
 
+		'math' => '
+			acos asin atan atan2 cos sin tan
+			acosh asinh atanh cosh sinh tanh
+			exp exp2 expm1 frexp ilogb ldexp
+			log10 log1p log2 logb modf scalbn scalbln
+			fabs pow sqrt
+			ceil floor
+			round roundf roundl
+		',
+
 		'stdarg' => '
 			va_list va_arg va_end va_start va_copy',
 
