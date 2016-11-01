@@ -11,6 +11,7 @@ require $dir . '/tokens.php';
 require $dir . '/parser.php';
 require $dir . '/objects.php';
 require $dir . '/translator.php';
+require $dir . '/tr_headers.php';
 require $dir . '/modules.php';
 require $dir . '/packages.php';
 
