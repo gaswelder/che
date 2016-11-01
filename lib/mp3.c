@@ -83,10 +83,6 @@ pub mp3file *mp3open(const char *path)
 		m->err = "Format not recognized";
 	}
 
-	nextframe(m);
-	nextframe(m);
-	nextframe(m);
-
 	return m;
 }
 
