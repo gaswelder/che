@@ -10,22 +10,16 @@ class mc_trans
 		$prototypes = array();
 		$types = array();
 		$body = array();
-		$headers = array();
 
 		$n = count($code);
 		for($i = 0; $i < $n; $i++)
 		{
 			$element = $code[$i];
 
-			if( $element instanceof c_typedef ) {
-				self::type( $element->type, $headers );
-				$types[] = $element;
-				continue;
-			}
-
 			if($element instanceof c_structdef
 				|| $element instanceof c_enum
-				|| $element instanceof c_define) {
+				|| $element instanceof c_define
+				|| $element instanceof c_typedef) {
 				$types[] = $element;
 				continue;
 			}
@@ -38,22 +32,9 @@ class mc_trans
 				continue;
 			}
 
-			if( $element instanceof c_structdef ) {
-				$types[] = new c_structdef($element->name);
-				foreach( $element->fields as $list ) {
-					self::varlist($list, $headers );
-				}
-			}
-
 			if( $element instanceof c_func ) {
 				$element = self::rewrite_func($element);
-				self::proto($element->proto, $headers);
-				self::body( $element->body, $headers );
 				$prototypes[] = $element->proto;
-			}
-
-			if($element instanceof c_prototype) {
-				self::proto($element, $headers);
 			}
 
 			/*
@@ -66,16 +47,12 @@ class mc_trans
 			$body[] = $element;
 		}
 
-		$out = array();
-
-		$headers = array_keys( $headers );
-		sort( $headers );
-		foreach( $headers as $h ) {
-			$out[] = new c_macro( 'include', "<$h.h>" );
-		}
-
-		$out = array_merge( $out, $types, $prototypes, $body );
-		return $out;
+		$out = array_merge( $types, $prototypes, $body );
+		/*
+		 * Generate #include headers for the code
+		 */
+		$headers = self::headers($out);
+		return array_merge($headers, $out);
 	}
 
 	private static function rewrite_func(c_func $f)
@@ -130,6 +107,39 @@ class mc_trans
 		}
 
 		return $c;
+	}
+
+	private static function headers($code)
+	{
+		$headers = array();
+
+		foreach($code as $element)
+		{
+			if( $element instanceof c_typedef ) {
+				self::type( $element->type, $headers );
+			}
+			else if( $element instanceof c_structdef ) {
+				foreach( $element->fields as $list ) {
+					self::varlist($list, $headers );
+				}
+			}
+			else if($element instanceof c_func) {
+				self::proto($element->proto, $headers);
+				self::body( $element->body, $headers );
+			}
+			else if($element instanceof c_prototype) {
+				self::proto($element, $headers);
+			}
+		}
+
+		$headers = array_keys( $headers );
+		sort( $headers );
+
+		$out = array();
+		foreach( $headers as $h ) {
+			$out[] = new c_macro( 'include', "<$h.h>" );
+		}
+		return $out;
 	}
 
 	private static function proto(c_prototype $p, &$headers)
