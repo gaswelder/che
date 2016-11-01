@@ -50,7 +50,7 @@ struct mp3file {
 pub struct mp3time {
 	int min;
 	int sec;
-	int usec;
+	uint64_t usec;
 };
 
 typedef struct mp3file mp3file;
