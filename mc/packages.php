@@ -65,6 +65,7 @@ class packages
 
 		foreach ($mods as $m) {
 			$mod->deps = array_merge($mod->deps, $m->deps);
+			$mod->link = array_merge($mod->link, $m->link);
 
 			/*
 			 * Merge the code removing redundant imports.
@@ -84,6 +85,7 @@ class packages
 		}
 
 		$mod->deps = array_unique($mod->deps);
+		$mod->link = array_merge($mod->link);
 		return $mod;
 	}
 
