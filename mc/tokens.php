@@ -1,13 +1,14 @@
 <?php
 
 // First stage parser
-
-class token {
+class token
+{
 	public $type;
 	public $content;
 	public $pos;
 
-	function __construct( $type, $content, $pos ) {
+	function __construct($type, $content, $pos)
+	{
 		$this->type = $type;
 		$this->content = $content;
 		$this->pos = $pos;
@@ -15,23 +16,27 @@ class token {
 
 	function __toString()
 	{
-		if( $this->content === null ) {
-			return '[' . $this->type . ']';
+		if ($this->content === null) {
+			return '['.$this->type.']';
 		}
 
 		$n = 40;
-		if( mb_strlen( $this->content ) > $n ) {
-			$c = mb_substr( $this->content, 0, $n-3 ) . '...';
+		if (mb_strlen($this->content) > $n) {
+			$c = mb_substr($this->content, 0, $n-3).'...';
 		}
 		else $c = $this->content;
-		$c = str_replace( array( "\r", "\n", "\t" ),
-			array( "\\r", "\\n", "\\t" ), $c );
+		$c = str_replace(array("\r", "\n", "\t"), array(
+			"\\r",
+			"\\n",
+			"\\t"
+		), $c);
 		return "[$this->type, $c]";
 	}
 }
 
-function tok( $type, $data, $pos ) {
-	return new token( $type, $data, $pos );
+function tok($type, $data, $pos)
+{
+	return new token($type, $data, $pos);
 }
 
 class mctok
@@ -45,15 +50,18 @@ class mctok
 	 */
 	protected $buffer = array();
 
-	function __construct( $path ) {
+	function __construct($path)
+	{
 		$this->s = new buf(file_get_contents($path));
 	}
 
-	function ended() {
+	function ended()
+	{
 		return $this->peek() == null;
 	}
 
-	function get() {
+	function get()
+	{
 		$t = $this->_get();
 		return $t;
 	}
@@ -63,12 +71,12 @@ class mctok
 	 */
 	function _get()
 	{
-		if( !empty($this->buffer) ) {
+		if (!empty($this->buffer)) {
 			return array_pop($this->buffer);
 		}
 
 		$t = $this->read();
-		while( $t && $t->type == 'comment' ) {
+		while ($t && $t->type == 'comment') {
 			$t = $this->read();
 		}
 		return $t;
@@ -77,21 +85,21 @@ class mctok
 	/*
 	 * Pushes a token back to the stream.
 	 */
-	function unget( $t ) {
-		array_push( $this->buffer, $t );
+	function unget($t)
+	{
+		array_push($this->buffer, $t);
 	}
 
 	/*
 	 * Returns next token without removing it from the stream.
 	 * Returns null if there is no next token.
 	 */
-	function peek( $n = 0 )
+	function peek($n = 0)
 	{
 		$buf = array();
-		while( $n >= 0 )
-		{
+		while ($n >= 0) {
 			$t = $this->get();
-			if( $t === null ) {
+			if ($t === null) {
 				break;
 			}
 
@@ -99,15 +107,15 @@ class mctok
 			$n--;
 		}
 
-		if( $n == -1 ) {
+		if ($n == -1) {
 			$r = $buf[count($buf)-1];
 		}
 		else {
 			$r = null;
 		}
 
-		while( !empty( $buf ) ) {
-			$this->unget( array_pop( $buf ) );
+		while (!empty($buf)) {
+			$this->unget(array_pop($buf));
 		}
 
 		return $r;
@@ -117,34 +125,86 @@ class mctok
 	 * Sorted by the length, longest first.
 	 */
 	private static $symbols = array(
-		'<<=', '>>=',
+		'<<=',
+		'>>=',
 		'...',
-		'++', '--', '->', '<<', '>>', '<=', '>=', '&&', '||',
-		'+=', '-=', '*=', '/=', '%=', '&=', '^=', '|=', '==', '!=',
-		'!', '~', '&', '^', '*', '/', '%', '=', '|', ':', ',', '<', '>',
-		'+', '-',
-		'{', '}', ';', '[', ']', '(', ')', '.', '?'
+		'++',
+		'--',
+		'->',
+		'<<',
+		'>>',
+		'<=',
+		'>=',
+		'&&',
+		'||',
+		'+=',
+		'-=',
+		'*=',
+		'/=',
+		'%=',
+		'&=',
+		'^=',
+		'|=',
+		'==',
+		'!=',
+		'!',
+		'~',
+		'&',
+		'^',
+		'*',
+		'/',
+		'%',
+		'=',
+		'|',
+		':',
+		',',
+		'<',
+		'>',
+		'+',
+		'-',
+		'{',
+		'}',
+		';',
+		'[',
+		']',
+		'(',
+		')',
+		'.',
+		'?'
 	);
 
 	private static $keywords = array(
-		'typedef', 'struct', 'union', 'import', 'enum',
-		'const', 'pub',
-		'if', 'else', 'for', 'while', 'defer', 'return',
-		'switch', 'case',
+		'typedef',
+		'struct',
+		'union',
+		'import',
+		'enum',
+		'const',
+		'pub',
+		'if',
+		'else',
+		'for',
+		'while',
+		'defer',
+		'return',
+		'switch',
+		'case',
 		'sizeof'
 	);
 
-	function error( $msg ) {
+	function error($msg)
+	{
 		$pos = $this->s->pos();
 		$str = $this->s->context(10);
 		//fwrite( STDERR, "$msg at $pos: \"$str...\"\n" );
-		trigger_error( "$msg at $pos: \"$str...\"" );
+		trigger_error("$msg at $pos: \"$str...\"");
 		exit;
 	}
 
-	protected function _read() {
+	protected function _read()
+	{
 		$t = $this->_read();
-		put( "read: $t" );
+		put("read: $t");
 		return $t;
 	}
 
@@ -152,9 +212,9 @@ class mctok
 	{
 		$s = $this->s;
 
-		$s->read_set( self::spaces );
+		$s->read_set(self::spaces);
 
-		if( $s->ended() ) {
+		if ($s->ended()) {
 			return null;
 		}
 
@@ -163,105 +223,101 @@ class mctok
 		/*
 		 * If we are on a new line and '#' follows, read it as a macro.
 		 */
-		if( $s->peek() == '#' ) {
-			return tok( 'macro', $s->skip_until( "\n" ), $pos );
+		if ($s->peek() == '#') {
+			return tok('macro', $s->skip_until("\n"), $pos);
 		}
 
 		/*
 		 * Multiple-line comments.
 		 */
-		if( $s->skip_literal( '/*' ) )
-		{
-			$comment = $s->until_literal( '*/' );
-			if( !$s->skip_literal( '*/' ) ) {
-				return $this->error( "*/ expected" );
+		if ($s->skip_literal('/*')) {
+			$comment = $s->until_literal('*/');
+			if (!$s->skip_literal('*/')) {
+				return $this->error("*/ expected");
 			}
-			return tok( 'comment', $comment, $pos );
+			return tok('comment', $comment, $pos);
 		}
 
 		/*
 		 * Singe-line comments.
 		 */
-		if( $s->skip_literal( '//' ) ) {
-			$comment = $s->skip_until( "\n" );
-			return tok( 'comment', $comment, $pos );
+		if ($s->skip_literal('//')) {
+			$comment = $s->skip_until("\n");
+			return tok('comment', $comment, $pos);
 		}
 
 		/*
 		 * Identifier name.
 		 */
-		if( ctype_alpha( $s->peek() ) || $s->peek() == '_' )
-		{
+		if (ctype_alpha($s->peek()) || $s->peek() == '_') {
 			$word = '';
-			while( !$s->ended() )
-			{
+			while (!$s->ended()) {
 				$ch = $s->peek();
-				if( ctype_alpha( $ch ) || ctype_digit( $ch ) || $ch == '_' ) {
+				if (ctype_alpha($ch) || ctype_digit($ch) || $ch == '_') {
 					$word .= $s->get();
 					continue;
 				}
 				break;
 			}
 
-			if( in_array( $word, self::$keywords ) ) {
-				return tok( $word, null, $pos );
+			if (in_array($word, self::$keywords)) {
+				return tok($word, null, $pos);
 			}
-			return tok( 'word', $word, $pos );
+			return tok('word', $word, $pos);
 		}
 
 		/*
 		 * Number
 		 */
-		if(ctype_digit($s->peek())) {
+		if (ctype_digit($s->peek())) {
 			return $this->read_number();
 		}
 
 		/*
 		 * String.
 		 */
-		if( $s->peek() == '"' )
-		{
+		if ($s->peek() == '"') {
 			$str = '';
 			/*
 			 * A string literal may be split into parts,
 			 * so concatenate it.
 			 */
-			while( $s->peek() == '"' ) {
+			while ($s->peek() == '"') {
 				$str .= $this->read_string();
-				$s->read_set( self::spaces );
+				$s->read_set(self::spaces);
 			}
-			return tok( 'string', $str, $pos );
+			return tok('string', $str, $pos);
 		}
 
 		/*
 		 * Character literal
 		 */
-		if( $s->peek() == "'" ) {
+		if ($s->peek() == "'") {
 			$s->get();
 
 			$str = '';
-			if( $s->peek() == '\\' ) {
+			if ($s->peek() == '\\') {
 				$str .= $s->get();
 			}
 
 			$str .= $s->get();
-			if( $s->get() != "'" ) {
-				return $this->error( "Single quote expected" );
+			if ($s->get() != "'") {
+				return $this->error("Single quote expected");
 			}
-			return tok( 'char', $str, $pos );
+			return tok('char', $str, $pos);
 		}
 
 		/*
 		 * Special character.
 		 */
-		foreach( self::$symbols as $sym ) {
-			if( $s->skip_literal( $sym ) ) {
-				return tok( $sym, null, $pos );
+		foreach (self::$symbols as $sym) {
+			if ($s->skip_literal($sym)) {
+				return tok($sym, null, $pos);
 			}
 		}
 
 		$ch = $s->peek();
-		return $this->error( "Unexpected character: '$ch'" );
+		return $this->error("Unexpected character: '$ch'");
 	}
 
 	private function read_number()
@@ -274,7 +330,7 @@ class mctok
 		 */
 		$p1 = $s->get();
 		$p2 = $s->peek();
-		$s->unget( $p1 );
+		$s->unget($p1);
 
 		$hex = false;
 		$alpha = '0123456789';
@@ -283,7 +339,7 @@ class mctok
 		/*
 		 * If '0x' follows, read a hexademical constant.
 		 */
-		if($p1 == '0' && $p2 == 'x') {
+		if ($p1 == '0' && $p2 == 'x') {
 			$hex = true;
 			$num .= $s->get();
 			$num .= $s->get();
@@ -291,25 +347,25 @@ class mctok
 		}
 		$num .= $s->read_set($alpha);
 
-		if(!$hex && $s->peek() == '.') {
+		if (!$hex && $s->peek() == '.') {
 			$num .= $s->get();
 			$num .= $s->read_set($alpha);
 		}
 		else {
-			if($s->peek() == 'U') {
+			if ($s->peek() == 'U') {
 				$num .= $s->get();
 			}
 
-			if( $s->peek() == 'L' ) {
+			if ($s->peek() == 'L') {
 				$num .= $s->get();
 			}
 		}
 
-		if(!$s->ended() && ctype_alpha($s->peek())) {
+		if (!$s->ended() && ctype_alpha($s->peek())) {
 			$c = $s->peek();
 			return $this->error("Unexpected character: '$c'");
 		}
-		return tok( 'num', $num, $pos );
+		return tok('num', $num, $pos);
 	}
 
 	private function read_string()
@@ -318,15 +374,15 @@ class mctok
 
 		$s->get();
 		$str = '';
-		while( !$s->ended() && $s->peek() != '"' ) {
+		while (!$s->ended() && $s->peek() != '"') {
 			$ch = $s->get();
 			$str .= $ch;
-			if( $ch == '\\' ) {
+			if ($ch == '\\') {
 				$str .= $s->get();
 			}
 		}
-		if( $s->get() != '"' ) {
-			return $this->error( "Double quote expected" );
+		if ($s->get() != '"') {
+			return $this->error("Double quote expected");
 		}
 		return $str;
 	}

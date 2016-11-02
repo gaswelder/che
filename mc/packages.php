@@ -37,13 +37,13 @@ class packages
 		 * the parser only type names defined only in the other files.
 		 */
 		$files = glob("$path/*.c");
-		foreach($files as $fpath) {
+		foreach ($files as $fpath) {
 			/*
 			 * Get typenames defined not in this file
 			 */
 			$context = array();
-			foreach($types as $k => $list) {
-				if($k == $fpath) continue;
+			foreach ($types as $k => $list) {
+				if ($k == $fpath) continue;
 				$context = array_merge($context, $list);
 			}
 			/*
@@ -63,18 +63,18 @@ class packages
 
 		$imports = array();
 
-		foreach($mods as $m) {
+		foreach ($mods as $m) {
 			$mod->deps = array_merge($mod->deps, $m->deps);
 
 			/*
 			 * Merge the code removing redundant imports.
 			 */
-			foreach($m->code as $c) {
+			foreach ($m->code as $c) {
 				/*
 				 * If this import has been here already, skip it.
 				 */
-				if($c instanceof c_import) {
-					if(in_array($c->path, $imports)) {
+				if ($c instanceof c_import) {
+					if (in_array($c->path, $imports)) {
 						continue;
 					}
 					$imports[] = $c->path;
@@ -95,7 +95,7 @@ class packages
 	{
 		$list = array();
 		$files = glob("$path/*.c");
-		foreach($files as $fpath) {
+		foreach ($files as $fpath) {
 			$list[$fpath] = self::typenames_f($fpath);
 		}
 		return $list;
@@ -108,17 +108,17 @@ class packages
 	{
 		$list = array();
 		$s = new mctok($path);
-		while(1) {
+		while (1) {
 			$t = $s->get();
-			if($t === null) {
+			if ($t === null) {
 				break;
 			}
-			if($t->type != 'typedef') {
+			if ($t->type != 'typedef') {
 				continue;
 			}
 
 			$name = self::get_typename($s, $path);
-			if(!$name) break;
+			if (!$name) break;
 			$list[] = $name;
 		}
 		return $list;
@@ -131,9 +131,9 @@ class packages
 		 * the most recent 'word' token.
 		 */
 		$name = null;
-		while(!$s->ended() && $s->peek()->type != ';') {
+		while (!$s->ended() && $s->peek()->type != ';') {
 			$t = $s->get();
-			if($t->type == 'word') {
+			if ($t->type == 'word') {
 				$name = $t->content;
 			}
 		}
@@ -142,14 +142,14 @@ class packages
 		 */
 		$t = $s->peek();
 		$pos = $t->pos;
-		if($t->type != ';') {
+		if ($t->type != ';') {
 			trigger_error("Semicolon expected at $path:$pos");
 			return null;
 		}
 		/*
 		 * Return the recorded name.
 		 */
-		if(!$name) {
+		if (!$name) {
 			trigger_error("Type name expected at $path:$pos");
 			return null;
 		}

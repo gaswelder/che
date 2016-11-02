@@ -1,38 +1,39 @@
 <?php
-
 require '/home/gas/code/php/lib/debug.php';
 stop_on_error();
-error_reporting( -1 );
+error_reporting(-1);
 
-$dir = dirname( __FILE__ );
+$dir = dirname(__FILE__);
 
-require $dir . '/buf.php';
-require $dir . '/tokens.php';
-require $dir . '/parser.php';
-require $dir . '/objects.php';
-require $dir . '/translator.php';
-require $dir . '/tr_headers.php';
-require $dir . '/modules.php';
-require $dir . '/packages.php';
+require $dir.'/buf.php';
+require $dir.'/tokens.php';
+require $dir.'/parser.php';
+require $dir.'/objects.php';
+require $dir.'/translator.php';
+require $dir.'/tr_headers.php';
+require $dir.'/modules.php';
+require $dir.'/packages.php';
 
-function trace( $m, $s = null ) {
-	fwrite( STDERR, "--- $m		$s\n" );
+function trace($m, $s = null)
+{
+	fwrite(STDERR, "--- $m		$s\n");
 }
 
-function put( $s ) {
-	fwrite( STDERR, "$s\n" );
+function put($s)
+{
+	fwrite(STDERR, "$s\n");
 }
 
 function mc_main($args)
 {
 	$home = getenv('CHE_HOME');
-	if($home === false) {
+	if ($home === false) {
 		$home = '.';
 	}
 	define('MCDIR', $home);
 
-	array_shift( $args );
-	if(count($args) != 1) {
+	array_shift($args);
+	if (count($args) != 1) {
 		fprintf(STDERR, "Usage: che <main file>\n");
 		return 1;
 	}
@@ -51,10 +52,9 @@ function compile($main)
 	$link = array();
 	$list = array($main);
 	$n = count($list);
-	for($i = 0; $i < $n; $i++)
-	{
+	for ($i = 0; $i < $n; $i++) {
 		$mod = parse_module($list[$i]);
-		foreach($mod->deps as $path) {
+		foreach ($mod->deps as $path) {
 			$list[] = $path;
 			$n++;
 		}
@@ -69,8 +69,8 @@ function compile($main)
 	 */
 	$rev = array_reverse($list);
 	$list = array();
-	foreach($rev as $name) {
-		if(!in_array($name, $list)) {
+	foreach ($rev as $name) {
+		if (!in_array($name, $list)) {
 			$list[] = $name;
 		}
 	}
@@ -80,7 +80,7 @@ function compile($main)
 	 * Translate the modules to C
 	 */
 	$sources = array();
-	foreach($list as $path) {
+	foreach ($list as $path) {
 		$mod = parse_module($path);
 		$code = mc_trans::translate($mod->code);
 		$tmppath = tmppath($path);
@@ -92,8 +92,8 @@ function compile($main)
 	 * Derive executable name from the main module
 	 */
 	$outname = basename($list[0]);
-	if( $p = strrpos( $outname, '.' ) ) {
-		$outname = substr( $outname, 0, $p );
+	if ($p = strrpos($outname, '.')) {
+		$outname = substr($outname, 0, $p);
 	}
 
 	/*
@@ -105,7 +105,7 @@ function compile($main)
 function tmppath($path)
 {
 	$dir = 'mcbuild';
-	if( !file_exists($dir) && !mkdir($dir) ) {
+	if (!file_exists($dir) && !mkdir($dir)) {
 		exit(1);
 	}
 	return $dir.'/'.basename($path).'-'.md5($path).'.c';
@@ -115,9 +115,9 @@ function c99($sources, $name, $link)
 {
 	$cmd = 'c99 -Wall -Wextra -Werror -pedantic -pedantic-errors';
 	$cmd .= ' -fmax-errors=3 -D _XOPEN_SOURCE=700';
-	$cmd .= ' -g ' . implode(' ', $sources);
+	$cmd .= ' -g '.implode(' ', $sources);
 	$cmd .= ' -o '.$name;
-	foreach($link as $name) {
+	foreach ($link as $name) {
 		$cmd .= ' -l '.$name;
 	}
 	exec($cmd, $output, $ret);
@@ -135,10 +135,10 @@ function format_che($code)
 		'c_varlist'
 	);
 	$out = '';
-	foreach( $code as $element ) {
+	foreach ($code as $element) {
 		$out .= $element->format();
-		$cn = get_class( $element );
-		if( in_array( $cn, $term ) ) {
+		$cn = get_class($element);
+		if (in_array($cn, $term)) {
 			$out .= ';';
 		}
 		$out .= "\n";

@@ -8,31 +8,30 @@ class tr_headers
 	{
 		$headers = array();
 
-		foreach($code as $element)
-		{
-			if( $element instanceof c_typedef ) {
-				self::type( $element->type, $headers );
+		foreach ($code as $element) {
+			if ($element instanceof c_typedef) {
+				self::type($element->type, $headers);
 			}
-			else if( $element instanceof c_structdef ) {
-				foreach( $element->fields as $list ) {
-					self::varlist($list, $headers );
+			else if ($element instanceof c_structdef) {
+				foreach ($element->fields as $list) {
+					self::varlist($list, $headers);
 				}
 			}
-			else if($element instanceof c_func) {
+			else if ($element instanceof c_func) {
 				self::proto($element->proto, $headers);
-				self::body( $element->body, $headers );
+				self::body($element->body, $headers);
 			}
-			else if($element instanceof c_prototype) {
+			else if ($element instanceof c_prototype) {
 				self::proto($element, $headers);
 			}
 		}
 
-		$headers = array_keys( $headers );
-		sort( $headers );
+		$headers = array_keys($headers);
+		sort($headers);
 
 		$out = array();
-		foreach( $headers as $h ) {
-			$out[] = new c_macro( 'include', "<$h.h>" );
+		foreach ($headers as $h) {
+			$out[] = new c_macro('include', "<$h.h>");
 		}
 
 		$code = array_merge($out, $code);
@@ -41,63 +40,55 @@ class tr_headers
 	private static function proto(c_prototype $p, &$headers)
 	{
 		$args = $p->args;
-		foreach($args->lists as $list) {
+		foreach ($args->lists as $list) {
 			self::varlist($list, $headers);
 		}
 		self::type($p->type, $headers);
 	}
 
-	private static function body( $body, &$headers )
+	private static function body($body, &$headers)
 	{
-		foreach( $body->parts as $part )
-		{
-			$cn = get_class( $part );
-			switch( $cn )
-			{
-				case 'c_varlist':
-					self::varlist($part, $headers);
-					break;
-
-				case 'c_if':
-					self::expr( $part->cond, $headers );
-					self::body( $part->body, $headers );
-					if( $part->else ) {
-						self::body( $part->else, $headers );
-					}
-					break;
-
-				case 'c_while':
-					self::expr( $part->cond, $headers );
-					self::body( $part->body, $headers );
-					break;
-
-				case 'c_for':
-					if($part->init instanceof c_varlist) {
-						self::varlist($part->init, $headers);
-					}
-					else {
-						self::expr( $part->init, $headers );
-					}
-					self::expr( $part->cond, $headers );
-					self::expr( $part->act, $headers );
-					self::body( $part->body, $headers );
-					break;
-
-				case 'c_switch':
-					self::expr( $part->cond, $headers );
-					foreach( $part->cases as $case ) {
-						self::body( $case[1], $headers );
-					}
-					break;
-
-				case 'c_return':
-				case 'c_expr':
-					self::expr( $part, $headers );
-					break;
-
-				default:
-					var_dump( "1706", $part );
-					exit(1);
+		foreach ($body->parts as $part) {
+			$cn = get_class($part);
+			switch ($cn) {
+			case 'c_varlist':
+				self::varlist($part, $headers);
+				break;
+			case 'c_if':
+				self::expr($part->cond, $headers);
+				self::body($part->body, $headers);
+				if ($part->else){
+					self::body($part->else, $headers);
+				}
+				break;
+			case 'c_while':
+				self::expr($part->cond, $headers);
+				self::body($part->body, $headers);
+				break;
+			case 'c_for':
+				if ($part->init instanceof c_varlist){
+					self::varlist($part->init, $headers);
+				}
+				else {
+					self::expr($part->init, $headers);
+				}
+				self::expr($part->cond, $headers);
+				self::expr($part->act, $headers);
+				self::body($part->body, $headers);
+				break;
+			case 'c_switch':
+				self::expr($part->cond, $headers);
+				foreach ($part->cases as $case){
+					self::body($case[1], $headers);
+				}
+				break;
+			case 'c_return':
+			case 'c_expr':
+				self::expr($part, $headers);
+				break;
+			default:
+				var_dump("1706", $part);
+				exit(1);
 			}
 		}
 	}
@@ -105,76 +96,69 @@ class tr_headers
 	private static function varlist(c_varlist $l, &$headers)
 	{
 		self::type($l->type, $headers);
-		foreach($l->values as $e) {
+		foreach ($l->values as $e) {
 			self::expr($e, $headers);
 		}
 	}
 
-	private static function type(c_type $type, &$headers )
+	private static function type(c_type $type, &$headers)
 	{
-		foreach( $type->l as $cast ) {
-			if( !is_string( $cast ) ) continue;
-			self::id( $cast, $headers );
+		foreach ($type->l as $cast) {
+			if (!is_string($cast)) continue;
+			self::id($cast, $headers);
 		}
 	}
 
-	private static function id( $id, &$headers )
+	private static function id($id, &$headers)
 	{
-		$h = self::get_header( $id );
-		if( $h ) $headers[$h] = true;
+		$h = self::get_header($id);
+		if ($h) $headers[$h] = true;
 	}
 
-	private static function expr( $e, &$headers )
+	private static function expr($e, &$headers)
 	{
-		if( !$e ) return;
+		if (!$e) return;
 
-		foreach( $e->parts as $part )
-		{
-			if( !is_array( $part ) ) continue;
+		foreach ($e->parts as $part) {
+			if (!is_array($part)) continue;
 
-			foreach( $part as $op ) {
-				switch( $op[0] )
-				{
-					case 'id':
-						self::id( $op[1], $headers );
-						break;
-
-					case 'call':
-						foreach( $op[1] as $expr ) {
-							self::expr( $expr, $headers );
-						}
-						break;
-
-					case 'expr':
-						self::expr( $op[1], $headers );
-						break;
-
-					case 'cast':
-						self::type( $op[1]->type, $headers );
-						break;
-
-					case 'literal':
-					case 'op':
-					case 'sizeof':
-					case 'index':
-						break;
-
-					default:
-						var_dump( $op );
-						exit;
+			foreach ($part as $op) {
+				switch ($op[0]) {
+				case 'id':
+					self::id($op[1], $headers);
+					break;
+				case 'call':
+					foreach ($op[1] as $expr){
+						self::expr($expr, $headers);
+					}
+					break;
+				case 'expr':
+					self::expr($op[1], $headers);
+					break;
+				case 'cast':
+					self::type($op[1]->type, $headers);
+					break;
+				case 'literal':
+				case 'op':
+				case 'sizeof':
+				case 'index':
+					break;
+				default:
+					var_dump($op);
+					exit;
 				}
 			}
 		}
 	}
 
-	private static function get_header( $id )
+	private static function get_header($id)
 	{
-		if( !self::$init ) {
+		if (!self::$init) {
 			self::$init = true;
 			self::init();
 		}
-		foreach( self::$lib as $header => $ids ) {
-			if( in_array( $id, $ids ) ) {
+		foreach (self::$lib as $header => $ids) {
+			if (in_array($id, $ids)) {
 				return $header;
 			}
 		}
@@ -183,8 +167,8 @@ class tr_headers
 
 	private static function init()
 	{
-		foreach( self::$lib as $k => $str ) {
-			$ids = array_filter( preg_split( '/\s+/', $str ) );
+		foreach (self::$lib as $k => $str) {
+			$ids = array_filter(preg_split('/\s+/', $str));
 			self::$lib[$k] = $ids;
 		}
 	}
