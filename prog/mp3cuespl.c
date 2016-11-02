@@ -9,7 +9,7 @@ int main(int argc, char *argv[])
 		fatal("Usage: mp3cuespl <cuefile> <mp3file>");
 	}
 
-	const char *cuepath = argv[1];;
+	const char *cuepath = argv[1];
 	const char *mp3path = argv[2];
 
 	char *s = readfile_str(cuepath);
