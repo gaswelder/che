@@ -19,7 +19,6 @@ class modules
 		$mod = new module();
 
 		$s = new parser($path);
-
 		foreach ($typenames as $name) {
 			$s->add_type($name);
 		}

@@ -109,6 +109,9 @@ class packages
 	private static function typenames_f($path)
 	{
 		$list = array();
+		/*
+		 * Scan file tokens for 'typedef' keywords
+		 */
 		$s = new mctok($path);
 		while (1) {
 			$t = $s->get();
@@ -118,7 +121,10 @@ class packages
 			if ($t->type != 'typedef') {
 				continue;
 			}
-
+			/*
+			 * When a 'typedef' is encountered, look ahead
+			 * to find the type name
+			 */
 			$name = self::get_typename($s, $path);
 			if (!$name) break;
 			$list[] = $name;
@@ -129,30 +135,56 @@ class packages
 	private static function get_typename(mctok $s, $path)
 	{
 		/*
-		 * Skip to the last token before a semicolon, recording
-		 * the most recent 'word' token.
+		 * New type name is at the end of the typedef statement.
+		 * It may have a value form or a function form.
 		 */
-		$name = null;
-		while (!$s->ended() && $s->peek()->type != ';') {
-			$t = $s->get();
-			if ($t->type == 'word') {
-				$name = $t->content;
-			}
-		}
+
 		/*
-		 * Assert that we have stopped before a semicolon.
+		 * Get all tokens until the semicolon.
 		 */
-		$t = $s->peek();
-		$pos = $t->pos;
-		if ($t->type != ';') {
-			trigger_error("Semicolon expected at $path:$pos");
+		$buf = array();
+		while (!$s->ended()) {
+			$t = $s->get();
+			if ($t->type == ';') {
+				break;
+			}
+			$buf[] = $t;
+		}
+
+		if (empty($buf)) {
+			trigger_error("No tokens after 'typedef'");
 			return null;
 		}
+
+		$buf = array_reverse($buf);
+
 		/*
-		 * Return the recorded name.
+		 * We assume that function typedefs end with "(...)".
+		 * In that case we omit that part.
 		 */
+		if ($buf[0]->type == ')') {
+			while (!empty($buf)) {
+				$t = array_shift($buf);
+				if ($t->type == '(') {
+					break;
+				}
+			}
+		}
+
+		/*
+		 * The last 'word' token is assumed to be the type name.
+		 */
+		$name = null;
+		while (!empty($buf)) {
+			$t = array_shift($buf);
+			if ($t->type == 'word') {
+				$name = $t->content;
+				break;
+			}
+		}
+
 		if (!$name) {
-			trigger_error("Type name expected at $path:$pos");
+			trigger_error("Type name expected in the typedef");
 			return null;
 		}
 		return $name;
