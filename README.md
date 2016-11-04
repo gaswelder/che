@@ -26,11 +26,11 @@ declarations are distributed along a set of headers. Since the library
 is standard, there is no point in writing these headers manually, so a
 hello world program can be just this:
 
-	```c
-	int main() {
-		puts("Howdy, Globe!");
-	}
-	```
+```c
+int main() {
+	puts("Howdy, Globe!");
+}
+```
 
 The translator will put `#include <stdio.h>` in before passing
 the result to the C compiler.
@@ -44,15 +44,15 @@ approach, they will have to write function prototypes at the top of the
 file because C compilers work bottom-up. But Che will generate the
 prototypes automatically, so this example will work:
 
-	```c
-	int main() {
-		func2();
-	}
+```c
+int main() {
+	func2();
+}
 
-	void func2() {
-		puts("Howdy, Globe!");
-	}
-	```
+void func2() {
+	puts("Howdy, Globe!");
+}
+```
 
 
 ## No forward declarations
@@ -258,22 +258,22 @@ world” still is:
 In C variables can be `static` too. There are two kinds of those. One is
 function-local, the other is module-local:
 
-	```c
-	// *** This is C, mind you ***
-	// module-local variable
-	static long seed = 42;
+```c
+// *** This is C, mind you ***
+// module-local variable
+static long seed = 42;
 
-	int count() {
-		// function-local variable
-		static int n;
-		n++;
-		return n;
-	}
+int count() {
+	// function-local variable
+	static int n;
+	n++;
+	return n;
+}
 
-	long foo() {
-		return seed++ * count();
-	}
-	```
+long foo() {
+	return seed++ * count();
+}
+```
 
 Function-local variables are usually caches of some kind, and they are
 the same as the module-local ones, only can't be seen by other
