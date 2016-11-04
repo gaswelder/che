@@ -176,14 +176,6 @@ class tr_headers
 	private static $init = false;
 
 	private static $lib = array(
-		'arpa/inet' => '
-			inet_ntop inet_ntoa
-		',
-
-		'netinet/in' => '
-			sockaddr_in
-		',
-
 		'assert' => '
 			assert',
 
@@ -255,31 +247,6 @@ class tr_headers
 		'time' => '
 			CLOCKS_PER_SEC clock_t time_t clock difftime mktime
 			time asctime ctime gmtime localtime strftime
-		',
-
-		'unistd' => '
-			chdir close getcwd getopt sleep optarg opterr
-			optind optopt
-		',
-
-		'sys/select' => '
-			fd_set
-		',
-
-		'sys/socket' => '
-			connect SOCK_STREAM SOL_SOCKET socklen_t
-		',
-
-		'sys/types' => '
-			ssize_t
-		',
-
-		'sys/stat' => '
-			stat
-		',
-
-		'netdb' => '
-			getaddrinfo
 		'
 	);
 }

@@ -1,3 +1,6 @@
+#define _X_OPEN_SOURCE 700
+#include <sys/stat.h>
+
 /*
  * Reads file at 'path' and returns a pointer to the file's
  * contents in memory. The contents size is put into 'size'.
@@ -72,7 +75,7 @@ int fsize(FILE *f, size_t *s)
 		return 0;
 	}
 
-	ssize_t size = (ssize_t) ftell(f);
+	long size = ftell(f);
 	if(size < 0) {
 		return 0;
 	}

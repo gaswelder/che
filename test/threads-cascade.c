@@ -71,7 +71,7 @@ void *tfunc(void *arg)
 	mtx_unlock(c->lock);
 
 	printf("%d: working\n", c->id);
-	sleep(1);
+	//sleep(1);
 	printf("%d: finishing\n", c->id);
 	return NULL;
 }

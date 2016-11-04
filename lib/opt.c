@@ -1,3 +1,10 @@
+#define _X_OPEN_SOURCE 700
+#include <unistd.h>
+/*
+ * getopt.h is a GNU quirk, probably. It's not POSIX.
+ */
+#include <getopt.h>
+
 /*
  * Twice as much as a borderline sane program would need.
  */

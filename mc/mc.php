@@ -113,7 +113,7 @@ function tmppath($path)
 function c99($sources, $name, $link)
 {
 	$cmd = 'c99 -Wall -Wextra -Werror -pedantic -pedantic-errors';
-	$cmd .= ' -fmax-errors=3 -D _XOPEN_SOURCE=700';
+	$cmd .= ' -fmax-errors=3';
 	$cmd .= ' -g '.implode(' ', $sources);
 	$cmd .= ' -o '.$name;
 	foreach ($link as $name) {
