@@ -1,10 +1,8 @@
 <?php
-require '/home/gas/code/php/lib/debug.php';
+$dir = dirname(__FILE__);
+require $dir.'/debug.php';
 stop_on_error();
 error_reporting(-1);
-
-$dir = dirname(__FILE__);
-
 require $dir.'/buf.php';
 require $dir.'/tokens.php';
 require $dir.'/parser.php';
