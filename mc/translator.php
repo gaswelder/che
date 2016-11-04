@@ -15,13 +15,13 @@ class mc_trans
 		for ($i = 0; $i < $n; $i++) {
 			$element = $code[$i];
 
-			if ($element instanceof c_include) {
+			if ($element instanceof c_include || $element instanceof c_define) {
 				$headers[] = $element;
 				continue;
 			}
 
 			if ($element instanceof c_structdef || $element instanceof c_enum
-				|| $element instanceof c_define || $element instanceof c_typedef) {
+				|| $element instanceof c_typedef) {
 				$types[] = $element;
 				continue;
 			}
