@@ -1,3 +1,7 @@
+if [ ! -d bin ]; then
+	mkdir bin || exit 1
+fi
+
 cd bin
 for i in ../test/*.c ../prog/*.c; do
 	basename $i
