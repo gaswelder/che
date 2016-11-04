@@ -5,6 +5,7 @@
 import "net"
 import "cli"
 import "log"
+import "threads"
 
 int main()
 {
@@ -21,15 +22,18 @@ int main()
 			err("accept error: %s", net_error());
 			continue;
 		}
-		process_client(s);
+		thr_t *t = thr_new(process_client, s);
+		assert(t);
+		thr_detach(t);
 	}
 
 	net_close(l);
 	return 0;
 }
 
-void *process_client(conn_t *c)
+void *process_client(void *arg)
 {
+	conn_t *c = (conn_t *) arg;
 	logmsg("%s connected", net_addr(c));
 	char buf[256];
 
