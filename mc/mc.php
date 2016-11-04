@@ -31,6 +31,7 @@ function mc_main($args)
 		$home = '.';
 	}
 	define('MCDIR', $home);
+	define('CHE_OS', 'unix');
 
 	array_shift($args);
 	if (count($args) != 1) {

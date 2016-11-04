@@ -36,7 +36,7 @@ class packages
 		 * have just collected). So we have to parse each file giving
 		 * the parser only type names defined only in the other files.
 		 */
-		$files = glob("$path/*.c");
+		$files = self::list_files($path);
 		foreach ($files as $fpath) {
 			/*
 			 * Get typenames defined not in this file
@@ -96,9 +96,35 @@ class packages
 	private static function typenames($path)
 	{
 		$list = array();
-		$files = glob("$path/*.c");
+		$files = self::list_files($path);
 		foreach ($files as $fpath) {
 			$list[$fpath] = self::typenames_f($fpath);
+		}
+		return $list;
+	}
+
+	private static function list_files($path)
+	{
+		$files = glob("$path/*.c");
+		/*
+		 * Omit files specific to other systems
+		 */
+		$list = array();
+		foreach ($files as $path) {
+			/*
+			 * Get second extension from the filename.
+			 * For 'main.unix.c' this will return 'unix'.
+			 * For 'main.c' this will return ''.
+			 */
+			$ext = pathinfo(pathinfo($path, PATHINFO_FILENAME), PATHINFO_EXTENSION);
+			/*
+			 * If the extension is present and doesn't match
+			 * our platform, skip it.
+			 */
+			if ($ext && $ext != CHE_OS) {
+				continue;
+			}
+			$list[] = $path;
 		}
 		return $list;
 	}
