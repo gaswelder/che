@@ -518,8 +518,6 @@ class c_sizeof extends c_element
 	}
 }
 
-;
-
 class c_expr extends c_element
 {
 	public $parts;
@@ -621,8 +619,6 @@ class c_return extends c_expr
 	}
 }
 
-;
-
 class c_body
 {
 	public $parts = array();
@@ -661,8 +657,6 @@ class c_comment extends c_literal
 		return "/* $this->content */";
 	}
 }
-
-;
 
 class c_if
 {
