@@ -60,16 +60,16 @@ void func2() {
 There is no need to add forward declarations to make the following
 example compile:
 
-	```c
-	struct a {
-		struct b foo;
-		struct a *next;
-	};
+```c
+struct a {
+	struct b foo;
+	struct a *next;
+};
 
-	struct b {
-		int foo;
-	};
-	```
+struct b {
+	int foo;
+};
+```
 
 
 ## Declaration lists
@@ -77,20 +77,20 @@ example compile:
 In C it is possible to declare multiple variables with a common type
 like this:
 
-	```c
-	int a, b, c;
-	struct vec {
-		int x, y, x;
-	};
-	```
+```c
+int a, b, c;
+struct vec {
+	int x, y, x;
+};
+```
 
 In Che it is also possible to do that with function parameters:
 
-	```c
-	struct vec sum(struct vec a, b) {
-		...
-	}
-	```
+```c
+struct vec sum(struct vec a, b) {
+	...
+}
+```
 
 The original C rules still apply: pointer and array notations “stick”
 to the identifiers, not the type.
@@ -109,60 +109,60 @@ Borrowed from Go, this statement probably eliminates the last excuse
 for using `goto` statements: arranging cleanup code. So instead of
 this:
 
-	```c
-	bool foo() {
-		FILE *f = fopen("foo", "rb");
-		if(!f)
-			return false;
+```c
+bool foo() {
+	FILE *f = fopen("foo", "rb");
+	if(!f)
+		return false;
 
-		bool r = true;
+	bool r = true;
 
-		char *buf = malloc(42);
-		if(!buf) {
+	char *buf = malloc(42);
+	if(!buf) {
+		r = false;
+		goto cleanup;
+	}
+
+	for(int i = 0; i < 42; i++) {
+		if(!bar(buf[i])) {
 			r = false;
 			goto cleanup;
 		}
-
-		for(int i = 0; i < 42; i++) {
-			if(!bar(buf[i])) {
-				r = false;
-				goto cleanup;
-			}
-		}
-
-		cleanup:
-			free(buf);
-			fclose(f);
-
-		return r;
 	}
-	```
+
+	cleanup:
+		free(buf);
+		fclose(f);
+
+	return r;
+}
+```
 
 we can write this:
 
-	```c
-	bool foo() {
-		FILE *f = fopen("foo", "rb");
-		if(!f) {
-			return false;
-		}
-		defer fclose(f);
-
-		char *buf = malloc(42);
-		if(!buf) {
-			return false;
-		}
-		defer free(buf);
-
-		for(int i = 0; i < 42; i++) {
-			if(!bar(buf[i])) {
-				return false;
-			}
-		}
-
-		return true;
+```c
+bool foo() {
+	FILE *f = fopen("foo", "rb");
+	if(!f) {
+		return false;
 	}
-	```
+	defer fclose(f);
+
+	char *buf = malloc(42);
+	if(!buf) {
+		return false;
+	}
+	defer free(buf);
+
+	for(int i = 0; i < 42; i++) {
+		if(!bar(buf[i])) {
+			return false;
+		}
+	}
+
+	return true;
+}
+```
 
 
 ## Modules and packages
@@ -240,20 +240,20 @@ declared as `static`. But more often than not it is more convenient to
 assume they all are private and explicitly mark only the “public” ones.
 Thus `static` is gone, and `pub` is introduced:
 
-	```c
-	// f1 will get imported, but f2 will not.
-	pub int f1() {...}
-	int f2() {...}
-	```
+```c
+// f1 will get imported, but f2 will not.
+pub int f1() {...}
+int f2() {...}
+```
 
 There is an exception for `main`: it's always assumed public, so “hello
 world” still is:
 
-	```c
-	int main() {
-		puts("Howdy, Globe!");
-	}
-	```
+```c
+int main() {
+	puts("Howdy, Globe!");
+}
+```
 
 In C variables can be `static` too. There are two kinds of those. One is
 function-local, the other is module-local:
@@ -282,21 +282,21 @@ something like `current_count`, and deal only with module-local
 variables. And those, just like functions, can be assumed private to
 the module, so the result will be:
 
-	```c
-	// Note that current_count will still be initialized to zero
-	// just like in C.
-	long seed = 42;
-	int current_count;
+```c
+// Note that current_count will still be initialized to zero
+// just like in C.
+long seed = 42;
+int current_count;
 
-	int count() {
-		current_count++;
-		return current_count;
-	}
+int count() {
+	current_count++;
+	return current_count;
+}
 
-	pub long foo() {
-		return seed++ * count();
-	}
-	```
+pub long foo() {
+	return seed++ * count();
+}
+```
 
 There is no `pub` for variables.
 
