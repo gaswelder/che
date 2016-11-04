@@ -6,6 +6,7 @@ class mc_trans
 	 */
 	static function translate($code)
 	{
+		$headers = array();
 		$prototypes = array();
 		$types = array();
 		$body = array();
@@ -13,6 +14,11 @@ class mc_trans
 		$n = count($code);
 		for ($i = 0; $i < $n; $i++) {
 			$element = $code[$i];
+
+			if ($element instanceof c_include) {
+				$headers[] = $element;
+				continue;
+			}
 
 			if ($element instanceof c_structdef || $element instanceof c_enum
 				|| $element instanceof c_define || $element instanceof c_typedef) {
@@ -43,7 +49,7 @@ class mc_trans
 			$body[] = $element;
 		}
 
-		$out = array_merge($types, $prototypes, $body);
+		$out = array_merge($headers, $types, $prototypes, $body);
 		tr_headers::add_headers($out);
 		return $out;
 	}

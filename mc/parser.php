@@ -176,6 +176,10 @@ class parser
 			return new c_macro($type, $id);
 		case '#endif':
 			return new c_macro($type);
+		case '#type':
+			$name = trim(strtok("\n"));
+			$this->add_type($name);
+			return new c_comment("#type $name");
 		default:
 			return $this->error("Unknown macro: $type");
 		}
