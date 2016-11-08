@@ -13,10 +13,8 @@ enum {
 int main( int argc, char *argv[] )
 {
 	const char *line_format = "unix";
-	bool recurse = 0;
 
-	opt_summary( "trim [-r] [-l unix/win/same] path..." );
-	opt( OPT_BOOL, "r", "Recurse into subdirectories", &recurse );
+	opt_summary( "trim [-l unix/win/same] path..." );
 	opt( OPT_STR, "l", "Convert line format ('unix', 'win' or 'same')", &line_format );
 
 	char **path = opt_parse( argc, argv );
@@ -42,71 +40,17 @@ int main( int argc, char *argv[] )
 
 	while( *path )
 	{
-		if( !trim( *path, recurse, lf ) ) {
+		if( is_dir( *path ) ) {
+			fprintf( stderr, "trim: skipping directory %s\n", *path );
+			path++;
+			continue;
+		}
+		if( !trim_file( *path, lf ) ) {
 			return 1;
 		}
 		path++;
 	}
 	return 0;
-}
-
-/*
- * Apply trim to the given path.
- */
-int trim( const char *path, bool recursive, int lf )
-{
-	if( is_dir( path ) ) {
-		if( !recursive ) {
-			return 1;
-		}
-		return trim_dir( path, recursive, lf );
-	}
-
-	return trim_file( path, lf );
-}
-
-/*
- * Trim files inside the directory.
- */
-int trim_dir( const char *path, bool recursive, int lf )
-{
-	/*
-	 * Open the directory for reading.
-	 */
-	dir_t *d = diropen( path );
-	if( !d ) {
-		fprintf( stderr, "Could not open directory %s\n", path );
-		return 0;
-	}
-
-	/*
-	 * Process each entry.
-	 */
-	int ok = 1;
-	while(1)
-	{
-		const char *fn = dirnext(d);
-		if(!fn) break;
-		/*
-		 * Skip files with names starting with a dot.
-		 */
-		if(fn[0] == '.') continue;
-
-		/*
-		 * Create a full path string and call trim on it.
-		 */
-		char *newpath = newstr( "%s/%s", path, fn );
-		if( !newpath ) {
-			fprintf( stderr, "Could not create path string\n" );
-			ok = 0;
-			break;
-		}
-
-		ok = trim( newpath, recursive, lf );
-		free( newpath );
-	}
-	dirclose( d );
-	return ok;
 }
 
 int trim_file( const char *path, int lf )
