@@ -103,7 +103,7 @@ function compile($main)
 
 function tmppath($path)
 {
-	$dir = 'mcbuild';
+	$dir = sys_get_temp_dir().'/chetmp';
 	if (!file_exists($dir) && !mkdir($dir)) {
 		exit(1);
 	}
