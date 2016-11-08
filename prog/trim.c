@@ -3,11 +3,16 @@ import "opt"
 import "os/dir"
 import "fileutil"
 import "strutil"
+import "cli"
 
 enum {
 	L_SAME,
 	L_UNIX,
-	L_WIN
+	L_WIN,
+	/*
+	 * L_NONE may occur at the end of file
+	 */
+	L_NONE
 };
 
 /*
@@ -45,7 +50,7 @@ int main( int argc, char *argv[] )
 	while( *path )
 	{
 		if( is_dir( *path ) ) {
-			fprintf( stderr, "trim: skipping directory %s\n", *path );
+			//fprintf( stderr, "trim: skipping directory %s\n", *path );
 			path++;
 			continue;
 		}
@@ -57,118 +62,166 @@ int main( int argc, char *argv[] )
 	return 0;
 }
 
-int trim_file( const char *path )
+/*
+ * We read lines one by one and for each line mark three parameters:
+ * 1) 'last_pos' - position of last non-space character in the line;
+ * 2) 'eol_pos' - position where the line ends (where EOF, '\n' or
+ *    '\r' appears);
+ * 3) type of end of line (CRLF, LF or EOF).
+
+ * If there are no non-space characters, 'last_pos' is -1.
+ * A line needs trimming if 'last_pos' + 1 < 'eol_pos'.
+ */
+
+struct linebuf {
+	char *line;
+	size_t maxsize;
+	int eol_pos;
+	int last_pos;
+	int lf;
+	int num;
+};
+
+bool trim_file(const char *path)
 {
-	FILE *fp = fopen( path, "rb" );
-	if( !fp ) {
-		fprintf( stderr, "Could not open '%s' for reading\n", path );
-		return 0;
-	}
+	FILE *f = fopen(path, "rb");
+	if(!f) return false;
 
-	/*
-	 * Create a trimmed copy of the file.
-	 */
-	zio *copy = zopen("mem", "", "");
-	if( !copy ) {
-		fprintf( stderr, "Could not allocate memory\n" );
-		fclose( fp );
-		return 0;
-	}
-	int changed = 0;
-	int ok = 1;
-	char line[BUFSIZ];
-	size_t linenum = 0;
-	while( fgets(line, sizeof(line), fp) )
-	{
-		linenum++;
-		ok = 0;
-		if( line_torn( line, sizeof line, fp ) ) {
-			fprintf( stderr, "'%s': line %zu is too big\n", path, linenum );
-			break;
-		}
+	zio *out = zopen("mem", "", "");
+	if(!out) fatal("Out of memory");
 
-		int r = trim_line( line, copy );
-		if( r < 0 ) {
-			break;
-		}
-		if( r > 0 ) changed = 1;
-		ok = 1;
-	}
+	bool changed = trim(f, out, path);
+	fclose(f);
 
-	if( ok && changed ) {
-		fprintf( stderr, "%s\n", path );
-		ok = save( copy, path );
+	if(changed) {
+		puts(path);
+		save(out, path);
 	}
-
-	zclose( copy );
-	fclose( fp );
-	return ok;
+	return true;
 }
 
-int line_torn( const char *line, size_t bufsize, FILE *fp )
+bool trim(FILE *in, zio *out, const char *fpath)
 {
-	size_t len = strlen( line );
-	return len == bufsize - 1
-		&& line[len-1] != '\n'
-		&& fpeek(fp) != EOF;
+	struct linebuf buf = {0};
+
+	bool changed = false;
+	while(1) {
+		/*
+		 * Read line from the input
+		 */
+		if(!read_line(in, &buf, fpath)) break;
+
+		/*
+		 * If the line needs trimming, we just move eol_pos to
+		 * the "correct" position.
+		 */
+		if(buf.last_pos + 1 < buf.eol_pos) {
+			buf.eol_pos = buf.last_pos + 1;
+			changed = true;
+		}
+
+		/*
+		 * Override EOL if necessary.
+		 */
+		if(lf != L_SAME && buf.lf != lf) {
+			changed = true;
+			buf.lf = lf;
+		}
+
+		/*
+		 * Write the resulting line out
+		 */
+		write_line(&buf, out);
+	}
+
+	if(buf.line) free(buf.line);
+	return changed;
 }
 
 /*
- * Writes trimmed copy of the line the the given stream.
- * Returns -1 on error. On success returns 0 if the line didn't
- * need trimming, 1 if did.
+ * Reads a line into the line buffer.
+ * Returns false if the stream is empty.
  */
-int trim_line( const char *line, zio *out )
+bool read_line(FILE *in, struct linebuf *buf, const char *fpath)
 {
-	const char *p = line;
+	if(fpeek(in) == EOF) return false;
 
-	/*
-	 * Set linemarker to point to the end-of-line marker in the line.
-	 */
-	const char *linemarker;
-	while( *p ) {
-		p++;
-	}
-	if( p > line && *(p-1) == '\n' ) p--;
-	if( p > line && *(p-1) == '\r' ) p--;
-	linemarker = p;
+	buf->eol_pos = -1;
+	buf->last_pos = -1;
+	buf->lf = L_NONE;
 
-	/*
-	 * Set contentent to point to the end of the content in the line.
-	 */
-	const char *contentend;
-	while( p > line && isspace(*(p-1)) ) {
-		p--;
-	}
-	contentend = p;
+	int len = 0;
 
-	/*
-	 * Print the content line.
-	 */
-	size_t len = 0;
-	for( p = line; p < contentend; p++ )
-	{
-		if( zputc( (unsigned char) *p, out) == EOF ) {
-			fprintf( stderr, "zputc failed\n" );
-			return -1;
+	while(1) {
+		int c = getc(in);
+		if(c == EOF) {
+			break;
 		}
+
+		if(c == '\r') {
+			if(fpeek(in) != '\n') {
+				if(feof(in)) {
+					err("WTF! %c", fgetc(in));
+				}
+				err("%s: unknown eol sequence at line %d: (%d,%d)",
+					fpath, buf->num, c, fpeek(in));
+				return false;
+			}
+			getc(in);
+			buf->lf = L_WIN;
+			break;
+		}
+
+		if(c == '\n') {
+			buf->lf = L_UNIX;
+			break;
+		}
+
+		if(!isspace(c)) {
+			buf->last_pos = len;
+		}
+
+		if((size_t) len >= buf->maxsize && !growbuf(buf)) {
+			fatal("Couldn't allocate > %zu bytes for line", buf->maxsize);
+		}
+		buf->line[len] = c;
 		len++;
 	}
 
-	/*
-	 * Print the end of line marker.
-	 */
-	if( lf == L_UNIX ) {
-		linemarker = "\n";
+	buf->eol_pos = len;
+	buf->num++;
+	return true;
+}
+
+bool growbuf(struct linebuf *buf)
+{
+	size_t newsize = buf->maxsize;
+	if(!newsize) newsize = 4096;
+	else newsize *= 2;
+
+	void *r = realloc(buf->line, newsize);
+	if(!r) return false;
+	buf->maxsize = newsize;
+	buf->line = r;
+	return true;
+}
+
+void write_line(struct linebuf *buf, zio *out)
+{
+	for(int i = 0; i < buf->eol_pos; i++) {
+		zputc(buf->line[i], out);
 	}
-	else if( lf == L_WIN ) {
-		linemarker = "\r\n";
+	switch(buf->lf) {
+		case L_UNIX:
+			zputc('\n', out);
+			break;
+		case L_WIN:
+			assert(zputc('\r', out) != EOF);
+			assert(zputc('\n', out) != EOF);
+			break;
+		default:
+			fatal("write_line: unhandled eol type: %d", buf->lf);
 	}
-	if( zputs(linemarker, out) < 0 ) {
-		return -1;
-	}
-	len += strlen(linemarker);
-	return len != strlen( line );
 }
 
 int save( zio *mem, const char *path )
@@ -183,7 +236,7 @@ int save( zio *mem, const char *path )
 	int ok = 1;
 	while( 1 ) {
 		int ch = zgetc( mem );
-		if( zeof( mem ) ) {
+		if(ch == EOF) {
 			break;
 		}
 		int r = fputc(ch, fp);
@@ -193,7 +246,6 @@ int save( zio *mem, const char *path )
 			break;
 		}
 	}
-
 	fclose( fp );
 	return ok;
 }
