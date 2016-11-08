@@ -102,3 +102,15 @@ int readf( FILE *f, char *data, size_t size)
 	}
 	return 1;
 }
+
+/*
+ * Returns true if given path exists and points to a directory.
+ */
+pub bool is_dir(const char *path)
+{
+	struct stat s;
+	if(stat(path, &s) < 0) {
+		return false;
+	}
+	return S_ISDIR(s.st_mode);
+}
