@@ -162,21 +162,6 @@ pub int zrewind(zio *s)
 	return 0;
 }
 
-pub int zeof(zio *s)
-{
-	switch(s->type) {
-		case S_FILE:
-			return feof(s->h);
-		case S_MEM:
-			return meof(s->h);
-		case S_TCP:
-			return 0;
-	}
-
-	puts("Unknown zio type");
-	return 1;
-}
-
 pub int zprintf(zio *s, const char *fmt, ...)
 {
 	va_list args;

@@ -37,13 +37,6 @@ void memrewind(MEM *m) {
 }
 
 /*
- * Returns 1 if the following call to memgetc will return EOF
- */
-int meof(MEM *m) {
-	return m->pos >= m->datalen;
-}
-
-/*
  * Puts a character in the memory at current position
  */
 int memputc(int ch, MEM *m)
