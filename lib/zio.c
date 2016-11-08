@@ -99,6 +99,53 @@ pub int zwrite(zio *s, const char *buf, int len)
 	return -1;
 }
 
+pub int zputc(int c, zio *s)
+{
+	if(c == EOF) return EOF;
+	if(s->type == S_FILE) {
+		return fputc(c, s->h);
+	}
+
+	char buf[1];
+	buf[0] = (char) c;
+	size_t n = 0;
+
+	switch(s->type) {
+		case S_MEM:
+			n = memwrite(buf, 1, sizeof(buf), s->h);
+			break;
+		case S_TCP:
+			n = net_write(s->h, buf, sizeof(buf));
+			break;
+		default:
+			puts("Unknown zio type");
+	}
+
+	if(n == 1) {
+		return c;
+	}
+	return EOF;
+}
+
+pub int zputs(const char *s, zio *z)
+{
+	if(z->type == S_FILE) {
+		return fputs(s, z->h);
+	}
+
+	size_t len = strlen(s);
+
+	switch(z->type) {
+		case S_MEM:
+			return memwrite(s, 1, len, z->h);
+		case S_TCP:
+			return net_write(z->h, s, len);
+		default:
+			puts("Unknown zio type");
+	}
+	return EOF;
+}
+
 pub int zrewind(zio *s)
 {
 	switch(s->type) {
@@ -114,6 +161,21 @@ pub int zrewind(zio *s)
 			puts("Unknown zio type");
 	}
 	return 0;
+}
+
+pub int zeof(zio *s)
+{
+	switch(s->type) {
+		case S_FILE:
+			return feof(s->h);
+		case S_MEM:
+			return meof(s->h);
+		case S_TCP:
+			return 0;
+	}
+
+	puts("Unknown zio type");
+	return 1;
 }
 
 pub int zprintf(zio *s, const char *fmt, ...)

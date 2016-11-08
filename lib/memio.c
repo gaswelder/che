@@ -91,6 +91,13 @@ pub void memrewind(MEM *m) {
 }
 
 /*
+ * Returns 1 if the following call to memgetc will return EOF
+ */
+pub int meof(MEM *m) {
+	return m->pos >= m->datalen;
+}
+
+/*
  * Returns next character of EOF.
  */
 pub int memgetc(MEM *m) {
