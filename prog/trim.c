@@ -10,6 +10,11 @@ enum {
 	L_WIN
 };
 
+/*
+ * Line-ending format
+ */
+int lf = L_SAME;
+
 int main( int argc, char *argv[] )
 {
 	const char *line_format = "unix";
@@ -23,7 +28,6 @@ int main( int argc, char *argv[] )
 		return 1;
 	}
 
-	int lf;
 	if( strcmp( line_format, "same" ) == 0 ) {
 		lf = L_SAME;
 	}
@@ -45,7 +49,7 @@ int main( int argc, char *argv[] )
 			path++;
 			continue;
 		}
-		if( !trim_file( *path, lf ) ) {
+		if( !trim_file( *path ) ) {
 			return 1;
 		}
 		path++;
@@ -53,7 +57,7 @@ int main( int argc, char *argv[] )
 	return 0;
 }
 
-int trim_file( const char *path, int lf )
+int trim_file( const char *path )
 {
 	FILE *fp = fopen( path, "rb" );
 	if( !fp ) {
@@ -83,7 +87,7 @@ int trim_file( const char *path, int lf )
 			break;
 		}
 
-		int r = trim_line( line, copy, lf );
+		int r = trim_line( line, copy );
 		if( r < 0 ) {
 			break;
 		}
@@ -114,7 +118,7 @@ int line_torn( const char *line, size_t bufsize, FILE *fp )
  * Returns -1 on error. On success returns 0 if the line didn't
  * need trimming, 1 if did.
  */
-int trim_line( const char *line, zio *out, int lf )
+int trim_line( const char *line, zio *out )
 {
 	const char *p = line;
 
