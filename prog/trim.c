@@ -16,27 +16,13 @@ int main( int argc, char *argv[] )
 	bool recurse = 0;
 
 	opt_summary( "trim [-r] [-l unix/win/same] path..." );
-	
 	opt( OPT_BOOL, "r", "Recurse into subdirectories", &recurse );
-	if(!line_format) {
-		puts("oops2");
-	}
-	
 	opt( OPT_STR, "l", "Convert line format ('unix', 'win' or 'same')", &line_format );
-	if(!line_format) {
-		puts("oops3");
-	}
-	
-	
-	
+
 	char **path = opt_parse( argc, argv );
 	if( !path ) {
 		opt_usage();
 		return 1;
-	}
-	
-	if(!line_format) {
-		puts("oops");
 	}
 
 	int lf;
@@ -67,7 +53,7 @@ int main( int argc, char *argv[] )
 /*
  * Apply trim to the given path.
  */
-int trim( const char *path, int recursive, int lf )
+int trim( const char *path, bool recursive, int lf )
 {
 	if( is_dir( path ) ) {
 		if( !recursive ) {
@@ -82,7 +68,7 @@ int trim( const char *path, int recursive, int lf )
 /*
  * Trim files inside the directory.
  */
-int trim_dir( const char *path, int recursive, int lf )
+int trim_dir( const char *path, bool recursive, int lf )
 {
 	/*
 	 * Open the directory for reading.
