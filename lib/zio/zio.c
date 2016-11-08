@@ -74,7 +74,7 @@ pub int zread(zio *s, char *buf, int size)
 			size_t r = fread(buf, 1, (size_t) size, s->h);
 			return (int) r;
 		case S_MEM:
-			return memread(buf, 1, (size_t) size, s->h);
+			return memread(s->h, buf, (size_t) size);
 		case S_TCP:
 			return net_read(s->h, buf, (size_t) size);
 		default:
@@ -89,7 +89,7 @@ pub int zwrite(zio *s, const char *buf, int len)
 		case S_FILE:
 			return (int) fwrite(buf, 1, (size_t) len, s->h);
 		case S_MEM:
-			return memwrite(buf, 1, (size_t) len, s->h);
+			return memwrite(s->h, buf, (size_t) len);
 		case S_TCP:
 			return net_write(s->h, buf, (size_t) len);
 		default:
@@ -111,7 +111,7 @@ pub int zputc(int c, zio *s)
 
 	switch(s->type) {
 		case S_MEM:
-			n = memwrite(buf, 1, sizeof(buf), s->h);
+			return memputc(c, s->h);
 			break;
 		case S_TCP:
 			n = net_write(s->h, buf, sizeof(buf));
@@ -136,7 +136,7 @@ pub int zputs(const char *s, zio *z)
 
 	switch(z->type) {
 		case S_MEM:
-			return memwrite(s, 1, len, z->h);
+			return memwrite(z->h, s, len);
 		case S_TCP:
 			return net_write(z->h, s, len);
 		default:
@@ -206,7 +206,7 @@ pub int zprintf(zio *s, const char *fmt, ...)
 			n = fwrite(buf, 1, len, s->h);
 			break;
 		case S_MEM:
-			n = memwrite(buf, 1, len, s->h);
+			n = memwrite(s->h, buf, len);
 			break;
 		case S_TCP:
 			n = net_write(s->h, buf, len);

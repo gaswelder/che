@@ -30,60 +30,6 @@ void memclose(MEM *mem) {
 }
 
 /*
- * Write 'count' pieces of size 'size' from the buffer 'buf'.
- */
-size_t memwrite(const void *buf, size_t size, size_t count, MEM *m)
-{
-	if(count >= SIZE_MAX/size) {
-		puts("Size overflow");
-		return 0;
-	}
-
-	size_t total = size * count;
-
-	if( !makespace(m, total) ) {
-		puts("No memory");
-		return 0;
-	}
-
-	size_t i;
-	char *p = (char *) buf;
-	for(i = 0; i < total; i++) {
-		m->data[m->pos++] = *p++;
-	}
-
-	/*
-	 * Update the datalen. We do it this way because
-	 * 'pos' could be reset far below the data size.
-	 */
-	if(m->pos > m->datalen) {
-		m->datalen = m->pos;
-	}
-	return total;
-}
-
-/*
- * Read up to 'count' pieces of size 'size' to the buffer 'buf'.
- * Returns the number of pieces read.
- */
-size_t memread(void *buf, size_t size, size_t count, MEM *m)
-{
-	size_t i;
-	char *p = (char *) buf;
-	for(i = 0; i < count; i++)
-	{
-		if(m->pos + size > m->datalen) {
-			break;
-		}
-		size_t j;
-		for(j = 0; j < size; j++) {
-			*p++ = m->data[m->pos++];
-		}
-	}
-	return i;
-}
-
-/*
  * Resets the position to zero.
  */
 void memrewind(MEM *m) {
@@ -98,9 +44,33 @@ int meof(MEM *m) {
 }
 
 /*
+ * Puts a character in the memory at current position
+ */
+int memputc(int ch, MEM *m)
+{
+	if(ch == EOF) return EOF;
+
+	if(!makespace(m, 1)) {
+		puts("No memory");
+		return EOF;
+	}
+
+	m->data[m->pos] = ch;
+	m->pos++;
+	/*
+	 * Advance datalen if we have written past it.
+	 */
+	if(m->pos > m->datalen) {
+		m->datalen = m->pos;
+	}
+	return ch;
+}
+
+/*
  * Returns next character of EOF.
  */
-int memgetc(MEM *m) {
+int memgetc(MEM *m)
+{
 	if(m->pos >= m->datalen) {
 		return EOF;
 	}
@@ -110,7 +80,48 @@ int memgetc(MEM *m) {
 }
 
 /*
- * Makes sure there is space for data of the additional given size.
+ * Write 'size' bytes from buffer 'buf'
+ * Returns number of bytes written.
+ */
+size_t memwrite(MEM *m, const char *buf, size_t size)
+{
+	if( !makespace(m, size) ) {
+		puts("No memory");
+		return 0;
+	}
+
+	for(size_t i = 0; i < size; i++) {
+		m->data[m->pos] = buf[i];
+		m->pos++;
+	}
+
+	/*
+	 * Advance datalen if we have written past it.
+	 */
+	if(m->pos > m->datalen) {
+		m->datalen = m->pos;
+	}
+	return size;
+}
+
+/*
+ * Read up to 'size' bytes to the buffer 'buf'.
+ * Returns the number of bytes read.
+ */
+size_t memread(MEM *m, char *buf, size_t size)
+{
+	size_t len = m->datalen - m->pos;
+	if(len > size) len = size;
+
+	for(size_t i = 0; i < len; i++) {
+		buf[i] = m->data[m->pos];
+		m->pos++;
+	}
+	return len;
+}
+
+/*
+ * Makes sure there is space for additional data of given size.
  * Returns 0 if there is no space and additional memory couldn't be
  * allocated.
  */
