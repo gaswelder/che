@@ -1,4 +1,3 @@
-import "memio"
 import "net"
 
 enum {

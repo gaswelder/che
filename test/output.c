@@ -1,8 +1,8 @@
-import "memio"
+import "zio"
 import "cli"
 
 /*
- * A test program that copies a file into a MEM buffer
+ * A test program that copies a file into a "mem" buffer
  * and then prints it out from it.
  */
 
@@ -17,9 +17,9 @@ int main(int argc, char **argv)
 		fatal("fopen failed");
 	}
 
-	MEM *m = memopen("foo", "bar");
+	zio *m = zopen("mem", "", "");
 	if(!m) {
-		fatal("memopen failed");
+		fatal("zopen failed");
 	}
 
 	/*
@@ -31,7 +31,7 @@ int main(int argc, char **argv)
 		if(!len) {
 			break;
 		}
-		size_t r = memwrite(buf, 1, len, m);
+		size_t r = zwrite(m, buf, len);
 		if(r < len) {
 			err("memwrite failed");
 			break;
@@ -42,12 +42,12 @@ int main(int argc, char **argv)
 	/*
 	 * Rewind the buffer and output it.
 	 */
-	memrewind(m);
+	zrewind(m);
 	while(1) {
-		int c = memgetc(m);
+		int c = zgetc(m);
 		if(c == EOF) break;
 		printf("%c", c);
 	}
-	memclose(m);
+	zclose(m);
 	return 0;
 }

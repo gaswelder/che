@@ -80,19 +80,31 @@ char linechars[] =
 bool send_line(struct client *c)
 {
 	for(int i = 0; i < 72; i++) {
-		if(zputc(linechars[c->charpos++], &(c->out)) == EOF) {
-			return false;
-		}
+		/*
+		 * Get next character
+		 */
+		char ch = linechars[c->charpos];
+		c->charpos++;
 		if(c->charpos == sizeof(linechars)) {
 			c->charpos = 0;
+		}
+
+		/*
+		 * Put it to the client's output buffer
+		 */
+		if(putch(ch, &(c->out)) == EOF) {
+			return false;
 		}
 	}
 	return true;
 }
 
-int zputc(int ch, struct nbuf *b)
+/*
+ * Puts a character to the client output buffer.
+ * Flushes the buffer when it fills.
+ */
+int putch(int ch, struct nbuf *b)
 {
-
 	b->data[b->len++] = ch;
 	if(b->len == sizeof(b->data)) {
 		if(net_write(b->conn, b->data, b->len) < b->len) {
