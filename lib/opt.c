@@ -62,7 +62,7 @@ pub void opt(int type, const char *name, const char *desc, void *value_pointer)
 	switch(type)
 	{
 		case OPT_BOOL:
-			*( (int *)value_pointer) = 0;
+			*( (bool *)value_pointer) = 0;
 			break;
 
 		case OPT_INT:
