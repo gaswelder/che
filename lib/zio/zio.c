@@ -14,31 +14,45 @@ struct __zio {
 
 typedef struct __zio zio;
 
+/*
+ * Returns type identifier for given type name.
+ */
+int gettype(const char *type)
+{
+	if(strcmp(type, "file") == 0) {
+		return S_FILE;
+	}
+	if(strcmp(type, "mem") == 0) {
+		return S_MEM;
+	}
+	if(strcmp(type, "tcp") == 0) {
+		return S_TCP;
+	}
+	return S_UNKNOWN;
+}
 
 pub zio *zopen(const char *type, const char *name, const char *mode)
 {
-	int t = S_UNKNOWN;
+	int t = gettype(type);
 	void *h = NULL;
 
-	if(strcmp(type, "file") == 0) {
-		t = S_FILE;
-		h = fopen(name, mode);
-	}
-	else if(strcmp(type, "mem") == 0) {
-		t = S_MEM;
-		h = memopen(name, mode);
-	}
-	else if(strcmp(type, "tcp") == 0) {
-		t = S_TCP;
-		h = net_conn("tcp", name);
-	}
-	else {
-		puts("Unknown zio type");
-		return NULL;
+	switch(t) {
+		case S_FILE:
+			h = fopen(name, mode);
+			break;
+		case S_MEM:
+			h = memopen(name, mode);
+			break;
+		case S_TCP:
+			h = net_conn("tcp", name);
+			break;
+		default:
+			printf("Unknown zio type: %s\n", type);
+			return NULL;
 	}
 
 	if(!h) {
-		puts("open failed");
+		printf("zio: open failed\n");
 		return NULL;
 	}
 
