@@ -7,7 +7,7 @@
 
 // chargen -l <listen addr>
 
-import "os/net"
+import "net"
 import "cli"
 import "zio"
 import "log"

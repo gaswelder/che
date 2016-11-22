@@ -2,7 +2,7 @@
  * Echo server for a single client
  */
 
-import "os/net"
+import "net"
 import "cli"
 import "log"
 import "threads"
