@@ -261,3 +261,77 @@ int format_address(struct sockaddr *a, char *buf, size_t n)
 	 */
 	return r > 0 && (size_t) r < n;
 }
+
+/*
+ * Reads a string from a net connection.
+ * Behaves like fgets.
+ */
+pub char *net_gets(char *s, int size, conn_t *c)
+{
+	int pos;
+	// read at most size-1 chars
+	for(pos = 0; pos < size-1; pos++) {
+		char ch;
+		int r = net_read(c, &ch, 1);
+
+		// on read error return NULL
+		if(r < 0) {
+			return NULL;
+		}
+
+		// if EOF and no chars read, return NULL
+		// if there were chars, just stop.
+		if(r == 0) {
+			if(pos == 0) return NULL;
+			else break;
+		}
+
+		// Put the char into the output array
+		s[pos] = ch;
+
+		// No chars after '\n'
+		if(ch == '\n') {
+			pos++;
+			break;
+		}
+	}
+
+	// null char after the last char read
+	s[pos] = '\0';
+	return s;
+}
+
+/*
+ * Writes a string to a net connection.
+ * Behaves like fputs.
+ */
+pub int net_puts(const char *s, conn_t *c)
+{
+	size_t len = strlen(s);
+	int r = net_write(c, s, len);
+
+	// return EOF if a write error occurs
+	if(r < 0 || (size_t) r < len) return EOF;
+
+	// return a non-negative value on success
+	return r;
+}
+
+/*
+ * Writes a formatted string to the connection.
+ * Behaves like fprintf.
+ */
+pub void net_printf(conn_t *c, const char *fmt, ...)
+{
+	va_list args;
+	va_start(args, fmt);
+	int len = vsnprintf(NULL, 0, fmt, args);
+	va_end(args);
+
+	char buf[len+1];
+	va_start(args, fmt);
+	len = vsnprintf(buf, len+1, fmt, args);
+	va_end(args);
+
+	net_puts(buf, c);
+}
