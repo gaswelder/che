@@ -134,8 +134,11 @@ char *getstr(char *src, char *buf, size_t bufsize)
 
 void error_404(conn_t *c)
 {
+	puts("No found");
 	net_puts(
 		"HTTP/1.1 404 Not Found\r\n"
+		"Content-Type: text/plain; charset=utf-8\r\n"
+		"Content-Length: 9\r\n"
 		"\r\n"
 		"Not Found", c);
 }
