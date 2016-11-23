@@ -44,7 +44,6 @@ void map_file(conn_t *c, char *localpath)
 	 */
 	net_printf(c,
 		"HTTP/1.1 200 OK\r\n"
-		"Content-Type: application/octet-stream\r\n"
 		"Content-Length: %zu\r\n"
 		"\r\n", size, c);
 
