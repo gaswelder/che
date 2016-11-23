@@ -11,6 +11,7 @@
 #include <sys/types.h>
 #include <unistd.h>
 
+import "cli"
 
 const char *error = "no error";
 
@@ -39,8 +40,31 @@ pub int net_read(conn_t *c, char *buf, size_t size) {
 	return recv(c->sock, buf, size, 0);
 }
 
-pub int net_write(conn_t *c, const char *buf, size_t n) {
-	return send(c->sock, buf, n, 0);
+/*
+ * Writes 'n' bytes from 'buf' to connection 'c'.
+ * Returns 'n' on success or -1 on failure.
+ */
+pub int net_write(conn_t *c, const char *buf, size_t n)
+{
+	/*
+	 * MSG_NOSIGNAL prevents SIGPIPE signals
+	 */
+	int r = send(c->sock, buf, n, MSG_NOSIGNAL);
+	if(r < 0) {
+		printf("error %d: %s\n", errno, strerror(errno));
+		return r;
+	}
+
+	/*
+	 * The send call in blocking mode is supposed to make
+	 * a full transmission.
+	 */
+	if((size_t) r < n) {
+		fatal("incomplete net_write: %d of %zu (errno=%d, %s)\n",
+			r, n, errno, strerror(errno));
+	}
+
+	return n;
 }
 
 pub conn_t *net_conn(const char *proto, const char *addr)
