@@ -37,6 +37,14 @@ void memrewind(MEM *m) {
 }
 
 /*
+ * Returns current position in the stream
+ */
+long memtell(MEM *m) {
+	assert(m->pos <= LONG_MAX);
+	return (long) m->pos;
+}
+
+/*
  * Puts a character in the memory at current position
  */
 int memputc(int ch, MEM *m)

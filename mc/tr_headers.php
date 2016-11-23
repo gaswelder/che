@@ -189,7 +189,7 @@ class tr_headers
 		',
 
 		'limits' => '
-			INT_MAX INT_MIN UINT_MAX
+			INT_MAX INT_MIN UINT_MAX LONG_MAX ULONG_MAX
 		',
 
 		'math' => '

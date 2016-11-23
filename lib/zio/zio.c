@@ -176,6 +176,25 @@ pub int zrewind(zio *s)
 	return 0;
 }
 
+/*
+ * Returns current position in the stream
+ * or -1 on error.
+ */
+pub long ztell(zio *s)
+{
+	switch(s->type) {
+		case S_FILE:
+			return ftell(s->h);
+		case S_MEM:
+			return memtell(s->h);
+		case S_TCP:
+			return -1;
+		default:
+			puts("Unknown zio type");
+	}
+	return -1;
+}
+
 pub int zprintf(zio *s, const char *fmt, ...)
 {
 	va_list args;
