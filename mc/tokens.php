@@ -332,39 +332,51 @@ class mctok
 		$p2 = $s->peek();
 		$s->unget($p1);
 
-		$hex = false;
-		$alpha = '0123456789';
-		$num = '';
-
-		/*
-		 * If '0x' follows, read a hexademical constant.
-		 */
+		// If '0x' follows, read a hexademical constant.
 		if ($p1 == '0' && $p2 == 'x') {
-			$hex = true;
-			$num .= $s->get();
-			$num .= $s->get();
-			$alpha = '0123456789ABCDEFabcdef';
+			return $this->read_hex();
 		}
-		$num .= $s->read_set($alpha);
 
-		if (!$hex && $s->peek() == '.') {
+		$alpha = '0123456789';
+		$num = $s->read_set($alpha);
+		
+		$modifiers = ['U', 'L'];
+
+		if ($s->peek() == '.') {
+			$modifiers = ['f'];
 			$num .= $s->get();
 			$num .= $s->read_set($alpha);
 		}
-		else {
-			if ($s->peek() == 'U') {
-				$num .= $s->get();
-			}
-
-			if ($s->peek() == 'L') {
-				$num .= $s->get();
-			}
+		
+		while (in_array($s->peek(), $modifiers)) {
+			$num .= $s->get();
 		}
 
 		if (!$s->ended() && ctype_alpha($s->peek())) {
 			$c = $s->peek();
 			return $this->error("Unexpected character: '$c'");
 		}
+		return tok('num', $num, $pos);
+	}
+	
+	private function read_hex()
+	{
+		$s = $this->s;
+		$pos = $s->pos();
+
+		// Skip "0x"
+		$s->get();
+		$s->get();
+		$alpha = '0123456789ABCDEFabcdef';
+		
+		$num = $s->read_set($alpha);
+		
+		$modifiers = ['U', 'L'];
+		
+		while (in_array($s->peek(), $modifiers)) {
+			$num .= $s->get();
+		}
+
 		return tok('num', $num, $pos);
 	}
 
