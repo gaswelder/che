@@ -1,5 +1,7 @@
 <?php
 
+require __DIR__ . '/lexer.php';
+require __DIR__ . '/token.php';
 require __DIR__ . '/subparsers.php';
 
 // Second stage parser that returns CPOM objects
