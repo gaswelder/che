@@ -215,17 +215,5 @@ class parser
 			&& $s->peek(1)->type == 'num') || $t == '{');
 	}
 
-	function expect($ch, $content = null)
-	{
-		$t = $this->s->get();
-		if ($t->type != $ch) {
-			$this->error("'$ch' expected, got $t");
-		}
-		if ($content !== null && $t->content !== $content) {
-			$this->error("[$ch, $content] expected, got $t");
-		}
-		return $t;
-	}
-
 	//function error( $e ) { trigger_error( $e ); }
 }
