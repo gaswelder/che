@@ -5,7 +5,7 @@ stop_on_error();
 error_reporting(-1);
 require $dir.'/buf.php';
 require $dir.'/tokens.php';
-require $dir.'/parser.php';
+require $dir.'/parser/parser.php';
 require $dir.'/objects.php';
 require $dir.'/translator.php';
 require $dir.'/tr_headers.php';
