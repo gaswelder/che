@@ -71,6 +71,7 @@ class parser
 
 	function read($name)
 	{
+		$this->trace($name);
 		$p = self::$parsers[$name];
 		return $p($this);
 	}
