@@ -224,34 +224,6 @@ class parser
 		return in_array($t->type, $ops);
 	}
 
-	function cast_follows()
-	{
-		$s = $this->s;
-		$buf = array();
-
-		$t = $s->get();
-		if ($t->type != '(') {
-			$s->unget($t);
-			return false;
-		}
-
-		if (!$this->type_follows()) {
-			$s->unget($t);
-			return false;
-		}
-
-		$s->unget($t);
-		return true;
-	}
-
-	function literal_follows()
-	{
-		$s = $this->s;
-		$t = $s->peek()->type;
-		return ($t == 'num' || $t == 'string' || $t == 'char' || ($t == '-'
-			&& $s->peek(1)->type == 'num') || $t == '{');
-	}
-
 	function expect($type, $content = null)
 	{
 		$t = $this->s->peek();

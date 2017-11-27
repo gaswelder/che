@@ -21,29 +21,24 @@ parser::extend('atom', function (parser $parser) {
 	$ops = array();
 
 	// <cast>?
-	if ($parser->cast_follows()) {
-		$parser->s->expect('(');
-		$tf = $parser->read('typeform');
-		$parser->s->expect(')');
-		$ops[] = array('cast', $tf);
+	try {
+		$ops[] = $parser->read('typecast');
+	} catch (ParseException $e) {
+		//
 	}
 
-	// <literal>?
-	if ($parser->literal_follows()) {
-		$ops[] = array(
-			'literal',
-			$parser->read('literal')
-		);
+	try {
+		$ops[] = ['literal', $parser->read('literal')];
 		return $ops;
+	} catch (ParseException $e) {
+		//
 	}
 
-	// <sizeof>?
-	if ($parser->s->peek()->type == 'sizeof') {
-		$ops[] = array(
-			'sizeof',
-			$parser->read('sizeof')
-		);
+	try {
+		$ops[] = ['sizeof', $parser->read('sizeof')];
 		return $ops;
+	} catch (ParseException $e) {
+		//
 	}
 
 	// <left-op>...
@@ -114,4 +109,41 @@ parser::extend('atom', function (parser $parser) {
 	}
 
 	return $ops;
+});
+
+parser::extend('typecast', function(parser $parser) {
+	$parser->expect('(');
+	if (!$parser->type_follows()) {
+		throw new ParseException("Not a typecast");
+	}
+	$tf = $parser->read('typeform');
+	$parser->expect(')');
+	return ['cast', $tf];
+});
+
+// <sizeof>: "sizeof" <sizeof-arg>
+// <sizeof-arg>: ("(" (<expr> | <type>) ")") | <expr> | <type>
+parser::extend('sizeof', function(parser $parser) {
+	$parts = [];
+
+	$parser->expect('sizeof');
+
+	$brace = false;
+	if ($parser->s->peek()->type == '(') {
+		$brace = true;
+		$parser->s->get();
+	}
+
+	if ($parser->type_follows()) {
+		$arg = $parser->read('typeform');
+	}
+	else {
+		$arg = $parser->read('expr');
+	}
+
+	if ($brace) {
+		$parser->expect(')');
+	}
+
+	return new c_sizeof($arg);
 });

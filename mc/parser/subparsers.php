@@ -202,36 +202,6 @@ parser::extend('if', function(parser $parser) {
 	return new c_if($expr, $body, $else);
 });
 
-
-
-
-// <sizeof>: "sizeof" <sizeof-arg>
-// <sizeof-arg>: ("(" (<expr> | <type>) ")") | <expr> | <type>
-parser::extend('sizeof', function(parser $parser) {
-	$parserarts = [];
-
-	$parser->s->expect('sizeof');
-
-	$brace = false;
-	if ($parser->s->peek()->type == '(') {
-		$brace = true;
-		$parser->s->get();
-	}
-
-	if ($parser->type_follows()) {
-		$arg = $parser->read('typeform');
-	}
-	else {
-		$arg = $parser->read('expr');
-	}
-
-	if ($brace) {
-		$parser->s->expect(')');
-	}
-
-	return new c_sizeof($arg);
-});
-
 parser::extend('typeform', function(parser $parser) {
 	$t = $parser->read('type');
 	$f = $parser->read('form');

@@ -7,8 +7,8 @@ parser::extend('literal', function(parser $parser) {
 		'literal-char',
 		'struct-literal',
 		'array-literal',
-		'addr-literal',
-		'word-literal'
+		//'addr-literal',
+		//'word-literal'
 	]);
 });
 
@@ -78,9 +78,9 @@ parser::extend('array-literal', function(parser $parser) {
 	return new c_array($elements);
 });
 
-parser::extend('addr-literal', function(parser $parser) {
-	$str = '&';
-	$parser->expect('&');
-	$str .= $parser->expect('word')->content;
-	return new c_literal($str);
-});
+// parser::extend('addr-literal', function(parser $parser) {
+// 	$str = '&';
+// 	$parser->expect('&');
+// 	$str .= $parser->expect('word')->content;
+// 	return new c_literal($str);
+// });
