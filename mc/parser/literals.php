@@ -1,14 +1,15 @@
 <?php
 
 parser::extend('literal', function(parser $parser) {
-	foreach (['literal-number', 'literal-string', 'literal-char', 'struct-literal', 'array-literal', 'addr-literal', 'word-literal'] as $option) {
-		try {
-			return $parser->read($option);
-		} catch (ParseException $e) {
-			//
-		}
-	}
-	throw new ParseException("Unknown input");
+	return $parser->any([
+		'literal-number',
+		'literal-string',
+		'literal-char',
+		'struct-literal',
+		'array-literal',
+		'addr-literal',
+		'word-literal'
+	]);
 });
 
 parser::extend('literal-number', function(parser $parser) {

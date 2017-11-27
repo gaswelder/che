@@ -98,13 +98,19 @@ class parser
 		$obj = $p($alt);
 		$this->s = $alt->s;
 		$this->type_names = $alt->type_names;
-
-
-		$this->trace('ok');
-
 		return $obj;
+	}
 
-		
+	function any($parsers)
+	{
+		foreach ($parsers as $parser) {
+			try {
+				return $this->read($parser);
+			} catch (ParseException $e) {
+				//
+			}
+		}
+		throw new ParseException("Unknown input");
 	}
 
 	function trace($m)

@@ -2,14 +2,15 @@
 
 // Root parser that operates on the top level of a module.
 parser::extend('root', function(parser $parser) {
-	foreach (['macro', 'typedef', 'comment', 'import', 'enum-def', 'struct-def-root', 'object-def'] as $option) {
-		try {
-			return $parser->read($option);
-		} catch (ParseException $e) {
-			//
-		}
-	}
-	throw new ParseException("Unknown input");
+	return $parser->any([
+		'macro',
+		'typedef',
+		'comment',
+		'import',
+		'enum-def',
+		'struct-def-root',
+		'object-def'
+	]);
 });
 
 parser::extend('comment', function(parser $parser) {
