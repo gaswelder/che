@@ -1,5 +1,66 @@
 <?php
 
+parser::extend('root', function(parser $parser) {
+	$t = $parser->s->peek();
+	
+	// <macro>?
+	if ($t->type == 'macro') {
+		return $parser->read('macro');
+	}
+
+	// <typedef>?
+	if ($t->type == 'typedef') {
+		$def = $parser->read('typedef');
+		$parser->add_type($def->form->name);
+		return $def;
+	}
+
+	// comment?
+	if ($t->type == 'comment') {
+		$parser->s->get();
+		return new c_comment($t->content);
+	}
+
+	if ($t->type == 'import') {
+		$parser->s->get();
+		$parserath = $parser->s->get();
+		$dir = dirname(realpath($parser->path));
+
+		return new c_import($parserath->content, $dir);
+	}
+
+	/*
+		* If 'pub' follows, look at the token after that.
+		*/
+	if ($t->type == 'pub') {
+		$t1 = $parser->s->peek(1);
+		$t2 = $parser->s->peek(2);
+		$t3 = $parser->s->peek(3);
+	}
+	else {
+		$t1 = $parser->s->peek(0);
+		$t2 = $parser->s->peek(1);
+		$t3 = $parser->s->peek(2);
+	}
+
+	// <enum-def>?
+	if ($t1->type == 'enum') {
+		return $parser->read('enum-def');
+	}
+
+	// <struct-def>?
+	if ($t1->type == 'struct') {
+		if ($t2->type == 'word' && $t3->type == '{') {
+			$def = $parser->read('struct-def');
+			return $def;
+		}
+	}
+
+	// <obj-def>
+	return $parser->read('object-def');
+});
+
+
 // <typedef>: "typedef" <type> <form> ";"
 parser::extend('typedef', function(parser $parser) {
 	$parser->s->expect('typedef');
@@ -819,64 +880,4 @@ parser::extend('object-def', function(parser $parser) {
 	}
 
 	return $parser->error("Unexpected $t");
-});
-
-parser::extend('root', function(parser $parser) {
-	$t = $parser->s->peek();
-	
-	// <macro>?
-	if ($t->type == 'macro') {
-		return $parser->read('macro');
-	}
-
-	// <typedef>?
-	if ($t->type == 'typedef') {
-		$def = $parser->read('typedef');
-		$parser->add_type($def->form->name);
-		return $def;
-	}
-
-	// comment?
-	if ($t->type == 'comment') {
-		$parser->s->get();
-		return new c_comment($t->content);
-	}
-
-	if ($t->type == 'import') {
-		$parser->s->get();
-		$parserath = $parser->s->get();
-		$dir = dirname(realpath($parser->path));
-
-		return new c_import($parserath->content, $dir);
-	}
-
-	/*
-		* If 'pub' follows, look at the token after that.
-		*/
-	if ($t->type == 'pub') {
-		$t1 = $parser->s->peek(1);
-		$t2 = $parser->s->peek(2);
-		$t3 = $parser->s->peek(3);
-	}
-	else {
-		$t1 = $parser->s->peek(0);
-		$t2 = $parser->s->peek(1);
-		$t3 = $parser->s->peek(2);
-	}
-
-	// <enum-def>?
-	if ($t1->type == 'enum') {
-		return $parser->read('enum-def');
-	}
-
-	// <struct-def>?
-	if ($t1->type == 'struct') {
-		if ($t2->type == 'word' && $t3->type == '{') {
-			$def = $parser->read('struct-def');
-			return $def;
-		}
-	}
-
-	// <obj-def>
-	return $parser->read('object-def');
 });

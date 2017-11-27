@@ -4,6 +4,8 @@ require __DIR__ . '/lexer.php';
 require __DIR__ . '/token.php';
 require __DIR__ . '/subparsers.php';
 
+class ParseException extends Exception {}
+
 // Second stage parser that returns CPOM objects
 class parser
 {
