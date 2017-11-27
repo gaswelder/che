@@ -15,6 +15,9 @@ class parser
 	private static $parsers = [];
 
 	static function extend($name, $parser) {
+		if (isset(self::$parsers[$name])) {
+			throw new Exception("Parser '$name' already defined");
+		}
 		self::$parsers[$name] = $parser;
 	}
 

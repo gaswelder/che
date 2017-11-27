@@ -1,58 +1,52 @@
 <?php
 
 parser::extend('literal', function(parser $parser) {
-	$t = $parser->s->get();
-
-	if ($t->type == 'num') {
-		return new c_number($t->content);
-	}
-
-	if ($t->type == 'string') {
-		return new c_string($t->content);
-	}
-
-	if ($t->type == 'char') {
-		return new c_char($t->content);
-	}
-
-	if ($t->type == '-') {
-		$n = $parser->s->expect('num');
-		return new c_number('-'.$n->content);
-	}
-
-	if ($t->type == '{') {
-		$peek = $parser->s->peek();
-		$parser->s->unget($t);
-
-		if ($peek->type == '.') {
-			return $parser->read('struct-literal');
-		}
-		else {
-			return $parser->read('array-literal');
+	foreach (['literal-number', 'literal-string', 'literal-char', 'struct-literal', 'array-literal', 'addr-literal', 'word-literal'] as $option) {
+		try {
+			return $parser->read($option);
+		} catch (ParseException $e) {
+			//
 		}
 	}
+	throw new ParseException("Unknown input");
+});
 
-	if ($t->type == 'word') {
-		return new c_literal($t->content);
+parser::extend('literal-number', function(parser $parser) {
+	// Optional minus sign.
+	$s = '';
+	try {
+		$parser->expect('-');
+		$s = '-';
+	} catch (ParseException $e) {
+		//
 	}
+	// The number token.
+	$s .= $parser->expect('num')->content;
+	return new c_number($s);
+});
 
-	if ($t->type == '&') {
-		$parser->s->unget($t);
-		return $parser->read('addr-literal');
-	}
+parser::extend('literal-string', function(parser $parser) {
+	return new c_string($parser->expect('string')->content);
+});
 
-	return $parser->error("Unexpected $t");
+parser::extend('literal-char', function(parser $parser) {
+	return new c_char($parser->expect('chat')->content);
+});
+
+parser::extend('word-literal', function(parser $parser) {
+	$t = $parser->expect('word');
+	return new c_literal($t->content);
 });
 
 // <struct-literal>: "{" "." <id> "=" <literal> [, ...] "}"
 parser::extend('struct-literal', function(parser $parser) {
 	$struct = new c_struct_literal();
 
-	$parser->s->expect('{');
+	$parser->expect('{');
 	while (!$parser->s->ended()) {
-		$parser->s->expect('.');
-		$id = $parser->s->expect('word')->content;
-		$parser->s->expect('=');
+		$parser->expect('.');
+		$id = $parser->expect('word')->content;
+		$parser->expect('=');
 		$val = $parser->read('literal');
 
 		$struct->add($id, $val);
@@ -64,28 +58,28 @@ parser::extend('struct-literal', function(parser $parser) {
 			break;
 		}
 	}
-	$parser->s->expect('}');
+	$parser->expect('}');
 	return $struct;
 });
 
 parser::extend('array-literal', function(parser $parser) {
 	$elements = array();
 
-	$parser->s->expect('{');
+	$parser->expect('{');
 	while (!$parser->s->ended() && $parser->s->peek()->type != '}') {
 		$elements[] = $parser->read('literal');
 		if ($parser->s->peek()->type == ',') {
 			$parser->s->get();
 		}
 	}
-	$parser->s->expect('}');
+	$parser->expect('}');
 
 	return new c_array($elements);
 });
 
 parser::extend('addr-literal', function(parser $parser) {
 	$str = '&';
-	$parser->s->expect('&');
-	$str .= $parser->s->expect('word')->content;
+	$parser->expect('&');
+	$str .= $parser->expect('word')->content;
 	return new c_literal($str);
 });
