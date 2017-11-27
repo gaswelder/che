@@ -136,6 +136,15 @@ class parser
 		$this->type_names[] = $name;
 	}
 
+	// Returns there is a type with the given name registered in the
+	// current parser instance.
+	function is_typename($name)
+	{
+		$ok = in_array($name, $this->type_names);
+		$this->trace("is_typename($name) = ".($ok ? "yes" : "no"));
+		return $ok;
+	}
+
 	/*
 	 * Reads next program object from the source.
 	 */
@@ -154,14 +163,6 @@ class parser
 		if ($this->type_follows()) return false;
 		$t = $this->s->peek()->type;
 		return $t == '*' || $t == 'word';
-	}
-
-	function is_typename($word)
-	{
-		$ok = in_array($word, $this->type_names);
-		$this->trace("is_typename($word) = ".($ok ? "yes" : "no"));
-		return $ok;
-		return in_array($word, $this->type_names);
 	}
 
 	function type_follows()

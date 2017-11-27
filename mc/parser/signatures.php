@@ -147,7 +147,9 @@ parser::extend('form', function(parser $parser) {
 
 parser::extend('type', function(parser $parser) {
 	$mods = array();
+	$type = array();
 
+	// Const?
 	try {
 		$parser->expect('const');
 		$mods[] = 'const';
@@ -155,30 +157,66 @@ parser::extend('type', function(parser $parser) {
 		//
 	}
 
-	$type = array();
-
-	// "struct" <struct-fields>?
-	if ($parser->s->peek()->type == 'struct') {
-		$type[] = $parser->read('struct-def');
+	// "struct {foo x; bar y; ...}"?
+	try {
+		$type[] = $parser->read('anonymous-struct');
 		return new c_type(array_merge($mods, $type));
+	} catch (ParseException $e) {
+		//
 	}
 
-	$t = $parser->s->peek();
-	while ($t->type == 'word' && $parser->is_typename($t->content)) {
-		$type[] = $t->content;
-		$parser->s->get();
-		$t = $parser->s->peek();
+	// "struct foo"?
+	try {
+		$type[] = $parser->read('struct-typename');
+		return new c_type(array_merge($mods, $type));
+	} catch (ParseException $e) {
+		//
 	}
 
-	if (empty($type)) {
-		if ($parser->s->peek()->type == 'word') {
-			$id = $parser->s->peek()->content;
-			return $parser->error("Unknown type name: $id");
-		}
-		return $parser->error("Type name expected, got ".$parser->s->peek());
-	}
-
+	$type[] = $parser->read('typename');
 	return new c_type(array_merge($mods, $type));
+});
+
+parser::extend('typename', function(parser $parser) {
+	$name = $parser->expect('word')->content;
+	if (!$parser->is_typename($name)) {
+		throw new ParseException("Not a typename: $name");
+	}
+	return $name;
+});
+
+parser::extend('struct-typename', function(parser $parser) {
+	$parser->expect('struct');
+	$name = $parser->expect('word')->content;
+	return new c_structdef($name);
+});
+
+// "struct" {<struct-fields>}
+parser::extend('anonymous-struct', function(parser $parser) {
+	$parser->expect('struct');
+	$parser->expect('{');
+
+	$def = new c_structdef('');
+
+	while (!$parser->s->ended() && $parser->s->peek()->type != '}') {
+		if ($parser->s->peek()->type == 'union') {
+			$u = $parser->read('union');
+			$type = new c_type(array($u));
+			$form = $parser->read('form');
+
+			$list = new c_varlist($type);
+			$list->add($form);
+		}
+		else {
+			$list = $parser->read('varlist');
+		}
+		$def->add($list);
+		$parser->s->expect(';');
+	}
+	$parser->expect('}');
+	$parser->expect(';');
+
+	return $def;
 });
 
 parser::extend('union', function(parser $parser) {
@@ -197,48 +235,4 @@ parser::extend('union', function(parser $parser) {
 	}
 	$parser->s->expect('}');
 	return $u;
-});
-
-// <struct-def>: "pub"? "struct" <name> [<struct-fields>] ";"
-parser::extend('struct-def', function(parser $parser) {
-	$pub = false;
-	if ($parser->s->peek()->type == 'pub') {
-		$pub = true;
-		$parser->s->get();
-	}
-
-	$parser->s->expect('struct');
-	if ($parser->s->peek()->type == 'word') {
-		$name = $parser->s->get()->content;
-	}
-	else {
-		$name = '';
-	}
-	$def = new c_structdef($name);
-	$def->pub = $pub;
-
-	if ($parser->s->peek()->type != '{') {
-		return $def;
-	}
-
-	$parser->s->get();
-	while (!$parser->s->ended() && $parser->s->peek()->type != '}') {
-		if ($parser->s->peek()->type == 'union') {
-			$u = $parser->read('union');
-			$type = new c_type(array($u));
-			$form = $parser->read('form');
-
-			$list = new c_varlist($type);
-			$list->add($form);
-		}
-		else {
-			$list = $parser->read('varlist');
-		}
-		$def->add($list);
-		$parser->s->expect(';');
-	}
-	$parser->s->expect('}');
-	$parser->s->expect(';');
-
-	return $def;
 });
