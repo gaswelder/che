@@ -3,6 +3,7 @@
 require __DIR__ . '/lexer.php';
 require __DIR__ . '/token.php';
 require __DIR__ . '/subparsers.php';
+require __DIR__ . '/literals.php';
 
 class ParseException extends Exception {}
 
