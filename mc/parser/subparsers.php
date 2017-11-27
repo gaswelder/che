@@ -1,85 +1,50 @@
 <?php
 
+// Root parser that operates on the top level of a module.
 parser::extend('root', function(parser $parser) {
-	$t = $parser->s->peek();
-	
-	// <macro>?
-	if ($t->type == 'macro') {
-		return $parser->read('macro');
-	}
-
-	// <typedef>?
-	if ($t->type == 'typedef') {
-		$def = $parser->read('typedef');
-		$parser->add_type($def->form->name);
-		return $def;
-	}
-
-	// comment?
-	if ($t->type == 'comment') {
-		$parser->s->get();
-		return new c_comment($t->content);
-	}
-
-	if ($t->type == 'import') {
-		$parser->s->get();
-		$parserath = $parser->s->get();
-		$dir = dirname(realpath($parser->path));
-
-		return new c_import($parserath->content, $dir);
-	}
-
-	/*
-		* If 'pub' follows, look at the token after that.
-		*/
-	if ($t->type == 'pub') {
-		$t1 = $parser->s->peek(1);
-		$t2 = $parser->s->peek(2);
-		$t3 = $parser->s->peek(3);
-	}
-	else {
-		$t1 = $parser->s->peek(0);
-		$t2 = $parser->s->peek(1);
-		$t3 = $parser->s->peek(2);
-	}
-
-	// <enum-def>?
-	if ($t1->type == 'enum') {
-		return $parser->read('enum-def');
-	}
-
-	// <struct-def>?
-	if ($t1->type == 'struct') {
-		if ($t2->type == 'word' && $t3->type == '{') {
-			$def = $parser->read('struct-def');
-			return $def;
+	foreach (['macro', 'typedef', 'comment', 'import', 'enum-def', 'struct-def-root', 'object-def'] as $option) {
+		try {
+			return $parser->read($option);
+		} catch (ParseException $e) {
+			//
 		}
 	}
+	throw new ParseException("Unknown input");
+});
 
-	// <obj-def>
-	return $parser->read('object-def');
+parser::extend('comment', function(parser $parser) {
+	$t = $parser->expect('comment');
+	return new c_comment($t->content);
+});
+
+parser::extend('import', function(parser $parser) {
+	$t = $parser->expect('import');
+	$path = $parser->s->get();
+	$dir = dirname(realpath($parser->path));
+	return new c_import($path->content, $dir);
 });
 
 
 // <typedef>: "typedef" <type> <form> ";"
 parser::extend('typedef', function(parser $parser) {
-	$parser->s->expect('typedef');
+	$parser->expect('typedef');
 	$type = $parser->read('type');
 	$form = $parser->read('form');
-	$parser->s->expect(';');
+	$parser->expect(';');
+	$parser->add_type($form->name);
 	return new c_typedef($type, $form);
 });
 
 // <macro>: "#include" <string> | "#define" <name> <string>
 // "#ifdef" <id> | "#ifndef" <id>
 parser::extend('macro', function(parser $parser) {
-	$m = $parser->s->get();
+	$m = $parser->expect('macro');
 
 	$type = strtok($m->content, " \t");
 	switch ($type) {
 	case '#include':
-		$parserath = trim(strtok("\n"));
-		return new c_include($parserath);
+		$path = trim(strtok("\n"));
+		return new c_include($path);
 	case '#define':
 		$name = strtok("\t ");
 		$value = strtok("\n");
@@ -102,11 +67,51 @@ parser::extend('macro', function(parser $parser) {
 	}
 });
 
+parser::extend('struct-def-root', function(parser $parser) {
+	$pub = false;
+	try {
+		$parser->expect('pub');
+		$pub = true;
+	} catch (ParseException $e) {
+		//
+	}
+
+	$parser->expect('struct');
+	$name = $parser->expect('word')->content;
+	$def = new c_structdef($name);
+	$def->pub = $pub;
+
+	if ($parser->s->peek()->type != '{') {
+		return $def;
+	}
+
+	$parser->s->get();
+	while (!$parser->s->ended() && $parser->s->peek()->type != '}') {
+		if ($parser->s->peek()->type == 'union') {
+			$u = $parser->read('union');
+			$type = new c_type(array($u));
+			$form = $parser->read('form');
+
+			$list = new c_varlist($type);
+			$list->add($form);
+		}
+		else {
+			$list = $parser->read('varlist');
+		}
+		$def->add($list);
+		$parser->s->expect(';');
+	}
+	$parser->s->expect('}');
+	$parser->s->expect(';');
+
+	return $def;
+});
+
 // <struct-def>: "pub"? "struct" <name> [<struct-fields>] ";"
 parser::extend('struct-def', function(parser $parser) {
-	$parserub = false;
+	$pub = false;
 	if ($parser->s->peek()->type == 'pub') {
-		$parserub = true;
+		$pub = true;
 		$parser->s->get();
 	}
 
@@ -118,7 +123,7 @@ parser::extend('struct-def', function(parser $parser) {
 		$name = '';
 	}
 	$def = new c_structdef($name);
-	$def->pub = $parserub;
+	$def->pub = $pub;
 
 	if ($parser->s->peek()->type != '{') {
 		return $def;
@@ -799,19 +804,21 @@ parser::extend('union', function(parser $parser) {
 
 // <enum-def>: "pub"? "enum" "{" <id> ["=" <literal>] [,]... "}" ";"
 parser::extend('enum-def', function(parser $parser) {
-	$parserub = false;
-	if ($parser->s->peek()->type == 'pub') {
-		$parserub = true;
-		$parser->s->get();
+	$pub = false;
+	try {
+		$parser->expect('pub');
+		$pub = true;
+	} catch (ParseException $e) {
+		//
 	}
 
-	$parser->s->expect('enum');
-	$parser->s->expect('{');
+	$parser->expect('enum');
+	$parser->expect('{');
 
 	$enum = new c_enum();
-	$enum->pub = $parserub;
+	$enum->pub = $pub;
 	while (1) {
-		$id = $parser->s->expect('word')->content;
+		$id = $parser->expect('word')->content;
 		$val = null;
 		if ($parser->s->peek()->type == '=') {
 			$parser->s->get();
@@ -825,8 +832,8 @@ parser::extend('enum-def', function(parser $parser) {
 			break;
 		}
 	}
-	$parser->s->expect('}');
-	$parser->s->expect(';');
+	$parser->expect('}');
+	$parser->expect(';');
 	return $enum;
 });
 
@@ -836,11 +843,12 @@ parser::extend('enum-def', function(parser $parser) {
 // or <stor> <type> <func> ";"
 // or <stor> <type> <func> <body>
 parser::extend('object-def', function(parser $parser) {
-	$parserub = false;
-
-	if ($parser->s->peek()->type == 'pub') {
-		$parser->s->get();
-		$parserub = true;
+	$pub = false;
+	try {
+		$parser->expect('pub');
+		$pub = true;
+	} catch (ParseException $e) {
+		//
 	}
 
 	$type = $parser->read('type');
@@ -850,7 +858,7 @@ parser::extend('object-def', function(parser $parser) {
 	 * If not a function, return as a varlist.
 	 */
 	if (empty($form->ops) || !($form->ops[0] instanceof c_formal_args)) {
-		if ($parserub) {
+		if ($pub) {
 			return $parser->error("varlist can't be declared 'pub'");
 		}
 		$expr = null;
@@ -866,7 +874,7 @@ parser::extend('object-def', function(parser $parser) {
 
 	$args = array_shift($form->ops);
 	$parserroto = new c_prototype($type, $form, $args);
-	$parserroto->pub = $parserub;
+	$parserroto->pub = $pub;
 
 	$t = $parser->s->get();
 	if ($t->type == ';') {
