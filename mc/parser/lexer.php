@@ -9,11 +9,16 @@ class mctok
 	/*
 	 * Buffer for returned tokens.
 	 */
-	protected $buffer = array();
+	private $buffer = array();
 
 	function __construct($path)
 	{
 		$this->s = new buf(file_get_contents($path));
+	}
+
+	function __clone()
+	{
+		$this->s = clone $this->s;
 	}
 
 	function ended()

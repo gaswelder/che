@@ -1,24 +1,24 @@
 <?php
 
 // <typedef>: "typedef" <type> <form> ";"
-parser::extend('typedef', function(parser $p) {
-	$p->s->expect('typedef');
-	$type = $p->read('type');
-	$form = $p->read('form');
-	$p->s->expect(';');
+parser::extend('typedef', function(parser $parser) {
+	$parser->s->expect('typedef');
+	$type = $parser->read('type');
+	$form = $parser->read('form');
+	$parser->s->expect(';');
 	return new c_typedef($type, $form);
 });
 
 // <macro>: "#include" <string> | "#define" <name> <string>
 // "#ifdef" <id> | "#ifndef" <id>
-parser::extend('macro', function(parser $p) {
-	$m = $p->s->get();
+parser::extend('macro', function(parser $parser) {
+	$m = $parser->s->get();
 
 	$type = strtok($m->content, " \t");
 	switch ($type) {
 	case '#include':
-		$path = trim(strtok("\n"));
-		return new c_include($path);
+		$parserath = trim(strtok("\n"));
+		return new c_include($parserath);
 	case '#define':
 		$name = strtok("\t ");
 		$value = strtok("\n");
@@ -34,103 +34,99 @@ parser::extend('macro', function(parser $p) {
 		return new c_macro($type);
 	case '#type':
 		$name = trim(strtok("\n"));
-		$p->add_type($name);
+		$parser->add_type($name);
 		return new c_comment("#type $name");
 	default:
-		return $p->error("Unknown macro: $type");
+		return $parser->error("Unknown macro: $type");
 	}
 });
 
 // <struct-def>: "pub"? "struct" <name> [<struct-fields>] ";"
-parser::extend('struct-def', function(parser $p) {
-	$s = $p->s;
-
-	$pub = false;
-	if ($s->peek()->type == 'pub') {
-		$pub = true;
-		$s->get();
+parser::extend('struct-def', function(parser $parser) {
+	$parserub = false;
+	if ($parser->s->peek()->type == 'pub') {
+		$parserub = true;
+		$parser->s->get();
 	}
 
-	$p->s->expect('struct');
-	if ($s->peek()->type == 'word') {
-		$name = $s->get()->content;
+	$parser->s->expect('struct');
+	if ($parser->s->peek()->type == 'word') {
+		$name = $parser->s->get()->content;
 	}
 	else {
 		$name = '';
 	}
 	$def = new c_structdef($name);
-	$def->pub = $pub;
+	$def->pub = $parserub;
 
-	if ($s->peek()->type != '{') {
+	if ($parser->s->peek()->type != '{') {
 		return $def;
 	}
 
-	$s->get();
-	while (!$s->ended() && $s->peek()->type != '}') {
-		if ($s->peek()->type == 'union') {
-			$u = $p->read('union');
+	$parser->s->get();
+	while (!$parser->s->ended() && $parser->s->peek()->type != '}') {
+		if ($parser->s->peek()->type == 'union') {
+			$u = $parser->read('union');
 			$type = new c_type(array($u));
-			$form = $p->read('form');
+			$form = $parser->read('form');
 
 			$list = new c_varlist($type);
 			$list->add($form);
 		}
 		else {
-			$list = $p->read('varlist');
+			$list = $parser->read('varlist');
 		}
 		$def->add($list);
-		$p->s->expect(';');
+		$parser->s->expect(';');
 	}
-	$p->s->expect('}');
-	$p->s->expect(';');
+	$parser->s->expect('}');
+	$parser->s->expect(';');
 
 	return $def;
 });
 
-parser::extend('varlist', function(parser $p) {
-	$s = $p->s;
-
-	$type = $p->read('type');
+parser::extend('varlist', function(parser $parser) {
+	$type = $parser->read('type');
 	$list = new c_varlist($type);
 
-	$f = $p->read('form');
+	$f = $parser->read('form');
 	$e = null;
-	if ($s->peek()->type == '=') {
-		$s->get();
-		$e = $p->read('expr');
+	if ($parser->s->peek()->type == '=') {
+		$parser->s->get();
+		$e = $parser->read('expr');
 	}
 	$list->add($f, $e);
 
-	while ($s->peek()->type == ',') {
-		$comma = $s->get();
+	while ($parser->s->peek()->type == ',') {
+		$comma = $parser->s->get();
 
-		if (!$p->form_follows()) {
-			$s->unget($comma);
+		if (!$parser->form_follows()) {
+			$parser->s->unget($comma);
 			break;
 		}
-		$f = $p->read('form');
+		$f = $parser->read('form');
 		$e = null;
-		if ($s->peek()->type == '=') {
-			$s->get();
-			$e = $p->read('expr');
+		if ($parser->s->peek()->type == '=') {
+			$parser->s->get();
+			$e = $parser->read('expr');
 		}
 		$list->add($f, $e);
 	}
 	return $list;
 });
 
-parser::extend('if', function(parser $p) {
-	$p->s->expect('if');
-	$p->s->expect('(');
-	$expr = $p->read('expr');
-	$p->s->expect(')');
+parser::extend('if', function(parser $parser) {
+	$parser->s->expect('if');
+	$parser->s->expect('(');
+	$expr = $parser->read('expr');
+	$parser->s->expect(')');
 
-	$body = $p->read('body-or-part');
+	$body = $parser->read('body-or-part');
 
-	$t = $p->s->peek();
+	$t = $parser->s->peek();
 	if ($t->type == 'else') {
-		$p->s->get();
-		$else = $p->read('body-or-part');
+		$parser->s->get();
+		$else = $parser->read('body-or-part');
 	}
 	else {
 		$else = null;
@@ -140,15 +136,13 @@ parser::extend('if', function(parser $p) {
 });
 
 // <expr>: <atom> [<op> <atom>]...
-parser::extend('expr', function (parser $p) {
-	$s = $p->s;
-
+parser::extend('expr', function (parser $parser) {
 	$e = new c_expr();
-	$e->add($p->read('atom'));
+	$e->add($parser->read('atom'));
 
-	while (!$s->ended() && $p->is_op($s->peek())) {
-		$e->add($s->get()->type);
-		$e->add($p->read('atom'));
+	while (!$parser->s->ended() && $parser->is_op($parser->s->peek())) {
+		$e->add($parser->s->get()->type);
+		$e->add($parser->read('atom'));
 	}
 
 	return $e;
@@ -159,8 +153,6 @@ parser::extend('expr', function (parser $p) {
 // 		<left-op>... ("(" <expr> ")" / <name>) <right-op>...
 // )
 parser::extend('atom', function (parser $parser) {
-	$s = $parser->s;
-
 	$ops = array();
 
 	// <cast>?
@@ -181,7 +173,7 @@ parser::extend('atom', function (parser $parser) {
 	}
 
 	// <sizeof>?
-	if ($s->peek()->type == 'sizeof') {
+	if ($parser->s->peek()->type == 'sizeof') {
 		$ops[] = array(
 			'sizeof',
 			$parser->read('sizeof')
@@ -191,12 +183,12 @@ parser::extend('atom', function (parser $parser) {
 
 	// <left-op>...
 	$L = array('&', '*', '++', '--', '!', '~');
-	while (!$s->ended() && in_array($s->peek()->type, $L)) {
-		$ops[] = array('op', $s->get()->type);
+	while (!$parser->s->ended() && in_array($parser->s->peek()->type, $L)) {
+		$ops[] = array('op', $parser->s->get()->type);
 	}
 
 	// "(" <expr> ")" / <name>
-	if ($s->peek()->type == '(') {
+	if ($parser->s->peek()->type == '(') {
 		$parser->s->expect('(');
 		$ops[] = array('expr', $parser->read('expr'));
 		$parser->s->expect(')');
@@ -206,18 +198,18 @@ parser::extend('atom', function (parser $parser) {
 		$ops[] = array('id', $t->content);
 	}
 
-	while (!$s->ended()) {
-		$p = $s->peek();
-		if ($p->type == '--' || $p->type == '++') {
+	while (!$parser->s->ended()) {
+		$peek = $parser->s->peek();
+		if ($peek->type == '--' || $peek->type == '++') {
 			$ops[] = array(
 				'op',
-				$s->get()->type
+				$parser->s->get()->type
 			);
 			continue;
 		}
 
-		if ($p->type == '[') {
-			$s->get();
+		if ($peek->type == '[') {
+			$parser->s->get();
 			$ops[] = array(
 				'index',
 				$parser->read('expr')
@@ -226,10 +218,10 @@ parser::extend('atom', function (parser $parser) {
 			continue;
 		}
 
-		if ($p->type == '.' || $p->type == '->') {
-			$s->get();
-			$ops[] = array('op', $p->type);
-			$t = $s->get();
+		if ($peek->type == '.' || $peek->type == '->') {
+			$parser->s->get();
+			$ops[] = array('op', $peek->type);
+			$t = $parser->s->get();
 			if ($t->type != 'word') {
 				return $parser->error("Id expected, got $t");
 			}
@@ -237,13 +229,13 @@ parser::extend('atom', function (parser $parser) {
 			continue;
 		}
 
-		if ($p->type == '(') {
-			$s->get();
+		if ($peek->type == '(') {
+			$parser->s->get();
 			$args = [];
-			while (!$s->ended() && $s->peek()->type != ')') {
+			while (!$parser->s->ended() && $parser->s->peek()->type != ')') {
 				$args[] = $parser->read('expr');
-				if ($s->peek()->type == ',') {
-					$s->get();
+				if ($parser->s->peek()->type == ',') {
+					$parser->s->get();
 				}
 				else {
 					break;
@@ -261,27 +253,26 @@ parser::extend('atom', function (parser $parser) {
 
 // <sizeof>: "sizeof" <sizeof-arg>
 // <sizeof-arg>: ("(" (<expr> | <type>) ")") | <expr> | <type>
-parser::extend('sizeof', function(parser $p) {
-	$s = $p->s;
-	$parts = [];
+parser::extend('sizeof', function(parser $parser) {
+	$parserarts = [];
 
-	$p->s->expect('sizeof');
+	$parser->s->expect('sizeof');
 
 	$brace = false;
-	if ($s->peek()->type == '(') {
+	if ($parser->s->peek()->type == '(') {
 		$brace = true;
-		$s->get();
+		$parser->s->get();
 	}
 
-	if ($p->type_follows()) {
-		$arg = $p->read('typeform');
+	if ($parser->type_follows()) {
+		$arg = $parser->read('typeform');
 	}
 	else {
-		$arg = $p->read('expr');
+		$arg = $parser->read('expr');
 	}
 
 	if ($brace) {
-		$p->s->expect(')');
+		$parser->s->expect(')');
 	}
 
 	return new c_sizeof($arg);
@@ -308,10 +299,10 @@ parser::extend('literal', function(parser $parser) {
 	}
 
 	if ($t->type == '{') {
-		$p = $parser->s->peek();
+		$peek = $parser->s->peek();
 		$parser->s->unget($t);
 
-		if ($p->type == '.') {
+		if ($peek->type == '.') {
 			return $parser->read('struct-literal');
 		}
 		else {
@@ -333,12 +324,10 @@ parser::extend('literal', function(parser $parser) {
 
 // <struct-literal>: "{" "." <id> "=" <literal> [, ...] "}"
 parser::extend('struct-literal', function(parser $parser) {
-	$s = $parser->s;
-
 	$struct = new c_struct_literal();
 
 	$parser->s->expect('{');
-	while (!$s->ended()) {
+	while (!$parser->s->ended()) {
 		$parser->s->expect('.');
 		$id = $parser->s->expect('word')->content;
 		$parser->s->expect('=');
@@ -346,8 +335,8 @@ parser::extend('struct-literal', function(parser $parser) {
 
 		$struct->add($id, $val);
 
-		if ($s->peek()->type == ',') {
-			$s->get();
+		if ($parser->s->peek()->type == ',') {
+			$parser->s->get();
 		}
 		else {
 			break;
@@ -358,15 +347,13 @@ parser::extend('struct-literal', function(parser $parser) {
 });
 
 parser::extend('array-literal', function(parser $parser) {
-	$s = $parser->s;
-
 	$elements = array();
 
 	$parser->s->expect('{');
-	while (!$s->ended() && $s->peek()->type != '}') {
+	while (!$parser->s->ended() && $parser->s->peek()->type != '}') {
 		$elements[] = $parser->read('literal');
-		if ($s->peek()->type == ',') {
-			$s->get();
+		if ($parser->s->peek()->type == ',') {
+			$parser->s->get();
 		}
 	}
 	$parser->s->expect('}');
@@ -375,36 +362,32 @@ parser::extend('array-literal', function(parser $parser) {
 });
 
 parser::extend('addr-literal', function(parser $parser) {
-	$s = $parser->s;
 	$str = '&';
 	$parser->s->expect('&');
 	$str .= $parser->s->expect('word')->content;
 	return new c_literal($str);
 });
 
-parser::extend('typeform', function(parser $p) {
-	$t = $p->read('type');
-	$f = $p->read('form');
+parser::extend('typeform', function(parser $parser) {
+	$t = $parser->read('type');
+	$f = $parser->read('form');
 	return new c_typeform($t, $f);
 });
 
 // <defer>: "defer" <expr>
-parser::extend('defer', function(parser $p) {
-	$s = $p->s;
-	$p->s->expect('defer');
-	return new c_defer($p->read('expr'));
+parser::extend('defer', function(parser $parser) {
+	$parser->s->expect('defer');
+	return new c_defer($parser->read('expr'));
 });
 
 // <switch-case>: "case" <literal>|<id> ":" <body-part>...
 parser::extend('switch-case', function(parser $parser) {
-	$s = $parser->s;
-
 	$parser->s->expect('case');
 
 	// <id> | <literal>
-	$p = $s->peek();
-	if ($p->type == 'word') {
-		$val = new c_literal($s->get()->content);
+	$peek = $parser->s->peek();
+	if ($peek->type == 'word') {
+		$val = new c_literal($parser->s->get()->content);
 	}
 	else {
 		$val = $parser->read('literal');
@@ -415,8 +398,8 @@ parser::extend('switch-case', function(parser $parser) {
 
 	// <body-part>...
 	$body = new c_body();
-	while (!$s->ended()) {
-		$t = $s->peek();
+	while (!$parser->s->ended()) {
+		$t = $parser->s->peek();
 		if ($t->type == 'case') {
 			break;
 		}
@@ -435,11 +418,10 @@ parser::extend('switch', function(parser $parser) {
 	$cond = $parser->read('expr');
 	$parser->s->expect(')');
 
-	$s = $parser->s;
 	$cases = [];
 
 	$parser->s->expect('{');
-	while (!$s->ended() && $s->peek()->type != '}') {
+	while (!$parser->s->ended() && $parser->s->peek()->type != '}') {
 		$cases[] = $parser->read('switch-case');
 	}
 	$parser->s->expect('}');
@@ -494,13 +476,12 @@ parser::extend('for', function(parser $parser) {
 
 // <body>: "{" <body-part>... "}"
 parser::extend('body', function(parser $parser) {
-	$s = $parser->s;
 	$body = new c_body();
 
 	$parser->s->expect('{');
-	while (!$s->ended() && $s->peek()->type != '}') {
-		$part = $parser->read('body-part');
-		$body->add($part);
+	while (!$parser->s->ended() && $parser->s->peek()->type != '}') {
+		$parserart = $parser->read('body-part');
+		$body->add($parserart);
 	}
 	$parser->s->expect('}');
 	return $body;
@@ -509,12 +490,11 @@ parser::extend('body', function(parser $parser) {
 // <body-part>: (comment | <obj-def> | <construct>
 // 	| (<expr> ";") | (<defer> ";") | <body> )...
 parser::extend('body-part', function(parser $parser) {
-	$s = $parser->s;
-	$t = $s->peek();
+	$t = $parser->s->peek();
 
 	// comment?
 	if ($t->type == 'comment') {
-		$s->get();
+		$parser->s->get();
 		return new c_comment($t->content);
 	}
 
@@ -555,13 +535,13 @@ parser::extend('body-part', function(parser $parser) {
 	return $expr;
 });
 
-parser::extend('body-or-part', function(parser $p) {
-	if ($p->s->peek()->type == '{') {
-		return $p->read('body');
+parser::extend('body-or-part', function(parser $parser) {
+	if ($parser->s->peek()->type == '{') {
+		return $parser->read('body');
 	}
 
 	$b = new c_body();
-	$b->add($p->read('body-part'));
+	$b->add($parser->read('body-part'));
 	return $b;
 });
 
@@ -593,7 +573,6 @@ parser::extend('call-signature', function(parser $parser) {
 // <der>: <left-mod>... <name> <right-mod>...
 //	or	<left-mod>... "(" <der> ")" <right-mod>... <call-signature>
 parser::extend('obj-der', function(parser $parser) {
-	$s = $parser->s;
 	/*
 	 * Priorities:
 	 * 2: x[] x()
@@ -610,8 +589,8 @@ parser::extend('obj-der', function(parser $parser) {
 	$right = array();
 
 	// <left-mod>...
-	while (!$s->ended()) {
-		$t = $s->get();
+	while (!$parser->s->ended()) {
+		$t = $parser->s->get();
 
 		if ($t->type == '(') {
 			$mod *= 10;
@@ -623,20 +602,20 @@ parser::extend('obj-der', function(parser $parser) {
 			continue;
 		}
 
-		$s->unget($t);
+		$parser->s->unget($t);
 		break;
 	}
 
 	// <name>?
-	if ($s->peek()->type == 'word') {
-		$name = $s->get()->content;
+	if ($parser->s->peek()->type == 'word') {
+		$name = $parser->s->get()->content;
 	}
 	else {
 		$name = '';
 	}
 
 	// <right-mod>
-	while (!$s->ended()) {
+	while (!$parser->s->ended()) {
 		$t = $parser->s->get();
 		$ch = $t->type;
 
@@ -647,7 +626,7 @@ parser::extend('obj-der', function(parser $parser) {
 
 		// <call-signature>?
 		if ($ch == '(') {
-			$s->unget($t);
+			$parser->s->unget($t);
 			$right[] = array(
 				$parser->read('call-signature'),
 				$mod * 2
@@ -669,7 +648,7 @@ parser::extend('obj-der', function(parser $parser) {
 		}
 
 		if ($mod == 1) {
-			$s->unget($t);
+			$parser->s->unget($t);
 			break;
 		}
 
@@ -700,55 +679,52 @@ parser::extend('obj-der', function(parser $parser) {
 	return array('name' => $name, 'ops' => $mods);
 });
 
-parser::extend('form', function(parser $p) {
-	$f = $p->read('obj-der');
+parser::extend('form', function(parser $parser) {
+	$f = $parser->read('obj-der');
 	return new c_form($f['name'], $f['ops']);
 });
 
 parser::extend('type', function(parser $parser) {
-	$s = $parser->s;
-
 	$mods = array();
 
-	if ($s->peek()->type == 'const') {
+	if ($parser->s->peek()->type == 'const') {
 		$mods[] = 'const';
-		$s->get();
+		$parser->s->get();
 	}
 
 	$type = array();
 
 	// "struct" <struct-fields>?
-	if ($s->peek()->type == 'struct') {
+	if ($parser->s->peek()->type == 'struct') {
 		$type[] = $parser->read('struct-def');
 		return new c_type(array_merge($mods, $type));
 	}
 
-	$t = $s->peek();
+	$t = $parser->s->peek();
 	while ($t->type == 'word' && $parser->is_typename($t->content)) {
 		$type[] = $t->content;
-		$s->get();
-		$t = $s->peek();
+		$parser->s->get();
+		$t = $parser->s->peek();
 	}
 
 	if (empty($type)) {
-		if ($s->peek()->type == 'word') {
-			$id = $s->peek()->content;
+		if ($parser->s->peek()->type == 'word') {
+			$id = $parser->s->peek()->content;
 			return $parser->error("Unknown type name: $id");
 		}
-		return $parser->error("Type name expected, got ".$s->peek());
+		return $parser->error("Type name expected, got ".$parser->s->peek());
 	}
 
 	return new c_type(array_merge($mods, $type));
 });
 
 parser::extend('union', function(parser $parser) {
-	$s = $parser->s;
 	$parser->s->expect('union');
 	$parser->s->expect('{');
 
 	$u = new c_union();
 
-	while (!$s->ended() && $s->peek()->type != '}') {
+	while (!$parser->s->ended() && $parser->s->peek()->type != '}') {
 		$type = $parser->read('type');
 		$form = $parser->read('form');
 		$list = new c_varlist($type);
@@ -762,29 +738,27 @@ parser::extend('union', function(parser $parser) {
 
 // <enum-def>: "pub"? "enum" "{" <id> ["=" <literal>] [,]... "}" ";"
 parser::extend('enum-def', function(parser $parser) {
-	$s = $parser->s;
-
-	$pub = false;
-	if ($s->peek()->type == 'pub') {
-		$pub = true;
-		$s->get();
+	$parserub = false;
+	if ($parser->s->peek()->type == 'pub') {
+		$parserub = true;
+		$parser->s->get();
 	}
 
 	$parser->s->expect('enum');
 	$parser->s->expect('{');
 
 	$enum = new c_enum();
-	$enum->pub = $pub;
+	$enum->pub = $parserub;
 	while (1) {
 		$id = $parser->s->expect('word')->content;
 		$val = null;
-		if ($s->peek()->type == '=') {
-			$s->get();
+		if ($parser->s->peek()->type == '=') {
+			$parser->s->get();
 			$val = $parser->read('literal');
 		}
 		$enum->add($id, $val);
-		if ($s->peek()->type == ',') {
-			$s->get();
+		if ($parser->s->peek()->type == ',') {
+			$parser->s->get();
 		}
 		else {
 			break;
@@ -801,13 +775,11 @@ parser::extend('enum-def', function(parser $parser) {
 // or <stor> <type> <func> ";"
 // or <stor> <type> <func> <body>
 parser::extend('object-def', function(parser $parser) {
-	$s = $parser->s;
+	$parserub = false;
 
-	$pub = false;
-
-	if ($s->peek()->type == 'pub') {
-		$s->get();
-		$pub = true;
+	if ($parser->s->peek()->type == 'pub') {
+		$parser->s->get();
+		$parserub = true;
 	}
 
 	$type = $parser->read('type');
@@ -817,12 +789,12 @@ parser::extend('object-def', function(parser $parser) {
 	 * If not a function, return as a varlist.
 	 */
 	if (empty($form->ops) || !($form->ops[0] instanceof c_formal_args)) {
-		if ($pub) {
+		if ($parserub) {
 			return $parser->error("varlist can't be declared 'pub'");
 		}
 		$expr = null;
-		if ($s->peek()->type == '=') {
-			$s->get();
+		if ($parser->s->peek()->type == '=') {
+			$parser->s->get();
 			$expr = $parser->read('expr');
 		}
 		$parser->s->expect(';');
@@ -832,25 +804,24 @@ parser::extend('object-def', function(parser $parser) {
 	}
 
 	$args = array_shift($form->ops);
-	$proto = new c_prototype($type, $form, $args);
-	$proto->pub = $pub;
+	$parserroto = new c_prototype($type, $form, $args);
+	$parserroto->pub = $parserub;
 
-	$t = $s->get();
+	$t = $parser->s->get();
 	if ($t->type == ';') {
-		return $proto;
+		return $parserroto;
 	}
 
 	if ($t->type == '{') {
-		$s->unget($t);
+		$parser->s->unget($t);
 		$body = $parser->read('body');
-		return new c_func($proto, $body);
+		return new c_func($parserroto, $body);
 	}
 
 	return $parser->error("Unexpected $t");
 });
 
 parser::extend('root', function(parser $parser) {
-	$s = $parser->s;
 	$t = $parser->s->peek();
 	
 	// <macro>?
@@ -873,24 +844,24 @@ parser::extend('root', function(parser $parser) {
 
 	if ($t->type == 'import') {
 		$parser->s->get();
-		$path = $parser->s->get();
+		$parserath = $parser->s->get();
 		$dir = dirname(realpath($parser->path));
 
-		return new c_import($path->content, $dir);
+		return new c_import($parserath->content, $dir);
 	}
 
 	/*
 		* If 'pub' follows, look at the token after that.
 		*/
 	if ($t->type == 'pub') {
-		$t1 = $s->peek(1);
-		$t2 = $s->peek(2);
-		$t3 = $s->peek(3);
+		$t1 = $parser->s->peek(1);
+		$t2 = $parser->s->peek(2);
+		$t3 = $parser->s->peek(3);
 	}
 	else {
-		$t1 = $s->peek(0);
-		$t2 = $s->peek(1);
-		$t3 = $s->peek(2);
+		$t1 = $parser->s->peek(0);
+		$t2 = $parser->s->peek(1);
+		$t3 = $parser->s->peek(2);
 	}
 
 	// <enum-def>?

@@ -15,6 +15,8 @@ class parser
 		self::$parsers[$name] = $parser;
 	}
 
+	private $level = 0;
+
 	private $type_names = array(
 		'struct',
 		'enum',
@@ -56,6 +58,11 @@ class parser
 		$this->s = new mctok($path);
 	}
 
+	function __clone() {
+		$this->s = clone $this->s;
+		$this->level++;
+	}
+
 	function ended()
 	{
 		return $this->s->ended();
@@ -75,14 +82,31 @@ class parser
 	{
 		$this->trace($name);
 		$p = self::$parsers[$name];
-		return $p($this);
+		//return $p($this);
+
+		// Create an "alternative history" by spawning a copy of the parser.
+		// Let it try to parse whatever it's parsing. If it fails with an exception,
+		// this exception will simply bubble up to our caller. If it succeeds,
+		// we assume the state of the cloned parser and return the result.
+		$alt = clone $this;
+		$obj = $p($alt);
+		$this->s = $alt->s;
+		$this->type_names = $alt->type_names;
+
+
+		$this->trace('ok');
+
+		return $obj;
+
+		
 	}
 
 	function trace($m)
 	{
 		return;
 		$s = $this->context();
-		fwrite(STDERR, "--- $m\t|\t$s\n");
+		$pref = str_repeat('  ', $this->level);
+		fwrite(STDERR, "-- $pref $m\t|\t$s\n");
 	}
 
 	function add_type($name)
@@ -94,7 +118,7 @@ class parser
 		if (in_array($name, $this->type_names)) {
 			trigger_error("add_type: redefinition of type $name");
 		}
-		//trace("New type: $name");
+		$this->trace("New type: $name");
 		$this->type_names[] = $name;
 	}
 
