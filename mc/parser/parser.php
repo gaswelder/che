@@ -124,10 +124,9 @@ class parser
 
 	function trace($m)
 	{
-		return;
 		$s = $this->context();
 		$pref = str_repeat('  ', $this->level);
-		fwrite(STDERR, "-- $pref $m\t|\t$s\n");
+		trace::line("-- $pref $m\t|\t$s");
 	}
 
 	function add_type($name)

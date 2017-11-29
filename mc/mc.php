@@ -8,14 +8,17 @@ require $dir.'/module/index.php';
 require $dir.'/translator/translator.php';
 require $dir.'/objects.php';
 
-function trace($m, $s = null)
+class trace
 {
-	fwrite(STDERR, "--- $m		$s\n");
-}
+	static $enabled = false;
 
-function put($s)
-{
-	fwrite(STDERR, "$s\n");
+	static function line($s)
+	{
+		if (!self::$enabled) {
+			return;
+		}
+		fwrite(STDERR, "$s\n");
+	}
 }
 
 function mc_main($args)
@@ -28,6 +31,11 @@ function mc_main($args)
 	define('CHE_OS', 'unix');
 
 	array_shift($args);
+	if (!empty($args) && $args[0] == '-t') {
+		trace::$enabled = true;
+		array_shift($args);
+	}
+
 	if (count($args) != 1) {
 		fprintf(STDERR, "Usage: che <main file>\n");
 		return 1;
