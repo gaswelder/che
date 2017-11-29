@@ -3,8 +3,10 @@
 class module
 {
 	public $code = array();
-	public $deps = array();
 	public $link = array();
+
+	// List of modules imported by this module.
+	public $deps = [];
 
 	// Path to this module's file.
 	public $path;
@@ -96,10 +98,7 @@ class module
 						$s->add_type($decl->form->name);
 					}
 				}
-				/*
-				 * Add the module's path to the dependencies list
-				 */
-				$mod->deps[] = $imp->path;
+				$mod->deps[] = $imp;
 			}
 			if ($t instanceof c_link) {
 				$mod->link[] = $t->name;
