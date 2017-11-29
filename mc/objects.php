@@ -471,7 +471,15 @@ class c_array extends c_literal
 	}
 }
 
-;
+class c_designated_array_element extends c_element
+{
+	public $index;
+	public $value;
+
+	function format() {
+		return "[$this->index] = " . $this->value->format();
+	}
+}
 
 class c_struct_literal extends c_element
 {

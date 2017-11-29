@@ -64,18 +64,44 @@ parser::extend('struct-literal', function(parser $parser) {
 });
 
 parser::extend('array-literal', function(parser $parser) {
-	$elements = array();
-
 	$parser->expect('{');
-	while (!$parser->s->ended() && $parser->s->peek()->type != '}') {
-		$elements[] = $parser->read('literal');
-		if ($parser->s->peek()->type == ',') {
-			$parser->s->get();
+
+	$elements = [];
+	while (1) {
+		try {
+			$elements[] = $parser->read('array-literal-element');
+		} catch (ParseException $e) {
+			break;
+		}
+		try {
+			$parser->expect(',');
+		} catch (ParseException $e) {
+			break;
 		}
 	}
 	$parser->expect('}');
-
 	return new c_array($elements);
+});
+
+parser::extend('array-literal-element', function(parser $parser) {
+	return $parser->any([
+		'literal',
+		'designated-array-element'
+	]);
+});
+
+parser::extend('designated-array-element', function(parser $parser) {
+	$item = new c_designated_array_element;
+	$parser->expect('[');
+	try {
+		$item->index = $parser->expect('word')->content;
+	} catch (ParseException $e) {
+		$item->index = $parser->expect('number')->content;
+	}
+	$parser->expect(']');
+	$parser->expect('=');
+	$item->value = $parser->read('literal');
+	return $item;
 });
 
 // parser::extend('addr-literal', function(parser $parser) {
