@@ -98,7 +98,12 @@ class parser
 		// this exception will simply bubble up to our caller. If it succeeds,
 		// we assume the state of the cloned parser and return the result.
 		$alt = clone $this;
-		$obj = $p($alt);
+		try {
+			$obj = $p($alt);
+		} catch (ParseException $e) {
+			$this->trace($e->getMessage());
+			throw $e;
+		}
 		$this->s = $alt->s;
 		$this->type_names = $alt->type_names;
 		return $obj;
