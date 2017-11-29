@@ -4,8 +4,10 @@ class mc_trans
 	/*
 	 * Translates Che code into C code
 	 */
-	static function translate($code)
+	static function translate(module $mod)
 	{
+		$code = $mod->code;
+		
 		$headers = array();
 		$prototypes = array();
 		$types = array();
@@ -50,8 +52,8 @@ class mc_trans
 		}
 
 		$out = array_merge($headers, $types, $prototypes, $body);
-		tr_headers::add_headers($out);
-		return $out;
+		$mod->code = $out;
+		tr_headers::add_headers($mod);
 	}
 
 	private static function rewrite_func(c_func $f)

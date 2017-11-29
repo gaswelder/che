@@ -4,8 +4,9 @@ class tr_headers
 	/*
 	 * Prepends standard headers to the given code.
 	 */
-	static function add_headers(&$code)
+	static function add_headers(module $mod)
 	{
+		$code = &$mod->code;
 		$headers = array();
 
 		foreach ($code as $element) {
@@ -35,6 +36,10 @@ class tr_headers
 		}
 
 		$code = array_merge($out, $code);
+
+		if (in_array('math', $headers)) {
+			$mod->link[] = 'm';
+		}
 	}
 
 	private static function proto(c_prototype $p, &$headers)
@@ -197,7 +202,7 @@ class tr_headers
 			acosh asinh atanh cosh sinh tanh
 			exp exp2 expm1 frexp ilogb ldexp
 			log10 log1p log2 logb modf scalbn scalbln
-			fabs pow sqrt
+			fabs pow sqrt sqrtf
 			ceil floor
 			round roundf roundl
 		',

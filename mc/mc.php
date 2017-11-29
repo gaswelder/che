@@ -47,7 +47,6 @@ function compile($main)
 	 * Parse the modules, adding newly discovered
 	 * dependencies to the end of the list.
 	 */
-	$link = array();
 	$list = array($main);
 	$n = count($list);
 	for ($i = 0; $i < $n; $i++) {
@@ -56,7 +55,6 @@ function compile($main)
 			$list[] = $path;
 			$n++;
 		}
-		$link = array_merge($link, $mod->link);
 	}
 
 	/*
@@ -78,12 +76,14 @@ function compile($main)
 	 * Translate the modules to C
 	 */
 	$sources = array();
+	$link = [];
 	foreach ($list as $path) {
 		$mod = parse_module($path);
-		$code = mc_trans::translate($mod->code);
+		mc_trans::translate($mod);
 		$tmppath = tmppath($path);
-		file_put_contents($tmppath, format_che($code));
+		file_put_contents($tmppath, $mod->format_as_c());
 		$sources[] = $tmppath;
+		$link = array_merge($link, $mod->link);
 	}
 
 	/*

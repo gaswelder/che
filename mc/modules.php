@@ -4,6 +4,11 @@ class module
 	public $code = array();
 	public $deps = array();
 	public $link = array();
+
+	function format_as_c()
+	{
+		return format_che($this->code);
+	}
 }
 
 class import
