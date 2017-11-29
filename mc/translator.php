@@ -29,8 +29,8 @@ class mc_trans
 			}
 
 			if ($element instanceof c_import) {
-				$imp = get_import($element->path, $element->dir);
-				array_splice($code, $i, 1, $imp->code);
+				$imp = module::import($element->path, $element->dir);
+				array_splice($code, $i, 1, $imp->synopsis());
 				$i--;
 				$n = count($code);
 				continue;

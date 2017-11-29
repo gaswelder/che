@@ -8,6 +8,7 @@ require $dir.'/parser/parser.php';
 require $dir.'/objects.php';
 require $dir.'/translator.php';
 require $dir.'/tr_headers.php';
+require $dir.'/module.php';
 require $dir.'/modules.php';
 require $dir.'/packages.php';
 
@@ -37,68 +38,86 @@ function mc_main($args)
 	}
 
 	$path = array_shift($args);
-	compile($path);
+	$p = new program($path);
+	$p->compile();
 }
 
-function compile($main)
+class program
 {
-	/*
-	 * The modules list starts with the main source file.
-	 * Parse the modules, adding newly discovered
-	 * dependencies to the end of the list.
-	 */
-	$list = array($main);
-	$n = count($list);
-	for ($i = 0; $i < $n; $i++) {
-		$mod = parse_module($list[$i]);
-		foreach ($mod->deps as $path) {
-			$list[] = $path;
-			$n++;
+	private $main;
+
+	function __construct($main)
+	{
+		$this->main = $main;
+	}
+
+	function compile()
+	{
+		$list = $this->modules();
+
+		/*
+		* Translate the modules to C
+		*/
+		$sources = array();
+		$link = [];
+		foreach ($list as $path) {
+			$mod = module::parse($path, []);
+			mc_trans::translate($mod);
+			$tmppath = tmppath($path);
+			file_put_contents($tmppath, $mod->format_as_c());
+			$sources[] = $tmppath;
+			$link = array_merge($link, $mod->link);
 		}
-	}
 
-	/*
-	 * After all the dependencies have been parsed, the list may contain
-	 * duplicate names due to common dependencies. The duplicates have
-	 * to be removed leaving ones closer to the end of the list, so that
-	 * [main, a, b, a, c] would become [main, b, a, c].
-	 */
-	$rev = array_reverse($list);
-	$list = array();
-	foreach ($rev as $name) {
-		if (!in_array($name, $list)) {
-			$list[] = $name;
+		/*
+		* Derive executable name from the main module
+		*/
+		$outname = basename($list[0]);
+		if ($p = strrpos($outname, '.')) {
+			$outname = substr($outname, 0, $p);
 		}
-	}
-	$list = array_reverse($list);
 
-	/*
-	 * Translate the modules to C
-	 */
-	$sources = array();
-	$link = [];
-	foreach ($list as $path) {
-		$mod = parse_module($path);
-		mc_trans::translate($mod);
-		$tmppath = tmppath($path);
-		file_put_contents($tmppath, $mod->format_as_c());
-		$sources[] = $tmppath;
-		$link = array_merge($link, $mod->link);
+		/*
+		* Run the compiler
+		*/
+		exit(c99($sources, $outname, $link));
 	}
 
-	/*
-	 * Derive executable name from the main module
-	 */
-	$outname = basename($list[0]);
-	if ($p = strrpos($outname, '.')) {
-		$outname = substr($outname, 0, $p);
-	}
+	private function modules()
+	{
+		/*
+		* The modules list starts with the main source file.
+		* Parse the modules, adding newly discovered
+		* dependencies to the end of the list.
+		*/
+		$list = array($this->main);
+		$n = count($list);
+		for ($i = 0; $i < $n; $i++) {
+			$mod = module::parse($list[$i], []);
+			foreach ($mod->deps as $path) {
+				$list[] = $path;
+				$n++;
+			}
+		}
 
-	/*
-	 * Run the compiler
-	 */
-	exit(c99($sources, $outname, $link));
+		/*
+		* After all the dependencies have been parsed, the list may contain
+		* duplicate names due to common dependencies. The duplicates have
+		* to be removed leaving ones closer to the end of the list, so that
+		* [main, a, b, a, c] would become [main, b, a, c].
+		*/
+		$rev = array_reverse($list);
+		$list = array();
+		foreach ($rev as $name) {
+			if (!in_array($name, $list)) {
+				$list[] = $name;
+			}
+		}
+		$list = array_reverse($list);
+		return $list;
+	}
 }
+
 
 function tmppath($path)
 {

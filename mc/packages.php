@@ -18,7 +18,7 @@ class packages
 {
 	/*
 	 * Parses a package at the given path (which must be a directory).
-	 * Returns a 'module' object like the regular 'parse_module'.
+	 * Returns a 'module' object like.
 	 */
 	static function parse($path)
 	{
@@ -46,10 +46,7 @@ class packages
 				if ($k == $fpath) continue;
 				$context = array_merge($context, $list);
 			}
-			/*
-			 * Parse
-			 */
-			$mods[] = parse_module($fpath, $context);
+			$mods[] = module::parse($fpath, $context);
 		}
 		return self::merge($mods);
 	}
