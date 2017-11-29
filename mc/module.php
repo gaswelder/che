@@ -1,5 +1,20 @@
 <?php
 
+class c_module
+{
+	public $link = [];
+	public $code;
+	public $name;
+
+	function write()
+	{
+		$s = format_che($this->code);
+		$tmppath = tmppath($this->name);
+		file_put_contents($tmppath, $s);
+		return $tmppath;
+	}
+}
+
 class module
 {
 	public $code = array();
@@ -11,9 +26,15 @@ class module
 	// Path to this module's file.
 	public $path;
 
-	function format_as_c()
+	function translate_to_c()
 	{
-		return format_che($this->code);
+		$mod = clone $this;
+		mc_trans::translate($mod);
+		$c = new c_module;
+		$c->code = $mod->code;
+		$c->link = $mod->link;
+		$c->name = $mod->path;
+		return $c;
 	}
 
 	// Returns synopsis that would be the contents of this module's
@@ -42,12 +63,6 @@ class module
 			}
 		}
 		return $code;
-	}
-
-	// Returns the list of this module's dependencies.
-	function dependencies()
-	{
-
 	}
 
 	static function import($modname, $refdir)

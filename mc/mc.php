@@ -60,10 +60,8 @@ class program
 
 		$all = $this->modules_list($mod);
 		foreach ($all as $mod) {
-			mc_trans::translate($mod);
-			$tmppath = tmppath($mod->path);
-			file_put_contents($tmppath, $mod->format_as_c());
-			$sources[] = $tmppath;
+			$mod = $mod->translate_to_c();
+			$sources[] = $mod->write();
 			$link = array_merge($link, $mod->link);
 		}
 
