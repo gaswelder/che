@@ -145,6 +145,10 @@ parser::extend('form', function(parser $parser) {
 	return new c_form($f['name'], $f['ops']);
 });
 
+// Type is a description of a pure value that we get after
+// applying all function calls, dereferencing and indexing.
+// That is, "int *" is not a type, only "int" is. The "*" part
+// is contained in the "form".
 parser::extend('type', function(parser $parser) {
 	$mods = array();
 	$type = array();
@@ -177,21 +181,31 @@ parser::extend('type', function(parser $parser) {
 	return new c_type(array_merge($mods, $type));
 });
 
+// Typename is a pure type name, like "int" or "foo", if "foo"
+// has been declared as a type.
+// "unsigned int" or "typename" where "typename" is a declared type
 parser::extend('typename', function(parser $parser) {
-	$name = $parser->expect('word')->content;
-	if (!$parser->is_typename($name)) {
-		throw new ParseException("Not a typename: $name");
+	$names = [];
+	$names[] = $parser->expect('word')->content;
+	if (!$parser->is_typename($names[0])) {
+		throw new ParseException("Not a typename: $names[0]");
 	}
-	return $name;
+	try {
+		$names[] = $parser->read('typename');
+	} catch (ParseException $e) {
+		//
+	}
+	return implode(' ', $names);
 });
 
+// "struct foo"
 parser::extend('struct-typename', function(parser $parser) {
 	$parser->expect('struct');
 	$name = $parser->expect('word')->content;
 	return new c_structdef($name);
 });
 
-// "struct" {<struct-fields>}
+// "struct {foo x; bar y; ...}"
 parser::extend('anonymous-struct', function(parser $parser) {
 	$parser->expect('struct');
 	$parser->expect('{');
