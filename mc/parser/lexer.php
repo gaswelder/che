@@ -355,7 +355,7 @@ class mctok
 			$num .= $s->get();
 		}
 
-		return tok('num', $num, $pos);
+		return tok('num', '0x'.$num, $pos);
 	}
 
 	private function read_string()
