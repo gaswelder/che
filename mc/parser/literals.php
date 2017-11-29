@@ -31,7 +31,7 @@ parser::extend('literal-string', function(parser $parser) {
 });
 
 parser::extend('literal-char', function(parser $parser) {
-	return new c_char($parser->expect('chat')->content);
+	return new c_char($parser->expect('char')->content);
 });
 
 parser::extend('word-literal', function(parser $parser) {
