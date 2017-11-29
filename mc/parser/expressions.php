@@ -2,15 +2,24 @@
 
 // <expr>: <atom> [<op> <atom>]...
 parser::extend('expr', function (parser $parser) {
-	$e = new c_expr();
-	$e->add($parser->read('atom'));
+	$expr = new c_expr();
 
-	while (!$parser->s->ended() && $parser->is_op($parser->s->peek())) {
-		$e->add($parser->s->get()->type);
-		$e->add($parser->read('atom'));
+	// An expression may start with a minus.
+	try {
+		$parser->expect('-');
+		$expr->add('-');
+	} catch (ParseException $e) {
+		//
 	}
 
-	return $e;
+	$expr->add($parser->read('atom'));
+
+	while (!$parser->s->ended() && $parser->is_op($parser->s->peek())) {
+		$expr->add($parser->s->get()->type);
+		$expr->add($parser->read('atom'));
+	}
+
+	return $expr;
 });
 
 // <expr-atom>: <cast>? (

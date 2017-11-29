@@ -543,10 +543,17 @@ class c_expr extends c_element
 
 	function format($tab = 0)
 	{
+		if (empty($this->parts)) {
+			return '';
+		}
 		$p = str_repeat("\t", $tab);
 		$n = count($this->parts);
 		$i = 0;
 		$s = '';
+		if ($this->parts[0] == '-') {
+			$s = '-';
+			$i++;
+		}
 		while ($i < $n) {
 			$a = $this->parts[$i];
 			$s .= $this->format_atom($a);
