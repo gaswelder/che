@@ -82,11 +82,8 @@ parser::extend('struct-def-root', function(parser $parser) {
 	$def = new c_structdef($name);
 	$def->pub = $pub;
 
-	if ($parser->s->peek()->type != '{') {
-		return $def;
-	}
+	$parser->expect('{');
 
-	$parser->s->get();
 	while (!$parser->s->ended() && $parser->s->peek()->type != '}') {
 		if ($parser->s->peek()->type == 'union') {
 			$u = $parser->read('union');
@@ -102,8 +99,8 @@ parser::extend('struct-def-root', function(parser $parser) {
 		$def->add($list);
 		$parser->s->expect(';');
 	}
-	$parser->s->expect('}');
-	$parser->s->expect(';');
+	$parser->expect('}');
+	$parser->expect(';');
 
 	return $def;
 });
