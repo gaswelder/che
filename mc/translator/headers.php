@@ -1,15 +1,11 @@
 <?php
 class tr_headers
 {
-	/*
-	 * Prepends standard headers to the given code.
-	 */
+	// Returns a list of standard C headers needed for the given code.
 	static function add_headers(module $mod)
 	{
-		$code = &$mod->code;
 		$headers = array();
-
-		foreach ($code as $element) {
+		foreach ($mod->code as $element) {
 			if ($element instanceof c_typedef) {
 				self::type($element->type, $headers);
 			}
@@ -29,17 +25,7 @@ class tr_headers
 
 		$headers = array_keys($headers);
 		sort($headers);
-
-		$out = array();
-		foreach ($headers as $h) {
-			$out[] = new c_macro('include', "<$h.h>");
-		}
-
-		$code = array_merge($out, $code);
-
-		if (in_array('math', $headers)) {
-			$mod->link[] = 'm';
-		}
+		return $headers;
 	}
 
 	private static function proto(c_prototype $p, &$headers)

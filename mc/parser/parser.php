@@ -1,5 +1,6 @@
 <?php
 
+require __DIR__ . '/buf.php';
 require __DIR__ . '/lexer.php';
 require __DIR__ . '/token.php';
 require __DIR__ . '/subparsers.php';

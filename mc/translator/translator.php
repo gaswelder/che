@@ -1,4 +1,6 @@
 <?php
+require __DIR__ . '/headers.php';
+
 class mc_trans
 {
 	/*
@@ -53,7 +55,18 @@ class mc_trans
 
 		$out = array_merge($headers, $types, $prototypes, $body);
 		$mod->code = $out;
-		tr_headers::add_headers($mod);
+
+
+		$headers = tr_headers::add_headers($mod);
+		$out = array();
+		foreach ($headers as $h) {
+			$out[] = new c_macro('include', "<$h.h>");
+		}
+		$mod->code = array_merge($out, $mod->code);
+
+		if (in_array('math', $headers)) {
+			$mod->link[] = 'm';
+		}
 	}
 
 	private static function rewrite_func(c_func $f)

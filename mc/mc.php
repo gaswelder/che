@@ -3,14 +3,10 @@ $dir = dirname(__FILE__);
 require $dir.'/debug.php';
 stop_on_error();
 error_reporting(-1);
-require $dir.'/buf.php';
 require $dir.'/parser/parser.php';
+require $dir.'/module/index.php';
+require $dir.'/translator/translator.php';
 require $dir.'/objects.php';
-require $dir.'/translator.php';
-require $dir.'/tr_headers.php';
-require $dir.'/module.php';
-require $dir.'/modules.php';
-require $dir.'/packages.php';
 
 function trace($m, $s = null)
 {
@@ -89,16 +85,6 @@ class program
 	}
 }
 
-
-function tmppath($path)
-{
-	$dir = sys_get_temp_dir().'/chetmp';
-	if (!file_exists($dir) && !mkdir($dir)) {
-		exit(1);
-	}
-	return $dir.'/'.basename($path).'-'.md5($path).'.c';
-}
-
 function c99($sources, $name, $link)
 {
 	$cmd = 'c99 -Wall -Wextra -Werror -pedantic -pedantic-errors';
@@ -111,27 +97,3 @@ function c99($sources, $name, $link)
 	exec($cmd, $output, $ret);
 	return $ret;
 }
-
-/*
- * Formats given Che code as text.
- */
-function format_che($code)
-{
-	$term = array(
-		'c_typedef',
-		'c_structdef',
-		'c_varlist'
-	);
-	$out = '';
-	foreach ($code as $element) {
-		$out .= $element->format();
-		$cn = get_class($element);
-		if (in_array($cn, $term)) {
-			$out .= ';';
-		}
-		$out .= "\n";
-	}
-	return $out;
-}
-
-?>

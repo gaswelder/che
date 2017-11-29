@@ -1,20 +1,5 @@
 <?php
 
-class c_module
-{
-	public $link = [];
-	public $code;
-	public $name;
-
-	function write()
-	{
-		$s = format_che($this->code);
-		$tmppath = tmppath($this->name);
-		file_put_contents($tmppath, $s);
-		return $tmppath;
-	}
-}
-
 class module
 {
 	public $code = array();
@@ -67,7 +52,7 @@ class module
 
 	static function import($modname, $refdir)
 	{
-		$path = find_import($modname, $refdir);
+		$path = self::find_import($modname, $refdir);
 		if (!$path) {
 			fwrite(STDERR, "Could not find module: $modname\n");
 			if ($modname[0] != '.' && MCDIR == '.') {
@@ -76,6 +61,31 @@ class module
 			exit(1);
 		}
 		return self::parse($path);
+	}
+
+	private static function find_import($name, $refdir)
+	{
+		if ($name[0] == '.') {
+			$name = substr($name, 1);
+			$p = array($refdir.$name);
+		}
+		else {
+			$p = array(
+				MCDIR."/lib/$name",
+				"$refdir/$name",
+				$name
+			);
+		}
+		foreach ($p as $path) {
+			if (file_exists($path)) {
+				return $path;
+			}
+			$path .= ".c";
+			if (file_exists($path)) {
+				return $path;
+			}
+		}
+		return null;
 	}
 
 	static function parse($path, $typenames = array())
