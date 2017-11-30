@@ -89,7 +89,8 @@ class program
 		foreach ($m->deps as $dep) {
 			$list = array_merge($list, $this->modules_list($dep));
 		}
-		return $list;
+		// Omit duplicate modules, leaving the ones closer to the end.
+		return array_reverse(array_unique(array_reverse($list), SORT_REGULAR));
 	}
 }
 
