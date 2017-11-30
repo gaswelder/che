@@ -48,7 +48,7 @@ parser::extend('struct-literal', function(parser $parser) {
 		$parser->expect('.');
 		$id = $parser->expect('word')->content;
 		$parser->expect('=');
-		$val = $parser->read('literal');
+		$val = $parser->read('expr');
 
 		$struct->add($id, $val);
 
