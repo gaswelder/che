@@ -29,10 +29,7 @@ parser::extend('import', function(parser $parser) {
 
 // <typedef>: "typedef" <type> <form> ";"
 parser::extend('typedef', function(parser $parser) {
-	$parser->expect('typedef');
-	$type = $parser->read('type');
-	$form = $parser->read('form');
-	$parser->expect(';');
+	list($type, $form) = $parser->seq('typedef', '$type', '$form', ';');
 	$parser->add_type($form->name);
 	return new c_typedef($type, $form);
 });

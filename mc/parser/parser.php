@@ -88,6 +88,20 @@ class parser
 		exit(1);
 	}
 
+	function seq(...$names)
+	{
+		$values = [];
+		foreach ($names as $name) {
+			if ($name[0] == '$') {
+				$name = substr($name, 1);
+				$values[] = $this->read($name);
+			} else {
+				$this->expect($name);
+			}
+		}
+		return $values;
+	}
+
 	function read($name)
 	{
 		$this->trace($name);
