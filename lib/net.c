@@ -1,9 +1,5 @@
 #define _XOPEN_SOURCE 700
-/*
- * For some reason the addrinfo struct is not defined
- * unless __USE_POSIX is not explicitly defined here.
- */
-#define __USE_POSIX
+
 #include <arpa/inet.h>
 #include <netdb.h>
 #include <sys/select.h>

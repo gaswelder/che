@@ -57,12 +57,21 @@ class mc_trans
 		$mod->code = $out;
 
 
+		$pos = 0;
+		foreach ($mod->code as $e) {
+			if ($e instanceof c_define || $e instanceof c_include) {
+				$pos++;
+			} else {
+				break;
+			}
+		}
+
 		$headers = tr_headers::add_headers($mod);
 		$out = array();
 		foreach ($headers as $h) {
 			$out[] = new c_macro('include', "<$h.h>");
 		}
-		$mod->code = array_merge($out, $mod->code);
+		array_splice($mod->code, $pos, 0, $out);
 
 		if (in_array('math', $headers)) {
 			$mod->link[] = 'm';
