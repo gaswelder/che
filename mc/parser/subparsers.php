@@ -9,6 +9,7 @@ parser::extend('root', function(parser $parser) {
 		'import',
 		'enum-def',
 		'struct-def-root',
+		'function',
 		'object-def'
 	]);
 });
@@ -256,12 +257,7 @@ parser::extend('enum-def', function(parser $parser) {
 	return $enum;
 });
 
-// <object-def>:
-// "pub"? <type> <form> [= <expr>] ";"
-// or <stor> <type> <form> ";"
-// or <stor> <type> <func> ";"
-// or <stor> <type> <func> <body>
-parser::extend('object-def', function(parser $parser) {
+parser::extend('function', function(parser $parser) {
 	$pub = false;
 	try {
 		$parser->expect('pub');
@@ -273,38 +269,34 @@ parser::extend('object-def', function(parser $parser) {
 	$type = $parser->read('type');
 	$form = $parser->read('form');
 
-	/*
-	 * If not a function, return as a varlist.
-	 */
 	if (empty($form->ops) || !($form->ops[0] instanceof c_formal_args)) {
-		if ($pub) {
-			return $parser->error("varlist can't be declared 'pub'");
-		}
-		$expr = null;
-		if ($parser->s->peek()->type == '=') {
-			$parser->s->get();
-			$expr = $parser->read('expr');
-		}
-		$parser->s->expect(';');
-		$list = new c_varlist($type);
-		$list->add($form, $expr);
-		return $list;
+		throw new ParseException("Not a function");
 	}
 
 	$args = array_shift($form->ops);
-	$parserroto = new c_prototype($type, $form, $args);
-	$parserroto->pub = $pub;
+	$proto = new c_prototype($type, $form, $args);
+	$proto->pub = $pub;
 
-	$t = $parser->s->get();
-	if ($t->type == ';') {
-		return $parserroto;
+	$body = $parser->read('body');
+	return new c_func($proto, $body);
+});
+
+parser::extend('object-def', function(parser $parser) {
+	$type = $parser->read('type');
+	$form = $parser->read('form');
+
+	if (!empty($form->ops) && $form->ops[0] instanceof c_formal_args) {
+		throw new ParseException("A function, not an object");
+	}
+	
+	$expr = null;
+	if ($parser->s->peek()->type == '=') {
+		$parser->s->get();
+		$expr = $parser->read('expr');
 	}
 
-	if ($t->type == '{') {
-		$parser->s->unget($t);
-		$body = $parser->read('body');
-		return new c_func($parserroto, $body);
-	}
-
-	return $parser->error("Unexpected $t");
+	$parser->expect(';');
+	$list = new c_varlist($type);
+	$list->add($form, $expr);
+	return $list;
 });
