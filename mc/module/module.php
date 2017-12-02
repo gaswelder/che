@@ -11,6 +11,16 @@ class module
 	// Path to this module's file.
 	public $path;
 
+	function info() {
+		$deps = array_map(function($mod) {
+			return $mod->info();
+		}, $this->deps);
+		return [
+			'path' => $this->path,
+			'deps' => $deps
+		];
+	}
+
 	function translate_to_c()
 	{
 		$mod = clone $this;

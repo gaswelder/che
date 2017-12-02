@@ -56,15 +56,15 @@ class package
 			$mods[] = module::parse($fpath, $context);
 		}
 
-		$package = new package;
-		$package->mods = $mods;
-		return $package->merge();
+		$pack->mods = $mods;
+		return $pack->merge();
 	}
 
 	// Merges the package files and returns the resulting module.
 	private function merge()
 	{
 		$mod = new module();
+		$mod->path = $this->path;
 		
 		$imports = array();
 
