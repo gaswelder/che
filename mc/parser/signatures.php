@@ -1,136 +1,78 @@
 <?php
 
-// <der>: <left-mod>... <name> <right-mod>...
-//	or	<left-mod>... "(" <der> ")" <right-mod>... <call-signature>
 parser::extend('obj-der', function(parser $parser) {
-	/*
-	 * Priorities:
-	 * 2: x[] x()
-	 * 1: *x
-	 */
-	/*
-	 * We treat braces as priority modifiers:
-	 *         *((*(foo[]))(int, double))[]
-	 *         *:1  *:100  foo  []:200  ():100  []:2
-	 */
-
-	$mod = 1;
-	$left = array();
-	$right = array();
-
-	// <left-mod>...
-	while (!$parser->s->ended()) {
-		$t = $parser->s->get();
-
-		if ($t->type == '(') {
-			$mod *= 10;
-			continue;
-		}
-
-		if ($t->type == '*') {
-			$left[] = array('*', 1 * $mod);
-			continue;
-		}
-
-		$parser->s->unget($t);
-		break;
+	try {
+		list ($obj) = $parser->seq('*', '$obj-der');
+		$obj['ops'][] = '*';
+		return $obj;
+	} catch (ParseException $e) {
+		//
 	}
 
-	// <name>?
-	if ($parser->s->peek()->type == 'word') {
-		$name = $parser->s->get()->content;
+	try {
+		$id = $parser->read('identifier');
+	} catch (ParseException $e) {
+		$id = new c_identifier('');
 	}
-	else {
-		$name = '';
-	}
-
-	// <right-mod>
-	while (!$parser->s->ended()) {
-		$t = $parser->s->get();
-		$ch = $t->type;
-
-		if ($ch == ')' && $mod > 1) {
-			$mod /= 10;
-			continue;
-		}
-
-		// <call-signature>?
-		if ($ch == '(') {
-			$parser->s->unget($t);
-			$right[] = array(
-				$parser->read('call-signature'),
-				$mod * 2
-			);
-			continue;
-		}
-
-		// "[" <expr> "]"
-		if ($ch == '[') {
-			$conv = '[';
-			if ($parser->s->peek()->type != ']') {
-				$conv .= $parser->read('expr')->format();
-			}
-			$parser->s->expect(']');
-			$conv .= ']';
-
-			$right[] = array($conv, $mod * 2);
-			continue;
-		}
-
-		if ($mod == 1) {
-			$parser->s->unget($t);
+	
+	$right = [];
+	while (1) {
+		try {
+			$right[] = $parser->any(['call-signature', 'index-signature']);
+		} catch (ParseException $e) {
 			break;
 		}
-
-		return $parser->error("Unexpected $t");
 	}
 
-	/*
-	 * Merge left and right modifiers into a single list.
-	 */
-	$left = array_reverse($left);
-	$mods = array();
-	while (!empty($left) && !empty($right)) {
-		if ($right[0][1] > $left[0][1]) {
-			$mods[] = array_shift($right)[0];
-		}
-		else {
-			$mods[] = array_shift($left)[0];
-		}
-	}
+	return [
+		'name' => $id->format(),
+		'ops' => $right
+	];
+});
 
-	while (!empty($left)) {
-		$mods[] = array_shift($left)[0];
+parser::extend('index-signature', function(parser $parser) {
+	$parser->expect('[');
+	try {
+		$expr = $parser->read('expr');
+		$parser->expect(']');
+		return '['.$expr->format().']';
+	} catch (ParseException $e) {
+		//
 	}
-	while (!empty($right)) {
-		$mods[] = array_shift($right)[0];
-	}
-
-	return array('name' => $name, 'ops' => $mods);
+	$parser->expect(']');
+	return '[]';
 });
 
 parser::extend('call-signature', function(parser $parser) {
 	$args = new c_formal_args();
-
-	$parser->s->expect('(');
-	if ($parser->type_follows()) {
-		while ($parser->type_follows()) {
+	$empty = true;
+	$parser->expect('(');
+	while (1) {
+		try {
 			$l = $parser->read('varlist');
 			$args->add($l);
+			$empty = false;
+		} catch (ParseException $e) {
+			break;
+		}
 
-			if ($parser->s->peek()->type != ',') {
-				break;
-			}
-
-			$parser->s->get();
-			if ($parser->s->peek()->type == '...') {
-				$parser->s->get();
-				$args->more = true;
-				break;
-			}
+		try {
+			$parser->expect(',');
+		} catch (ParseException $e) {
+			break;
 		}
 	}
-	$parser->s->expect(')');
+
+	if (!$empty) {
+		try {
+			$parser->expect('...');
+			$args->more = true;
+		} catch (ParseException $e) {
+			//
+		}
+	}
+
+	$parser->expect(')');
 	return $args;
 });
 

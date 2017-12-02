@@ -119,7 +119,6 @@ class parser
 	{
 		$this->trace($name);
 		$p = self::$parsers[$name];
-		//return $p($this);
 
 		// Create an "alternative history" by spawning a copy of the parser.
 		// Let it try to parse whatever it's parsing. If it fails with an exception,
@@ -129,7 +128,7 @@ class parser
 		try {
 			$obj = $p($alt);
 		} catch (ParseException $e) {
-			$this->trace($e->getMessage());
+			$this->trace("$name: " . $e->getMessage());
 			throw $e;
 		}
 		$this->s = $alt->s;
@@ -153,7 +152,7 @@ class parser
 	{
 		$s = $this->context();
 		$pref = str_repeat('  ', $this->level);
-		trace::line("-- $pref $m\t|\t$s");
+		trace::line("$pref $m | ... $s");
 	}
 
 	function add_type($name)
@@ -226,7 +225,7 @@ class parser
 		return $this->is_typename($t->content);
 	}
 
-	function context($n = 4)
+	function context($n = 6)
 	{
 		$s = $this->s;
 
