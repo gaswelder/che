@@ -42,6 +42,13 @@ function mc_main($args)
 	}
 
 	$path = array_shift($args);
+	if (is_dir($path)) {
+		$path = "$path/main.c";
+	}
+	if (!file_exists($path)) {
+		fwrite(STDERR, "File does not exist: $path\n");
+		exit(1);
+	}
 	$p = new program($path);
 	$p->compile();
 }
