@@ -97,7 +97,7 @@ class module
 		}
 	
 		if (is_dir($path)) {
-			$mod = packages::parse($path);
+			$mod = package::parse($path);
 			$mods[$path] = $mod;
 			return $mod;
 		}
