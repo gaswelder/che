@@ -20,8 +20,7 @@ parser::extend('comment', function(parser $parser) {
 });
 
 parser::extend('import', function(parser $parser) {
-	$t = $parser->expect('import');
-	$path = $parser->s->get();
+	list ($path) = $parser->seq('import', '$literal-string');
 	$dir = dirname(realpath($parser->path));
 	return new c_import($path->content, $dir);
 });
@@ -75,32 +74,37 @@ parser::extend('struct-def-root', function(parser $parser) {
 		//
 	}
 
-	$parser->expect('struct');
-	$name = $parser->expect('word')->content;
-	$def = new c_structdef($name);
+	list ($id) = $parser->seq('struct', '$identifier', '{');
+	$lists = $parser->many('struct-def-element');
+	$parser->seq('}', ';');
+
+	$def = new c_structdef($id->content, $lists);
 	$def->pub = $pub;
-
-	$parser->expect('{');
-
-	while (!$parser->s->ended() && $parser->s->peek()->type != '}') {
-		if ($parser->s->peek()->type == 'union') {
-			$u = $parser->read('union');
-			$type = new c_type(array($u));
-			$form = $parser->read('form');
-
-			$list = new c_varlist($type);
-			$list->add($form);
-		}
-		else {
-			$list = $parser->read('varlist');
-		}
-		$def->add($list);
-		$parser->s->expect(';');
-	}
-	$parser->expect('}');
-	$parser->expect(';');
-
 	return $def;
+});
+
+parser::extend('struct-def-element', function(parser $parser) {
+	if ($parser->s->peek()->type == 'union') {
+		$u = $parser->read('union');
+		$type = new c_type(array($u));
+		$form = $parser->read('form');
+
+		$list = new c_varlist($type);
+		$list->add($form);
+	}
+	else {
+		$list = $parser->read('varlist');
+	}
+	$parser->expect(';');
+	return $list;
+});
+
+parser::extend('embedded-union', function(parser $parser) {
+	list ($u, $form) = $parser->seq('$union', '$form');
+	$type = new c_type(array($u));
+	$list = new c_varlist($type);
+	$list->add($form);
+	return $list;
 });
 
 parser::extend('varlist', function(parser $parser) {
@@ -135,14 +139,16 @@ parser::extend('varlist', function(parser $parser) {
 
 // <return>: "return" [<expr>] ";"
 parser::extend('return', function(parser $parser) {
-	$parser->s->expect('return');
-	if ($parser->s->peek()->type != ';') {
-		$expr = $parser->read('expr');
-	}
-	else {
-		$expr = new c_expr();
-	}
-	$parser->s->expect(';');
+	return $parser->any(['return-expr', 'return-empty']);
+});
+
+parser::extend('return-empty', function(parser $parser) {
+	$parser->seq('return', ';');
+	return new c_return();
+});
+
+parser::extend('return-expr', function(parser $parser) {
+	list ($expr) = $parser->seq('return', '$expr', ';');
 	return new c_return($expr->parts);
 });
 
@@ -164,6 +170,18 @@ parser::extend('body', function(parser $parser) {
 // <body-part>: (comment | <obj-def> | <construct>
 // 	| (<expr> ";") | (<defer> ";") | <body> )...
 parser::extend('body-part', function(parser $parser) {
+	// return $parser->any([
+	// 	'comment',
+	// 	'if',
+	// 	'for',
+	// 	'while',
+	// 	'switch',
+	// 	'return',
+	// 	'body',
+	// 	'varlist',
+	// 	'defer',
+	// 	'expr'
+	// ]);
 	$t = $parser->s->peek();
 
 	// comment?

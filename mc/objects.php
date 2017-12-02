@@ -360,10 +360,13 @@ class c_structdef extends c_element
 	public $pub;
 	public $name;
 	public $fields = array();
-	// array of varlists
-	function __construct($name)
+
+	function __construct($name, $lists = [])
 	{
 		$this->name = $name;
+		foreach ($lists as $list) {
+			$this->add($list);
+		}
 	}
 
 	function add(c_varlist $list)
@@ -483,28 +486,38 @@ class c_designated_array_element extends c_element
 
 class c_struct_literal extends c_element
 {
-	private $vals = array();
+	private $elements = [];
 
-	function add($name, $val)
+	function add($element)
 	{
-		$this->vals[$name] = $val;
+		$this->elements[] = $element;
 	}
 
 	function format()
 	{
 		$s = "{\n";
-		$i = 0;
-		$n = count($this->vals);
-		foreach ($this->vals as $name => $val) {
-			$s .= "\t.$name = ".$val->format();
-			$i++;
-			if ($i < $n) {
-				$s .= ",";
-			}
-			$s .= "\n";
+		foreach ($this->elements as $e) {
+			$s .= "\t" . $e->format() . ",\n";
 		}
 		$s .= "}\n";
 		return $s;
+	}
+}
+
+class c_struct_literal_element extends c_element
+{
+	private $id;
+	private $value;
+
+	function __construct($id, $value)
+	{
+		$this->id = $id;
+		$this->value = $value;
+	}
+
+	function format()
+	{
+		return sprintf('.%s = %s', $this->id->format(), $this->value->format());
 	}
 }
 
@@ -571,9 +584,17 @@ class c_expr extends c_element
 		$s = '';
 		foreach ($a as $i) {
 			switch ($i[0]) {
-			case 'id':
+				case 'id':
+				$s .= $i[1]->format();
+				break;
 			case 'op':
 				$s .= $i[1];
+				break;
+			case 'struct-access-dot':
+				$s .= '.' . $i[1]->format();
+				break;
+			case 'struct-access-arrow':
+				$s .= '->' . $i[1]->format();
 				break;
 			case 'call':
 				$s .= '(';

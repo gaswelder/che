@@ -15,11 +15,72 @@ parser::extend('expr', function (parser $parser) {
 	$expr->add($parser->read('atom'));
 
 	while (!$parser->s->ended() && $parser->is_op($parser->s->peek())) {
-		$expr->add($parser->s->get()->type);
+		$expr->add($parser->read('operator'));
 		$expr->add($parser->read('atom'));
 	}
 
 	return $expr;
+});
+
+parser::extend('operator', function(parser $parser) {
+	if (!$parser->is_op($parser->s->peek())) {
+		throw new ParseException("Not an operator");
+	}
+	return $parser->s->get()->type;
+});
+
+parser::extend('left-operator', function(parser $parser) {
+	$L = array('&', '*', '++', '--', '!', '~');
+	$t = $parser->s->get();
+	if (!$t || !in_array($t->type, $L)) {
+		throw new ParseException("Not a left-op");
+	}
+	return $t->type;
+});
+
+parser::extend('right-operator', function(parser $parser) {
+	$r = ['--', '++'];
+	$t = $parser->s->get();
+	if (!$t || !in_array($t->type, $r)) {
+		throw new ParseException("Not a right-op");
+	}
+	return ['op', $t->type];
+});
+
+parser::extend('index-op', function(parser $parser) {
+	list ($expr) = $parser->seq('[', '$expr', ']');
+	return ['index', $expr];
+});
+
+parser::extend('struct-access-op', function(parser $parser) {
+	try {
+		list ($id) = $parser->seq('.', '$identifier');
+		return ['struct-access-dot', $id];
+	} catch (ParseException $e) {
+		//
+	}
+
+	list ($id) = $parser->seq('->', '$identifier');
+	return ['struct-access-arrow', $id];
+});
+
+parser::extend('call-op', function(parser $parser) {
+	$parser->expect('(');
+	$args = [];
+	while (1) {
+		try {
+			$args[] = $parser->read('expr');
+		} catch (ParseException $e) {
+			break;
+		}
+		try {
+			$parser->expect(',');
+		} catch (ParseException $e) {
+			break;
+		}
+	}
+	$parser->expect(')');
+	return ['call', $args];
 });
 
 // <expr-atom>: <cast>? (
@@ -51,70 +112,33 @@ parser::extend('atom', function (parser $parser) {
 	}
 
 	// <left-op>...
-	$L = array('&', '*', '++', '--', '!', '~');
-	while (!$parser->s->ended() && in_array($parser->s->peek()->type, $L)) {
-		$ops[] = array('op', $parser->s->get()->type);
+	while (1) {
+		try {
+			$ops[] = ['op', $parser->read('left-operator')];
+		} catch (ParseException $e) {
+			break;
+		}
 	}
 
-	// "(" <expr> ")" / <name>
-	if ($parser->s->peek()->type == '(') {
-		$parser->s->expect('(');
-		$ops[] = array('expr', $parser->read('expr'));
-		$parser->s->expect(')');
-	}
-	else {
-		$t = $parser->s->expect('word');
-		$ops[] = array('id', $t->content);
+	try {
+		list ($expr) = $parser->seq('(', '$expr', ')');
+		$ops[] = ['expr', $expr];
+	} catch (ParseException $e) {
+		$ops[] = ['id', $parser->read('identifier')];
 	}
 
-	while (!$parser->s->ended()) {
-		$peek = $parser->s->peek();
-		if ($peek->type == '--' || $peek->type == '++') {
-			$ops[] = array(
-				'op',
-				$parser->s->get()->type
-			);
+	while (1) {
+		try {
+			$ops[] = $parser->any([
+				'right-operator',
+				'index-op',
+				'struct-access-op',
+				'call-op'
+			]);
 			continue;
+		} catch (ParseException $e) {
+			break;
 		}
-
-		if ($peek->type == '[') {
-			$parser->s->get();
-			$ops[] = array(
-				'index',
-				$parser->read('expr')
-			);
-			$parser->s->expect(']');
-			continue;
-		}
-
-		if ($peek->type == '.' || $peek->type == '->') {
-			$parser->s->get();
-			$ops[] = array('op', $peek->type);
-			$t = $parser->s->get();
-			if ($t->type != 'word') {
-				return $parser->error("Id expected, got $t");
-			}
-			$ops[] = array('id', $t->content);
-			continue;
-		}
-
-		if ($peek->type == '(') {
-			$parser->s->get();
-			$args = [];
-			while (!$parser->s->ended() && $parser->s->peek()->type != ')') {
-				$args[] = $parser->read('expr');
-				if ($parser->s->peek()->type == ',') {
-					$parser->s->get();
-				}
-				else {
-					break;
-				}
-			}
-			$parser->s->expect(')');
-			$ops[] = array('call', $args);
-		}
-
-		break;
 	}
 
 	return $ops;
@@ -133,26 +157,24 @@ parser::extend('typecast', function(parser $parser) {
 // <sizeof>: "sizeof" <sizeof-arg>
 // <sizeof-arg>: ("(" (<expr> | <type>) ")") | <expr> | <type>
 parser::extend('sizeof', function(parser $parser) {
-	$parts = [];
-
 	$parser->expect('sizeof');
-
-	$brace = false;
-	if ($parser->s->peek()->type == '(') {
-		$brace = true;
-		$parser->s->get();
+	try {
+		list ($arg) = $parser->seq('(', '$sizeof-contents', ')');
+	} catch (ParseException $e) {
+		list ($arg) = $parser->seq('$sizeof-contents');
 	}
-
-	if ($parser->type_follows()) {
-		$arg = $parser->read('typeform');
-	}
-	else {
-		$arg = $parser->read('expr');
-	}
-
-	if ($brace) {
-		$parser->expect(')');
-	}
-
 	return new c_sizeof($arg);
+});
+
+parser::extend('sizeof-contents', function(parser $parser) {
+	return $parser->any(['typeform', 'expr']);
+});
+
+parser::extend('constant-expression', function(parser $parser) {
+	return $parser->any(['literal', 'identifier']);
+});
+
+parser::extend('identifier', function(parser $parser) {
+	$name = $parser->expect('word')->content;
+	return new c_identifier($name);
 });

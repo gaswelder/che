@@ -102,6 +102,19 @@ class parser
 		return $values;
 	}
 
+	function many($name)
+	{
+		$list = [];
+		while (1) {
+			try {
+				$list[] = $this->read($name);
+			} catch (ParseException $e) {
+				break;
+			}
+		}
+		return $list;
+	}
+
 	function read($name)
 	{
 		$this->trace($name);

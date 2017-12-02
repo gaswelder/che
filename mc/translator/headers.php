@@ -102,6 +102,9 @@ class tr_headers
 
 	private static function id($id, &$headers)
 	{
+		if ($id instanceof c_identifier) {
+			$id = $id->format();
+		}
 		$h = self::get_header($id);
 		if ($h) $headers[$h] = true;
 	}
@@ -133,6 +136,8 @@ class tr_headers
 				case 'op':
 				case 'sizeof':
 				case 'index':
+				case 'struct-access-dot':
+				case 'struct-access-arrow':
 					break;
 				default:
 					var_dump($op);

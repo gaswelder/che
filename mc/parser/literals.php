@@ -42,25 +42,26 @@ parser::extend('word-literal', function(parser $parser) {
 // <struct-literal>: "{" "." <id> "=" <literal> [, ...] "}"
 parser::extend('struct-literal', function(parser $parser) {
 	$struct = new c_struct_literal();
-
 	$parser->expect('{');
-	while (!$parser->s->ended()) {
-		$parser->expect('.');
-		$id = $parser->expect('word')->content;
-		$parser->expect('=');
-		$val = $parser->read('expr');
-
-		$struct->add($id, $val);
-
-		if ($parser->s->peek()->type == ',') {
-			$parser->s->get();
+	while (1) {
+		try {
+			$struct->add($parser->read('struct-literal-element'));
+		} catch (ParseException $e) {
+			break;
 		}
-		else {
+		try {
+			$parser->expect(',');
+		} catch (ParseException $e) {
 			break;
 		}
 	}
 	$parser->expect('}');
 	return $struct;
+});
+
+parser::extend('struct-literal-element', function(parser $parser) {
+	list ($id, $val) = $parser->seq('.', '$identifier', '=', '$expr');
+	return new c_struct_literal_element($id, $val);
 });
 
 parser::extend('array-literal', function(parser $parser) {
@@ -102,15 +103,6 @@ parser::extend('designated-array-element', function(parser $parser) {
 	$parser->expect('=');
 	$item->value = $parser->read('constant-expression');
 	return $item;
-});
-
-parser::extend('constant-expression', function(parser $parser) {
-	return $parser->any(['literal', 'identifier']);
-});
-
-parser::extend('identifier', function(parser $parser) {
-	$name = $parser->expect('word')->content;
-	return new c_identifier($name);
 });
 
 // parser::extend('addr-literal', function(parser $parser) {
