@@ -431,7 +431,7 @@ class c_string extends c_literal
 	}
 }
 
-;
+class c_identifier extends c_literal {}
 
 class c_char extends c_literal
 {

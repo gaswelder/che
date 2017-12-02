@@ -85,7 +85,7 @@ parser::extend('array-literal', function(parser $parser) {
 
 parser::extend('array-literal-element', function(parser $parser) {
 	return $parser->any([
-		'literal',
+		'constant-expression',
 		'designated-array-element'
 	]);
 });
@@ -100,8 +100,17 @@ parser::extend('designated-array-element', function(parser $parser) {
 	}
 	$parser->expect(']');
 	$parser->expect('=');
-	$item->value = $parser->read('literal');
+	$item->value = $parser->read('constant-expression');
 	return $item;
+});
+
+parser::extend('constant-expression', function(parser $parser) {
+	return $parser->any(['literal', 'identifier']);
+});
+
+parser::extend('identifier', function(parser $parser) {
+	$name = $parser->expect('word')->content;
+	return new c_identifier($name);
 });
 
 // parser::extend('addr-literal', function(parser $parser) {
