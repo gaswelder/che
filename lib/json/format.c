@@ -13,10 +13,10 @@ pub char *json_format(json_node *n)
 		if(c == EOF) break;
 		str_addc(s, c);
 	}
-	char *str = strdup(str_raw(s));
+	char *str1 = strdup(str_raw(s));
 	str_free(s);
 	zclose(z);
-	return str;
+	return str1;
 }
 
 void json_write(zio *z, json_node *n)

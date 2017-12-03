@@ -16,7 +16,7 @@ parser::extend('if-only', function(parser $parser) {
 
 // <defer>: "defer" <expr>
 parser::extend('defer', function(parser $parser) {
-	list($expr) = $parser->seq('defer', '$expr');
+	list($expr) = $parser->seq('defer', '$expr', ';');
 	return new c_defer($expr);
 });
 
@@ -67,4 +67,19 @@ parser::extend('for', function(parser $parser) {
 	$init = $parser->any(['varlist', 'expr']);
 	list ($cond, $act, $body) = $parser->seq(';', '$expr', ';', '$expr', ')', '$body');
 	return new c_for($init, $cond, $act, $body);
+});
+
+// <return>: "return" [<expr>] ";"
+parser::extend('return', function(parser $parser) {
+	return $parser->any(['return-expr', 'return-empty']);
+});
+
+parser::extend('return-empty', function(parser $parser) {
+	$parser->seq('return', ';');
+	return new c_return();
+});
+
+parser::extend('return-expr', function(parser $parser) {
+	list ($expr) = $parser->seq('return', '$expr', ';');
+	return new c_return($expr->parts);
 });

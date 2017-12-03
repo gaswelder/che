@@ -110,10 +110,15 @@ class c_varlist
 		$this->forms = array();
 	}
 
-	function add(c_form $f, c_expr $e = null)
-	{
-		$this->forms[] = $f;
-		$this->values[] = $e;
+	function add($var) {
+		if ($var instanceof c_form) {
+			$this->forms[] = $var;
+			$this->values[] = null;
+		} else {
+			// assignment
+			$this->forms[] = $var[0];
+			$this->values[] = $var[1];
+		}
 	}
 
 	function format()
@@ -326,32 +331,38 @@ class c_prototype
  */
 class c_formal_args
 {
-	public $lists = array();
-	// array of varlists
-	public $more = false;
-	// true if the list ends with '...'
-	function add(c_varlist $l)
+	public $groups = [];
+	public $more = false; // ellipsis
+
+	function add(c_formal_argsgroup $g)
 	{
-		$this->lists[] = $l;
+		$this->groups[] = $g;
 	}
 
 	function format()
 	{
-		$s = '(';
-		$i = 0;
-		foreach ($this->lists as $l) {
-			foreach ($l->forms as $f) {
-				if ($i > 0) $s .= ', ';
-				$i++;
-				$s .= $l->type->format();
-				$s .= ' '.$f->format();
-			}
+		$list = [];
+		foreach ($this->groups as $g) {
+			$list[] = $g->format();
 		}
 		if ($this->more) {
-			$s .= ', ...';
+			$list[] = '...';
 		}
-		$s .= ')';
-		return $s;
+		return '('.implode(', ', $list).')';
+	}
+}
+
+class c_formal_argsgroup extends c_element
+{
+	public $type;
+	public $forms = [];
+
+	function format() {
+		$list = [];
+		foreach ($this->forms as $form) {
+			$list[] = $this->type->format() . ' ' . $form->format();
+		}
+		return implode(', ', $list);
 	}
 }
 

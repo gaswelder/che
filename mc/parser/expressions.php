@@ -176,5 +176,8 @@ parser::extend('constant-expression', function(parser $parser) {
 
 parser::extend('identifier', function(parser $parser) {
 	$name = $parser->expect('word')->content;
+	if ($parser->is_typename($name)) {
+		throw new ParseException("typename, not id");
+	}
 	return new c_identifier($name);
 });

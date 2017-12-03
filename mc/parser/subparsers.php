@@ -107,124 +107,74 @@ parser::extend('embedded-union', function(parser $parser) {
 	return $list;
 });
 
+parser::extend('assignment', function(parser $parser) {
+	return $parser->seq('$form', '=', '$expr');
+});
+
 parser::extend('varlist', function(parser $parser) {
 	$type = $parser->read('type');
 	$list = new c_varlist($type);
 
-	$f = $parser->read('form');
-	$e = null;
-	if ($parser->s->peek()->type == '=') {
-		$parser->s->get();
-		$e = $parser->read('expr');
-	}
-	$list->add($f, $e);
+	$next = $parser->any(['assignment', 'form']);
+	$list->add($next);
 
-	while ($parser->s->peek()->type == ',') {
-		$comma = $parser->s->get();
-
-		if (!$parser->form_follows()) {
-			$parser->s->unget($comma);
+	while (1) {
+		try {
+			$parser->expect(',');
+		} catch (ParseException $e) {
 			break;
 		}
-		$f = $parser->read('form');
-		$e = null;
-		if ($parser->s->peek()->type == '=') {
-			$parser->s->get();
-			$e = $parser->read('expr');
-		}
-		$list->add($f, $e);
+		
+		try {
+			$next = $parser->any(['assignment', 'form']);
+			$list->add($next);
+		} catch (ParseException $e) {
+			break;
+		}	
 	}
 	return $list;
 });
-
-// <return>: "return" [<expr>] ";"
-parser::extend('return', function(parser $parser) {
-	return $parser->any(['return-expr', 'return-empty']);
-});
-
-parser::extend('return-empty', function(parser $parser) {
-	$parser->seq('return', ';');
-	return new c_return();
-});
-
-parser::extend('return-expr', function(parser $parser) {
-	list ($expr) = $parser->seq('return', '$expr', ';');
-	return new c_return($expr->parts);
-});
-
-
 
 // <body>: "{" <body-part>... "}"
 parser::extend('body', function(parser $parser) {
 	$body = new c_body();
 
-	$parser->s->expect('{');
+	$parser->expect('{');
 	while (!$parser->s->ended() && $parser->s->peek()->type != '}') {
 		$parserart = $parser->read('body-part');
 		$body->add($parserart);
 	}
-	$parser->s->expect('}');
+	$parser->expect('}');
 	return $body;
 });
 
 // <body-part>: (comment | <obj-def> | <construct>
 // 	| (<expr> ";") | (<defer> ";") | <body> )...
 parser::extend('body-part', function(parser $parser) {
-	// return $parser->any([
-	// 	'comment',
-	// 	'if',
-	// 	'for',
-	// 	'while',
-	// 	'switch',
-	// 	'return',
-	// 	'body',
-	// 	'varlist',
-	// 	'defer',
-	// 	'expr'
-	// ]);
-	$t = $parser->s->peek();
-
-	// comment?
-	if ($t->type == 'comment') {
-		$parser->s->get();
-		return new c_comment($t->content);
+	try {
+		return $parser->any([
+			'comment',
+			'if',
+			'for',
+			'while',
+			'switch',
+			'return',
+			'body-varlist',
+			'defer',
+			//'expr'
+		]);
+	} catch (ParseException $e) {
+		//
 	}
 
-	// <construct>?
-	$constructs = array(
-		'if',
-		'for',
-		'while',
-		'switch',
-		'return'
-	);
-	if (in_array($t->type, $constructs)) {
-		return $parser->read($t->type);
-	}
-
-	// <body>?
-	if ($t->type == '{') {
-		return $parser->body();
-	}
-
-	// <varlist>?
-	if ($parser->type_follows()) {
-		$list = $parser->read('varlist');
-		$parser->s->expect(';');
-		return $list;
-	}
-
-	// <defer>?
-	if ($t->type == 'defer') {
-		$d = $parser->read('defer');
-		$parser->s->expect(';');
-		return $d;
-	}
-
-	// <expr>
 	$expr = $parser->read('expr');
 	$parser->s->expect(';');
 	return $expr;
+});
+
+parser::extend('body-varlist', function(parser $parser) {
+	list ($list) = $parser->seq('$varlist', ';');
+	return $list;
 });
 
 parser::extend('body-or-part', function(parser $parser) {
@@ -312,6 +262,6 @@ parser::extend('object-def', function(parser $parser) {
 
 	$parser->expect(';');
 	$list = new c_varlist($type);
-	$list->add($form, $expr);
+	$list->add([$form, $expr]);
 	return $list;
 });

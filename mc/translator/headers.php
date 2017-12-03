@@ -30,11 +30,10 @@ class tr_headers
 
 	private static function proto(c_prototype $p, &$headers)
 	{
-		$args = $p->args;
-		foreach ($args->lists as $list) {
-			self::varlist($list, $headers);
-		}
 		self::type($p->type, $headers);
+		foreach ($p->args->groups as $group) {
+			self::type($group->type, $headers);
+		}
 	}
 
 	private static function body($body, &$headers)

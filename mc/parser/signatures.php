@@ -43,15 +43,30 @@ parser::extend('index-signature', function(parser $parser) {
 	return '[]';
 });
 
+parser::extend('formal-argsgroup', function(parser $parser) {
+	$group = new c_formal_argsgroup();
+	$group->type = $parser->read('type');
+	
+	$forms = [$parser->read('form')];
+	$group->forms = array_merge($forms, $parser->many('formal-argsgroup-cont'));
+	return $group;
+});
+
+parser::extend('formal-argsgroup-cont', function(parser $parser) {
+	list ($form) = $parser->seq(',', '$form');
+	if ($form->format() == '') {
+		throw new ParseException('empty form');
+	}
+	return $form;
+});
+
 parser::extend('call-signature', function(parser $parser) {
 	$args = new c_formal_args();
-	$empty = true;
 	$parser->expect('(');
 	while (1) {
 		try {
-			$l = $parser->read('varlist');
-			$args->add($l);
-			$empty = false;
+			$g = $parser->read('formal-argsgroup');
+			$args->add($g);
 		} catch (ParseException $e) {
 			break;
 		}
@@ -61,12 +76,11 @@ parser::extend('call-signature', function(parser $parser) {
 		} catch (ParseException $e) {
 			break;
 		}
-	}
 
-	if (!$empty) {
 		try {
 			$parser->expect('...');
 			$args->more = true;
+			break;
 		} catch (ParseException $e) {
 			//
 		}
@@ -149,46 +163,32 @@ parser::extend('struct-typename', function(parser $parser) {
 
 // "struct {foo x; bar y; ...}"
 parser::extend('anonymous-struct', function(parser $parser) {
-	$parser->expect('struct');
-	$parser->expect('{');
+	$parser->seq('struct', '{');
+	$lists = $parser->many('struct-def-element');
+	$parser->seq('}', ';');
 
 	$def = new c_structdef('');
-
-	while (!$parser->s->ended() && $parser->s->peek()->type != '}') {
-		if ($parser->s->peek()->type == 'union') {
-			$u = $parser->read('union');
-			$type = new c_type(array($u));
-			$form = $parser->read('form');
-
-			$list = new c_varlist($type);
-			$list->add($form);
-		}
-		else {
-			$list = $parser->read('varlist');
-		}
+	foreach ($lists as $list) {
 		$def->add($list);
-		$parser->s->expect(';');
 	}
-	$parser->expect('}');
-	$parser->expect(';');
-
 	return $def;
 });
 
 parser::extend('union', function(parser $parser) {
-	$parser->s->expect('union');
-	$parser->s->expect('{');
+	$parser->seq('union', '{');
+	$lists = $parser->many('union-def-element');
+	$parser->expect('}');
 
 	$u = new c_union();
-
-	while (!$parser->s->ended() && $parser->s->peek()->type != '}') {
-		$type = $parser->read('type');
-		$form = $parser->read('form');
-		$list = new c_varlist($type);
-		$list->add($form);
+	foreach ($lists as $list) {
 		$u->add($list);
-		$parser->s->expect(';');
 	}
-	$parser->s->expect('}');
 	return $u;
+});
+
+parser::extend('union-def-element', function(parser $parser) {
+	list ($type, $form) = $parser->seq('$type', '$form', ';');
+	$list = new c_varlist($type);
+	$list->add($form);
+	return $list;
 });

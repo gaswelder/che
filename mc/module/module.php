@@ -32,6 +32,15 @@ class module
 		return $c;
 	}
 
+	function format()
+	{
+		$s = '';
+		foreach ($this->code as $e) {
+			$s .= $e->format() . "\n";
+		}
+		return $s;
+	}
+
 	// Returns synopsis that would be the contents of this module's
 	// C header file.
 	function synopsis()

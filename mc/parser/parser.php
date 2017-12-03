@@ -90,16 +90,24 @@ class parser
 
 	function seq(...$names)
 	{
-		$values = [];
-		foreach ($names as $name) {
-			if ($name[0] == '$') {
-				$name = substr($name, 1);
-				$values[] = $this->read($name);
-			} else {
-				$this->expect($name);
+		$backup = [clone $this->s, $this->type_names];
+
+		try {
+			$values = [];
+			foreach ($names as $name) {
+				if ($name[0] == '$') {
+					$name = substr($name, 1);
+					$values[] = $this->read($name);
+				} else {
+					$this->expect($name);
+				}
 			}
+			return $values;
+		} catch (ParseException $e) {
+			$this->s = $backup[0];
+			$this->type_names = $backup[1];
+			throw $e;
 		}
-		return $values;
 	}
 
 	function many($name)
@@ -128,11 +136,12 @@ class parser
 		try {
 			$obj = $p($alt);
 		} catch (ParseException $e) {
-			$this->trace("$name: " . $e->getMessage());
+			$this->trace("[$this->level] $name: " . $e->getMessage());
 			throw $e;
 		}
 		$this->s = $alt->s;
 		$this->type_names = $alt->type_names;
+		$this->trace("[$this->level] $name: ok");
 		return $obj;
 	}
 
@@ -152,7 +161,7 @@ class parser
 	{
 		$s = $this->context();
 		$pref = str_repeat('  ', $this->level);
-		trace::line("$pref $m | ... $s");
+		trace::line("$pref $m |    $s");
 	}
 
 	function add_type($name)
