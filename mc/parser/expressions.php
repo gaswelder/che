@@ -145,12 +145,7 @@ parser::extend('atom', function (parser $parser) {
 });
 
 parser::extend('typecast', function(parser $parser) {
-	$parser->expect('(');
-	if (!$parser->type_follows()) {
-		throw new ParseException("Not a typecast");
-	}
-	$tf = $parser->read('typeform');
-	$parser->expect(')');
+	list ($tf) = $parser->seq('(', '$typeform', ')');
 	return ['cast', $tf];
 });
 

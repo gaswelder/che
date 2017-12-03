@@ -197,43 +197,6 @@ class parser
 		return $this->read('root');
 	}
 
-	//
-
-	function form_follows()
-	{
-		if ($this->type_follows()) return false;
-		$t = $this->s->peek()->type;
-		return $t == '*' || $t == 'word';
-	}
-
-	function type_follows()
-	{
-		$b = $this->_type_follows();
-		return $b;
-
-		$r = $b ? '+' : '';
-		$c = $this->context();
-		put("$r	$c");
-
-		return $b;
-	}
-
-	private function _type_follows()
-	{
-		$this->trace("type_follows");
-		$t = $this->s->peek();
-
-		$type_keywords = array('struct', 'const');
-		if (in_array($t->type, $type_keywords)) {
-			return true;
-		}
-
-		if ($t->type != 'word') {
-			return false;
-		}
-		return $this->is_typename($t->content);
-	}
-
 	function context($n = 6)
 	{
 		$s = $this->s;
