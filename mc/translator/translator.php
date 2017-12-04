@@ -113,8 +113,7 @@ class mc_trans
 			else if ($part instanceof c_switch) {
 				$part = clone $part;
 				foreach ($part->cases as $i => $case) {
-					$part->cases[$i][1] = self::rewrite_body($part->cases[$i][1],
-						$defer);
+					$part->cases[$i]->body = self::rewrite_body($part->cases[$i]->body, $defer);
 				}
 			}
 			else if ($part instanceof c_return) {

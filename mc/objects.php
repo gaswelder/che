@@ -116,6 +116,15 @@ class c_varlist
 		$this->forms = array();
 	}
 
+	function typenames()
+	{
+		// return array_merge($this->type->typenames(), $this->)
+		// self::type($l->type, $headers);
+		// foreach ($l->values as $e) {
+		// 	self::expr($e, $headers);
+		// }
+	}
+
 	function add($var) {
 		if ($var instanceof c_form) {
 			$this->forms[] = $var;
@@ -240,6 +249,19 @@ class c_type
 		}
 		return implode(' ', $s);
 	}
+
+	function typenames()
+	{
+		$names = [];
+		foreach ($this->l as $t) {
+			if (is_string($t)) {
+				$names[] = $t;
+			} else {
+				$names[] = $t->format();
+			}
+		}
+		return $names;
+	}
 }
 
 /*
@@ -285,6 +307,11 @@ class c_typedef extends c_element
 	function format()
 	{
 		return sprintf("typedef %s %s", $this->type->format(), $this->form->format());
+	}
+
+	function typenames()
+	{
+		return $this->type->typenames();
 	}
 
 	static function parse(parser $parser) {
@@ -723,50 +750,18 @@ class c_sizeof extends c_element
 	}
 }
 
-class c_expr extends c_element
+class c_expr_atom extends c_element
 {
-	public $parts;
+	public $a;
 
-	function __construct($parts = array())
-	{
-		$this->parts = $parts;
+	function __construct($a) {
+		$this->a = $a;
 	}
 
-	function add($p)
-	{
-		assert($p != null);
-		$this->parts[] = $p;
-	}
-
-	function format($tab = 0)
-	{
-		if (empty($this->parts)) {
-			return '';
-		}
-		$p = str_repeat("\t", $tab);
-		$n = count($this->parts);
-		$i = 0;
-		$s = '';
-		if ($this->parts[0] == '-') {
-			$s = '-';
-			$i++;
-		}
-		while ($i < $n) {
-			$a = $this->parts[$i];
-			$s .= $this->format_atom($a);
-			$i++;
-			if ($i < $n) {
-				$s .= ' '.$this->parts[$i].' ';
-				$i++;
-			}
-		}
-		return $p.$s;
-	}
-
-	function format_atom($a)
+	function format()
 	{
 		$s = '';
-		foreach ($a as $i) {
+		foreach ($this->a as $i) {
 			switch ($i[0]) {
 				case 'id':
 				$s .= $i[1]->format();
@@ -817,6 +812,105 @@ class c_expr extends c_element
 
 	static function parse(parser $parser)
 	{
+		$ops = array();
+
+		// <cast>?
+		try {
+			$ops[] = $parser->read('typecast');
+		} catch (ParseException $e) {
+			//
+		}
+	
+		try {
+			$ops[] = ['literal', $parser->read('literal')];
+			return new c_expr_atom($ops);
+		} catch (ParseException $e) {
+			//
+		}
+	
+		try {
+			$ops[] = ['sizeof', $parser->read('sizeof')];
+			return new c_expr_atom($ops);
+		} catch (ParseException $e) {
+			//
+		}
+	
+		// <left-op>...
+		while (1) {
+			try {
+				$ops[] = ['op', $parser->read('left-operator')];
+			} catch (ParseException $e) {
+				break;
+			}
+		}
+	
+		try {
+			list ($expr) = $parser->seq('(', '$expr', ')');
+			$ops[] = ['expr', $expr];
+		} catch (ParseException $e) {
+			$ops[] = ['id', $parser->read('identifier')];
+		}
+	
+		while (1) {
+			try {
+				$ops[] = $parser->any([
+					'right-operator',
+					'index-op',
+					'struct-access-op',
+					'call-op'
+				]);
+				continue;
+			} catch (ParseException $e) {
+				break;
+			}
+		}
+	
+		return new c_expr_atom($ops);
+	}
+}
+
+class c_expr extends c_element
+{
+	public $parts;
+
+	function __construct($parts = array())
+	{
+		$this->parts = $parts;
+	}
+
+	function add($p)
+	{
+		assert($p != null);
+		$this->parts[] = $p;
+	}
+
+	function format($tab = 0)
+	{
+		if (empty($this->parts)) {
+			return '';
+		}
+		$p = str_repeat("\t", $tab);
+		$n = count($this->parts);
+		$i = 0;
+		$s = '';
+		if ($this->parts[0] == '-') {
+			$s = '-';
+			$i++;
+		}
+		while ($i < $n) {
+			$a = $this->parts[$i];
+			$s .= $a->format();
+			$i++;
+			if ($i < $n) {
+				$s .= ' '.$this->parts[$i].' ';
+				$i++;
+			}
+		}
+		return $p.$s;
+	}
+
+	static function parse(parser $parser)
+	{
 		$expr = new c_expr();
 
 		// An expression may start with a minus.
@@ -850,6 +944,12 @@ class c_defer
 	function format()
 	{
 		return "defer ".$this->expr->format();
+	}
+
+	static function parse(parser $parser)
+	{
+		list($expr) = $parser->seq('defer', '$expr', ';');
+		return new c_defer($expr);
 	}
 }
 
@@ -896,9 +996,23 @@ class c_body
 		$body = new c_body();
 		
 		$parser->expect('{');
-		while (!$parser->s->ended() && $parser->s->peek()->type != '}') {
-			$parserart = $parser->read('body-part');
-			$body->add($parserart);
+		while (1) {
+			try {
+				$part = $parser->any([
+					'comment',
+					'if',
+					'for',
+					'while',
+					'switch',
+					'return',
+					'body-varlist',
+					'defer',
+					'body-expr'
+				]);
+				$body->add($part);
+			} catch (ParseException $e) {
+				break;
+			}
 		}
 		$parser->expect('}');
 		return $body;
@@ -950,12 +1064,6 @@ class c_switch
 	public $cond;
 	public $cases;
 
-	function __construct($cond, $cases)
-	{
-		$this->cond = $cond;
-		$this->cases = $cases;
-	}
-
 	function format($tab = 0)
 	{
 		$pref = str_repeat("\t", $tab);
@@ -963,15 +1071,61 @@ class c_switch
 		$s = $pref.sprintf("switch (%s) {\n", $this->cond->format());
 
 		foreach ($this->cases as $case) {
-			$s .= $pref."case ";
-			$s .= $case[0]->format().":\n";
-			if (!empty($case[1]->parts)) {
-				$s .= $case[1]->format($tab);
-			}
+			$s .= $case->format();
 		}
 
 		$s .= "}\n";
 		return $s;
+	}
+
+	static function parse(parser $parser)
+	{
+		$sw = new c_switch();
+		list ($cond) = $parser->seq('switch', '(', '$expr', ')', '{');
+		
+		$sw->cond = $cond;
+		
+		while (!$parser->s->ended() && $parser->s->peek()->type != '}') {
+			$sw->cases[] = $parser->read('switch-case');
+		}
+		$parser->expect('}');
+		return $sw;
+	}
+}
+
+class c_switch_case extends c_element
+{
+	public $value;
+	public $body;
+
+	function format() {
+		return sprintf("case %s:\n%s\nbreak;", $this->value->format(), $this->body->format());
+	}
+
+	static function parse(parser $parser)
+	{
+		$parser->expect('case');
+		
+		// <id> | <literal>
+		$val = $parser->any(['identifier', 'literal']);
+		$parser->expect(':');
+	
+		// <body-part>...
+		$body = new c_body();
+		while (!$parser->s->ended()) {
+			$t = $parser->s->peek();
+			if ($t->type == 'case') {
+				break;
+			}
+			if ($t->type == '}') {
+				break;
+			}
+			$body->add($parser->read('body-part'));
+		}
+		$case = new self();
+		$case->value = $val;
+		$case->body = $body;
+		return $case;
 	}
 }
 
@@ -1025,6 +1179,12 @@ class c_while
 		$s = $p.sprintf("while (%s) ", $this->cond->format());
 		$s .= $this->body->format($tab);
 		return $s;
+	}
+
+	static function parse(parser $parser)
+	{
+		list ($cond, $body) = $parser->seq('while', '(', '$expr', ')', '$body');
+		return new c_while($cond, $body);
 	}
 }
 

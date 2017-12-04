@@ -121,35 +121,11 @@ class module
 			return $mod;
 		}
 
-		$mod = new module();
-		$mod->path = $path;
-
 		$s = new parser($path);
 		foreach ($typenames as $name) {
 			$s->add_type($name);
 		}
-
-		while (!$s->ended()) {
-			$t = $s->get();
-			if ($t instanceof c_import) {
-				/*
-				 * Update the parser's types list
-				 * from the referenced module
-				 */
-				$imp = module::import($t->path, $t->dir);
-				foreach ($imp->synopsis() as $decl) {
-					if ($decl instanceof c_typedef) {
-						$s->add_type($decl->form->name);
-					}
-				}
-				$mod->deps[] = $imp;
-			}
-			if ($t instanceof c_link) {
-				$mod->link[] = $t->name;
-			}
-
-			$mod->code[] = $t;
-		}
+		$mod = $s->parse();
 
 		$mods[$path] = $mod;
 		return $mod;

@@ -65,65 +65,8 @@ parser::extend('call-op', function(parser $parser) {
 	return ['call', $args];
 });
 
-// <expr-atom>: <cast>? (
-// 		<literal> / <sizeof> /
-// 		<left-op>... ("(" <expr> ")" / <name>) <right-op>...
-// )
 parser::extend('atom', function (parser $parser) {
-	$ops = array();
-
-	// <cast>?
-	try {
-		$ops[] = $parser->read('typecast');
-	} catch (ParseException $e) {
-		//
-	}
-
-	try {
-		$ops[] = ['literal', $parser->read('literal')];
-		return $ops;
-	} catch (ParseException $e) {
-		//
-	}
-
-	try {
-		$ops[] = ['sizeof', $parser->read('sizeof')];
-		return $ops;
-	} catch (ParseException $e) {
-		//
-	}
-
-	// <left-op>...
-	while (1) {
-		try {
-			$ops[] = ['op', $parser->read('left-operator')];
-		} catch (ParseException $e) {
-			break;
-		}
-	}
-
-	try {
-		list ($expr) = $parser->seq('(', '$expr', ')');
-		$ops[] = ['expr', $expr];
-	} catch (ParseException $e) {
-		$ops[] = ['id', $parser->read('identifier')];
-	}
-
-	while (1) {
-		try {
-			$ops[] = $parser->any([
-				'right-operator',
-				'index-op',
-				'struct-access-op',
-				'call-op'
-			]);
-			continue;
-		} catch (ParseException $e) {
-			break;
-		}
-	}
-
-	return $ops;
+	return c_expr_atom::parse($parser);
 });
 
 parser::extend('typecast', function(parser $parser) {

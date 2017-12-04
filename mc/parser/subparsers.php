@@ -26,6 +26,14 @@ parser::extend('typedef', function(parser $parser) {
 	return c_typedef::parse($parser);
 });
 
+parser::extend('struct-def-root', function(parser $parser) {
+	return c_structdef::parse($parser);
+});
+
+parser::extend('struct-identifier', function(parser $parser) {
+	return c_struct_identifier::parse($parser);
+});
+
 // <macro>: "#include" <string> | "#define" <name> <string>
 // "#ifdef" <id> | "#ifndef" <id>
 parser::extend('macro', function(parser $parser) {
@@ -56,14 +64,6 @@ parser::extend('macro', function(parser $parser) {
 	default:
 		return $parser->error("Unknown macro: $type");
 	}
-});
-
-parser::extend('struct-def-root', function(parser $parser) {
-	return c_structdef::parse($parser);
-});
-
-parser::extend('struct-identifier', function(parser $parser) {
-	return c_struct_identifier::parse($parser);
 });
 
 parser::extend('struct-def-element', function(parser $parser) {
@@ -123,28 +123,24 @@ parser::extend('body', function(parser $parser) {
 	return c_body::parse($parser);
 });
 
-// <body-part>: (comment | <obj-def> | <construct>
-// 	| (<expr> ";") | (<defer> ";") | <body> )...
-parser::extend('body-part', function(parser $parser) {
-	try {
-		return $parser->any([
-			'comment',
-			'if',
-			'for',
-			'while',
-			'switch',
-			'return',
-			'body-varlist',
-			'defer',
-			//'expr'
-		]);
-	} catch (ParseException $e) {
-		//
-	}
-
+parser::extend('body-expr', function(parser $parser) {
 	$expr = $parser->read('expr');
 	$parser->expect(';');
 	return $expr;
+});
+
+parser::extend('body-part', function(parser $parser) {
+	return $parser->any([
+		'comment',
+		'if',
+		'for',
+		'while',
+		'switch',
+		'return',
+		'body-varlist',
+		'defer',
+		'body-expr'
+	]);
 });
 
 parser::extend('body-varlist', function(parser $parser) {
@@ -162,7 +158,6 @@ parser::extend('body-or-part', function(parser $parser) {
 	return $b;
 });
 
-// <enum-def>: "pub"? "enum" "{" <id> ["=" <literal>] [,]... "}" ";"
 parser::extend('enum-def', function(parser $parser) {
 	return c_enum::parse($parser);
 });

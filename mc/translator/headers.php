@@ -7,7 +7,10 @@ class tr_headers
 		$headers = array();
 		foreach ($mod->code as $element) {
 			if ($element instanceof c_typedef) {
-				self::type($element->type, $headers);
+				$typenames = $element->typenames();
+				foreach ($typenames as $name) {
+					self::id($name, $headers);
+				}
 			}
 			else if ($element instanceof c_structdef) {
 				foreach ($element->fields as $list) {
@@ -69,7 +72,7 @@ class tr_headers
 			case 'c_switch':
 				self::expr($part->cond, $headers);
 				foreach ($part->cases as $case){
-					self::body($case[1], $headers);
+					self::body($case->body, $headers);
 				}
 				break;
 			case 'c_return':
@@ -113,9 +116,9 @@ class tr_headers
 		if (!$e) return;
 
 		foreach ($e->parts as $part) {
-			if (!is_array($part)) continue;
+			if (is_string($part)) continue;
 
-			foreach ($part as $op) {
+			foreach ($part->a as $op) {
 				switch ($op[0]) {
 				case 'id':
 					self::id($op[1], $headers);

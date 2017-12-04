@@ -216,6 +216,35 @@ class parser
 		return $this->read('root');
 	}
 
+	function parse()
+	{
+		$mod = new module();
+		$mod->path = $this->path;
+
+		while (!$this->ended()) {
+			$t = $this->get();
+			if ($t instanceof c_import) {
+				/*
+				 * Update the parser's types list
+				 * from the referenced module
+				 */
+				$imp = module::import($t->path, $t->dir);
+				foreach ($imp->synopsis() as $decl) {
+					if ($decl instanceof c_typedef) {
+						$this->add_type($decl->form->name);
+					}
+				}
+				$mod->deps[] = $imp;
+			}
+			if ($t instanceof c_link) {
+				$mod->link[] = $t->name;
+			}
+
+			$mod->code[] = $t;
+		}
+		return $mod;
+	}
+
 	function context($n = 6)
 	{
 		$s = $this->s;
