@@ -118,7 +118,6 @@ class c_varlist
 
 	function typenames()
 	{
-		// return array_merge($this->type->typenames(), $this->)
 		// self::type($l->type, $headers);
 		// foreach ($l->values as $e) {
 		// 	self::expr($e, $headers);
@@ -750,6 +749,41 @@ class c_sizeof extends c_element
 	}
 }
 
+class c_function_call extends c_element
+{
+	public $args = [];
+
+	static function parse(parser $parser)
+	{
+		$call = new self();
+
+		$parser->expect('(');
+		while (1) {
+			try {
+				$call->args[] = $parser->read('expr');
+			} catch (ParseException $e) {
+				break;
+			}
+			try {
+				$parser->expect(',');
+			} catch (ParseException $e) {
+				break;
+			}
+		}
+		$parser->expect(')');
+		return $call;
+	}
+
+	function format()
+	{
+		$list = [];
+		foreach ($this->args as $arg) {
+			$list[] = $arg->format();
+		}
+		return '('.implode(', ', $list).')';
+	}
+}
+
 class c_expr_atom extends c_element
 {
 	public $a;
@@ -762,6 +796,11 @@ class c_expr_atom extends c_element
 	{
 		$s = '';
 		foreach ($this->a as $i) {
+			if ($i instanceof c_function_call) {
+				$s .= $i->format();
+				continue;
+			}
+
 			switch ($i[0]) {
 				case 'id':
 				$s .= $i[1]->format();
@@ -774,16 +813,6 @@ class c_expr_atom extends c_element
 				break;
 			case 'struct-access-arrow':
 				$s .= '->' . $i[1]->format();
-				break;
-			case 'call':
-				$s .= '(';
-				$n = 0;
-				foreach ($i[1] as $expr){
-					if ($n > 0)$s .= ', ';
-					$s .= $expr->format();
-					$n++;
-				}
-				$s .= ')';
 				break;
 			case 'literal':
 				$s .= $i[1]->format();

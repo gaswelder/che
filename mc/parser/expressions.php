@@ -47,22 +47,7 @@ parser::extend('struct-access-op', function(parser $parser) {
 });
 
 parser::extend('call-op', function(parser $parser) {
-	$parser->expect('(');
-	$args = [];
-	while (1) {
-		try {
-			$args[] = $parser->read('expr');
-		} catch (ParseException $e) {
-			break;
-		}
-		try {
-			$parser->expect(',');
-		} catch (ParseException $e) {
-			break;
-		}
-	}
-	$parser->expect(')');
-	return ['call', $args];
+	return c_function_call::parse($parser);
 });
 
 parser::extend('atom', function (parser $parser) {

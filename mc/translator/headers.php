@@ -119,14 +119,18 @@ class tr_headers
 			if (is_string($part)) continue;
 
 			foreach ($part->a as $op) {
+
+				if ($op instanceof c_function_call) {
+					foreach ($op->args as $expr) {
+						self::expr($expr, $headers);
+					}
+					continue;
+				}
+
+
 				switch ($op[0]) {
 				case 'id':
 					self::id($op[1], $headers);
-					break;
-				case 'call':
-					foreach ($op[1] as $expr){
-						self::expr($expr, $headers);
-					}
 					break;
 				case 'expr':
 					self::expr($op[1], $headers);
