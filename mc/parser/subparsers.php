@@ -143,7 +143,7 @@ parser::extend('body-part', function(parser $parser) {
 	}
 
 	$expr = $parser->read('expr');
-	$parser->s->expect(';');
+	$parser->expect(';');
 	return $expr;
 });
 

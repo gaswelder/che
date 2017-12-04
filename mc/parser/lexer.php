@@ -56,18 +56,6 @@ class mctok
 		array_push($this->buffer, $t);
 	}
 
-	function expect($type, $content = null)
-	{
-		$t = $this->get();
-		if ($t->type != $type) {
-			$this->error("'$type' expected, got $t");
-		}
-		if ($content !== null && $t->content !== $content) {
-			$this->error("[$type, $content] expected, got $t");
-		}
-		return $t;
-	}
-
 	/*
 	 * Returns next token without removing it from the stream.
 	 * Returns null if there is no next token.
