@@ -4,161 +4,33 @@ class tr_headers
 	// Returns a list of standard C headers needed for the given code.
 	static function add_headers(module $mod)
 	{
-		$headers = array();
-		foreach ($mod->code as $element) {
-			if ($element instanceof c_typedef) {
-				$typenames = $element->typenames();
-				foreach ($typenames as $name) {
-					self::id($name, $headers);
-				}
-			}
-			else if ($element instanceof c_structdef) {
-				foreach ($element->fields as $list) {
-					self::varlist($list, $headers);
-				}
-			}
-			else if ($element instanceof c_func) {
-				self::proto($element->proto, $headers);
-				self::body($element->body, $headers);
-			}
-			else if ($element instanceof c_prototype) {
-				self::proto($element, $headers);
-			}
-		}
-
-		$headers = array_keys($headers);
-		sort($headers);
-		return $headers;
-	}
-
-	private static function proto(c_prototype $p, &$headers)
-	{
-		self::type($p->type, $headers);
-		foreach ($p->args->groups as $group) {
-			self::type($group->type, $headers);
-		}
-	}
-
-	private static function body($body, &$headers)
-	{
-		foreach ($body->parts as $part) {
-			$cn = get_class($part);
-			switch ($cn) {
-			case 'c_varlist':
-				self::varlist($part, $headers);
-				break;
-			case 'c_if':
-				self::expr($part->cond, $headers);
-				self::body($part->body, $headers);
-				if ($part->else){
-					self::body($part->else, $headers);
-				}
-				break;
-			case 'c_while':
-				self::expr($part->cond, $headers);
-				self::body($part->body, $headers);
-				break;
-			case 'c_for':
-				if ($part->init instanceof c_varlist){
-					self::varlist($part->init, $headers);
-				}
-				else {
-					self::expr($part->init, $headers);
-				}
-				self::expr($part->cond, $headers);
-				self::expr($part->act, $headers);
-				self::body($part->body, $headers);
-				break;
-			case 'c_switch':
-				self::expr($part->cond, $headers);
-				foreach ($part->cases as $case){
-					self::body($case->body, $headers);
-				}
-				break;
-			case 'c_return':
-			case 'c_expr':
-				self::expr($part, $headers);
-				break;
-			default:
-				var_dump("1706", $part);
-				exit(1);
-			}
-		}
-	}
-
-	private static function varlist(c_varlist $l, &$headers)
-	{
-		self::type($l->type, $headers);
-		foreach ($l->values as $e) {
-			self::expr($e, $headers);
-		}
-	}
-
-	private static function type(c_type $type, &$headers)
-	{
-		foreach ($type->l as $cast) {
-			if (!is_string($cast)) continue;
-			self::id($cast, $headers);
-		}
-	}
-
-	private static function id($id, &$headers)
-	{
-		if ($id instanceof c_identifier) {
-			$id = $id->format();
-		}
-		$h = self::get_header($id);
-		if ($h) $headers[$h] = true;
-	}
-
-	private static function expr($e, &$headers)
-	{
-		if (!$e) return;
-
-		foreach ($e->parts as $part) {
-			if (is_string($part)) continue;
-
-			foreach ($part->a as $op) {
-
-				if ($op instanceof c_function_call) {
-					foreach ($op->args as $expr) {
-						self::expr($expr, $headers);
-					}
-					continue;
-				}
-
-
-				switch ($op[0]) {
-				case 'id':
-					self::id($op[1], $headers);
-					break;
-				case 'expr':
-					self::expr($op[1], $headers);
-					break;
-				case 'cast':
-					self::type($op[1]->type, $headers);
-					break;
-				case 'literal':
-				case 'op':
-				case 'sizeof':
-				case 'index':
-				case 'struct-access-dot':
-				case 'struct-access-arrow':
-					break;
-				default:
-					var_dump($op);
-					exit;
-				}
-			}
-		}
-	}
-
-	private static function get_header($id)
-	{
 		if (!self::$init) {
 			self::$init = true;
 			self::init();
 		}
+
+		$names = [];
+		foreach ($mod->code as $element) {
+			foreach ($element->typenames() as $name) {
+				if ($name instanceof c_identifier) {
+					$name = $name->format();
+				}
+				$names[] = $name;
+			}
+		}
+		$names = array_unique($names);
+
+		$headers = [];
+		foreach ($names as $name) {
+			$headers[] = self::get_header($name);
+		}
+		$headers = array_unique(array_filter($headers));
+		sort($headers);
+		return $headers;
+	}
+
+	private static function get_header($id)
+	{
 		foreach (self::$lib as $header => $ids) {
 			if (in_array($id, $ids)) {
 				return $header;
@@ -252,5 +124,3 @@ class tr_headers
 		'
 	);
 }
-
-?>

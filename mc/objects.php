@@ -8,6 +8,10 @@ class c_element
 		$s = json_encode($this, JSON_PRETTY_PRINT);
 		return "$t$s";
 	}
+
+	function typenames() {
+		return [];
+	}
 }
 
 class c_import extends c_element
@@ -57,6 +61,7 @@ class c_define extends c_element
 {
 	public $name;
 	public $value;
+
 	function __construct($name, $value)
 	{
 		$this->name = $name;
@@ -118,10 +123,12 @@ class c_varlist
 
 	function typenames()
 	{
-		// self::type($l->type, $headers);
-		// foreach ($l->values as $e) {
-		// 	self::expr($e, $headers);
-		// }
+		$names = $this->type->typenames();
+		foreach ($this->values as $expr) {
+			if ($expr == null) continue;
+			$names = array_merge($names, $expr->typenames());
+		}
+		return $names;
 	}
 
 	function add($var) {
@@ -325,6 +332,10 @@ class c_enum extends c_element
 	public $pub = false;
 	public $values = array();
 
+	function typenames() {
+		return [];
+	}
+
 	function add($name, $val)
 	{
 		$this->values[$name] = $val;
@@ -392,6 +403,15 @@ class c_prototype
 		$this->type = $type;
 		$this->form = $form;
 		$this->args = $args;
+	}
+
+	function typenames()
+	{
+		$names = $this->type->typenames();
+		foreach ($this->args->groups as $group) {
+			$names = array_merge($names, $group->type->typenames());
+		}
+		return $names;
 	}
 
 	function format()
@@ -469,6 +489,15 @@ class c_structdef extends c_element
 	public $pub;
 	public $name;
 	public $fields = array();
+
+	function typenames()
+	{
+		$names = [];
+		foreach ($this->fields as $list) {
+			$names = array_merge($names, $list->typenames());
+		}
+		return $names;
+	}
 
 	function __construct($name = null, $lists = [])
 	{
@@ -792,6 +821,44 @@ class c_expr_atom extends c_element
 		$this->a = $a;
 	}
 
+	function typenames()
+	{
+		$names = [];
+
+		foreach ($this->a as $op) {
+			if ($op instanceof c_function_call) {
+				foreach ($op->args as $expr) {
+					$names = array_merge($names, $expr->typenames());
+				}
+				continue;
+			}
+
+			switch ($op[0]) {
+			case 'id':
+				$names[] = $op[1];
+				break;
+			case 'expr':
+				$names = array_merge($names, $op[1]->typenames());
+				break;
+			case 'cast':
+				$names[] = $op[1]->type;
+				break;
+			case 'literal':
+			case 'op':
+			case 'sizeof':
+			case 'index':
+			case 'struct-access-dot':
+			case 'struct-access-arrow':
+				break;
+			default:
+				var_dump("typenames failed for atom part");
+				var_dump($op);
+				exit;
+			}
+		}
+		return $names;
+	}
+
 	function format()
 	{
 		$s = '';
@@ -907,6 +974,18 @@ class c_expr extends c_element
 		$this->parts = $parts;
 	}
 
+	function typenames()
+	{
+		$names = [];
+		foreach ($this->parts as $part) {
+			if (is_string($part)) {
+				continue;
+			}
+			$names = array_merge($names, $part->typenames());
+		}
+		return $names;
+	}
+
 	function add($p)
 	{
 		assert($p != null);
@@ -999,6 +1078,39 @@ class c_body
 		$this->parts[] = $p;
 	}
 
+	function typenames()
+	{
+		$names = [];
+		foreach ($this->parts as $part) {
+			$cn = get_class($part);
+			switch ($cn) {
+			case 'c_varlist':
+				$names = array_merge($names, $part->typenames());
+				break;
+			case 'c_if':
+				$names = array_merge($names, $part->typenames());
+				break;
+			case 'c_while':
+				$names = array_merge($names, $part->typenames());
+				break;
+			case 'c_for':
+				$names = array_merge($names, $part->typenames());
+				break;
+			case 'c_switch':
+				$names = array_merge($names, $part->typenames());
+				break;
+			case 'c_return':
+			case 'c_expr':
+				$names = array_merge($names, $part->typenames());
+				break;
+			default:
+				var_dump("1706", $part);
+				exit(1);
+			}
+		}
+		return $names;
+	}
+
 	function format($tab = 0)
 	{
 		$pref = str_repeat("\t", $tab);
@@ -1069,6 +1181,16 @@ class c_if
 	// c_body
 	public $else;
 
+	function typenames()
+	{
+		$b = $this->body->typenames();
+		$names = array_merge($this->cond->typenames(), $b);
+		if ($this->else) {
+			$names = array_merge($names, $this->else->typenames());
+		}
+		return $names;
+	}
+
 	function __construct($cond, $body, $else)
 	{
 		$this->cond = $cond;
@@ -1092,6 +1214,15 @@ class c_switch
 {
 	public $cond;
 	public $cases;
+
+	function typenames()
+	{
+		$names = $this->cond->typenames();
+		foreach ($this->cases as $case) {
+			$names = array_merge($names, $case->body->typenames());
+		}
+		return $names;
+	}
 
 	function format($tab = 0)
 	{
@@ -1174,6 +1305,16 @@ class c_for
 		$this->body = $b;
 	}
 
+	function typenames()
+	{
+		return array_merge(
+			$this->init->typenames(),
+			$this->cond->typenames(),
+			$this->act->typenames(),
+			$this->body->typenames()
+		);
+	}
+
 	function format($tab = 0)
 	{
 		$p = str_repeat("\t", $tab);
@@ -1202,6 +1343,11 @@ class c_while
 		$this->body = $body;
 	}
 
+	function typenames()
+	{
+		return array_merge($this->cond->typenames(), $this->body->typenames());
+	}
+
 	function format($tab = 0)
 	{
 		$p = str_repeat("\t", $tab);
@@ -1221,6 +1367,11 @@ class c_func extends c_element
 {
 	public $proto;
 	public $body;
+
+	function typenames() {
+		$names = array_merge($this->proto->typenames(), $this->body->typenames());
+		return $names;
+	}
 
 	function __construct($proto, $body)
 	{
