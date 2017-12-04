@@ -63,10 +63,7 @@ parser::extend('while', function(parser $parser) {
 });
 
 parser::extend('for', function(parser $parser) {
-	$parser->seq('for', '(');
-	$init = $parser->any(['varlist', 'expr']);
-	list ($cond, $act, $body) = $parser->seq(';', '$expr', ';', '$expr', ')', '$body');
-	return new c_for($init, $cond, $act, $body);
+	return c_for::parse($parser);
 });
 
 // <return>: "return" [<expr>] ";"

@@ -15,22 +15,15 @@ parser::extend('root', function(parser $parser) {
 });
 
 parser::extend('comment', function(parser $parser) {
-	$t = $parser->expect('comment');
-	return new c_comment($t->content);
+	return c_comment::parse($parser);
 });
 
 parser::extend('import', function(parser $parser) {
-	list ($path) = $parser->seq('import', '$literal-string');
-	$dir = dirname(realpath($parser->path));
-	return new c_import($path->content, $dir);
+	return c_import::parse($parser);
 });
 
-
-// <typedef>: "typedef" <type> <form> ";"
 parser::extend('typedef', function(parser $parser) {
-	list($type, $form) = $parser->seq('typedef', '$type', '$form', ';');
-	$parser->add_type($form->name);
-	return new c_typedef($type, $form);
+	return c_typedef::parse($parser);
 });
 
 // <macro>: "#include" <string> | "#define" <name> <string>
@@ -66,21 +59,11 @@ parser::extend('macro', function(parser $parser) {
 });
 
 parser::extend('struct-def-root', function(parser $parser) {
-	$pub = false;
-	try {
-		$parser->expect('pub');
-		$pub = true;
-	} catch (ParseException $e) {
-		//
-	}
+	return c_structdef::parse($parser);
+});
 
-	list ($id) = $parser->seq('struct', '$identifier', '{');
-	$lists = $parser->many('struct-def-element');
-	$parser->seq('}', ';');
-
-	$def = new c_structdef($id->content, $lists);
-	$def->pub = $pub;
-	return $def;
+parser::extend('struct-identifier', function(parser $parser) {
+	return c_struct_identifier::parse($parser);
 });
 
 parser::extend('struct-def-element', function(parser $parser) {
@@ -111,6 +94,7 @@ parser::extend('assignment', function(parser $parser) {
 	return $parser->seq('$form', '=', '$expr');
 });
 
+
 parser::extend('varlist', function(parser $parser) {
 	$type = $parser->read('type');
 	$list = new c_varlist($type);
@@ -135,17 +119,8 @@ parser::extend('varlist', function(parser $parser) {
 	return $list;
 });
 
-// <body>: "{" <body-part>... "}"
 parser::extend('body', function(parser $parser) {
-	$body = new c_body();
-
-	$parser->expect('{');
-	while (!$parser->s->ended() && $parser->s->peek()->type != '}') {
-		$parserart = $parser->read('body-part');
-		$body->add($parserart);
-	}
-	$parser->expect('}');
-	return $body;
+	return c_body::parse($parser);
 });
 
 // <body-part>: (comment | <obj-def> | <construct>
@@ -189,61 +164,11 @@ parser::extend('body-or-part', function(parser $parser) {
 
 // <enum-def>: "pub"? "enum" "{" <id> ["=" <literal>] [,]... "}" ";"
 parser::extend('enum-def', function(parser $parser) {
-	$pub = false;
-	try {
-		$parser->expect('pub');
-		$pub = true;
-	} catch (ParseException $e) {
-		//
-	}
-
-	$parser->expect('enum');
-	$parser->expect('{');
-
-	$enum = new c_enum();
-	$enum->pub = $pub;
-	while (1) {
-		$id = $parser->expect('word')->content;
-		$val = null;
-		if ($parser->s->peek()->type == '=') {
-			$parser->s->get();
-			$val = $parser->read('literal');
-		}
-		$enum->add($id, $val);
-		if ($parser->s->peek()->type == ',') {
-			$parser->s->get();
-		}
-		else {
-			break;
-		}
-	}
-	$parser->expect('}');
-	$parser->expect(';');
-	return $enum;
+	return c_enum::parse($parser);
 });
 
 parser::extend('function', function(parser $parser) {
-	$pub = false;
-	try {
-		$parser->expect('pub');
-		$pub = true;
-	} catch (ParseException $e) {
-		//
-	}
-
-	$type = $parser->read('type');
-	$form = $parser->read('form');
-
-	if (empty($form->ops) || !($form->ops[0] instanceof c_formal_args)) {
-		throw new ParseException("Not a function");
-	}
-
-	$args = array_shift($form->ops);
-	$proto = new c_prototype($type, $form, $args);
-	$proto->pub = $pub;
-
-	$body = $parser->read('body');
-	return new c_func($proto, $body);
+	return c_func::parse($parser);
 });
 
 parser::extend('object-def', function(parser $parser) {

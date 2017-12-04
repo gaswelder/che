@@ -1,5 +1,5 @@
 <?php
-// Program object model
+
 class c_element
 {
 	function __toString()
@@ -24,6 +24,12 @@ class c_import extends c_element
 	function format()
 	{
 		return "import $this->path";
+	}
+
+	static function parse(parser $parser) {
+		list ($path) = $parser->seq('import', '$literal-string');
+		$dir = dirname(realpath($parser->path));
+		return new c_import($path->content, $dir);
 	}
 }
 
@@ -206,6 +212,12 @@ class c_form
 
 		return $s;
 	}
+
+	static function parse(parser $parser)
+	{
+		$f = $parser->read('obj-der');
+		return new c_form($f['name'], $f['ops']);
+	}
 }
 
 /*
@@ -247,6 +259,13 @@ class c_typeform
 	{
 		return $this->type->format().' '.$this->form->format();
 	}
+
+	static function parse(parser $parser)
+	{
+		$t = $parser->read('type');
+		$f = $parser->read('form');
+		return new c_typeform($t, $f);
+	}
 }
 
 class c_typedef extends c_element
@@ -266,6 +285,12 @@ class c_typedef extends c_element
 	function format()
 	{
 		return sprintf("typedef %s %s", $this->type->format(), $this->form->format());
+	}
+
+	static function parse(parser $parser) {
+		list($type, $form) = $parser->seq('typedef', '$type', '$form', ';');
+		$parser->add_type($form->name);
+		return new c_typedef($type, $form);
 	}
 }
 
@@ -297,6 +322,34 @@ class c_enum extends c_element
 		}
 		$s .= "};\n";
 		return $s;
+	}
+
+	static function parse(parser $parser)
+	{
+		$pub = $parser->maybe('pub');
+		$parser->expect('enum');
+		$parser->expect('{');
+	
+		$enum = new c_enum();
+		$enum->pub = $pub;
+		while (1) {
+			$id = $parser->expect('word')->content;
+			$val = null;
+			if ($parser->s->peek()->type == '=') {
+				$parser->s->get();
+				$val = $parser->read('literal');
+			}
+			$enum->add($id, $val);
+			if ($parser->s->peek()->type == ',') {
+				$parser->s->get();
+			}
+			else {
+				break;
+			}
+		}
+		$parser->expect('}');
+		$parser->expect(';');
+		return $enum;
 	}
 }
 
@@ -366,14 +419,34 @@ class c_formal_argsgroup extends c_element
 	}
 }
 
+class c_struct_identifier extends c_element
+{
+	public $name;
+
+	function format() {
+		if ($this->name) {
+			return 'struct '.$this->name->format();
+		}
+		return 'struct';
+	}
+
+	static function parse(parser $parser) {
+		list ($id) = $parser->seq('struct', '$identifier');
+		$sid = new c_struct_identifier();
+		$sid->name = $id;
+		return $sid;
+	}
+}
+
 class c_structdef extends c_element
 {
 	public $pub;
 	public $name;
 	public $fields = array();
 
-	function __construct($name, $lists = [])
+	function __construct($name = null, $lists = [])
 	{
+		if (!$name) $name = new c_struct_identifier();
 		$this->name = $name;
 		foreach ($lists as $list) {
 			$this->add($list);
@@ -387,7 +460,7 @@ class c_structdef extends c_element
 
 	function format()
 	{
-		$s = "struct $this->name";
+		$s = $this->name->format();
 		if (empty($this->fields)) {
 			return $s;
 		}
@@ -400,6 +473,18 @@ class c_structdef extends c_element
 		}
 		$s .= "}";
 		return $s;
+	}
+
+	static function parse(parser $parser)
+	{
+		$pub = $parser->maybe('pub');
+		list ($id) = $parser->seq('$struct-identifier', '{');
+		$lists = $parser->many('struct-def-element');
+		$parser->seq('}', ';');
+	
+		$def = new c_structdef($id, $lists);
+		$def->pub = $pub;
+		return $def;
 	}
 }
 
@@ -445,7 +530,15 @@ class c_string extends c_literal
 	}
 }
 
-class c_identifier extends c_literal {}
+class c_identifier extends c_literal {
+	static function parse(parser $parser) {
+		$name = $parser->expect('word')->content;
+		if ($parser->is_typename($name)) {
+			throw new ParseException("typename, not id");
+		}
+		return new c_identifier($name);
+	}
+}
 
 class c_char extends c_literal
 {
@@ -463,9 +556,23 @@ class c_number extends c_literal
 	{
 		return $this->content;
 	}
+
+	static function parse(parser $parser)
+	{
+		// Optional minus sign.
+		$s = '';
+		try {
+			$parser->expect('-');
+			$s = '-';
+		} catch (ParseException $e) {
+			//
+		}
+		// The number token.
+		$s .= $parser->expect('num')->content;
+		return new c_number($s);
+	}
 }
 
-;
 class c_array extends c_literal
 {
 	function format()
@@ -483,6 +590,26 @@ class c_array extends c_literal
 		$s .= '}';
 		return $s;
 	}
+
+	static function parse(parser $parser)
+	{
+		$parser->expect('{');			
+		$elements = [];
+		while (1) {
+			try {
+				$elements[] = $parser->read('array-literal-element');
+			} catch (ParseException $e) {
+				break;
+			}
+			try {
+				$parser->expect(',');
+			} catch (ParseException $e) {
+				break;
+			}
+		}
+		$parser->expect('}');
+		return new c_array($elements);
+	}
 }
 
 class c_designated_array_element extends c_element
@@ -492,6 +619,21 @@ class c_designated_array_element extends c_element
 
 	function format() {
 		return "[$this->index] = " . $this->value->format();
+	}
+
+	static function parse(parser $parser)
+	{
+		$item = new c_designated_array_element;
+		$parser->expect('[');
+		try {
+			$item->index = $parser->expect('word')->content;
+		} catch (ParseException $e) {
+			$item->index = $parser->expect('number')->content;
+		}
+		$parser->expect(']');
+		$parser->expect('=');
+		$item->value = $parser->read('constant-expression');
+		return $item;
 	}
 }
 
@@ -512,6 +654,26 @@ class c_struct_literal extends c_element
 		}
 		$s .= "}\n";
 		return $s;
+	}
+
+	static function parse(parser $parser)
+	{
+		$struct = new c_struct_literal();
+		$parser->expect('{');
+		while (1) {
+			try {
+				$struct->add($parser->read('struct-literal-element'));
+			} catch (ParseException $e) {
+				break;
+			}
+			try {
+				$parser->expect(',');
+			} catch (ParseException $e) {
+				break;
+			}
+		}
+		$parser->expect('}');
+		return $struct;
 	}
 }
 
@@ -547,6 +709,17 @@ class c_sizeof extends c_element
 		$s .= $this->arg->format();
 		$s .= ')';
 		return $s;
+	}
+
+	static function parse(parser $parser)
+	{
+		$parser->expect('sizeof');
+		try {
+			list ($arg) = $parser->seq('(', '$sizeof-contents', ')');
+		} catch (ParseException $e) {
+			list ($arg) = $parser->seq('$sizeof-contents');
+		}
+		return new c_sizeof($arg);
 	}
 }
 
@@ -641,6 +814,28 @@ class c_expr extends c_element
 		}
 		return $s;
 	}
+
+	static function parse(parser $parser)
+	{
+		$expr = new c_expr();
+
+		// An expression may start with a minus.
+		try {
+			$parser->expect('-');
+			$expr->add('-');
+		} catch (ParseException $e) {
+			//
+		}
+	
+		$expr->add($parser->read('atom'));
+	
+		while (!$parser->s->ended() && $parser->is_op($parser->s->peek())) {
+			$expr->add($parser->read('operator'));
+			$expr->add($parser->read('atom'));
+		}
+	
+		return $expr;
+	}
 }
 
 class c_defer
@@ -695,6 +890,19 @@ class c_body
 		$a = ['c_if', 'c_for', 'c_while', 'c_switch'];
 		return in_array(get_class($part), $a);
 	}
+
+	static function parse(parser $parser)
+	{
+		$body = new c_body();
+		
+		$parser->expect('{');
+		while (!$parser->s->ended() && $parser->s->peek()->type != '}') {
+			$parserart = $parser->read('body-part');
+			$body->add($parserart);
+		}
+		$parser->expect('}');
+		return $body;
+	}
 }
 
 class c_comment extends c_literal
@@ -702,6 +910,11 @@ class c_comment extends c_literal
 	function format()
 	{
 		return "/* $this->content */";
+	}
+
+	static function parse(parser $parser) {
+		$t = $parser->expect('comment');
+		return new c_comment($t->content);
 	}
 }
 
@@ -786,6 +999,14 @@ class c_for
 		$s .= $this->body->format($tab);
 		return $s;
 	}
+
+	static function parse(parser $parser)
+	{
+		$parser->seq('for', '(');
+		$init = $parser->any(['varlist', 'expr']);
+		list ($cond, $act, $body) = $parser->seq(';', '$expr', ';', '$expr', ')', '$body');
+		return new c_for($init, $cond, $act, $body);
+	}
 }
 
 class c_while
@@ -827,6 +1048,21 @@ class c_func extends c_element
 		$s .= $this->body->format();
 		return $s;
 	}
-}
 
-?>
+	static function parse(parser $parser) {
+		$pub = $parser->maybe('pub');
+		$type = $parser->read('type');
+		$form = $parser->read('form');
+	
+		if (empty($form->ops) || !($form->ops[0] instanceof c_formal_args)) {
+			throw new ParseException("Not a function");
+		}
+	
+		$args = array_shift($form->ops);
+		$proto = new c_prototype($type, $form, $args);
+		$proto->pub = $pub;
+	
+		$body = $parser->read('body');
+		return new c_func($proto, $body);
+	}
+}

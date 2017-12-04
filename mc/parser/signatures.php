@@ -91,14 +91,11 @@ parser::extend('call-signature', function(parser $parser) {
 });
 
 parser::extend('typeform', function(parser $parser) {
-	$t = $parser->read('type');
-	$f = $parser->read('form');
-	return new c_typeform($t, $f);
+	return c_typeform::parse($parser);
 });
 
 parser::extend('form', function(parser $parser) {
-	$f = $parser->read('obj-der');
-	return new c_form($f['name'], $f['ops']);
+	return c_form::parse($parser);
 });
 
 // Type is a description of a pure value that we get after
@@ -156,9 +153,7 @@ parser::extend('typename', function(parser $parser) {
 
 // "struct foo"
 parser::extend('struct-typename', function(parser $parser) {
-	$parser->expect('struct');
-	$name = $parser->expect('word')->content;
-	return new c_structdef($name);
+	return c_struct_identifier::parse($parser);
 });
 
 // "struct {foo x; bar y; ...}"
@@ -167,7 +162,7 @@ parser::extend('anonymous-struct', function(parser $parser) {
 	$lists = $parser->many('struct-def-element');
 	$parser->seq('}', ';');
 
-	$def = new c_structdef('');
+	$def = new c_structdef();
 	foreach ($lists as $list) {
 		$def->add($list);
 	}

@@ -1,25 +1,7 @@
 <?php
 
-// <expr>: <atom> [<op> <atom>]...
 parser::extend('expr', function (parser $parser) {
-	$expr = new c_expr();
-
-	// An expression may start with a minus.
-	try {
-		$parser->expect('-');
-		$expr->add('-');
-	} catch (ParseException $e) {
-		//
-	}
-
-	$expr->add($parser->read('atom'));
-
-	while (!$parser->s->ended() && $parser->is_op($parser->s->peek())) {
-		$expr->add($parser->read('operator'));
-		$expr->add($parser->read('atom'));
-	}
-
-	return $expr;
+	return c_expr::parse($parser);
 });
 
 parser::extend('operator', function(parser $parser) {
@@ -149,16 +131,8 @@ parser::extend('typecast', function(parser $parser) {
 	return ['cast', $tf];
 });
 
-// <sizeof>: "sizeof" <sizeof-arg>
-// <sizeof-arg>: ("(" (<expr> | <type>) ")") | <expr> | <type>
 parser::extend('sizeof', function(parser $parser) {
-	$parser->expect('sizeof');
-	try {
-		list ($arg) = $parser->seq('(', '$sizeof-contents', ')');
-	} catch (ParseException $e) {
-		list ($arg) = $parser->seq('$sizeof-contents');
-	}
-	return new c_sizeof($arg);
+	return c_sizeof::parse($parser);
 });
 
 parser::extend('sizeof-contents', function(parser $parser) {
@@ -170,9 +144,5 @@ parser::extend('constant-expression', function(parser $parser) {
 });
 
 parser::extend('identifier', function(parser $parser) {
-	$name = $parser->expect('word')->content;
-	if ($parser->is_typename($name)) {
-		throw new ParseException("typename, not id");
-	}
-	return new c_identifier($name);
+	return c_identifier::parse($parser);
 });
