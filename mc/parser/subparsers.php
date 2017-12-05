@@ -142,8 +142,10 @@ parser::extend('body-varlist', function(parser $parser) {
 });
 
 parser::extend('body-or-part', function(parser $parser) {
-	if ($parser->s->peek()->type == '{') {
+	try {
 		return $parser->read('body');
+	} catch (ParseException $e) {
+		//
 	}
 
 	$b = new c_body();
@@ -172,9 +174,10 @@ parser::extend('object-def', function(parser $parser) {
 	}
 	
 	$expr = null;
-	if ($parser->s->peek()->type == '=') {
-		$parser->s->get();
-		$expr = $parser->read('expr');
+	try {
+		list ($expr) = $parser->seq('=', '$expr');
+	} catch (ParseException $e) {
+		//
 	}
 
 	$parser->expect(';');
