@@ -1,17 +1,13 @@
 <?php
 
 parser::extend('if', function(parser $parser) {
-	return $parser->any(['if-else', 'if-only']);
-});
-
-parser::extend('if-else', function(parser $parser) {
-	list($expr, $ok, $else) = $parser->seq('if', '(', '$expr', ')', '$body-or-part', 'else', '$body-or-part');
-	return new c_if($expr, $ok, $else);
-});
-
-parser::extend('if-only', function(parser $parser) {
-	list($expr, $body) = $parser->seq('if', '(', '$expr', ')', '$body-or-part');
-	return new c_if($expr, $body, null);
+	list($expr, $ok) = $parser->seq('if', '(', '$expr', ')', '$body-or-part');
+	try {
+		list($else) = $parser->seq('else', '$body-or-part');
+		return new c_if($expr, $ok, $else);
+	} catch (ParseException $e) {
+		return new c_if($expr, $ok, null);
+	}
 });
 
 parser::extend('defer', function(parser $parser) {
