@@ -67,17 +67,10 @@ parser::extend('macro', function(parser $parser) {
 });
 
 parser::extend('struct-def-element', function(parser $parser) {
-	if ($parser->s->peek()->type == 'union') {
-		$u = $parser->read('union');
-		$type = new c_type(array($u));
-		$form = $parser->read('form');
-
-		$list = new c_varlist($type);
-		$list->add($form);
-	}
-	else {
-		$list = $parser->read('varlist');
-	}
+	$list = $parser->any([
+		'embedded-union',
+		'varlist'
+	]);
 	$parser->expect(';');
 	return $list;
 });
