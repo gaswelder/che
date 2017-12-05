@@ -845,7 +845,7 @@ class c_expr_atom extends c_element
 				$names = array_merge($names, $op[1]->typenames());
 				break;
 			case 'cast':
-				$names[] = $op[1]->type;
+				$names = array_merge($op[1]->type->typenames());
 				break;
 			case 'literal':
 			case 'op':
