@@ -327,65 +327,69 @@ class c_typedef extends c_element
 	}
 }
 
+class c_enum_item extends c_element
+{
+	public $id;
+	public $value;
+
+	function format() {
+		if ($this->value === null) {
+			return $this->id->format();
+		}
+		return $this->id->format().' = '.$this->value->format();
+	}
+
+	static function parse(parser $parser)
+	{
+		$item = new self();
+		$item->id = $parser->read('identifier');
+
+		if ($parser->maybe('=')) {
+			$item->value = $parser->read('literal');
+		}
+		return $item;
+	}
+}
+
 class c_enum extends c_element
 {
 	public $pub = false;
-	public $values = array();
+	public $items = [];
 
 	function typenames() {
 		return [];
 	}
 
-	function add($name, $val)
-	{
-		$this->values[$name] = $val;
-	}
-
 	function format()
 	{
-		$s = "enum {\n";
-		$n = count($this->values);
-		$i = 0;
-		foreach ($this->values as $name => $val) {
-			$s .= "\t$name";
-			if ($val !== null) {
-				$s .= " = ".$val->format();
-			}
-			$i++;
-			if ($i < $n) {
-				$s .= ",";
-			}
-			$s .= "\n";
+		$lines = ['enum {'];
+		foreach ($this->items as $item) {
+			$lines[] = "\t" . $item->format() . ',';
 		}
-		$s .= "};\n";
-		return $s;
+		$lines[] = '};';
+		return implode("\n", $lines) . "\n";
 	}
 
 	static function parse(parser $parser)
 	{
 		$pub = $parser->maybe('pub');
-		$parser->expect('enum');
-		$parser->expect('{');
-	
+		$parser->seq('enum', '{');	
+
 		$enum = new c_enum();
 		$enum->pub = $pub;
 		while (1) {
-			$id = $parser->expect('word')->content;
-			$val = null;
-			if ($parser->s->peek()->type == '=') {
-				$parser->s->get();
-				$val = $parser->read('literal');
+			try {
+				$enum->items[] = $parser->read('enum-item');
+			} catch (ParseException $e) {
+				break;
 			}
-			$enum->add($id, $val);
-			if ($parser->s->peek()->type == ',') {
-				$parser->s->get();
-			}
-			else {
+			try {
+				$parser->seq(',');
+			} catch (ParseException $e) {
 				break;
 			}
 		}
-		$parser->expect('}');
-		$parser->expect(';');
+		$parser->seq('}', ';');
 		return $enum;
 	}
 }

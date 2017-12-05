@@ -162,6 +162,10 @@ parser::extend('enum-def', function(parser $parser) {
 	return c_enum::parse($parser);
 });
 
+parser::extend('enum-item', function(parser $parser) {
+	return c_enum_item::parse($parser);
+});
+
 parser::extend('function', function(parser $parser) {
 	return c_func::parse($parser);
 });
