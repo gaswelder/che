@@ -9,28 +9,8 @@ require __DIR__ . '/expressions.php';
 require __DIR__ . '/signatures.php';
 require __DIR__ . '/control.php';
 
-function any() {
-	foreach ($any as $func) {
-		list ($input, $result) = $func($orig);
-		if (ok($result)) {
-			return [$input, $result];
-		}
-	}
-	return [$orig, error("unknown input")];
-}
-
-function expect($input, $tokname) {
-	$orig = $input;
-	$next = array_shift($input);
-	if ($next->type == $tokname) {
-		return [$input, $next];
-	}
-	return [$orig, error("$tokname expected, got $next")];
-}
-
 class ParseException extends Exception {}
 
-// Second stage parser that returns CPOM objects
 class parser
 {
 	public $s;
