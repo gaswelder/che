@@ -200,27 +200,16 @@ class parser
 	{
 		$mod = new module();
 		$mod->path = $this->path;
+		$mod->code = $this->read('all');
 
-		while (!$this->ended()) {
-			$t = $this->get();
+		foreach ($mod->code as $t) {
 			if ($t instanceof c_import) {
-				/*
-				 * Update the parser's types list
-				 * from the referenced module
-				 */
 				$imp = module::import($t->path, $t->dir);
-				foreach ($imp->synopsis() as $decl) {
-					if ($decl instanceof c_typedef) {
-						$this->add_type($decl->form->name);
-					}
-				}
 				$mod->deps[] = $imp;
 			}
 			if ($t instanceof c_link) {
 				$mod->link[] = $t->name;
 			}
-
-			$mod->code[] = $t;
 		}
 		return $mod;
 	}
@@ -261,6 +250,9 @@ class parser
 	function expect($type, $content = null)
 	{
 		$t = $this->s->peek();
+		if (!$t) {
+			throw new ParseException("'$type' expected, got end of file");
+		}
 		if ($t->type != $type) {
 			throw new ParseException("'$type' expected, got $t");
 		}

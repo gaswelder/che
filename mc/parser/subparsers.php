@@ -1,5 +1,9 @@
 <?php
 
+parser::extend('all', function(parser $parser) {
+	return $parser->many('root');
+});
+
 // Root parser that operates on the top level of a module.
 parser::extend('root', function(parser $parser) {
 	return $parser->any([

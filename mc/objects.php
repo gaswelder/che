@@ -30,9 +30,18 @@ class c_import extends c_element
 		return "import $this->path";
 	}
 
-	static function parse(parser $parser) {
+	static function parse(parser $parser)
+	{
 		list ($path) = $parser->seq('import', '$literal-string');
 		$dir = dirname(realpath($parser->path));
+
+		// Add types exported from the referenced module.
+		$imp = module::import($path->content, $dir);
+		foreach ($imp->synopsis() as $decl) {
+			if ($decl instanceof c_typedef) {
+				$parser->add_type($decl->form->name);
+			}
+		}
 		return new c_import($path->content, $dir);
 	}
 }
