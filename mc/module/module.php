@@ -24,7 +24,74 @@ class module
 	function translate_to_c()
 	{
 		$mod = clone $this;
-		mc_trans::translate($mod);
+		$code = $mod->code;
+		
+		$headers = array();
+		$prototypes = array();
+		$types = array();
+		$body = array();
+
+		$n = count($code);
+		for ($i = 0; $i < $n; $i++) {
+			$element = $code[$i];
+
+			if ($element instanceof c_include || $element instanceof c_define) {
+				$headers[] = $element;
+				continue;
+			}
+
+			if ($element instanceof c_structdef || $element instanceof c_enum
+				|| $element instanceof c_typedef) {
+				$types[] = $element;
+				continue;
+			}
+
+			if ($element instanceof c_import) {
+				$imp = module::import($element->path, $element->dir);
+				array_splice($code, $i, 1, $imp->synopsis());
+				$i--;
+				$n = count($code);
+				continue;
+			}
+
+			if ($element instanceof c_func) {
+				$element = $element->translate();
+				$prototypes[] = $element->proto;
+			}
+
+			/*
+			 * Mark module-global variables as static.
+			 */
+			if ($element instanceof c_varlist) {
+				$element->stat = true;
+			}
+
+			$body[] = $element;
+		}
+
+		$out = array_merge($headers, $types, $prototypes, $body);
+		$mod->code = $out;
+
+		$pos = 0;
+		foreach ($mod->code as $e) {
+			if ($e instanceof c_define || $e instanceof c_include) {
+				$pos++;
+			} else {
+				break;
+			}
+		}
+
+		$headers = tr_headers::add_headers($mod);
+		$out = array();
+		foreach ($headers as $h) {
+			$out[] = new c_macro('include', "<$h.h>");
+		}
+		array_splice($mod->code, $pos, 0, $out);
+
+		if (in_array('math', $headers)) {
+			$mod->link[] = 'm';
+		}
+
 		$c = new c_module;
 		$c->code = $mod->code;
 		$c->link = $mod->link;

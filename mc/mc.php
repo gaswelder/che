@@ -5,7 +5,7 @@ stop_on_error();
 error_reporting(-1);
 require $dir.'/parser/parser.php';
 require $dir.'/module/index.php';
-require $dir.'/translator/translator.php';
+require $dir.'/translator/headers.php';
 require $dir.'/objects.php';
 
 class trace

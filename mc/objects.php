@@ -1402,6 +1402,56 @@ class c_func extends c_element
 		return $s;
 	}
 
+	function translate()
+	{
+		$f = clone $this;
+		$n = count($f->body->parts);
+		if (!$n) return $f;
+
+		/*
+		 * Make sure that every function's body ends with a return
+		 * statement so that the deferred statements will be written
+		 * there.
+		 */
+		if ($f->proto->form->name != 'main' && !($f->body->parts[$n-1] instanceof c_return)) {
+			$f->body->parts[] = new c_return();
+		}
+
+		$f->body = self::rewrite_body($f->body);
+		return $f;
+	}
+
+	private static function rewrite_body(c_body $b, $defer = array())
+	{
+		$c = new c_body();
+
+		foreach ($b->parts as $part) {
+			if ($part instanceof c_defer) {
+				$defer[] = $part->expr;
+				continue;
+			}
+
+			if ($part instanceof c_if || $part instanceof c_for || $part instanceof c_while) {
+				$part = clone $part;
+				$part->body = self::rewrite_body($part->body, $defer);
+			}
+			else if ($part instanceof c_switch) {
+				$part = clone $part;
+				foreach ($part->cases as $i => $case) {
+					$part->cases[$i]->body = self::rewrite_body($part->cases[$i]->body, $defer);
+				}
+			}
+			else if ($part instanceof c_return) {
+				foreach ($defer as $e) {
+					$c->parts[] = $e;
+				}
+			}
+			$c->parts[] = $part;
+		}
+
+		return $c;
+	}
+
 	static function parse(parser $parser) {
 		$pub = $parser->maybe('pub');
 		$type = $parser->read('type');
