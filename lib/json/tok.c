@@ -37,7 +37,7 @@ enum {
 /*
  * Parsing context.
  */
-struct __parser {
+struct parser {
 	/*
 	 * First error reported during parsing.
 	 */
@@ -52,7 +52,7 @@ struct __parser {
 /*
  * Returns type of the next token
  */
-int peek(struct __parser *p)
+int peek(struct parser *p)
 {
 	if(p->next.type == EOF && buf_more(p->buf)) {
 		read(p, &(p->next));
@@ -60,7 +60,7 @@ int peek(struct __parser *p)
 	return p->next.type;
 }
 
-void get(struct __parser *p, struct _token *t)
+void get(struct parser *p, struct _token *t)
 {
 	/*
 	 * Read next value into the cache if necessary.
@@ -82,7 +82,7 @@ void get(struct __parser *p, struct _token *t)
 	p->next.type = EOF;
 }
 
-void read(struct __parser *p, struct _token *t)
+void read(struct parser *p, struct _token *t)
 {
 	/*
 	 * Skip spaces
@@ -123,7 +123,7 @@ void read(struct __parser *p, struct _token *t)
 	error(p, "Unexpected character: %c", c);
 }
 
-void readstr(struct __parser *p, struct _token *t)
+void readstr(struct parser *p, struct _token *t)
 {
 	assert(expectch(p, '"'));
 	str *s = str_new();
@@ -175,7 +175,7 @@ void readstr(struct __parser *p, struct _token *t)
 	t->str = copy;
 }
 
-bool expectch(struct __parser *p, char c)
+bool expectch(struct parser *p, char c)
 {
 	char g = buf_get(p->buf);
 	if(g != c) {
@@ -185,7 +185,7 @@ bool expectch(struct __parser *p, char c)
 	return true;
 }
 
-void readkw(struct __parser *p, struct _token *t)
+void readkw(struct parser *p, struct _token *t)
 {
 	char kw[8];
 	int i = 0;
@@ -214,7 +214,7 @@ void readkw(struct __parser *p, struct _token *t)
 /*
  * number = [ minus ] int [ frac ] [ exp ]
  */
-void readnum(struct __parser *p, struct _token *t)
+void readnum(struct parser *p, struct _token *t)
 {
 	bool minus = false;
 	double num = 0.0;

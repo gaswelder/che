@@ -5,7 +5,7 @@ import "parsebuf"
  */
 pub json_node *json_parse(const char *s)
 {
-	struct __parser p;
+	struct parser p;
 
 	p.buf = buf_new(s);
 	if(!p.buf) {
@@ -45,7 +45,7 @@ pub json_node *json_parse(const char *s)
  * Reads one node and returns it.
  * Returns NULL in case of error.
  */
-json_node *read_node(struct __parser *p)
+json_node *read_node(struct parser *p)
 {
 	switch(peek(p)) {
 		case EOF:
@@ -75,7 +75,7 @@ json_node *read_node(struct __parser *p)
 	return NULL;
 }
 
-json_node *read_array(struct __parser *p)
+json_node *read_array(struct parser *p)
 {
 	if(!expect(p, '[')) {
 		return NULL;
@@ -107,7 +107,7 @@ json_node *read_array(struct __parser *p)
 	return a;
 }
 
-json_node *read_dict(struct __parser *p)
+json_node *read_dict(struct parser *p)
 {
 	if(!expect(p, '{')) {
 		return NULL;
@@ -164,7 +164,7 @@ json_node *read_dict(struct __parser *p)
 	return o;
 }
 
-bool expect(struct __parser *p, int toktype)
+bool expect(struct parser *p, int toktype)
 {
 	struct _token t;
 	get(p, &t);
@@ -179,7 +179,7 @@ bool expect(struct __parser *p, int toktype)
  * Puts a formatted error message to the parser's
  * context and returns NULL.
  */
-void *error(struct __parser *p, const char *fmt, ...)
+void *error(struct parser *p, const char *fmt, ...)
 {
 	va_list args;
 	va_start(args, fmt);
