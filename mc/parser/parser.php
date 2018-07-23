@@ -265,7 +265,7 @@ class parser
 	function maybe($type)
 	{
 		try {
-			$this->expect('pub');
+			$this->expect($type);
 			return true;
 		} catch (ParseException $e) {
 			return false;
