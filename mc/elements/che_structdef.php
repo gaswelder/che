@@ -54,7 +54,7 @@ class che_structdef extends c_element
 	static function parse(parser $parser)
 	{
 		$pub = $parser->maybe('pub');
-		list($id) = $parser->seq('$struct-identifier', '{');
+		list($id) = $parser->seq('$che_struct_identifier', '{');
 		$lists = $parser->many('struct-def-element');
 		$parser->seq('}', ';');
 

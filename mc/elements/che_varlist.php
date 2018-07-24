@@ -31,10 +31,15 @@ class che_varlist
 		if ($var instanceof che_form) {
 			$this->forms[] = $var;
 			$this->values[] = null;
+		} else if ($var instanceof che_assignment) {
+			$this->forms[] = $var->left;
+			$this->values[] = $var->right;
 		} else {
-			// assignment
 			$this->forms[] = $var[0];
 			$this->values[] = $var[1];
+
+			// var_dump($var);
+			// throw new Exception("Unknown type of variable");
 		}
 	}
 

@@ -17,7 +17,7 @@ parser::extend('root', function (parser $parser) {
 		'che_import',
 		'enum-def',
 		'struct-def-root',
-		'function',
+		'che_func',
 		'object-def'
 	]);
 });
@@ -28,10 +28,6 @@ parser::extend('comment', function (parser $parser) {
 
 parser::extend('struct-def-root', function (parser $parser) {
 	return che_structdef::parse($parser);
-});
-
-parser::extend('struct-identifier', function (parser $parser) {
-	return che_struct_identifier::parse($parser);
 });
 
 // <macro>: "#include" <string> | "#define" <name> <string>
@@ -83,16 +79,11 @@ parser::extend('embedded-union', function (parser $parser) {
 	return $list;
 });
 
-parser::extend('assignment', function (parser $parser) {
-	return $parser->seq('$form', '=', '$expr');
-});
-
-
 parser::extend('varlist', function (parser $parser) {
 	$type = $parser->read('type');
 	$list = new che_varlist($type);
 
-	$next = $parser->any(['assignment', 'form']);
+	$next = $parser->any(['che_assignment', 'form']);
 	$list->add($next);
 
 	while (1) {
@@ -103,7 +94,7 @@ parser::extend('varlist', function (parser $parser) {
 		}
 
 		try {
-			$next = $parser->any(['assignment', 'form']);
+			$next = $parser->any(['che_assignment', 'form']);
 			$list->add($next);
 		} catch (ParseException $e) {
 			break;
@@ -159,10 +150,6 @@ parser::extend('enum-def', function (parser $parser) {
 
 parser::extend('enum-item', function (parser $parser) {
 	return che_enum_item::parse($parser);
-});
-
-parser::extend('function', function (parser $parser) {
-	return che_func::parse($parser);
 });
 
 parser::extend('object-def', function (parser $parser) {
