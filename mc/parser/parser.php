@@ -9,7 +9,9 @@ require __DIR__ . '/expressions.php';
 require __DIR__ . '/signatures.php';
 require __DIR__ . '/control.php';
 
-class ParseException extends Exception {}
+class ParseException extends Exception
+{
+}
 
 class parser
 {
@@ -17,7 +19,8 @@ class parser
 
 	private static $parsers = [];
 
-	static function extend($name, $parser) {
+	static function extend($name, $parser)
+	{
 		if (isset(self::$parsers[$name])) {
 			throw new Exception("Parser '$name' already defined");
 		}
@@ -67,7 +70,8 @@ class parser
 		$this->s = new mctok($path);
 	}
 
-	function __clone() {
+	function __clone()
+	{
 		$this->s = clone $this->s;
 		$this->level++;
 	}
@@ -81,9 +85,9 @@ class parser
 	{
 		$p = $this->s->peek();
 		$pos = $p ? $p->pos : "EOF";
-		$pos = $this->path.':'.$pos;
+		$pos = $this->path . ':' . $pos;
 		fwrite(STDERR, "$pos: $msg\n");
-		fwrite(STDERR, $this->context()."\n");
+		fwrite(STDERR, $this->context() . "\n");
 		exit(1);
 	}
 
@@ -181,7 +185,7 @@ class parser
 	function is_typename($name)
 	{
 		$ok = in_array($name, $this->type_names);
-		$this->trace("is_typename($name) = ".($ok ? "yes" : "no"));
+		$this->trace("is_typename($name) = " . ($ok ? "yes" : "no"));
 		return $ok;
 	}
 
@@ -240,10 +244,12 @@ class parser
 
 	function is_op($t)
 	{
-		$ops = ['+', '-', '*', '/', '=', '|', '&', '~', '^', '<', '>', '?',
+		$ops = [
+			'+', '-', '*', '/', '=', '|', '&', '~', '^', '<', '>', '?',
 			':', '%', '+=', '-=', '*=', '/=', '%=', '&=', '^=', '|=', '++',
 			'--', '->', '.', '>>', '<<', '<=', '>=', '&&', '||', '==', '!=',
-			'<<=', '>>='];
+			'<<=', '>>='
+		];
 		return in_array($t->type, $ops);
 	}
 
