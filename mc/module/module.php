@@ -52,8 +52,8 @@ class module
 				continue;
 			}
 
-			if ($element instanceof c_import) {
-				$imp = module::import($element->path, $element->dir);
+			if ($element instanceof che_import) {
+				$imp = $element->get_module();
 				array_splice($code, $i, 1, $imp->synopsis());
 				$i--;
 				$n = count($code);
@@ -68,7 +68,7 @@ class module
 			/*
 			 * Mark module-global variables as static.
 			 */
-			if ($element instanceof c_varlist) {
+			if ($element instanceof che_varlist) {
 				$element->stat = true;
 			}
 

@@ -19,7 +19,7 @@ class c_module
 		$term = array(
 			'c_typedef',
 			'c_structdef',
-			'c_varlist'
+			'che_varlist'
 		);
 		$out = '';
 		foreach ($this->code as $element) {
@@ -35,10 +35,10 @@ class c_module
 
 	private function tmppath()
 	{
-		$dir = sys_get_temp_dir().'/chetmp';
+		$dir = sys_get_temp_dir() . '/chetmp';
 		if (!file_exists($dir) && !mkdir($dir)) {
 			exit(1);
 		}
-		return $dir.'/'.basename($this->name).'-'.md5($this->name).'.c';
+		return $dir . '/' . basename($this->name) . '-' . md5($this->name) . '.c';
 	}
 }

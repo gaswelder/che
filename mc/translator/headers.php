@@ -12,7 +12,7 @@ class tr_headers
 		$names = [];
 		foreach ($mod->code as $element) {
 			foreach ($element->typenames() as $name) {
-				if ($name instanceof c_identifier) {
+				if ($name instanceof che_identifier) {
 					$name = $name->format();
 				}
 				$names[] = $name;

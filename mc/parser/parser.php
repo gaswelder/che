@@ -210,8 +210,8 @@ class parser
 		$mod->code = $this->read('all');
 
 		foreach ($mod->code as $t) {
-			if ($t instanceof c_import) {
-				$imp = module::import($t->path, $t->dir);
+			if ($t instanceof che_import) {
+				$imp = $t->get_module();
 				$mod->deps[] = $imp;
 			}
 			if ($t instanceof c_link) {

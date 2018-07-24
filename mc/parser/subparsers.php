@@ -14,7 +14,7 @@ parser::extend('root', function (parser $parser) {
 		'macro',
 		'c_typedef',
 		'comment',
-		'c_import',
+		'che_import',
 		'enum-def',
 		'struct-def-root',
 		'function',
@@ -78,7 +78,7 @@ parser::extend('struct-def-element', function (parser $parser) {
 parser::extend('embedded-union', function (parser $parser) {
 	list($u, $form) = $parser->seq('$union', '$form');
 	$type = new c_type(array($u));
-	$list = new c_varlist($type);
+	$list = new che_varlist($type);
 	$list->add($form);
 	return $list;
 });
@@ -90,7 +90,7 @@ parser::extend('assignment', function (parser $parser) {
 
 parser::extend('varlist', function (parser $parser) {
 	$type = $parser->read('type');
-	$list = new c_varlist($type);
+	$list = new che_varlist($type);
 
 	$next = $parser->any(['assignment', 'form']);
 	$list->add($next);
@@ -181,7 +181,7 @@ parser::extend('object-def', function (parser $parser) {
 	}
 
 	$parser->expect(';');
-	$list = new c_varlist($type);
+	$list = new che_varlist($type);
 	$list->add([$form, $expr]);
 	return $list;
 });

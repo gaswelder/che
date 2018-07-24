@@ -1,12 +1,16 @@
 <?php
 $dir = dirname(__FILE__);
-require $dir.'/debug.php';
+require $dir . '/debug.php';
 stop_on_error();
 error_reporting(-1);
-require $dir.'/parser/parser.php';
-require $dir.'/module/index.php';
-require $dir.'/translator/headers.php';
-require $dir.'/objects.php';
+require $dir . '/parser/parser.php';
+require $dir . '/module/index.php';
+require $dir . '/translator/headers.php';
+require $dir . '/objects.php';
+
+foreach (glob($dir . '/elements/*.php') as $path) {
+	require $path;
+}
 
 class trace
 {
@@ -77,16 +81,16 @@ class program
 		}
 
 		/*
-		* Derive executable name from the main module
-		*/
+		 * Derive executable name from the main module
+		 */
 		$outname = basename($this->main);
 		if ($p = strrpos($outname, '.')) {
 			$outname = substr($outname, 0, $p);
 		}
 
 		/*
-		* Run the compiler
-		*/
+		 * Run the compiler
+		 */
 		exit(c99($sources, $outname, $link));
 	}
 
@@ -105,10 +109,10 @@ function c99($sources, $name, $link)
 {
 	$cmd = 'c99 -Wall -Wextra -Werror -pedantic -pedantic-errors';
 	$cmd .= ' -fmax-errors=3';
-	$cmd .= ' -g '.implode(' ', $sources);
-	$cmd .= ' -o '.$name;
+	$cmd .= ' -g ' . implode(' ', $sources);
+	$cmd .= ' -o ' . $name;
 	foreach ($link as $name) {
-		$cmd .= ' -l '.$name;
+		$cmd .= ' -l ' . $name;
 	}
 	exec($cmd, $output, $ret);
 	return $ret;

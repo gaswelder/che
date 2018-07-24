@@ -12,7 +12,7 @@ parser::extend('obj-der', function (parser $parser) {
 	try {
 		$id = $parser->read('identifier');
 	} catch (ParseException $e) {
-		$id = new c_identifier('');
+		$id = new che_identifier('');
 	}
 
 	$right = [];
@@ -183,7 +183,7 @@ parser::extend('union', function (parser $parser) {
 
 parser::extend('union-def-element', function (parser $parser) {
 	list($type, $form) = $parser->seq('$type', '$form', ';');
-	$list = new c_varlist($type);
+	$list = new che_varlist($type);
 	$list->add($form);
 	return $list;
 });

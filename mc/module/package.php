@@ -75,11 +75,11 @@ class package
 			// Merge the code removing redundant imports.
 			foreach ($m->code as $c) {
 				// If this import has been here already, skip it.
-				if ($c instanceof c_import) {
-					if (in_array($c->path, $imports)) {
+				if ($c instanceof che_import) {
+					if (in_array($c->path(), $imports)) {
 						continue;
 					}
-					$imports[] = $c->path;
+					$imports[] = $c->path();
 				}
 				$mod->code[] = $c;
 			}
