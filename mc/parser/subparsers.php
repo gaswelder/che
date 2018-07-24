@@ -12,9 +12,9 @@ parser::extend('all', function (parser $parser) {
 parser::extend('root', function (parser $parser) {
 	return $parser->any([
 		'macro',
-		'typedef',
+		'c_typedef',
 		'comment',
-		'import',
+		'c_import',
 		'enum-def',
 		'struct-def-root',
 		'function',
@@ -24,14 +24,6 @@ parser::extend('root', function (parser $parser) {
 
 parser::extend('comment', function (parser $parser) {
 	return c_comment::parse($parser);
-});
-
-parser::extend('import', function (parser $parser) {
-	return c_import::parse($parser);
-});
-
-parser::extend('typedef', function (parser $parser) {
-	return c_typedef::parse($parser);
 });
 
 parser::extend('struct-def-root', function (parser $parser) {

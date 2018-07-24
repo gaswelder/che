@@ -129,7 +129,10 @@ class parser
 	function read($name)
 	{
 		$this->trace($name);
-		$p = self::$parsers[$name];
+		$p = self::$parsers[$name] ?? null;
+		if (!$p) {
+			$p = $name . '::parse';
+		}
 
 		// Create an "alternative history" by spawning a copy of the parser.
 		// Let it try to parse whatever it's parsing. If it fails with an exception,
