@@ -59,14 +59,6 @@ parser::extend('typecast', function (parser $parser) {
 	return ['cast', $tf];
 });
 
-parser::extend('sizeof', function (parser $parser) {
-	return che_sizeof::parse($parser);
-});
-
-parser::extend('sizeof-contents', function (parser $parser) {
-	return $parser->any(['typeform', 'expr']);
-});
-
 parser::extend('constant-expression', function (parser $parser) {
 	return $parser->any(['literal', 'identifier']);
 });

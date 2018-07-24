@@ -188,7 +188,7 @@ class che_expr_atom extends c_element
 		}
 
 		try {
-			$ops[] = ['sizeof', $parser->read('sizeof')];
+			$ops[] = ['sizeof', $parser->read('che_sizeof')];
 			return new che_expr_atom($ops);
 		} catch (ParseException $e) {
 			//

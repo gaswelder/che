@@ -20,10 +20,14 @@ class che_sizeof extends c_element
 	static function parse(parser $parser)
 	{
 		$parser->expect('sizeof');
-		try {
-			list($arg) = $parser->seq('(', '$sizeof-contents', ')');
-		} catch (ParseException $e) {
-			list($arg) = $parser->seq('$sizeof-contents');
+
+		$brace = false;
+		if ($parser->maybe('(')) {
+			$brace = true;
+		}
+		$arg = $parser->any(['typeform', 'expr']);
+		if ($brace) {
+			$parser->expect(')');
 		}
 		return new self($arg);
 	}
