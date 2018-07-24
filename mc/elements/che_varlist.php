@@ -10,7 +10,7 @@ class che_varlist
 	public $forms;
 	public $values;
 
-	function __construct(c_type $type)
+	function __construct(che_type $type)
 	{
 		$this->type = $type;
 		$this->forms = array();
@@ -28,7 +28,7 @@ class che_varlist
 
 	function add($var)
 	{
-		if ($var instanceof c_form) {
+		if ($var instanceof che_form) {
 			$this->forms[] = $var;
 			$this->values[] = null;
 		} else {

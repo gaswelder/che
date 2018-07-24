@@ -1,10 +1,10 @@
 <?php
 
-class c_defer
+class che_defer
 {
 	public $expr;
 
-	function __construct(c_expr $e)
+	function __construct(che_expr $e)
 	{
 		$this->expr = $e;
 	}
@@ -17,6 +17,6 @@ class c_defer
 	static function parse(parser $parser)
 	{
 		list($expr) = $parser->seq('defer', '$expr', ';');
-		return new c_defer($expr);
+		return new self($expr);
 	}
 }

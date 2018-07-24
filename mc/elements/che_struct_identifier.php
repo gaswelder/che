@@ -1,6 +1,6 @@
 <?php
 
-class c_struct_identifier extends c_element
+class che_struct_identifier extends c_element
 {
 	public $name;
 
@@ -15,7 +15,7 @@ class c_struct_identifier extends c_element
 	static function parse(parser $parser)
 	{
 		list($id) = $parser->seq('struct', '$identifier');
-		$sid = new c_struct_identifier();
+		$sid = new self();
 		$sid->name = $id;
 		return $sid;
 	}

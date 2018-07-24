@@ -1,6 +1,6 @@
 <?php
 
-class c_body
+class che_body
 {
 	public $parts = array();
 
@@ -18,7 +18,7 @@ class c_body
 				case 'che_varlist':
 					$names = array_merge($names, $part->typenames());
 					break;
-				case 'c_if':
+				case 'che_if':
 					$names = array_merge($names, $part->typenames());
 					break;
 				case 'che_while':
@@ -30,8 +30,8 @@ class c_body
 				case 'che_switch':
 					$names = array_merge($names, $part->typenames());
 					break;
-				case 'c_return':
-				case 'c_expr':
+				case 'che_return':
+				case 'che_expr':
 					$names = array_merge($names, $part->typenames());
 					break;
 				default:
@@ -59,13 +59,13 @@ class c_body
 
 	static function is_construct($part)
 	{
-		$a = ['c_if', 'che_for', 'che_while', 'che_switch'];
+		$a = ['che_if', 'che_for', 'che_while', 'che_switch'];
 		return in_array(get_class($part), $a);
 	}
 
 	static function parse(parser $parser)
 	{
-		$body = new c_body();
+		$body = new self();
 
 		$parser->expect('{');
 		while (1) {

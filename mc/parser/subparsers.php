@@ -12,7 +12,7 @@ parser::extend('all', function (parser $parser) {
 parser::extend('root', function (parser $parser) {
 	return $parser->any([
 		'macro',
-		'c_typedef',
+		'che_typedef',
 		'comment',
 		'che_import',
 		'enum-def',
@@ -23,15 +23,15 @@ parser::extend('root', function (parser $parser) {
 });
 
 parser::extend('comment', function (parser $parser) {
-	return c_comment::parse($parser);
+	return che_comment::parse($parser);
 });
 
 parser::extend('struct-def-root', function (parser $parser) {
-	return c_structdef::parse($parser);
+	return che_structdef::parse($parser);
 });
 
 parser::extend('struct-identifier', function (parser $parser) {
-	return c_struct_identifier::parse($parser);
+	return che_struct_identifier::parse($parser);
 });
 
 // <macro>: "#include" <string> | "#define" <name> <string>
@@ -60,7 +60,7 @@ parser::extend('macro', function (parser $parser) {
 		case '#type':
 			$name = trim(strtok("\n"));
 			$parser->add_type($name);
-			return new c_comment("#type $name");
+			return new che_comment("#type $name");
 		default:
 			return $parser->error("Unknown macro: $type");
 	}
@@ -77,7 +77,7 @@ parser::extend('struct-def-element', function (parser $parser) {
 
 parser::extend('embedded-union', function (parser $parser) {
 	list($u, $form) = $parser->seq('$union', '$form');
-	$type = new c_type(array($u));
+	$type = new che_type(array($u));
 	$list = new che_varlist($type);
 	$list->add($form);
 	return $list;
@@ -113,7 +113,7 @@ parser::extend('varlist', function (parser $parser) {
 });
 
 parser::extend('body', function (parser $parser) {
-	return c_body::parse($parser);
+	return che_body::parse($parser);
 });
 
 parser::extend('body-expr', function (parser $parser) {
@@ -148,28 +148,28 @@ parser::extend('body-or-part', function (parser $parser) {
 		//
 	}
 
-	$b = new c_body();
+	$b = new che_body();
 	$b->add($parser->read('body-part'));
 	return $b;
 });
 
 parser::extend('enum-def', function (parser $parser) {
-	return c_enum::parse($parser);
+	return che_enum::parse($parser);
 });
 
 parser::extend('enum-item', function (parser $parser) {
-	return c_enum_item::parse($parser);
+	return che_enum_item::parse($parser);
 });
 
 parser::extend('function', function (parser $parser) {
-	return c_func::parse($parser);
+	return che_func::parse($parser);
 });
 
 parser::extend('object-def', function (parser $parser) {
 	$type = $parser->read('type');
 	$form = $parser->read('form');
 
-	if (!empty($form->ops) && $form->ops[0] instanceof c_formal_args) {
+	if (!empty($form->ops) && $form->ops[0] instanceof che_formal_args) {
 		throw new ParseException("A function, not an object");
 	}
 

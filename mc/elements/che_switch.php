@@ -62,7 +62,7 @@ class che_switch_case extends c_element
 		$parser->expect(':');
 	
 		// <body-part>...
-		$body = new c_body();
+		$body = new che_body();
 		while (!$parser->s->ended()) {
 			$t = $parser->s->peek();
 			if ($t->type == 'case') {

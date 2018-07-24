@@ -3,9 +3,7 @@
 class che_for
 {
 	public $init;
-	// c_expr
 	public $cond;
-	// c_expr;
 	public $act;
 	public $body;
 	function __construct($i, $c, $a, $b)

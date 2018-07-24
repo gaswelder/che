@@ -1,6 +1,6 @@
 <?php
 
-class c_function_call extends c_element
+class che_function_call extends c_element
 {
 	public $args = [];
 

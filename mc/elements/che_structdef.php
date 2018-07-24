@@ -1,6 +1,6 @@
 <?php
 
-class c_structdef extends c_element
+class che_structdef extends c_element
 {
 	public $pub;
 	public $name;
@@ -17,7 +17,7 @@ class c_structdef extends c_element
 
 	function __construct($name = null, $lists = [])
 	{
-		if (!$name) $name = new c_struct_identifier();
+		if (!$name) $name = new che_struct_identifier();
 		$this->name = $name;
 		foreach ($lists as $list) {
 			$this->add($list);
@@ -58,7 +58,7 @@ class c_structdef extends c_element
 		$lists = $parser->many('struct-def-element');
 		$parser->seq('}', ';');
 
-		$def = new c_structdef($id, $lists);
+		$def = new self($id, $lists);
 		$def->pub = $pub;
 		return $def;
 	}

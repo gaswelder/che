@@ -1,6 +1,6 @@
 <?php
 
-class c_func extends c_element
+class che_func extends c_element
 {
 	public $proto;
 	public $body;
@@ -38,25 +38,25 @@ class c_func extends c_element
 		 * statement so that the deferred statements will be written
 		 * there.
 		 */
-		if ($f->proto->form->name != 'main' && !($f->body->parts[$n - 1] instanceof c_return)) {
-			$f->body->parts[] = new c_return();
+		if ($f->proto->form->name != 'main' && !($f->body->parts[$n - 1] instanceof che_return)) {
+			$f->body->parts[] = new che_return();
 		}
 
 		$f->body = self::rewrite_body($f->body);
 		return $f;
 	}
 
-	private static function rewrite_body(c_body $b, $defer = array())
+	private static function rewrite_body(che_body $b, $defer = array())
 	{
-		$c = new c_body();
+		$c = new che_body();
 
 		foreach ($b->parts as $part) {
-			if ($part instanceof c_defer) {
+			if ($part instanceof che_defer) {
 				$defer[] = $part->expr;
 				continue;
 			}
 
-			if ($part instanceof c_if || $part instanceof che_for || $part instanceof che_while) {
+			if ($part instanceof che_if || $part instanceof che_for || $part instanceof che_while) {
 				$part = clone $part;
 				$part->body = self::rewrite_body($part->body, $defer);
 			} else if ($part instanceof che_switch) {
@@ -64,7 +64,7 @@ class c_func extends c_element
 				foreach ($part->cases as $i => $case) {
 					$part->cases[$i]->body = self::rewrite_body($part->cases[$i]->body, $defer);
 				}
-			} else if ($part instanceof c_return) {
+			} else if ($part instanceof che_return) {
 				foreach ($defer as $e) {
 					$c->parts[] = $e;
 				}
@@ -81,7 +81,7 @@ class c_func extends c_element
 		$type = $parser->read('type');
 		$form = $parser->read('form');
 
-		if (empty($form->ops) || !($form->ops[0] instanceof c_formal_args)) {
+		if (empty($form->ops) || !($form->ops[0] instanceof che_formal_args)) {
 			throw new ParseException("Not a function");
 		}
 
@@ -90,6 +90,6 @@ class c_func extends c_element
 		$proto->pub = $pub;
 
 		$body = $parser->read('body');
-		return new c_func($proto, $body);
+		return new che_func($proto, $body);
 	}
 }

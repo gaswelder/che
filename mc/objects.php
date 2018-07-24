@@ -90,7 +90,7 @@ class c_prototype
 	public $form;
 	public $args;
 
-	function __construct(c_type $type, c_form $form, c_formal_args $args)
+	function __construct(che_type $type, che_form $form, che_formal_args $args)
 	{
 		assert($form->name != "");
 		$this->type = $type;

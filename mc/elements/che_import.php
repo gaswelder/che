@@ -32,7 +32,7 @@ class che_import
 		// Add types exported from the referenced module.
 		$imp = module::import($path->content, $dir);
 		foreach ($imp->synopsis() as $decl) {
-			if ($decl instanceof c_typedef) {
+			if ($decl instanceof che_typedef) {
 				$parser->add_type($decl->form->name);
 			}
 		}

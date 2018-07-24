@@ -1,6 +1,6 @@
 <?php
 
-class c_literal extends c_element
+class che_literal extends c_element
 {
 	public $content;
 	function __construct($s)
@@ -14,7 +14,7 @@ class c_literal extends c_element
 	}
 }
 
-class c_string extends c_literal
+class che_string extends che_literal
 {
 	function format()
 	{
@@ -22,7 +22,7 @@ class c_string extends c_literal
 	}
 }
 
-class c_array extends c_literal
+class che_array extends che_literal
 {
 	function format()
 	{
@@ -57,11 +57,11 @@ class c_array extends c_literal
 			}
 		}
 		$parser->expect('}');
-		return new c_array($elements);
+		return new che_array($elements);
 	}
 }
 
-class c_designated_array_element extends c_element
+class che_designated_array_element extends c_element
 {
 	public $index;
 	public $value;
@@ -73,7 +73,7 @@ class c_designated_array_element extends c_element
 
 	static function parse(parser $parser)
 	{
-		$item = new c_designated_array_element;
+		$item = new self;
 		$parser->expect('[');
 		try {
 			$item->index = $parser->expect('word')->content;
@@ -87,7 +87,7 @@ class c_designated_array_element extends c_element
 	}
 }
 
-class che_number extends c_literal
+class che_number extends che_literal
 {
 	function format()
 	{
@@ -110,7 +110,7 @@ class che_number extends c_literal
 	}
 }
 
-class che_char extends c_literal
+class che_char extends che_literal
 {
 	function format()
 	{
@@ -118,7 +118,7 @@ class che_char extends c_literal
 	}
 }
 
-class c_comment extends c_literal
+class che_comment extends che_literal
 {
 	function format()
 	{
@@ -128,6 +128,6 @@ class c_comment extends c_literal
 	static function parse(parser $parser)
 	{
 		$t = $parser->expect('comment');
-		return new c_comment($t->content);
+		return new che_comment($t->content);
 	}
 }

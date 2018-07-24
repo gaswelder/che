@@ -1,6 +1,6 @@
 <?php
 
-class c_enum extends c_element
+class che_enum extends c_element
 {
 	public $pub = false;
 	public $items = [];
@@ -25,7 +25,7 @@ class c_enum extends c_element
 		$pub = $parser->maybe('pub');
 		$parser->seq('enum', '{');
 
-		$enum = new c_enum();
+		$enum = new self();
 		$enum->pub = $pub;
 		while (1) {
 			try {
@@ -44,7 +44,7 @@ class c_enum extends c_element
 	}
 }
 
-class c_enum_item extends c_element
+class che_enum_item extends c_element
 {
 	public $id;
 	public $value;

@@ -1,6 +1,6 @@
 <?php
 
-class c_sizeof extends c_element
+class che_sizeof extends c_element
 {
 	private $arg;
 
@@ -25,6 +25,6 @@ class c_sizeof extends c_element
 		} catch (ParseException $e) {
 			list($arg) = $parser->seq('$sizeof-contents');
 		}
-		return new c_sizeof($arg);
+		return new self($arg);
 	}
 }

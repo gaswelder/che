@@ -1,7 +1,7 @@
 <?php
 
 parser::extend('expr', function (parser $parser) {
-	return c_expr::parse($parser);
+	return che_expr::parse($parser);
 });
 
 parser::extend('operator', function (parser $parser) {
@@ -47,11 +47,11 @@ parser::extend('struct-access-op', function (parser $parser) {
 });
 
 parser::extend('call-op', function (parser $parser) {
-	return c_function_call::parse($parser);
+	return che_function_call::parse($parser);
 });
 
 parser::extend('atom', function (parser $parser) {
-	return c_expr_atom::parse($parser);
+	return che_expr_atom::parse($parser);
 });
 
 parser::extend('typecast', function (parser $parser) {
@@ -60,7 +60,7 @@ parser::extend('typecast', function (parser $parser) {
 });
 
 parser::extend('sizeof', function (parser $parser) {
-	return c_sizeof::parse($parser);
+	return che_sizeof::parse($parser);
 });
 
 parser::extend('sizeof-contents', function (parser $parser) {

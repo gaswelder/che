@@ -17,7 +17,7 @@ parser::extend('literal-number', function (parser $parser) {
 });
 
 parser::extend('literal-string', function (parser $parser) {
-	return new c_string($parser->expect('string')->content);
+	return new che_string($parser->expect('string')->content);
 });
 
 parser::extend('literal-char', function (parser $parser) {
@@ -26,21 +26,21 @@ parser::extend('literal-char', function (parser $parser) {
 
 parser::extend('word-literal', function (parser $parser) {
 	$t = $parser->expect('word');
-	return new c_literal($t->content);
+	return new che_literal($t->content);
 });
 
 // <struct-literal>: "{" "." <id> "=" <literal> [, ...] "}"
 parser::extend('struct-literal', function (parser $parser) {
-	return c_struct_literal::parse($parser);
+	return che_struct_literal::parse($parser);
 });
 
 parser::extend('struct-literal-element', function (parser $parser) {
 	list($id, $val) = $parser->seq('.', '$identifier', '=', '$expr');
-	return new c_struct_literal_element($id, $val);
+	return new che_struct_literal_element($id, $val);
 });
 
 parser::extend('array-literal', function (parser $parser) {
-	return c_array::parse($parser);
+	return che_array::parse($parser);
 });
 
 parser::extend('array-literal-element', function (parser $parser) {
@@ -51,5 +51,5 @@ parser::extend('array-literal-element', function (parser $parser) {
 });
 
 parser::extend('designated-array-element', function (parser $parser) {
-	return c_designated_array_element::parse($parser);
+	return che_designated_array_element::parse($parser);
 });

@@ -37,7 +37,7 @@ class module
 		for ($i = 0; $i < $n; $i++) {
 			$element = $code[$i];
 
-			if ($element instanceof c_structdef) {
+			if ($element instanceof che_structdef) {
 				$struct_forwards[] = $element->forward_declaration();
 			}
 
@@ -46,8 +46,8 @@ class module
 				continue;
 			}
 
-			if ($element instanceof c_structdef || $element instanceof c_enum
-				|| $element instanceof c_typedef) {
+			if ($element instanceof che_structdef || $element instanceof che_enum
+				|| $element instanceof che_typedef) {
 				$types[] = $element;
 				continue;
 			}
@@ -60,7 +60,7 @@ class module
 				continue;
 			}
 
-			if ($element instanceof c_func) {
+			if ($element instanceof che_func) {
 				$element = $element->translate();
 				$prototypes[] = $element->proto;
 			}
@@ -122,16 +122,16 @@ class module
 		foreach ($this->code as $element) {
 			$cn = get_class($element);
 			switch ($cn) {
-				case 'c_typedef':
+				case 'che_typedef':
 					$code[] = $element;
 					break;
-				case 'c_structdef':
-				case 'c_enum':
+				case 'che_structdef':
+				case 'che_enum':
 					if ($element->pub) {
 						$code[] = $element;
 					}
 					break;
-				case 'c_func':
+				case 'che_func':
 					$dec = $element->proto;
 					if ($dec->pub) {
 						$code[] = $dec;

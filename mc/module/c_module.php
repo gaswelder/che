@@ -17,8 +17,8 @@ class c_module
 	private function format()
 	{
 		$term = array(
-			'c_typedef',
-			'c_structdef',
+			'che_typedef',
+			'che_structdef',
 			'che_varlist'
 		);
 		$out = '';

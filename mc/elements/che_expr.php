@@ -1,6 +1,6 @@
 <?php
 
-class c_expr extends c_element
+class che_expr extends c_element
 {
 	public $parts;
 
@@ -54,7 +54,7 @@ class c_expr extends c_element
 
 	static function parse(parser $parser)
 	{
-		$expr = new c_expr();
+		$expr = new self();
 
 		// An expression may start with a minus.
 		try {
@@ -75,7 +75,7 @@ class c_expr extends c_element
 	}
 }
 
-class c_expr_atom extends c_element
+class che_expr_atom extends c_element
 {
 	public $a;
 
@@ -89,7 +89,7 @@ class c_expr_atom extends c_element
 		$names = [];
 
 		foreach ($this->a as $op) {
-			if ($op instanceof c_function_call) {
+			if ($op instanceof che_function_call) {
 				foreach ($op->args as $expr) {
 					$names = array_merge($names, $expr->typenames());
 				}
@@ -126,7 +126,7 @@ class c_expr_atom extends c_element
 	{
 		$s = '';
 		foreach ($this->a as $i) {
-			if ($i instanceof c_function_call) {
+			if ($i instanceof che_function_call) {
 				$s .= $i->format();
 				continue;
 			}
@@ -182,14 +182,14 @@ class c_expr_atom extends c_element
 
 		try {
 			$ops[] = ['literal', $parser->read('literal')];
-			return new c_expr_atom($ops);
+			return new che_expr_atom($ops);
 		} catch (ParseException $e) {
 			//
 		}
 
 		try {
 			$ops[] = ['sizeof', $parser->read('sizeof')];
-			return new c_expr_atom($ops);
+			return new che_expr_atom($ops);
 		} catch (ParseException $e) {
 			//
 		}
@@ -224,6 +224,6 @@ class c_expr_atom extends c_element
 			}
 		}
 
-		return new c_expr_atom($ops);
+		return new che_expr_atom($ops);
 	}
 }

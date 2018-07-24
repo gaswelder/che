@@ -1,11 +1,9 @@
 <?php
 
-class c_if
+class che_if
 {
 	public $cond;
-	// c_expr
 	public $body;
-	// c_body
 	public $else;
 
 	function typenames()

@@ -3,12 +3,12 @@
 /*
  * Formal arguments list for a function prototype, like '(int a, int *b)'.
  */
-class c_formal_args
+class che_formal_args
 {
 	public $groups = [];
 	public $more = false; // ellipsis
 
-	function add(c_formal_argsgroup $g)
+	function add(che_formal_argsgroup $g)
 	{
 		$this->groups[] = $g;
 	}
@@ -26,7 +26,7 @@ class c_formal_args
 	}
 }
 
-class c_formal_argsgroup extends c_element
+class che_formal_argsgroup extends c_element
 {
 	public $type;
 	public $forms = [];

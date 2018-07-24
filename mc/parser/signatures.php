@@ -44,7 +44,7 @@ parser::extend('index-signature', function (parser $parser) {
 });
 
 parser::extend('formal-argsgroup', function (parser $parser) {
-	$group = new c_formal_argsgroup();
+	$group = new che_formal_argsgroup();
 	$group->type = $parser->read('type');
 
 	$forms = [$parser->read('form')];
@@ -61,7 +61,7 @@ parser::extend('formal-argsgroup-cont', function (parser $parser) {
 });
 
 parser::extend('call-signature', function (parser $parser) {
-	$args = new c_formal_args();
+	$args = new che_formal_args();
 	$parser->expect('(');
 	while (1) {
 		try {
@@ -91,11 +91,11 @@ parser::extend('call-signature', function (parser $parser) {
 });
 
 parser::extend('typeform', function (parser $parser) {
-	return c_typeform::parse($parser);
+	return che_typeform::parse($parser);
 });
 
 parser::extend('form', function (parser $parser) {
-	return c_form::parse($parser);
+	return che_form::parse($parser);
 });
 
 // Type is a description of a pure value that we get after
@@ -117,7 +117,7 @@ parser::extend('type', function (parser $parser) {
 	// "struct {foo x; bar y; ...}"?
 	try {
 		$type[] = $parser->read('anonymous-struct');
-		return new c_type(array_merge($mods, $type));
+		return new che_type(array_merge($mods, $type));
 	} catch (ParseException $e) {
 		//
 	}
@@ -125,13 +125,13 @@ parser::extend('type', function (parser $parser) {
 	// "struct foo"?
 	try {
 		$type[] = $parser->read('struct-typename');
-		return new c_type(array_merge($mods, $type));
+		return new che_type(array_merge($mods, $type));
 	} catch (ParseException $e) {
 		//
 	}
 
 	$type[] = $parser->read('typename');
-	return new c_type(array_merge($mods, $type));
+	return new che_type(array_merge($mods, $type));
 });
 
 // Typename is a pure type name, like "int" or "foo", if "foo"
@@ -153,7 +153,7 @@ parser::extend('typename', function (parser $parser) {
 
 // "struct foo"
 parser::extend('struct-typename', function (parser $parser) {
-	return c_struct_identifier::parse($parser);
+	return che_struct_identifier::parse($parser);
 });
 
 // "struct {foo x; bar y; ...}"
@@ -162,7 +162,7 @@ parser::extend('anonymous-struct', function (parser $parser) {
 	$lists = $parser->many('struct-def-element');
 	$parser->seq('}');
 
-	$def = new c_structdef();
+	$def = new che_structdef();
 	foreach ($lists as $list) {
 		$def->add($list);
 	}
@@ -174,7 +174,7 @@ parser::extend('union', function (parser $parser) {
 	$lists = $parser->many('union-def-element');
 	$parser->expect('}');
 
-	$u = new c_union();
+	$u = new che_union();
 	foreach ($lists as $list) {
 		$u->add($list);
 	}

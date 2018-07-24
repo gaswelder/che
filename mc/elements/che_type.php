@@ -3,7 +3,7 @@
 /*
  * Type, a list of type modifiers like 'int' or 'struct {...}'.
  */
-class c_type
+class che_type
 {
 	public $l;
 	function __construct($list)

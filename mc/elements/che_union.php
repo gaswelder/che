@@ -1,6 +1,6 @@
 <?php
 
-class c_union
+class che_union
 {
 	public $fields = array();
 

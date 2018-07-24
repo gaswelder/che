@@ -3,7 +3,7 @@
 /*
  * Form, an object description like *foo[42] or myfunc(int, int).
  */
-class c_form
+class che_form
 {
 	public $name;
 	public $ops;
@@ -32,7 +32,7 @@ class c_form
 				continue;
 			}
 
-			if ($mod instanceof c_formal_args) {
+			if ($mod instanceof che_formal_args) {
 				$s .= $mod->format();
 				continue;
 			}
@@ -66,6 +66,6 @@ class c_form
 	static function parse(parser $parser)
 	{
 		$f = $parser->read('obj-der');
-		return new c_form($f['name'], $f['ops']);
+		return new che_form($f['name'], $f['ops']);
 	}
 }

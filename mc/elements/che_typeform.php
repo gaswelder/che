@@ -3,7 +3,7 @@
 /*
  * A combination of type and form, like in "(struct foo *[])".
  */
-class c_typeform
+class che_typeform
 {
 	public $type;
 	public $form;
@@ -22,6 +22,6 @@ class c_typeform
 	{
 		$t = $parser->read('type');
 		$f = $parser->read('form');
-		return new c_typeform($t, $f);
+		return new self($t, $f);
 	}
 }

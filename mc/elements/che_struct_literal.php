@@ -1,6 +1,6 @@
 <?php
 
-class c_struct_literal extends c_element
+class che_struct_literal extends c_element
 {
 	private $elements = [];
 
@@ -21,7 +21,7 @@ class c_struct_literal extends c_element
 
 	static function parse(parser $parser)
 	{
-		$struct = new c_struct_literal();
+		$struct = new self;
 		$parser->expect('{');
 		while (1) {
 			try {
@@ -40,7 +40,7 @@ class c_struct_literal extends c_element
 	}
 }
 
-class c_struct_literal_element extends c_element
+class che_struct_literal_element extends c_element
 {
 	private $id;
 	private $value;

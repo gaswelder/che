@@ -1,11 +1,11 @@
 <?php
 
-class c_typedef extends c_element
+class che_typedef extends c_element
 {
 	public $form;
 	public $type;
 
-	function __construct(c_type $type, c_form $form)
+	function __construct(che_type $type, che_form $form)
 	{
 		if (!$form->name) {
 			trigger_error("typedef: empty type name");
@@ -28,6 +28,6 @@ class c_typedef extends c_element
 	{
 		list($type, $form) = $parser->seq('typedef', '$type', '$form', ';');
 		$parser->add_type($form->name);
-		return new c_typedef($type, $form);
+		return new self($type, $form);
 	}
 }
