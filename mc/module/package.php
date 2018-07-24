@@ -9,7 +9,7 @@ they have to be merged first.
 
 To untangle this, we have to do preliminary "discovery" of types in
 the package by looking at typedefs at the lexer's level.
-*/
+ */
 
 
 class package
@@ -18,9 +18,9 @@ class package
 	public $path;
 
 	/*
-	* Parses a package at the given path (which must be a directory).
-	* Returns a 'module' object like.
-	*/
+	 * Parses a package at the given path (which must be a directory).
+	 * Returns a 'module' object like.
+	 */
 	static function parse($path)
 	{
 		$pack = new package;
@@ -37,17 +37,17 @@ class package
 		$mods = array();
 
 		/*
-		* If we just get all the type names together and use them
-		* to parse the files, the parser will fail because it will
-		* encounter typedefs for already known types (the ones we
-		* have just collected). So we have to parse each file giving
-		* the parser only type names defined only in the other files.
-		*/
+		 * If we just get all the type names together and use them
+		 * to parse the files, the parser will fail because it will
+		 * encounter typedefs for already known types (the ones we
+		 * have just collected). So we have to parse each file giving
+		 * the parser only type names defined only in the other files.
+		 */
 		foreach ($files as $file) {
 			$fpath = $file->path;
 			/*
-			* Get typenames defined not in this file
-			*/
+			 * Get typenames defined not in this file
+			 */
 			$context = array();
 			foreach ($types as $k => $list) {
 				if ($k == $fpath) continue;
@@ -65,7 +65,7 @@ class package
 	{
 		$mod = new module();
 		$mod->path = $this->path;
-		
+
 		$imports = array();
 
 		foreach ($this->mods as $m) {

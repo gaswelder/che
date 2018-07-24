@@ -1,8 +1,8 @@
 <?php
 
-parser::extend('obj-der', function(parser $parser) {
+parser::extend('obj-der', function (parser $parser) {
 	try {
-		list ($obj) = $parser->seq('*', '$obj-der');
+		list($obj) = $parser->seq('*', '$obj-der');
 		$obj['ops'][] = '*';
 		return $obj;
 	} catch (ParseException $e) {
@@ -14,7 +14,7 @@ parser::extend('obj-der', function(parser $parser) {
 	} catch (ParseException $e) {
 		$id = new c_identifier('');
 	}
-	
+
 	$right = [];
 	while (1) {
 		try {
@@ -30,12 +30,12 @@ parser::extend('obj-der', function(parser $parser) {
 	];
 });
 
-parser::extend('index-signature', function(parser $parser) {
+parser::extend('index-signature', function (parser $parser) {
 	$parser->expect('[');
 	try {
 		$expr = $parser->read('expr');
 		$parser->expect(']');
-		return '['.$expr->format().']';
+		return '[' . $expr->format() . ']';
 	} catch (ParseException $e) {
 		//
 	}
@@ -43,24 +43,24 @@ parser::extend('index-signature', function(parser $parser) {
 	return '[]';
 });
 
-parser::extend('formal-argsgroup', function(parser $parser) {
+parser::extend('formal-argsgroup', function (parser $parser) {
 	$group = new c_formal_argsgroup();
 	$group->type = $parser->read('type');
-	
+
 	$forms = [$parser->read('form')];
 	$group->forms = array_merge($forms, $parser->many('formal-argsgroup-cont'));
 	return $group;
 });
 
-parser::extend('formal-argsgroup-cont', function(parser $parser) {
-	list ($form) = $parser->seq(',', '$form');
+parser::extend('formal-argsgroup-cont', function (parser $parser) {
+	list($form) = $parser->seq(',', '$form');
 	if ($form->format() == '') {
 		throw new ParseException('empty form');
 	}
 	return $form;
 });
 
-parser::extend('call-signature', function(parser $parser) {
+parser::extend('call-signature', function (parser $parser) {
 	$args = new c_formal_args();
 	$parser->expect('(');
 	while (1) {
@@ -90,11 +90,11 @@ parser::extend('call-signature', function(parser $parser) {
 	return $args;
 });
 
-parser::extend('typeform', function(parser $parser) {
+parser::extend('typeform', function (parser $parser) {
 	return c_typeform::parse($parser);
 });
 
-parser::extend('form', function(parser $parser) {
+parser::extend('form', function (parser $parser) {
 	return c_form::parse($parser);
 });
 
@@ -102,7 +102,7 @@ parser::extend('form', function(parser $parser) {
 // applying all function calls, dereferencing and indexing.
 // That is, "int *" is not a type, only "int" is. The "*" part
 // is contained in the "form".
-parser::extend('type', function(parser $parser) {
+parser::extend('type', function (parser $parser) {
 	$mods = array();
 	$type = array();
 
@@ -137,7 +137,7 @@ parser::extend('type', function(parser $parser) {
 // Typename is a pure type name, like "int" or "foo", if "foo"
 // has been declared as a type.
 // "unsigned int" or "typename" where "typename" is a declared type
-parser::extend('typename', function(parser $parser) {
+parser::extend('typename', function (parser $parser) {
 	$names = [];
 	$names[] = $parser->expect('word')->content;
 	if (!$parser->is_typename($names[0])) {
@@ -152,15 +152,15 @@ parser::extend('typename', function(parser $parser) {
 });
 
 // "struct foo"
-parser::extend('struct-typename', function(parser $parser) {
+parser::extend('struct-typename', function (parser $parser) {
 	return c_struct_identifier::parse($parser);
 });
 
 // "struct {foo x; bar y; ...}"
-parser::extend('anonymous-struct', function(parser $parser) {
+parser::extend('anonymous-struct', function (parser $parser) {
 	$parser->seq('struct', '{');
 	$lists = $parser->many('struct-def-element');
-	$parser->seq('}', ';');
+	$parser->seq('}');
 
 	$def = new c_structdef();
 	foreach ($lists as $list) {
@@ -169,7 +169,7 @@ parser::extend('anonymous-struct', function(parser $parser) {
 	return $def;
 });
 
-parser::extend('union', function(parser $parser) {
+parser::extend('union', function (parser $parser) {
 	$parser->seq('union', '{');
 	$lists = $parser->many('union-def-element');
 	$parser->expect('}');
@@ -181,8 +181,8 @@ parser::extend('union', function(parser $parser) {
 	return $u;
 });
 
-parser::extend('union-def-element', function(parser $parser) {
-	list ($type, $form) = $parser->seq('$type', '$form', ';');
+parser::extend('union-def-element', function (parser $parser) {
+	list($type, $form) = $parser->seq('$type', '$form', ';');
 	$list = new c_varlist($type);
 	$list->add($form);
 	return $list;

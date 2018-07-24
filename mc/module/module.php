@@ -11,8 +11,9 @@ class module
 	// Path to this module's file.
 	public $path;
 
-	function info() {
-		$deps = array_map(function($mod) {
+	function info()
+	{
+		$deps = array_map(function ($mod) {
 			return $mod->info();
 		}, $this->deps);
 		return [
@@ -116,21 +117,21 @@ class module
 		foreach ($this->code as $element) {
 			$cn = get_class($element);
 			switch ($cn) {
-			case 'c_typedef':
-				$code[] = $element;
-				break;
-			case 'c_structdef':
-			case 'c_enum':
-				if ($element->pub){
+				case 'c_typedef':
 					$code[] = $element;
-				}
-				break;
-			case 'c_func':
-				$dec = $element->proto;
-				if ($dec->pub){
-					$code[] = $dec;
-				}
-				break;
+					break;
+				case 'c_structdef':
+				case 'c_enum':
+					if ($element->pub) {
+						$code[] = $element;
+					}
+					break;
+				case 'c_func':
+					$dec = $element->proto;
+					if ($dec->pub) {
+						$code[] = $dec;
+					}
+					break;
 			}
 		}
 		return $code;
@@ -153,11 +154,10 @@ class module
 	{
 		if ($name[0] == '.') {
 			$name = substr($name, 1);
-			$p = array($refdir.$name);
-		}
-		else {
+			$p = array($refdir . $name);
+		} else {
 			$p = array(
-				MCDIR."/lib/$name",
+				MCDIR . "/lib/$name",
 				"$refdir/$name",
 				$name
 			);
@@ -181,7 +181,7 @@ class module
 		if (isset($mods[$path])) {
 			return $mods[$path];
 		}
-	
+
 		if (is_dir($path)) {
 			$mod = package::parse($path);
 			$mods[$path] = $mod;
