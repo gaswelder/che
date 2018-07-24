@@ -26,8 +26,9 @@ class module
 	{
 		$mod = clone $this;
 		$code = $mod->code;
-		
+
 		$headers = array();
+		$struct_forwards = [];
 		$prototypes = array();
 		$types = array();
 		$body = array();
@@ -35,6 +36,10 @@ class module
 		$n = count($code);
 		for ($i = 0; $i < $n; $i++) {
 			$element = $code[$i];
+
+			if ($element instanceof c_structdef) {
+				$struct_forwards[] = $element->forward_declaration();
+			}
 
 			if ($element instanceof c_include || $element instanceof c_define) {
 				$headers[] = $element;
@@ -70,7 +75,7 @@ class module
 			$body[] = $element;
 		}
 
-		$out = array_merge($headers, $types, $prototypes, $body);
+		$out = array_merge($headers, $struct_forwards, $types, $prototypes, $body);
 		$mod->code = $out;
 
 		$pos = 0;

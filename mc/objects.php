@@ -491,18 +491,35 @@ class c_struct_identifier extends c_element
 {
 	public $name;
 
-	function format() {
+	function format()
+	{
 		if ($this->name) {
-			return 'struct '.$this->name->format();
+			return 'struct ' . $this->name->format();
 		}
 		return 'struct';
 	}
 
-	static function parse(parser $parser) {
-		list ($id) = $parser->seq('struct', '$identifier');
+	static function parse(parser $parser)
+	{
+		list($id) = $parser->seq('struct', '$identifier');
 		$sid = new c_struct_identifier();
 		$sid->name = $id;
 		return $sid;
+	}
+}
+
+class c_forward_declaration extends c_element
+{
+	private $src;
+
+	function __construct($src)
+	{
+		$this->src = $src;
+	}
+
+	function format()
+	{
+		return $this->src;
 	}
 }
 
@@ -528,6 +545,11 @@ class c_structdef extends c_element
 		foreach ($lists as $list) {
 			$this->add($list);
 		}
+	}
+
+	function forward_declaration()
+	{
+		return new c_forward_declaration($this->name->format() . ';');
 	}
 
 	function add(c_varlist $list)
