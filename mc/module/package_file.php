@@ -38,7 +38,7 @@ class package_file
 		 /*
 		 * Scan file tokens for 'typedef' keywords
 		 */
-		$s = new mctok($this->path);
+		$s = new lexer($this->path);
 		while (1) {
 			$t = $s->get();
 			if ($t === null) {
@@ -58,7 +58,7 @@ class package_file
 		return $list;
 	}
 
-	private static function get_typename(mctok $s)
+	private static function get_typename(lexer $s)
 	{
 		 /*
 		 * New type name is at the end of the typedef statement.

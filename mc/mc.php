@@ -4,13 +4,22 @@ require $dir . '/debug.php';
 stop_on_error();
 error_reporting(-1);
 require $dir . '/parser/parser.php';
-require $dir . '/module/index.php';
 require $dir . '/translator/headers.php';
 require $dir . '/objects.php';
 
-foreach (glob($dir . '/elements/*.php') as $path) {
-	require $path;
-}
+spl_autoload_register(function ($classname) use ($dir) {
+	$paths = [
+		"$dir/elements/$classname.php",
+		"$dir/module/$classname.php",
+		"$dir/parser/$classname.php"
+	];
+	foreach ($paths as $path) {
+		if (file_exists($path)) {
+			require $path;
+			return;
+		}
+	}
+});
 
 class trace
 {

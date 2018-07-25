@@ -67,7 +67,7 @@ class parser
 	function __construct($path)
 	{
 		$this->path = $path;
-		$this->s = new mctok($path);
+		$this->s = new lexer($path);
 	}
 
 	function __clone()

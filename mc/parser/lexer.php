@@ -1,6 +1,6 @@
 <?php
 
-class mctok
+class lexer
 {
 	const spaces = "\r\n\t ";
 
@@ -74,9 +74,8 @@ class mctok
 		}
 
 		if ($n == -1) {
-			$r = $buf[count($buf)-1];
-		}
-		else {
+			$r = $buf[count($buf) - 1];
+		} else {
 			$r = null;
 		}
 
@@ -305,7 +304,7 @@ class mctok
 
 		$alpha = '0123456789';
 		$num = $s->read_set($alpha);
-		
+
 		$modifiers = ['U', 'L'];
 
 		if ($s->peek() == '.') {
@@ -313,7 +312,7 @@ class mctok
 			$num .= $s->get();
 			$num .= $s->read_set($alpha);
 		}
-		
+
 		while (in_array($s->peek(), $modifiers)) {
 			$num .= $s->get();
 		}
@@ -324,7 +323,7 @@ class mctok
 		}
 		return tok('num', $num, $pos);
 	}
-	
+
 	private function read_hex()
 	{
 		$s = $this->s;
@@ -334,16 +333,16 @@ class mctok
 		$s->get();
 		$s->get();
 		$alpha = '0123456789ABCDEFabcdef';
-		
+
 		$num = $s->read_set($alpha);
-		
+
 		$modifiers = ['U', 'L'];
-		
+
 		while (in_array($s->peek(), $modifiers)) {
 			$num .= $s->get();
 		}
 
-		return tok('num', '0x'.$num, $pos);
+		return tok('num', '0x' . $num, $pos);
 	}
 
 	private function read_string()
