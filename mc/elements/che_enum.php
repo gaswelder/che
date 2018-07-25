@@ -5,11 +5,6 @@ class che_enum extends che_element
 	public $pub = false;
 	public $items = [];
 
-	function typenames()
-	{
-		return [];
-	}
-
 	function format()
 	{
 		$lines = ['enum {'];

@@ -16,16 +16,6 @@ class che_varlist extends che_element
 		$this->forms = array();
 	}
 
-	function typenames()
-	{
-		$names = $this->type->typenames();
-		foreach ($this->values as $expr) {
-			if ($expr == null) continue;
-			$names = array_merge($names, $expr->typenames());
-		}
-		return $names;
-	}
-
 	function add($var)
 	{
 		if ($var instanceof che_form) {

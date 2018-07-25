@@ -9,18 +9,6 @@ class che_expr extends che_element
 		$this->parts = $parts;
 	}
 
-	function typenames()
-	{
-		$names = [];
-		foreach ($this->parts as $part) {
-			if (is_string($part)) {
-				continue;
-			}
-			$names = array_merge($names, $part->typenames());
-		}
-		return $names;
-	}
-
 	function add($p)
 	{
 		assert($p != null);
@@ -82,44 +70,6 @@ class che_expr_atom extends che_element
 	function __construct($a)
 	{
 		$this->a = $a;
-	}
-
-	function typenames()
-	{
-		$names = [];
-
-		foreach ($this->a as $op) {
-			if ($op instanceof che_function_call) {
-				foreach ($op->args as $expr) {
-					$names = array_merge($names, $expr->typenames());
-				}
-				continue;
-			}
-
-			switch ($op[0]) {
-				case 'id':
-					$names[] = $op[1];
-					break;
-				case 'expr':
-					$names = array_merge($names, $op[1]->typenames());
-					break;
-				case 'cast':
-					$names = array_merge($op[1]->type->typenames());
-					break;
-				case 'literal':
-				case 'op':
-				case 'sizeof':
-				case 'index':
-				case 'struct-access-dot':
-				case 'struct-access-arrow':
-					break;
-				default:
-					var_dump("typenames failed for atom part");
-					var_dump($op);
-					exit;
-			}
-		}
-		return $names;
 	}
 
 	function format()

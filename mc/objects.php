@@ -9,11 +9,6 @@ abstract class c_element
 		return "$t$s";
 	}
 
-	function typenames()
-	{
-		return [];
-	}
-
 	abstract function format();
 
 	function translate()
@@ -103,15 +98,6 @@ class c_prototype
 		$this->type = $type;
 		$this->form = $form;
 		$this->args = $args;
-	}
-
-	function typenames()
-	{
-		$names = $this->type->typenames();
-		foreach ($this->args->groups as $group) {
-			$names = array_merge($names, $group->type->typenames());
-		}
-		return $names;
 	}
 
 	function format()

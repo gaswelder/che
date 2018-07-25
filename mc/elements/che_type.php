@@ -20,17 +20,4 @@ class che_type
 		}
 		return implode(' ', $s);
 	}
-
-	function typenames()
-	{
-		$names = [];
-		foreach ($this->l as $t) {
-			if (is_string($t)) {
-				$names[] = $t;
-			} else {
-				$names[] = $t->format();
-			}
-		}
-		return $names;
-	}
 }

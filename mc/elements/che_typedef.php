@@ -19,11 +19,6 @@ class che_typedef extends che_element
 		return sprintf("typedef %s %s", $this->type->format(), $this->form->format());
 	}
 
-	function typenames()
-	{
-		return $this->type->typenames();
-	}
-
 	static function parse(parser $parser)
 	{
 		list($type, $form) = $parser->seq('typedef', '$type', '$form', ';');

@@ -5,15 +5,6 @@ class che_switch
 	public $cond;
 	public $cases;
 
-	function typenames()
-	{
-		$names = $this->cond->typenames();
-		foreach ($this->cases as $case) {
-			$names = array_merge($names, $case->body->typenames());
-		}
-		return $names;
-	}
-
 	function format($tab = 0)
 	{
 		$pref = str_repeat("\t", $tab);

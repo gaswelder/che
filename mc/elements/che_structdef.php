@@ -6,15 +6,6 @@ class che_structdef extends che_element
 	public $name;
 	public $fields = array();
 
-	function typenames()
-	{
-		$names = [];
-		foreach ($this->fields as $list) {
-			$names = array_merge($names, $list->typenames());
-		}
-		return $names;
-	}
-
 	function __construct($name = null, $lists = [])
 	{
 		if (!$name) $name = new che_struct_identifier();

@@ -6,16 +6,6 @@ class che_if
 	public $body;
 	public $else;
 
-	function typenames()
-	{
-		$b = $this->body->typenames();
-		$names = array_merge($this->cond->typenames(), $b);
-		if ($this->else) {
-			$names = array_merge($names, $this->else->typenames());
-		}
-		return $names;
-	}
-
 	function __construct($cond, $body, $else)
 	{
 		$this->cond = $cond;

@@ -6,22 +6,13 @@ class che_for
 	public $cond;
 	public $act;
 	public $body;
+
 	function __construct($i, $c, $a, $b)
 	{
 		$this->init = $i;
 		$this->cond = $c;
 		$this->act = $a;
 		$this->body = $b;
-	}
-
-	function typenames()
-	{
-		return array_merge(
-			$this->init->typenames(),
-			$this->cond->typenames(),
-			$this->act->typenames(),
-			$this->body->typenames()
-		);
 	}
 
 	function format($tab = 0)

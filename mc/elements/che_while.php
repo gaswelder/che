@@ -4,15 +4,11 @@ class che_while
 {
 	public $cond;
 	public $body;
+
 	function __construct($cond, $body)
 	{
 		$this->cond = $cond;
 		$this->body = $body;
-	}
-
-	function typenames()
-	{
-		return array_merge($this->cond->typenames(), $this->body->typenames());
 	}
 
 	function format($tab = 0)

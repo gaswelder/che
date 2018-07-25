@@ -9,39 +9,6 @@ class che_body
 		$this->parts[] = $p;
 	}
 
-	function typenames()
-	{
-		$names = [];
-		foreach ($this->parts as $part) {
-			$cn = get_class($part);
-			switch ($cn) {
-				case 'che_varlist':
-					$names = array_merge($names, $part->typenames());
-					break;
-				case 'che_if':
-					$names = array_merge($names, $part->typenames());
-					break;
-				case 'che_while':
-					$names = array_merge($names, $part->typenames());
-					break;
-				case 'che_for':
-					$names = array_merge($names, $part->typenames());
-					break;
-				case 'che_switch':
-					$names = array_merge($names, $part->typenames());
-					break;
-				case 'che_return':
-				case 'che_expr':
-					$names = array_merge($names, $part->typenames());
-					break;
-				default:
-					var_dump("1706", $part);
-					exit(1);
-			}
-		}
-		return $names;
-	}
-
 	function format($tab = 0)
 	{
 		$pref = str_repeat("\t", $tab);

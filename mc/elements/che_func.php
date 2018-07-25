@@ -5,12 +5,6 @@ class che_func extends che_element
 	public $proto;
 	public $body;
 
-	function typenames()
-	{
-		$names = array_merge($this->proto->typenames(), $this->body->typenames());
-		return $names;
-	}
-
 	function __construct($proto, $body)
 	{
 		$this->proto = $proto;
