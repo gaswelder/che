@@ -3,7 +3,7 @@
 /*
  * Variable declarations list like "int a, *b, c()"
  */
-class che_varlist
+class che_varlist extends che_element
 {
 	public $stat = false;
 	public $type;
@@ -62,5 +62,10 @@ class che_varlist
 			$s = 'static ' . $s;
 		}
 		return $s;
+	}
+
+	function translate()
+	{
+		return [$this];
 	}
 }

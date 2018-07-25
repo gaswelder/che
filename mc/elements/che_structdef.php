@@ -62,4 +62,25 @@ class che_structdef extends che_element
 		$def->pub = $pub;
 		return $def;
 	}
+
+	function translate()
+	{
+		return [
+			new c_struct_forward_declaration($this->name->format() . ";\n"),
+			$this
+		];
+	}
+}
+
+class c_struct_forward_declaration
+{
+	private $s;
+	function __construct($s)
+	{
+		$this->s = $s;
+	}
+	function format()
+	{
+		return $this->s;
+	}
 }

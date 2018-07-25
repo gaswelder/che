@@ -22,95 +22,104 @@ class module
 		];
 	}
 
-	// function translate()
-	// {
-	// 	$elements = [];
-	// 	foreach ($this->code as $element) {
-	// 		$elements = array_merge($elements, $element->translate());
-	// 	}
-	// 	return c_module::make($elements);
-	// }
-
-	function translate_to_c()
+	/**
+	 * Reorders the given list of C elements so that the native top-down
+	 * compiler would be able to work.
+	 */
+	static function stable_elements_sort($elements)
 	{
-		$mod = clone $this;
-		$code = $mod->code;
+		// Generally we split elements into groups by their kind
+		// and then lay them out group by group. For example, all
+		// headers come before all functions.
+		//
+		// But the original order of some elements inside each group
+		// sometimes matters (for example, when one structure definition
+		// embeds a structure defined earlier). That's why we use the
+		// stable sort here.
 
-		$headers = array();
-		$struct_forwards = [];
-		$prototypes = array();
-		$types = array();
-		$body = array();
-
-		$n = count($code);
-		for ($i = 0; $i < $n; $i++) {
-			$element = $code[$i];
-
-			if ($element instanceof che_structdef) {
-				$struct_forwards[] = $element->forward_declaration();
-			}
-
-			if ($element instanceof c_include || $element instanceof c_define) {
-				$headers[] = $element;
-				continue;
-			}
-
-			if ($element instanceof che_structdef || $element instanceof che_enum
-				|| $element instanceof che_typedef) {
-				$types[] = $element;
-				continue;
-			}
-
-			if ($element instanceof che_import) {
-				$imp = $element->get_module();
-				array_splice($code, $i, 1, $imp->merge()->synopsis());
-				$i--;
-				$n = count($code);
-				continue;
-			}
-
-			if ($element instanceof che_func) {
-				$element = $element->translate();
-				$prototypes[] = $element->proto;
-			}
-
-			/*
-			 * Mark module-global variables as static.
-			 */
-			if ($element instanceof che_varlist) {
-				$element->stat = true;
-			}
-
-			$body[] = $element;
+		$tmp = [];
+		foreach ($elements as $i => $e) {
+			$tmp[] = [$e, $i];
 		}
 
-		$out = array_merge($headers, $struct_forwards, $types, $prototypes, $body);
-		$mod->code = $out;
-
-		$pos = 0;
-		foreach ($mod->code as $e) {
-			if ($e instanceof c_define || $e instanceof c_include) {
-				$pos++;
-			} else {
-				break;
+		$order = function ($obj) {
+			$cn = get_class($obj);
+			$ranks = [
+				[c_define::class, c_include::class],
+				[che_enum::class],
+				[c_struct_forward_declaration::class],
+				[che_typedef::class],
+				[che_structdef::class],
+				[c_prototype::class],
+				[che_varlist::class]
+			];
+			foreach ($ranks as $i => $n) {
+				if (in_array($cn, $n)) return $i;
 			}
+			return $i + 1;
+		};
+
+		usort($tmp, function ($a, $b) use ($order) {
+			// If the elements have the same rank, return the same ordering
+			// as they had originally.
+			// Otherwise reorder as usual.
+			$i = $order($a[0]);
+			$j = $order($b[0]);
+			if ($i == $j) {
+				return $a[1] <=> $b[1];
+			}
+			return $i <=> $j;
+		});
+		return array_column($tmp, 0);
+	}
+
+	/**
+	 * Returns a C module translated from this module.
+	 */
+	function translate() : c_module
+	{
+		$elements = [];
+		foreach ($this->code as $element) {
+			$elements = array_merge($elements, $element->translate());
 		}
 
-		$headers = tr_headers::add_headers($mod);
-		$out = array();
-		foreach ($headers as $h) {
-			$out[] = new c_macro('include', "<$h.h>");
+		$std = [
+			'assert',
+			'ctype',
+			'errno',
+			'limits',
+			'math',
+			'stdarg',
+			'stdbool',
+			'stddef',
+			'stdint',
+			'stdio',
+			'stdlib',
+			'string',
+			'time'
+		];
+		foreach ($std as $n) {
+			$elements[] = new c_include("<$n.h>");
 		}
-		array_splice($mod->code, $pos, 0, $out);
 
-		if (in_array('math', $headers)) {
-			$mod->link[] = 'm';
-		}
+		// Filter out link pragmas and add them to the module.
+		$links = array_filter($elements, function ($e) {
+			return $e instanceof c_link;
+		});
+		$elements = array_filter($elements, function ($e) {
+			return !($e instanceof c_link);
+		});
+
+		// Reorder the code.
+		$elements = self::stable_elements_sort($elements);
 
 		$c = new c_module;
-		$c->code = $mod->code;
-		$c->link = $mod->link;
-		$c->name = $mod->path;
+		$c->code = $elements;
+		$c->link = ['m'];
+		foreach ($links as $link) {
+			$c->link[] = $link->name;
+		}
+		$c->name = $this->path;
 		return $c;
 	}
 
@@ -123,7 +132,7 @@ class module
 		return $s;
 	}
 
-	// Returns synopsis that would be the contents of this module's
+	// Returns synopsis that would be the contents of this module' s
 	// C header file.
 	function synopsis()
 	{

@@ -18,7 +18,7 @@ parser::extend('root', function (parser $parser) {
 		'enum-def',
 		'struct-def-root',
 		'che_func',
-		'object-def'
+		'root-varlist'
 	]);
 });
 
@@ -150,6 +150,13 @@ parser::extend('enum-def', function (parser $parser) {
 
 parser::extend('enum-item', function (parser $parser) {
 	return che_enum_item::parse($parser);
+});
+
+parser::extend('root-varlist', function (parser $parser) {
+	$varlist = $parser->read('object-def');
+	// Mark all root variables static.
+	$varlist->stat = true;
+	return $varlist;
 });
 
 parser::extend('object-def', function (parser $parser) {

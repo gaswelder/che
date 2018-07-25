@@ -43,7 +43,10 @@ class che_func extends che_element
 		}
 
 		$f->body = self::rewrite_body($f->body);
-		return $f;
+		return [
+			$f->proto,
+			$f
+		];
 	}
 
 	private static function rewrite_body(che_body $b, $defer = array())

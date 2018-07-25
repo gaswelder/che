@@ -1,6 +1,6 @@
 <?php
 
-class che_import
+class che_import extends che_element
 {
 	private $path;
 	private $dir;
@@ -43,5 +43,10 @@ class che_import
 	function format()
 	{
 		return 'import "' . $this->path . '"';
+	}
+
+	function translate()
+	{
+		return $this->get_module()->merge()->synopsis();
 	}
 }

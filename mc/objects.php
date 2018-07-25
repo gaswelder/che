@@ -15,6 +15,11 @@ abstract class c_element
 	}
 
 	abstract function format();
+
+	function translate()
+	{
+		return [$this];
+	}
 }
 
 class c_macro extends c_element

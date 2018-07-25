@@ -205,9 +205,6 @@ class parser
 				$imp = $t->get_module();
 				$mod->deps[] = $imp;
 			}
-			if ($t instanceof c_link) {
-				$mod->link[] = $t->name;
-			}
 		}
 		return $mod;
 	}

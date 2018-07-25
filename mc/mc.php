@@ -23,7 +23,6 @@ require __DIR__ . '/parser/literals.php';
 require __DIR__ . '/parser/expressions.php';
 require __DIR__ . '/parser/signatures.php';
 require __DIR__ . '/parser/control.php';
-require __DIR__ . '/translator/headers.php';
 require __DIR__ . '/objects.php';
 
 class trace
@@ -83,7 +82,7 @@ class program
 
 		$all = $this->modules_list($main);
 		foreach ($all as $mod) {
-			$mod = $mod->translate_to_c();
+			$mod = $mod->translate();
 			$sources[] = $mod->write();
 			$link = array_merge($link, $mod->link);
 		}
