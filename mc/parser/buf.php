@@ -50,8 +50,7 @@ class buf
 			$this->line++;
 			$this->linelengths[] = $this->col;
 			$this->col = 1;
-		}
-		else {
+		} else {
 			$this->col++;
 		}
 		return $ch;
@@ -64,8 +63,7 @@ class buf
 		if ($ch == "\n") {
 			$this->line--;
 			$this->col = array_pop($this->linelengths);
-		}
-		else {
+		} else {
 			$this->col--;
 		}
 	}
@@ -90,8 +88,8 @@ class buf
 
 	function fcontext($n = 10)
 	{
-		$s = '{'.$this->str[$this->pos].'}';
-		$s .= substr($this->str, $this->pos+1, $n);
+		$s = '{' . $this->str[$this->pos] . '}';
+		$s .= substr($this->str, $this->pos + 1, $n);
 		$s = str_replace(array("\r", "\n", "\t"), array(
 			"\\r",
 			"\\n",
@@ -154,5 +152,3 @@ class buf
 		return $s;
 	}
 }
-
-?>
