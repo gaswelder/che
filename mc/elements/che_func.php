@@ -1,6 +1,6 @@
 <?php
 
-class che_func extends c_element
+class che_func extends che_element
 {
 	public $proto;
 	public $body;

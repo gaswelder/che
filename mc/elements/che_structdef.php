@@ -1,6 +1,6 @@
 <?php
 
-class che_structdef extends c_element
+class che_structdef extends che_element
 {
 	public $pub;
 	public $name;

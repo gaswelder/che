@@ -1,6 +1,6 @@
 <?php
 
-class che_literal extends c_element
+class che_literal extends che_element
 {
 	public $content;
 	function __construct($s)
@@ -61,7 +61,7 @@ class che_array extends che_literal
 	}
 }
 
-class che_designated_array_element extends c_element
+class che_designated_array_element extends che_element
 {
 	public $index;
 	public $value;

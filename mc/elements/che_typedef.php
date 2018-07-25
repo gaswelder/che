@@ -1,6 +1,6 @@
 <?php
 
-class che_typedef extends c_element
+class che_typedef extends che_element
 {
 	public $form;
 	public $type;

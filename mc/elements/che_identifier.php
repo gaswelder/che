@@ -1,6 +1,6 @@
 <?php
 
-class che_identifier extends c_element
+class che_identifier extends che_element
 {
 	private $content;
 

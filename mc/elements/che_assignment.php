@@ -1,6 +1,6 @@
 <?php
 
-class che_assignment extends c_element
+class che_assignment extends che_element
 {
 	public $left;
 	public $right;

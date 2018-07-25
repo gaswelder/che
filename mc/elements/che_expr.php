@@ -1,6 +1,6 @@
 <?php
 
-class che_expr extends c_element
+class che_expr extends che_element
 {
 	public $parts;
 
@@ -75,7 +75,7 @@ class che_expr extends c_element
 	}
 }
 
-class che_expr_atom extends c_element
+class che_expr_atom extends che_element
 {
 	public $a;
 

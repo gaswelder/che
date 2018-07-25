@@ -26,7 +26,7 @@ class che_formal_args
 	}
 }
 
-class che_formal_argsgroup extends c_element
+class che_formal_argsgroup extends che_element
 {
 	public $type;
 	public $forms = [];

@@ -1,6 +1,6 @@
 <?php
 
-class che_sizeof extends c_element
+class che_sizeof extends che_element
 {
 	private $arg;
 

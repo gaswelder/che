@@ -22,6 +22,15 @@ class module
 		];
 	}
 
+	// function translate()
+	// {
+	// 	$elements = [];
+	// 	foreach ($this->code as $element) {
+	// 		$elements = array_merge($elements, $element->translate());
+	// 	}
+	// 	return c_module::make($elements);
+	// }
+
 	function translate_to_c()
 	{
 		$mod = clone $this;

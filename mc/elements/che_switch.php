@@ -43,7 +43,7 @@ class che_switch
 	}
 }
 
-class che_switch_case extends c_element
+class che_switch_case extends che_element
 {
 	public $value;
 	public $body;

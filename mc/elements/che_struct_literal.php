@@ -1,6 +1,6 @@
 <?php
 
-class che_struct_literal extends c_element
+class che_struct_literal extends che_element
 {
 	private $elements = [];
 
@@ -40,7 +40,7 @@ class che_struct_literal extends c_element
 	}
 }
 
-class che_struct_literal_element extends c_element
+class che_struct_literal_element extends che_element
 {
 	private $id;
 	private $value;

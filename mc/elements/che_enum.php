@@ -1,6 +1,6 @@
 <?php
 
-class che_enum extends c_element
+class che_enum extends che_element
 {
 	public $pub = false;
 	public $items = [];
@@ -44,7 +44,7 @@ class che_enum extends c_element
 	}
 }
 
-class che_enum_item extends c_element
+class che_enum_item extends che_element
 {
 	public $id;
 	public $value;
