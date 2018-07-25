@@ -1,6 +1,6 @@
 <?php
 
-class c_element
+abstract class c_element
 {
 	function __toString()
 	{
@@ -13,6 +13,8 @@ class c_element
 	{
 		return [];
 	}
+
+	abstract function format();
 }
 
 class c_macro extends c_element

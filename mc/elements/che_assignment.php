@@ -13,4 +13,9 @@ class che_assignment extends c_element
 		$a->right = $right;
 		return $a;
 	}
+
+	function format()
+	{
+		return $this->left->format() . ' = ' . $this->right->format;
+	}
 }

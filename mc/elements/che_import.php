@@ -39,4 +39,9 @@ class che_import
 
 		return new self($path->content, $dir);
 	}
+
+	function format()
+	{
+		return 'import "' . $this->path . '"';
+	}
 }
