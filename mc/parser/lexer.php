@@ -189,7 +189,7 @@ class lexer
 		 * If we are on a new line and '#' follows, read it as a macro.
 		 */
 		if ($s->peek() == '#') {
-			return tok('macro', $s->skip_until("\n"), $pos);
+			return token::make('macro', $s->skip_until("\n"), $pos);
 		}
 
 		/*
@@ -200,7 +200,7 @@ class lexer
 			if (!$s->skip_literal('*/')) {
 				return $this->error("*/ expected");
 			}
-			return tok('comment', $comment, $pos);
+			return token::make('comment', $comment, $pos);
 		}
 
 		/*
@@ -208,7 +208,7 @@ class lexer
 		 */
 		if ($s->skip_literal('//')) {
 			$comment = $s->skip_until("\n");
-			return tok('comment', $comment, $pos);
+			return token::make('comment', $comment, $pos);
 		}
 
 		/*
@@ -226,9 +226,9 @@ class lexer
 			}
 
 			if (in_array($word, self::$keywords)) {
-				return tok($word, null, $pos);
+				return token::make($word, null, $pos);
 			}
-			return tok('word', $word, $pos);
+			return token::make('word', $word, $pos);
 		}
 
 		/*
@@ -251,7 +251,7 @@ class lexer
 				$str .= $this->read_string();
 				$s->read_set(self::spaces);
 			}
-			return tok('string', $str, $pos);
+			return token::make('string', $str, $pos);
 		}
 
 		/*
@@ -269,7 +269,7 @@ class lexer
 			if ($s->get() != "'") {
 				return $this->error("Single quote expected");
 			}
-			return tok('char', $str, $pos);
+			return token::make('char', $str, $pos);
 		}
 
 		/*
@@ -277,7 +277,7 @@ class lexer
 		 */
 		foreach (self::$symbols as $sym) {
 			if ($s->skip_literal($sym)) {
-				return tok($sym, null, $pos);
+				return token::make($sym, null, $pos);
 			}
 		}
 
@@ -321,7 +321,7 @@ class lexer
 			$c = $s->peek();
 			return $this->error("Unexpected character: '$c'");
 		}
-		return tok('num', $num, $pos);
+		return token::make('num', $num, $pos);
 	}
 
 	private function read_hex()
@@ -342,7 +342,7 @@ class lexer
 			$num .= $s->get();
 		}
 
-		return tok('num', '0x' . $num, $pos);
+		return token::make('num', '0x' . $num, $pos);
 	}
 
 	private function read_string()

@@ -1,14 +1,5 @@
 <?php
 
-require __DIR__ . '/buf.php';
-require __DIR__ . '/lexer.php';
-require __DIR__ . '/token.php';
-require __DIR__ . '/subparsers.php';
-require __DIR__ . '/literals.php';
-require __DIR__ . '/expressions.php';
-require __DIR__ . '/signatures.php';
-require __DIR__ . '/control.php';
-
 class ParseException extends Exception
 {
 }

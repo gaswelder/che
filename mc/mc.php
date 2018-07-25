@@ -1,13 +1,10 @@
 <?php
-$dir = dirname(__FILE__);
-require $dir . '/debug.php';
+require __DIR__ . '/debug.php';
 stop_on_error();
 error_reporting(-1);
-require $dir . '/parser/parser.php';
-require $dir . '/translator/headers.php';
-require $dir . '/objects.php';
 
-spl_autoload_register(function ($classname) use ($dir) {
+spl_autoload_register(function ($classname) {
+	$dir = __DIR__;
 	$paths = [
 		"$dir/elements/$classname.php",
 		"$dir/module/$classname.php",
@@ -20,6 +17,14 @@ spl_autoload_register(function ($classname) use ($dir) {
 		}
 	}
 });
+
+require __DIR__ . '/parser/subparsers.php';
+require __DIR__ . '/parser/literals.php';
+require __DIR__ . '/parser/expressions.php';
+require __DIR__ . '/parser/signatures.php';
+require __DIR__ . '/parser/control.php';
+require __DIR__ . '/translator/headers.php';
+require __DIR__ . '/objects.php';
 
 class trace
 {
