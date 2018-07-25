@@ -46,13 +46,6 @@ function mc_main($args)
 	}
 
 	$path = array_shift($args);
-	if (is_dir($path)) {
-		$path = "$path/main.c";
-	}
-	if (!file_exists($path)) {
-		fwrite(STDERR, "File does not exist: $path\n");
-		exit(1);
-	}
 	$p = new program($path);
 	$p->compile();
 }
@@ -68,12 +61,13 @@ class program
 
 	function compile()
 	{
-		$mod = module::parse($this->main, []);
+		$package = package::read($this->main);
+		$main = $package->merge();
 
 		$sources = [];
 		$link = [];
 
-		$all = $this->modules_list($mod);
+		$all = $this->modules_list($main);
 		foreach ($all as $mod) {
 			$mod = $mod->translate_to_c();
 			$sources[] = $mod->write();
@@ -98,7 +92,7 @@ class program
 	{
 		$list = [$m];
 		foreach ($m->deps as $dep) {
-			$list = array_merge($list, $this->modules_list($dep));
+			$list = array_merge($list, $this->modules_list($dep->merge()));
 		}
 		// Omit duplicate modules, leaving the ones closer to the end.
 		return array_reverse(array_unique(array_reverse($list), SORT_REGULAR));

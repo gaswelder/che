@@ -1,5 +1,4 @@
 import "opt"
-import "./ppm.c"
 
 #define S     800           // video size
 #define N     360           // number of dots

@@ -12,11 +12,11 @@ class che_import
 	}
 
 	/**
-	 * Returns the module or the package corresponding to this import.
+	 * Returns the package corresponding to this import.
 	 */
-	function get_module()
+	function get_module() : package
 	{
-		return module::import($this->path, $this->dir);
+		return package::read($this->path, $this->dir);
 	}
 
 	function path()
@@ -30,12 +30,13 @@ class che_import
 		$dir = dirname(realpath($parser->path));
 
 		// Add types exported from the referenced module.
-		$imp = module::import($path->content, $dir);
-		foreach ($imp->synopsis() as $decl) {
-			if ($decl instanceof che_typedef) {
-				$parser->add_type($decl->form->name);
+		$package = package::read($path->content, $dir);
+		foreach ($package->types() as $types) {
+			foreach ($types as $type) {
+				$parser->add_type($type);
 			}
 		}
+
 		return new self($path->content, $dir);
 	}
 }

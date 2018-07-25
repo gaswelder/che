@@ -54,7 +54,7 @@ class module
 
 			if ($element instanceof che_import) {
 				$imp = $element->get_module();
-				array_splice($code, $i, 1, $imp->synopsis());
+				array_splice($code, $i, 1, $imp->merge()->synopsis());
 				$i--;
 				$n = count($code);
 				continue;
@@ -155,28 +155,29 @@ class module
 		return self::parse($path);
 	}
 
-	private static function find_import($name, $refdir)
+	function merge(module $that) : module
 	{
-		if ($name[0] == '.') {
-			$name = substr($name, 1);
-			$p = array($refdir . $name);
-		} else {
-			$p = array(
-				MCDIR . "/lib/$name",
-				"$refdir/$name",
-				$name
-			);
-		}
-		foreach ($p as $path) {
-			if (file_exists($path)) {
-				return $path;
+		$mod = new module;
+		$mod->path = '';
+		$mod->deps = array_merge($this->deps, $that->deps);
+		$mod->link = array_merge($this->link, $that->link);
+		$mod->code = array_merge($this->code, $that->code);
+
+		$mod->deps = array_unique($mod->deps, SORT_REGULAR);
+
+		// Remove redundant imports
+		$imports = [];
+		$mod->code = array_filter($mod->code, function ($c) use (&$imports) {
+			if ($c instanceof che_import) {
+				if (in_array($c->path(), $imports)) {
+					return false;
+				}
+				$imports[] = $c->path();
 			}
-			$path .= ".c";
-			if (file_exists($path)) {
-				return $path;
-			}
-		}
-		return null;
+			return true;
+		});
+
+		return $mod;
 	}
 
 	static function parse($path, $typenames = array())
@@ -188,9 +189,7 @@ class module
 		}
 
 		if (is_dir($path)) {
-			$mod = package::parse($path);
-			$mods[$path] = $mod;
-			return $mod;
+			throw new Exception("Not a file: $path");
 		}
 
 		$s = new parser($path);

@@ -1,7 +1,5 @@
 // https://en.wikipedia.org/wiki/Netpbm_format
 
-import "./font.c"
-
 #define S     800           // video size
 #define R0    (S / 400.0f)  // dot inner radius
 #define R1    (S / 200.0f)  // dot outer radius
