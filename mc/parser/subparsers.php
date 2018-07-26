@@ -39,12 +39,6 @@ parser::extend('macro', function (parser $parser) {
 		case '#link':
 			$name = strtok("\n");
 			return new c_link($name);
-		case '#ifdef':
-		case '#ifndef':
-			$id = trim(strtok("\n"));
-			return new c_macro($type, $id);
-		case '#endif':
-			return new c_macro($type);
 		case '#type':
 			$name = trim(strtok("\n"));
 			$parser->add_type($name);
