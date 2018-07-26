@@ -76,7 +76,7 @@ class che_func extends che_element
 	{
 		$pub = $parser->maybe('pub');
 		$type = $parser->read('type');
-		$form = $parser->read('form');
+		$form = $parser->read('che_form');
 
 		if (empty($form->ops) || !($form->ops[0] instanceof che_formal_args)) {
 			throw new ParseException("Not a function");

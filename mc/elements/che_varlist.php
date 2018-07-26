@@ -21,7 +21,7 @@ class che_varlist extends che_element
 		$type = $parser->read('type');
 		$list = new self($type);
 
-		$next = $parser->any(['che_assignment', 'form']);
+		$next = $parser->any(['che_assignment', 'che_form']);
 		$list->add($next);
 
 		while (1) {
@@ -32,7 +32,7 @@ class che_varlist extends che_element
 			}
 
 			try {
-				$next = $parser->any(['che_assignment', 'form']);
+				$next = $parser->any(['che_assignment', 'che_form']);
 				$list->add($next);
 			} catch (ParseException $e) {
 				break;

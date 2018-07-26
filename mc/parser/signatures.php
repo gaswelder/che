@@ -47,13 +47,13 @@ parser::extend('formal-argsgroup', function (parser $parser) {
 	$group = new che_formal_argsgroup();
 	$group->type = $parser->read('type');
 
-	$forms = [$parser->read('form')];
+	$forms = [$parser->read('che_form')];
 	$group->forms = array_merge($forms, $parser->many('formal-argsgroup-cont'));
 	return $group;
 });
 
 parser::extend('formal-argsgroup-cont', function (parser $parser) {
-	list($form) = $parser->seq(',', '$form');
+	list($form) = $parser->seq(',', '$che_form');
 	if ($form->format() == '') {
 		throw new ParseException('empty form');
 	}
@@ -88,10 +88,6 @@ parser::extend('call-signature', function (parser $parser) {
 
 	$parser->expect(')');
 	return $args;
-});
-
-parser::extend('form', function (parser $parser) {
-	return che_form::parse($parser);
 });
 
 // Type is a description of a pure value that we get after
@@ -160,7 +156,7 @@ parser::extend('union', function (parser $parser) {
 });
 
 parser::extend('union-def-element', function (parser $parser) {
-	list($type, $form) = $parser->seq('$type', '$form', ';');
+	list($type, $form) = $parser->seq('$type', '$che_form', ';');
 	$list = new che_varlist($type);
 	$list->add($form);
 	return $list;

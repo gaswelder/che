@@ -21,7 +21,7 @@ class che_typeform
 	static function parse(parser $parser)
 	{
 		$t = $parser->read('type');
-		$f = $parser->read('form');
+		$f = $parser->read('che_form');
 		return new self($t, $f);
 	}
 }

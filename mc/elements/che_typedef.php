@@ -21,7 +21,7 @@ class che_typedef extends che_element
 
 	static function parse(parser $parser)
 	{
-		list($type, $form) = $parser->seq('typedef', '$type', '$form', ';');
+		list($type, $form) = $parser->seq('typedef', '$type', '$che_form', ';');
 		$parser->add_type($form->name);
 		return new self($type, $form);
 	}

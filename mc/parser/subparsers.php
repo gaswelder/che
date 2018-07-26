@@ -64,7 +64,7 @@ parser::extend('struct-def-element', function (parser $parser) {
 });
 
 parser::extend('embedded-union', function (parser $parser) {
-	list($u, $form) = $parser->seq('$union', '$form');
+	list($u, $form) = $parser->seq('$union', '$che_form');
 	$type = new che_type(array($u));
 	$list = new che_varlist($type);
 	$list->add($form);
@@ -117,7 +117,7 @@ parser::extend('root-varlist', function (parser $parser) {
 
 parser::extend('object-def', function (parser $parser) {
 	$type = $parser->read('type');
-	$form = $parser->read('form');
+	$form = $parser->read('che_form');
 
 	if (!empty($form->ops) && $form->ops[0] instanceof che_formal_args) {
 		throw new ParseException("A function, not an object");
