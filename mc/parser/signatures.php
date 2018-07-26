@@ -112,7 +112,7 @@ parser::extend('type', function (parser $parser) {
 
 	// "struct {foo x; bar y; ...}"?
 	try {
-		$type[] = $parser->read('anonymous-struct');
+		$type[] = $parser->read('che_anonymous_struct');
 		return new che_type(array_merge($mods, $type));
 	} catch (ParseException $e) {
 		//
@@ -145,19 +145,6 @@ parser::extend('typename', function (parser $parser) {
 		//
 	}
 	return implode(' ', $names);
-});
-
-// "struct {foo x; bar y; ...}"
-parser::extend('anonymous-struct', function (parser $parser) {
-	$parser->seq('struct', '{');
-	$lists = $parser->many('struct-def-element');
-	$parser->seq('}');
-
-	$def = new che_structdef();
-	foreach ($lists as $list) {
-		$def->add($list);
-	}
-	return $def;
 });
 
 parser::extend('union', function (parser $parser) {
