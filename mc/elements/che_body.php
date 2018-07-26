@@ -9,18 +9,17 @@ class che_body
 		$this->parts[] = $p;
 	}
 
-	function format($tab = 0)
+	function format()
 	{
-		$pref = str_repeat("\t", $tab);
 		$s = "{\n";
 		foreach ($this->parts as $part) {
-			$s .= $part->format($tab + 1);
+			$s .= tab($part->format());
 			if (!self::is_construct($part)) {
 				$s .= ';';
 			}
 			$s .= "\n";
 		}
-		$s .= "$pref}\n";
+		$s .= "}\n";
 		return $s;
 	}
 

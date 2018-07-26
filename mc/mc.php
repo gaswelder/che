@@ -25,6 +25,11 @@ require __DIR__ . '/parser/signatures.php';
 require __DIR__ . '/parser/control.php';
 require __DIR__ . '/objects.php';
 
+function tab($s)
+{
+	return "\t" . str_replace("\n", "\n\t", $s);
+}
+
 class trace
 {
 	static $enabled = false;
@@ -48,19 +53,41 @@ function mc_main($args)
 	define('CHE_OS', 'unix');
 
 	array_shift($args);
+
+	if (!empty($args) && $args[0] == 'format') {
+		array_shift($args);
+		return format($args);
+	}
+
+	return build($args);
+}
+
+function build($args)
+{
 	if (!empty($args) && $args[0] == '-t') {
 		trace::$enabled = true;
 		array_shift($args);
 	}
 
 	if (count($args) != 1) {
-		fprintf(STDERR, "Usage: che <main file>\n");
+		fprintf(STDERR, "Usage: che <package>\n");
 		return 1;
 	}
 
 	$path = array_shift($args);
 	$p = new program($path);
 	$p->compile();
+}
+
+function format($args)
+{
+	if (count($args) != 1) {
+		fprintf(STDERR, "Usage: che <package>\n");
+		return 1;
+	}
+	$path = array_shift($args);
+	$p = new program($path);
+	echo $p->format();
 }
 
 class program
@@ -70,6 +97,13 @@ class program
 	function __construct($main)
 	{
 		$this->main = $main;
+	}
+
+	function format()
+	{
+		$package = package::read($this->main);
+		$main = $package->merge();
+		return $main->format();
 	}
 
 	function compile()

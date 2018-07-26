@@ -11,11 +11,11 @@ class che_func extends che_element
 		$this->body = $body;
 	}
 
-	function format($tab = 0)
+	function format()
 	{
 		$s = $this->proto->format();
-		$s = substr($s, 0, -1);
 		// remove ';'
+		$s = substr($s, 0, -1);
 		$s .= ' ';
 		$s .= $this->body->format();
 		return $s;
