@@ -24,7 +24,7 @@ class che_enum extends che_element
 		$enum->pub = $pub;
 		while (1) {
 			try {
-				$enum->items[] = $parser->read('enum-item');
+				$enum->items[] = $parser->read('che_enum_item');
 			} catch (ParseException $e) {
 				break;
 			}
@@ -55,7 +55,7 @@ class che_enum_item extends che_element
 	static function parse(parser $parser)
 	{
 		$item = new self();
-		$item->id = $parser->read('identifier');
+		$item->id = $parser->read('che_identifier');
 
 		if ($parser->maybe('=')) {
 			$item->value = $parser->read('literal');

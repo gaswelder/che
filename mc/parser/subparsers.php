@@ -13,21 +13,13 @@ parser::extend('root', function (parser $parser) {
 	return $parser->any([
 		'macro',
 		'che_typedef',
-		'comment',
+		'che_comment',
 		'che_import',
-		'enum-def',
-		'struct-def-root',
+		'che_enum',
+		'che_structdef',
 		'che_func',
 		'root-varlist'
 	]);
-});
-
-parser::extend('comment', function (parser $parser) {
-	return che_comment::parse($parser);
-});
-
-parser::extend('struct-def-root', function (parser $parser) {
-	return che_structdef::parse($parser);
 });
 
 // <macro>: "#include" <string> | "#define" <name> <string>
@@ -65,7 +57,7 @@ parser::extend('macro', function (parser $parser) {
 parser::extend('struct-def-element', function (parser $parser) {
 	$list = $parser->any([
 		'embedded-union',
-		'varlist'
+		'che_varlist'
 	]);
 	$parser->expect(';');
 	return $list;
@@ -79,43 +71,15 @@ parser::extend('embedded-union', function (parser $parser) {
 	return $list;
 });
 
-parser::extend('varlist', function (parser $parser) {
-	$type = $parser->read('type');
-	$list = new che_varlist($type);
-
-	$next = $parser->any(['che_assignment', 'form']);
-	$list->add($next);
-
-	while (1) {
-		try {
-			$parser->expect(',');
-		} catch (ParseException $e) {
-			break;
-		}
-
-		try {
-			$next = $parser->any(['che_assignment', 'form']);
-			$list->add($next);
-		} catch (ParseException $e) {
-			break;
-		}
-	}
-	return $list;
-});
-
-parser::extend('body', function (parser $parser) {
-	return che_body::parse($parser);
-});
-
 parser::extend('body-expr', function (parser $parser) {
-	$expr = $parser->read('expr');
+	$expr = $parser->read('che_expr');
 	$parser->expect(';');
 	return $expr;
 });
 
 parser::extend('body-part', function (parser $parser) {
 	return $parser->any([
-		'comment',
+		'che_comment',
 		'if',
 		'for',
 		'while',
@@ -128,13 +92,13 @@ parser::extend('body-part', function (parser $parser) {
 });
 
 parser::extend('body-varlist', function (parser $parser) {
-	list($list) = $parser->seq('$varlist', ';');
+	list($list) = $parser->seq('$che_varlist', ';');
 	return $list;
 });
 
 parser::extend('body-or-part', function (parser $parser) {
 	try {
-		return $parser->read('body');
+		return $parser->read('che_body');
 	} catch (ParseException $e) {
 		//
 	}
@@ -142,14 +106,6 @@ parser::extend('body-or-part', function (parser $parser) {
 	$b = new che_body();
 	$b->add($parser->read('body-part'));
 	return $b;
-});
-
-parser::extend('enum-def', function (parser $parser) {
-	return che_enum::parse($parser);
-});
-
-parser::extend('enum-item', function (parser $parser) {
-	return che_enum_item::parse($parser);
 });
 
 parser::extend('root-varlist', function (parser $parser) {
@@ -169,7 +125,7 @@ parser::extend('object-def', function (parser $parser) {
 
 	$expr = null;
 	try {
-		list($expr) = $parser->seq('=', '$expr');
+		list($expr) = $parser->seq('=', '$che_expr');
 	} catch (ParseException $e) {
 		//
 	}

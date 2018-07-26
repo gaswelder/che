@@ -11,7 +11,7 @@ class che_function_call extends che_element
 		$parser->expect('(');
 		while (1) {
 			try {
-				$call->args[] = $parser->read('expr');
+				$call->args[] = $parser->read('che_expr');
 			} catch (ParseException $e) {
 				break;
 			}

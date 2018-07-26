@@ -52,11 +52,11 @@ class che_expr extends che_element
 			//
 		}
 
-		$expr->add($parser->read('atom'));
+		$expr->add($parser->read('che_expr_atom'));
 
 		while (!$parser->s->ended() && $parser->is_op($parser->s->peek())) {
 			$expr->add($parser->read('operator'));
-			$expr->add($parser->read('atom'));
+			$expr->add($parser->read('che_expr_atom'));
 		}
 
 		return $expr;
@@ -154,10 +154,10 @@ class che_expr_atom extends che_element
 		}
 
 		try {
-			list($expr) = $parser->seq('(', '$expr', ')');
+			list($expr) = $parser->seq('(', '$che_expr', ')');
 			$ops[] = ['expr', $expr];
 		} catch (ParseException $e) {
-			$ops[] = ['id', $parser->read('identifier')];
+			$ops[] = ['id', $parser->read('che_identifier')];
 		}
 
 		while (1) {

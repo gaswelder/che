@@ -16,6 +16,31 @@ class che_varlist extends che_element
 		$this->forms = array();
 	}
 
+	static function parse(parser $parser)
+	{
+		$type = $parser->read('type');
+		$list = new self($type);
+
+		$next = $parser->any(['che_assignment', 'form']);
+		$list->add($next);
+
+		while (1) {
+			try {
+				$parser->expect(',');
+			} catch (ParseException $e) {
+				break;
+			}
+
+			try {
+				$next = $parser->any(['che_assignment', 'form']);
+				$list->add($next);
+			} catch (ParseException $e) {
+				break;
+			}
+		}
+		return $list;
+	}
+
 	function add($var)
 	{
 		if ($var instanceof che_form) {

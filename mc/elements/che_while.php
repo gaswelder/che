@@ -1,6 +1,6 @@
 <?php
 
-class che_while
+class che_while extends che_element
 {
 	public $cond;
 	public $body;
@@ -11,17 +11,16 @@ class che_while
 		$this->body = $body;
 	}
 
-	function format($tab = 0)
+	function format()
 	{
-		$p = str_repeat("\t", $tab);
-		$s = $p . sprintf("while (%s) ", $this->cond->format());
-		$s .= $this->body->format($tab);
+		$s = sprintf("while (%s) ", $this->cond->format());
+		$s .= $this->body->format();
 		return $s;
 	}
 
 	static function parse(parser $parser)
 	{
-		list($cond, $body) = $parser->seq('while', '(', '$expr', ')', '$body');
+		list($cond, $body) = $parser->seq('while', '(', '$che_expr', ')', '$che_body');
 		return new self($cond, $body);
 	}
 }

@@ -1,7 +1,7 @@
 <?php
 
 parser::extend('if', function (parser $parser) {
-	list($expr, $ok) = $parser->seq('if', '(', '$expr', ')', '$body-or-part');
+	list($expr, $ok) = $parser->seq('if', '(', '$che_expr', ')', '$body-or-part');
 	try {
 		list($else) = $parser->seq('else', '$body-or-part');
 		return new che_if($expr, $ok, $else);
@@ -40,6 +40,6 @@ parser::extend('return-empty', function (parser $parser) {
 });
 
 parser::extend('return-expr', function (parser $parser) {
-	list($expr) = $parser->seq('return', '$expr', ';');
+	list($expr) = $parser->seq('return', '$che_expr', ';');
 	return new che_return($expr->parts);
 });

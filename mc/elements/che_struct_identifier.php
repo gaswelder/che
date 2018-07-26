@@ -14,7 +14,7 @@ class che_struct_identifier extends che_element
 
 	static function parse(parser $parser)
 	{
-		list($id) = $parser->seq('struct', '$identifier');
+		list($id) = $parser->seq('struct', '$che_identifier');
 		$sid = new self();
 		$sid->name = $id;
 		return $sid;

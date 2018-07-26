@@ -86,7 +86,7 @@ class che_func extends che_element
 		$proto = new c_prototype($type, $form, $args);
 		$proto->pub = $pub;
 
-		$body = $parser->read('body');
+		$body = $parser->read('che_body');
 		return new che_func($proto, $body);
 	}
 }

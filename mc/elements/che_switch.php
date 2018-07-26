@@ -22,7 +22,7 @@ class che_switch
 	static function parse(parser $parser)
 	{
 		$sw = new che_switch();
-		list($cond) = $parser->seq('switch', '(', '$expr', ')', '{');
+		list($cond) = $parser->seq('switch', '(', '$che_expr', ')', '{');
 
 		$sw->cond = $cond;
 
@@ -49,7 +49,7 @@ class che_switch_case extends che_element
 		$parser->expect('case');
 		
 		// <id> | <literal>
-		$val = $parser->any(['identifier', 'literal']);
+		$val = $parser->any(['che_identifier', 'literal']);
 		$parser->expect(':');
 	
 		// <body-part>...

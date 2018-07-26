@@ -16,7 +16,7 @@ class che_defer
 
 	static function parse(parser $parser)
 	{
-		list($expr) = $parser->seq('defer', '$expr', ';');
+		list($expr) = $parser->seq('defer', '$che_expr', ';');
 		return new self($expr);
 	}
 }

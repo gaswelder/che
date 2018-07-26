@@ -1,6 +1,6 @@
 <?php
 
-class che_for
+class che_for extends che_element
 {
 	public $init;
 	public $cond;
@@ -31,8 +31,8 @@ class che_for
 	static function parse(parser $parser)
 	{
 		$parser->seq('for', '(');
-		$init = $parser->any(['varlist', 'expr']);
-		list($cond, $act, $body) = $parser->seq(';', '$expr', ';', '$expr', ')', '$body');
+		$init = $parser->any(['che_varlist', 'che_expr']);
+		list($cond, $act, $body) = $parser->seq(';', '$che_expr', ';', '$che_expr', ')', '$che_body');
 		return new self($init, $cond, $act, $body);
 	}
 }

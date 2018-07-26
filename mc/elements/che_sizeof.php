@@ -25,7 +25,7 @@ class che_sizeof extends che_element
 		if ($parser->maybe('(')) {
 			$brace = true;
 		}
-		$arg = $parser->any(['typeform', 'expr']);
+		$arg = $parser->any(['che_typeform', 'che_expr']);
 		if ($brace) {
 			$parser->expect(')');
 		}

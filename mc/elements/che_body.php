@@ -37,7 +37,7 @@ class che_body
 		while (1) {
 			try {
 				$part = $parser->any([
-					'comment',
+					'che_comment',
 					'if',
 					'for',
 					'while',

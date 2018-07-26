@@ -10,7 +10,7 @@ parser::extend('obj-der', function (parser $parser) {
 	}
 
 	try {
-		$id = $parser->read('identifier');
+		$id = $parser->read('che_identifier');
 	} catch (ParseException $e) {
 		$id = new che_identifier('');
 	}
@@ -33,7 +33,7 @@ parser::extend('obj-der', function (parser $parser) {
 parser::extend('index-signature', function (parser $parser) {
 	$parser->expect('[');
 	try {
-		$expr = $parser->read('expr');
+		$expr = $parser->read('che_expr');
 		$parser->expect(']');
 		return '[' . $expr->format() . ']';
 	} catch (ParseException $e) {
@@ -90,10 +90,6 @@ parser::extend('call-signature', function (parser $parser) {
 	return $args;
 });
 
-parser::extend('typeform', function (parser $parser) {
-	return che_typeform::parse($parser);
-});
-
 parser::extend('form', function (parser $parser) {
 	return che_form::parse($parser);
 });
@@ -124,7 +120,7 @@ parser::extend('type', function (parser $parser) {
 
 	// "struct foo"?
 	try {
-		$type[] = $parser->read('struct-typename');
+		$type[] = $parser->read('che_struct_identifier');
 		return new che_type(array_merge($mods, $type));
 	} catch (ParseException $e) {
 		//
@@ -149,11 +145,6 @@ parser::extend('typename', function (parser $parser) {
 		//
 	}
 	return implode(' ', $names);
-});
-
-// "struct foo"
-parser::extend('struct-typename', function (parser $parser) {
-	return che_struct_identifier::parse($parser);
 });
 
 // "struct {foo x; bar y; ...}"

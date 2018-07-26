@@ -2,18 +2,14 @@
 
 parser::extend('literal', function (parser $parser) {
 	return $parser->any([
-		'literal-number',
+		'che_number',
 		'literal-string',
 		'literal-char',
-		'struct-literal',
+		'che_struct_literal',
 		'array-literal',
 		//'addr-literal',
 		//'word-literal'
 	]);
-});
-
-parser::extend('literal-number', function (parser $parser) {
-	return che_number::parse($parser);
 });
 
 parser::extend('literal-string', function (parser $parser) {
@@ -29,13 +25,8 @@ parser::extend('word-literal', function (parser $parser) {
 	return new che_literal($t->content);
 });
 
-// <struct-literal>: "{" "." <id> "=" <literal> [, ...] "}"
-parser::extend('struct-literal', function (parser $parser) {
-	return che_struct_literal::parse($parser);
-});
-
 parser::extend('struct-literal-element', function (parser $parser) {
-	list($id, $val) = $parser->seq('.', '$identifier', '=', '$expr');
+	list($id, $val) = $parser->seq('.', '$che_identifier', '=', '$che_expr');
 	return new che_struct_literal_element($id, $val);
 });
 

@@ -1,9 +1,5 @@
 <?php
 
-parser::extend('expr', function (parser $parser) {
-	return che_expr::parse($parser);
-});
-
 parser::extend('operator', function (parser $parser) {
 	if (!$parser->is_op($parser->s->peek())) {
 		throw new ParseException("Not an operator");
@@ -30,19 +26,19 @@ parser::extend('right-operator', function (parser $parser) {
 });
 
 parser::extend('index-op', function (parser $parser) {
-	list($expr) = $parser->seq('[', '$expr', ']');
+	list($expr) = $parser->seq('[', '$che_expr', ']');
 	return ['index', $expr];
 });
 
 parser::extend('struct-access-op', function (parser $parser) {
 	try {
-		list($id) = $parser->seq('.', '$identifier');
+		list($id) = $parser->seq('.', '$che_identifier');
 		return ['struct-access-dot', $id];
 	} catch (ParseException $e) {
 		//
 	}
 
-	list($id) = $parser->seq('->', '$identifier');
+	list($id) = $parser->seq('->', '$che_identifier');
 	return ['struct-access-arrow', $id];
 });
 
@@ -50,19 +46,11 @@ parser::extend('call-op', function (parser $parser) {
 	return che_function_call::parse($parser);
 });
 
-parser::extend('atom', function (parser $parser) {
-	return che_expr_atom::parse($parser);
-});
-
 parser::extend('typecast', function (parser $parser) {
-	list($tf) = $parser->seq('(', '$typeform', ')');
+	list($tf) = $parser->seq('(', '$che_typeform', ')');
 	return ['cast', $tf];
 });
 
 parser::extend('constant-expression', function (parser $parser) {
-	return $parser->any(['literal', 'identifier']);
-});
-
-parser::extend('identifier', function (parser $parser) {
-	return che_identifier::parse($parser);
+	return $parser->any(['literal', 'che_identifier']);
 });
