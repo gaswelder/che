@@ -64,11 +64,7 @@ parser::extend('struct-def-element', function (parser $parser) {
 });
 
 parser::extend('embedded-union', function (parser $parser) {
-	list($u, $form) = $parser->seq('$union', '$che_form');
-	$type = new che_type(array($u));
-	$list = new che_varlist($type);
-	$list->add($form);
-	return $list;
+	return che_embedded_union::parse($parser);
 });
 
 parser::extend('body-expr', function (parser $parser) {

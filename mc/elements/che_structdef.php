@@ -20,9 +20,9 @@ class che_structdef extends che_element
 		return new c_forward_declaration($this->name->format() . ';');
 	}
 
-	function add(che_varlist $list)
+	function add(che_struct_fields $fields)
 	{
-		$this->fields[] = $list;
+		$this->fields[] = $fields;
 	}
 
 	function format()
@@ -46,7 +46,7 @@ class che_structdef extends che_element
 	{
 		$pub = $parser->maybe('pub');
 		list($id) = $parser->seq('$che_struct_identifier', '{');
-		$lists = $parser->many('struct-def-element');
+		$lists = $parser->many('che_struct_fields');
 		$parser->seq('}', ';');
 
 		$def = new self($id, $lists);
@@ -73,5 +73,34 @@ class c_struct_forward_declaration
 	function format()
 	{
 		return $this->s;
+	}
+}
+
+// One type, many forms.
+class che_struct_fields extends che_element
+{
+	public $type;
+	public $forms = [];
+
+	static function parse(parser $parser)
+	{
+		$s = new self;
+		$s->type = $parser->read('type');
+		$s->forms[] = $parser->read('che_form');
+		while ($parser->maybe(',')) {
+			$s->forms[] = $parser->read('che_form');
+		}
+		$parser->expect(';');
+		return $s;
+	}
+
+	function format()
+	{
+		$s = $this->type->format() . ' ';
+		foreach ($this->forms as $i => $f) {
+			if ($i > 0) $s .= ', ';
+			$s .= $f->format();
+		}
+		return $s;
 	}
 }

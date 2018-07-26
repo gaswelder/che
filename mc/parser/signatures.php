@@ -122,6 +122,13 @@ parser::extend('type', function (parser $parser) {
 		//
 	}
 
+	try {
+		$type[] = $parser->read('che_embedded_union');
+		return new che_type(array_merge($mods, $type));
+	} catch (ParseException $e) {
+		//
+	}
+
 	$type[] = $parser->read('typename');
 	return new che_type(array_merge($mods, $type));
 });
