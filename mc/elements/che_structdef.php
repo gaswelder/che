@@ -27,7 +27,8 @@ class che_structdef extends che_element
 
 	function format()
 	{
-		$s = $this->name->format();
+		$s = 'struct';
+		if ($this->name) $s .= ' ' . $this->name->format();
 		if (empty($this->fields)) {
 			return $s;
 		}
@@ -35,7 +36,7 @@ class che_structdef extends che_element
 		$s .= " {\n";
 		foreach ($this->fields as $list) {
 			foreach ($list->forms as $f) {
-				$s .= sprintf("\t%s %s;\n", $list->type->format(), $f->format());
+				$s .= tab($list->type->format() . ' ' . $f->format() . ";\n");
 			}
 		}
 		$s .= "}";
@@ -44,20 +45,28 @@ class che_structdef extends che_element
 
 	static function parse(parser $parser)
 	{
-		$pub = $parser->maybe('pub');
-		list($id) = $parser->seq('$che_struct_identifier', '{');
-		$lists = $parser->many('che_struct_fields');
+		$def = new self;
+		$def->pub = $parser->maybe('pub');
+		$parser->seq('struct');
+		try {
+			$def->name = $parser->read('che_identifier');
+		} catch (ParseException $e) {
+			//
+		}
+		if ($def->pub && !$def->name) {
+			throw new ParseException("unnamed structs can't be pub");
+		}
+		$parser->seq('{');
+		$def->fields = $parser->many('che_struct_fields');
 		$parser->seq('}', ';');
 
-		$def = new self($id, $lists);
-		$def->pub = $pub;
 		return $def;
 	}
 
 	function translate()
 	{
 		return [
-			new c_struct_forward_declaration($this->name->format() . ";\n"),
+			new c_struct_forward_declaration('struct ' . $this->name->format() . ";\n"),
 			$this
 		];
 	}

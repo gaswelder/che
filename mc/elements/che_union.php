@@ -13,7 +13,7 @@ class che_union
 	{
 		$s = "union {\n";
 		foreach ($this->fields as $list) {
-			$s .= "\t" . $list->format() . ";\n";
+			$s .= tab($list->format()) . ";\n";
 		}
 		$s .= "}\n";
 		return $s;

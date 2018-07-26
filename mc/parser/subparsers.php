@@ -54,19 +54,6 @@ parser::extend('macro', function (parser $parser) {
 	}
 });
 
-parser::extend('struct-def-element', function (parser $parser) {
-	$list = $parser->any([
-		'embedded-union',
-		'che_varlist'
-	]);
-	$parser->expect(';');
-	return $list;
-});
-
-parser::extend('embedded-union', function (parser $parser) {
-	return che_embedded_union::parse($parser);
-});
-
 parser::extend('body-expr', function (parser $parser) {
 	$expr = $parser->read('che_expr');
 	$parser->expect(';');

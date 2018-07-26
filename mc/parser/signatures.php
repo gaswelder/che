@@ -108,7 +108,7 @@ parser::extend('type', function (parser $parser) {
 
 	// "struct {foo x; bar y; ...}"?
 	try {
-		$type[] = $parser->read('che_anonymous_struct');
+		$type[] = $parser->read('che_structdef');
 		return new che_type(array_merge($mods, $type));
 	} catch (ParseException $e) {
 		//
