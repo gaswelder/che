@@ -1,15 +1,7 @@
 <?php
 
 parser::extend('literal', function (parser $parser) {
-	return $parser->any([
-		'che_number',
-		'literal-string',
-		'literal-char',
-		'che_struct_literal',
-		'array-literal',
-		//'addr-literal',
-		//'word-literal'
-	]);
+	return che_literal::parse($parser);
 });
 
 parser::extend('literal-string', function (parser $parser) {

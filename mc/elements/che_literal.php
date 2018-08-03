@@ -12,6 +12,19 @@ class che_literal extends che_element
 	{
 		return $this->content;
 	}
+
+	static function parse(parser $parser)
+	{
+		return $parser->any([
+			'che_number',
+			'literal-string',
+			'literal-char',
+			'che_struct_literal',
+			'array-literal',
+			//'addr-literal',
+			//'word-literal'
+		]);
+	}
 }
 
 class che_string extends che_literal
