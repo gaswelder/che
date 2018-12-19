@@ -1,5 +1,5 @@
 import "zio"
-import "clip/str"
+import "string"
 
 pub char *json_format(json_node *n)
 {

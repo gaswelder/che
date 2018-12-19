@@ -1,4 +1,4 @@
-import "clip/str"
+import "string"
 
 int main()
 {
