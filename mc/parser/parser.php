@@ -158,7 +158,7 @@ class parser
 	{
 		$s = $this->context();
 		$pref = str_repeat('  ', $this->level);
-		trace::line("$pref $m |    $s");
+		trace::line("$s$pref | $m");
 	}
 
 	function add_type($name)

@@ -53,6 +53,16 @@ pub size_t str_len(str *s)
 	return s->len;
 }
 
+/*
+ * Frees the string container, but return the resulting string.
+ * The string returned will have to be deallocated by the caller.
+ */
+pub char *str_unpack(str *s) {
+	char *c = s->data;
+	free(s);
+	return c;
+}
+
 bool grow(str *s)
 {
 	if(s->max > SIZE_MAX/2) {

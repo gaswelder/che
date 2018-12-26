@@ -4,6 +4,7 @@ Give it an explicit copy (using strdup, for example) if needed.
 
 Example: parse a list like "[a,b,c,d,e,]"
 
+```c
 	// To simplify the example we assume that the separator (comma)
 	// follows every element.
 	const char *list = "[a,b,c,d,e,]";
@@ -32,3 +33,4 @@ Example: parse a list like "[a,b,c,d,e,]"
 	// And nothing must follow the list
 	assert(buf_get(b) == EOF);
 	buf_free(b);
+```
