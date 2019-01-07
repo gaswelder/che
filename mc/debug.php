@@ -5,7 +5,7 @@
 function stop_on_error()
 {
 	set_error_handler(function ($level, $msg, $file, $line) {
-		if (!error_reporting())return;
+		if (!error_reporting()) return;
 		fwrite(STDERR, "\nError: $msg at $file:$line\n\n");
 		__debug::print_source($file, $line);
 		__debug::print_stack();
@@ -46,9 +46,9 @@ class __debug
 			$f .= "$r[class]$r[type]";
 		}
 		$f .= $r['function'];
-		$f .= '('.self::format_args($r['args']).')';
+		$f .= '(' . self::format_args($r['args']) . ')';
 		if (isset($r['line'])) {
-			$f .= " / ".basename($r['file']).':'.$r['line'];
+			$f .= " / " . basename($r['file']) . ':' . $r['line'];
 		}
 		return $f;
 	}
@@ -64,9 +64,9 @@ class __debug
 
 			if (is_string($arg)) {
 				if (mb_strlen($arg) > 20) {
-					$arg = mb_substr($arg, 0, 17).'...';
+					$arg = mb_substr($arg, 0, 17) . '...';
 				}
-				$arg = "'".$arg."'";
+				$arg = "'" . $arg . "'";
 			}
 			$parts[] = $arg;
 		}
@@ -88,7 +88,7 @@ class __debug
 		$lines = file($file);
 		$n = count($lines);
 		if ($l2 >= $n) {
-			$l2 = $n-1;
+			$l2 = $n - 1;
 		}
 		for ($i = $l1; $i <= $l2; $i++) {
 			/*
@@ -100,7 +100,7 @@ class __debug
 			/*
 			 * Print the line number and the line itself.
 			 */
-			fprintf(STDERR, "\t%d\t%s", $i+1, $lines[$i]);
+			fprintf(STDERR, "\t%d\t%s", $i + 1, $lines[$i]);
 		}
 		fwrite(STDERR, "\n");
 	}
