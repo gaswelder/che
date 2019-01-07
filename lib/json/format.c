@@ -27,7 +27,7 @@ void json_write(zio *z, json_node *n)
 			size_t len = json_size(n);
 			zprintf(z, "{");
 			for(size_t i = 0; i < len; i++) {
-				zprintf(z, "\"%s\": ", json_key(n, i));
+				zprintf(z, "\"%s\":", json_key(n, i));
 				json_write(z, json_val(n, i));
 				if(i + 1 < len) {
 					zprintf(z, ",");
@@ -49,7 +49,7 @@ void json_write(zio *z, json_node *n)
 			break;
 
 		case JSON_STR:
-			zprintf(z, "\"%s\"", json_str(n));
+			write_string(z, n);
 			break;
 
 		case JSON_NUM:
@@ -64,4 +64,33 @@ void json_write(zio *z, json_node *n)
 			zprintf(z, "null");
 			break;
 	}
+}
+
+/*
+ * Writes a node's escaped string contents.
+ */
+void write_string(zio *z, json_node *none) {
+	const char *content = json_str(none);
+	
+	size_t n = strlen(content);
+	zputc('"', z);
+	for (size_t i = 0; i < n; i++) {
+		const char c = content[i];
+		if (c == '\n') {
+			zputc('\\', z);
+			zputc('n', z);
+			continue;
+		}
+		if (c == '\t') {
+			zputc('\\', z);
+			zputc('t', z);
+			continue;
+		}
+		if (c == '\\' || c == '\"' || c == '/') {
+			zputc('\\', z);
+		}
+		zputc(c, z);
+	}
+	zputc('"', z);
+	// zprintf(z, "\"%s\"", json_str(n));
 }

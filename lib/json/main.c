@@ -124,6 +124,9 @@ pub json_node *json_newarr()
  */
 pub json_node *json_newstr(const char *s)
 {
+	if (s == NULL) {
+		return json_newnull();
+	}
 	json_node *obj = newnode(JSON_STR);
 	if( !obj ) return NULL;
 
