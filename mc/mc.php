@@ -59,6 +59,11 @@ function mc_main($args)
 		return format($args);
 	}
 
+	if (!empty($args) && $args[0] == 'lexer') {
+		array_shift($args);
+		return lexer($args);
+	}
+
 	return build($args);
 }
 
@@ -93,6 +98,30 @@ function format($args)
 	$path = array_shift($args);
 	$p = new program($path);
 	echo $p->format();
+}
+
+function lexer($args)
+{
+	if (count($args) > 0) {
+		fprintf(STDERR, "'che lexer' doesn't accept arguments");
+		return 1;
+	}
+	$src = '';
+	while (true) {
+		$line = fgets(STDIN);
+		if ($line === false) break;
+		$src .= $line;
+	}
+
+	$s = new lexer_1($src);
+	while (true) {
+		$tok = $s->get();
+		if (!$tok) break;
+		if ($tok->type == 'error') {
+			throw new Exception("$tok->content at $tok->pos");
+		}
+		echo json_encode($tok), "\n";
+	}
 }
 
 class program

@@ -33,7 +33,12 @@ class lexer
 
 	function ended()
 	{
-		return count($this->toks) == 0;
+		$t = $this->get();
+		if ($t == null) {
+			return true;
+		}
+		$this->unget($t);
+		return false;
 	}
 
 	function get()
