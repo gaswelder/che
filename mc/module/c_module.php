@@ -39,6 +39,6 @@ class c_module
 		if (!file_exists($dir) && !mkdir($dir)) {
 			exit(1);
 		}
-		return $dir . '/' . basename($this->name) . '-' . md5($this->name) . '.c';
+		return $dir . '/' . basename($this->name) . '-' . md5(realpath($this->name)) . '.c';
 	}
 }

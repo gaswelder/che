@@ -148,6 +148,8 @@ class program
 
 function c99($sources, $name, $link)
 {
+	$sources = array_unique($sources);
+	$link = array_unique($link);
 	$cmd = 'c99 -Wall -Wextra -Werror -pedantic -pedantic-errors';
 	$cmd .= ' -fmax-errors=3';
 	$cmd .= ' -g ' . implode(' ', $sources);
@@ -155,6 +157,7 @@ function c99($sources, $name, $link)
 	foreach ($link as $name) {
 		$cmd .= ' -l ' . $name;
 	}
+	debmsg("$cmd\n");
 	exec($cmd, $output, $ret);
 	return $ret;
 }
