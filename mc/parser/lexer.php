@@ -2,22 +2,38 @@
 
 require __DIR__ . '/lexer_1.php';
 
-class lexer
+function debmsg($m)
 {
-	private $toks = [];
+	echo "$m\n";
+}
 
-	function __construct($path)
-	{
+function read($path)
+{
+	static $cache = [];
+	if (!isset($cache[$path])) {
+		$toks = [];
 		$s = new lexer_1(file_get_contents($path));
-		$this->toks = [];
+		debmsg('parsing ' . $path);
 		while (true) {
 			$tok = $s->get();
 			if (!$tok) break;
 			if ($tok->type == 'error') {
 				throw new Exception("$tok->content at $tok->pos");
 			}
-			$this->toks[] = $tok;
+			$toks[] = $tok;
 		}
+		$cache[$path] = $toks;
+	}
+	return $cache[$path];
+}
+
+class lexer
+{
+	private $toks = [];
+
+	function __construct($path)
+	{
+		$this->toks = read($path);
 	}
 
 	function ended()
