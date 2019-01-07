@@ -69,6 +69,11 @@ function build($args)
 		array_shift($args);
 	}
 
+	if (!empty($args) && $args[0] == '-v') {
+		__debug::$messages = true;
+		array_shift($args);
+	}
+
 	if (count($args) != 1) {
 		fprintf(STDERR, "Usage: che <package>\n");
 		return 1;

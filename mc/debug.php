@@ -13,8 +13,21 @@ function stop_on_error()
 	});
 }
 
+function debmsg($m)
+{
+	__debug::message($m);
+}
+
 class __debug
 {
+	static $messages = false;
+
+	static function message($m)
+	{
+		if (!self::$messages) return;
+		echo "$m\n";
+	}
+
 	static function print_stack()
 	{
 		fwrite(STDERR, "Stack:\n");

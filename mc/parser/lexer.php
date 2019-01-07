@@ -2,11 +2,6 @@
 
 require __DIR__ . '/lexer_1.php';
 
-function debmsg($m)
-{
-	echo "$m\n";
-}
-
 function read($path)
 {
 	static $cache = [];
