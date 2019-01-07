@@ -154,6 +154,7 @@ class lexer_1
 		/*
 		 * Special character.
 		 */
+		$pos = $this->s->pos();
 		foreach (self::$symbols as $sym) {
 			if ($s->skip_literal($sym)) {
 				return token::make($sym, null, $pos);

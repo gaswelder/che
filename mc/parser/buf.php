@@ -47,8 +47,8 @@ class buf
 		}
 		$ch = $this->str[$this->pos++];
 		if ($ch == "\n") {
-			$this->line++;
 			$this->linelengths[] = $this->col;
+			$this->line++;
 			$this->col = 1;
 		} else {
 			$this->col++;
@@ -58,6 +58,9 @@ class buf
 
 	function unget($ch)
 	{
+		if (strlen($ch) != 1) {
+			throw new Exception("got " . $ch);
+		}
 		$this->pos--;
 		assert($this->str[$this->pos] == $ch);
 		if ($ch == "\n") {
@@ -121,7 +124,10 @@ class buf
 		if (!$this->literal_follows($s)) {
 			return false;
 		}
-		$this->pos += $n;
+		while ($n > 0) {
+			$n--;
+			$this->get();
+		}
 		return true;
 	}
 

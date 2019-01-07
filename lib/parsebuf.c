@@ -116,7 +116,7 @@ pub char *buf_read_set(parsebuf *b, const char *set) {
 // }
 
 pub bool buf_skip_literal(parsebuf *b, const char *literal) {
-	if (!literal_follows(b, literal)) {
+	if (!buf_literal_follows(b, literal)) {
 		return false;
 	}
 	size_t n = strlen(literal);
@@ -126,7 +126,10 @@ pub bool buf_skip_literal(parsebuf *b, const char *literal) {
 	return true;
 }
 
-bool literal_follows(parsebuf *b, const char *literal) {
+/*
+ * Returns true if the given literal is next in the buffer.
+ */
+pub bool buf_literal_follows(parsebuf *b, const char *literal) {
 	const char *p1 = b->s + b->pos;
 	const char *p2 = literal;
 
@@ -151,7 +154,7 @@ pub char *buf_skip_until(parsebuf *b, const char *literal) {
 	char *p = s;
 
 	while (buf_more(b)) {
-		if (literal_follows(b, literal)) {
+		if (buf_literal_follows(b, literal)) {
 			break;
 		}
 		*p = buf_get(b);
