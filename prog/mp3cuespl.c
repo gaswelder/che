@@ -30,14 +30,14 @@ int main(int argc, char *argv[])
 
 	int n = cue_ntracks(c);
 	for(int i = 0; i < n; i++) {
-		struct cuetrack *track = cue_track(c, i);
+		cuetrack_t *track = cue_track(c, i);
 
 		char fname[1000];
 		snprintf(fname, sizeof(fname), "%02d. %s.mp3", i+1, track->title);
 
-		struct mp3time pos = {0};
+		mp3time_t pos = {0};
 		if(i+1 < n) {
-			struct cuetrack *next = cue_track(c, i+1);
+			cuetrack_t *next = cue_track(c, i+1);
 			pos.usec = next->pos_usec;
 		}
 		else {

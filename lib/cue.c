@@ -15,6 +15,7 @@ pub struct cuetrack {
 	char title[300];
 	uint64_t pos_usec;
 };
+typedef struct cuetrack cuetrack_t;
 
 /*
  * Sheet structure, the topmost element

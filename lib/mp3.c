@@ -54,6 +54,7 @@ pub struct mp3time {
 };
 
 typedef struct mp3file_s mp3file;
+typedef struct mp3time mp3time_t;
 
 /*
  * Opens an MP3 file and finds the beginning of the stream.
