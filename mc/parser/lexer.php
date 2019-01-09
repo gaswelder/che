@@ -1,5 +1,6 @@
 <?php
 
+require_once __DIR__ . '/buf.php';
 require __DIR__ . '/lexer_1.php';
 
 function read($path)
@@ -39,6 +40,11 @@ class lexer
 		}
 		$this->unget($t);
 		return false;
+	}
+
+	function more()
+	{
+		return !$this->ended();
 	}
 
 	function get()

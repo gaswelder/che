@@ -32,7 +32,7 @@ int main(int argc, char *argv[])
 	for(int i = 0; i < n; i++) {
 		cuetrack_t *track = cue_track(c, i);
 
-		char fname[1000];
+		char fname[1000] = {};
 		snprintf(fname, sizeof(fname), "%02d. %s.mp3", i+1, track->title);
 
 		mp3time_t pos = {0};
