@@ -16,6 +16,6 @@ class c_assignment
 
     function format()
     {
-        return $this->name->format() . ' = ' . format_expression($this->value);
+        return $this->name->format() . ' = ' . $this->value->format();
     }
 }

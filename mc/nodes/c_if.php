@@ -23,7 +23,7 @@ class c_if
 
     function format()
     {
-        $s = sprintf('if (%s) %s', format_expression($this->condition), $this->body->format());
+        $s = sprintf('if (%s) %s', $this->condition->format(), $this->body->format());
         if ($this->else) {
             $s .= ' else ' . $this->else->format();
         }

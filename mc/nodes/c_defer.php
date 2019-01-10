@@ -15,6 +15,6 @@ class c_defer
 
     function format()
     {
-        return 'defer ' . format_expression($this->expression) . ';';
+        return 'defer ' . $this->expression->format() . ';';
     }
 }

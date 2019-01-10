@@ -32,9 +32,9 @@ class c_for
     {
         return sprintf(
             'for (%s; %s; %s) %s',
-            format_expression($this->init),
-            format_expression($this->condition),
-            format_expression($this->action),
+            $this->init->format(),
+            $this->condition->format(),
+            $this->action->format(),
             $this->body->format()
         );
     }

@@ -27,7 +27,7 @@ class c_function_call
         $s = $this->name->format() . '(';
         foreach ($this->arguments as $i => $argument) {
             if ($i > 0) $s .= ', ';
-            $s .= format_expression($argument);
+            $s .= $argument->format();
         }
         $s .= ')';
         return $s;

@@ -21,6 +21,6 @@ class c_variable_declaration
     {
         return $this->type->format() . ' '
             . $this->form->format() . ' = '
-            . format_expression($this->value);
+            . $this->value->format();
     }
 }

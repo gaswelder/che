@@ -18,6 +18,6 @@ class c_while
 
     function format()
     {
-        return sprintf('while (%s) %s', format_expression($this->condition), $this->body->format());
+        return sprintf('while (%s) %s', $this->condition->format(), $this->body->format());
     }
 }

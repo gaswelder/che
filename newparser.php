@@ -18,6 +18,7 @@ foreach (glob('mc/nodes/*.php') as $path) {
 // $lexer = new lexer('prog/rand.c');
 $path = 'prog/mp3cuespl.c';
 // $path = 'test/types.c';
+// $path = 'test/expressions.c';
 $lexer = new lexer($path);
 $lexer->typenames = typenames($path);
 $m = parse_program($lexer);
@@ -35,42 +36,76 @@ function parse_program($lexer)
     }
 }
 
-function format_expression($expression)
-{
-    $s = '';
-    foreach ($expression as $atom) {
-        if (is_string($atom)) {
-            $s .= ' ' . $atom . ' ';
-            continue;
-        }
-        if (get_class($atom) == 'token') {
-            $s .= ' ' . $atom->type . ' ';
-            continue;
-        }
-        $s .= $atom->format();
-    }
-    return $s;
-}
-
 function is_op($token)
 {
-    $ops = ['+', '-', '<', '>', '*', '/', '!=', '->', '.'];
+    $ops = [
+        '+', '-', '*', '/', '=', '|', '&', '~', '^', '<', '>', '?',
+        ':', '%', '+=', '-=', '*=', '/=', '%=', '&=', '^=', '|=', '++',
+        '--', '->', '.', '>>', '<<', '<=', '>=', '&&', '||', '==', '!=',
+        '<<=', '>>='
+    ];
 
     return in_array($token->type, $ops);
 }
 
-function parse_expression($lexer)
+class c_binary_op
 {
-    $parts = [
-        parse_atom($lexer)
-    ];
+    private $op;
+    private $a;
+    private $b;
 
-    while ($lexer->more() && is_op($lexer->peek())) {
-        $parts[] = $lexer->get();
-        $parts[] = parse_atom($lexer);
+    function __construct($op, $a, $b)
+    {
+        $this->op = $op;
+        $this->a = $a;
+        $this->b = $b;
     }
 
-    return $parts;
+    function format()
+    {
+        return sprintf('(%s) %s (%s)', $this->a->format(), $this->op, $this->b->format());
+    }
+}
+
+function parse_expression($lexer, $level = 0)
+{
+    $result = parse_atom($lexer);
+    while (is_op($lexer->peek())) {
+        // If the operator is not stronger that our current level,
+        // yield the result.
+        if (operator_strength($lexer->peek()->type) <= $level) {
+            return $result;
+        }
+        $op = $lexer->get()->type;
+        $next = parse_expression($lexer, operator_strength($op));
+        $result = new c_binary_op($op, $result, $next);
+    }
+    return $result;
+}
+
+function operator_strength($op)
+{
+    $map = [
+        [','],
+        ['=', '+=', '-=', '*=', '/=', '%=', '<<=', '>>=', '&=', '^=', '|='],
+        ['||'],
+        ['&&'],
+        ['|'],
+        ['^'],
+        ['&'],
+        ['!=', '=='],
+        ['>', '<', '>=', '<='],
+        ['<<', '>>'],
+        ['+', '-'],
+        ['*', '/', '%'],
+        ['->', '.']
+    ];
+    foreach ($map as $i => $ops) {
+        if (in_array($op, $ops)) {
+            return $i + 1;
+        }
+    }
+    throw new Exception("unknown operator: '$op'");
 }
 
 function parse_atom($lexer)
@@ -84,6 +119,8 @@ function parse_atom($lexer)
         case '&':
         case '*':
         case '!':
+        case '--':
+        case '++':
             return c_prefix_operator::parse($lexer);
         case '{':
             return c_array_literal::parse($lexer);
@@ -99,9 +136,9 @@ function parse_atom($lexer)
         if ($lexer->peek(1)->type == '(') {
             return c_function_call::parse($lexer);
         }
-        if ($lexer->peek(1)->type == '=') {
-            return c_assignment::parse($lexer);
-        }
+        // if ($lexer->peek(1)->type == '=') {
+        //     return c_assignment::parse($lexer);
+        // }
         if ($lexer->peek(1)->type == '[') {
             return c_index::parse($lexer);
         }
@@ -154,7 +191,7 @@ class c_op_decrement
 
     function format()
     {
-        return '--' . $this->operand->format();
+        return $this->operand->format() . '--';
     }
 }
 
@@ -169,7 +206,7 @@ class c_op_increment
 
     function format()
     {
-        return '++(not postfix?)' . $this->operand->format();
+        return $this->operand->format() . '++';
     }
 }
 
@@ -203,6 +240,11 @@ class c_literal
     }
 }
 
+function is_prefix_op($token)
+{
+    $ops = ['!', '--', '++'];
+    return in_array($token->type, $ops);
+}
 
 class c_prefix_operator
 {
@@ -211,17 +253,13 @@ class c_prefix_operator
 
     static function parse($lexer)
     {
-        $self = new self;
-        $ops = ['&', '*', '!'];
-        foreach ($ops as $op) {
-            if ($lexer->peek()->type == $op) {
-                $lexer->get();
-                $self->type = $op;
-                $self->operand = c_identifier::parse($lexer);
-                return $self;
-            }
+        if (!is_prefix_op($lexer->peek())) {
+            throw new Exception("prefix operator expected");
         }
-        throw new Exception("operator expected");
+        $self = new self;
+        $self->type = $lexer->get()->type;
+        $self->operand = c_identifier::parse($lexer);
+        return $self;
     }
 
     function format()

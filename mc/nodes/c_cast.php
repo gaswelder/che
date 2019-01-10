@@ -17,6 +17,6 @@ class c_cast
 
     function format()
     {
-        return '(' . $this->type->format() . ') ' . format_expression($this->operand);
+        return '(' . $this->type->format() . ') ' . $this->operand->format();
     }
 }

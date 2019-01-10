@@ -15,6 +15,6 @@ class c_return
 
     function format()
     {
-        return 'return ' . format_expression($this->expression) . ';';
+        return 'return ' . $this->expression->format() . ';';
     }
 }

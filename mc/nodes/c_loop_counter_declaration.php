@@ -22,7 +22,7 @@ class c_loop_counter_declaration
             '%s %s = %s',
             $this->type->format(),
             $this->name->format(),
-            format_expression($this->value)
+            $this->value->format()
         );
         return $s;
     }
