@@ -48,47 +48,10 @@ function is_op($token)
     return in_array($token->type, $ops);
 }
 
-class c_binary_op
+function is_prefix_op($token)
 {
-    private $op;
-    private $a;
-    private $b;
-
-    function __construct($op, $a, $b)
-    {
-        $this->op = $op;
-        $this->a = $a;
-        $this->b = $b;
-    }
-
-    function format()
-    {
-        return sprintf('(%s) %s (%s)', $this->a->format(), $this->op, $this->b->format());
-    }
-}
-
-function parse_expression($lexer, $level = 0)
-{
-    $result = parse_atom($lexer);
-    while (is_op($lexer->peek())) {
-        // If the operator is not stronger that our current level,
-        // yield the result.
-        if (operator_strength($lexer->peek()->type) <= $level) {
-            return $result;
-        }
-        $op = $lexer->get()->type;
-        $next = parse_expression($lexer, operator_strength($op));
-        $result = new c_binary_op($op, $result, $next);
-    }
-    return $result;
-}
-
-function indent($text)
-{
-    if (substr($text, -1) == "\n") {
-        return indent(substr($text, 0, -1)) . "\n";
-    }
-    return "\t" . str_replace("\n", "\n\t", $text);
+    $ops = ['!', '--', '++'];
+    return in_array($token->type, $ops);
 }
 
 function operator_strength($op)
@@ -114,6 +77,22 @@ function operator_strength($op)
         }
     }
     throw new Exception("unknown operator: '$op'");
+}
+
+function parse_expression($lexer, $level = 0)
+{
+    $result = parse_atom($lexer);
+    while (is_op($lexer->peek())) {
+        // If the operator is not stronger that our current level,
+        // yield the result.
+        if (operator_strength($lexer->peek()->type) <= $level) {
+            return $result;
+        }
+        $op = $lexer->get()->type;
+        $next = parse_expression($lexer, operator_strength($op));
+        $result = new c_binary_op($op, $result, $next);
+    }
+    return $result;
 }
 
 function parse_atom($lexer)
@@ -144,14 +123,11 @@ function parse_atom($lexer)
         if ($lexer->peek(1)->type == '(') {
             return c_function_call::parse($lexer);
         }
-        // if ($lexer->peek(1)->type == '=') {
-        //     return c_assignment::parse($lexer);
-        // }
         if ($lexer->peek(1)->type == '[') {
             return c_index::parse($lexer);
         }
 
-        $var = c_variable::parse($lexer);
+        $var = c_identifier::parse($lexer);
         if ($lexer->peek()->type == '--') {
             $lexer->get();
             return new c_op_decrement($var);
@@ -165,6 +141,14 @@ function parse_atom($lexer)
 
     var_dump($lexer->peek());
     throw new Exception("unknown expression");
+}
+
+function indent($text)
+{
+    if (substr($text, -1) == "\n") {
+        return indent(substr($text, 0, -1)) . "\n";
+    }
+    return "\t" . str_replace("\n", "\n\t", $text);
 }
 
 class c_index
@@ -217,83 +201,6 @@ class c_op_increment
         return $this->operand->format() . '++';
     }
 }
-
-
-class c_literal
-{
-    private $value;
-    private $type;
-
-    static function parse($lexer)
-    {
-        $types = ['string', 'num'];
-        $self = new self;
-        foreach ($types as $type) {
-            if ($lexer->peek()->type != $type) {
-                continue;
-            }
-            $self->value = $lexer->get()->content;
-            $self->type = $type;
-            return $self;
-        }
-        throw new Exception("literal expected");
-    }
-
-    function format()
-    {
-        if ($this->type == 'string') {
-            return '"' . $this->value . '"';
-        }
-        return $this->value;
-    }
-}
-
-function is_prefix_op($token)
-{
-    $ops = ['!', '--', '++'];
-    return in_array($token->type, $ops);
-}
-
-class c_prefix_operator
-{
-    private $operand;
-    private $type;
-
-    static function parse($lexer)
-    {
-        if (!is_prefix_op($lexer->peek())) {
-            throw new Exception("prefix operator expected");
-        }
-        $self = new self;
-        $self->type = $lexer->get()->type;
-        $self->operand = c_identifier::parse($lexer);
-        return $self;
-    }
-
-    function format()
-    {
-        return $this->type . $this->operand->format();
-    }
-}
-
-class c_variable
-{
-    private $name;
-
-    static function parse($lexer)
-    {
-        $self = new self;
-        $self->name = expect($lexer, 'word')->content;
-        return $self;
-    }
-
-    function format()
-    {
-        return $this->name;
-    }
-}
-
-
 
 function expect($lexer, $type)
 {
