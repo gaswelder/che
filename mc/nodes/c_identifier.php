@@ -6,7 +6,7 @@ class c_identifier
 
     static function parse($lexer)
     {
-        $tok = expect($lexer, 'word');
+        $tok = expect($lexer, 'word', 'identifier');
         $self = new self;
         $self->name = $tok->content;
         return $self;

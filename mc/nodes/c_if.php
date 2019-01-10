@@ -9,10 +9,10 @@ class c_if
     static function parse($lexer)
     {
         $self = new self;
-        expect($lexer, 'if');
-        expect($lexer, '(');
+        expect($lexer, 'if', 'if statement');
+        expect($lexer, '(', 'if statement');
         $self->condition = parse_expression($lexer);
-        expect($lexer, ')');
+        expect($lexer, ')', 'if statement');
         $self->body = c_body::parse($lexer);
         if ($lexer->peek()->type == 'else') {
             $lexer->get();

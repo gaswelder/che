@@ -7,11 +7,11 @@ class c_array_literal
     static function parse($lexer)
     {
         $self = new self;
-        expect($lexer, '{');
+        expect($lexer, '{', 'array literal');
         while ($lexer->more() && $lexer->peek()->type != '}') {
-            $self->values[] = expect($lexer, 'num')->content;
+            $self->values[] = expect($lexer, 'num', 'array literal')->content;
         }
-        expect($lexer, '}');
+        expect($lexer, '}', 'array literal');
         return $self;
     }
 

@@ -7,7 +7,7 @@ class c_literal
 
     static function parse($lexer)
     {
-        $types = ['string', 'num'];
+        $types = ['string', 'num', 'char'];
         $self = new self;
         foreach ($types as $type) {
             if ($lexer->peek()->type != $type) {
@@ -17,14 +17,18 @@ class c_literal
             $self->type = $type;
             return $self;
         }
-        throw new Exception("literal expected");
+        throw new Exception("literal expected, got " . $lexer->peek());
     }
 
     function format()
     {
-        if ($this->type == 'string') {
-            return '"' . $this->value . '"';
+        switch ($this->type) {
+            case 'string':
+                return '"' . $this->value . '"';
+            case 'char':
+                return '\'' . $this->value . '\'';
+            default:
+                return $this->value;
         }
-        return $this->value;
     }
 }

@@ -3,21 +3,16 @@
 class c_prefix_operator
 {
     private $operand;
-    private $type;
+    private $operator;
 
-    static function parse($lexer)
+    function __construct($operator, $operand)
     {
-        if (!is_prefix_op($lexer->peek())) {
-            throw new Exception("prefix operator expected");
-        }
-        $self = new self;
-        $self->type = $lexer->get()->type;
-        $self->operand = c_identifier::parse($lexer);
-        return $self;
+        $this->operator = $operator;
+        $this->operand = $operand;
     }
 
     function format()
     {
-        return $this->type . $this->operand->format();
+        return $this->operator . $this->operand->format();
     }
 }

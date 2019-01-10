@@ -18,12 +18,24 @@ foreach (glob('mc/nodes/*.php') as $path) {
 // $lexer = new lexer('prog/rand.c');
 $path = 'prog/mp3cuespl.c';
 // $path = 'test/types.c';
-// $path = 'test/expressions.c';
+$path = 'test/expressions.c';
+
 $lexer = new lexer($path);
 $lexer->typenames = typenames($path);
 $m = parse_program($lexer);
 var_dump($m);
-if ($m) echo $m->format();
+echo $m->format();
+exit;
+
+foreach (glob('test/*.c') as $path) {
+    echo $path, "\n";
+    $lexer = new lexer($path);
+    $lexer->typenames = typenames($path);
+    $m = parse_program($lexer);
+    var_dump($m);
+    if (!$m) break;
+    echo $m->format();
+}
 
 function parse_program($lexer)
 {
@@ -50,7 +62,13 @@ function is_op($token)
 
 function is_prefix_op($token)
 {
-    $ops = ['!', '--', '++'];
+    $ops = ['!', '--', '++', '*', '~', '&', '-'];
+    return in_array($token->type, $ops);
+}
+
+function is_postfix_op($token)
+{
+    $ops = ['++', '--', '(', '['];
     return in_array($token->type, $ops);
 }
 
@@ -97,50 +115,66 @@ function parse_expression($lexer, $level = 0)
 
 function parse_atom($lexer)
 {
-    $next = $lexer->peek();
-
-    switch ($next->type) {
-        case 'string':
-        case 'num':
-            return c_literal::parse($lexer);
-        case '&':
-        case '*':
-        case '!':
-        case '--':
-        case '++':
-            return c_prefix_operator::parse($lexer);
+    switch ($lexer->peek()->type) {
         case '{':
             return c_array_literal::parse($lexer);
         case 'sizeof':
             return c_sizeof::parse($lexer);
     }
 
-    if ($next->type == '(' && is_type($lexer->peek(1), $lexer->typenames)) {
-        return c_cast::parse($lexer);
+    $pre = [];
+    while ($lexer->more()) {
+        if (is_prefix_op($lexer->peek())) {
+            $pre[] = $lexer->get()->type;
+            continue;
+        }
+        if ($lexer->peek()->type == '(' && is_type($lexer->peek(1), $lexer->typenames)) {
+            expect($lexer, '(');
+            $pre[] = c_type::parse($lexer);
+            expect($lexer, ')');
+            continue;
+        }
+        break;
     }
 
-    if ($next->type == 'word') {
-        if ($lexer->peek(1)->type == '(') {
-            return c_function_call::parse($lexer);
-        }
-        if ($lexer->peek(1)->type == '[') {
-            return c_index::parse($lexer);
-        }
-
-        $var = c_identifier::parse($lexer);
-        if ($lexer->peek()->type == '--') {
-            $lexer->get();
-            return new c_op_decrement($var);
-        }
-        if ($lexer->peek()->type == '++') {
-            $lexer->get();
-            return new c_op_increment($var);
-        }
-        return $var;
+    if ($lexer->peek()->type == 'word') {
+        $result = c_identifier::parse($lexer);
+    } else {
+        $result = c_literal::parse($lexer);
     }
 
-    var_dump($lexer->peek());
-    throw new Exception("unknown expression");
+    while ($lexer->more()) {
+        if ($lexer->peek()->type == '(') {
+            $args = c_function_arguments::parse($lexer);
+            $result = new c_function_call($result, $args);
+            continue;
+        }
+        if ($lexer->peek()->type == '[') {
+            expect($lexer, '[', 'array index');
+            $index = expect($lexer, 'num', 'array index')->content;
+            expect($lexer, ']', 'array index');
+            $result = new c_array_index($result, $index);
+            continue;
+        }
+
+        if (is_postfix_op($lexer->peek())) {
+            $op = $lexer->get()->type;
+            $result = new c_postfix_operator($result, $op);
+            continue;
+        }
+        break;
+    }
+
+    while (!empty($pre)) {
+        $op = array_pop($pre);
+        if ($op instanceof c_type) {
+            $result = new c_cast($op, $result);
+        } else {
+            $result = new c_prefix_operator($op, $result);
+        }
+    }
+
+    return $result;
 }
 
 function indent($text)
@@ -151,65 +185,22 @@ function indent($text)
     return "\t" . str_replace("\n", "\n\t", $text);
 }
 
-class c_index
+function with_comment($comment, $message)
 {
-    private $operand;
-    private $index;
-
-    static function parse($lexer)
-    {
-        $self = new self;
-        $self->operand = c_identifier::parse($lexer);
-        expect($lexer, '[');
-        $self->index = expect($lexer, 'num')->content;
-        expect($lexer, ']');
-        return $self;
+    if ($comment) {
+        return $comment . ': ' . $message;
     }
-
-    function format()
-    {
-        return $this->operand->format() . "[$this->index]";
-    }
+    return $message;
 }
 
-class c_op_decrement
-{
-    private $operand;
-
-    function __construct($operand)
-    {
-        $this->operand = $operand;
-    }
-
-    function format()
-    {
-        return $this->operand->format() . '--';
-    }
-}
-
-class c_op_increment
-{
-    private $operand;
-
-    function __construct($operand)
-    {
-        $this->operand = $operand;
-    }
-
-    function format()
-    {
-        return $this->operand->format() . '++';
-    }
-}
-
-function expect($lexer, $type)
+function expect($lexer, $type, $comment = null)
 {
     if (!$lexer->more()) {
-        throw new Exception("expected '$type', got end of file");
+        throw new Exception(with_comment($comment, "expected '$type', got end of file"));
     }
     $next = $lexer->peek();
     if ($next->type != $type) {
-        throw new Exception("expected '$type', got ('$next->type', '$next->content') at $next->pos");
+        throw new Exception(with_comment($comment, "expected '$type', got $next at $next->pos"));
     }
     return $lexer->get();
 }
@@ -277,6 +268,6 @@ function parse_statement($lexer)
     }
 
     $expr = parse_expression($lexer);
-    expect($lexer, ';');
+    expect($lexer, ';', 'parsing statement');
     return $expr;
 }
