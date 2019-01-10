@@ -83,6 +83,14 @@ function parse_expression($lexer, $level = 0)
     return $result;
 }
 
+function indent($text)
+{
+    if (substr($text, -1) == "\n") {
+        return indent(substr($text, 0, -1)) . "\n";
+    }
+    return "\t" . str_replace("\n", "\n\t", $text);
+}
+
 function operator_strength($op)
 {
     $map = [

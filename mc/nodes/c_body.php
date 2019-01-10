@@ -21,23 +21,10 @@ class c_body
 
     function format()
     {
-        $s = "{\n";
+        $s = '';
         foreach ($this->statements as $statement) {
-            $s .= "\t";
-            if (is_array($statement)) {
-                foreach ($statement as $atom) {
-                    if (get_class($atom) == 'token') {
-                        $s .= $atom->type;
-                    } else {
-                        $s .= $atom->format() . ' ';
-                    }
-                }
-                $s .= ";\n";
-                continue;
-            }
             $s .= $statement->format() . ";\n";
         }
-        $s .= "\n}\n";
-        return $s;
+        return "{\n" . indent($s) . "}";
     }
 }
