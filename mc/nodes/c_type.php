@@ -5,19 +5,24 @@ class c_type
     private $type;
     private $const = false;
 
-    static function parse($lexer)
+    static function parse($lexer, $comment = null)
     {
-        $types = ['const'];
-
         $self = new self;
 
-        if ($lexer->peek()->type == 'const') {
+        if ($lexer->follows('const')) {
             $lexer->get();
             $self->const = true;
         }
 
-        $tok = expect($lexer, 'word');
-        $self->type = $tok->content;
+        if ($lexer->follows('struct')) {
+            $lexer->get();
+            $name = expect($lexer, 'word')->content;
+            $self->type = 'struct ' . $name;
+        } else {
+            $tok = expect($lexer, 'word', $comment);
+            $self->type = $tok->content;
+        }
+
         return $self;
     }
 

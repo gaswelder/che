@@ -8,12 +8,12 @@ class c_form
     {
         // *argv[]
         $self = new self;
-        while ($lexer->peek()->type == '*') {
+        while ($lexer->follows('*')) {
             $self->str .= $lexer->get()->type;
         }
         $self->str .= expect($lexer, 'word')->content;
 
-        if ($lexer->peek()->type == '[') {
+        if ($lexer->follows('[')) {
             $self->str .= $lexer->get()->type;
             while ($lexer->more() && $lexer->peek()->type != ']') {
                 $self->str .= $lexer->get()->content;

@@ -7,7 +7,7 @@ int main(int argc, char *argv[])
 		return 1;
 	}
 
-	const char *path;
+	const char *path = NULL;
 	if(argc > 1) {
 		path = argv[1];
 	}

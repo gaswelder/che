@@ -7,9 +7,9 @@ class c_body
     static function parse($lexer)
     {
         $self = new self;
-        if ($lexer->peek()->type == '{') {
+        if ($lexer->follows('{')) {
             expect($lexer, '{');
-            while ($lexer->more() && $lexer->peek()->type != '}') {
+            while (!$lexer->follows('}')) {
                 $self->statements[] = parse_statement($lexer);
             }
             expect($lexer, '}');

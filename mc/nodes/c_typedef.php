@@ -9,7 +9,7 @@ class c_typedef
     {
         expect($lexer, 'typedef');
         $self = new self;
-        $self->type = c_type::parse($lexer);
+        $self->type = c_type::parse($lexer, 'reading a typedef');
         $self->alias = c_identifier::parse($lexer);
         expect($lexer, ';');
         return $self;

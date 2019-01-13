@@ -79,4 +79,9 @@ class lexer
 		}
 		return $this->toks[$n];
 	}
+
+	function follows($type)
+	{
+		return $this->more() && $this->peek()->type == $type;
+	}
 }

@@ -4,13 +4,6 @@ require 'mc/parser/lexer.php';
 require 'mc/parser/token.php';
 require 'mc/debug.php';
 require 'mc/module/package_file.php';
-
-function typenames($path)
-{
-    $file = new package_file($path);
-    return $file->typenames();
-}
-
 foreach (glob('mc/nodes/*.php') as $path) {
     require $path;
 }
@@ -20,21 +13,55 @@ $path = 'prog/mp3cuespl.c';
 // $path = 'test/types.c';
 $path = 'test/expressions.c';
 
-$lexer = new lexer($path);
-$lexer->typenames = typenames($path);
-$m = parse_program($lexer);
-var_dump($m);
-echo $m->format();
-exit;
+// $lexer = new lexer($path);
+// $lexer->typenames = typenames($path);
+// $m = parse_program($lexer);
+// var_dump($m);
+// echo $m->format();
+// exit;
 
 foreach (glob('test/*.c') as $path) {
+    // $path = 'test/chargen.c';
     echo $path, "\n";
     $lexer = new lexer($path);
     $lexer->typenames = typenames($path);
     $m = parse_program($lexer);
-    var_dump($m);
+    // var_dump($m);
     if (!$m) break;
     echo $m->format();
+}
+
+function typenames($path)
+{
+    $file = new package_file($path);
+    return $file->typenames();
+}
+
+function parse_module_element($lexer)
+{
+    switch ($lexer->peek()->type) {
+        case 'import':
+            return c_import::parse($lexer);
+        case 'typedef':
+            return c_typedef::parse($lexer);
+        case 'struct':
+            return c_struct_definition::parse($lexer);
+    }
+    $type = c_type::parse($lexer);
+    $form = c_form::parse($lexer);
+    if ($lexer->peek()->type == '(') {
+        $parameters = c_function_parameters::parse($lexer);
+        $body = c_body::parse($lexer);
+        return new c_function_declaration($type, $form, $parameters, $body);
+    }
+
+    if ($lexer->peek()->type == '=') {
+        $lexer->get();
+        $value = parse_expression($lexer);
+        expect($lexer, ';', 'module variable declaration');
+        return new c_module_variable($type, $form, $value);
+    }
+    throw new Exception("unexpected input");
 }
 
 function parse_program($lexer)
@@ -115,6 +142,20 @@ function parse_expression($lexer, $level = 0)
 
 function parse_atom($lexer)
 {
+    if ($lexer->peek()->type == '(' && is_type($lexer->peek(1), $lexer->typenames)) {
+        expect($lexer, '(');
+        $type = c_type::parse($lexer);
+        expect($lexer, ')');
+        return new c_cast($type, parse_expression($lexer));
+    }
+
+    if ($lexer->peek()->type == '(') {
+        $lexer->get();
+        $expr = parse_expression($lexer);
+        expect($lexer, ')');
+        return $expr;
+    }
+
     switch ($lexer->peek()->type) {
         case '{':
             return c_array_literal::parse($lexer);
@@ -122,19 +163,9 @@ function parse_atom($lexer)
             return c_sizeof::parse($lexer);
     }
 
-    $pre = [];
-    while ($lexer->more()) {
-        if (is_prefix_op($lexer->peek())) {
-            $pre[] = $lexer->get()->type;
-            continue;
-        }
-        if ($lexer->peek()->type == '(' && is_type($lexer->peek(1), $lexer->typenames)) {
-            expect($lexer, '(');
-            $pre[] = c_type::parse($lexer);
-            expect($lexer, ')');
-            continue;
-        }
-        break;
+    if (is_prefix_op($lexer->peek())) {
+        $op = $lexer->get()->type;
+        return new c_prefix_operator($op, parse_expression($lexer));
     }
 
     if ($lexer->peek()->type == 'word') {
@@ -151,7 +182,7 @@ function parse_atom($lexer)
         }
         if ($lexer->peek()->type == '[') {
             expect($lexer, '[', 'array index');
-            $index = expect($lexer, 'num', 'array index')->content;
+            $index = parse_expression($lexer);
             expect($lexer, ']', 'array index');
             $result = new c_array_index($result, $index);
             continue;
@@ -163,15 +194,6 @@ function parse_atom($lexer)
             continue;
         }
         break;
-    }
-
-    while (!empty($pre)) {
-        $op = array_pop($pre);
-        if ($op instanceof c_type) {
-            $result = new c_cast($op, $result);
-        } else {
-            $result = new c_prefix_operator($op, $result);
-        }
     }
 
     return $result;
@@ -265,6 +287,8 @@ function parse_statement($lexer)
             return c_defer::parse($lexer);
         case 'return':
             return c_return::parse($lexer);
+        case 'switch':
+            return c_switch::parse($lexer);
     }
 
     $expr = parse_expression($lexer);

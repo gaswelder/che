@@ -1,20 +1,28 @@
 void main() {
-    putchar('\n');
-    !*foo()[3]++;
+	char foo[] =
+		"abc"
+		"def";
 
-    12 * sizeof(int);
+	putchar('\n');
+	!*foo()[3]++;
 
-    242 * !(uint32_t) foo;
+	12 * sizeof(int);
 
-    1 + 2 * 3 + 4;
-    a + b + c;
-    a + b * c;
-    a + b * !c;
-    a + --c;
-    pos.usec = next->pos_usec;
-    pos.min = -1 + -1;
+	242 * !(uint32_t) foo;
 
-    if (!arr_pushi(a, i)) {
+	1 + 2 * 3 + 4;
+	a + b + c;
+	a + b * c;
+	(a + b) * c;
+	a + b * !c;
+	a + --c;
+	pos.usec = next->pos_usec;
+	pos.min = -1 + -1;
+
+	if (!arr_pushi(a, i)) {
 		fatal("failed");
 	}
+
+	putch(ch, &(c->out));
+	sizeof(b->data);
 }

@@ -8,6 +8,10 @@ class c_return
     {
         $self = new self;
         expect($lexer, 'return');
+        if ($lexer->peek()->type == ';') {
+            $lexer->get();
+            return $self;
+        }
         $self->expression = parse_expression($lexer);
         expect($lexer, ';');
         return $self;
@@ -15,6 +19,9 @@ class c_return
 
     function format()
     {
+        if (!$this->expression) {
+            return 'return;';
+        }
         return 'return ' . $this->expression->format() . ';';
     }
 }

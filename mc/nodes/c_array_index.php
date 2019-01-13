@@ -13,6 +13,6 @@ class c_array_index
 
     function format()
     {
-        return $this->array->format() . '[' . $this->index . ']';
+        return $this->array->format() . '[' . $this->index->format() . ']';
     }
 }

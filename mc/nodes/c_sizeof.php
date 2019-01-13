@@ -6,10 +6,14 @@ class c_sizeof
 
     static function parse($lexer)
     {
+        $self = new self;
         expect($lexer, 'sizeof');
         expect($lexer, '(');
-        $self = new self;
-        $self->argument = c_form::parse($lexer);
+        if (is_type($lexer->peek(), $lexer->typenames)) {
+            $self->argument = c_type::parse($lexer);
+        } else {
+            $self->argument = parse_expression($lexer);
+        }
         expect($lexer, ')');
         return $self;
     }

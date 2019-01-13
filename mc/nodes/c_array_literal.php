@@ -1,5 +1,13 @@
 <?php
 
+function parse_array_literal_member($lexer)
+{
+    if ($lexer->follows('{')) {
+        return c_array_literal::parse($lexer);
+    }
+    return c_literal::parse($lexer);
+}
+
 class c_array_literal
 {
     private $values = [];
@@ -8,8 +16,12 @@ class c_array_literal
     {
         $self = new self;
         expect($lexer, '{', 'array literal');
-        while ($lexer->more() && $lexer->peek()->type != '}') {
-            $self->values[] = expect($lexer, 'num', 'array literal')->content;
+        if (!$lexer->follows('}')) {
+            $self->values[] = parse_array_literal_member($lexer);
+            while ($lexer->follows(',')) {
+                $lexer->get();
+                $self->values[] = parse_array_literal_member($lexer);
+            }
         }
         expect($lexer, '}', 'array literal');
         return $self;
@@ -20,7 +32,7 @@ class c_array_literal
         $s = '{';
         foreach ($this->values as $i => $value) {
             if ($i > 0) $s .= ', ';
-            $s .= $value;
+            $s .= $value->format();
         }
         $s .= '}';
         return $s;

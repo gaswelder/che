@@ -14,7 +14,7 @@ class c_if
         $self->condition = parse_expression($lexer);
         expect($lexer, ')', 'if statement');
         $self->body = c_body::parse($lexer);
-        if ($lexer->peek()->type == 'else') {
+        if ($lexer->follows('else')) {
             $lexer->get();
             $self->else = c_body::parse($lexer);
         }

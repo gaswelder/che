@@ -8,12 +8,12 @@ class c_function_parameters
     {
         expect($lexer, '(');
         $self = new self;
-        if ($lexer->more() && $lexer->peek()->type != ')') {
+        if (!$lexer->follows(')')) {
             $self->parameters[] = c_function_parameter::parse($lexer);
-        }
-        while ($lexer->more() && $lexer->peek()->type == ',') {
-            $lexer->get();
-            $self->parameters[] = c_function_parameter::parse($lexer);
+            while ($lexer->follows(',')) {
+                $lexer->get();
+                $self->parameters[] = c_function_parameter::parse($lexer);
+            }
         }
         expect($lexer, ')');
         return $self;

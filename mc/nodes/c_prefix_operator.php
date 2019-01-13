@@ -13,6 +13,9 @@ class c_prefix_operator
 
     function format()
     {
+        if ($this->operand instanceof c_binary_op) {
+            return $this->operator . '(' . $this->operand->format() . ')';
+        }
         return $this->operator . $this->operand->format();
     }
 }

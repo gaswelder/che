@@ -17,11 +17,19 @@ struct nbuf {
 	char data[2048];
 	int len;
 };
+typedef struct nbuf nbuf_t;
 
 struct client {
 	int charpos;
-	struct nbuf out;
+	nbuf_t out;
 };
+
+typedef struct client client_t;
+
+char linechars[] =
+	"!\"#$%&'()*+,-./0123456789:;<=>?@"
+	"ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`"
+	"abcdefghijklmnopqrstuvwxyz{|}~ ";
 
 int main()
 {
@@ -37,7 +45,7 @@ int main()
 			continue;
 		}
 
-		struct client *c = calloc(1, sizeof(*c));
+		client_t *c = calloc(1, sizeof(*c));
 		c->out.conn = s;
 		process_client(c);
 		//th_detach(th_start(&process_client, c));
@@ -47,11 +55,11 @@ int main()
 	return 0;
 }
 
-void *process_client(struct client *c)
+void *process_client(client_t *c)
 {
 	conn_t *conn = c->out.conn;
 	logmsg("%s connected", net_addr(conn));
-	char buf[256];
+	char buf[256] = {};
 
 	while(1) {
 		if(net_incoming(conn)) {
@@ -72,12 +80,7 @@ void *process_client(struct client *c)
 	return NULL;
 }
 
-char linechars[] =
-	"!\"#$%&'()*+,-./0123456789:;<=>?@"
-	"ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`"
-	"abcdefghijklmnopqrstuvwxyz{|}~ ";
-
-bool send_line(struct client *c)
+bool send_line(client_t *c)
 {
 	for(int i = 0; i < 72; i++) {
 		/*
@@ -103,7 +106,7 @@ bool send_line(struct client *c)
  * Puts a character to the client output buffer.
  * Flushes the buffer when it fills.
  */
-int putch(int ch, struct nbuf *b)
+int putch(int ch, nbuf_t *b)
 {
 	b->data[b->len++] = ch;
 	if(b->len == sizeof(b->data)) {

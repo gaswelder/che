@@ -10,7 +10,7 @@ class c_function_arguments
         expect($lexer, '(');
         if ($lexer->more() && $lexer->peek()->type != ')') {
             $self->arguments[] = parse_expression($lexer);
-            while ($lexer->more() && $lexer->peek()->type == ',') {
+            while ($lexer->follows(',')) {
                 $lexer->get();
                 $self->arguments[] = parse_expression($lexer);
             }
