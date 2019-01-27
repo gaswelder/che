@@ -2,15 +2,13 @@ import "threads"
 
 int main()
 {
-	int i;
-
 	/*
 	 * Create N threads, passing them different arguments.
 	 */
 	const int N = 16;
-	thr_t *t[N];
-	int args[N];
-	for(i = 0; i < N; i++) {
+	thr_t *t[N] = {0};
+	int args[N] = {0};
+	for(int i = 0; i < N; i++) {
 		args[i] = i + 1;
 		t[i] = thr_new(threadmain, &args[i]);
 		assert(t[i]);
@@ -20,8 +18,8 @@ int main()
 	 * Wait for all threads, printing their return values.
 	 * Each thread should return square of its argument.
 	 */
-	for(i = 0; i < N; i++) {
-		void *r;
+	for(int i = 0; i < N; i++) {
+		void *r = NULL;
 		thr_join(t[i], &r);
 		if((i+1)*(i+1) != *((int*)r)) {
 			puts("FAIL");

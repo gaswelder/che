@@ -13,21 +13,22 @@ struct control {
 	bool running;
 };
 
+typedef struct control control_t;
+
 int main()
 {
 	mtx_t *lock = mtx_new();
 	cnd_t *cnd = cnd_new();
 
-	int i;
 	const int N = 4;
-	struct control args[N];
-	thr_t *t[N];
+	control_t args[N] = {0};
+	thr_t *t[N] = {0};
 
 	/*
 	 * Start threads one by one
 	 */
-	for(i = 0; i < N; i++) {
-		struct control *c = &args[i];
+	for(int i = 0; i < N; i++) {
+		control_t *c = &args[i];
 		c->id = i + 1;
 		c->lock = lock;
 		c->cnd = cnd;
@@ -49,7 +50,7 @@ int main()
 	/*
 	 * Wait for threads to finish
 	 */
-	for(i = 0; i < N; i++) {
+	for(int i = 0; i < N; i++) {
 		thr_join(t[i], NULL);
 	}
 
@@ -61,7 +62,7 @@ int main()
 
 void *tfunc(void *arg)
 {
-	struct control *c = arg;
+	control_t *c = arg;
 
 	printf("%d: created\n", c->id);
 	mtx_lock(c->lock);

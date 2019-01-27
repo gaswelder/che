@@ -21,8 +21,8 @@ kv_t tests[] = {
 
 int main()
 {
-	md5sum s;
-	md5str buf;
+	md5sum_t s = {0};
+	md5str_t buf = "";
 
 	size_t n = sizeof(tests)/sizeof(tests[0]);
 	for(size_t i = 0; i < n; i++) {

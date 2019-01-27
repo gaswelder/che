@@ -25,4 +25,8 @@ void main() {
 
 	putch(ch, &(c->out));
 	sizeof(b->data);
+
+	if((i+1)*(i+1) != *((int*)r)) {
+		puts("");
+	}
 }

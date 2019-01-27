@@ -12,7 +12,11 @@ class c_struct_definition
         $self->name = c_identifier::parse($lexer);
         expect($lexer, '{', 'struct definition');
         while ($lexer->more() && $lexer->peek()->type != '}') {
-            $self->fieldlists[] = c_struct_fieldlist::parse($lexer);
+            if ($lexer->peek()->type == 'union') {
+                $self->fieldlists[] = c_union::parse($lexer);
+            } else {
+                $self->fieldlists[] = c_struct_fieldlist::parse($lexer);
+            }
         }
         expect($lexer, '}');
         expect($lexer, ';');

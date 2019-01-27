@@ -21,4 +21,22 @@ class c_module
         }
         return $s;
     }
+
+    function json()
+    {
+        return ['type' => 'c_module', 'elements' => array_map(function ($element) {
+            return $element->json();
+        }, $this->elements)];
+    }
+
+    function imports()
+    {
+        $list = [];
+        foreach ($this->elements as $element) {
+            if ($element instanceof c_import) {
+                $list[] = $element;
+            }
+        }
+        return $list;
+    }
 }

@@ -25,7 +25,7 @@ int main(int argc, char **argv)
 	/*
 	 * Read the file into the buffer
 	 */
-	char buf[8];
+	char buf[8] = "";
 	while(1) {
 		size_t len = fread(buf, 1, 8, f);
 		if(!len) {

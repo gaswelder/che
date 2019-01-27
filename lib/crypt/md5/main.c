@@ -3,8 +3,8 @@ import "zio"
 /*
  * Data type for the MD5 message digest.
  */
-typedef uint32_t md5sum[4];
-typedef char md5str[33];
+typedef uint32_t md5sum_t[4];
+typedef char md5str_t[33];
 
 /*
  * Computes digest for the file located at 'path' and puts
@@ -46,7 +46,7 @@ pub bool md5_buf(const char *buf, size_t len, uint32_t md[4])
 /*
  * Returns true if message digests 'a' and 'b' are equal.
  */
-pub bool md5_eq(md5sum a, md5sum b)
+pub bool md5_eq(md5sum_t a, md5sum_t b)
 {
 	for(int i = 0; i < 4; i++) {
 		if(a[i] != b[i]) {
@@ -67,7 +67,7 @@ pub void md5_print(uint32_t buf[4])
 	}
 }
 
-pub void md5_sprint(md5sum s, md5str buf)
+pub void md5_sprint(md5sum_t s, md5str_t buf)
 {
 	char *p = buf;
 	for(int i = 0; i < 4; i++) {

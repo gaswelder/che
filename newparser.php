@@ -9,26 +9,52 @@ foreach (glob('mc/nodes/*.php') as $path) {
 }
 
 // $lexer = new lexer('prog/rand.c');
-$path = 'prog/mp3cuespl.c';
 // $path = 'test/types.c';
 $path = 'test/expressions.c';
+// $path = 'test/md5.c';
+// $path = 'test/ellipsis.c';
+// $path = 'test/union.c';
+// just_parse($path);
+// exit;
 
-// $lexer = new lexer($path);
-// $lexer->typenames = typenames($path);
-// $m = parse_program($lexer);
+// $m = parse_path($path);
+// // echo json_encode($m->json(), JSON_PRETTY_PRINT);
 // var_dump($m);
 // echo $m->format();
+// // var_dump($m->imports());
+// echo dep_tree($m);
 // exit;
 
 foreach (glob('test/*.c') as $path) {
-    // $path = 'test/chargen.c';
     echo $path, "\n";
+    just_parse($path);
+}
+
+function just_parse($path)
+{
     $lexer = new lexer($path);
     $lexer->typenames = typenames($path);
     $m = parse_program($lexer);
     // var_dump($m);
-    if (!$m) break;
     echo $m->format();
+}
+
+function parse_path($path)
+{
+    $lexer = new lexer($path);
+    $lexer->typenames = typenames($path);
+    return parse_program($lexer);
+}
+
+function dep_tree(c_module $module)
+{
+    $s = '';
+    $imps = $module->imports();
+    foreach ($imps as $imp) {
+        $s .= $imp->name() . "\n";
+        $s .= indent(dep_tree($imp->resolve())) . "\n";
+    }
+    return $s;
 }
 
 function typenames($path)
@@ -41,21 +67,34 @@ function parse_module_element($lexer)
 {
     switch ($lexer->peek()->type) {
         case 'import':
-            return c_import::parse($lexer);
+            $import = c_import::parse($lexer);
+            // $k = $import->resolve();
+            // var_dump('k', $k);
+            // exit;
+            return $import;
         case 'typedef':
             return c_typedef::parse($lexer);
         case 'struct':
             return c_struct_definition::parse($lexer);
+    }
+
+    $pub = false;
+    if ($lexer->follows('pub')) {
+        $lexer->get();
+        $pub = true;
     }
     $type = c_type::parse($lexer);
     $form = c_form::parse($lexer);
     if ($lexer->peek()->type == '(') {
         $parameters = c_function_parameters::parse($lexer);
         $body = c_body::parse($lexer);
-        return new c_function_declaration($type, $form, $parameters, $body);
+        return new c_function_declaration($pub, $type, $form, $parameters, $body);
     }
 
     if ($lexer->peek()->type == '=') {
+        if ($pub) {
+            throw new Exception("module variables can't be exported");
+        }
         $lexer->get();
         $value = parse_expression($lexer);
         expect($lexer, ';', 'module variable declaration');
@@ -140,13 +179,38 @@ function parse_expression($lexer, $level = 0)
     return $result;
 }
 
+class c_anonymous_typeform
+{
+    private $type;
+    private $ops = [];
+
+    static function parse($lexer)
+    {
+        $self = new self;
+        $self->type = c_type::parse($lexer);
+        while ($lexer->follows('*')) {
+            $self->ops[] = $lexer->get()->type;
+        }
+        return $self;
+    }
+
+    function format()
+    {
+        $s = $this->type->format();
+        foreach ($this->ops as $op) {
+            $s .= $op;
+        }
+        return $s;
+    }
+}
+
 function parse_atom($lexer)
 {
     if ($lexer->peek()->type == '(' && is_type($lexer->peek(1), $lexer->typenames)) {
         expect($lexer, '(');
-        $type = c_type::parse($lexer);
-        expect($lexer, ')');
-        return new c_cast($type, parse_expression($lexer));
+        $typeform = c_anonymous_typeform::parse($lexer);
+        expect($lexer, ')', 'typecast');
+        return new c_cast($typeform, parse_expression($lexer));
     }
 
     if ($lexer->peek()->type == '(') {

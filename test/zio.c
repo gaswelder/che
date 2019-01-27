@@ -10,7 +10,7 @@ int main(int argc, char **argv)
 	zio *m = zopen("mem", "", "");
 	zio *f = zopen("file", argv[1], "rb");
 
-	char buf[16];
+	char buf[16] = {};
 	while(1) {
 		int len = zread(f, buf, 16);
 		if( len < 0 ) {

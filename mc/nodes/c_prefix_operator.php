@@ -13,7 +13,7 @@ class c_prefix_operator
 
     function format()
     {
-        if ($this->operand instanceof c_binary_op) {
+        if ($this->operand instanceof c_binary_op || $this->operand instanceof c_cast) {
             return $this->operator . '(' . $this->operand->format() . ')';
         }
         return $this->operator . $this->operand->format();

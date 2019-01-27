@@ -2,9 +2,9 @@ import "crypt/sha1"
 
 int main()
 {
-	sha1sum a;
-	
-	char s[1000001];
+	sha1sum_t a = {0};
+
+	char s[1000001] = {0};
 	memset(s, 'a', 1000000);
 	s[1000000] = '\0';
 	
