@@ -69,7 +69,7 @@ pub void zclose(zio *s)
 			fclose((FILE *)s->h);
 			break;
 		case S_MEM:
-			memclose((MEM *)s->h);
+			memclose((mem_t *)s->h);
 			break;
 		case S_TCP:
 			net_close(s->h);
@@ -119,7 +119,7 @@ pub int zputc(int c, zio *s)
 		return fputc(c, s->h);
 	}
 
-	char buf[1];
+	char buf[1] = {};
 	buf[0] = (char) c;
 	size_t n = 0;
 
@@ -197,7 +197,7 @@ pub long ztell(zio *s)
 
 pub int zprintf(zio *s, const char *fmt, ...)
 {
-	va_list args;
+	va_list args = {};
 
 	/*
 	 * Find out how long the string will be
@@ -210,7 +210,7 @@ pub int zprintf(zio *s, const char *fmt, ...)
 	/*
 	 * Format the string
 	 */
-	char buf[len + 1];
+	char buf[len + 1] = {};
 	va_start(args, fmt);
 	len = vsnprintf(buf, len + 1, fmt, args);
 	va_end(args);
@@ -218,7 +218,7 @@ pub int zprintf(zio *s, const char *fmt, ...)
 	/*
 	 * Write the string
 	 */
-	int n;
+	int n = -1;
 	switch(s->type) {
 		case S_FILE:
 			n = fwrite(buf, 1, len, s->h);
@@ -249,7 +249,7 @@ pub int zgetc(zio *s)
 		case S_MEM:
 			return memgetc(s->h);
 		case S_TCP:
-			char c;
+			char c = 0;
 			int n = net_read(s->h, &c, 1);
 			if(n <= 0) {
 				return EOF;

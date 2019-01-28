@@ -40,6 +40,17 @@ class c_module
         return $list;
     }
 
+    function types()
+    {
+        $list = [];
+        foreach ($this->elements as $element) {
+            if ($element instanceof c_typedef) {
+                $list[] = $element->name();
+            }
+        }
+        return $list;
+    }
+
     function merge(c_module $that)
     {
         $result = new self;

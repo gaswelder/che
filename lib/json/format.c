@@ -57,7 +57,11 @@ void json_write(zio *z, json_node *n)
 			break;
 
 		case JSON_BOOL:
-			zprintf(z, json_bool(n)? "true" : "false");
+			if (json_bool(n)) {
+				zprintf(z, "true");
+			} else {
+				zprintf(z, "false");
+			}
 			break;
 
 		case JSON_NULL:

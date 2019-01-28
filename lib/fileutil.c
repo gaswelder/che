@@ -1,6 +1,8 @@
 #define _X_OPEN_SOURCE 700
 #include <sys/stat.h>
 
+typedef struct stat stat_t;
+
 /*
  * Reads file at 'path' and returns a pointer to the file's
  * contents in memory. The contents size is put into 'size'.
@@ -12,7 +14,7 @@ pub char *readfile(const char *path, size_t *size)
 		return NULL;
 	}
 
-	size_t len;
+	size_t len = 0;
 	if(!fsize(f, &len)) {
 		fclose(f);
 		return NULL;
@@ -41,7 +43,7 @@ pub char *readfile(const char *path, size_t *size)
  */
 pub char *readfile_str(const char *path)
 {
-	size_t len;
+	size_t len = 0;
 	char *data = readfile(path, &len);
 	if(!data) return NULL;
 
@@ -61,7 +63,7 @@ pub char *readfile_str(const char *path)
  */
 pub bool filesize(const char *path, size_t *size)
 {
-	struct stat s;
+	stat_t s = {};
 	if(stat(path, &s) < 0) {
 		return false;
 	}
@@ -90,7 +92,7 @@ int fsize(FILE *f, size_t *s)
 
 int readf( FILE *f, char *data, size_t size)
 {
-	int c;
+	int c = 0;
 	while( size > 0 ) {
 		c = fgetc(f);
 		if( feof(f) ) {
@@ -108,7 +110,7 @@ int readf( FILE *f, char *data, size_t size)
  */
 pub bool is_dir(const char *path)
 {
-	struct stat s;
+	stat_t s = {};
 	if(stat(path, &s) < 0) {
 		return false;
 	}

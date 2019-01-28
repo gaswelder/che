@@ -47,17 +47,17 @@ void md5_init(uint32_t md[4])
  */
 void md5_feed(uint32_t buf[4], uint32_t block[16]) {
 	// tmp = buf
-	uint32_t tmp[4];
+	uint32_t tmp[4] = {};
 	tmp[0] = buf[0];
 	tmp[1] = buf[1];
 	tmp[2] = buf[2];
 	tmp[3] = buf[3];
 
-	uint32_t *a;
-	uint32_t *b;
-	uint32_t *c;
-	uint32_t *d;
-	int i;
+	uint32_t *a = NULL;
+	uint32_t *b = NULL;
+	uint32_t *c = NULL;
+	uint32_t *d = NULL;
+	int i = 0;
 
 	/*
 	 * 4 vectors, one for each round

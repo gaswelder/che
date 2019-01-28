@@ -12,8 +12,8 @@ void sha1(zio *data, uint32_t sum[5])
 	sum[3] = 0x10325476;
 	sum[4] = 0xc3d2e1f0;
 
-	struct _src s;
-	uint32_t block[16];
+	src_t s = {};
+	uint32_t block[16] = {};
 
 	src_init(&s, data);
 	while(fill_block(&s, block)) {
@@ -26,8 +26,8 @@ void sha1_feed(uint32_t block[16], uint32_t sum[5])
 	/*
 	 * Prepare message schedule W[t]
 	 */
-	uint32_t W[80];
-	int t;
+	uint32_t W[80] = {};
+	int t = 0;
 	for(t = 0; t < 16; t++) {
 		W[t] = block[t];
 	}
@@ -42,7 +42,7 @@ void sha1_feed(uint32_t block[16], uint32_t sum[5])
 		d = sum[3],
 		e = sum[4];
 
-	uint32_t T;
+	uint32_t T = 0;
 	for(t = 0; t < 80; t++) {
 		T = ROTL(5, a) + f(t, b, c, d) + e + K(t) + W[t];
 		e = d;

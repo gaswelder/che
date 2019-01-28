@@ -69,7 +69,7 @@ bool grow(str *s)
 		return false;
 	}
 
-	size_t new;
+	size_t new = 0;
 	if(s->max == 0) {
 		new = 16;
 	}

@@ -8,14 +8,13 @@ foreach (glob('mc/nodes/*.php') as $path) {
     require $path;
 }
 
-// $lexer = new lexer('prog/rand.c');
-// $path = 'test/types.c';
-$path = 'test/expressions.c';
-// $path = 'test/md5.c';
-// $path = 'test/ellipsis.c';
-// $path = 'test/union.c';
-// just_parse($path);
+// $path = 'test/parameters.c';
+// $m = parse_path($path);
+// var_dump($m);
+// echo $m->format();
 // exit;
+
+
 
 // $m = parse_path($path);
 // // echo json_encode($m->json(), JSON_PRETTY_PRINT);
@@ -121,14 +120,17 @@ function parse_module_element($lexer)
     switch ($lexer->peek()->type) {
         case 'import':
             $import = c_import::parse($lexer);
-            // $k = $import->resolve();
-            // var_dump('k', $k);
-            // exit;
+            $m = resolve_import($import);
+            $lexer->typenames = array_merge($lexer->typenames, $m->types());
             return $import;
         case 'typedef':
             return c_typedef::parse($lexer);
         case 'struct':
             return c_struct_definition::parse($lexer);
+        case 'enum':
+            return c_enum::parse($lexer);
+        case 'macro':
+            return c_compat_macro::parse($lexer);
     }
 
     $pub = false;
@@ -136,7 +138,11 @@ function parse_module_element($lexer)
         $lexer->get();
         $pub = true;
     }
-    $type = c_type::parse($lexer);
+    try {
+        $type = c_type::parse($lexer);
+    } catch (Exception $e) {
+        throw new Exception("unexpected input (expecting function, variable, typedef, struct)");
+    }
     $form = c_form::parse($lexer);
     if ($lexer->peek()->type == '(') {
         $parameters = c_function_parameters::parse($lexer);
@@ -246,8 +252,61 @@ class c_anonymous_typeform
     }
 }
 
+class c_struct_literal_member
+{
+    private $name;
+    private $value;
+
+    static function parse($lexer)
+    {
+        $self = new self;
+        expect($lexer, '.', 'struct literal member');
+        $self->name = c_identifier::parse($lexer, 'struct literal member');
+        expect($lexer, '=', 'struct literal member');
+        $self->value = parse_expression($lexer, 'struct literal member');
+        return $self;
+    }
+
+    function format()
+    {
+        return '.' . $this->name->format() . ' = ' . $this->value->format();
+    }
+}
+
+class c_struct_literal
+{
+    private $members = [];
+
+    static function parse($lexer)
+    {
+        $self = new self;
+        expect($lexer, '{', 'struct literal');
+        $self->members[] = c_struct_literal_member::parse($lexer);
+        while ($lexer->follows(',')) {
+            $lexer->get();
+            $self->members[] = c_struct_literal_member::parse($lexer);
+        }
+        expect($lexer, '}', 'struct literal');
+        return $self;
+    }
+
+    function format()
+    {
+        $s = "{\n";
+        foreach ($this->members as $member) {
+            $s .= "\t" . $member->format() . "\n";
+        }
+        $s .= "}\n";
+    }
+}
+
 function parse_atom($lexer)
 {
+    $nono = ['case', 'default', 'if', 'else', 'for', 'while', 'switch'];
+    if (in_array($lexer->peek()->type, $nono)) {
+        throw new Exception("expression: unexpected keyword '" . $lexer->peek()->type . "'");
+    }
+
     if ($lexer->peek()->type == '(' && is_type($lexer->peek(1), $lexer->typenames)) {
         expect($lexer, '(');
         $typeform = c_anonymous_typeform::parse($lexer);
@@ -262,11 +321,15 @@ function parse_atom($lexer)
         return $expr;
     }
 
-    switch ($lexer->peek()->type) {
-        case '{':
-            return c_array_literal::parse($lexer);
-        case 'sizeof':
-            return c_sizeof::parse($lexer);
+    if ($lexer->peek()->type == '{') {
+        if ($lexer->peek(1)->type == '.') {
+            return c_struct_literal::parse($lexer);
+        }
+        return c_array_literal::parse($lexer);
+    }
+
+    if ($lexer->peek()->type == 'sizeof') {
+        return c_sizeof::parse($lexer);
     }
 
     if (is_prefix_op($lexer->peek())) {

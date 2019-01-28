@@ -29,7 +29,9 @@ struct _src {
 	bool more;
 };
 
-void src_init(struct _src *s, zio *data)
+typedef struct _src src_t;
+
+void src_init(src_t *s, zio *data)
 {
 	s->stream = data;
 	s->length = 0;
@@ -37,7 +39,7 @@ void src_init(struct _src *s, zio *data)
 	s->more = true;
 }
 
-bool fill_block(struct _src *s, uint32_t block[16])
+bool fill_block(src_t *s, uint32_t block[16])
 {
 	if(!s->more) return false;
 	for(int i = 0; i < 16; i++) {
@@ -46,7 +48,7 @@ bool fill_block(struct _src *s, uint32_t block[16])
 	return true;
 }
 
-uint32_t next_word(struct _src *s)
+uint32_t next_word(src_t *s)
 {
 	uint32_t word = 0;
 	for(int i = 0; i < 4; i++) {
@@ -57,7 +59,7 @@ uint32_t next_word(struct _src *s)
 	return word;
 }
 
-uint8_t next_byte(struct _src *s)
+uint8_t next_byte(src_t *s)
 {
 	if(s->more_data) {
 		int c = zgetc(s->stream);
@@ -100,15 +102,15 @@ uint8_t next_byte(struct _src *s)
 	return b;
 }
 
-void init_padding(struct _src *s)
+void init_padding(src_t *s)
 {
 	/*
 	 * Now we know 'b' (data length in bits), so we can create the
 	 * length mark and calculate how many zero bytes need to be added.
 	 */
 
-	int i;
-	uint8_t b;
+	int i = 0;
+	uint8_t b = 0;
 	uint8_t *pos = (uint8_t *) &(s->lenbuf);
 	for(i = 0; i < 8; i++) {
 		b = (s->length >> (64-8 - 8*i)) & 0xFF;

@@ -28,12 +28,14 @@ struct __src {
 	bool more;
 };
 
+typedef struct __src src_t;
+
 /*
  * Process the stream and put the digest in 'digest'.
  */
 void md5(zio *stream, uint32_t digest[4])
 {
-	struct __src s = {
+	src_t s = {
 		.stream = stream,
 		.length = 0,
 		.more_data = true,
@@ -45,7 +47,7 @@ void md5(zio *stream, uint32_t digest[4])
 	/*
 	 * Process the stream in 16-word blocks.
 	 */
-	uint32_t block[16];
+	uint32_t block[16] = {};
 	while (s.more)
 	{
 		for (int i = 0; i < 16; i++) {
@@ -141,9 +143,9 @@ void init_padding(struct __src *s)
 	/*
 	 * The length mark is a sequence of two words, low word first.
 	 */
-	int i;
-	uint8_t b;
-	uint32_t w;
+	int i = 0;
+	uint8_t b = 0;
+	uint32_t w = 0;
 	uint8_t *pos = (uint8_t *) &(s->lenbuf);
 
 	// low word

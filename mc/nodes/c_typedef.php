@@ -10,7 +10,8 @@ class c_typedef
         expect($lexer, 'typedef');
         $self = new self;
         $self->type = c_type::parse($lexer, 'reading a typedef');
-        $self->alias = c_identifier::parse($lexer);
+        // $self->alias = c_identifier::parse($lexer);
+        $self->alias = c_form::parse($lexer);
         expect($lexer, ';');
         return $self;
     }
@@ -18,5 +19,10 @@ class c_typedef
     function format()
     {
         return sprintf("typedef %s %s;\n", $this->type->format(), $this->alias->format());
+    }
+
+    function name()
+    {
+        return $this->alias->name();
     }
 }

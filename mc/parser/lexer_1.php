@@ -21,6 +21,7 @@ class lexer_1
 	);
 
 	private static $keywords = array(
+		'default',
 		'typedef', 'struct',
 		'import', 'union',
 		'const', 'return',

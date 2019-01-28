@@ -48,7 +48,7 @@ pub void buf_fcontext(parsebuf *b, char *buf, size_t len)
 		len = b->len - b->pos;
 	}
 
-	size_t i;
+	size_t i = 0;
 	for(i = 0; i < len; i++) {
 		buf[i] = b->s[b->pos + i];
 	}

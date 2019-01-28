@@ -23,12 +23,14 @@ struct __json_node {
 	} val;
 };
 
+typedef struct __json_node json_node;
+
 struct __kv {
 	char *key;
-	struct __json_node *val;
+	json_node *val;
 };
 
-typedef struct __json_node json_node;
+typedef struct __kv kv_t;
 
 pub const char *json_err(json_node *n)
 {
@@ -206,7 +208,7 @@ pub const char *json_key(json_node *n, size_t i)
 	arr_t *a = n->val.obj;
 	size_t len = arr_len(a);
 	if(i >= len) return NULL;
-	struct __kv *kv = arr_get(a, i);
+	kv_t *kv = arr_get(a, i);
 	return kv->key;
 }
 
@@ -221,7 +223,7 @@ pub json_node *json_val(json_node *n, size_t i)
 	arr_t *a = n->val.obj;
 	size_t len = arr_len(a);
 	if(i >= len) return NULL;
-	struct __kv *kv = arr_get(a, i);
+	kv_t *kv = arr_get(a, i);
 	return kv->val;
 }
 
@@ -239,7 +241,7 @@ pub json_node *json_get(json_node *n, const char *key)
 	arr_t *a = n->val.obj;
 	size_t len = arr_len(a);
 	for(size_t i = 0; i < len; i++) {
-		struct __kv *kv = arr_get(a, i);
+		kv_t *kv = arr_get(a, i);
 		if(strcmp(kv->key, key) == 0) {
 			return kv->val;
 		}
@@ -288,7 +290,7 @@ pub void json_free( json_node *node )
 		arr_t *a = node->val.obj;
 		size_t n = arr_len(a);
 		for(size_t i = 0; i < n; i++) {
-			struct __kv *kv = arr_get(a, i);
+			kv_t *kv = arr_get(a, i);
 			free(kv->key);
 			json_free(kv->val);
 			free(kv);
@@ -416,7 +418,7 @@ pub bool json_put( json_node *n, const char *key, json_node *val )
 	/*
 	 * Find if the given key already exists.
 	 */
-	struct __kv *kv = NULL;
+	kv_t *kv = NULL;
 	arr_t *a = n->val.obj;
 	size_t len = arr_len(a);
 	for(size_t i = 0; i < len; i++) {

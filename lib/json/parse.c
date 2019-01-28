@@ -5,7 +5,7 @@ import "parsebuf"
  */
 pub json_node *json_parse(const char *s)
 {
-	struct parser p;
+	parser_t p = {};
 
 	p.buf = buf_new(s);
 	if(!p.buf) {
@@ -13,7 +13,7 @@ pub json_node *json_parse(const char *s)
 	}
 	p.next.type = EOF;
 
-	json_node *n;
+	json_node *n = NULL;
 
 	if(peek(&p) == EOF) {
 		n = json_newerror("No content");
@@ -45,7 +45,7 @@ pub json_node *json_parse(const char *s)
  * Reads one node and returns it.
  * Returns NULL in case of error.
  */
-json_node *read_node(struct parser *p)
+json_node *read_node(parser_t *p)
 {
 	switch(peek(p)) {
 		case EOF:
@@ -55,13 +55,13 @@ json_node *read_node(struct parser *p)
 		case '{':
 			return read_dict(p);
 		case T_STR:
-			struct _token t;
+			token_t t = {};
 			get(p, &t);
 			json_node *n = json_newstr(t.str);
 			free(t.str);
 			return n;
 		case T_NUM:
-			struct _token t;
+			token_t t = {};
 			get(p, &t);
 			return json_newnum(t.num);
 		case T_TRUE:
@@ -75,7 +75,7 @@ json_node *read_node(struct parser *p)
 	return NULL;
 }
 
-json_node *read_array(struct parser *p)
+json_node *read_array(parser_t *p)
 {
 	if(!expect(p, '[')) {
 		return NULL;
@@ -107,7 +107,7 @@ json_node *read_array(struct parser *p)
 	return a;
 }
 
-json_node *read_dict(struct parser *p)
+json_node *read_dict(parser_t *p)
 {
 	if(!expect(p, '{')) {
 		return NULL;
@@ -117,7 +117,7 @@ json_node *read_dict(struct parser *p)
 	if(!o) return NULL;
 
 	if(peek(p) != '}') {
-		struct _token t;
+		token_t t = {};
 
 		while(peek(p) != EOF) {
 
@@ -164,9 +164,9 @@ json_node *read_dict(struct parser *p)
 	return o;
 }
 
-bool expect(struct parser *p, int toktype)
+bool expect(parser_t *p, int toktype)
 {
-	struct _token t;
+	token_t t = {};
 	get(p, &t);
 	if(t.type != toktype) {
 		error(p, "'%c' expected", toktype);
@@ -179,9 +179,9 @@ bool expect(struct parser *p, int toktype)
  * Puts a formatted error message to the parser's
  * context and returns NULL.
  */
-void *error(struct parser *p, const char *fmt, ...)
+void *error(parser_t *p, const char *fmt, ...)
 {
-	va_list args;
+	va_list args = {};
 	va_start(args, fmt);
 	vsnprintf(p->err, sizeof(p->err), fmt, args);
 	va_end(args);

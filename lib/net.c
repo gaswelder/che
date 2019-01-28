@@ -10,6 +10,10 @@
 import "cli"
 
 const char *error = "no error";
+typedef struct sockaddr sockaddr_t;
+typedef struct sockaddr_in sockaddr_in_t;
+typedef struct addrinfo addrinfo_t;
+typedef struct timeval timeval_t;
 
 struct conn {
 	int sock;
@@ -17,7 +21,7 @@ struct conn {
 	char port[16];
 
 	int ai_family;
-	struct sockaddr ai_addr;
+	sockaddr_t ai_addr;
 	socklen_t addrlen;
 	char addrstr[300];
 };
@@ -65,7 +69,7 @@ pub int net_write(conn_t *c, const char *buf, size_t n)
 
 pub conn_t *net_conn(const char *proto, const char *addr)
 {
-	struct conn *c = newconn(proto, addr);
+	conn_t *c = newconn(proto, addr);
 	if(!c) {
 		return NULL;
 	}
@@ -81,7 +85,7 @@ pub conn_t *net_conn(const char *proto, const char *addr)
 
 pub conn_t *net_listen(const char *proto, const char *addr)
 {
-	struct conn *c = newconn(proto, addr);
+	conn_t *c = newconn(proto, addr);
 	if(!c) {
 		return NULL;
 	}
@@ -110,13 +114,13 @@ pub conn_t *net_listen(const char *proto, const char *addr)
 
 pub conn_t *net_accept(conn_t *l)
 {
-	struct conn *c = calloc(1, sizeof(struct conn));
+	conn_t *c = calloc(1, sizeof(conn_t));
 	if(!c) {
 		error = "no memory for new socket";
 		return NULL;
 	}
 
-	socklen_t size = sizeof(struct sockaddr);
+	socklen_t size = sizeof(sockaddr_t);
 	int s = accept(l->sock, &(c->ai_addr), &size);
 	if(s == -1) {
 		error = "accept failed";
@@ -135,7 +139,7 @@ pub conn_t *net_accept(conn_t *l)
 	return c;
 }
 
-pub void net_close(struct conn *c)
+pub void net_close(conn_t *c)
 {
 	close(c->sock);
 	free(c);
@@ -147,12 +151,12 @@ pub void net_close(struct conn *c)
  */
 pub int net_incoming(conn_t *c)
 {
-	fd_set read;
+	fd_set read = {};
 	FD_ZERO(&read);
 	FD_SET(c->sock, &read);
 
-	struct timeval t;
-	memset(&t, 0, sizeof(struct timeval));
+	timeval_t t = {};
+	memset(&t, 0, sizeof(timeval_t));
 
 	if(select(c->sock + 1, &read, NULL, NULL, &t) == -1) {
 		error = "select error";
@@ -166,7 +170,7 @@ pub int net_incoming(conn_t *c)
 	return 0;
 }
 
-struct conn *newconn(const char *proto, const char *addr)
+conn_t *newconn(const char *proto, const char *addr)
 {
 	/*
 	 * Only TCP is implemented
@@ -176,7 +180,7 @@ struct conn *newconn(const char *proto, const char *addr)
 		return NULL;
 	}
 
-	struct conn *c = calloc(1, sizeof(struct conn));
+	conn_t *c = calloc(1, sizeof(conn_t));
 	if( !c ) {
 		error = "malloc failed";
 		return NULL;
@@ -195,7 +199,7 @@ struct conn *newconn(const char *proto, const char *addr)
 	return c;
 }
 
-int getsock(struct conn *c, const char *addr)
+int getsock(conn_t *c, const char *addr)
 {
 	/*
 	 * Split the address into a hostname and a portname
@@ -204,22 +208,22 @@ int getsock(struct conn *c, const char *addr)
 		return 0;
 	}
 
-	struct addrinfo query = {
+	addrinfo_t query = {
 		.ai_socktype = SOCK_STREAM,
 		.ai_protocol = IPPROTO_TCP
 	};
-	struct addrinfo *result;
+	addrinfo_t *result = NULL;
 	if(getaddrinfo(c->host, c->port, &query, &result) != 0) {
 		error = "getaddrinfo error";
 		return 0;
 	}
 
-	struct addrinfo *i;
+	addrinfo_t *i = NULL;
 	for(i = result; i != NULL; i = i->ai_next)
 	{
 		c->sock = socket( i->ai_family, i->ai_socktype, i->ai_protocol );
 		if( c->sock > 0 ) {
-			memcpy(&(c->ai_addr), i->ai_addr, sizeof(struct sockaddr));
+			memcpy(&(c->ai_addr), i->ai_addr, sizeof(sockaddr_t));
 			c->addrlen = i->ai_addrlen;
 			c->ai_family = i->ai_family;
 			break;
@@ -234,7 +238,7 @@ int getsock(struct conn *c, const char *addr)
 	return 1;
 }
 
-int parseaddr(struct conn *c, const char *addr)
+int parseaddr(conn_t *c, const char *addr)
 {
 	int i = 0;
 	const char *p = addr;
@@ -265,13 +269,13 @@ int parseaddr(struct conn *c, const char *addr)
 	return 1;
 }
 
-int format_address(struct sockaddr *a, char *buf, size_t n)
+int format_address(sockaddr_t *a, char *buf, size_t n)
 {
 	if(a->sa_family != AF_INET) {
 		error = "unknown sa_family";
 		return 0;
 	}
-	struct sockaddr_in *ai = (struct sockaddr_in *) a;
+	sockaddr_in_t *ai = (sockaddr_in_t *) a;
 	int r = snprintf( buf, n, "%s:%u",
 		inet_ntoa( ai->sin_addr ),
 		ntohs( ai->sin_port )
@@ -288,10 +292,10 @@ int format_address(struct sockaddr *a, char *buf, size_t n)
  */
 pub char *net_gets(char *s, int size, conn_t *c)
 {
-	int pos;
+	int pos = 0;
 	// read at most size-1 chars
 	for(pos = 0; pos < size-1; pos++) {
-		char ch;
+		char ch = 0;
 		int r = net_read(c, &ch, 1);
 
 		// on read error return NULL
@@ -343,12 +347,12 @@ pub int net_puts(const char *s, conn_t *c)
  */
 pub void net_printf(conn_t *c, const char *fmt, ...)
 {
-	va_list args;
+	va_list args = {};
 	va_start(args, fmt);
 	int len = vsnprintf(NULL, 0, fmt, args);
 	va_end(args);
 
-	char buf[len+1];
+	char buf[len+1] = {};
 	va_start(args, fmt);
 	len = vsnprintf(buf, len+1, fmt, args);
 	va_end(args);

@@ -6,23 +6,23 @@ struct mem {
 	size_t size; // allocated buffer size
 };
 
-typedef struct mem MEM;
+typedef struct mem mem_t;
 
 /*
  * Creates a memory buffer.
  * 'name' and 'mode' are ignored.
  */
-MEM *memopen(const char *name, const char *mode) {
+mem_t *memopen(const char *name, const char *mode) {
 	(void) name;
 	(void) mode;
-	MEM *m = calloc( 1, sizeof(struct mem) );
+	mem_t *m = calloc(1, sizeof(mem_t));
 	return m;
 }
 
 /*
  * Closes the buffer.
  */
-void memclose(MEM *mem) {
+void memclose(mem_t *mem) {
 	if(mem->data) {
 		free(mem->data);
 	}
@@ -32,14 +32,14 @@ void memclose(MEM *mem) {
 /*
  * Resets the position to zero.
  */
-void memrewind(MEM *m) {
+void memrewind(mem_t *m) {
 	m->pos = 0;
 }
 
 /*
  * Returns current position in the stream
  */
-long memtell(MEM *m) {
+long memtell(mem_t *m) {
 	assert(m->pos <= LONG_MAX);
 	return (long) m->pos;
 }
@@ -47,7 +47,7 @@ long memtell(MEM *m) {
 /*
  * Puts a character in the memory at current position
  */
-int memputc(int ch, MEM *m)
+int memputc(int ch, mem_t *m)
 {
 	if(ch == EOF) return EOF;
 
@@ -70,7 +70,7 @@ int memputc(int ch, MEM *m)
 /*
  * Returns next character of EOF.
  */
-int memgetc(MEM *m)
+int memgetc(mem_t *m)
 {
 	if(m->pos >= m->datalen) {
 		return EOF;
@@ -84,7 +84,7 @@ int memgetc(MEM *m)
  * Write 'size' bytes from buffer 'buf'
  * Returns number of bytes written.
  */
-size_t memwrite(MEM *m, const char *buf, size_t size)
+size_t memwrite(mem_t *m, const char *buf, size_t size)
 {
 	if( !makespace(m, size) ) {
 		puts("No memory");
@@ -109,7 +109,7 @@ size_t memwrite(MEM *m, const char *buf, size_t size)
  * Read up to 'size' bytes to the buffer 'buf'.
  * Returns the number of bytes read.
  */
-size_t memread(MEM *m, char *buf, size_t size)
+size_t memread(mem_t *m, char *buf, size_t size)
 {
 	size_t len = m->datalen - m->pos;
 	if(len > size) len = size;
@@ -126,7 +126,7 @@ size_t memread(MEM *m, char *buf, size_t size)
  * Returns 0 if there is no space and additional memory couldn't be
  * allocated.
  */
-int makespace(MEM *mem, size_t size)
+int makespace(mem_t *mem, size_t size)
 {
 	size_t need = mem->pos + size;
 

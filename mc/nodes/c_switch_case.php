@@ -9,7 +9,11 @@ class c_switch_case
     {
         $self = new self;
         expect($lexer, 'case');
-        $self->value = c_literal::parse($lexer);
+        if ($lexer->follows('word')) {
+            $self->value = c_identifier::parse($lexer);
+        } else {
+            $self->value = c_literal::parse($lexer);
+        }
         expect($lexer, ':');
         $until = ['case', 'break', 'default', '}'];
         while ($lexer->more() && !in_array($lexer->peek()->type, $until)) {

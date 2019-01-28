@@ -24,6 +24,11 @@ class c_form
         return $self;
     }
 
+    function name()
+    {
+        return trim($this->str, '[]*');
+    }
+
     function format()
     {
         return $this->str;

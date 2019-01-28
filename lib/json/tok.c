@@ -21,6 +21,8 @@ struct _token {
 	double num;
 };
 
+typedef struct _token token_t;
+
 /*
  * These values are above 255 so that they couldn't be
  * confused with byte values in the parsed string.
@@ -46,13 +48,15 @@ struct parser {
 	/*
 	 * Look-ahead cache.
 	 */
-	struct _token next;
+	token_t next;
 };
+
+typedef struct parser parser_t;
 
 /*
  * Returns type of the next token
  */
-int peek(struct parser *p)
+int peek(parser_t *p)
 {
 	if(p->next.type == EOF && buf_more(p->buf)) {
 		read(p, &(p->next));
@@ -60,7 +64,7 @@ int peek(struct parser *p)
 	return p->next.type;
 }
 
-void get(struct parser *p, struct _token *t)
+void get(parser_t *p, token_t *t)
 {
 	/*
 	 * Read next value into the cache if necessary.
@@ -82,7 +86,7 @@ void get(struct parser *p, struct _token *t)
 	p->next.type = EOF;
 }
 
-void read(struct parser *p, struct _token *t)
+void read(parser_t *p, token_t *t)
 {
 	/*
 	 * Skip spaces
@@ -123,7 +127,7 @@ void read(struct parser *p, struct _token *t)
 	error(p, "Unexpected character: %c", c);
 }
 
-void readstr(struct parser *p, struct _token *t)
+void readstr(parser_t *p, token_t *t)
 {
 	assert(expectch(p, '"'));
 	str *s = str_new();
@@ -175,7 +179,7 @@ void readstr(struct parser *p, struct _token *t)
 	t->str = copy;
 }
 
-bool expectch(struct parser *p, char c)
+bool expectch(parser_t *p, char c)
 {
 	char g = buf_get(p->buf);
 	if(g != c) {
@@ -185,9 +189,9 @@ bool expectch(struct parser *p, char c)
 	return true;
 }
 
-void readkw(struct parser *p, struct _token *t)
+void readkw(parser_t *p, token_t *t)
 {
-	char kw[8];
+	char kw[8] = {};
 	int i = 0;
 
 	while(isalpha(buf_peek(p->buf)) && i < 7) {
@@ -214,7 +218,7 @@ void readkw(struct parser *p, struct _token *t)
 /*
  * number = [ minus ] int [ frac ] [ exp ]
  */
-void readnum(struct parser *p, struct _token *t)
+void readnum(parser_t *p, token_t *t)
 {
 	bool minus = false;
 	double num = 0.0;
@@ -282,8 +286,8 @@ void readnum(struct parser *p, struct _token *t)
 			e += buf_get(p->buf) - '0';
 		}
 
-		double mul;
-		if(eminus) mul = 0.1;
+		double mul = 0;
+		if (eminus) mul = 0.1;
 		else mul = 10;
 		while(e-- > 0) {
 			num *= mul;
