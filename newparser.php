@@ -25,25 +25,12 @@ $path = 'test/expressions.c';
 // echo dep_tree($m);
 // exit;
 
+
 foreach (glob('test/*.c') as $path) {
     echo $path, "\n";
-    just_parse($path);
-}
-
-function just_parse($path)
-{
-    $lexer = new lexer($path);
-    $lexer->typenames = typenames($path);
-    $m = parse_program($lexer);
-    // var_dump($m);
-    echo $m->format();
-}
-
-function parse_path($path)
-{
-    $lexer = new lexer($path);
-    $lexer->typenames = typenames($path);
-    return parse_program($lexer);
+    $m = parse_path($path);
+    // echo $m->format();
+    echo dep_tree($m);
 }
 
 function dep_tree(c_module $module)
@@ -52,15 +39,81 @@ function dep_tree(c_module $module)
     $imps = $module->imports();
     foreach ($imps as $imp) {
         $s .= $imp->name() . "\n";
-        $s .= indent(dep_tree($imp->resolve())) . "\n";
+        $s .= indent(dep_tree(resolve_import($imp))) . "\n";
     }
-    return $s;
+    $s .= "\n";
+    return indent($s);
 }
+
+function parse_path($module_path)
+{
+    // A module can be written as one .c file, or as multiple
+    // .c files in a directory. Treat both cases as one by reducing
+    // to a list of .c files to parse and merge.
+    if (is_dir($module_path)) {
+        $paths = glob("$module_path/*.c");
+    } else {
+        $paths = [$module_path];
+    }
+
+    // Preview all module files and collect what new types they define.
+    $types = [];
+    foreach ($paths as $path) {
+        $types = array_merge($types, typenames($path));
+    }
+
+    // Parse each file separately using the gathered types information.
+    $modules = array_map(function ($path) use ($types) {
+        $lexer = new lexer($path);
+        $lexer->typenames = $types;
+        return parse_program($lexer, $path);
+    }, $paths);
+
+    // Merge all partial modules into one.
+    $result = array_reduce($modules, function ($a, $b) {
+        if (!$a) return $b;
+        return $a->merge($b);
+    }, null);
+
+    return $result;
+}
+
+
+function resolve_import(c_import $import)
+{
+    $name = $import->name();
+    $paths = [
+        'lib/' . $name . '.c',
+        "lib/$name",
+        // $name
+    ];
+    foreach ($paths as $path) {
+        if (file_exists($path)) {
+            return parse_path($path);
+        }
+    }
+    throw new Exception("can't find module '$name'");
+}
+
+
 
 function typenames($path)
 {
     $file = new package_file($path);
     return $file->typenames();
+}
+
+function parse_program($lexer, $filename)
+{
+    // return c_module::parse($lexer);
+    try {
+        return c_module::parse($lexer);
+    } catch (Exception $e) {
+        $next = $lexer->peek();
+        $where = "$filename:" . $lexer->peek()->pos;
+        $what = $e->getMessage();
+        echo "$where: $what: $next...\n";
+    }
 }
 
 function parse_module_element($lexer)
@@ -101,17 +154,6 @@ function parse_module_element($lexer)
         return new c_module_variable($type, $form, $value);
     }
     throw new Exception("unexpected input");
-}
-
-function parse_program($lexer)
-{
-    // return c_module::parse($lexer);
-    try {
-        return c_module::parse($lexer);
-    } catch (Exception $e) {
-        $next = $lexer->peek();
-        echo $e->getMessage(), ' at ' . $lexer->peek()->pos, ": $next ...\n";
-    }
 }
 
 function is_op($token)

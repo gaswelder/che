@@ -6,6 +6,7 @@ require __DIR__ . '/lexer_1.php';
 function read($path)
 {
 	static $cache = [];
+
 	if (!isset($cache[$path])) {
 		$toks = [];
 		$s = new lexer_1(file_get_contents($path));
@@ -29,6 +30,9 @@ class lexer
 
 	function __construct($path)
 	{
+		if (!is_file($path)) {
+			throw new Exception("can't parse '$path': not a file");
+		}
 		$this->toks = read($path);
 	}
 

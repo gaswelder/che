@@ -39,4 +39,25 @@ class c_module
         }
         return $list;
     }
+
+    function merge(c_module $that)
+    {
+        $result = new self;
+        $result->elements = array_merge($this->elements, $that->elements);
+        return $result;
+
+		// // Remove redundant imports
+        // $imports = [];
+        // $mod->code = array_filter($mod->code, function ($c) use (&$imports) {
+        //     if ($c instanceof che_import) {
+        //         if (in_array($c->path(), $imports)) {
+        //             return false;
+        //         }
+        //         $imports[] = $c->path();
+        //     }
+        //     return true;
+        // });
+
+        // return $mod;
+    }
 }

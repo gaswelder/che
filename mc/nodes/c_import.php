@@ -23,18 +23,4 @@ class c_import
     {
         return $this->path;
     }
-
-    function resolve()
-    {
-        $paths = [
-            'lib/' . $this->path . '.c',
-            $this->path
-        ];
-        foreach ($paths as $path) {
-            if (file_exists($path)) {
-                return parse_path($path);
-            }
-        }
-        throw new Exception("can't find module '$this->path'");
-    }
 }
