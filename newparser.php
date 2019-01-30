@@ -8,7 +8,7 @@ foreach (glob('mc/nodes/*.php') as $path) {
     require $path;
 }
 
-// $path = 'test/parameters.c';
+// $path = 'test/forms.c';
 // $m = parse_path($path);
 // var_dump($m);
 // echo $m->format();
@@ -225,31 +225,6 @@ function parse_expression($lexer, $level = 0)
         $result = new c_binary_op($op, $result, $next);
     }
     return $result;
-}
-
-class c_anonymous_typeform
-{
-    private $type;
-    private $ops = [];
-
-    static function parse($lexer)
-    {
-        $self = new self;
-        $self->type = c_type::parse($lexer);
-        while ($lexer->follows('*')) {
-            $self->ops[] = $lexer->get()->type;
-        }
-        return $self;
-    }
-
-    function format()
-    {
-        $s = $this->type->format();
-        foreach ($this->ops as $op) {
-            $s .= $op;
-        }
-        return $s;
-    }
 }
 
 class c_struct_literal_member
