@@ -4,6 +4,7 @@ require 'mc/parser/lexer.php';
 require 'mc/parser/token.php';
 require 'mc/debug.php';
 require 'mc/module/package_file.php';
+require 'deptree.php';
 foreach (glob('mc/nodes/*.php') as $path) {
     require $path;
 }
@@ -26,22 +27,7 @@ foreach (glob('mc/nodes/*.php') as $path) {
 
 
 foreach (glob('test/*.c') as $path) {
-    echo $path, "\n";
-    $m = parse_path($path);
-    // echo $m->format();
-    echo dep_tree($m);
-}
-
-function dep_tree(c_module $module)
-{
-    $s = '';
-    $imps = $module->imports();
-    foreach ($imps as $imp) {
-        $s .= $imp->name() . "\n";
-        $s .= indent(dep_tree(resolve_import($imp))) . "\n";
-    }
-    $s .= "\n";
-    return indent($s);
+    echo dep_tree($path);
 }
 
 function parse_path($module_path)
@@ -343,12 +329,12 @@ function parse_atom($lexer)
     return $result;
 }
 
-function indent($text)
+function indent($text, $tab = "\t")
 {
     if (substr($text, -1) == "\n") {
-        return indent(substr($text, 0, -1)) . "\n";
+        return indent(substr($text, 0, -1), $tab) . "\n";
     }
-    return "\t" . str_replace("\n", "\n\t", $text);
+    return $tab . str_replace("\n", "\n$tab", $text);
 }
 
 function with_comment($comment, $message)
