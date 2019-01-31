@@ -31,4 +31,15 @@ class c_function_declaration
         }
         return $s;
     }
+
+    function translate()
+    {
+        return new c_compat_function_declaration(
+            !$this->pub,
+            $this->type,
+            $this->form,
+            $this->parameters,
+            $this->body
+        );
+    }
 }

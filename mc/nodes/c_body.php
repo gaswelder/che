@@ -25,6 +25,6 @@ class c_body
         foreach ($this->statements as $statement) {
             $s .= $statement->format() . ";\n";
         }
-        return "{\n" . indent($s) . "}";
+        return "{\n" . indent($s) . "}\n";
     }
 }

@@ -15,6 +15,12 @@ foreach (glob('mc/nodes/*.php') as $path) {
 // echo $m->format();
 // exit;
 
+$m = parse_path('test/arr.c');
+$c = $m->translate();
+$c->build('zz');
+// var_dump($c);
+exit;
+
 
 
 // $m = parse_path($path);
@@ -78,6 +84,67 @@ function resolve_import(c_import $import)
         }
     }
     throw new Exception("can't find module '$name'");
+}
+
+function hoist_declarations($elements)
+{
+    $forward = [];
+    $body = [];
+
+    foreach ($elements as $element) {
+        if ($element instanceof c_compat_include
+            || $element instanceof c_compat_function_forward_declaration
+            || $element instanceof c_struct_definition
+            || $element instanceof c_typedef) {
+            $forward[] = $element;
+        } else {
+            $body[] = $element;
+        }
+    }
+    return array_merge($forward, $body);
+}
+
+function translate_module($che_elements)
+{
+    $elements = [];
+    $sources = [];
+
+    $std = [
+        'assert',
+        'ctype',
+        'errno',
+        'limits',
+        'math',
+        'stdarg',
+        'stdbool',
+        'stddef',
+        'stdint',
+        'stdio',
+        'stdlib',
+        'string',
+        'time'
+    ];
+    foreach ($std as $n) {
+        $elements[] = new c_compat_include("<$n.h>");
+    }
+
+    foreach ($che_elements as $element) {
+        if ($element instanceof c_import) {
+            $module = resolve_import($element);
+            $compat = $module->translate();
+            $elements = array_merge($elements, $compat->synopsis());
+            $sources[] = $compat->source_path();
+            continue;
+        }
+        if ($element instanceof c_function_declaration) {
+            $func = $element->translate();
+            $elements[] = $func->forward_declaration();
+            $elements[] = $func;
+            continue;
+        };
+        $elements[] = $element;
+    }
+    return [hoist_declarations($elements), $sources];
 }
 
 

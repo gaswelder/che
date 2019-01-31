@@ -25,7 +25,7 @@ class c_struct_fieldlist
 
     function format()
     {
-        $s = $this->type->format();
+        $s = $this->type->format() . ' ';
         foreach ($this->forms as $i => $form) {
             if ($i > 0) $s .= ', ';
             $s .= $form->format();
