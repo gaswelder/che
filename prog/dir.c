@@ -21,14 +21,13 @@ int main(int argc, char *argv[])
 		return 1;
 	}
 
-	defer dirclose(d);
-
-	while(1) {
+	while (true) {
 		const char *fn = dirnext(d);
-		if(!fn) break;
-
+		if (!fn) break;
 		printf("%s\n", fn);
 	}
+
+	dirclose(d);
 
 	return 0;
 }

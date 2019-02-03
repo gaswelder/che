@@ -15,16 +15,31 @@ foreach (glob('mc/nodes/*.php') as $path) {
 // exit;
 
 // Build
-$m = parse_path('prog/post.c');
-$mods = resolve_deps($m);
-$c_mods = array_map('translate', $mods);
-build($c_mods, 'zz');
+cmd_build('prog/echo7.c', 'zz');
 exit;
+foreach (glob('prog/*.c') as $path) {
+    echo $path, "\n";
+    cmd_build($path, 'z-' . basename($path));
+}
+exit;
+
+function cmd_build($path, $name)
+{
+    $m = parse_path($path);
+    $mods = resolve_deps($m);
+    $c_mods = array_map('translate', $mods);
+    build($c_mods, $name);
+}
+
+// Deps
+// $path = 'prog/chargen.c';
+// echo dep_tree($path);
+// exit;
 
 function translate(c_module $m)
 {
-    $elements = translate_module($m->elements());
-    return new c_compat_module($elements);
+    [$elements, $link] = translate_module($m->elements());
+    return new c_compat_module($elements, $link);
 }
 
 function resolve_deps(c_module $m)
@@ -52,26 +67,21 @@ function build($modules, $name)
         $paths[] = $path;
     }
 
+    $link = [];
+    foreach ($modules as $module) {
+        $link = array_unique(array_merge($link, $module->link()));
+    }
+
     $cmd = 'c99 -Wall -Wextra -Werror -pedantic -pedantic-errors';
     $cmd .= ' -fmax-errors=3';
     $cmd .= ' -g ' . implode(' ', $paths);
     $cmd .= ' -o ' . $name;
-        // foreach ($this->link as $name) {
-        //     $cmd .= ' -l ' . $name;
-        // }
+    foreach ($link as $name) {
+        $cmd .= ' -l ' . $name;
+    }
     echo "$cmd\n";
     exec($cmd, $output, $ret);
 }
-
-
-
-// $m = parse_path($path);
-// // echo json_encode($m->json(), JSON_PRETTY_PRINT);
-// var_dump($m);
-// echo $m->format();
-// // var_dump($m->imports());
-// echo dep_tree($m);
-// exit;
 
 
 foreach (glob('test/*.c') as $path) {
@@ -152,6 +162,7 @@ function hoist_declarations($elements)
 function translate_module($che_elements)
 {
     $elements = [];
+    $link = [];
 
     foreach ($che_elements as $element) {
         if ($element instanceof c_import) {
@@ -168,6 +179,15 @@ function translate_module($che_elements)
         }
         if ($element instanceof c_enum) {
             $elements[] = $element->translate();
+            continue;
+        }
+        // Discard #type hints.
+        if ($element instanceof c_compat_macro && $element->name() == 'type') {
+            continue;
+        }
+        // Discard #link hints, but remember the values.
+        if ($element instanceof c_compat_macro && $element->name() == 'link') {
+            $link[] = $element->value();
             continue;
         }
         $elements[] = $element;
@@ -192,7 +212,26 @@ function translate_module($che_elements)
         $elements[] = new c_compat_include("<$n.h>");
     }
 
-    return hoist_declarations($elements);
+    return [deduplicate_synopsis(hoist_declarations($elements)), $link];
+}
+
+function deduplicate_synopsis($elements)
+{
+    $result = [];
+    $set = [];
+
+    foreach ($elements as $element) {
+        if ($element instanceof c_typedef || $element instanceof c_struct_definition) {
+            $s = $element->format();
+            if (isset($set[$s])) {
+                continue;
+            }
+            $set[$s] = true;
+        }
+        $result[] = $element;
+    }
+
+    return $result;
 }
 
 

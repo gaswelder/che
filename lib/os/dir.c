@@ -6,6 +6,7 @@ struct __dir {
 };
 
 typedef struct __dir dir_t;
+typedef struct dirent dirent_t;
 
 /*
  * Opens directory at given path and returns its handle.
@@ -13,7 +14,7 @@ typedef struct __dir dir_t;
  */
 pub dir_t *diropen(const char *path)
 {
-	dir_t *d = calloc(1, sizeof(struct __dir));
+	dir_t *d = calloc(1, sizeof(*d));
 	if(!d) return NULL;
 
 	d->d = opendir(path);
@@ -31,7 +32,7 @@ pub dir_t *diropen(const char *path)
  */
 pub const char *dirnext(dir_t *d)
 {
-	struct dirent *e = readdir(d->d);
+	dirent_t *e = readdir(d->d);
 	if(!e) return NULL;
 	return e->d_name;
 }

@@ -35,7 +35,7 @@ void *process_client(void *arg)
 {
 	conn_t *c = (conn_t *) arg;
 	logmsg("%s connected", net_addr(c));
-	char buf[256];
+	char buf[256] = {0};
 
 	while(1) {
 		int len = net_read(c, buf, sizeof(buf));

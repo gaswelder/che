@@ -33,10 +33,12 @@ char linechars[] =
 
 int main()
 {
-	conn_t *l = net_listen("tcp", "0.0.0.0:1900");
+	char address[] = "0.0.0.0:1900";
+	conn_t *l = net_listen("tcp", address);
 	if(!l) {
 		fatal("listen failed: %s", net_error());
 	}
+	logmsg("listening at %s", address);
 
 	while(1) {
 		conn_t *s = net_accept(l);

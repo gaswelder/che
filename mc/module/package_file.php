@@ -44,16 +44,16 @@ class package_file
 			if ($t === null) {
 				break;
 			}
-			if ($t->type != 'typedef') {
-				continue;
+
+			// When a 'typedef' is encountered, look ahead
+			// to find the type name
+			if ($t->type == 'typedef') {
+				$list[] = self::get_typename($s);
 			}
-			 /*
-			 * When a 'typedef' is encountered, look ahead
-			 * to find the type name
-			 */
-			$name = self::get_typename($s);
-			if (!$name) break;
-			$list[] = $name;
+
+			if ($t->type == 'macro' && strpos($t->content, '#type') === 0) {
+				$list[] = trim(substr($t->content, strlen('#type') + 1));
+			}
 		}
 		return $list;
 	}
@@ -78,8 +78,7 @@ class package_file
 		}
 
 		if (empty($buf)) {
-			trigger_error("No tokens after 'typedef'");
-			return null;
+			throw new Exception("No tokens after 'typedef'");
 		}
 
 		$buf = array_reverse($buf);
@@ -110,8 +109,7 @@ class package_file
 		}
 
 		if (!$name) {
-			trigger_error("Type name expected in the typedef");
-			return null;
+			throw new Exception("Type name expected in the typedef");
 		}
 		return $name;
 	}

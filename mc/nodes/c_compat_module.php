@@ -3,10 +3,12 @@
 class c_compat_module
 {
     private $elements = [];
+    private $link = [];
 
-    function __construct($elements)
+    function __construct($elements, $link)
     {
         $this->elements = $elements;
+        $this->link = $link;
     }
 
     function format()
@@ -16,6 +18,11 @@ class c_compat_module
             $s .= $node->format();
         }
         return $s;
+    }
+
+    function link()
+    {
+        return $this->link;
     }
 
     function synopsis()
