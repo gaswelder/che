@@ -47,7 +47,7 @@ void md5_init(uint32_t md[4])
  */
 void md5_feed(uint32_t buf[4], uint32_t block[16]) {
 	// tmp = buf
-	uint32_t tmp[4] = {};
+	uint32_t tmp[4] = {0};
 	tmp[0] = buf[0];
 	tmp[1] = buf[1];
 	tmp[2] = buf[2];

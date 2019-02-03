@@ -17,6 +17,7 @@ class c_module_variable
     {
         return $this->type->format()
             . ' ' . $this->form->format()
-            . ' = ' . $this->value->format();
+            . ' = ' . $this->value->format()
+            . ";\n";
     }
 }

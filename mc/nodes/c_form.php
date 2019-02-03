@@ -16,7 +16,8 @@ class c_form
         if ($lexer->follows('[')) {
             $self->str .= $lexer->get()->type;
             while ($lexer->more() && $lexer->peek()->type != ']') {
-                $self->str .= $lexer->get()->content;
+                $expr = parse_expression($lexer);
+                $self->str .= $expr->format();
             }
             expect($lexer, ']');
             $self->str .= ']';

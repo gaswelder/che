@@ -210,7 +210,10 @@ pub int zprintf(zio *s, const char *fmt, ...)
 	/*
 	 * Format the string
 	 */
-	char buf[len + 1] = {};
+	char *buf = calloc(len + 1, sizeof(char));
+	if (!buf) {
+		return -1;
+	}
 	va_start(args, fmt);
 	len = vsnprintf(buf, len + 1, fmt, args);
 	va_end(args);
@@ -232,6 +235,7 @@ pub int zprintf(zio *s, const char *fmt, ...)
 		default:
 			puts("Unknown zio type");
 	}
+	free(buf);
 
 	if(n < len) {
 		fprintf(stderr, "zprintf write error: len=%d, n=%d\n", len, n);

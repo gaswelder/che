@@ -34,6 +34,9 @@ class c_array_literal
             if ($i > 0) $s .= ', ';
             $s .= $value->format();
         }
+        if (empty($this->values)) {
+            $s .= '0';
+        }
         $s .= '}';
         return $s;
     }

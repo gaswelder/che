@@ -47,7 +47,7 @@ void md5(zio *stream, uint32_t digest[4])
 	/*
 	 * Process the stream in 16-word blocks.
 	 */
-	uint32_t block[16] = {};
+	uint32_t block[16] = {0};
 	while (s.more)
 	{
 		for (int i = 0; i < 16; i++) {

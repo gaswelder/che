@@ -26,13 +26,45 @@ class c_enum_member
     }
 }
 
+class c_compat_enum
+{
+    private $hidden;
+    private $members;
+
+    function __construct($members, $hidden)
+    {
+        $this->members = $members;
+        $this->hidden = $hidden;
+    }
+
+    function is_private()
+    {
+        return $this->hidden;
+    }
+
+    function format()
+    {
+        $s = "enum {\n";
+        foreach ($this->members as $i => $member) {
+            if ($i > 0) {
+                $s .= ",\n";
+            }
+            $s .= "\t" . $member->format();
+        }
+        $s .= "\n};\n";
+        return $s;
+    }
+}
+
 class c_enum
 {
     private $members = [];
+    private $pub;
 
-    static function parse($lexer)
+    static function parse($lexer, $pub)
     {
         $self = new self;
+        $self->pub = $pub;
         expect($lexer, 'enum', 'enum definition');
         expect($lexer, '{', 'enum definition');
         $self->members[] = c_enum_member::parse($lexer);
@@ -47,11 +79,20 @@ class c_enum
 
     function format()
     {
-        $s = "enum {\n";
+        $s = '';
+        if ($this->pub) {
+            $s .= 'pub ';
+        }
+        $s .= "enum {\n";
         foreach ($this->members as $id) {
             $s .= "\t" . $id->format() . ",\n";
         }
         $s .= "}\n";
         return $s;
+    }
+
+    function translate()
+    {
+        return new c_compat_enum($this->members, !$this->pub);
     }
 }

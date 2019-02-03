@@ -17,10 +17,11 @@ class c_switch_default
 
     function format()
     {
-        $s = "default:\n";
+        $s = "default: {\n";
         foreach ($this->statements as $statement) {
-            $s .= $statement->format() . "\n";
+            $s .= $statement->format() . ";\n";
         }
+        $s .= "}\n";
         return $s;
     }
 }

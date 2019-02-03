@@ -24,10 +24,11 @@ class c_switch_case
 
     function format()
     {
-        $s = 'case ' . $this->value->format() . ":\n";
+        $s = 'case ' . $this->value->format() . ": {\n";
         foreach ($this->statements as $statement) {
             $s .= $statement->format() . ";\n";
         }
+        $s .= "}\n";
         return $s;
     }
 }

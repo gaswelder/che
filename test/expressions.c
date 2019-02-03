@@ -1,4 +1,10 @@
 void main() {
+	char optstr[MAX_FLAGS * 2 + 2] =  {};
+
+	if (!*argv || !*(argv + 1)) {
+		return;
+	}
+
 	char foo[] =
 		"abc"
 		"def";

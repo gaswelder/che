@@ -151,11 +151,11 @@ pub void net_close(conn_t *c)
  */
 pub int net_incoming(conn_t *c)
 {
-	fd_set read = {};
+	fd_set read = {0};
 	FD_ZERO(&read);
 	FD_SET(c->sock, &read);
 
-	timeval_t t = {};
+	timeval_t t = {0};
 	memset(&t, 0, sizeof(timeval_t));
 
 	if(select(c->sock + 1, &read, NULL, NULL, &t) == -1) {
@@ -347,15 +347,16 @@ pub int net_puts(const char *s, conn_t *c)
  */
 pub void net_printf(conn_t *c, const char *fmt, ...)
 {
-	va_list args = {};
+	va_list args = {0};
 	va_start(args, fmt);
 	int len = vsnprintf(NULL, 0, fmt, args);
 	va_end(args);
 
-	char buf[len+1] = {};
+	char *buf = calloc(len + 1, sizeof(char));
 	va_start(args, fmt);
 	len = vsnprintf(buf, len+1, fmt, args);
 	va_end(args);
 
 	net_puts(buf, c);
+	free(buf);
 }

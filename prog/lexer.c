@@ -30,7 +30,7 @@ const char *keywords[] = {
 	"else",
 	"pub",
 	"for",
-	"if",
+	"if"
 };
 
 struct lexer_struct {

@@ -61,7 +61,7 @@ int sendm(zio *n, const char *from, const char *to, const char *subj)
 	zprintf(n, "To: <%s>\r\n", to);
 	zprintf(n, "\r\n");
 
-	char buf[4096];
+	char buf[4096] = {};
 	while( fgets(buf, 4096, stdin) ) {
 		zprintf(n, "%s", buf);
 	}
@@ -85,7 +85,7 @@ void expect(zio *n, int code)
 	(void) code;
 	if(_error) return;
 
-	char buf[256];
+	char buf[256] = {};
 	int len = zread(n, buf, 255);
 	if( len < 0 ) {
 		err("net_read error");

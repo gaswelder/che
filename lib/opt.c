@@ -31,10 +31,12 @@ struct optspec {
 	void *value_pointer;
 };
 
+typedef struct optspec optspec_t;
+
 /*
  * List of defined options.
  */
-struct optspec specs[MAX_FLAGS];
+optspec_t specs[MAX_FLAGS] = {};
 int flags_num = 0;
 
 const char *progname = "progname";
@@ -91,12 +93,11 @@ pub char **opt_parse( int argc, char **argv )
 {
 	opterr = 0;
 	progname = argv[0];
-	char optstr[MAX_FLAGS * 2 + 2];
+	char optstr[MAX_FLAGS * 2 + 2] =  {};
 
 	char *p = optstr;
 	*p++ = ':';
-	int i;
-	for( i = 0; i < flags_num; i++ )
+	for (int i = 0; i < flags_num; i++ )
 	{
 		*p++ = specs[i].name[0];
 		if( specs[i].type != OPT_BOOL ) {
@@ -105,7 +106,7 @@ pub char **opt_parse( int argc, char **argv )
 	}
 	*p = '\0';
 
-	int c;
+	int c = 0;
 	while( (c = getopt(argc, argv, optstr)) != -1 )
 	{
 		if( c == ':' ) {
@@ -144,7 +145,7 @@ void setflag(int c)
 		exit(1);
 	}
 
-	struct optspec *flag = &specs[pos];
+	optspec_t *flag = &specs[pos];
 
 	switch( flag->type )
 	{
@@ -171,7 +172,7 @@ void setflag(int c)
 
 			if( flag->type == OPT_UINT )
 			{
-				unsigned val;
+				unsigned val = 0;
 				if( sscanf(optarg, "%u", &val) < 1 ) {
 					fprintf(stderr, "Couldn't parse value");
 					exit(1);
@@ -180,7 +181,7 @@ void setflag(int c)
 			}
 			else if( flag->type == OPT_SIZE )
 			{
-				size_t val;
+				size_t val = 0;
 				if( sscanf(optarg, "%lu", &val) < 1 ) {
 					fprintf(stderr, "Couldn't parse value");
 					exit(1);
@@ -189,7 +190,7 @@ void setflag(int c)
 			}
 			else
 			{
-				int val;
+				int val = 0;
 				if( sscanf(optarg, "%d", &val) < 1 ) {
 					fprintf(stderr, "Couldn't parse value");
 					exit(1);
@@ -208,7 +209,7 @@ pub void opt_summary(const char *s) {
 	summary = s;
 }
 
-pub void opt_usage(void)
+pub void opt_usage()
 {
 	if( summary ) {
 		fprintf( stderr, "Usage: %s\n", summary );
@@ -216,8 +217,7 @@ pub void opt_usage(void)
 		fprintf( stderr, "Usage: %s [options] [arguments]\n", progname );
 	}
 
-	int i;
-	for(i = 0; i < flags_num; i++)
+	for (int i = 0; i < flags_num; i++)
 	{
 		fprintf( stderr, "\t-%s", specs[i].name );
 		switch( specs[i].type )

@@ -51,10 +51,9 @@ class c_module
         return $list;
     }
 
-    function translate()
+    function elements()
     {
-        [$elements, $sources] = translate_module($this->elements);
-        return new c_compat_module($elements, $sources);
+        return $this->elements;
     }
 
     function merge(c_module $that)

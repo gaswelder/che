@@ -9,17 +9,59 @@ foreach (glob('mc/nodes/*.php') as $path) {
     require $path;
 }
 
-// $path = 'test/forms.c';
+// $path = 'test/expressions.c';
 // $m = parse_path($path);
-// var_dump($m);
 // echo $m->format();
 // exit;
 
-$m = parse_path('test/arr.c');
-$c = $m->translate();
-$c->build('zz');
-// var_dump($c);
+// Build
+$m = parse_path('prog/post.c');
+$mods = resolve_deps($m);
+$c_mods = array_map('translate', $mods);
+build($c_mods, 'zz');
 exit;
+
+function translate(c_module $m)
+{
+    $elements = translate_module($m->elements());
+    return new c_compat_module($elements);
+}
+
+function resolve_deps(c_module $m)
+{
+    $deps = [$m];
+    foreach ($m->imports() as $imp) {
+        $sub = resolve_import($imp);
+        $deps = array_merge($deps, resolve_deps($sub));
+    }
+    return array_unique($deps, SORT_REGULAR);
+}
+
+function build($modules, $name)
+{
+    if (!file_exists('tmp')) {
+        mkdir('tmp');
+    }
+
+    // Save all the modules somewhere.
+    $paths = [];
+    foreach ($modules as $module) {
+        $src = $module->format();
+        $path = 'tmp/' . md5($src) . '.c';
+        file_put_contents($path, $src);
+        $paths[] = $path;
+    }
+
+    $cmd = 'c99 -Wall -Wextra -Werror -pedantic -pedantic-errors';
+    $cmd .= ' -fmax-errors=3';
+    $cmd .= ' -g ' . implode(' ', $paths);
+    $cmd .= ' -o ' . $name;
+        // foreach ($this->link as $name) {
+        //     $cmd .= ' -l ' . $name;
+        // }
+    echo "$cmd\n";
+    exec($cmd, $output, $ret);
+}
 
 
 
@@ -88,26 +130,48 @@ function resolve_import(c_import $import)
 
 function hoist_declarations($elements)
 {
-    $forward = [];
+    $a = [];
+    $b = [];
     $body = [];
 
     foreach ($elements as $element) {
         if ($element instanceof c_compat_include
-            || $element instanceof c_compat_function_forward_declaration
+            || $element instanceof c_compat_macro) {
+            $a[] = $element;
+        } else if ($element instanceof c_compat_function_forward_declaration
             || $element instanceof c_struct_definition
             || $element instanceof c_typedef) {
-            $forward[] = $element;
+            $b[] = $element;
         } else {
             $body[] = $element;
         }
     }
-    return array_merge($forward, $body);
+    return array_merge($a, $b, $body);
 }
 
 function translate_module($che_elements)
 {
     $elements = [];
-    $sources = [];
+
+    foreach ($che_elements as $element) {
+        if ($element instanceof c_import) {
+            $module = resolve_import($element);
+            $compat = translate($module);
+            $elements = array_merge($elements, $compat->synopsis());
+            continue;
+        }
+        if ($element instanceof c_function_declaration) {
+            $func = $element->translate();
+            $elements[] = $func->forward_declaration();
+            $elements[] = $func;
+            continue;
+        }
+        if ($element instanceof c_enum) {
+            $elements[] = $element->translate();
+            continue;
+        }
+        $elements[] = $element;
+    }
 
     $std = [
         'assert',
@@ -128,23 +192,7 @@ function translate_module($che_elements)
         $elements[] = new c_compat_include("<$n.h>");
     }
 
-    foreach ($che_elements as $element) {
-        if ($element instanceof c_import) {
-            $module = resolve_import($element);
-            $compat = $module->translate();
-            $elements = array_merge($elements, $compat->synopsis());
-            $sources[] = $compat->source_path();
-            continue;
-        }
-        if ($element instanceof c_function_declaration) {
-            $func = $element->translate();
-            $elements[] = $func->forward_declaration();
-            $elements[] = $func;
-            continue;
-        };
-        $elements[] = $element;
-    }
-    return [hoist_declarations($elements), $sources];
+    return hoist_declarations($elements);
 }
 
 
@@ -180,8 +228,6 @@ function parse_module_element($lexer)
             return c_typedef::parse($lexer);
         case 'struct':
             return c_struct_definition::parse($lexer);
-        case 'enum':
-            return c_enum::parse($lexer);
         case 'macro':
             return c_compat_macro::parse($lexer);
     }
@@ -191,16 +237,23 @@ function parse_module_element($lexer)
         $lexer->get();
         $pub = true;
     }
+    if ($lexer->follows('enum')) {
+        return c_enum::parse($lexer, $pub);
+    }
     try {
         $type = c_type::parse($lexer);
     } catch (Exception $e) {
-        throw new Exception("unexpected input (expecting function, variable, typedef, struct)");
+        throw new Exception("unexpected input (expecting function, variable, typedef, struct, enum)");
     }
     $form = c_form::parse($lexer);
     if ($lexer->peek()->type == '(') {
         $parameters = c_function_parameters::parse($lexer);
         $body = c_body::parse($lexer);
         return new c_function_declaration($pub, $type, $form, $parameters, $body);
+    }
+
+    if ($lexer->peek()->type != '=') {
+        throw new Exception("module variable: '=' expected");
     }
 
     if ($lexer->peek()->type == '=') {
@@ -254,6 +307,7 @@ function operator_strength($op)
         ['<<', '>>'],
         ['+', '-'],
         ['*', '/', '%'],
+        ['prefix'],
         ['->', '.']
     ];
     foreach ($map as $i => $ops) {
@@ -264,13 +318,13 @@ function operator_strength($op)
     throw new Exception("unknown operator: '$op'");
 }
 
-function parse_expression($lexer, $level = 0)
+function parse_expression($lexer, $current_strength = 0)
 {
     $result = parse_atom($lexer);
     while (is_op($lexer->peek())) {
         // If the operator is not stronger that our current level,
         // yield the result.
-        if (operator_strength($lexer->peek()->type) <= $level) {
+        if (operator_strength($lexer->peek()->type) <= $current_strength) {
             return $result;
         }
         $op = $lexer->get()->type;
@@ -322,9 +376,10 @@ class c_struct_literal
     {
         $s = "{\n";
         foreach ($this->members as $member) {
-            $s .= "\t" . $member->format() . "\n";
+            $s .= "\t" . $member->format() . ",\n";
         }
         $s .= "}\n";
+        return $s;
     }
 }
 
@@ -362,7 +417,7 @@ function parse_atom($lexer)
 
     if (is_prefix_op($lexer->peek())) {
         $op = $lexer->get()->type;
-        return new c_prefix_operator($op, parse_expression($lexer));
+        return new c_prefix_operator($op, parse_expression($lexer, operator_strength('prefix')));
     }
 
     if ($lexer->peek()->type == 'word') {
