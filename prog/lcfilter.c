@@ -19,13 +19,18 @@ bool streq(const char *a, const char *b) {
 	return a && b && strcmp(a, b) == 0;
 }
 
+// Pretend to return new objects,
+// but update and return the same static ones.
+proc_info_t _proc = {};
+log_entry_t _log = {};
+
 int main(int argc, char **argv) {
 	if (argc != 2) {
 		fprintf(stderr, "Usage: lcfilter <application id>\n");
 		return 1;
 	}
 
-	char line[10000];
+	char line[10000] = {0};
 	const char *appname = argv[1];
 
 	// const char *appname = "com.foo.bar";
@@ -90,11 +95,6 @@ proc_info_t* proc_info(const log_entry_t *log) {
 
 	return &_proc;
 }
-
-// Pretend to return new objects,
-// but update and return the same static ones.
-proc_info_t _proc;
-log_entry_t _log;
 
 
 /*

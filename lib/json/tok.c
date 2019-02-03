@@ -59,7 +59,7 @@ typedef struct parser parser_t;
 int peek(parser_t *p)
 {
 	if(p->next.type == EOF && buf_more(p->buf)) {
-		read(p, &(p->next));
+		readtok(p, &(p->next));
 	}
 	return p->next.type;
 }
@@ -86,7 +86,7 @@ void get(parser_t *p, token_t *t)
 	p->next.type = EOF;
 }
 
-void read(parser_t *p, token_t *t)
+void readtok(parser_t *p, token_t *t)
 {
 	/*
 	 * Skip spaces

@@ -1,5 +1,6 @@
 import "clip/arr"
 import "zio"
+import "strutil"
 
 enum {
 	JSON_UND,
@@ -80,7 +81,7 @@ const char *typename(int type) {
 json_node *json_newerror(const char *s) {
 	json_node *n = newnode(JSON_ERR);
 	if(!n) return NULL;
-	n->val.str = strdup(s);
+	n->val.str = newstr("%s", s);
 	if(!n->val.str) {
 		free(n);
 		return NULL;
@@ -329,7 +330,7 @@ pub json_node *json_copy( json_node *obj )
 	{
 		size_t n = json_size(obj);
 		for(size_t i = 0; i < n; i++) {
-			char *k = strdup(json_key(obj, i));
+			char *k = newstr("%s", json_key(obj, i));
 			json_node *v = json_copy(json_val(obj, i));
 			if(!k || !v || !json_put(copy, k, v)) {
 				free(k);
@@ -353,7 +354,7 @@ pub json_node *json_copy( json_node *obj )
 	}
 	else if( obj->type == JSON_STR )
 	{
-		copy->val.str = strdup(obj->val.str);
+		copy->val.str = newstr("%s", obj->val.str);
 		if(!copy->val.str) {
 			free(copy);
 			return NULL;
@@ -438,7 +439,7 @@ pub bool json_put( json_node *n, const char *key, json_node *val )
 	}
 	else {
 		kv = calloc(1, sizeof(*kv));
-		kv->key = strdup(key);
+		kv->key = newstr("%s", key);
 		arr_push(a, kv);
 	}
 

@@ -1,5 +1,6 @@
 import "zio"
 import "string"
+import "strutil"
 
 pub char *json_format(json_node *n)
 {
@@ -13,7 +14,7 @@ pub char *json_format(json_node *n)
 		if(c == EOF) break;
 		str_addc(s, c);
 	}
-	char *str1 = strdup(str_raw(s));
+	char *str1 = newstr("%s", str_raw(s));
 	str_free(s);
 	zclose(z);
 	return str1;

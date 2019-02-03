@@ -45,10 +45,10 @@ bool streq(char *a, char *b) {
 
 int main() {
     char *source = read_stdin();
-    defer free(source);
-
-    lexer_t *lexer = lexer_make(source);
-    defer lexer_free(lexer);
+	lexer_t *lexer = lexer_make(source);
+	if (!source || !lexer) {
+		return 1;
+	}
 
     while (true) {
         tok_t *tok = lexer_read(lexer);
@@ -68,6 +68,8 @@ int main() {
 		tok_free(tok);
     }
 
+	free(source);
+	lexer_free(lexer);
     return 0;
 }
 

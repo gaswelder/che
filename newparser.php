@@ -15,7 +15,7 @@ foreach (glob('mc/nodes/*.php') as $path) {
 // exit;
 
 // Build
-cmd_build('prog/echo7.c', 'zz');
+cmd_build('prog/lexer.c', 'zz');
 exit;
 foreach (glob('prog/*.c') as $path) {
     echo $path, "\n";
@@ -140,23 +140,27 @@ function resolve_import(c_import $import)
 
 function hoist_declarations($elements)
 {
-    $a = [];
-    $b = [];
-    $body = [];
+    $order = [
+        [c_compat_include::class, c_compat_macro::class],
+        [c_struct_definition::class, c_typedef::class, c_compat_enum::class],
+        [c_compat_function_forward_declaration::class]
+    ];
+
+    $get_order = function ($element) use ($order) {
+        foreach ($order as $i => $classnames) {
+            if (in_array(get_class($element), $classnames)) {
+                return $i;
+            }
+        }
+        return count($order);
+    };
+
+    $groups = [[], [], [], []];
 
     foreach ($elements as $element) {
-        if ($element instanceof c_compat_include
-            || $element instanceof c_compat_macro) {
-            $a[] = $element;
-        } else if ($element instanceof c_compat_function_forward_declaration
-            || $element instanceof c_struct_definition
-            || $element instanceof c_typedef) {
-            $b[] = $element;
-        } else {
-            $body[] = $element;
-        }
+        $groups[$get_order($element)][] = $element;
     }
-    return array_merge($a, $b, $body);
+    return call_user_func_array('array_merge', $groups);
 }
 
 function translate_module($che_elements)
