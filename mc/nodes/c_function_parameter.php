@@ -29,4 +29,16 @@ class c_function_parameter
         }
         return $s;
     }
+
+    function translate()
+    {
+        $compat = [];
+        foreach ($this->forms as $form) {
+            $p = new self;
+            $p->type = $this->type;
+            $p->forms = [$form];
+            $compat[] = $p;
+        }
+        return $compat;
+    }
 }

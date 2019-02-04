@@ -8,26 +8,28 @@ import "cli"
  * The map
  */
 struct __map {
-	struct __table *t;
+	__table *t;
 };
-
-struct __table {
-	int nitems; // how many items
-	int nbuckets; // how many buckets
-	struct __item **buckets;
-};
+typedef struct __map map;
 
 /*
  * An element of the hash table
  */
 struct __item {
-	struct __item *next;
+	__item *next;
 	char key[MAXKEY];
 	void *value;
 	int intval;
 };
+typedef struct __item __item;
 
-typedef struct __map map;
+struct __table {
+	int nitems; // how many items
+	int nbuckets; // how many buckets
+	__item **buckets;
+};
+typedef struct __table __table;
+
 
 pub map *map_new()
 {
@@ -47,8 +49,11 @@ pub void map_free(map *m)
  */
 pub bool map_exists(map *m, const char *key)
 {
-	struct __item *i = find(m->t, key);
-	return i ? true : false;
+	__item *i = find(m->t, key);
+	if (i) {
+		return true;
+	}
+	return false;
 }
 
 /*
@@ -56,13 +61,13 @@ pub bool map_exists(map *m, const char *key)
  */
 pub void *map_get(map *m, const char *key)
 {
-	struct __item *i = find(m->t, key);
+	__item *i = find(m->t, key);
 	return i->value;
 }
 
 pub int map_geti(map *m, const char *key)
 {
-	struct __item *i = find(m->t, key);
+	__item *i = find(m->t, key);
 	return i->intval;
 }
 
@@ -71,7 +76,7 @@ pub int map_geti(map *m, const char *key)
  */
 pub void map_set(map *m, const char *key, void *val)
 {
-	struct __item *i = find(m->t, key);
+	__item *i = find(m->t, key);
 	/*
 	 * If already exists, just change the value.
 	 */
@@ -90,7 +95,7 @@ pub void map_set(map *m, const char *key, void *val)
 
 pub void map_seti(map *m, const char *key, int val)
 {
-	struct __item *i = find(m->t, key);
+	__item *i = find(m->t, key);
 	if(i) {
 		i->intval = val;
 		return;
@@ -108,15 +113,14 @@ pub void map_seti(map *m, const char *key, int val)
  */
 void grow(map *m)
 {
-	struct __table *old = m->t;
+	__table *old = m->t;
 
 	/*
 	 * Create new table and reinsert values into it
 	 */
-	struct __table *new = create_table(old->nbuckets * 2);
-	int j;
-	for(j = 0; j < old->nbuckets; j++) {
-		struct __item *i = old->buckets[j];
+	__table *new = create_table(old->nbuckets * 2);
+	for(int j = 0; j < old->nbuckets; j++) {
+		__item *i = old->buckets[j];
 		while(i) {
 			insert(new, i->key, i->value, i->intval);
 			i = i->next;
@@ -130,9 +134,9 @@ void grow(map *m)
 /*
  * Finds an item in a single bucket
  */
-struct __item *find(struct __table *t, const char *key)
+__item *find(__table *t, const char *key)
 {
-	struct __item *i = t->buckets[hash(key) % t->nbuckets];
+	__item *i = t->buckets[hash(key) % t->nbuckets];
 	while(i) {
 		if(strcmp(i->key, key) == 0) {
 			return i;
@@ -143,42 +147,39 @@ struct __item *find(struct __table *t, const char *key)
 	return NULL;
 }
 
-void insert(struct __table *t, const char *key, void *val, int intval)
+void insert(__table *t, const char *key, void *val, int intval)
 {
 	if(strlen(key) >= MAXKEY) {
 		fatal("Key too long: %s", key);
 	}
 
-	struct __item *i = alloc(1, sizeof(*i));
+	__item *i = alloc(1, sizeof(*i));
 	strcpy(i->key, key);
 	i->value = val;
 	i->intval = intval;
 
 	int pos = hash(key) % t->nbuckets;
-	struct __item *b = t->buckets[pos];
+	__item *b = t->buckets[pos];
 	i->next = b;
 	t->buckets[pos] = i;
 
 	t->nitems++;
 }
 
-struct __table *create_table(int size)
+__table *create_table(int size)
 {
-	struct __table *t = alloc(1, sizeof(*t));
-	t->buckets = alloc(size, sizeof(struct __bucket *));
+	__table *t = alloc(1, sizeof(*t));
+	t->buckets = alloc(size, sizeof(t->buckets[0]));
 	t->nbuckets = size;
 	return t;
 }
 
-void free_table(struct __table *t)
+void free_table(__table *t)
 {
-	int k;
-	for(k = 0; k < t->nbuckets; k++) {
-		struct __item *i;
-		struct __item *next;
-		i = t->buckets[k];
-		while(i) {
-			next = i->next;
+	for (int k = 0; k < t->nbuckets; k++) {
+		__item *i = t->buckets[k];
+		while (i) {
+			__item next = i->next;
 			free(i);
 			i = next;
 		}
@@ -191,12 +192,12 @@ void free_table(struct __table *t)
  */
 int hash(const char *s)
 {
-	unsigned long h = 0;
-	while(*s) {
+	uint32_t h = 0;
+	while (*s) {
 		h = (h * *s  + 2020181) % 2605013;
 		s++;
 	}
-	return h;
+	return (int) h;
 }
 
 void *alloc(size_t n, size_t size)

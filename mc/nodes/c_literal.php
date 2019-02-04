@@ -17,6 +17,12 @@ class c_literal
             $self->type = $type;
             return $self;
         }
+        if ($lexer->peek()->type == 'word' && $lexer->peek()->content == 'NULL') {
+            $lexer->get();
+            $self->type = 'null';
+            $self->value = 'NULL';
+            return $self;
+        }
         throw new Exception("literal expected, got " . $lexer->peek());
     }
 

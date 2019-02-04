@@ -1,13 +1,5 @@
 <?php
 
-class c_ellipsis
-{
-    function format()
-    {
-        return '...';
-    }
-}
-
 class c_function_parameters
 {
     private $parameters = [];
@@ -42,5 +34,18 @@ class c_function_parameters
         }
         $s .= ')';
         return $s;
+    }
+
+    function translate()
+    {
+        $compat = new self;
+        foreach ($this->parameters as $parameter) {
+            if ($parameter instanceof c_ellipsis) {
+                $compat->parameters[] = $parameter;
+                continue;
+            }
+            $compat->parameters = array_merge($compat->parameters, $parameter->translate());
+        }
+        return $compat;
     }
 }

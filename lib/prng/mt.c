@@ -49,8 +49,8 @@
 #define UPPER_MASK 0x80000000UL /* most significant w-r bits */
 #define LOWER_MASK 0x7fffffffUL /* least significant r bits */
 
-uint32_t mt[N]; /* the array for the state vector  */
-int mti=N+1; /* mti==N+1 means mt[N] is not initialized */
+uint32_t mt[N] = {}; /* the array for the state vector  */
+int mti = N + 1; /* mti==N+1 means mt[N] is not initialized */
 
 /*
  * Initializes the generator with the given seed.
@@ -102,33 +102,41 @@ void init_by_array(uint32_t init_key[], int key_length)
 }
 */
 
-uint32_t mag01[2]={0x0UL, MATRIX_A};
+uint32_t mag01[2] = { 0x0UL, MATRIX_A };
+
+uint32_t combine(uint32_t x, y) {
+    uint32_t upper = x & UPPER_MASK;
+    uint32_t lower = y & LOWER_MASK;
+    return upper | lower;
+}
 
 /*
  * Returns a random number from the interval [0,0xffffffff].
  */
-pub uint32_t mt_rand32(void)
+pub uint32_t mt_rand32()
 {
-    uint32_t y;
+    uint32_t y = 0;
     
     /* mag01[x] = x * MATRIX_A  for x=0,1 */
 
     if (mti >= N) { /* generate N words at one time */
-        int kk;
+        int kk = 0;
 
-        if (mti == N+1)   /* if mt_seed() has not been called, */
-            mt_seed(5489UL); /* a default initial seed is used */
+        // if mt_seed has not been called, use the default initial seed.
+        if (mti == N+1) {
+            mt_seed(5489UL);
+        }
 
         for (kk=0;kk<N-M;kk++) {
-            y = (mt[kk]&UPPER_MASK)|(mt[kk+1]&LOWER_MASK);
+            y = combine(mt[kk], mt[kk+1]);
             mt[kk] = mt[kk+M] ^ (y >> 1) ^ mag01[y & 0x1UL];
         }
         while (kk < N-1) {
-            y = (mt[kk]&UPPER_MASK)|(mt[kk+1]&LOWER_MASK);
+            y = combine(mt[kk], mt[kk+1]);
             mt[kk] = mt[kk+(M-N)] ^ (y >> 1) ^ mag01[y & 0x1UL];
             kk++;
         }
-        y = (mt[N-1]&UPPER_MASK)|(mt[0]&LOWER_MASK);
+        y = combine(mt[N-1], mt[0]);
         mt[N-1] = mt[M-1] ^ (y >> 1) ^ mag01[y & 0x1UL];
 
         mti = 0;
@@ -148,7 +156,7 @@ pub uint32_t mt_rand32(void)
 /*
  * Returns a random number from the interval [0.0,1.0].
  */
-pub double mt_randf(void)
+pub double mt_randf()
 {
     return mt_rand32()*(1.0/4294967295.0);
     /* divided by 2^32-1 */

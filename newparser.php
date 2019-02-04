@@ -15,7 +15,7 @@ foreach (glob('mc/nodes/*.php') as $path) {
 // exit;
 
 // Build
-cmd_build('prog/lexer.c', 'zz');
+cmd_build('prog/wc.c', 'zz');
 exit;
 foreach (glob('prog/*.c') as $path) {
     echo $path, "\n";

@@ -31,6 +31,8 @@ struct header {
 	bool padded;
 };
 
+typedef struct header header_t;
+
 struct mp3file_s {
 	FILE *file;
 	const char *err;
@@ -43,11 +45,11 @@ struct mp3file_s {
 
 	long nextpos;
 
-	struct header h;
+	header_t h;
 };
 
 
-pub struct mp3time {
+struct mp3time {
 	int min;
 	int sec;
 	uint64_t usec;
@@ -131,7 +133,7 @@ bool nextframe(struct mp3file_s *f)
 /*
  * Writes data from 'f' to 'out' until the specified time position.
  */
-pub void mp3out(mp3file *f, FILE *out, struct mp3time pos)
+pub void mp3out(mp3file *f, FILE *out, mp3time_t pos)
 {
 	if(f->err) return;
 	/*
@@ -139,7 +141,7 @@ pub void mp3out(mp3file *f, FILE *out, struct mp3time pos)
 	 * time:
 	 * nframes * samples_per_frame / 44100 <= time_sec
 	 */
-	size_t usec;
+	size_t usec = 0;
 	if(pos.min == -1) {
 		usec = SIZE_MAX;
 	}
@@ -193,7 +195,7 @@ bool read_header(struct mp3file_s *f)
 	/*
 	 * Calculate the length of the frame.
 	 */
-	struct header *h = &f->h;
+	header_t *h = &f->h;
 	size_t len = 144 * (h->bitrate*1000) / h->freq;
 	if(h->padded) len++;
 
@@ -205,7 +207,7 @@ bool read_header(struct mp3file_s *f)
 	return r;
 }
 
-bool _read_header(bits_t *s, struct header *h)
+bool _read_header(bits_t *s, header_t *h)
 {
 	// 8 bits: FF
 	if(bits_getn(s, 8) != 0xFF) {

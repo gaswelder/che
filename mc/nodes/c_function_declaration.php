@@ -38,7 +38,7 @@ class c_function_declaration
             !$this->pub,
             $this->type,
             $this->form,
-            $this->parameters,
+            $this->parameters->translate(),
             $this->body
         );
     }

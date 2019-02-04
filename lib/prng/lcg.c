@@ -5,8 +5,9 @@ struct __state {
 	int m;
 	int x;
 };
+typedef struct __state lcg_t;
 
-struct __state s;
+lcg_t s = {445, 700001, 2097152, 0};
 
 pub void lcg_seed(int a, int c, int m, int x) {
 	s.a = a;

@@ -29,20 +29,18 @@ class c_compat_module
     {
         $elements = [];
 
+        $exports = [
+            c_typedef::class,
+            c_struct_definition::class,
+            c_compat_macro::class,
+        ];
+
         foreach ($this->elements as $element) {
             if ($element instanceof c_compat_function_declaration && !$element->is_static()) {
                 $elements[] = $element->forward_declaration();
                 continue;
             }
-            if ($element instanceof c_typedef) {
-                $elements[] = $element;
-                continue;
-            }
-            if ($element instanceof c_struct_definition) {
-                $elements[] = $element;
-                continue;
-            }
-            if ($element instanceof c_compat_macro) {
+            if (in_array(get_class($element), $exports)) {
                 $elements[] = $element;
                 continue;
             }

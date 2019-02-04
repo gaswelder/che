@@ -43,7 +43,6 @@ pub int http_main()
 void *process_client(void *arg)
 {
 	conn_t *c = (conn_t *) arg;
-	defer net_close(c);
 
 	struct request req;
 
@@ -55,6 +54,7 @@ void *process_client(void *arg)
 		map(c, req.path);
 	}
 
+	net_close(c);
 	return NULL;
 }
 

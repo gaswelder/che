@@ -11,7 +11,7 @@ import "parsebuf"
 /*
  * Track info: title and position in microseconds
  */
-pub struct cuetrack {
+struct cuetrack {
 	char title[300];
 	uint64_t pos_usec;
 };
@@ -23,7 +23,7 @@ typedef struct cuetrack cuetrack_t;
  */
 #define MAXTRACKS 100
 struct _cue {
-	struct cuetrack tracks[MAXTRACKS];
+	cuetrack_t tracks[MAXTRACKS];
 	int ntracks;
 };
 
@@ -39,6 +39,7 @@ struct _ctx {
 	char cmd[40];
 	parsebuf *buf;
 };
+typedef struct _ctx context_t;
 
 /*
  * Recognized header commands
@@ -62,14 +63,12 @@ pub void cue_free(cue_t *c)
  */
 pub cue_t *cue_parse(const char *s)
 {
-	struct _ctx c;
+	context_t c = {};
 
 	c.buf = buf_new(s);
-	if(!c.buf) return NULL;
-	defer buf_free(c.buf);
-
 	cue_t *cue = calloc(1, sizeof(cue_t));
-	if(!cue) {
+	if (!c.buf || !cue) {
+		if (c.buf) buf_free(c.buf);
 		return NULL;
 	}
 
@@ -98,10 +97,10 @@ pub cue_t *cue_parse(const char *s)
 	/*
 	 * Read file->track trees
 	 */
-	while(streq(c.cmd, "FILE")) {
+	while(strcmp(c.cmd, "FILE") == 0) {
 		skip_line(c.buf);
 		read_command(&c);
-		while(streq(c.cmd, "TRACK")) {
+		while(strcmp(c.cmd, "TRACK") == 0) {
 			if(cue->ntracks == MAXTRACKS) {
 				fatal("Too many tracks (limit = %d)", MAXTRACKS);
 			}
@@ -114,6 +113,7 @@ pub cue_t *cue_parse(const char *s)
 		fatal("Unexpected command: %s", c.cmd);
 	}
 
+	buf_free(c.buf);
 	return cue;
 }
 
@@ -127,11 +127,11 @@ const char *track_props[] = {
 	NULL
 };
 
-void read_track(struct _ctx *c, struct cuetrack *track)
+void read_track(context_t *c, cuetrack_t *track)
 {
 	skip_line(c->buf);
 
-	char val[1000];
+	char val[1000] = "";
 
 	while(1) {
 		read_command(c);
@@ -147,7 +147,7 @@ void read_track(struct _ctx *c, struct cuetrack *track)
 		}
 		val[i] = '\0';
 
-		if(streq(c->cmd, "TITLE")) {
+		if(strcmp(c->cmd, "TITLE") == 0) {
 			/*
 			 * Cut off double quotes
 			 */
@@ -166,8 +166,11 @@ void read_track(struct _ctx *c, struct cuetrack *track)
 			continue;
 		}
 
-		if(streq(c->cmd, "INDEX")) {
-			unsigned num, min, sec, frames;
+		if(strcmp(c->cmd, "INDEX") == 0) {
+			unsigned num = 0;
+			unsigned min = 0;
+			unsigned sec = 0;
+			unsigned frames = 0;
 			int n = sscanf(val, "%u %u:%u:%u", &num, &min, &sec, &frames);
 			if(n != 4) {
 				fatal("Couldn't parse index: %s", val);
@@ -201,7 +204,7 @@ void skip_line(parsebuf *b)
 /*
  * Reads the following CUE command into the 'cmd' field.
  */
-void read_command(struct _ctx *c)
+void read_command(context_t *c)
 {
 	while(buf_peek(c->buf) == ' ' || buf_peek(c->buf) == '\t') {
 		buf_get(c->buf);
@@ -225,7 +228,7 @@ bool is_in(const char *cmd, const char **list)
 {
 	const char **p = list;
 	while(*p) {
-		if(streq(*p, cmd)) {
+		if(strcmp(*p, cmd) == 0) {
 			return true;
 		}
 		p++;
@@ -233,7 +236,7 @@ bool is_in(const char *cmd, const char **list)
 	return false;
 }
 
-pub struct cuetrack *cue_track(cue_t *c, int i)
+pub cuetrack_t *cue_track(cue_t *c, int i)
 {
 	if(i < 0 || i >= c->ntracks) {
 		return NULL;
@@ -244,9 +247,4 @@ pub struct cuetrack *cue_track(cue_t *c, int i)
 pub int cue_ntracks(cue_t *c)
 {
 	return c->ntracks;
-}
-
-bool streq(const char *s1, *s2)
-{
-	return strcmp(s1, s2) == 0;
 }

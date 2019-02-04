@@ -6,6 +6,7 @@ import "net"
 import "os/dir"
 import "fileutil"
 import "zio"
+import "cli"
 
 /*
  * Serve the file corresponding to the given query path
@@ -15,7 +16,6 @@ void map(conn_t *c, char *path)
 	printf("map %s\n", path);
 	assert(path[0] == '/');
 	char *localpath = newstr(".%s", path);
-	defer free(localpath);
 
 	if(is_dir(localpath)) {
 		show_dir(c, localpath);
@@ -23,6 +23,7 @@ void map(conn_t *c, char *path)
 	else {
 		map_file(c, localpath);
 	}
+	free(localpath);
 }
 
 /*
@@ -51,11 +52,15 @@ void map_file(conn_t *c, char *localpath)
 	 * Pump the file to the client
 	 */
 	zio *f = zopen("file", localpath, "rb");
-	assert(f);
-	defer zclose(f);
+	if (!f) {
+		fatal("failed to open %s", localpath);
+	}
 
 	size_t total = copy(f, c);
-	assert(total == size);
+	zclose(f);
+	if (total != size) {
+		fatal("total != size");
+	}
 }
 
 /*
@@ -90,7 +95,6 @@ void show_dir(conn_t *c, char *path)
 	 * serve it with already known content-length.
 	 */
 	zio *buf = zopen("mem", "", "");
-	defer zclose(buf);
 
 	/*
 	 * Write the index page to the buffer
@@ -112,6 +116,7 @@ void show_dir(conn_t *c, char *path)
 		"\r\n", size);
 	size_t total = copy(buf, c);
 	assert(total == size);
+	zclose(buf);
 }
 
 void write_index(zio *c, dir_t *d, const char *path)

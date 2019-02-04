@@ -15,7 +15,7 @@ int main(int argc, char **argv)
 	if( argc == 1 ) {
 		return usage();
 	}
-	char cols[4];
+	char cols[4] = "";
 	int ncols = 0;
 
 	bool header = false;
@@ -34,13 +34,11 @@ int main(int argc, char **argv)
 			fatal("Invalid argument: %s", arg);
 		}
 
-		int i;
-
-		switch( arg[0] ) {
+		switch (arg[0]) {
 			case 's':
 			case 'a':
 			case 'n':
-				for(i = 0; i < ncols; i++) {
+				for(int i = 0; i < ncols; i++) {
 					if(cols[i] == arg[0]) {
 						fatal("Duplicate -%c argument", arg[0]);
 					}
@@ -67,8 +65,7 @@ int main(int argc, char **argv)
 int process(char *cols, int ncols, bool header)
 {
 	bool calc_avg = false;
-	int i;
-	for(i = 0; i < ncols; i++) {
+	for(int i = 0; i < ncols; i++) {
 		if( cols[i] == 'a' ) {
 			calc_avg = true;
 			break;
@@ -81,7 +78,7 @@ int process(char *cols, int ncols, bool header)
 
 	while( 1 )
 	{
-		double x;
+		double x = 0;
 		int r = scanf("%lf\n", &x);
 		if( r == EOF ) {
 			break;
@@ -102,8 +99,8 @@ int process(char *cols, int ncols, bool header)
 	 */
 	if( header )
 	{
-		char *name;
-		for(i = 0; i < ncols; i++)
+		char *name = NULL;
+		for(int i = 0; i < ncols; i++)
 		{
 			if(i > 0) {
 				putchar('\t');
@@ -127,7 +124,7 @@ int process(char *cols, int ncols, bool header)
 		putchar('\n');
 	}
 
-	for(i = 0; i < ncols; i++)
+	for(int i = 0; i < ncols; i++)
 	{
 		if(i > 0) {
 			putchar('\t');

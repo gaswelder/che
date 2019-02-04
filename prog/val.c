@@ -22,7 +22,8 @@ typedef struct value val_t;
 
 int main()
 {
-	val_t a, b;
+	val_t a = {};
+	val_t b = {};
 
 	val_seti(&a, 42);
 	val_setd(&b, 0.5);
@@ -80,12 +81,15 @@ double val_dbl(val_t v)
 	return 0;
 }
 
+bool is_num(val_t x) {
+	return x.type == V_INT || x.type == V_DBL;
+}
+
 val_t val_sum(val_t a, b)
 {
-	val_t s;
+	val_t s = {};
 
-	if((a.type != V_INT && a.type != V_DBL)
-		|| (b.type != V_INT && b.type != V_DBL)) {
+	if (!is_num(a) || !is_num(b)) {
 		s.type = V_ERR;
 		s.val.e = "Can't produce sum for the given values";
 		return s;

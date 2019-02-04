@@ -9,14 +9,14 @@ int main()
 	map *h = map_new();
 
 	int max = 0;
-	char maxword[7];
-	int i;
-	for(i = 0; i < 900000; i++)
+	char maxword[7] = "";
+
+	for (int i = 0; i < 900000; i++)
 	{
-		char word[7];
+		char word[7] = "";
 		genword(word, 7);
 
-		int c;
+		int c = 0;
 		if(!map_exists(h, word)) {
 			c = 0;
 		}
@@ -44,9 +44,8 @@ char *vowels = "aeiou";
 
 void genword(char *buffer, int size)
 {
-	int i;
-
-	for(i = 0; i < size-1; i++)
+	int i = 0;
+	for (i = 0; i < size-1; i++)
 	{
 		if(i % 2 == 0) {
 			buffer[i] = consonants[ lcg_rand() % 19 ];

@@ -13,21 +13,23 @@ int main(int argc, char *argv[])
 	const char *mp3path = argv[2];
 
 	char *s = readfile_str(cuepath);
-	if(!s) {
-		fatal("Couldn't read %s", cuepath);
-	}
-	defer free(s);
+	if(!s) fatal("Couldn't read %s", cuepath);
 
 	cue_t *c = cue_parse(s);
-	if(!c) fatal("Couldn't parse");
-	defer cue_free(c);
+	free(s);
+	if(!c) fatal("Couldn't parse the cue file");
 
 	mp3file *m = mp3open(mp3path);
-	if(!m) {
-		fatal("Couldn't open '%s'", mp3path);
-	}
-	defer mp3close(m);
+	if(!m) fatal("Couldn't open '%s'", mp3path);
 
+	cuespl(c, m);
+	cue_free(c);
+	mp3close(m);
+
+	return 0;
+}
+
+void cuespl(cue_t *c, mp3file *m) {
 	int n = cue_ntracks(c);
 	for(int i = 0; i < n; i++) {
 		cuetrack_t *track = cue_track(c, i);
@@ -53,6 +55,4 @@ int main(int argc, char *argv[])
 		mp3out(m, out, pos);
 		fclose(out);
 	}
-
-	return 0;
 }

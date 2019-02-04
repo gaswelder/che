@@ -141,7 +141,7 @@ pub const char *xml_attr(xml *x, const char *name)
 	}
 	int i = 0;
 	for(i = 0; i < n->nattrs; i++) {
-		if(streq(n->attrs[i].name, name)) {
+		if(strcmp(n->attrs[i].name, name) == 0) {
 			return n->attrs[i].value;
 		}
 	}
@@ -182,7 +182,7 @@ pub bool xml_enter(xml *x)
 			shift(x);
 			return true;
 		case T_CLOSE:
-			if(!streq(next->name, x->node.name)) {
+			if(strcmp(next->name, x->node.name) != 0) {
 				error(x, "Unexpected closing tag: %s", x->next_tag.name);
 				return false;
 			}
@@ -263,7 +263,7 @@ pub void xml_leave(xml *x)
 	 */
 	struct __tag *t = next_tag(x);
 	const char *pname = x->path[x->pathlen-1];
-	if(!t || t->type != T_CLOSE || !streq(t->name, pname)) {
+	if(!t || t->type != T_CLOSE || strcmp(t->name, pname) != 0) {
 		error(x, "Missing closing tag for %s", pname);
 		return;
 	}
@@ -474,9 +474,4 @@ void error(xml *x, const char *fmt, ...)
 	va_end(l);
 
 	printf(" at %d:%d\n", x->line, x->col);
-}
-
-bool streq(const char *s1, const char *s2) {
-	assert(s1 && s2);
-	return strcmp(s1, s2) == 0;
 }

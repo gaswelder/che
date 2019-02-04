@@ -20,7 +20,7 @@ int main(int argc, char *argv[])
 		fatal("%s", mp3err(f));
 	}
 
-	struct mp3time points[20];
+	mp3time_t points[20] = {};
 	if(!parse_times(points, argv[2], 20)) {
 		fatal("Couldn't parse time positions");
 	}
@@ -29,7 +29,7 @@ int main(int argc, char *argv[])
 	/*
 	 * The original name without the extension.
 	 */
-	char namebase[len + 1];
+	char *namebase = calloc(len + 1, sizeof(char));
 	strcpy(namebase, path);
 	if(len > 4 && strcmp(namebase + len - 4, ".mp3") == 0) {
 		namebase[len - 4] = '\0';
@@ -40,10 +40,11 @@ int main(int argc, char *argv[])
 	 * +3 to account for "-NN",
 	 * +4 for ".mp3" in case the original name doesn't have it.
 	 */
-	char newname[len + 1 + 3 + 4];
+	size_t namesize = len + 1 + 3 + 4;
+	char *newname = calloc(namesize, sizeof(char));
 
 	for(int i = 0; i < 20; i++) {
-		snprintf(newname, sizeof(newname), "%s-%02d.mp3", namebase, i+1);
+		snprintf(newname, namesize, "%s-%02d.mp3", namebase, i+1);
 		puts(newname);
 		out(f, newname, points[i]);
 		if(points[i].min == -1) {
@@ -51,6 +52,8 @@ int main(int argc, char *argv[])
 		}
 	}
 
+	free(namebase);
+	free(newname);
 	mp3close(f);
 }
 
@@ -136,7 +139,7 @@ bool parse_times(struct mp3time *a, const char *spec, size_t maxsize)
 	return true;
 }
 
-void out(mp3file *f, const char *path, struct mp3time t)
+void out(mp3file *f, const char *path, mp3time_t t)
 {
 	if(mp3err(f)) {
 		fatal("%s", mp3err(f));

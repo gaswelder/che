@@ -5,6 +5,9 @@ function parse_array_literal_member($lexer)
     if ($lexer->follows('{')) {
         return c_array_literal::parse($lexer);
     }
+    if ($lexer->follows('word')) {
+        return c_identifier::parse($lexer);
+    }
     return c_literal::parse($lexer);
 }
 

@@ -81,6 +81,7 @@ struct linebuf {
 	int lf;
 	int num;
 };
+typedef struct linebuf linebuf_t;
 
 bool trim_file(const char *path)
 {
@@ -102,7 +103,7 @@ bool trim_file(const char *path)
 
 bool trim(FILE *in, zio *out, const char *fpath)
 {
-	struct linebuf buf = {0};
+	linebuf_t buf = {0};
 
 	bool changed = false;
 	while(1) {
@@ -142,7 +143,7 @@ bool trim(FILE *in, zio *out, const char *fpath)
  * Reads a line into the line buffer.
  * Returns false if the stream is empty.
  */
-bool read_line(FILE *in, struct linebuf *buf, const char *fpath)
+bool read_line(FILE *in, linebuf_t *buf, const char *fpath)
 {
 	if(fpeek(in) == EOF) return false;
 
@@ -193,7 +194,7 @@ bool read_line(FILE *in, struct linebuf *buf, const char *fpath)
 	return true;
 }
 
-bool growbuf(struct linebuf *buf)
+bool growbuf(linebuf_t *buf)
 {
 	size_t newsize = buf->maxsize;
 	if(!newsize) newsize = 4096;
@@ -206,7 +207,7 @@ bool growbuf(struct linebuf *buf)
 	return true;
 }
 
-void write_line(struct linebuf *buf, zio *out)
+void write_line(linebuf_t *buf, zio *out)
 {
 	for(int i = 0; i < buf->eol_pos; i++) {
 		zputc(buf->line[i], out);
