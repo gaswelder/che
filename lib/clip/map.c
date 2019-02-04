@@ -179,7 +179,7 @@ void free_table(__table *t)
 	for (int k = 0; k < t->nbuckets; k++) {
 		__item *i = t->buckets[k];
 		while (i) {
-			__item next = i->next;
+			__item *next = i->next;
 			free(i);
 			i = next;
 		}

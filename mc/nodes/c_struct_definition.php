@@ -1,5 +1,20 @@
 <?php
 
+class c_compat_struct_forward_declaration
+{
+    private $name;
+
+    function __construct($name)
+    {
+        $this->name = $name;
+    }
+
+    function format()
+    {
+        return 'struct ' . $this->name->format() . ";\n";
+    }
+}
+
 class c_struct_definition
 {
     private $name;
@@ -31,5 +46,13 @@ class c_struct_definition
         }
         return 'struct ' . $this->name->format() . " {\n"
             . indent($s) . "};\n\n";
+    }
+
+    function translate()
+    {
+        return [
+            new c_compat_struct_forward_declaration($this->name),
+            $this
+        ];
     }
 }

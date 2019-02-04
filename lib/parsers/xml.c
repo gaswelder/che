@@ -52,7 +52,7 @@ struct __xml {
 	int nextchar;
 
 	// lookahead cache
-	struct __tag next_tag;
+	__tag next_tag;
 };
 
 typedef struct __xml xml;
@@ -67,7 +67,7 @@ pub xml *xml_open(const char *path)
 		fatal("fopen(%s) failed", path);
 	}
 
-	xml *x = calloc(1, sizeof(struct __xml));
+	xml *x = calloc(1, sizeof(__xml));
 	x->f = f;
 	x->line = 1;
 	x->col = 1;
@@ -87,7 +87,7 @@ pub xml *xml_open(const char *path)
 	/*
 	 * Go to the first element
 	 */
-	struct __tag *n = next_tag(x);
+	__tag *n = next_tag(x);
 	if(!n) {
 		error(x, "Unexpected end of file");
 		return x;
@@ -165,7 +165,7 @@ pub bool xml_enter(xml *x)
 		return false;
 	}
 
-	struct __tag *next = next_tag(x);
+	__tag *next = next_tag(x);
 	if(!next) {
 		error(x, "Unexpected end of file");
 		return false;
@@ -220,7 +220,7 @@ pub void xml_next(xml *x)
 		 * look at what follows next.
 		 */
 		case T_MONO:
-			struct __tag *next = next_tag(x);
+			__tag *next = next_tag(x);
 			if(!next) {
 				error(x, "Unexpected end of file");
 				return;
@@ -261,7 +261,7 @@ pub void xml_leave(xml *x)
 	/*
 	 * Expect closing tag for current parent
 	 */
-	struct __tag *t = next_tag(x);
+	__tag *t = next_tag(x);
 	const char *pname = x->path[x->pathlen-1];
 	if(!t || t->type != T_CLOSE || strcmp(t->name, pname) != 0) {
 		error(x, "Missing closing tag for %s", pname);
@@ -312,7 +312,7 @@ void pushparent(xml *x)
 void shift(xml *x)
 {
 	// cur = next
-	memcpy(&(x->node), next_tag(x), sizeof(struct __tag));
+	memcpy(&(x->node), next_tag(x), sizeof(__tag));
 
 	// Consume the tag
 	x->next_tag.type = T_NULL;
@@ -321,7 +321,7 @@ void shift(xml *x)
 /*
  * Returns a pointer to the next tag from the file.
  */
-struct __tag *next_tag(xml *x)
+__tag *next_tag(xml *x)
 {
 	read_tag(x);
 	return &(x->next_tag);
@@ -332,7 +332,7 @@ struct __tag *next_tag(xml *x)
  */
 void read_tag(xml *x)
 {
-	struct __tag *t = &(x->next_tag);
+	__tag *t = &(x->next_tag);
 	if(t->type != T_NULL) {
 		return;
 	}
@@ -378,7 +378,7 @@ void read_tag(xml *x)
 		if(t->nattrs >= MAXATTRS) {
 			fatal("too many attributes");
 		}
-		struct __attr *a = &(t->attrs[t->nattrs++]);
+		__attr *a = &(t->attrs[t->nattrs++]);
 
 		// name
 		int len = 0;
@@ -418,7 +418,7 @@ void read_tag(xml *x)
 	expect(x, '>');
 }
 
-int peek(struct __xml *x)
+int peek(__xml *x)
 {
 	if(x->nextchar == EOF) {
 		x->nextchar = fgetc(x->f);

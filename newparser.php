@@ -79,7 +79,7 @@ function build($modules, $name)
     foreach ($link as $name) {
         $cmd .= ' -l ' . $name;
     }
-    echo "$cmd\n";
+    // echo "$cmd\n";
     exec($cmd, $output, $ret);
 }
 
@@ -142,7 +142,9 @@ function hoist_declarations($elements)
 {
     $order = [
         [c_compat_include::class, c_compat_macro::class],
-        [c_struct_definition::class, c_typedef::class, c_compat_enum::class],
+        [c_compat_struct_forward_declaration::class],
+        [c_typedef::class],
+        [c_struct_definition::class, c_compat_enum::class],
         [c_compat_function_forward_declaration::class]
     ];
 
@@ -179,6 +181,10 @@ function translate_module($che_elements)
             $func = $element->translate();
             $elements[] = $func->forward_declaration();
             $elements[] = $func;
+            continue;
+        }
+        if ($element instanceof c_struct_definition) {
+            $elements = array_merge($elements, $element->translate());
             continue;
         }
         if ($element instanceof c_enum) {
