@@ -27,17 +27,19 @@ struct __attr {
 	char name[MAXNAME];
 	char value[MAXVALUE];
 };
+typedef struct __attr __attr;
 
 struct __tag {
 	char name[MAXNAME];
 	int type;
-	struct __attr attrs[MAXATTRS];
+	__attr attrs[MAXATTRS];
 	int nattrs;
 };
+typedef struct __tag __tag;
 
 struct __xml {
 	// node we're at right now
-	struct __tag node;
+	__tag node;
 
 	// parent names stack
 	char path[MAXSTACK][MAXNAME];
@@ -67,7 +69,7 @@ pub xml *xml_open(const char *path)
 		fatal("fopen(%s) failed", path);
 	}
 
-	xml *x = calloc(1, sizeof(__xml));
+	xml *x = calloc(1, sizeof(xml));
 	x->f = f;
 	x->line = 1;
 	x->col = 1;
@@ -135,7 +137,7 @@ pub const char *xml_attr(xml *x, const char *name)
 		return NULL;
 	}
 
-	struct __tag *n = &(x->node);
+	__tag *n = &(x->node);
 	if(n->type == T_NULL) {
 		return NULL;
 	}
@@ -418,7 +420,7 @@ void read_tag(xml *x)
 	expect(x, '>');
 }
 
-int peek(__xml *x)
+int peek(xml *x)
 {
 	if(x->nextchar == EOF) {
 		x->nextchar = fgetc(x->f);
@@ -428,7 +430,7 @@ int peek(__xml *x)
 
 int get(xml *x)
 {
-	int c;
+	int c = 0;
 	if(x->nextchar != EOF) {
 		c = x->nextchar;
 		x->nextchar = EOF;
@@ -464,7 +466,7 @@ void expect(xml *x, int ch)
 
 void error(xml *x, const char *fmt, ...)
 {
-	va_list l;
+	va_list l = {};
 	va_start(l, fmt);
 	vsnprintf(x->error, sizeof(x->error), fmt, l);
 	va_end(l);

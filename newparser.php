@@ -15,8 +15,8 @@ foreach (glob('mc/nodes/*.php') as $path) {
 // exit;
 
 // Build
-cmd_build('prog/wc.c', 'zz');
-exit;
+// cmd_build('prog/xml.c', 'zz');
+// exit;
 foreach (glob('prog/*.c') as $path) {
     echo $path, "\n";
     cmd_build($path, 'z-' . basename($path));
@@ -157,7 +157,7 @@ function hoist_declarations($elements)
         return count($order);
     };
 
-    $groups = [[], [], [], []];
+    $groups = [[], [], [], [], []];
 
     foreach ($elements as $element) {
         $groups[$get_order($element)][] = $element;

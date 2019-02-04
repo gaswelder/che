@@ -3,7 +3,7 @@ import "parsers/xml"
 
 int main()
 {
-	xml *x = xml_open("test/xmltest.xml");
+	xml *x = xml_open("prog/xmltest.xml");
 	if(!x) {
 		fatal("could not open xml");
 	}

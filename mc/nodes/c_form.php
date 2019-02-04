@@ -13,7 +13,7 @@ class c_form
         }
         $self->str .= expect($lexer, 'word')->content;
 
-        if ($lexer->follows('[')) {
+        while ($lexer->follows('[')) {
             $self->str .= $lexer->get()->type;
             while ($lexer->more() && $lexer->peek()->type != ']') {
                 $expr = parse_expression($lexer);
