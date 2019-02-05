@@ -2,12 +2,15 @@
 
 function cmd_build($argv)
 {
-    if (count($argv) != 1) {
-        echo "Usage: build <source-path>\n";
+    if (count($argv) < 1 || count($argv) > 2) {
+        echo "Usage: build <source-path> [<output-path>]\n";
         return 1;
     }
     $path = array_shift($argv);
-    $name = str_replace('.c', '', basename($path));
+    $name = array_shift($argv);
+    if (!$name) {
+        $name = str_replace('.c', '', basename($path));
+    }
 
     $m = parse_path($path);
     if (!$m) {
