@@ -1,7 +1,14 @@
 <?php
 
-function cmd_build($path, $name)
+function cmd_build($argv)
 {
+    if (count($argv) != 1) {
+        echo "Usage: build <source-path>\n";
+        return 1;
+    }
+    $path = array_shift($argv);
+    $name = str_replace('.c', '', basename($path));
+
     $m = parse_path($path);
     $mods = resolve_deps($m);
     $c_mods = array_map('translate', $mods);

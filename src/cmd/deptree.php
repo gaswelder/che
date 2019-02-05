@@ -1,11 +1,16 @@
 <?php
 
-function dep_tree($path)
+function cmd_deptree($argv)
 {
+    if (count($argv) != 1) {
+        echo "Usage: deptree <source-path>\n";
+        return 1;
+    }
+    $path = array_shift($argv);
     $m = parse_path($path);
     $t = build_tree($m);
     $r = render_tree($path, $t);
-    return implode("\n", $r) . "\n";
+    echo implode("\n", $r) . "\n";
 }
 
 function build_tree(c_module $module)

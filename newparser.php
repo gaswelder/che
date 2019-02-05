@@ -6,8 +6,8 @@ require 'src/package_file.php';
 require 'src/parser.php';
 require 'src/translator.php';
 require 'src/resolver.php';
-require 'src/build.php';
-require 'src/deptree.php';
+require 'src/cmd/build.php';
+require 'src/cmd/deptree.php';
 foreach (glob('src/nodes/*.php') as $path) {
     require $path;
 }
@@ -20,25 +20,29 @@ function indent($text, $tab = "\t")
     return $tab . str_replace("\n", "\n$tab", $text);
 }
 
-// $path = 'test/expressions.c';
-// $m = parse_path($path);
-// echo $m->format();
-// exit;
+exit(main($argv));
 
-// Build
-// cmd_build('prog/xml.c', 'zz');
-// exit;
-foreach (glob('prog/*.c') as $path) {
-    echo $path, "\n";
-    cmd_build($path, 'bin/' . basename($path));
+function main($argv)
+{
+    $commands = [
+        'build' => 'cmd_build',
+        'deptree' => 'cmd_deptree'
+    ];
+    array_shift($argv);
+    if (empty($argv)) {
+        echo "Usage: che <command>\n";
+        foreach ($commands as $name => $func) {
+            echo "\t$name\n";
+        }
+        return 1;
+    }
+    $cmd = array_shift($argv);
+    if (!isset($commands[$cmd])) {
+        echo "Unknown command: $cmd\n";
+        return 1;
+    }
+
+    $func = $commands[$cmd];
+    $func($argv);
+    return 0;
 }
-exit;
-
-// Deps
-// $path = 'prog/chargen.c';
-// echo dep_tree($path);
-// exit;
-// foreach (glob('test/*.c') as $path) {
-//     echo dep_tree($path);
-// }
-
