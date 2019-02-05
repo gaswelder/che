@@ -10,6 +10,9 @@ function cmd_build($argv)
     $name = str_replace('.c', '', basename($path));
 
     $m = parse_path($path);
+    if (!$m) {
+        return 1;
+    }
     $mods = resolve_deps($m);
     $c_mods = array_map('translate', $mods);
     build($c_mods, $name);
