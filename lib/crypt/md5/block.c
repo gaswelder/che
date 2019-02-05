@@ -15,7 +15,7 @@ import "zio"
  * The number of zeros 'z' is such that end of stream happens to be at
  * a length mark that is a multiple of 512 bits (64 bytes).
  */
-struct __src {
+typedef {
 	zio *stream; // data stream
 
 	uint64_t length; // current message length in bits
@@ -26,9 +26,7 @@ struct __src {
 	int lenpos; // current position in lenbuf
 
 	bool more;
-};
-
-typedef struct __src src_t;
+} src_t;
 
 /*
  * Process the stream and put the digest in 'digest'.
@@ -75,7 +73,7 @@ void print_block(uint32_t b[16])
  *   |->|->|->|->|->|->|->|->|
  *   |<----------|<----------|
  */
-uint32_t next_word(struct __src *s)
+uint32_t next_word(src_t *s)
 {
 	uint32_t word = 0;
 	int pos = 0;
@@ -90,7 +88,7 @@ uint32_t next_word(struct __src *s)
 	return word;
 }
 
-uint8_t next_byte(struct __src *s)
+uint8_t next_byte(src_t *s)
 {
 	if(s->more_data) {
 		int c = zgetc(s->stream);
@@ -133,7 +131,7 @@ uint8_t next_byte(struct __src *s)
 	return b;
 }
 
-void init_padding(struct __src *s)
+void init_padding(src_t *s)
 {
 	/*
 	 * Now we know 'b' (data length in bits), so we can create the

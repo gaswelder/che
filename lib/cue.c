@@ -11,35 +11,30 @@ import "parsebuf"
 /*
  * Track info: title and position in microseconds
  */
-struct cuetrack {
+typedef {
 	char title[300];
 	uint64_t pos_usec;
-};
-typedef struct cuetrack cuetrack_t;
+} cuetrack_t;
 
 /*
  * Sheet structure, the topmost element
  * with preallocated array of track info structures.
  */
 #define MAXTRACKS 100
-struct _cue {
+
+typedef {
 	cuetrack_t tracks[MAXTRACKS];
 	int ntracks;
-};
-
-typedef struct _cue cue_t;
-
-
+} cue_t;
 
 /*
  * Parsing context.
  * 'cmd' is the following CUE command (like "TRACK" or "TITLE")
  */
-struct _ctx {
+typedef {
 	char cmd[40];
 	parsebuf *buf;
-};
-typedef struct _ctx context_t;
+} context_t;
 
 /*
  * Recognized header commands

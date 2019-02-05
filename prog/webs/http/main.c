@@ -6,11 +6,11 @@ import "strutil"
 /*
  * A client request
  */
-struct request {
+typedef {
 	char method[10];
 	char proto[10]; // "HTTP/1.1"
 	char path[4080];
-};
+} request;
 
 pub int http_main()
 {
@@ -44,7 +44,7 @@ void *process_client(void *arg)
 {
 	conn_t *c = (conn_t *) arg;
 
-	struct request req;
+	request req;
 
 	while(1) {
 		if(!read_request(c, &req)) {
@@ -61,7 +61,7 @@ void *process_client(void *arg)
 /*
  * Reads a request from the given client
  */
-bool read_request(conn_t *c, struct request *req)
+bool read_request(conn_t *c, request *req)
 {
 	char line[4096];
 

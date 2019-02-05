@@ -13,7 +13,7 @@ enum {
 	JSON_NULL
 };
 
-struct __json_node {
+typedef {
 	int type;
 	union {
 		char *str;
@@ -22,16 +22,12 @@ struct __json_node {
 		arr_t *obj;
 		bool boolval;
 	} val;
-};
+} json_node;
 
-typedef struct __json_node json_node;
-
-struct __kv {
+typedef {
 	char *key;
 	json_node *val;
-};
-
-typedef struct __kv kv_t;
+} kv_t;
 
 pub const char *json_err(json_node *n)
 {

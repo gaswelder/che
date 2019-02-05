@@ -24,16 +24,14 @@ int frequencies[] = {44100, 48000, 32000};
 const int frame_samples = 1152;
 
 
-struct header {
+typedef {
 	int bitrate;
 	int freq;
 	int mode;
 	bool padded;
-};
+} header_t;
 
-typedef struct header header_t;
-
-struct mp3file_s {
+typedef {
 	FILE *file;
 	const char *err;
 
@@ -46,17 +44,13 @@ struct mp3file_s {
 	long nextpos;
 
 	header_t h;
-};
+} mp3file;
 
-
-struct mp3time {
+typedef {
 	int min;
 	int sec;
 	uint64_t usec;
-};
-
-typedef struct mp3file_s mp3file;
-typedef struct mp3time mp3time_t;
+} mp3time_t;
 
 /*
  * Opens an MP3 file and finds the beginning of the stream.
@@ -109,7 +103,7 @@ pub const char *mp3err(mp3file *f)
 /*
  * Reads next frame. Returns false on error.
  */
-bool nextframe(struct mp3file_s *f)
+bool nextframe(mp3file *f)
 {
 	if(f->err) {
 		fatal("can't nextframe: %s", f->err);
@@ -166,7 +160,7 @@ pub void mp3out(mp3file *f, FILE *out, mp3time_t pos)
 /*
  * Writes current frame to the given file.
  */
-pub void write_frame(struct mp3file_s *f, FILE *out)
+pub void write_frame(mp3file *f, FILE *out)
 {
 	/*
 	 * Go back 4 bytes to the header
@@ -184,7 +178,7 @@ pub void write_frame(struct mp3file_s *f, FILE *out)
 }
 
 
-bool read_header(struct mp3file_s *f)
+bool read_header(mp3file *f)
 {
 	bits_t *s = bits_new(f->file);
 	bool r = _read_header(s, &f->h);

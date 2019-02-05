@@ -1,12 +1,10 @@
-struct __parsebuf {
+typedef {
 	const char *s;
 	size_t pos;
 	size_t len;
 	size_t col;
 	size_t row;
-};
-
-typedef struct __parsebuf parsebuf;
+} parsebuf;
 
 /*
  * Creates and returns an instance of a parsebuffer with

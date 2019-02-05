@@ -8,7 +8,7 @@ enum {
 	V_STR
 };
 
-struct value {
+typedef {
 	int type;
 	union {
 		int i;
@@ -16,9 +16,7 @@ struct value {
 		char *s;
 		char *e;
 	} val;
-};
-
-typedef struct value val_t;
+} val_t;
 
 int main()
 {

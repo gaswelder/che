@@ -6,14 +6,12 @@
 
 import "threads"
 
-struct control {
+typedef {
 	int id;
 	mtx_t *lock;
 	cnd_t *cnd;
 	bool running;
-};
-
-typedef struct control control_t;
+} control_t;
 
 int main()
 {

@@ -58,19 +58,42 @@ class package_file
 		return $list;
 	}
 
-	private static function get_typename(lexer $s)
+	private static function get_typename(lexer $lexer)
 	{
-		 /*
-		 * New type name is at the end of the typedef statement.
-		 * It may have a value form or a function form.
-		 */
+		// The type name is at the end of the typedef statement.
+		// typedef foo bar;
+		// typedef {...} bar;
+		// typedef struct foo bar;
+
+		$skip_brackets = function () use ($lexer, &$skip_brackets) {
+			expect($lexer, '{');
+			while ($lexer->more()) {
+				if ($lexer->follows('{')) {
+					$skip_brackets();
+					continue;
+				}
+				if ($lexer->follows('}')) {
+					break;
+				}
+				$lexer->get();
+			}
+			expect($lexer, '}');
+		};
+
+		if ($lexer->follows('{')) {
+			$skip_brackets();
+			$name = expect($lexer, 'word')->content;
+			expect($lexer, ';');
+			return $name;
+		}
+		 
  
 		 /*
 		 * Get all tokens until the semicolon.
 		 */
 		$buf = array();
-		while (!$s->ended()) {
-			$t = $s->get();
+		while (!$lexer->ended()) {
+			$t = $lexer->get();
 			if ($t->type == ';') {
 				break;
 			}

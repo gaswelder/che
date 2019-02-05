@@ -23,21 +23,19 @@ enum {
 	T_MONO // self-closing tag
 };
 
-struct __attr {
+typedef {
 	char name[MAXNAME];
 	char value[MAXVALUE];
-};
-typedef struct __attr __attr;
+} __attr;
 
-struct __tag {
+typedef {
 	char name[MAXNAME];
 	int type;
 	__attr attrs[MAXATTRS];
 	int nattrs;
-};
-typedef struct __tag __tag;
+} __tag;
 
-struct __xml {
+typedef {
 	// node we're at right now
 	__tag node;
 
@@ -55,9 +53,7 @@ struct __xml {
 
 	// lookahead cache
 	__tag next_tag;
-};
-
-typedef struct __xml xml;
+} xml;
 
 /*
  * Creates a parser that reads from the given file

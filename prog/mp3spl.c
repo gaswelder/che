@@ -57,7 +57,7 @@ int main(int argc, char *argv[])
 	mp3close(f);
 }
 
-bool parse_times(struct mp3time *a, const char *spec, size_t maxsize)
+bool parse_times(mp3time_t *a, const char *spec, size_t maxsize)
 {
 	size_t i = 0;
 

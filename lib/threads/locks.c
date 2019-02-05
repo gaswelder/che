@@ -3,16 +3,13 @@
 #type pthread_mutex_t
 #type pthread_cond_t
 
-struct __mtx {
+typedef {
 	pthread_mutex_t m;
-};
+} mtx_t;
 
-struct __cnd {
+typedef {
 	pthread_cond_t c;
-};
-
-typedef struct __mtx mtx_t;
-typedef struct __cnd cnd_t;
+} cnd_t;
 
 /*
  * Creates and returns a new mutex

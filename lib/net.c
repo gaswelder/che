@@ -15,7 +15,7 @@ typedef struct sockaddr_in sockaddr_in_t;
 typedef struct addrinfo addrinfo_t;
 typedef struct timeval timeval_t;
 
-struct conn {
+typedef {
 	int sock;
 	char host[256];
 	char port[16];
@@ -24,9 +24,7 @@ struct conn {
 	sockaddr_t ai_addr;
 	socklen_t addrlen;
 	char addrstr[300];
-};
-
-typedef struct conn conn_t;
+} conn_t;
 
 pub const char *net_error() {
 	return error;

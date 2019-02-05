@@ -6,11 +6,9 @@
 
 typedef void *thr_func(void *);
 
-struct __thr {
+typedef {
 	pthread_t t;
-};
-
-typedef struct __thr thr_t;
+} thr_t;
 
 /*
  * Creates and starts a new thread running function 'f'.

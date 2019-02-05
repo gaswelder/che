@@ -1,19 +1,15 @@
 
-struct proc_info_s {
+typedef {
 	char pid[100];
 	char appname[1000];
-};
+} proc_info_t;
 
-typedef struct proc_info_s proc_info_t;
-
-struct log_entry_s {
+typedef {
 	char level;
 	char tag[1000];
 	char pid[100];
 	char message[10000];
-};
-
-typedef struct log_entry_s log_entry_t;
+} log_entry_t;
 
 bool streq(const char *a, const char *b) {
 	return a && b && strcmp(a, b) == 0;

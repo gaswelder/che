@@ -73,15 +73,14 @@ int main( int argc, char *argv[] )
  * A line needs trimming if 'last_pos' + 1 < 'eol_pos'.
  */
 
-struct linebuf {
+typedef {
 	char *line;
 	size_t maxsize;
 	int eol_pos;
 	int last_pos;
 	int lf;
 	int num;
-};
-typedef struct linebuf linebuf_t;
+} linebuf_t;
 
 bool trim_file(const char *path)
 {

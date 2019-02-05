@@ -12,19 +12,16 @@ import "cli"
 import "zio"
 import "log"
 
-struct nbuf {
+typedef {
 	conn_t *conn;
 	char data[2048];
 	int len;
-};
-typedef struct nbuf nbuf_t;
+} nbuf_t;
 
-struct client {
+typedef {
 	int charpos;
 	nbuf_t out;
-};
-
-typedef struct client client_t;
+} client_t;
 
 char linechars[] =
 	"!\"#$%&'()*+,-./0123456789:;<=>?@"

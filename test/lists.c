@@ -1,9 +1,7 @@
 
-struct vec {
+typedef {
 	int x, y, z;
-};
-
-typedef struct vec vec_t;
+} vec_t;
 
 
 int main()

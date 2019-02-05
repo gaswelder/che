@@ -1,11 +1,9 @@
 
-struct __str {
+typedef {
 	char *data;
 	size_t len;
 	size_t max;
-};
-
-typedef struct __str str;
+} str;
 
 pub str *str_new()
 {

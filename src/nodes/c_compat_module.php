@@ -31,7 +31,7 @@ class c_compat_module
 
         $exports = [
             c_typedef::class,
-            c_struct_definition::class,
+            c_compat_struct_definition::class,
             c_compat_struct_forward_declaration::class,
             c_compat_macro::class,
         ];

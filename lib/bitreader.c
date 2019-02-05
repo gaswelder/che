@@ -1,11 +1,9 @@
 
-struct bitstream {
+typedef {
 	FILE *f;
 	uint8_t byte;
 	int bytepos;
-};
-
-typedef struct bitstream bits_t;
+} bits_t;
 
 /*
  * Returns new bitreader for file 'f'.

@@ -4,6 +4,13 @@ class c_identifier
 {
     private $name;
 
+    static function make(string $name)
+    {
+        $self = new self;
+        $self->name = $name;
+        return $self;
+    }
+
     static function parse($lexer, $hint = null)
     {
         $tok = expect($lexer, 'word', $hint);

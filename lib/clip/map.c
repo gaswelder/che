@@ -7,28 +7,25 @@ import "cli"
 /*
  * The map
  */
-struct __map {
+typedef {
 	__table *t;
-};
-typedef struct __map map;
+} map;
 
 /*
  * An element of the hash table
  */
-struct __item {
+typedef {
 	__item *next;
 	char key[MAXKEY];
 	void *value;
 	int intval;
-};
-typedef struct __item __item;
+} __item;
 
-struct __table {
+typedef {
 	int nitems; // how many items
 	int nbuckets; // how many buckets
 	__item **buckets;
-};
-typedef struct __table __table;
+} __table;
 
 
 pub map *map_new()

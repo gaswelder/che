@@ -1,13 +1,11 @@
-struct __arr {
+typedef {
 	size_t len;
 	size_t maxlen;
 	union {
 		int i;
 		void *v;
 	} *vals;
-};
-
-typedef struct __arr arr_t;
+} arr_t;
 
 /*
  * Creates new array
@@ -104,7 +102,7 @@ pub int arr_geti(arr_t *a, size_t i)
  * Allocates more memory for the contents.
  * Returns false on failure.
  */
-bool grow(struct __arr *a)
+bool grow(arr_t *a)
 {
 	size_t newlen = a->len * 2;
 	if(!newlen) newlen = 16;

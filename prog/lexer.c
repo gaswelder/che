@@ -33,11 +33,10 @@ const char *keywords[] = {
 	"if"
 };
 
-struct lexer_struct {
+typedef {
 	char *source;
 	parsebuf *buf;
-};
-typedef struct lexer_struct lexer_t;
+} lexer_t;
 
 bool streq(char *a, char *b) {
 	return strcmp(a, b) == 0;
@@ -97,13 +96,11 @@ void lexer_free(lexer_t *l) {
 	free(l);
 }
 
-
-struct s_token {
+typedef {
 	char *name;
 	char *content;
 	char *pos;
-};
-typedef struct s_token tok_t;
+} tok_t;
 
 
 /*

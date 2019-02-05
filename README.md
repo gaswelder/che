@@ -18,7 +18,6 @@ on POSIX, so not everything can be compiled on Windows.
 
 The language differences are outlined below.
 
-
 ## No include headers
 
 The C languange specifies a library that everyone knows. The
@@ -34,7 +33,6 @@ int main() {
 
 The translator will put `#include <stdio.h>` in before passing
 the result to the C compiler.
-
 
 ## No function prototypes
 
@@ -54,23 +52,26 @@ void func2() {
 }
 ```
 
+## No need in `struct`
 
-## No forward declarations
-
-There is no need to add forward declarations to make the following
-example compile:
+Instead of this:
 
 ```c
-struct a {
-	struct b foo;
-	struct a *next;
+struct foo_s {
+	int a;
+	int b;
 };
-
-struct b {
-	int foo;
-};
+typedef struct foo_s foo_t;
 ```
 
+we have this:
+
+```c
+typedef {
+	int a;
+	int b;
+} foo_t;
+```
 
 ## Declaration lists
 
@@ -87,7 +88,7 @@ struct vec {
 In Che it is also possible to do that with function parameters:
 
 ```c
-struct vec sum(struct vec a, b) {
+int sum(int a, b, c) {
 	...
 }
 ```
@@ -95,13 +96,11 @@ struct vec sum(struct vec a, b) {
 The original C rules still apply: pointer and array notations “stick”
 to the identifiers, not the type.
 
-
 ## No preprocessor
 
 There is no preprocessor, so all macros are gone. `#define` statements
 are processed by the same parser as the normal language and are used
 only to define constants.
-
 
 ## The `defer` statement
 
@@ -164,7 +163,6 @@ bool foo() {
 }
 ```
 
-
 ## Modules and packages
 
 Some time ago a single C source file used to be called a "module". It
@@ -176,25 +174,25 @@ semi-automated copy-paste mechanism for prototypes and typedefs) and
 put the modules in the compiler's command line. The Che translator does
 that automatically:
 
-	// main.c:
-	----------------
-	import "module2"
+    // main.c:
+    ----------------
+    import "module2"
 
-	int main() {
-		foo();
-	}
-	----------------
+    int main() {
+    	foo();
+    }
+    ----------------
 
-	// module2.c:
-	----------------
-	pub void foo() {
-		puts("Howdy, Globe!");
-	}
-	----------------
+    // module2.c:
+    ----------------
+    pub void foo() {
+    	puts("Howdy, Globe!");
+    }
+    ----------------
 
-	// command line:
-	$ che main.c
-	----------------
+    // command line:
+    $ che main.c
+    ----------------
 
 The translator will replace every import statement with type
 declarations and function prototypes extracted from the referenced
@@ -213,25 +211,24 @@ incomplete module files. When importing, these files will be merged to
 obtain the module which will finally be imported and compiled. So, the
 following package “pak”:
 
-	pak/a.c:
-		typedef int foo_t;
+    pak/a.c:
+    	typedef int foo_t;
 
-		pub int foo(foo_t x) {
-			return bar(2*x);
-		}
+    	pub int foo(foo_t x) {
+    		return bar(2*x);
+    	}
 
-	pak/b.c:
-		int bar(foo_t x) {
-			return x*x;
-		}
+    pak/b.c:
+    	int bar(foo_t x) {
+    		return x*x;
+    	}
 
 would be compiled as if it was a single module:
 
-	*:
-		typedef int foo_t;
-		pub int foo(foo_t x) {...}
-		int bar(foo_t x) {...}
-
+    *:
+    	typedef int foo_t;
+    	pub int foo(foo_t x) {...}
+    	int bar(foo_t x) {...}
 
 ## The `pub` keyword
 

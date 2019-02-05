@@ -1,11 +1,9 @@
 import "crypt/md5"
 
-struct kv {
+typedef {
 	const char *d;
 	const char *s;
-};
-
-typedef struct kv kv_t;
+} kv_t;
 
 kv_t tests[] = {
 	{"d41d8cd98f00b204e9800998ecf8427e", ""},

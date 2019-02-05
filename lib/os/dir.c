@@ -1,11 +1,10 @@
 #include <dirent.h>
 #type DIR
 
-struct __dir {
+typedef {
 	DIR *d;
-};
+} dir_t;
 
-typedef struct __dir dir_t;
 typedef struct dirent dirent_t;
 
 /*

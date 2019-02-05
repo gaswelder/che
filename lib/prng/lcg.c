@@ -1,11 +1,10 @@
 
-struct __state {
+typedef {
 	int a;
 	int c;
 	int m;
 	int x;
-};
-typedef struct __state lcg_t;
+} lcg_t;
 
 lcg_t s = {445, 700001, 2097152, 0};
 

@@ -5,6 +5,13 @@ class c_type
     private $type;
     private $const = false;
 
+    static function make($name)
+    {
+        $self = new self;
+        $self->type = $name;
+        return $self;
+    }
+
     static function parse($lexer, $comment = null)
     {
         $self = new self;

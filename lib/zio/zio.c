@@ -7,12 +7,10 @@ enum {
 	S_TCP
 };
 
-struct __zio {
+typedef {
 	int type;
 	void *h;
-};
-
-typedef struct __zio zio;
+} zio;
 
 /*
  * Returns type identifier for given type name.

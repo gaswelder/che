@@ -10,7 +10,7 @@ import "parsebuf"
  * also "string" and "number" tokens that have additional
  * value.
  */
-struct _token {
+typedef {
 	/*
 	 * The "type" will be the same as the character in case
 	 * of tokens like '{' or ','. For special cases it will
@@ -19,9 +19,7 @@ struct _token {
 	int type;
 	char *str;
 	double num;
-};
-
-typedef struct _token token_t;
+} token_t;
 
 /*
  * These values are above 255 so that they couldn't be
@@ -39,7 +37,7 @@ enum {
 /*
  * Parsing context.
  */
-struct parser {
+typedef {
 	/*
 	 * First error reported during parsing.
 	 */
@@ -49,9 +47,7 @@ struct parser {
 	 * Look-ahead cache.
 	 */
 	token_t next;
-};
-
-typedef struct parser parser_t;
+} parser_t;
 
 /*
  * Returns type of the next token

@@ -24,14 +24,12 @@ pub enum {
 /*
  * A structure describing an option.
  */
-struct optspec {
+typedef {
 	int type;
 	const char *name;
 	const char *desc;
 	void *value_pointer;
-};
-
-typedef struct optspec optspec_t;
+} optspec_t;
 
 /*
  * List of defined options.

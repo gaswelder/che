@@ -1,12 +1,10 @@
 
-struct mem {
+typedef {
 	char *data;
 	size_t pos; // current position, <= datalen
 	size_t datalen; // actual data size, <= size
 	size_t size; // allocated buffer size
-};
-
-typedef struct mem mem_t;
+} mem_t;
 
 /*
  * Creates a memory buffer.

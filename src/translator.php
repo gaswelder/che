@@ -24,7 +24,7 @@ function translate_module($che_elements)
             $elements[] = $func;
             continue;
         }
-        if ($element instanceof c_struct_definition) {
+        if ($element instanceof c_typedef) {
             $elements = array_merge($elements, $element->translate());
             continue;
         }
@@ -72,7 +72,7 @@ function hoist_declarations($elements)
         [c_compat_include::class, c_compat_macro::class],
         [c_compat_struct_forward_declaration::class],
         [c_typedef::class],
-        [c_struct_definition::class, c_compat_enum::class],
+        [c_compat_struct_definition::class, c_compat_enum::class],
         [c_compat_function_forward_declaration::class]
     ];
 
@@ -99,7 +99,7 @@ function deduplicate_synopsis($elements)
     $set = [];
 
     foreach ($elements as $element) {
-        if ($element instanceof c_typedef || $element instanceof c_struct_definition) {
+        if ($element instanceof c_typedef || $element instanceof c_compat_struct_definition) {
             $s = $element->format();
             if (isset($set[$s])) {
                 continue;

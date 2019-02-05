@@ -16,7 +16,7 @@ import "zio"
  * The number of zeros 'z' is such that end of stream happens to be at
  * a length mark that is a multiple of 512 bits (64 bytes).
  */
-struct _src {
+typedef {
 	zio *stream; // data stream
 
 	uint64_t length; // current message length in bits
@@ -27,9 +27,7 @@ struct _src {
 	int lenpos; // current position in lenbuf
 
 	bool more;
-};
-
-typedef struct _src src_t;
+} src_t;
 
 void src_init(src_t *s, zio *data)
 {
