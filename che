@@ -2,7 +2,6 @@
 <?php
 require 'src/lexer.php';
 require 'src/token.php';
-require 'mc/debug.php';
 require 'src/package_file.php';
 require 'src/parser.php';
 require 'src/translator.php';

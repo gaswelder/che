@@ -10,7 +10,6 @@ function read($path)
 	if (!isset($cache[$path])) {
 		$toks = [];
 		$s = new lexer_1(file_get_contents($path));
-		debmsg('parsing ' . $path);
 		while (true) {
 			$tok = $s->get();
 			if (!$tok) break;
