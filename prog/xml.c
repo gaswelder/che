@@ -1,5 +1,5 @@
 import "cli"
-import "parsers/xml"
+import "xml"
 
 int main()
 {
