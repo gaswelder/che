@@ -43,6 +43,5 @@ function main($argv)
     }
 
     $func = $commands[$cmd];
-    $func($argv);
-    return 0;
+    return $func($argv);
 }

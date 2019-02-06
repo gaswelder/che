@@ -18,7 +18,7 @@ function cmd_build($argv)
     }
     $mods = resolve_deps($m);
     $c_mods = array_map('translate', $mods);
-    build($c_mods, $name);
+    return build($c_mods, $name);
 }
 
 function build($modules, $name)
@@ -50,4 +50,5 @@ function build($modules, $name)
     }
     // echo "$cmd\n";
     exec($cmd, $output, $ret);
+    return $ret;
 }
