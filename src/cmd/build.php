@@ -36,7 +36,7 @@ function build($modules, $name)
         $paths[] = $path;
     }
 
-    $link = [];
+    $link = ['m'];
     foreach ($modules as $module) {
         $link = array_unique(array_merge($link, $module->link()));
     }

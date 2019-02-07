@@ -11,6 +11,39 @@ function parse_array_literal_member($lexer)
     return c_literal::parse($lexer);
 }
 
+class c_array_literal_entry
+{
+    private $index = null;
+    private $value;
+
+    static function parse($lexer)
+    {
+        $self = new self;
+        if ($lexer->follows('[')) {
+            $lexer->get();
+            if ($lexer->follows('word')) {
+                $self->index = c_identifier::parse($lexer);
+            } else {
+                $self->index = c_literal::parse($lexer);
+            }
+            expect($lexer, ']', 'array literal entry');
+            expect($lexer, '=', 'array literal entry');
+        }
+        $self->value = parse_array_literal_member($lexer);
+        return $self;
+    }
+
+    function format()
+    {
+        $s = '';
+        if ($this->index) {
+            $s .= '[' . $this->index->format() . '] = ';
+        }
+        $s .= $this->value->format();
+        return $s;
+    }
+}
+
 class c_array_literal
 {
     private $values = [];
@@ -20,10 +53,10 @@ class c_array_literal
         $self = new self;
         expect($lexer, '{', 'array literal');
         if (!$lexer->follows('}')) {
-            $self->values[] = parse_array_literal_member($lexer);
+            $self->values[] = c_array_literal_entry::parse($lexer);
             while ($lexer->follows(',')) {
                 $lexer->get();
-                $self->values[] = parse_array_literal_member($lexer);
+                $self->values[] = c_array_literal_entry::parse($lexer);
             }
         }
         expect($lexer, '}', 'array literal');
