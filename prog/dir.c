@@ -1,4 +1,4 @@
-import "os/dir"
+import "dir"
 
 int main(int argc, char *argv[])
 {
@@ -15,19 +15,19 @@ int main(int argc, char *argv[])
 		path = ".";
 	}
 
-	dir_t *d = diropen(path);
+	dir_t *d = dir_open(path);
 	if(!d) {
 		fprintf(stderr, "Couldn't read %s\n", path);
 		return 1;
 	}
 
 	while (true) {
-		const char *fn = dirnext(d);
+		const char *fn = dir_next(d);
 		if (!fn) break;
 		printf("%s\n", fn);
 	}
 
-	dirclose(d);
+	dir_close(d);
 
 	return 0;
 }

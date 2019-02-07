@@ -11,7 +11,7 @@ typedef struct dirent dirent_t;
  * Opens directory at given path and returns its handle.
  * Returns NULL on failure.
  */
-pub dir_t *diropen(const char *path)
+pub dir_t *dir_open(const char *path)
 {
 	dir_t *d = calloc(1, sizeof(*d));
 	if(!d) return NULL;
@@ -29,7 +29,7 @@ pub dir_t *diropen(const char *path)
  * Moves to next file in the directory and returns
  * its name.
  */
-pub const char *dirnext(dir_t *d)
+pub const char *dir_next(dir_t *d)
 {
 	dirent_t *e = readdir(d->d);
 	if(!e) return NULL;
@@ -39,7 +39,7 @@ pub const char *dirnext(dir_t *d)
 /*
  * Closes the directory handle/
  */
-pub void dirclose(dir_t *d)
+pub void dir_close(dir_t *d)
 {
 	closedir(d->d);
 	free(d);
