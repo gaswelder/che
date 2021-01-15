@@ -31,6 +31,15 @@ fn main() {
                     "data": parser::is_op(String::from(token_type))
                 })
             )
+        } else if f == "operator_strength" {
+            let op = args[0].as_str().unwrap();
+            println!(
+                "{}",
+                json!({
+                    "error": "",
+                    "data": parser::operator_strength(String::from(op))
+                })
+            )
         } else {
             println!(
                 "{}",

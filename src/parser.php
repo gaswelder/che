@@ -263,26 +263,5 @@ function is_postfix_op($token)
 
 function operator_strength($op)
 {
-    $map = [
-        [','],
-        ['=', '+=', '-=', '*=', '/=', '%=', '<<=', '>>=', '&=', '^=', '|='],
-        ['||'],
-        ['&&'],
-        ['|'],
-        ['^'],
-        ['&'],
-        ['!=', '=='],
-        ['>', '<', '>=', '<='],
-        ['<<', '>>'],
-        ['+', '-'],
-        ['*', '/', '%'],
-        ['prefix'],
-        ['->', '.']
-    ];
-    foreach ($map as $i => $ops) {
-        if (in_array($op, $ops)) {
-            return $i + 1;
-        }
-    }
-    throw new Exception("unknown operator: '$op'");
+    return call_rust_mem("operator_strength", $op);
 }
