@@ -1,6 +1,7 @@
 use serde_json::{json, Value};
 use std::io::stdin;
 use std::string::String;
+mod parser;
 
 fn main() {
     loop {
@@ -46,7 +47,7 @@ fn main() {
                 "{}",
                 json!({
                     "error": "",
-                    "data": is_op(String::from(token_type))
+                    "data": parser::is_op(String::from(token_type))
                 })
             )
         } else {
@@ -63,18 +64,4 @@ fn main() {
 
 fn echo(s: &str) -> String {
     return format!("echo: {}", s);
-}
-
-fn is_op(token_type: String) -> bool {
-    let ops = [
-        "+", "-", "*", "/", "=", "|", "&", "~", "^", "<", ">", "?", ":", "%", "+=", "-=", "*=",
-        "/=", "%=", "&=", "^=", "|=", "++", "--", "->", ".", ">>", "<<", "<=", ">=", "&&", "||",
-        "==", "!=", "<<=", ">>=",
-    ];
-    for op in ops.iter() {
-        if token_type.eq(op) {
-            return true;
-        }
-    }
-    return false;
 }
