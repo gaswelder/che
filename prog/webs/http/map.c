@@ -3,7 +3,7 @@
  */
 
 import "net"
-import "os/dir"
+import "dir"
 import "fileutil"
 import "zio"
 import "cli"

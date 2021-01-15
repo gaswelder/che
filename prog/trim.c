@@ -1,6 +1,6 @@
 import "zio"
 import "opt"
-import "os/dir"
+import "dir"
 import "fileutil"
 import "strutil"
 import "cli"
