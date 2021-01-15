@@ -94,7 +94,7 @@ function parse_statement($lexer)
 function parse_expression($lexer, $current_strength = 0)
 {
     $result = parse_atom($lexer);
-    while (is_op($lexer->peek())) {
+    while (is_op($lexer->peek()->type)) {
         // If the operator is not stronger that our current level,
         // yield the result.
         if (operator_strength($lexer->peek()->type) <= $current_strength) {
@@ -244,16 +244,9 @@ function typenames($path)
     return $file->typenames();
 }
 
-function is_op($token)
+function is_op($token_type)
 {
-    $ops = [
-        '+', '-', '*', '/', '=', '|', '&', '~', '^', '<', '>', '?',
-        ':', '%', '+=', '-=', '*=', '/=', '%=', '&=', '^=', '|=', '++',
-        '--', '->', '.', '>>', '<<', '<=', '>=', '&&', '||', '==', '!=',
-        '<<=', '>>='
-    ];
-
-    return in_array($token->type, $ops);
+    return call_rust_mem("is_op", ["token_type" => $token_type]);
 }
 
 function is_prefix_op($token)
