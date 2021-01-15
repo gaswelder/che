@@ -12,18 +12,9 @@ fn main() {
         }
         let v: Value = serde_json::from_str(&buf).unwrap();
         let f = v.as_object().unwrap().get("f").unwrap().as_str().unwrap();
+        let args = v.as_object().unwrap().get("a").unwrap().as_array().unwrap();
         if f == "echo" {
-            let s = v
-                .as_object()
-                .unwrap()
-                .get("a")
-                .unwrap()
-                .as_object()
-                .unwrap()
-                .get("s")
-                .unwrap()
-                .as_str()
-                .unwrap();
+            let s = args[0].as_str().unwrap();
             println!(
                 "{}",
                 json!({
@@ -32,17 +23,7 @@ fn main() {
                 })
             )
         } else if f == "is_op" {
-            let token_type = v
-                .as_object()
-                .unwrap()
-                .get("a")
-                .unwrap()
-                .as_object()
-                .unwrap()
-                .get("token_type")
-                .unwrap()
-                .as_str()
-                .unwrap();
+            let token_type = args[0].as_str().unwrap();
             println!(
                 "{}",
                 json!({

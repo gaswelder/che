@@ -246,7 +246,7 @@ function typenames($path)
 
 function is_op($token_type)
 {
-    return call_rust_mem("is_op", ["token_type" => $token_type]);
+    return call_rust_mem("is_op", $token_type);
 }
 
 function is_prefix_op($token)

@@ -12,7 +12,7 @@ foreach (glob('src/nodes/*.php') as $path) {
     require $path;
 }
 
-function call_rust($f, $args = [])
+function call_rust($f, ...$args)
 {
     $descriptorspec = array(
         0 => array("pipe", "r"),  // stdin is a pipe that the child will read from
@@ -33,12 +33,12 @@ function call_rust($f, $args = [])
 }
 
 $_call_rust_mem = [];
-function call_rust_mem($f, $args = [])
+function call_rust_mem($f, ...$args)
 {
     global $_call_rust_mem;
     $s = json_encode(["f" => $f, "a" => $args]);
     if (!array_key_exists($s, $_call_rust_mem)) {
-        $_call_rust_mem[$s] = call_rust($f, $args);
+        $_call_rust_mem[$s] = call_rust($f, ...$args);
     }
     return $_call_rust_mem[$s];
 }
