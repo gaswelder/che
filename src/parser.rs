@@ -38,3 +38,8 @@ pub fn operator_strength(op: String) -> usize {
     }
     panic!("unknown operator: '{}'", op);
 }
+
+pub fn is_postfix_op(token: String) -> bool {
+    let ops = ["++", "--", "(", "["];
+    return ops.to_vec().contains(&token.as_str());
+}

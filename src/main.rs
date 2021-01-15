@@ -40,6 +40,15 @@ fn main() {
                     "data": parser::operator_strength(String::from(op))
                 })
             )
+        } else if f == "is_postfix_op" {
+            let op = args[0].as_str().unwrap();
+            println!(
+                "{}",
+                json!({
+                    "error": "",
+                    "data": parser::is_postfix_op(String::from(op))
+                })
+            )
         } else {
             println!(
                 "{}",

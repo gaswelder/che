@@ -164,7 +164,7 @@ function parse_atom($lexer)
             continue;
         }
 
-        if (is_postfix_op($lexer->peek())) {
+        if (is_postfix_op($lexer->peek()->type)) {
             $op = $lexer->get()->type;
             $result = new c_postfix_operator($result, $op);
             continue;
@@ -249,10 +249,9 @@ function is_prefix_op($token)
     return in_array($token->type, $ops);
 }
 
-function is_postfix_op($token)
+function is_postfix_op($op)
 {
-    $ops = ['++', '--', '(', '['];
-    return in_array($token->type, $ops);
+    return call_rust_mem("is_postfix_op", $op);
 }
 
 function operator_strength($op)
