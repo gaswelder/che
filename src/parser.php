@@ -238,12 +238,6 @@ function is_type($token, $typenames)
     return in_array($name, $types) || in_array($name, $typenames) || substr($name, -2) == '_t';
 }
 
-function typenames($path)
-{
-    $file = new package_file($path);
-    return $file->typenames();
-}
-
 function is_op($token_type)
 {
     return call_rust_mem("is_op", $token_type);
