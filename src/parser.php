@@ -67,11 +67,15 @@ function parse_module_element($lexer)
 
 function parse_statement($lexer)
 {
-    if (is_type($lexer->peek(), $lexer->typenames) || $lexer->peek()->type == 'const') {
+    $next = $lexer->peek();
+    if (
+        ($next->type == 'word' && is_type($next->content, $lexer->typenames))
+        || $next->type == 'const'
+    ) {
         return c_variable_declaration::parse($lexer);
     }
 
-    switch ($lexer->peek()->type) {
+    switch ($next->type) {
         case 'if':
             return c_if::parse($lexer);
         case 'for':
@@ -114,7 +118,11 @@ function parse_atom($lexer)
         throw new Exception("expression: unexpected keyword '" . $lexer->peek()->type . "'");
     }
 
-    if ($lexer->peek()->type == '(' && is_type($lexer->peek(1), $lexer->typenames)) {
+    if (
+        $lexer->peek()->type == '('
+        && $lexer->peek(1)->type == 'word'
+        && is_type($lexer->peek(1)->content, $lexer->typenames)
+    ) {
         expect($lexer, '(');
         $typeform = c_anonymous_typeform::parse($lexer);
         expect($lexer, ')', 'typecast');
@@ -196,7 +204,7 @@ function expect($lexer, $type, $comment = null)
 }
 
 
-function is_type($token, $typenames)
+function is_type($name, $typenames)
 {
     $types = [
         'struct',
@@ -230,10 +238,6 @@ function is_type($token, $typenames)
         'socklen_t',
         'ssize_t'
     ];
-    if ($token->type != 'word') {
-        return false;
-    }
-    $name = $token->content;
 
     return in_array($name, $types) || in_array($name, $typenames) || substr($name, -2) == '_t';
 }

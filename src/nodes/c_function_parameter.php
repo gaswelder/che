@@ -10,10 +10,12 @@ class c_function_parameter
         $self = new self;
         $self->type = c_type::parse($lexer);
         $self->forms[] = c_form::parse($lexer);
-        while ($lexer->follows(',')
+        while (
+            $lexer->follows(',')
             && $lexer->peek(1)->type != '...'
             && $lexer->peek(1)->type != 'const'
-            && !is_type($lexer->peek(1), $lexer->typenames)) {
+            && !($lexer->peek(1)->type == 'word' && is_type($lexer->peek(1)->content, $lexer->typenames))
+        ) {
             $lexer->get();
             $self->forms[] = c_form::parse($lexer);
         }
