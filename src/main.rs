@@ -33,6 +33,13 @@ fn route(f: &str, args: &Vec<serde_json::Value>) {
                 "data": parser::is_op(String::from(token_type))
             })
         }
+        "is_prefix_op" => {
+            let token_type = args[0].as_str().unwrap();
+            json!({
+                "error": "",
+                "data": parser::is_prefix_op(String::from(token_type))
+            })
+        }
         "operator_strength" => {
             let op = args[0].as_str().unwrap();
             json!({

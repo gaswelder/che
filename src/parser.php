@@ -147,7 +147,7 @@ function parse_atom($lexer)
         return c_sizeof::parse($lexer);
     }
 
-    if (is_prefix_op($lexer->peek())) {
+    if (is_prefix_op($lexer->peek()->type)) {
         $op = $lexer->get()->type;
         return new c_prefix_operator($op, parse_expression($lexer, operator_strength('prefix')));
     }
@@ -247,10 +247,9 @@ function is_op($token_type)
     return call_rust_mem("is_op", $token_type);
 }
 
-function is_prefix_op($token)
+function is_prefix_op($op)
 {
-    $ops = ['!', '--', '++', '*', '~', '&', '-'];
-    return in_array($token->type, $ops);
+    return call_rust_mem("is_prefix_op", $op);
 }
 
 function is_postfix_op($op)

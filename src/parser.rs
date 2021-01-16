@@ -43,3 +43,8 @@ pub fn is_postfix_op(token: String) -> bool {
     let ops = ["++", "--", "(", "["];
     return ops.to_vec().contains(&token.as_str());
 }
+
+pub fn is_prefix_op(op: String) -> bool {
+    let ops = ["!", "--", "++", "*", "~", "&", "-"];
+    return ops.to_vec().contains(&op.as_str());
+}
