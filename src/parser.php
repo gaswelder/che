@@ -206,40 +206,7 @@ function expect($lexer, $type, $comment = null)
 
 function is_type($name, $typenames)
 {
-    $types = [
-        'struct',
-        'enum',
-        'union',
-        'void',
-        'char',
-        'short',
-        'int',
-        'long',
-        'float',
-        'double',
-        'unsigned',
-        'bool',
-        'va_list',
-        'FILE',
-        'ptrdiff_t',
-        'size_t',
-        'wchar_t',
-        'int8_t',
-        'int16_t',
-        'int32_t',
-        'int64_t',
-        'uint8_t',
-        'uint16_t',
-        'uint32_t',
-        'uint64_t',
-        'clock_t',
-        'time_t',
-        'fd_set',
-        'socklen_t',
-        'ssize_t'
-    ];
-
-    return in_array($name, $types) || in_array($name, $typenames) || substr($name, -2) == '_t';
+    return call_rust_mem('is_type', $name, $typenames);
 }
 
 function is_op($token_type)

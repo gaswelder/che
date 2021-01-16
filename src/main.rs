@@ -54,6 +54,18 @@ fn route(f: &str, args: &Vec<serde_json::Value>) {
                 "data": parser::is_postfix_op(String::from(op))
             })
         }
+        "is_type" => {
+            let op = args[0].as_str().unwrap();
+
+            let mut typenames: Vec<String> = Vec::new();
+            for s in args[1].as_array().unwrap() {
+                typenames.push(s.as_str().unwrap().to_string());
+            }
+            json!({
+                "error": "",
+                "data": parser::is_type(op.to_string(), &typenames)
+            })
+        }
         _ => {
             json!({
                 "error": "unknown function",
