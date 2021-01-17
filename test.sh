@@ -1,3 +1,5 @@
+php test.php
+
 if [ ! -d bin ]; then
 	mkdir bin || exit 1
 fi
