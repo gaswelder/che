@@ -37,7 +37,14 @@ function parse_path($module_path)
     $modules = array_map(function ($path) use ($types) {
         $lexer = new lexer($path);
         $lexer->typenames = $types;
-        return parse_program($lexer, $path);
+        try {
+            return c_module::parse($lexer);
+        } catch (Exception $e) {
+            $next = $lexer->peek();
+            $where = "$path:" . $lexer->peek()->pos;
+            $what = $e->getMessage();
+            echo "$where: $what: $next...\n";
+        }
     }, $paths);
 
     // Merge all partial modules into one.

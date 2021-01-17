@@ -1,18 +1,5 @@
 <?php
 
-function parse_program($lexer, $filename)
-{
-    // return c_module::parse($lexer);
-    try {
-        return c_module::parse($lexer);
-    } catch (Exception $e) {
-        $next = $lexer->peek();
-        $where = "$filename:" . $lexer->peek()->pos;
-        $what = $e->getMessage();
-        echo "$where: $what: $next...\n";
-    }
-}
-
 function parse_module_element($lexer)
 {
     switch ($lexer->peek()->type) {
