@@ -7,13 +7,22 @@ function test($name, $f)
         echo "OK: $name\n";
     } catch (Exception $e) {
         echo "FAIL: $name: " . $e->getMessage(), "\n";
+        exit(1);
     }
+}
+
+function formatValue($v)
+{
+    if ($v === null) {
+        return 'NULL';
+    }
+    return "'$v'";
 }
 
 function eq($expected, $actual)
 {
     if ($expected !== $actual) {
-        throw new Exception("expected '$expected', got '$actual'");
+        throw new Exception(sprintf("expected %s, got %s", formatValue($expected), formatValue($actual)));
     }
 }
 

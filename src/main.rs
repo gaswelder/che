@@ -2,7 +2,9 @@ use serde_json::{json, Value};
 use std::env;
 use std::io::stdin;
 use std::string::String;
+mod buf;
 mod parser;
+use buf::Buf;
 
 fn main() {
     let args: Vec<String> = env::args().collect();
@@ -17,8 +19,8 @@ fn serve_class(class_name: String) {
     if class_name != "buf" {
         panic!("unknown class name: {}", class_name);
     }
-    let mut constructed = false;
-    let mut s = String::new();
+
+    let mut b: Option<Buf> = None;
 
     loop {
         let mut buf = String::new();
@@ -29,27 +31,94 @@ fn serve_class(class_name: String) {
         let v: Value = serde_json::from_str(&buf).unwrap();
         let f = v.as_object().unwrap().get("f").unwrap().as_str().unwrap();
         let args = v.as_object().unwrap().get("a").unwrap().as_array().unwrap();
-        if !constructed {
-            if f != "__construct" {
-                panic!("__construct call expected");
-            }
-            s = args[0].as_str().unwrap().to_string();
-            constructed = true;
-            let response = json!({
+        if f != "__construct" {
+            println!(
+                "{}",
+                json!({
+                    "error": "__construct call expected",
+                    "data": null
+                })
+            );
+            continue;
+        }
+        let s = args[0].as_str().unwrap().to_string();
+        b.replace(buf::new(s));
+        println!(
+            "{}",
+            json!({
                 "error": "",
                 "data": null
-            });
-            println!("{}", response);
-        } else {
-            if f != "len" {
+            })
+        );
+        break;
+    }
+
+    let mut b1 = b.unwrap();
+    loop {
+        let mut buf = String::new();
+        stdin().read_line(&mut buf).unwrap();
+        if buf == "" {
+            break;
+        }
+        let v: Value = serde_json::from_str(&buf).unwrap();
+        let f = v.as_object().unwrap().get("f").unwrap().as_str().unwrap();
+        let args = v.as_object().unwrap().get("a").unwrap().as_array().unwrap();
+        let response = match f {
+            "ended" => json!({
+                "error": "",
+                "data": b1.ended()
+            }),
+            "more" => json!({
+                "error": "",
+                "data": b1.more()
+            }),
+            "pos" => json!({
+                "error": "",
+                "data": b1.pos()
+            }),
+            "peek" => {
+                let r = b1.peek();
+                json!({
+                    "error": "",
+                    "data": r
+                })
+            }
+            "get" => json!({
+                "error": "",
+                "data": b1.get()
+            }),
+            "unget" => json!({
+                "error": "",
+                "data": b1.unget(args[0].as_str().unwrap().chars().next().unwrap())
+            }),
+            "read_set" => {
+                let set = String::from(args[0].as_str().unwrap());
+                json!({
+                    "error": "",
+                    "data": b1.read_set(set)
+                })
+            }
+            "skip_literal" => json!({
+                "error": "",
+                "data": b1.skip_literal(args[0].as_str().unwrap())
+            }),
+            "until_literal" => json!({
+                "error": "",
+                "data": b1.until_literal(args[0].as_str().unwrap())
+            }),
+            "skip_until" => json!({
+                "error": "",
+                "data": b1.skip_until(args[0].as_str().unwrap().chars().next().unwrap())
+            }),
+            "context" => json!({
+                "error": "",
+                "data": b1.context()
+            }),
+            _ => {
                 panic!("unknown method: {}", f);
             }
-            let response = json!({
-                "error": "",
-                "data": s.len()
-            });
-            println!("{}", response);
-        }
+        };
+        println!("{}", response);
     }
 }
 

@@ -1,4 +1,4 @@
-php test.php
+php test.php || exit $?
 
 if [ ! -d bin ]; then
 	mkdir bin || exit 1
