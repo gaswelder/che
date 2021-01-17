@@ -22,7 +22,7 @@ class c_typedef
 
         $self->type = c_type::parse($lexer, 'typedef');
         while ($lexer->follows('*')) {
-            $self->before .= $lexer->get()->type;
+            $self->before .= $lexer->get()['type'];
         }
         $self->alias = c_identifier::parse($lexer);
 
@@ -33,7 +33,7 @@ class c_typedef
         if ($lexer->follows('[')) {
             $lexer->get();
             $self->after .= '[';
-            $self->after .= expect($lexer, 'num')->content;
+            $self->after .= expect($lexer, 'num')['content'];
             expect($lexer, ']');
             $self->after .= ']';
         }

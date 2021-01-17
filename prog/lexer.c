@@ -281,7 +281,7 @@ tok_t *read_string(parsebuf *b) {
 		// 		$str .= $this->read_string();
 		// 		$s->read_set(self::spaces);
 		// 	}
-		// 	return token::make("string", $str, $pos);
+		// 	return make_token("string", $str, $pos);
 		// }
 
 

@@ -9,7 +9,7 @@ class c_switch_default
         $self = new self;
         expect($lexer, 'default');
         expect($lexer, ':');
-        while ($lexer->more() && $lexer->peek()->type != '}') {
+        while ($lexer->more() && $lexer->peek()['type'] != '}') {
             $self->statements[] = parse_statement($lexer);
         }
         return $self;

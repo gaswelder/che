@@ -12,8 +12,8 @@ function read($path)
 		while (true) {
 			$tok = read_token($buf);
 			if (!$tok) break;
-			if ($tok->type == 'error') {
-				throw new Exception("$tok->content at $tok->pos");
+			if ($tok['type'] == 'error') {
+				throw new Exception($tok['content'] . ' at ' . $tok['pos']);
 			}
 			$toks[] = $tok;
 		}
@@ -53,12 +53,10 @@ class lexer
 	{
 		while (true) {
 			if (empty($this->toks)) {
-				// var_dump('get', 'null');
 				return null;
 			}
 			$tok = array_shift($this->toks);
-			// var_dump('get', $tok);
-			if ($tok->type != 'comment') return $tok;
+			if ($tok['type'] != 'comment') return $tok;
 		}
 	}
 
@@ -84,13 +82,13 @@ class lexer
 
 	function follows($type)
 	{
-		return $this->more() && $this->peek()->type == $type;
+		return $this->more() && $this->peek()['type'] == $type;
 	}
 }
 
 function error_token($buf, $msg)
 {
-	return token::make('error', $msg, $buf->pos());
+	return make_token('error', $msg, $buf->pos());
 }
 
 const spaces = "\r\n\t ";
@@ -109,7 +107,7 @@ function read_token($buf)
 		 * If we are on a new line and '#' follows, read it as a macro.
 		 */
 	if ($buf->peek() == '#') {
-		return token::make('macro', $buf->skip_until("\n"), $pos);
+		return make_token('macro', $buf->skip_until("\n"), $pos);
 	}
 
 	/*
@@ -120,7 +118,7 @@ function read_token($buf)
 		if (!$buf->skip_literal('*/')) {
 			return error_token($buf, "*/ expected");
 		}
-		return token::make('comment', $comment, $pos);
+		return make_token('comment', $comment, $pos);
 	}
 
 	/*
@@ -128,7 +126,7 @@ function read_token($buf)
 		 */
 	if ($buf->skip_literal('//')) {
 		$comment = $buf->skip_until("\n");
-		return token::make('comment', $comment, $pos);
+		return make_token('comment', $comment, $pos);
 	}
 
 	/*
@@ -157,9 +155,9 @@ function read_token($buf)
 			'pub', 'if'
 		);
 		if (in_array($word, $keywords)) {
-			return token::make($word, null, $pos);
+			return make_token($word, null, $pos);
 		}
-		return token::make('word', $word, $pos);
+		return make_token('word', $word, $pos);
 	}
 
 	/*
@@ -182,7 +180,7 @@ function read_token($buf)
 			$str .= read_string($buf);
 			$buf->read_set(spaces);
 		}
-		return token::make('string', $str, $pos);
+		return make_token('string', $str, $pos);
 	}
 
 	/*
@@ -200,7 +198,7 @@ function read_token($buf)
 		if ($buf->get() != "'") {
 			return error_token($buf, "Single quote expected");
 		}
-		return token::make('char', $str, $pos);
+		return make_token('char', $str, $pos);
 	}
 
 	$pos = $buf->pos();
@@ -221,7 +219,7 @@ function read_token($buf)
 	);
 	foreach ($symbols as $sym) {
 		if ($buf->skip_literal($sym)) {
-			return token::make($sym, null, $pos);
+			return make_token($sym, null, $pos);
 		}
 	}
 
@@ -262,7 +260,7 @@ function read_number($buf)
 		$c = $buf->peek();
 		return error_token($buf, "Unexpected character: '$c'");
 	}
-	return token::make('num', $num, $pos);
+	return make_token('num', $num, $pos);
 }
 
 function read_hex($buf)
@@ -282,7 +280,7 @@ function read_hex($buf)
 		$num .= $buf->get();
 	}
 
-	return token::make('num', '0x' . $num, $pos);
+	return make_token('num', '0x' . $num, $pos);
 }
 
 function read_string($buf)

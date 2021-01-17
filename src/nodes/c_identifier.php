@@ -15,7 +15,7 @@ class c_identifier
     {
         $tok = expect($lexer, 'word', $hint);
         $self = new self;
-        $self->name = $tok->content;
+        $self->name = $tok['content'];
         return $self;
     }
 

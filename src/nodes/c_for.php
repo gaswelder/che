@@ -13,7 +13,7 @@ class c_for
         expect($lexer, 'for');
         expect($lexer, '(');
 
-        if ($lexer->peek()->type == 'word' && is_type($lexer->peek()->content, $lexer->typenames)) {
+        if ($lexer->peek()['type'] == 'word' && is_type($lexer->peek()['content'], $lexer->typenames)) {
             $self->init = c_loop_counter_declaration::parse($lexer);
         } else {
             $self->init = parse_expression($lexer);

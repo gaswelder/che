@@ -23,11 +23,11 @@ class c_type
 
         if ($lexer->follows('struct')) {
             $lexer->get();
-            $name = expect($lexer, 'word')->content;
+            $name = expect($lexer, 'word')['content'];
             $self->type = 'struct ' . $name;
         } else {
             $tok = expect($lexer, 'word', $comment);
-            $self->type = $tok->content;
+            $self->type = $tok['content'];
         }
 
         return $self;

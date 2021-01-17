@@ -10,7 +10,7 @@ class c_anonymous_typeform
         $self = new self;
         $self->type = c_type::parse($lexer);
         while ($lexer->follows('*')) {
-            $self->ops[] = $lexer->get()->type;
+            $self->ops[] = $lexer->get()['type'];
         }
         return $self;
     }

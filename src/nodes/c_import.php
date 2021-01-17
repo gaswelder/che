@@ -10,7 +10,7 @@ class c_import
         $tok = expect($lexer, 'string');
         // expect($lexer, ';');
         $self = new self;
-        $self->path = $tok->content;
+        $self->path = $tok['content'];
         return $self;
     }
 

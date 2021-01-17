@@ -41,7 +41,7 @@ function parse_path($module_path)
             return c_module::parse($lexer);
         } catch (Exception $e) {
             $next = $lexer->peek();
-            $where = "$path:" . $lexer->peek()->pos;
+            $where = "$path:" . $lexer->peek()['pos'];
             $what = $e->getMessage();
             echo "$where: $what: $next...\n";
         }
@@ -82,12 +82,12 @@ function package_file_typenames($path): array
 
         // When a 'typedef' is encountered, look ahead
         // to find the type name
-        if ($t->type == 'typedef') {
+        if ($t['type'] == 'typedef') {
             $list[] = get_typename($lexer);
         }
 
-        if ($t->type == 'macro' && strpos($t->content, '#type') === 0) {
-            $list[] = trim(substr($t->content, strlen('#type') + 1));
+        if ($t['type'] == 'macro' && strpos($t['content'], '#type') === 0) {
+            $list[] = trim(substr($t['content'], strlen('#type') + 1));
         }
     }
     return $list;
@@ -117,7 +117,7 @@ function get_typename(lexer $lexer)
 
     if ($lexer->follows('{')) {
         $skip_brackets();
-        $name = expect($lexer, 'word')->content;
+        $name = expect($lexer, 'word')['content'];
         expect($lexer, ';');
         return $name;
     }
@@ -127,7 +127,7 @@ function get_typename(lexer $lexer)
     $buf = array();
     while (!$lexer->ended()) {
         $t = $lexer->get();
-        if ($t->type == ';') {
+        if ($t['type'] == ';') {
             break;
         }
         $buf[] = $t;
@@ -141,10 +141,10 @@ function get_typename(lexer $lexer)
 
     // We assume that function typedefs end with "(...)".
     // In that case we omit that part.
-    if ($buf[0]->type == ')') {
+    if ($buf[0]['type'] == ')') {
         while (!empty($buf)) {
             $t = array_shift($buf);
-            if ($t->type == '(') {
+            if ($t['type'] == '(') {
                 break;
             }
         }
@@ -154,8 +154,8 @@ function get_typename(lexer $lexer)
     $name = null;
     while (!empty($buf)) {
         $t = array_shift($buf);
-        if ($t->type == 'word') {
-            $name = $t->content;
+        if ($t['type'] == 'word') {
+            $name = $t['content'];
             break;
         }
     }

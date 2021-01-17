@@ -7,7 +7,7 @@ class c_compat_macro
     static function parse($lexer)
     {
         $self = new self;
-        $self->content = expect($lexer, 'macro')->content;
+        $self->content = expect($lexer, 'macro')['content'];
         return $self;
     }
 
