@@ -5,13 +5,15 @@ use std::string::String;
 mod buf;
 mod parser;
 use buf::Buf;
+use std::collections::HashMap;
 
 fn main() {
     let args: Vec<String> = env::args().collect();
+    let mut buf_instances: HashMap<String, Buf> = HashMap::new();
     if args.len() > 1 {
-        serve_class(args[1].to_string());
+        serve_class(args[1].to_string(), &mut buf_instances);
     } else {
-        serve_functions();
+        serve_functions(&mut buf_instances);
     }
 }
 
@@ -35,13 +37,12 @@ fn read_call() -> Option<Call> {
     });
 }
 
-fn serve_class(class_name: String) {
+fn serve_class(class_name: String, buf_instances: &mut HashMap<String, Buf>) {
     if class_name != "buf" {
         panic!("unknown class name: {}", class_name);
     }
 
-    let mut b: Option<Buf> = None;
-
+    let mut instance_key = String::new();
     loop {
         let callm = read_call();
         if callm.is_none() {
@@ -61,18 +62,19 @@ fn serve_class(class_name: String) {
             continue;
         }
         let s = args[0].as_str().unwrap().to_string();
-        b.replace(buf::new(s));
+        instance_key = String::from("0xabcdef");
+        buf_instances.insert(instance_key.clone(), buf::new(s));
         println!(
             "{}",
             json!({
                 "error": "",
-                "data": null
+                "data": instance_key
             })
         );
         break;
     }
 
-    let mut b1 = b.unwrap();
+    // let mut b1 = b.unwrap();
     loop {
         let callm = read_call();
         if callm.is_none() {
@@ -81,7 +83,7 @@ fn serve_class(class_name: String) {
         let call = callm.unwrap();
         let f = call.f.as_str();
         let args = call.args;
-
+        let b1 = buf_instances.get_mut(&instance_key).unwrap();
         let response = match f {
             "ended" => json!({
                 "error": "",
@@ -141,7 +143,7 @@ fn serve_class(class_name: String) {
     }
 }
 
-fn serve_functions() {
+fn serve_functions(buf_instances: &mut HashMap<String, Buf>) {
     loop {
         let callm = read_call();
         if callm.is_none() {
@@ -189,6 +191,19 @@ fn serve_functions() {
                     "error": "",
                     "data": parser::is_type(op.to_string(), &typenames)
                 })
+            }
+            "use_buf" => {
+                let op = args[0].as_str().unwrap();
+                match buf_instances.get_mut(op) {
+                    Some(buf) => json!({
+                        "error": "",
+                        "data": buf.get()
+                    }),
+                    None => json!({
+                        "error": format!("instance '{}' missing {:#?}", op, buf_instances.keys()),
+                        "data": ""
+                    }),
+                }
             }
             _ => {
                 json!({

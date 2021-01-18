@@ -9,7 +9,13 @@ function call_rust($f, ...$args)
     );
 
     $proc = proc_open("cargo run -q", $descriptorspec, $pipes);
-    fwrite($pipes[0], json_encode(["f" => $f, "a" => $args]) . "\n");
+    $fargs = array_map(function ($arg) {
+        if ($arg instanceof buf) {
+            return $arg->_rust_instance_id;
+        }
+        return $arg;
+    }, $args);
+    fwrite($pipes[0], json_encode(["f" => $f, "a" => $fargs]) . "\n");
     fclose($pipes[0]);
     $s = stream_get_contents($pipes[1]);
     proc_terminate($proc);
@@ -33,10 +39,11 @@ function call_rust_mem($f, ...$args)
 
 function make_rust_object($name, ...$args)
 {
-    return new class ($name, $args)
+    return new class($name, $args)
     {
         private $proc;
         private $pipes;
+        public $_rust_instance_id;
 
         function __construct($name, $args)
         {
@@ -54,6 +61,7 @@ function make_rust_object($name, ...$args)
             }
             $this->proc = $proc;
             $this->pipes = $pipes;
+            $this->_rust_instance_id = $s['data'];
         }
 
         function __destruct()
