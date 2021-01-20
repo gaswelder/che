@@ -1,29 +1,32 @@
 <?php
 
-function call_rust($f, ...$args)
+function make_call($ns, $id, $f, $args)
 {
-    $descriptorspec = array(
-        0 => array("pipe", "r"),  // stdin is a pipe that the child will read from
-        1 => array("pipe", "w"),  // stdout is a pipe that the child will write to
-        // 2 => array("file", "/tmp/error-output.txt", "a") // stderr is a file to write to
-    );
+    $conn = fsockopen("localhost", 2124, $errno, $errstr);
+    if ($errno) {
+        throw new Exception("make_call: $errstr ($errno)");
+    }
 
-    $proc = proc_open("cargo run -q", $descriptorspec, $pipes);
     $fargs = array_map(function ($arg) {
         if ($arg instanceof buf) {
             return $arg->_rust_instance_id;
         }
         return $arg;
     }, $args);
-    fwrite($pipes[0], json_encode(["f" => $f, "a" => $fargs]) . "\n");
-    fclose($pipes[0]);
-    $s = stream_get_contents($pipes[1]);
-    proc_terminate($proc);
-    $data = json_decode($s, true);
-    if ($data["error"] !== "") {
-        throw new Exception($data["error"]);
+
+    fwrite($conn, json_encode(['ns' => $ns, 'id' => $id, "f" => $f, "a" => $fargs]) . "\n");
+    $line = fgets($conn);
+    fclose($conn);
+    $s = json_decode($line, true);
+    if ($s['error']) {
+        throw new Exception($s['error']);
     }
-    return $data["data"];
+    return $s['data'];
+}
+
+function call_rust($f, ...$args)
+{
+    return make_call('', '', $f, $args);
 }
 
 $_call_rust_mem = [];
@@ -41,44 +44,17 @@ function make_rust_object($name, ...$args)
 {
     return new class($name, $args)
     {
-        private $proc;
-        private $pipes;
         public $_rust_instance_id;
 
         function __construct($name, $args)
         {
-            $descriptorspec = array(
-                0 => array("pipe", "r"),  // stdin is a pipe that the child will read from
-                1 => array("pipe", "w"),  // stdout is a pipe that the child will write to
-                // 2 => array("file", "/tmp/error-output.txt", "a") // stderr is a file to write to
-            );
-
-            $proc = proc_open("cargo run -q $name", $descriptorspec, $pipes);
-            fwrite($pipes[0], json_encode(["f" => '__construct', "a" => $args]) . "\n");
-            $s = json_decode(fgets($pipes[1]), true);
-            if ($s['error']) {
-                throw new Exception($s['error']);
-            }
-            $this->proc = $proc;
-            $this->pipes = $pipes;
-            $this->_rust_instance_id = $s['data'];
+            $s = make_call($name, '', '__construct', $args);
+            $this->_rust_instance_id = $s;
         }
 
-        function __destruct()
+        function __call($method, $args)
         {
-            // fclose($this->pipes[0]);
-            proc_terminate($this->proc);
-        }
-
-        function __call($method, $arguments)
-        {
-            $pipes = $this->pipes;
-            fwrite($pipes[0], json_encode(["f" => $method, "a" => $arguments]) . "\n");
-            $s = json_decode(fgets($pipes[1]), true);
-            if ($s['error']) {
-                throw new Exception($s['error']);
-            }
-            return $s['data'];
+            return make_call('buf', $this->_rust_instance_id, $method, $args);
         }
     };
 }
