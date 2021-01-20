@@ -251,24 +251,5 @@ function read_hex($buf)
 
 function read_string_literal($buf)
 {
-	$pos = $buf->pos();
-	$str = '';
-	// A string literal may be split into parts.
-	while ($buf->peek() == '"') {
-		$buf->get();
-		$substr = '';
-		while (!$buf->ended() && $buf->peek() != '"') {
-			$ch = $buf->get();
-			$substr .= $ch;
-			if ($ch == '\\') {
-				$substr .= $buf->get();
-			}
-		}
-		if ($buf->get() != '"') {
-			return error_token($buf, "Double quote expected");
-		}
-		$str .= $substr;
-		$buf->read_set(spaces);
-	}
-	return make_token('string', $str, $pos);
+	return call_rust('read_string_literal', $buf);
 }

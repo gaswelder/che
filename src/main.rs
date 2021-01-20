@@ -224,6 +224,13 @@ fn exec_function_call(call: Call, buf_instances: &mut HashMap<String, Buf>) -> s
                 "data": lexer::read_number(buf)
             });
         }
+        "read_string_literal" => {
+            let buf = buf_instances.get_mut(args[0].as_str().unwrap()).unwrap();
+            return json!({
+                "error": "",
+                "data": lexer::read_string_literal(buf)
+            });
+        }
         _ => {
             json!({
                 "error": format!("unknown function: {}", f),

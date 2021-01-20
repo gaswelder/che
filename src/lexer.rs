@@ -8,6 +8,8 @@ pub struct Token {
     pub pos: String,
 }
 
+const SPACES: &str = "\r\n\t ";
+
 pub fn read_number(buf: &mut Buf) -> Token {
     if buf.literal_follows("0x") {
         return read_hex(buf);
@@ -54,6 +56,37 @@ pub fn read_hex(buf: &mut Buf) -> Token {
     return Token {
         kind: "num".to_string(),
         content: Some(String::from("0x") + &num),
+        pos,
+    };
+}
+
+pub fn read_string_literal(buf: &mut Buf) -> Token {
+    let pos = buf.pos();
+    let mut s = String::new();
+    // A string literal may be split into parts.
+    while buf.more() && buf.peek().unwrap() == '"' {
+        buf.get();
+        let mut substr = String::new();
+        while buf.more() && buf.peek().unwrap() != '"' {
+            let ch = buf.get().unwrap();
+            substr += &ch.to_string();
+            if ch == '\\' {
+                substr += &buf.get().unwrap().to_string();
+            }
+        }
+        if !buf.more() || buf.get().unwrap() != '"' {
+            return Token {
+                kind: "error".to_string(),
+                content: Some("Double quote expected".to_string()),
+                pos,
+            };
+        }
+        s += &substr;
+        buf.read_set(SPACES.to_string());
+    }
+    return Token {
+        kind: "string".to_string(),
+        content: Some(s),
         pos,
     };
 }
