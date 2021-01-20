@@ -126,102 +126,33 @@ function read_token($buf)
 
 	$pos = $buf->pos();
 
-	/*
-		 * If we are on a new line and '#' follows, read it as a macro.
-		 */
 	if ($buf->peek() == '#') {
 		return make_token('macro', $buf->skip_until("\n"), $pos);
 	}
 
-	/*
-		 * Multiple-line comments.
-		 */
-	if ($buf->skip_literal('/*')) {
-		$comment = $buf->until_literal('*/');
-		if (!$buf->skip_literal('*/')) {
-			return error_token($buf, "*/ expected");
-		}
-		return make_token('comment', $comment, $pos);
+	if ($buf->literal_follows("/*")) {
+		return read_multiline_comment($buf);
 	}
 
-	/*
-		 * Singe-line comments.
-		 */
 	if ($buf->skip_literal('//')) {
 		$comment = $buf->skip_until("\n");
 		return make_token('comment', $comment, $pos);
 	}
 
-	/*
-		 * Identifier name.
-		 */
 	if (ctype_alpha($buf->peek()) || $buf->peek() == '_') {
-		$word = '';
-		while (!$buf->ended()) {
-			$ch = $buf->peek();
-			if (ctype_alpha($ch) || ctype_digit($ch) || $ch == '_') {
-				$word .= $buf->get();
-				continue;
-			}
-			break;
-		}
-
-		$keywords = array(
-			'default',
-			'typedef', 'struct',
-			'import', 'union',
-			'const', 'return',
-			'switch', 'sizeof',
-			'while', 'defer',
-			'case', 'enum',
-			'else', 'for',
-			'pub', 'if'
-		);
-		if (in_array($word, $keywords)) {
-			return make_token($word, null, $pos);
-		}
-		return make_token('word', $word, $pos);
+		return read_word($buf);
 	}
 
-	/*
-		 * Number
-		 */
 	if (ctype_digit($buf->peek())) {
 		return read_number($buf);
 	}
 
-	/*
-		 * String.
-		 */
 	if ($buf->peek() == '"') {
-		$str = '';
-		/*
-			 * A string literal may be split into parts,
-			 * so concatenate it.
-			 */
-		while ($buf->peek() == '"') {
-			$str .= read_string($buf);
-			$buf->read_set(spaces);
-		}
-		return make_token('string', $str, $pos);
+		return read_string_literal($buf);
 	}
 
-	/*
-		 * Character literal
-		 */
 	if ($buf->peek() == "'") {
-		$buf->get();
-
-		$str = '';
-		if ($buf->peek() == '\\') {
-			$str .= $buf->get();
-		}
-
-		$str .= $buf->get();
-		if ($buf->get() != "'") {
-			return error_token($buf, "Single quote expected");
-		}
-		return make_token('char', $str, $pos);
+		return read_char_literal($buf);
 	}
 
 	$pos = $buf->pos();
@@ -250,6 +181,64 @@ function read_token($buf)
 	return error_token($buf, "Unexpected character: '$ch'");
 }
 
+function read_multiline_comment($buf)
+{
+	$pos = $buf->pos();
+	$buf->skip_literal('/*');
+	$comment = $buf->until_literal('*/');
+	if (!$buf->skip_literal('*/')) {
+		return error_token($buf, "*/ expected");
+	}
+	return make_token('comment', $comment, $pos);
+}
+
+function read_char_literal($buf)
+{
+	$pos = $buf->pos();
+	$buf->get();
+
+	$str = '';
+	if ($buf->peek() == '\\') {
+		$str .= $buf->get();
+	}
+
+	$str .= $buf->get();
+	if ($buf->get() != "'") {
+		return error_token($buf, "Single quote expected");
+	}
+	return make_token('char', $str, $pos);
+}
+
+function read_word($buf)
+{
+	$pos = $buf->pos();
+	$word = '';
+	while (!$buf->ended()) {
+		$ch = $buf->peek();
+		if (ctype_alpha($ch) || ctype_digit($ch) || $ch == '_') {
+			$word .= $buf->get();
+			continue;
+		}
+		break;
+	}
+
+	$keywords = array(
+		'default',
+		'typedef', 'struct',
+		'import', 'union',
+		'const', 'return',
+		'switch', 'sizeof',
+		'while', 'defer',
+		'case', 'enum',
+		'else', 'for',
+		'pub', 'if'
+	);
+	if (in_array($word, $keywords)) {
+		return make_token($word, null, $pos);
+	}
+	return make_token('word', $word, $pos);
+}
+
 function read_number($buf)
 {
 	return call_rust('read_number', $buf);
@@ -260,19 +249,26 @@ function read_hex($buf)
 	return call_rust('read_hex', $buf);
 }
 
-function read_string($buf)
+function read_string_literal($buf)
 {
-	$buf->get();
+	$pos = $buf->pos();
 	$str = '';
-	while (!$buf->ended() && $buf->peek() != '"') {
-		$ch = $buf->get();
-		$str .= $ch;
-		if ($ch == '\\') {
-			$str .= $buf->get();
+	// A string literal may be split into parts.
+	while ($buf->peek() == '"') {
+		$buf->get();
+		$substr = '';
+		while (!$buf->ended() && $buf->peek() != '"') {
+			$ch = $buf->get();
+			$substr .= $ch;
+			if ($ch == '\\') {
+				$substr .= $buf->get();
+			}
 		}
+		if ($buf->get() != '"') {
+			return error_token($buf, "Double quote expected");
+		}
+		$str .= $substr;
+		$buf->read_set(spaces);
 	}
-	if ($buf->get() != '"') {
-		return error_token($buf, "Double quote expected");
-	}
-	return $str;
+	return make_token('string', $str, $pos);
 }

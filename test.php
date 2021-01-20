@@ -1,10 +1,13 @@
 <?php
 
 $fails = 0;
+$eq = 0;
 
 function test($name, $f)
 {
     global $fails;
+    global $eq;
+    $eq = 0;
     try {
         $f();
         echo "OK: $name\n";
@@ -24,6 +27,8 @@ function formatValue($v)
 
 function eq($expected, $actual)
 {
+    global $eq;
+    $eq++;
     if (is_array($expected) && is_array($actual)) {
         $keys = array_unique(array_merge(array_keys($expected), array_keys($actual)));
         $errors = [];
@@ -41,7 +46,7 @@ function eq($expected, $actual)
             }
         }
         if (count($errors) > 0) {
-            throw new Exception(implode("\n", $errors));
+            throw new Exception("eq #$eq: " . implode("\n", $errors));
         }
         return;
     }

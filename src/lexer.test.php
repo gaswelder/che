@@ -49,12 +49,6 @@ test('read_token', function () {
 	], read_token(new buf('abc_123++')));
 
 	eq([
-		'kind' => 'string',
-		'content' => 'abcdef',
-		'pos' => '1:1'
-	], read_token(new buf("\"abc\"\n\"def\" 123")));
-
-	eq([
 		'kind' => 'char',
 		'content' => 'a',
 		'pos' => '1:1'
@@ -130,10 +124,24 @@ test('read_hex', function () {
 	], read_hex(new buf('0x123UL')));
 });
 
-test('read_string', function () {
-	$buf = new buf('"abc" 123');
-	eq('abc', read_string($buf));
 
-	$buf = new buf('"abc\\"def" 123');
-	eq('abc\"def', read_string($buf));
+
+test('read_string_literal', function () {
+	eq([
+		'kind' => 'string',
+		'content' => 'abc',
+		'pos' => '1:1'
+	], read_token(new buf("\"abc\" 123")));
+
+	eq([
+		'kind' => 'string',
+		'content' => 'ab\\"c',
+		'pos' => '1:1'
+	], read_token(new buf('"ab\\"c" 123')));
+
+	eq([
+		'kind' => 'string',
+		'content' => 'abcdef',
+		'pos' => '1:1'
+	], read_token(new buf("\"abc\" \"def\" 123")));
 });
