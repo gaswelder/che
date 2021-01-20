@@ -10,14 +10,14 @@ class c_literal
         $types = ['string', 'num', 'char'];
         $self = new self;
         foreach ($types as $type) {
-            if ($lexer->peek()['type'] != $type) {
+            if ($lexer->peek()['kind'] != $type) {
                 continue;
             }
             $self->value = $lexer->get()['content'];
             $self->type = $type;
             return $self;
         }
-        if ($lexer->peek()['type'] == 'word' && $lexer->peek()['content'] == 'NULL') {
+        if ($lexer->peek()['kind'] == 'word' && $lexer->peek()['content'] == 'NULL') {
             $lexer->get();
             $self->type = 'null';
             $self->value = 'NULL';

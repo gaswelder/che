@@ -8,7 +8,7 @@ class c_return
     {
         $self = new self;
         expect($lexer, 'return');
-        if ($lexer->peek()['type'] == ';') {
+        if ($lexer->peek()['kind'] == ';') {
             $lexer->get();
             return $self;
         }

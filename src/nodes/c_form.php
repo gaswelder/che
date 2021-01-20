@@ -9,13 +9,13 @@ class c_form
         // *argv[]
         $self = new self;
         while ($lexer->follows('*')) {
-            $self->str .= $lexer->get()['type'];
+            $self->str .= $lexer->get()['kind'];
         }
         $self->str .= expect($lexer, 'word')['content'];
 
         while ($lexer->follows('[')) {
-            $self->str .= $lexer->get()['type'];
-            while ($lexer->more() && $lexer->peek()['type'] != ']') {
+            $self->str .= $lexer->get()['kind'];
+            while ($lexer->more() && $lexer->peek()['kind'] != ']') {
                 $expr = parse_expression($lexer);
                 $self->str .= $expr->format();
             }

@@ -6,6 +6,7 @@ use buf::Buf;
 use std::collections::HashMap;
 use std::io::prelude::*;
 use std::net::TcpListener;
+mod lexer;
 
 struct Call {
     ns: String,
@@ -191,9 +192,24 @@ fn exec_function_call(call: Call, buf_instances: &mut HashMap<String, Buf>) -> s
                 }),
             }
         }
+        "make_token" => {
+            let token = lexer::Token {
+                kind: args[0].as_str().unwrap().to_string(),
+                content: if args[1].as_null().is_some() {
+                    None
+                } else {
+                    args[1].as_str().map(String::from)
+                },
+                pos: args[2].as_str().unwrap().to_string(),
+            };
+            return json!({
+                "error": "",
+                "data": token
+            });
+        }
         _ => {
             json!({
-                "error": "unknown function",
+                "error": format!("unknown function: {}", f),
                 "data": null
             })
         }

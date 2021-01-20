@@ -9,7 +9,7 @@ class c_sizeof
         $self = new self;
         expect($lexer, 'sizeof');
         expect($lexer, '(');
-        if ($lexer->peek()['type'] == 'word' && is_type($lexer->peek()['content'], $lexer->typenames)) {
+        if ($lexer->peek()['kind'] == 'word' && is_type($lexer->peek()['content'], $lexer->typenames)) {
             $self->argument = c_type::parse($lexer);
         } else {
             $self->argument = parse_expression($lexer);

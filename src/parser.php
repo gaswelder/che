@@ -2,7 +2,7 @@
 
 function parse_module_element($lexer)
 {
-    switch ($lexer->peek()['type']) {
+    switch ($lexer->peek()['kind']) {
         case 'import':
             $import = c_import::parse($lexer);
             $m = resolve_import($import);
@@ -30,17 +30,17 @@ function parse_module_element($lexer)
         throw new Exception("unexpected input (expecting function, variable, typedef, struct, enum)");
     }
     $form = c_form::parse($lexer);
-    if ($lexer->peek()['type'] == '(') {
+    if ($lexer->peek()['kind'] == '(') {
         $parameters = c_function_parameters::parse($lexer);
         $body = c_body::parse($lexer);
         return new c_function_declaration($pub, $type, $form, $parameters, $body);
     }
 
-    if ($lexer->peek()['type'] != '=') {
+    if ($lexer->peek()['kind'] != '=') {
         throw new Exception("module variable: '=' expected");
     }
 
-    if ($lexer->peek()['type'] == '=') {
+    if ($lexer->peek()['kind'] == '=') {
         if ($pub) {
             throw new Exception("module variables can't be exported");
         }
@@ -56,13 +56,13 @@ function parse_statement($lexer)
 {
     $next = $lexer->peek();
     if (
-        ($next['type'] == 'word' && is_type($next['content'], $lexer->typenames))
-        || $next['type'] == 'const'
+        ($next['kind'] == 'word' && is_type($next['content'], $lexer->typenames))
+        || $next['kind'] == 'const'
     ) {
         return c_variable_declaration::parse($lexer);
     }
 
-    switch ($next['type']) {
+    switch ($next['kind']) {
         case 'if':
             return c_if::parse($lexer);
         case 'for':
@@ -85,13 +85,13 @@ function parse_statement($lexer)
 function parse_expression($lexer, $current_strength = 0)
 {
     $result = parse_atom($lexer);
-    while (is_op($lexer->peek()['type'])) {
+    while (is_op($lexer->peek()['kind'])) {
         // If the operator is not stronger that our current level,
         // yield the result.
-        if (operator_strength($lexer->peek()['type']) <= $current_strength) {
+        if (operator_strength($lexer->peek()['kind']) <= $current_strength) {
             return $result;
         }
-        $op = $lexer->get()['type'];
+        $op = $lexer->get()['kind'];
         $next = parse_expression($lexer, operator_strength($op));
         $result = new c_binary_op($op, $result, $next);
     }
@@ -101,13 +101,13 @@ function parse_expression($lexer, $current_strength = 0)
 function parse_atom($lexer)
 {
     $nono = ['case', 'default', 'if', 'else', 'for', 'while', 'switch'];
-    if (in_array($lexer->peek()['type'], $nono)) {
-        throw new Exception("expression: unexpected keyword '" . $lexer->peek()['type'] . "'");
+    if (in_array($lexer->peek()['kind'], $nono)) {
+        throw new Exception("expression: unexpected keyword '" . $lexer->peek()['kind'] . "'");
     }
 
     if (
-        $lexer->peek()['type'] == '('
-        && $lexer->peek(1)['type'] == 'word'
+        $lexer->peek()['kind'] == '('
+        && $lexer->peek(1)['kind'] == 'word'
         && is_type($lexer->peek(1)['content'], $lexer->typenames)
     ) {
         expect($lexer, '(');
@@ -116,42 +116,42 @@ function parse_atom($lexer)
         return new c_cast($typeform, parse_expression($lexer));
     }
 
-    if ($lexer->peek()['type'] == '(') {
+    if ($lexer->peek()['kind'] == '(') {
         $lexer->get();
         $expr = parse_expression($lexer);
         expect($lexer, ')');
         return $expr;
     }
 
-    if ($lexer->peek()['type'] == '{') {
-        if ($lexer->peek(1)['type'] == '.') {
+    if ($lexer->peek()['kind'] == '{') {
+        if ($lexer->peek(1)['kind'] == '.') {
             return c_struct_literal::parse($lexer);
         }
         return c_array_literal::parse($lexer);
     }
 
-    if ($lexer->peek()['type'] == 'sizeof') {
+    if ($lexer->peek()['kind'] == 'sizeof') {
         return c_sizeof::parse($lexer);
     }
 
-    if (is_prefix_op($lexer->peek()['type'])) {
-        $op = $lexer->get()['type'];
+    if (is_prefix_op($lexer->peek()['kind'])) {
+        $op = $lexer->get()['kind'];
         return new c_prefix_operator($op, parse_expression($lexer, operator_strength('prefix')));
     }
 
-    if ($lexer->peek()['type'] == 'word') {
+    if ($lexer->peek()['kind'] == 'word') {
         $result = c_identifier::parse($lexer);
     } else {
         $result = c_literal::parse($lexer);
     }
 
     while ($lexer->more()) {
-        if ($lexer->peek()['type'] == '(') {
+        if ($lexer->peek()['kind'] == '(') {
             $args = c_function_arguments::parse($lexer);
             $result = new c_function_call($result, $args);
             continue;
         }
-        if ($lexer->peek()['type'] == '[') {
+        if ($lexer->peek()['kind'] == '[') {
             expect($lexer, '[', 'array index');
             $index = parse_expression($lexer);
             expect($lexer, ']', 'array index');
@@ -159,8 +159,8 @@ function parse_atom($lexer)
             continue;
         }
 
-        if (is_postfix_op($lexer->peek()['type'])) {
-            $op = $lexer->get()['type'];
+        if (is_postfix_op($lexer->peek()['kind'])) {
+            $op = $lexer->get()['kind'];
             $result = new c_postfix_operator($result, $op);
             continue;
         }
@@ -184,7 +184,7 @@ function expect($lexer, $type, $comment = null)
         throw new Exception(with_comment($comment, "expected '$type', got end of file"));
     }
     $next = $lexer->peek();
-    if ($next['type'] != $type) {
+    if ($next['kind'] != $type) {
         throw new Exception(with_comment($comment, "expected '$type', got $next at $next[pos]"));
     }
     return $lexer->get();

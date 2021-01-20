@@ -8,7 +8,7 @@ class c_function_arguments
     {
         $self = new self;
         expect($lexer, '(');
-        if ($lexer->more() && $lexer->peek()['type'] != ')') {
+        if ($lexer->more() && $lexer->peek()['kind'] != ')') {
             $self->arguments[] = parse_expression($lexer);
             while ($lexer->follows(',')) {
                 $lexer->get();

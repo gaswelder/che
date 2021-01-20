@@ -16,7 +16,7 @@ class c_switch_case
         }
         expect($lexer, ':');
         $until = ['case', 'break', 'default', '}'];
-        while ($lexer->more() && !in_array($lexer->peek()['type'], $until)) {
+        while ($lexer->more() && !in_array($lexer->peek()['kind'], $until)) {
             $self->statements[] = parse_statement($lexer);
         }
         return $self;

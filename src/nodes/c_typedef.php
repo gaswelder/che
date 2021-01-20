@@ -22,7 +22,7 @@ class c_typedef
 
         $self->type = c_type::parse($lexer, 'typedef');
         while ($lexer->follows('*')) {
-            $self->before .= $lexer->get()['type'];
+            $self->before .= $lexer->get()['kind'];
         }
         $self->alias = c_identifier::parse($lexer);
 

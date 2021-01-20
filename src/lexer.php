@@ -12,7 +12,7 @@ function read($path)
 		while (true) {
 			$tok = read_token($buf);
 			if (!$tok) break;
-			if ($tok['type'] == 'error') {
+			if ($tok['kind'] == 'error') {
 				throw new Exception($tok['content'] . ' at ' . $tok['pos']);
 			}
 			$toks[] = $tok;
@@ -56,7 +56,7 @@ class lexer
 				return null;
 			}
 			$tok = array_shift($this->toks);
-			if ($tok['type'] != 'comment') return $tok;
+			if ($tok['kind'] != 'comment') return $tok;
 		}
 	}
 
@@ -82,7 +82,7 @@ class lexer
 
 	function follows($type)
 	{
-		return $this->more() && $this->peek()['type'] == $type;
+		return $this->more() && $this->peek()['kind'] == $type;
 	}
 }
 
@@ -91,19 +91,15 @@ function error_token($buf, $msg)
 	return make_token('error', $msg, $buf->pos());
 }
 
-function make_token($type, $data, $pos)
+function make_token($kind, $content, $pos)
 {
-	return [
-		'type' => $type,
-		'content' => $data,
-		'pos' => $pos
-	];
+	return call_rust_mem('make_token', $kind, $content, $pos);
 }
 
 function token_to_string($token)
 {
 	if ($token['content'] === null) {
-		return '[' . $token['type'] . ']';
+		return '[' . $token['kind'] . ']';
 	}
 
 	$n = 40;
