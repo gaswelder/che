@@ -76,3 +76,9 @@ test('skip_until', function () {
     eq('abc', $buf->skip_until('1'));
     eq('123', $buf->skip_until('z'));
 });
+
+test('literal_follows', function () {
+    $buf = new buf('abc123');
+    eq(true, $buf->literal_follows('abc'));
+    eq(false, $buf->literal_follows('123'));
+});

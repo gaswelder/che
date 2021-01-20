@@ -252,32 +252,23 @@ function read_token($buf)
 
 function read_number($buf)
 {
-	$pos = $buf->pos();
-
-	// Peek at next 2 characters.
-	$p1 = $buf->get();
-	$p2 = $buf->peek();
-	$buf->unget($p1);
-
-	// If '0x' follows, read a hexademical constant.
-	if ($p1 == '0' && $p2 == 'x') {
+	if ($buf->literal_follows('0x')) {
 		return read_hex($buf);
 	}
 
+	$pos = $buf->pos();
 	$alpha = '0123456789';
 	$num = $buf->read_set($alpha);
 
-	$modifiers = ['U', 'L'];
+	$modifiers = "UL";
 
 	if ($buf->peek() == '.') {
-		$modifiers = ['f'];
+		$modifiers .= "f";
 		$num .= $buf->get();
 		$num .= $buf->read_set($alpha);
 	}
 
-	while (in_array($buf->peek(), $modifiers)) {
-		$num .= $buf->get();
-	}
+	$num .= $buf->read_set($modifiers);
 
 	if (!$buf->ended() && ctype_alpha($buf->peek())) {
 		$c = $buf->peek();

@@ -108,7 +108,7 @@ impl Buf {
         return s;
     }
 
-    fn literal_follows(&self, s: &str) -> bool {
+    pub fn literal_follows(&self, s: &str) -> bool {
         if s.len() > self.s.len() - self.pos {
             return false;
         }

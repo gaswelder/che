@@ -117,6 +117,10 @@ fn exec_method_call(call: Call, buf_instances: &mut HashMap<String, Buf>) -> ser
             "error": "",
             "data": b1.skip_literal(args[0].as_str().unwrap())
         }),
+        "literal_follows" => json!({
+            "error": "",
+            "data": b1.literal_follows(args[0].as_str().unwrap())
+        }),
         "until_literal" => json!({
             "error": "",
             "data": b1.until_literal(args[0].as_str().unwrap())
