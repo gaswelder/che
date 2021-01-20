@@ -288,22 +288,7 @@ function read_number($buf)
 
 function read_hex($buf)
 {
-	$pos = $buf->pos();
-
-	// Skip "0x"
-	$buf->get();
-	$buf->get();
-	$alpha = '0123456789ABCDEFabcdef';
-
-	$num = $buf->read_set($alpha);
-
-	$modifiers = ['U', 'L'];
-
-	while (in_array($buf->peek(), $modifiers)) {
-		$num .= $buf->get();
-	}
-
-	return make_token('num', '0x' . $num, $pos);
+	return call_rust('read_hex', $buf);
 }
 
 function read_string($buf)

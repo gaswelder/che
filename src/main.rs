@@ -77,8 +77,7 @@ fn exec_method_call(call: Call, buf_instances: &mut HashMap<String, Buf>) -> ser
             "data": instance_key
         });
     }
-    let instance_key = call.id;
-    let b1 = buf_instances.get_mut(&instance_key).unwrap();
+    let b1 = buf_instances.get_mut(&call.id).unwrap();
     return match f {
         "ended" => json!({
             "error": "",
@@ -205,6 +204,13 @@ fn exec_function_call(call: Call, buf_instances: &mut HashMap<String, Buf>) -> s
             return json!({
                 "error": "",
                 "data": token
+            });
+        }
+        "read_hex" => {
+            let buf = buf_instances.get_mut(args[0].as_str().unwrap()).unwrap();
+            return json!({
+                "error": "",
+                "data": lexer::read_hex(buf)
             });
         }
         _ => {
