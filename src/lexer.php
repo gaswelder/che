@@ -252,29 +252,7 @@ function read_token($buf)
 
 function read_number($buf)
 {
-	if ($buf->literal_follows('0x')) {
-		return read_hex($buf);
-	}
-
-	$pos = $buf->pos();
-	$alpha = '0123456789';
-	$num = $buf->read_set($alpha);
-
-	$modifiers = "UL";
-
-	if ($buf->peek() == '.') {
-		$modifiers .= "f";
-		$num .= $buf->get();
-		$num .= $buf->read_set($alpha);
-	}
-
-	$num .= $buf->read_set($modifiers);
-
-	if (!$buf->ended() && ctype_alpha($buf->peek())) {
-		$c = $buf->peek();
-		return error_token($buf, "Unexpected character: '$c'");
-	}
-	return make_token('num', $num, $pos);
+	return call_rust('read_number', $buf);
 }
 
 function read_hex($buf)
