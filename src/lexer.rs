@@ -120,3 +120,27 @@ pub fn read_word(buf: &mut Buf) -> Token {
         pos,
     };
 }
+
+pub fn read_char_literal(buf: &mut Buf) -> Token {
+    let pos = buf.pos();
+    buf.get();
+
+    let mut s = String::new();
+    if buf.more() && buf.peek().unwrap() == '\\' {
+        s.push(buf.get().unwrap());
+    }
+
+    s.push(buf.get().unwrap());
+    if buf.get().unwrap() != '\'' {
+        return Token {
+            kind: "error".to_string(),
+            content: Some("Single quote expected".to_string()),
+            pos,
+        };
+    }
+    return Token {
+        kind: "char".to_string(),
+        content: Some(s),
+        pos,
+    };
+}

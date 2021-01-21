@@ -194,19 +194,7 @@ function read_multiline_comment($buf)
 
 function read_char_literal($buf)
 {
-	$pos = $buf->pos();
-	$buf->get();
-
-	$str = '';
-	if ($buf->peek() == '\\') {
-		$str .= $buf->get();
-	}
-
-	$str .= $buf->get();
-	if ($buf->get() != "'") {
-		return error_token($buf, "Single quote expected");
-	}
-	return make_token('char', $str, $pos);
+	return call_rust('read_char_literal', $buf);
 }
 
 function read_word($buf)
