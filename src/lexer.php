@@ -211,32 +211,7 @@ function read_char_literal($buf)
 
 function read_word($buf)
 {
-	$pos = $buf->pos();
-	$word = '';
-	while (!$buf->ended()) {
-		$ch = $buf->peek();
-		if (ctype_alpha($ch) || ctype_digit($ch) || $ch == '_') {
-			$word .= $buf->get();
-			continue;
-		}
-		break;
-	}
-
-	$keywords = array(
-		'default',
-		'typedef', 'struct',
-		'import', 'union',
-		'const', 'return',
-		'switch', 'sizeof',
-		'while', 'defer',
-		'case', 'enum',
-		'else', 'for',
-		'pub', 'if'
-	);
-	if (in_array($word, $keywords)) {
-		return make_token($word, null, $pos);
-	}
-	return make_token('word', $word, $pos);
+	return call_rust('read_word', $buf);
 }
 
 function read_number($buf)

@@ -90,3 +90,33 @@ pub fn read_string_literal(buf: &mut Buf) -> Token {
         pos,
     };
 }
+
+pub fn read_word(buf: &mut Buf) -> Token {
+    let pos = buf.pos();
+    let mut word = String::new();
+    while buf.more() {
+        let ch = buf.peek().unwrap();
+        if !ch.is_alphanumeric() && ch != '_' {
+            break;
+        }
+        word.push(buf.get().unwrap());
+    }
+
+    let keywords = [
+        "default", "typedef", "struct", "import", "union", "const", "return", "switch", "sizeof",
+        "while", "defer", "case", "enum", "else", "for", "pub", "if",
+    ];
+
+    if keywords.contains(&word.as_str()) {
+        return Token {
+            kind: word,
+            content: None,
+            pos,
+        };
+    }
+    return Token {
+        kind: "word".to_string(),
+        content: Some(word),
+        pos,
+    };
+}
