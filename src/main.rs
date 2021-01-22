@@ -195,6 +195,19 @@ fn exec_function_call(call: Call, buf_instances: &mut HashMap<String, Buf>) -> s
                 }),
             }
         }
+        "read_file" => {
+            let filename = args[0].as_str().unwrap();
+            return match lexer::read_file(filename) {
+                Err(s) => json!({
+                    "error": s,
+                    "data": null
+                }),
+                Ok(tokens) => json!({
+                    "error": "",
+                    "data": tokens
+                }),
+            };
+        }
         "read_token" => {
             let buf = buf_instances.get_mut(args[0].as_str().unwrap()).unwrap();
             return json!({

@@ -1,5 +1,6 @@
 use crate::buf::Buf;
 use serde::{Deserialize, Serialize};
+use std::fs;
 
 #[derive(Serialize, Deserialize)]
 pub struct Token {
@@ -9,6 +10,25 @@ pub struct Token {
 }
 
 const SPACES: &str = "\r\n\t ";
+
+pub fn read_file(filename: &str) -> Result<Vec<Token>, String> {
+    let mut toks: Vec<Token> = Vec::new();
+    let contents = fs::read_to_string(filename).expect("Something went wrong reading the file");
+    let mut b = crate::buf::new(contents);
+    loop {
+        let r = read_token(&mut b);
+        if r.is_none() {
+            break;
+        }
+        let tok = r.unwrap();
+        if tok.kind == "error" {
+            let err = format!("{} at {}", tok.content.unwrap(), tok.pos);
+            return Err(err);
+        }
+        toks.push(tok)
+    }
+    return Ok(toks);
+}
 
 pub fn read_token(buf: &mut Buf) -> Option<Token> {
     buf.read_set(SPACES.to_string());

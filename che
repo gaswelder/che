@@ -11,6 +11,10 @@ foreach (glob('src/nodes/*.php') as $path) {
     require $path;
 }
 
+set_error_handler(function ($errno, $errstr, $file, $line) {
+    throw new Exception("$errstr at $file:$line");
+});
+
 function indent($text, $tab = "\t")
 {
     if (substr($text, -1) == "\n") {

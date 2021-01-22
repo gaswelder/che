@@ -2,22 +2,16 @@
 
 require_once __DIR__ . '/buf.php';
 
+function read_file($path)
+{
+	return call_rust('read_file', $path);
+}
+
 function read($path)
 {
 	static $cache = [];
-
 	if (!isset($cache[$path])) {
-		$toks = [];
-		$buf = new buf(file_get_contents($path));
-		while (true) {
-			$tok = read_token($buf);
-			if (!$tok) break;
-			if ($tok['kind'] == 'error') {
-				throw new Exception($tok['content'] . ' at ' . $tok['pos']);
-			}
-			$toks[] = $tok;
-		}
-		$cache[$path] = $toks;
+		$cache[$path] = read_file($path);
 	}
 	return $cache[$path];
 }
