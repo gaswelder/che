@@ -86,16 +86,6 @@ class lexer
 	}
 }
 
-function error_token($buf, $msg)
-{
-	return make_token('error', $msg, $buf->pos());
-}
-
-function make_token($kind, $content, $pos)
-{
-	return call_rust_mem('make_token', $kind, $content, $pos);
-}
-
 function token_to_string($token)
 {
 	if ($token['content'] === null) {
@@ -114,39 +104,7 @@ function token_to_string($token)
 	return "[$token[type], $c]";
 }
 
-const spaces = "\r\n\t ";
-
 function read_token($buf)
 {
 	return call_rust('read_token', $buf);
-}
-
-function read_multiline_comment($buf)
-{
-	return call_rust('read_multiline_comment', $buf);
-}
-
-function read_char_literal($buf)
-{
-	return call_rust('read_char_literal', $buf);
-}
-
-function read_word($buf)
-{
-	return call_rust('read_word', $buf);
-}
-
-function read_number($buf)
-{
-	return call_rust('read_number', $buf);
-}
-
-function read_hex($buf)
-{
-	return call_rust('read_hex', $buf);
-}
-
-function read_string_literal($buf)
-{
-	return call_rust('read_string_literal', $buf);
 }

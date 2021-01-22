@@ -82,51 +82,43 @@ test('read_token', function () {
 			'pos' => '1:1'
 		], read_token(new buf($sym . '123')));
 	}
-});
 
-test('read_number', function () {
 	eq([
 		'kind' => 'num',
 		'content' => '0x123',
 		'pos' => '1:1'
-	], read_number(new buf('0x123 abc')));
+	], read_token(new buf('0x123 abc')));
 
 	eq([
 		'kind' => 'num',
 		'content' => '123',
 		'pos' => '1:1'
-	], read_number(new buf('123 abc')));
+	], read_token(new buf('123 abc')));
 
 	eq([
 		'kind' => 'num',
 		'content' => '123UL',
 		'pos' => '1:1'
-	], read_number(new buf('123UL abc')));
+	], read_token(new buf('123UL abc')));
 
 	eq([
 		'kind' => 'num',
 		'content' => '123.45',
 		'pos' => '1:1'
-	], read_number(new buf('123.45 abc')));
-});
+	], read_token(new buf('123.45 abc')));
 
-test('read_hex', function () {
 	eq([
 		'kind' => 'num',
 		'content' => '0x123',
 		'pos' => '1:1'
-	], read_hex(new buf('0x123')));
+	], read_token(new buf('0x123')));
 
 	eq([
 		'kind' => 'num',
 		'content' => '0x123UL',
 		'pos' => '1:1'
-	], read_hex(new buf('0x123UL')));
-});
+	], read_token(new buf('0x123UL')));
 
-
-
-test('read_string_literal', function () {
 	eq([
 		'kind' => 'string',
 		'content' => 'abc',

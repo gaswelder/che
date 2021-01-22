@@ -195,63 +195,6 @@ fn exec_function_call(call: Call, buf_instances: &mut HashMap<String, Buf>) -> s
                 }),
             }
         }
-        "make_token" => {
-            let token = lexer::Token {
-                kind: args[0].as_str().unwrap().to_string(),
-                content: if args[1].as_null().is_some() {
-                    None
-                } else {
-                    args[1].as_str().map(String::from)
-                },
-                pos: args[2].as_str().unwrap().to_string(),
-            };
-            return json!({
-                "error": "",
-                "data": token
-            });
-        }
-        "read_hex" => {
-            let buf = buf_instances.get_mut(args[0].as_str().unwrap()).unwrap();
-            return json!({
-                "error": "",
-                "data": lexer::read_hex(buf)
-            });
-        }
-        "read_number" => {
-            let buf = buf_instances.get_mut(args[0].as_str().unwrap()).unwrap();
-            return json!({
-                "error": "",
-                "data": lexer::read_number(buf)
-            });
-        }
-        "read_string_literal" => {
-            let buf = buf_instances.get_mut(args[0].as_str().unwrap()).unwrap();
-            return json!({
-                "error": "",
-                "data": lexer::read_string_literal(buf)
-            });
-        }
-        "read_word" => {
-            let buf = buf_instances.get_mut(args[0].as_str().unwrap()).unwrap();
-            return json!({
-                "error": "",
-                "data": lexer::read_word(buf)
-            });
-        }
-        "read_char_literal" => {
-            let buf = buf_instances.get_mut(args[0].as_str().unwrap()).unwrap();
-            return json!({
-                "error": "",
-                "data": lexer::read_char_literal(buf)
-            });
-        }
-        "read_multiline_comment" => {
-            let buf = buf_instances.get_mut(args[0].as_str().unwrap()).unwrap();
-            return json!({
-                "error": "",
-                "data": lexer::read_multiline_comment(buf)
-            });
-        }
         "read_token" => {
             let buf = buf_instances.get_mut(args[0].as_str().unwrap()).unwrap();
             return json!({
