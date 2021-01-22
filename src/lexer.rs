@@ -162,3 +162,72 @@ pub fn read_multiline_comment(buf: &mut Buf) -> Token {
         pos,
     };
 }
+
+pub fn read_token(buf: &mut Buf) -> Option<Token> {
+    buf.read_set(SPACES.to_string());
+
+    if buf.ended() {
+        return None;
+    }
+
+    let pos = buf.pos();
+
+    if buf.peek().unwrap() == '#' {
+        return Some(Token {
+            kind: "macro".to_string(),
+            content: Some(buf.skip_until('\n')),
+            pos,
+        });
+    }
+
+    if buf.literal_follows("/*") {
+        return Some(read_multiline_comment(buf));
+    }
+
+    if buf.skip_literal("//") {
+        return Some(Token {
+            kind: "comment".to_string(),
+            content: Some(buf.skip_until('\n')),
+            pos,
+        });
+    }
+
+    let next = buf.peek().unwrap();
+    if next.is_ascii_alphabetic() || next == '_' {
+        return Some(read_word(buf));
+    }
+
+    if next.is_ascii_digit() {
+        return Some(read_number(buf));
+    }
+
+    if next == '"' {
+        return Some(read_string_literal(buf));
+    }
+
+    if next == '\'' {
+        return Some(read_char_literal(buf));
+    }
+
+    // Sorted by length, longest first.
+    let symbols = [
+        "<<=", ">>=", "...", "++", "--", "->", "<<", ">>", "<=", ">=", "&&", "||", "+=", "-=",
+        "*=", "/=", "%=", "&=", "^=", "|=", "==", "!=", "!", "~", "&", "^", "*", "/", "%", "=",
+        "|", ":", ",", "<", ">", "+", "-", "{", "}", ";", "[", "]", "(", ")", ".", "?",
+    ];
+    for sym in &symbols {
+        if buf.skip_literal(sym) {
+            return Some(Token {
+                kind: sym.to_string(),
+                content: None,
+                pos,
+            });
+        }
+    }
+
+    return Some(Token {
+        kind: "error".to_string(),
+        content: Some(format!("Unexpected character: '{}'", next).to_string()),
+        pos,
+    });
+}

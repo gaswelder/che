@@ -118,67 +118,7 @@ const spaces = "\r\n\t ";
 
 function read_token($buf)
 {
-	$buf->read_set(spaces);
-
-	if ($buf->ended()) {
-		return null;
-	}
-
-	$pos = $buf->pos();
-
-	if ($buf->peek() == '#') {
-		return make_token('macro', $buf->skip_until("\n"), $pos);
-	}
-
-	if ($buf->literal_follows("/*")) {
-		return read_multiline_comment($buf);
-	}
-
-	if ($buf->skip_literal('//')) {
-		$comment = $buf->skip_until("\n");
-		return make_token('comment', $comment, $pos);
-	}
-
-	if (ctype_alpha($buf->peek()) || $buf->peek() == '_') {
-		return read_word($buf);
-	}
-
-	if (ctype_digit($buf->peek())) {
-		return read_number($buf);
-	}
-
-	if ($buf->peek() == '"') {
-		return read_string_literal($buf);
-	}
-
-	if ($buf->peek() == "'") {
-		return read_char_literal($buf);
-	}
-
-	$pos = $buf->pos();
-	// Sorted by length, longest first.
-	$symbols = array(
-		'<<=', '>>=', '...', '++',
-		'--', '->', '<<', '>>',
-		'<=', '>=', '&&', '||',
-		'+=', '-=', '*=', '/=',
-		'%=', '&=', '^=', '|=',
-		'==', '!=', '!', '~',
-		'&', '^', '*', '/',
-		'%', '=', '|', ':',
-		',', '<', '>', '+',
-		'-', '{', '}', ';',
-		'[', ']', '(', ')',
-		'.', '?'
-	);
-	foreach ($symbols as $sym) {
-		if ($buf->skip_literal($sym)) {
-			return make_token($sym, null, $pos);
-		}
-	}
-
-	$ch = $buf->peek();
-	return error_token($buf, "Unexpected character: '$ch'");
+	return call_rust('read_token', $buf);
 }
 
 function read_multiline_comment($buf)
