@@ -1,5 +1,6 @@
 #!/usr/bin/php
 <?php
+require 'src/nodes.php';
 require 'src/lexer.php';
 require 'src/parser.php';
 require 'src/translator.php';
@@ -7,9 +8,6 @@ require 'src/resolver.php';
 require 'src/cmd/build.php';
 require 'src/cmd/deptree.php';
 require_once 'src/rust-proxy.php';
-foreach (glob('src/nodes/*.php') as $path) {
-    require $path;
-}
 
 set_error_handler(function ($errno, $errstr, $file, $line) {
     throw new Exception("$errstr at $file:$line");
