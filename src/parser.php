@@ -4,12 +4,12 @@ function parse_module_element($lexer)
 {
     switch ($lexer->peek()['kind']) {
         case 'import':
-            $import = c_import::parse($lexer);
+            $import = parse_import($lexer);
             $m = resolve_import($import);
             $lexer->typenames = array_merge($lexer->typenames, $m->types());
             return $import;
         case 'typedef':
-            return c_typedef::parse($lexer);
+            return parse_typedef($lexer);
         case 'struct':
             return c_struct_definition::parse($lexer);
         case 'macro':
@@ -50,6 +50,66 @@ function parse_module_element($lexer)
         return new c_module_variable($type, $form, $value);
     }
     throw new Exception("unexpected input");
+}
+
+function parse_anonymous_parameters($lexer)
+{
+    $node = new c_anonymous_parameters;
+    expect($lexer, '(', 'anonymous function parameters');
+    if (!$lexer->follows(')')) {
+        $node->forms[] = c_anonymous_typeform::parse($lexer);
+        while ($lexer->follows(',')) {
+            $lexer->get();
+            $node->forms[] = c_anonymous_typeform::parse($lexer);
+        }
+    }
+    expect($lexer, ')', 'anonymous function parameters');
+    return $node;
+}
+
+function parse_import($lexer)
+{
+    expect($lexer, 'import');
+    $tok = expect($lexer, 'string');
+    // expect($lexer, ';');
+    $node = new c_import;
+    $node->path = $tok['content'];
+    return $node;
+}
+
+function parse_typedef($lexer)
+{
+    $node = new c_typedef;
+
+    expect($lexer, 'typedef');
+
+    if ($lexer->follows('{')) {
+        $node->type = c_composite_type::parse($lexer);
+        $node->alias = c_identifier::parse($lexer);
+        expect($lexer, ';', 'typedef');
+        return $node;
+    }
+
+    $node->type = c_type::parse($lexer, 'typedef');
+    while ($lexer->follows('*')) {
+        $node->before .= $lexer->get()['kind'];
+    }
+    $node->alias = c_identifier::parse($lexer);
+
+    if ($lexer->follows('(')) {
+        $node->after .= parse_anonymous_parameters($lexer)->format();
+    }
+
+    if ($lexer->follows('[')) {
+        $lexer->get();
+        $node->after .= '[';
+        $node->after .= expect($lexer, 'num')['content'];
+        expect($lexer, ']');
+        $node->after .= ']';
+    }
+
+    expect($lexer, ';', 'typedef');
+    return $node;
 }
 
 function parse_statement($lexer)

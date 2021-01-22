@@ -2,22 +2,7 @@
 
 class c_anonymous_parameters
 {
-    private $forms = [];
-
-    static function parse($lexer)
-    {
-        $self = new self;
-        expect($lexer, '(', 'anonymous function parameters');
-        if (!$lexer->follows(')')) {
-            $self->forms[] = c_anonymous_typeform::parse($lexer);
-            while ($lexer->follows(',')) {
-                $lexer->get();
-                $self->forms[] = c_anonymous_typeform::parse($lexer);
-            }
-        }
-        expect($lexer, ')', 'anonymous function parameters');
-        return $self;
-    }
+    public $forms = [];
 
     function format()
     {

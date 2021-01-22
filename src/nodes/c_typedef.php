@@ -2,45 +2,10 @@
 
 class c_typedef
 {
-    private $type;
-    private $before = '';
-    private $alias;
-    private $after = '';
-
-    static function parse($lexer)
-    {
-        $self = new self;
-
-        expect($lexer, 'typedef');
-
-        if ($lexer->follows('{')) {
-            $self->type = c_composite_type::parse($lexer);
-            $self->alias = c_identifier::parse($lexer);
-            expect($lexer, ';', 'typedef');
-            return $self;
-        }
-
-        $self->type = c_type::parse($lexer, 'typedef');
-        while ($lexer->follows('*')) {
-            $self->before .= $lexer->get()['kind'];
-        }
-        $self->alias = c_identifier::parse($lexer);
-
-        if ($lexer->follows('(')) {
-            $self->after .= c_anonymous_parameters::parse($lexer)->format();
-        }
-
-        if ($lexer->follows('[')) {
-            $lexer->get();
-            $self->after .= '[';
-            $self->after .= expect($lexer, 'num')['content'];
-            expect($lexer, ']');
-            $self->after .= ']';
-        }
-
-        expect($lexer, ';', 'typedef');
-        return $self;
-    }
+    public $type;
+    public $before = '';
+    public $alias;
+    public $after = '';
 
     function format()
     {
