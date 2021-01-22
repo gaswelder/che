@@ -30,7 +30,7 @@ function build($modules, $name)
     // Save all the modules somewhere.
     $paths = [];
     foreach ($modules as $module) {
-        $src = $module->format();
+        $src = format_module($module);
         $path = 'tmp/' . md5($src) . '.c';
         file_put_contents($path, $src);
         $paths[] = $path;

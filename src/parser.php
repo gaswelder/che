@@ -106,7 +106,7 @@ function parse_typedef($lexer)
     $node->alias = parse_identifier($lexer);
 
     if ($lexer->follows('(')) {
-        $node->after .= parse_anonymous_parameters($lexer)->format();
+        $node->after .= format_node(parse_anonymous_parameters($lexer));
     }
 
     if ($lexer->follows('[')) {
@@ -518,7 +518,7 @@ function parse_form($lexer)
         $node->str .= $lexer->get()['kind'];
         while ($lexer->more() && $lexer->peek()['kind'] != ']') {
             $expr = parse_expression($lexer);
-            $node->str .= $expr->format();
+            $node->str .= format_node($expr);
         }
         expect($lexer, ']');
         $node->str .= ']';

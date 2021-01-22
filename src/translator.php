@@ -100,7 +100,7 @@ function deduplicate_synopsis($elements)
 
     foreach ($elements as $element) {
         if ($element instanceof c_typedef || $element instanceof c_compat_struct_definition) {
-            $s = $element->format();
+            $s = format_node($element);
             if (isset($set[$s])) {
                 continue;
             }

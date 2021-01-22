@@ -1,5 +1,6 @@
 #!/usr/bin/php
 <?php
+require 'src/formatter.php';
 require 'src/nodes.php';
 require 'src/lexer.php';
 require 'src/parser.php';
