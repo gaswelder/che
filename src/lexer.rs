@@ -144,3 +144,21 @@ pub fn read_char_literal(buf: &mut Buf) -> Token {
         pos,
     };
 }
+
+pub fn read_multiline_comment(buf: &mut Buf) -> Token {
+    let pos = buf.pos();
+    buf.skip_literal("/*");
+    let comment = buf.until_literal("*/");
+    if !buf.skip_literal("*/") {
+        return Token {
+            kind: "error".to_string(),
+            content: Some("*/ expected".to_string()),
+            pos,
+        };
+    }
+    return Token {
+        kind: "comment".to_string(),
+        content: Some(comment),
+        pos,
+    };
+}

@@ -183,13 +183,7 @@ function read_token($buf)
 
 function read_multiline_comment($buf)
 {
-	$pos = $buf->pos();
-	$buf->skip_literal('/*');
-	$comment = $buf->until_literal('*/');
-	if (!$buf->skip_literal('*/')) {
-		return error_token($buf, "*/ expected");
-	}
-	return make_token('comment', $comment, $pos);
+	return call_rust('read_multiline_comment', $buf);
 }
 
 function read_char_literal($buf)
