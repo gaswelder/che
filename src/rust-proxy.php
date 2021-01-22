@@ -8,9 +8,9 @@ function make_call($ns, $id, $f, $args)
     }
 
     $fargs = array_map(function ($arg) {
-        if ($arg instanceof buf) {
-            return $arg->_rust_instance_id;
-        }
+        // if ($arg instanceof buf) {
+        //     return $arg->_rust_instance_id;
+        // }
         return $arg;
     }, $args);
 

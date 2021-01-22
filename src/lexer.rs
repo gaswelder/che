@@ -2,7 +2,7 @@ use crate::buf::Buf;
 use serde::{Deserialize, Serialize};
 use std::fs;
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct Token {
     pub kind: String,
     pub content: Option<String>,
@@ -250,4 +250,146 @@ fn read_multiline_comment(buf: &mut Buf) -> Token {
         content: Some(comment),
         pos,
     };
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn _read_token(s: &str) -> Token {
+        let mut b = crate::buf::new(s.to_string());
+        return read_token(&mut b).unwrap();
+    }
+
+    #[test]
+    fn read_token_test() {
+        struct C<'a> {
+            input: &'a str,
+            kind: &'a str,
+            content: &'a str,
+            pos: &'a str,
+        }
+        let cases = [
+            C {
+                input: "#type abc\n",
+                kind: "macro",
+                content: "#type abc",
+                pos: "1:1",
+            },
+            C {
+                input: "/* \ncomment /* comment \n*/ 123",
+                kind: "comment",
+                content: " \ncomment /* comment \n",
+                pos: "1:1",
+            },
+            C {
+                input: "// comment\n123",
+                kind: "comment",
+                content: " comment",
+                pos: "1:1",
+            },
+            C {
+                input: "abc_123++",
+                kind: "word",
+                content: "abc_123",
+                pos: "1:1",
+            },
+            C {
+                input: "'a'123",
+                kind: "char",
+                content: "a",
+                pos: "1:1",
+            },
+            C {
+                input: "'\\t'123",
+                kind: "char",
+                content: "\\t",
+                pos: "1:1",
+            },
+            C {
+                input: "0x123 abc",
+                kind: "num",
+                content: "0x123",
+                pos: "1:1",
+            },
+            C {
+                input: "123 abc",
+                kind: "num",
+                content: "123",
+                pos: "1:1",
+            },
+            C {
+                input: "123UL abc",
+                kind: "num",
+                content: "123UL",
+                pos: "1:1",
+            },
+            C {
+                input: "123.45 abc",
+                kind: "num",
+                content: "123.45",
+                pos: "1:1",
+            },
+            C {
+                input: "0x123",
+                kind: "num",
+                content: "0x123",
+                pos: "1:1",
+            },
+            C {
+                input: "0x123UL",
+                kind: "num",
+                content: "0x123UL",
+                pos: "1:1",
+            },
+            C {
+                input: "\"abc\" 123",
+                kind: "string",
+                content: "abc",
+                pos: "1:1",
+            },
+            C {
+                input: "\"ab\\\"c\" 123",
+                kind: "string",
+                content: "ab\\\"c",
+                pos: "1:1",
+            },
+            C {
+                input: "\"abc\" \"def\" 123",
+                kind: "string",
+                content: "abcdef",
+                pos: "1:1",
+            },
+        ];
+
+        for case in &cases {
+            let t = _read_token(case.input);
+            assert_eq!(t.content.unwrap(), case.content);
+            assert_eq!(t.kind, case.kind);
+            assert_eq!(t.pos, case.pos);
+        }
+
+        let symbols = [
+            "<<=", ">>=", "...", "++", "--", "->", "<<", ">>", "<=", ">=", "&&", "||", "+=", "-=",
+            "*=", "/=", "%=", "&=", "^=", "|=", "==", "!=", "!", "~", "&", "^", "*", "/", "%", "=",
+            "|", ":", ",", "<", ">", "+", "-", "{", "}", ";", "[", "]", "(", ")", ".", "?",
+        ];
+        for sym in &symbols {
+            let t = _read_token(format!("{}123", sym).as_str());
+            assert_eq!(t.content.is_none(), true);
+            assert_eq!(t.kind, sym.to_string());
+            assert_eq!(t.pos, "1:1");
+        }
+
+        let keywords = [
+            "default", "typedef", "struct", "import", "union", "const", "return", "switch",
+            "sizeof", "while", "defer", "case", "enum", "else", "for", "pub", "if",
+        ];
+        for kw in &keywords {
+            let t = _read_token(format!("{} 123", kw).as_str());
+            assert_eq!(t.content.is_none(), true);
+            assert_eq!(t.kind, kw.to_string());
+            assert_eq!(t.pos, "1:1");
+        }
+    }
 }

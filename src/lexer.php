@@ -1,7 +1,5 @@
 <?php
 
-require_once __DIR__ . '/buf.php';
-
 function read_file($path)
 {
 	return call_rust('read_file', $path);
