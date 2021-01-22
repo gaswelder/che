@@ -19,8 +19,6 @@ function parse_module_element($lexer)
             return $import;
         case 'typedef':
             return parse_typedef($lexer);
-        case 'struct':
-            return c_struct_definition::parse($lexer);
         case 'macro':
             return parse_compat_macro($lexer);
     }
