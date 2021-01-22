@@ -38,7 +38,7 @@ function parse_path($module_path)
         $lexer = new lexer($path);
         $lexer->typenames = $types;
         try {
-            return c_module::parse($lexer);
+            return parse_module($lexer);
         } catch (Exception $e) {
             $next = $lexer->peek();
             $where = "$path:" . $lexer->peek()['pos'];

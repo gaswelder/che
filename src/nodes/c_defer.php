@@ -2,16 +2,7 @@
 
 class c_defer
 {
-    private $expression;
-
-    static function parse($lexer)
-    {
-        expect($lexer, 'defer');
-        $self = new self;
-        $self->expression = parse_expression($lexer);
-        expect($lexer, ';');
-        return $self;
-    }
+    public $expression;
 
     function format()
     {

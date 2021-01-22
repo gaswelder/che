@@ -2,34 +2,13 @@
 
 class c_type
 {
-    private $type;
-    private $const = false;
+    public $type;
+    public $const = false;
 
     static function make($name)
     {
         $self = new self;
         $self->type = $name;
-        return $self;
-    }
-
-    static function parse($lexer, $comment = null)
-    {
-        $self = new self;
-
-        if ($lexer->follows('const')) {
-            $lexer->get();
-            $self->const = true;
-        }
-
-        if ($lexer->follows('struct')) {
-            $lexer->get();
-            $name = expect($lexer, 'word')['content'];
-            $self->type = 'struct ' . $name;
-        } else {
-            $tok = expect($lexer, 'word', $comment);
-            $self->type = $tok['content'];
-        }
-
         return $self;
     }
 

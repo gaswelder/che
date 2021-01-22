@@ -2,18 +2,8 @@
 
 class c_anonymous_typeform
 {
-    private $type;
-    private $ops = [];
-
-    static function parse($lexer)
-    {
-        $self = new self;
-        $self->type = c_type::parse($lexer);
-        while ($lexer->follows('*')) {
-            $self->ops[] = $lexer->get()['kind'];
-        }
-        return $self;
-    }
+    public $type;
+    public $ops = [];
 
     function format()
     {

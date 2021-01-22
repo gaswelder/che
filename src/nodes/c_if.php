@@ -2,24 +2,9 @@
 
 class c_if
 {
-    private $condition;
-    private $body;
-    private $else = null;
-
-    static function parse($lexer)
-    {
-        $self = new self;
-        expect($lexer, 'if', 'if statement');
-        expect($lexer, '(', 'if statement');
-        $self->condition = parse_expression($lexer);
-        expect($lexer, ')', 'if statement');
-        $self->body = c_body::parse($lexer);
-        if ($lexer->follows('else')) {
-            $lexer->get();
-            $self->else = c_body::parse($lexer);
-        }
-        return $self;
-    }
+    public $condition;
+    public $body;
+    public $else = null;
 
     function format()
     {

@@ -2,25 +2,8 @@
 
 class c_function_parameter
 {
-    private $type;
-    private $forms = [];
-
-    static function parse($lexer)
-    {
-        $self = new self;
-        $self->type = c_type::parse($lexer);
-        $self->forms[] = c_form::parse($lexer);
-        while (
-            $lexer->follows(',')
-            && $lexer->peek(1)['kind'] != '...'
-            && $lexer->peek(1)['kind'] != 'const'
-            && !($lexer->peek(1)['kind'] == 'word' && is_type($lexer->peek(1)['content'], $lexer->typenames))
-        ) {
-            $lexer->get();
-            $self->forms[] = c_form::parse($lexer);
-        }
-        return $self;
-    }
+    public $type;
+    public $forms = [];
 
     function format()
     {

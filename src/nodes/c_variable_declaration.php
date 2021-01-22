@@ -2,29 +2,9 @@
 
 class c_variable_declaration
 {
-    private $type;
-    private $forms = [];
-    private $values = [];
-
-    static function parse($lexer)
-    {
-        $self = new self;
-        $self->type = c_type::parse($lexer);
-
-        $self->forms[] = c_form::parse($lexer);
-        expect($lexer, '=', 'variable declaration');
-        $self->values[] = parse_expression($lexer);
-
-        while ($lexer->follows(',')) {
-            $lexer->get();
-            $self->forms[] = c_form::parse($lexer);
-            expect($lexer, '=', 'variable declaration');
-            $self->values[] = parse_expression($lexer);
-        }
-
-        expect($lexer, ';');
-        return $self;
-    }
+    public $type;
+    public $forms = [];
+    public $values = [];
 
     function format()
     {

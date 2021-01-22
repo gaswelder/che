@@ -2,18 +2,7 @@
 
 class c_switch_default
 {
-    private $statements = [];
-
-    static function parse($lexer)
-    {
-        $self = new self;
-        expect($lexer, 'default');
-        expect($lexer, ':');
-        while ($lexer->more() && $lexer->peek()['kind'] != '}') {
-            $self->statements[] = parse_statement($lexer);
-        }
-        return $self;
-    }
+    public $statements = [];
 
     function format()
     {
