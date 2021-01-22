@@ -165,3 +165,83 @@ impl Buf {
     //     // return $s;
     // }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::new;
+    #[test]
+    fn ended() {
+        let mut buf = new(String::from("1"));
+        assert_eq!(buf.ended(), false);
+        buf.get();
+        assert_eq!(buf.ended(), true);
+    }
+
+    #[test]
+    fn pos() {
+        let mut buf = new(String::from("123\n456"));
+        let seq = ["1:1", "1:2", "1:3", "1:4", "2:1", "2:2", "2:3"];
+        for pos in &seq {
+            assert_eq!(buf.pos(), pos.to_string());
+            buf.get();
+        }
+    }
+    #[test]
+    fn peek() {
+        let mut buf = new(String::from('1'));
+        assert_eq!('1', buf.peek().unwrap());
+        assert_eq!('1', buf.peek().unwrap());
+        buf.get();
+        assert_eq!(buf.peek().is_none(), true);
+    }
+    #[test]
+    fn get() {
+        let mut buf = new(String::from("123"));
+        assert_eq!(buf.get().unwrap(), '1');
+        assert_eq!(buf.get().unwrap(), '2');
+        assert_eq!(buf.get().unwrap(), '3');
+        assert_eq!(buf.get().is_none(), true);
+    }
+    #[test]
+    fn unget() {
+        let mut buf = new(String::from("123"));
+        assert_eq!('1', buf.get().unwrap());
+        assert_eq!('2', buf.get().unwrap());
+        buf.unget('2');
+        assert_eq!('2', buf.get().unwrap());
+        assert_eq!('3', buf.get().unwrap());
+        assert_eq!(true, buf.get().is_none());
+    }
+    #[test]
+    fn read_set() {
+        let mut buf = new(String::from("aba123"));
+        assert_eq!("", buf.read_set(String::from("1234567890")));
+        assert_eq!("aba", buf.read_set(String::from("abcdef")));
+        assert_eq!('1', buf.get().unwrap());
+    }
+    #[test]
+    fn skip_literal() {
+        let mut buf = new(String::from("abc123"));
+        assert_eq!(false, buf.skip_literal("123"));
+        assert_eq!(true, buf.skip_literal("abc"));
+        assert_eq!('1', buf.get().unwrap());
+    }
+    #[test]
+    fn until_literal() {
+        let mut buf = new(String::from("abc123"));
+        assert_eq!("abc", buf.until_literal("123"));
+        assert_eq!('1', buf.get().unwrap());
+    }
+    #[test]
+    fn skip_until() {
+        let mut buf = new(String::from("abc123"));
+        assert_eq!("abc", buf.skip_until('1'));
+        assert_eq!("123", buf.skip_until('z'));
+    }
+    #[test]
+    fn literal_follows() {
+        let buf = new(String::from("abc123"));
+        assert_eq!(true, buf.literal_follows("abc"));
+        assert_eq!(false, buf.literal_follows("123"));
+    }
+}

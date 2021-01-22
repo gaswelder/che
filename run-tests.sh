@@ -1,4 +1,5 @@
 php test.php || exit $?
+cargo test || exit $?
 
 if [ ! -d bin ]; then
 	mkdir bin || exit 1

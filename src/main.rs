@@ -182,19 +182,6 @@ fn exec_function_call(call: Call, buf_instances: &mut HashMap<String, Buf>) -> s
                 "data": parser::is_type(op.to_string(), &typenames)
             })
         }
-        "call_buf_get" => {
-            let op = args[0].as_str().unwrap();
-            match buf_instances.get_mut(op) {
-                Some(buf) => json!({
-                    "error": "",
-                    "data": buf.get()
-                }),
-                None => json!({
-                    "error": format!("instance '{}' missing {:#?}", op, buf_instances.keys()),
-                    "data": ""
-                }),
-            }
-        }
         "read_file" => {
             let filename = args[0].as_str().unwrap();
             return match lexer::read_file(filename) {
