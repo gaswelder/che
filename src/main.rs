@@ -59,7 +59,7 @@ fn exec_method_call(call: Call, lexer_instances: &mut HashMap<String, Lexer>) ->
 
     if f == "__construct" {
         let instance_key = format!("#{}", lexer_instances.len());
-        println!("new buf {}", instance_key);
+        println!("new {} {}", call.ns, instance_key);
         let s = args[0].as_str().unwrap();
         lexer_instances.insert(instance_key.clone(), lexer::new(s));
         return json!({
@@ -81,33 +81,55 @@ fn exec_method_call(call: Call, lexer_instances: &mut HashMap<String, Lexer>) ->
             "error": "",
             "data": b1.get()
         }),
-        // "unget" => {
-        //     // let t =
-        //     b1.unget(t);
-        //     json!({
-        //         "error": "",
-        //         "data": null
-        //     })
-        // }
-        // "peek" => {
-        //     json!({
-        //         "error": "",
-        //         "data": b1.peek()
-        //     })
-        // }
-        // "peekN" => {
-        //     json!({
-        //         "error": "",
-        //         "data": b1.peekN(n)
-        //     })
-        // }
-        // "follows" => {
-        //     let set = String::from(args[0].as_str().unwrap());
-        //     json!({
-        //         "error": "",
-        //         "data": b1.follows(t)
-        //     })
-        // }
+        "unget" => {
+            let c = args[0].as_object().unwrap().get("content").unwrap();
+            let t = Token {
+                kind: args[0]
+                    .as_object()
+                    .unwrap()
+                    .get("kind")
+                    .unwrap()
+                    .as_str()
+                    .unwrap()
+                    .to_string(),
+                content: if c.is_null() {
+                    None
+                } else {
+                    Some(c.as_str().unwrap().to_string())
+                },
+                pos: args[0]
+                    .as_object()
+                    .unwrap()
+                    .get("pos")
+                    .unwrap()
+                    .as_str()
+                    .unwrap()
+                    .to_string(),
+            };
+            b1.unget(t);
+            json!({
+                "error": "",
+                "data": null
+            })
+        }
+        "peek" => {
+            json!({
+                "error": "",
+                "data": b1.peek()
+            })
+        }
+        "peek_n" => {
+            json!({
+                "error": "",
+                "data": b1.peek_n(args[0].as_u64().unwrap() as usize)
+            })
+        }
+        "follows" => {
+            json!({
+                "error": "",
+                "data": b1.follows(args[0].as_str().unwrap())
+            })
+        }
         _ => {
             panic!("unknown method: {}", f);
         }

@@ -34,7 +34,7 @@ function parse_module_element($lexer)
     try {
         $type = parse_type($lexer);
     } catch (Exception $e) {
-        throw new Exception("unexpected input (expecting function, variable, typedef, struct, enum)");
+        throw new Exception("unexpected input (expecting function, variable, typedef, struct, enum) || " . $e->getMessage());
     }
     $form = parse_form($lexer);
     if ($lexer->peek()['kind'] == '(') {
@@ -174,8 +174,8 @@ function parse_atom($lexer)
 
     if (
         $lexer->peek()['kind'] == '('
-        && $lexer->peek(1)['kind'] == 'word'
-        && is_type($lexer->peek(1)['content'], $lexer->typenames)
+        && $lexer->peek_n(1)['kind'] == 'word'
+        && is_type($lexer->peek_n(1)['content'], $lexer->typenames)
     ) {
         expect($lexer, '(');
         $typeform = parse_anonymous_typeform($lexer);
@@ -191,7 +191,7 @@ function parse_atom($lexer)
     }
 
     if ($lexer->peek()['kind'] == '{') {
-        if ($lexer->peek(1)['kind'] == '.') {
+        if ($lexer->peek_n(1)['kind'] == '.') {
             return parse_struct_literal($lexer);
         }
         return parse_array_literal($lexer);
@@ -472,9 +472,9 @@ function parse_function_parameter($lexer)
     $node->forms[] = parse_form($lexer);
     while (
         $lexer->follows(',')
-        && $lexer->peek(1)['kind'] != '...'
-        && $lexer->peek(1)['kind'] != 'const'
-        && !($lexer->peek(1)['kind'] == 'word' && is_type($lexer->peek(1)['content'], $lexer->typenames))
+        && $lexer->peek_n(1)['kind'] != '...'
+        && $lexer->peek_n(1)['kind'] != 'const'
+        && !($lexer->peek_n(1)['kind'] == 'word' && is_type($lexer->peek_n(1)['content'], $lexer->typenames))
     ) {
         $lexer->get();
         $node->forms[] = parse_form($lexer);

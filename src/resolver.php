@@ -43,7 +43,7 @@ function parse_path($module_path)
             $next = $lexer->peek();
             $where = "$path:" . $lexer->peek()['pos'];
             $what = $e->getMessage();
-            echo "$where: $what: $next...\n";
+            echo sprintf("%s: %s: %s...\n", $where, $what, token_to_string($next));
         }
     }, $paths);
 

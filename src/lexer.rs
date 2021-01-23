@@ -406,16 +406,16 @@ pub fn new(filename: &str) -> Lexer {
 
 impl Lexer {
     pub fn ended(&self) -> bool {
-        return !self.more();
+        return self.toks.is_empty();
     }
 
     pub fn more(&self) -> bool {
-        return !self.toks.is_empty();
+        return !self.ended();
     }
 
     pub fn get(&mut self) -> Option<Token> {
         loop {
-            if self.toks.is_empty() {
+            if !self.more() {
                 return None;
             }
             let tok = self.toks.pop().unwrap();
@@ -425,21 +425,21 @@ impl Lexer {
         }
     }
 
-    // pub fn unget(&mut self, t: Token) {
-    //     self.toks.push(t);
-    // }
-    // pub fn peek(&self) -> Option<&Token> {
-    //     return self.peekN(0);
-    // }
-    // pub fn peekN(&self, n: usize) -> Option<&Token> {
-    //     let N = self.toks.len();
-    //     if N <= n {
-    //         return None;
-    //     }
-    //     let tok = &self.toks[N - 1 - n];
-    //     return Some(tok);
-    // }
-    // pub fn follows(&self, token_type: &str) -> bool {
-    //     return self.more() && self.peek().unwrap().kind == token_type;
-    // }
+    pub fn unget(&mut self, t: Token) {
+        self.toks.push(t);
+    }
+    pub fn peek(&self) -> Option<&Token> {
+        return self.peek_n(0);
+    }
+    pub fn peek_n(&self, n: usize) -> Option<&Token> {
+        let l = self.toks.len();
+        if l <= n {
+            return None;
+        }
+        let tok = &self.toks[l - 1 - n];
+        return Some(tok);
+    }
+    pub fn follows(&self, token_type: &str) -> bool {
+        return self.more() && self.peek().unwrap().kind == token_type;
+    }
 }

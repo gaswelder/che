@@ -10,6 +10,21 @@ function read($path)
 	return read_file($path);
 }
 
+class lexer1
+{
+	private $proxy;
+
+	function __construct($path)
+	{
+		$this->proxy = make_rust_object('lexer', $path);
+	}
+
+	function __call($f, $args)
+	{
+		return call_user_func_array([$this->proxy, $f], $args);
+	}
+}
+
 class lexer
 {
 	private $toks = [];
@@ -56,11 +71,12 @@ class lexer
 		array_unshift($this->toks, $t);
 	}
 
-	/*
-	 * Returns next token without removing it from the stream.
-	 * Returns null if there is no next token.
-	 */
-	function peek($n = 0)
+	function peek()
+	{
+		return $this->peek_n(0);
+	}
+
+	function peek_n($n)
 	{
 		if (count($this->toks) <= $n) {
 			return null;
@@ -89,7 +105,7 @@ function token_to_string($token)
 		"\\n",
 		"\\t"
 	), $c);
-	return "[$token[type], $c]";
+	return "[$token[kind], $c]";
 }
 
 function read_token($buf)

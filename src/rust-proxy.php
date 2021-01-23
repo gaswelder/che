@@ -45,16 +45,18 @@ function make_rust_object($name, ...$args)
     return new class($name, $args)
     {
         public $_rust_instance_id;
+        private $ns;
 
         function __construct($name, $args)
         {
             $s = make_call($name, '', '__construct', $args);
             $this->_rust_instance_id = $s;
+            $this->ns = $name;
         }
 
         function __call($method, $args)
         {
-            return make_call('buf', $this->_rust_instance_id, $method, $args);
+            return make_call($this->ns, $this->_rust_instance_id, $method, $args);
         }
     };
 }
