@@ -61,17 +61,17 @@ impl Buf {
         return Some(c);
     }
 
-    pub fn unget(&mut self, c: char) {
-        assert!(self.pos > 0);
-        assert!(self.at(self.pos - 1) == c);
-        self.pos -= 1;
-        if c as char == '\n' {
-            self.line -= 1;
-            self.col = self.linelengths.pop().unwrap();
-        } else {
-            self.col -= 1;
-        }
-    }
+    // pub fn unget(&mut self, c: char) {
+    //     assert!(self.pos > 0);
+    //     assert!(self.at(self.pos - 1) == c);
+    //     self.pos -= 1;
+    //     if c as char == '\n' {
+    //         self.line -= 1;
+    //         self.col = self.linelengths.pop().unwrap();
+    //     } else {
+    //         self.col -= 1;
+    //     }
+    // }
 
     // Skips any sequence of characters from the given string.
     // Returns the skipped string.
@@ -133,24 +133,24 @@ impl Buf {
         return s;
     }
 
-    pub fn context(&self) -> String {
-        let s = String::new();
+    // pub fn context(&self) -> String {
+    //     let s = String::new();
 
-        let start = if self.pos < 10 { 0 } else { self.pos - 10 };
-        let end = if self.pos + 10 > self.s.len() {
-            self.s.len()
-        } else {
-            self.pos + 10
-        };
+    //     let start = if self.pos < 10 { 0 } else { self.pos - 10 };
+    //     let end = if self.pos + 10 > self.s.len() {
+    //         self.s.len()
+    //     } else {
+    //         self.pos + 10
+    //     };
 
-        format!(
-            "{}[{}]{}",
-            self.s[start..self.pos].iter().collect::<String>(),
-            self.s[self.pos],
-            self.s[self.pos..end].iter().collect::<String>()
-        );
-        return s;
-    }
+    //     format!(
+    //         "{}[{}]{}",
+    //         self.s[start..self.pos].iter().collect::<String>(),
+    //         self.s[self.pos],
+    //         self.s[self.pos..end].iter().collect::<String>()
+    //     );
+    //     return s;
+    // }
 
     // pub fn fcontext(self) -> String {
     //     let n = 10;
@@ -202,16 +202,16 @@ mod tests {
         assert_eq!(buf.get().unwrap(), '3');
         assert_eq!(buf.get().is_none(), true);
     }
-    #[test]
-    fn unget() {
-        let mut buf = new(String::from("123"));
-        assert_eq!('1', buf.get().unwrap());
-        assert_eq!('2', buf.get().unwrap());
-        buf.unget('2');
-        assert_eq!('2', buf.get().unwrap());
-        assert_eq!('3', buf.get().unwrap());
-        assert_eq!(true, buf.get().is_none());
-    }
+    // #[test]
+    // fn unget() {
+    //     let mut buf = new(String::from("123"));
+    //     assert_eq!('1', buf.get().unwrap());
+    //     assert_eq!('2', buf.get().unwrap());
+    //     buf.unget('2');
+    //     assert_eq!('2', buf.get().unwrap());
+    //     assert_eq!('3', buf.get().unwrap());
+    //     assert_eq!(true, buf.get().is_none());
+    // }
     #[test]
     fn read_set() {
         let mut buf = new(String::from("aba123"));

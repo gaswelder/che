@@ -2,11 +2,11 @@ use serde_json::{json, Value};
 use std::string::String;
 mod buf;
 mod parser;
-use buf::Buf;
 use std::collections::HashMap;
 use std::io::prelude::*;
 use std::net::TcpListener;
 mod lexer;
+use lexer::Lexer;
 use lexer::Token;
 
 struct Call {
@@ -17,7 +17,7 @@ struct Call {
 }
 
 fn main() {
-    let mut buf_instances: HashMap<String, Buf> = HashMap::new();
+    let mut lexer_instances: HashMap<String, Lexer> = HashMap::new();
     let mut read_files: HashMap<String, Vec<Token>> = HashMap::new();
 
     let ln = TcpListener::bind("localhost:2124").unwrap();
@@ -38,9 +38,9 @@ fn main() {
 
         let call = parse_call(String::from(s).trim()).unwrap();
         let response = if call.ns == "" {
-            exec_function_call(call, &mut buf_instances, &mut read_files)
+            exec_function_call(call, &mut read_files)
         } else {
-            exec_method_call(call, &mut buf_instances)
+            exec_method_call(call, &mut lexer_instances)
         };
         c.write(format!("{}", response).as_bytes()).unwrap();
         c.flush().unwrap();
@@ -61,8 +61,8 @@ fn parse_call(buf: &str) -> Option<Call> {
     });
 }
 
-fn exec_method_call(call: Call, buf_instances: &mut HashMap<String, Buf>) -> serde_json::Value {
-    if call.ns != "buf" {
+fn exec_method_call(call: Call, lexer_instances: &mut HashMap<String, Lexer>) -> serde_json::Value {
+    if call.ns != "lexer" {
         panic!("unknown class name: {}", call.ns);
     }
 
@@ -70,16 +70,16 @@ fn exec_method_call(call: Call, buf_instances: &mut HashMap<String, Buf>) -> ser
     let args = call.args;
 
     if f == "__construct" {
-        let instance_key = format!("#{}", buf_instances.len());
+        let instance_key = format!("#{}", lexer_instances.len());
         println!("new buf {}", instance_key);
-        let s = args[0].as_str().unwrap().to_string();
-        buf_instances.insert(instance_key.clone(), buf::new(s));
+        let s = args[0].as_str().unwrap();
+        lexer_instances.insert(instance_key.clone(), lexer::new(s));
         return json!({
             "error": "",
             "data": instance_key
         });
     }
-    let b1 = buf_instances.get_mut(&call.id).unwrap();
+    let b1 = lexer_instances.get_mut(&call.id).unwrap();
     return match f {
         "ended" => json!({
             "error": "",
@@ -89,52 +89,37 @@ fn exec_method_call(call: Call, buf_instances: &mut HashMap<String, Buf>) -> ser
             "error": "",
             "data": b1.more()
         }),
-        "pos" => json!({
-            "error": "",
-            "data": b1.pos()
-        }),
-        "peek" => {
-            let r = b1.peek();
-            json!({
-                "error": "",
-                "data": r
-            })
-        }
         "get" => json!({
             "error": "",
             "data": b1.get()
         }),
-        "unget" => json!({
-            "error": "",
-            "data": b1.unget(args[0].as_str().unwrap().chars().next().unwrap())
-        }),
-        "read_set" => {
-            let set = String::from(args[0].as_str().unwrap());
-            json!({
-                "error": "",
-                "data": b1.read_set(set)
-            })
-        }
-        "skip_literal" => json!({
-            "error": "",
-            "data": b1.skip_literal(args[0].as_str().unwrap())
-        }),
-        "literal_follows" => json!({
-            "error": "",
-            "data": b1.literal_follows(args[0].as_str().unwrap())
-        }),
-        "until_literal" => json!({
-            "error": "",
-            "data": b1.until_literal(args[0].as_str().unwrap())
-        }),
-        "skip_until" => json!({
-            "error": "",
-            "data": b1.skip_until(args[0].as_str().unwrap().chars().next().unwrap())
-        }),
-        "context" => json!({
-            "error": "",
-            "data": b1.context()
-        }),
+        // "unget" => {
+        //     // let t =
+        //     b1.unget(t);
+        //     json!({
+        //         "error": "",
+        //         "data": null
+        //     })
+        // }
+        // "peek" => {
+        //     json!({
+        //         "error": "",
+        //         "data": b1.peek()
+        //     })
+        // }
+        // "peekN" => {
+        //     json!({
+        //         "error": "",
+        //         "data": b1.peekN(n)
+        //     })
+        // }
+        // "follows" => {
+        //     let set = String::from(args[0].as_str().unwrap());
+        //     json!({
+        //         "error": "",
+        //         "data": b1.follows(t)
+        //     })
+        // }
         _ => {
             panic!("unknown method: {}", f);
         }
@@ -143,7 +128,6 @@ fn exec_method_call(call: Call, buf_instances: &mut HashMap<String, Buf>) -> ser
 
 fn exec_function_call(
     call: Call,
-    buf_instances: &mut HashMap<String, Buf>,
     read_files: &mut HashMap<String, Vec<Token>>,
 ) -> serde_json::Value {
     let f = call.f.as_str();
@@ -204,13 +188,6 @@ fn exec_function_call(
             return json!({
                 "error": "",
                 "data": read_files.get(filename).unwrap()
-            });
-        }
-        "read_token" => {
-            let buf = buf_instances.get_mut(args[0].as_str().unwrap()).unwrap();
-            return json!({
-                "error": "",
-                "data": lexer::read_token(buf)
             });
         }
         _ => {

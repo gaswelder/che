@@ -393,3 +393,53 @@ mod tests {
         }
     }
 }
+
+pub struct Lexer {
+    toks: Vec<Token>,
+}
+
+pub fn new(filename: &str) -> Lexer {
+    let mut toks = read_file(filename).unwrap();
+    toks.reverse();
+    return Lexer { toks };
+}
+
+impl Lexer {
+    pub fn ended(&self) -> bool {
+        return !self.more();
+    }
+
+    pub fn more(&self) -> bool {
+        return !self.toks.is_empty();
+    }
+
+    pub fn get(&mut self) -> Option<Token> {
+        loop {
+            if self.toks.is_empty() {
+                return None;
+            }
+            let tok = self.toks.pop().unwrap();
+            if tok.kind != "comment" {
+                return Some(tok);
+            }
+        }
+    }
+
+    // pub fn unget(&mut self, t: Token) {
+    //     self.toks.push(t);
+    // }
+    // pub fn peek(&self) -> Option<&Token> {
+    //     return self.peekN(0);
+    // }
+    // pub fn peekN(&self, n: usize) -> Option<&Token> {
+    //     let N = self.toks.len();
+    //     if N <= n {
+    //         return None;
+    //     }
+    //     let tok = &self.toks[N - 1 - n];
+    //     return Some(tok);
+    // }
+    // pub fn follows(&self, token_type: &str) -> bool {
+    //     return self.more() && self.peek().unwrap().kind == token_type;
+    // }
+}
