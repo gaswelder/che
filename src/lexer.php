@@ -7,11 +7,7 @@ function read_file($path)
 
 function read($path)
 {
-	static $cache = [];
-	if (!isset($cache[$path])) {
-		$cache[$path] = read_file($path);
-	}
-	return $cache[$path];
+	return read_file($path);
 }
 
 class lexer

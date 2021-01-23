@@ -7,6 +7,7 @@ use std::collections::HashMap;
 use std::io::prelude::*;
 use std::net::TcpListener;
 mod lexer;
+use lexer::Token;
 
 struct Call {
     ns: String,
@@ -17,6 +18,7 @@ struct Call {
 
 fn main() {
     let mut buf_instances: HashMap<String, Buf> = HashMap::new();
+    let mut read_files: HashMap<String, Vec<Token>> = HashMap::new();
 
     let ln = TcpListener::bind("localhost:2124").unwrap();
     for conn in ln.incoming() {
@@ -36,7 +38,7 @@ fn main() {
 
         let call = parse_call(String::from(s).trim()).unwrap();
         let response = if call.ns == "" {
-            exec_function_call(call, &mut buf_instances)
+            exec_function_call(call, &mut buf_instances, &mut read_files)
         } else {
             exec_method_call(call, &mut buf_instances)
         };
@@ -139,7 +141,11 @@ fn exec_method_call(call: Call, buf_instances: &mut HashMap<String, Buf>) -> ser
     };
 }
 
-fn exec_function_call(call: Call, buf_instances: &mut HashMap<String, Buf>) -> serde_json::Value {
+fn exec_function_call(
+    call: Call,
+    buf_instances: &mut HashMap<String, Buf>,
+    read_files: &mut HashMap<String, Vec<Token>>,
+) -> serde_json::Value {
     let f = call.f.as_str();
     let args = call.args;
     return match f {
@@ -184,16 +190,21 @@ fn exec_function_call(call: Call, buf_instances: &mut HashMap<String, Buf>) -> s
         }
         "read_file" => {
             let filename = args[0].as_str().unwrap();
-            return match lexer::read_file(filename) {
-                Err(s) => json!({
-                    "error": s,
-                    "data": null
-                }),
-                Ok(tokens) => json!({
-                    "error": "",
-                    "data": tokens
-                }),
-            };
+            if read_files.get(filename).is_none() {
+                println!("reading {}", filename);
+                let r = lexer::read_file(filename);
+                if r.is_err() {
+                    return json!({
+                        "error": r.unwrap_err(),
+                        "data": null
+                    });
+                }
+                read_files.insert(filename.to_string(), r.unwrap());
+            }
+            return json!({
+                "error": "",
+                "data": read_files.get(filename).unwrap()
+            });
         }
         "read_token" => {
             let buf = buf_instances.get_mut(args[0].as_str().unwrap()).unwrap();
