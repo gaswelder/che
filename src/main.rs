@@ -1,4 +1,5 @@
-use serde_json::{json, Value};
+use serde::Deserialize;
+use serde_json::json;
 use std::string::String;
 mod buf;
 mod parser;
@@ -9,11 +10,12 @@ mod lexer;
 use lexer::Lexer;
 use lexer::Token;
 
+#[derive(Deserialize)]
 struct Call {
     ns: String,
     id: String,
     f: String,
-    args: Vec<serde_json::Value>,
+    a: Vec<serde_json::Value>,
 }
 
 fn main() {
@@ -36,7 +38,7 @@ fn main() {
             }
         }
 
-        let call = parse_call(String::from(s).trim()).unwrap();
+        let call: Call = serde_json::from_str(String::from(s).trim()).unwrap();
         let response = if call.ns == "" {
             exec_function_call(call, &mut read_files)
         } else {
@@ -47,27 +49,13 @@ fn main() {
     }
 }
 
-fn parse_call(buf: &str) -> Option<Call> {
-    if buf == "" {
-        return None;
-    }
-    let v: Value = serde_json::from_str(&buf).unwrap();
-    let obj = v.as_object().unwrap();
-    return Some(Call {
-        ns: obj.get("ns").unwrap().as_str().unwrap().to_string(),
-        id: obj.get("id").unwrap().as_str().unwrap().to_string(),
-        f: obj.get("f").unwrap().as_str().unwrap().to_string(),
-        args: obj.get("a").unwrap().as_array().unwrap().to_vec(),
-    });
-}
-
 fn exec_method_call(call: Call, lexer_instances: &mut HashMap<String, Lexer>) -> serde_json::Value {
     if call.ns != "lexer" {
         panic!("unknown class name: {}", call.ns);
     }
 
     let f = call.f.as_str();
-    let args = call.args;
+    let args = call.a;
 
     if f == "__construct" {
         let instance_key = format!("#{}", lexer_instances.len());
@@ -131,7 +119,7 @@ fn exec_function_call(
     read_files: &mut HashMap<String, Vec<Token>>,
 ) -> serde_json::Value {
     let f = call.f.as_str();
-    let args = call.args;
+    let args = call.a;
     return match f {
         "is_op" => {
             let token_type = args[0].as_str().unwrap();
