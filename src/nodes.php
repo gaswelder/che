@@ -579,28 +579,3 @@ class c_type
         return $self;
     }
 }
-
-class c_union_field
-{
-    public $type;
-    public $form;
-}
-
-class c_union
-{
-    public $form;
-    public $fields = [];
-}
-
-class c_variable_declaration
-{
-    public $type;
-    public $forms = [];
-    public $values = [];
-}
-
-class c_while
-{
-    public $condition;
-    public $body;
-}

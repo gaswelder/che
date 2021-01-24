@@ -401,20 +401,26 @@ function parse_defer($lexer)
 
 function parse_union($lexer)
 {
-    $node = new c_union;
+    $fields = [];
     expect($lexer, 'union');
     expect($lexer, '{');
     while (!$lexer->follows('}')) {
-        $field = new c_union_field;
-        $field->type = parse_type($lexer);
-        $field->form = parse_form($lexer);
+        $type = parse_type($lexer);
+        $form = parse_form($lexer);
         expect($lexer, ';');
-        $node->fields[] = $field;
+        $fields[] = [
+            'type' => $type,
+            'form' => $form
+        ];
     }
     expect($lexer, '}');
-    $node->form = parse_form($lexer);
+    $form = parse_form($lexer);
     expect($lexer, ';');
-    return $node;
+    return [
+        'kind' => 'c_union',
+        'form' => $form,
+        'fields' => $fields,
+    ];
 }
 
 function parse_enum($lexer, $pub)
@@ -668,22 +674,26 @@ function parse_anonymous_typeform($lexer)
 
 function parse_variable_declaration($lexer)
 {
-    $node = new c_variable_declaration;
-    $node->type = parse_type($lexer);
+    $type = parse_type($lexer);
 
-    $node->forms[] = parse_form($lexer);
+    $forms = [parse_form($lexer)];
     expect($lexer, '=', 'variable declaration');
-    $node->values[] = parse_expression($lexer);
+    $values = [parse_expression($lexer)];
 
     while ($lexer->follows(',')) {
         $lexer->get();
-        $node->forms[] = parse_form($lexer);
+        $forms[] = parse_form($lexer);
         expect($lexer, '=', 'variable declaration');
-        $node->values[] = parse_expression($lexer);
+        $values[] = parse_expression($lexer);
     }
 
     expect($lexer, ';');
-    return $node;
+    return [
+        'kind' => 'c_variable_declaration',
+        'type' => $type,
+        'forms' => $forms,
+        'values' => $values
+    ];
 }
 
 function parse_return($lexer)
@@ -701,13 +711,16 @@ function parse_return($lexer)
 
 function parse_while($lexer)
 {
-    $node = new c_while;
     expect($lexer, 'while');
     expect($lexer, '(');
-    $node->condition = parse_expression($lexer);
+    $condition = parse_expression($lexer);
     expect($lexer, ')');
-    $node->body = parse_body($lexer);
-    return $node;
+    $body = parse_body($lexer);
+    return [
+        'kind' => 'c_while',
+        'condition' => $condition,
+        'body' => $body
+    ];
 }
 
 function parse_sizeof($lexer)

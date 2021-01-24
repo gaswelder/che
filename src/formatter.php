@@ -2,6 +2,18 @@
 
 function format_node($node)
 {
+    if (is_array($node)) {
+        switch ($node['kind']) {
+            case 'c_while':
+                return format_while($node);
+            case 'c_variable_declaration':
+                return format_variable_declaration($node);
+            case 'c_union':
+                return format_union($node);
+            default:
+                throw new Exception("Unknown node type: " . $node['kind']);
+        }
+    }
     $cn = get_class($node);
     switch ($cn) {
         case c_anonymous_parameters::class:
@@ -98,14 +110,6 @@ function format_node($node)
             return format_typedef($node);
         case c_type::class:
             return format_type($node);
-        case c_union_field::class:
-            return format_union_field($node);
-        case c_union::class:
-            return format_union($node);
-        case c_variable_declaration::class:
-            return format_variable_declaration($node);
-        case c_while::class:
-            return format_while($node);
         default:
             throw new Exception("don't know how to format '$cn'");
     }
@@ -532,16 +536,11 @@ function format_type($node)
     return $s;
 }
 
-function format_union_field($node)
-{
-    return format_node($node->type) . ' ' . format_node($node->form) . ';';
-}
-
 function format_variable_declaration($node)
 {
-    $s = format_node($node->type) . ' ';
-    foreach ($node->forms as $i => $form) {
-        $value = $node->values[$i];
+    $s = format_node($node['type']) . ' ';
+    foreach ($node['forms'] as $i => $form) {
+        $value = $node['values'][$i];
         if ($i > 0) $s .= ', ';
         $s .= format_node($form) . ' = ' . format_node($value);
     }
@@ -551,14 +550,14 @@ function format_variable_declaration($node)
 
 function format_while($node)
 {
-    return sprintf('while (%s) %s', format_node($node->condition), format_node($node->body));
+    return sprintf('while (%s) %s', format_node($node['condition']), format_node($node['body']));
 }
 
 function format_union($node)
 {
     $s = '';
-    foreach ($node->fields as $field) {
-        $s .= format_node($field) . "\n";
+    foreach ($node['fields'] as $field) {
+        $s .= format_node($field['type']) . ' ' . format_node($field['form']) . ";\n";
     }
-    return sprintf("union {\n%s\n} %s;\n", indent($s), format_node($node->form));
+    return sprintf("union {\n%s\n} %s;\n", indent($s), format_node($node['form']));
 }
