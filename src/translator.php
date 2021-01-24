@@ -6,42 +6,49 @@ function translate(c_module $m)
     return new c_compat_module($elements, $link);
 }
 
+function translate_node($node)
+{
+    if ($node instanceof c_import) {
+        $module = resolve_import($node);
+        $compat = translate($module);
+        return $compat->synopsis();
+    }
+    if ($node instanceof c_function_declaration) {
+        $func = $node->translate();
+        return [
+            $func->forward_declaration(),
+            $func
+        ];
+    }
+    if ($node instanceof c_typedef) {
+        return $node->translate();
+    }
+    if ($node instanceof c_enum) {
+        return [$node->translate()];
+    }
+    // Discard #type hints.
+    if ($node instanceof c_compat_macro && $node->name() == 'type') {
+        return [];
+    }
+    // Discard #link hints.
+    if ($node instanceof c_compat_macro && $node->name() == 'link') {
+        return [];
+    }
+    return [$node];
+}
+
 function translate_module($che_elements)
 {
-    $elements = [];
     $link = [];
+    foreach ($che_elements as $node) {
+        if ($node instanceof c_compat_macro && $node->name() == 'link') {
+            $link[] = $node->value();
+        }
+    }
 
+    $elements = [];
     foreach ($che_elements as $element) {
-        if ($element instanceof c_import) {
-            $module = resolve_import($element);
-            $compat = translate($module);
-            $elements = array_merge($elements, $compat->synopsis());
-            continue;
-        }
-        if ($element instanceof c_function_declaration) {
-            $func = $element->translate();
-            $elements[] = $func->forward_declaration();
-            $elements[] = $func;
-            continue;
-        }
-        if ($element instanceof c_typedef) {
-            $elements = array_merge($elements, $element->translate());
-            continue;
-        }
-        if ($element instanceof c_enum) {
-            $elements[] = $element->translate();
-            continue;
-        }
-        // Discard #type hints.
-        if ($element instanceof c_compat_macro && $element->name() == 'type') {
-            continue;
-        }
-        // Discard #link hints, but remember the values.
-        if ($element instanceof c_compat_macro && $element->name() == 'link') {
-            $link[] = $element->value();
-            continue;
-        }
-        $elements[] = $element;
+        $elements = array_merge($elements, translate_node($element));
     }
 
     $std = [
