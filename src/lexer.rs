@@ -405,17 +405,22 @@ pub fn new(filename: &str) -> Lexer {
 }
 
 impl Lexer {
-    pub fn ended(&self) -> bool {
-        return self.toks.is_empty();
+    pub fn ended(&mut self) -> bool {
+        return !self.more();
     }
 
-    pub fn more(&self) -> bool {
-        return !self.ended();
+    pub fn more(&mut self) -> bool {
+        let r = self.get();
+        if r.is_none() {
+            return false;
+        }
+        self.unget(r.unwrap());
+        return true;
     }
 
     pub fn get(&mut self) -> Option<Token> {
         loop {
-            if !self.more() {
+            if self.toks.len() == 0 {
                 return None;
             }
             let tok = self.toks.pop().unwrap();
@@ -439,7 +444,7 @@ impl Lexer {
         let tok = &self.toks[l - 1 - n];
         return Some(tok);
     }
-    pub fn follows(&self, token_type: &str) -> bool {
+    pub fn follows(&mut self, token_type: &str) -> bool {
         return self.more() && self.peek().unwrap().kind == token_type;
     }
 }
