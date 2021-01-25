@@ -33,7 +33,35 @@ function translate_import(c_import $node)
 {
     $module = resolve_import($node);
     $compat = translate($module);
-    return $compat->synopsis();
+    return get_module_synopsis($compat);
+}
+
+function get_module_synopsis(c_compat_module $node)
+{
+    $elements = [];
+
+    $exports = [
+        c_typedef::class,
+        c_compat_struct_definition::class,
+        c_compat_struct_forward_declaration::class,
+        c_compat_macro::class,
+    ];
+
+    foreach ($node->elements as $element) {
+        if ($element instanceof c_compat_function_declaration && !$element->is_static()) {
+            $elements[] = $element->forward_declaration();
+            continue;
+        }
+        if (in_array(get_class($element), $exports)) {
+            $elements[] = $element;
+            continue;
+        }
+        if ($element instanceof c_compat_enum && !$element->is_private()) {
+            $elements[] = $element;
+            continue;
+        }
+    }
+    return $elements;
 }
 
 function translate_enum(c_enum $node)
@@ -43,7 +71,18 @@ function translate_enum(c_enum $node)
 
 function translate_typedef(c_typedef $node)
 {
-    return $node->translate();
+    if ($node->type instanceof c_composite_type) {
+        $struct_name = '__' . $node->name() . '_struct';
+        $typedef = new c_typedef;
+        $typedef->alias = $node->alias;
+        $typedef->type = c_type::make('struct ' . $struct_name);
+        return [
+            new c_compat_struct_forward_declaration(c_identifier::make($struct_name)),
+            new c_compat_struct_definition($struct_name, $node->type),
+            $typedef
+        ];
+    }
+    return [$node];
 }
 
 function translate_function_declaration(c_function_declaration $node)
@@ -93,21 +132,24 @@ function translate_module($che_elements)
 
 function hoist_declarations($elements)
 {
-    $order = [
-        [c_compat_include::class, c_compat_macro::class],
-        [c_compat_struct_forward_declaration::class],
-        [c_typedef::class],
-        [c_compat_struct_definition::class, c_compat_enum::class],
-        [c_compat_function_forward_declaration::class]
-    ];
-
-    $get_order = function ($element) use ($order) {
-        foreach ($order as $i => $classnames) {
-            if (in_array(get_class($element), $classnames)) {
-                return $i;
-            }
+    $get_order = function ($element) {
+        $cn = get_class($element);
+        if (in_array($cn, [c_compat_include::class, c_compat_macro::class])) {
+            return 0;
         }
-        return count($order);
+        if ($cn === c_compat_struct_forward_declaration::class) {
+            return 1;
+        }
+        if ($cn === c_typedef::class) {
+            return 2;
+        }
+        if (in_array($cn, [c_compat_struct_definition::class, c_compat_enum::class])) {
+            return 3;
+        }
+        if ($cn === c_compat_function_forward_declaration::class) {
+            return 4;
+        }
+        return 5;
     };
 
     $groups = [[], [], [], [], []];

@@ -168,34 +168,6 @@ class c_compat_module
     {
         return $this->link;
     }
-
-    function synopsis()
-    {
-        $elements = [];
-
-        $exports = [
-            c_typedef::class,
-            c_compat_struct_definition::class,
-            c_compat_struct_forward_declaration::class,
-            c_compat_macro::class,
-        ];
-
-        foreach ($this->elements as $element) {
-            if ($element instanceof c_compat_function_declaration && !$element->is_static()) {
-                $elements[] = $element->forward_declaration();
-                continue;
-            }
-            if (in_array(get_class($element), $exports)) {
-                $elements[] = $element;
-                continue;
-            }
-            if ($element instanceof c_compat_enum && !$element->is_private()) {
-                $elements[] = $element;
-                continue;
-            }
-        }
-        return $elements;
-    }
 }
 
 class c_compat_struct_definition
@@ -548,22 +520,6 @@ class c_typedef
     function name()
     {
         return format_node($this->alias);
-    }
-
-    function translate()
-    {
-        if ($this->type instanceof c_composite_type) {
-            $struct_name = '__' . $this->name() . '_struct';
-            $typedef = new self;
-            $typedef->alias = $this->alias;
-            $typedef->type = c_type::make('struct ' . $struct_name);
-            return [
-                new c_compat_struct_forward_declaration(c_identifier::make($struct_name)),
-                new c_compat_struct_definition($struct_name, $this->type),
-                $typedef
-            ];
-        }
-        return [$this];
     }
 }
 
