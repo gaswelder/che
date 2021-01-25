@@ -9,32 +9,50 @@ function translate(c_module $m)
 function translate_node($node)
 {
     if ($node instanceof c_import) {
-        $module = resolve_import($node);
-        $compat = translate($module);
-        return $compat->synopsis();
+        return translate_import($node);
     }
     if ($node instanceof c_function_declaration) {
-        $func = $node->translate();
-        return [
-            $func->forward_declaration(),
-            $func
-        ];
+        return translate_function_declaration($node);
     }
     if ($node instanceof c_typedef) {
-        return $node->translate();
+        return translate_typedef($node);
     }
     if ($node instanceof c_enum) {
-        return [$node->translate()];
+        return translate_enum($node);
     }
-    // Discard #type hints.
     if ($node instanceof c_compat_macro && $node->name() == 'type') {
         return [];
     }
-    // Discard #link hints.
     if ($node instanceof c_compat_macro && $node->name() == 'link') {
         return [];
     }
     return [$node];
+}
+
+function translate_import(c_import $node)
+{
+    $module = resolve_import($node);
+    $compat = translate($module);
+    return $compat->synopsis();
+}
+
+function translate_enum(c_enum $node)
+{
+    return [$node->translate()];
+}
+
+function translate_typedef(c_typedef $node)
+{
+    return $node->translate();
+}
+
+function translate_function_declaration(c_function_declaration $node)
+{
+    $func = $node->translate();
+    return [
+        $func->forward_declaration(),
+        $func
+    ];
 }
 
 function translate_module($che_elements)
