@@ -706,15 +706,20 @@ function parse_variable_declaration($lexer)
 
 function parse_return($lexer)
 {
-    $node = new c_return;
     expect($lexer, 'return');
     if ($lexer->peek()['kind'] == ';') {
         $lexer->get();
-        return $node;
+        return [
+            'kind' => 'c_return',
+            'expression' => null
+        ];
     }
-    $node->expression = parse_expression($lexer);
+    $expression = parse_expression($lexer);
     expect($lexer, ';');
-    return $node;
+    return [
+        'kind' => 'c_return',
+        'expression' => $expression
+    ];
 }
 
 function parse_while($lexer)
@@ -733,14 +738,16 @@ function parse_while($lexer)
 
 function parse_sizeof($lexer)
 {
-    $node = new c_sizeof;
     expect($lexer, 'sizeof');
     expect($lexer, '(');
     if ($lexer->peek()['kind'] == 'word' && is_type($lexer->peek()['content'], $lexer->typenames)) {
-        $node->argument = parse_type($lexer);
+        $argument = parse_type($lexer);
     } else {
-        $node->argument = parse_expression($lexer);
+        $argument = parse_expression($lexer);
     }
     expect($lexer, ')');
-    return $node;
+    return [
+        'kind' => 'c_sizeof',
+        'argument' => $argument
+    ];
 }

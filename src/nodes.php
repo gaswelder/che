@@ -458,16 +458,6 @@ class c_prefix_operator
     }
 }
 
-class c_return
-{
-    public $expression;
-}
-
-class c_sizeof
-{
-    public $argument;
-}
-
 class c_struct_fieldlist
 {
     public $type;

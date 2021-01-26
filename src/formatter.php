@@ -14,6 +14,10 @@ function format_node($node)
                 return format_loop_counter_declaration($node);
             case 'c_type':
                 return format_type($node);
+            case 'c_sizeof':
+                return format_sizeof($node);
+            case 'c_return':
+                return format_return($node);
             default:
                 throw new Exception("Unknown node type: " . $node['kind']);
         }
@@ -92,10 +96,6 @@ function format_node($node)
             return format_postfix_operator($node);
         case c_prefix_operator::class:
             return format_prefix_operator($node);
-        case c_return::class:
-            return format_return($node);
-        case c_sizeof::class:
-            return format_sizeof($node);
         case c_struct_fieldlist::class:
             return format_struct_fieldlist($node);
         case c_struct_literal_member::class:
@@ -439,15 +439,15 @@ function format_prefix_operator($node)
 
 function format_return($node)
 {
-    if (!$node->expression) {
+    if (!$node['expression']) {
         return 'return;';
     }
-    return 'return ' . format_node($node->expression) . ';';
+    return 'return ' . format_node($node['expression']) . ';';
 }
 
 function format_sizeof($node)
 {
-    return 'sizeof(' . format_node($node->argument) . ')';
+    return 'sizeof(' . format_node($node['argument']) . ')';
 }
 
 function format_struct_fieldlist($node)
