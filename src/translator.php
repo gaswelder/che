@@ -75,7 +75,11 @@ function translate_typedef(c_typedef $node)
         $struct_name = '__' . $node->name() . '_struct';
         $typedef = new c_typedef;
         $typedef->alias = $node->alias;
-        $typedef->type = c_type::make('struct ' . $struct_name);
+        $typedef->type = [
+            'kind' => 'c_type',
+            'const' => false,
+            'type' => 'struct ' . $struct_name
+        ];
         return [
             new c_compat_struct_forward_declaration(c_identifier::make($struct_name)),
             new c_compat_struct_definition($struct_name, $node->type),

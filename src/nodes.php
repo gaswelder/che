@@ -374,13 +374,6 @@ class c_literal
     public $type;
 }
 
-class c_loop_counter_declaration
-{
-    public $type;
-    public $name;
-    public $value;
-}
-
 class c_module
 {
     public $elements = [];
@@ -498,11 +491,6 @@ class c_switch_case
     public $statements = [];
 }
 
-class c_switch_default
-{
-    public $statements = [];
-}
-
 class c_switch
 {
     public $value;
@@ -520,18 +508,5 @@ class c_typedef
     function name()
     {
         return format_node($this->alias);
-    }
-}
-
-class c_type
-{
-    public $type;
-    public $const = false;
-
-    static function make($name)
-    {
-        $self = new self;
-        $self->type = $name;
-        return $self;
     }
 }

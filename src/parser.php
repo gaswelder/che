@@ -456,7 +456,16 @@ function parse_for($lexer)
     expect($lexer, '(');
 
     if ($lexer->peek()['kind'] == 'word' && is_type($lexer->peek()['content'], $lexer->typenames)) {
-        $node->init = parse_loop_counter_declaration($lexer);
+        $type = parse_type($lexer);
+        $name = parse_identifier($lexer);
+        expect($lexer, '=');
+        $value = parse_expression($lexer);
+        $node->init = [
+            'kind' => 'c_loop_counter_declaration',
+            'type' => $type,
+            'name' => $name,
+            'value' => $value
+        ];
     } else {
         $node->init = parse_expression($lexer);
     }
@@ -470,35 +479,30 @@ function parse_for($lexer)
     return $node;
 }
 
-function parse_loop_counter_declaration($lexer)
-{
-    $node = new c_loop_counter_declaration;
-    $node->type = parse_type($lexer);
-    $node->name = parse_identifier($lexer);
-    expect($lexer, '=');
-    $node->value = parse_expression($lexer);
-    return $node;
-}
-
 function parse_type($lexer, $comment = null)
 {
-    $node = new c_type;
+    $const = false;
+    $type = '';
 
     if ($lexer->follows('const')) {
         $lexer->get();
-        $node->const = true;
+        $const = true;
     }
 
     if ($lexer->follows('struct')) {
         $lexer->get();
         $name = expect($lexer, 'word')['content'];
-        $node->type = 'struct ' . $name;
+        $type = 'struct ' . $name;
     } else {
         $tok = expect($lexer, 'word', $comment);
-        $node->type = $tok['content'];
+        $type = $tok['content'];
     }
 
-    return $node;
+    return [
+        'kind' => 'c_type',
+        'const' => $const,
+        'type' => $type
+    ];
 }
 
 function parse_function_parameter($lexer)
@@ -569,26 +573,30 @@ function parse_switch($lexer)
     expect($lexer, ')');
     expect($lexer, '{');
     while ($lexer->follows('case')) {
-        $case = new c_switch_case;
         expect($lexer, 'case');
+        $value = null;
         if ($lexer->follows('word')) {
-            $case->value = parse_identifier($lexer);
+            $value = parse_identifier($lexer);
         } else {
-            $case->value = parse_literal($lexer);
+            $value = parse_literal($lexer);
         }
         expect($lexer, ':');
         $until = ['case', 'break', 'default', '}'];
+        $statements = [];
         while ($lexer->more() && !in_array($lexer->peek()['kind'], $until)) {
-            $case->statements[] = parse_statement($lexer);
+            $statements[] = parse_statement($lexer);
         }
-        $node->cases[] = $case;
+        $node->cases[] = [
+            'value' => $value,
+            'statements' => $statements
+        ];
     }
     if ($lexer->follows('default')) {
-        $def = new c_switch_default;
+        $def = [];
         expect($lexer, 'default');
         expect($lexer, ':');
         while ($lexer->more() && $lexer->peek()['kind'] != '}') {
-            $def->statements[] = parse_statement($lexer);
+            $def[] = parse_statement($lexer);
         }
         $node->default = $def;
     }
