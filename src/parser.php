@@ -54,7 +54,12 @@ function parse_module_element($lexer)
         $lexer->get();
         $value = parse_expression($lexer);
         expect($lexer, ';', 'module variable declaration');
-        return new c_module_variable($type, $form, $value);
+        return [
+            'kind' => 'c_module_variable',
+            'type' => $type,
+            'form' => $form,
+            'value' => $value
+        ];
     }
     throw new Exception("unexpected input");
 }
@@ -86,37 +91,45 @@ function parse_import($lexer)
 
 function parse_typedef($lexer)
 {
-    $node = new c_typedef;
-
     expect($lexer, 'typedef');
 
+    $type = null;
+    $alias = null;
+    $before = null;
+    $after = null;
+
     if ($lexer->follows('{')) {
-        $node->type = parse_composite_type($lexer);
-        $node->alias = parse_identifier($lexer);
+        $type = parse_composite_type($lexer);
+        $alias = parse_identifier($lexer);
         expect($lexer, ';', 'typedef');
-        return $node;
+    } else {
+        $type = parse_type($lexer, 'typedef');
+        while ($lexer->follows('*')) {
+            $before .= $lexer->get()['kind'];
+        }
+        $alias = parse_identifier($lexer);
+
+        if ($lexer->follows('(')) {
+            $after .= format_node(parse_anonymous_parameters($lexer));
+        }
+
+        if ($lexer->follows('[')) {
+            $lexer->get();
+            $after .= '[';
+            $after .= expect($lexer, 'num')['content'];
+            expect($lexer, ']');
+            $after .= ']';
+        }
+        expect($lexer, ';', 'typedef');
     }
 
-    $node->type = parse_type($lexer, 'typedef');
-    while ($lexer->follows('*')) {
-        $node->before .= $lexer->get()['kind'];
-    }
-    $node->alias = parse_identifier($lexer);
-
-    if ($lexer->follows('(')) {
-        $node->after .= format_node(parse_anonymous_parameters($lexer));
-    }
-
-    if ($lexer->follows('[')) {
-        $lexer->get();
-        $node->after .= '[';
-        $node->after .= expect($lexer, 'num')['content'];
-        expect($lexer, ']');
-        $node->after .= ']';
-    }
-
-    expect($lexer, ';', 'typedef');
-    return $node;
+    return [
+        'kind' => 'c_typedef',
+        'type' => $type,
+        'before' => $before,
+        'after' => $after,
+        'alias' => $alias
+    ];
 }
 
 function parse_statement($lexer)
@@ -566,19 +579,20 @@ function parse_form($lexer)
 
 function parse_switch($lexer)
 {
-    $node = new c_switch;
     expect($lexer, 'switch');
     expect($lexer, '(');
-    $node->value = parse_expression($lexer);
+    $value = parse_expression($lexer);
+    $cases = [];
+    $default = null;
     expect($lexer, ')');
     expect($lexer, '{');
     while ($lexer->follows('case')) {
         expect($lexer, 'case');
-        $value = null;
+        $case_value = null;
         if ($lexer->follows('word')) {
-            $value = parse_identifier($lexer);
+            $case_value = parse_identifier($lexer);
         } else {
-            $value = parse_literal($lexer);
+            $case_value = parse_literal($lexer);
         }
         expect($lexer, ':');
         $until = ['case', 'break', 'default', '}'];
@@ -586,8 +600,8 @@ function parse_switch($lexer)
         while ($lexer->more() && !in_array($lexer->peek()['kind'], $until)) {
             $statements[] = parse_statement($lexer);
         }
-        $node->cases[] = [
-            'value' => $value,
+        $cases[] = [
+            'value' => $case_value,
             'statements' => $statements
         ];
     }
@@ -598,10 +612,15 @@ function parse_switch($lexer)
         while ($lexer->more() && $lexer->peek()['kind'] != '}') {
             $def[] = parse_statement($lexer);
         }
-        $node->default = $def;
+        $default = $def;
     }
     expect($lexer, '}');
-    return $node;
+    return [
+        'kind' => 'c_switch',
+        'value' => $value,
+        'cases' => $cases,
+        'default' => $default
+    ];
 }
 
 function parse_literal($lexer)
@@ -650,15 +669,17 @@ function parse_if($lexer)
 
 function parse_struct_literal($lexer)
 {
-    $node = new c_struct_literal;
+    $members = [];
     expect($lexer, '{', 'struct literal');
     while (true) {
-        $member = new c_struct_literal_member;
         expect($lexer, '.', 'struct literal member');
-        $member->name = parse_identifier($lexer);
+        $member_name = parse_identifier($lexer);
         expect($lexer, '=', 'struct literal member');
-        $member->value = parse_expression($lexer);
-        $node->members[] = $member;
+        $member_value = parse_expression($lexer);
+        $members[] = [
+            'name' => $member_name,
+            'value' => $member_value
+        ];
         if ($lexer->follows(',')) {
             $lexer->get();
             continue;
@@ -667,7 +688,10 @@ function parse_struct_literal($lexer)
         }
     }
     expect($lexer, '}', 'struct literal');
-    return $node;
+    return [
+        'kind' => 'c_struct_literal',
+        'members' => $members
+    ];
 }
 
 function parse_anonymous_typeform($lexer)

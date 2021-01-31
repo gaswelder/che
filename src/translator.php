@@ -8,14 +8,14 @@ function translate(c_module $m)
 
 function translate_node($node)
 {
+    if (is_array($node) && $node['kind'] == 'c_typedef') {
+        return translate_typedef($node);
+    }
     if ($node instanceof c_import) {
         return translate_import($node);
     }
     if ($node instanceof c_function_declaration) {
         return translate_function_declaration($node);
-    }
-    if ($node instanceof c_typedef) {
-        return translate_typedef($node);
     }
     if ($node instanceof c_enum) {
         return translate_enum($node);
@@ -41,7 +41,7 @@ function get_module_synopsis(c_compat_module $node)
     $elements = [];
 
     $exports = [
-        c_typedef::class,
+        'c_typedef',
         c_compat_struct_definition::class,
         c_compat_struct_forward_declaration::class,
         c_compat_macro::class,
@@ -52,7 +52,12 @@ function get_module_synopsis(c_compat_module $node)
             $elements[] = $element->forward_declaration();
             continue;
         }
-        if (in_array(get_class($element), $exports)) {
+        if (is_array($element)) {
+            $cn = $element['kind'];
+        } else {
+            $cn = get_class($element);
+        }
+        if (in_array($cn, $exports)) {
             $elements[] = $element;
             continue;
         }
@@ -69,21 +74,24 @@ function translate_enum(c_enum $node)
     return [$node->translate()];
 }
 
-function translate_typedef(c_typedef $node)
+function translate_typedef($node)
 {
-    if ($node->type instanceof c_composite_type) {
-        $struct_name = '__' . $node->name() . '_struct';
-        $typedef = new c_typedef;
-        $typedef->alias = $node->alias;
-        $typedef->type = [
-            'kind' => 'c_type',
-            'const' => false,
-            'type' => 'struct ' . $struct_name
-        ];
+    if ($node['type'] instanceof c_composite_type) {
+        $struct_name = '__' . format_node($node['alias']) . '_struct';
         return [
             new c_compat_struct_forward_declaration(c_identifier::make($struct_name)),
-            new c_compat_struct_definition($struct_name, $node->type),
-            $typedef
+            new c_compat_struct_definition($struct_name, $node['type']),
+            [
+                'kind' => 'c_typedef',
+                'before' => null,
+                'after' => null,
+                'type' => [
+                    'kind' => 'c_type',
+                    'const' => false,
+                    'type' => 'struct ' . $struct_name
+                ],
+                'alias' => $node['alias']
+            ]
         ];
     }
     return [$node];
@@ -137,14 +145,18 @@ function translate_module($che_elements)
 function hoist_declarations($elements)
 {
     $get_order = function ($element) {
-        $cn = get_class($element);
+        if (is_array($element)) {
+            $cn = $element['kind'];
+        } else {
+            $cn = get_class($element);
+        }
         if (in_array($cn, [c_compat_include::class, c_compat_macro::class])) {
             return 0;
         }
         if ($cn === c_compat_struct_forward_declaration::class) {
             return 1;
         }
-        if ($cn === c_typedef::class) {
+        if ($cn === 'c_typedef') {
             return 2;
         }
         if (in_array($cn, [c_compat_struct_definition::class, c_compat_enum::class])) {
@@ -170,7 +182,7 @@ function deduplicate_synopsis($elements)
     $set = [];
 
     foreach ($elements as $element) {
-        if ($element instanceof c_typedef || $element instanceof c_compat_struct_definition) {
+        if ((is_array($element) && $element['kind'] === 'c_typedef') || $element instanceof c_compat_struct_definition) {
             $s = format_node($element);
             if (isset($set[$s])) {
                 continue;

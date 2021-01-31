@@ -18,6 +18,14 @@ function format_node($node)
                 return format_sizeof($node);
             case 'c_return':
                 return format_return($node);
+            case 'c_typedef':
+                return format_typedef($node);
+            case 'c_switch':
+                return format_switch($node);
+            case 'c_module_variable':
+                return format_module_variable($node);
+            case 'c_struct_literal':
+                return format_struct_literal($node);
             default:
                 throw new Exception("Unknown node type: " . $node['kind']);
         }
@@ -90,22 +98,12 @@ function format_node($node)
             return format_literal($node);
         case c_module::class:
             return format_module($node);
-        case c_module_variable::class:
-            return format_module_variable($node);
         case c_postfix_operator::class:
             return format_postfix_operator($node);
         case c_prefix_operator::class:
             return format_prefix_operator($node);
         case c_struct_fieldlist::class:
             return format_struct_fieldlist($node);
-        case c_struct_literal_member::class:
-            return format_struct_literal_member($node);
-        case c_struct_literal::class:
-            return format_struct_literal($node);
-        case c_switch::class:
-            return format_switch($node);
-        case c_typedef::class:
-            return format_typedef($node);
         default:
             throw new Exception("don't know how to format '$cn'");
     }
@@ -418,9 +416,9 @@ function format_module($node)
 
 function format_module_variable($node)
 {
-    return format_node($node->type)
-        . ' ' . format_node($node->form)
-        . ' = ' . format_node($node->value)
+    return format_node($node['type'])
+        . ' ' . format_node($node['form'])
+        . ' = ' . format_node($node['value'])
         . ";\n";
 }
 
@@ -461,16 +459,11 @@ function format_struct_fieldlist($node)
     return $s;
 }
 
-function format_struct_literal_member($node)
-{
-    return '.' . format_node($node->name) . ' = ' . format_node($node->value);
-}
-
 function format_struct_literal($node)
 {
     $s = "{\n";
-    foreach ($node->members as $member) {
-        $s .= "\t" . format_node($member) . ",\n";
+    foreach ($node['members'] as $member) {
+        $s .= "\t" . '.' . format_node($member['name']) . ' = ' . format_node($member['value']) . ",\n";
     }
     $s .= "}\n";
     return $s;
@@ -479,33 +472,33 @@ function format_struct_literal($node)
 function format_switch($node)
 {
     $s = '';
-    foreach ($node->cases as $case) {
+    foreach ($node['cases'] as $case) {
         $s .= 'case ' . format_node($case['value']) . ": {\n";
         foreach ($case['statements'] as $statement) {
             $s .= format_node($statement) . ";\n";
         }
         $s .= "}\n";
     }
-    if ($node->default) {
+    if ($node['default']) {
         $s .= "default: {\n";
-        foreach ($node->default as $statement) {
+        foreach ($node['default'] as $statement) {
             $s .= format_node($statement) . ";\n";
         }
         $s .= "}\n";
     }
     return sprintf(
         "switch (%s) {\n%s\n}",
-        format_node($node->value),
+        format_node($node['value']),
         indent($s)
     );
 }
 
 function format_typedef($node)
 {
-    return 'typedef ' . format_node($node->type) . ' '
-        . $node->before
-        . format_node($node->alias)
-        . $node->after
+    return 'typedef ' . format_node($node['type']) . ' '
+        . $node['before']
+        . format_node($node['alias'])
+        . $node['after']
         . ";\n";
 }
 

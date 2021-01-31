@@ -400,8 +400,8 @@ class c_module
     {
         $list = [];
         foreach ($this->elements as $element) {
-            if ($element instanceof c_typedef) {
-                $list[] = $element->name();
+            if (is_array($element) && $element['kind'] == 'c_typedef') {
+                $list[] = format_node($element['alias']);
             }
         }
         return $list;
@@ -417,20 +417,6 @@ class c_module
         $result = new self;
         $result->elements = array_merge($this->elements, $that->elements);
         return $result;
-    }
-}
-
-class c_module_variable
-{
-    public $type;
-    public $form;
-    public $value;
-
-    function __construct($type, $form, $value)
-    {
-        $this->type = $type;
-        $this->form = $form;
-        $this->value = $value;
     }
 }
 
@@ -462,41 +448,4 @@ class c_struct_fieldlist
 {
     public $type;
     public $forms = [];
-}
-
-class c_struct_literal_member
-{
-    public $name;
-    public $value;
-}
-
-class c_struct_literal
-{
-    public $members = [];
-}
-
-class c_switch_case
-{
-    public $value;
-    public $statements = [];
-}
-
-class c_switch
-{
-    public $value;
-    public $cases = [];
-    public $default;
-}
-
-class c_typedef
-{
-    public $type;
-    public $before = '';
-    public $alias;
-    public $after = '';
-
-    function name()
-    {
-        return format_node($this->alias);
-    }
 }
