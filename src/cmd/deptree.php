@@ -16,7 +16,7 @@ function cmd_deptree($argv)
 function build_tree(c_module $module)
 {
     $tree = [];
-    $imps = $module->imports();
+    $imps = module_imports($module);
     foreach ($imps as $imp) {
         $tree[] = [$imp->name(), build_tree(resolve_import($imp))];
     }

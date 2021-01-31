@@ -50,7 +50,7 @@ function parse_path($module_path)
     // Merge all partial modules into one.
     $result = array_reduce($modules, function ($a, $b) {
         if (!$a) return $b;
-        return $a->merge($b);
+        return merge_modules($a, $b);
     }, null);
 
     return $result;
@@ -59,7 +59,7 @@ function parse_path($module_path)
 function resolve_deps(c_module $m)
 {
     $deps = [$m];
-    foreach ($m->imports() as $imp) {
+    foreach (module_imports($m) as $imp) {
         $sub = resolve_import($imp);
         $deps = array_merge($deps, resolve_deps($sub));
     }

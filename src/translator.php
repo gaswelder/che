@@ -2,7 +2,7 @@
 
 function translate(c_module $m)
 {
-    [$elements, $link] = translate_module($m->elements());
+    [$elements, $link] = translate_module($m->elements);
     return new c_compat_module($elements, $link);
 }
 

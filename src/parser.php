@@ -15,7 +15,7 @@ function parse_module_element($lexer)
         case 'import':
             $import = parse_import($lexer);
             $m = resolve_import($import);
-            $lexer->typenames = array_merge($lexer->typenames, $m->types());
+            $lexer->typenames = array_merge($lexer->typenames, module_types($m));
             return $import;
         case 'typedef':
             return parse_typedef($lexer);
