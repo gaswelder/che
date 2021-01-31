@@ -387,20 +387,24 @@ function parse_composite_type($lexer)
 
 function parse_struct_fieldlist($lexer)
 {
-    $node = new c_struct_fieldlist;
     if ($lexer->follows('struct')) {
         throw new Exception("can't parse nested structs, please consider a typedef");
     }
-    $node->type = parse_type($lexer);
-    $node->forms[] = parse_form($lexer);
+    $type = parse_type($lexer);
+    $forms = [];
+    $forms[] = parse_form($lexer);
 
     while ($lexer->follows(',')) {
         $lexer->get();
-        $node->forms[] = parse_form($lexer);
+        $forms[] = parse_form($lexer);
     }
 
     expect($lexer, ';');
-    return $node;
+    return [
+        'kind' => 'c_struct_fieldlist',
+        'type' => $type,
+        'forms' => $forms
+    ];
 }
 
 function parse_defer($lexer)
@@ -464,7 +468,11 @@ function parse_enum($lexer, $pub)
 
 function parse_for($lexer)
 {
-    $node = new c_for;
+    $init = null;
+    $condition = null;
+    $action = null;
+    $body = null;
+
     expect($lexer, 'for');
     expect($lexer, '(');
 
@@ -473,23 +481,29 @@ function parse_for($lexer)
         $name = parse_identifier($lexer);
         expect($lexer, '=');
         $value = parse_expression($lexer);
-        $node->init = [
+        $init = [
             'kind' => 'c_loop_counter_declaration',
             'type' => $type,
             'name' => $name,
             'value' => $value
         ];
     } else {
-        $node->init = parse_expression($lexer);
+        $init = parse_expression($lexer);
     }
 
     expect($lexer, ';');
-    $node->condition = parse_expression($lexer);
+    $condition = parse_expression($lexer);
     expect($lexer, ';');
-    $node->action = parse_expression($lexer);
+    $action = parse_expression($lexer);
     expect($lexer, ')');
-    $node->body = parse_body($lexer);
-    return $node;
+    $body = parse_body($lexer);
+    return [
+        'kind' => 'c_for',
+        'init' => $init,
+        'condition' => $condition,
+        'action' => $action,
+        'body' => $body
+    ];
 }
 
 function parse_type($lexer, $comment = null)
@@ -654,17 +668,24 @@ function parse_identifier($lexer)
 
 function parse_if($lexer)
 {
-    $node = new c_if;
+    $condition = null;
+    $body = null;
+    $else = null;
     expect($lexer, 'if', 'if statement');
     expect($lexer, '(', 'if statement');
-    $node->condition = parse_expression($lexer);
+    $condition = parse_expression($lexer);
     expect($lexer, ')', 'if statement');
-    $node->body = parse_body($lexer);
+    $body = parse_body($lexer);
     if ($lexer->follows('else')) {
         $lexer->get();
-        $node->else = parse_body($lexer);
+        $else = parse_body($lexer);
     }
-    return $node;
+    return [
+        'kind' => 'c_if',
+        'condition' => $condition,
+        'body' => $body,
+        'else' => $else
+    ];
 }
 
 function parse_struct_literal($lexer)

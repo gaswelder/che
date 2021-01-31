@@ -26,6 +26,12 @@ function format_node($node)
                 return format_module_variable($node);
             case 'c_struct_literal':
                 return format_struct_literal($node);
+            case 'c_for':
+                return format_for($node);
+            case 'c_if':
+                return format_if($node);
+            case 'c_struct_fieldlist':
+                return format_struct_fieldlist($node);
             default:
                 throw new Exception("Unknown node type: " . $node['kind']);
         }
@@ -76,8 +82,6 @@ function format_node($node)
             return format_enum($node);
         case c_form::class:
             return format_form($node);
-        case c_for::class:
-            return format_for($node);
         case c_function_arguments::class:
             return format_function_arguments($node);
         case c_function_call::class:
@@ -90,8 +94,6 @@ function format_node($node)
             return format_function_parameters($node);
         case c_identifier::class:
             return format_identifier($node);
-        case c_if::class:
-            return format_if($node);
         case c_import::class:
             return format_import($node);
         case c_literal::class:
@@ -102,8 +104,6 @@ function format_node($node)
             return format_postfix_operator($node);
         case c_prefix_operator::class:
             return format_prefix_operator($node);
-        case c_struct_fieldlist::class:
-            return format_struct_fieldlist($node);
         default:
             throw new Exception("don't know how to format '$cn'");
     }
@@ -304,10 +304,10 @@ function format_for($node)
 {
     return sprintf(
         'for (%s; %s; %s) %s',
-        format_node($node->init),
-        format_node($node->condition),
-        format_node($node->action),
-        format_node($node->body)
+        format_node($node['init']),
+        format_node($node['condition']),
+        format_node($node['action']),
+        format_node($node['body'])
     );
 }
 
@@ -381,9 +381,9 @@ function format_identifier($node)
 
 function format_if($node)
 {
-    $s = sprintf('if (%s) %s', format_node($node->condition), format_node($node->body));
-    if ($node->else) {
-        $s .= ' else ' . format_node($node->else);
+    $s = sprintf('if (%s) %s', format_node($node['condition']), format_node($node['body']));
+    if ($node['else']) {
+        $s .= ' else ' . format_node($node['else']);
     }
     return $s;
 }
@@ -450,8 +450,8 @@ function format_sizeof($node)
 
 function format_struct_fieldlist($node)
 {
-    $s = format_node($node->type) . ' ';
-    foreach ($node->forms as $i => $form) {
+    $s = format_node($node['type']) . ' ';
+    foreach ($node['forms'] as $i => $form) {
         if ($i > 0) $s .= ', ';
         $s .= format_node($form);
     }

@@ -249,14 +249,6 @@ class c_form
     }
 }
 
-class c_for
-{
-    public $init;
-    public $condition;
-    public $action;
-    public $body;
-}
-
 class c_function_arguments
 {
     public $arguments = [];
@@ -351,13 +343,6 @@ class c_identifier
     }
 }
 
-class c_if
-{
-    public $condition;
-    public $body;
-    public $else = null;
-}
-
 class c_import
 {
     public $path;
@@ -442,10 +427,4 @@ class c_prefix_operator
         $this->operator = $operator;
         $this->operand = $operand;
     }
-}
-
-class c_struct_fieldlist
-{
-    public $type;
-    public $forms = [];
 }
