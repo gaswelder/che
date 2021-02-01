@@ -216,7 +216,12 @@ function parse_atom($lexer)
 
     if (is_prefix_op($lexer->peek()['kind'])) {
         $op = $lexer->get()['kind'];
-        return new c_prefix_operator($op, parse_expression($lexer, operator_strength('prefix')));
+        $operand = parse_expression($lexer, operator_strength('prefix'));
+        return [
+            'kind' => 'c_prefix_operator',
+            'operator' => $op,
+            'operand' => $operand
+        ];
     }
 
     if ($lexer->peek()['kind'] == 'word') {
@@ -305,15 +310,19 @@ function operator_strength($op)
     return call_rust_mem("operator_strength", $op);
 }
 
-function parse_array_literal_member($lexer)
+function parse_array_literal($lexer)
 {
-    if ($lexer->follows('{')) {
-        return parse_array_literal($lexer);
+    $node = new c_array_literal;
+    expect($lexer, '{', 'array literal');
+    if (!$lexer->follows('}')) {
+        $node->values[] = parse_array_literal_entry($lexer);
+        while ($lexer->follows(',')) {
+            $lexer->get();
+            $node->values[] = parse_array_literal_entry($lexer);
+        }
     }
-    if ($lexer->follows('word')) {
-        return parse_identifier($lexer);
-    }
-    return parse_literal($lexer);
+    expect($lexer, '}', 'array literal');
+    return $node;
 }
 
 function parse_array_literal_entry($lexer)
@@ -333,19 +342,15 @@ function parse_array_literal_entry($lexer)
     return $node;
 }
 
-function parse_array_literal($lexer)
+function parse_array_literal_member($lexer)
 {
-    $node = new c_array_literal;
-    expect($lexer, '{', 'array literal');
-    if (!$lexer->follows('}')) {
-        $node->values[] = parse_array_literal_entry($lexer);
-        while ($lexer->follows(',')) {
-            $lexer->get();
-            $node->values[] = parse_array_literal_entry($lexer);
-        }
+    if ($lexer->follows('{')) {
+        return parse_array_literal($lexer);
     }
-    expect($lexer, '}', 'array literal');
-    return $node;
+    if ($lexer->follows('word')) {
+        return parse_identifier($lexer);
+    }
+    return parse_literal($lexer);
 }
 
 function parse_body($lexer)
@@ -365,9 +370,19 @@ function parse_body($lexer)
 
 function parse_compat_macro($lexer)
 {
-    $node = new c_compat_macro;
-    $node->content = expect($lexer, 'macro')['content'];
-    return $node;
+    $content = expect($lexer, 'macro')['content'];
+    $pos = strpos($content, ' ');
+    if ($pos === false) {
+        throw new Exception("can't get macro name from '$content'");
+    }
+    $name = substr($content, 1, $pos - 1);
+    $value = substr($content, $pos + 1);
+
+    return [
+        'kind' => 'c_compat_macro',
+        'name' => $name,
+        'value' => $value
+    ];
 }
 
 function parse_composite_type($lexer)
@@ -661,9 +676,11 @@ function parse_literal($lexer)
 function parse_identifier($lexer)
 {
     $tok = expect($lexer, 'word');
-    $node = new c_identifier;
-    $node->name = $tok['content'];
-    return $node;
+    $name = $tok['content'];
+    return [
+        'kind' => 'c_identifier',
+        'name' => $name
+    ];
 }
 
 function parse_if($lexer)
@@ -717,12 +734,16 @@ function parse_struct_literal($lexer)
 
 function parse_anonymous_typeform($lexer)
 {
-    $node = new c_anonymous_typeform;
-    $node->type = parse_type($lexer);
+    $type = parse_type($lexer);
+    $ops = [];
     while ($lexer->follows('*')) {
-        $node->ops[] = $lexer->get()['kind'];
+        $ops[] = $lexer->get()['kind'];
     }
-    return $node;
+    return [
+        'kind' => 'c_anonymous_typeform',
+        'type' => $type,
+        'ops' => $ops
+    ];
 }
 
 function parse_variable_declaration($lexer)

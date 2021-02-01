@@ -32,6 +32,14 @@ function format_node($node)
                 return format_if($node);
             case 'c_struct_fieldlist':
                 return format_struct_fieldlist($node);
+            case 'c_anonymous_typeform':
+                return format_anonymous_typeform($node);
+            case 'c_identifier':
+                return $node['name'];
+            case 'c_compat_macro':
+                return "#$node[name] $node[value]\n";
+            case 'c_prefix_operator':
+                return format_prefix_operator($node);
             default:
                 throw new Exception("Unknown node type: " . $node['kind']);
         }
@@ -40,8 +48,6 @@ function format_node($node)
     switch ($cn) {
         case c_anonymous_parameters::class:
             return format_anonymous_parameters($node);
-        case c_anonymous_typeform::class:
-            return format_anonymous_typeform($node);
         case c_array_index::class:
             return format_array_index($node);
         case c_array_literal_entry::class:
@@ -60,8 +66,6 @@ function format_node($node)
             return format_compat_function_forward_declaration($node);
         case c_compat_include::class:
             return format_compat_include($node);
-        case c_compat_macro::class:
-            return format_compat_macro($node);
         case c_compat_module::class:
             return format_compat_module($node);
         case c_compat_struct_definition::class:
@@ -92,8 +96,6 @@ function format_node($node)
             return format_function_parameter($node);
         case c_function_parameters::class:
             return format_function_parameters($node);
-        case c_identifier::class:
-            return format_identifier($node);
         case c_import::class:
             return format_import($node);
         case c_literal::class:
@@ -102,8 +104,6 @@ function format_node($node)
             return format_module($node);
         case c_postfix_operator::class:
             return format_postfix_operator($node);
-        case c_prefix_operator::class:
-            return format_prefix_operator($node);
         default:
             throw new Exception("don't know how to format '$cn'");
     }
@@ -122,8 +122,8 @@ function format_anonymous_parameters($node)
 
 function format_anonymous_typeform($node)
 {
-    $s = format_node($node->type);
-    foreach ($node->ops as $op) {
+    $s = format_node($node['type']);
+    foreach ($node['ops'] as $op) {
         $s .= $op;
     }
     return $s;
@@ -215,11 +215,6 @@ function format_compat_include($node)
     return "#include $node->name\n";
 }
 
-function format_compat_macro($node)
-{
-    return $node->content . "\n";
-}
-
 function format_compat_module($node)
 {
     $s = '';
@@ -236,7 +231,7 @@ function format_compat_struct_definition($node)
 
 function format_compat_struct_forward_declaration($node)
 {
-    return 'struct ' . format_node($node->name) . ";\n";
+    return 'struct ' . $node->name . ";\n";
 }
 
 function format_composite_type($node)
@@ -374,11 +369,6 @@ function format_function_parameters($node)
     return $s;
 }
 
-function format_identifier($node)
-{
-    return $node->name;
-}
-
 function format_if($node)
 {
     $s = sprintf('if (%s) %s', format_node($node['condition']), format_node($node['body']));
@@ -429,10 +419,12 @@ function format_postfix_operator($node)
 
 function format_prefix_operator($node)
 {
-    if ($node->operand instanceof c_binary_op || $node->operand instanceof c_cast) {
-        return $node->operator . '(' . format_node($node->operand) . ')';
+    $operand = $node['operand'];
+    $operator = $node['operator'];
+    if ($operand instanceof c_binary_op || $operand instanceof c_cast) {
+        return $operator . '(' . format_node($operand) . ')';
     }
-    return $node->operator . format_node($node->operand);
+    return $operator . format_node($operand);
 }
 
 function format_return($node)

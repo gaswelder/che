@@ -5,12 +5,6 @@ class c_anonymous_parameters
     public $forms = [];
 }
 
-class c_anonymous_typeform
-{
-    public $type;
-    public $ops = [];
-}
-
 class c_array_index
 {
     public $array;
@@ -123,33 +117,6 @@ class c_compat_include
     function __construct($name)
     {
         $this->name = $name;
-    }
-}
-
-class c_compat_macro
-{
-    public $content;
-
-    public function kv()
-    {
-        $pos = strpos($this->content, ' ');
-        if ($pos === false) {
-            throw new Exception("can't get macro name from '$this->content'");
-        }
-        return [
-            substr($this->content, 1, $pos - 1),
-            substr($this->content, $pos + 1)
-        ];
-    }
-
-    function name()
-    {
-        return $this->kv()[0];
-    }
-
-    function value()
-    {
-        return $this->kv()[1];
     }
 }
 
@@ -331,18 +298,6 @@ class c_function_parameters
     }
 }
 
-class c_identifier
-{
-    public $name;
-
-    static function make(string $name)
-    {
-        $self = new self;
-        $self->name = $name;
-        return $self;
-    }
-}
-
 class c_import
 {
     public $path;
@@ -373,17 +328,5 @@ class c_postfix_operator
     {
         $this->operand = $operand;
         $this->operator = $operator;
-    }
-}
-
-class c_prefix_operator
-{
-    public $operand;
-    public $operator;
-
-    function __construct($operator, $operand)
-    {
-        $this->operator = $operator;
-        $this->operand = $operand;
     }
 }

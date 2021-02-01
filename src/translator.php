@@ -8,6 +8,8 @@ function translate(c_module $m)
 
 function translate_node($node)
 {
+    $cn = is_array($node) ? $node['kind'] : get_class($node);
+
     if (is_array($node) && $node['kind'] == 'c_typedef') {
         return translate_typedef($node);
     }
@@ -20,10 +22,10 @@ function translate_node($node)
     if ($node instanceof c_enum) {
         return translate_enum($node);
     }
-    if ($node instanceof c_compat_macro && $node->name() == 'type') {
+    if ($cn === 'c_compat_macro' && $node['name'] == 'type') {
         return [];
     }
-    if ($node instanceof c_compat_macro && $node->name() == 'link') {
+    if ($cn === 'c_compat_macro' && $node['name'] == 'link') {
         return [];
     }
     return [$node];
@@ -44,7 +46,7 @@ function get_module_synopsis(c_compat_module $node)
         'c_typedef',
         c_compat_struct_definition::class,
         c_compat_struct_forward_declaration::class,
-        c_compat_macro::class,
+        'c_compat_macro',
     ];
 
     foreach ($node->elements as $element) {
@@ -79,7 +81,7 @@ function translate_typedef($node)
     if ($node['type'] instanceof c_composite_type) {
         $struct_name = '__' . format_node($node['alias']) . '_struct';
         return [
-            new c_compat_struct_forward_declaration(c_identifier::make($struct_name)),
+            new c_compat_struct_forward_declaration($struct_name),
             new c_compat_struct_definition($struct_name, $node['type']),
             [
                 'kind' => 'c_typedef',
@@ -110,8 +112,8 @@ function translate_module($che_elements)
 {
     $link = [];
     foreach ($che_elements as $node) {
-        if ($node instanceof c_compat_macro && $node->name() == 'link') {
-            $link[] = $node->value();
+        if (is_array($node) && $node['kind'] === 'c_compat_macro' && $node['name'] == 'link') {
+            $link[] = $node['value'];
         }
     }
 
@@ -150,7 +152,7 @@ function hoist_declarations($elements)
         } else {
             $cn = get_class($element);
         }
-        if (in_array($cn, [c_compat_include::class, c_compat_macro::class])) {
+        if (in_array($cn, [c_compat_include::class, 'c_compat_macro'])) {
             return 0;
         }
         if ($cn === c_compat_struct_forward_declaration::class) {
