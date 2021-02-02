@@ -2,9 +2,12 @@
 
 function parse_module($lexer)
 {
-    $m = new c_module;
+    $m = [
+        'kind' => 'c_module',
+        'elements' => []
+    ];
     while ($lexer->more()) {
-        $m->elements[] = parse_module_element($lexer);
+        $m['elements'][] = parse_module_element($lexer);
     }
     return $m;
 }
@@ -83,10 +86,11 @@ function parse_import($lexer)
 {
     expect($lexer, 'import');
     $tok = expect($lexer, 'string');
-    // expect($lexer, ';');
-    $node = new c_import;
-    $node->path = $tok['content'];
-    return $node;
+    $path = $tok['content'];
+    return [
+        'kind' => 'c_import',
+        'path' => $path
+    ];
 }
 
 function parse_typedef($lexer)
@@ -255,7 +259,11 @@ function parse_atom($lexer)
 
         if (is_postfix_op($lexer->peek()['kind'])) {
             $op = $lexer->get()['kind'];
-            $result = new c_postfix_operator($result, $op);
+            $result = [
+                'kind' => 'c_postfix_operator',
+                'operand' => $result,
+                'operator' => $op
+            ];
             continue;
         }
         break;
@@ -655,20 +663,26 @@ function parse_switch($lexer)
 function parse_literal($lexer)
 {
     $types = ['string', 'num', 'char'];
-    $node = new c_literal;
     foreach ($types as $type) {
         if ($lexer->peek()['kind'] != $type) {
             continue;
         }
-        $node->value = $lexer->get()['content'];
-        $node->type = $type;
-        return $node;
+        $value = $lexer->get()['content'];
+        return [
+            'kind' => 'c_literal',
+            'type' => $type,
+            'value' => $value
+        ];
     }
     if ($lexer->peek()['kind'] == 'word' && $lexer->peek()['content'] == 'NULL') {
         $lexer->get();
-        $node->type = 'null';
-        $node->value = 'NULL';
-        return $node;
+        $type = 'null';
+        $value = 'NULL';
+        return [
+            'kind' => 'c_literal',
+            'type' => $type,
+            'value' => $value
+        ];
     }
     throw new Exception("literal expected, got " . $lexer->peek());
 }

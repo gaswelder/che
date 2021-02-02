@@ -1,12 +1,11 @@
 <?php
 
-function resolve_import(c_import $import)
+function resolve_import($import)
 {
-    $name = $import->name();
+    $name = $import['path'];
     $paths = [
-        'lib/' . $name . '.c',
+        "lib/$name.c",
         "lib/$name",
-        // $name
     ];
     foreach ($paths as $path) {
         if (file_exists($path)) {
@@ -49,14 +48,19 @@ function parse_path($module_path)
 
     // Merge all partial modules into one.
     $result = array_reduce($modules, function ($a, $b) {
-        if (!$a) return $b;
-        return merge_modules($a, $b);
+        if (!$a) {
+            return $b;
+        }
+        return [
+            'kind' => 'c_module',
+            'elements' => array_merge($a['elements'], $b['elements'])
+        ];
     }, null);
 
     return $result;
 }
 
-function resolve_deps(c_module $m)
+function resolve_deps($m)
 {
     $deps = [$m];
     foreach (module_imports($m) as $imp) {

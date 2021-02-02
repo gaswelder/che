@@ -38,7 +38,7 @@ function build($modules, $name)
 
     $link = ['m'];
     foreach ($modules as $module) {
-        $link = array_unique(array_merge($link, $module->link()));
+        $link = array_unique(array_merge($link, $module['link']));
     }
 
     $cmd = 'c99 -Wall -Wextra -Werror -pedantic -pedantic-errors';

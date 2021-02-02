@@ -13,12 +13,12 @@ function cmd_deptree($argv)
     echo implode("\n", $r) . "\n";
 }
 
-function build_tree(c_module $module)
+function build_tree($module)
 {
     $tree = [];
     $imports = module_imports($module);
     foreach ($imports as $import) {
-        $tree[] = [$import->name(), build_tree(resolve_import($import))];
+        $tree[] = [$import->path, build_tree(resolve_import($import))];
     }
     return $tree;
 }

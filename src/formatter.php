@@ -40,6 +40,16 @@ function format_node($node)
                 return "#$node[name] $node[value]\n";
             case 'c_prefix_operator':
                 return format_prefix_operator($node);
+            case 'c_postfix_operator':
+                return format_postfix_operator($node);
+            case 'c_module':
+                return format_module($node);
+            case 'c_compat_module':
+                return format_compat_module($node);
+            case 'c_literal':
+                return format_literal($node);
+            case 'c_import':
+                return format_import($node);
             default:
                 throw new Exception("Unknown node type: " . $node['kind']);
         }
@@ -66,8 +76,6 @@ function format_node($node)
             return format_compat_function_forward_declaration($node);
         case c_compat_include::class:
             return format_compat_include($node);
-        case c_compat_module::class:
-            return format_compat_module($node);
         case c_compat_struct_definition::class:
             return format_compat_struct_definition($node);
         case c_compat_struct_forward_declaration::class:
@@ -96,14 +104,6 @@ function format_node($node)
             return format_function_parameter($node);
         case c_function_parameters::class:
             return format_function_parameters($node);
-        case c_import::class:
-            return format_import($node);
-        case c_literal::class:
-            return format_literal($node);
-        case c_module::class:
-            return format_module($node);
-        case c_postfix_operator::class:
-            return format_postfix_operator($node);
         default:
             throw new Exception("don't know how to format '$cn'");
     }
@@ -226,7 +226,7 @@ function format_compat_include($node)
 function format_compat_module($node)
 {
     $s = '';
-    foreach ($node->elements as $node) {
+    foreach ($node['elements'] as $node) {
         $s .= format_node($node);
     }
     return $s;
@@ -388,25 +388,25 @@ function format_if($node)
 
 function format_import($node)
 {
-    return "import $node->path\n";
+    return "import $node[path]\n";
 }
 
 function format_literal($node)
 {
-    switch ($node->type) {
+    switch ($node['type']) {
         case 'string':
-            return '"' . $node->value . '"';
+            return '"' . $node['value'] . '"';
         case 'char':
-            return '\'' . $node->value . '\'';
+            return '\'' . $node['value'] . '\'';
         default:
-            return $node->value;
+            return $node['value'];
     }
 }
 
 function format_module($node)
 {
     $s = '';
-    foreach ($node->elements as $cnode) {
+    foreach ($node['elements'] as $cnode) {
         $s .= format_node($cnode);
     }
     return $s;
@@ -422,7 +422,7 @@ function format_module_variable($node)
 
 function format_postfix_operator($node)
 {
-    return format_node($node->operand) . $node->operator;
+    return format_node($node['operand']) . $node['operator'];
 }
 
 function format_prefix_operator($node)

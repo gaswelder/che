@@ -112,23 +112,6 @@ class c_compat_include
     }
 }
 
-class c_compat_module
-{
-    public $elements = [];
-    public $link = [];
-
-    function __construct($elements, $link)
-    {
-        $this->elements = $elements;
-        $this->link = $link;
-    }
-
-    function link()
-    {
-        return $this->link;
-    }
-}
-
 class c_compat_struct_definition
 {
     public $name;
@@ -247,37 +230,4 @@ class c_function_parameter
 class c_function_parameters
 {
     public $parameters = [];
-}
-
-class c_import
-{
-    public $path;
-
-    function name()
-    {
-        return $this->path;
-    }
-}
-
-class c_literal
-{
-    public $value;
-    public $type;
-}
-
-class c_module
-{
-    public $elements = [];
-}
-
-class c_postfix_operator
-{
-    public $operand;
-    public $operator;
-
-    function __construct($operand, $operator)
-    {
-        $this->operand = $operand;
-        $this->operator = $operator;
-    }
 }

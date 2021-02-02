@@ -1,9 +1,13 @@
 <?php
 
-function translate(c_module $m)
+function translate($module)
 {
-    [$elements, $link] = translate_module($m->elements);
-    return new c_compat_module($elements, $link);
+    [$elements, $link] = translate_module($module['elements']);
+    return [
+        'kind' => 'c_compat_module',
+        'elements' => $elements,
+        'link' => $link
+    ];
 }
 
 function translate_node($node)
@@ -13,7 +17,7 @@ function translate_node($node)
     if (is_array($node) && $node['kind'] == 'c_typedef') {
         return translate_typedef($node);
     }
-    if ($node instanceof c_import) {
+    if ($cn === 'c_import') {
         return translate_import($node);
     }
     if ($node instanceof c_function_declaration) {
@@ -34,14 +38,14 @@ function translate_node($node)
     return [$node];
 }
 
-function translate_import(c_import $node)
+function translate_import($node)
 {
     $module = resolve_import($node);
     $compat = translate($module);
     return get_module_synopsis($compat);
 }
 
-function get_module_synopsis(c_compat_module $node)
+function get_module_synopsis($module)
 {
     $elements = [];
 
@@ -52,7 +56,7 @@ function get_module_synopsis(c_compat_module $node)
         'c_compat_macro',
     ];
 
-    foreach ($node->elements as $element) {
+    foreach ($module['elements'] as $element) {
         if ($element instanceof c_compat_function_declaration && !$element->is_static()) {
             $elements[] = $element->forward_declaration();
             continue;
