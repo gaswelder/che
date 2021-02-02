@@ -158,12 +158,20 @@ function format_array_literal($node)
     return $s;
 }
 
+function brace_if_needed(c_binary_op $node, $operand)
+{
+    if ($operand instanceof c_binary_op && operator_strength($operand->op) < operator_strength($node->op)) {
+        return '(' . format_node($operand) . ')';
+    }
+    return format_node($operand);
+}
+
 function format_binary_op($node)
 {
     $parts = [
-        $node->brace_if_needed($node->a),
+        brace_if_needed($node, $node->a),
         $node->op,
-        $node->brace_if_needed($node->b)
+        brace_if_needed($node, $node->b)
     ];
     if (in_array($node->op, ['.', '->'])) {
         return implode('', $parts);

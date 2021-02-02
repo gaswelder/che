@@ -22,6 +22,9 @@ function translate_node($node)
     if ($node instanceof c_enum) {
         return translate_enum($node);
     }
+    if ($node instanceof c_function_parameters) {
+        return translate_function_parameters($node);
+    }
     if ($cn === 'c_compat_macro' && $node['name'] == 'type') {
         return [];
     }
@@ -73,7 +76,7 @@ function get_module_synopsis(c_compat_module $node)
 
 function translate_enum(c_enum $node)
 {
-    return [$node->translate()];
+    return [new c_compat_enum($node->members, !$node->pub)];
 }
 
 function translate_typedef($node)
@@ -101,7 +104,13 @@ function translate_typedef($node)
 
 function translate_function_declaration(c_function_declaration $node)
 {
-    $func = $node->translate();
+    $func = new c_compat_function_declaration(
+        !$node->pub,
+        $node->type,
+        $node->form,
+        translate_function_parameters($node->parameters),
+        $node->body
+    );
     return [
         $func->forward_declaration(),
         $func
@@ -195,4 +204,29 @@ function deduplicate_synopsis($elements)
     }
 
     return $result;
+}
+
+function translate_function_parameters($node)
+{
+    $compat = new c_function_parameters;
+    foreach ($node->parameters as $parameter) {
+        if ($parameter instanceof c_ellipsis) {
+            $compat->parameters[] = $parameter;
+            continue;
+        }
+        $compat->parameters = array_merge($compat->parameters, translate_function_parameter($parameter));
+    }
+    return $compat;
+}
+
+function translate_function_parameter($node)
+{
+    $compat = [];
+    foreach ($node->forms as $form) {
+        $p = new c_function_parameter;
+        $p->type = $node->type;
+        $p->forms = [$form];
+        $compat[] = $p;
+    }
+    return $compat;
 }

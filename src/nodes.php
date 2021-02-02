@@ -39,14 +39,6 @@ class c_binary_op
         $this->a = $a;
         $this->b = $b;
     }
-
-    public function brace_if_needed($operand)
-    {
-        if ($operand instanceof c_binary_op && operator_strength($operand->op) < operator_strength($this->op)) {
-            return '(' . format_node($operand) . ')';
-        }
-        return format_node($operand);
-    }
 }
 
 class c_body
@@ -199,11 +191,6 @@ class c_enum
 {
     public $members = [];
     public $pub;
-
-    function translate()
-    {
-        return new c_compat_enum($this->members, !$this->pub);
-    }
 }
 
 class c_form
@@ -249,53 +236,17 @@ class c_function_declaration
         $this->parameters = $parameters;
         $this->body = $body;
     }
-
-    function translate()
-    {
-        return new c_compat_function_declaration(
-            !$this->pub,
-            $this->type,
-            $this->form,
-            $this->parameters->translate(),
-            $this->body
-        );
-    }
 }
 
 class c_function_parameter
 {
     public $type;
     public $forms = [];
-
-    function translate()
-    {
-        $compat = [];
-        foreach ($this->forms as $form) {
-            $p = new self;
-            $p->type = $this->type;
-            $p->forms = [$form];
-            $compat[] = $p;
-        }
-        return $compat;
-    }
 }
 
 class c_function_parameters
 {
     public $parameters = [];
-
-    function translate()
-    {
-        $compat = new self;
-        foreach ($this->parameters as $parameter) {
-            if ($parameter instanceof c_ellipsis) {
-                $compat->parameters[] = $parameter;
-                continue;
-            }
-            $compat->parameters = array_merge($compat->parameters, $parameter->translate());
-        }
-        return $compat;
-    }
 }
 
 class c_import
