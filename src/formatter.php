@@ -50,6 +50,16 @@ function format_node($node)
                 return format_literal($node);
             case 'c_import':
                 return format_import($node);
+            case 'c_function_declaration':
+                return format_function_declaration($node);
+            case 'c_function_call':
+                return format_function_call($node);
+            case 'c_array_index':
+                return format_array_index($node);
+            case 'c_array_literal':
+                return format_array_literal($node);
+            case 'c_cast':
+                return format_cast($node);
             default:
                 throw new Exception("Unknown node type: " . $node['kind']);
         }
@@ -58,18 +68,11 @@ function format_node($node)
     switch ($cn) {
         case c_anonymous_parameters::class:
             return format_anonymous_parameters($node);
-        case c_array_index::class:
-            return format_array_index($node);
-        case c_array_literal_entry::class:
-            return format_array_literal_entry($node);
-        case c_array_literal::class:
-            return format_array_literal($node);
         case c_binary_op::class:
             return format_binary_op($node);
         case c_body::class:
             return format_body($node);
-        case c_cast::class:
-            return format_cast($node);
+
         case c_compat_function_declaration::class:
             return format_compat_function_declaration($node);
         case c_compat_function_forward_declaration::class:
@@ -94,14 +97,6 @@ function format_node($node)
             return format_enum($node);
         case c_form::class:
             return format_form($node);
-        case c_function_arguments::class:
-            return format_function_arguments($node);
-        case c_function_call::class:
-            return format_function_call($node);
-        case c_function_declaration::class:
-            return format_function_declaration($node);
-        case c_function_parameter::class:
-            return format_function_parameter($node);
         case c_function_parameters::class:
             return format_function_parameters($node);
         default:
@@ -131,27 +126,24 @@ function format_anonymous_typeform($node)
 
 function format_array_index($node)
 {
-    return format_node($node->array) . '[' . format_node($node->index) . ']';
-}
-
-function format_array_literal_entry($node)
-{
-    $s = '';
-    if ($node->index) {
-        $s .= '[' . format_node($node->index) . '] = ';
-    }
-    $s .= format_node($node->value);
-    return $s;
+    return format_node($node['array']) . '[' . format_node($node['index']) . ']';
 }
 
 function format_array_literal($node)
 {
     $s = '{';
-    foreach ($node->values as $i => $value) {
-        if ($i > 0) $s .= ', ';
-        $s .= format_node($value);
+    foreach ($node['values'] as $i => $entry) {
+        if ($i > 0) {
+            $s .= ', ';
+        }
+        $s1 = '';
+        if ($entry['index']) {
+            $s1 .= '[' . format_node($entry['index']) . '] = ';
+        }
+        $s1 .= format_node($entry['value']);
+        $s .= $s1;
     }
-    if (empty($node->values)) {
+    if (empty($node['values'])) {
         $s .= '0';
     }
     $s .= '}';
@@ -190,7 +182,7 @@ function format_body($node)
 
 function format_cast($node)
 {
-    return sprintf("(%s) %s", format_node($node->type), format_node($node->operand));
+    return sprintf("(%s) %s", format_node($node['type']), format_node($node['operand']));
 }
 
 function format_compat_function_declaration($node)
@@ -325,43 +317,30 @@ function format_loop_counter_declaration($node)
     return $s;
 }
 
-function format_function_arguments($node)
-{
-    $s = '(';
-    foreach ($node->arguments as $i => $argument) {
-        if ($i > 0) $s .= ', ';
-        $s .= format_node($argument);
-    }
-    $s .= ')';
-    return $s;
-}
-
 function format_function_call($node)
 {
-    return format_node($node->function) . format_node($node->arguments);
+    $s1 = '(';
+    foreach ($node['arguments'] as $i => $argument) {
+        if ($i > 0) {
+            $s1 .= ', ';
+        }
+        $s1 .= format_node($argument);
+    }
+    $s1 .= ')';
+    return format_node($node['function']) . $s1;
 }
 
 function format_function_declaration($node)
 {
     $s = sprintf(
         "%s %s%s %s\n\n",
-        format_node($node->type),
-        format_node($node->form),
-        format_node($node->parameters),
-        format_node($node->body)
+        format_node($node['type']),
+        format_node($node['form']),
+        format_node($node['parameters']),
+        format_node($node['body'])
     );
     if ($node->pub) {
         return 'pub ' . $s;
-    }
-    return $s;
-}
-
-function format_function_parameter($node)
-{
-    $s = format_node($node->type) . ' ';
-    foreach ($node->forms as $i => $form) {
-        if ($i > 0) $s .= ', ';
-        $s .= format_node($form);
     }
     return $s;
 }
@@ -370,8 +349,21 @@ function format_function_parameters($node)
 {
     $s = '(';
     foreach ($node->parameters as $i => $parameter) {
-        if ($i > 0) $s .= ', ';
-        $s .= format_node($parameter);
+        if ($i > 0) {
+            $s .= ', ';
+        }
+        if ($parameter instanceof c_ellipsis) {
+            $s .= '...';
+            continue;
+        }
+        $s1 = format_node($parameter['type']) . ' ';
+        foreach ($parameter['forms'] as $i => $form) {
+            if ($i > 0) {
+                $s1 .= ', ';
+            }
+            $s1 .= format_node($form);
+        }
+        $s .= $s1;
     }
     $s .= ')';
     return $s;
@@ -429,7 +421,7 @@ function format_prefix_operator($node)
 {
     $operand = $node['operand'];
     $operator = $node['operator'];
-    if ($operand instanceof c_binary_op || $operand instanceof c_cast) {
+    if ($operand instanceof c_binary_op || (is_array($operand) && $operand['kind'] === 'c_cast')) {
         return $operator . '(' . format_node($operand) . ')';
     }
     return $operator . format_node($operand);

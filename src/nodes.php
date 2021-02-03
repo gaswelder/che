@@ -5,28 +5,6 @@ class c_anonymous_parameters
     public $forms = [];
 }
 
-class c_array_index
-{
-    public $array;
-    public $index;
-
-    function __construct($array, $index)
-    {
-        $this->array = $array;
-        $this->index = $index;
-    }
-}
-
-class c_array_literal_entry
-{
-    public $index = null;
-    public $value;
-}
-class c_array_literal
-{
-    public $values = [];
-}
-
 class c_binary_op
 {
     public $op;
@@ -44,18 +22,6 @@ class c_binary_op
 class c_body
 {
     public $statements = [];
-}
-
-class c_cast
-{
-    public $type;
-    public $operand;
-
-    function __construct($type, $operand)
-    {
-        $this->type = $type;
-        $this->operand = $operand;
-    }
 }
 
 class c_compat_function_declaration
@@ -184,47 +150,6 @@ class c_form
     {
         return trim($this->str, '[]*');
     }
-}
-
-class c_function_arguments
-{
-    public $arguments = [];
-}
-
-class c_function_call
-{
-    public $function;
-    public $arguments;
-
-    function __construct($function, $arguments)
-    {
-        $this->function = $function;
-        $this->arguments = $arguments;
-    }
-}
-
-class c_function_declaration
-{
-    public $pub;
-    public $type;
-    public $form;
-    public $parameters;
-    public $body;
-
-    function __construct($pub, $type, $form, $parameters, $body)
-    {
-        $this->pub = $pub;
-        $this->type = $type;
-        $this->form = $form;
-        $this->parameters = $parameters;
-        $this->body = $body;
-    }
-}
-
-class c_function_parameter
-{
-    public $type;
-    public $forms = [];
 }
 
 class c_function_parameters

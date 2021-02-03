@@ -20,7 +20,7 @@ function translate_node($node)
     if ($cn === 'c_import') {
         return translate_import($node);
     }
-    if ($node instanceof c_function_declaration) {
+    if ($cn === 'c_function_declaration') {
         return translate_function_declaration($node);
     }
     if ($node instanceof c_enum) {
@@ -106,14 +106,14 @@ function translate_typedef($node)
     return [$node];
 }
 
-function translate_function_declaration(c_function_declaration $node)
+function translate_function_declaration($node)
 {
     $func = new c_compat_function_declaration(
-        !$node->pub,
-        $node->type,
-        $node->form,
-        translate_function_parameters($node->parameters),
-        $node->body
+        !$node['pub'],
+        $node['type'],
+        $node['form'],
+        translate_function_parameters($node['parameters']),
+        $node['body']
     );
     return [
         $func->forward_declaration(),
@@ -226,11 +226,13 @@ function translate_function_parameters($node)
 function translate_function_parameter($node)
 {
     $compat = [];
-    foreach ($node->forms as $form) {
-        $p = new c_function_parameter;
-        $p->type = $node->type;
-        $p->forms = [$form];
-        $compat[] = $p;
+    foreach ($node['forms'] as $form) {
+        $type = $node['type'];
+        $forms = [$form];
+        $compat[] = [
+            'type' => $type,
+            'forms' => $forms
+        ];
     }
     return $compat;
 }

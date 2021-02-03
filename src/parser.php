@@ -41,9 +41,7 @@ function parse_module_element($lexer)
     }
     $form = parse_form($lexer);
     if ($lexer->peek()['kind'] == '(') {
-        $parameters = parse_function_parameters($lexer);
-        $body = parse_body($lexer);
-        return new c_function_declaration($pub, $type, $form, $parameters, $body);
+        return parse_function_declaration($lexer, $pub, $type, $form);
     }
 
     if ($lexer->peek()['kind'] != '=') {
@@ -197,7 +195,11 @@ function parse_atom($lexer)
         expect($lexer, '(');
         $typeform = parse_anonymous_typeform($lexer);
         expect($lexer, ')', 'typecast');
-        return new c_cast($typeform, parse_expression($lexer));
+        return [
+            'kind' => 'c_cast',
+            'type' => $typeform,
+            'operand' => parse_expression($lexer)
+        ];
     }
 
     if ($lexer->peek()['kind'] == '(') {
@@ -236,24 +238,18 @@ function parse_atom($lexer)
 
     while ($lexer->more()) {
         if ($lexer->peek()['kind'] == '(') {
-            $arguments = new c_function_arguments;
-            expect($lexer, '(');
-            if ($lexer->more() && $lexer->peek()['kind'] != ')') {
-                $arguments->arguments[] = parse_expression($lexer);
-                while ($lexer->follows(',')) {
-                    $lexer->get();
-                    $arguments->arguments[] = parse_expression($lexer);
-                }
-            }
-            expect($lexer, ')');
-            $result = new c_function_call($result, $arguments);
+            $result = parse_function_call($lexer, $result);
             continue;
         }
         if ($lexer->peek()['kind'] == '[') {
             expect($lexer, '[', 'array index');
             $index = parse_expression($lexer);
             expect($lexer, ']', 'array index');
-            $result = new c_array_index($result, $index);
+            $result = [
+                'kind' => 'c_array_index',
+                'array' => $result,
+                'index' => $index
+            ];
             continue;
         }
 
@@ -320,34 +316,40 @@ function operator_strength($op)
 
 function parse_array_literal($lexer)
 {
-    $node = new c_array_literal;
+    $values = [];
     expect($lexer, '{', 'array literal');
     if (!$lexer->follows('}')) {
-        $node->values[] = parse_array_literal_entry($lexer);
+        $values[] = parse_array_literal_entry($lexer);
         while ($lexer->follows(',')) {
             $lexer->get();
-            $node->values[] = parse_array_literal_entry($lexer);
+            $values[] = parse_array_literal_entry($lexer);
         }
     }
     expect($lexer, '}', 'array literal');
-    return $node;
+    return [
+        'kind' => 'c_array_literal',
+        'values' => $values
+    ];
 }
 
 function parse_array_literal_entry($lexer)
 {
-    $node = new c_array_literal_entry;
+    $index = null;
     if ($lexer->follows('[')) {
         $lexer->get();
         if ($lexer->follows('word')) {
-            $node->index = parse_identifier($lexer);
+            $index = parse_identifier($lexer);
         } else {
-            $node->index = parse_literal($lexer);
+            $index = parse_literal($lexer);
         }
         expect($lexer, ']', 'array literal entry');
         expect($lexer, '=', 'array literal entry');
     }
-    $node->value = parse_array_literal_member($lexer);
-    return $node;
+    $value = parse_array_literal_member($lexer);
+    return [
+        'index' => $index,
+        'value' => $value
+    ];
 }
 
 function parse_array_literal_member($lexer)
@@ -557,9 +559,9 @@ function parse_type($lexer, $comment = null)
 
 function parse_function_parameter($lexer)
 {
-    $node = new c_function_parameter;
-    $node->type = parse_type($lexer);
-    $node->forms[] = parse_form($lexer);
+    $forms = [];
+    $type = parse_type($lexer);
+    $forms[] = parse_form($lexer);
     while (
         $lexer->follows(',')
         && $lexer->peek_n(1)['kind'] != '...'
@@ -567,30 +569,40 @@ function parse_function_parameter($lexer)
         && !($lexer->peek_n(1)['kind'] == 'word' && is_type($lexer->peek_n(1)['content'], $lexer->typenames))
     ) {
         $lexer->get();
-        $node->forms[] = parse_form($lexer);
+        $forms[] = parse_form($lexer);
     }
-    return $node;
+    return [
+        'type' => $type,
+        'forms' => $forms
+    ];
 }
 
-function parse_function_parameters($lexer)
+function parse_function_declaration($lexer, $pub, $type, $form)
 {
-    $node = new c_function_parameters;
-
+    $parameters = new c_function_parameters;
     expect($lexer, '(');
     if (!$lexer->follows(')')) {
-        $node->parameters[] = parse_function_parameter($lexer);
+        $parameters->parameters[] = parse_function_parameter($lexer);
         while ($lexer->follows(',')) {
             $lexer->get();
             if ($lexer->follows('...')) {
                 $lexer->get();
-                $node->parameters[] = new c_ellipsis();
+                $parameters->parameters[] = new c_ellipsis();
                 break;
             }
-            $node->parameters[] = parse_function_parameter($lexer);
+            $parameters->parameters[] = parse_function_parameter($lexer);
         }
     }
     expect($lexer, ')');
-    return $node;
+    $body = parse_body($lexer);
+    return [
+        'kind' => 'c_function_declaration',
+        'pub' => $pub,
+        'type' => $type,
+        'form' => $form,
+        'parameters' => $parameters,
+        'body' => $body
+    ];
 }
 
 function parse_form($lexer)
@@ -829,5 +841,24 @@ function parse_sizeof($lexer)
     return [
         'kind' => 'c_sizeof',
         'argument' => $argument
+    ];
+}
+
+function parse_function_call($lexer, $function_name)
+{
+    $arguments = [];
+    expect($lexer, '(');
+    if ($lexer->more() && $lexer->peek()['kind'] != ')') {
+        $arguments[] = parse_expression($lexer);
+        while ($lexer->follows(',')) {
+            $lexer->get();
+            $arguments[] = parse_expression($lexer);
+        }
+    }
+    expect($lexer, ')');
+    return [
+        'kind' => 'c_function_call',
+        'function' => $function_name,
+        'arguments' => $arguments
     ];
 }
