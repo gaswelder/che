@@ -45,11 +45,6 @@ class c_compat_function_declaration
     {
         return new c_compat_function_forward_declaration($this->static, $this->type, $this->form, $this->parameters);
     }
-
-    function is_static()
-    {
-        return $this->static;
-    }
 }
 
 class c_compat_function_forward_declaration
@@ -65,16 +60,6 @@ class c_compat_function_forward_declaration
         $this->type = $type;
         $this->form = $form;
         $this->parameters = $parameters;
-    }
-}
-
-class c_compat_include
-{
-    public $name;
-
-    function __construct($name)
-    {
-        $this->name = $name;
     }
 }
 
@@ -105,20 +90,10 @@ class c_composite_type
     public $fieldlists = [];
 }
 
-class c_defer
-{
-    public $expression;
-}
-
 class c_ellipsis
 {
 }
 
-class c_enum_member
-{
-    public $id;
-    public $value;
-}
 class c_compat_enum
 {
     public $hidden;
@@ -128,11 +103,6 @@ class c_compat_enum
     {
         $this->members = $members;
         $this->hidden = $hidden;
-    }
-
-    function is_private()
-    {
-        return $this->hidden;
     }
 }
 
@@ -145,14 +115,4 @@ class c_enum
 class c_form
 {
     public $str = '';
-
-    function name()
-    {
-        return trim($this->str, '[]*');
-    }
-}
-
-class c_function_parameters
-{
-    public $parameters = [];
 }

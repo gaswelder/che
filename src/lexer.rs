@@ -193,7 +193,7 @@ fn read_word(buf: &mut Buf) -> Token {
 
     let keywords = [
         "default", "typedef", "struct", "import", "union", "const", "return", "switch", "sizeof",
-        "while", "defer", "case", "enum", "else", "for", "pub", "if",
+        "while", "case", "enum", "else", "for", "pub", "if",
     ];
 
     if keywords.contains(&word.as_str()) {
@@ -383,7 +383,7 @@ mod tests {
 
         let keywords = [
             "default", "typedef", "struct", "import", "union", "const", "return", "switch",
-            "sizeof", "while", "defer", "case", "enum", "else", "for", "pub", "if",
+            "sizeof", "while", "case", "enum", "else", "for", "pub", "if",
         ];
         for kw in &keywords {
             let t = _read_token(format!("{} 123", kw).as_str());

@@ -26,7 +26,7 @@ function translate_node($node)
     if ($node instanceof c_enum) {
         return translate_enum($node);
     }
-    if ($node instanceof c_function_parameters) {
+    if ($cn === 'c_function_parameters') {
         return translate_function_parameters($node);
     }
     if ($cn === 'c_compat_macro' && $node['name'] == 'type') {
@@ -57,7 +57,7 @@ function get_module_synopsis($module)
     ];
 
     foreach ($module['elements'] as $element) {
-        if ($element instanceof c_compat_function_declaration && !$element->is_static()) {
+        if ($element instanceof c_compat_function_declaration && !$element->static) {
             $elements[] = $element->forward_declaration();
             continue;
         }
@@ -70,7 +70,7 @@ function get_module_synopsis($module)
             $elements[] = $element;
             continue;
         }
-        if ($element instanceof c_compat_enum && !$element->is_private()) {
+        if ($element instanceof c_compat_enum && !$element->hidden) {
             $elements[] = $element;
             continue;
         }
@@ -151,7 +151,10 @@ function translate_module($che_elements)
         'time'
     ];
     foreach ($std as $n) {
-        $elements[] = new c_compat_include("<$n.h>");
+        $elements[] = [
+            'kind' => 'c_compat_include',
+            'name' => "<$n.h>"
+        ];
     }
 
     return [deduplicate_synopsis(hoist_declarations($elements)), $link];
@@ -165,7 +168,7 @@ function hoist_declarations($elements)
         } else {
             $cn = get_class($element);
         }
-        if (in_array($cn, [c_compat_include::class, 'c_compat_macro'])) {
+        if (in_array($cn, ['c_compat_include', 'c_compat_macro'])) {
             return 0;
         }
         if ($cn === c_compat_struct_forward_declaration::class) {
@@ -212,15 +215,18 @@ function deduplicate_synopsis($elements)
 
 function translate_function_parameters($node)
 {
-    $compat = new c_function_parameters;
-    foreach ($node->parameters as $parameter) {
+    $parameters = [];
+    foreach ($node['parameters'] as $parameter) {
         if ($parameter instanceof c_ellipsis) {
-            $compat->parameters[] = $parameter;
+            $parameters[] = $parameter;
             continue;
         }
-        $compat->parameters = array_merge($compat->parameters, translate_function_parameter($parameter));
+        $parameters = array_merge($parameters, translate_function_parameter($parameter));
     }
-    return $compat;
+    return [
+        'kind' => 'c_function_parameters',
+        'parameters' => $parameters
+    ];
 }
 
 function translate_function_parameter($node)

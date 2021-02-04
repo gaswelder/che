@@ -60,6 +60,12 @@ function format_node($node)
                 return format_array_literal($node);
             case 'c_cast':
                 return format_cast($node);
+            case 'c_compat_include':
+                return format_compat_include($node);
+            case 'c_enum_member':
+                return format_enum_member($node);
+            case 'c_function_parameters':
+                return format_function_parameters($node);
             default:
                 throw new Exception("Unknown node type: " . $node['kind']);
         }
@@ -77,28 +83,20 @@ function format_node($node)
             return format_compat_function_declaration($node);
         case c_compat_function_forward_declaration::class:
             return format_compat_function_forward_declaration($node);
-        case c_compat_include::class:
-            return format_compat_include($node);
         case c_compat_struct_definition::class:
             return format_compat_struct_definition($node);
         case c_compat_struct_forward_declaration::class:
             return format_compat_struct_forward_declaration($node);
         case c_composite_type::class:
             return format_composite_type($node);
-        case c_defer::class:
-            return format_defer($node);
         case c_ellipsis::class:
             return format_ellipsis($node);
-        case c_enum_member::class:
-            return format_enum_member($node);
         case c_compat_enum::class:
             return format_compat_enum($node);
         case c_enum::class:
             return format_enum($node);
         case c_form::class:
             return format_form($node);
-        case c_function_parameters::class:
-            return format_function_parameters($node);
         default:
             throw new Exception("don't know how to format '$cn'");
     }
@@ -212,7 +210,7 @@ function format_compat_function_forward_declaration($node)
 
 function format_compat_include($node)
 {
-    return "#include $node->name\n";
+    return "#include $node[name]\n";
 }
 
 function format_compat_module($node)
@@ -244,11 +242,6 @@ function format_composite_type($node)
         . indent($s) . "}";
 }
 
-function format_defer($node)
-{
-    return 'defer ' . format_node($node->expression) . ';';
-}
-
 function format_ellipsis($node)
 {
     return '...';
@@ -256,9 +249,9 @@ function format_ellipsis($node)
 
 function format_enum_member($node)
 {
-    $s = format_node($node->id);
-    if ($node->value) {
-        $s .= ' = ' . format_node($node->value);
+    $s = format_node($node['id']);
+    if ($node['value']) {
+        $s .= ' = ' . format_node($node['value']);
     }
     return $s;
 }
@@ -348,7 +341,7 @@ function format_function_declaration($node)
 function format_function_parameters($node)
 {
     $s = '(';
-    foreach ($node->parameters as $i => $parameter) {
+    foreach ($node['parameters'] as $i => $parameter) {
         if ($i > 0) {
             $s .= ', ';
         }

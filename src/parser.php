@@ -151,8 +151,6 @@ function parse_statement($lexer)
             return parse_for($lexer);
         case 'while':
             return parse_while($lexer);
-        case 'defer':
-            return parse_defer($lexer);
         case 'return':
             return parse_return($lexer);
         case 'switch':
@@ -432,15 +430,6 @@ function parse_struct_fieldlist($lexer)
     ];
 }
 
-function parse_defer($lexer)
-{
-    expect($lexer, 'defer');
-    $node = new c_defer;
-    $node->expression = parse_expression($lexer);
-    expect($lexer, ';');
-    return $node;
-}
-
 function parse_union($lexer)
 {
     $fields = [];
@@ -472,13 +461,17 @@ function parse_enum($lexer, $pub)
     expect($lexer, 'enum', 'enum definition');
     expect($lexer, '{', 'enum definition');
     while (true) {
-        $member = new c_enum_member;
-        $member->id = parse_identifier($lexer);
+        $id = parse_identifier($lexer);
+        $value = null;
         if ($lexer->follows('=')) {
             $lexer->get();
-            $member->value = parse_literal($lexer);
+            $value = parse_literal($lexer);
         }
-        $node->members[] = $member;
+        $node->members[] = [
+            'kind' => 'c_enum_member',
+            'id' => $id,
+            'value' => $value
+        ];
         if ($lexer->follows(',')) {
             $lexer->get();
             continue;
@@ -579,18 +572,18 @@ function parse_function_parameter($lexer)
 
 function parse_function_declaration($lexer, $pub, $type, $form)
 {
-    $parameters = new c_function_parameters;
+    $parameters = [];
     expect($lexer, '(');
     if (!$lexer->follows(')')) {
-        $parameters->parameters[] = parse_function_parameter($lexer);
+        $parameters[] = parse_function_parameter($lexer);
         while ($lexer->follows(',')) {
             $lexer->get();
             if ($lexer->follows('...')) {
                 $lexer->get();
-                $parameters->parameters[] = new c_ellipsis();
+                $parameters[] = new c_ellipsis();
                 break;
             }
-            $parameters->parameters[] = parse_function_parameter($lexer);
+            $parameters[] = parse_function_parameter($lexer);
         }
     }
     expect($lexer, ')');
@@ -600,7 +593,10 @@ function parse_function_declaration($lexer, $pub, $type, $form)
         'pub' => $pub,
         'type' => $type,
         'form' => $form,
-        'parameters' => $parameters,
+        'parameters' => [
+            'kind' => 'c_function_parameters',
+            'parameters' => $parameters
+        ],
         'body' => $body
     ];
 }

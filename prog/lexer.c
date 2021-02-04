@@ -24,7 +24,6 @@ const char *keywords[] = {
 	"union",
 	"const",
 	"while",
-	"defer",
 	"case",
 	"enum",
 	"else",

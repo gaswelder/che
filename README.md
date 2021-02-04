@@ -102,67 +102,6 @@ There is no preprocessor, so all macros are gone. `#define` statements
 are processed by the same parser as the normal language and are used
 only to define constants.
 
-## The `defer` statement
-
-Borrowed from Go, this statement probably eliminates the last excuse
-for using `goto` statements: arranging cleanup code. So instead of
-this:
-
-```c
-bool foo() {
-	FILE *f = fopen("foo", "rb");
-	if(!f)
-		return false;
-
-	bool r = true;
-
-	char *buf = malloc(42);
-	if(!buf) {
-		r = false;
-		goto cleanup;
-	}
-
-	for(int i = 0; i < 42; i++) {
-		if(!bar(buf[i])) {
-			r = false;
-			goto cleanup;
-		}
-	}
-
-	cleanup:
-		free(buf);
-		fclose(f);
-
-	return r;
-}
-```
-
-we can write this:
-
-```c
-bool foo() {
-	FILE *f = fopen("foo", "rb");
-	if(!f) {
-		return false;
-	}
-	defer fclose(f);
-
-	char *buf = malloc(42);
-	if(!buf) {
-		return false;
-	}
-	defer free(buf);
-
-	for(int i = 0; i < 42; i++) {
-		if(!bar(buf[i])) {
-			return false;
-		}
-	}
-
-	return true;
-}
-```
-
 ## Modules and packages
 
 Some time ago a single C source file used to be called a "module". It
