@@ -67,17 +67,20 @@ function parse_module_element($lexer)
 
 function parse_anonymous_parameters($lexer)
 {
-    $node = new c_anonymous_parameters;
+    $forms = [];
     expect($lexer, '(', 'anonymous function parameters');
     if (!$lexer->follows(')')) {
-        $node->forms[] = parse_anonymous_typeform($lexer);
+        $forms[] = parse_anonymous_typeform($lexer);
         while ($lexer->follows(',')) {
             $lexer->get();
-            $node->forms[] = parse_anonymous_typeform($lexer);
+            $forms[] = parse_anonymous_typeform($lexer);
         }
     }
     expect($lexer, ')', 'anonymous function parameters');
-    return $node;
+    return [
+        'kind' => 'c_anonymous_parameters',
+        'forms' => $forms
+    ];
 }
 
 function parse_import($lexer)
@@ -173,7 +176,12 @@ function parse_expression($lexer, $current_strength = 0)
         }
         $op = $lexer->get()['kind'];
         $next = parse_expression($lexer, operator_strength($op));
-        $result = new c_binary_op($op, $result, $next);
+        $result = [
+            'kind' => 'c_binary_op',
+            'op' => $op,
+            'a' => $result,
+            'b' => $next
+        ];
     }
     return $result;
 }
@@ -363,17 +371,20 @@ function parse_array_literal_member($lexer)
 
 function parse_body($lexer)
 {
-    $node = new c_body;
+    $statements = [];
     if ($lexer->follows('{')) {
         expect($lexer, '{');
         while (!$lexer->follows('}')) {
-            $node->statements[] = parse_statement($lexer);
+            $statements[] = parse_statement($lexer);
         }
         expect($lexer, '}');
     } else {
-        $node->statements[] = parse_statement($lexer);
+        $statements[] = parse_statement($lexer);
     }
-    return $node;
+    return [
+        'kind' => 'c_body',
+        'statements' => $statements
+    ];
 }
 
 function parse_compat_macro($lexer)
@@ -395,17 +406,20 @@ function parse_compat_macro($lexer)
 
 function parse_composite_type($lexer)
 {
-    $node = new c_composite_type;
+    $fieldlists = [];
     expect($lexer, '{', 'struct type definition');
     while ($lexer->more() && $lexer->peek()['kind'] != '}') {
         if ($lexer->peek()['kind'] == 'union') {
-            $node->fieldlists[] = parse_union($lexer);
+            $fieldlists[] = parse_union($lexer);
         } else {
-            $node->fieldlists[] = parse_struct_fieldlist($lexer);
+            $fieldlists[] = parse_struct_fieldlist($lexer);
         }
     }
     expect($lexer, '}');
-    return $node;
+    return [
+        'kind' => 'c_composite_type',
+        'fieldlists' => $fieldlists
+    ];
 }
 
 function parse_struct_fieldlist($lexer)
@@ -456,8 +470,7 @@ function parse_union($lexer)
 
 function parse_enum($lexer, $pub)
 {
-    $node = new c_enum;
-    $node->pub = $pub;
+    $members = [];
     expect($lexer, 'enum', 'enum definition');
     expect($lexer, '{', 'enum definition');
     while (true) {
@@ -467,7 +480,7 @@ function parse_enum($lexer, $pub)
             $lexer->get();
             $value = parse_literal($lexer);
         }
-        $node->members[] = [
+        $members[] = [
             'kind' => 'c_enum_member',
             'id' => $id,
             'value' => $value
@@ -481,7 +494,11 @@ function parse_enum($lexer, $pub)
     }
     expect($lexer, '}', 'enum definition');
     expect($lexer, ';', 'enum definition');
-    return $node;
+    return [
+        'kind' => 'c_enum',
+        'pub' => $pub,
+        'members' => $members
+    ];
 }
 
 function parse_for($lexer)
@@ -580,7 +597,9 @@ function parse_function_declaration($lexer, $pub, $type, $form)
             $lexer->get();
             if ($lexer->follows('...')) {
                 $lexer->get();
-                $parameters[] = new c_ellipsis();
+                $parameters[] = [
+                    'kind' => 'c_ellipsis'
+                ];
                 break;
             }
             $parameters[] = parse_function_parameter($lexer);
@@ -604,20 +623,23 @@ function parse_function_declaration($lexer, $pub, $type, $form)
 function parse_form($lexer)
 {
     // *argv[]
-    $node = new c_form;
+    $node = [
+        'kind' => 'c_form',
+        'str' => ''
+    ];
     while ($lexer->follows('*')) {
-        $node->str .= $lexer->get()['kind'];
+        $node['str'] .= $lexer->get()['kind'];
     }
-    $node->str .= expect($lexer, 'word')['content'];
+    $node['str'] .= expect($lexer, 'word')['content'];
 
     while ($lexer->follows('[')) {
-        $node->str .= $lexer->get()['kind'];
+        $node['str'] .= $lexer->get()['kind'];
         while ($lexer->more() && $lexer->peek()['kind'] != ']') {
             $expr = parse_expression($lexer);
-            $node->str .= format_node($expr);
+            $node['str'] .= format_node($expr);
         }
         expect($lexer, ']');
-        $node->str .= ']';
+        $node['str'] .= ']';
     }
     return $node;
 }

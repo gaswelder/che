@@ -4,6 +4,8 @@ function format_node($node)
 {
     if (is_array($node)) {
         switch ($node['kind']) {
+            case 'c_body':
+                return format_body($node);
             case 'c_while':
                 return format_while($node);
             case 'c_variable_declaration':
@@ -66,37 +68,34 @@ function format_node($node)
                 return format_enum_member($node);
             case 'c_function_parameters':
                 return format_function_parameters($node);
+            case 'c_compat_enum':
+                return format_compat_enum($node);
+            case 'c_composite_type':
+                return format_composite_type($node);
+            case 'c_form':
+                return format_form($node);
+            case 'c_compat_struct_forward_declaration':
+                return format_compat_struct_forward_declaration($node);
+            case 'c_compat_function_forward_declaration':
+                return format_compat_function_forward_declaration($node);
+            case 'c_compat_struct_definition':
+                return format_compat_struct_definition($node);
+            case 'c_binary_op':
+                return format_binary_op($node);
+            case 'c_anonymous_parameters':
+                return format_anonymous_parameters($node);
+            case 'c_enum':
+                return format_enum($node);
+            case 'c_ellipsis':
+                return '...';
             default:
                 throw new Exception("Unknown node type: " . $node['kind']);
         }
     }
     $cn = get_class($node);
     switch ($cn) {
-        case c_anonymous_parameters::class:
-            return format_anonymous_parameters($node);
-        case c_binary_op::class:
-            return format_binary_op($node);
-        case c_body::class:
-            return format_body($node);
-
         case c_compat_function_declaration::class:
             return format_compat_function_declaration($node);
-        case c_compat_function_forward_declaration::class:
-            return format_compat_function_forward_declaration($node);
-        case c_compat_struct_definition::class:
-            return format_compat_struct_definition($node);
-        case c_compat_struct_forward_declaration::class:
-            return format_compat_struct_forward_declaration($node);
-        case c_composite_type::class:
-            return format_composite_type($node);
-        case c_ellipsis::class:
-            return format_ellipsis($node);
-        case c_compat_enum::class:
-            return format_compat_enum($node);
-        case c_enum::class:
-            return format_enum($node);
-        case c_form::class:
-            return format_form($node);
         default:
             throw new Exception("don't know how to format '$cn'");
     }
@@ -105,7 +104,7 @@ function format_node($node)
 function format_anonymous_parameters($node)
 {
     $s = '(';
-    foreach ($node->forms as $i => $form) {
+    foreach ($node['forms'] as $i => $form) {
         if ($i > 0) $s .= ', ';
         $s .= format_node($form);
     }
@@ -148,9 +147,13 @@ function format_array_literal($node)
     return $s;
 }
 
-function brace_if_needed(c_binary_op $node, $operand)
+function brace_if_needed($node, $operand)
 {
-    if ($operand instanceof c_binary_op && operator_strength($operand->op) < operator_strength($node->op)) {
+    if (
+        is_array($operand) &&
+        $operand['kind'] === 'c_binary_op' &&
+        operator_strength($operand['op']) < operator_strength($node['op'])
+    ) {
         return '(' . format_node($operand) . ')';
     }
     return format_node($operand);
@@ -159,11 +162,11 @@ function brace_if_needed(c_binary_op $node, $operand)
 function format_binary_op($node)
 {
     $parts = [
-        brace_if_needed($node, $node->a),
-        $node->op,
-        brace_if_needed($node, $node->b)
+        brace_if_needed($node, $node['a']),
+        $node['op'],
+        brace_if_needed($node, $node['b'])
     ];
-    if (in_array($node->op, ['.', '->'])) {
+    if (in_array($node['op'], ['.', '->'])) {
         return implode('', $parts);
     }
     return implode(' ', $parts);
@@ -172,7 +175,7 @@ function format_binary_op($node)
 function format_body($node)
 {
     $s = '';
-    foreach ($node->statements as $statement) {
+    foreach ($node['statements'] as $statement) {
         $s .= format_node($statement) . ";\n";
     }
     return "{\n" . indent($s) . "}\n";
@@ -199,12 +202,12 @@ function format_compat_function_declaration($node)
 function format_compat_function_forward_declaration($node)
 {
     $s = '';
-    if ($node->static && format_node($node->form) != 'main') {
+    if ($node['static'] && format_node($node['form']) != 'main') {
         $s .= 'static ';
     }
-    $s .= format_node($node->type)
-        . ' ' . format_node($node->form)
-        . format_node($node->parameters) . ";\n";
+    $s .= format_node($node['type'])
+        . ' ' . format_node($node['form'])
+        . format_node($node['parameters']) . ";\n";
     return $s;
 }
 
@@ -224,27 +227,22 @@ function format_compat_module($node)
 
 function format_compat_struct_definition($node)
 {
-    return 'struct ' . $node->name . ' ' . format_node($node->fields) . ";\n";
+    return 'struct ' . $node['name'] . ' ' . format_node($node['fields']) . ";\n";
 }
 
 function format_compat_struct_forward_declaration($node)
 {
-    return 'struct ' . $node->name . ";\n";
+    return 'struct ' . $node['name'] . ";\n";
 }
 
 function format_composite_type($node)
 {
     $s = '';
-    foreach ($node->fieldlists as $fieldlist) {
+    foreach ($node['fieldlists'] as $fieldlist) {
         $s .= format_node($fieldlist) . "\n";
     }
     return "{\n"
         . indent($s) . "}";
-}
-
-function format_ellipsis($node)
-{
-    return '...';
 }
 
 function format_enum_member($node)
@@ -259,7 +257,7 @@ function format_enum_member($node)
 function format_compat_enum($node)
 {
     $s = "enum {\n";
-    foreach ($node->members as $i => $member) {
+    foreach ($node['members'] as $i => $member) {
         if ($i > 0) {
             $s .= ",\n";
         }
@@ -272,11 +270,11 @@ function format_compat_enum($node)
 function format_enum($node)
 {
     $s = '';
-    if ($node->pub) {
+    if ($node['pub']) {
         $s .= 'pub ';
     }
     $s .= "enum {\n";
-    foreach ($node->members as $id) {
+    foreach ($node['members'] as $id) {
         $s .= "\t" . format_node($id) . ",\n";
     }
     $s .= "}\n";
@@ -285,7 +283,7 @@ function format_enum($node)
 
 function format_form($node)
 {
-    return $node->str;
+    return $node['str'];
 }
 
 function format_for($node)
@@ -345,7 +343,7 @@ function format_function_parameters($node)
         if ($i > 0) {
             $s .= ', ';
         }
-        if ($parameter instanceof c_ellipsis) {
+        if (is_array($parameter) && isset($parameter['kind']) && $parameter['kind'] === 'c_ellipsis') {
             $s .= '...';
             continue;
         }
@@ -414,7 +412,7 @@ function format_prefix_operator($node)
 {
     $operand = $node['operand'];
     $operator = $node['operator'];
-    if ($operand instanceof c_binary_op || (is_array($operand) && $operand['kind'] === 'c_cast')) {
+    if (is_array($operand) && ($operand['kind'] === 'c_binary_op' || $operand['kind'] === 'c_cast')) {
         return $operator . '(' . format_node($operand) . ')';
     }
     return $operator . format_node($operand);
