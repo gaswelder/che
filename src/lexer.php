@@ -2,7 +2,7 @@
 
 class lexer
 {
-	private $proxy;
+	public $proxy;
 
 	function __construct($path)
 	{

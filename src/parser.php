@@ -274,26 +274,10 @@ function parse_atom($lexer)
     return $result;
 }
 
-function with_comment($comment, $message)
-{
-    if ($comment) {
-        return $comment . ': ' . $message;
-    }
-    return $message;
-}
-
 function expect($lexer, $type, $comment = null)
 {
-    if (!$lexer->more()) {
-        throw new Exception(with_comment($comment, "expected '$type', got end of file"));
-    }
-    $next = $lexer->peek();
-    if ($next['kind'] != $type) {
-        throw new Exception(with_comment($comment, "expected '$type', got $next at $next[pos]"));
-    }
-    return $lexer->get();
+    return call_rust('expect', $lexer->proxy->_rust_instance_id, $type, $comment);
 }
-
 
 function is_type($name, $typenames)
 {

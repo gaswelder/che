@@ -121,7 +121,8 @@ function get_typename(lexer $lexer)
 
     if ($lexer->follows('{')) {
         $skip_brackets();
-        $name = expect($lexer, 'word')['content'];
+        $x = expect($lexer, 'word');
+        $name = $x['content'];
         expect($lexer, ';');
         return $name;
     }

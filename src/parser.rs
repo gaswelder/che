@@ -1,3 +1,5 @@
+use crate::lexer::{Lexer, Token};
+
 pub fn is_op(token_type: String) -> bool {
     let ops = [
         "+", "-", "*", "/", "=", "|", "&", "~", "^", "<", ">", "?", ":", "%", "+=", "-=", "*=",
@@ -85,4 +87,28 @@ pub fn is_type(name: String, typenames: &Vec<String>) -> bool {
     return types.to_vec().contains(&name.as_str())
         || typenames.to_vec().contains(&name)
         || name.ends_with("_t");
+}
+
+fn with_comment(comment: Option<&str>, message: String) -> String {
+    match comment {
+        Some(s) => format!("{}: {}", s, message),
+        None => message.to_string(),
+    }
+}
+
+pub fn expect(lexer: &mut Lexer, kind: &str, comment: Option<&str>) -> Result<Token, String> {
+    if !lexer.more() {
+        return Err(with_comment(
+            comment,
+            format!("expected '{}', got end of file", kind),
+        ));
+    }
+    let next = lexer.peek().unwrap();
+    if next.kind != kind {
+        return Err(with_comment(
+            comment,
+            format!("expected '{}', got {} at {}", kind, next.kind, next.pos),
+        ));
+    }
+    return Ok(lexer.get().unwrap());
 }

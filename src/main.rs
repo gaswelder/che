@@ -40,7 +40,7 @@ fn main() {
 
         let call: Call = serde_json::from_str(String::from(s).trim()).unwrap();
         let response = if call.ns == "" {
-            exec_function_call(call, &mut read_files)
+            exec_function_call(call, &mut read_files, &mut lexer_instances)
         } else {
             exec_method_call(call, &mut lexer_instances)
         };
@@ -139,6 +139,7 @@ fn exec_method_call(call: Call, lexer_instances: &mut HashMap<String, Lexer>) ->
 fn exec_function_call(
     call: Call,
     read_files: &mut HashMap<String, Vec<Token>>,
+    lexer_instances: &mut HashMap<String, Lexer>,
 ) -> serde_json::Value {
     let f = call.f.as_str();
     let args = call.a;
@@ -181,6 +182,22 @@ fn exec_function_call(
                 "error": "",
                 "data": parser::is_type(op.to_string(), &typenames)
             })
+        }
+        "expect" => {
+            let instance_id = String::from(args[0].as_str().unwrap());
+            let lexer = lexer_instances.get_mut(&instance_id).unwrap();
+            let kind = args[1].as_str().unwrap();
+            let comment = args[2].as_str();
+            match parser::expect(lexer, kind, comment) {
+                Ok(tok) => json!({
+                    "error": "",
+                    "data": tok
+                }),
+                Err(s) => json!({
+                    "error": s,
+                    "data": null
+                }),
+            }
         }
         "read_file" => {
             let filename = args[0].as_str().unwrap();
