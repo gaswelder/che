@@ -1,4 +1,5 @@
 use crate::lexer::{Lexer, Token};
+use serde::{Deserialize, Serialize};
 
 pub fn is_op(token_type: String) -> bool {
     let ops = [
@@ -111,4 +112,19 @@ pub fn expect(lexer: &mut Lexer, kind: &str, comment: Option<&str>) -> Result<To
         ));
     }
     return Ok(lexer.get().unwrap());
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct Identifier {
+    kind: String,
+    name: String,
+}
+
+pub fn parse_identifier(lexer: &mut Lexer) -> Result<Identifier, String> {
+    let tok = expect(lexer, "word", None)?;
+    let name = tok.content;
+    return Ok(Identifier {
+        kind: "c_identifier".to_string(),
+        name: name.unwrap(),
+    });
 }

@@ -276,7 +276,7 @@ function parse_atom($lexer)
 
 function expect($lexer, $type, $comment = null)
 {
-    return call_rust('expect', $lexer->proxy->_rust_instance_id, $type, $comment);
+    return call_rust('expect', $lexer, $type, $comment);
 }
 
 function is_type($name, $typenames)
@@ -703,12 +703,7 @@ function parse_literal($lexer)
 
 function parse_identifier($lexer)
 {
-    $tok = expect($lexer, 'word');
-    $name = $tok['content'];
-    return [
-        'kind' => 'c_identifier',
-        'name' => $name
-    ];
+    return call_rust('parse_identifier', $lexer);
 }
 
 function parse_if($lexer)

@@ -26,7 +26,13 @@ function make_call($ns, $id, $f, $args)
 
 function call_rust($f, ...$args)
 {
-    return make_call('', '', $f, $args);
+    $fargs = array_map(function ($arg) {
+        if ($arg instanceof lexer) {
+            return $arg->proxy->_rust_instance_id;
+        }
+        return $arg;
+    }, $args);
+    return make_call('', '', $f, $fargs);
 }
 
 $_call_rust_mem = [];
