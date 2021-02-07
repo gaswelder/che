@@ -242,6 +242,34 @@ fn exec_function_call(
                 }),
             }
         }
+        "parse_anonymous_parameters" => {
+            let instance_id = String::from(args[0].as_str().unwrap());
+            let lexer = lexer_instances.get_mut(&instance_id).unwrap();
+            match parser::parse_anonymous_parameters(lexer) {
+                Ok(node) => json!({
+                    "error": "",
+                    "data": node
+                }),
+                Err(s) => json!({
+                    "error": s,
+                    "data": null
+                }),
+            }
+        }
+        "parse_literal" => {
+            let instance_id = String::from(args[0].as_str().unwrap());
+            let lexer = lexer_instances.get_mut(&instance_id).unwrap();
+            match parser::parse_literal(lexer) {
+                Ok(node) => json!({
+                    "error": "",
+                    "data": node
+                }),
+                Err(s) => json!({
+                    "error": s,
+                    "data": null
+                }),
+            }
+        }
         "read_file" => {
             let filename = args[0].as_str().unwrap();
             if read_files.get(filename).is_none() {

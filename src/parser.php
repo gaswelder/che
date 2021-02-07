@@ -67,20 +67,21 @@ function parse_module_element($lexer)
 
 function parse_anonymous_parameters($lexer)
 {
-    $forms = [];
-    expect($lexer, '(', 'anonymous function parameters');
-    if (!$lexer->follows(')')) {
-        $forms[] = parse_anonymous_typeform($lexer);
-        while ($lexer->follows(',')) {
-            $lexer->get();
-            $forms[] = parse_anonymous_typeform($lexer);
-        }
-    }
-    expect($lexer, ')', 'anonymous function parameters');
-    return [
-        'kind' => 'c_anonymous_parameters',
-        'forms' => $forms
-    ];
+    return call_rust('parse_anonymous_parameters', $lexer);
+    // $forms = [];
+    // expect($lexer, '(', 'anonymous function parameters');
+    // if (!$lexer->follows(')')) {
+    //     $forms[] = parse_anonymous_typeform($lexer);
+    //     while ($lexer->follows(',')) {
+    //         $lexer->get();
+    //         $forms[] = parse_anonymous_typeform($lexer);
+    //     }
+    // }
+    // expect($lexer, ')', 'anonymous function parameters');
+    // return [
+    //     'kind' => 'c_anonymous_parameters',
+    //     'forms' => $forms
+    // ];
 }
 
 function parse_import($lexer)
@@ -655,29 +656,7 @@ function parse_switch($lexer)
 
 function parse_literal($lexer)
 {
-    $types = ['string', 'num', 'char'];
-    foreach ($types as $type) {
-        if ($lexer->peek()['kind'] != $type) {
-            continue;
-        }
-        $value = $lexer->get()['content'];
-        return [
-            'kind' => 'c_literal',
-            'type_name' => $type,
-            'value' => $value
-        ];
-    }
-    if ($lexer->peek()['kind'] == 'word' && $lexer->peek()['content'] == 'NULL') {
-        $lexer->get();
-        $type = 'null';
-        $value = 'NULL';
-        return [
-            'kind' => 'c_literal',
-            'type_name' => $type,
-            'value' => $value
-        ];
-    }
-    throw new Exception("literal expected, got " . $lexer->peek());
+    return call_rust("parse_literal", $lexer);
 }
 
 function parse_identifier($lexer)

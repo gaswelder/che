@@ -1,12 +1,24 @@
 use crate::buf::Buf;
 use serde::{Deserialize, Serialize};
+use std::fmt;
 use std::fs;
+use substring::Substring;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Token {
     pub kind: String,
     pub content: Option<String>,
     pub pos: String,
+}
+
+impl fmt::Display for Token {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        if self.content.is_none() {
+            return write!(f, "[{}]", self.kind);
+        }
+        let c = self.content.as_ref().unwrap().substring(0, 40);
+        return write!(f, "[{} {}]", self.kind, c);
+    }
 }
 
 const SPACES: &str = "\r\n\t ";

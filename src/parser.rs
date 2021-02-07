@@ -179,3 +179,56 @@ pub fn parse_anonymous_typeform(lexer: &mut Lexer) -> Result<AnonymousTypeform, 
         ops,
     });
 }
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct AnonymousParameters {
+    kind: String,
+    forms: Vec<AnonymousTypeform>,
+}
+pub fn parse_anonymous_parameters(lexer: &mut Lexer) -> Result<AnonymousParameters, String> {
+    let mut forms: Vec<AnonymousTypeform> = Vec::new();
+    expect(lexer, "(", Some("anonymous function parameters")).unwrap();
+    if !lexer.follows(")") {
+        forms.push(parse_anonymous_typeform(lexer).unwrap());
+        while lexer.follows(",") {
+            lexer.get();
+            forms.push(parse_anonymous_typeform(lexer).unwrap());
+        }
+    }
+    expect(lexer, ")", Some("anonymous function parameters")).unwrap();
+    return Ok(AnonymousParameters {
+        kind: "c_anonymous_parameters".to_string(),
+        forms,
+    });
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct Literal {
+    kind: String,
+    type_name: String,
+    value: String,
+}
+pub fn parse_literal(lexer: &mut Lexer) -> Result<Literal, String> {
+    let types = ["string", "num", "char"];
+    for t in types.iter() {
+        if lexer.peek().unwrap().kind != t.to_string() {
+            continue;
+        }
+        let value = lexer.get().unwrap().content.unwrap();
+        return Ok(Literal {
+            kind: "c_literal".to_string(),
+            type_name: t.to_string(),
+            value: value,
+        });
+    }
+    let next = lexer.peek().unwrap();
+    if next.kind == "word" && next.content.as_ref().unwrap() == "NULL" {
+        lexer.get();
+        return Ok(Literal {
+            kind: "c_literal".to_string(),
+            type_name: "null".to_string(),
+            value: "NULL".to_string(),
+        });
+    }
+    return Err(format!("literal expected, got {}", lexer.peek().unwrap()));
+}
