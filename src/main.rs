@@ -213,6 +213,35 @@ fn exec_function_call(
                 }),
             }
         }
+        "parse_type" => {
+            let instance_id = String::from(args[0].as_str().unwrap());
+            let lexer = lexer_instances.get_mut(&instance_id).unwrap();
+            let comment = args[1].as_str();
+            match parser::parse_type(lexer, comment) {
+                Ok(node) => json!({
+                    "error": "",
+                    "data": node
+                }),
+                Err(s) => json!({
+                    "error": s,
+                    "data": null
+                }),
+            }
+        }
+        "parse_anonymous_typeform" => {
+            let instance_id = String::from(args[0].as_str().unwrap());
+            let lexer = lexer_instances.get_mut(&instance_id).unwrap();
+            match parser::parse_anonymous_typeform(lexer) {
+                Ok(node) => json!({
+                    "error": "",
+                    "data": node
+                }),
+                Err(s) => json!({
+                    "error": s,
+                    "data": null
+                }),
+            }
+        }
         "read_file" => {
             let filename = args[0].as_str().unwrap();
             if read_files.get(filename).is_none() {

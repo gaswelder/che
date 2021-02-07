@@ -527,28 +527,7 @@ function parse_for($lexer)
 
 function parse_type($lexer, $comment = null)
 {
-    $const = false;
-    $type = '';
-
-    if ($lexer->follows('const')) {
-        $lexer->get();
-        $const = true;
-    }
-
-    if ($lexer->follows('struct')) {
-        $lexer->get();
-        $name = expect($lexer, 'word')['content'];
-        $type = 'struct ' . $name;
-    } else {
-        $tok = expect($lexer, 'word', $comment);
-        $type = $tok['content'];
-    }
-
-    return [
-        'kind' => 'c_type',
-        'is_const' => $const,
-        'type_name' => $type
-    ];
+    return call_rust('parse_type', $lexer, $comment);
 }
 
 function parse_function_parameter($lexer)
@@ -757,16 +736,7 @@ function parse_struct_literal($lexer)
 
 function parse_anonymous_typeform($lexer)
 {
-    $type = parse_type($lexer);
-    $ops = [];
-    while ($lexer->follows('*')) {
-        $ops[] = $lexer->get()['kind'];
-    }
-    return [
-        'kind' => 'c_anonymous_typeform',
-        'type_name' => $type,
-        'ops' => $ops
-    ];
+    return call_rust('parse_anonymous_typeform', $lexer);
 }
 
 function parse_variable_declaration($lexer)

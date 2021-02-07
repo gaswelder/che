@@ -128,3 +128,54 @@ pub fn parse_identifier(lexer: &mut Lexer) -> Result<Identifier, String> {
         name: name.unwrap(),
     });
 }
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct Type {
+    kind: String,
+    is_const: bool,
+    type_name: String,
+}
+
+pub fn parse_type(lexer: &mut Lexer, comment: Option<&str>) -> Result<Type, String> {
+    let mut is_const = false;
+    let type_name: String;
+
+    if lexer.follows("const") {
+        lexer.get();
+        is_const = true;
+    }
+
+    if lexer.follows("struct") {
+        lexer.get();
+        let name = expect(lexer, "word", comment)?.content.unwrap();
+        type_name = format!("struct {}", name);
+    } else {
+        type_name = expect(lexer, "word", comment)?.content.unwrap();
+    }
+
+    return Ok(Type {
+        kind: "c_type".to_string(),
+        is_const,
+        type_name,
+    });
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct AnonymousTypeform {
+    kind: String,
+    type_name: Type,
+    ops: Vec<String>,
+}
+
+pub fn parse_anonymous_typeform(lexer: &mut Lexer) -> Result<AnonymousTypeform, String> {
+    let type_name = parse_type(lexer, None).unwrap();
+    let mut ops: Vec<String> = Vec::new();
+    while lexer.follows("*") {
+        ops.push(lexer.get().unwrap().kind);
+    }
+    return Ok(AnonymousTypeform {
+        kind: "c_anonymous_typeform".to_string(),
+        type_name: type_name,
+        ops,
+    });
+}
