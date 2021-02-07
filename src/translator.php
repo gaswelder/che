@@ -50,7 +50,7 @@ function compat_function_forward_declaration($node)
     return [
         'kind' => 'c_compat_function_forward_declaration',
         'static' => $node['static'],
-        'type' => $node['type'],
+        'type_name' => $node['type_name'],
         'form' => $node['form'],
         'parameters' => $node['parameters']
     ];
@@ -100,7 +100,7 @@ function translate_enum($node)
 
 function translate_typedef($node)
 {
-    if (is_array($node['type']) && $node['type']['kind'] === 'c_composite_type') {
+    if ($node['type_name']['kind'] === 'c_composite_type') {
         $struct_name = '__' . format_node($node['alias']) . '_struct';
         return [
             [
@@ -110,16 +110,16 @@ function translate_typedef($node)
             [
                 'kind' => 'c_compat_struct_definition',
                 'name' => $struct_name,
-                'fields' => $node['type']
+                'fields' => $node['type_name']
             ],
             [
                 'kind' => 'c_typedef',
                 'before' => null,
                 'after' => null,
-                'type' => [
+                'type_name' => [
                     'kind' => 'c_type',
-                    'const' => false,
-                    'type' => 'struct ' . $struct_name
+                    'is_const' => false,
+                    'type_name' => 'struct ' . $struct_name
                 ],
                 'alias' => $node['alias']
             ]
@@ -133,7 +133,7 @@ function translate_function_declaration($node)
     $func = [
         'kind' => 'c_compat_function_declaration',
         'static' => !$node['pub'],
-        'type' => $node['type'],
+        'type_name' => $node['type_name'],
         'form' => $node['form'],
         'parameters' => translate_function_parameters($node['parameters']),
         'body' => $node['body']
@@ -260,11 +260,9 @@ function translate_function_parameter($node)
 {
     $compat = [];
     foreach ($node['forms'] as $form) {
-        $type = $node['type'];
-        $forms = [$form];
         $compat[] = [
-            'type' => $type,
-            'forms' => $forms
+            'type_name' => $node['type_name'],
+            'forms' => [$form]
         ];
     }
     return $compat;

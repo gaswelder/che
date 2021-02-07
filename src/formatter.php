@@ -109,7 +109,7 @@ function format_anonymous_parameters($node)
 
 function format_anonymous_typeform($node)
 {
-    $s = format_node($node['type']);
+    $s = format_node($node['type_name']);
     foreach ($node['ops'] as $op) {
         $s .= $op;
     }
@@ -178,7 +178,7 @@ function format_body($node)
 
 function format_cast($node)
 {
-    return sprintf("(%s) %s", format_node($node['type']), format_node($node['operand']));
+    return sprintf("(%s) %s", format_node($node['type_name']), format_node($node['operand']));
 }
 
 function format_compat_function_declaration($node)
@@ -187,7 +187,7 @@ function format_compat_function_declaration($node)
     if ($node['static'] && format_node($node['form']) != 'main') {
         $s .= 'static ';
     }
-    $s .= format_node($node['type'])
+    $s .= format_node($node['type_name'])
         . ' ' . format_node($node['form'])
         . format_node($node['parameters'])
         . ' ' . format_node($node['body']);
@@ -200,7 +200,7 @@ function format_compat_function_forward_declaration($node)
     if ($node['static'] && format_node($node['form']) != 'main') {
         $s .= 'static ';
     }
-    $s .= format_node($node['type'])
+    $s .= format_node($node['type_name'])
         . ' ' . format_node($node['form'])
         . format_node($node['parameters']) . ";\n";
     return $s;
@@ -296,7 +296,7 @@ function format_loop_counter_declaration($node)
 {
     $s = sprintf(
         '%s %s = %s',
-        format_node($node['type']),
+        format_node($node['type_name']),
         format_node($node['name']),
         format_node($node['value'])
     );
@@ -320,7 +320,7 @@ function format_function_declaration($node)
 {
     $s = sprintf(
         "%s %s%s %s\n\n",
-        format_node($node['type']),
+        format_node($node['type_name']),
         format_node($node['form']),
         format_node($node['parameters']),
         format_node($node['body'])
@@ -342,7 +342,7 @@ function format_function_parameters($node)
             $s .= '...';
             continue;
         }
-        $s1 = format_node($parameter['type']) . ' ';
+        $s1 = format_node($parameter['type_name']) . ' ';
         foreach ($parameter['forms'] as $i => $form) {
             if ($i > 0) {
                 $s1 .= ', ';
@@ -371,7 +371,7 @@ function format_import($node)
 
 function format_literal($node)
 {
-    switch ($node['type']) {
+    switch ($node['type_name']) {
         case 'string':
             return '"' . $node['value'] . '"';
         case 'char':
@@ -392,7 +392,7 @@ function format_module($node)
 
 function format_module_variable($node)
 {
-    return format_node($node['type'])
+    return format_node($node['type_name'])
         . ' ' . format_node($node['form'])
         . ' = ' . format_node($node['value'])
         . ";\n";
@@ -428,7 +428,7 @@ function format_sizeof($node)
 
 function format_struct_fieldlist($node)
 {
-    $s = format_node($node['type']) . ' ';
+    $s = format_node($node['type_name']) . ' ';
     foreach ($node['forms'] as $i => $form) {
         if ($i > 0) $s .= ', ';
         $s .= format_node($form);
@@ -473,7 +473,7 @@ function format_switch($node)
 
 function format_typedef($node)
 {
-    return 'typedef ' . format_node($node['type']) . ' '
+    return 'typedef ' . format_node($node['type_name']) . ' '
         . $node['before']
         . format_node($node['alias'])
         . $node['after']
@@ -483,16 +483,16 @@ function format_typedef($node)
 function format_type($node)
 {
     $s = '';
-    if ($node['const']) {
+    if ($node['is_const']) {
         $s .= 'const ';
     }
-    $s .= $node['type'];
+    $s .= $node['type_name'];
     return $s;
 }
 
 function format_variable_declaration($node)
 {
-    $s = format_node($node['type']) . ' ';
+    $s = format_node($node['type_name']) . ' ';
     foreach ($node['forms'] as $i => $form) {
         $value = $node['values'][$i];
         if ($i > 0) $s .= ', ';
@@ -511,7 +511,7 @@ function format_union($node)
 {
     $s = '';
     foreach ($node['fields'] as $field) {
-        $s .= format_node($field['type']) . ' ' . format_node($field['form']) . ";\n";
+        $s .= format_node($field['type_name']) . ' ' . format_node($field['form']) . ";\n";
     }
     return sprintf("union {\n%s\n} %s;\n", indent($s), format_node($node['form']));
 }

@@ -57,7 +57,7 @@ function parse_module_element($lexer)
         expect($lexer, ';', 'module variable declaration');
         return [
             'kind' => 'c_module_variable',
-            'type' => $type,
+            'type_name' => $type,
             'form' => $form,
             'value' => $value
         ];
@@ -130,7 +130,7 @@ function parse_typedef($lexer)
 
     return [
         'kind' => 'c_typedef',
-        'type' => $type,
+        'type_name' => $type,
         'before' => $before,
         'after' => $after,
         'alias' => $alias
@@ -203,7 +203,7 @@ function parse_atom($lexer)
         expect($lexer, ')', 'typecast');
         return [
             'kind' => 'c_cast',
-            'type' => $typeform,
+            'type_name' => $typeform,
             'operand' => parse_expression($lexer)
         ];
     }
@@ -423,7 +423,7 @@ function parse_struct_fieldlist($lexer)
     expect($lexer, ';');
     return [
         'kind' => 'c_struct_fieldlist',
-        'type' => $type,
+        'type_name' => $type,
         'forms' => $forms
     ];
 }
@@ -438,7 +438,7 @@ function parse_union($lexer)
         $form = parse_form($lexer);
         expect($lexer, ';');
         $fields[] = [
-            'type' => $type,
+            'type_name' => $type,
             'form' => $form
         ];
     }
@@ -502,7 +502,7 @@ function parse_for($lexer)
         $value = parse_expression($lexer);
         $init = [
             'kind' => 'c_loop_counter_declaration',
-            'type' => $type,
+            'type_name' => $type,
             'name' => $name,
             'value' => $value
         ];
@@ -546,8 +546,8 @@ function parse_type($lexer, $comment = null)
 
     return [
         'kind' => 'c_type',
-        'const' => $const,
-        'type' => $type
+        'is_const' => $const,
+        'type_name' => $type
     ];
 }
 
@@ -566,7 +566,7 @@ function parse_function_parameter($lexer)
         $forms[] = parse_form($lexer);
     }
     return [
-        'type' => $type,
+        'type_name' => $type,
         'forms' => $forms
     ];
 }
@@ -594,7 +594,7 @@ function parse_function_declaration($lexer, $pub, $type, $form)
     return [
         'kind' => 'c_function_declaration',
         'pub' => $pub,
-        'type' => $type,
+        'type_name' => $type,
         'form' => $form,
         'parameters' => [
             'kind' => 'c_function_parameters',
@@ -684,7 +684,7 @@ function parse_literal($lexer)
         $value = $lexer->get()['content'];
         return [
             'kind' => 'c_literal',
-            'type' => $type,
+            'type_name' => $type,
             'value' => $value
         ];
     }
@@ -694,7 +694,7 @@ function parse_literal($lexer)
         $value = 'NULL';
         return [
             'kind' => 'c_literal',
-            'type' => $type,
+            'type_name' => $type,
             'value' => $value
         ];
     }
@@ -764,7 +764,7 @@ function parse_anonymous_typeform($lexer)
     }
     return [
         'kind' => 'c_anonymous_typeform',
-        'type' => $type,
+        'type_name' => $type,
         'ops' => $ops
     ];
 }
@@ -787,7 +787,7 @@ function parse_variable_declaration($lexer)
     expect($lexer, ';');
     return [
         'kind' => 'c_variable_declaration',
-        'type' => $type,
+        'type_name' => $type,
         'forms' => $forms,
         'values' => $values
     ];
