@@ -88,16 +88,11 @@ function format_node($node)
                 return format_enum($node);
             case 'c_ellipsis':
                 return '...';
+            case 'c_compat_function_declaration':
+                return format_compat_function_declaration($node);
             default:
                 throw new Exception("Unknown node type: " . $node['kind']);
         }
-    }
-    $cn = get_class($node);
-    switch ($cn) {
-        case c_compat_function_declaration::class:
-            return format_compat_function_declaration($node);
-        default:
-            throw new Exception("don't know how to format '$cn'");
     }
 }
 
@@ -189,13 +184,13 @@ function format_cast($node)
 function format_compat_function_declaration($node)
 {
     $s = '';
-    if ($node->static && format_node($node->form) != 'main') {
+    if ($node['static'] && format_node($node['form']) != 'main') {
         $s .= 'static ';
     }
-    $s .= format_node($node->type)
-        . ' ' . format_node($node->form)
-        . format_node($node->parameters)
-        . ' ' . format_node($node->body);
+    $s .= format_node($node['type'])
+        . ' ' . format_node($node['form'])
+        . format_node($node['parameters'])
+        . ' ' . format_node($node['body']);
     return $s;
 }
 

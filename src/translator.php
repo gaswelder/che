@@ -45,6 +45,17 @@ function translate_import($node)
     return get_module_synopsis($compat);
 }
 
+function compat_function_forward_declaration($node)
+{
+    return [
+        'kind' => 'c_compat_function_forward_declaration',
+        'static' => $node['static'],
+        'type' => $node['type'],
+        'form' => $node['form'],
+        'parameters' => $node['parameters']
+    ];
+}
+
 function get_module_synopsis($module)
 {
     $elements = [];
@@ -57,8 +68,8 @@ function get_module_synopsis($module)
     ];
 
     foreach ($module['elements'] as $element) {
-        if ($element instanceof c_compat_function_declaration && !$element->static) {
-            $elements[] = $element->forward_declaration();
+        if ($element['kind'] === 'c_compat_function_declaration' && !$element['static']) {
+            $elements[] = compat_function_forward_declaration($element);
             continue;
         }
         if (is_array($element)) {
@@ -119,15 +130,16 @@ function translate_typedef($node)
 
 function translate_function_declaration($node)
 {
-    $func = new c_compat_function_declaration(
-        !$node['pub'],
-        $node['type'],
-        $node['form'],
-        translate_function_parameters($node['parameters']),
-        $node['body']
-    );
+    $func = [
+        'kind' => 'c_compat_function_declaration',
+        'static' => !$node['pub'],
+        'type' => $node['type'],
+        'form' => $node['form'],
+        'parameters' => translate_function_parameters($node['parameters']),
+        'body' => $node['body']
+    ];
     return [
-        $func->forward_declaration(),
+        compat_function_forward_declaration($func),
         $func
     ];
 }
