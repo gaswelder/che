@@ -265,7 +265,7 @@ function format_compat_enum($node)
 function format_enum($node)
 {
     $s = '';
-    if ($node['pub']) {
+    if ($node['is_pub']) {
         $s .= 'pub ';
     }
     $s .= "enum {\n";

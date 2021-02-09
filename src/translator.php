@@ -94,7 +94,7 @@ function translate_enum($node)
     return [[
         'kind' => 'c_compat_enum',
         'members' => $node['members'],
-        'hidden' => !$node['pub']
+        'hidden' => !$node['is_pub']
     ]];
 }
 
@@ -132,7 +132,7 @@ function translate_function_declaration($node)
 {
     $func = [
         'kind' => 'c_compat_function_declaration',
-        'static' => !$node['pub'],
+        'static' => !$node['is_pub'],
         'type_name' => $node['type_name'],
         'form' => $node['form'],
         'parameters' => translate_function_parameters($node['parameters']),

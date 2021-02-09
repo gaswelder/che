@@ -270,6 +270,21 @@ fn exec_function_call(
                 }),
             }
         }
+        "parse_enum" => {
+            let instance_id = String::from(args[0].as_str().unwrap());
+            let lexer = lexer_instances.get_mut(&instance_id).unwrap();
+            let is_pub = args[1].as_bool().unwrap();
+            match parser::parse_enum(lexer, is_pub) {
+                Ok(node) => json!({
+                    "error": "",
+                    "data": node
+                }),
+                Err(s) => json!({
+                    "error": s,
+                    "data": null
+                }),
+            }
+        }
         "read_file" => {
             let filename = args[0].as_str().unwrap();
             if read_files.get(filename).is_none() {

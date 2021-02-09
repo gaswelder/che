@@ -455,35 +455,7 @@ function parse_union($lexer)
 
 function parse_enum($lexer, $pub)
 {
-    $members = [];
-    expect($lexer, 'enum', 'enum definition');
-    expect($lexer, '{', 'enum definition');
-    while (true) {
-        $id = parse_identifier($lexer);
-        $value = null;
-        if ($lexer->follows('=')) {
-            $lexer->get();
-            $value = parse_literal($lexer);
-        }
-        $members[] = [
-            'kind' => 'c_enum_member',
-            'id' => $id,
-            'value' => $value
-        ];
-        if ($lexer->follows(',')) {
-            $lexer->get();
-            continue;
-        } else {
-            break;
-        }
-    }
-    expect($lexer, '}', 'enum definition');
-    expect($lexer, ';', 'enum definition');
-    return [
-        'kind' => 'c_enum',
-        'pub' => $pub,
-        'members' => $members
-    ];
+    return call_rust('parse_enum', $lexer, $pub);
 }
 
 function parse_for($lexer)
@@ -573,7 +545,7 @@ function parse_function_declaration($lexer, $pub, $type, $form)
     $body = parse_body($lexer);
     return [
         'kind' => 'c_function_declaration',
-        'pub' => $pub,
+        'is_pub' => $pub,
         'type_name' => $type,
         'form' => $form,
         'parameters' => [

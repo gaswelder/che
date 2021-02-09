@@ -232,3 +232,47 @@ pub fn parse_literal(lexer: &mut Lexer) -> Result<Literal, String> {
     }
     return Err(format!("literal expected, got {}", lexer.peek().unwrap()));
 }
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct Enum {
+    kind: String,
+    is_pub: bool,
+    members: Vec<EnumMember>,
+}
+#[derive(Serialize, Deserialize, Debug)]
+pub struct EnumMember {
+    kind: String,
+    id: Identifier,
+    value: Option<Literal>,
+}
+pub fn parse_enum(lexer: &mut Lexer, is_pub: bool) -> Result<Enum, String> {
+    let mut members: Vec<EnumMember> = Vec::new();
+    expect(lexer, "enum", Some("enum definition")).unwrap();
+    expect(lexer, "{", Some("enum definition")).unwrap();
+    loop {
+        let id = parse_identifier(lexer);
+        let mut value: Option<Literal> = None;
+        if lexer.follows("=") {
+            lexer.get();
+            value = Some(parse_literal(lexer)?);
+        }
+        members.push(EnumMember {
+            kind: "c_enum_member".to_string(),
+            id: id.unwrap(),
+            value,
+        });
+        if lexer.follows(",") {
+            lexer.get();
+            continue;
+        } else {
+            break;
+        }
+    }
+    expect(lexer, "}", Some("enum definition")).unwrap();
+    expect(lexer, ";", Some("enum definition")).unwrap();
+    return Ok(Enum {
+        kind: "c_enum".to_string(),
+        is_pub,
+        members,
+    });
+}
