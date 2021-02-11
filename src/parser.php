@@ -307,51 +307,12 @@ function operator_strength($op)
 
 function parse_array_literal($lexer)
 {
-    $values = [];
-    expect($lexer, '{', 'array literal');
-    if (!$lexer->follows('}')) {
-        $values[] = parse_array_literal_entry($lexer);
-        while ($lexer->follows(',')) {
-            $lexer->get();
-            $values[] = parse_array_literal_entry($lexer);
-        }
-    }
-    expect($lexer, '}', 'array literal');
-    return [
-        'kind' => 'c_array_literal',
-        'values' => $values
-    ];
+    return call_rust('parse_array_literal', $lexer);
 }
 
 function parse_array_literal_entry($lexer)
 {
-    $index = null;
-    if ($lexer->follows('[')) {
-        $lexer->get();
-        if ($lexer->follows('word')) {
-            $index = parse_identifier($lexer);
-        } else {
-            $index = parse_literal($lexer);
-        }
-        expect($lexer, ']', 'array literal entry');
-        expect($lexer, '=', 'array literal entry');
-    }
-    $value = parse_array_literal_member($lexer);
-    return [
-        'index' => $index,
-        'value' => $value
-    ];
-}
-
-function parse_array_literal_member($lexer)
-{
-    if ($lexer->follows('{')) {
-        return parse_array_literal($lexer);
-    }
-    if ($lexer->follows('word')) {
-        return parse_identifier($lexer);
-    }
-    return parse_literal($lexer);
+    return call_rust('parse_array_literal_entry', $lexer);
 }
 
 function parse_body($lexer)

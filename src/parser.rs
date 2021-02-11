@@ -1,5 +1,5 @@
 use crate::lexer::{Lexer, Token};
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Serialize, Serializer};
 
 pub fn is_op(token_type: String) -> bool {
     let ops = [
@@ -275,4 +275,97 @@ pub fn parse_enum(lexer: &mut Lexer, is_pub: bool) -> Result<Enum, String> {
         is_pub,
         members,
     });
+}
+
+#[derive(Debug, Serialize)]
+pub struct ArrayLiteral {
+    kind: String,
+    values: Vec<ArrayLiteralEntry>,
+}
+
+pub fn parse_array_literal(lexer: &mut Lexer) -> Result<ArrayLiteral, String> {
+    let mut values: Vec<ArrayLiteralEntry> = Vec::new();
+    expect(lexer, "{", Some("array literal"))?;
+    if !lexer.follows("}") {
+        values.push(parse_array_literal_entry(lexer).unwrap());
+        while lexer.follows(",") {
+            lexer.get();
+            values.push(parse_array_literal_entry(lexer).unwrap());
+        }
+    }
+    expect(lexer, "}", Some("array literal"))?;
+    return Ok(ArrayLiteral {
+        kind: "c_array_literal".to_string(),
+        values,
+    });
+}
+
+#[derive(Debug)]
+enum ArrayLiteralKey {
+    None,
+    Identifier(Identifier),
+    Literal(Literal),
+}
+
+impl Serialize for ArrayLiteralKey {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        match self {
+            ArrayLiteralKey::None => serializer.serialize_none(),
+            ArrayLiteralKey::Identifier(x) => Serialize::serialize(x, serializer),
+            ArrayLiteralKey::Literal(x) => Serialize::serialize(x, serializer),
+        }
+    }
+}
+
+#[derive(Debug)]
+enum ArrayLiteralValue {
+    ArrayLiteral(ArrayLiteral),
+    Identifier(Identifier),
+    Literal(Literal),
+}
+
+impl Serialize for ArrayLiteralValue {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        match self {
+            ArrayLiteralValue::ArrayLiteral(x) => Serialize::serialize(x, serializer),
+            ArrayLiteralValue::Identifier(x) => Serialize::serialize(x, serializer),
+            ArrayLiteralValue::Literal(x) => Serialize::serialize(x, serializer),
+        }
+    }
+}
+
+#[derive(Debug, Serialize)]
+pub struct ArrayLiteralEntry {
+    index: ArrayLiteralKey,
+    value: ArrayLiteralValue,
+}
+
+pub fn parse_array_literal_entry(lexer: &mut Lexer) -> Result<ArrayLiteralEntry, String> {
+    let mut index: ArrayLiteralKey = ArrayLiteralKey::None;
+    if lexer.follows("[") {
+        lexer.get();
+        if lexer.follows("word") {
+            index = ArrayLiteralKey::Identifier(parse_identifier(lexer)?);
+        } else {
+            index = ArrayLiteralKey::Literal(parse_literal(lexer)?);
+        }
+        expect(lexer, "]", Some("array literal entry"))?;
+        expect(lexer, "=", Some("array literal entry"))?;
+    }
+    let value: ArrayLiteralValue;
+    if lexer.follows("{") {
+        value = ArrayLiteralValue::ArrayLiteral(parse_array_literal(lexer)?);
+    } else if lexer.follows("word") {
+        value = ArrayLiteralValue::Identifier(parse_identifier(lexer)?);
+    } else {
+        value = ArrayLiteralValue::Literal(parse_literal(lexer)?);
+    }
+
+    return Ok(ArrayLiteralEntry { index, value });
 }
