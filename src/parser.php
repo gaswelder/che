@@ -157,22 +157,30 @@ function parse_statement($lexer, $typenames)
 function parse_expression($lexer, $typenames, $current_strength)
 {
     $result = parse_atom($lexer, $typenames);
-    while (is_op($lexer->peek()['kind'])) {
+    while (true) {
+        if (!is_op($lexer->peek()['kind'])) {
+            return $result;
+        }
         // If the operator is not stronger that our current level,
         // yield the result.
         if (operator_strength($lexer->peek()['kind']) <= $current_strength) {
             return $result;
         }
-        $op = $lexer->get()['kind'];
-        $next = parse_expression($lexer, $typenames, operator_strength($op));
-        $result = [
-            'kind' => 'c_binary_op',
-            'op' => $op,
-            'a' => $result,
-            'b' => $next
-        ];
+        $result = parse_binary_op($lexer, $typenames, $result);
     }
     return $result;
+}
+
+function parse_binary_op($lexer, $typenames, $first_operand)
+{
+    $op = $lexer->get()['kind'];
+    $second_operand = parse_expression($lexer, $typenames, operator_strength($op));
+    return [
+        'kind' => 'c_binary_op',
+        'op' => $op,
+        'a' => $first_operand,
+        'b' => $second_operand
+    ];
 }
 
 function parse_atom($lexer, $typenames)
