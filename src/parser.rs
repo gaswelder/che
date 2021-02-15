@@ -1,21 +1,16 @@
 use crate::lexer::{Lexer, Token};
 use serde::{Deserialize, Serialize, Serializer};
 
-pub fn is_op(token_type: String) -> bool {
+pub fn is_op(token_type: &str) -> bool {
     let ops = [
         "+", "-", "*", "/", "=", "|", "&", "~", "^", "<", ">", "?", ":", "%", "+=", "-=", "*=",
         "/=", "%=", "&=", "^=", "|=", "++", "--", "->", ".", ">>", "<<", "<=", ">=", "&&", "||",
         "==", "!=", "<<=", ">>=",
     ];
-    for op in ops.iter() {
-        if token_type.eq(op) {
-            return true;
-        }
-    }
-    return false;
+    return ops.contains(&token_type);
 }
 
-pub fn operator_strength(op: String) -> usize {
+pub fn operator_strength(op: &str) -> usize {
     let map = [
         vec![","],
         vec![
@@ -35,24 +30,24 @@ pub fn operator_strength(op: String) -> usize {
         vec!["->", "."],
     ];
     for (i, ops) in map.iter().enumerate() {
-        if ops.contains(&op.as_str()) {
+        if ops.contains(&op) {
             return i + 1;
         }
     }
     panic!("unknown operator: '{}'", op);
 }
 
-pub fn is_postfix_op(token: String) -> bool {
+pub fn is_postfix_op(token: &str) -> bool {
     let ops = ["++", "--", "(", "["];
-    return ops.to_vec().contains(&token.as_str());
+    return ops.to_vec().contains(&token);
 }
 
-pub fn is_prefix_op(op: String) -> bool {
+pub fn is_prefix_op(op: &str) -> bool {
     let ops = ["!", "--", "++", "*", "~", "&", "-"];
-    return ops.to_vec().contains(&op.as_str());
+    return ops.to_vec().contains(&op);
 }
 
-pub fn is_type(name: String, typenames: &Vec<String>) -> bool {
+pub fn is_type(name: &str, typenames: &Vec<String>) -> bool {
     let types = [
         "struct",
         "enum",
@@ -85,8 +80,8 @@ pub fn is_type(name: String, typenames: &Vec<String>) -> bool {
         "socklen_t",
         "ssize_t",
     ];
-    return types.to_vec().contains(&name.as_str())
-        || typenames.to_vec().contains(&name)
+    return types.to_vec().contains(&name)
+        || typenames.to_vec().contains(&String::from(name))
         || name.ends_with("_t");
 }
 
@@ -368,4 +363,320 @@ pub fn parse_array_literal_entry(lexer: &mut Lexer) -> Result<ArrayLiteralEntry,
     }
 
     return Ok(ArrayLiteralEntry { index, value });
+}
+
+#[derive(Debug, Serialize)]
+pub struct BinaryOp {
+    kind: String,
+    op: String,
+    a: Expression,
+    b: Expression,
+}
+
+#[derive(Debug)]
+pub enum Expression {
+    BinaryOp(Box<BinaryOp>),
+    Cast(Box<Cast>),
+    FunctionCall(Box<FunctionCall>),
+    Expression(Box<Expression>),
+    Literal(Literal),
+    Identifier(Identifier),
+    StructLiteral(Box<StructLiteral>),
+    ArrayLiteral(Box<ArrayLiteral>),
+    Sizeof(Box<Sizeof>),
+    PrefixOperator(Box<PrefixOperator>),
+    PostfixOperator(Box<PostfixOperator>),
+    ArrayIndex(Box<ArrayIndex>),
+}
+
+impl Serialize for Expression {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        match self {
+            Expression::BinaryOp(x) => Serialize::serialize(x, serializer),
+            Expression::Cast(x) => Serialize::serialize(x, serializer),
+            Expression::FunctionCall(x) => Serialize::serialize(x, serializer),
+            Expression::Expression(x) => Serialize::serialize(x, serializer),
+            Expression::Literal(x) => Serialize::serialize(x, serializer),
+            Expression::Identifier(x) => Serialize::serialize(x, serializer),
+            Expression::StructLiteral(x) => Serialize::serialize(x, serializer),
+            Expression::ArrayLiteral(x) => Serialize::serialize(x, serializer),
+            Expression::Sizeof(x) => Serialize::serialize(x, serializer),
+            Expression::PrefixOperator(x) => Serialize::serialize(x, serializer),
+            Expression::PostfixOperator(x) => Serialize::serialize(x, serializer),
+            Expression::ArrayIndex(x) => Serialize::serialize(x, serializer),
+        }
+    }
+}
+
+pub fn parse_expression(
+    lexer: &mut Lexer,
+    current_strength: usize,
+    typenames: &Vec<String>,
+) -> Result<Expression, String> {
+    let mut result: Expression = parse_atom(lexer, typenames)?;
+    loop {
+        let peek = lexer.peek().unwrap();
+        if !is_op(&peek.kind) {
+            break;
+        }
+        // If the operator is not stronger that our current level,
+        // yield the result.
+        if operator_strength(peek.kind.as_str()) <= current_strength {
+            return Ok(Expression::Expression(Box::new(result)));
+        }
+        let op = lexer.get().unwrap();
+        let next = parse_expression(lexer, operator_strength(&op.kind), typenames)?;
+        result = Expression::BinaryOp(Box::new(BinaryOp {
+            kind: "c_binary_op".to_string(),
+            op: String::from(&op.kind),
+            a: result,
+            b: next,
+        }));
+    }
+    return Ok(Expression::Expression(Box::new(result)));
+}
+
+#[derive(Debug, Serialize)]
+pub struct Cast {
+    kind: String,
+    type_name: AnonymousTypeform,
+    operand: Expression,
+}
+
+#[derive(Debug, Serialize)]
+pub struct PostfixOperator {
+    kind: String,
+    operator: String,
+    operand: Expression,
+}
+
+#[derive(Debug, Serialize)]
+pub struct PrefixOperator {
+    kind: String,
+    operator: String,
+    operand: Expression,
+}
+
+#[derive(Debug, Serialize)]
+pub struct ArrayIndex {
+    kind: String,
+    array: Expression,
+    index: Expression,
+}
+
+pub fn parse_atom(lexer: &mut Lexer, typenames: &Vec<String>) -> Result<Expression, String> {
+    let nono = ["case", "default", "if", "else", "for", "while", "switch"];
+    let next = &lexer.peek().unwrap().kind;
+    if nono.contains(&next.as_str()) {
+        return Err(format!(
+            "expression: unexpected keyword '{}'",
+            lexer.peek().unwrap().kind
+        ));
+    }
+
+    if next == "("
+        && lexer.peek_n(1).unwrap().kind == "word"
+        && is_type(
+            lexer.peek_n(1).unwrap().content.as_ref().unwrap(),
+            typenames,
+        )
+    {
+        expect(lexer, "(", None)?;
+        let typeform = parse_anonymous_typeform(lexer)?;
+        expect(lexer, ")", Some("typecast"))?;
+        return Ok(Expression::Cast(Box::new(Cast {
+            kind: "c_cast".to_string(),
+            type_name: typeform,
+            operand: parse_expression(lexer, 0, typenames).unwrap(),
+        })));
+    }
+
+    if next == "(" {
+        lexer.get();
+        let expr = parse_expression(lexer, 0, typenames).unwrap();
+        expect(lexer, ")", None)?;
+        return Ok(Expression::Expression(Box::new(expr)));
+    }
+
+    if next == "{" {
+        if lexer.peek_n(1).unwrap().kind == "." {
+            return Ok(Expression::StructLiteral(Box::new(
+                parse_struct_literal(lexer, typenames).unwrap(),
+            )));
+        }
+        return Ok(Expression::ArrayLiteral(Box::new(parse_array_literal(
+            lexer,
+        )?)));
+    }
+
+    if next == "sizeof" {
+        return Ok(Expression::Sizeof(Box::new(parse_sizeof(
+            lexer, typenames,
+        )?)));
+    }
+
+    if is_prefix_op(next) {
+        let op = lexer.get().unwrap().kind;
+        let operand = parse_expression(lexer, operator_strength("prefix"), typenames)?;
+        return Ok(Expression::PrefixOperator(Box::new(PrefixOperator {
+            kind: "c_prefix_operator".to_string(),
+            operator: op,
+            operand: operand,
+        })));
+    }
+
+    let mut result: Expression;
+    if next == "word" {
+        result = Expression::Identifier(parse_identifier(lexer)?);
+    } else {
+        result = Expression::Literal(parse_literal(lexer)?);
+    }
+
+    while lexer.more() {
+        if lexer.peek().unwrap().kind == "(" {
+            result =
+                Expression::FunctionCall(Box::new(parse_function_call(lexer, typenames, result)?));
+            continue;
+        }
+        if lexer.peek().unwrap().kind == "[" {
+            expect(lexer, "[", Some("array index"))?;
+            let index = parse_expression(lexer, 0, typenames)?;
+            expect(lexer, "]", Some("array index"))?;
+            result = Expression::ArrayIndex(Box::new(ArrayIndex {
+                kind: "c_array_index".to_string(),
+                array: result,
+                index: index,
+            }));
+            continue;
+        }
+
+        if is_postfix_op(lexer.peek().unwrap().kind.as_str()) {
+            let op = lexer.get().unwrap().kind;
+            result = Expression::PostfixOperator(Box::new(PostfixOperator {
+                kind: "c_postfix_operator".to_string(),
+                operand: result,
+                operator: op,
+            }));
+            continue;
+        }
+        break;
+    }
+
+    return Ok(result);
+}
+
+#[derive(Debug, Serialize)]
+pub struct StructLiteralMember {
+    name: Identifier,
+    value: Expression,
+}
+
+#[derive(Debug, Serialize)]
+pub struct StructLiteral {
+    kind: String,
+    members: Vec<StructLiteralMember>,
+}
+
+pub fn parse_struct_literal(
+    lexer: &mut Lexer,
+    typenames: &Vec<String>,
+) -> Result<StructLiteral, String> {
+    let mut result = StructLiteral {
+        kind: "c_struct_literal".to_string(),
+        members: Vec::new(),
+    };
+    expect(lexer, "{", Some("struct literal"))?;
+    loop {
+        expect(lexer, ".", Some("struct literal member"))?;
+        let member_name = parse_identifier(lexer)?;
+        expect(lexer, "=", Some("struct literal member"))?;
+        let member_value = parse_expression(lexer, 0, typenames)?;
+        result.members.push(StructLiteralMember {
+            name: member_name,
+            value: member_value,
+        });
+        if lexer.follows(",") {
+            lexer.get();
+            continue;
+        } else {
+            break;
+        }
+    }
+    expect(lexer, "}", Some("struct literal"))?;
+    return Ok(result);
+}
+
+#[derive(Debug)]
+enum SizeofArgument {
+    Type(Type),
+    Expression(Expression),
+}
+
+impl Serialize for SizeofArgument {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        match self {
+            SizeofArgument::Type(x) => Serialize::serialize(x, serializer),
+            SizeofArgument::Expression(x) => Serialize::serialize(x, serializer),
+        }
+    }
+}
+
+#[derive(Debug, Serialize)]
+pub struct Sizeof {
+    kind: String,
+    argument: SizeofArgument,
+}
+
+pub fn parse_sizeof(lexer: &mut Lexer, typenames: &Vec<String>) -> Result<Sizeof, String> {
+    expect(lexer, "sizeof", None)?;
+    expect(lexer, "(", None)?;
+    let argument: SizeofArgument;
+
+    if lexer.peek().unwrap().kind == "word"
+        && is_type(lexer.peek().unwrap().content.as_ref().unwrap(), typenames)
+    {
+        argument = SizeofArgument::Type(parse_type(lexer, None)?);
+    } else {
+        argument = SizeofArgument::Expression(parse_expression(lexer, 0, typenames).unwrap());
+    }
+    expect(lexer, ")", None)?;
+    return Ok(Sizeof {
+        kind: "c_sizeof".to_string(),
+        argument,
+    });
+}
+
+#[derive(Debug, Serialize)]
+pub struct FunctionCall {
+    kind: String,
+    function: Expression,
+    arguments: Vec<Expression>,
+}
+
+pub fn parse_function_call(
+    lexer: &mut Lexer,
+    typenames: &Vec<String>,
+    function_name: Expression,
+) -> Result<FunctionCall, String> {
+    let mut arguments: Vec<Expression> = Vec::new();
+    expect(lexer, "(", None)?;
+    if lexer.more() && lexer.peek().unwrap().kind != ")" {
+        arguments.push(parse_expression(lexer, 0, typenames)?);
+        while lexer.follows(",") {
+            lexer.get();
+            arguments.push(parse_expression(lexer, 0, typenames)?);
+        }
+    }
+    expect(lexer, ")", None)?;
+    return Ok(FunctionCall {
+        kind: "c_function_call".to_string(),
+        function: function_name,
+        arguments: arguments,
+    });
 }

@@ -148,28 +148,28 @@ fn exec_function_call(
             let token_type = args[0].as_str().unwrap();
             json!({
                 "error": "",
-                "data": parser::is_op(String::from(token_type))
+                "data": parser::is_op(token_type)
             })
         }
         "is_prefix_op" => {
             let token_type = args[0].as_str().unwrap();
             json!({
                 "error": "",
-                "data": parser::is_prefix_op(String::from(token_type))
+                "data": parser::is_prefix_op(token_type)
             })
         }
         "operator_strength" => {
             let op = args[0].as_str().unwrap();
             json!({
                 "error": "",
-                "data": parser::operator_strength(String::from(op))
+                "data": parser::operator_strength(op)
             })
         }
         "is_postfix_op" => {
             let op = args[0].as_str().unwrap();
             json!({
                 "error": "",
-                "data": parser::is_postfix_op(String::from(op))
+                "data": parser::is_postfix_op(op)
             })
         }
         "is_type" => {
@@ -180,7 +180,7 @@ fn exec_function_call(
             }
             json!({
                 "error": "",
-                "data": parser::is_type(op.to_string(), &typenames)
+                "data": parser::is_type(op, &typenames)
             })
         }
         "expect" => {
@@ -203,6 +203,48 @@ fn exec_function_call(
             let instance_id = String::from(args[0].as_str().unwrap());
             let lexer = lexer_instances.get_mut(&instance_id).unwrap();
             match parser::parse_identifier(lexer) {
+                Ok(node) => json!({
+                    "error": "",
+                    "data": node
+                }),
+                Err(s) => json!({
+                    "error": s,
+                    "data": null
+                }),
+            }
+        }
+        "parse_sizeof" => {
+            let instance_id = String::from(args[0].as_str().unwrap());
+            let lexer = lexer_instances.get_mut(&instance_id).unwrap();
+            let mut typenames: Vec<String> = Vec::new();
+            for item in args[1].as_array().unwrap() {
+                typenames.push(item.as_str().unwrap().to_string())
+            }
+            match parser::parse_sizeof(lexer, &typenames) {
+                Ok(node) => json!({
+                    "error": "",
+                    "data": node
+                }),
+                Err(s) => json!({
+                    "error": s,
+                    "data": null
+                }),
+            }
+        }
+        "parse_expression" => {
+            let instance_id = String::from(args[0].as_str().unwrap());
+            let lexer = lexer_instances.get_mut(&instance_id).unwrap();
+            let mut typenames: Vec<String> = Vec::new();
+            for item in args[1].as_array().unwrap() {
+                typenames.push(item.as_str().unwrap().to_string())
+            }
+            let mut current_strength1 = args[2].as_u64().unwrap();
+            let mut current_strength: usize = 0;
+            while current_strength1 > 0 {
+                current_strength += 1;
+                current_strength1 -= 1;
+            }
+            match parser::parse_expression(lexer, current_strength, &typenames) {
                 Ok(node) => json!({
                     "error": "",
                     "data": node
