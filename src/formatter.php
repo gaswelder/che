@@ -278,7 +278,15 @@ function format_enum($node)
 
 function format_form($node)
 {
-    return $node['str'];
+    $s = $node['stars'] . $node['name'];
+    foreach ($node['indexes'] as $expr) {
+        if ($expr) {
+            $s .= '[' . format_node($expr) . ']';
+        } else {
+            $s .= '[]';
+        }
+    }
+    return $s;
 }
 
 function format_for($node)

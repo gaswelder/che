@@ -416,23 +416,28 @@ function parse_function_declaration($lexer, $pub, $type, $form, $typenames)
 function parse_form($lexer, $typenames)
 {
     // *argv[]
+    // linechars[]
+    // buf[SIZE * 2]
     $node = [
         'kind' => 'c_form',
-        'str' => ''
+        'stars' => '',
+        'name' => null,
+        'indexes' => [],
     ];
     while ($lexer->follows('*')) {
-        $node['str'] .= $lexer->get()['kind'];
+        $node['stars'] .= $lexer->get()['kind'];
     }
-    $node['str'] .= expect($lexer, 'word')['content'];
+    $node['name'] = expect($lexer, 'word')['content'];
 
     while ($lexer->follows('[')) {
-        $node['str'] .= $lexer->get()['kind'];
-        while ($lexer->more() && $lexer->peek()['kind'] != ']') {
+        $lexer->get()['kind'];
+        if ($lexer->peek()['kind'] != ']') {
             $expr = parse_expression($lexer, $typenames, 0);
-            $node['str'] .= format_node($expr);
+        } else {
+            $expr = null;
         }
+        $node['indexes'][] = $expr;
         expect($lexer, ']');
-        $node['str'] .= ']';
     }
     return $node;
 }
