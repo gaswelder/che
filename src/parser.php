@@ -136,18 +136,6 @@ function parse_expression($lexer, $typenames, $current_strength)
     return call_rust('parse_expression', $lexer, $typenames, $current_strength);
 }
 
-function parse_binary_op($lexer, $typenames, $first_operand)
-{
-    $op = $lexer->get()['kind'];
-    $second_operand = parse_expression($lexer, $typenames, operator_strength($op));
-    return [
-        'kind' => 'c_binary_op',
-        'op' => $op,
-        'a' => $first_operand,
-        'b' => $second_operand
-    ];
-}
-
 function expect($lexer, $type, $comment = null)
 {
     return call_rust('expect', $lexer, $type, $comment);
@@ -158,34 +146,9 @@ function is_type($name, $typenames)
     return call_rust_mem('is_type', $name, $typenames);
 }
 
-function is_op($token_type)
-{
-    return call_rust_mem("is_op", $token_type);
-}
-
-function is_prefix_op($op)
-{
-    return call_rust_mem("is_prefix_op", $op);
-}
-
-function is_postfix_op($op)
-{
-    return call_rust_mem("is_postfix_op", $op);
-}
-
 function operator_strength($op)
 {
     return call_rust_mem("operator_strength", $op);
-}
-
-function parse_array_literal($lexer)
-{
-    return call_rust('parse_array_literal', $lexer);
-}
-
-function parse_array_literal_entry($lexer)
-{
-    return call_rust('parse_array_literal_entry', $lexer);
 }
 
 function parse_body($lexer, $typenames)
@@ -292,46 +255,6 @@ function parse_enum($lexer, $pub)
     return call_rust('parse_enum', $lexer, $pub);
 }
 
-function parse_for($lexer, $typenames)
-{
-    $init = null;
-    $condition = null;
-    $action = null;
-    $body = null;
-
-    expect($lexer, 'for');
-    expect($lexer, '(');
-
-    if ($lexer->peek()['kind'] == 'word' && is_type($lexer->peek()['content'], $typenames)) {
-        $type = parse_type($lexer);
-        $name = parse_identifier($lexer);
-        expect($lexer, '=');
-        $value = parse_expression($lexer, $typenames, 0);
-        $init = [
-            'kind' => 'c_loop_counter_declaration',
-            'type_name' => $type,
-            'name' => $name,
-            'value' => $value
-        ];
-    } else {
-        $init = parse_expression($lexer, $typenames, 0);
-    }
-
-    expect($lexer, ';');
-    $condition = parse_expression($lexer, $typenames, 0);
-    expect($lexer, ';');
-    $action = parse_expression($lexer, $typenames, 0);
-    expect($lexer, ')');
-    $body = parse_body($lexer, $typenames);
-    return [
-        'kind' => 'c_for',
-        'init' => $init,
-        'condition' => $condition,
-        'action' => $action,
-        'body' => $body
-    ];
-}
-
 function parse_type($lexer, $comment = null)
 {
     return call_rust('parse_type', $lexer, $comment);
@@ -419,51 +342,6 @@ function parse_form($lexer, $typenames)
     return $node;
 }
 
-function parse_switch($lexer, $typenames)
-{
-    expect($lexer, 'switch');
-    expect($lexer, '(');
-    $value = parse_expression($lexer, $typenames, 0);
-    $cases = [];
-    $default = null;
-    expect($lexer, ')');
-    expect($lexer, '{');
-    while ($lexer->follows('case')) {
-        expect($lexer, 'case');
-        $case_value = null;
-        if ($lexer->follows('word')) {
-            $case_value = parse_identifier($lexer);
-        } else {
-            $case_value = parse_literal($lexer);
-        }
-        expect($lexer, ':');
-        $until = ['case', 'break', 'default', '}'];
-        $statements = [];
-        while ($lexer->more() && !in_array($lexer->peek()['kind'], $until)) {
-            $statements[] = parse_statement($lexer, $typenames);
-        }
-        $cases[] = [
-            'value' => $case_value,
-            'statements' => $statements
-        ];
-    }
-    if ($lexer->follows('default')) {
-        $def = [];
-        expect($lexer, 'default');
-        expect($lexer, ':');
-        while ($lexer->more() && $lexer->peek()['kind'] != '}') {
-            $def[] = parse_statement($lexer, $typenames);
-        }
-        $default = $def;
-    }
-    expect($lexer, '}');
-    return [
-        'kind' => 'c_switch',
-        'value' => $value,
-        'cases' => $cases,
-        'default' => $default
-    ];
-}
 
 function parse_literal($lexer)
 {
@@ -473,114 +351,4 @@ function parse_literal($lexer)
 function parse_identifier($lexer)
 {
     return call_rust('parse_identifier', $lexer);
-}
-
-function parse_if($lexer, $typenames)
-{
-    $condition = null;
-    $body = null;
-    $else = null;
-    expect($lexer, 'if', 'if statement');
-    expect($lexer, '(', 'if statement');
-    $condition = parse_expression($lexer, $typenames, 0);
-    expect($lexer, ')', 'if statement');
-    $body = parse_body($lexer, $typenames);
-    if ($lexer->follows('else')) {
-        $lexer->get();
-        $else = parse_body($lexer, $typenames);
-    }
-    return [
-        'kind' => 'c_if',
-        'condition' => $condition,
-        'body' => $body,
-        'else_body' => $else
-    ];
-}
-
-function parse_struct_literal($lexer, $typenames)
-{
-    $members = [];
-    expect($lexer, '{', 'struct literal');
-    while (true) {
-        expect($lexer, '.', 'struct literal member');
-        $member_name = parse_identifier($lexer);
-        expect($lexer, '=', 'struct literal member');
-        $member_value = parse_expression($lexer, $typenames, 0);
-        $members[] = [
-            'name' => $member_name,
-            'value' => $member_value
-        ];
-        if ($lexer->follows(',')) {
-            $lexer->get();
-            continue;
-        } else {
-            break;
-        }
-    }
-    expect($lexer, '}', 'struct literal');
-    return [
-        'kind' => 'c_struct_literal',
-        'members' => $members
-    ];
-}
-
-function parse_anonymous_typeform($lexer)
-{
-    return call_rust('parse_anonymous_typeform', $lexer);
-}
-
-function parse_variable_declaration($lexer, $typenames)
-{
-    $type = parse_type($lexer);
-
-    $forms = [parse_form($lexer, $typenames)];
-    expect($lexer, '=', 'variable declaration');
-    $values = [parse_expression($lexer, $typenames, 0)];
-
-    while ($lexer->follows(',')) {
-        $lexer->get();
-        $forms[] = parse_form($lexer, $typenames);
-        expect($lexer, '=', 'variable declaration');
-        $values[] = parse_expression($lexer, $typenames, 0);
-    }
-
-    expect($lexer, ';');
-    return [
-        'kind' => 'c_variable_declaration',
-        'type_name' => $type,
-        'forms' => $forms,
-        'values' => $values
-    ];
-}
-
-function parse_return($lexer, $typenames)
-{
-    expect($lexer, 'return');
-    if ($lexer->peek()['kind'] == ';') {
-        $lexer->get();
-        return [
-            'kind' => 'c_return',
-            'expression' => null
-        ];
-    }
-    $expression = parse_expression($lexer, $typenames, 0);
-    expect($lexer, ';');
-    return [
-        'kind' => 'c_return',
-        'expression' => $expression
-    ];
-}
-
-function parse_while($lexer, $typenames)
-{
-    expect($lexer, 'while');
-    expect($lexer, '(');
-    $condition = parse_expression($lexer, $typenames, 0);
-    expect($lexer, ')');
-    $body = parse_body($lexer, $typenames);
-    return [
-        'kind' => 'c_while',
-        'condition' => $condition,
-        'body' => $body
-    ];
 }
