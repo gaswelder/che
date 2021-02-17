@@ -128,30 +128,7 @@ function parse_typedef($lexer, $typenames)
 
 function parse_statement($lexer, $typenames)
 {
-    $next = $lexer->peek();
-    if (
-        ($next['kind'] == 'word' && is_type($next['content'], $typenames))
-        || $next['kind'] == 'const'
-    ) {
-        return parse_variable_declaration($lexer, $typenames);
-    }
-
-    switch ($next['kind']) {
-        case 'if':
-            return parse_if($lexer, $typenames);
-        case 'for':
-            return parse_for($lexer, $typenames);
-        case 'while':
-            return parse_while($lexer, $typenames);
-        case 'return':
-            return parse_return($lexer, $typenames);
-        case 'switch':
-            return parse_switch($lexer, $typenames);
-    }
-
-    $expr = parse_expression($lexer, $typenames, 0);
-    expect($lexer, ';', 'parsing statement');
-    return $expr;
+    return call_rust('parse_statement', $lexer, $typenames);
 }
 
 function parse_expression($lexer, $typenames, $current_strength)
@@ -516,7 +493,7 @@ function parse_if($lexer, $typenames)
         'kind' => 'c_if',
         'condition' => $condition,
         'body' => $body,
-        'else' => $else
+        'else_body' => $else
     ];
 }
 

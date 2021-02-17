@@ -366,8 +366,8 @@ function format_function_parameters($node)
 function format_if($node)
 {
     $s = sprintf('if (%s) %s', format_node($node['condition']), format_node($node['body']));
-    if ($node['else']) {
-        $s .= ' else ' . format_node($node['else']);
+    if ($node['else_body']) {
+        $s .= ' else ' . format_node($node['else_body']);
     }
     return $s;
 }

@@ -680,3 +680,372 @@ pub fn parse_function_call(
         arguments: arguments,
     });
 }
+
+#[derive(Serialize, Debug)]
+pub struct While {
+    kind: String,
+    condition: Expression,
+    body: Body,
+}
+
+pub fn parse_while(lexer: &mut Lexer, typenames: &Vec<String>) -> Result<While, String> {
+    expect(lexer, "while", None)?;
+    expect(lexer, "(", None)?;
+    let condition = parse_expression(lexer, 0, typenames)?;
+    expect(lexer, ")", None)?;
+    let body = parse_body(lexer, typenames)?;
+    return Ok(While {
+        kind: "c_while".to_string(),
+        condition,
+        body,
+    });
+}
+
+#[derive(Serialize, Debug)]
+pub struct Body {
+    kind: String,
+    statements: Vec<Statement>,
+}
+
+pub fn parse_body(lexer: &mut Lexer, typenames: &Vec<String>) -> Result<Body, String> {
+    let mut statements: Vec<Statement> = Vec::new();
+    if lexer.follows("{") {
+        expect(lexer, "{", None)?;
+        while !lexer.follows("}") {
+            statements.push(parse_statement(lexer, typenames)?);
+        }
+        expect(lexer, "}", None)?;
+    } else {
+        statements.push(parse_statement(lexer, typenames)?);
+    }
+    return Ok(Body {
+        kind: "c_body".to_string(),
+        statements,
+    });
+}
+
+#[derive(Debug)]
+pub enum Statement {
+    VariableDeclaration(VariableDeclaration),
+    If(If),
+    For(For),
+    While(While),
+    Return(Return),
+    Switch(Switch),
+    Expression(Expression),
+}
+
+impl Serialize for Statement {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        match self {
+            Statement::VariableDeclaration(x) => Serialize::serialize(x, serializer),
+            Statement::If(x) => Serialize::serialize(x, serializer),
+            Statement::For(x) => Serialize::serialize(x, serializer),
+            Statement::While(x) => Serialize::serialize(x, serializer),
+            Statement::Return(x) => Serialize::serialize(x, serializer),
+            Statement::Switch(x) => Serialize::serialize(x, serializer),
+            Statement::Expression(x) => Serialize::serialize(x, serializer),
+        }
+    }
+}
+
+pub fn parse_statement(lexer: &mut Lexer, typenames: &Vec<String>) -> Result<Statement, String> {
+    let next = lexer.peek().unwrap();
+    if (next.kind == "word" && is_type(&next.content.as_ref().unwrap(), typenames))
+        || next.kind == "const"
+    {
+        return Ok(Statement::VariableDeclaration(parse_variable_declaration(
+            lexer, typenames,
+        )?));
+    }
+
+    match next.kind.as_str() {
+        "if" => return Ok(Statement::If(parse_if(lexer, typenames)?)),
+        "for" => return Ok(Statement::For(parse_for(lexer, typenames)?)),
+        "while" => return Ok(Statement::While(parse_while(lexer, typenames)?)),
+        "return" => return Ok(Statement::Return(parse_return(lexer, typenames)?)),
+        "switch" => return Ok(Statement::Switch(parse_switch(lexer, typenames)?)),
+        _ => {
+            let expr = parse_expression(lexer, 0, typenames)?;
+            expect(lexer, ";", Some("parsing statement"))?;
+            return Ok(Statement::Expression(expr));
+        }
+    };
+}
+
+#[derive(Serialize, Debug)]
+pub struct VariableDeclaration {
+    kind: String,
+    type_name: Type,
+    forms: Vec<Form>,
+    values: Vec<Expression>,
+}
+
+pub fn parse_variable_declaration(
+    lexer: &mut Lexer,
+    typenames: &Vec<String>,
+) -> Result<VariableDeclaration, String> {
+    let type_name = parse_type(lexer, None)?;
+
+    let mut forms = vec![parse_form(lexer, typenames)?];
+    expect(lexer, "=", Some("variable declaration"))?;
+    let mut values = vec![parse_expression(lexer, 0, typenames)?];
+
+    while lexer.follows(",") {
+        lexer.get();
+        forms.push(parse_form(lexer, typenames)?);
+        expect(lexer, "=", Some("variable declaration"))?;
+        values.push(parse_expression(lexer, 0, typenames)?);
+    }
+
+    expect(lexer, ";", None)?;
+    return Ok(VariableDeclaration {
+        kind: "c_variable_declaration".to_string(),
+        type_name,
+        forms,
+        values,
+    });
+}
+
+#[derive(Serialize, Debug)]
+pub struct Return {
+    kind: String,
+    expression: Option<Expression>,
+}
+
+pub fn parse_return(lexer: &mut Lexer, typenames: &Vec<String>) -> Result<Return, String> {
+    expect(lexer, "return", None)?;
+    if lexer.peek().unwrap().kind == ";" {
+        lexer.get();
+        return Ok(Return {
+            kind: "c_return".to_string(),
+            expression: None,
+        });
+    }
+    let expression = parse_expression(lexer, 0, typenames)?;
+    expect(lexer, ";", None)?;
+    return Ok(Return {
+        kind: "c_return".to_string(),
+        expression: Some(expression),
+    });
+}
+
+#[derive(Serialize, Debug)]
+pub struct Form {
+    kind: String,
+    stars: String,
+    name: String,
+    indexes: Vec<Option<Expression>>,
+}
+
+pub fn parse_form(lexer: &mut Lexer, typenames: &Vec<String>) -> Result<Form, String> {
+    // *argv[]
+    // linechars[]
+    // buf[SIZE * 2]
+    let mut node = Form {
+        kind: "c_form".to_string(),
+        stars: String::new(),
+        name: String::new(),
+        indexes: vec![],
+    };
+
+    while lexer.follows("*") {
+        node.stars += &lexer.get().unwrap().kind;
+    }
+    node.name = String::from(expect(lexer, "word", None).unwrap().content.unwrap());
+
+    while lexer.follows("[") {
+        &lexer.get().unwrap();
+        let expr: Option<Expression>;
+        if lexer.more() && lexer.peek().unwrap().kind != "]" {
+            expr = Some(parse_expression(lexer, 0, typenames)?);
+        } else {
+            expr = None;
+        }
+        node.indexes.push(expr);
+        expect(lexer, "]", None)?;
+    }
+    return Ok(node);
+}
+
+#[derive(Serialize, Debug)]
+pub struct If {
+    kind: String,
+    condition: Expression,
+    body: Body,
+    else_body: Option<Body>,
+}
+
+pub fn parse_if(lexer: &mut Lexer, typenames: &Vec<String>) -> Result<If, String> {
+    let condition;
+    let body;
+    let mut else_body = None;
+
+    expect(lexer, "if", Some("if statement"))?;
+    expect(lexer, "(", Some("if statement"))?;
+    condition = parse_expression(lexer, 0, typenames)?;
+    expect(lexer, ")", Some("if statement"))?;
+    body = parse_body(lexer, typenames)?;
+    if lexer.follows("else") {
+        lexer.get();
+        else_body = Some(parse_body(lexer, typenames)?);
+    }
+    return Ok(If {
+        kind: "c_if".to_string(),
+        condition,
+        body,
+        else_body,
+    });
+}
+
+#[derive(Serialize, Debug)]
+pub struct For {
+    kind: String,
+    init: ForInit,
+    condition: Expression,
+    action: Expression,
+    body: Body,
+}
+
+#[derive(Debug)]
+pub enum ForInit {
+    Expression(Expression),
+    LoopCounterDeclaration(LoopCounterDeclaration),
+}
+
+impl Serialize for ForInit {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        match self {
+            ForInit::Expression(x) => Serialize::serialize(x, serializer),
+            ForInit::LoopCounterDeclaration(x) => Serialize::serialize(x, serializer),
+        }
+    }
+}
+
+#[derive(Serialize, Debug)]
+pub struct LoopCounterDeclaration {
+    kind: String,
+    type_name: Type,
+    name: Identifier,
+    value: Expression,
+}
+
+pub fn parse_for(lexer: &mut Lexer, typenames: &Vec<String>) -> Result<For, String> {
+    expect(lexer, "for", None)?;
+    expect(lexer, "(", None)?;
+
+    let init: ForInit;
+    if lexer.peek().unwrap().kind == "word"
+        && is_type(&lexer.peek().unwrap().content.as_ref().unwrap(), typenames)
+    {
+        let type_name = parse_type(lexer, None)?;
+        let name = parse_identifier(lexer)?;
+        expect(lexer, "=", None)?;
+        let value = parse_expression(lexer, 0, typenames)?;
+        init = ForInit::LoopCounterDeclaration(LoopCounterDeclaration {
+            kind: "c_loop_counter_declaration".to_string(),
+            type_name,
+            name,
+            value,
+        });
+    } else {
+        init = ForInit::Expression(parse_expression(lexer, 0, typenames)?);
+    }
+
+    expect(lexer, ";", None)?;
+    let condition = parse_expression(lexer, 0, typenames)?;
+    expect(lexer, ";", None)?;
+    let action = parse_expression(lexer, 0, typenames)?;
+    expect(lexer, ")", None)?;
+    let body = parse_body(lexer, typenames)?;
+
+    return Ok(For {
+        kind: "c_for".to_string(),
+        init,
+        condition,
+        action,
+        body,
+    });
+}
+
+#[derive(Deserialize, Debug)]
+pub enum SwitchCaseValue {
+    Identifier(Identifier),
+    Literal(Literal),
+}
+
+impl Serialize for SwitchCaseValue {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        match self {
+            SwitchCaseValue::Identifier(x) => Serialize::serialize(x, serializer),
+            SwitchCaseValue::Literal(x) => Serialize::serialize(x, serializer),
+        }
+    }
+}
+
+#[derive(Serialize, Debug)]
+pub struct SwitchCase {
+    value: SwitchCaseValue,
+    statements: Vec<Statement>,
+}
+
+#[derive(Serialize, Debug)]
+pub struct Switch {
+    kind: String,
+    value: Expression,
+    cases: Vec<SwitchCase>,
+    default: Option<Vec<Statement>>,
+}
+
+pub fn parse_switch(lexer: &mut Lexer, typenames: &Vec<String>) -> Result<Switch, String> {
+    expect(lexer, "switch", None)?;
+    expect(lexer, "(", None)?;
+    let value = parse_expression(lexer, 0, typenames)?;
+    let mut cases: Vec<SwitchCase> = vec![];
+    expect(lexer, ")", None)?;
+    expect(lexer, "{", None)?;
+    while lexer.follows("case") {
+        expect(lexer, "case", None)?;
+        let case_value = if lexer.follows("word") {
+            SwitchCaseValue::Identifier(parse_identifier(lexer)?)
+        } else {
+            SwitchCaseValue::Literal(parse_literal(lexer)?)
+        };
+        expect(lexer, ":", None)?;
+        let until = ["case", "break", "default", "}"];
+        let mut statements: Vec<Statement> = vec![];
+        while lexer.more() && !until.contains(&lexer.peek().unwrap().kind.as_str()) {
+            statements.push(parse_statement(lexer, typenames)?);
+        }
+        cases.push(SwitchCase {
+            value: case_value,
+            statements,
+        });
+    }
+    let mut default: Option<Vec<Statement>> = None;
+    if lexer.follows("default") {
+        expect(lexer, "default", None)?;
+        expect(lexer, ":", None)?;
+        let mut def: Vec<Statement> = vec![];
+        while lexer.more() && lexer.peek().unwrap().kind != "}" {
+            def.push(parse_statement(lexer, typenames)?);
+        }
+        default = Some(def);
+    }
+    expect(lexer, "}", None)?;
+    return Ok(Switch {
+        kind: "c_switch".to_string(),
+        value,
+        cases,
+        default,
+    });
+}
