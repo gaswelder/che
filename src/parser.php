@@ -268,22 +268,7 @@ function parse_type($lexer, $comment = null)
 
 function parse_function_parameter($lexer, $typenames)
 {
-    $forms = [];
-    $type = parse_type($lexer);
-    $forms[] = parse_form($lexer, $typenames);
-    while (
-        $lexer->follows(',')
-        && $lexer->peek_n(1)['kind'] != '...'
-        && $lexer->peek_n(1)['kind'] != 'const'
-        && !($lexer->peek_n(1)['kind'] == 'word' && is_type($lexer->peek_n(1)['content'], $typenames))
-    ) {
-        $lexer->get();
-        $forms[] = parse_form($lexer, $typenames);
-    }
-    return [
-        'type_name' => $type,
-        'forms' => $forms
-    ];
+    return call_rust('parse_function_parameter', $lexer, $typenames);
 }
 
 function parse_function_declaration($lexer, $pub, $type, $form, $typenames)

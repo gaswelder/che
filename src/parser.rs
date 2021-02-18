@@ -1100,6 +1100,7 @@ pub fn parse_function_declaration(
     });
 }
 
+#[derive(Serialize, Debug)]
 pub struct FunctionParameter {
     type_name: Type,
     forms: Vec<Form>,
