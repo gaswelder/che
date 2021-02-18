@@ -1,5 +1,19 @@
 <?php
 
+function parse_path($module_path)
+{
+    $types = get_file_typenames($module_path);
+    $lexer = new lexer($module_path);
+    try {
+        return parse_module($lexer, $types);
+    } catch (Exception $e) {
+        $next = $lexer->peek();
+        $where = "$module_path:" . $lexer->peek()['pos'];
+        $what = $e->getMessage();
+        echo sprintf("%s: %s: %s...\n", $where, $what, token_to_string($next));
+    }
+}
+
 function parse_module($lexer, $typenames)
 {
     $elements = [];

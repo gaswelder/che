@@ -9,7 +9,6 @@
 
 import "net"
 import "cli"
-import "zio"
 import "log"
 
 typedef {
