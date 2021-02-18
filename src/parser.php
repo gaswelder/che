@@ -314,33 +314,8 @@ function parse_function_declaration($lexer, $pub, $type, $form, $typenames)
 
 function parse_form($lexer, $typenames)
 {
-    // *argv[]
-    // linechars[]
-    // buf[SIZE * 2]
-    $node = [
-        'kind' => 'c_form',
-        'stars' => '',
-        'name' => null,
-        'indexes' => [],
-    ];
-    while ($lexer->follows('*')) {
-        $node['stars'] .= $lexer->get()['kind'];
-    }
-    $node['name'] = expect($lexer, 'word')['content'];
-
-    while ($lexer->follows('[')) {
-        $lexer->get()['kind'];
-        if ($lexer->peek()['kind'] != ']') {
-            $expr = parse_expression($lexer, $typenames, 0);
-        } else {
-            $expr = null;
-        }
-        $node['indexes'][] = $expr;
-        expect($lexer, ']');
-    }
-    return $node;
+    return call_rust('parse_form', $lexer, $typenames);
 }
-
 
 function parse_literal($lexer)
 {

@@ -1049,3 +1049,80 @@ pub fn parse_switch(lexer: &mut Lexer, typenames: &Vec<String>) -> Result<Switch
         default,
     });
 }
+
+pub struct FunctionParameters {
+    list: Vec<FunctionParameter>,
+    variadic: bool,
+}
+pub struct FunctionDeclaration {
+    kind: String,
+    is_pub: bool,
+    type_name: Type,
+    form: Form,
+    parameters: FunctionParameters,
+    body: Body,
+}
+
+pub fn parse_function_declaration(
+    lexer: &mut Lexer,
+    is_pub: bool,
+    type_name: Type,
+    form: Form,
+    typenames: &Vec<String>,
+) -> Result<FunctionDeclaration, String> {
+    let mut parameters: Vec<FunctionParameter> = vec![];
+    let mut variadic = false;
+    expect(lexer, "(", None)?;
+    if !lexer.follows(")") {
+        parameters.push(parse_function_parameter(lexer, typenames)?);
+        while lexer.follows(",") {
+            lexer.get();
+            if lexer.follows("...") {
+                lexer.get();
+                variadic = true;
+                break;
+            }
+            parameters.push(parse_function_parameter(lexer, typenames)?);
+        }
+    }
+    expect(lexer, ")", None)?;
+    let body = parse_body(lexer, typenames)?;
+    return Ok(FunctionDeclaration {
+        kind: "c_function_declaration".to_string(),
+        is_pub,
+        type_name,
+        form,
+        parameters: FunctionParameters {
+            list: parameters,
+            variadic,
+        },
+        body,
+    });
+}
+
+pub struct FunctionParameter {
+    type_name: Type,
+    forms: Vec<Form>,
+}
+
+pub fn parse_function_parameter(
+    lexer: &mut Lexer,
+    typenames: &Vec<String>,
+) -> Result<FunctionParameter, String> {
+    let mut forms: Vec<Form> = vec![];
+    let type_name = parse_type(lexer, None)?;
+    forms.push(parse_form(lexer, typenames)?);
+    while lexer.follows(",")
+        && lexer.peek_n(1).unwrap().kind != "..."
+        && lexer.peek_n(1).unwrap().kind != "const"
+        && !(lexer.peek_n(1).unwrap().kind == "word"
+            && is_type(
+                lexer.peek_n(1).unwrap().content.as_ref().unwrap(),
+                typenames,
+            ))
+    {
+        lexer.get();
+        forms.push(parse_form(lexer, typenames)?);
+    }
+    return Ok(FunctionParameter { type_name, forms });
+}
