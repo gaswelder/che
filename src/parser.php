@@ -234,26 +234,7 @@ function parse_struct_fieldlist($lexer, $typenames)
 
 function parse_union($lexer, $typenames)
 {
-    $fields = [];
-    expect($lexer, 'union');
-    expect($lexer, '{');
-    while (!$lexer->follows('}')) {
-        $type = parse_type($lexer);
-        $form = parse_form($lexer, $typenames);
-        expect($lexer, ';');
-        $fields[] = [
-            'type_name' => $type,
-            'form' => $form
-        ];
-    }
-    expect($lexer, '}');
-    $form = parse_form($lexer, $typenames);
-    expect($lexer, ';');
-    return [
-        'kind' => 'c_union',
-        'form' => $form,
-        'fields' => $fields,
-    ];
+    return call_rust('parse_union', $lexer, $typenames);
 }
 
 function parse_enum($lexer, $pub)

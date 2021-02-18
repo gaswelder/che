@@ -1127,3 +1127,36 @@ pub fn parse_function_parameter(
     }
     return Ok(FunctionParameter { type_name, forms });
 }
+
+#[derive(Serialize, Debug)]
+pub struct Union {
+    kind: String,
+    form: Form,
+    fields: Vec<UnionField>,
+}
+
+#[derive(Serialize, Debug)]
+pub struct UnionField {
+    type_name: Type,
+    form: Form,
+}
+
+pub fn parse_union(lexer: &mut Lexer, typenames: &Vec<String>) -> Result<Union, String> {
+    let mut fields: Vec<UnionField> = vec![];
+    expect(lexer, "union", None)?;
+    expect(lexer, "{", None)?;
+    while !lexer.follows("}") {
+        let type_name = parse_type(lexer, None)?;
+        let form = parse_form(lexer, typenames)?;
+        expect(lexer, ";", None)?;
+        fields.push(UnionField { type_name, form });
+    }
+    expect(lexer, "}", None)?;
+    let form = parse_form(lexer, typenames)?;
+    expect(lexer, ";", None)?;
+    return Ok(Union {
+        kind: "c_union".to_string(),
+        form,
+        fields,
+    });
+}
