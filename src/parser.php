@@ -34,43 +34,7 @@ function parse_module($lexer, $typenames)
 
 function parse_module_object($lexer, $typenames)
 {
-    $pub = false;
-    if ($lexer->follows('pub')) {
-        $lexer->get();
-        $pub = true;
-    }
-    if ($lexer->follows('enum')) {
-        return parse_enum($lexer, $pub);
-    }
-    try {
-        $type = parse_type($lexer);
-    } catch (Exception $e) {
-        throw new Exception("unexpected input (expecting function, variable, typedef, struct, enum) || " . $e->getMessage());
-    }
-    $form = parse_form($lexer, $typenames);
-    if ($lexer->peek()['kind'] == '(') {
-        return parse_function_declaration($lexer, $pub, $type, $form, $typenames);
-    }
-
-    if ($lexer->peek()['kind'] != '=') {
-        throw new Exception("module variable: '=' expected");
-    }
-
-    if ($lexer->peek()['kind'] == '=') {
-        if ($pub) {
-            throw new Exception("module variables can't be exported");
-        }
-        $lexer->get();
-        $value = parse_expression($lexer, $typenames, 0);
-        expect($lexer, ';', 'module variable declaration');
-        return [
-            'kind' => 'c_module_variable',
-            'type_name' => $type,
-            'form' => $form,
-            'value' => $value
-        ];
-    }
-    throw new Exception("unexpected input");
+    return call_rust('parse_module_object', $lexer, $typenames);
 }
 
 function parse_anonymous_parameters($lexer)

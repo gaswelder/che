@@ -1050,10 +1050,13 @@ pub fn parse_switch(lexer: &mut Lexer, typenames: &Vec<String>) -> Result<Switch
     });
 }
 
+#[derive(Debug, Serialize)]
 pub struct FunctionParameters {
     list: Vec<FunctionParameter>,
     variadic: bool,
 }
+
+#[derive(Debug, Serialize)]
 pub struct FunctionDeclaration {
     kind: String,
     is_pub: bool,
@@ -1159,4 +1162,74 @@ pub fn parse_union(lexer: &mut Lexer, typenames: &Vec<String>) -> Result<Union, 
         form,
         fields,
     });
+}
+
+#[derive(Serialize, Debug)]
+pub struct ModuleVariable {
+    kind: String,
+    type_name: Type,
+    form: Form,
+    value: Expression,
+}
+
+#[derive(Debug)]
+pub enum ModuleObject {
+    ModuleVariable(ModuleVariable),
+    Enum(Enum),
+    FunctionDeclaration(FunctionDeclaration),
+}
+
+impl Serialize for ModuleObject {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        match self {
+            ModuleObject::ModuleVariable(x) => Serialize::serialize(x, serializer),
+            ModuleObject::Enum(x) => Serialize::serialize(x, serializer),
+            ModuleObject::FunctionDeclaration(x) => Serialize::serialize(x, serializer),
+        }
+    }
+}
+
+pub fn parse_module_object(
+    lexer: &mut Lexer,
+    typenames: &Vec<String>,
+) -> Result<ModuleObject, String> {
+    let mut is_pub = false;
+    if lexer.follows("pub") {
+        lexer.get();
+        is_pub = true;
+    }
+    if lexer.follows("enum") {
+        return Ok(ModuleObject::Enum(parse_enum(lexer, is_pub)?));
+    }
+    let type_name = parse_type(lexer, None)?;
+    let form = parse_form(lexer, typenames)?;
+    if lexer.peek().unwrap().kind == "(" {
+        return Ok(ModuleObject::FunctionDeclaration(
+            parse_function_declaration(lexer, is_pub, type_name, form, typenames)?,
+        ));
+    }
+
+    if lexer.peek().unwrap().kind != "=" {
+        return Err("module variable: '=' expected".to_string());
+    }
+
+    if lexer.peek().unwrap().kind == "=" {
+        if is_pub {
+            return Err("module variables can't be exported".to_string());
+        }
+        lexer.get();
+        let value = parse_expression(lexer, 0, typenames)?;
+        expect(lexer, ";", Some("module variable declaration"))?;
+        let var = ModuleVariable {
+            kind: "c_module_variable".to_string(),
+            type_name,
+            form,
+            value,
+        };
+        return Ok(ModuleObject::ModuleVariable(var));
+    }
+    return Err("unexpected input".to_string());
 }
