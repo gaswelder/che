@@ -26,9 +26,6 @@ function translate_node($node)
     if ($cn === 'c_enum') {
         return translate_enum($node);
     }
-    if ($cn === 'c_function_parameters') {
-        return translate_function_parameters($node);
-    }
     if ($cn === 'c_compat_macro' && $node['name'] == 'type') {
         return [];
     }
@@ -126,6 +123,23 @@ function translate_typedef($node)
         ];
     }
     return [$node];
+}
+
+function translate_function_parameters($node)
+{
+    $parameters = [];
+    foreach ($node['list'] as $parameter) {
+        foreach ($parameter['forms'] as $form) {
+            $parameters[] = [
+                'type_name' => $parameter['type_name'],
+                'forms' => [$form]
+            ];
+        }
+    }
+    return [
+        'list' => $parameters,
+        'variadic' => $node['variadic']
+    ];
 }
 
 function translate_function_declaration($node)
@@ -238,32 +252,4 @@ function deduplicate_synopsis($elements)
     }
 
     return $result;
-}
-
-function translate_function_parameters($node)
-{
-    $parameters = [];
-    foreach ($node['parameters'] as $parameter) {
-        if (is_array($parameter) && isset($parameter['kind']) && $parameter['kind'] === 'c_ellipsis') {
-            $parameters[] = $parameter;
-            continue;
-        }
-        $parameters = array_merge($parameters, translate_function_parameter($parameter));
-    }
-    return [
-        'kind' => 'c_function_parameters',
-        'parameters' => $parameters
-    ];
-}
-
-function translate_function_parameter($node)
-{
-    $compat = [];
-    foreach ($node['forms'] as $form) {
-        $compat[] = [
-            'type_name' => $node['type_name'],
-            'forms' => [$form]
-        ];
-    }
-    return $compat;
 }

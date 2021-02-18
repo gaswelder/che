@@ -66,8 +66,6 @@ function format_node($node)
                 return format_compat_include($node);
             case 'c_enum_member':
                 return format_enum_member($node);
-            case 'c_function_parameters':
-                return format_function_parameters($node);
             case 'c_compat_enum':
                 return format_compat_enum($node);
             case 'c_composite_type':
@@ -86,8 +84,6 @@ function format_node($node)
                 return format_anonymous_parameters($node);
             case 'c_enum':
                 return format_enum($node);
-            case 'c_ellipsis':
-                return '...';
             case 'c_compat_function_declaration':
                 return format_compat_function_declaration($node);
             default:
@@ -189,7 +185,7 @@ function format_compat_function_declaration($node)
     }
     $s .= format_node($node['type_name'])
         . ' ' . format_node($node['form'])
-        . format_node($node['parameters'])
+        . format_function_parameters($node['parameters'])
         . ' ' . format_node($node['body']);
     return $s;
 }
@@ -202,7 +198,7 @@ function format_compat_function_forward_declaration($node)
     }
     $s .= format_node($node['type_name'])
         . ' ' . format_node($node['form'])
-        . format_node($node['parameters']) . ";\n";
+        . format_function_parameters($node['parameters']) . ";\n";
     return $s;
 }
 
@@ -330,7 +326,7 @@ function format_function_declaration($node)
         "%s %s%s %s\n\n",
         format_node($node['type_name']),
         format_node($node['form']),
-        format_node($node['parameters']),
+        format_function_parameters($node['parameters']),
         format_node($node['body'])
     );
     if ($node->pub) {
@@ -339,16 +335,12 @@ function format_function_declaration($node)
     return $s;
 }
 
-function format_function_parameters($node)
+function format_function_parameters($parameters)
 {
     $s = '(';
-    foreach ($node['parameters'] as $i => $parameter) {
+    foreach ($parameters['list'] as $i => $parameter) {
         if ($i > 0) {
             $s .= ', ';
-        }
-        if (is_array($parameter) && isset($parameter['kind']) && $parameter['kind'] === 'c_ellipsis') {
-            $s .= '...';
-            continue;
         }
         $s1 = format_node($parameter['type_name']) . ' ';
         foreach ($parameter['forms'] as $i => $form) {
@@ -358,6 +350,9 @@ function format_function_parameters($node)
             $s1 .= format_node($form);
         }
         $s .= $s1;
+    }
+    if ($parameters['variadic']) {
+        $s .= ', ...';
     }
     $s .= ')';
     return $s;

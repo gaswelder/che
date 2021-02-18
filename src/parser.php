@@ -283,6 +283,7 @@ function parse_function_parameter($lexer, $typenames)
 function parse_function_declaration($lexer, $pub, $type, $form, $typenames)
 {
     $parameters = [];
+    $variadic = false;
     expect($lexer, '(');
     if (!$lexer->follows(')')) {
         $parameters[] = parse_function_parameter($lexer, $typenames);
@@ -290,9 +291,7 @@ function parse_function_declaration($lexer, $pub, $type, $form, $typenames)
             $lexer->get();
             if ($lexer->follows('...')) {
                 $lexer->get();
-                $parameters[] = [
-                    'kind' => 'c_ellipsis'
-                ];
+                $variadic = true;
                 break;
             }
             $parameters[] = parse_function_parameter($lexer, $typenames);
@@ -306,8 +305,8 @@ function parse_function_declaration($lexer, $pub, $type, $form, $typenames)
         'type_name' => $type,
         'form' => $form,
         'parameters' => [
-            'kind' => 'c_function_parameters',
-            'parameters' => $parameters
+            'list' => $parameters,
+            'variadic' => $variadic
         ],
         'body' => $body
     ];
