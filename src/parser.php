@@ -1,33 +1,39 @@
 <?php
 
-function parse_module($lexer)
+function parse_module($lexer, $typenames)
 {
-    $m = [
-        'kind' => 'c_module',
-        'elements' => []
-    ];
+    $elements = [];
     while ($lexer->more()) {
-        $m['elements'][] = parse_module_element($lexer);
+        switch ($lexer->peek()['kind']) {
+            case 'import':
+                $import = parse_import($lexer);
+                $elements[] = $import;
+
+                $module = resolve_import($import);
+                foreach ($module['elements'] as $element) {
+                    if ($element['kind'] == 'c_typedef') {
+                        $typenames[] = format_node($element['alias']);
+                    }
+                }
+                break;
+            case 'typedef':
+                $elements[] = parse_typedef($lexer, $typenames);
+                break;
+            case 'macro':
+                $elements[] = parse_compat_macro($lexer);
+                break;
+            default:
+                $elements[] = parse_module_object($lexer, $typenames);
+        }
     }
-    return $m;
+    return [
+        'kind' => 'c_module',
+        'elements' => $elements
+    ];
 }
 
-function parse_module_element($lexer)
+function parse_module_object($lexer, $typenames)
 {
-    switch ($lexer->peek()['kind']) {
-        case 'import':
-            $import = parse_import($lexer);
-            $m = resolve_import($import);
-            $lexer->typenames = array_merge($lexer->typenames, module_types($m));
-            return $import;
-        case 'typedef':
-            return parse_typedef($lexer, $lexer->typenames);
-        case 'macro':
-            return parse_compat_macro($lexer);
-    }
-
-    $typenames = $lexer->typenames;
-
     $pub = false;
     if ($lexer->follows('pub')) {
         $lexer->get();

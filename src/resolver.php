@@ -35,9 +35,8 @@ function parse_path($module_path)
     // Parse each file separately using the gathered types information.
     $modules = array_map(function ($path) use ($types) {
         $lexer = new lexer($path);
-        $lexer->typenames = $types;
         try {
-            return parse_module($lexer);
+            return parse_module($lexer, $types);
         } catch (Exception $e) {
             $next = $lexer->peek();
             $where = "$path:" . $lexer->peek()['pos'];
