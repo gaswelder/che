@@ -96,47 +96,14 @@ function parse_typedef($lexer, $typenames)
     ];
 }
 
-function parse_statement($lexer, $typenames)
-{
-    return call_rust('parse_statement', $lexer, $typenames);
-}
-
-function parse_expression($lexer, $typenames, $current_strength)
-{
-    return call_rust('parse_expression', $lexer, $typenames, $current_strength);
-}
-
 function expect($lexer, $type, $comment = null)
 {
     return call_rust('expect', $lexer, $type, $comment);
 }
 
-function is_type($name, $typenames)
-{
-    return call_rust_mem('is_type', $name, $typenames);
-}
-
 function operator_strength($op)
 {
     return call_rust_mem("operator_strength", $op);
-}
-
-function parse_body($lexer, $typenames)
-{
-    $statements = [];
-    if ($lexer->follows('{')) {
-        expect($lexer, '{');
-        while (!$lexer->follows('}')) {
-            $statements[] = parse_statement($lexer, $typenames);
-        }
-        expect($lexer, '}');
-    } else {
-        $statements[] = parse_statement($lexer, $typenames);
-    }
-    return [
-        'kind' => 'c_body',
-        'statements' => $statements
-    ];
 }
 
 function parse_compat_macro($lexer)
@@ -201,61 +168,14 @@ function parse_union($lexer, $typenames)
     return call_rust('parse_union', $lexer, $typenames);
 }
 
-function parse_enum($lexer, $pub)
-{
-    return call_rust('parse_enum', $lexer, $pub);
-}
-
 function parse_type($lexer, $comment = null)
 {
     return call_rust('parse_type', $lexer, $comment);
 }
 
-function parse_function_parameter($lexer, $typenames)
-{
-    return call_rust('parse_function_parameter', $lexer, $typenames);
-}
-
-function parse_function_declaration($lexer, $pub, $type, $form, $typenames)
-{
-    $parameters = [];
-    $variadic = false;
-    expect($lexer, '(');
-    if (!$lexer->follows(')')) {
-        $parameters[] = parse_function_parameter($lexer, $typenames);
-        while ($lexer->follows(',')) {
-            $lexer->get();
-            if ($lexer->follows('...')) {
-                $lexer->get();
-                $variadic = true;
-                break;
-            }
-            $parameters[] = parse_function_parameter($lexer, $typenames);
-        }
-    }
-    expect($lexer, ')');
-    $body = parse_body($lexer, $typenames);
-    return [
-        'kind' => 'c_function_declaration',
-        'is_pub' => $pub,
-        'type_name' => $type,
-        'form' => $form,
-        'parameters' => [
-            'list' => $parameters,
-            'variadic' => $variadic
-        ],
-        'body' => $body
-    ];
-}
-
 function parse_form($lexer, $typenames)
 {
     return call_rust('parse_form', $lexer, $typenames);
-}
-
-function parse_literal($lexer)
-{
-    return call_rust("parse_literal", $lexer);
 }
 
 function parse_identifier($lexer)
