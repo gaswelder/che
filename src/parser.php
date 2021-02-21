@@ -107,7 +107,21 @@ function parse_func_typedef($lexer)
 
 function parse_struct_typedef($lexer, $typenames)
 {
-    $type = parse_composite_type($lexer, $typenames);
+    $fieldlists = [];
+    expect($lexer, '{', 'struct type definition');
+    while ($lexer->more() && $lexer->peek()['kind'] != '}') {
+        if ($lexer->peek()['kind'] == 'union') {
+            $fieldlists[] = parse_union($lexer, $typenames);
+        } else {
+            $fieldlists[] = parse_struct_fieldlist($lexer, $typenames);
+        }
+    }
+    expect($lexer, '}');
+    $type = [
+        'kind' => 'c_composite_type',
+        'fieldlists' => $fieldlists
+    ];
+
     $alias = parse_identifier($lexer);
     expect($lexer, ';', 'typedef');
 
@@ -117,6 +131,28 @@ function parse_struct_typedef($lexer, $typenames)
         'before' => '',
         'after' => '',
         'alias' => $alias
+    ];
+}
+
+function parse_struct_fieldlist($lexer, $typenames)
+{
+    if ($lexer->follows('struct')) {
+        throw new Exception("can't parse nested structs, please consider a typedef");
+    }
+    $type = parse_type($lexer);
+    $forms = [];
+    $forms[] = parse_form($lexer, $typenames);
+
+    while ($lexer->follows(',')) {
+        $lexer->get();
+        $forms[] = parse_form($lexer, $typenames);
+    }
+
+    expect($lexer, ';');
+    return [
+        'kind' => 'c_struct_fieldlist',
+        'type_name' => $type,
+        'forms' => $forms
     ];
 }
 
@@ -144,46 +180,6 @@ function parse_compat_macro($lexer)
         'kind' => 'c_compat_macro',
         'name' => $name,
         'value' => $value
-    ];
-}
-
-function parse_composite_type($lexer, $typenames)
-{
-    $fieldlists = [];
-    expect($lexer, '{', 'struct type definition');
-    while ($lexer->more() && $lexer->peek()['kind'] != '}') {
-        if ($lexer->peek()['kind'] == 'union') {
-            $fieldlists[] = parse_union($lexer, $typenames);
-        } else {
-            $fieldlists[] = parse_struct_fieldlist($lexer, $typenames);
-        }
-    }
-    expect($lexer, '}');
-    return [
-        'kind' => 'c_composite_type',
-        'fieldlists' => $fieldlists
-    ];
-}
-
-function parse_struct_fieldlist($lexer, $typenames)
-{
-    if ($lexer->follows('struct')) {
-        throw new Exception("can't parse nested structs, please consider a typedef");
-    }
-    $type = parse_type($lexer);
-    $forms = [];
-    $forms[] = parse_form($lexer, $typenames);
-
-    while ($lexer->follows(',')) {
-        $lexer->get();
-        $forms[] = parse_form($lexer, $typenames);
-    }
-
-    expect($lexer, ';');
-    return [
-        'kind' => 'c_struct_fieldlist',
-        'type_name' => $type,
-        'forms' => $forms
     ];
 }
 
