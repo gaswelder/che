@@ -1233,3 +1233,69 @@ pub fn parse_module_object(
     }
     return Err("unexpected input".to_string());
 }
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct Import {
+    kind: String,
+    path: String,
+}
+
+pub fn parse_import(lexer: &mut Lexer) -> Result<Import, String> {
+    expect(lexer, "import", None)?;
+    let path = expect(lexer, "string", None).unwrap().content.unwrap();
+
+    return Ok(Import {
+        kind: "c_import".to_string(),
+        path,
+    });
+}
+
+// pub struct Typedef {
+//     kind: String,
+//     type_name: Type,
+//     before: String,
+//     after: String,
+//     alias: Identifier,
+// }
+
+// pub fn parse_typedef(lexer: &mut Lexer, typenames: &Vec<String>) -> Result<Typedef, String>
+// {
+//     expect(lexer, "typedef", None);
+
+//     let type_name: Type;
+//     let alias: Identifier;
+//     let mut before = String::new();
+//     let mut after = String::new();
+//     if lexer.follows("{") {
+//         type_name = parse_composite_type(lexer, typenames);
+//         alias = parse_identifier(lexer)?;
+//         expect(lexer, ";", Some("typedef"));
+//     } else {
+//         type_name = parse_type(lexer, Some("typedef"))?;
+//         while lexer.follows("*") {
+//             before += &lexer.get().unwrap().kind;
+//         }
+//         alias = parse_identifier(lexer)?;
+
+//         if lexer.follows("(") {
+//             after += format_node(parse_anonymous_parameters(lexer));
+//         }
+
+//         if (lexer.follows("[")) {
+//             lexer.get();
+//             after .= "[";
+//             after .= expect(lexer, "num")["content"];
+//             expect(lexer, "]");
+//             after .= "]";
+//         }
+//         expect(lexer, ";", "typedef");
+//     }
+
+//     return [
+//         kind: "c_typedef".to_string(),
+//         type_name ,
+//         before ,
+//         after,
+//         alias ,
+//     ];
+// }

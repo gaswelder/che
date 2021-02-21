@@ -58,13 +58,7 @@ function parse_anonymous_parameters($lexer)
 
 function parse_import($lexer)
 {
-    expect($lexer, 'import');
-    $tok = expect($lexer, 'string');
-    $path = $tok['content'];
-    return [
-        'kind' => 'c_import',
-        'path' => $path
-    ];
+    return call_rust('parse_import', $lexer);
 }
 
 function parse_typedef($lexer, $typenames)
