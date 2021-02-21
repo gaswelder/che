@@ -1250,52 +1250,28 @@ pub fn parse_import(lexer: &mut Lexer) -> Result<Import, String> {
     });
 }
 
-// pub struct Typedef {
-//     kind: String,
-//     type_name: Type,
-//     before: String,
-//     after: String,
-//     alias: Identifier,
-// }
+#[derive(Serialize, Deserialize, Debug)]
+pub struct CompatMacro {
+    kind: String,
+    name: String,
+    value: String,
+}
 
-// pub fn parse_typedef(lexer: &mut Lexer, typenames: &Vec<String>) -> Result<Typedef, String>
-// {
-//     expect(lexer, "typedef", None);
+pub fn parse_compat_macro(lexer: &mut Lexer) -> Result<CompatMacro, String> {
+    let content = expect(lexer, "macro", None)
+        .unwrap()
+        .content
+        .unwrap()
+        .clone();
+    let pos = content.find(" ");
+    if pos.is_none() {
+        return Err(format!("can't get macro name from '{}'", content));
+    }
+    let (name, value) = content.split_at(pos.unwrap());
 
-//     let type_name: Type;
-//     let alias: Identifier;
-//     let mut before = String::new();
-//     let mut after = String::new();
-//     if lexer.follows("{") {
-//         type_name = parse_composite_type(lexer, typenames);
-//         alias = parse_identifier(lexer)?;
-//         expect(lexer, ";", Some("typedef"));
-//     } else {
-//         type_name = parse_type(lexer, Some("typedef"))?;
-//         while lexer.follows("*") {
-//             before += &lexer.get().unwrap().kind;
-//         }
-//         alias = parse_identifier(lexer)?;
-
-//         if lexer.follows("(") {
-//             after += format_node(parse_anonymous_parameters(lexer));
-//         }
-
-//         if (lexer.follows("[")) {
-//             lexer.get();
-//             after .= "[";
-//             after .= expect(lexer, "num")["content"];
-//             expect(lexer, "]");
-//             after .= "]";
-//         }
-//         expect(lexer, ";", "typedef");
-//     }
-
-//     return [
-//         kind: "c_typedef".to_string(),
-//         type_name ,
-//         before ,
-//         after,
-//         alias ,
-//     ];
-// }
+    return Ok(CompatMacro {
+        kind: "c_compat_macro".to_string(),
+        name: name[1..].to_string(),
+        value: value.to_string(),
+    });
+}

@@ -317,6 +317,20 @@ fn exec_function_call(
                 }),
             }
         }
+        "parse_compat_macro" => {
+            let instance_id = String::from(args[0].as_str().unwrap());
+            let lexer = lexer_instances.get_mut(&instance_id).unwrap();
+            match parser::parse_compat_macro(lexer) {
+                Ok(node) => json!({
+                    "error": "",
+                    "data": node
+                }),
+                Err(s) => json!({
+                    "error": s,
+                    "data": null
+                }),
+            }
+        }
         "parse_sizeof" => {
             let instance_id = String::from(args[0].as_str().unwrap());
             let lexer = lexer_instances.get_mut(&instance_id).unwrap();

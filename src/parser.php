@@ -168,19 +168,7 @@ function operator_strength($op)
 
 function parse_compat_macro($lexer)
 {
-    $content = expect($lexer, 'macro')['content'];
-    $pos = strpos($content, ' ');
-    if ($pos === false) {
-        throw new Exception("can't get macro name from '$content'");
-    }
-    $name = substr($content, 1, $pos - 1);
-    $value = substr($content, $pos + 1);
-
-    return [
-        'kind' => 'c_compat_macro',
-        'name' => $name,
-        'value' => $value
-    ];
+    return call_rust('parse_compat_macro', $lexer);
 }
 
 function parse_union($lexer, $typenames)
