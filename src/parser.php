@@ -64,42 +64,58 @@ function parse_import($lexer)
 function parse_typedef($lexer, $typenames)
 {
     expect($lexer, 'typedef');
-
-    $type = null;
-    $alias = null;
-    $before = null;
-    $after = null;
-
     if ($lexer->follows('{')) {
-        $type = parse_composite_type($lexer, $typenames);
-        $alias = parse_identifier($lexer);
-        expect($lexer, ';', 'typedef');
+        return parse_struct_typedef($lexer, $typenames);
     } else {
-        $type = parse_type($lexer, 'typedef');
-        while ($lexer->follows('*')) {
-            $before .= $lexer->get()['kind'];
-        }
-        $alias = parse_identifier($lexer);
-
-        if ($lexer->follows('(')) {
-            $after .= format_node(parse_anonymous_parameters($lexer));
-        }
-
-        if ($lexer->follows('[')) {
-            $lexer->get();
-            $after .= '[';
-            $after .= expect($lexer, 'num')['content'];
-            expect($lexer, ']');
-            $after .= ']';
-        }
-        expect($lexer, ';', 'typedef');
+        return parse_func_typedef($lexer);
     }
+}
+
+function parse_func_typedef($lexer)
+{
+    $before = '';
+    $after = '';
+
+    // typedef void *f(int a)[20];
+    $type = parse_type($lexer, 'typedef');
+    while ($lexer->follows('*')) {
+        $before .= $lexer->get()['kind'];
+    }
+    $alias = parse_identifier($lexer);
+
+    if ($lexer->follows('(')) {
+        $after .= format_anonymous_parameters(parse_anonymous_parameters($lexer));
+    }
+
+    if ($lexer->follows('[')) {
+        $lexer->get();
+        $after .= '[';
+        $after .= expect($lexer, 'num')['content'];
+        expect($lexer, ']');
+        $after .= ']';
+    }
+    expect($lexer, ';', 'typedef');
 
     return [
         'kind' => 'c_typedef',
         'type_name' => $type,
         'before' => $before,
         'after' => $after,
+        'alias' => $alias
+    ];
+}
+
+function parse_struct_typedef($lexer, $typenames)
+{
+    $type = parse_composite_type($lexer, $typenames);
+    $alias = parse_identifier($lexer);
+    expect($lexer, ';', 'typedef');
+
+    return [
+        'kind' => 'c_typedef',
+        'type_name' => $type,
+        'before' => '',
+        'after' => '',
         'alias' => $alias
     ];
 }
