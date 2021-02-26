@@ -84,28 +84,29 @@ function parse_typedef($lexer, $typenames)
 
 function parse_typedef_form($lexer)
 {
-    $before = '';
-    $after = '';
+    $stars = '';
     while ($lexer->follows('*')) {
-        $before .= $lexer->get()['kind'];
+        $stars .= $lexer->get()['kind'];
     }
+
     $alias = parse_identifier($lexer);
 
+    $params = null;
     if ($lexer->follows('(')) {
-        $after .= format_anonymous_parameters(parse_anonymous_parameters($lexer));
+        $params = parse_anonymous_parameters($lexer);
     }
 
+    $size = null;
     if ($lexer->follows('[')) {
         $lexer->get();
-        $after .= '[';
-        $after .= expect($lexer, 'num')['content'];
+        $size .= expect($lexer, 'num')['content'];
         expect($lexer, ']');
-        $after .= ']';
     }
 
     return [
-        'before' => $before,
-        'after' => $after,
+        'stars' => $stars,
+        'params' => $params,
+        'size' => $size,
         'alias' => $alias
     ];
 }

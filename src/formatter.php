@@ -476,9 +476,14 @@ function format_switch($node)
 
 function format_typedef($node)
 {
-    $form = $node['form']['before']
-        . format_node($node['form']['alias'])
-        . $node['form']['after'];
+    $form = $node['form']['stars']
+        . format_node($node['form']['alias']);
+    if ($node['form']['params']) {
+        $form .= format_anonymous_parameters($node['form']['params']);
+    }
+    if ($node['form']['size']) {
+        $form .= '[' . $node['form']['size'] . ']';
+    }
     $type = format_node($node['type_name']);
     return "typedef $type $form;\n";
 }

@@ -117,8 +117,9 @@ function translate_typedef($node)
                     'type_name' => 'struct ' . $struct_name
                 ],
                 'form' => [
-                    'before' => null,
-                    'after' => null,
+                    'stars' => null,
+                    'size' => null,
+                    'params' => null,
                     'alias' => $node['form']['alias']
                 ]
             ]
