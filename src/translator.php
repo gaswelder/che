@@ -97,8 +97,8 @@ function translate_enum($node)
 
 function translate_typedef($node)
 {
-    if ($node['type_name']['kind'] === 'c_composite_type') {
-        $struct_name = '__' . format_node($node['alias']) . '_struct';
+    if ($node['type_name']['kind'] === 'c_anonymous_struct') {
+        $struct_name = '__' . format_node($node['form']['alias']) . '_struct';
         return [
             [
                 'kind' => 'c_compat_struct_forward_declaration',
@@ -111,14 +111,16 @@ function translate_typedef($node)
             ],
             [
                 'kind' => 'c_typedef',
-                'before' => null,
-                'after' => null,
                 'type_name' => [
                     'kind' => 'c_type',
                     'is_const' => false,
                     'type_name' => 'struct ' . $struct_name
                 ],
-                'alias' => $node['alias']
+                'form' => [
+                    'before' => null,
+                    'after' => null,
+                    'alias' => $node['form']['alias']
+                ]
             ]
         ];
     }

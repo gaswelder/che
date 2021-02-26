@@ -26,7 +26,7 @@ function parse_module($lexer, $typenames)
                 $module = resolve_import($import);
                 foreach ($module['elements'] as $element) {
                     if ($element['kind'] == 'c_typedef') {
-                        $typenames[] = format_node($element['alias']);
+                        $typenames[] = format_node($element['form']['alias']);
                     }
                 }
                 break;
@@ -63,21 +63,29 @@ function parse_import($lexer)
 
 function parse_typedef($lexer, $typenames)
 {
+    // typedef void *f(int a)[20];
+    // typedef foo bar;
+    // typedef struct foo foo_t;
     expect($lexer, 'typedef');
+    $type = null;
     if ($lexer->follows('{')) {
-        return parse_struct_typedef($lexer, $typenames);
+        $type = parse_anonymous_struct($lexer, $typenames);
     } else {
-        return parse_func_typedef($lexer);
+        $type = parse_type($lexer, 'typedef');
     }
+    $form = parse_typedef_form($lexer);
+    expect($lexer, ';', 'typedef');
+    return [
+        'kind' => 'c_typedef',
+        'type_name' => $type,
+        'form' => $form
+    ];
 }
 
-function parse_func_typedef($lexer)
+function parse_typedef_form($lexer)
 {
     $before = '';
     $after = '';
-
-    // typedef void *f(int a)[20];
-    $type = parse_type($lexer, 'typedef');
     while ($lexer->follows('*')) {
         $before .= $lexer->get()['kind'];
     }
@@ -94,18 +102,15 @@ function parse_func_typedef($lexer)
         expect($lexer, ']');
         $after .= ']';
     }
-    expect($lexer, ';', 'typedef');
 
     return [
-        'kind' => 'c_typedef',
-        'type_name' => $type,
         'before' => $before,
         'after' => $after,
         'alias' => $alias
     ];
 }
 
-function parse_struct_typedef($lexer, $typenames)
+function parse_anonymous_struct($lexer, $typenames)
 {
     $fieldlists = [];
     expect($lexer, '{', 'struct type definition');
@@ -117,20 +122,9 @@ function parse_struct_typedef($lexer, $typenames)
         }
     }
     expect($lexer, '}');
-    $type = [
-        'kind' => 'c_composite_type',
-        'fieldlists' => $fieldlists
-    ];
-
-    $alias = parse_identifier($lexer);
-    expect($lexer, ';', 'typedef');
-
     return [
-        'kind' => 'c_typedef',
-        'type_name' => $type,
-        'before' => '',
-        'after' => '',
-        'alias' => $alias
+        'kind' => 'c_anonymous_struct',
+        'fieldlists' => $fieldlists
     ];
 }
 

@@ -68,8 +68,8 @@ function format_node($node)
                 return format_enum_member($node);
             case 'c_compat_enum':
                 return format_compat_enum($node);
-            case 'c_composite_type':
-                return format_composite_type($node);
+            case 'c_anonymous_struct':
+                return format_anonymous_struct($node);
             case 'c_form':
                 return format_form($node);
             case 'c_compat_struct_forward_declaration':
@@ -226,7 +226,7 @@ function format_compat_struct_forward_declaration($node)
     return 'struct ' . $node['name'] . ";\n";
 }
 
-function format_composite_type($node)
+function format_anonymous_struct($node)
 {
     $s = '';
     foreach ($node['fieldlists'] as $fieldlist) {
@@ -476,11 +476,11 @@ function format_switch($node)
 
 function format_typedef($node)
 {
-    return 'typedef ' . format_node($node['type_name']) . ' '
-        . $node['before']
-        . format_node($node['alias'])
-        . $node['after']
-        . ";\n";
+    $form = $node['form']['before']
+        . format_node($node['form']['alias'])
+        . $node['form']['after'];
+    $type = format_node($node['type_name']);
+    return "typedef $type $form;\n";
 }
 
 function format_type($node)
