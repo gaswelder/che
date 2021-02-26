@@ -1275,3 +1275,166 @@ pub fn parse_compat_macro(lexer: &mut Lexer) -> Result<CompatMacro, String> {
         value: value.to_string(),
     });
 }
+
+pub enum TypedefTarget {
+    AnonymousStruct(AnonymousStruct),
+    Type(Type),
+}
+
+impl Serialize for TypedefTarget {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        match self {
+            TypedefTarget::AnonymousStruct(x) => Serialize::serialize(x, serializer),
+            TypedefTarget::Type(x) => Serialize::serialize(x, serializer),
+        }
+    }
+}
+
+#[derive(Serialize)]
+pub struct Typedef {
+    kind: String,
+    type_name: TypedefTarget,
+    form: TypedefForm,
+}
+
+pub fn parse_typedef(lexer: &mut Lexer, typenames: &Vec<String>) -> Result<Typedef, String> {
+    // typedef void *f(int a)[20];
+    // typedef foo bar;
+    // typedef struct foo foo_t;
+    expect(lexer, "typedef", None)?;
+    let type_name;
+    if lexer.follows("{") {
+        type_name = TypedefTarget::AnonymousStruct(parse_anonymous_struct(lexer, typenames)?);
+    } else {
+        type_name = TypedefTarget::Type(parse_type(lexer, Some("typedef"))?);
+    }
+    let form = parse_typedef_form(lexer)?;
+    expect(lexer, ";", Some("typedef"))?;
+    return Ok(Typedef {
+        kind: "c_typedef".to_string(),
+        type_name,
+        form,
+    });
+}
+
+#[derive(Serialize)]
+pub struct TypedefForm {
+    stars: String,
+    params: Option<AnonymousParameters>,
+    size: usize,
+    alias: Identifier,
+}
+
+pub fn parse_typedef_form(lexer: &mut Lexer) -> Result<TypedefForm, String> {
+    let mut stars = String::new();
+    while lexer.follows("*") {
+        stars += &lexer.get().unwrap().kind;
+    }
+
+    let alias = parse_identifier(lexer)?;
+
+    let mut params: Option<AnonymousParameters> = None;
+    if lexer.follows("(") {
+        params = Some(parse_anonymous_parameters(lexer)?);
+    }
+
+    let mut size: usize = 0;
+    if lexer.follows("[") {
+        lexer.get();
+        size = expect(lexer, "num", None)
+            .unwrap()
+            .content
+            .unwrap()
+            .parse()
+            .unwrap();
+        expect(lexer, "]", None)?;
+    }
+
+    return Ok(TypedefForm {
+        stars,
+        params,
+        size,
+        alias,
+    });
+}
+
+pub enum StructEntry {
+    StructFieldlist(StructFieldlist),
+    Union(Union),
+}
+
+impl Serialize for StructEntry {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        match self {
+            StructEntry::Union(x) => Serialize::serialize(x, serializer),
+            StructEntry::StructFieldlist(x) => Serialize::serialize(x, serializer),
+        }
+    }
+}
+
+#[derive(Serialize)]
+pub struct AnonymousStruct {
+    kind: String,
+    fieldlists: Vec<StructEntry>,
+}
+
+pub fn parse_anonymous_struct(
+    lexer: &mut Lexer,
+    typenames: &Vec<String>,
+) -> Result<AnonymousStruct, String> {
+    let mut fieldlists: Vec<StructEntry> = vec![];
+    expect(lexer, "{", Some("struct type definition"))?;
+    while lexer.more() && lexer.peek().unwrap().kind != "}" {
+        if lexer.peek().unwrap().kind == "union" {
+            fieldlists.push(StructEntry::Union(parse_union(lexer, typenames)?));
+        } else {
+            fieldlists.push(StructEntry::StructFieldlist(parse_struct_fieldlist(
+                lexer, typenames,
+            )?));
+        }
+    }
+    expect(lexer, "}", None)?;
+
+    return Ok(AnonymousStruct {
+        kind: "c_anonymous_struct".to_string(),
+        fieldlists,
+    });
+}
+
+#[derive(Serialize)]
+pub struct StructFieldlist {
+    kind: String,
+    type_name: Type,
+    forms: Vec<Form>,
+}
+
+pub fn parse_struct_fieldlist(
+    lexer: &mut Lexer,
+    typenames: &Vec<String>,
+) -> Result<StructFieldlist, String> {
+    if lexer.follows("struct") {
+        return Err("can't parse nested structs, please consider a typedef".to_string());
+    }
+
+    let type_name = parse_type(lexer, None)?;
+
+    let mut forms: Vec<Form> = vec![];
+    forms.push(parse_form(lexer, typenames)?);
+    while lexer.follows(",") {
+        lexer.get();
+        forms.push(parse_form(lexer, typenames)?);
+    }
+
+    expect(lexer, ";", None)?;
+    return Ok(StructFieldlist {
+        kind: "c_struct_fieldlist".to_string(),
+        type_name,
+        forms,
+    });
+}
