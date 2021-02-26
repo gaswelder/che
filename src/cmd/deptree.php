@@ -7,7 +7,7 @@ function cmd_deptree($argv)
         return 1;
     }
     $path = array_shift($argv);
-    $m = parse_path($path);
+    $m = get_module($path);
     $t = build_tree($m);
     $r = render_tree($path, $t);
     echo implode("\n", $r) . "\n";
@@ -18,7 +18,7 @@ function build_tree($module)
     $tree = [];
     $imports = module_imports($module);
     foreach ($imports as $import) {
-        $tree[] = [$import->path, build_tree(resolve_import($import))];
+        $tree[] = [$import->path, build_tree(get_module($import['path']))];
     }
     return $tree;
 }

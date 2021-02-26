@@ -12,13 +12,23 @@ function cmd_build($argv)
         $name = str_replace('.c', '', basename($path));
     }
 
-    $m = parse_path($path);
+    $m = get_module($path);
     if (!$m) {
         return 1;
     }
     $mods = resolve_deps($m);
     $c_mods = array_map('translate', $mods);
     return build($c_mods, $name);
+}
+
+function resolve_deps($m)
+{
+    $deps = [$m];
+    foreach (module_imports($m) as $imp) {
+        $sub = get_module($imp['path']);
+        $deps = array_merge($deps, resolve_deps($sub));
+    }
+    return array_unique($deps, SORT_REGULAR);
 }
 
 function build($modules, $name)

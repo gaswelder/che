@@ -37,7 +37,7 @@ function translate_node($node)
 
 function translate_import($node)
 {
-    $module = resolve_import($node);
+    $module = get_module($node['path']);
     $compat = translate($module);
     return get_module_synopsis($compat);
 }

@@ -5,7 +5,6 @@ require 'src/modules.php';
 require 'src/lexer.php';
 require 'src/parser.php';
 require 'src/translator.php';
-require 'src/resolver.php';
 require 'src/cmd/build.php';
 require 'src/cmd/deptree.php';
 require_once 'src/rust-proxy.php';

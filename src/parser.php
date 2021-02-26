@@ -1,7 +1,16 @@
 <?php
 
-function parse_path($module_path)
+function get_module($name)
 {
+    if (substr($name, -2) === ".c") {
+        $module_path = $name;
+    } else {
+        $module_path = "lib/$name.c";
+    }
+    if (!file_exists($module_path)) {
+        throw new Exception("can't find module '$name'");
+    }
+
     $types = get_file_typenames($module_path);
     $lexer = new lexer($module_path);
     try {
@@ -14,6 +23,107 @@ function parse_path($module_path)
     }
 }
 
+/**
+ * Returns list of type names (as strings) declared in this file.
+ */
+function get_file_typenames($path): array
+{
+    $list = array();
+    // Scan file tokens for 'typedef' keywords
+    $lexer = new lexer($path);
+    while (1) {
+        $t = $lexer->get();
+        if ($t === null) {
+            break;
+        }
+
+        // When a 'typedef' is encountered, look ahead
+        // to find the type name
+        if ($t['kind'] == 'typedef') {
+            $list[] = get_typename($lexer);
+        }
+
+        if ($t['kind'] == 'macro' && strpos($t['content'], '#type') === 0) {
+            $list[] = trim(substr($t['content'], strlen('#type') + 1));
+        }
+    }
+    return $list;
+}
+
+function get_typename(lexer $lexer)
+{
+    // The type name is at the end of the typedef statement.
+    // typedef foo bar;
+    // typedef {...} bar;
+    // typedef struct foo bar;
+
+    $skip_brackets = function () use ($lexer, &$skip_brackets) {
+        expect($lexer, '{');
+        while ($lexer->more()) {
+            if ($lexer->follows('{')) {
+                $skip_brackets();
+                continue;
+            }
+            if ($lexer->follows('}')) {
+                break;
+            }
+            $lexer->get();
+        }
+        expect($lexer, '}');
+    };
+
+    if ($lexer->follows('{')) {
+        $skip_brackets();
+        $x = expect($lexer, 'word');
+        $name = $x['content'];
+        expect($lexer, ';');
+        return $name;
+    }
+
+
+    // Get all tokens until the semicolon.
+    $buf = array();
+    while (!$lexer->ended()) {
+        $t = $lexer->get();
+        if ($t['kind'] == ';') {
+            break;
+        }
+        $buf[] = $t;
+    }
+
+    if (empty($buf)) {
+        throw new Exception("No tokens after 'typedef'");
+    }
+
+    $buf = array_reverse($buf);
+
+    // We assume that function typedefs end with "(...)".
+    // In that case we omit that part.
+    if ($buf[0]['kind'] == ')') {
+        while (!empty($buf)) {
+            $t = array_shift($buf);
+            if ($t['kind'] == '(') {
+                break;
+            }
+        }
+    }
+
+    // The last 'word' token is assumed to be the type name.
+    $name = null;
+    while (!empty($buf)) {
+        $t = array_shift($buf);
+        if ($t['kind'] == 'word') {
+            $name = $t['content'];
+            break;
+        }
+    }
+
+    if (!$name) {
+        throw new Exception("Type name expected in the typedef");
+    }
+    return $name;
+}
+
 function parse_module($lexer, $typenames)
 {
     $elements = [];
@@ -23,7 +133,7 @@ function parse_module($lexer, $typenames)
                 $import = parse_import($lexer);
                 $elements[] = $import;
 
-                $module = resolve_import($import);
+                $module = get_module($import['path']);
                 foreach ($module['elements'] as $element) {
                     if ($element['kind'] == 'c_typedef') {
                         $typenames[] = format_node($element['form']['alias']);
