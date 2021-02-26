@@ -51,11 +51,6 @@ function parse_module_object($lexer, $typenames)
     return call_rust('parse_module_object', $lexer, $typenames);
 }
 
-function parse_anonymous_parameters($lexer)
-{
-    return call_rust('parse_anonymous_parameters', $lexer);
-}
-
 function parse_import($lexer)
 {
     return call_rust('parse_import', $lexer);
@@ -79,24 +74,4 @@ function operator_strength($op)
 function parse_compat_macro($lexer)
 {
     return call_rust('parse_compat_macro', $lexer);
-}
-
-function parse_union($lexer, $typenames)
-{
-    return call_rust('parse_union', $lexer, $typenames);
-}
-
-function parse_type($lexer, $comment = null)
-{
-    return call_rust('parse_type', $lexer, $comment);
-}
-
-function parse_form($lexer, $typenames)
-{
-    return call_rust('parse_form', $lexer, $typenames);
-}
-
-function parse_identifier($lexer)
-{
-    return call_rust('parse_identifier', $lexer);
 }
