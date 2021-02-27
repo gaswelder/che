@@ -335,6 +335,20 @@ fn exec_function_call(
                 }),
             }
         }
+        "get_typename" => {
+            let instance_id = String::from(args[0].as_str().unwrap());
+            let lexer = lexer_instances.get_mut(&instance_id).unwrap();
+            match parser::get_typename(lexer) {
+                Ok(node) => json!({
+                    "error": "",
+                    "data": node
+                }),
+                Err(s) => json!({
+                    "error": s,
+                    "data": null
+                }),
+            }
+        }
         "parse_compat_macro" => {
             let instance_id = String::from(args[0].as_str().unwrap());
             let lexer = lexer_instances.get_mut(&instance_id).unwrap();

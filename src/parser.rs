@@ -1438,3 +1438,75 @@ pub fn parse_struct_fieldlist(
         forms,
     });
 }
+
+fn skip_brackets(lexer: &mut Lexer) {
+    expect(lexer, "{", None).unwrap();
+    while lexer.more() {
+        if lexer.follows("{") {
+            skip_brackets(lexer);
+            continue;
+        }
+        if lexer.follows("}") {
+            break;
+        }
+        lexer.get();
+    }
+    expect(lexer, "}", None).unwrap();
+}
+
+pub fn get_typename(lexer: &mut Lexer) -> Result<String, String> {
+    // The type name is at the end of the typedef statement.
+    // typedef foo bar;
+    // typedef {...} bar;
+    // typedef struct foo bar;
+
+    if lexer.follows("{") {
+        skip_brackets(lexer);
+        let name = expect(lexer, "word", None).unwrap().content.unwrap();
+        expect(lexer, ";", None)?;
+        return Ok(name);
+    }
+
+    // Get all tokens until the semicolon.
+    let mut buf: Vec<Token> = vec![];
+    while !lexer.ended() {
+        let t = lexer.get().unwrap();
+        if t.kind == ";" {
+            break;
+        }
+        buf.push(t);
+    }
+
+    if buf.is_empty() {
+        return Err("No tokens after 'typedef'".to_string());
+    }
+
+    buf.reverse();
+
+    // We assume that function typedefs end with "(...)".
+    // In that case we omit that part.
+    if buf[0].kind == ")" {
+        while !buf.is_empty() {
+            let t = buf.remove(0);
+            if t.kind == "(" {
+                break;
+            }
+        }
+    }
+
+    let mut name: Option<String> = None;
+
+    // The last "word" token is assumed to be the type name.
+    while !buf.is_empty() {
+        let t = buf.remove(0);
+        if t.kind == "word" {
+            name = Some(t.content.unwrap());
+            break;
+        }
+    }
+
+    if name.is_none() {
+        return Err("Type name expected in the typedef".to_string());
+    }
+    return Ok(name.unwrap());
+}

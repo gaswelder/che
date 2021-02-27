@@ -52,76 +52,7 @@ function get_file_typenames($path): array
 
 function get_typename(lexer $lexer)
 {
-    // The type name is at the end of the typedef statement.
-    // typedef foo bar;
-    // typedef {...} bar;
-    // typedef struct foo bar;
-
-    $skip_brackets = function () use ($lexer, &$skip_brackets) {
-        expect($lexer, '{');
-        while ($lexer->more()) {
-            if ($lexer->follows('{')) {
-                $skip_brackets();
-                continue;
-            }
-            if ($lexer->follows('}')) {
-                break;
-            }
-            $lexer->get();
-        }
-        expect($lexer, '}');
-    };
-
-    if ($lexer->follows('{')) {
-        $skip_brackets();
-        $x = expect($lexer, 'word');
-        $name = $x['content'];
-        expect($lexer, ';');
-        return $name;
-    }
-
-
-    // Get all tokens until the semicolon.
-    $buf = array();
-    while (!$lexer->ended()) {
-        $t = $lexer->get();
-        if ($t['kind'] == ';') {
-            break;
-        }
-        $buf[] = $t;
-    }
-
-    if (empty($buf)) {
-        throw new Exception("No tokens after 'typedef'");
-    }
-
-    $buf = array_reverse($buf);
-
-    // We assume that function typedefs end with "(...)".
-    // In that case we omit that part.
-    if ($buf[0]['kind'] == ')') {
-        while (!empty($buf)) {
-            $t = array_shift($buf);
-            if ($t['kind'] == '(') {
-                break;
-            }
-        }
-    }
-
-    // The last 'word' token is assumed to be the type name.
-    $name = null;
-    while (!empty($buf)) {
-        $t = array_shift($buf);
-        if ($t['kind'] == 'word') {
-            $name = $t['content'];
-            break;
-        }
-    }
-
-    if (!$name) {
-        throw new Exception("Type name expected in the typedef");
-    }
-    return $name;
+    return call_rust('get_typename', $lexer);
 }
 
 function parse_module($lexer, $typenames)
