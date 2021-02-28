@@ -66,3 +66,28 @@ function make_rust_object($name, ...$args)
         }
     };
 }
+
+function get_module($name)
+{
+    return call_rust('get_module', $name);
+}
+
+function operator_strength($op)
+{
+    return call_rust_mem("operator_strength", $op);
+}
+
+class lexer
+{
+    public $proxy;
+
+    function __construct($path)
+    {
+        $this->proxy = make_rust_object('lexer', $path);
+    }
+
+    function __call($f, $args)
+    {
+        return call_user_func_array([$this->proxy, $f], $args);
+    }
+}
