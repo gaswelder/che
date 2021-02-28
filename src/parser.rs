@@ -1177,6 +1177,9 @@ pub enum ModuleObject {
     ModuleVariable(ModuleVariable),
     Enum(Enum),
     FunctionDeclaration(FunctionDeclaration),
+    Import(Import),
+    Typedef(Typedef),
+    CompatMacro(CompatMacro),
 }
 
 impl Serialize for ModuleObject {
@@ -1188,6 +1191,9 @@ impl Serialize for ModuleObject {
             ModuleObject::ModuleVariable(x) => Serialize::serialize(x, serializer),
             ModuleObject::Enum(x) => Serialize::serialize(x, serializer),
             ModuleObject::FunctionDeclaration(x) => Serialize::serialize(x, serializer),
+            ModuleObject::Import(x) => Serialize::serialize(x, serializer),
+            ModuleObject::Typedef(x) => Serialize::serialize(x, serializer),
+            ModuleObject::CompatMacro(x) => Serialize::serialize(x, serializer),
         }
     }
 }
@@ -1276,6 +1282,7 @@ pub fn parse_compat_macro(lexer: &mut Lexer) -> Result<CompatMacro, String> {
     });
 }
 
+#[derive(Debug)]
 pub enum TypedefTarget {
     AnonymousStruct(AnonymousStruct),
     Type(Type),
@@ -1293,7 +1300,7 @@ impl Serialize for TypedefTarget {
     }
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, Debug)]
 pub struct Typedef {
     kind: String,
     type_name: TypedefTarget,
@@ -1320,7 +1327,7 @@ pub fn parse_typedef(lexer: &mut Lexer, typenames: &Vec<String>) -> Result<Typed
     });
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, Debug)]
 pub struct TypedefForm {
     stars: String,
     params: Option<AnonymousParameters>,
@@ -1361,6 +1368,7 @@ pub fn parse_typedef_form(lexer: &mut Lexer) -> Result<TypedefForm, String> {
     });
 }
 
+#[derive(Debug)]
 pub enum StructEntry {
     StructFieldlist(StructFieldlist),
     Union(Union),
@@ -1378,7 +1386,7 @@ impl Serialize for StructEntry {
     }
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, Debug)]
 pub struct AnonymousStruct {
     kind: String,
     fieldlists: Vec<StructEntry>,
@@ -1407,7 +1415,7 @@ pub fn parse_anonymous_struct(
     });
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, Debug)]
 pub struct StructFieldlist {
     kind: String,
     type_name: Type,
@@ -1533,4 +1541,90 @@ pub fn get_file_typenames(path: &str) -> Result<Vec<String>, String> {
         }
     }
     return Ok(list);
+}
+
+pub fn get_module(name: &str) -> Result<Module, String> {
+    let mut module_path = String::new();
+    if name.ends_with(".c") {
+        module_path += name;
+    } else {
+        module_path += format!("lib/{}.c", name).as_str();
+    };
+
+    let k = std::fs::metadata(module_path.as_str());
+    if k.is_err() {
+        return Err(format!("can't find module '{}'", name));
+    }
+
+    let types = get_file_typenames(module_path.as_str())?;
+    let mut lexer = new(module_path.as_str());
+    let r = parse_module(&mut lexer, types);
+    if r.is_err() {
+        let next = lexer.peek().unwrap();
+        let wher = format!("{}: {}", module_path, lexer.peek().unwrap().pos);
+        let what = r.err().unwrap();
+        return Err(format!("{}: {}: {}...", wher, what, token_to_string(next)));
+    }
+    return r;
+}
+
+pub fn token_to_string(token: &Token) -> String {
+    if token.content.is_none() {
+        return format!("[{}]", token.kind);
+    }
+
+    let n = 40;
+    let mut c: String;
+    if token.content.as_ref().unwrap().len() > n {
+        c = token.content.as_ref().unwrap()[0..(n - 3)].to_string() + "...";
+    } else {
+        c = token.content.as_ref().unwrap().to_string();
+    }
+    c = c.replace("\r", "\\r");
+    c = c.replace("\n", "\\n");
+    c = c.replace("\t", "\\t");
+    return format!("[{}, {}]", token.kind, c);
+}
+
+#[derive(Serialize)]
+pub struct Module {
+    kind: String,
+    elements: Vec<ModuleObject>,
+}
+
+pub fn parse_module(lexer: &mut Lexer, typenames: Vec<String>) -> Result<Module, String> {
+    let mut elements: Vec<ModuleObject> = vec![];
+    let mut types = typenames.clone();
+    while lexer.more() {
+        match lexer.peek().unwrap().kind.as_str() {
+            "import" => {
+                let import = parse_import(lexer)?;
+                let p = import.path.clone();
+                elements.push(ModuleObject::Import(import));
+
+                let module = get_module(p.as_str())?;
+                for element in module.elements {
+                    match element {
+                        ModuleObject::Typedef(t) => {
+                            types.push(t.form.alias.name);
+                        }
+                        _ => {}
+                    }
+                }
+            }
+            "typedef" => {
+                elements.push(ModuleObject::Typedef(parse_typedef(lexer, &types)?));
+            }
+            "macro" => {
+                elements.push(ModuleObject::CompatMacro(parse_compat_macro(lexer)?));
+            }
+            _ => {
+                elements.push(parse_module_object(lexer, &types)?);
+            }
+        }
+    }
+    return Ok(Module {
+        kind: "c_module".to_string(),
+        elements,
+    });
 }
