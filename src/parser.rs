@@ -1,4 +1,4 @@
-use crate::lexer::{Lexer, Token};
+use crate::lexer::{new, Lexer, Token};
 use serde::{Deserialize, Serialize, Serializer};
 
 pub fn is_op(token_type: &str) -> bool {
@@ -1509,4 +1509,28 @@ pub fn get_typename(lexer: &mut Lexer) -> Result<String, String> {
         return Err("Type name expected in the typedef".to_string());
     }
     return Ok(name.unwrap());
+}
+
+pub fn get_file_typenames(path: &str) -> Result<Vec<String>, String> {
+    // Scan file tokens for 'typedef' keywords
+    let mut lexer = new(path);
+    let mut list: Vec<String> = vec![];
+    loop {
+        let t = lexer.get();
+        if t.is_none() {
+            break;
+        }
+
+        let tt = t.unwrap();
+        // When a 'typedef' is encountered, look ahead
+        // to find the type name
+        if tt.kind == "typedef" {
+            list.push(get_typename(&mut lexer)?);
+        }
+        if tt.kind == "macro" && tt.content.as_ref().unwrap().starts_with("#type") {
+            let name = tt.content.unwrap()[6..].trim().to_string();
+            list.push(name);
+        }
+    }
+    return Ok(list);
 }

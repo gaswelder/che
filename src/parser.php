@@ -23,31 +23,9 @@ function get_module($name)
     }
 }
 
-/**
- * Returns list of type names (as strings) declared in this file.
- */
 function get_file_typenames($path): array
 {
-    $list = array();
-    // Scan file tokens for 'typedef' keywords
-    $lexer = new lexer($path);
-    while (1) {
-        $t = $lexer->get();
-        if ($t === null) {
-            break;
-        }
-
-        // When a 'typedef' is encountered, look ahead
-        // to find the type name
-        if ($t['kind'] == 'typedef') {
-            $list[] = get_typename($lexer);
-        }
-
-        if ($t['kind'] == 'macro' && strpos($t['content'], '#type') === 0) {
-            $list[] = trim(substr($t['content'], strlen('#type') + 1));
-        }
-    }
-    return $list;
+    return call_rust('get_file_typenames', $path);
 }
 
 function get_typename(lexer $lexer)
