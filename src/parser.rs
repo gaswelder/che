@@ -1,7 +1,7 @@
 use crate::lexer::{new, Lexer, Token};
-use serde::{Deserialize, Serialize, Serializer};
+use crate::nodes::*;
 
-pub fn is_op(token_type: &str) -> bool {
+fn is_op(token_type: &str) -> bool {
     let ops = [
         "+", "-", "*", "/", "=", "|", "&", "~", "^", "<", ">", "?", ":", "%", "+=", "-=", "*=",
         "/=", "%=", "&=", "^=", "|=", "++", "--", "->", ".", ">>", "<<", "<=", ">=", "&&", "||",
@@ -37,17 +37,17 @@ pub fn operator_strength(op: &str) -> usize {
     panic!("unknown operator: '{}'", op);
 }
 
-pub fn is_postfix_op(token: &str) -> bool {
+fn is_postfix_op(token: &str) -> bool {
     let ops = ["++", "--", "(", "["];
     return ops.to_vec().contains(&token);
 }
 
-pub fn is_prefix_op(op: &str) -> bool {
+fn is_prefix_op(op: &str) -> bool {
     let ops = ["!", "--", "++", "*", "~", "&", "-"];
     return ops.to_vec().contains(&op);
 }
 
-pub fn is_type(name: &str, typenames: &Vec<String>) -> bool {
+fn is_type(name: &str, typenames: &Vec<String>) -> bool {
     let types = [
         "struct",
         "enum",
@@ -92,7 +92,7 @@ fn with_comment(comment: Option<&str>, message: String) -> String {
     }
 }
 
-pub fn expect(lexer: &mut Lexer, kind: &str, comment: Option<&str>) -> Result<Token, String> {
+fn expect(lexer: &mut Lexer, kind: &str, comment: Option<&str>) -> Result<Token, String> {
     if !lexer.more() {
         return Err(with_comment(
             comment,
@@ -109,13 +109,7 @@ pub fn expect(lexer: &mut Lexer, kind: &str, comment: Option<&str>) -> Result<To
     return Ok(lexer.get().unwrap());
 }
 
-#[derive(Serialize, Deserialize, Debug)]
-pub struct Identifier {
-    kind: String,
-    name: String,
-}
-
-pub fn parse_identifier(lexer: &mut Lexer) -> Result<Identifier, String> {
+fn parse_identifier(lexer: &mut Lexer) -> Result<Identifier, String> {
     let tok = expect(lexer, "word", None)?;
     let name = tok.content;
     return Ok(Identifier {
@@ -124,14 +118,7 @@ pub fn parse_identifier(lexer: &mut Lexer) -> Result<Identifier, String> {
     });
 }
 
-#[derive(Serialize, Deserialize, Debug)]
-pub struct Type {
-    kind: String,
-    is_const: bool,
-    type_name: String,
-}
-
-pub fn parse_type(lexer: &mut Lexer, comment: Option<&str>) -> Result<Type, String> {
+fn parse_type(lexer: &mut Lexer, comment: Option<&str>) -> Result<Type, String> {
     let mut is_const = false;
     let type_name: String;
 
@@ -155,14 +142,7 @@ pub fn parse_type(lexer: &mut Lexer, comment: Option<&str>) -> Result<Type, Stri
     });
 }
 
-#[derive(Serialize, Deserialize, Debug)]
-pub struct AnonymousTypeform {
-    kind: String,
-    type_name: Type,
-    ops: Vec<String>,
-}
-
-pub fn parse_anonymous_typeform(lexer: &mut Lexer) -> Result<AnonymousTypeform, String> {
+fn parse_anonymous_typeform(lexer: &mut Lexer) -> Result<AnonymousTypeform, String> {
     let type_name = parse_type(lexer, None).unwrap();
     let mut ops: Vec<String> = Vec::new();
     while lexer.follows("*") {
@@ -175,12 +155,7 @@ pub fn parse_anonymous_typeform(lexer: &mut Lexer) -> Result<AnonymousTypeform, 
     });
 }
 
-#[derive(Serialize, Deserialize, Debug)]
-pub struct AnonymousParameters {
-    kind: String,
-    forms: Vec<AnonymousTypeform>,
-}
-pub fn parse_anonymous_parameters(lexer: &mut Lexer) -> Result<AnonymousParameters, String> {
+fn parse_anonymous_parameters(lexer: &mut Lexer) -> Result<AnonymousParameters, String> {
     let mut forms: Vec<AnonymousTypeform> = Vec::new();
     expect(lexer, "(", Some("anonymous function parameters")).unwrap();
     if !lexer.follows(")") {
@@ -197,13 +172,7 @@ pub fn parse_anonymous_parameters(lexer: &mut Lexer) -> Result<AnonymousParamete
     });
 }
 
-#[derive(Serialize, Deserialize, Debug)]
-pub struct Literal {
-    kind: String,
-    type_name: String,
-    value: String,
-}
-pub fn parse_literal(lexer: &mut Lexer) -> Result<Literal, String> {
+fn parse_literal(lexer: &mut Lexer) -> Result<Literal, String> {
     let types = ["string", "num", "char"];
     for t in types.iter() {
         if lexer.peek().unwrap().kind != t.to_string() {
@@ -228,19 +197,7 @@ pub fn parse_literal(lexer: &mut Lexer) -> Result<Literal, String> {
     return Err(format!("literal expected, got {}", lexer.peek().unwrap()));
 }
 
-#[derive(Serialize, Deserialize, Debug)]
-pub struct Enum {
-    kind: String,
-    is_pub: bool,
-    members: Vec<EnumMember>,
-}
-#[derive(Serialize, Deserialize, Debug)]
-pub struct EnumMember {
-    kind: String,
-    id: Identifier,
-    value: Option<Literal>,
-}
-pub fn parse_enum(lexer: &mut Lexer, is_pub: bool) -> Result<Enum, String> {
+fn parse_enum(lexer: &mut Lexer, is_pub: bool) -> Result<Enum, String> {
     let mut members: Vec<EnumMember> = Vec::new();
     expect(lexer, "enum", Some("enum definition")).unwrap();
     expect(lexer, "{", Some("enum definition")).unwrap();
@@ -272,13 +229,7 @@ pub fn parse_enum(lexer: &mut Lexer, is_pub: bool) -> Result<Enum, String> {
     });
 }
 
-#[derive(Debug, Serialize)]
-pub struct ArrayLiteral {
-    kind: String,
-    values: Vec<ArrayLiteralEntry>,
-}
-
-pub fn parse_array_literal(lexer: &mut Lexer) -> Result<ArrayLiteral, String> {
+fn parse_array_literal(lexer: &mut Lexer) -> Result<ArrayLiteral, String> {
     let mut values: Vec<ArrayLiteralEntry> = Vec::new();
     expect(lexer, "{", Some("array literal"))?;
     if !lexer.follows("}") {
@@ -295,53 +246,7 @@ pub fn parse_array_literal(lexer: &mut Lexer) -> Result<ArrayLiteral, String> {
     });
 }
 
-#[derive(Debug)]
-enum ArrayLiteralKey {
-    None,
-    Identifier(Identifier),
-    Literal(Literal),
-}
-
-impl Serialize for ArrayLiteralKey {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        match self {
-            ArrayLiteralKey::None => serializer.serialize_none(),
-            ArrayLiteralKey::Identifier(x) => Serialize::serialize(x, serializer),
-            ArrayLiteralKey::Literal(x) => Serialize::serialize(x, serializer),
-        }
-    }
-}
-
-#[derive(Debug)]
-enum ArrayLiteralValue {
-    ArrayLiteral(ArrayLiteral),
-    Identifier(Identifier),
-    Literal(Literal),
-}
-
-impl Serialize for ArrayLiteralValue {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        match self {
-            ArrayLiteralValue::ArrayLiteral(x) => Serialize::serialize(x, serializer),
-            ArrayLiteralValue::Identifier(x) => Serialize::serialize(x, serializer),
-            ArrayLiteralValue::Literal(x) => Serialize::serialize(x, serializer),
-        }
-    }
-}
-
-#[derive(Debug, Serialize)]
-pub struct ArrayLiteralEntry {
-    index: ArrayLiteralKey,
-    value: ArrayLiteralValue,
-}
-
-pub fn parse_array_literal_entry(lexer: &mut Lexer) -> Result<ArrayLiteralEntry, String> {
+fn parse_array_literal_entry(lexer: &mut Lexer) -> Result<ArrayLiteralEntry, String> {
     let mut index: ArrayLiteralKey = ArrayLiteralKey::None;
     if lexer.follows("[") {
         lexer.get();
@@ -365,53 +270,7 @@ pub fn parse_array_literal_entry(lexer: &mut Lexer) -> Result<ArrayLiteralEntry,
     return Ok(ArrayLiteralEntry { index, value });
 }
 
-#[derive(Debug, Serialize)]
-pub struct BinaryOp {
-    kind: String,
-    op: String,
-    a: Expression,
-    b: Expression,
-}
-
-#[derive(Debug)]
-pub enum Expression {
-    BinaryOp(Box<BinaryOp>),
-    Cast(Box<Cast>),
-    FunctionCall(Box<FunctionCall>),
-    Expression(Box<Expression>),
-    Literal(Literal),
-    Identifier(Identifier),
-    StructLiteral(Box<StructLiteral>),
-    ArrayLiteral(Box<ArrayLiteral>),
-    Sizeof(Box<Sizeof>),
-    PrefixOperator(Box<PrefixOperator>),
-    PostfixOperator(Box<PostfixOperator>),
-    ArrayIndex(Box<ArrayIndex>),
-}
-
-impl Serialize for Expression {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        match self {
-            Expression::BinaryOp(x) => Serialize::serialize(x, serializer),
-            Expression::Cast(x) => Serialize::serialize(x, serializer),
-            Expression::FunctionCall(x) => Serialize::serialize(x, serializer),
-            Expression::Expression(x) => Serialize::serialize(x, serializer),
-            Expression::Literal(x) => Serialize::serialize(x, serializer),
-            Expression::Identifier(x) => Serialize::serialize(x, serializer),
-            Expression::StructLiteral(x) => Serialize::serialize(x, serializer),
-            Expression::ArrayLiteral(x) => Serialize::serialize(x, serializer),
-            Expression::Sizeof(x) => Serialize::serialize(x, serializer),
-            Expression::PrefixOperator(x) => Serialize::serialize(x, serializer),
-            Expression::PostfixOperator(x) => Serialize::serialize(x, serializer),
-            Expression::ArrayIndex(x) => Serialize::serialize(x, serializer),
-        }
-    }
-}
-
-pub fn parse_expression(
+fn parse_expression(
     lexer: &mut Lexer,
     current_strength: usize,
     typenames: &Vec<String>,
@@ -439,35 +298,7 @@ pub fn parse_expression(
     return Ok(Expression::Expression(Box::new(result)));
 }
 
-#[derive(Debug, Serialize)]
-pub struct Cast {
-    kind: String,
-    type_name: AnonymousTypeform,
-    operand: Expression,
-}
-
-#[derive(Debug, Serialize)]
-pub struct PostfixOperator {
-    kind: String,
-    operator: String,
-    operand: Expression,
-}
-
-#[derive(Debug, Serialize)]
-pub struct PrefixOperator {
-    kind: String,
-    operator: String,
-    operand: Expression,
-}
-
-#[derive(Debug, Serialize)]
-pub struct ArrayIndex {
-    kind: String,
-    array: Expression,
-    index: Expression,
-}
-
-pub fn parse_atom(lexer: &mut Lexer, typenames: &Vec<String>) -> Result<Expression, String> {
+fn parse_atom(lexer: &mut Lexer, typenames: &Vec<String>) -> Result<Expression, String> {
     let nono = ["case", "default", "if", "else", "for", "while", "switch"];
     let next = &lexer.peek().unwrap().kind;
     if nono.contains(&next.as_str()) {
@@ -568,19 +399,7 @@ pub fn parse_atom(lexer: &mut Lexer, typenames: &Vec<String>) -> Result<Expressi
     return Ok(result);
 }
 
-#[derive(Debug, Serialize)]
-pub struct StructLiteralMember {
-    name: Identifier,
-    value: Expression,
-}
-
-#[derive(Debug, Serialize)]
-pub struct StructLiteral {
-    kind: String,
-    members: Vec<StructLiteralMember>,
-}
-
-pub fn parse_struct_literal(
+fn parse_struct_literal(
     lexer: &mut Lexer,
     typenames: &Vec<String>,
 ) -> Result<StructLiteral, String> {
@@ -609,31 +428,7 @@ pub fn parse_struct_literal(
     return Ok(result);
 }
 
-#[derive(Debug)]
-enum SizeofArgument {
-    Type(Type),
-    Expression(Expression),
-}
-
-impl Serialize for SizeofArgument {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        match self {
-            SizeofArgument::Type(x) => Serialize::serialize(x, serializer),
-            SizeofArgument::Expression(x) => Serialize::serialize(x, serializer),
-        }
-    }
-}
-
-#[derive(Debug, Serialize)]
-pub struct Sizeof {
-    kind: String,
-    argument: SizeofArgument,
-}
-
-pub fn parse_sizeof(lexer: &mut Lexer, typenames: &Vec<String>) -> Result<Sizeof, String> {
+fn parse_sizeof(lexer: &mut Lexer, typenames: &Vec<String>) -> Result<Sizeof, String> {
     expect(lexer, "sizeof", None)?;
     expect(lexer, "(", None)?;
     let argument: SizeofArgument;
@@ -652,14 +447,7 @@ pub fn parse_sizeof(lexer: &mut Lexer, typenames: &Vec<String>) -> Result<Sizeof
     });
 }
 
-#[derive(Debug, Serialize)]
-pub struct FunctionCall {
-    kind: String,
-    function: Expression,
-    arguments: Vec<Expression>,
-}
-
-pub fn parse_function_call(
+fn parse_function_call(
     lexer: &mut Lexer,
     typenames: &Vec<String>,
     function_name: Expression,
@@ -681,14 +469,7 @@ pub fn parse_function_call(
     });
 }
 
-#[derive(Serialize, Debug)]
-pub struct While {
-    kind: String,
-    condition: Expression,
-    body: Body,
-}
-
-pub fn parse_while(lexer: &mut Lexer, typenames: &Vec<String>) -> Result<While, String> {
+fn parse_while(lexer: &mut Lexer, typenames: &Vec<String>) -> Result<While, String> {
     expect(lexer, "while", None)?;
     expect(lexer, "(", None)?;
     let condition = parse_expression(lexer, 0, typenames)?;
@@ -701,13 +482,7 @@ pub fn parse_while(lexer: &mut Lexer, typenames: &Vec<String>) -> Result<While, 
     });
 }
 
-#[derive(Serialize, Debug)]
-pub struct Body {
-    kind: String,
-    statements: Vec<Statement>,
-}
-
-pub fn parse_body(lexer: &mut Lexer, typenames: &Vec<String>) -> Result<Body, String> {
+fn parse_body(lexer: &mut Lexer, typenames: &Vec<String>) -> Result<Body, String> {
     let mut statements: Vec<Statement> = Vec::new();
     if lexer.follows("{") {
         expect(lexer, "{", None)?;
@@ -724,35 +499,7 @@ pub fn parse_body(lexer: &mut Lexer, typenames: &Vec<String>) -> Result<Body, St
     });
 }
 
-#[derive(Debug)]
-pub enum Statement {
-    VariableDeclaration(VariableDeclaration),
-    If(If),
-    For(For),
-    While(While),
-    Return(Return),
-    Switch(Switch),
-    Expression(Expression),
-}
-
-impl Serialize for Statement {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        match self {
-            Statement::VariableDeclaration(x) => Serialize::serialize(x, serializer),
-            Statement::If(x) => Serialize::serialize(x, serializer),
-            Statement::For(x) => Serialize::serialize(x, serializer),
-            Statement::While(x) => Serialize::serialize(x, serializer),
-            Statement::Return(x) => Serialize::serialize(x, serializer),
-            Statement::Switch(x) => Serialize::serialize(x, serializer),
-            Statement::Expression(x) => Serialize::serialize(x, serializer),
-        }
-    }
-}
-
-pub fn parse_statement(lexer: &mut Lexer, typenames: &Vec<String>) -> Result<Statement, String> {
+fn parse_statement(lexer: &mut Lexer, typenames: &Vec<String>) -> Result<Statement, String> {
     let next = lexer.peek().unwrap();
     if (next.kind == "word" && is_type(&next.content.as_ref().unwrap(), typenames))
         || next.kind == "const"
@@ -776,15 +523,7 @@ pub fn parse_statement(lexer: &mut Lexer, typenames: &Vec<String>) -> Result<Sta
     };
 }
 
-#[derive(Serialize, Debug)]
-pub struct VariableDeclaration {
-    kind: String,
-    type_name: Type,
-    forms: Vec<Form>,
-    values: Vec<Expression>,
-}
-
-pub fn parse_variable_declaration(
+fn parse_variable_declaration(
     lexer: &mut Lexer,
     typenames: &Vec<String>,
 ) -> Result<VariableDeclaration, String> {
@@ -810,13 +549,7 @@ pub fn parse_variable_declaration(
     });
 }
 
-#[derive(Serialize, Debug)]
-pub struct Return {
-    kind: String,
-    expression: Option<Expression>,
-}
-
-pub fn parse_return(lexer: &mut Lexer, typenames: &Vec<String>) -> Result<Return, String> {
+fn parse_return(lexer: &mut Lexer, typenames: &Vec<String>) -> Result<Return, String> {
     expect(lexer, "return", None)?;
     if lexer.peek().unwrap().kind == ";" {
         lexer.get();
@@ -833,15 +566,7 @@ pub fn parse_return(lexer: &mut Lexer, typenames: &Vec<String>) -> Result<Return
     });
 }
 
-#[derive(Serialize, Debug)]
-pub struct Form {
-    kind: String,
-    stars: String,
-    name: String,
-    indexes: Vec<Option<Expression>>,
-}
-
-pub fn parse_form(lexer: &mut Lexer, typenames: &Vec<String>) -> Result<Form, String> {
+fn parse_form(lexer: &mut Lexer, typenames: &Vec<String>) -> Result<Form, String> {
     // *argv[]
     // linechars[]
     // buf[SIZE * 2]
@@ -871,15 +596,7 @@ pub fn parse_form(lexer: &mut Lexer, typenames: &Vec<String>) -> Result<Form, St
     return Ok(node);
 }
 
-#[derive(Serialize, Debug)]
-pub struct If {
-    kind: String,
-    condition: Expression,
-    body: Body,
-    else_body: Option<Body>,
-}
-
-pub fn parse_if(lexer: &mut Lexer, typenames: &Vec<String>) -> Result<If, String> {
+fn parse_if(lexer: &mut Lexer, typenames: &Vec<String>) -> Result<If, String> {
     let condition;
     let body;
     let mut else_body = None;
@@ -901,42 +618,7 @@ pub fn parse_if(lexer: &mut Lexer, typenames: &Vec<String>) -> Result<If, String
     });
 }
 
-#[derive(Serialize, Debug)]
-pub struct For {
-    kind: String,
-    init: ForInit,
-    condition: Expression,
-    action: Expression,
-    body: Body,
-}
-
-#[derive(Debug)]
-pub enum ForInit {
-    Expression(Expression),
-    LoopCounterDeclaration(LoopCounterDeclaration),
-}
-
-impl Serialize for ForInit {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        match self {
-            ForInit::Expression(x) => Serialize::serialize(x, serializer),
-            ForInit::LoopCounterDeclaration(x) => Serialize::serialize(x, serializer),
-        }
-    }
-}
-
-#[derive(Serialize, Debug)]
-pub struct LoopCounterDeclaration {
-    kind: String,
-    type_name: Type,
-    name: Identifier,
-    value: Expression,
-}
-
-pub fn parse_for(lexer: &mut Lexer, typenames: &Vec<String>) -> Result<For, String> {
+fn parse_for(lexer: &mut Lexer, typenames: &Vec<String>) -> Result<For, String> {
     expect(lexer, "for", None)?;
     expect(lexer, "(", None)?;
 
@@ -974,39 +656,7 @@ pub fn parse_for(lexer: &mut Lexer, typenames: &Vec<String>) -> Result<For, Stri
     });
 }
 
-#[derive(Deserialize, Debug)]
-pub enum SwitchCaseValue {
-    Identifier(Identifier),
-    Literal(Literal),
-}
-
-impl Serialize for SwitchCaseValue {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        match self {
-            SwitchCaseValue::Identifier(x) => Serialize::serialize(x, serializer),
-            SwitchCaseValue::Literal(x) => Serialize::serialize(x, serializer),
-        }
-    }
-}
-
-#[derive(Serialize, Debug)]
-pub struct SwitchCase {
-    value: SwitchCaseValue,
-    statements: Vec<Statement>,
-}
-
-#[derive(Serialize, Debug)]
-pub struct Switch {
-    kind: String,
-    value: Expression,
-    cases: Vec<SwitchCase>,
-    default: Option<Vec<Statement>>,
-}
-
-pub fn parse_switch(lexer: &mut Lexer, typenames: &Vec<String>) -> Result<Switch, String> {
+fn parse_switch(lexer: &mut Lexer, typenames: &Vec<String>) -> Result<Switch, String> {
     expect(lexer, "switch", None)?;
     expect(lexer, "(", None)?;
     let value = parse_expression(lexer, 0, typenames)?;
@@ -1050,23 +700,7 @@ pub fn parse_switch(lexer: &mut Lexer, typenames: &Vec<String>) -> Result<Switch
     });
 }
 
-#[derive(Debug, Serialize)]
-pub struct FunctionParameters {
-    list: Vec<FunctionParameter>,
-    variadic: bool,
-}
-
-#[derive(Debug, Serialize)]
-pub struct FunctionDeclaration {
-    kind: String,
-    is_pub: bool,
-    type_name: Type,
-    form: Form,
-    parameters: FunctionParameters,
-    body: Body,
-}
-
-pub fn parse_function_declaration(
+fn parse_function_declaration(
     lexer: &mut Lexer,
     is_pub: bool,
     type_name: Type,
@@ -1103,13 +737,7 @@ pub fn parse_function_declaration(
     });
 }
 
-#[derive(Serialize, Debug)]
-pub struct FunctionParameter {
-    type_name: Type,
-    forms: Vec<Form>,
-}
-
-pub fn parse_function_parameter(
+fn parse_function_parameter(
     lexer: &mut Lexer,
     typenames: &Vec<String>,
 ) -> Result<FunctionParameter, String> {
@@ -1131,20 +759,7 @@ pub fn parse_function_parameter(
     return Ok(FunctionParameter { type_name, forms });
 }
 
-#[derive(Serialize, Debug)]
-pub struct Union {
-    kind: String,
-    form: Form,
-    fields: Vec<UnionField>,
-}
-
-#[derive(Serialize, Debug)]
-pub struct UnionField {
-    type_name: Type,
-    form: Form,
-}
-
-pub fn parse_union(lexer: &mut Lexer, typenames: &Vec<String>) -> Result<Union, String> {
+fn parse_union(lexer: &mut Lexer, typenames: &Vec<String>) -> Result<Union, String> {
     let mut fields: Vec<UnionField> = vec![];
     expect(lexer, "union", None)?;
     expect(lexer, "{", None)?;
@@ -1164,44 +779,7 @@ pub fn parse_union(lexer: &mut Lexer, typenames: &Vec<String>) -> Result<Union, 
     });
 }
 
-#[derive(Serialize, Debug)]
-pub struct ModuleVariable {
-    kind: String,
-    type_name: Type,
-    form: Form,
-    value: Expression,
-}
-
-#[derive(Debug)]
-pub enum ModuleObject {
-    ModuleVariable(ModuleVariable),
-    Enum(Enum),
-    FunctionDeclaration(FunctionDeclaration),
-    Import(Import),
-    Typedef(Typedef),
-    CompatMacro(CompatMacro),
-}
-
-impl Serialize for ModuleObject {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        match self {
-            ModuleObject::ModuleVariable(x) => Serialize::serialize(x, serializer),
-            ModuleObject::Enum(x) => Serialize::serialize(x, serializer),
-            ModuleObject::FunctionDeclaration(x) => Serialize::serialize(x, serializer),
-            ModuleObject::Import(x) => Serialize::serialize(x, serializer),
-            ModuleObject::Typedef(x) => Serialize::serialize(x, serializer),
-            ModuleObject::CompatMacro(x) => Serialize::serialize(x, serializer),
-        }
-    }
-}
-
-pub fn parse_module_object(
-    lexer: &mut Lexer,
-    typenames: &Vec<String>,
-) -> Result<ModuleObject, String> {
+fn parse_module_object(lexer: &mut Lexer, typenames: &Vec<String>) -> Result<ModuleObject, String> {
     let mut is_pub = false;
     if lexer.follows("pub") {
         lexer.get();
@@ -1240,13 +818,7 @@ pub fn parse_module_object(
     return Err("unexpected input".to_string());
 }
 
-#[derive(Serialize, Deserialize, Debug)]
-pub struct Import {
-    kind: String,
-    path: String,
-}
-
-pub fn parse_import(lexer: &mut Lexer) -> Result<Import, String> {
+fn parse_import(lexer: &mut Lexer) -> Result<Import, String> {
     expect(lexer, "import", None)?;
     let path = expect(lexer, "string", None).unwrap().content.unwrap();
 
@@ -1256,14 +828,7 @@ pub fn parse_import(lexer: &mut Lexer) -> Result<Import, String> {
     });
 }
 
-#[derive(Serialize, Deserialize, Debug)]
-pub struct CompatMacro {
-    kind: String,
-    name: String,
-    value: String,
-}
-
-pub fn parse_compat_macro(lexer: &mut Lexer) -> Result<CompatMacro, String> {
+fn parse_compat_macro(lexer: &mut Lexer) -> Result<CompatMacro, String> {
     let content = expect(lexer, "macro", None)
         .unwrap()
         .content
@@ -1282,32 +847,7 @@ pub fn parse_compat_macro(lexer: &mut Lexer) -> Result<CompatMacro, String> {
     });
 }
 
-#[derive(Debug)]
-pub enum TypedefTarget {
-    AnonymousStruct(AnonymousStruct),
-    Type(Type),
-}
-
-impl Serialize for TypedefTarget {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        match self {
-            TypedefTarget::AnonymousStruct(x) => Serialize::serialize(x, serializer),
-            TypedefTarget::Type(x) => Serialize::serialize(x, serializer),
-        }
-    }
-}
-
-#[derive(Serialize, Debug)]
-pub struct Typedef {
-    kind: String,
-    type_name: TypedefTarget,
-    form: TypedefForm,
-}
-
-pub fn parse_typedef(lexer: &mut Lexer, typenames: &Vec<String>) -> Result<Typedef, String> {
+fn parse_typedef(lexer: &mut Lexer, typenames: &Vec<String>) -> Result<Typedef, String> {
     // typedef void *f(int a)[20];
     // typedef foo bar;
     // typedef struct foo foo_t;
@@ -1327,15 +867,7 @@ pub fn parse_typedef(lexer: &mut Lexer, typenames: &Vec<String>) -> Result<Typed
     });
 }
 
-#[derive(Serialize, Debug)]
-pub struct TypedefForm {
-    stars: String,
-    params: Option<AnonymousParameters>,
-    size: usize,
-    alias: Identifier,
-}
-
-pub fn parse_typedef_form(lexer: &mut Lexer) -> Result<TypedefForm, String> {
+fn parse_typedef_form(lexer: &mut Lexer) -> Result<TypedefForm, String> {
     let mut stars = String::new();
     while lexer.follows("*") {
         stars += &lexer.get().unwrap().kind;
@@ -1368,31 +900,7 @@ pub fn parse_typedef_form(lexer: &mut Lexer) -> Result<TypedefForm, String> {
     });
 }
 
-#[derive(Debug)]
-pub enum StructEntry {
-    StructFieldlist(StructFieldlist),
-    Union(Union),
-}
-
-impl Serialize for StructEntry {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        match self {
-            StructEntry::Union(x) => Serialize::serialize(x, serializer),
-            StructEntry::StructFieldlist(x) => Serialize::serialize(x, serializer),
-        }
-    }
-}
-
-#[derive(Serialize, Debug)]
-pub struct AnonymousStruct {
-    kind: String,
-    fieldlists: Vec<StructEntry>,
-}
-
-pub fn parse_anonymous_struct(
+fn parse_anonymous_struct(
     lexer: &mut Lexer,
     typenames: &Vec<String>,
 ) -> Result<AnonymousStruct, String> {
@@ -1415,14 +923,7 @@ pub fn parse_anonymous_struct(
     });
 }
 
-#[derive(Serialize, Debug)]
-pub struct StructFieldlist {
-    kind: String,
-    type_name: Type,
-    forms: Vec<Form>,
-}
-
-pub fn parse_struct_fieldlist(
+fn parse_struct_fieldlist(
     lexer: &mut Lexer,
     typenames: &Vec<String>,
 ) -> Result<StructFieldlist, String> {
@@ -1462,7 +963,7 @@ fn skip_brackets(lexer: &mut Lexer) {
     expect(lexer, "}", None).unwrap();
 }
 
-pub fn get_typename(lexer: &mut Lexer) -> Result<String, String> {
+fn get_typename(lexer: &mut Lexer) -> Result<String, String> {
     // The type name is at the end of the typedef statement.
     // typedef foo bar;
     // typedef {...} bar;
@@ -1519,7 +1020,7 @@ pub fn get_typename(lexer: &mut Lexer) -> Result<String, String> {
     return Ok(name.unwrap());
 }
 
-pub fn get_file_typenames(path: &str) -> Result<Vec<String>, String> {
+fn get_file_typenames(path: &str) -> Result<Vec<String>, String> {
     // Scan file tokens for 'typedef' keywords
     let mut lexer = new(path);
     let mut list: Vec<String> = vec![];
@@ -1568,7 +1069,7 @@ pub fn get_module(name: &str) -> Result<Module, String> {
     return r;
 }
 
-pub fn token_to_string(token: &Token) -> String {
+fn token_to_string(token: &Token) -> String {
     if token.content.is_none() {
         return format!("[{}]", token.kind);
     }
@@ -1586,13 +1087,7 @@ pub fn token_to_string(token: &Token) -> String {
     return format!("[{}, {}]", token.kind, c);
 }
 
-#[derive(Serialize)]
-pub struct Module {
-    kind: String,
-    elements: Vec<ModuleObject>,
-}
-
-pub fn parse_module(lexer: &mut Lexer, typenames: Vec<String>) -> Result<Module, String> {
+fn parse_module(lexer: &mut Lexer, typenames: Vec<String>) -> Result<Module, String> {
     let mut elements: Vec<ModuleObject> = vec![];
     let mut types = typenames.clone();
     while lexer.more() {

@@ -7,6 +7,7 @@ use std::collections::HashMap;
 use std::io::prelude::*;
 use std::net::TcpListener;
 mod lexer;
+mod nodes;
 use lexer::Lexer;
 use lexer::Token;
 
