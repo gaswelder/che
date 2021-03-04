@@ -2,7 +2,41 @@
 
 function translate($module)
 {
-    [$elements, $link] = translate_module($module['elements']);
+    $link = [];
+    foreach ($module['elements'] as $node) {
+        if (is_array($node) && $node['kind'] === 'c_compat_macro' && $node['name'] == 'link') {
+            $link[] = $node['value'];
+        }
+    }
+
+    $elements = [];
+    foreach ($module['elements'] as $element) {
+        $elements = array_merge($elements, translate_node($element));
+    }
+
+    $std = [
+        'assert',
+        'ctype',
+        'errno',
+        'limits',
+        'math',
+        'stdarg',
+        'stdbool',
+        'stddef',
+        'stdint',
+        'stdio',
+        'stdlib',
+        'string',
+        'time'
+    ];
+    foreach ($std as $n) {
+        $elements[] = [
+            'kind' => 'c_compat_include',
+            'name' => "<$n.h>"
+        ];
+    }
+
+    $elements = deduplicate_synopsis(hoist_declarations($elements));
     return [
         'kind' => 'c_compat_module',
         'elements' => $elements,
@@ -12,19 +46,24 @@ function translate($module)
 
 function translate_node($node)
 {
-    $cn = is_array($node) ? $node['kind'] : get_class($node);
-
-    if (is_array($node) && $node['kind'] == 'c_typedef') {
+    $cn = $node['kind'];
+    if ($cn == 'c_typedef') {
         return translate_typedef($node);
     }
     if ($cn === 'c_import') {
-        return translate_import($node);
+        $module = get_module($node['path']);
+        $compat = translate($module);
+        return get_module_synopsis($compat);
     }
     if ($cn === 'c_function_declaration') {
         return translate_function_declaration($node);
     }
     if ($cn === 'c_enum') {
-        return translate_enum($node);
+        return [[
+            'kind' => 'c_compat_enum',
+            'members' => $node['members'],
+            'hidden' => !$node['is_pub']
+        ]];
     }
     if ($cn === 'c_compat_macro' && $node['name'] == 'type') {
         return [];
@@ -33,13 +72,6 @@ function translate_node($node)
         return [];
     }
     return [$node];
-}
-
-function translate_import($node)
-{
-    $module = get_module($node['path']);
-    $compat = translate($module);
-    return get_module_synopsis($compat);
 }
 
 function compat_function_forward_declaration($node)
@@ -84,15 +116,6 @@ function get_module_synopsis($module)
         }
     }
     return $elements;
-}
-
-function translate_enum($node)
-{
-    return [[
-        'kind' => 'c_compat_enum',
-        'members' => $node['members'],
-        'hidden' => !$node['is_pub']
-    ]];
 }
 
 function translate_typedef($node)
@@ -161,75 +184,32 @@ function translate_function_declaration($node)
     ];
 }
 
-function translate_module($che_elements)
+function get_order($element)
 {
-    $link = [];
-    foreach ($che_elements as $node) {
-        if (is_array($node) && $node['kind'] === 'c_compat_macro' && $node['name'] == 'link') {
-            $link[] = $node['value'];
-        }
+    $cn = $element['kind'];
+    if (in_array($cn, ['c_compat_include', 'c_compat_macro'])) {
+        return 0;
     }
-
-    $elements = [];
-    foreach ($che_elements as $element) {
-        $elements = array_merge($elements, translate_node($element));
+    if ($cn === 'c_compat_struct_forward_declaration') {
+        return 1;
     }
-
-    $std = [
-        'assert',
-        'ctype',
-        'errno',
-        'limits',
-        'math',
-        'stdarg',
-        'stdbool',
-        'stddef',
-        'stdint',
-        'stdio',
-        'stdlib',
-        'string',
-        'time'
-    ];
-    foreach ($std as $n) {
-        $elements[] = [
-            'kind' => 'c_compat_include',
-            'name' => "<$n.h>"
-        ];
+    if ($cn === 'c_typedef') {
+        return 2;
     }
-
-    return [deduplicate_synopsis(hoist_declarations($elements)), $link];
-}
+    if (in_array($cn, ['c_compat_struct_definition', 'c_compat_enum'])) {
+        return 3;
+    }
+    if ($cn === 'c_compat_function_forward_declaration') {
+        return 4;
+    }
+    return 5;
+};
 
 function hoist_declarations($elements)
 {
-    $get_order = function ($element) {
-        if (is_array($element)) {
-            $cn = $element['kind'];
-        } else {
-            $cn = get_class($element);
-        }
-        if (in_array($cn, ['c_compat_include', 'c_compat_macro'])) {
-            return 0;
-        }
-        if ($cn === 'c_compat_struct_forward_declaration') {
-            return 1;
-        }
-        if ($cn === 'c_typedef') {
-            return 2;
-        }
-        if (in_array($cn, ['c_compat_struct_definition', 'c_compat_enum'])) {
-            return 3;
-        }
-        if ($cn === 'c_compat_function_forward_declaration') {
-            return 4;
-        }
-        return 5;
-    };
-
     $groups = [[], [], [], [], []];
-
     foreach ($elements as $element) {
-        $groups[$get_order($element)][] = $element;
+        $groups[get_order($element)][] = $element;
     }
     return call_user_func_array('array_merge', $groups);
 }
@@ -241,9 +221,8 @@ function deduplicate_synopsis($elements)
 
     foreach ($elements as $element) {
         if (
-            is_array($element)
-            && ($element['kind'] === 'c_typedef'
-                || $element['kind'] === 'c_compat_struct_definition')
+            $element['kind'] === 'c_typedef'
+            || $element['kind'] === 'c_compat_struct_definition'
         ) {
             $s = format_node($element);
             if (isset($set[$s])) {
