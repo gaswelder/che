@@ -207,12 +207,6 @@ fn get_module_synopsis(module: CompatModule) -> Vec<CompatModuleObject> {
 
     for element in module.elements {
         match element {
-            // Write out non-static function prototypes.
-            // CompatModuleObject::CompatFunctionDeclaration(x) => {
-            //     if !x.is_static {
-            //         elements.push(compat_function_forward_declaration(&x));
-            //     }
-            // }
             CompatModuleObject::Typedef(x) => elements.push(CompatModuleObject::Typedef(x)),
             CompatModuleObject::CompatStructDefinition(x) => {
                 elements.push(CompatModuleObject::CompatStructDefinition(x))
@@ -261,8 +255,10 @@ fn translate_function_declaration(node: &FunctionDeclaration) -> Vec<CompatModul
         parameters: translate_function_parameters(&node.parameters),
         body: node.body.clone(),
     };
-    return vec![
-        compat_function_forward_declaration(&func),
-        CompatModuleObject::CompatFunctionDeclaration(func),
-    ];
+    let decl = compat_function_forward_declaration(&func);
+    let mut r = vec![CompatModuleObject::CompatFunctionDeclaration(func)];
+    if format::format_form(&node.form) != "main" {
+        r.push(decl);
+    }
+    return r;
 }

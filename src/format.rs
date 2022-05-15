@@ -25,7 +25,7 @@ fn format_type(node: &Type) -> String {
     return s;
 }
 
-fn format_form(node: &Form) -> String {
+pub fn format_form(node: &Form) -> String {
     let mut s = String::new();
     s += &node.stars;
     s += &node.name;
