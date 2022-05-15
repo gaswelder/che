@@ -11,6 +11,8 @@ fn is_op(token_type: &str) -> bool {
 }
 
 pub fn operator_strength(op: &str) -> usize {
+    // The lower the operator, the stronger it binds. So, for example,
+    // a = 1, b = 2 will be parsed as (a = 1), (b = 2).
     let map = [
         vec![","],
         vec![
@@ -919,7 +921,7 @@ fn parse_anonymous_struct(
 
     return Ok(AnonymousStruct {
         kind: "c_anonymous_struct".to_string(),
-        fieldlists,
+        entries: fieldlists,
     });
 }
 
@@ -1044,21 +1046,22 @@ fn get_file_typenames(path: &str) -> Result<Vec<String>, String> {
     return Ok(list);
 }
 
-pub fn get_module(name: &str) -> Result<Module, String> {
-    let mut module_path = String::new();
-    if name.ends_with(".c") {
-        module_path += name;
+pub fn get_module(name: &String) -> Result<Module, String> {
+    // If requested module name ends with ".c", we look it at the given
+    // location. If ".c" is omitted, we look for it inside the hardcoded lib
+    // directory.
+    let module_path = if name.ends_with(".c") {
+        name.clone()
     } else {
-        module_path += format!("lib/{}.c", name).as_str();
+        format!("lib/{}.c", name)
     };
 
-    let k = std::fs::metadata(module_path.as_str());
-    if k.is_err() {
+    if std::fs::metadata(&module_path).is_err() {
         return Err(format!("can't find module '{}'", name));
     }
 
-    let types = get_file_typenames(module_path.as_str())?;
-    let mut lexer = new(module_path.as_str());
+    let types = get_file_typenames(&module_path)?;
+    let mut lexer = new(&module_path);
     let r = parse_module(&mut lexer, types);
     if r.is_err() {
         let next = lexer.peek().unwrap();
@@ -1097,7 +1100,7 @@ fn parse_module(lexer: &mut Lexer, typenames: Vec<String>) -> Result<Module, Str
                 let p = import.path.clone();
                 elements.push(ModuleObject::Import(import));
 
-                let module = get_module(p.as_str())?;
+                let module = get_module(&p)?;
                 for element in module.elements {
                     match element {
                         ModuleObject::Typedef(t) => {

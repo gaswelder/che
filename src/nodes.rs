@@ -1,59 +1,65 @@
 use serde::{Deserialize, Serialize, Serializer};
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Identifier {
     pub kind: String,
     pub name: String,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Type {
     pub kind: String,
     pub is_const: bool,
     pub type_name: String,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct AnonymousTypeform {
     pub kind: String,
     pub type_name: Type,
     pub ops: Vec<String>,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct AnonymousParameters {
     pub kind: String,
     pub forms: Vec<AnonymousTypeform>,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Literal {
     pub kind: String,
     pub type_name: String,
     pub value: String,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Enum {
     pub kind: String,
     pub is_pub: bool,
     pub members: Vec<EnumMember>,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Clone)]
+pub struct CompatEnum {
+    pub members: Vec<EnumMember>,
+    pub is_hidden: bool,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct EnumMember {
     pub kind: String,
     pub id: Identifier,
     pub value: Option<Literal>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct ArrayLiteral {
     pub kind: String,
     pub values: Vec<ArrayLiteralEntry>,
 }
 
-#[derive(Debug)]
+#[derive(Deserialize, Debug, Clone)]
 pub enum ArrayLiteralKey {
     None,
     Identifier(Identifier),
@@ -73,7 +79,7 @@ impl Serialize for ArrayLiteralKey {
     }
 }
 
-#[derive(Debug)]
+#[derive(Deserialize, Debug, Clone)]
 pub enum ArrayLiteralValue {
     ArrayLiteral(ArrayLiteral),
     Identifier(Identifier),
@@ -93,13 +99,13 @@ impl Serialize for ArrayLiteralValue {
     }
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct ArrayLiteralEntry {
     pub index: ArrayLiteralKey,
     pub value: ArrayLiteralValue,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct BinaryOp {
     pub kind: String,
     pub op: String,
@@ -107,7 +113,7 @@ pub struct BinaryOp {
     pub b: Expression,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Deserialize, Clone)]
 pub enum Expression {
     BinaryOp(Box<BinaryOp>),
     Cast(Box<Cast>),
@@ -145,47 +151,47 @@ impl Serialize for Expression {
     }
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Cast {
     pub kind: String,
     pub type_name: AnonymousTypeform,
     pub operand: Expression,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct PostfixOperator {
     pub kind: String,
     pub operator: String,
     pub operand: Expression,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct PrefixOperator {
     pub kind: String,
     pub operator: String,
     pub operand: Expression,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct ArrayIndex {
     pub kind: String,
     pub array: Expression,
     pub index: Expression,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct StructLiteralMember {
     pub name: Identifier,
     pub value: Expression,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct StructLiteral {
     pub kind: String,
     pub members: Vec<StructLiteralMember>,
 }
 
-#[derive(Debug)]
+#[derive(Deserialize, Debug, Clone)]
 pub enum SizeofArgument {
     Type(Type),
     Expression(Expression),
@@ -203,33 +209,33 @@ impl Serialize for SizeofArgument {
     }
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Sizeof {
     pub kind: String,
     pub argument: SizeofArgument,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct FunctionCall {
     pub kind: String,
     pub function: Expression,
     pub arguments: Vec<Expression>,
 }
 
-#[derive(Serialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct While {
     pub kind: String,
     pub condition: Expression,
     pub body: Body,
 }
 
-#[derive(Serialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Body {
     pub kind: String,
     pub statements: Vec<Statement>,
 }
 
-#[derive(Debug)]
+#[derive(Deserialize, Debug, Clone)]
 pub enum Statement {
     VariableDeclaration(VariableDeclaration),
     If(If),
@@ -257,7 +263,7 @@ impl Serialize for Statement {
     }
 }
 
-#[derive(Serialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct VariableDeclaration {
     pub kind: String,
     pub type_name: Type,
@@ -265,13 +271,13 @@ pub struct VariableDeclaration {
     pub values: Vec<Expression>,
 }
 
-#[derive(Serialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Return {
     pub kind: String,
     pub expression: Option<Expression>,
 }
 
-#[derive(Serialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Form {
     pub kind: String,
     pub stars: String,
@@ -279,7 +285,7 @@ pub struct Form {
     pub indexes: Vec<Option<Expression>>,
 }
 
-#[derive(Serialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct If {
     pub kind: String,
     pub condition: Expression,
@@ -287,7 +293,7 @@ pub struct If {
     pub else_body: Option<Body>,
 }
 
-#[derive(Serialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct For {
     pub kind: String,
     pub init: ForInit,
@@ -296,7 +302,7 @@ pub struct For {
     pub body: Body,
 }
 
-#[derive(Debug)]
+#[derive(Deserialize, Debug, Clone)]
 pub enum ForInit {
     Expression(Expression),
     LoopCounterDeclaration(LoopCounterDeclaration),
@@ -314,7 +320,7 @@ impl Serialize for ForInit {
     }
 }
 
-#[derive(Serialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct LoopCounterDeclaration {
     pub kind: String,
     pub type_name: Type,
@@ -322,7 +328,7 @@ pub struct LoopCounterDeclaration {
     pub value: Expression,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Clone)]
 pub enum SwitchCaseValue {
     Identifier(Identifier),
     Literal(Literal),
@@ -340,13 +346,13 @@ impl Serialize for SwitchCaseValue {
     }
 }
 
-#[derive(Serialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct SwitchCase {
     pub value: SwitchCaseValue,
     pub statements: Vec<Statement>,
 }
 
-#[derive(Serialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Switch {
     pub kind: String,
     pub value: Expression,
@@ -354,13 +360,19 @@ pub struct Switch {
     pub default: Option<Vec<Statement>>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct FunctionParameters {
     pub list: Vec<FunctionParameter>,
     pub variadic: bool,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct CompatFunctionParameters {
+    pub list: Vec<CompatFunctionParameter>,
+    pub variadic: bool,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct FunctionDeclaration {
     pub kind: String,
     pub is_pub: bool,
@@ -370,26 +382,32 @@ pub struct FunctionDeclaration {
     pub body: Body,
 }
 
-#[derive(Serialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct FunctionParameter {
     pub type_name: Type,
     pub forms: Vec<Form>,
 }
 
-#[derive(Serialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct CompatFunctionParameter {
+    pub type_name: Type,
+    pub form: Form,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Union {
     pub kind: String,
     pub form: Form,
     pub fields: Vec<UnionField>,
 }
 
-#[derive(Serialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct UnionField {
     pub type_name: Type,
     pub form: Form,
 }
 
-#[derive(Serialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct ModuleVariable {
     pub kind: String,
     pub type_name: Type,
@@ -397,7 +415,7 @@ pub struct ModuleVariable {
     pub value: Expression,
 }
 
-#[derive(Debug)]
+#[derive(Clone)]
 pub enum ModuleObject {
     ModuleVariable(ModuleVariable),
     Enum(Enum),
@@ -405,41 +423,88 @@ pub enum ModuleObject {
     Import(Import),
     Typedef(Typedef),
     CompatMacro(CompatMacro),
+    // CompatInclude(CompatInclude),
 }
 
-impl Serialize for ModuleObject {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        match self {
-            ModuleObject::ModuleVariable(x) => Serialize::serialize(x, serializer),
-            ModuleObject::Enum(x) => Serialize::serialize(x, serializer),
-            ModuleObject::FunctionDeclaration(x) => Serialize::serialize(x, serializer),
-            ModuleObject::Import(x) => Serialize::serialize(x, serializer),
-            ModuleObject::Typedef(x) => Serialize::serialize(x, serializer),
-            ModuleObject::CompatMacro(x) => Serialize::serialize(x, serializer),
-        }
-    }
+#[derive(Clone)]
+pub enum CompatModuleObject {
+    ModuleVariable(ModuleVariable),
+    Typedef(Typedef),
+    CompatMacro(CompatMacro),
+    CompatInclude(CompatInclude),
+    CompatEnum(CompatEnum),
+    CompatStructForwardDeclaration(CompatStructForwardDeclaration),
+    CompatStructDefinition(CompatStructDefinition),
+    CompatFunctionForwardDeclaration(CompatFunctionForwardDeclaration),
+    CompatFunctionDeclaration(CompatFunctionDeclaration),
+    CompatSplit(CompatSplit),
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Debug, Clone)]
+pub struct CompatFunctionForwardDeclaration {
+    pub is_static: bool,
+    pub type_name: Type,
+    pub form: Form,
+    pub parameters: CompatFunctionParameters,
+}
+
+#[derive(Debug, Clone)]
+pub struct CompatFunctionDeclaration {
+    pub kind: String,
+    pub is_static: bool,
+    pub type_name: Type,
+    pub form: Form,
+    pub parameters: CompatFunctionParameters,
+    pub body: Body,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct CompatStructForwardDeclaration {
+    pub kind: String,
+    pub name: String,
+}
+
+#[derive(Clone)]
+pub struct CompatStructDefinition {
+    pub kind: String,
+    pub name: String,
+    pub fields: Vec<CompatStructEntry>,
+}
+
+// impl Serialize for ModuleObject {
+//     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+//     where
+//         S: Serializer,
+//     {
+//         match self {
+//             ModuleObject::ModuleVariable(x) => Serialize::serialize(x, serializer),
+//             ModuleObject::Enum(x) => Serialize::serialize(x, serializer),
+//             ModuleObject::FunctionDeclaration(x) => Serialize::serialize(x, serializer),
+//             ModuleObject::Import(x) => Serialize::serialize(x, serializer),
+//             ModuleObject::Typedef(x) => Serialize::serialize(x, serializer),
+//             ModuleObject::CompatMacro(x) => Serialize::serialize(x, serializer),
+//             ModuleObject::CompatStructForwardDeclaration(x) => Serialize::serialize(x, serializer),
+//             ModuleObject::CompatStructDefinition(x) => Serialize::serialize(x, serializer),
+//         }
+//     }
+// }
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Import {
     pub kind: String,
     pub path: String,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct CompatMacro {
     pub kind: String,
     pub name: String,
     pub value: String,
 }
 
-#[derive(Debug)]
-pub enum TypedefTarget {
-    AnonymousStruct(AnonymousStruct),
-    Type(Type),
+#[derive(Clone)]
+pub struct CompatInclude {
+    pub name: String,
 }
 
 impl Serialize for TypedefTarget {
@@ -454,14 +519,20 @@ impl Serialize for TypedefTarget {
     }
 }
 
-#[derive(Serialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Typedef {
     pub kind: String,
     pub type_name: TypedefTarget,
     pub form: TypedefForm,
 }
 
-#[derive(Serialize, Debug)]
+#[derive(Debug, Deserialize, Clone)]
+pub enum TypedefTarget {
+    AnonymousStruct(AnonymousStruct),
+    Type(Type),
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct TypedefForm {
     pub stars: String,
     pub params: Option<AnonymousParameters>,
@@ -469,9 +540,15 @@ pub struct TypedefForm {
     pub alias: Identifier,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Deserialize, Clone)]
 pub enum StructEntry {
     StructFieldlist(StructFieldlist),
+    Union(Union),
+}
+
+#[derive(Clone)]
+pub enum CompatStructEntry {
+    CompatStructField(CompatStructField),
     Union(Union),
 }
 
@@ -487,21 +564,38 @@ impl Serialize for StructEntry {
     }
 }
 
-#[derive(Serialize, Debug)]
+#[derive(Serialize, Debug, Deserialize, Clone)]
 pub struct AnonymousStruct {
     pub kind: String,
-    pub fieldlists: Vec<StructEntry>,
+    pub entries: Vec<StructEntry>,
 }
 
-#[derive(Serialize, Debug)]
+#[derive(Serialize, Debug, Deserialize, Clone)]
 pub struct StructFieldlist {
     pub kind: String,
     pub type_name: Type,
     pub forms: Vec<Form>,
 }
 
-#[derive(Serialize)]
+#[derive(Clone)]
+pub struct CompatStructField {
+    pub type_name: Type,
+    pub form: Form,
+}
+
+#[derive(Clone)]
 pub struct Module {
     pub kind: String,
     pub elements: Vec<ModuleObject>,
+}
+
+#[derive(Clone)]
+pub struct CompatModule {
+    pub elements: Vec<CompatModuleObject>,
+    pub link: Vec<String>,
+}
+
+#[derive(Clone)]
+pub struct CompatSplit {
+    pub text: String,
 }

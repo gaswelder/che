@@ -1,171 +1,117 @@
-use serde::Deserialize;
-use serde_json::json;
-use std::string::String;
 mod buf;
-mod parser;
-use std::collections::HashMap;
-use std::io::prelude::*;
-use std::net::TcpListener;
+mod format;
 mod lexer;
 mod nodes;
-use lexer::Lexer;
-use lexer::Token;
-
-#[derive(Deserialize)]
-struct Call {
-    ns: String,
-    id: String,
-    f: String,
-    a: Vec<serde_json::Value>,
-}
+mod parser;
+mod translator;
+use md5;
+use std::env;
+use std::fs;
+use std::path::Path;
+use std::process::Command;
+use std::string::String;
 
 fn main() {
-    let mut lexer_instances: HashMap<String, Lexer> = HashMap::new();
+    let args: Vec<String> = env::args().collect();
+    println!("{:?}", args);
 
-    let ln = TcpListener::bind("localhost:2124").unwrap();
-    for conn in ln.incoming() {
-        let mut c = conn.unwrap();
-        let mut s = String::new();
-        loop {
-            let mut input = [0; 20 * 1024];
-            let len = c.read(&mut input).unwrap();
-            if len == 0 {
-                break;
-            }
-            s.push_str(String::from_utf8(input[0..len].to_vec()).unwrap().as_str());
-            if input[len - 1] == '\n' as u8 {
-                break;
-            }
-        }
-
-        let call: Call = serde_json::from_str(String::from(s).trim()).unwrap();
-        let response = if call.ns == "" {
-            exec_function_call(call)
-        } else {
-            exec_method_call(call, &mut lexer_instances)
-        };
-        c.write(format!("{}", response).as_bytes()).unwrap();
-        c.flush().unwrap();
+    if args[1] == "build" {
+        build(&args[2..]);
+        return;
     }
 }
 
-fn exec_method_call(call: Call, lexer_instances: &mut HashMap<String, Lexer>) -> serde_json::Value {
-    if call.ns != "lexer" {
-        panic!("unknown class name: {}", call.ns);
+fn build(argv: &[String]) {
+    if argv.len() < 1 || argv.len() > 2 {
+        eprintln!("Usage: build <source-path> [<output-path>]\n");
+        return;
     }
-
-    let f = call.f.as_str();
-    let args = call.a;
-
-    if f == "__construct" {
-        let instance_key = format!("#{}", lexer_instances.len());
-        println!("new {} {}", call.ns, instance_key);
-        let s = args[0].as_str().unwrap();
-        lexer_instances.insert(instance_key.clone(), lexer::new(s));
-        return json!({
-            "error": "",
-            "data": instance_key
-        });
-    }
-    let b1 = lexer_instances.get_mut(&call.id).unwrap();
-    return match f {
-        "ended" => json!({
-            "error": "",
-            "data": b1.ended()
-        }),
-        "more" => json!({
-            "error": "",
-            "data": b1.more()
-        }),
-        "get" => json!({
-            "error": "",
-            "data": b1.get()
-        }),
-        "unget" => {
-            let c = args[0].as_object().unwrap().get("content").unwrap();
-            let t = Token {
-                kind: args[0]
-                    .as_object()
-                    .unwrap()
-                    .get("kind")
-                    .unwrap()
-                    .as_str()
-                    .unwrap()
-                    .to_string(),
-                content: if c.is_null() {
-                    None
-                } else {
-                    Some(c.as_str().unwrap().to_string())
-                },
-                pos: args[0]
-                    .as_object()
-                    .unwrap()
-                    .get("pos")
-                    .unwrap()
-                    .as_str()
-                    .unwrap()
-                    .to_string(),
-            };
-            b1.unget(t);
-            json!({
-                "error": "",
-                "data": null
-            })
-        }
-        "peek" => {
-            json!({
-                "error": "",
-                "data": b1.peek()
-            })
-        }
-        "peek_n" => {
-            json!({
-                "error": "",
-                "data": b1.peek_n(args[0].as_u64().unwrap() as usize)
-            })
-        }
-        "follows" => {
-            json!({
-                "error": "",
-                "data": b1.follows(args[0].as_str().unwrap())
-            })
-        }
-        _ => {
-            panic!("unknown method: {}", f);
-        }
+    let path = &argv[0];
+    let name = if argv.len() == 2 {
+        argv[1].clone()
+    } else {
+        Path::new(&path)
+            .with_extension("")
+            .file_name()
+            .unwrap()
+            .to_str()
+            .unwrap()
+            .to_string()
     };
-}
 
-fn exec_function_call(call: Call) -> serde_json::Value {
-    let f = call.f.as_str();
-    let args = call.a;
-    return match f {
-        "operator_strength" => {
-            let op = args[0].as_str().unwrap();
-            json!({
-                "error": "",
-                "data": parser::operator_strength(op)
-            })
-        }
-        "get_module" => {
-            let name = args[0].as_str().unwrap();
-            let r = parser::get_module(name);
-            match r {
-                Ok(node) => json!({
-                    "error": "",
-                    "data": node
-                }),
-                Err(s) => json!({
-                    "error": s,
-                    "data": null
-                }),
+    // Get the module we're building.
+    let m = parser::get_module(&path).unwrap();
+
+    // Get all modules that our module depends on. This includes our module as
+    // well, so this is a complete list of modules required for the build.
+    let mods = resolve_deps(&m);
+
+    // Convert all modules to C modules.
+    let c_mods: Vec<nodes::CompatModule> = mods.iter().map(|m| translator::translate(&m)).collect();
+
+    // Save all C modules somewhere.
+    if fs::metadata("tmp").is_err() {
+        fs::create_dir("tmp").unwrap();
+    }
+    let mut paths: Vec<String> = Vec::new();
+    for module in &c_mods {
+        let src = format::format_compat_module(&module);
+        let path = format!("tmp/{:x}.c", md5::compute(&src));
+        fs::write(&path, &src).unwrap();
+        paths.push(path);
+    }
+
+    let mut link: Vec<String> = vec!["m".to_string()];
+    for module in &c_mods {
+        for l in &module.link {
+            if link.iter().position(|x| x == l).is_none() {
+                link.push(l.clone());
             }
         }
-        _ => {
-            json!({
-                "error": format!("unknown function: {}", f),
-                "data": null
-            })
+    }
+
+    let mut cmd = Command::new("c99");
+    cmd.args(&[
+        "-Wall",
+        "-Wextra",
+        "-Werror",
+        "-pedantic",
+        "-pedantic-errors",
+        "-fmax-errors=3",
+        "-g",
+    ]);
+    for p in paths {
+        cmd.arg(p);
+    }
+    cmd.args(&["-o", &name]);
+    for l in link {
+        cmd.args(&["-l", &l]);
+    }
+    println!("{:?}", cmd);
+    let mut ch = cmd.spawn().unwrap();
+    let r = ch.wait().unwrap();
+    println!("exit {}", r);
+}
+
+fn resolve_deps(m: &nodes::Module) -> Vec<nodes::Module> {
+    let mut deps: Vec<nodes::Module> = vec![m.clone()];
+    for imp in module_imports(&m) {
+        let sub = parser::get_module(&imp.path).unwrap();
+        for dep in resolve_deps(&sub) {
+            deps.push(dep);
         }
-    };
+    }
+    // TODO: unique
+    return deps;
+}
+
+fn module_imports(module: &nodes::Module) -> Vec<nodes::Import> {
+    let mut list: Vec<nodes::Import> = vec![];
+    for element in &module.elements {
+        match element {
+            nodes::ModuleObject::Import(x) => list.push(x.clone()),
+            _ => {}
+        }
+    }
+    return list;
 }

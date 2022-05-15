@@ -1,19 +1,117 @@
-pub fn format_union(node: &Union) -> String {
+use crate::nodes::*;
+// use crate::parser::operator_strength;
+
+// enum Node {
+//     Body(Body),
+//     While(While),
+//     VariableDeclaration(VariableDeclaration),
+//     Union(Union),
+//     LoopCounterDeclaration(LoopCounterDeclaration),
+//     Type(Type),
+//     Sizeof(Sizeof),
+//     Return(Return),
+//     Typedef(Typedef),
+//     Switch(Switch),
+//     ModuleVariable(ModuleVariable),
+//     StructLiteral(StructLiteral),
+//     For(For),
+//     If(If),
+//     StructFieldlist(StructFieldlist),
+//     AnonymousTypeform(AnonymousTypeform),
+//     Identifier(Identifier),
+//     CompatMacro(CompatMacro),
+//     PrefixOperator(PrefixOperator),
+//     PostfixOperator(PostfixOperator),
+//     Module(Module),
+//     CompatModule(CompatModule),
+//     Literal(Literal),
+//     Import(Import),
+//     FunctionDeclaration(FunctionDeclaration),
+//     FunctionCall(FunctionCall),
+//     ArrayIndex(ArrayIndex),
+//     ArrayLiteral(ArrayLiteral),
+//     Cast(Cast),
+//     CompatInclude(CompatInclude),
+//     EnumMember(EnumMember),
+//     CompatEnum(CompatEnum),
+//     AnonymousStruct(AnonymousStruct),
+//     Form(Form),
+//     CompatStructForwardDeclaration(CompatStructForwardDeclaration),
+//     CompatFunctionForwardDeclaration(CompatFunctionForwardDeclaration),
+//     CompatStructDefinition(CompatStructDefinition),
+//     BinaryOp(BinaryOp),
+//     AnonymousParameters(AnonymousParameters),
+//     Enum(Enum),
+//     CompatFunctionDeclaration(CompatFunctionDeclaration),
+// }
+
+// fn format_node(node: Node) -> String {
+//     match node {
+//         Node::Body(x) => format_body(&x),
+//         Node::While(x) => format_while(&x),
+//         Node::VariableDeclaration(x) => format_variable_declaration(&x),
+//         Node::Union(x) => format_union(&x),
+//         Node::LoopCounterDeclaration(x) => format_loop_counter_declaration(&x),
+//         Node::Type(x) => format_type(&x),
+//         Node::Sizeof(x) => format_sizeof(&x),
+//         Node::Return(x) => format_return(&x),
+//         Node::Typedef(x) => format_typedef(&x),
+//         Node::Switch(x) => format_switch(&x),
+//         Node::ModuleVariable(x) => format_module_variable(&x),
+//         Node::StructLiteral(x) => format_struct_literal(&x),
+//         Node::For(x) => format_for(&x),
+//         Node::If(x) => format_if(&x),
+//         Node::StructFieldlist(x) => format_struct_fieldlist(&x),
+//         Node::AnonymousTypeform(x) => format_anonymous_typeform(&x),
+//         Node::Identifier(x) => format_identifier(&x),
+//         Node::CompatMacro(x) => format!("#{} {}\n", x.name, x.value),
+//         Node::PrefixOperator(x) => format_prefix_operator(&x),
+//         Node::PostfixOperator(x) => format_postfix_operator(&x),
+//         Node::Module(x) => format_module(&x),
+//         Node::CompatModule(x) => format_compat_module(&x),
+//         Node::Literal(x) => format_literal(&x),
+//         Node::Import(x) => format_import(&x),
+//         Node::FunctionDeclaration(x) => format_function_declaration(&x),
+//         Node::FunctionCall(x) => format_function_call(&x),
+//         Node::ArrayIndex(x) => format_array_index(&x),
+//         Node::ArrayLiteral(x) => format_array_literal(&x),
+//         Node::Cast(x) => format_cast(&x),
+//         Node::CompatInclude(x) => format_compat_include(&x),
+//         Node::EnumMember(x) => format_enum_member(&x),
+//         Node::CompatEnum(x) => format_compat_enum(&x),
+//         Node::AnonymousStruct(x) => format_anonymous_struct(&x),
+//         Node::Form(x) => format_form(&x),
+//         Node::CompatStructForwardDeclaration(x) => format_compat_struct_forward_declaration(&x),
+//         Node::CompatFunctionForwardDeclaration(x) => format_compat_function_forward_declaration(&x),
+//         Node::CompatStructDefinition(x) => format_compat_struct_definition(&x),
+//         Node::BinaryOp(x) => format_binary_op(&x),
+//         Node::AnonymousParameters(x) => format_anonymous_parameters(&x),
+//         Node::Enum(x) => format_enum(&x),
+//         Node::CompatFunctionDeclaration(x) => format_compat_function_declaration(&x),
+//     }
+// }
+
+// fn format_identifier(x: &Identifier) -> String {
+//     return x.name.clone();
+// }
+
+fn format_union(node: &Union) -> String {
     let mut s = String::new();
     for field in &node.fields {
-        s += &format_type(&field.type_name);
-        s += " ";
-        s += &format_form(&field.form);
-        s += ";\n";
+        s += &format!(
+            "\t{t} {name};\n",
+            t = format_type(&field.type_name),
+            name = format_form(&field.form)
+        );
     }
     return format!(
-        "union {{\n{}\n}} {};\n",
-        indent(&s),
-        format_form(&node.form)
+        "union {{\n{fields}\n}} {name};\n",
+        fields = s,
+        name = format_form(&node.form)
     );
 }
 
-pub fn format_type(node: &Type) -> String {
+fn format_type(node: &Type) -> String {
     let mut s = String::new();
     if node.is_const {
         s += "const ";
@@ -22,7 +120,7 @@ pub fn format_type(node: &Type) -> String {
     return s;
 }
 
-pub fn format_form(node: &Form) -> String {
+fn format_form(node: &Form) -> String {
     let mut s = String::new();
     s += &node.stars;
     s += &node.name;
@@ -35,7 +133,7 @@ pub fn format_form(node: &Form) -> String {
     return s;
 }
 
-pub fn format_expression(expr: &Expression) -> String {
+fn format_expression(expr: &Expression) -> String {
     match expr {
         Expression::BinaryOp(x) => format_binary_op(x),
         Expression::Cast(x) => format_cast(x),
@@ -52,7 +150,7 @@ pub fn format_expression(expr: &Expression) -> String {
     }
 }
 
-pub fn format_cast(node: &Cast) -> String {
+fn format_cast(node: &Cast) -> String {
     return format!(
         "({}) {}",
         format_anonymous_typeform(&node.type_name),
@@ -60,7 +158,7 @@ pub fn format_cast(node: &Cast) -> String {
     );
 }
 
-pub fn format_sizeof(node: &Sizeof) -> String {
+fn format_sizeof(node: &Sizeof) -> String {
     let arg = match &node.argument {
         SizeofArgument::Type(x) => format_type(&x),
         SizeofArgument::Expression(x) => format_expression(&x),
@@ -68,7 +166,7 @@ pub fn format_sizeof(node: &Sizeof) -> String {
     return format!("sizeof({})", arg);
 }
 
-pub fn format_anonymous_typeform(node: &AnonymousTypeform) -> String {
+fn format_anonymous_typeform(node: &AnonymousTypeform) -> String {
     let mut s = format_type(&node.type_name);
     for op in &node.ops {
         s += &op;
@@ -76,7 +174,7 @@ pub fn format_anonymous_typeform(node: &AnonymousTypeform) -> String {
     return s;
 }
 
-pub fn format_array_index(node: &ArrayIndex) -> String {
+fn format_array_index(node: &ArrayIndex) -> String {
     return format!(
         "{}[{}]",
         format_expression(&node.array),
@@ -84,7 +182,7 @@ pub fn format_array_index(node: &ArrayIndex) -> String {
     );
 }
 
-pub fn format_anonymous_parameters(node: &AnonymousParameters) -> String {
+fn format_anonymous_parameters(node: &AnonymousParameters) -> String {
     let mut s = String::from("(");
     for (i, form) in node.forms.iter().enumerate() {
         if i > 0 {
@@ -96,7 +194,7 @@ pub fn format_anonymous_parameters(node: &AnonymousParameters) -> String {
     return s;
 }
 
-pub fn format_array_literal(node: &ArrayLiteral) -> String {
+fn format_array_literal(node: &ArrayLiteral) -> String {
     let mut s = String::from("{");
     if !node.values.is_empty() {
         for (i, entry) in node.values.iter().enumerate() {
@@ -121,112 +219,114 @@ pub fn format_array_literal(node: &ArrayLiteral) -> String {
     return s;
 }
 
-pub fn brace_if_needed(node: &BinaryOp, operand: &Expression) -> String {
-    match operand {
-        Expression::BinaryOp(x) => {
-            if operator_strength(&x.op) < operator_strength(&node.op) {
-                return format!("({})", format_binary_op(&*x));
-            } else {
-                return format_binary_op(&*x);
-            }
-        }
-        _ => format_expression(operand),
-    }
-}
-
-pub fn format_binary_op(node: &BinaryOp) -> String {
+fn format_binary_op(node: &BinaryOp) -> String {
     let parts = vec![
-        brace_if_needed(node, &node.a),
+        format!("({})", format_expression(&node.a)),
         node.op.clone(),
-        brace_if_needed(node, &node.b),
+        if node.op != "->" && node.op != "." {
+            format!("({})", format_expression(&node.b))
+        } else {
+            format_expression(&node.b)
+        },
     ];
-    if node.op == "." || node.op == "->" {
-        return parts.join("");
-    }
-    return parts.join(" ");
+    let glue = if node.op == "." || node.op == "->" {
+        ""
+    } else {
+        " "
+    };
+    return parts.join(glue);
 }
 
 fn indent(text: &str) -> String {
     if text.ends_with("\n") {
         return indent(&text[0..text.len() - 1]) + "\n";
     }
-    return String::from("\t") + &text.replace("\n", "n\t");
+    return String::from("\t") + &text.replace("\n", "\n\t");
 }
 
-pub fn format_body(node: &Body) -> String {
+fn format_body(node: &Body) -> String {
     let mut s = String::new();
     for statement in &node.statements {
         s += &format_statement(&statement);
-        s += ";\n";
+        s += "\n";
     }
     return format!("{{\n{}}}\n", indent(&s));
 }
 
-// pub fn format_compat_function_declaration(node)
-// {
-//     let mut s = String::new();
-//     if (node['static'] && format_node(node['form']) != 'main') {
-//         s += "static ";
-//     }
-//     s += format_node(node['type_name'])
-//         . ' ' . format_node(node['form'])
-//         . format_pub fn_parameters(node['parameters'])
-//         . ' ' . format_node(node['body']);
-//     return s;
-// }
-
-// pub fn format_compat_function_forward_declaration($node)
-// {
-//     $s = '';
-//     if ($node['static'] && format_node($node['form']) != 'main') {
-//         $s += 'static ';
-//     }
-//     $s += format_node($node['type_name'])
-//         . ' ' . format_node($node['form'])
-//         . format_pub fn_parameters($node['parameters']) . ";\n";
-//     return $s;
-// }
-
-// pub fn format_compat_include($node)
-// {
-//     return "#include $node[name]\n";
-// }
-
-// pub fn format_compat_module($node)
-// {
-//     $s = '';
-//     foreach ($node['elements'] as $node) {
-//         $s += format_node($node);
-//     }
-//     return $s;
-// }
-
-// pub fn format_compat_struct_definition($node)
-// {
-//     return 'struct ' . $node['name'] . ' ' . format_node($node['fields']) . ";\n";
-// }
-
-// pub fn format_compat_struct_forward_declaration($node)
-// {
-//     return 'struct ' . $node['name'] . ";\n";
-// }
-
-// pub fn format_compat_enum($node)
-// {
-//     $s = "enum {\n";
-//     foreach ($node['members'] as $i => $member) {
-//         if ($i > 0) {
-//             $s += ",\n";
-//         }
-//         $s += "\t" . format_node($member);
-//     }
-//     $s += "\n};\n";
-//     return $s;
-// }
-
-pub fn format_anonymous_struct(node: &AnonymousStruct) -> String {
+fn format_compat_function_declaration(node: &CompatFunctionDeclaration) -> String {
+    let form = format_form(&node.form);
     let mut s = String::new();
-    for fieldlist in &node.fieldlists {
+    if node.is_static && form != "main" {
+        s += "static ";
+    }
+
+    s += &format!(
+        "{} {} {} {}",
+        format_type(&node.type_name),
+        form,
+        format_compat_function_parameters(&node.parameters),
+        format_body(&node.body)
+    );
+    return s;
+}
+
+fn format_compat_function_forward_declaration(node: &CompatFunctionForwardDeclaration) -> String {
+    let mut s = String::new();
+    let form = format_form(&node.form);
+    if node.is_static && form != "main" {
+        s += "static ";
+    }
+    s += &format!(
+        "{} {} {};\n",
+        format_type(&node.type_name),
+        form,
+        format_compat_function_parameters(&node.parameters)
+    );
+    return s;
+}
+
+fn format_compat_include(node: &CompatInclude) -> String {
+    return format!("#include {}\n", node.name);
+}
+
+pub fn format_compat_struct_definition(node: &CompatStructDefinition) -> String {
+    let mut s = String::new();
+    for entry in &node.fields {
+        match entry {
+            CompatStructEntry::CompatStructField(x) => {
+                s += &format!("{} {};\n", format_type(&x.type_name), format_form(&x.form));
+            }
+            CompatStructEntry::Union(x) => {
+                s += &format_union(&x);
+            }
+        }
+    }
+    return format!(
+        "struct {name} {{\n{contents}\n}};\n",
+        name = node.name,
+        contents = indent(&s)
+    );
+}
+
+fn format_compat_struct_forward_declaration(node: &CompatStructForwardDeclaration) -> String {
+    return format!("struct {};\n", node.name);
+}
+
+fn format_compat_enum(node: &CompatEnum) -> String {
+    let mut s = String::from("enum {\n");
+    for (i, member) in node.members.iter().enumerate() {
+        if i > 0 {
+            s += ",\n";
+        }
+        s += &format!("\t{}", format_enum_member(&member));
+    }
+    s += "\n};\n";
+    return s;
+}
+
+fn format_anonymous_struct(node: &AnonymousStruct) -> String {
+    let mut s = String::new();
+    for fieldlist in &node.entries {
         s += &match fieldlist {
             StructEntry::StructFieldlist(x) => format_struct_fieldlist(&x),
             StructEntry::Union(x) => format_union(&x),
@@ -236,20 +336,20 @@ pub fn format_anonymous_struct(node: &AnonymousStruct) -> String {
     return format!("{{\n{}}}", indent(&s));
 }
 
-pub fn format_enum(node: &Enum) -> String {
-    let mut s = String::new();
-    if node.is_pub {
-        s += "pub ";
-    }
-    s += "enum {\n";
-    for id in &node.members {
-        s += &format!("\t{},\n", format_enum_member(&id));
-    }
-    s += "}\n";
-    return s;
-}
+// fn format_enum(node: &Enum) -> String {
+//     let mut s = String::new();
+//     if node.is_pub {
+//         s += "pub ";
+//     }
+//     s += "enum {\n";
+//     for id in &node.members {
+//         s += &format!("\t{},\n", format_enum_member(&id));
+//     }
+//     s += "}\n";
+//     return s;
+// }
 
-pub fn format_enum_member(node: &EnumMember) -> String {
+fn format_enum_member(node: &EnumMember) -> String {
     let mut s = node.id.name.clone();
     if node.value.is_some() {
         s += " = ";
@@ -258,7 +358,7 @@ pub fn format_enum_member(node: &EnumMember) -> String {
     return s;
 }
 
-pub fn format_for(node: &For) -> String {
+fn format_for(node: &For) -> String {
     let init = match &node.init {
         ForInit::Expression(x) => format_expression(&x),
         ForInit::LoopCounterDeclaration(x) => format!(
@@ -277,7 +377,7 @@ pub fn format_for(node: &For) -> String {
     );
 }
 
-pub fn format_function_call(node: &FunctionCall) -> String {
+fn format_function_call(node: &FunctionCall) -> String {
     let mut s1 = String::from("(");
     for (i, argument) in node.arguments.iter().enumerate() {
         if i > 0 {
@@ -289,21 +389,43 @@ pub fn format_function_call(node: &FunctionCall) -> String {
     return format!("{}{}", format_expression(&node.function), s1);
 }
 
-pub fn format_function_declaration(node: &FunctionDeclaration) -> String {
-    let s = format!(
-        "{} {}{} {}\n\n",
-        format_type(&node.type_name),
-        format_form(&node.form),
-        format_function_parameters(&node.parameters),
-        format_body(&node.body)
-    );
-    if node.is_pub {
-        return format!("pub {}", s);
-    }
-    return s;
-}
+// fn format_function_declaration(node: &FunctionDeclaration) -> String {
+//     let s = format!(
+//         "{} {}{} {}\n\n",
+//         format_type(&node.type_name),
+//         format_form(&node.form),
+//         format_function_parameters(&node.parameters),
+//         format_body(&node.body)
+//     );
+//     if node.is_pub {
+//         return format!("pub {}", s);
+//     }
+//     return s;
+// }
 
-pub fn format_function_parameters(parameters: &FunctionParameters) -> String {
+// fn format_function_parameters(parameters: &FunctionParameters) -> String {
+//     let mut s = String::from("(");
+//     for (i, parameter) in parameters.list.iter().enumerate() {
+//         if i > 0 {
+//             s += ", ";
+//         }
+//         s += &format_type(&parameter.type_name);
+//         s += " ";
+//         for (i, form) in parameter.forms.iter().enumerate() {
+//             if i > 0 {
+//                 s += ", ";
+//             }
+//             s += &format_form(&form);
+//         }
+//     }
+//     if parameters.variadic {
+//         s += ", ...";
+//     }
+//     s += ")";
+//     return s;
+// }
+
+fn format_compat_function_parameters(parameters: &CompatFunctionParameters) -> String {
     let mut s = String::from("(");
     for (i, parameter) in parameters.list.iter().enumerate() {
         if i > 0 {
@@ -311,12 +433,7 @@ pub fn format_function_parameters(parameters: &FunctionParameters) -> String {
         }
         s += &format_type(&parameter.type_name);
         s += " ";
-        for (i, form) in parameter.forms.iter().enumerate() {
-            if i > 0 {
-                s += ", ";
-            }
-            s += &format_form(&form);
-        }
+        s += &format_form(&parameter.form);
     }
     if parameters.variadic {
         s += ", ...";
@@ -325,11 +442,11 @@ pub fn format_function_parameters(parameters: &FunctionParameters) -> String {
     return s;
 }
 
-pub fn format_if(node: &If) -> String {
+fn format_if(node: &If) -> String {
     let mut s = format!(
-        "if ({}) {}",
-        format_expression(&node.condition),
-        format_body(&node.body)
+        "if ({cond}) {body}",
+        cond = format_expression(&node.condition),
+        body = format_body(&node.body)
     );
     if node.else_body.is_some() {
         s += &format!(" else {}", format_body(node.else_body.as_ref().unwrap()));
@@ -337,11 +454,11 @@ pub fn format_if(node: &If) -> String {
     return s;
 }
 
-pub fn format_import(node: &Import) -> String {
-    format!("import {}\n", node.path)
-}
+// fn format_import(node: &Import) -> String {
+//     format!("import {}\n", node.path)
+// }
 
-pub fn format_literal(node: &Literal) -> String {
+fn format_literal(node: &Literal) -> String {
     match node.type_name.as_str() {
         "string" => format!("\"{}\"", node.value),
         "char" => format!("\'{}\'", node.value),
@@ -349,26 +466,27 @@ pub fn format_literal(node: &Literal) -> String {
     }
 }
 
-pub fn format_compat_macro(node: &CompatMacro) -> String {
+fn format_compat_macro(node: &CompatMacro) -> String {
     format!("#{} {}\n", node.name, node.value)
 }
 
-pub fn format_module(node: &Module) -> String {
-    let mut s = String::new();
-    for cnode in &node.elements {
-        s += &match cnode {
-            ModuleObject::ModuleVariable(x) => format_module_variable(&x),
-            ModuleObject::Enum(x) => format_enum(&x),
-            ModuleObject::FunctionDeclaration(x) => format_function_declaration(&x),
-            ModuleObject::Import(x) => format_import(&x),
-            ModuleObject::Typedef(x) => format_typedef(&x),
-            ModuleObject::CompatMacro(x) => format_compat_macro(&x),
-        }
-    }
-    return s;
-}
+// fn format_module(node: &Module) -> String {
+//     let mut s = String::new();
+//     for cnode in &node.elements {
+//         s += &match cnode {
+//             ModuleObject::CompatInclude(x) => format_compat_include(&x),
+//             ModuleObject::ModuleVariable(x) => format_module_variable(&x),
+//             ModuleObject::Enum(x) => format_enum(&x),
+//             ModuleObject::FunctionDeclaration(x) => format_function_declaration(&x),
+//             ModuleObject::Import(x) => format_import(&x),
+//             ModuleObject::Typedef(x) => format_typedef(&x),
+//             ModuleObject::CompatMacro(x) => format_compat_macro(&x),
+//         }
+//     }
+//     return s;
+// }
 
-pub fn format_module_variable(node: &ModuleVariable) -> String {
+fn format_module_variable(node: &ModuleVariable) -> String {
     return format!(
         "{} {} = {};\n",
         format_type(&node.type_name),
@@ -377,11 +495,11 @@ pub fn format_module_variable(node: &ModuleVariable) -> String {
     );
 }
 
-pub fn format_postfix_operator(node: &PostfixOperator) -> String {
+fn format_postfix_operator(node: &PostfixOperator) -> String {
     return format_expression(&node.operand) + &node.operator;
 }
 
-pub fn format_prefix_operator(node: &PrefixOperator) -> String {
+fn format_prefix_operator(node: &PrefixOperator) -> String {
     let operand = &node.operand;
     let operator = &node.operator;
     match operand {
@@ -391,14 +509,14 @@ pub fn format_prefix_operator(node: &PrefixOperator) -> String {
     }
 }
 
-pub fn format_return(node: &Return) -> String {
+fn format_return(node: &Return) -> String {
     match &node.expression {
         None => String::from("return;"),
-        Some(x) => format!("return {};", format_expression(&x)),
+        Some(x) => format!("return {}", format_expression(&x)),
     }
 }
 
-pub fn format_struct_fieldlist(node: &StructFieldlist) -> String {
+fn format_struct_fieldlist(node: &StructFieldlist) -> String {
     let mut s = format_type(&node.type_name) + " ";
     for (i, form) in node.forms.iter().enumerate() {
         if i > 0 {
@@ -410,7 +528,7 @@ pub fn format_struct_fieldlist(node: &StructFieldlist) -> String {
     return s;
 }
 
-pub fn format_struct_literal(node: &StructLiteral) -> String {
+fn format_struct_literal(node: &StructLiteral) -> String {
     let mut s = String::from("{\n");
     for member in &node.members {
         s += &format!(
@@ -423,19 +541,19 @@ pub fn format_struct_literal(node: &StructLiteral) -> String {
     return s;
 }
 
-pub fn format_statement(node: &Statement) -> String {
+fn format_statement(node: &Statement) -> String {
     match node {
-        Statement::VariableDeclaration(x) => format_variable_declaration(x),
+        Statement::VariableDeclaration(x) => format_variable_declaration(x) + ";",
         Statement::If(x) => format_if(x),
         Statement::For(x) => format_for(x),
         Statement::While(x) => format_while(x),
-        Statement::Return(x) => format_return(x),
+        Statement::Return(x) => format_return(x) + ";",
         Statement::Switch(x) => format_switch(x),
-        Statement::Expression(x) => format_expression(&x),
+        Statement::Expression(x) => format_expression(&x) + ";",
     }
 }
 
-pub fn format_switch(node: &Switch) -> String {
+fn format_switch(node: &Switch) -> String {
     let mut s = String::new();
     for case in &node.cases {
         let val = match &case.value {
@@ -479,25 +597,56 @@ pub fn format_typedef(node: &Typedef) -> String {
     return format!("typedef {} {};\n", t, form);
 }
 
-pub fn format_variable_declaration(node: &VariableDeclaration) -> String {
+fn format_variable_declaration(node: &VariableDeclaration) -> String {
     let mut s = String::from(format_type(&node.type_name)) + " ";
     for (i, form) in node.forms.iter().enumerate() {
         let value = &node.values[i];
         if i > 0 {
             s += ", ";
         }
-        s += &format_form(&form);
-        s += " = ";
-        s += &format_expression(value);
+        s += &format!("{} = {}", &format_form(&form), &format_expression(value));
     }
-    s += ";\n";
     return s;
 }
 
-pub fn format_while(node: &While) -> String {
+fn format_while(node: &While) -> String {
     return format!(
         "while ({}) {}",
         format_expression(&node.condition),
         format_body(&node.body)
     );
+}
+
+// fn format_loop_counter_declaration(node: &LoopCounterDeclaration) -> String {
+//     return format!(
+//         "{} {} = {}",
+//         format_type(&node.type_name),
+//         format_identifier(&node.name),
+//         format_expression(&node.value)
+//     );
+// }
+
+pub fn format_compat_module(node: &CompatModule) -> String {
+    let mut s = String::new();
+    for e in &node.elements {
+        s += &match e {
+            CompatModuleObject::ModuleVariable(x) => format_module_variable(&x),
+            CompatModuleObject::Typedef(x) => format_typedef(&x),
+            CompatModuleObject::CompatMacro(x) => format_compat_macro(&x),
+            CompatModuleObject::CompatInclude(x) => format_compat_include(&x),
+            CompatModuleObject::CompatEnum(x) => format_compat_enum(&x),
+            CompatModuleObject::CompatStructForwardDeclaration(x) => {
+                format_compat_struct_forward_declaration(&x)
+            }
+            CompatModuleObject::CompatStructDefinition(x) => format_compat_struct_definition(&x),
+            CompatModuleObject::CompatFunctionForwardDeclaration(x) => {
+                format_compat_function_forward_declaration(&x)
+            }
+            CompatModuleObject::CompatFunctionDeclaration(x) => {
+                format_compat_function_declaration(&x)
+            }
+            CompatModuleObject::CompatSplit(x) => format!("\n\n{}\n", x.text),
+        }
+    }
+    return s;
 }
