@@ -95,7 +95,10 @@ pub fn translate(module: &Module) -> CompatModule {
         }
         groups[order].push(element);
     }
-    let mut sorted_elements: Vec<CompatModuleObject> = vec![];
+    let mut sorted_elements: Vec<CompatModuleObject> =
+        vec![CompatModuleObject::CompatSplit(CompatSplit {
+            text: String::from(format!("/* -------{}------- */", &module.id)),
+        })];
     for group in groups {
         for e in group {
             sorted_elements.push(e)
