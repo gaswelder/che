@@ -1,6 +1,8 @@
 bin/
 tmp/
 _heap/
+.vscode
+
 
 
 # Added by cargo
