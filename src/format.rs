@@ -1,4 +1,5 @@
 use crate::nodes::*;
+use crate::parser;
 
 fn format_union(node: &Union) -> String {
     let mut s = String::new();
@@ -40,7 +41,7 @@ pub fn format_form(node: &Form) -> String {
 
 fn format_expression(expr: &Expression) -> String {
     match expr {
-        Expression::BinaryOp(x) => format_binary_op(x),
+        Expression::BinaryOp { op, a, b } => format_binary_op(op, a, b),
         Expression::Cast(x) => format_cast(x),
         Expression::FunctionCall(x) => format_function_call(x),
         Expression::Expression(x) => format_expression(x),
@@ -124,21 +125,39 @@ fn format_array_literal(node: &ArrayLiteral) -> String {
     return s;
 }
 
-fn format_binary_op(node: &BinaryOp) -> String {
-    let parts = vec![
-        format!("({})", format_expression(&node.a)),
-        node.op.clone(),
-        if node.op != "->" && node.op != "." {
-            format!("({})", format_expression(&node.b))
-        } else {
-            format_expression(&node.b)
-        },
-    ];
-    let glue = if node.op == "." || node.op == "->" {
-        ""
-    } else {
-        " "
+fn is_binary_op(a: &Expression) -> Option<&String> {
+    match a {
+        Expression::BinaryOp { op, .. } => Some(op),
+        Expression::Expression(e) => is_binary_op(e),
+        _ => None,
+    }
+}
+
+fn format_binary_op(op: &String, a: &Expression, b: &Expression) -> String {
+    // If a is a binary op weaker than op, wrap it
+    let af = match is_binary_op(a) {
+        Some(k) => {
+            if parser::operator_strength(&k) < parser::operator_strength(op) {
+                format!("({})", format_expression(a))
+            } else {
+                format_expression(a)
+            }
+        }
+        None => format_expression(a),
     };
+    // If b is a binary op weaker than op, wrap it
+    let bf = match is_binary_op(b) {
+        Some(k) => {
+            if parser::operator_strength(&k) < parser::operator_strength(op) {
+                format!("({})", format_expression(b))
+            } else {
+                format_expression(b)
+            }
+        }
+        None => format_expression(b),
+    };
+    let parts = vec![af, op.clone(), bf];
+    let glue = if op == "." || op == "->" { "" } else { " " };
     return parts.join(glue);
 }
 
@@ -396,7 +415,9 @@ fn format_prefix_operator(node: &PrefixOperator) -> String {
     let operand = &node.operand;
     let operator = &node.operator;
     match operand {
-        Expression::BinaryOp(x) => format!("{}({})", operator, format_binary_op(&*x)),
+        Expression::BinaryOp { op, a, b } => {
+            format!("{}({})", operator, format_binary_op(op, a, b))
+        }
         Expression::Cast(x) => format!("{}({})", operator, format_cast(&*x)),
         _ => format!("{}{}", operator, format_expression(&operand)),
     }

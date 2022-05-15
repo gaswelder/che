@@ -59,15 +59,12 @@ pub struct ArrayLiteralEntry {
 }
 
 #[derive(Debug, Clone)]
-pub struct BinaryOp {
-    pub op: String,
-    pub a: Expression,
-    pub b: Expression,
-}
-
-#[derive(Debug, Clone)]
 pub enum Expression {
-    BinaryOp(Box<BinaryOp>),
+    BinaryOp {
+        op: String,
+        a: Box<Expression>,
+        b: Box<Expression>,
+    },
     Cast(Box<Cast>),
     FunctionCall(Box<FunctionCall>),
     Expression(Box<Expression>),

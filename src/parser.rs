@@ -269,11 +269,11 @@ fn parse_expression(
         }
         let op = lexer.get().unwrap();
         let next = parse_expression(lexer, operator_strength(&op.kind), typenames)?;
-        result = Expression::BinaryOp(Box::new(BinaryOp {
+        result = Expression::BinaryOp {
             op: String::from(&op.kind),
-            a: result,
-            b: next,
-        }));
+            a: Box::new(result),
+            b: Box::new(next),
+        };
     }
     return Ok(Expression::Expression(Box::new(result)));
 }
