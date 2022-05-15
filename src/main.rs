@@ -5,6 +5,8 @@ mod nodes;
 mod parser;
 mod translator;
 use md5;
+#[cfg(test)]
+use pretty_assertions::assert_eq;
 use std::env;
 use std::fs;
 use std::path::Path;
@@ -19,6 +21,18 @@ fn main() {
         build(&args[2..]);
         return;
     }
+}
+
+#[test]
+fn one() {
+    let m = parser::get_module(&"test/snapshots/brace.in.c".to_string()).unwrap();
+    let mods = resolve_deps(&m);
+    let c_mods: Vec<nodes::CompatModule> = mods.iter().map(|m| translator::translate(&m)).collect();
+    let result = format::format_compat_module(&c_mods[0]);
+    assert_eq!(
+        result,
+        fs::read_to_string("test/snapshots/brace.out.c").unwrap()
+    );
 }
 
 fn build(argv: &[String]) {
