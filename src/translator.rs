@@ -103,6 +103,7 @@ pub fn translate(module: &Module) -> CompatModule {
     }
 
     return CompatModule {
+        id: module.id.clone(),
         elements: sorted_elements,
         link,
     };

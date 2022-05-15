@@ -593,6 +593,7 @@ pub struct Module {
 pub struct CompatModule {
     pub elements: Vec<CompatModuleObject>,
     pub link: Vec<String>,
+    pub id: String,
 }
 
 #[derive(Clone)]

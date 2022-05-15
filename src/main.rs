@@ -56,7 +56,7 @@ fn build(argv: &[String]) {
     let mut paths: Vec<String> = Vec::new();
     for module in &c_mods {
         let src = format::format_compat_module(&module);
-        let path = format!("tmp/{:x}.c", md5::compute(&src));
+        let path = format!("tmp/{:x}.c", md5::compute(&module.id));
         fs::write(&path, &src).unwrap();
         paths.push(path);
     }
