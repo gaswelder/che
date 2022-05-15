@@ -1,5 +1,6 @@
 use crate::lexer::{new, Lexer, Token};
 use crate::nodes::*;
+use std::path::Path;
 
 fn is_op(token_type: &str) -> bool {
     let ops = [
@@ -1047,7 +1048,7 @@ fn get_file_typenames(path: &str) -> Result<Vec<String>, String> {
 }
 
 pub fn get_module(name: &String) -> Result<Module, String> {
-    // If requested module name ends with ".c", we look it at the given
+    // If requested module name ends with ".c", we look for it at the given
     // location. If ".c" is omitted, we look for it inside the hardcoded lib
     // directory.
     let module_path = if name.ends_with(".c") {
@@ -1062,14 +1063,17 @@ pub fn get_module(name: &String) -> Result<Module, String> {
 
     let types = get_file_typenames(&module_path)?;
     let mut lexer = new(&module_path);
-    let r = parse_module(&mut lexer, types);
-    if r.is_err() {
+    let elements = parse_module(&mut lexer, types);
+    if elements.is_err() {
         let next = lexer.peek().unwrap();
         let wher = format!("{}: {}", module_path, lexer.peek().unwrap().pos);
-        let what = r.err().unwrap();
+        let what = elements.err().unwrap();
         return Err(format!("{}: {}: {}...", wher, what, token_to_string(next)));
     }
-    return r;
+    return Ok(Module {
+        elements: elements.unwrap(),
+        id: format!("{}", Path::new(&module_path).display()),
+    });
 }
 
 fn token_to_string(token: &Token) -> String {
@@ -1090,7 +1094,7 @@ fn token_to_string(token: &Token) -> String {
     return format!("[{}, {}]", token.kind, c);
 }
 
-fn parse_module(lexer: &mut Lexer, typenames: Vec<String>) -> Result<Module, String> {
+fn parse_module(lexer: &mut Lexer, typenames: Vec<String>) -> Result<Vec<ModuleObject>, String> {
     let mut elements: Vec<ModuleObject> = vec![];
     let mut types = typenames.clone();
     while lexer.more() {
@@ -1121,8 +1125,5 @@ fn parse_module(lexer: &mut Lexer, typenames: Vec<String>) -> Result<Module, Str
             }
         }
     }
-    return Ok(Module {
-        kind: "c_module".to_string(),
-        elements,
-    });
+    return Ok(elements);
 }

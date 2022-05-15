@@ -585,7 +585,7 @@ pub struct CompatStructField {
 
 #[derive(Clone)]
 pub struct Module {
-    pub kind: String,
+    pub id: String,
     pub elements: Vec<ModuleObject>,
 }
 

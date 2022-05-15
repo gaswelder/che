@@ -95,13 +95,17 @@ fn build(argv: &[String]) {
 
 fn resolve_deps(m: &nodes::Module) -> Vec<nodes::Module> {
     let mut deps: Vec<nodes::Module> = vec![m.clone()];
+    let mut present = vec![m.id.clone()];
     for imp in module_imports(&m) {
         let sub = parser::get_module(&imp.path).unwrap();
         for dep in resolve_deps(&sub) {
+            if present.contains(&&dep.id) {
+                continue;
+            }
+            present.push(dep.id.clone());
             deps.push(dep);
         }
     }
-    // TODO: unique
     return deps;
 }
 
