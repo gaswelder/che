@@ -43,26 +43,8 @@ pub fn translate(module: &Module) -> CompatModule {
 
     // Reorder the elements so that typedefs and similar preamble elements
     // come first.
-    let mut groups: Vec<Vec<CompatModuleObject>> = vec![
-        vec![CompatModuleObject::CompatSplit {
-            text: String::from("/* -------------- */"),
-        }],
-        vec![CompatModuleObject::CompatSplit {
-            text: String::from("/* -------------- */"),
-        }],
-        vec![CompatModuleObject::CompatSplit {
-            text: String::from("/* -------------- */"),
-        }],
-        vec![CompatModuleObject::CompatSplit {
-            text: String::from("/* -------------- */"),
-        }],
-        vec![CompatModuleObject::CompatSplit {
-            text: String::from("/* -------------- */"),
-        }],
-        vec![CompatModuleObject::CompatSplit {
-            text: String::from("/* -------------- */"),
-        }],
-    ];
+    let mut groups: Vec<Vec<CompatModuleObject>> =
+        vec![vec![], vec![], vec![], vec![], vec![], vec![]];
     let mut set: HashSet<String> = HashSet::new();
     for element in elements {
         let order = match element {
@@ -99,6 +81,12 @@ pub fn translate(module: &Module) -> CompatModule {
         text: String::from(format!("/* -------{}------- */", &module.id)),
     }];
     for group in groups {
+        if group.len() == 0 {
+            continue;
+        }
+        sorted_elements.push(CompatModuleObject::CompatSplit {
+            text: String::from("/* -------------- */"),
+        });
         for e in group {
             sorted_elements.push(e)
         }
