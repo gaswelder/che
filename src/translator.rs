@@ -53,7 +53,7 @@ pub fn translate(module: &Module) -> CompatModule {
             CompatModuleObject::CompatStructForwardDeclaration(_) => 1,
             CompatModuleObject::Typedef(_) => 2,
             CompatModuleObject::CompatStructDefinition(_) => 3,
-            CompatModuleObject::CompatEnum(_) => 3,
+            CompatModuleObject::Enum { .. } => 3,
             CompatModuleObject::CompatFunctionForwardDeclaration(_) => 4,
             _ => 5,
         };
@@ -109,10 +109,10 @@ fn translate_node(node: &ModuleObject) -> Vec<CompatModuleObject> {
         }
         ModuleObject::FunctionDeclaration(x) => translate_function_declaration(x),
         ModuleObject::Enum(x) => {
-            return vec![CompatModuleObject::CompatEnum(CompatEnum {
+            return vec![CompatModuleObject::Enum {
                 members: x.members.clone(),
                 is_hidden: !x.is_pub,
-            })];
+            }];
         }
         ModuleObject::CompatMacro(x) => {
             if x.name == "type" || x.name == "link" {
@@ -142,10 +142,10 @@ fn translate_typedef(node: &Typedef) -> Vec<CompatModuleObject> {
                     // One fieldlist is multiple fields of the same type.
                     StructEntry::StructFieldlist(x) => {
                         for f in &x.forms {
-                            fields.push(CompatStructEntry::CompatStructField(CompatStructField {
+                            fields.push(CompatStructEntry::CompatStructField {
                                 type_name: x.type_name.clone(),
                                 form: f.clone(),
-                            }));
+                            });
                         }
                     }
                     StructEntry::Union(x) => {
@@ -156,19 +156,15 @@ fn translate_typedef(node: &Typedef) -> Vec<CompatModuleObject> {
             vec![
                 CompatModuleObject::CompatStructForwardDeclaration(
                     CompatStructForwardDeclaration {
-                        kind: "c_compat_struct_forward_declaration".to_string(),
                         name: struct_name.clone(),
                     },
                 ),
                 CompatModuleObject::CompatStructDefinition(CompatStructDefinition {
-                    kind: "c_compat_struct_definition".to_string(),
                     name: struct_name.clone(),
                     fields: fields,
                 }),
                 CompatModuleObject::Typedef(Typedef {
-                    kind: "c_typedef".to_string(),
                     type_name: TypedefTarget::Type(Type {
-                        kind: "c_type".to_string(),
                         is_const: false,
                         type_name: format!("struct {}", struct_name.clone()),
                     }),
@@ -182,7 +178,6 @@ fn translate_typedef(node: &Typedef) -> Vec<CompatModuleObject> {
             ]
         }
         _ => vec![CompatModuleObject::Typedef(Typedef {
-            kind: "c_typedef".to_string(),
             type_name: node.type_name.clone(),
             form: node.form.clone(),
         })],
@@ -217,9 +212,9 @@ fn get_module_synopsis(module: CompatModule) -> Vec<CompatModuleObject> {
                 }
             }
             CompatModuleObject::CompatMacro(x) => elements.push(CompatModuleObject::CompatMacro(x)),
-            CompatModuleObject::CompatEnum(x) => {
-                if !x.is_hidden {
-                    elements.push(CompatModuleObject::CompatEnum(x))
+            CompatModuleObject::Enum { is_hidden, members } => {
+                if !is_hidden {
+                    elements.push(CompatModuleObject::Enum { is_hidden, members })
                 }
             }
             _ => {}
@@ -248,7 +243,6 @@ fn translate_function_parameters(node: &FunctionParameters) -> CompatFunctionPar
 
 fn translate_function_declaration(node: &FunctionDeclaration) -> Vec<CompatModuleObject> {
     let func = CompatFunctionDeclaration {
-        kind: "c_compat_function_declaration".to_string(),
         is_static: !node.is_pub,
         type_name: node.type_name.clone(),
         form: node.form.clone(),

@@ -198,8 +198,8 @@ pub fn format_compat_struct_definition(node: &CompatStructDefinition) -> String 
     let mut s = String::new();
     for entry in &node.fields {
         match entry {
-            CompatStructEntry::CompatStructField(x) => {
-                s += &format!("{} {};\n", format_type(&x.type_name), format_form(&x.form));
+            CompatStructEntry::CompatStructField { type_name, form } => {
+                s += &format!("{} {};\n", format_type(&type_name), format_form(&form));
             }
             CompatStructEntry::Union(x) => {
                 s += &format_union(&x);
@@ -215,18 +215,6 @@ pub fn format_compat_struct_definition(node: &CompatStructDefinition) -> String 
 
 fn format_compat_struct_forward_declaration(node: &CompatStructForwardDeclaration) -> String {
     return format!("struct {};\n", node.name);
-}
-
-fn format_compat_enum(node: &CompatEnum) -> String {
-    let mut s = String::from("enum {\n");
-    for (i, member) in node.members.iter().enumerate() {
-        if i > 0 {
-            s += ",\n";
-        }
-        s += &format!("\t{}", format_enum_member(&member));
-    }
-    s += "\n};\n";
-    return s;
 }
 
 fn format_anonymous_struct(node: &AnonymousStruct) -> String {
@@ -530,7 +518,17 @@ pub fn format_compat_module(node: &CompatModule) -> String {
             CompatModuleObject::Typedef(x) => format_typedef(&x),
             CompatModuleObject::CompatMacro(x) => format_compat_macro(&x),
             CompatModuleObject::CompatInclude(x) => format_compat_include(&x),
-            CompatModuleObject::CompatEnum(x) => format_compat_enum(&x),
+            CompatModuleObject::Enum { members, .. } => {
+                let mut s = String::from("enum {\n");
+                for (i, member) in members.iter().enumerate() {
+                    if i > 0 {
+                        s += ",\n";
+                    }
+                    s += &format!("\t{}", format_enum_member(&member));
+                }
+                s += "\n};\n";
+                return s;
+            }
             CompatModuleObject::CompatStructForwardDeclaration(x) => {
                 format_compat_struct_forward_declaration(&x)
             }
