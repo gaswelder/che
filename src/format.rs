@@ -140,7 +140,7 @@ fn format_expression(expr: &Expression) -> String {
         Expression::FunctionCall(x) => format_function_call(x),
         Expression::Expression(x) => format_expression(x),
         Expression::Literal(x) => format_literal(x),
-        Expression::Identifier(x) => x.name.clone(),
+        Expression::Identifier(x) => x.clone(),
         Expression::StructLiteral(x) => format_struct_literal(x),
         Expression::ArrayLiteral(x) => format_array_literal(x),
         Expression::Sizeof(x) => format_sizeof(x),
@@ -203,12 +203,12 @@ fn format_array_literal(node: &ArrayLiteral) -> String {
             }
             s += &match &entry.index {
                 ArrayLiteralKey::None => String::from(""),
-                ArrayLiteralKey::Identifier(x) => format!("[{}] = ", x.name),
+                ArrayLiteralKey::Identifier(x) => format!("[{}] = ", x),
                 ArrayLiteralKey::Literal(x) => format!("[{}] = ", format_literal(&x)),
             };
             s += &match &entry.value {
                 ArrayLiteralValue::ArrayLiteral(x) => format_array_literal(&x),
-                ArrayLiteralValue::Identifier(x) => x.name.clone(),
+                ArrayLiteralValue::Identifier(x) => x.clone(),
                 ArrayLiteralValue::Literal(x) => format_literal(&x),
             };
         }
@@ -350,7 +350,7 @@ fn format_anonymous_struct(node: &AnonymousStruct) -> String {
 // }
 
 fn format_enum_member(node: &EnumMember) -> String {
-    let mut s = node.id.name.clone();
+    let mut s = node.id.clone();
     if node.value.is_some() {
         s += " = ";
         s += &format_literal(node.value.as_ref().unwrap());
@@ -364,7 +364,7 @@ fn format_for(node: &For) -> String {
         ForInit::LoopCounterDeclaration(x) => format!(
             "{} {} = {}",
             format_type(&x.type_name),
-            x.name.name,
+            x.name,
             format_expression(&x.value)
         ),
     };
@@ -533,7 +533,7 @@ fn format_struct_literal(node: &StructLiteral) -> String {
     for member in &node.members {
         s += &format!(
             "\t.{} = {},\n",
-            member.name.name,
+            member.name,
             format_expression(&member.value)
         );
     }
@@ -557,7 +557,7 @@ fn format_switch(node: &Switch) -> String {
     let mut s = String::new();
     for case in &node.cases {
         let val = match &case.value {
-            SwitchCaseValue::Identifier(x) => x.name.clone(),
+            SwitchCaseValue::Identifier(x) => x.clone(),
             SwitchCaseValue::Literal(x) => format_literal(&x),
         };
         s += &format!("case {}: {{\n", val);
@@ -583,7 +583,7 @@ fn format_switch(node: &Switch) -> String {
 }
 
 pub fn format_typedef(node: &Typedef) -> String {
-    let mut form = node.form.stars.clone() + &node.form.alias.name;
+    let mut form = node.form.stars.clone() + &node.form.alias;
     if node.form.params.is_some() {
         form += &format_anonymous_parameters(&node.form.params.as_ref().unwrap());
     }
@@ -645,7 +645,7 @@ pub fn format_compat_module(node: &CompatModule) -> String {
             CompatModuleObject::CompatFunctionDeclaration(x) => {
                 format_compat_function_declaration(&x)
             }
-            CompatModuleObject::CompatSplit(x) => format!("\n\n{}\n", x.text),
+            CompatModuleObject::CompatSplit { text } => format!("\n\n{}\n", text),
         }
     }
     return s;

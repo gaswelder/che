@@ -44,24 +44,24 @@ pub fn translate(module: &Module) -> CompatModule {
     // Reorder the elements so that typedefs and similar preamble elements
     // come first.
     let mut groups: Vec<Vec<CompatModuleObject>> = vec![
-        vec![CompatModuleObject::CompatSplit(CompatSplit {
+        vec![CompatModuleObject::CompatSplit {
             text: String::from("/* -------------- */"),
-        })],
-        vec![CompatModuleObject::CompatSplit(CompatSplit {
+        }],
+        vec![CompatModuleObject::CompatSplit {
             text: String::from("/* -------------- */"),
-        })],
-        vec![CompatModuleObject::CompatSplit(CompatSplit {
+        }],
+        vec![CompatModuleObject::CompatSplit {
             text: String::from("/* -------------- */"),
-        })],
-        vec![CompatModuleObject::CompatSplit(CompatSplit {
+        }],
+        vec![CompatModuleObject::CompatSplit {
             text: String::from("/* -------------- */"),
-        })],
-        vec![CompatModuleObject::CompatSplit(CompatSplit {
+        }],
+        vec![CompatModuleObject::CompatSplit {
             text: String::from("/* -------------- */"),
-        })],
-        vec![CompatModuleObject::CompatSplit(CompatSplit {
+        }],
+        vec![CompatModuleObject::CompatSplit {
             text: String::from("/* -------------- */"),
-        })],
+        }],
     ];
     let mut set: HashSet<String> = HashSet::new();
     for element in elements {
@@ -95,10 +95,9 @@ pub fn translate(module: &Module) -> CompatModule {
         }
         groups[order].push(element);
     }
-    let mut sorted_elements: Vec<CompatModuleObject> =
-        vec![CompatModuleObject::CompatSplit(CompatSplit {
-            text: String::from(format!("/* -------{}------- */", &module.id)),
-        })];
+    let mut sorted_elements: Vec<CompatModuleObject> = vec![CompatModuleObject::CompatSplit {
+        text: String::from(format!("/* -------{}------- */", &module.id)),
+    }];
     for group in groups {
         for e in group {
             sorted_elements.push(e)
@@ -146,7 +145,7 @@ fn translate_typedef(node: &Typedef) -> Vec<CompatModuleObject> {
         // And remember that the struct definition itself is sugar that
         // should be translated as well.
         TypedefTarget::AnonymousStruct(s) => {
-            let struct_name = format!("__{}_struct", node.form.alias.name);
+            let struct_name = format!("__{}_struct", node.form.alias);
 
             // Build the compat struct fields.
             let mut fields: Vec<CompatStructEntry> = Vec::new();

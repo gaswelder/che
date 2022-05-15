@@ -112,13 +112,9 @@ fn expect(lexer: &mut Lexer, kind: &str, comment: Option<&str>) -> Result<Token,
     return Ok(lexer.get().unwrap());
 }
 
-fn parse_identifier(lexer: &mut Lexer) -> Result<Identifier, String> {
+fn parse_identifier(lexer: &mut Lexer) -> Result<String, String> {
     let tok = expect(lexer, "word", None)?;
-    let name = tok.content;
-    return Ok(Identifier {
-        kind: "c_identifier".to_string(),
-        name: name.unwrap(),
-    });
+    return Ok(String::from(tok.content.unwrap()));
 }
 
 fn parse_type(lexer: &mut Lexer, comment: Option<&str>) -> Result<Type, String> {
@@ -1108,7 +1104,7 @@ fn parse_module(lexer: &mut Lexer, typenames: Vec<String>) -> Result<Vec<ModuleO
                 for element in module.elements {
                     match element {
                         ModuleObject::Typedef(t) => {
-                            types.push(t.form.alias.name);
+                            types.push(t.form.alias);
                         }
                         _ => {}
                     }

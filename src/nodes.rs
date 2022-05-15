@@ -1,12 +1,6 @@
 use serde::{Deserialize, Serialize, Serializer};
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct Identifier {
-    pub kind: String,
-    pub name: String,
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Type {
     pub kind: String,
     pub is_const: bool,
@@ -49,7 +43,7 @@ pub struct CompatEnum {
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct EnumMember {
     pub kind: String,
-    pub id: Identifier,
+    pub id: String,
     pub value: Option<Literal>,
 }
 
@@ -62,7 +56,7 @@ pub struct ArrayLiteral {
 #[derive(Deserialize, Debug, Clone)]
 pub enum ArrayLiteralKey {
     None,
-    Identifier(Identifier),
+    Identifier(String),
     Literal(Literal),
 }
 
@@ -82,7 +76,7 @@ impl Serialize for ArrayLiteralKey {
 #[derive(Deserialize, Debug, Clone)]
 pub enum ArrayLiteralValue {
     ArrayLiteral(ArrayLiteral),
-    Identifier(Identifier),
+    Identifier(String),
     Literal(Literal),
 }
 
@@ -120,7 +114,7 @@ pub enum Expression {
     FunctionCall(Box<FunctionCall>),
     Expression(Box<Expression>),
     Literal(Literal),
-    Identifier(Identifier),
+    Identifier(String),
     StructLiteral(Box<StructLiteral>),
     ArrayLiteral(Box<ArrayLiteral>),
     Sizeof(Box<Sizeof>),
@@ -181,7 +175,7 @@ pub struct ArrayIndex {
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct StructLiteralMember {
-    pub name: Identifier,
+    pub name: String,
     pub value: Expression,
 }
 
@@ -324,13 +318,13 @@ impl Serialize for ForInit {
 pub struct LoopCounterDeclaration {
     pub kind: String,
     pub type_name: Type,
-    pub name: Identifier,
+    pub name: String,
     pub value: Expression,
 }
 
 #[derive(Deserialize, Debug, Clone)]
 pub enum SwitchCaseValue {
-    Identifier(Identifier),
+    Identifier(String),
     Literal(Literal),
 }
 
@@ -437,7 +431,7 @@ pub enum CompatModuleObject {
     CompatStructDefinition(CompatStructDefinition),
     CompatFunctionForwardDeclaration(CompatFunctionForwardDeclaration),
     CompatFunctionDeclaration(CompatFunctionDeclaration),
-    CompatSplit(CompatSplit),
+    CompatSplit { text: String },
 }
 
 #[derive(Debug, Clone)]
@@ -537,7 +531,7 @@ pub struct TypedefForm {
     pub stars: String,
     pub params: Option<AnonymousParameters>,
     pub size: usize,
-    pub alias: Identifier,
+    pub alias: String,
 }
 
 #[derive(Debug, Deserialize, Clone)]
@@ -594,9 +588,4 @@ pub struct CompatModule {
     pub elements: Vec<CompatModuleObject>,
     pub link: Vec<String>,
     pub id: String,
-}
-
-#[derive(Clone)]
-pub struct CompatSplit {
-    pub text: String,
 }
