@@ -1,99 +1,4 @@
 use crate::nodes::*;
-// use crate::parser::operator_strength;
-
-// enum Node {
-//     Body(Body),
-//     While(While),
-//     VariableDeclaration(VariableDeclaration),
-//     Union(Union),
-//     LoopCounterDeclaration(LoopCounterDeclaration),
-//     Type(Type),
-//     Sizeof(Sizeof),
-//     Return(Return),
-//     Typedef(Typedef),
-//     Switch(Switch),
-//     ModuleVariable(ModuleVariable),
-//     StructLiteral(StructLiteral),
-//     For(For),
-//     If(If),
-//     StructFieldlist(StructFieldlist),
-//     AnonymousTypeform(AnonymousTypeform),
-//     Identifier(Identifier),
-//     CompatMacro(CompatMacro),
-//     PrefixOperator(PrefixOperator),
-//     PostfixOperator(PostfixOperator),
-//     Module(Module),
-//     CompatModule(CompatModule),
-//     Literal(Literal),
-//     Import(Import),
-//     FunctionDeclaration(FunctionDeclaration),
-//     FunctionCall(FunctionCall),
-//     ArrayIndex(ArrayIndex),
-//     ArrayLiteral(ArrayLiteral),
-//     Cast(Cast),
-//     CompatInclude(CompatInclude),
-//     EnumMember(EnumMember),
-//     CompatEnum(CompatEnum),
-//     AnonymousStruct(AnonymousStruct),
-//     Form(Form),
-//     CompatStructForwardDeclaration(CompatStructForwardDeclaration),
-//     CompatFunctionForwardDeclaration(CompatFunctionForwardDeclaration),
-//     CompatStructDefinition(CompatStructDefinition),
-//     BinaryOp(BinaryOp),
-//     AnonymousParameters(AnonymousParameters),
-//     Enum(Enum),
-//     CompatFunctionDeclaration(CompatFunctionDeclaration),
-// }
-
-// fn format_node(node: Node) -> String {
-//     match node {
-//         Node::Body(x) => format_body(&x),
-//         Node::While(x) => format_while(&x),
-//         Node::VariableDeclaration(x) => format_variable_declaration(&x),
-//         Node::Union(x) => format_union(&x),
-//         Node::LoopCounterDeclaration(x) => format_loop_counter_declaration(&x),
-//         Node::Type(x) => format_type(&x),
-//         Node::Sizeof(x) => format_sizeof(&x),
-//         Node::Return(x) => format_return(&x),
-//         Node::Typedef(x) => format_typedef(&x),
-//         Node::Switch(x) => format_switch(&x),
-//         Node::ModuleVariable(x) => format_module_variable(&x),
-//         Node::StructLiteral(x) => format_struct_literal(&x),
-//         Node::For(x) => format_for(&x),
-//         Node::If(x) => format_if(&x),
-//         Node::StructFieldlist(x) => format_struct_fieldlist(&x),
-//         Node::AnonymousTypeform(x) => format_anonymous_typeform(&x),
-//         Node::Identifier(x) => format_identifier(&x),
-//         Node::CompatMacro(x) => format!("#{} {}\n", x.name, x.value),
-//         Node::PrefixOperator(x) => format_prefix_operator(&x),
-//         Node::PostfixOperator(x) => format_postfix_operator(&x),
-//         Node::Module(x) => format_module(&x),
-//         Node::CompatModule(x) => format_compat_module(&x),
-//         Node::Literal(x) => format_literal(&x),
-//         Node::Import(x) => format_import(&x),
-//         Node::FunctionDeclaration(x) => format_function_declaration(&x),
-//         Node::FunctionCall(x) => format_function_call(&x),
-//         Node::ArrayIndex(x) => format_array_index(&x),
-//         Node::ArrayLiteral(x) => format_array_literal(&x),
-//         Node::Cast(x) => format_cast(&x),
-//         Node::CompatInclude(x) => format_compat_include(&x),
-//         Node::EnumMember(x) => format_enum_member(&x),
-//         Node::CompatEnum(x) => format_compat_enum(&x),
-//         Node::AnonymousStruct(x) => format_anonymous_struct(&x),
-//         Node::Form(x) => format_form(&x),
-//         Node::CompatStructForwardDeclaration(x) => format_compat_struct_forward_declaration(&x),
-//         Node::CompatFunctionForwardDeclaration(x) => format_compat_function_forward_declaration(&x),
-//         Node::CompatStructDefinition(x) => format_compat_struct_definition(&x),
-//         Node::BinaryOp(x) => format_binary_op(&x),
-//         Node::AnonymousParameters(x) => format_anonymous_parameters(&x),
-//         Node::Enum(x) => format_enum(&x),
-//         Node::CompatFunctionDeclaration(x) => format_compat_function_declaration(&x),
-//     }
-// }
-
-// fn format_identifier(x: &Identifier) -> String {
-//     return x.name.clone();
-// }
 
 fn format_union(node: &Union) -> String {
     let mut s = String::new();
@@ -616,15 +521,6 @@ fn format_while(node: &While) -> String {
         format_body(&node.body)
     );
 }
-
-// fn format_loop_counter_declaration(node: &LoopCounterDeclaration) -> String {
-//     return format!(
-//         "{} {} = {}",
-//         format_type(&node.type_name),
-//         format_identifier(&node.name),
-//         format_expression(&node.value)
-//     );
-// }
 
 pub fn format_compat_module(node: &CompatModule) -> String {
     let mut s = String::new();

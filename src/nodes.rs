@@ -465,24 +465,6 @@ pub struct CompatStructDefinition {
     pub fields: Vec<CompatStructEntry>,
 }
 
-// impl Serialize for ModuleObject {
-//     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-//     where
-//         S: Serializer,
-//     {
-//         match self {
-//             ModuleObject::ModuleVariable(x) => Serialize::serialize(x, serializer),
-//             ModuleObject::Enum(x) => Serialize::serialize(x, serializer),
-//             ModuleObject::FunctionDeclaration(x) => Serialize::serialize(x, serializer),
-//             ModuleObject::Import(x) => Serialize::serialize(x, serializer),
-//             ModuleObject::Typedef(x) => Serialize::serialize(x, serializer),
-//             ModuleObject::CompatMacro(x) => Serialize::serialize(x, serializer),
-//             ModuleObject::CompatStructForwardDeclaration(x) => Serialize::serialize(x, serializer),
-//             ModuleObject::CompatStructDefinition(x) => Serialize::serialize(x, serializer),
-//         }
-//     }
-// }
-
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Import {
     pub kind: String,
