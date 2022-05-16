@@ -278,7 +278,6 @@ pub enum ModuleObject {
     Import(Import),
     Typedef(Typedef),
     CompatMacro(CompatMacro),
-    // CompatInclude(CompatInclude),
 }
 
 #[derive(Debug, Clone)]
@@ -303,13 +302,13 @@ pub struct CompatStructForwardDeclaration {
     pub name: String,
 }
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct CompatStructDefinition {
     pub name: String,
     pub fields: Vec<CompatStructEntry>,
 }
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub enum CompatStructEntry {
     CompatStructField { type_name: Type, form: Form },
     Union(Union),
@@ -326,7 +325,7 @@ pub struct CompatMacro {
     pub value: String,
 }
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct CompatInclude {
     pub name: String,
 }
@@ -374,14 +373,14 @@ pub struct Module {
     pub elements: Vec<ModuleObject>,
 }
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct CompatModule {
     pub elements: Vec<CompatModuleObject>,
     pub link: Vec<String>,
     pub id: String,
 }
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub enum CompatModuleObject {
     ModuleVariable(ModuleVariable),
     Typedef(Typedef),

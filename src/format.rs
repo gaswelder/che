@@ -540,15 +540,15 @@ pub fn format_compat_module(node: &CompatModule) -> String {
             CompatModuleObject::CompatMacro(x) => format_compat_macro(&x),
             CompatModuleObject::CompatInclude(x) => format_compat_include(&x),
             CompatModuleObject::Enum { members, .. } => {
-                let mut s = String::from("enum {\n");
+                let mut s1 = String::from("enum {\n");
                 for (i, member) in members.iter().enumerate() {
                     if i > 0 {
-                        s += ",\n";
+                        s1 += ",\n";
                     }
-                    s += &format!("\t{}", format_enum_member(&member));
+                    s1 += &format!("\t{}", format_enum_member(&member));
                 }
-                s += "\n};\n";
-                return s;
+                s1 += "\n};\n";
+                s1
             }
             CompatModuleObject::CompatStructForwardDeclaration(x) => {
                 format_compat_struct_forward_declaration(&x)
