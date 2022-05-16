@@ -10,17 +10,15 @@ use pretty_assertions::assert_eq;
 use std::env;
 use std::fs;
 use std::path::Path;
-use std::process::Command;
+use std::process::{exit, Command};
 use std::string::String;
 
 fn main() {
     let args: Vec<String> = env::args().collect();
-    println!("{:?}", args);
-
     if args[1] == "build" {
-        build(&args[2..]);
-        return;
+        exit(build(&args[2..]));
     }
+    exit(1);
 }
 
 #[test]
@@ -35,10 +33,10 @@ fn one() {
     );
 }
 
-fn build(argv: &[String]) {
+fn build(argv: &[String]) -> i32 {
     if argv.len() < 1 || argv.len() > 2 {
         eprintln!("Usage: build <source-path> [<output-path>]\n");
-        return;
+        return 1;
     }
     let path = &argv[0];
     let name = if argv.len() == 2 {
@@ -101,10 +99,9 @@ fn build(argv: &[String]) {
     for l in link {
         cmd.args(&["-l", &l]);
     }
-    println!("{:?}", cmd);
     let mut ch = cmd.spawn().unwrap();
     let r = ch.wait().unwrap();
-    println!("exit {}", r);
+    exit(r.code().unwrap());
 }
 
 fn resolve_deps(m: &nodes::Module) -> Vec<nodes::Module> {

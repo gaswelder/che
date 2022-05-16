@@ -9,5 +9,5 @@ cargo build || exit 1
 for i in prog/*.c; do
 	name=`basename $i`
 	echo $name
-	target/debug/che build "$i" "bin/$name" || exit 1
+	target/debug/che build "$i" "bin/$name"
 done
