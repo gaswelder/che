@@ -7,7 +7,7 @@
 
 // chargen -l <listen addr>
 
-import "net"
+import "os/net"
 import "cli"
 import "log"
 

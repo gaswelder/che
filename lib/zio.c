@@ -1,4 +1,4 @@
-import "net"
+import "os/net"
 
 enum {
 	S_UNKNOWN,

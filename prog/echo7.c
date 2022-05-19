@@ -2,10 +2,10 @@
  * Echo server for a single client
  */
 
-import "net"
+import "os/net"
 import "cli"
 import "log"
-import "threads"
+import "os/threads"
 
 int main()
 {

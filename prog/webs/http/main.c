@@ -1,4 +1,4 @@
-import "net"
+import "os/net"
 import "cli"
 import "fileutil"
 import "strutil"

@@ -2,8 +2,8 @@
  * Directory mapping module
  */
 
-import "net"
-import "dir"
+import "os/net"
+import "os/dir"
 import "fileutil"
 import "zio"
 import "cli"

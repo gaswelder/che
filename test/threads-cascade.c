@@ -4,7 +4,7 @@
  * number 1, then thread number 2, and so on.
  */
 
-import "threads"
+import "os/threads"
 
 typedef {
 	int id;
