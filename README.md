@@ -11,7 +11,7 @@ is a command specified by POSIX, and GCC or Clang packages typically have this
 binding installed. If not, you'd have to create a `c99` wrapper yourself for
 whatever c99-compliant compiler you have.
 
-Some libraries (for example, [net](lib/net.c)) depend on POSIX, so not
+Some libraries (for example, [net](lib/os/net.c)) depend on POSIX, so not
 everything can be compiled on Windows. There was multi-platform support
 initially, but I don't use Windows anymore.
 
