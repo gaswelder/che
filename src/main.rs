@@ -100,7 +100,7 @@ fn build(argv: &[String]) -> i32 {
     }
     cmd.args(&["-o", &name]);
     for l in link {
-        cmd.args(&["-l", &l]);
+        cmd.args(&["-l", &l.trim()]);
     }
     let mut ch = cmd.spawn().unwrap();
     let r = ch.wait().unwrap();
