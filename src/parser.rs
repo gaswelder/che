@@ -188,8 +188,8 @@ fn parse_literal(lexer: &mut Lexer) -> Result<Literal, String> {
 
 fn parse_enum(lexer: &mut Lexer, is_pub: bool) -> Result<Enum, String> {
     let mut members: Vec<EnumMember> = Vec::new();
-    expect(lexer, "enum", Some("enum definition")).unwrap();
-    expect(lexer, "{", Some("enum definition")).unwrap();
+    expect(lexer, "enum", Some("enum definition"))?;
+    expect(lexer, "{", Some("enum definition"))?;
     loop {
         let id = parse_identifier(lexer);
         let mut value: Option<Literal> = None;
@@ -208,8 +208,8 @@ fn parse_enum(lexer: &mut Lexer, is_pub: bool) -> Result<Enum, String> {
             break;
         }
     }
-    expect(lexer, "}", Some("enum definition")).unwrap();
-    expect(lexer, ";", Some("enum definition")).unwrap();
+    expect(lexer, "}", Some("enum definition"))?;
+    expect(lexer, ";", Some("enum definition"))?;
     return Ok(Enum { is_pub, members });
 }
 

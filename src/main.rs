@@ -16,7 +16,13 @@ use std::string::String;
 fn main() {
     let args: Vec<String> = env::args().collect();
     if args[1] == "build" {
-        exit(build(&args[2..]));
+        match build(&args[2..]) {
+            Ok(_) => exit(0),
+            Err(m) => {
+                eprintln!("{}", m);
+                exit(1);
+            }
+        }
     }
     if args[1] == "deptree" {
         exit(deptree(&args[2..]));
@@ -50,10 +56,9 @@ fn snapshots() {
     }
 }
 
-fn build(argv: &[String]) -> i32 {
+fn build(argv: &[String]) -> Result<(), String> {
     if argv.len() < 1 || argv.len() > 2 {
-        eprintln!("Usage: build <source-path> [<output-path>]\n");
-        return 1;
+        return Err(String::from("Usage: build <source-path> [<output-path>]"));
     }
     let path = &argv[0];
     let name = if argv.len() == 2 {
@@ -69,7 +74,7 @@ fn build(argv: &[String]) -> i32 {
     };
 
     // Get the module we're building.
-    let m = parser::get_module(&path).unwrap();
+    let m = parser::get_module(&path)?;
 
     // Get all modules that our module depends on. This includes our module as
     // well, so this is a complete list of modules required for the build.
