@@ -25,15 +25,29 @@ fn main() {
 }
 
 #[test]
-fn one() {
-    let m = parser::get_module(&"test/snapshots/brace.in.c".to_string()).unwrap();
-    let mods = resolve_deps(&m);
-    let c_mods: Vec<nodes::CompatModule> = mods.iter().map(|m| translator::translate(&m)).collect();
-    let result = format::format_compat_module(&c_mods[0]);
-    assert_eq!(
-        result,
-        fs::read_to_string("test/snapshots/brace.out.c").unwrap()
-    );
+fn snapshots() {
+    for entry in fs::read_dir("test/snapshots").unwrap() {
+        let tmp = entry.unwrap().path();
+        let path = tmp.to_str().unwrap();
+        if path.ends_with(".out.c") {
+            continue;
+        }
+        println!("{}", path);
+
+        // get the output
+        let m = parser::get_module(&path.to_string()).unwrap();
+        let mods = resolve_deps(&m);
+        let c_mods: Vec<nodes::CompatModule> =
+            mods.iter().map(|m| translator::translate(&m)).collect();
+        let result = format::format_compat_module(&c_mods[0]);
+
+        let snapshot_path = path.replace(".c", ".out.c");
+        if env::var("UPDATE_SNAPSHOT").is_ok() {
+            fs::write(snapshot_path, result).unwrap();
+        } else {
+            assert_eq!(result, fs::read_to_string(snapshot_path).unwrap());
+        }
+    }
 }
 
 fn build(argv: &[String]) -> i32 {
