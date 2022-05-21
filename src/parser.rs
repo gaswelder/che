@@ -191,18 +191,14 @@ fn parse_enum(lexer: &mut Lexer, is_pub: bool) -> Result<Enum, String> {
     expect(lexer, "enum", Some("enum definition"))?;
     expect(lexer, "{", Some("enum definition"))?;
     loop {
-        let id = parse_identifier(lexer);
-        let mut value: Option<Literal> = None;
-        if lexer.follows("=") {
-            lexer.get();
-            value = Some(parse_literal(lexer)?);
-        }
-        members.push(EnumMember {
-            id: id.unwrap(),
-            value,
-        });
-        if lexer.follows(",") {
-            lexer.get();
+        let id = parse_identifier(lexer)?;
+        let value: Option<Literal> = if lexer.eat("=") {
+            Some(parse_literal(lexer)?)
+        } else {
+            None
+        };
+        members.push(EnumMember { id, value });
+        if lexer.eat(",") {
             continue;
         } else {
             break;

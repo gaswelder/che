@@ -459,4 +459,11 @@ impl Lexer {
     pub fn follows(&mut self, token_type: &str) -> bool {
         return self.more() && self.peek().unwrap().kind == token_type;
     }
+    pub fn eat(&mut self, token_type: &str) -> bool {
+        if self.follows(token_type) {
+            self.get();
+            return true;
+        }
+        return false;
+    }
 }
