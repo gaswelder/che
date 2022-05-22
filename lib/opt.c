@@ -22,7 +22,7 @@ pub enum {
 };
 
 /*
- * A structure describing an option.
+ * A single option description.
  */
 typedef {
 	int type;
@@ -42,7 +42,7 @@ const char *summary = NULL;
 
 /*
  * Declares an option.
- * 'type' is one of 'OPT_...' constants.
+ * `type` is one of the `OPT_` constants.
  * 'name' is the flag name, as it appears in a command line.
  * 'desc' is text description.
  * 'value_pointer' is a pointer to save the flag value at.
@@ -54,8 +54,8 @@ pub void opt(int type, const char *name, const char *desc, void *value_pointer)
 		exit(1);
 	}
 
-	if( flags_num >= MAX_FLAGS ) {
-		fprintf( stderr, "Reached flags limit (%d)\n", MAX_FLAGS );
+	if (flags_num >= MAX_FLAGS) {
+		fprintf(stderr, "Too many flags (%d)\n", MAX_FLAGS);
 		exit(1);
 	}
 
