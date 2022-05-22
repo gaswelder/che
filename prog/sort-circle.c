@@ -1,27 +1,128 @@
+/*
+ * This is a port of the [https://github.com/skeeto/sort-circle]("sort-circle demo by skeeto).
+ */
+
 import "opt"
 import "cli"
+import "ppm"
+import "prng/pcg32"
+import "fileutil"
 
-#define S     800           // video size
-#define N     360           // number of dots
-#define WAIT  1             // pause in seconds between sorts
-#define HZ    44100         // audio sample rate
+/*
+ * The array that's being shuffled and sorted.
+ */
+#define N     360
+int array[N] = {};
+
+/*
+ * The sorting algorithms.
+ */
+enum {
+    SORT_NULL,
+    SORT_BUBBLE,
+    SORT_ODD_EVEN,
+    SORT_INSERTION,
+    SORT_STOOGESORT,
+    SORT_QUICKSORT,
+    SORT_RADIX_8_LSD,
+
+    SORTS_TOTAL
+};
+const char *sort_names[] = {
+    [SORT_ODD_EVEN] = "Odd-even",
+    [SORT_BUBBLE] = "Bubble",
+    [SORT_INSERTION] = "Insertion",
+    [SORT_STOOGESORT] = "Stoogesort",
+    [SORT_QUICKSORT] = "Quicksort",
+    [SORT_RADIX_8_LSD] = "Radix LSD (base 8)"
+};
+
+/**
+ * PPM buffer
+ */
+const int S = 800;
+ppm_t *ppm = NULL;
+
 #define FPS   60            // output framerate
+
+#define HZ    44100         // audio sample rate
 #define MINHZ 20            // lowest tone
 #define MAXHZ 1000          // highest tone
 #define PI 3.141592653589793f
-
-int array[N] = {};
 int swaps[N] = {};
 const char *message = "";
 FILE *wav = NULL;
 
-uint32_t pcg32(uint64_t *s)
+int main(int argc, char **argv)
 {
-    uint64_t m = 0x9b60933458e17d7d;
-    uint64_t a = 0xd737232eeccdf7ed;
-    *s = *s * m + a;
-    int shift = 29 - (*s >> 61);
-    return *s >> shift;
+    if (!load_font("prog/sort-circle-font.bin")) {
+        fatal("couldn't load font at 'prog/sort-circle-font.bin'");
+    }
+
+    ppm = ppm_init(S);
+
+    /*
+     * Parse the flags.
+     */
+    bool help = false;
+    opt(OPT_BOOL, "h", "print the help message", &help);
+    bool hide_shuffle = false;
+    opt(OPT_BOOL, "q", "don't draw the shuffle", &hide_shuffle);
+    bool slow_shuffle = false;
+    opt(OPT_BOOL, "y", "slow down shuffle animation", &slow_shuffle);
+    const char *audio_output = NULL;
+    opt(OPT_STR, "a", "name of audio output (WAV)", &audio_output);
+    int sort_number = 0;
+    opt(OPT_INT, "s", "animate sort number N", &sort_number);
+    int delay = 0;
+    opt(OPT_INT, "w", "insert a delay of N frames", &delay);
+    const char *seed_str = NULL;
+    opt(OPT_STR, "x", "seed for shuffling (64-bit HEX string)", &seed_str);
+    opt_parse(argc, argv);
+
+    if (help) {
+        opt_usage();
+        for (int i = 1; i < SORTS_TOTAL; i++) {
+            fprintf(stderr, "  %d: %s\n", i, sort_names[i]);
+        }
+        exit(EXIT_SUCCESS);
+    }
+
+    if (seed_str) {
+        pcg32_seed(strtoull(seed_str, NULL, 16));
+    }
+
+    if (audio_output) {
+        wav = wav_init(audio_output);
+        if (!wav) {
+            fprintf(stderr, "%s: %s: %s\n", argv[0], strerror(errno), audio_output);
+            exit(EXIT_FAILURE);
+        }
+    }
+
+    if (delay) {
+        for (int i = 0; i < delay; i++) {
+            frame();
+        }
+    }
+
+    /*
+     * Fill the array
+     */
+    for (int i = 0; i < N; i++) {
+        array[i] = i;
+    }
+
+    for (int i = 1; i < SORTS_TOTAL; i++) {
+        shuffle(array, hide_shuffle, slow_shuffle);
+        run_sort(i);
+        /*
+         * Pause for 1 second
+         */
+        for (int i = 0; i < FPS; i++) {
+            frame();
+        }
+    }
 }
 
 void emit_u32le(uint32_t v, FILE *f)
@@ -46,8 +147,7 @@ void emit_u16le(unsigned v, FILE *f)
     fputc((v >> 8) & 0xff, f);
 }
 
-uint32_t
-hue(int v)
+uint32_t hue(int v)
 {
     uint32_t h = v / (N / 6);
     uint32_t f = v % (N / 6);
@@ -71,30 +171,33 @@ hue(int v)
     return -1;
 }
 
-void frame()
-{
-    uint8_t buf[S * S * 3] = {};
-
+void frame() {
     for (int i = 0; i < N; i++) {
-        float delta = abs(i - array[i]) / (N / 2.0f);
+        float delta = fabs(i - array[i]) / (N / 2.0f);
         float x = -sinf(i * 2.0f * PI / N);
         float y = -cosf(i * 2.0f * PI / N);
         float r = S * 15.0f / 32.0f * (1.0f - delta);
         float px = r * x + S / 2.0f;
         float py = r * y + S / 2.0f;
-        ppm_dot(buf, px, py, hue(array[i]));
+
+        int32_t c = hue(array[i]);
+        rgb_t color = {
+            .r = ((c >> 16) / 255.0f),
+            .g = (((c >> 8) & 0xff) / 255.0f),
+            .b = ((c & 0xff) / 255.0f)
+        };
+        ppm_dot(ppm, px, py, color);
     }
     if (message) {
-        ppm_string(buf, message);
+        draw_string(ppm, message);
     }
-        
-    ppm_write(buf, stdout);
+    ppm_write(ppm, stdout);
 
     /* Output audio */
     if (wav) {
         int nsamples = HZ / FPS;
         float samples[HZ / FPS] = {};
-        // memset(samples, 0, sizeof(samples));
+        memset(samples, 0, sizeof(samples));
 
         /* How many voices to mix? */
         int voices = 0;
@@ -127,8 +230,7 @@ void frame()
     memset(swaps, 0, sizeof(swaps));
 }
 
-void
-swap(int a[N], int i, int j)
+void swap(int a[N], int i, int j)
 {
     int tmp = a[i];
     a[i] = a[j];
@@ -137,8 +239,7 @@ swap(int a[N], int i, int j)
     swaps[(a - array) + j]++;
 }
 
-void
-sort_bubble(int array[N])
+void sort_bubble(int array[N])
 {
     int c = 0;
     while (1) {
@@ -265,47 +366,21 @@ sort_radix_lsd(int array[N], int b)
     }
 }
 
-#define SHUFFLE_DRAW  (1u << 0)
-#define SHUFFLE_FAST  (1u << 1)
-
-void
-shuffle(int array[N], uint64_t *rng, unsigned flags)
-{
+void shuffle(int array[N], bool hide, slow) {
     message = "Fisher-Yates";
     for (int i = N - 1; i > 0; i--) {
-        uint32_t r = pcg32(rng) % (i + 1);
+        uint32_t r = pcg32() % (i + 1);
         swap(array, i, r);
-        if (flags & SHUFFLE_DRAW) {
-            if (!(flags & SHUFFLE_FAST) || i % 2)
+        if (hide) {
+            continue;
+        }
+        if (slow || i % 2) {
             frame();
         }
     }
 }
 
-enum {
-    SORT_NULL,
-    SORT_BUBBLE,
-    SORT_ODD_EVEN,
-    SORT_INSERTION,
-    SORT_STOOGESORT,
-    SORT_QUICKSORT,
-    SORT_RADIX_8_LSD,
-
-    SORTS_TOTAL
-};
-
-const char *sort_names[] = {
-    [SORT_ODD_EVEN] = "Odd-even",
-    [SORT_BUBBLE] = "Bubble",
-    [SORT_INSERTION] = "Insertion",
-    [SORT_STOOGESORT] = "Stoogesort",
-    [SORT_QUICKSORT] = "Quicksort",
-    [SORT_RADIX_8_LSD] = "Radix LSD (base 8)"
-};
-
-void
-run_sort(int type)
-{
+void run_sort(int type) {
     if (type > 0 && type < SORTS_TOTAL)
         message = sort_names[type];
     else
@@ -337,8 +412,7 @@ run_sort(int type)
     frame();
 }
 
-FILE *
-wav_init(const char *file)
+FILE *wav_init(const char *file)
 {
     FILE *f = fopen(file, "wb");
     if (f) {
@@ -359,95 +433,75 @@ wav_init(const char *file)
     return f;
 }
 
-void
-usage(const char *name, FILE *f)
+#define R0    (S / 400.0f)  // dot inner radius
+#define R1    (S / 200.0f)  // dot outer radius
+void ppm_dot(ppm_t *p, float x, y, rgb_t color)
 {
-    fprintf(f, "usage: %s [-a file] [-h] [-q] [s N] [-w N] [-x HEX] [-y]\n",
-            name);
-    fprintf(f, "  -a       name of audio output (WAV)\n");
-    fprintf(f, "  -h       print this message\n");
-    fprintf(f, "  -q       don't draw the shuffle\n");
-    fprintf(f, "  -s N     animate sort number N (see below)\n");
-    fprintf(f, "  -w N     insert a delay of N frames\n");
-    fprintf(f, "  -x HEX   use HEX as a 64-bit seed for shuffling\n");
-    fprintf(f, "  -y       slow down shuffle animation\n");
-    fprintf(f, "\n");
-    for (int i = 1; i < SORTS_TOTAL; i++) {
-        fprintf(f, "  %d: %s\n", i, sort_names[i]);
+    int miny = floorf(y - R1 - 1);
+    int maxy = ceilf(y + R1 + 1);
+    int minx = floorf(x - R1 - 1);
+    int maxx = ceilf(x + R1 + 1);
+
+    for (int py = miny; py <= maxy; py++) {
+        float dy = py - y;
+        for (int px = minx; px <= maxx; px++) {
+            float dx = px - x;
+            float d = sqrtf(dy * dy + dx * dx);
+            float alpha = smoothstep(R1, R0, d);
+            ppm_merge(p, px, py, color, alpha);
+        }
     }
 }
 
-int main(int argc, char **argv)
+float smoothstep(float lower, float upper, float x)
 {
-    if (!load_font("prog/sort-circle/font.bin")) {
-        fatal("couldn't load font");
-    }
-    bool help = false;
-    bool hide_shuffle = false;
-    bool slow_shuffle = false;
-    const char *audio_output = NULL;
-    int sort_number = 0;
-    int delay = 0;
-    const char *seed_str = NULL;
+    x = clamp((x - lower) / (upper - lower), 0.0f, 1.0f);
+    return x * x * (3.0f - 2.0f * x);
+}
 
-    opt(OPT_BOOL, "h", "print the help message", &help);
-    opt(OPT_BOOL, "q", "don't draw the shuffle", &hide_shuffle);
-    opt(OPT_BOOL, "y", "slow down shuffle animation", &slow_shuffle);
-    opt(OPT_STR, "a", "name of audio output (WAV)", &audio_output);
-    opt(OPT_INT, "s", "animate sort number N", &sort_number);
-    opt(OPT_INT, "w", "insert a delay of N frames", &delay);
-    opt(OPT_STR, "x", "seed for shuffling (64-bit HEX string)", &seed_str);
-    opt_parse(argc, argv);
-
-    int sorts = 0;
-    unsigned flags = SHUFFLE_DRAW | SHUFFLE_FAST;
-    uint64_t seed = 0;
-
-    if (help) {
-        usage(argv[0], stdout);
-        exit(EXIT_SUCCESS);
-    }
-    if (hide_shuffle) {
-        flags &= ~SHUFFLE_DRAW;
-    }
-    if (slow_shuffle) {
-        flags &= ~SHUFFLE_FAST;
-    }
-    if (audio_output) {
-        wav = wav_init(audio_output);
-        if (!wav) {
-            fprintf(stderr, "%s: %s: %s\n", argv[0], strerror(errno), audio_output);
-            exit(EXIT_FAILURE);
-        }
-    }
-    if (seed_str) {
-        seed = strtoull(seed_str, 0, 16);
-    }
-    if (delay) {
-        for (int i = 0; i < delay; i++) {
-            frame();
-        }
-    }
-    if (sort_number) {
-        sorts++;
-        frame();
-        shuffle(array, &seed, flags);
-        run_sort(sort_number);
-    }
+float clamp(float x, float lower, float upper)
+{
+    if (x < lower)
+        return lower;
+    if (x > upper)
+        return upper;
+    return x;
+}
 
 
-    for (int i = 0; i < N; i++) {
-        array[i] = i;
-    }
-
-    /* If no sorts selected, run all of them in order */
-    if (!sorts) {
-        for (int i = 1; i < SORTS_TOTAL; i++) {
-            shuffle(array, &seed, flags);
-            run_sort(i);
-            for (int i = 0; i < WAIT * FPS; i++) {
-                frame();
+const int PAD = 800 / 128;     // message padding
+#define FONT_W 16
+#define FONT_H 33
+void draw_string(ppm_t *p, const char *message)
+{
+    rgb_t fontcolor = {1.0, 1.0, 1.0};
+    for (int c = 0; message[c]; c++) {
+        int x = c * FONT_W + PAD;
+        int y = PAD;
+        for (int dy = 0; dy < FONT_H; dy++) {
+            for (int dx = 0; dx < FONT_W; dx++) {
+                float alpha = font_value(message[c], dx, dy);
+                if (alpha > 0.0f) {
+                    ppm_merge(p, x + dx, y + dy, fontcolor, alpha);
+                }
             }
         }
     }
+}
+
+uint8_t *font = NULL;
+
+bool load_font(const char *path) {
+    font = (uint8_t *) readfile(path, NULL);
+    return font != NULL;
+}
+
+float font_value(int c, int x, int y) {
+    if (c < 32 || c > 127) {
+        return 0.0f;
+    }
+    int cx = c % 16;
+    int cy = (c - 32) / 16;
+    int v = font[(cy * FONT_H + y) * FONT_W * 16 + (cx * FONT_W) + x];
+    return sqrtf(v / 255.0f);
 }
