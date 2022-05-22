@@ -209,10 +209,6 @@ fn format_compat_function_forward_declaration(node: &CompatFunctionForwardDeclar
     return s;
 }
 
-fn format_compat_include(node: &CompatInclude) -> String {
-    return format!("#include {}\n", node.name);
-}
-
 pub fn format_compat_struct_definition(node: &CompatStructDefinition) -> String {
     let mut s = String::new();
     for entry in &node.fields {
@@ -230,10 +226,6 @@ pub fn format_compat_struct_definition(node: &CompatStructDefinition) -> String 
         name = node.name,
         contents = indent(&s)
     );
-}
-
-fn format_compat_struct_forward_declaration(node: &CompatStructForwardDeclaration) -> String {
-    return format!("struct {};\n", node.name);
 }
 
 fn format_anonymous_struct(node: &AnonymousStruct) -> String {
@@ -538,7 +530,7 @@ pub fn format_compat_module(node: &CompatModule) -> String {
             CompatModuleObject::ModuleVariable(x) => format_module_variable(&x),
             CompatModuleObject::Typedef(x) => format_typedef(&x),
             CompatModuleObject::CompatMacro(x) => format_compat_macro(&x),
-            CompatModuleObject::CompatInclude(x) => format_compat_include(&x),
+            CompatModuleObject::CompatInclude(x) => format!("#include {}\n", x),
             CompatModuleObject::Enum { members, .. } => {
                 let mut s1 = String::from("enum {\n");
                 for (i, member) in members.iter().enumerate() {
@@ -550,9 +542,7 @@ pub fn format_compat_module(node: &CompatModule) -> String {
                 s1 += "\n};\n";
                 s1
             }
-            CompatModuleObject::CompatStructForwardDeclaration(x) => {
-                format_compat_struct_forward_declaration(&x)
-            }
+            CompatModuleObject::CompatStructForwardDeclaration(x) => format!("struct {};\n", x),
             CompatModuleObject::CompatStructDefinition(x) => format_compat_struct_definition(&x),
             CompatModuleObject::CompatFunctionForwardDeclaration(x) => {
                 format_compat_function_forward_declaration(&x)

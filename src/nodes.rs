@@ -11,11 +11,6 @@ pub struct AnonymousTypeform {
 }
 
 #[derive(Debug, Clone)]
-pub struct AnonymousParameters {
-    pub forms: Vec<AnonymousTypeform>,
-}
-
-#[derive(Debug, Clone)]
 pub struct Literal {
     pub type_name: String,
     pub value: String,
@@ -298,11 +293,6 @@ pub struct CompatFunctionDeclaration {
 }
 
 #[derive(Debug, Clone)]
-pub struct CompatStructForwardDeclaration {
-    pub name: String,
-}
-
-#[derive(Debug, Clone)]
 pub struct CompatStructDefinition {
     pub name: String,
     pub fields: Vec<CompatStructEntry>,
@@ -326,11 +316,6 @@ pub struct CompatMacro {
 }
 
 #[derive(Debug, Clone)]
-pub struct CompatInclude {
-    pub name: String,
-}
-
-#[derive(Debug, Clone)]
 pub struct Typedef {
     pub type_name: TypedefTarget,
     pub form: TypedefForm,
@@ -348,6 +333,11 @@ pub struct TypedefForm {
     pub params: Option<AnonymousParameters>,
     pub size: usize,
     pub alias: String,
+}
+
+#[derive(Debug, Clone)]
+pub struct AnonymousParameters {
+    pub forms: Vec<AnonymousTypeform>,
 }
 
 #[derive(Debug, Clone)]
@@ -385,12 +375,12 @@ pub enum CompatModuleObject {
     ModuleVariable(ModuleVariable),
     Typedef(Typedef),
     CompatMacro(CompatMacro),
-    CompatInclude(CompatInclude),
+    CompatInclude(String),
     Enum {
         members: Vec<EnumMember>,
         is_hidden: bool,
     },
-    CompatStructForwardDeclaration(CompatStructForwardDeclaration),
+    CompatStructForwardDeclaration(String),
     CompatStructDefinition(CompatStructDefinition),
     CompatFunctionForwardDeclaration(CompatFunctionForwardDeclaration),
     CompatFunctionDeclaration(CompatFunctionDeclaration),

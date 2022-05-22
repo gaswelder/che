@@ -36,9 +36,7 @@ pub fn translate(module: &Module) -> CompatModule {
         "stdio", "stdlib", "string", "time",
     ];
     for n in std {
-        elements.push(CompatModuleObject::CompatInclude(CompatInclude {
-            name: format!("<{}.h>", n),
-        }));
+        elements.push(CompatModuleObject::CompatInclude(format!("<{}.h>", n)));
     }
 
     // Reorder the elements so that typedefs and similar preamble elements
@@ -154,11 +152,7 @@ fn translate_typedef(node: &Typedef) -> Vec<CompatModuleObject> {
                 }
             }
             vec![
-                CompatModuleObject::CompatStructForwardDeclaration(
-                    CompatStructForwardDeclaration {
-                        name: struct_name.clone(),
-                    },
-                ),
+                CompatModuleObject::CompatStructForwardDeclaration(struct_name.clone()),
                 CompatModuleObject::CompatStructDefinition(CompatStructDefinition {
                     name: struct_name.clone(),
                     fields: fields,
