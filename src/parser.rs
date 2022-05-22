@@ -106,7 +106,7 @@ fn expect(lexer: &mut Lexer, kind: &str, comment: Option<&str>) -> Result<Token,
     if next.kind != kind {
         return Err(with_comment(
             comment,
-            format!("expected '{}', got {} at {}", kind, next.kind, next.pos),
+            format!("expected '{}', got '{}' at {}", kind, next.kind, next.pos),
         ));
     }
     return Ok(lexer.get().unwrap());
@@ -534,7 +534,15 @@ fn parse_form(lexer: &mut Lexer, typenames: &Vec<String>) -> Result<Form, String
     while lexer.follows("*") {
         node.stars += &lexer.get().unwrap().kind;
     }
-    node.name = String::from(expect(lexer, "word", None).unwrap().content.unwrap());
+
+    match expect(lexer, "word", None)?.content {
+        Some(x) => {
+            node.name = String::from(x);
+        }
+        None => {
+            return Err(String::from("missing word content"));
+        }
+    }
 
     while lexer.follows("[") {
         &lexer.get().unwrap();
