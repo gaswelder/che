@@ -5,15 +5,15 @@
 typedef { float r, g, b; } rgb_t;
 
 typedef {
-    uint8_t *buf;
     rgb_t *frame;
-    int S;
+    int width, height;
 } ppm_t;
 
-pub ppm_t *ppm_init(int size) {
+pub ppm_t *ppm_init(int width, height) {
     ppm_t *p = calloc(1, sizeof(ppm_t));
-    p->S = size;
-    p->frame = calloc(size * size, sizeof(rgb_t));
+    p->width = width;
+    p->height = height;
+    p->frame = calloc(width * height, sizeof(rgb_t));
     return p;
 }
 
@@ -22,7 +22,7 @@ pub ppm_t *ppm_init(int size) {
  */
 pub void ppm_set(ppm_t *p, int x, y, rgb_t color)
 {
-    p->frame[x + y * p->S] = color;
+    p->frame[x + y * p->width] = color;
 }
 
 /**
@@ -30,7 +30,7 @@ pub void ppm_set(ppm_t *p, int x, y, rgb_t color)
 */
 pub rgb_t ppm_get(ppm_t *p, int x, y)
 {
-    return p->frame[x + p->S * y];
+    return p->frame[x + p->width * y];
 }
 
 pub void ppm_merge(ppm_t *p, int x, y, rgb_t color, float a)
@@ -48,15 +48,18 @@ pub void ppm_merge(ppm_t *p, int x, y, rgb_t color, float a)
  */
 pub void ppm_write(ppm_t *p, FILE *f)
 {
-    fprintf(f, "P6\n%d %d\n255\n", p->S, p->S);
-    
+    fprintf(f, "P6\n%d %d\n255\n", p->width, p->height);
+    int size = p->width * p->height;
     uint32_t buf = 0;
-    for (int i = 0; i < p->S * p->S; i++) {
+    for (int i = 0; i < size; i++) {
         buf = format_rgb(p->frame[i]);
         fwrite(&buf, 3, 1, f);
     }
-    fflush(f);
-    memset(p->frame, 0, p->S * p->S * sizeof(rgb_t));
+}
+
+pub void ppm_clear(ppm_t *p)
+{
+    memset(p->frame, 0, p->width * p->height * sizeof(rgb_t));
 }
 
 /* Convert RGB to 24-bit color. */

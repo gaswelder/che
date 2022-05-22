@@ -59,7 +59,7 @@ int main(int argc, char **argv)
         fatal("couldn't load font at 'prog/sort-circle-font.bin'");
     }
 
-    ppm = ppm_init(S);
+    ppm = ppm_init(S, S);
 
     /*
      * Parse the flags.
@@ -192,6 +192,8 @@ void frame() {
         draw_string(ppm, message);
     }
     ppm_write(ppm, stdout);
+    ppm_clear(ppm);
+    fflush(stdout);
 
     /* Output audio */
     if (wav) {
