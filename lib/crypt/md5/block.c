@@ -1,4 +1,4 @@
-import "zio"
+import "mem"
 
 /*
  * The internal "machinery" processes a stream of 64-byte blocks.
@@ -16,7 +16,7 @@ import "zio"
  * a length mark that is a multiple of 512 bits (64 bytes).
  */
 typedef {
-	zio *stream; // data stream
+	mem_t *stream; // data stream
 
 	uint64_t length; // current message length in bits
 	bool more_data; // set to false after the end of data
@@ -31,7 +31,7 @@ typedef {
 /*
  * Process the stream and put the digest in 'digest'.
  */
-void md5(zio *stream, uint32_t digest[4])
+void md5(mem_t *stream, uint32_t digest[4])
 {
 	src_t s = {
 		.stream = stream,

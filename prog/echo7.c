@@ -10,14 +10,14 @@ import "os/threads"
 int main()
 {
 	const char *addr = "0.0.0.0:7000";
-	conn_t *l = net_listen("tcp", addr);
+	net_t *l = net_listen("tcp", addr);
 	if(!l) {
 		fatal("listen failed: %s", net_error());
 	}
 	logmsg("listening at %s", addr);
 
 	while(1) {
-		conn_t *s = net_accept(l);
+		net_t *s = net_accept(l);
 		if(!s) {
 			err("accept error: %s", net_error());
 			continue;
@@ -33,7 +33,7 @@ int main()
 
 void *process_client(void *arg)
 {
-	conn_t *c = (conn_t *) arg;
+	net_t *c = (net_t *) arg;
 	logmsg("%s connected", net_addr(c));
 	char buf[256] = {0};
 

@@ -12,7 +12,7 @@ import "cli"
 import "log"
 
 typedef {
-	conn_t *conn;
+	net_t *conn;
 	char data[2048];
 	int len;
 } nbuf_t;
@@ -30,14 +30,14 @@ char linechars[] =
 int main()
 {
 	char address[] = "0.0.0.0:1900";
-	conn_t *l = net_listen("tcp", address);
+	net_t *l = net_listen("tcp", address);
 	if(!l) {
 		fatal("listen failed: %s", net_error());
 	}
 	logmsg("listening at %s", address);
 
 	while(1) {
-		conn_t *s = net_accept(l);
+		net_t *s = net_accept(l);
 		if(!s) {
 			err("accept error");
 			continue;
@@ -55,7 +55,7 @@ int main()
 
 void *process_client(client_t *c)
 {
-	conn_t *conn = c->out.conn;
+	net_t *conn = c->out.conn;
 	logmsg("%s connected", net_addr(conn));
 	char buf[256] = {};
 

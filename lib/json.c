@@ -1,8 +1,8 @@
 import "clip/arr"
-import "zio"
 import "strutil"
 import "parsebuf"
 import "string"
+import "mem"
 
 enum {
 	JSON_UND,
@@ -956,49 +956,49 @@ void readnum(parser_t *p, token_t *t)
 
 pub char *json_format(json_node *n)
 {
-	zio *z = zopen("mem", "", "");
+	mem_t *z = memopen();
 	json_write(z, n);
-	zrewind(z);
+	memrewind(z);
 
 	str *s = str_new();
 	while(1) {
-		char c = zgetc(z);
+		char c = memgetc(z);
 		if(c == EOF) break;
 		str_addc(s, c);
 	}
 	char *str1 = newstr("%s", str_raw(s));
 	str_free(s);
-	zclose(z);
+	memclose(z);
 	return str1;
 }
 
-void json_write(zio *z, json_node *n)
+void json_write(mem_t *z, json_node *n)
 {
 	switch(json_type(n))
 	{
 		case JSON_OBJ:
 			size_t len = json_size(n);
-			zprintf(z, "{");
+			memprintf(z, "{");
 			for(size_t i = 0; i < len; i++) {
-				zprintf(z, "\"%s\":", json_key(n, i));
+				memprintf(z, "\"%s\":", json_key(n, i));
 				json_write(z, json_val(n, i));
 				if(i + 1 < len) {
-					zprintf(z, ",");
+					memprintf(z, ",");
 				}
 			}
-			zprintf(z, "}");
+			memprintf(z, "}");
 			break;
 
 		case JSON_ARR:
 			size_t len = json_len(n);
-			zprintf(z, "[");
+			memprintf(z, "[");
 			for(size_t i = 0; i < len; i++) {
 				json_write(z, json_at(n, i));
 				if(i + 1 < len) {
-					zprintf(z, ",");
+					memprintf(z, ",");
 				}
 			}
-			zprintf(z, "]");
+			memprintf(z, "]");
 			break;
 
 		case JSON_STR:
@@ -1006,19 +1006,19 @@ void json_write(zio *z, json_node *n)
 			break;
 
 		case JSON_NUM:
-			zprintf(z, "%f", json_dbl(n));
+			memprintf(z, "%f", json_dbl(n));
 			break;
 
 		case JSON_BOOL:
 			if (json_bool(n)) {
-				zprintf(z, "true");
+				memprintf(z, "true");
 			} else {
-				zprintf(z, "false");
+				memprintf(z, "false");
 			}
 			break;
 
 		case JSON_NULL:
-			zprintf(z, "null");
+			memprintf(z, "null");
 			break;
 	}
 }
@@ -1026,28 +1026,27 @@ void json_write(zio *z, json_node *n)
 /*
  * Writes a node's escaped string contents.
  */
-void write_string(zio *z, json_node *none) {
-	const char *content = json_str(none);
+void write_string(mem_t *z, json_node *node) {
+	const char *content = json_str(node);
 	
 	size_t n = strlen(content);
-	zputc('"', z);
+	memputc('"', z);
 	for (size_t i = 0; i < n; i++) {
 		const char c = content[i];
 		if (c == '\n') {
-			zputc('\\', z);
-			zputc('n', z);
+			memputc('\\', z);
+			memputc('n', z);
 			continue;
 		}
 		if (c == '\t') {
-			zputc('\\', z);
-			zputc('t', z);
+			memputc('\\', z);
+			memputc('t', z);
 			continue;
 		}
 		if (c == '\\' || c == '\"' || c == '/') {
-			zputc('\\', z);
+			memputc('\\', z);
 		}
-		zputc(c, z);
+		memputc(c, z);
 	}
-	zputc('"', z);
-	// zprintf(z, "\"%s\"", json_str(n));
+	memputc('"', z);
 }

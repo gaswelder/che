@@ -1,4 +1,4 @@
-import "zio"
+import "mem"
 import "opt"
 import "os/dir"
 import "fileutil"
@@ -87,8 +87,8 @@ bool trim_file(const char *path)
 	FILE *f = fopen(path, "rb");
 	if(!f) return false;
 
-	zio *out = zopen("mem", "", "");
-	if(!out) fatal("Out of memory");
+	mem_t *out = memopen();
+	if (!out) fatal("Out of memory");
 
 	bool changed = trim(f, out, path);
 	fclose(f);
@@ -100,7 +100,7 @@ bool trim_file(const char *path)
 	return true;
 }
 
-bool trim(FILE *in, zio *out, const char *fpath)
+bool trim(FILE *in, mem_t *out, const char *fpath)
 {
 	linebuf_t buf = {0};
 
@@ -206,25 +206,25 @@ bool growbuf(linebuf_t *buf)
 	return true;
 }
 
-void write_line(linebuf_t *buf, zio *out)
+void write_line(linebuf_t *buf, mem_t *out)
 {
 	for(int i = 0; i < buf->eol_pos; i++) {
-		zputc(buf->line[i], out);
+		memputc(buf->line[i], out);
 	}
 	switch(buf->lf) {
 		case L_UNIX:
-			zputc('\n', out);
+			memputc('\n', out);
 			break;
 		case L_WIN:
-			assert(zputc('\r', out) != EOF);
-			assert(zputc('\n', out) != EOF);
+			assert(memputc('\r', out) != EOF);
+			assert(memputc('\n', out) != EOF);
 			break;
 		default:
 			fatal("write_line: unhandled eol type: %d", buf->lf);
 	}
 }
 
-int save( zio *mem, const char *path )
+int save(mem_t *mem, const char *path )
 {
 	FILE *fp = fopen( path, "wb" );
 	if( !fp ) {
@@ -232,10 +232,10 @@ int save( zio *mem, const char *path )
 		return 0;
 	}
 
-	zrewind( mem );
+	memrewind( mem );
 	int ok = 1;
 	while( 1 ) {
-		int ch = zgetc( mem );
+		int ch = memgetc( mem );
 		if(ch == EOF) {
 			break;
 		}

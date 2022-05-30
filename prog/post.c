@@ -1,4 +1,4 @@
-import "zio"
+import "os/net"
 import "opt"
 import "cli"
 
@@ -26,49 +26,49 @@ int main(int argc, char **argv)
 		return 1;
 	}
 
-	zio *n = zopen("tcp", addr, "");
+	net_t *n = net_open("tcp", addr);
 	if( !n ) {
-		err("connect failed");
+		fprintf(stderr, "connect to '%s' failed: %s\n", addr, strerror(errno));
 		exit(1);
 	}
 
 	sendm(n, from, to, subj);
-	zclose(n);
+	net_close(n);
 }
 
-int sendm(zio *n, const char *from, const char *to, const char *subj)
+int sendm(net_t *n, const char *from, const char *to, const char *subj)
 {
 	expect(n, 220);
 
-	zprintf(n, "HELO %s\r\n", "sofa");
+	net_printf(n, "HELO %s\r\n", "sofa");
 	expect(n, 250);
 	if(senderror()) return 0;
 
-	zprintf(n, "MAIL FROM:<%s>\r\n", from);
+	net_printf(n, "MAIL FROM:<%s>\r\n", from);
 	expect(n, 250);
 	if(senderror()) return 0;
 
-	zprintf(n, "RCPT TO:<%s>\r\n", to);
+	net_printf(n, "RCPT TO:<%s>\r\n", to);
 	expect(n, 250);
 	if(senderror()) return 0;
 
-	zprintf(n, "DATA\r\n");
+	net_printf(n, "DATA\r\n");
 	expect(n, 354);
 	if(senderror()) return 0;
 
-	zprintf(n, "Subject: %s\r\n", subj);
-	zprintf(n, "From: <%s>\r\n", from);
-	zprintf(n, "To: <%s>\r\n", to);
-	zprintf(n, "\r\n");
+	net_printf(n, "Subject: %s\r\n", subj);
+	net_printf(n, "From: <%s>\r\n", from);
+	net_printf(n, "To: <%s>\r\n", to);
+	net_printf(n, "\r\n");
 
 	char buf[4096] = {};
 	while( fgets(buf, 4096, stdin) ) {
-		zprintf(n, "%s", buf);
+		net_printf(n, "%s", buf);
 	}
-	zprintf(n, ".\r\n");
+	net_printf(n, ".\r\n");
 	expect(n, 250);
 
-	zprintf(n, "QUIT\r\n");
+	net_printf(n, "QUIT\r\n");
 	expect(n, 221);
 
 	return !senderror();
@@ -80,13 +80,13 @@ int senderror() {
 	return _error;
 }
 
-void expect(zio *n, int code)
+void expect(net_t *n, int code)
 {
 	(void) code;
 	if(_error) return;
 
 	char buf[256] = {};
-	int len = zread(n, buf, 255);
+	int len = net_read(n, buf, 255);
 	if( len < 0 ) {
 		err("net_read error");
 		_error = 1;

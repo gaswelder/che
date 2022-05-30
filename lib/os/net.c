@@ -24,17 +24,17 @@ typedef {
 	sockaddr_t ai_addr;
 	socklen_t addrlen;
 	char addrstr[300];
-} conn_t;
+} net_t;
 
 pub const char *net_error() {
 	return error;
 }
 
-pub const char *net_addr(conn_t *c) {
+pub const char *net_addr(net_t *c) {
 	return c->addrstr;
 }
 
-pub int net_read(conn_t *c, char *buf, size_t size) {
+pub int net_read(net_t *c, char *buf, size_t size) {
 	return recv(c->sock, buf, size, 0);
 }
 
@@ -42,7 +42,7 @@ pub int net_read(conn_t *c, char *buf, size_t size) {
  * Writes 'n' bytes from 'buf' to connection 'c'.
  * Returns 'n' on success or -1 on failure.
  */
-pub int net_write(conn_t *c, const char *buf, size_t n)
+pub int net_write(net_t *c, const char *buf, size_t n)
 {
 	/*
 	 * MSG_NOSIGNAL prevents SIGPIPE signals
@@ -65,9 +65,13 @@ pub int net_write(conn_t *c, const char *buf, size_t n)
 	return n;
 }
 
-pub conn_t *net_conn(const char *proto, const char *addr)
+/**
+ * Creates a connection with the protocol `proto` to the destination address
+ * `addr`. Returns NULL on failure.
+ */
+pub net_t *net_open(const char *proto, const char *addr)
 {
-	conn_t *c = newconn(proto, addr);
+	net_t *c = newconn(proto, addr);
 	if(!c) {
 		return NULL;
 	}
@@ -81,9 +85,9 @@ pub conn_t *net_conn(const char *proto, const char *addr)
 	return c;
 }
 
-pub conn_t *net_listen(const char *proto, const char *addr)
+pub net_t *net_listen(const char *proto, const char *addr)
 {
-	conn_t *c = newconn(proto, addr);
+	net_t *c = newconn(proto, addr);
 	if(!c) {
 		return NULL;
 	}
@@ -110,9 +114,9 @@ pub conn_t *net_listen(const char *proto, const char *addr)
 	return c;
 }
 
-pub conn_t *net_accept(conn_t *l)
+pub net_t *net_accept(net_t *l)
 {
-	conn_t *c = calloc(1, sizeof(conn_t));
+	net_t *c = calloc(1, sizeof(net_t));
 	if(!c) {
 		error = "no memory for new socket";
 		return NULL;
@@ -137,7 +141,7 @@ pub conn_t *net_accept(conn_t *l)
 	return c;
 }
 
-pub void net_close(conn_t *c)
+pub void net_close(net_t *c)
 {
 	close(c->sock);
 	free(c);
@@ -147,7 +151,7 @@ pub void net_close(conn_t *c)
  * Returns true if there is data to be read
  * from the given connection.
  */
-pub int net_incoming(conn_t *c)
+pub int net_incoming(net_t *c)
 {
 	fd_set read = {0};
 	FD_ZERO(&read);
@@ -168,7 +172,7 @@ pub int net_incoming(conn_t *c)
 	return 0;
 }
 
-conn_t *newconn(const char *proto, const char *addr)
+net_t *newconn(const char *proto, const char *addr)
 {
 	/*
 	 * Only TCP is implemented
@@ -178,7 +182,7 @@ conn_t *newconn(const char *proto, const char *addr)
 		return NULL;
 	}
 
-	conn_t *c = calloc(1, sizeof(conn_t));
+	net_t *c = calloc(1, sizeof(net_t));
 	if( !c ) {
 		error = "malloc failed";
 		return NULL;
@@ -197,7 +201,7 @@ conn_t *newconn(const char *proto, const char *addr)
 	return c;
 }
 
-int getsock(conn_t *c, const char *addr)
+int getsock(net_t *c, const char *addr)
 {
 	/*
 	 * Split the address into a hostname and a portname
@@ -236,7 +240,7 @@ int getsock(conn_t *c, const char *addr)
 	return 1;
 }
 
-int parseaddr(conn_t *c, const char *addr)
+int parseaddr(net_t *c, const char *addr)
 {
 	int i = 0;
 	const char *p = addr;
@@ -288,7 +292,7 @@ int format_address(sockaddr_t *a, char *buf, size_t n)
  * Reads a string from a net connection.
  * Behaves like fgets.
  */
-pub char *net_gets(char *s, int size, conn_t *c)
+pub char *net_gets(char *s, int size, net_t *c)
 {
 	int pos = 0;
 	// read at most size-1 chars
@@ -327,7 +331,7 @@ pub char *net_gets(char *s, int size, conn_t *c)
  * Writes a string to a net connection.
  * Behaves like fputs.
  */
-pub int net_puts(const char *s, conn_t *c)
+pub int net_puts(const char *s, net_t *c)
 {
 	size_t len = strlen(s);
 	int r = net_write(c, s, len);
@@ -343,7 +347,7 @@ pub int net_puts(const char *s, conn_t *c)
  * Writes a formatted string to the connection.
  * Behaves like fprintf.
  */
-pub void net_printf(conn_t *c, const char *fmt, ...)
+pub void net_printf(net_t *c, const char *fmt, ...)
 {
 	va_list args = {0};
 	va_start(args, fmt);
