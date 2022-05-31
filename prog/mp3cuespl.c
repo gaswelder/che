@@ -15,9 +15,13 @@ int main(int argc, char *argv[])
 	char *s = readfile_str(cuepath);
 	if(!s) fatal("Couldn't read %s", cuepath);
 
-	cue_t *c = cue_parse(s);
+	char *err = NULL;
+	cue_t *c = cue_parse(s, &err);
 	free(s);
-	if(!c) fatal("Couldn't parse the cue file");
+	if (!c) {
+		fprintf(stderr, "Couldn't parse the cue file: %s\n", err);
+		return 1;
+	}
 
 	mp3file *m = mp3open(mp3path);
 	if(!m) fatal("Couldn't open '%s'", mp3path);

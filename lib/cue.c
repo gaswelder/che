@@ -52,18 +52,38 @@ pub void cue_free(cue_t *c)
 	free(c);
 }
 
-/*
- * Parses given string, returns a 'cue_t' pointer.
- * Returns NULL on memory error.
+char __error[1000] = {};
+
+/**
+ * Returns a pointer to a static buffer with the given formatted message.
+ * If the message is too long, it's truncated.
  */
-pub cue_t *cue_parse(const char *s)
+char *makeerr(const char *fmt, ...) {
+	va_list l = {0};
+	va_start(l, fmt);
+	vsnprintf(__error, sizeof(__error)-1, fmt, l);
+	va_end(l);
+	return __error;
+}
+
+/*
+ * Parses the given string, returns a 'cue_t' pointer.
+ * Returns NULL on error and sets `err` to point to an error message.
+ */
+pub cue_t *cue_parse(const char *s, char **err)
 {
 	context_t c = {};
 
 	c.buf = buf_new(s);
+	if (!c.buf) {
+		*err = strerror(errno);
+		return NULL;
+	}
+
 	cue_t *cue = calloc(1, sizeof(cue_t));
-	if (!c.buf || !cue) {
-		if (c.buf) buf_free(c.buf);
+	if (!cue) {
+		buf_free(c.buf);
+		*err = strerror(errno);
 		return NULL;
 	}
 
@@ -72,9 +92,11 @@ pub cue_t *cue_parse(const char *s)
 	 */
 	if((uint8_t) buf_peek(c.buf) == 0xEF) {
 		buf_get(c.buf);
-		if((uint8_t) buf_get(c.buf) != 0xBB
-			|| (uint8_t) buf_get(c.buf) != 0xBF) {
-			fatal("Unknown byte-order mark");
+		if((uint8_t) buf_get(c.buf) != 0xBB || (uint8_t) buf_get(c.buf) != 0xBF) {
+			free(cue);
+			buf_free(c.buf);
+			*err = "Unknown byte-order mark";
+			return NULL;
 		}
 	}
 
@@ -97,15 +119,25 @@ pub cue_t *cue_parse(const char *s)
 		read_command(&c);
 		while(strcmp(c.cmd, "TRACK") == 0) {
 			if(cue->ntracks == MAXTRACKS) {
-				fatal("Too many tracks (limit = %d)", MAXTRACKS);
+				free(cue);
+				buf_free(c.buf);
+				*err = makeerr("too many tracks (limit = %d)", MAXTRACKS);
+				return NULL;
 			}
-			read_track(&c, &cue->tracks[cue->ntracks]);
+			if (!read_track(&c, &cue->tracks[cue->ntracks], err)) {
+				free(cue);
+				buf_free(c.buf);
+				return NULL;
+			}
 			cue->ntracks++;
 		}
 	}
 
 	if(buf_more(c.buf)) {
-		fatal("Unexpected command: %s", c.cmd);
+		free(cue);
+		buf_free(c.buf);
+		*err = makeerr("unexpected command: '%s'", c.cmd);
+		return NULL;
 	}
 
 	buf_free(c.buf);
@@ -122,11 +154,11 @@ const char *track_props[] = {
 	NULL
 };
 
-void read_track(context_t *c, cuetrack_t *track)
+bool read_track(context_t *c, cuetrack_t *track, char **err)
 {
 	skip_line(c->buf);
 
-	char val[1000] = "";
+	char val[500] = "";
 
 	while(1) {
 		read_command(c);
@@ -147,7 +179,8 @@ void read_track(context_t *c, cuetrack_t *track)
 			 * Cut off double quotes
 			 */
 			if(val[0] != '"') {
-				fatal("Double quotes expected in %s", val);
+				*err = makeerr("double quotes expected in %s", val);
+				return false;
 			}
 			char *p = val + strlen(val);
 			while(p > val) {
@@ -168,19 +201,22 @@ void read_track(context_t *c, cuetrack_t *track)
 			unsigned frames = 0;
 			int n = sscanf(val, "%u %u:%u:%u", &num, &min, &sec, &frames);
 			if(n != 4) {
-				fatal("Couldn't parse index: %s", val);
+				*err = makeerr("couldn't parse index: %s", val);
+				return false;
 			}
 			if(num == 0) {
 				continue;
 			}
 			if(num != 1) {
-				fatal("Unexpected index number in %s", val);
+				*err = makeerr("unexpected index number in %s", val);
+				return false;
 			}
 			const int us = 1000000;
 			track->pos_usec = frames * us / 75 + sec * us + 60 * min * us;
 			continue;
 		}
 	}
+	return true;
 }
 
 /*
