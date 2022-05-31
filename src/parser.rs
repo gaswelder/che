@@ -303,7 +303,7 @@ fn parse_atom(lexer: &mut Lexer, typenames: &Vec<String>) -> Result<Expression, 
 
     if next == "(" {
         lexer.get();
-        let expr = parse_expression(lexer, 0, typenames).unwrap();
+        let expr = parse_expression(lexer, 0, typenames)?;
         expect(lexer, ")", None)?;
         return Ok(Expression::Expression(Box::new(expr)));
     }
