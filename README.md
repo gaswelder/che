@@ -188,3 +188,8 @@ int main() {
 	int values[3] = {1, 2, 3};
 }
 ```
+
+## Private enums and typedefs
+
+Enums and typedefs may be marked `pub` to become importable. By default all
+`enum` and `typedef` declarations are private.
