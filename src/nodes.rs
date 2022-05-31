@@ -190,7 +190,7 @@ pub enum ForInit {
 #[derive(Debug, Clone)]
 pub struct LoopCounterDeclaration {
     pub type_name: Type,
-    pub name: String,
+    pub form: Form,
     pub value: Expression,
 }
 

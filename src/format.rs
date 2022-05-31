@@ -268,7 +268,7 @@ fn format_for(node: &For) -> String {
         ForInit::LoopCounterDeclaration(x) => format!(
             "{} {} = {}",
             format_type(&x.type_name),
-            x.name,
+            format_form(&x.form),
             format_expression(&x.value)
         ),
     };

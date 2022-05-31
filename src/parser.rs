@@ -589,12 +589,12 @@ fn parse_for(lexer: &mut Lexer, typenames: &Vec<String>) -> Result<For, String> 
         && is_type(&lexer.peek().unwrap().content.as_ref().unwrap(), typenames)
     {
         let type_name = parse_type(lexer, None)?;
-        let name = parse_identifier(lexer)?;
+        let form = parse_form(lexer, typenames)?;
         expect(lexer, "=", None)?;
         let value = parse_expression(lexer, 0, typenames)?;
         init = ForInit::LoopCounterDeclaration(LoopCounterDeclaration {
             type_name,
-            name,
+            form,
             value,
         });
     } else {
