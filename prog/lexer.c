@@ -1,7 +1,7 @@
-import "parsebuf"
-import "string"
-import "strutil"
-import "json"
+#import parsebuf
+#import string
+#import strutil
+#import json
 
 /*
  * Sorted by length, longest first.

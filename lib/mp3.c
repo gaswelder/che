@@ -7,8 +7,8 @@
  * http://mpgedit.org/mpgedit/mpeg_format/mpeghdr.htm
  */
 
-import "cli"
-import "bitreader"
+#import cli
+#import bitreader
 
 #define L3 1
 

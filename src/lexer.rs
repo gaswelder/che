@@ -44,12 +44,20 @@ pub fn read_file(filename: &str) -> Result<Vec<Token>, String> {
 
 pub fn read_token(buf: &mut Buf) -> Option<Token> {
     buf.read_set(SPACES.to_string());
-
     if buf.ended() {
         return None;
     }
 
     let pos = buf.pos();
+
+    if buf.skip_literal("#import") {
+        buf.read_set(SPACES.to_string());
+        return Some(Token {
+            kind: "import".to_string(),
+            content: Some(buf.skip_until('\n').trim().to_string()),
+            pos,
+        });
+    }
 
     if buf.peek().unwrap() == '#' {
         return Some(Token {
@@ -204,8 +212,8 @@ fn read_word(buf: &mut Buf) -> Token {
     }
 
     let keywords = [
-        "default", "typedef", "struct", "import", "union", "const", "return", "switch", "sizeof",
-        "while", "case", "enum", "else", "for", "pub", "if",
+        "default", "typedef", "struct", "union", "const", "return", "switch", "sizeof", "while",
+        "case", "enum", "else", "for", "pub", "if",
     ];
 
     if keywords.contains(&word.as_str()) {
@@ -394,8 +402,8 @@ mod tests {
         }
 
         let keywords = [
-            "default", "typedef", "struct", "import", "union", "const", "return", "switch",
-            "sizeof", "while", "case", "enum", "else", "for", "pub", "if",
+            "default", "typedef", "struct", "union", "const", "return", "switch", "sizeof",
+            "while", "case", "enum", "else", "for", "pub", "if",
         ];
         for kw in &keywords {
             let t = _read_token(format!("{} 123", kw).as_str());

@@ -1,4 +1,4 @@
-import "tiff"
+#import tiff
 
 int usage() {
 	puts("Usage: tiff <info|dump> <filename>");

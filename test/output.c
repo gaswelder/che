@@ -1,5 +1,5 @@
-import "zio"
-import "cli"
+#import zio
+#import cli
 
 /*
  * A test program that copies a file into a "mem" buffer

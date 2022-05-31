@@ -1,6 +1,6 @@
-import "prng/mt"
-import "opt"
-import "cli"
+#import prng/mt
+#import opt
+#import cli
 
 int main(int argc, char **argv)
 {

@@ -1,4 +1,4 @@
-import "os/dir"
+#import os/dir
 
 int main(int argc, char *argv[])
 {

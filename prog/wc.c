@@ -1,5 +1,5 @@
-import "prng/lcg"
-import "clip/map"
+#import prng/lcg
+#import clip/map
 
 int main()
 {

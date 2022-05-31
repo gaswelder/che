@@ -8,7 +8,7 @@
  * 'next' and 'leave'.
  */
 
-import "cli"
+#import cli
 
 #define MAXNAME 16 // max name length
 #define MAXSTACK 4 // max nesting level

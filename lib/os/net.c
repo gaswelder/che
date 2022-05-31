@@ -7,7 +7,7 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-import "cli"
+#import cli
 
 const char *error = "no error";
 typedef struct sockaddr sockaddr_t;

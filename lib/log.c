@@ -1,4 +1,4 @@
-import "cli"
+#import cli
 
 typedef struct tm tm_t;
 

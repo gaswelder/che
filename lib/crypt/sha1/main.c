@@ -1,4 +1,4 @@
-import "zio"
+#import zio
 
 typedef uint32_t sha1sum[5];
 

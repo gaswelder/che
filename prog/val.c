@@ -1,4 +1,4 @@
-import "cli"
+#import cli
 
 enum {
 	V_UNK,

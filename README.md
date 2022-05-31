@@ -93,7 +93,7 @@ explicit with import statements:
 
     // main.c:
     ----------------
-    import "module2"
+    #import module2
 
     int main() {
     	foo();

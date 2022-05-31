@@ -1,4 +1,4 @@
-import "crypt/sha1"
+#import crypt/sha1
 
 int main()
 {

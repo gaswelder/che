@@ -1,5 +1,5 @@
-import "cli"
-import "clip/arr"
+#import cli
+#import clip/arr
 
 int main()
 {

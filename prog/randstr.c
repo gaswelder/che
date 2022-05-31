@@ -1,5 +1,5 @@
-import "prng/mt"
-import "opt"
+#import prng/mt
+#import opt
 
 const char alpha[] = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890";
 

@@ -2,11 +2,11 @@
  * This is a port of the [https://github.com/skeeto/sort-circle]("sort-circle demo by skeeto).
  */
 
-import "opt"
-import "cli"
-import "ppm"
-import "prng/pcg32"
-import "fileutil"
+#import opt
+#import cli
+#import ppm
+#import prng/pcg32
+#import fileutil
 
 /*
  * The array that's being shuffled and sorted.

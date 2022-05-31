@@ -1,5 +1,5 @@
-import "bitreader"
-import "cli"
+#import bitreader
+#import cli
 
 /*
  * Reads and prints a file using the bitreader

@@ -1,8 +1,8 @@
 /*
  * CUE format parser
  */
-import "cli"
-import "parsebuf"
+#import cli
+#import parsebuf
 
 /*
  * http://wiki.hydrogenaud.io/index.php?title=Cue_sheet

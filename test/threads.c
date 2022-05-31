@@ -1,4 +1,4 @@
-import "os/threads"
+#import os/threads
 
 int main()
 {

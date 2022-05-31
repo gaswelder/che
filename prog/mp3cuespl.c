@@ -1,7 +1,7 @@
-import "mp3"
-import "cue"
-import "fileutil"
-import "cli"
+#import mp3
+#import cue
+#import fileutil
+#import cli
 
 int main(int argc, char *argv[])
 {

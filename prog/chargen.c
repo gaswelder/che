@@ -7,9 +7,9 @@
 
 // chargen -l <listen addr>
 
-import "os/net"
-import "cli"
-import "log"
+#import os/net
+#import cli
+#import log
 
 typedef {
 	net_t *conn;

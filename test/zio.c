@@ -1,5 +1,5 @@
-import "zio"
-import "cli"
+#import zio
+#import cli
 
 int main(int argc, char **argv)
 {

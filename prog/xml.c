@@ -1,5 +1,5 @@
-import "cli"
-import "xml"
+#import cli
+#import xml
 
 int main()
 {

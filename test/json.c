@@ -1,5 +1,5 @@
-import "json"
-import "cli"
+#import json
+#import cli
 
 const char *test = "{\n\"defaults\": {\n"
 	"\t\t\"login\": \"foo\",\n"

@@ -1,4 +1,4 @@
-import "string"
+#import string
 
 int main()
 {

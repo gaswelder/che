@@ -770,13 +770,6 @@ fn parse_module_object(lexer: &mut Lexer, typenames: &Vec<String>) -> Result<Mod
     return Err("unexpected input".to_string());
 }
 
-fn parse_import(lexer: &mut Lexer) -> Result<Import, String> {
-    expect(lexer, "import", None)?;
-    let path = expect(lexer, "string", None).unwrap().content.unwrap();
-
-    return Ok(Import { path });
-}
-
 fn parse_compat_macro(lexer: &mut Lexer) -> Result<CompatMacro, String> {
     let content = expect(lexer, "macro", None)
         .unwrap()
@@ -1036,10 +1029,10 @@ fn parse_module(lexer: &mut Lexer, typenames: Vec<String>) -> Result<Vec<ModuleO
     while lexer.more() {
         match lexer.peek().unwrap().kind.as_str() {
             "import" => {
-                let import = parse_import(lexer)?;
-                let p = import.path.clone();
-                elements.push(ModuleObject::Import(import));
-
+                let tok = lexer.get().unwrap();
+                let path = tok.content.unwrap();
+                let p = path.clone();
+                elements.push(ModuleObject::Import(Import { path }));
                 let module = get_module(&p)?;
                 for element in module.elements {
                     match element {

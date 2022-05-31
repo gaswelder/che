@@ -1,8 +1,8 @@
-import "clip/arr"
-import "strutil"
-import "parsebuf"
-import "string"
-import "mem"
+#import clip/arr
+#import strutil
+#import parsebuf
+#import string
+#import mem
 
 enum {
 	JSON_UND,

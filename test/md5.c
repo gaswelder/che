@@ -1,4 +1,4 @@
-import "crypt/md5"
+#import crypt/md5
 
 typedef {
 	const char *d;

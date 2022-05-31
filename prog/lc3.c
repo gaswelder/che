@@ -2,8 +2,8 @@
  * LC-3 emulator from https://justinmeiners.github.io/lc3-vm/
  */
 #include <signal.h>
-import "os/term"
-import "os/misc"
+#import os/term
+#import os/misc
 
 /**
  * 10 registers with their keys.

@@ -1,4 +1,4 @@
-import "mem"
+#import mem
 
 /*
  * The internal "machinery" processes a stream of 64-byte blocks.

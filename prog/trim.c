@@ -1,9 +1,9 @@
-import "mem"
-import "opt"
-import "os/dir"
-import "fileutil"
-import "strutil"
-import "cli"
+#import mem
+#import opt
+#import os/dir
+#import fileutil
+#import strutil
+#import cli
 
 enum {
 	L_SAME,

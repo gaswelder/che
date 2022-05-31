@@ -1,5 +1,5 @@
-import "cli"
-import "mp3"
+#import cli
+#import mp3
 
 /*
  * mp3spl <mp3> <time>,<time>,...

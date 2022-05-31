@@ -1,4 +1,4 @@
-import "cli"
+#import cli
 
 int usage()
 {

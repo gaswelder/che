@@ -1,6 +1,6 @@
-import "os/net"
-import "opt"
-import "cli"
+#import os/net
+#import opt
+#import cli
 
 int main(int argc, char **argv)
 {
