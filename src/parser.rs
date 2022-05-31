@@ -1,5 +1,6 @@
 use crate::lexer::{new, Lexer, Token};
 use crate::nodes::*;
+use std::env;
 use std::path::Path;
 
 fn is_op(token_type: &str) -> bool {
@@ -983,7 +984,8 @@ pub fn get_module(name: &String) -> Result<Module, String> {
     let module_path = if name.ends_with(".c") {
         name.clone()
     } else {
-        format!("lib/{}.c", name)
+        let path = env::var("CHELANG_HOME").unwrap_or(String::from("."));
+        format!("{}/lib/{}.c", path, name)
     };
 
     if std::fs::metadata(&module_path).is_err() {
