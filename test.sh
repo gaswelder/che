@@ -11,7 +11,7 @@ cargo build || exit 1
 for i in prog/*.c; do
 	name=`basename $i .c`
 	echo $name
-	target/debug/che build "$i" "prog/$name.out"
+	target/debug/che build "$i" "prog/$name.out" || exit 1
 	if [ -f "prog/$name.test.sh" ]; then
 		cd prog
 		./$name.test.sh && echo "OK $name" || exit 1

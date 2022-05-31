@@ -15,7 +15,7 @@ enum {
 	JSON_NULL
 };
 
-typedef {
+pub typedef {
 	int type;
 	union {
 		char *str;
@@ -669,7 +669,7 @@ void *error(parser_t *p, const char *fmt, ...)
  * also "string" and "number" tokens that have additional
  * value.
  */
-typedef {
+pub typedef {
 	/*
 	 * The "type" will be the same as the character in case
 	 * of tokens like '{' or ','. For special cases it will

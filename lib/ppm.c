@@ -2,9 +2,9 @@
 
 // Pipe the output into mpv
 
-typedef { float r, g, b; } rgb_t;
+pub typedef { float r, g, b; } rgb_t;
 
-typedef {
+pub typedef {
     rgb_t *frame;
     int width, height;
 } ppm_t;

@@ -742,6 +742,11 @@ fn parse_module_object(lexer: &mut Lexer, typenames: &Vec<String>) -> Result<Mod
     if lexer.follows("enum") {
         return Ok(ModuleObject::Enum(parse_enum(lexer, is_pub)?));
     }
+    if lexer.follows("typedef") {
+        return Ok(ModuleObject::Typedef(parse_typedef(
+            is_pub, lexer, typenames,
+        )?));
+    }
     let type_name = parse_type(lexer, None)?;
     let form = parse_form(lexer, typenames)?;
     if lexer.peek().unwrap().kind == "(" {
@@ -789,7 +794,11 @@ fn parse_compat_macro(lexer: &mut Lexer) -> Result<CompatMacro, String> {
     });
 }
 
-fn parse_typedef(lexer: &mut Lexer, typenames: &Vec<String>) -> Result<Typedef, String> {
+fn parse_typedef(
+    is_pub: bool,
+    lexer: &mut Lexer,
+    typenames: &Vec<String>,
+) -> Result<Typedef, String> {
     // typedef void *f(int a)[20];
     // typedef foo bar;
     // typedef struct foo foo_t;
@@ -802,7 +811,11 @@ fn parse_typedef(lexer: &mut Lexer, typenames: &Vec<String>) -> Result<Typedef, 
     }
     let form = parse_typedef_form(lexer)?;
     expect(lexer, ";", Some("typedef"))?;
-    return Ok(Typedef { type_name, form });
+    return Ok(Typedef {
+        is_pub,
+        type_name,
+        form,
+    });
 }
 
 fn parse_typedef_form(lexer: &mut Lexer) -> Result<TypedefForm, String> {
@@ -1044,9 +1057,6 @@ fn parse_module(lexer: &mut Lexer, typenames: Vec<String>) -> Result<Vec<ModuleO
                         _ => {}
                     }
                 }
-            }
-            "typedef" => {
-                elements.push(ModuleObject::Typedef(parse_typedef(lexer, &types)?));
             }
             "macro" => {
                 elements.push(ModuleObject::CompatMacro(parse_compat_macro(lexer)?));

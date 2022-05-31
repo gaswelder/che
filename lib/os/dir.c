@@ -1,7 +1,7 @@
 #include <dirent.h>
 #type DIR
 
-typedef {
+pub typedef {
 	DIR *d;
 } dir_t;
 

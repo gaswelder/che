@@ -7,21 +7,21 @@
 /*
  * The map
  */
-typedef {
+pub typedef {
 	__table *t;
 } map;
 
 /*
  * An element of the hash table
  */
-typedef {
+pub typedef {
 	__item *next;
 	char key[MAXKEY];
 	void *value;
 	int intval;
 } __item;
 
-typedef {
+pub typedef {
 	int nitems; // how many items
 	int nbuckets; // how many buckets
 	__item **buckets;

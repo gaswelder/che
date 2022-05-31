@@ -4,9 +4,9 @@
 #type pthread_cond_t
 #include <pthread.h>
 
-typedef void *thr_func(void *);
+pub typedef void *thr_func(void *);
 
-typedef {
+pub typedef {
 	pthread_t t;
 } thr_t;
 
@@ -45,11 +45,11 @@ pub bool thr_detach(thr_t *t)
 	return r == 0;
 }
 
-typedef {
+pub typedef {
 	pthread_mutex_t m;
 } mtx_t;
 
-typedef {
+pub typedef {
 	pthread_cond_t c;
 } cnd_t;
 

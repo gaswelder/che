@@ -1,4 +1,4 @@
-typedef {
+pub typedef {
 	char *data;
 	size_t pos; // current position, <= datalen
 	size_t datalen; // actual data size, <= size

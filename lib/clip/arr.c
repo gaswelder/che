@@ -1,4 +1,4 @@
-typedef {
+pub typedef {
 	size_t len;
 	size_t maxlen;
 	union {

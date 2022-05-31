@@ -1,6 +1,6 @@
 #import cli
 
-typedef struct tm tm_t;
+pub typedef struct tm tm_t;
 
 pub void logmsg(const char *fmt, ...)
 {

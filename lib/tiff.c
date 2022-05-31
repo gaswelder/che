@@ -26,7 +26,7 @@ enum {
 #define TIFF_RowsPerStrip 278
 #define TIFF_StripByteCounts 279
 
-typedef {
+pub typedef {
 	int tag;
 	int type;
 	size_t count;
@@ -34,12 +34,12 @@ typedef {
 	TIFFFile *file;
 } TIFFEntry;
 
-typedef {
+pub typedef {
 	TIFFEntry **entries;
 	int entries_count;
 } TIFFDirectory;
 
-typedef {
+pub typedef {
 	int endiannes;
 	FILE *file;
 	TIFFDirectory **directories;

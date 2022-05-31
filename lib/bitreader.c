@@ -1,5 +1,5 @@
 
-typedef {
+pub typedef {
 	FILE *f;
 	uint8_t byte;
 	int bytepos;

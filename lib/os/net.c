@@ -10,12 +10,12 @@
 #import cli
 
 const char *error = "no error";
-typedef struct sockaddr sockaddr_t;
+pub typedef struct sockaddr sockaddr_t;
 typedef struct sockaddr_in sockaddr_in_t;
 typedef struct addrinfo addrinfo_t;
 typedef struct timeval timeval_t;
 
-typedef {
+pub typedef {
 	int sock;
 	char host[256];
 	char port[16];

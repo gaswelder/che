@@ -11,7 +11,7 @@
 /*
  * Track info: title and position in microseconds
  */
-typedef {
+pub typedef {
 	char title[300];
 	uint64_t pos_usec;
 } cuetrack_t;
@@ -22,7 +22,7 @@ typedef {
  */
 #define MAXTRACKS 100
 
-typedef {
+pub typedef {
 	cuetrack_t tracks[MAXTRACKS];
 	int ntracks;
 } cue_t;

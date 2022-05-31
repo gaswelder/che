@@ -18,9 +18,8 @@ pub fn translate(module: &Module) -> CompatModule {
         }
     }
 
-    // Translate each node into a C node. Some nodes are valid C nodes
-    // already, but some are not and have to be converted to their
-    // "Compat..." analogs.
+    // Translate each node into a C node. Some nodes are valid C nodes already,
+    // but some are not and have to be converted to their "Compat..." analogs.
     let mut elements: Vec<CompatModuleObject> = Vec::new();
     for element in &module.elements {
         for node in translate_node(element) {
@@ -49,7 +48,7 @@ pub fn translate(module: &Module) -> CompatModule {
             CompatModuleObject::CompatInclude(_) => 0,
             CompatModuleObject::CompatMacro(_) => 0,
             CompatModuleObject::CompatStructForwardDeclaration(_) => 1,
-            CompatModuleObject::Typedef(_) => 2,
+            CompatModuleObject::Typedef { .. } => 2,
             CompatModuleObject::CompatStructDefinition(_) => 3,
             CompatModuleObject::Enum { .. } => 3,
             CompatModuleObject::CompatFunctionForwardDeclaration(_) => 4,
@@ -57,8 +56,10 @@ pub fn translate(module: &Module) -> CompatModule {
         };
 
         match &element {
-            CompatModuleObject::Typedef(x) => {
-                let s = format::format_typedef(&x);
+            CompatModuleObject::Typedef {
+                type_name, form, ..
+            } => {
+                let s = format::format_typedef(&type_name, &form);
                 if set.contains(&s) {
                     continue;
                 }
@@ -157,7 +158,8 @@ fn translate_typedef(node: &Typedef) -> Vec<CompatModuleObject> {
                     name: struct_name.clone(),
                     fields: fields,
                 }),
-                CompatModuleObject::Typedef(Typedef {
+                CompatModuleObject::Typedef {
+                    is_pub: node.is_pub,
                     type_name: TypedefTarget::Type(Type {
                         is_const: false,
                         type_name: format!("struct {}", struct_name.clone()),
@@ -168,13 +170,14 @@ fn translate_typedef(node: &Typedef) -> Vec<CompatModuleObject> {
                         params: None,
                         alias: node.form.alias.clone(),
                     },
-                }),
+                },
             ]
         }
-        _ => vec![CompatModuleObject::Typedef(Typedef {
+        _ => vec![CompatModuleObject::Typedef {
+            is_pub: node.is_pub,
             type_name: node.type_name.clone(),
             form: node.form.clone(),
-        })],
+        }],
     }
 }
 
@@ -196,7 +199,11 @@ fn get_module_synopsis(module: CompatModule) -> Vec<CompatModuleObject> {
 
     for element in module.elements {
         match element {
-            CompatModuleObject::Typedef(x) => elements.push(CompatModuleObject::Typedef(x)),
+            CompatModuleObject::Typedef { is_pub, .. } => {
+                if is_pub {
+                    elements.push(element.clone())
+                }
+            }
             CompatModuleObject::CompatStructDefinition(x) => {
                 elements.push(CompatModuleObject::CompatStructDefinition(x))
             }

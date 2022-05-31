@@ -317,6 +317,7 @@ pub struct CompatMacro {
 
 #[derive(Debug, Clone)]
 pub struct Typedef {
+    pub is_pub: bool,
     pub type_name: TypedefTarget,
     pub form: TypedefForm,
 }
@@ -373,7 +374,11 @@ pub struct CompatModule {
 #[derive(Debug, Clone)]
 pub enum CompatModuleObject {
     ModuleVariable(ModuleVariable),
-    Typedef(Typedef),
+    Typedef {
+        is_pub: bool,
+        type_name: TypedefTarget,
+        form: TypedefForm,
+    },
     CompatMacro(CompatMacro),
     CompatInclude(String),
     Enum {

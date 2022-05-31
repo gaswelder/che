@@ -6,9 +6,9 @@
 #include <sys/termios.h>
 #include <sys/mman.h>
 
-typedef struct termios _termios_t;
+pub typedef struct termios _termios_t;
 
-typedef {
+pub typedef {
     _termios_t original_state;
     _termios_t current_state;
     int fileno;

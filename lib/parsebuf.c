@@ -1,4 +1,4 @@
-typedef {
+pub typedef {
 	const char *s;
 	size_t pos;
 	size_t len;

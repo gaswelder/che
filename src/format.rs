@@ -488,19 +488,19 @@ fn format_switch(node: &Switch) -> String {
     );
 }
 
-pub fn format_typedef(node: &Typedef) -> String {
-    let mut form = node.form.stars.clone() + &node.form.alias;
-    if node.form.params.is_some() {
-        form += &format_anonymous_parameters(&node.form.params.as_ref().unwrap());
+pub fn format_typedef(type_name: &TypedefTarget, form: &TypedefForm) -> String {
+    let mut formstr = form.stars.clone() + &form.alias;
+    if form.params.is_some() {
+        formstr += &format_anonymous_parameters(&form.params.as_ref().unwrap());
     }
-    if node.form.size > 0 {
-        form += &format!("[{}]", node.form.size);
+    if form.size > 0 {
+        formstr += &format!("[{}]", form.size);
     }
-    let t = match &node.type_name {
+    let t = match &type_name {
         TypedefTarget::AnonymousStruct(x) => format_anonymous_struct(&x),
         TypedefTarget::Type(x) => format_type(&x),
     };
-    return format!("typedef {} {};\n", t, form);
+    return format!("typedef {} {};\n", t, formstr);
 }
 
 fn format_variable_declaration(node: &VariableDeclaration) -> String {
@@ -528,7 +528,9 @@ pub fn format_compat_module(node: &CompatModule) -> String {
     for e in &node.elements {
         s += &match e {
             CompatModuleObject::ModuleVariable(x) => format_module_variable(&x),
-            CompatModuleObject::Typedef(x) => format_typedef(&x),
+            CompatModuleObject::Typedef {
+                type_name, form, ..
+            } => format_typedef(&type_name, &form),
             CompatModuleObject::CompatMacro(x) => format_compat_macro(&x),
             CompatModuleObject::CompatInclude(x) => format!("#include {}\n", x),
             CompatModuleObject::Enum { members, .. } => {

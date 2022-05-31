@@ -24,14 +24,14 @@ int frequencies[] = {44100, 48000, 32000};
 const int frame_samples = 1152;
 
 
-typedef {
+pub typedef {
 	int bitrate;
 	int freq;
 	int mode;
 	bool padded;
 } header_t;
 
-typedef {
+pub typedef {
 	FILE *file;
 	const char *err;
 
@@ -46,7 +46,7 @@ typedef {
 	header_t h;
 } mp3file;
 
-typedef {
+pub typedef {
 	int min;
 	int sec;
 	uint64_t usec;

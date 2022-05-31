@@ -23,19 +23,19 @@ enum {
 	T_MONO // self-closing tag
 };
 
-typedef {
+pub typedef {
 	char name[MAXNAME];
 	char value[MAXVALUE];
 } __attr;
 
-typedef {
+pub typedef {
 	char name[MAXNAME];
 	int type;
 	__attr attrs[MAXATTRS];
 	int nattrs;
 } __tag;
 
-typedef {
+pub typedef {
 	// node we're at right now
 	__tag node;
 
