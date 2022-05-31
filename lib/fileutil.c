@@ -116,3 +116,42 @@ pub bool is_dir(const char *path)
 	}
 	return S_ISDIR(s.st_mode);
 }
+
+
+pub int append_file( const char *path_to, const char *path_from )
+{
+	FILE *from = fopen( path_from, "rb" );
+	if( !from ) {
+		return 0;
+	}
+
+	FILE *to = fopen( path_to, "ab" );
+	if( !to ) {
+		fclose( from );
+		return 0;
+	}
+
+	char buf[BUFSIZ] = {};
+	int ok = 1;
+	while( 1 ) {
+		size_t len = fread( buf, 1, sizeof(buf), from );
+		if( !len ) {
+			break;
+		}
+		if( fwrite( buf, 1, len, to ) < len ) {
+			ok = 0;
+			break;
+		}
+	}
+	fclose( from );
+	fclose( to );
+	return ok;
+}
+
+pub int file_exists( const char *path )
+{
+	FILE *f = fopen( path, "r" );
+	if( !f ) return 0;
+	fclose( f );
+	return 1;
+}

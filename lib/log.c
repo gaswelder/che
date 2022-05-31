@@ -1,13 +1,11 @@
-#import cli
+#import time
 
-pub typedef struct tm tm_t;
-
-pub void logmsg(const char *fmt, ...)
+pub bool logmsg(const char *fmt, ...)
 {
 	char timestamp[64] = "";
 
-	if (!date(timestamp, sizeof(timestamp), "%F %T")) {
-		fatal("date failed");
+	if (!time_format(timestamp, sizeof(timestamp), "%F %T")) {
+		return false;
 	}
 
 	fprintf(stderr, "%s ", timestamp);
@@ -17,11 +15,5 @@ pub void logmsg(const char *fmt, ...)
 	vfprintf(stderr, fmt, args);
 	va_end(args);
 	fputc('\n', stderr);
-}
-
-int date(char *buf, size_t size, const char *fmt)
-{
-	time_t t = time(NULL);
-	tm_t *ts = localtime(&t);
-	return t && strftime(buf, size, fmt, ts);
+	return true;
 }
