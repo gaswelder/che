@@ -1,4 +1,5 @@
 #import strutil
+#import panic
 
 int main() {
   item_t *input = read();
@@ -57,16 +58,6 @@ item_t *car(item_t *x) {
     panic("car: item not a list");
   }
   return x->data;
-}
-
-void panic(const char *fmt, ...)
-{
-	va_list l = {0};
-	va_start(l, fmt);
-	vfprintf(stderr, fmt, l);
-	va_end(l);
-	fprintf(stderr, "\r\n");
-	exit(1);
 }
 
 char *desc(item_t *x) {
