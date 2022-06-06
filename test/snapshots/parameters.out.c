@@ -1,6 +1,6 @@
 
 
-/* -------test/snapshots/brace.c------- */
+/* -------test/snapshots/parameters.c------- */
 
 
 /* -------------- */
@@ -20,15 +20,10 @@
 
 
 /* -------------- */
-static uint32_t rotate (uint32_t value, int bits);
+static double src_init (int *s, float *data);
 
 
 /* -------------- */
-int main () {
-	if (t && (a || b)) {
-		}
-
-}
-static uint32_t rotate (uint32_t value, int bits) {
-	return value << bits | value >> 32 - bits;
+static double src_init (int *s, float *data) {
+	return 1;
 }

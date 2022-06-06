@@ -1,5 +1,34 @@
 #import mem
 
+pub typedef uint32_t sha1sum_t[5];
+
+/*
+ * Computes digest for the string 's' and stores it in 'md'.
+ */
+pub bool sha1_str(const char *s, sha1sum_t h)
+{
+	return sha1_buf(s, strlen(s), h);
+}
+
+/*
+ * Computes digest for the data in the 'buf' and stores in 'md'.
+ */
+pub bool sha1_buf(const char *buf, size_t len, sha1sum_t h)
+{
+	mem_t *z = memopen();
+	int n = memwrite(z, buf, len);
+	memrewind(z);
+	assert((size_t) n == len);
+	sha1(z, h);
+	memclose(z);
+	return true;
+}
+
+pub void sha1_print(sha1sum_t h)
+{
+	printf("%08x %08x %08x %08x %08x", h[0], h[1], h[2], h[3], h[4]);
+}
+
 /*
  * The internal "machinery" processes a stream of 64-byte blocks.
  * The message itself is put in the base of that stream, followed by
@@ -11,7 +40,8 @@
  * 'message' is the actual data, its length is 'b' bits (b/8 bytes).
  * 'eof' byte is a bit '1' followed by seven zero bits.
  * 'zeros' is 'z' zero bytes.
- * 'length' is an 64-bit encoding of length of the message.
+ *
+ * 'length' is a 64-bit encoding of length of the message.
  * The number of zeros 'z' is such that end of stream happens to be at
  * a length mark that is a multiple of 512 bits (64 bytes).
  */
@@ -28,62 +58,30 @@ typedef {
 	bool more;
 } src_t;
 
-/*
- * Process the stream and put the digest in 'digest'.
- */
-void md5(mem_t *stream, uint32_t digest[4])
+void src_init(src_t *s, mem_t *data)
 {
-	src_t s = {
-		.stream = stream,
-		.length = 0,
-		.more_data = true,
-		.more = true
-	};
-
-	md5_init(digest);
-
-	/*
-	 * Process the stream in 16-word blocks.
-	 */
-	uint32_t block[16] = {0};
-	while (s.more)
-	{
-		for (int i = 0; i < 16; i++) {
-			block[i] = next_word(&s);
-		}
-		//print_block(block);
-		md5_feed(digest, block);
-	}
+	s->stream = data;
+	s->length = 0;
+	s->more_data = true;
+	s->more = true;
 }
 
-/*
-void print_block(uint32_t b[16])
+bool fill_block(src_t *s, uint32_t block[16])
 {
+	if(!s->more) return false;
 	for(int i = 0; i < 16; i++) {
-		printf("%08x (%u)", b[i], b[i]);
-		if((i+1) % 4 == 0) putchar('\n');
-		else putchar(' ');
+		block[i] = next_word(s);
 	}
+	return true;
 }
-*/
-/*
- * Regardless of the machine, the "md5" byte is big-endian (the highest
- * bit comes first), but a "word", which is 4 bytes, is little-endian
- * (the lowest byte comes first):
- *   |->|->|->|->|->|->|->|->|
- *   |<----------|<----------|
- */
+
 uint32_t next_word(src_t *s)
 {
 	uint32_t word = 0;
-	int pos = 0;
-	/*
-	 * Compose a word from bytes, least-significant byte first.
-	 */
 	for(int i = 0; i < 4; i++) {
 		uint8_t b = next_byte(s);
-		word += (b << pos);
-		pos += 8;
+		word *= 256;
+		word += b;
 	}
 	return word;
 }
@@ -91,7 +89,7 @@ uint32_t next_word(src_t *s)
 uint8_t next_byte(src_t *s)
 {
 	if(s->more_data) {
-		int c = zgetc(s->stream);
+		int c = memgetc(s->stream);
 		if(c != EOF) {
 			s->length += 8;
 			return (uint8_t) c;
@@ -138,29 +136,14 @@ void init_padding(src_t *s)
 	 * length mark and calculate how many zero bytes need to be added.
 	 */
 
-	/*
-	 * The length mark is a sequence of two words, low word first.
-	 */
 	int i = 0;
 	uint8_t b = 0;
-	uint32_t w = 0;
 	uint8_t *pos = (uint8_t *) &(s->lenbuf);
-
-	// low word
-	w = s->length & 0xFFFFFFFF;
-	for(i = 0; i < 4; i++) {
-		b = (w >> i*8) & 0xFF;
+	for(i = 0; i < 8; i++) {
+		b = (s->length >> (64-8 - 8*i)) & 0xFF;
 		*pos = b;
 		pos++;
 	}
-	// high word
-	w = (s->length >> 32) & 0xFFFFFFFF;
-	for(int i = 0; i < 4; i++) {
-		b = (w >> i*8) & 0xFF;
-		*pos = b;
-		pos++;
-	}
-
 	s->lenpos = 0;
 
 	/*
@@ -174,4 +157,105 @@ void init_padding(src_t *s)
 		n++;
 	}
 	s->zeros = 64 * n - 9 - l;
+}
+
+/*
+ * http://csrc.nist.gov/publications/fips/fips180-4/fips-180-4.pdf
+ */
+
+void sha1(mem_t *data, uint32_t sum[5])
+{
+	sum[0] = 0x67452301;
+	sum[1] = 0xefcdab89;
+	sum[2] = 0x98badcfe;
+	sum[3] = 0x10325476;
+	sum[4] = 0xc3d2e1f0;
+
+	src_t s = {};
+	uint32_t block[16] = {};
+
+	src_init(&s, data);
+	while(fill_block(&s, block)) {
+		sha1_feed(block, sum);
+	}
+}
+
+void sha1_feed(uint32_t block[16], uint32_t sum[5])
+{
+	/*
+	 * Prepare message schedule W[t]
+	 */
+	uint32_t W[80] = {};
+	int t = 0;
+	for(t = 0; t < 16; t++) {
+		W[t] = block[t];
+	}
+	for(t = 16; t < 80; t++) {
+		W[t] = ROTL(1, W[t-3] ^ W[t-8] ^ W[t-14] ^ W[t-16]);
+	}
+
+	uint32_t
+		a = sum[0],
+		b = sum[1],
+		c = sum[2],
+		d = sum[3],
+		e = sum[4];
+
+	uint32_t T = 0;
+	for(t = 0; t < 80; t++) {
+		T = ROTL(5, a) + f(t, b, c, d) + e + K(t) + W[t];
+		e = d;
+		d = c;
+		c = ROTL(30, b);
+		b = a;
+		a = T;
+	}
+
+	sum[0] += a;
+	sum[1] += b;
+	sum[2] += c;
+	sum[3] += d;
+	sum[4] += e;
+}
+
+/*
+ * Logical functions f[t]: f0, f1, ..., f79
+ */
+uint32_t f(int t, uint32_t x, y, z)
+{
+	if(t < 20) {
+		return (x & y) | ((~x) & z);
+	}
+	if(t < 40) {
+		return x ^ y ^ z;
+	}
+	if(t < 60) {
+		return (x & y) ^ (x & z) ^ (y & z);
+	}
+	return x ^ y ^ z;
+}
+
+/*
+ * Constants K[i]: K0, K1, ..., K79
+ */
+uint32_t K(int t)
+{
+	if(t < 20) {
+		return 0x5a827999;
+	}
+	if(t < 40) {
+		return 0x6ed9eba1;
+	}
+	if(t < 60) {
+		return 0x8f1bbcdc;
+	}
+	return 0xca62c1d6;
+}
+
+/*
+ * Rotate-left function
+ */
+uint32_t ROTL(int bits, uint32_t value)
+{
+	return (value << bits) | (value >> (32 - bits));
 }

@@ -1,6 +1,6 @@
 
 
-/* -------test/snapshots/brace.c------- */
+/* -------test/snapshots/enum.c------- */
 
 
 /* -------------- */
@@ -20,15 +20,11 @@
 
 
 /* -------------- */
-static uint32_t rotate (uint32_t value, int bits);
-
-
-/* -------------- */
-int main () {
-	if (t && (a || b)) {
-		}
-
-}
-static uint32_t rotate (uint32_t value, int bits) {
-	return value << bits | value >> 32 - bits;
-}
+enum {
+	T_ERR = 257,
+	T_TRUE,
+	T_FALSE,
+	T_NULL,
+	T_STR,
+	T_NUM
+};

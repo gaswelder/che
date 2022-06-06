@@ -13,13 +13,14 @@ typedef {
 	bool running;
 } control_t;
 
+#define N 4
+
 int main()
 {
 	mtx_t *lock = mtx_new();
 	cnd_t *cnd = cnd_new();
 
-	const int N = 4;
-	control_t args[N] = {0};
+	control_t args[4] = {0};
 	thr_t *t[N] = {0};
 
 	/*

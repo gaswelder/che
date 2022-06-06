@@ -1,5 +1,5 @@
-#import zio
-#import cli
+#import mem
+#import panic
 
 /*
  * A test program that copies a file into a "mem" buffer
@@ -9,17 +9,17 @@
 int main(int argc, char **argv)
 {
 	if(argc != 2) {
-		fatal("Usage: output <filename>");
+		panic("Usage: output <filename>");
 	}
 
 	FILE *f = fopen(argv[1], "rb");
 	if(!f) {
-		fatal("fopen failed");
+		panic("fopen failed");
 	}
 
-	zio *m = zopen("mem", "", "");
+	mem_t *m = memopen();
 	if(!m) {
-		fatal("zopen failed");
+		panic("memopen failed");
 	}
 
 	/*
@@ -31,9 +31,9 @@ int main(int argc, char **argv)
 		if(!len) {
 			break;
 		}
-		size_t r = zwrite(m, buf, len);
+		size_t r = memwrite(m, buf, len);
 		if(r < len) {
-			err("memwrite failed");
+			panic("memwrite failed");
 			break;
 		}
 	}
@@ -42,12 +42,12 @@ int main(int argc, char **argv)
 	/*
 	 * Rewind the buffer and output it.
 	 */
-	zrewind(m);
+	memrewind(m);
 	while(1) {
-		int c = zgetc(m);
+		int c = memgetc(m);
 		if(c == EOF) break;
 		printf("%c", c);
 	}
-	zclose(m);
+	memclose(m);
 	return 0;
 }

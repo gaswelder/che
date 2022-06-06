@@ -112,6 +112,7 @@ fn build(argv: &[String]) -> Result<(), String> {
         "-pedantic",
         "-pedantic-errors",
         "-fmax-errors=3",
+        "-Wno-parentheses",
         "-g",
     ]);
     for p in paths {

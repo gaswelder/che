@@ -2,9 +2,5 @@ bin/
 tmp/
 _heap/
 .vscode
-
-
-
-# Added by cargo
-
 /target
+*.out

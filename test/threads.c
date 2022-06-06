@@ -1,11 +1,12 @@
 #import os/threads
 
+#define N 16
+
 int main()
 {
 	/*
 	 * Create N threads, passing them different arguments.
 	 */
-	const int N = 16;
 	thr_t *t[N] = {0};
 	int args[N] = {0};
 	for(int i = 0; i < N; i++) {

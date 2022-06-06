@@ -240,19 +240,6 @@ fn format_anonymous_struct(node: &AnonymousStruct) -> String {
     return format!("{{\n{}}}", indent(&s));
 }
 
-// fn format_enum(node: &Enum) -> String {
-//     let mut s = String::new();
-//     if node.is_pub {
-//         s += "pub ";
-//     }
-//     s += "enum {\n";
-//     for id in &node.members {
-//         s += &format!("\t{},\n", format_enum_member(&id));
-//     }
-//     s += "}\n";
-//     return s;
-// }
-
 fn format_enum_member(node: &EnumMember) -> String {
     let mut s = node.id.clone();
     if node.value.is_some() {

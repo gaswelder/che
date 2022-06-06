@@ -1,6 +1,6 @@
 
 
-/* -------test/snapshots/brace.c------- */
+/* -------test/snapshots/union.c------- */
 
 
 /* -------------- */
@@ -20,15 +20,20 @@
 
 
 /* -------------- */
-static uint32_t rotate (uint32_t value, int bits);
+struct __foo_struct;
 
 
 /* -------------- */
-int main () {
-	if (t && (a || b)) {
-		}
+typedef struct __foo_struct foo;
 
-}
-static uint32_t rotate (uint32_t value, int bits) {
-	return value << bits | value >> 32 - bits;
-}
+
+/* -------------- */
+struct __foo_struct {
+	size_t len;
+	union {
+		int i;
+		void *v;
+	
+	} *vals;
+
+};
