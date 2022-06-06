@@ -3,6 +3,6 @@
 int main() {
     char *argv[] = {"/bin/ls", "exec.c", NULL};
     char *env[] = {NULL};
-    exec_result r = exec("/bin/ls", argv, env);
+    exec_result r = exec("/bin/ls", argv, env, stdin, stdout, stderr);
     printf("err = %s, exit status = %d\n", r.error, r.status);
 }
