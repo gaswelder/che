@@ -2,64 +2,79 @@
 #include <unistd.h>
 #include <sys/wait.h>
 
-pub typedef {
-    char *error;
-    int status;
-} exec_result;
+pub typedef { int pid; char *error; } exec_t;
+pub typedef { FILE *read, *write; } pipe_t;
+
+/*
+ * Creates a pipe for inter-process communication. One side of the pipe can be
+ * passed as a stream to the `exec` function. Don't forget to close the passed
+ * side of the pipe on the caller side to avoid deadlocks.
+ */
+pub pipe_t exec_makepipe() {
+    int fd[2] = {0};
+    pipe_t r = { .read = NULL, .write = NULL };
+    if (pipe(fd) == -1) {
+        return r;
+    }
+    r.read = fdopen(fd[0], "rb");
+    r.write = fdopen(fd[1], "wb");
+    return r;
+}
 
 /*
  * Executes the program at path `path` with given args and environment.
  * `in`, `out` and `err` specify standard streams. Pass `stdin`, `stdout` and
  * `stderr` for usual terminal output.
  */
-pub exec_result exec(char *path, *argv[], *env[], FILE *in, *out, *err) {
-    exec_result r = { .error = NULL, .status = 0 };
+pub exec_t *exec(char *path, *argv[], *env[], FILE *in, *out, *err) {
+    exec_t *r = calloc(1, sizeof(exec_t));
+    if (!r) {
+        return NULL;
+    }
 
-    pid_t pid = fork();
-    if (pid == -1) {
-        r.error = strerror(errno);
+    r->pid = fork();
+    if (r->pid == -1) {
+        r->error = strerror(errno);
+        return r;
+    }
+    if (r->pid) {
         return r;
     }
 
-    /*
-     * Parent
-     */
-    if (pid) {
-        if (waitpid(pid, &r.status, 0) != pid) {
-            r.error = strerror(errno);
-        }
-        return r;
-    }
-    
-    /*
-     * Child
-     */
+    free(r);
+    child(in, out, err, path, argv, env);
+    exit(123);
+}
 
+pub bool exec_wait(exec_t *r, int *status) {
+    bool ok = waitpid(r->pid, status, 0) == r->pid;
+    free(r);
+    return ok;
+}
+
+void child(FILE *in, *out, *err, char *path, **argv, **env) {
     /*
      * Replace standard streams with those given in the arguments.
      */
     if (in != stdin) {
         fclose(stdin);
         if (dup(fileno(in)) < 1) {
-            r.error = strerror(errno);
-            return r;
+            exit(errno);
         }
     }
     if (out != stdout) {
         fclose(stdout);
         if (dup(fileno(out)) < 1) {
-            r.error = strerror(errno);
-            return r;
+            exit(errno);
         }
     }
     if (err != stderr) {
         fclose(stderr);
         if (dup(fileno(err)) < 1) {
-            r.error = strerror(errno);
-            return r;
+            exit(errno);
         }
     }
     int rr = execve(path, argv, env);
-    fprintf(stderr, "execve '%s' failed: %s\n", path, strerror(errno));
+    fprintf(err, "execve '%s' failed: %s\n", path, strerror(errno));
     exit(rr);
 }

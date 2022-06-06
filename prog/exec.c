@@ -3,6 +3,12 @@
 int main() {
     char *argv[] = {"/bin/ls", "exec.c", NULL};
     char *env[] = {NULL};
-    exec_result r = exec("/bin/ls", argv, env, stdin, stdout, stderr);
-    printf("err = %s, exit status = %d\n", r.error, r.status);
+    exec_t *r = exec("/bin/ls", argv, env, stdin, stdout, stderr);
+
+    int status = 0;
+    if (!exec_wait(r, &status)) {
+        fprintf(stderr, "wait failed: %s\n", strerror(errno));
+        return 1;
+    }
+    printf("err = %s, exit status = %d\n", strerror(errno), status);
 }
