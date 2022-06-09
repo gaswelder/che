@@ -20,3 +20,24 @@ pub char *newstr(const char *format, ... )
 
 	return buf;
 }
+
+/**
+ * Trims `s` by adding zeros at the end and adjusting the pointer at the
+ * beginning. Modifies the buffer and returns the adjusted pointer. Don't
+ * pass readonly buffers life those from static strings.
+ */
+pub char *trim(char *s) {
+	char *left = s;
+	while (*left && isspace(*left)) left++;
+
+	char *right = left;
+	while (*right) right++;
+	right--;
+
+	while (right > left && isspace(*right)) {
+		*right = '\0';
+		right--;
+	}
+
+	return left;
+}

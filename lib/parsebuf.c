@@ -4,27 +4,24 @@ pub typedef {
 	size_t len;
 	size_t col;
 	size_t row;
-} parsebuf;
+} parsebuf_t;
 
 /*
- * Creates and returns an instance of a parsebuffer with
- * the given string as the contents. The string must not be
- * deallocated before the buffer is.
+ * Creates and returns an instance of a parsebuffer with the given string as
+ * contents. The string must not be deallocated before the buffer.
  */
-pub parsebuf *buf_new(const char *s)
-{
-	parsebuf *b = calloc(1, sizeof(parsebuf));
-	if(!b) return NULL;
+pub parsebuf_t *buf_new(const char *s) {
+	parsebuf_t *b = calloc(1, sizeof(parsebuf_t));
+	if (!b) return NULL;
 	b->s = s;
 	b->len = strlen(s);
 	return b;
 }
 
 /*
- * Frees the memory used by the buffer.
+ * Frees memory used by the buffer.
  */
-pub void buf_free(parsebuf *b)
-{
+pub void buf_free(parsebuf_t *b) {
 	free(b);
 }
 
@@ -32,15 +29,21 @@ pub void buf_free(parsebuf *b)
  * Returns the next character in the buffer.
  * Returns EOF if there is no next character.
  */
-pub int buf_peek(parsebuf *b)
-{
+pub int buf_peek(parsebuf_t *b) {
 	if (b->pos >= b->len) {
 		return EOF;
 	}
 	return b->s[b->pos];
 }
 
-pub void buf_fcontext(parsebuf *b, char *buf, size_t len)
+/*
+ * Returns true if there is at least one more character in the stream.
+ */
+pub bool buf_more(parsebuf_t *b) {
+	return b->pos < b->len;
+}
+
+pub void buf_fcontext(parsebuf_t *b, char *buf, size_t len)
 {
 	if(len > b->len - b->pos) {
 		len = b->len - b->pos;
@@ -54,10 +57,10 @@ pub void buf_fcontext(parsebuf *b, char *buf, size_t len)
 }
 
 /*
- * Returns the next character in the buffer and removes
- * it from the stream. Returns EOF if there is no next character.
+ * Returns next character in the buffer and removes it from the stream.
+ * Returns EOF if there is no next character.
  */
-pub int buf_get(parsebuf *b)
+pub int buf_get(parsebuf_t *b)
 {
 	if (b->pos >= b->len) {
 		return EOF;
@@ -73,15 +76,6 @@ pub int buf_get(parsebuf *b)
 	return c;
 }
 
-/*
- * Returns true if there is at least one more character
- * in the stream.
- */
-pub bool buf_more(parsebuf *b)
-{
-	return b->pos < b->len;
-}
-
 bool haschar(const char *s, char c) {
 	const char *p = s;
 	while (*p) {
@@ -91,13 +85,13 @@ bool haschar(const char *s, char c) {
 	return false;
 }
 
-pub void buf_skip_set(parsebuf *b, const char *set) {
+pub void buf_skip_set(parsebuf_t *b, const char *set) {
 	while (buf_more(b) && haschar(set, buf_peek(b))) {
 		buf_get(b);
 	}
 }
 
-pub char *buf_read_set(parsebuf *b, const char *set) {
+pub char *buf_read_set(parsebuf_t *b, const char *set) {
 	char *s = calloc(10000, 1);
 	char *p = s;
 	while (buf_more(b) && haschar(set, buf_peek(b))) {
@@ -107,13 +101,13 @@ pub char *buf_read_set(parsebuf *b, const char *set) {
 	return s;
 }
 
-// void ahead(parsebuf *b) {
+// void ahead(parsebuf_t *b) {
 // 	for (size_t i = 0; i < 10; i++) {
 // 		putchar(b->s[b->pos + i]);
 // 	}
 // }
 
-pub bool buf_skip_literal(parsebuf *b, const char *literal) {
+pub bool buf_skip_literal(parsebuf_t *b, const char *literal) {
 	if (!buf_literal_follows(b, literal)) {
 		return false;
 	}
@@ -127,7 +121,7 @@ pub bool buf_skip_literal(parsebuf *b, const char *literal) {
 /*
  * Returns true if the given literal is next in the buffer.
  */
-pub bool buf_literal_follows(parsebuf *b, const char *literal) {
+pub bool buf_literal_follows(parsebuf_t *b, const char *literal) {
 	const char *p1 = b->s + b->pos;
 	const char *p2 = literal;
 
@@ -141,13 +135,13 @@ pub bool buf_literal_follows(parsebuf *b, const char *literal) {
 	return true;
 }
 
-pub char *buf_pos(parsebuf *b) {
+pub char *buf_pos(parsebuf_t *b) {
 	char *s = calloc(10, 1);
 	sprintf(s, "%zu:%zu", b->row + 1, b->col + 1);
 	return s;
 }
 
-pub char *buf_skip_until(parsebuf *b, const char *literal) {
+pub char *buf_skip_until(parsebuf_t *b, const char *literal) {
 	char *s = calloc(10000, 1);
 	char *p = s;
 
