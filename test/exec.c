@@ -10,5 +10,8 @@ int main() {
         fprintf(stderr, "wait failed: %s\n", strerror(errno));
         return 1;
     }
-    printf("err = %s, exit status = %d\n", strerror(errno), status);
+    if (errno != 0 || status != 0) {
+        return 1;
+    }
+    return 0;
 }

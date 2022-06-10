@@ -3,9 +3,10 @@
 
 int main()
 {
-	xml *x = xml_open("prog/xmltest.xml");
+	xml *x = xml_open("xmltest.xml");
 	if(!x) {
-		fatal("could not open xml");
+		fprintf(stderr, "couldn't open xmltest.xml: %s\n", strerror(errno));
+		return 1;
 	}
 
 	assert(strcmp(xml_nodename(x), "root") == 0);
@@ -31,7 +32,7 @@ void process_dir(xml *x)
 {
 	while(xml_nodename(x)) {
 		assert(strcmp(xml_nodename(x), "file") == 0);
-		printf("\tfile %s\n", xml_attr(x, "name"));
+		printf("  file %s\n", xml_attr(x, "name"));
 		xml_next(x);
 	}
 }

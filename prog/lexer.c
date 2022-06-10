@@ -34,7 +34,7 @@ const char *keywords[] = {
 
 typedef {
 	char *source;
-	parsebuf *buf;
+	parsebuf_t *buf;
 } lexer_t;
 
 bool streq(char *a, char *b) {
@@ -136,7 +136,7 @@ char *tok_json(tok_t *t) {
 }
 
 tok_t *lexer_read(lexer_t *l) {
-	parsebuf *b = l->buf;
+	parsebuf_t *b = l->buf;
 
 	buf_skip_set(b, " \r\n\t");
 	if (!buf_more(b)) {
@@ -196,12 +196,12 @@ tok_t *lexer_read(lexer_t *l) {
 	
 }
 
-tok_t *read_macro(parsebuf *b) {
+tok_t *read_macro(parsebuf_t *b) {
 	char *s = buf_skip_until(b, "\n");
 	return tok_make("macro", s, buf_pos(b));
 }
 
-tok_t *read_number(parsebuf *b) {
+tok_t *read_number(parsebuf_t *b) {
 	// If "0x" follows, read a hexademical constant.
 	if (buf_skip_literal(b, "0x")) {
 		return read_hex_number(b);
@@ -230,7 +230,7 @@ tok_t *read_number(parsebuf *b) {
 	return tok_make("num", result, pos);
 }
 
-tok_t *read_hex_number(parsebuf *b) {
+tok_t *read_hex_number(parsebuf_t *b) {
 	// Skip "0x"
 	buf_get(b);
 	buf_get(b);
@@ -244,7 +244,7 @@ tok_t *read_hex_number(parsebuf *b) {
 
 // // TODO: clip/str: str_new() -> str_new(template, args...)
 
-tok_t *read_string(parsebuf *b) {
+tok_t *read_string(parsebuf_t *b) {
 	char *pos = buf_pos(b);
 
 	// Skip the opening quote
@@ -287,7 +287,7 @@ tok_t *read_string(parsebuf *b) {
 	// return tok_make("error", "double quote expected", buf_pos(b));
 }
 
-tok_t *read_char(parsebuf *b) {
+tok_t *read_char(parsebuf_t *b) {
 	char *s = calloc(3, 1);
 	char *p = s;
 	char *pos = buf_pos(b);
@@ -308,7 +308,7 @@ tok_t *read_char(parsebuf *b) {
 }
 
 
-tok_t *read_multiline_comment(parsebuf *b) {
+tok_t *read_multiline_comment(parsebuf_t *b) {
 	char *pos = buf_pos(b);
 	buf_skip_literal(b, "/*");
 	char *comment = buf_skip_until(b, "*/");
@@ -319,13 +319,13 @@ tok_t *read_multiline_comment(parsebuf *b) {
 	return tok_make("comment", comment, pos);
 }
 
-tok_t *read_line_comment(parsebuf *b) {
+tok_t *read_line_comment(parsebuf_t *b) {
 	char *pos = buf_pos(b);
 	buf_skip_literal(b, "//");
 	return tok_make("comment", buf_skip_until(b, "\n"), pos);
 }
 
-tok_t *read_identifier(parsebuf *b) {
+tok_t *read_identifier(parsebuf_t *b) {
 	str *s = str_new();
 	char *pos = buf_pos(b);
 

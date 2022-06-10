@@ -90,7 +90,7 @@ bool trim_file(const char *path)
 	mem_t *out = memopen();
 	if (!out) fatal("Out of memory");
 
-	bool changed = trim(f, out, path);
+	bool changed = ftrim(f, out, path);
 	fclose(f);
 
 	if(changed) {
@@ -100,7 +100,7 @@ bool trim_file(const char *path)
 	return true;
 }
 
-bool trim(FILE *in, mem_t *out, const char *fpath)
+bool ftrim(FILE *in, mem_t *out, const char *fpath)
 {
 	linebuf_t buf = {0};
 

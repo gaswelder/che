@@ -6,15 +6,7 @@ cargo build || exit 1
 export CHELANG_HOME=`pwd`
 
 cd test
-for i in *.c; do
-	name=`basename $i .c`
-	echo $name
-	../target/debug/che build "$i" "$name.out" || exit 1
-	if [ -f "$name.test.sh" ]; then
-		./$name.test.sh && echo "OK $name" || exit 1
-	fi
-done
-rm *.out
+./tests.sh
 cd ..
 
 cd prog
@@ -28,3 +20,5 @@ for i in *.c; do
 done
 rm *.out
 cd ..
+
+echo "all OK"

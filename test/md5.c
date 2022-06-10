@@ -26,14 +26,11 @@ int main()
 	for(size_t i = 0; i < n; i++) {
 		md5_str(tests[i].s, s);
 		md5_sprint(s, buf);
-
-		printf("%s\n", tests[i].s);
-		if(strcmp(buf, tests[i].d) == 0) {
-			printf("* OK (%s)\n", buf);
-		}
-		else {
+		if(!strcmp(buf, tests[i].d) == 0) {
 			printf("* FAIL (%s != %s)\n", buf, tests[i].d);
+			return 1;
 		}
-		putchar('\n');
 	}
+	puts("OK");
+	return 0;
 }

@@ -33,7 +33,7 @@ pub typedef {
  */
 typedef {
 	char cmd[40];
-	parsebuf *buf;
+	parsebuf_t *buf;
 } context_t;
 
 /*
@@ -222,7 +222,7 @@ bool read_track(context_t *c, cuetrack_t *track, char **err)
 /*
  * Discards rest of the current line
  */
-void skip_line(parsebuf *b)
+void skip_line(parsebuf_t *b)
 {
 	while(buf_more(b) && buf_peek(b) != '\n') {
 		buf_get(b);
