@@ -1002,7 +1002,10 @@ pub fn get_module(name: &String) -> Result<Module, String> {
     };
 
     if std::fs::metadata(&module_path).is_err() {
-        return Err(format!("can't find module '{}'", name));
+        return Err(format!(
+            "can't find module '{}' (looked at {})",
+            name, module_path
+        ));
     }
 
     let types = get_file_typenames(&module_path)?;
