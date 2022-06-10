@@ -10,9 +10,9 @@ typedef {
 client_t tl_exec(char **args) {
     char *argv[20] = {};
     int i = 0;
-    argv[i++] = "/usr/bin/ssh";
-    argv[i++] = "pi";
-    argv[i++] = "transmission-remote";
+//    argv[i++] = "/usr/bin/ssh";
+//    argv[i++] = "pi";
+    argv[i++] = "/usr/bin/transmission-remote";
     argv[i++] = "-n";
     argv[i++] = "transmission:transmission";
     while (*args) {
