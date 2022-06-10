@@ -22,11 +22,12 @@ pub pipe_t exec_makepipe() {
 }
 
 /*
- * Executes the program at path `path` with given args and environment.
+ * Executes the program with given args and environment. argv[0] is the program
+ * file path.
  * `in`, `out` and `err` specify standard streams. Pass `stdin`, `stdout` and
  * `stderr` for usual terminal output.
  */
-pub exec_t *exec(char *path, *argv[], *env[], FILE *in, *out, *err) {
+pub exec_t *exec(char *argv[], *env[], FILE *in, *out, *err) {
     exec_t *r = calloc(1, sizeof(exec_t));
     if (!r) {
         return NULL;
@@ -42,7 +43,7 @@ pub exec_t *exec(char *path, *argv[], *env[], FILE *in, *out, *err) {
     }
 
     free(r);
-    child(in, out, err, path, argv, env);
+    child(in, out, err, argv, env);
     exit(123);
 }
 
@@ -52,7 +53,7 @@ pub bool exec_wait(exec_t *r, int *status) {
     return ok;
 }
 
-void child(FILE *in, *out, *err, char *path, **argv, **env) {
+void child(FILE *in, *out, *err, char **argv, **env) {
     /*
      * Replace standard streams with those given in the arguments.
      */
@@ -74,7 +75,7 @@ void child(FILE *in, *out, *err, char *path, **argv, **env) {
             exit(errno);
         }
     }
-    int rr = execve(path, argv, env);
-    fprintf(err, "execve '%s' failed: %s\n", path, strerror(errno));
+    int rr = execve(argv[0], argv, env);
+    fprintf(err, "execve '%s' failed: %s\n", argv[0], strerror(errno));
     exit(rr);
 }

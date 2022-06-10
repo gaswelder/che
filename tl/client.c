@@ -23,7 +23,7 @@ client_t tl_exec(char **args) {
 
     char **env = {NULL};
     pipe_t pipe = exec_makepipe();
-    exec_t *child = exec("/usr/bin/ssh", argv, env, stdin, pipe.write, stderr);
+    exec_t *child = exec(argv, env, stdin, pipe.write, stderr);
     fclose(pipe.write);
     client_t r = {
         .out = pipe.read,
