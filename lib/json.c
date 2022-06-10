@@ -701,7 +701,7 @@ typedef {
 	 * First error reported during parsing.
 	 */
 	char err[256];
-	parsebuf *buf;
+	parsebuf_t *buf;
 	/*
 	 * Look-ahead cache.
 	 */

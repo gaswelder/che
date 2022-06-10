@@ -1,33 +1,30 @@
 #!/bin/sh
 
-cargo test || exit $?
-
-if [ ! -d bin ]; then
-	mkdir bin || exit 1
-fi
-
+cargo test || exit 1
 cargo build || exit 1
 
-for i in prog/*.c; do
-	name=`basename $i .c`
-	echo $name
-	target/debug/che build "$i" "prog/$name.out" || exit 1
-	if [ -f "prog/$name.test.sh" ]; then
-		cd prog
-		./$name.test.sh && echo "OK $name" || exit 1
-		cd ..
-	fi
-done
-rm prog/*.out
+export CHELANG_HOME=`pwd`
 
-for i in test/*.c; do
+cd test
+for i in *.c; do
 	name=`basename $i .c`
 	echo $name
-	target/debug/che build "$i" "test/$name.out" || exit 1
-	if [ -f "test/$name.test.sh" ]; then
-		cd test
+	../target/debug/che build "$i" "$name.out" || exit 1
+	if [ -f "$name.test.sh" ]; then
 		./$name.test.sh && echo "OK $name" || exit 1
-		cd ..
 	fi
 done
-rm test/*.out
+rm *.out
+cd ..
+
+cd prog
+for i in *.c; do
+	name=`basename $i .c`
+	echo $name
+	../target/debug/che build "$i" "$name.out" || exit 1
+	if [ -f "$name.test.sh" ]; then
+		./$name.test.sh && echo "OK $name" || exit 1
+	fi
+done
+rm *.out
+cd ..
