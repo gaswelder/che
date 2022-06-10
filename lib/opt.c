@@ -180,7 +180,7 @@ void setflag(int c)
 			else if( flag->type == OPT_SIZE )
 			{
 				size_t val = 0;
-				if( sscanf(optarg, "%lu", &val) < 1 ) {
+				if( sscanf(optarg, "%zu", &val) < 1 ) {
 					fprintf(stderr, "Couldn't parse value");
 					exit(1);
 				}
