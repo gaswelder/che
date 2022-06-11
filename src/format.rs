@@ -244,7 +244,7 @@ fn format_enum_member(node: &EnumMember) -> String {
     let mut s = node.id.clone();
     if node.value.is_some() {
         s += " = ";
-        s += &format_literal(node.value.as_ref().unwrap());
+        s += &format_expression(node.value.as_ref().unwrap());
     }
     return s;
 }

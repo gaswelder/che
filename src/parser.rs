@@ -187,14 +187,19 @@ fn parse_literal(lexer: &mut Lexer) -> Result<Literal, String> {
     return Err(format!("literal expected, got {}", lexer.peek().unwrap()));
 }
 
-fn parse_enum(lexer: &mut Lexer, is_pub: bool) -> Result<Enum, String> {
+fn parse_enum(
+    lexer: &mut Lexer,
+    is_pub: bool,
+    typenames: &Vec<String>,
+    modnames: &Vec<String>,
+) -> Result<Enum, String> {
     let mut members: Vec<EnumMember> = Vec::new();
     expect(lexer, "enum", Some("enum definition"))?;
     expect(lexer, "{", Some("enum definition"))?;
     loop {
         let id = parse_identifier(lexer)?;
-        let value: Option<Literal> = if lexer.eat("=") {
-            Some(parse_literal(lexer)?)
+        let value: Option<Expression> = if lexer.eat("=") {
+            Some(parse_expression(lexer, 0, typenames, modnames)?)
         } else {
             None
         };
@@ -817,7 +822,9 @@ fn parse_module_object(
         is_pub = true;
     }
     if lexer.follows("enum") {
-        return Ok(ModuleObject::Enum(parse_enum(lexer, is_pub)?));
+        return Ok(ModuleObject::Enum(parse_enum(
+            lexer, is_pub, typenames, modnames,
+        )?));
     }
     if lexer.follows("typedef") {
         return Ok(ModuleObject::Typedef(parse_typedef(

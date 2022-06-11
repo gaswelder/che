@@ -25,7 +25,7 @@ pub struct Enum {
 #[derive(Debug, Clone)]
 pub struct EnumMember {
     pub id: String,
-    pub value: Option<Literal>,
+    pub value: Option<Expression>,
 }
 
 #[derive(Debug, Clone)]
