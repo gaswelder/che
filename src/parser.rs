@@ -966,6 +966,22 @@ fn get_typename(lexer: &mut Lexer) -> Result<String, String> {
     return Ok(name.unwrap());
 }
 
+// fn get_file_deps(path: &str) -> Result<Vec<String>, String> {
+//     let mut lexer = new(path);
+//     let mut list: Vec<String> = vec![];
+//     loop {
+//         match lexer.get() {
+//             None => break,
+//             Some(t) => {
+//                 if t.kind == "import" {
+//                     list.push(t.content.unwrap())
+//                 }
+//             }
+//         }
+//     }
+//     return Ok(list);
+// }
+
 fn get_file_typenames(path: &str) -> Result<Vec<String>, String> {
     // Scan file tokens for 'typedef' keywords
     let mut lexer = new(path);
@@ -1009,6 +1025,7 @@ pub fn get_module(name: &String) -> Result<Module, String> {
     }
 
     let types = get_file_typenames(&module_path)?;
+    // let deps = get_file_deps(&module_path)?;
     let mut lexer = new(&module_path);
     let elements = parse_module(&mut lexer, types);
     if elements.is_err() {
