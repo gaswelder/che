@@ -456,6 +456,22 @@ impl Lexer {
     pub fn peek(&self) -> Option<&Token> {
         return self.peek_n(0);
     }
+
+    pub fn peek_skipping_comments(&self) -> Option<&Token> {
+        let mut n: usize = 0;
+        loop {
+            let r = self.peek_n(n);
+            if r.is_none() {
+                return None;
+            }
+            if r.unwrap().kind == "comment" {
+                n += 1;
+                continue;
+            }
+            return r;
+        }
+    }
+
     pub fn peek_n(&self, n: usize) -> Option<&Token> {
         let l = self.toks.len();
         if l <= n {

@@ -215,8 +215,10 @@ fn parse_array_literal(lexer: &mut Lexer) -> Result<ArrayLiteral, String> {
     expect(lexer, "{", Some("array literal"))?;
     if !lexer.follows("}") {
         values.push(parse_array_literal_entry(lexer)?);
-        while lexer.follows(",") {
-            lexer.get();
+        while lexer.eat(",") {
+            if lexer.peek_skipping_comments().unwrap().kind == "}" {
+                break;
+            }
             values.push(parse_array_literal_entry(lexer)?);
         }
     }
