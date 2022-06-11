@@ -10,15 +10,34 @@ cd test
 cd ..
 
 cd prog
-for i in *.c; do
-	name=`basename $i .c`
-	echo $name
-	../target/debug/che build "$i" "$name.out" || exit 1
-	if [ -f "$name.test.sh" ]; then
-		./$name.test.sh && echo "OK $name" || exit 1
-	fi
-done
-rm *.out
+	# Build all on top
+	for i in *.c; do
+		name=`basename $i .c`
+		echo build $name
+		../target/debug/che build "$i" "$name.out" || exit 1
+	done
+
+	# Run all tests
+	for i in *.test.sh; do
+		name=`basename $i .test.sh`
+		./$i && echo "OK $name" || exit 1
+	done
+	rm *.out
+	rm -rf tmp
+
+	# Build all in folders
+	for i in */; do
+		cd $i
+		name=`basename $i`
+		echo build "$name"
+		../../target/debug/che build "$name.c" "$name.out" || exit 1
+		if [ -f test.sh ]; then
+			./test.sh || exit 1
+			echo OK $i
+		fi
+		rm *.out
+		cd ..
+	done
 cd ..
 
 echo "all OK"

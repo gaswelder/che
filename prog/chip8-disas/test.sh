@@ -1,6 +1,6 @@
 #!/bin/sh
 
-a=`./chip8-disas.out chip8-tetris.bin`
+a=`./chip8-disas.out tetris.bin`
 test "$a" = '0x512	a2b4	LD	I, 0x2b4
 0x514	23e6	CALL	0x3e6
 0x516	22b6	CALL	0x2b6
