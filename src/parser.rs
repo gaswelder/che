@@ -214,10 +214,10 @@ fn parse_array_literal(lexer: &mut Lexer) -> Result<ArrayLiteral, String> {
     let mut values: Vec<ArrayLiteralEntry> = Vec::new();
     expect(lexer, "{", Some("array literal"))?;
     if !lexer.follows("}") {
-        values.push(parse_array_literal_entry(lexer).unwrap());
+        values.push(parse_array_literal_entry(lexer)?);
         while lexer.follows(",") {
             lexer.get();
-            values.push(parse_array_literal_entry(lexer).unwrap());
+            values.push(parse_array_literal_entry(lexer)?);
         }
     }
     expect(lexer, "}", Some("array literal"))?;
