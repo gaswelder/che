@@ -24,8 +24,8 @@ int main( int argc, char *argv[] )
 {
 	const char *line_format = "unix";
 
-	opt_summary( "trim [-l unix/win/same] path..." );
-	opt( OPT_STR, "l", "Convert line format ('unix', 'win' or 'same')", &line_format );
+	opt.summary( "trim [-l unix/win/same] path..." );
+	opt.opt( OPT_STR, "l", "Convert line format ('unix', 'win' or 'same')", &line_format );
 
 	char **path = opt_parse( argc, argv );
 	if( !path ) {

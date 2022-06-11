@@ -19,12 +19,12 @@ int main(int argc, char *argv[])
 	/*
 	 * Parse the arguments.
 	 */
-	opt_summary( "datelog [-o] [-p period] [-d dir] [-c current logname]" );
-	opt(OPT_STR, "p",
+	opt.summary( "datelog [-o] [-p period] [-d dir] [-c current logname]" );
+	opt.opt(OPT_STR, "p",
 		"Log period ('month'/'day'/'hour'/'minute'/'second')", &pername);
-	opt(OPT_STR, "d", "Directory for log files", &dir);
-	opt(OPT_STR, "c", "File name for current log file", &static_name);
-	opt(OPT_BOOL, "o", "Output received lines to stdout", &output);
+	opt.opt(OPT_STR, "d", "Directory for log files", &dir);
+	opt.opt(OPT_STR, "c", "File name for current log file", &static_name);
+	opt.opt(OPT_BOOL, "o", "Output received lines to stdout", &output);
 
 	char **args = opt_parse(argc, argv);
 	if( !args ) {

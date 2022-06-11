@@ -47,7 +47,7 @@ const char *summary = NULL;
  * 'desc' is text description.
  * 'value_pointer' is a pointer to save the flag value at.
  */
-pub void opt(int type, const char *name, const char *desc, void *value_pointer)
+pub void opt_opt(int type, const char *name, const char *desc, void *value_pointer)
 {
 	if( strlen(name) > 1 ) {
 		fprintf(stderr, "Only one-letter flags supported\n" );

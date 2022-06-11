@@ -65,23 +65,23 @@ int main(int argc, char **argv)
      * Parse the flags.
      */
     bool help = false;
-    opt(OPT_BOOL, "h", "print the help message", &help);
+    opt.opt(OPT_BOOL, "h", "print the help message", &help);
     bool hide_shuffle = false;
-    opt(OPT_BOOL, "q", "don't draw the shuffle", &hide_shuffle);
+    opt.opt(OPT_BOOL, "q", "don't draw the shuffle", &hide_shuffle);
     bool slow_shuffle = false;
-    opt(OPT_BOOL, "y", "slow down shuffle animation", &slow_shuffle);
+    opt.opt(OPT_BOOL, "y", "slow down shuffle animation", &slow_shuffle);
     const char *audio_output = NULL;
-    opt(OPT_STR, "a", "name of audio output (WAV)", &audio_output);
+    opt.opt(OPT_STR, "a", "name of audio output (WAV)", &audio_output);
     int sort_number = 0;
-    opt(OPT_INT, "s", "animate sort number N", &sort_number);
+    opt.opt(OPT_INT, "s", "animate sort number N", &sort_number);
     int delay = 0;
-    opt(OPT_INT, "w", "insert a delay of N frames", &delay);
+    opt.opt(OPT_INT, "w", "insert a delay of N frames", &delay);
     const char *seed_str = NULL;
-    opt(OPT_STR, "x", "seed for shuffling (64-bit HEX string)", &seed_str);
-    opt_parse(argc, argv);
+    opt.opt(OPT_STR, "x", "seed for shuffling (64-bit HEX string)", &seed_str);
+    opt.parse(argc, argv);
 
     if (help) {
-        opt_usage();
+        opt.usage();
         for (int i = 1; i < SORTS_TOTAL; i++) {
             fprintf(stderr, "  %d: %s\n", i, sort_names[i]);
         }

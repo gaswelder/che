@@ -193,3 +193,23 @@ int main() {
 
 Enums and typedefs may be marked `pub` to become importable. By default all
 `enum` and `typedef` declarations are private.
+
+## Module prefixes
+
+```c
+#import prng/mt
+int main() {
+	printf("%f\n", mt.randf());
+	return 0;
+}
+```
+
+is syntax sugar for
+
+```c
+#import prng/mt
+int main() {
+	printf("%f\n", mt_randf());
+	return 0;
+}
+```
