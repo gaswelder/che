@@ -293,6 +293,7 @@ pub struct CompatFunctionDeclaration {
 pub struct CompatStructDefinition {
     pub name: String,
     pub fields: Vec<CompatStructEntry>,
+    pub is_pub: bool,
 }
 
 #[derive(Debug, Clone)]

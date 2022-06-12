@@ -157,6 +157,7 @@ fn translate_typedef(node: &Typedef) -> Vec<CompatModuleObject> {
                 CompatModuleObject::CompatStructDefinition(CompatStructDefinition {
                     name: struct_name.clone(),
                     fields: fields,
+                    is_pub: node.is_pub,
                 }),
                 CompatModuleObject::Typedef {
                     is_pub: node.is_pub,
@@ -205,7 +206,9 @@ fn get_module_synopsis(module: CompatModule) -> Vec<CompatModuleObject> {
                 }
             }
             CompatModuleObject::CompatStructDefinition(x) => {
-                elements.push(CompatModuleObject::CompatStructDefinition(x))
+                if x.is_pub {
+                    elements.push(CompatModuleObject::CompatStructDefinition(x))
+                }
             }
             CompatModuleObject::CompatFunctionForwardDeclaration(x) => {
                 if !x.is_static {
