@@ -137,7 +137,7 @@ fn build(argv: &[String]) -> Result<(), String> {
     for liner in reader.lines() {
         let mut line = liner.unwrap();
         for p in &paths {
-            line = line.replace(&p.path, &p.id);
+            line = line.replace(&p.path, &format!("{}->{}", &p.id, &p.path));
         }
         println!("{}", &line);
     }
