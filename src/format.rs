@@ -58,7 +58,7 @@ fn format_expression(expr: &Expression) -> String {
 
 fn format_cast(node: &Cast) -> String {
     return format!(
-        "({}) {}",
+        "({})({})",
         format_anonymous_typeform(&node.type_name),
         format_expression(&node.operand)
     );

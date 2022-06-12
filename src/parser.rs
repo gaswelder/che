@@ -310,7 +310,7 @@ fn parse_atom(
         expect(lexer, ")", Some("typecast"))?;
         return Ok(Expression::Cast(Box::new(Cast {
             type_name: typeform,
-            operand: parse_expression(lexer, 0, typenames, modnames).unwrap(),
+            operand: parse_expression(lexer, 100, typenames, modnames).unwrap(),
         })));
     }
 
