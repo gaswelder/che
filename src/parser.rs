@@ -342,12 +342,15 @@ fn parse_atom(
     }
 
     if is_prefix_op(next) {
-        let op = lexer.get().unwrap().kind;
-        let operand = parse_expression(lexer, operator_strength("prefix"), typenames, modnames)?;
-        return Ok(Expression::PrefixOperator(Box::new(PrefixOperator {
-            operator: op,
-            operand: operand,
-        })));
+        return Ok(Expression::PrefixOperator {
+            operator: lexer.get().unwrap().kind,
+            operand: Box::new(parse_expression(
+                lexer,
+                operator_strength("prefix"),
+                typenames,
+                modnames,
+            )?),
+        });
     }
 
     let mut result: Expression;
@@ -392,10 +395,10 @@ fn parse_atom(
 
         if is_postfix_op(lexer.peek().unwrap().kind.as_str()) {
             let op = lexer.get().unwrap().kind;
-            result = Expression::PostfixOperator(Box::new(PostfixOperator {
-                operand: result,
+            result = Expression::PostfixOperator {
+                operand: Box::new(result),
                 operator: op,
-            }));
+            };
             continue;
         }
         break;

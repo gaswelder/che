@@ -23,10 +23,6 @@
 /* -------------- */
 void main () {
 	char optstr[MAX_FLAGS * 2 + 2] = {0};
-	if (!*argv || !*argv + 1) {
-		return;;
-	}
-	
 	char foo[] = "abcdef";
 	putchar('\n');
 	!*foo()[3]++;

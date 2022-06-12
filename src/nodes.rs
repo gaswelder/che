@@ -55,39 +55,33 @@ pub struct ArrayLiteralEntry {
 
 #[derive(Debug, Clone)]
 pub enum Expression {
+    Literal(Literal),
+    StructLiteral(Box<StructLiteral>),
+    ArrayLiteral(Box<ArrayLiteral>),
+    Identifier(String),
     BinaryOp {
         op: String,
         a: Box<Expression>,
         b: Box<Expression>,
     },
+    PrefixOperator {
+        operator: String,
+        operand: Box<Expression>,
+    },
+    PostfixOperator {
+        operator: String,
+        operand: Box<Expression>,
+    },
     Cast(Box<Cast>),
     FunctionCall(Box<FunctionCall>),
     Expression(Box<Expression>),
-    Literal(Literal),
-    Identifier(String),
-    StructLiteral(Box<StructLiteral>),
-    ArrayLiteral(Box<ArrayLiteral>),
     Sizeof(Box<Sizeof>),
-    PrefixOperator(Box<PrefixOperator>),
-    PostfixOperator(Box<PostfixOperator>),
     ArrayIndex(Box<ArrayIndex>),
 }
 
 #[derive(Debug, Clone)]
 pub struct Cast {
     pub type_name: AnonymousTypeform,
-    pub operand: Expression,
-}
-
-#[derive(Debug, Clone)]
-pub struct PostfixOperator {
-    pub operator: String,
-    pub operand: Expression,
-}
-
-#[derive(Debug, Clone)]
-pub struct PrefixOperator {
-    pub operator: String,
     pub operand: Expression,
 }
 
@@ -262,7 +256,7 @@ pub struct ModuleVariable {
     pub value: Expression,
 }
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub enum ModuleObject {
     ModuleVariable(ModuleVariable),
     Enum(Enum),

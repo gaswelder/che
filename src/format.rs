@@ -50,8 +50,28 @@ fn format_expression(expr: &Expression) -> String {
         Expression::StructLiteral(x) => format_struct_literal(x),
         Expression::ArrayLiteral(x) => format_array_literal(x),
         Expression::Sizeof(x) => format_sizeof(x),
-        Expression::PrefixOperator(x) => format_prefix_operator(x),
-        Expression::PostfixOperator(x) => format_postfix_operator(x),
+        Expression::PrefixOperator { operator, operand } => {
+            let expr = &**operand;
+            match is_binary_op(expr) {
+                Some(op) => {
+                    if parser::operator_strength("prefix") > parser::operator_strength(op) {
+                        return format!("{}({})", operator, format_expression(expr));
+                    }
+                    return format!("{}{}", operator, format_expression(expr));
+                }
+                None => {}
+            }
+            return match expr {
+                Expression::BinaryOp { op, a, b } => {
+                    format!("{}({})", operator, format_binary_op(&op, &a, &b))
+                }
+                Expression::Cast(x) => format!("{}({})", operator, format_cast(&*x)),
+                _ => format!("{}{}", operator, format_expression(&operand)),
+            };
+        }
+        Expression::PostfixOperator { operator, operand } => {
+            return format_expression(&operand) + &operator;
+        }
         Expression::ArrayIndex(x) => format_array_index(x),
     }
 }
@@ -133,9 +153,19 @@ fn is_binary_op(a: &Expression) -> Option<&String> {
     }
 }
 
+fn is_op(e: &Expression) -> Option<String> {
+    match e {
+        Expression::BinaryOp { op, .. } => Some(String::from(op)),
+        Expression::PostfixOperator { .. } => Some(String::from("prefix")),
+        Expression::PrefixOperator { .. } => Some(String::from("prefix")),
+        Expression::Expression(e) => is_op(e),
+        _ => None,
+    }
+}
+
 fn format_binary_op(op: &String, a: &Expression, b: &Expression) -> String {
-    // If a is a binary op weaker than op, wrap it
-    let af = match is_binary_op(a) {
+    // If a is an op weaker than op, wrap it
+    let af = match is_op(a) {
         Some(k) => {
             if parser::operator_strength(&k) < parser::operator_strength(op) {
                 format!("({})", format_expression(a))
@@ -145,8 +175,8 @@ fn format_binary_op(op: &String, a: &Expression, b: &Expression) -> String {
         }
         None => format_expression(a),
     };
-    // If b is a binary op weaker than op, wrap it
-    let bf = match is_binary_op(b) {
+    // If b is an op weaker than op, wrap it
+    let bf = match is_op(b) {
         Some(k) => {
             if parser::operator_strength(&k) < parser::operator_strength(op) {
                 format!("({})", format_expression(b))
@@ -384,22 +414,6 @@ fn format_module_variable(node: &ModuleVariable) -> String {
         format_form(&node.form),
         format_expression(&node.value)
     );
-}
-
-fn format_postfix_operator(node: &PostfixOperator) -> String {
-    return format_expression(&node.operand) + &node.operator;
-}
-
-fn format_prefix_operator(node: &PrefixOperator) -> String {
-    let operand = &node.operand;
-    let operator = &node.operator;
-    match operand {
-        Expression::BinaryOp { op, a, b } => {
-            format!("{}({})", operator, format_binary_op(op, a, b))
-        }
-        Expression::Cast(x) => format!("{}({})", operator, format_cast(&*x)),
-        _ => format!("{}{}", operator, format_expression(&operand)),
-    }
 }
 
 fn format_return(node: &Return) -> String {
