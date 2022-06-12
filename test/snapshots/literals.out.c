@@ -21,5 +21,5 @@
 
 
 /* -------------- */
-char *a[] = {"a", "b", "c"};
-char *b[] = {"a", "b", "c"};
+static char *a[] = {"a", "b", "c"};
+static char *b[] = {"a", "b", "c"};

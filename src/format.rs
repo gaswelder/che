@@ -379,7 +379,7 @@ fn format_compat_macro(node: &CompatMacro) -> String {
 
 fn format_module_variable(node: &ModuleVariable) -> String {
     return format!(
-        "{} {} = {};\n",
+        "static {} {} = {};\n",
         format_type(&node.type_name),
         format_form(&node.form),
         format_expression(&node.value)
