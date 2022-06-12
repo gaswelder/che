@@ -32,7 +32,7 @@ pub fn translate(module: &Module) -> CompatModule {
     // headers that are required, but why bother.
     let std = vec![
         "assert", "ctype", "errno", "limits", "math", "stdarg", "stdbool", "stddef", "stdint",
-        "stdio", "stdlib", "string", "time",
+        "stdio", "stdlib", "string", "time", "setjmp",
     ];
     for n in std {
         elements.push(CompatModuleObject::CompatInclude(format!("<{}.h>", n)));
