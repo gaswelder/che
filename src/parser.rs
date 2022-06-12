@@ -539,18 +539,19 @@ fn parse_variable_declaration(
     modnames: &Vec<String>,
 ) -> Result<Statement, String> {
     let type_name = parse_type(lexer, None)?;
-
-    let mut forms = vec![parse_form(lexer, typenames, modnames)?];
-    expect(lexer, "=", Some("variable declaration"))?;
-    let mut values = vec![parse_expression(lexer, 0, typenames, modnames)?];
-
-    while lexer.follows(",") {
-        lexer.get();
+    let mut forms = vec![];
+    let mut values = vec![];
+    loop {
         forms.push(parse_form(lexer, typenames, modnames)?);
-        expect(lexer, "=", Some("variable declaration"))?;
-        values.push(parse_expression(lexer, 0, typenames, modnames)?);
+        if lexer.eat("=") {
+            values.push(Some(parse_expression(lexer, 0, typenames, modnames)?));
+        } else {
+            values.push(None)
+        };
+        if !lexer.eat(",") {
+            break;
+        }
     }
-
     expect(lexer, ";", None)?;
     return Ok(Statement::VariableDeclaration {
         type_name,

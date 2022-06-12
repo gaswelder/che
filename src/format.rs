@@ -447,7 +447,14 @@ fn format_statement(node: &Statement) -> String {
                 if i > 0 {
                     s += ", ";
                 }
-                s += &format!("{} = {}", &format_form(&form), &format_expression(value));
+                match value {
+                    Some(x) => {
+                        s += &format!("{} = {}", &format_form(&form), &format_expression(x));
+                    }
+                    None => {
+                        s += &format!("{}", format_form(&form));
+                    }
+                }
             }
             return s + ";";
         }

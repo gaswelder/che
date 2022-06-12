@@ -141,7 +141,7 @@ pub enum Statement {
     VariableDeclaration {
         type_name: Type,
         forms: Vec<Form>,
-        values: Vec<Expression>,
+        values: Vec<Option<Expression>>,
     },
     If(If),
     For(For),
