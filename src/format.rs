@@ -436,7 +436,21 @@ fn format_struct_literal(node: &StructLiteral) -> String {
 
 fn format_statement(node: &Statement) -> String {
     match node {
-        Statement::VariableDeclaration(x) => format_variable_declaration(x) + ";",
+        Statement::VariableDeclaration {
+            type_name,
+            forms,
+            values,
+        } => {
+            let mut s = String::from(format_type(&type_name)) + " ";
+            for (i, form) in forms.iter().enumerate() {
+                let value = &values[i];
+                if i > 0 {
+                    s += ", ";
+                }
+                s += &format!("{} = {}", &format_form(&form), &format_expression(value));
+            }
+            return s + ";";
+        }
         Statement::If(x) => format_if(x),
         Statement::For(x) => format_for(x),
         Statement::While(x) => format_while(x),
@@ -488,18 +502,6 @@ pub fn format_typedef(type_name: &TypedefTarget, form: &TypedefForm) -> String {
         TypedefTarget::Type(x) => format_type(&x),
     };
     return format!("typedef {} {};\n", t, formstr);
-}
-
-fn format_variable_declaration(node: &VariableDeclaration) -> String {
-    let mut s = String::from(format_type(&node.type_name)) + " ";
-    for (i, form) in node.forms.iter().enumerate() {
-        let value = &node.values[i];
-        if i > 0 {
-            s += ", ";
-        }
-        s += &format!("{} = {}", &format_form(&form), &format_expression(value));
-    }
-    return s;
 }
 
 fn format_while(node: &While) -> String {

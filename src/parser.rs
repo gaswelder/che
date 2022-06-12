@@ -516,9 +516,7 @@ fn parse_statement(
     if (next.kind == "word" && is_type(&next.content.as_ref().unwrap(), typenames))
         || next.kind == "const"
     {
-        return Ok(Statement::VariableDeclaration(parse_variable_declaration(
-            lexer, typenames, modnames,
-        )?));
+        return parse_variable_declaration(lexer, typenames, modnames);
     }
 
     match next.kind.as_str() {
@@ -539,7 +537,7 @@ fn parse_variable_declaration(
     lexer: &mut Lexer,
     typenames: &Vec<String>,
     modnames: &Vec<String>,
-) -> Result<VariableDeclaration, String> {
+) -> Result<Statement, String> {
     let type_name = parse_type(lexer, None)?;
 
     let mut forms = vec![parse_form(lexer, typenames, modnames)?];
@@ -554,7 +552,7 @@ fn parse_variable_declaration(
     }
 
     expect(lexer, ";", None)?;
-    return Ok(VariableDeclaration {
+    return Ok(Statement::VariableDeclaration {
         type_name,
         forms,
         values,

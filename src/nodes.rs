@@ -138,20 +138,17 @@ pub struct Body {
 
 #[derive(Debug, Clone)]
 pub enum Statement {
-    VariableDeclaration(VariableDeclaration),
+    VariableDeclaration {
+        type_name: Type,
+        forms: Vec<Form>,
+        values: Vec<Expression>,
+    },
     If(If),
     For(For),
     While(While),
     Return(Return),
     Switch(Switch),
     Expression(Expression),
-}
-
-#[derive(Debug, Clone)]
-pub struct VariableDeclaration {
-    pub type_name: Type,
-    pub forms: Vec<Form>,
-    pub values: Vec<Expression>,
 }
 
 #[derive(Debug, Clone)]
