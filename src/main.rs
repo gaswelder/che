@@ -9,8 +9,9 @@ use md5;
 use pretty_assertions::assert_eq;
 use std::env;
 use std::fs;
+use std::io::BufRead;
 use std::path::Path;
-use std::process::{exit, Command};
+use std::process::{exit, Command, Stdio};
 use std::string::String;
 
 fn main() {
@@ -87,12 +88,19 @@ fn build(argv: &[String]) -> Result<(), String> {
     if fs::metadata("tmp").is_err() {
         fs::create_dir("tmp").unwrap();
     }
-    let mut paths: Vec<String> = Vec::new();
+    struct PathId {
+        path: String,
+        id: String,
+    }
+    let mut paths: Vec<PathId> = Vec::new();
     for module in &c_mods {
         let src = format::format_compat_module(&module);
         let path = format!("tmp/{:x}.c", md5::compute(&module.id));
+        paths.push(PathId {
+            path: String::from(&path),
+            id: String::from(&module.id),
+        });
         fs::write(&path, &src).unwrap();
-        paths.push(path);
     }
 
     let mut link: Vec<String> = vec!["m".to_string()];
@@ -115,15 +123,25 @@ fn build(argv: &[String]) -> Result<(), String> {
         "-Wno-parentheses",
         "-g",
     ]);
-    for p in paths {
-        cmd.arg(p);
+    for p in &paths {
+        cmd.arg(p.path.clone());
     }
     cmd.args(&["-o", &name]);
     for l in link {
         cmd.args(&["-l", &l.trim()]);
     }
-    let mut ch = cmd.spawn().unwrap();
-    let r = ch.wait().unwrap();
+    cmd.stderr(Stdio::piped());
+    let mut proc = cmd.spawn().unwrap();
+    let out = proc.stderr.as_mut().unwrap();
+    let reader = std::io::BufReader::new(out);
+    for liner in reader.lines() {
+        let mut line = liner.unwrap();
+        for p in &paths {
+            line = line.replace(&p.path, &p.id);
+        }
+        println!("{}", &line);
+    }
+    let r = proc.wait().unwrap();
     exit(r.code().unwrap());
 }
 
