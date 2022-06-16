@@ -41,15 +41,50 @@ pub fn format_form(node: &Form) -> String {
 
 fn format_expression(expr: &Expression) -> String {
     match expr {
-        Expression::BinaryOp { op, a, b } => format_binary_op(op, a, b),
-        Expression::Cast(x) => format_cast(x),
-        Expression::FunctionCall(x) => format_function_call(x),
-        Expression::Expression(x) => format_expression(x),
+        Expression::Cast { type_name, operand } => {
+            return format!(
+                "({})({})",
+                format_anonymous_typeform(&type_name),
+                format_expression(&operand)
+            );
+        }
+        Expression::FunctionCall {
+            function,
+            arguments,
+        } => {
+            let mut s1 = String::from("(");
+            for (i, argument) in arguments.iter().enumerate() {
+                if i > 0 {
+                    s1 += ", ";
+                }
+                s1 += &format_expression(&argument);
+            }
+            s1 += ")";
+            return format!("{}{}", format_expression(&function), s1);
+        }
         Expression::Literal(x) => format_literal(x),
         Expression::Identifier(x) => x.clone(),
-        Expression::StructLiteral(x) => format_struct_literal(x),
+        Expression::StructLiteral { members } => {
+            let mut s = String::from("{\n");
+            for member in members {
+                s += &format!(
+                    "\t.{} = {},\n",
+                    member.name,
+                    format_expression(&member.value)
+                );
+            }
+            s += "}\n";
+            return s;
+        }
         Expression::ArrayLiteral(x) => format_array_literal(x),
-        Expression::Sizeof(x) => format_sizeof(x),
+        Expression::Sizeof { argument } => {
+            let arg = match &**argument {
+                SizeofArgument::Type(x) => format_type(&x),
+                SizeofArgument::Expression(x) => format_expression(&x),
+            };
+            return format!("sizeof({})", arg);
+        }
+        Expression::BinaryOp { op, a, b } => format_binary_op(op, a, b),
         Expression::PrefixOperator { operator, operand } => {
             let expr = &**operand;
             match is_binary_op(expr) {
@@ -65,31 +100,25 @@ fn format_expression(expr: &Expression) -> String {
                 Expression::BinaryOp { op, a, b } => {
                     format!("{}({})", operator, format_binary_op(&op, &a, &b))
                 }
-                Expression::Cast(x) => format!("{}({})", operator, format_cast(&*x)),
+                Expression::Cast { type_name, operand } => format!(
+                    "{}{}",
+                    operator,
+                    format!(
+                        "({})({})",
+                        format_anonymous_typeform(&type_name),
+                        format_expression(&operand)
+                    )
+                ),
                 _ => format!("{}{}", operator, format_expression(&operand)),
             };
         }
         Expression::PostfixOperator { operator, operand } => {
             return format_expression(&operand) + &operator;
         }
-        Expression::ArrayIndex(x) => format_array_index(x),
+        Expression::ArrayIndex { array, index } => {
+            return format!("{}[{}]", format_expression(array), format_expression(index));
+        }
     }
-}
-
-fn format_cast(node: &Cast) -> String {
-    return format!(
-        "({})({})",
-        format_anonymous_typeform(&node.type_name),
-        format_expression(&node.operand)
-    );
-}
-
-fn format_sizeof(node: &Sizeof) -> String {
-    let arg = match &node.argument {
-        SizeofArgument::Type(x) => format_type(&x),
-        SizeofArgument::Expression(x) => format_expression(&x),
-    };
-    return format!("sizeof({})", arg);
 }
 
 fn format_anonymous_typeform(node: &AnonymousTypeform) -> String {
@@ -98,14 +127,6 @@ fn format_anonymous_typeform(node: &AnonymousTypeform) -> String {
         s += &op;
     }
     return s;
-}
-
-fn format_array_index(node: &ArrayIndex) -> String {
-    return format!(
-        "{}[{}]",
-        format_expression(&node.array),
-        format_expression(&node.index)
-    );
 }
 
 fn format_anonymous_parameters(node: &AnonymousParameters) -> String {
@@ -148,7 +169,6 @@ fn format_array_literal(node: &ArrayLiteral) -> String {
 fn is_binary_op(a: &Expression) -> Option<&String> {
     match a {
         Expression::BinaryOp { op, .. } => Some(op),
-        Expression::Expression(e) => is_binary_op(e),
         _ => None,
     }
 }
@@ -158,7 +178,6 @@ fn is_op(e: &Expression) -> Option<String> {
         Expression::BinaryOp { op, .. } => Some(String::from(op)),
         Expression::PostfixOperator { .. } => Some(String::from("prefix")),
         Expression::PrefixOperator { .. } => Some(String::from("prefix")),
-        Expression::Expression(e) => is_op(e),
         _ => None,
     }
 }
@@ -298,54 +317,6 @@ fn format_for(node: &For) -> String {
     );
 }
 
-fn format_function_call(node: &FunctionCall) -> String {
-    let mut s1 = String::from("(");
-    for (i, argument) in node.arguments.iter().enumerate() {
-        if i > 0 {
-            s1 += ", ";
-        }
-        s1 += &format_expression(&argument);
-    }
-    s1 += ")";
-    return format!("{}{}", format_expression(&node.function), s1);
-}
-
-// fn format_function_declaration(node: &FunctionDeclaration) -> String {
-//     let s = format!(
-//         "{} {}{} {}\n\n",
-//         format_type(&node.type_name),
-//         format_form(&node.form),
-//         format_function_parameters(&node.parameters),
-//         format_body(&node.body)
-//     );
-//     if node.is_pub {
-//         return format!("pub {}", s);
-//     }
-//     return s;
-// }
-
-// fn format_function_parameters(parameters: &FunctionParameters) -> String {
-//     let mut s = String::from("(");
-//     for (i, parameter) in parameters.list.iter().enumerate() {
-//         if i > 0 {
-//             s += ", ";
-//         }
-//         s += &format_type(&parameter.type_name);
-//         s += " ";
-//         for (i, form) in parameter.forms.iter().enumerate() {
-//             if i > 0 {
-//                 s += ", ";
-//             }
-//             s += &format_form(&form);
-//         }
-//     }
-//     if parameters.variadic {
-//         s += ", ...";
-//     }
-//     s += ")";
-//     return s;
-// }
-
 fn format_compat_function_parameters(parameters: &CompatFunctionParameters) -> String {
     let mut s = String::from("(");
     for (i, parameter) in parameters.list.iter().enumerate() {
@@ -432,19 +403,6 @@ fn format_struct_fieldlist(node: &StructFieldlist) -> String {
         s += &format_form(&form);
     }
     s += ";";
-    return s;
-}
-
-fn format_struct_literal(node: &StructLiteral) -> String {
-    let mut s = String::from("{\n");
-    for member in &node.members {
-        s += &format!(
-            "\t.{} = {},\n",
-            member.name,
-            format_expression(&member.value)
-        );
-    }
-    s += "}\n";
     return s;
 }
 

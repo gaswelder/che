@@ -56,7 +56,9 @@ pub struct ArrayLiteralEntry {
 #[derive(Debug, Clone)]
 pub enum Expression {
     Literal(Literal),
-    StructLiteral(Box<StructLiteral>),
+    StructLiteral {
+        members: Vec<StructLiteralMember>,
+    },
     ArrayLiteral(Box<ArrayLiteral>),
     Identifier(String),
     BinaryOp {
@@ -72,23 +74,21 @@ pub enum Expression {
         operator: String,
         operand: Box<Expression>,
     },
-    Cast(Box<Cast>),
-    FunctionCall(Box<FunctionCall>),
-    Expression(Box<Expression>),
-    Sizeof(Box<Sizeof>),
-    ArrayIndex(Box<ArrayIndex>),
-}
-
-#[derive(Debug, Clone)]
-pub struct Cast {
-    pub type_name: AnonymousTypeform,
-    pub operand: Expression,
-}
-
-#[derive(Debug, Clone)]
-pub struct ArrayIndex {
-    pub array: Expression,
-    pub index: Expression,
+    Cast {
+        type_name: AnonymousTypeform,
+        operand: Box<Expression>,
+    },
+    FunctionCall {
+        function: Box<Expression>,
+        arguments: Vec<Expression>,
+    },
+    Sizeof {
+        argument: Box<SizeofArgument>,
+    },
+    ArrayIndex {
+        array: Box<Expression>,
+        index: Box<Expression>,
+    },
 }
 
 #[derive(Debug, Clone)]
@@ -98,25 +98,9 @@ pub struct StructLiteralMember {
 }
 
 #[derive(Debug, Clone)]
-pub struct StructLiteral {
-    pub members: Vec<StructLiteralMember>,
-}
-
-#[derive(Debug, Clone)]
 pub enum SizeofArgument {
     Type(Type),
     Expression(Expression),
-}
-
-#[derive(Debug, Clone)]
-pub struct Sizeof {
-    pub argument: SizeofArgument,
-}
-
-#[derive(Debug, Clone)]
-pub struct FunctionCall {
-    pub function: Expression,
-    pub arguments: Vec<Expression>,
 }
 
 #[derive(Debug, Clone)]

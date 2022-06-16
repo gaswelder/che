@@ -23,25 +23,6 @@ impl fmt::Display for Token {
 
 const SPACES: &str = "\r\n\t ";
 
-pub fn read_file(filename: &str) -> Result<Vec<Token>, String> {
-    let mut toks: Vec<Token> = Vec::new();
-    let contents = fs::read_to_string(filename).expect("Something went wrong reading the file");
-    let mut b = crate::buf::new(contents);
-    loop {
-        let r = read_token(&mut b);
-        if r.is_none() {
-            break;
-        }
-        let tok = r.unwrap();
-        if tok.kind == "error" {
-            let err = format!("{} at {}", tok.content.unwrap(), tok.pos);
-            return Err(err);
-        }
-        toks.push(tok)
-    }
-    return Ok(toks);
-}
-
 pub fn read_token(buf: &mut Buf) -> Option<Token> {
     buf.read_set(SPACES.to_string());
     if buf.ended() {
@@ -418,10 +399,28 @@ pub struct Lexer {
     toks: Vec<Token>,
 }
 
-pub fn new(filename: &str) -> Lexer {
-    let mut toks = read_file(filename).unwrap();
+pub fn for_file(filename: &str) -> Result<Lexer, String> {
+    let contents = fs::read_to_string(filename).expect("Something went wrong reading the file");
+    return for_string(contents);
+}
+
+pub fn for_string(contents: String) -> Result<Lexer, String> {
+    let mut toks: Vec<Token> = Vec::new();
+    let mut b = crate::buf::new(contents);
+    loop {
+        let r = read_token(&mut b);
+        if r.is_none() {
+            break;
+        }
+        let tok = r.unwrap();
+        if tok.kind == "error" {
+            let err = format!("{} at {}", tok.content.unwrap(), tok.pos);
+            return Err(err);
+        }
+        toks.push(tok)
+    }
     toks.reverse();
-    return Lexer { toks };
+    return Ok(Lexer { toks });
 }
 
 impl Lexer {

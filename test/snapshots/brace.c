@@ -10,6 +10,8 @@ int main() {
 	}
 
     (++p)->inst = 0;
+
+    a->len++;
 }
 
 uint32_t rotate(uint32_t value, int bits) {

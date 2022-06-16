@@ -36,6 +36,7 @@ int main () {
 	}
 	
 	(++p)->inst = 0;
+	a->len++;
 }
 static uint32_t rotate (uint32_t value, int bits) {
 	return value << bits | value >> 32 - bits;
