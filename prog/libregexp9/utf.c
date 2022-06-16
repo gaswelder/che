@@ -32,13 +32,10 @@
  * OF THIS SOFTWARE OR ITS FITNESS FOR ANY PARTICULAR PURPOSE.
  */
 
-// The Plan 9 character set and representation are
-// based on the Unicode Standard and on the ISO multibyte
-// UTF-8 encoding (Universal Character Set Transformation Format, 8 bits wide).
-// The Unicode Standard represents its characters in 16 bits;
-// UTF-8 represents such values in an 8-bit byte stream.
-
-
+// The Plan 9 character set and representation are based on the Unicode Standard
+// and on the ISO multibyte UTF-8 encoding (Universal Character Set
+// Transformation Format, 8 bits wide). The Unicode Standard represents its
+// characters in 16 bits; UTF-8 represents such values in an 8-bit byte stream.
 
 // UTF-8 is designed so the 7-bit ASCII set (values hexadecimal 00 to 7F),
 // appear only as themselves in the encoding.
@@ -67,9 +64,16 @@
 // When there are multiple ways to encode a value, for example rune 0,
 // the shortest encoding is used.
 
-// In the inverse mapping,
-// any sequence except those described above
-// is incorrect and is converted to rune hexadecimal 0080.
+// In the inverse mapping, any sequence except those described above is
+// incorrect and is converted to rune hexadecimal 0080.
+
+/*
+ * In Plan 9, a rune is a number representing a Unicode character. Internally,
+ * programs may store characters as runes. However, any external manifestation
+ * of textual information, in files or at the interface between programs, uses
+ * a machine-independent, byte-stream encoding called UTF-8.
+ */
+pub typedef uint32_t Rune;
 
 #define	nelem(x)	(sizeof (x)/sizeof (x)[0])
 
@@ -86,13 +90,7 @@ void *memccpy (void *dest, *src, int c, size_t n) {
 	return NULL;
 }
 
-/*
- * In Plan 9, a rune is a number representing a Unicode character. Internally,
- * programs may store characters as runes. However, any external manifestation
- * of textual information, in files or at the interface between programs, uses
- * a machine-independent, byte-stream encoding called UTF-8.
- */
-pub typedef uint32_t Rune;
+
 
 pub enum {
 	UTFmax		= 4,		/* maximum bytes per rune */
@@ -140,8 +138,7 @@ long runestrlen(Rune *s) {
 }
 
 /*
- * Return pointer to first occurrence of s2 in s1,
- * 0 if none
+ * Return pointer to first occurrence of s2 in s1, NULL if none.
  */
 pub Rune* runestrstr(Rune *s1, Rune *s2) {
 	Rune *p = NULL, *pa = NULL, *pb = NULL;
@@ -163,7 +160,7 @@ pub Rune* runestrstr(Rune *s1, Rune *s2) {
 			}
 		}
 	}
-	return 0;
+	return NULL;
 }
 
 pub Rune*
@@ -1604,7 +1601,9 @@ pub int runelen(long c) {
 
 // The case-conversion routines return the character unchanged if it has no case.
 
-// returns the number of runes that are represented by the UTF string s .
+/*
+ * Returns the number of runes that are represented by the UTF string s.
+ */
 pub int utflen(char *s)
 {
 	int c = 0;
@@ -1647,20 +1646,20 @@ pub char* utfecpy(char *to, char *e, char *from)
 	return end;
 }
 
-// returns the number of complete runes that
-// are represented by the first n bytes of UTF string s .
-// If the last few bytes of the string contain an incompletely coded rune,
-// utfnlen will not count them; in this way, it differs from utflen ,
-// which includes every byte of the string.
-pub int utfnlen(char *s, long m)
+/*
+ * Returns the number of complete runes that are represented by the first n
+ * bytes of UTF string s. If the last few bytes of the string contain an
+ * incompletely coded rune, utfnlen will not count them; in this way, it differs
+ * from utflen, which includes every byte of the string.
+ */
+pub int utfnlen(char *s, long n)
 {
 	int c = 0;
-	long n = 0;
+	long count = 0;
 	Rune rune = 0;
-	char *es = NULL;
 
-	es = s + m;
-	for(n = 0; s < es; n++) {
+	char *es = s + n;
+	for(count = 0; s < es; count++) {
 		c = *(uint8_t*)s;
 		if(c < Runeself){
 			if(c == '\0')
@@ -1672,38 +1671,14 @@ pub int utfnlen(char *s, long m)
 			break;
 		s += chartorune(&rune, s);
 	}
-	return n;
+	return count;
 }
 
-pub char *utfrrune(char *s, long c) {
-	long c1 = 0;
-	Rune r = 0;
-	char *s1 = NULL;
-
-	if(c < Runesync)		/* not part of utf sequence */
-		return strrchr(s, c);
-
-	s1 = 0;
-	while (true) {
-		c1 = *(uint8_t*)s;
-		if(c1 < Runeself) {	/* one byte rune */
-			if(c1 == 0)
-				return s1;
-			if(c1 == c)
-				s1 = s;
-			s++;
-			continue;
-		}
-		c1 = chartorune(&r, s);
-		if(r == c)
-			s1 = s;
-		s += c1;
-	}
-}
-
-// Utfrune ( utfrrune ) returns a pointer to the first (last) occurrence of rune
-// c in the UTF string s, or 0 if c does not occur in the string.
-// The NUL byte terminating a string is considered to be part of the string s .
+/*
+ * Returns a pointer to the first occurrence of rune c in the UTF8 string s, or
+ * NULL if c does not occur in the string.
+ * The NUL byte terminating a string is considered to be part of the string s.
+ */
 pub char *utfrune(char *s, long c) {
 	long c1 = 0;
 	Rune r = 0;
@@ -1730,11 +1705,39 @@ pub char *utfrune(char *s, long c) {
 }
 
 /*
- * Return pointer to first occurrence of s2 in s1,
- * 0 if none
+ * Same as utfrune, but finds the last occurrence instead of first.
  */
-// returns a pointer to the first occurrence of the UTF string s2 as a UTF substring of s1,
-// or 0 if there is none. If s2 is the null string, utfutf returns s1.
+pub char *utfrrune(char *s, Rune c) {
+	long c1 = 0;
+	Rune r = 0;
+	char *s1 = NULL;
+
+	if(c < Runesync)		/* not part of utf sequence */
+		return strrchr(s, c);
+
+	s1 = 0;
+	while (true) {
+		c1 = *(uint8_t*)s;
+		if(c1 < Runeself) {	/* one byte rune */
+			if(c1 == 0)
+				return s1;
+			if(c1 == c)
+				s1 = s;
+			s++;
+			continue;
+		}
+		c1 = chartorune(&r, s);
+		if(r == c)
+			s1 = s;
+		s += c1;
+	}
+}
+
+/*
+ * Returns a pointer to the first occurrence of the UTF string s2 as a UTF
+ * substring of s1, or NULL if there is none. If s2 is the null string, returns
+ * s1.
+ */
 pub char *utfutf(char *s1, char *s2) {
 	char *p = NULL;
 	long f = 0, n1 = 0, n2 = 0;
@@ -1749,5 +1752,5 @@ pub char *utfutf(char *s1, char *s2) {
 	for(p=s1; p=utfrune(p, f); p+=n1)
 		if(strncmp(p, s2, n2) == 0)
 			return p;
-	return 0;
+	return NULL;
 }
