@@ -18,7 +18,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-#import utf.c
+#import utf
 
 #define	nelem(x)	(sizeof (x)/sizeof (x)[0])
 
