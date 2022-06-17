@@ -17,7 +17,7 @@ fn format_union(node: &Union) -> String {
     );
 }
 
-fn format_type(node: &Type) -> String {
+pub fn format_type(node: &Type) -> String {
     let mut s = String::new();
     if node.is_const {
         s += "const ";
@@ -361,22 +361,6 @@ fn format_literal(node: &Literal) -> String {
 fn format_compat_macro(node: &CompatMacro) -> String {
     format!("#{} {}\n", node.name, node.value)
 }
-
-// fn format_module(node: &Module) -> String {
-//     let mut s = String::new();
-//     for cnode in &node.elements {
-//         s += &match cnode {
-//             ModuleObject::CompatInclude(x) => format_compat_include(&x),
-//             ModuleObject::ModuleVariable(x) => format_module_variable(&x),
-//             ModuleObject::Enum(x) => format_enum(&x),
-//             ModuleObject::FunctionDeclaration(x) => format_function_declaration(&x),
-//             ModuleObject::Import(x) => format_import(&x),
-//             ModuleObject::Typedef(x) => format_typedef(&x),
-//             ModuleObject::CompatMacro(x) => format_compat_macro(&x),
-//         }
-//     }
-//     return s;
-// }
 
 fn format_module_variable(node: &ModuleVariable) -> String {
     return format!(

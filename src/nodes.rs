@@ -1,3 +1,34 @@
+#[derive(Clone)]
+pub struct Module {
+    pub id: String,
+    pub elements: Vec<ModuleObject>,
+}
+
+#[derive(Debug, Clone)]
+pub enum ModuleObject {
+    ModuleVariable(ModuleVariable),
+    Import {
+        path: String,
+    },
+    CompatMacro(CompatMacro),
+    Enum {
+        is_pub: bool,
+        members: Vec<EnumMember>,
+    },
+    FunctionDeclaration {
+        is_pub: bool,
+        type_name: Type,
+        form: Form,
+        parameters: FunctionParameters,
+        body: Body,
+    },
+    Typedef {
+        is_pub: bool,
+        type_name: TypedefTarget,
+        form: TypedefForm,
+    },
+}
+
 #[derive(Debug, Clone)]
 pub struct Type {
     pub is_const: bool,
@@ -14,12 +45,6 @@ pub struct AnonymousTypeform {
 pub struct Literal {
     pub type_name: String,
     pub value: String,
-}
-
-#[derive(Debug, Clone)]
-pub struct Enum {
-    pub is_pub: bool,
-    pub members: Vec<EnumMember>,
 }
 
 #[derive(Debug, Clone)]
@@ -201,15 +226,6 @@ pub struct CompatFunctionParameters {
 }
 
 #[derive(Debug, Clone)]
-pub struct FunctionDeclaration {
-    pub is_pub: bool,
-    pub type_name: Type,
-    pub form: Form,
-    pub parameters: FunctionParameters,
-    pub body: Body,
-}
-
-#[derive(Debug, Clone)]
 pub struct FunctionParameter {
     pub type_name: Type,
     pub forms: Vec<Form>,
@@ -238,16 +254,6 @@ pub struct ModuleVariable {
     pub type_name: Type,
     pub form: Form,
     pub value: Expression,
-}
-
-#[derive(Debug, Clone)]
-pub enum ModuleObject {
-    ModuleVariable(ModuleVariable),
-    Enum(Enum),
-    FunctionDeclaration(FunctionDeclaration),
-    Import(Import),
-    Typedef(Typedef),
-    CompatMacro(CompatMacro),
 }
 
 #[derive(Debug, Clone)]
@@ -281,21 +287,9 @@ pub enum CompatStructEntry {
 }
 
 #[derive(Debug, Clone)]
-pub struct Import {
-    pub path: String,
-}
-
-#[derive(Debug, Clone)]
 pub struct CompatMacro {
     pub name: String,
     pub value: String,
-}
-
-#[derive(Debug, Clone)]
-pub struct Typedef {
-    pub is_pub: bool,
-    pub type_name: TypedefTarget,
-    pub form: TypedefForm,
 }
 
 #[derive(Debug, Clone)]
@@ -332,12 +326,6 @@ pub struct AnonymousStruct {
 pub struct StructFieldlist {
     pub type_name: Type,
     pub forms: Vec<Form>,
-}
-
-#[derive(Clone)]
-pub struct Module {
-    pub id: String,
-    pub elements: Vec<ModuleObject>,
 }
 
 #[derive(Debug, Clone)]

@@ -100,17 +100,27 @@ pub fn translate(module: &Module) -> CompatModule {
 
 fn translate_node(node: &ModuleObject) -> Vec<CompatModuleObject> {
     match node {
-        ModuleObject::Typedef(x) => translate_typedef(x),
-        ModuleObject::Import(x) => {
-            let module = parser::get_module(&x.path).unwrap();
+        ModuleObject::Typedef {
+            is_pub,
+            type_name,
+            form,
+        } => translate_typedef(*is_pub, type_name, form),
+        ModuleObject::Import { path } => {
+            let module = parser::get_module(&path).unwrap();
             let compat = translate(&module);
             return get_module_synopsis(compat);
         }
-        ModuleObject::FunctionDeclaration(x) => translate_function_declaration(x),
-        ModuleObject::Enum(x) => {
+        ModuleObject::FunctionDeclaration {
+            is_pub,
+            type_name,
+            form,
+            parameters,
+            body,
+        } => translate_function_declaration(*is_pub, type_name, form, parameters, body),
+        ModuleObject::Enum { is_pub, members } => {
             return vec![CompatModuleObject::Enum {
-                members: x.members.clone(),
-                is_hidden: !x.is_pub,
+                members: members.clone(),
+                is_hidden: !is_pub,
             }];
         }
         ModuleObject::CompatMacro(x) => {
@@ -125,14 +135,18 @@ fn translate_node(node: &ModuleObject) -> Vec<CompatModuleObject> {
     }
 }
 
-fn translate_typedef(node: &Typedef) -> Vec<CompatModuleObject> {
-    match &node.type_name {
+fn translate_typedef(
+    is_pub: bool,
+    type_name: &TypedefTarget,
+    form: &TypedefForm,
+) -> Vec<CompatModuleObject> {
+    match &type_name {
         // A sugary "typedef {int a} foo_t" is translated to
         // "struct __foo_t_struct {int a}; typedef __foo_t_struct foo_t;".
         // And remember that the struct definition itself is sugar that
         // should be translated as well.
         TypedefTarget::AnonymousStruct(s) => {
-            let struct_name = format!("__{}_struct", node.form.alias);
+            let struct_name = format!("__{}_struct", form.alias);
 
             // Build the compat struct fields.
             let mut fields: Vec<CompatStructEntry> = Vec::new();
@@ -157,10 +171,10 @@ fn translate_typedef(node: &Typedef) -> Vec<CompatModuleObject> {
                 CompatModuleObject::CompatStructDefinition(CompatStructDefinition {
                     name: struct_name.clone(),
                     fields: fields,
-                    is_pub: node.is_pub,
+                    is_pub,
                 }),
                 CompatModuleObject::Typedef {
-                    is_pub: node.is_pub,
+                    is_pub,
                     type_name: TypedefTarget::Type(Type {
                         is_const: false,
                         type_name: format!("struct {}", struct_name.clone()),
@@ -169,15 +183,15 @@ fn translate_typedef(node: &Typedef) -> Vec<CompatModuleObject> {
                         stars: "".to_string(),
                         size: 0,
                         params: None,
-                        alias: node.form.alias.clone(),
+                        alias: form.alias.clone(),
                     },
                 },
             ]
         }
         _ => vec![CompatModuleObject::Typedef {
-            is_pub: node.is_pub,
-            type_name: node.type_name.clone(),
-            form: node.form.clone(),
+            is_pub,
+            type_name: type_name.clone(),
+            form: form.clone(),
         }],
     }
 }
@@ -245,17 +259,23 @@ fn translate_function_parameters(node: &FunctionParameters) -> CompatFunctionPar
     };
 }
 
-fn translate_function_declaration(node: &FunctionDeclaration) -> Vec<CompatModuleObject> {
+fn translate_function_declaration(
+    is_pub: bool,
+    type_name: &Type,
+    form: &Form,
+    parameters: &FunctionParameters,
+    body: &Body,
+) -> Vec<CompatModuleObject> {
     let func = CompatFunctionDeclaration {
-        is_static: !node.is_pub,
-        type_name: node.type_name.clone(),
-        form: node.form.clone(),
-        parameters: translate_function_parameters(&node.parameters),
-        body: node.body.clone(),
+        is_static: !is_pub,
+        type_name: type_name.clone(),
+        form: form.clone(),
+        parameters: translate_function_parameters(&parameters),
+        body: body.clone(),
     };
     let decl = compat_function_forward_declaration(&func);
     let mut r = vec![CompatModuleObject::CompatFunctionDeclaration(func)];
-    if format::format_form(&node.form) != "main" {
+    if format::format_form(&form) != "main" {
         r.push(decl);
     }
     return r;
