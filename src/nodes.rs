@@ -17,7 +17,7 @@ pub enum ModuleObject {
     },
     FunctionDeclaration {
         is_pub: bool,
-        type_name: Type,
+        type_name: Typename,
         form: Form,
         parameters: FunctionParameters,
         body: Body,
@@ -30,14 +30,14 @@ pub enum ModuleObject {
 }
 
 #[derive(Debug, Clone)]
-pub struct Type {
+pub struct Typename {
     pub is_const: bool,
-    pub type_name: String,
+    pub name: String,
 }
 
 #[derive(Debug, Clone)]
 pub struct AnonymousTypeform {
-    pub type_name: Type,
+    pub type_name: Typename,
     pub ops: Vec<String>,
 }
 
@@ -124,7 +124,7 @@ pub struct StructLiteralMember {
 
 #[derive(Debug, Clone)]
 pub enum SizeofArgument {
-    Type(Type),
+    Typename(Typename),
     Expression(Expression),
 }
 
@@ -142,7 +142,7 @@ pub struct Body {
 #[derive(Debug, Clone)]
 pub enum Statement {
     VariableDeclaration {
-        type_name: Type,
+        type_name: Typename,
         forms: Vec<Form>,
         values: Vec<Option<Expression>>,
     },
@@ -189,7 +189,7 @@ pub enum ForInit {
 
 #[derive(Debug, Clone)]
 pub struct LoopCounterDeclaration {
-    pub type_name: Type,
+    pub type_name: Typename,
     pub form: Form,
     pub value: Expression,
 }
@@ -227,13 +227,13 @@ pub struct CompatFunctionParameters {
 
 #[derive(Debug, Clone)]
 pub struct FunctionParameter {
-    pub type_name: Type,
+    pub type_name: Typename,
     pub forms: Vec<Form>,
 }
 
 #[derive(Debug, Clone)]
 pub struct CompatFunctionParameter {
-    pub type_name: Type,
+    pub type_name: Typename,
     pub form: Form,
 }
 
@@ -245,13 +245,13 @@ pub struct Union {
 
 #[derive(Debug, Clone)]
 pub struct UnionField {
-    pub type_name: Type,
+    pub type_name: Typename,
     pub form: Form,
 }
 
 #[derive(Debug, Clone)]
 pub struct ModuleVariable {
-    pub type_name: Type,
+    pub type_name: Typename,
     pub form: Form,
     pub value: Expression,
 }
@@ -259,7 +259,7 @@ pub struct ModuleVariable {
 #[derive(Debug, Clone)]
 pub struct CompatFunctionForwardDeclaration {
     pub is_static: bool,
-    pub type_name: Type,
+    pub type_name: Typename,
     pub form: Form,
     pub parameters: CompatFunctionParameters,
 }
@@ -267,7 +267,7 @@ pub struct CompatFunctionForwardDeclaration {
 #[derive(Debug, Clone)]
 pub struct CompatFunctionDeclaration {
     pub is_static: bool,
-    pub type_name: Type,
+    pub type_name: Typename,
     pub form: Form,
     pub parameters: CompatFunctionParameters,
     pub body: Body,
@@ -282,7 +282,7 @@ pub struct CompatStructDefinition {
 
 #[derive(Debug, Clone)]
 pub enum CompatStructEntry {
-    CompatStructField { type_name: Type, form: Form },
+    CompatStructField { type_name: Typename, form: Form },
     Union(Union),
 }
 
@@ -295,7 +295,7 @@ pub struct CompatMacro {
 #[derive(Debug, Clone)]
 pub enum TypedefTarget {
     AnonymousStruct(AnonymousStruct),
-    Type(Type),
+    Typename(Typename),
 }
 
 #[derive(Debug, Clone)]
@@ -324,7 +324,7 @@ pub struct AnonymousStruct {
 
 #[derive(Debug, Clone)]
 pub struct StructFieldlist {
-    pub type_name: Type,
+    pub type_name: Typename,
     pub forms: Vec<Form>,
 }
 

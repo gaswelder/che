@@ -3,11 +3,11 @@ use crate::nodes::*;
 use crate::parser;
 use std::collections::HashSet;
 
-pub fn translate(module: &Module) -> CompatModule {
+pub fn translate(m: &Module) -> CompatModule {
     // Build the list of modules to link.
     // These are specified using the #link macros.
     let mut link: Vec<String> = Vec::new();
-    for node in &module.elements {
+    for node in &m.elements {
         match node {
             ModuleObject::CompatMacro(x) => {
                 if x.name == "link" {
@@ -21,8 +21,8 @@ pub fn translate(module: &Module) -> CompatModule {
     // Translate each node into a C node. Some nodes are valid C nodes already,
     // but some are not and have to be converted to their "Compat..." analogs.
     let mut elements: Vec<CompatModuleObject> = Vec::new();
-    for element in &module.elements {
-        for node in translate_node(element) {
+    for element in &m.elements {
+        for node in translate_module_object(element) {
             elements.push(node)
         }
     }
@@ -77,7 +77,7 @@ pub fn translate(module: &Module) -> CompatModule {
         groups[order].push(element);
     }
     let mut sorted_elements: Vec<CompatModuleObject> = vec![CompatModuleObject::CompatSplit {
-        text: String::from(format!("/* -------{}------- */", &module.id)),
+        text: String::from(format!("/* -------{}------- */", &m.id)),
     }];
     for group in groups {
         if group.len() == 0 {
@@ -92,14 +92,14 @@ pub fn translate(module: &Module) -> CompatModule {
     }
 
     return CompatModule {
-        id: module.id.clone(),
+        id: m.id.clone(),
         elements: sorted_elements,
         link,
     };
 }
 
-fn translate_node(node: &ModuleObject) -> Vec<CompatModuleObject> {
-    match node {
+fn translate_module_object(x: &ModuleObject) -> Vec<CompatModuleObject> {
+    match x {
         ModuleObject::Typedef {
             is_pub,
             type_name,
@@ -170,14 +170,14 @@ fn translate_typedef(
                 CompatModuleObject::CompatStructForwardDeclaration(struct_name.clone()),
                 CompatModuleObject::CompatStructDefinition(CompatStructDefinition {
                     name: struct_name.clone(),
-                    fields: fields,
+                    fields,
                     is_pub,
                 }),
                 CompatModuleObject::Typedef {
                     is_pub,
-                    type_name: TypedefTarget::Type(Type {
+                    type_name: TypedefTarget::Typename(Typename {
                         is_const: false,
-                        type_name: format!("struct {}", struct_name.clone()),
+                        name: format!("struct {}", struct_name.clone()),
                     }),
                     form: TypedefForm {
                         stars: "".to_string(),
@@ -261,14 +261,14 @@ fn translate_function_parameters(node: &FunctionParameters) -> CompatFunctionPar
 
 fn translate_function_declaration(
     is_pub: bool,
-    type_name: &Type,
+    typename: &Typename,
     form: &Form,
     parameters: &FunctionParameters,
     body: &Body,
 ) -> Vec<CompatModuleObject> {
     let func = CompatFunctionDeclaration {
         is_static: !is_pub,
-        type_name: type_name.clone(),
+        type_name: typename.clone(),
         form: form.clone(),
         parameters: translate_function_parameters(&parameters),
         body: body.clone(),

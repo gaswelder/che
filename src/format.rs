@@ -17,13 +17,8 @@ fn format_union(node: &Union) -> String {
     );
 }
 
-pub fn format_type(node: &Type) -> String {
-    let mut s = String::new();
-    if node.is_const {
-        s += "const ";
-    }
-    s += &node.type_name;
-    return s;
+pub fn format_type(t: &Typename) -> String {
+    return format!("{}{}", if t.is_const { "const " } else { "" }, t.name);
 }
 
 pub fn format_form(node: &Form) -> String {
@@ -79,7 +74,7 @@ fn format_expression(expr: &Expression) -> String {
         Expression::ArrayLiteral(x) => format_array_literal(x),
         Expression::Sizeof { argument } => {
             let arg = match &**argument {
-                SizeofArgument::Type(x) => format_type(&x),
+                SizeofArgument::Typename(x) => format_type(&x),
                 SizeofArgument::Expression(x) => format_expression(&x),
             };
             return format!("sizeof({})", arg);
@@ -462,7 +457,7 @@ pub fn format_typedef(type_name: &TypedefTarget, form: &TypedefForm) -> String {
     }
     let t = match &type_name {
         TypedefTarget::AnonymousStruct(x) => format_anonymous_struct(&x),
-        TypedefTarget::Type(x) => format_type(&x),
+        TypedefTarget::Typename(x) => format_type(&x),
     };
     return format!("typedef {} {};\n", t, formstr);
 }
