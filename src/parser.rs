@@ -3,10 +3,17 @@ use crate::nodes::*;
 use std::env;
 use std::path::Path;
 
+struct Ctx {
+    typenames: Vec<String>,
+    modnames: Vec<String>,
+}
+
 #[test]
 fn test_expressions_parser() {
-    let typenames: Vec<String> = vec!["foo_t".to_string()];
-    let modnames: Vec<String> = vec!["opt".to_string()];
+    let ctx = Ctx {
+        typenames: vec!["foo_t".to_string()],
+        modnames: vec!["opt".to_string()],
+    };
     let cases: Vec<&str> = vec![
         "1",
         "x",
@@ -36,52 +43,38 @@ fn test_expressions_parser() {
     for c in cases {
         println!("-----------{}------------", c);
         let mut l = for_string(c.to_string()).unwrap();
-        let e = expr(&mut l, 0, &typenames, &modnames).unwrap();
+        let e = expr(&mut l, 0, &ctx).unwrap();
         println!("{:#?}", e);
     }
     // panic!("k");
 }
 
-fn expr(
-    l: &mut Lexer,
-    n: usize,
-    typenames: &Vec<String>,
-    modnames: &Vec<String>,
-) -> Result<Expression, String> {
+fn expr(l: &mut Lexer, n: usize, ctx: &Ctx) -> Result<Expression, String> {
     // println!("expr({}): {:?}", n, l.peek());
     if n < operator_strength("prefix") {
-        return seq(l, n, typenames, modnames);
+        return seq(l, n, ctx);
     }
     if n == operator_strength("prefix") {
-        return pref(l, typenames, modnames);
+        return pref(l, ctx);
     }
     if n == operator_strength("suffix") {
-        return base(l, typenames, modnames);
+        return base(l, ctx);
     }
     panic!("unexpected n: {}", n)
 }
 
-fn parens(
-    l: &mut Lexer,
-    typenames: &Vec<String>,
-    modnames: &Vec<String>,
-) -> Result<Expression, String> {
+fn parens(l: &mut Lexer, ctx: &Ctx) -> Result<Expression, String> {
     expect(l, "(", Some("parenthesized expression"))?;
-    let e = expr(l, 0, typenames, modnames);
+    let e = expr(l, 0, ctx);
     expect(l, ")", Some("parenthesized expression"))?;
     return e;
 }
 
-fn seq(
-    l: &mut Lexer,
-    n: usize,
-    typenames: &Vec<String>,
-    modnames: &Vec<String>,
-) -> Result<Expression, String> {
-    let mut r = expr(l, n + 1, typenames, modnames)?;
+fn seq(l: &mut Lexer, n: usize, ctx: &Ctx) -> Result<Expression, String> {
+    let mut r = expr(l, n + 1, ctx)?;
     while op_follows(l, n) {
         let op = l.get().unwrap().kind;
-        let r2 = expr(l, n + 1, typenames, modnames)?;
+        let r2 = expr(l, n + 1, ctx)?;
         r = Expression::BinaryOp {
             op,
             a: Box::new(r),
@@ -99,17 +92,13 @@ fn op_follows(l: &mut Lexer, strength: usize) -> bool {
     return is_op(&next) && operator_strength(&next) == strength;
 }
 
-fn pref(
-    l: &mut Lexer,
-    typenames: &Vec<String>,
-    modnames: &Vec<String>,
-) -> Result<Expression, String> {
+fn pref(l: &mut Lexer, ctx: &Ctx) -> Result<Expression, String> {
     // println!("  pref(): {:?}", l.peek());
     let got = l.get().unwrap();
     let next = String::from(&got.kind);
 
     if is_prefix_op(&next) {
-        let r = pref(l, typenames, modnames)?;
+        let r = pref(l, ctx)?;
         return Ok(Expression::PrefixOperator {
             operator: next,
             operand: Box::new(r),
@@ -119,44 +108,40 @@ fn pref(
     // cast
     if next == "("
         && l.peek().unwrap().kind == "word"
-        && is_type(l.peek().unwrap().content.as_ref().unwrap(), typenames)
+        && is_type(l.peek().unwrap().content.as_ref().unwrap(), &ctx.typenames)
     {
         let typeform = parse_anonymous_typeform(l)?;
         expect(l, ")", Some("typecast"))?;
         return Ok(Expression::Cast {
             type_name: typeform,
-            operand: Box::new(pref(l, typenames, modnames)?),
+            operand: Box::new(pref(l, ctx)?),
         });
     }
 
     if next == "sizeof" {
         l.unget(got);
-        return parse_sizeof(l, typenames, modnames);
+        return parse_sizeof(l, ctx);
     }
 
     l.unget(got);
-    return base(l, typenames, modnames);
+    return base(l, ctx);
 }
 
-fn base(
-    l: &mut Lexer,
-    typenames: &Vec<String>,
-    modnames: &Vec<String>,
-) -> Result<Expression, String> {
+fn base(l: &mut Lexer, ctx: &Ctx) -> Result<Expression, String> {
     // println!("      base(): {:?}", l.peek());
-    let mut r = expr_id(l, typenames, modnames)?;
+    let mut r = expr_id(l, ctx)?;
     while l.more() {
         let next = l.peek().unwrap();
         // call
         if next.kind == "(" {
-            r = parse_function_call(l, typenames, modnames, r)?;
+            r = parse_function_call(l, ctx, r)?;
             continue;
         }
 
         // index
         if next.kind == "[" {
             expect(l, "[", Some("array index"))?;
-            let index = expr(l, 0, typenames, modnames)?;
+            let index = expr(l, 0, ctx)?;
             expect(l, "]", Some("array index"))?;
             r = Expression::ArrayIndex {
                 array: Box::new(r),
@@ -177,7 +162,7 @@ fn base(
             r = Expression::BinaryOp {
                 op: l.get().unwrap().kind,
                 a: Box::new(r),
-                b: Box::new(expr_id(l, typenames, modnames)?),
+                b: Box::new(expr_id(l, ctx)?),
             };
             continue;
         }
@@ -187,11 +172,7 @@ fn base(
     return Ok(r);
 }
 
-fn expr_id(
-    l: &mut Lexer,
-    typenames: &Vec<String>,
-    modnames: &Vec<String>,
-) -> Result<Expression, String> {
+fn expr_id(l: &mut Lexer, ctx: &Ctx) -> Result<Expression, String> {
     if !l.more() {
         return Err(String::from("id: unexpected end of input"));
     }
@@ -199,7 +180,7 @@ fn expr_id(
 
     // mod "." word ?
     if next.kind == "word"
-        && modnames.contains(&next.content.as_ref().unwrap())
+        && ctx.modnames.contains(&next.content.as_ref().unwrap())
         && l.peek().unwrap().kind == "."
         && l.peek_n(1).unwrap().kind == "word"
     {
@@ -221,13 +202,13 @@ fn expr_id(
     }
     if next.kind == "(" {
         l.unget(next);
-        return parens(l, typenames, modnames);
+        return parens(l, ctx);
     }
     // Composite literal?
     if next.kind == "{" {
         l.unget(next);
         if l.peek_n(1).unwrap().kind == "." {
-            return parse_struct_literal(l, typenames, modnames);
+            return parse_struct_literal(l, ctx);
         }
         return Ok(Expression::ArrayLiteral(Box::new(parse_array_literal(l)?)));
     }
@@ -421,19 +402,14 @@ fn parse_literal(lexer: &mut Lexer) -> Result<Literal, String> {
     return Err(format!("literal expected, got {}", lexer.peek().unwrap()));
 }
 
-fn parse_enum(
-    lexer: &mut Lexer,
-    is_pub: bool,
-    typenames: &Vec<String>,
-    modnames: &Vec<String>,
-) -> Result<Enum, String> {
+fn parse_enum(lexer: &mut Lexer, is_pub: bool, ctx: &Ctx) -> Result<Enum, String> {
     let mut members: Vec<EnumMember> = Vec::new();
     expect(lexer, "enum", Some("enum definition"))?;
     expect(lexer, "{", Some("enum definition"))?;
     loop {
         let id = parse_identifier(lexer)?;
         let value: Option<Expression> = if lexer.eat("=") {
-            Some(expr(lexer, 0, typenames, modnames)?)
+            Some(expr(lexer, 0, ctx)?)
         } else {
             None
         };
@@ -489,18 +465,14 @@ fn parse_array_literal_entry(lexer: &mut Lexer) -> Result<ArrayLiteralEntry, Str
     return Ok(ArrayLiteralEntry { index, value });
 }
 
-fn parse_struct_literal(
-    lexer: &mut Lexer,
-    typenames: &Vec<String>,
-    modnames: &Vec<String>,
-) -> Result<Expression, String> {
+fn parse_struct_literal(lexer: &mut Lexer, ctx: &Ctx) -> Result<Expression, String> {
     let mut members: Vec<StructLiteralMember> = Vec::new();
     expect(lexer, "{", Some("struct literal"))?;
     loop {
         expect(lexer, ".", Some("struct literal member"))?;
         let member_name = parse_identifier(lexer)?;
         expect(lexer, "=", Some("struct literal member"))?;
-        let member_value = expr(lexer, 0, typenames, modnames)?;
+        let member_value = expr(lexer, 0, ctx)?;
         members.push(StructLiteralMember {
             name: member_name,
             value: member_value,
@@ -516,21 +488,20 @@ fn parse_struct_literal(
     return Ok(Expression::StructLiteral { members });
 }
 
-fn parse_sizeof(
-    lexer: &mut Lexer,
-    typenames: &Vec<String>,
-    modnames: &Vec<String>,
-) -> Result<Expression, String> {
+fn parse_sizeof(lexer: &mut Lexer, ctx: &Ctx) -> Result<Expression, String> {
     expect(lexer, "sizeof", None)?;
     expect(lexer, "(", None)?;
     let argument: SizeofArgument;
 
     if lexer.peek().unwrap().kind == "word"
-        && is_type(lexer.peek().unwrap().content.as_ref().unwrap(), typenames)
+        && is_type(
+            lexer.peek().unwrap().content.as_ref().unwrap(),
+            &ctx.typenames,
+        )
     {
         argument = SizeofArgument::Type(parse_type(lexer, None)?);
     } else {
-        argument = SizeofArgument::Expression(expr(lexer, 0, typenames, modnames).unwrap());
+        argument = SizeofArgument::Expression(expr(lexer, 0, ctx).unwrap());
     }
     expect(lexer, ")", None)?;
     return Ok(Expression::Sizeof {
@@ -540,17 +511,16 @@ fn parse_sizeof(
 
 fn parse_function_call(
     l: &mut Lexer,
-    typenames: &Vec<String>,
-    modnames: &Vec<String>,
+    ctx: &Ctx,
     function_name: Expression,
 ) -> Result<Expression, String> {
     let mut arguments: Vec<Expression> = Vec::new();
     expect(l, "(", None)?;
     if l.more() && l.peek().unwrap().kind != ")" {
-        arguments.push(expr(l, 0, typenames, modnames)?);
+        arguments.push(expr(l, 0, ctx)?);
         while l.follows(",") {
             l.get();
-            arguments.push(expr(l, 0, typenames, modnames)?);
+            arguments.push(expr(l, 0, ctx)?);
         }
     }
     expect(l, ")", None)?;
@@ -560,75 +530,59 @@ fn parse_function_call(
     });
 }
 
-fn parse_while(
-    lexer: &mut Lexer,
-    typenames: &Vec<String>,
-    modnames: &Vec<String>,
-) -> Result<While, String> {
+fn parse_while(lexer: &mut Lexer, ctx: &Ctx) -> Result<While, String> {
     expect(lexer, "while", None)?;
     expect(lexer, "(", None)?;
-    let condition = expr(lexer, 0, typenames, modnames)?;
+    let condition = expr(lexer, 0, ctx)?;
     expect(lexer, ")", None)?;
-    let body = parse_body(lexer, typenames, modnames)?;
+    let body = parse_body(lexer, ctx)?;
     return Ok(While { condition, body });
 }
 
-fn parse_body(
-    lexer: &mut Lexer,
-    typenames: &Vec<String>,
-    modnames: &Vec<String>,
-) -> Result<Body, String> {
+fn parse_body(lexer: &mut Lexer, ctx: &Ctx) -> Result<Body, String> {
     let mut statements: Vec<Statement> = Vec::new();
     if lexer.follows("{") {
         expect(lexer, "{", None)?;
         while !lexer.follows("}") {
-            statements.push(parse_statement(lexer, typenames, modnames)?);
+            statements.push(parse_statement(lexer, ctx)?);
         }
         expect(lexer, "}", None)?;
     } else {
-        statements.push(parse_statement(lexer, typenames, modnames)?);
+        statements.push(parse_statement(lexer, ctx)?);
     }
     return Ok(Body { statements });
 }
 
-fn parse_statement(
-    lexer: &mut Lexer,
-    typenames: &Vec<String>,
-    modnames: &Vec<String>,
-) -> Result<Statement, String> {
+fn parse_statement(lexer: &mut Lexer, ctx: &Ctx) -> Result<Statement, String> {
     let next = lexer.peek().unwrap();
-    if (next.kind == "word" && is_type(&next.content.as_ref().unwrap(), typenames))
+    if (next.kind == "word" && is_type(&next.content.as_ref().unwrap(), &ctx.typenames))
         || next.kind == "const"
     {
-        return parse_variable_declaration(lexer, typenames, modnames);
+        return parse_variable_declaration(lexer, ctx);
     }
 
     match next.kind.as_str() {
-        "if" => return Ok(Statement::If(parse_if(lexer, typenames, modnames)?)),
-        "for" => return Ok(Statement::For(parse_for(lexer, typenames, modnames)?)),
-        "while" => return Ok(Statement::While(parse_while(lexer, typenames, modnames)?)),
-        "return" => return Ok(Statement::Return(parse_return(lexer, typenames, modnames)?)),
-        "switch" => return Ok(Statement::Switch(parse_switch(lexer, typenames, modnames)?)),
+        "if" => return Ok(Statement::If(parse_if(lexer, ctx)?)),
+        "for" => return Ok(Statement::For(parse_for(lexer, ctx)?)),
+        "while" => return Ok(Statement::While(parse_while(lexer, ctx)?)),
+        "return" => return Ok(Statement::Return(parse_return(lexer, ctx)?)),
+        "switch" => return Ok(Statement::Switch(parse_switch(lexer, ctx)?)),
         _ => {
-            let expr = expr(lexer, 0, typenames, modnames)?;
+            let expr = expr(lexer, 0, ctx)?;
             expect(lexer, ";", Some("parsing statement"))?;
             return Ok(Statement::Expression(expr));
         }
     };
 }
 
-fn parse_variable_declaration(
-    lexer: &mut Lexer,
-    typenames: &Vec<String>,
-    modnames: &Vec<String>,
-) -> Result<Statement, String> {
+fn parse_variable_declaration(lexer: &mut Lexer, ctx: &Ctx) -> Result<Statement, String> {
     let type_name = parse_type(lexer, None)?;
     let mut forms = vec![];
     let mut values = vec![];
     loop {
-        forms.push(parse_form(lexer, typenames, modnames)?);
+        forms.push(parse_form(lexer, ctx)?);
         if lexer.eat("=") {
-            values.push(Some(expr(lexer, 0, typenames, modnames)?));
+            values.push(Some(expr(lexer, 0, ctx)?));
         } else {
             values.push(None)
         };
@@ -644,28 +598,20 @@ fn parse_variable_declaration(
     });
 }
 
-fn parse_return(
-    lexer: &mut Lexer,
-    typenames: &Vec<String>,
-    modnames: &Vec<String>,
-) -> Result<Return, String> {
+fn parse_return(lexer: &mut Lexer, ctx: &Ctx) -> Result<Return, String> {
     expect(lexer, "return", None)?;
     if lexer.peek().unwrap().kind == ";" {
         lexer.get();
         return Ok(Return { expression: None });
     }
-    let expression = expr(lexer, 0, typenames, modnames)?;
+    let expression = expr(lexer, 0, ctx)?;
     expect(lexer, ";", None)?;
     return Ok(Return {
         expression: Some(expression),
     });
 }
 
-fn parse_form(
-    lexer: &mut Lexer,
-    typenames: &Vec<String>,
-    modnames: &Vec<String>,
-) -> Result<Form, String> {
+fn parse_form(lexer: &mut Lexer, ctx: &Ctx) -> Result<Form, String> {
     // *argv[]
     // linechars[]
     // buf[SIZE * 2]
@@ -692,7 +638,7 @@ fn parse_form(
         &lexer.get().unwrap();
         let e: Option<Expression>;
         if lexer.more() && lexer.peek().unwrap().kind != "]" {
-            e = Some(expr(lexer, 0, typenames, modnames)?);
+            e = Some(expr(lexer, 0, ctx)?);
         } else {
             e = None;
         }
@@ -702,23 +648,19 @@ fn parse_form(
     return Ok(node);
 }
 
-fn parse_if(
-    lexer: &mut Lexer,
-    typenames: &Vec<String>,
-    modnames: &Vec<String>,
-) -> Result<If, String> {
+fn parse_if(lexer: &mut Lexer, ctx: &Ctx) -> Result<If, String> {
     let condition;
     let body;
     let mut else_body = None;
 
     expect(lexer, "if", Some("if statement"))?;
     expect(lexer, "(", Some("if statement"))?;
-    condition = expr(lexer, 0, typenames, modnames)?;
+    condition = expr(lexer, 0, ctx)?;
     expect(lexer, ")", Some("if statement"))?;
-    body = parse_body(lexer, typenames, modnames)?;
+    body = parse_body(lexer, ctx)?;
     if lexer.follows("else") {
         lexer.get();
-        else_body = Some(parse_body(lexer, typenames, modnames)?);
+        else_body = Some(parse_body(lexer, ctx)?);
     }
     return Ok(If {
         condition,
@@ -727,37 +669,36 @@ fn parse_if(
     });
 }
 
-fn parse_for(
-    lexer: &mut Lexer,
-    typenames: &Vec<String>,
-    modnames: &Vec<String>,
-) -> Result<For, String> {
+fn parse_for(lexer: &mut Lexer, ctx: &Ctx) -> Result<For, String> {
     expect(lexer, "for", None)?;
     expect(lexer, "(", None)?;
 
     let init: ForInit;
     if lexer.peek().unwrap().kind == "word"
-        && is_type(&lexer.peek().unwrap().content.as_ref().unwrap(), typenames)
+        && is_type(
+            &lexer.peek().unwrap().content.as_ref().unwrap(),
+            &ctx.typenames,
+        )
     {
         let type_name = parse_type(lexer, None)?;
-        let form = parse_form(lexer, typenames, modnames)?;
+        let form = parse_form(lexer, ctx)?;
         expect(lexer, "=", None)?;
-        let value = expr(lexer, 0, typenames, modnames)?;
+        let value = expr(lexer, 0, ctx)?;
         init = ForInit::LoopCounterDeclaration(LoopCounterDeclaration {
             type_name,
             form,
             value,
         });
     } else {
-        init = ForInit::Expression(expr(lexer, 0, typenames, modnames)?);
+        init = ForInit::Expression(expr(lexer, 0, ctx)?);
     }
 
     expect(lexer, ";", None)?;
-    let condition = expr(lexer, 0, typenames, modnames)?;
+    let condition = expr(lexer, 0, ctx)?;
     expect(lexer, ";", None)?;
-    let action = expr(lexer, 0, typenames, modnames)?;
+    let action = expr(lexer, 0, ctx)?;
     expect(lexer, ")", None)?;
-    let body = parse_body(lexer, typenames, modnames)?;
+    let body = parse_body(lexer, ctx)?;
 
     return Ok(For {
         init,
@@ -767,14 +708,10 @@ fn parse_for(
     });
 }
 
-fn parse_switch(
-    lexer: &mut Lexer,
-    typenames: &Vec<String>,
-    modnames: &Vec<String>,
-) -> Result<Switch, String> {
+fn parse_switch(lexer: &mut Lexer, ctx: &Ctx) -> Result<Switch, String> {
     expect(lexer, "switch", None)?;
     expect(lexer, "(", None)?;
-    let value = expr(lexer, 0, typenames, modnames)?;
+    let value = expr(lexer, 0, ctx)?;
     let mut cases: Vec<SwitchCase> = vec![];
     expect(lexer, ")", None)?;
     expect(lexer, "{", None)?;
@@ -789,7 +726,7 @@ fn parse_switch(
         let until = ["case", "break", "default", "}"];
         let mut statements: Vec<Statement> = vec![];
         while lexer.more() && !until.contains(&lexer.peek().unwrap().kind.as_str()) {
-            statements.push(parse_statement(lexer, typenames, modnames)?);
+            statements.push(parse_statement(lexer, ctx)?);
         }
         cases.push(SwitchCase {
             value: case_value,
@@ -802,7 +739,7 @@ fn parse_switch(
         expect(lexer, ":", None)?;
         let mut def: Vec<Statement> = vec![];
         while lexer.more() && lexer.peek().unwrap().kind != "}" {
-            def.push(parse_statement(lexer, typenames, modnames)?);
+            def.push(parse_statement(lexer, ctx)?);
         }
         default = Some(def);
     }
@@ -819,14 +756,13 @@ fn parse_function_declaration(
     is_pub: bool,
     type_name: Type,
     form: Form,
-    typenames: &Vec<String>,
-    modnames: &Vec<String>,
+    ctx: &Ctx,
 ) -> Result<FunctionDeclaration, String> {
     let mut parameters: Vec<FunctionParameter> = vec![];
     let mut variadic = false;
     expect(lexer, "(", None)?;
     if !lexer.follows(")") {
-        parameters.push(parse_function_parameter(lexer, typenames, modnames)?);
+        parameters.push(parse_function_parameter(lexer, ctx)?);
         while lexer.follows(",") {
             lexer.get();
             if lexer.follows("...") {
@@ -834,11 +770,11 @@ fn parse_function_declaration(
                 variadic = true;
                 break;
             }
-            parameters.push(parse_function_parameter(lexer, typenames, modnames)?);
+            parameters.push(parse_function_parameter(lexer, ctx)?);
         }
     }
     expect(lexer, ")", None)?;
-    let body = parse_body(lexer, typenames, modnames)?;
+    let body = parse_body(lexer, ctx)?;
     return Ok(FunctionDeclaration {
         is_pub,
         type_name,
@@ -851,74 +787,58 @@ fn parse_function_declaration(
     });
 }
 
-fn parse_function_parameter(
-    lexer: &mut Lexer,
-    typenames: &Vec<String>,
-    modnames: &Vec<String>,
-) -> Result<FunctionParameter, String> {
+fn parse_function_parameter(lexer: &mut Lexer, ctx: &Ctx) -> Result<FunctionParameter, String> {
     let mut forms: Vec<Form> = vec![];
     let type_name = parse_type(lexer, None)?;
-    forms.push(parse_form(lexer, typenames, modnames)?);
+    forms.push(parse_form(lexer, ctx)?);
     while lexer.follows(",")
         && lexer.peek_n(1).unwrap().kind != "..."
         && lexer.peek_n(1).unwrap().kind != "const"
         && !(lexer.peek_n(1).unwrap().kind == "word"
             && is_type(
                 lexer.peek_n(1).unwrap().content.as_ref().unwrap(),
-                typenames,
+                &ctx.typenames,
             ))
     {
         lexer.get();
-        forms.push(parse_form(lexer, typenames, modnames)?);
+        forms.push(parse_form(lexer, ctx)?);
     }
     return Ok(FunctionParameter { type_name, forms });
 }
 
-fn parse_union(
-    lexer: &mut Lexer,
-    typenames: &Vec<String>,
-    modnames: &Vec<String>,
-) -> Result<Union, String> {
+fn parse_union(lexer: &mut Lexer, ctx: &Ctx) -> Result<Union, String> {
     let mut fields: Vec<UnionField> = vec![];
     expect(lexer, "union", None)?;
     expect(lexer, "{", None)?;
     while !lexer.follows("}") {
         let type_name = parse_type(lexer, None)?;
-        let form = parse_form(lexer, typenames, modnames)?;
+        let form = parse_form(lexer, ctx)?;
         expect(lexer, ";", None)?;
         fields.push(UnionField { type_name, form });
     }
     expect(lexer, "}", None)?;
-    let form = parse_form(lexer, typenames, modnames)?;
+    let form = parse_form(lexer, ctx)?;
     expect(lexer, ";", None)?;
     return Ok(Union { form, fields });
 }
 
-fn parse_module_object(
-    lexer: &mut Lexer,
-    typenames: &Vec<String>,
-    modnames: &Vec<String>,
-) -> Result<ModuleObject, String> {
+fn parse_module_object(lexer: &mut Lexer, ctx: &Ctx) -> Result<ModuleObject, String> {
     let mut is_pub = false;
     if lexer.follows("pub") {
         lexer.get();
         is_pub = true;
     }
     if lexer.follows("enum") {
-        return Ok(ModuleObject::Enum(parse_enum(
-            lexer, is_pub, typenames, modnames,
-        )?));
+        return Ok(ModuleObject::Enum(parse_enum(lexer, is_pub, ctx)?));
     }
     if lexer.follows("typedef") {
-        return Ok(ModuleObject::Typedef(parse_typedef(
-            is_pub, lexer, typenames, modnames,
-        )?));
+        return Ok(ModuleObject::Typedef(parse_typedef(is_pub, lexer, ctx)?));
     }
     let type_name = parse_type(lexer, None)?;
-    let form = parse_form(lexer, typenames, modnames)?;
+    let form = parse_form(lexer, ctx)?;
     if lexer.peek().unwrap().kind == "(" {
         return Ok(ModuleObject::FunctionDeclaration(
-            parse_function_declaration(lexer, is_pub, type_name, form, typenames, modnames)?,
+            parse_function_declaration(lexer, is_pub, type_name, form, ctx)?,
         ));
     }
 
@@ -931,7 +851,7 @@ fn parse_module_object(
             return Err("module variables can't be exported".to_string());
         }
         lexer.get();
-        let value = expr(lexer, 0, typenames, modnames)?;
+        let value = expr(lexer, 0, ctx)?;
         expect(lexer, ";", Some("module variable declaration"))?;
         let var = ModuleVariable {
             type_name,
@@ -961,20 +881,14 @@ fn parse_compat_macro(lexer: &mut Lexer) -> Result<CompatMacro, String> {
     });
 }
 
-fn parse_typedef(
-    is_pub: bool,
-    lexer: &mut Lexer,
-    typenames: &Vec<String>,
-    modnames: &Vec<String>,
-) -> Result<Typedef, String> {
+fn parse_typedef(is_pub: bool, lexer: &mut Lexer, ctx: &Ctx) -> Result<Typedef, String> {
     // typedef void *f(int a)[20];
     // typedef foo bar;
     // typedef struct foo foo_t;
     expect(lexer, "typedef", None)?;
     let type_name;
     if lexer.follows("{") {
-        type_name =
-            TypedefTarget::AnonymousStruct(parse_anonymous_struct(lexer, typenames, modnames)?);
+        type_name = TypedefTarget::AnonymousStruct(parse_anonymous_struct(lexer, ctx)?);
     } else {
         type_name = TypedefTarget::Type(parse_type(lexer, Some("typedef"))?);
     }
@@ -1020,19 +934,15 @@ fn parse_typedef_form(lexer: &mut Lexer) -> Result<TypedefForm, String> {
     });
 }
 
-fn parse_anonymous_struct(
-    lexer: &mut Lexer,
-    typenames: &Vec<String>,
-    modnames: &Vec<String>,
-) -> Result<AnonymousStruct, String> {
+fn parse_anonymous_struct(lexer: &mut Lexer, ctx: &Ctx) -> Result<AnonymousStruct, String> {
     let mut fieldlists: Vec<StructEntry> = vec![];
     expect(lexer, "{", Some("struct type definition"))?;
     while lexer.more() && lexer.peek().unwrap().kind != "}" {
         if lexer.peek().unwrap().kind == "union" {
-            fieldlists.push(StructEntry::Union(parse_union(lexer, typenames, modnames)?));
+            fieldlists.push(StructEntry::Union(parse_union(lexer, ctx)?));
         } else {
             fieldlists.push(StructEntry::StructFieldlist(parse_struct_fieldlist(
-                lexer, typenames, modnames,
+                lexer, ctx,
             )?));
         }
     }
@@ -1043,11 +953,7 @@ fn parse_anonymous_struct(
     });
 }
 
-fn parse_struct_fieldlist(
-    lexer: &mut Lexer,
-    typenames: &Vec<String>,
-    modnames: &Vec<String>,
-) -> Result<StructFieldlist, String> {
+fn parse_struct_fieldlist(lexer: &mut Lexer, ctx: &Ctx) -> Result<StructFieldlist, String> {
     if lexer.follows("struct") {
         return Err("can't parse nested structs, please consider a typedef".to_string());
     }
@@ -1055,10 +961,10 @@ fn parse_struct_fieldlist(
     let type_name = parse_type(lexer, None)?;
 
     let mut forms: Vec<Form> = vec![];
-    forms.push(parse_form(lexer, typenames, modnames)?);
+    forms.push(parse_form(lexer, ctx)?);
     while lexer.follows(",") {
         lexer.get();
-        forms.push(parse_form(lexer, typenames, modnames)?);
+        forms.push(parse_form(lexer, ctx)?);
     }
 
     expect(lexer, ";", None)?;
@@ -1203,10 +1109,12 @@ pub fn get_module(name: &String) -> Result<Module, String> {
         ));
     }
 
-    let types = get_file_typenames(&module_path)?;
-    let deps = get_file_deps(&module_path)?;
+    let ctx = Ctx {
+        typenames: get_file_typenames(&module_path)?,
+        modnames: get_file_deps(&module_path)?,
+    };
     let mut lexer = for_file(&module_path)?;
-    let elements = parse_module(&mut lexer, types, deps);
+    let elements = parse_module(&mut lexer, &ctx);
     if elements.is_err() {
         let next = lexer.peek().unwrap();
         let wher = format!("{}: {}", module_path, lexer.peek().unwrap().pos);
@@ -1239,13 +1147,12 @@ fn token_to_string(token: &Token) -> String {
     return format!("[{}, {}]", token.kind, c);
 }
 
-fn parse_module(
-    lexer: &mut Lexer,
-    typenames: Vec<String>,
-    modnames: Vec<String>,
-) -> Result<Vec<ModuleObject>, String> {
+fn parse_module(lexer: &mut Lexer, ctx: &Ctx) -> Result<Vec<ModuleObject>, String> {
     let mut elements: Vec<ModuleObject> = vec![];
-    let mut types = typenames.clone();
+    let mut ctx2 = Ctx {
+        modnames: ctx.modnames.clone(),
+        typenames: ctx.typenames.clone(),
+    };
     while lexer.more() {
         match lexer.peek().unwrap().kind.as_str() {
             "import" => {
@@ -1257,7 +1164,7 @@ fn parse_module(
                 for element in module.elements {
                     match element {
                         ModuleObject::Typedef(t) => {
-                            types.push(t.form.alias);
+                            ctx2.typenames.push(t.form.alias);
                         }
                         _ => {}
                     }
@@ -1267,7 +1174,7 @@ fn parse_module(
                 elements.push(ModuleObject::CompatMacro(parse_compat_macro(lexer)?));
             }
             _ => {
-                elements.push(parse_module_object(lexer, &types, &modnames)?);
+                elements.push(parse_module_object(lexer, &ctx2)?);
             }
         }
     }
