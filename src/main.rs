@@ -85,8 +85,9 @@ fn build(argv: &[String]) -> Result<(), String> {
     let c_mods: Vec<nodes::CompatModule> = mods.iter().map(|m| translator::translate(&m)).collect();
 
     // Save all C modules somewhere.
-    if fs::metadata("tmp").is_err() {
-        fs::create_dir("tmp").unwrap();
+    let tmppath = format!("{}/tmp", parser::homepath());
+    if fs::metadata(&tmppath).is_err() {
+        fs::create_dir(&tmppath).unwrap();
     }
     struct PathId {
         path: String,
@@ -95,7 +96,7 @@ fn build(argv: &[String]) -> Result<(), String> {
     let mut paths: Vec<PathId> = Vec::new();
     for module in &c_mods {
         let src = format::format_compat_module(&module);
-        let path = format!("tmp/{:x}.c", md5::compute(&module.id));
+        let path = format!("{}/{:x}.c", tmppath, md5::compute(&module.id));
         paths.push(PathId {
             path: String::from(&path),
             id: String::from(&module.id),

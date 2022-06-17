@@ -1091,6 +1091,10 @@ fn get_file_typenames(path: &str) -> Result<Vec<String>, String> {
     return Ok(list);
 }
 
+pub fn homepath() -> String {
+    return env::var("CHELANG_HOME").unwrap_or(String::from("."));
+}
+
 pub fn get_module(name: &String) -> Result<Module, String> {
     // If requested module name ends with ".c", we look for it at the given
     // location. If ".c" is omitted, we look for it inside the hardcoded lib
@@ -1098,8 +1102,7 @@ pub fn get_module(name: &String) -> Result<Module, String> {
     let module_path = if name.ends_with(".c") {
         name.clone()
     } else {
-        let path = env::var("CHELANG_HOME").unwrap_or(String::from("."));
-        format!("{}/lib/{}.c", path, name)
+        format!("{}/lib/{}.c", homepath(), name)
     };
 
     if std::fs::metadata(&module_path).is_err() {
