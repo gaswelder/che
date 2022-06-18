@@ -246,68 +246,84 @@ fn indent_tree(lines: Vec<String>, first: &str, cont: &str) -> Vec<String> {
     return result;
 }
 
+struct Exports {
+    consts: Vec<nodes::EnumItem>,
+    fns: Vec<nodes::FunctionDeclaration>,
+    types: Vec<nodes::Typedef>,
+}
+
+fn get_exports(m: &nodes::Module) -> Exports {
+    let mut exports = Exports {
+        consts: Vec::new(),
+        fns: Vec::new(),
+        types: Vec::new(),
+    };
+    for e in &m.elements {
+        match e {
+            nodes::ModuleObject::Enum(x) => {
+                if x.is_pub {
+                    for member in &x.members {
+                        exports.consts.push(member.clone());
+                    }
+                }
+            }
+            nodes::ModuleObject::Typedef(x) => {
+                if x.is_pub {
+                    exports.types.push(x.clone());
+                }
+            }
+            nodes::ModuleObject::FunctionDeclaration(f) => {
+                if f.is_pub {
+                    exports.fns.push(f.clone())
+                }
+            }
+            _ => {}
+        }
+    }
+    return exports;
+}
+
 fn exports(argv: &[String]) -> i32 {
     for path in argv {
         let m = parser::get_module(&path.to_string()).unwrap();
         println!("mod {}", m.id);
-        let mut consts: Vec<String> = Vec::new();
-        let mut fns: Vec<String> = Vec::new();
-        let mut types: Vec<String> = Vec::new();
-        for e in m.elements {
-            match e {
-                nodes::ModuleObject::Enum(nodes::Enum { is_pub, members }) => {
-                    if is_pub {
-                        for member in members {
-                            consts.push(member.id);
-                        }
-                    }
-                }
-                nodes::ModuleObject::Typedef(nodes::Typedef { is_pub, form, .. }) => {
-                    if is_pub {
-                        types.push(form.alias);
-                    }
-                }
-                nodes::ModuleObject::FunctionDeclaration(nodes::FunctionDeclaration {
-                    is_pub,
-                    form,
-                    type_name,
-                    parameters,
-                    ..
-                }) => {
-                    if is_pub {
-                        let mut params = String::from("(");
-                        for (i, parameter) in parameters.list.iter().enumerate() {
-                            if i > 0 {
-                                params += ", ";
-                            }
-                            params += &format::format_type(&parameter.type_name);
-                            params += " ";
-                            for form in &parameter.forms {
-                                params += &format::format_form(&form);
-                            }
-                        }
-                        if parameters.variadic {
-                            params += ", ...";
-                        }
-                        params += ")";
-
-                        let form = format::format_form(&form);
-                        let mut s = String::new();
-                        s += &format!("{}\t{} {}", format::format_type(&type_name), form, params);
-                        fns.push(s);
-                    }
-                }
-                _ => {}
+        let exports = get_exports(&m);
+        if !exports.consts.is_empty() {
+            println!("constants");
+            for c in exports.consts {
+                println!("\t{}", c.id);
             }
         }
-        if !consts.is_empty() {
-            println!("constants\n\t{}", consts.join("\n\t"));
+        if !exports.types.is_empty() {
+            println!("types");
+            for c in exports.types {
+                println!("\t{}", c.form.alias);
+            }
         }
-        if !types.is_empty() {
-            println!("types\n\t{}", types.join("\n\t"));
-        }
-        if !fns.is_empty() {
-            println!("functions\n\t{}", fns.join("\n\t"));
+        if !exports.fns.is_empty() {
+            println!("functions");
+            for c in exports.fns {
+                let mut params = String::from("(");
+                for (i, parameter) in c.parameters.list.iter().enumerate() {
+                    if i > 0 {
+                        params += ", ";
+                    }
+                    params += &format::format_type(&parameter.type_name);
+                    params += " ";
+                    for form in &parameter.forms {
+                        params += &format::format_form(&form);
+                    }
+                }
+                if c.parameters.variadic {
+                    params += ", ...";
+                }
+                params += ")";
+
+                let form = format::format_form(&c.form);
+                let mut s = String::new();
+                s += &format!("{}\t{} {}", format::format_type(&c.type_name), form, params);
+                println!("\t{}", s);
+            }
         }
     }
     return 0;
