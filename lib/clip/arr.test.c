@@ -1,7 +1,7 @@
 #import cli
 #import clip/arr
 
-int main()
+bool test()
 {
 	arr_t *a = arr_new();
 
@@ -21,10 +21,14 @@ int main()
 		actual += arr_geti(c, i);
 	}
 
-	if (expected == actual) {
-		puts("OK");
+	return expected == actual;
+}
+
+int main() {
+	if (test()) {
+        puts("OK clip/arr test");
 		return 0;
 	}
-	puts("FAIL");
+	puts("FAIL clip/arr test");
 	return 1;
 }

@@ -22,8 +22,6 @@ run () {
     echo OK $src
 }
 
-run arr.c '.' 'OK'
-run exec.c 'exec.c' 'exec.c'
 run xml.c '.' "dir dir1
   file file1
   file file2

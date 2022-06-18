@@ -7,10 +7,15 @@ export CHELANG_HOME=`pwd`
 che=$CHELANG_HOME/target/debug/che
 
 ## ...
-cd lib/crypt
-$che build md5.test.c test.out
-./test.out || exit 1
-cd $CHELANG_HOME
+libtest() {
+	cd `dirname "$1"`
+	$che build `basename $1` test.out
+	./test.out || exit 1
+	cd $CHELANG_HOME
+}
+libtest lib/crypt/md5.test.c
+libtest lib/clip/arr.test.c
+libtest lib/os/exec.test.c
 
 
 cd test
