@@ -18,6 +18,7 @@
 #include <string.h>
 #include <time.h>
 #include <setjmp.h>
+#define nelem(x) (sizeof (x)/sizeof (x)[0])
 
 
 /* -------------- */

@@ -145,7 +145,7 @@ void dlog_free( dlog_t *log )
  */
 period_t *find_period( const char *pername )
 {
-	int n = (int)( sizeof(periods) / sizeof(periods[0]) );
+	int n = (int) nelem(periods);
 
 	for( int i = 0; i < n; i++ ) {
 		if( strcmp( periods[i].name, pername ) == 0 ) {

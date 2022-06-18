@@ -62,7 +62,7 @@ kv typenames[] = {
 
 pub const char *tiff_typename(int type)
 {
-	for (size_t i = 0; i < sizeof(typenames) / sizeof(typenames[0]); i++) {
+	for (size_t i = 0; i < nelem(typenames); i++) {
 		kv entry = typenames[i];
 		if (entry.k == type) {
 			return entry.v;

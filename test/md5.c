@@ -22,7 +22,7 @@ int main()
 	md5sum_t s = {0};
 	md5str_t buf = "";
 
-	size_t n = sizeof(tests)/sizeof(tests[0]);
+	size_t n = nelem(tests);
 	for(size_t i = 0; i < n; i++) {
 		md5_str(tests[i].s, s);
 		md5_sprint(s, buf);

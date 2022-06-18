@@ -201,3 +201,21 @@ int main() {
 	return 0;
 }
 ```
+
+## The nelem macro
+
+One common idiom to get a static array's length is:
+
+```c
+for (int i = 0; i < sizeof(a) / sizeof(a[0]); i++) {
+	...
+}
+```
+
+Since it's often defined as macro, one of those is built in:
+
+```c
+for (int i = 0; i < nelem(a); i++) {
+	...
+}
+```

@@ -37,6 +37,10 @@ pub fn translate(m: &Module) -> CompatModule {
     for n in std {
         elements.push(CompatModuleObject::CompatInclude(format!("<{}.h>", n)));
     }
+    elements.push(CompatModuleObject::CompatMacro(CompatMacro {
+        name: "define".to_string(),
+        value: "nelem(x) (sizeof (x)/sizeof (x)[0])".to_string(),
+    }));
 
     // Reorder the elements so that typedefs and similar preamble elements
     // come first.

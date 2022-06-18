@@ -75,8 +75,6 @@
  */
 pub typedef uint32_t Rune;
 
-#define	nelem(x)	(sizeof (x)/sizeof (x)[0])
-
 void *memccpy (void *dest, *src, int c, size_t n) {
 	uint8_t *from = (uint8_t *) src;
 	uint8_t *to = (uint8_t *) dest;

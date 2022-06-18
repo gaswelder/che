@@ -172,14 +172,14 @@ tok_t *lexer_read(lexer_t *l) {
 
 	
 	char *pos = buf_pos(b);
-	for (size_t i = 0; i < sizeof(keywords) / sizeof(keywords[0]); i++) {
+	for (size_t i = 0; i < nelem(keywords); i++) {
 		const char *keyword = keywords[i];
 		if (buf_skip_literal(b, keyword)) {
 			// puts("keyword");
 			return tok_make(newstr("%s", keyword), NULL, pos);
 		}
 	}
-	for (size_t i = 0; i < sizeof(symbols) / sizeof(symbols[0]); i++) {
+	for (size_t i = 0; i < nelem(symbols); i++) {
 		const char *symbol = symbols[i];
 		if (buf_skip_literal(b, symbol)) {
 			// puts("symbol");

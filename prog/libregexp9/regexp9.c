@@ -20,8 +20,6 @@
 
 #import utf
 
-#define	nelem(x)	(sizeof (x)/sizeof (x)[0])
-
 // Plan 9 regular expression notation
 
 // Regular expression syntax used by the Plan 9 regular expression library.

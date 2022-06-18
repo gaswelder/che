@@ -236,7 +236,7 @@ bool _read_header(bits_t *s, header_t *h)
 
 	// 2: freq
 	index = bits_getn(s, 2);
-	if(index < 0 || (size_t)index >= (sizeof(frequencies)/sizeof(frequencies[0]))) {
+	if(index < 0 || (size_t)index >= nelem(frequencies)) {
 		return false;
 	}
 	h->freq = frequencies[index];
