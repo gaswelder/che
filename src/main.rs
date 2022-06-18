@@ -18,7 +18,19 @@ use std::string::String;
 #[test]
 fn test_rename() {
     let mut m = parser::get_module(&"json".to_string()).unwrap();
-    rename::rename_mod(&mut m);
+    let exports = get_exports(&m);
+    let mut names: Vec<String> = Vec::new();
+    for e in exports.consts {
+        names.push(e.id);
+    }
+    for f in exports.fns {
+        names.push(f.form.name);
+    }
+    for t in exports.types {
+        names.push(t.form.alias);
+    }
+    println!("{:?}", names);
+    rename::rename_mod(&mut m, &"kek".to_string(), &names);
     let c = translator::translate(&m);
     fs::write("out.c", format::format_compat_module(&c)).unwrap();
 }
