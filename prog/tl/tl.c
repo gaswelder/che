@@ -152,9 +152,9 @@ int cmd_rm(int argc, char **argv) {
         tl_rm(*id);
 
         char *path = newstr("%s/%s", dir, name);
-        char *newpath = newstr("%s/__/%s", dir, name);
+        char *newpath = newstr("%s/__%s", dir, name);
         if (rename(path, newpath) < 0) {
-            fprintf(stderr, "failed to move torrent to '%s': %s\n", newpath, strerror(errno));
+            fprintf(stderr, "failed rename torrent to '%s': %s\n", newpath, strerror(errno));
         }
         free(path);
         free(newpath);

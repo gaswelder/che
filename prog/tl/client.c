@@ -54,7 +54,7 @@ pub void tl_add(char *url) {
 }
 
 pub void tl_rm(char *id) {
-    char *args[] = {"-r", id, NULL};
+    char *args[] = {"-it", id, "-r", NULL};
     client_t c = tl_exec(args);
     fpassthrough(c.out, stdout);
     tl_close(c);
