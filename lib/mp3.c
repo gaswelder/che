@@ -10,7 +10,7 @@
 #import cli
 #import bitreader
 
-#define L3 1
+const int L3 = 1;
 
 int bitrates[] = {
 	0, 32, 40, 48, 56, 64, 80, 96, 112,

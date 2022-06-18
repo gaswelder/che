@@ -14,17 +14,18 @@ enum {
 	BIG = 1
 };
 
-
-#define TIFF_ImageWidth 256
-#define TIFF_ImageLength 257
-#define TIFF_BitsPerSample 258
-#define TIFF_Compression 259
-	#define TIFF_Uncompressed 1
-	#define TIFF_LZW 5
-#define TIFF_ImageDescription 270
-#define TIFF_StripOffsets 273
-#define TIFF_RowsPerStrip 278
-#define TIFF_StripByteCounts 279
+pub enum {
+	TIFF_ImageWidth = 256,
+	TIFF_ImageLength = 257,
+	TIFF_BitsPerSample = 258,
+	TIFF_Compression = 259,
+	TIFF_Uncompressed = 1,
+	TIFF_LZW = 5,
+	TIFF_ImageDescription = 270,
+	TIFF_StripOffsets = 273,
+	TIFF_RowsPerStrip = 278,
+	TIFF_StripByteCounts = 279
+};
 
 pub typedef {
 	int tag;

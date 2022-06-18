@@ -6,11 +6,6 @@
 #include <getopt.h>
 
 /*
- * Twice as much as a borderline sane program would need.
- */
-#define MAX_FLAGS 32
-
-/*
  * Option value types for use in the 'opt' function
  */
 pub enum {
@@ -22,7 +17,7 @@ pub enum {
 };
 
 /*
- * A single option description.
+ * List of defined options.
  */
 typedef {
 	int type;
@@ -30,11 +25,11 @@ typedef {
 	const char *desc;
 	void *value_pointer;
 } optspec_t;
-
 /*
- * List of defined options.
+ * Twice as much as a borderline sane program would need.
  */
-optspec_t specs[MAX_FLAGS] = {};
+const int MAX_FLAGS = 32;
+optspec_t specs[32] = {};
 int flags_num = 0;
 
 const char *progname = "progname";
@@ -55,7 +50,7 @@ pub void opt_opt(int type, const char *name, const char *desc, void *value_point
 	}
 
 	if (flags_num >= MAX_FLAGS) {
-		fprintf(stderr, "Too many flags (%d)\n", MAX_FLAGS);
+		fprintf(stderr, "Too many flags max is (%d)\n", MAX_FLAGS);
 		exit(1);
 	}
 
@@ -91,7 +86,7 @@ pub char **opt_parse( int argc, char **argv )
 {
 	opterr = 0;
 	progname = argv[0];
-	char optstr[MAX_FLAGS * 2 + 2] =  {};
+	char *optstr = calloc(1, MAX_FLAGS * 2 + 2);
 
 	char *p = optstr;
 	*p++ = ':';

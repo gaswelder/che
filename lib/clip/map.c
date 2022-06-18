@@ -1,12 +1,5 @@
 #import cli
-/*
- */
 
-#define MAXKEY 256
-
-/*
- * The map
- */
 pub typedef {
 	__table *t;
 } map;
@@ -14,6 +7,7 @@ pub typedef {
 /*
  * An element of the hash table
  */
+#define MAXKEY 256
 pub typedef {
 	__item *next;
 	char key[MAXKEY];

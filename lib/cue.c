@@ -20,10 +20,10 @@ pub typedef {
  * Sheet structure, the topmost element
  * with preallocated array of track info structures.
  */
-#define MAXTRACKS 100
+const int MAXTRACKS = 100;
 
 pub typedef {
-	cuetrack_t tracks[MAXTRACKS];
+	cuetrack_t tracks[100];
 	int ntracks;
 } cue_t;
 
