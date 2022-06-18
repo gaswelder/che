@@ -6,27 +6,40 @@ pub struct Module {
 
 #[derive(Debug, Clone)]
 pub enum ModuleObject {
-    ModuleVariable(ModuleVariable),
-    Import {
-        path: String,
-    },
     CompatMacro(CompatMacro),
-    Enum {
-        is_pub: bool,
-        members: Vec<EnumMember>,
-    },
-    FunctionDeclaration {
-        is_pub: bool,
-        type_name: Typename,
-        form: Form,
-        parameters: FunctionParameters,
-        body: Body,
-    },
-    Typedef {
-        is_pub: bool,
-        type_name: TypedefTarget,
-        form: TypedefForm,
-    },
+    Import { path: String },
+    Enum(Enum),
+    Typedef(Typedef),
+    ModuleVariable(ModuleVariable),
+    FunctionDeclaration(FunctionDeclaration),
+}
+
+#[derive(Debug, Clone)]
+pub struct Enum {
+    pub is_pub: bool,
+    pub members: Vec<EnumItem>,
+}
+
+#[derive(Debug, Clone)]
+pub struct EnumItem {
+    pub id: String,
+    pub value: Option<Expression>,
+}
+
+#[derive(Debug, Clone)]
+pub struct Typedef {
+    pub is_pub: bool,
+    pub type_name: TypedefTarget,
+    pub form: TypedefForm,
+}
+
+#[derive(Debug, Clone)]
+pub struct FunctionDeclaration {
+    pub is_pub: bool,
+    pub type_name: Typename,
+    pub form: Form,
+    pub parameters: FunctionParameters,
+    pub body: Body,
 }
 
 #[derive(Debug, Clone)]
@@ -45,12 +58,6 @@ pub struct AnonymousTypeform {
 pub struct Literal {
     pub type_name: String,
     pub value: String,
-}
-
-#[derive(Debug, Clone)]
-pub struct EnumMember {
-    pub id: String,
-    pub value: Option<Expression>,
 }
 
 #[derive(Debug, Clone)]
@@ -317,7 +324,7 @@ pub enum CompatModuleObject {
     CompatMacro(CompatMacro),
     CompatInclude(String),
     Enum {
-        members: Vec<EnumMember>,
+        members: Vec<EnumItem>,
         is_hidden: bool,
     },
     CompatStructForwardDeclaration(String),

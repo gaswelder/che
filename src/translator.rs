@@ -100,24 +100,24 @@ pub fn translate(m: &Module) -> CompatModule {
 
 fn translate_module_object(x: &ModuleObject) -> Vec<CompatModuleObject> {
     match x {
-        ModuleObject::Typedef {
+        ModuleObject::Typedef(Typedef {
             is_pub,
             type_name,
             form,
-        } => translate_typedef(*is_pub, type_name, form),
+        }) => translate_typedef(*is_pub, type_name, form),
         ModuleObject::Import { path } => {
             let module = parser::get_module(&path).unwrap();
             let compat = translate(&module);
             return get_module_synopsis(compat);
         }
-        ModuleObject::FunctionDeclaration {
+        ModuleObject::FunctionDeclaration(FunctionDeclaration {
             is_pub,
             type_name,
             form,
             parameters,
             body,
-        } => translate_function_declaration(*is_pub, type_name, form, parameters, body),
-        ModuleObject::Enum { is_pub, members } => {
+        }) => translate_function_declaration(*is_pub, type_name, form, parameters, body),
+        ModuleObject::Enum(Enum { is_pub, members }) => {
             return vec![CompatModuleObject::Enum {
                 members: members.clone(),
                 is_hidden: !is_pub,

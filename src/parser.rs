@@ -391,7 +391,7 @@ fn parse_literal(lexer: &mut Lexer) -> Result<Literal, String> {
 }
 
 fn parse_enum(lexer: &mut Lexer, is_pub: bool, ctx: &Ctx) -> Result<ModuleObject, String> {
-    let mut members: Vec<EnumMember> = Vec::new();
+    let mut members: Vec<EnumItem> = Vec::new();
     expect(lexer, "enum", Some("enum definition"))?;
     expect(lexer, "{", Some("enum definition"))?;
     loop {
@@ -401,7 +401,7 @@ fn parse_enum(lexer: &mut Lexer, is_pub: bool, ctx: &Ctx) -> Result<ModuleObject
         } else {
             None
         };
-        members.push(EnumMember { id, value });
+        members.push(EnumItem { id, value });
         if lexer.eat(",") {
             continue;
         } else {
@@ -410,7 +410,7 @@ fn parse_enum(lexer: &mut Lexer, is_pub: bool, ctx: &Ctx) -> Result<ModuleObject
     }
     expect(lexer, "}", Some("enum definition"))?;
     expect(lexer, ";", Some("enum definition"))?;
-    return Ok(ModuleObject::Enum { is_pub, members });
+    return Ok(ModuleObject::Enum(Enum { is_pub, members }));
 }
 
 fn parse_array_literal(lexer: &mut Lexer) -> Result<ArrayLiteral, String> {
@@ -762,7 +762,7 @@ fn parse_function_declaration(
     }
     expect(lexer, ")", None)?;
     let body = parse_body(lexer, ctx)?;
-    return Ok(ModuleObject::FunctionDeclaration {
+    return Ok(ModuleObject::FunctionDeclaration(FunctionDeclaration {
         is_pub,
         type_name,
         form,
@@ -771,7 +771,7 @@ fn parse_function_declaration(
             variadic,
         },
         body,
-    });
+    }));
 }
 
 fn parse_function_parameter(lexer: &mut Lexer, ctx: &Ctx) -> Result<TypeAndForms, String> {
@@ -879,11 +879,11 @@ fn parse_typedef(is_pub: bool, lexer: &mut Lexer, ctx: &Ctx) -> Result<ModuleObj
     }
     let form = parse_typedef_form(lexer)?;
     expect(lexer, ";", Some("typedef"))?;
-    return Ok(ModuleObject::Typedef {
+    return Ok(ModuleObject::Typedef(Typedef {
         is_pub,
         type_name,
         form,
-    });
+    }));
 }
 
 fn parse_typedef_form(lexer: &mut Lexer) -> Result<TypedefForm, String> {
@@ -1149,7 +1149,7 @@ fn parse_module(lexer: &mut Lexer, ctx: &Ctx) -> Result<Vec<ModuleObject>, Strin
                 let module = get_module(&p)?;
                 for element in module.elements {
                     match element {
-                        ModuleObject::Typedef { form, .. } => {
+                        ModuleObject::Typedef(Typedef { form, .. }) => {
                             ctx2.typenames.push(form.alias);
                         }
                         _ => {}

@@ -255,25 +255,25 @@ fn exports(argv: &[String]) -> i32 {
         let mut types: Vec<String> = Vec::new();
         for e in m.elements {
             match e {
-                nodes::ModuleObject::Enum { is_pub, members } => {
+                nodes::ModuleObject::Enum(nodes::Enum { is_pub, members }) => {
                     if is_pub {
                         for member in members {
                             consts.push(member.id);
                         }
                     }
                 }
-                nodes::ModuleObject::Typedef { is_pub, form, .. } => {
+                nodes::ModuleObject::Typedef(nodes::Typedef { is_pub, form, .. }) => {
                     if is_pub {
                         types.push(form.alias);
                     }
                 }
-                nodes::ModuleObject::FunctionDeclaration {
+                nodes::ModuleObject::FunctionDeclaration(nodes::FunctionDeclaration {
                     is_pub,
                     form,
                     type_name,
                     parameters,
                     ..
-                } => {
+                }) => {
                     if is_pub {
                         let mut params = String::from("(");
                         for (i, parameter) in parameters.list.iter().enumerate() {

@@ -272,7 +272,7 @@ pub fn format_compat_struct_definition(node: &CompatStructDefinition) -> String 
     );
 }
 
-fn format_enum_member(node: &EnumMember) -> String {
+fn format_enum_member(node: &EnumItem) -> String {
     let mut s = node.id.clone();
     if node.value.is_some() {
         s += " = ";

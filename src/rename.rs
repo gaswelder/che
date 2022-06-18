@@ -13,7 +13,7 @@ fn mod_obj(obj: &mut ModuleObject) {
             expr(&mut x.value);
             rename_form(&mut x.form);
         }
-        ModuleObject::Enum { is_pub, members } => {
+        ModuleObject::Enum(Enum { is_pub, members }) => {
             if !*is_pub {
                 return;
             }
@@ -21,23 +21,23 @@ fn mod_obj(obj: &mut ModuleObject) {
                 m.id = format!("{}_{}", "kekekekeke", m.id);
             }
         }
-        ModuleObject::FunctionDeclaration {
+        ModuleObject::FunctionDeclaration(FunctionDeclaration {
             is_pub: _,
             type_name,
             form,
             parameters,
             body,
-        } => {
+        }) => {
             rename_typename(type_name);
             params(parameters);
             rename_body(body);
             rename_form(form);
         }
-        ModuleObject::Typedef {
+        ModuleObject::Typedef(Typedef {
             type_name,
             form,
             is_pub: _,
-        } => {
+        }) => {
             match &mut form.params {
                 Some(x) => {
                     for tf in &mut x.forms {
