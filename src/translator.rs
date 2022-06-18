@@ -137,23 +137,23 @@ fn translate_module_object(x: &ModuleObject) -> Vec<CompatModuleObject> {
 
 fn translate_typedef(
     is_pub: bool,
-    type_name: &TypedefTarget,
+    target: &TypedefTarget,
     form: &TypedefForm,
 ) -> Vec<CompatModuleObject> {
-    match &type_name {
+    match &target {
         // A sugary "typedef {int a} foo_t" is translated to
         // "struct __foo_t_struct {int a}; typedef __foo_t_struct foo_t;".
         // And remember that the struct definition itself is sugar that
         // should be translated as well.
-        TypedefTarget::AnonymousStruct(s) => {
+        TypedefTarget::AnonymousStruct { entries } => {
             let struct_name = format!("__{}_struct", form.alias);
 
             // Build the compat struct fields.
             let mut fields: Vec<CompatStructEntry> = Vec::new();
-            for entry in &s.entries {
+            for entry in entries {
                 match entry {
                     // One fieldlist is multiple fields of the same type.
-                    StructEntry::StructFieldlist(x) => {
+                    StructEntry::Plain(x) => {
                         for f in &x.forms {
                             fields.push(CompatStructEntry::CompatStructField {
                                 type_name: x.type_name.clone(),
@@ -188,11 +188,13 @@ fn translate_typedef(
                 },
             ]
         }
-        _ => vec![CompatModuleObject::Typedef {
-            is_pub,
-            type_name: type_name.clone(),
-            form: form.clone(),
-        }],
+        _ => {
+            return vec![CompatModuleObject::Typedef {
+                is_pub,
+                type_name: target.clone(),
+                form: form.clone(),
+            }];
+        }
     }
 }
 

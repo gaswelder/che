@@ -59,6 +59,12 @@ pub struct ArrayLiteral {
 }
 
 #[derive(Debug, Clone)]
+pub struct ArrayLiteralEntry {
+    pub index: ArrayLiteralKey,
+    pub value: ArrayLiteralValue,
+}
+
+#[derive(Debug, Clone)]
 pub enum ArrayLiteralKey {
     None,
     Identifier(String),
@@ -70,12 +76,6 @@ pub enum ArrayLiteralValue {
     ArrayLiteral(ArrayLiteral),
     Identifier(String),
     Literal(Literal),
-}
-
-#[derive(Debug, Clone)]
-pub struct ArrayLiteralEntry {
-    pub index: ArrayLiteralKey,
-    pub value: ArrayLiteralValue,
 }
 
 #[derive(Debug, Clone)]
@@ -129,12 +129,6 @@ pub enum SizeofArgument {
 }
 
 #[derive(Debug, Clone)]
-pub struct While {
-    pub condition: Expression,
-    pub body: Body,
-}
-
-#[derive(Debug, Clone)]
 pub struct Body {
     pub statements: Vec<Statement>,
 }
@@ -146,17 +140,30 @@ pub enum Statement {
         forms: Vec<Form>,
         values: Vec<Option<Expression>>,
     },
-    If(If),
-    For(For),
-    While(While),
-    Return(Return),
-    Switch(Switch),
+    If {
+        condition: Expression,
+        body: Body,
+        else_body: Option<Body>,
+    },
+    For {
+        init: ForInit,
+        condition: Expression,
+        action: Expression,
+        body: Body,
+    },
+    While {
+        condition: Expression,
+        body: Body,
+    },
+    Return {
+        expression: Option<Expression>,
+    },
+    Switch {
+        value: Expression,
+        cases: Vec<SwitchCase>,
+        default: Option<Vec<Statement>>,
+    },
     Expression(Expression),
-}
-
-#[derive(Debug, Clone)]
-pub struct Return {
-    pub expression: Option<Expression>,
 }
 
 #[derive(Debug, Clone)]
@@ -167,31 +174,13 @@ pub struct Form {
 }
 
 #[derive(Debug, Clone)]
-pub struct If {
-    pub condition: Expression,
-    pub body: Body,
-    pub else_body: Option<Body>,
-}
-
-#[derive(Debug, Clone)]
-pub struct For {
-    pub init: ForInit,
-    pub condition: Expression,
-    pub action: Expression,
-    pub body: Body,
-}
-
-#[derive(Debug, Clone)]
 pub enum ForInit {
     Expression(Expression),
-    LoopCounterDeclaration(LoopCounterDeclaration),
-}
-
-#[derive(Debug, Clone)]
-pub struct LoopCounterDeclaration {
-    pub type_name: Typename,
-    pub form: Form,
-    pub value: Expression,
+    LoopCounterDeclaration {
+        type_name: Typename,
+        form: Form,
+        value: Expression,
+    },
 }
 
 #[derive(Debug, Clone)]
@@ -207,15 +196,8 @@ pub struct SwitchCase {
 }
 
 #[derive(Debug, Clone)]
-pub struct Switch {
-    pub value: Expression,
-    pub cases: Vec<SwitchCase>,
-    pub default: Option<Vec<Statement>>,
-}
-
-#[derive(Debug, Clone)]
 pub struct FunctionParameters {
-    pub list: Vec<FunctionParameter>,
+    pub list: Vec<TypeAndForms>,
     pub variadic: bool,
 }
 
@@ -226,7 +208,7 @@ pub struct CompatFunctionParameters {
 }
 
 #[derive(Debug, Clone)]
-pub struct FunctionParameter {
+pub struct TypeAndForms {
     pub type_name: Typename,
     pub forms: Vec<Form>,
 }
@@ -294,7 +276,7 @@ pub struct CompatMacro {
 
 #[derive(Debug, Clone)]
 pub enum TypedefTarget {
-    AnonymousStruct(AnonymousStruct),
+    AnonymousStruct { entries: Vec<StructEntry> },
     Typename(Typename),
 }
 
@@ -313,19 +295,8 @@ pub struct AnonymousParameters {
 
 #[derive(Debug, Clone)]
 pub enum StructEntry {
-    StructFieldlist(StructFieldlist),
+    Plain(TypeAndForms),
     Union(Union),
-}
-
-#[derive(Debug, Clone)]
-pub struct AnonymousStruct {
-    pub entries: Vec<StructEntry>,
-}
-
-#[derive(Debug, Clone)]
-pub struct StructFieldlist {
-    pub type_name: Typename,
-    pub forms: Vec<Form>,
 }
 
 #[derive(Debug, Clone)]

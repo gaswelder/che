@@ -518,13 +518,13 @@ fn parse_function_call(
     });
 }
 
-fn parse_while(lexer: &mut Lexer, ctx: &Ctx) -> Result<While, String> {
+fn parse_while(lexer: &mut Lexer, ctx: &Ctx) -> Result<Statement, String> {
     expect(lexer, "while", None)?;
     expect(lexer, "(", None)?;
     let condition = expr(lexer, 0, ctx)?;
     expect(lexer, ")", None)?;
     let body = parse_body(lexer, ctx)?;
-    return Ok(While { condition, body });
+    return Ok(Statement::While { condition, body });
 }
 
 fn parse_body(lexer: &mut Lexer, ctx: &Ctx) -> Result<Body, String> {
@@ -548,13 +548,12 @@ fn parse_statement(lexer: &mut Lexer, ctx: &Ctx) -> Result<Statement, String> {
     {
         return parse_variable_declaration(lexer, ctx);
     }
-
-    match next.kind.as_str() {
-        "if" => return Ok(Statement::If(parse_if(lexer, ctx)?)),
-        "for" => return Ok(Statement::For(parse_for(lexer, ctx)?)),
-        "while" => return Ok(Statement::While(parse_while(lexer, ctx)?)),
-        "return" => return Ok(Statement::Return(parse_return(lexer, ctx)?)),
-        "switch" => return Ok(Statement::Switch(parse_switch(lexer, ctx)?)),
+    return match next.kind.as_str() {
+        "if" => parse_if(lexer, ctx),
+        "for" => parse_for(lexer, ctx),
+        "while" => parse_while(lexer, ctx),
+        "return" => parse_return(lexer, ctx),
+        "switch" => parse_switch(lexer, ctx),
         _ => {
             let expr = expr(lexer, 0, ctx)?;
             expect(lexer, ";", Some("parsing statement"))?;
@@ -586,15 +585,15 @@ fn parse_variable_declaration(lexer: &mut Lexer, ctx: &Ctx) -> Result<Statement,
     });
 }
 
-fn parse_return(lexer: &mut Lexer, ctx: &Ctx) -> Result<Return, String> {
+fn parse_return(lexer: &mut Lexer, ctx: &Ctx) -> Result<Statement, String> {
     expect(lexer, "return", None)?;
     if lexer.peek().unwrap().kind == ";" {
         lexer.get();
-        return Ok(Return { expression: None });
+        return Ok(Statement::Return { expression: None });
     }
     let expression = expr(lexer, 0, ctx)?;
     expect(lexer, ";", None)?;
-    return Ok(Return {
+    return Ok(Statement::Return {
         expression: Some(expression),
     });
 }
@@ -636,7 +635,7 @@ fn parse_form(lexer: &mut Lexer, ctx: &Ctx) -> Result<Form, String> {
     return Ok(node);
 }
 
-fn parse_if(lexer: &mut Lexer, ctx: &Ctx) -> Result<If, String> {
+fn parse_if(lexer: &mut Lexer, ctx: &Ctx) -> Result<Statement, String> {
     let condition;
     let body;
     let mut else_body = None;
@@ -650,14 +649,14 @@ fn parse_if(lexer: &mut Lexer, ctx: &Ctx) -> Result<If, String> {
         lexer.get();
         else_body = Some(parse_body(lexer, ctx)?);
     }
-    return Ok(If {
+    return Ok(Statement::If {
         condition,
         body,
         else_body,
     });
 }
 
-fn parse_for(lexer: &mut Lexer, ctx: &Ctx) -> Result<For, String> {
+fn parse_for(lexer: &mut Lexer, ctx: &Ctx) -> Result<Statement, String> {
     expect(lexer, "for", None)?;
     expect(lexer, "(", None)?;
 
@@ -672,11 +671,11 @@ fn parse_for(lexer: &mut Lexer, ctx: &Ctx) -> Result<For, String> {
         let form = parse_form(lexer, ctx)?;
         expect(lexer, "=", None)?;
         let value = expr(lexer, 0, ctx)?;
-        init = ForInit::LoopCounterDeclaration(LoopCounterDeclaration {
+        init = ForInit::LoopCounterDeclaration {
             type_name,
             form,
             value,
-        });
+        };
     } else {
         init = ForInit::Expression(expr(lexer, 0, ctx)?);
     }
@@ -688,7 +687,7 @@ fn parse_for(lexer: &mut Lexer, ctx: &Ctx) -> Result<For, String> {
     expect(lexer, ")", None)?;
     let body = parse_body(lexer, ctx)?;
 
-    return Ok(For {
+    return Ok(Statement::For {
         init,
         condition,
         action,
@@ -696,7 +695,7 @@ fn parse_for(lexer: &mut Lexer, ctx: &Ctx) -> Result<For, String> {
     });
 }
 
-fn parse_switch(lexer: &mut Lexer, ctx: &Ctx) -> Result<Switch, String> {
+fn parse_switch(lexer: &mut Lexer, ctx: &Ctx) -> Result<Statement, String> {
     expect(lexer, "switch", None)?;
     expect(lexer, "(", None)?;
     let value = expr(lexer, 0, ctx)?;
@@ -732,7 +731,7 @@ fn parse_switch(lexer: &mut Lexer, ctx: &Ctx) -> Result<Switch, String> {
         default = Some(def);
     }
     expect(lexer, "}", None)?;
-    return Ok(Switch {
+    return Ok(Statement::Switch {
         value,
         cases,
         default,
@@ -746,7 +745,7 @@ fn parse_function_declaration(
     form: Form,
     ctx: &Ctx,
 ) -> Result<ModuleObject, String> {
-    let mut parameters: Vec<FunctionParameter> = vec![];
+    let mut parameters: Vec<TypeAndForms> = vec![];
     let mut variadic = false;
     expect(lexer, "(", None)?;
     if !lexer.follows(")") {
@@ -775,7 +774,7 @@ fn parse_function_declaration(
     });
 }
 
-fn parse_function_parameter(lexer: &mut Lexer, ctx: &Ctx) -> Result<FunctionParameter, String> {
+fn parse_function_parameter(lexer: &mut Lexer, ctx: &Ctx) -> Result<TypeAndForms, String> {
     let mut forms: Vec<Form> = vec![];
     let type_name = parse_typename(lexer, None)?;
     forms.push(parse_form(lexer, ctx)?);
@@ -791,7 +790,7 @@ fn parse_function_parameter(lexer: &mut Lexer, ctx: &Ctx) -> Result<FunctionPara
         lexer.get();
         forms.push(parse_form(lexer, ctx)?);
     }
-    return Ok(FunctionParameter { type_name, forms });
+    return Ok(TypeAndForms { type_name, forms });
 }
 
 fn parse_union(lexer: &mut Lexer, ctx: &Ctx) -> Result<Union, String> {
@@ -874,7 +873,7 @@ fn parse_typedef(is_pub: bool, lexer: &mut Lexer, ctx: &Ctx) -> Result<ModuleObj
     expect(lexer, "typedef", None)?;
     let type_name;
     if lexer.follows("{") {
-        type_name = TypedefTarget::AnonymousStruct(parse_anonymous_struct(lexer, ctx)?);
+        type_name = parse_anonymous_struct(lexer, ctx)?;
     } else {
         type_name = TypedefTarget::Typename(parse_typename(lexer, Some("typedef"))?);
     }
@@ -920,26 +919,24 @@ fn parse_typedef_form(lexer: &mut Lexer) -> Result<TypedefForm, String> {
     });
 }
 
-fn parse_anonymous_struct(lexer: &mut Lexer, ctx: &Ctx) -> Result<AnonymousStruct, String> {
+fn parse_anonymous_struct(l: &mut Lexer, ctx: &Ctx) -> Result<TypedefTarget, String> {
     let mut fieldlists: Vec<StructEntry> = vec![];
-    expect(lexer, "{", Some("struct type definition"))?;
-    while lexer.more() && lexer.peek().unwrap().kind != "}" {
-        if lexer.peek().unwrap().kind == "union" {
-            fieldlists.push(StructEntry::Union(parse_union(lexer, ctx)?));
+    expect(l, "{", Some("struct type definition"))?;
+    while l.more() && l.peek().unwrap().kind != "}" {
+        if l.peek().unwrap().kind == "union" {
+            fieldlists.push(StructEntry::Union(parse_union(l, ctx)?));
         } else {
-            fieldlists.push(StructEntry::StructFieldlist(parse_struct_fieldlist(
-                lexer, ctx,
-            )?));
+            fieldlists.push(StructEntry::Plain(parse_type_and_forms(l, ctx)?));
         }
     }
-    expect(lexer, "}", None)?;
+    expect(l, "}", None)?;
 
-    return Ok(AnonymousStruct {
+    return Ok(TypedefTarget::AnonymousStruct {
         entries: fieldlists,
     });
 }
 
-fn parse_struct_fieldlist(lexer: &mut Lexer, ctx: &Ctx) -> Result<StructFieldlist, String> {
+fn parse_type_and_forms(lexer: &mut Lexer, ctx: &Ctx) -> Result<TypeAndForms, String> {
     if lexer.follows("struct") {
         return Err("can't parse nested structs, please consider a typedef".to_string());
     }
@@ -954,7 +951,7 @@ fn parse_struct_fieldlist(lexer: &mut Lexer, ctx: &Ctx) -> Result<StructFieldlis
     }
 
     expect(lexer, ";", None)?;
-    return Ok(StructFieldlist { type_name, forms });
+    return Ok(TypeAndForms { type_name, forms });
 }
 
 fn skip_brackets(lexer: &mut Lexer) {

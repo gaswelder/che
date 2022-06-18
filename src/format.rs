@@ -272,18 +272,6 @@ pub fn format_compat_struct_definition(node: &CompatStructDefinition) -> String 
     );
 }
 
-fn format_anonymous_struct(node: &AnonymousStruct) -> String {
-    let mut s = String::new();
-    for fieldlist in &node.entries {
-        s += &match fieldlist {
-            StructEntry::StructFieldlist(x) => format_struct_fieldlist(&x),
-            StructEntry::Union(x) => format_union(&x),
-        };
-        s += "\n";
-    }
-    return format!("{{\n{}}}", indent(&s));
-}
-
 fn format_enum_member(node: &EnumMember) -> String {
     let mut s = node.id.clone();
     if node.value.is_some() {
@@ -293,22 +281,26 @@ fn format_enum_member(node: &EnumMember) -> String {
     return s;
 }
 
-fn format_for(node: &For) -> String {
-    let init = match &node.init {
+fn format_for(init: &ForInit, condition: &Expression, action: &Expression, body: &Body) -> String {
+    let init = match init {
         ForInit::Expression(x) => format_expression(&x),
-        ForInit::LoopCounterDeclaration(x) => format!(
+        ForInit::LoopCounterDeclaration {
+            type_name,
+            form,
+            value,
+        } => format!(
             "{} {} = {}",
-            format_type(&x.type_name),
-            format_form(&x.form),
-            format_expression(&x.value)
+            format_type(type_name),
+            format_form(form),
+            format_expression(value)
         ),
     };
     return format!(
         "for ({}; {}; {}) {}",
         init,
-        format_expression(&node.condition),
-        format_expression(&node.action),
-        format_body(&node.body)
+        format_expression(condition),
+        format_expression(action),
+        format_body(body)
     );
 }
 
@@ -328,22 +320,6 @@ fn format_compat_function_parameters(parameters: &CompatFunctionParameters) -> S
     s += ")";
     return s;
 }
-
-fn format_if(node: &If) -> String {
-    let mut s = format!(
-        "if ({cond}) {body}",
-        cond = format_expression(&node.condition),
-        body = format_body(&node.body)
-    );
-    if node.else_body.is_some() {
-        s += &format!(" else {}", format_body(node.else_body.as_ref().unwrap()));
-    }
-    return s;
-}
-
-// fn format_import(node: &Import) -> String {
-//     format!("import {}\n", node.path)
-// }
 
 fn format_literal(node: &Literal) -> String {
     match node.type_name.as_str() {
@@ -366,14 +342,7 @@ fn format_module_variable(node: &ModuleVariable) -> String {
     );
 }
 
-fn format_return(node: &Return) -> String {
-    match &node.expression {
-        None => String::from("return;"),
-        Some(x) => format!("return {}", format_expression(&x)),
-    }
-}
-
-fn format_struct_fieldlist(node: &StructFieldlist) -> String {
+fn format_type_and_forms(node: &TypeAndForms) -> String {
     let mut s = format_type(&node.type_name) + " ";
     for (i, form) in node.forms.iter().enumerate() {
         if i > 0 {
@@ -409,18 +378,56 @@ fn format_statement(node: &Statement) -> String {
             }
             return s + ";";
         }
-        Statement::If(x) => format_if(x),
-        Statement::For(x) => format_for(x),
-        Statement::While(x) => format_while(x),
-        Statement::Return(x) => format_return(x) + ";",
-        Statement::Switch(x) => format_switch(x),
+        Statement::If {
+            condition,
+            body,
+            else_body,
+        } => {
+            let mut s = format!(
+                "if ({cond}) {body}",
+                cond = format_expression(condition),
+                body = format_body(body)
+            );
+            if else_body.is_some() {
+                s += &format!(" else {}", format_body(else_body.as_ref().unwrap()));
+            }
+            return s;
+        }
+        Statement::For {
+            init,
+            condition,
+            action,
+            body,
+        } => format_for(init, condition, action, body),
+        Statement::While { condition, body } => {
+            return format!(
+                "while ({}) {}",
+                format_expression(condition),
+                format_body(body)
+            );
+        }
+        Statement::Return { expression } => {
+            return match expression {
+                None => String::from("return;"),
+                Some(x) => format!("return {}", format_expression(&x)),
+            } + ";";
+        }
+        Statement::Switch {
+            value,
+            cases,
+            default,
+        } => format_switch(value, cases, default),
         Statement::Expression(x) => format_expression(&x) + ";",
     }
 }
 
-fn format_switch(node: &Switch) -> String {
+fn format_switch(
+    value: &Expression,
+    cases: &Vec<SwitchCase>,
+    default: &Option<Vec<Statement>>,
+) -> String {
     let mut s = String::new();
-    for case in &node.cases {
+    for case in cases {
         let val = match &case.value {
             SwitchCaseValue::Identifier(x) => x.clone(),
             SwitchCaseValue::Literal(x) => format_literal(&x),
@@ -432,9 +439,9 @@ fn format_switch(node: &Switch) -> String {
         }
         s += "}\n";
     }
-    if node.default.is_some() {
+    if default.is_some() {
         s += "default: {\n";
-        for statement in node.default.as_ref().unwrap() {
+        for statement in default.as_ref().unwrap() {
             s += &format_statement(&statement);
             s += ";\n";
         }
@@ -442,7 +449,7 @@ fn format_switch(node: &Switch) -> String {
     }
     return format!(
         "switch ({}) {{\n{}\n}}",
-        format_expression(&node.value),
+        format_expression(value),
         indent(&s)
     );
 }
@@ -456,18 +463,22 @@ pub fn format_typedef(type_name: &TypedefTarget, form: &TypedefForm) -> String {
         formstr += &format!("[{}]", form.size);
     }
     let t = match &type_name {
-        TypedefTarget::AnonymousStruct(x) => format_anonymous_struct(&x),
+        TypedefTarget::AnonymousStruct { entries } => format_anonymous_struct(entries),
         TypedefTarget::Typename(x) => format_type(&x),
     };
     return format!("typedef {} {};\n", t, formstr);
 }
 
-fn format_while(node: &While) -> String {
-    return format!(
-        "while ({}) {}",
-        format_expression(&node.condition),
-        format_body(&node.body)
-    );
+fn format_anonymous_struct(entries: &Vec<StructEntry>) -> String {
+    let mut s = String::new();
+    for fieldlist in entries {
+        s += &match fieldlist {
+            StructEntry::Plain(x) => format_type_and_forms(&x),
+            StructEntry::Union(x) => format_union(&x),
+        };
+        s += "\n";
+    }
+    return format!("{{\n{}}}", indent(&s));
 }
 
 pub fn format_compat_module(node: &CompatModule) -> String {

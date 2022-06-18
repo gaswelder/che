@@ -3,6 +3,7 @@ mod format;
 mod lexer;
 mod nodes;
 mod parser;
+mod rename;
 mod translator;
 use md5;
 #[cfg(test)]
@@ -13,6 +14,14 @@ use std::io::BufRead;
 use std::path::Path;
 use std::process::{exit, Command, Stdio};
 use std::string::String;
+
+#[test]
+fn test_rename() {
+    let mut m = parser::get_module(&"json".to_string()).unwrap();
+    rename::rename_mod(&mut m);
+    let c = translator::translate(&m);
+    fs::write("out.c", format::format_compat_module(&c)).unwrap();
+}
 
 fn main() {
     let args: Vec<String> = env::args().collect();
