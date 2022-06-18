@@ -4,6 +4,14 @@ cargo test || exit 1
 cargo build || exit 1
 
 export CHELANG_HOME=`pwd`
+che=$CHELANG_HOME/target/debug/che
+
+## ...
+cd lib/crypt
+$che build md5.test.c test.out
+./test.out || exit 1
+cd $CHELANG_HOME
+
 
 cd test
 ./tests.sh
@@ -14,7 +22,7 @@ cd prog
 	for i in *.c; do
 		name=`basename $i .c`
 		echo build $name
-		../target/debug/che build "$i" "$name.out" || exit 1
+		$che build "$i" "$name.out" || exit 1
 	done
 
 	# Run all tests
@@ -30,7 +38,7 @@ cd prog
 		cd $i
 		name=`basename $i`
 		echo build "$name"
-		../../target/debug/che build "$name.c" "$name.out" || exit 1
+		$che build "$name.c" "$name.out" || exit 1
 		if [ -f test.sh ]; then
 			./test.sh || exit 1
 			echo OK $i

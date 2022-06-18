@@ -28,6 +28,5 @@ run xml.c '.' "dir dir1
   file file1
   file file2
 dir dir3"
-run md5.c '.' 'OK'
 
 rm *.out

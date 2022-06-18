@@ -17,20 +17,25 @@ kv_t tests[] = {
 		"123456789012345678901234567890123456789012345678901234567890"}
 };
 
-int main()
-{
+bool rfctest() {
 	md5sum_t s = {0};
 	md5str_t buf = "";
 
-	size_t n = nelem(tests);
-	for(size_t i = 0; i < n; i++) {
+	for (size_t i = 0; i < nelem(tests); i++) {
 		md5_str(tests[i].s, s);
 		md5_sprint(s, buf);
-		if(!strcmp(buf, tests[i].d) == 0) {
+		if (!strcmp(buf, tests[i].d) == 0) {
 			printf("* FAIL (%s != %s)\n", buf, tests[i].d);
-			return 1;
+			return false;
 		}
 	}
-	puts("OK");
-	return 0;
+	return true;
+}
+
+int main() {
+	if (rfctest()) {
+        puts("OK crypt/md5 rfctest");
+		return 0;
+	}
+	return 1;
 }
