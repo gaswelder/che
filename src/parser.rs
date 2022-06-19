@@ -717,10 +717,10 @@ fn parse_switch(lexer: &mut Lexer, ctx: &Ctx) -> Result<Statement, String> {
         }
         cases.push(SwitchCase {
             value: case_value,
-            statements,
+            body: Body { statements },
         });
     }
-    let mut default: Option<Vec<Statement>> = None;
+    let mut default: Option<Body> = None;
     if lexer.follows("default") {
         expect(lexer, "default", None)?;
         expect(lexer, ":", None)?;
@@ -728,7 +728,7 @@ fn parse_switch(lexer: &mut Lexer, ctx: &Ctx) -> Result<Statement, String> {
         while lexer.more() && lexer.peek().unwrap().kind != "}" {
             def.push(parse_statement(lexer, ctx)?);
         }
-        default = Some(def);
+        default = Some(Body { statements: def });
     }
     expect(lexer, "}", None)?;
     return Ok(Statement::Switch {

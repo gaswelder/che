@@ -11,9 +11,9 @@ bool test() {
         return false;
     }
     if (errno != 0 || status != 0) {
-        return true;
+        return false;
     }
-    return false;
+    return true;
 }
 
 

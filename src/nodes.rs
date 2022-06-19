@@ -168,7 +168,7 @@ pub enum Statement {
     Switch {
         value: Expression,
         cases: Vec<SwitchCase>,
-        default: Option<Vec<Statement>>,
+        default: Option<Body>,
     },
     Expression(Expression),
 }
@@ -199,7 +199,7 @@ pub enum SwitchCaseValue {
 #[derive(Debug, Clone)]
 pub struct SwitchCase {
     pub value: SwitchCaseValue,
-    pub statements: Vec<Statement>,
+    pub body: Body,
 }
 
 #[derive(Debug, Clone)]

@@ -1,4 +1,5 @@
 mod buf;
+mod checkers;
 mod format;
 mod lexer;
 mod nodes;
@@ -18,7 +19,7 @@ use std::string::String;
 #[test]
 fn test_rename() {
     let mut m = parser::get_module(&"json".to_string()).unwrap();
-    let exports = get_exports(&m);
+    let exports = checkers::get_exports(&m);
     let mut names: Vec<String> = Vec::new();
     for e in exports.consts {
         names.push(e.id);
@@ -104,6 +105,16 @@ fn build(argv: &[String]) -> Result<(), String> {
     // Get all modules that our module depends on. This includes our module as
     // well, so this is a complete list of modules required for the build.
     let mods = resolve_deps(&m);
+
+    // Dome some checks.
+    for m in &mods {
+        for imp in module_imports(m) {
+            let dep = parser::get_module(&imp.path)?;
+            if !checkers::depused(&m, &dep) {
+                return Err(format!("{}: imported {} is not used", m.id, dep.id));
+            }
+        }
+    }
 
     // Convert all modules to C modules.
     let c_mods: Vec<nodes::CompatModule> = mods.iter().map(|m| translator::translate(&m)).collect();
@@ -258,48 +269,11 @@ fn indent_tree(lines: Vec<String>, first: &str, cont: &str) -> Vec<String> {
     return result;
 }
 
-struct Exports {
-    consts: Vec<nodes::EnumItem>,
-    fns: Vec<nodes::FunctionDeclaration>,
-    types: Vec<nodes::Typedef>,
-}
-
-fn get_exports(m: &nodes::Module) -> Exports {
-    let mut exports = Exports {
-        consts: Vec::new(),
-        fns: Vec::new(),
-        types: Vec::new(),
-    };
-    for e in &m.elements {
-        match e {
-            nodes::ModuleObject::Enum(x) => {
-                if x.is_pub {
-                    for member in &x.members {
-                        exports.consts.push(member.clone());
-                    }
-                }
-            }
-            nodes::ModuleObject::Typedef(x) => {
-                if x.is_pub {
-                    exports.types.push(x.clone());
-                }
-            }
-            nodes::ModuleObject::FunctionDeclaration(f) => {
-                if f.is_pub {
-                    exports.fns.push(f.clone())
-                }
-            }
-            _ => {}
-        }
-    }
-    return exports;
-}
-
 fn exports(argv: &[String]) -> i32 {
     for path in argv {
         let m = parser::get_module(&path.to_string()).unwrap();
         println!("mod {}", m.id);
-        let exports = get_exports(&m);
+        let exports = checkers::get_exports(&m);
         if !exports.consts.is_empty() {
             println!("constants");
             for c in exports.consts {

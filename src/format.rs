@@ -421,11 +421,7 @@ fn format_statement(node: &Statement) -> String {
     }
 }
 
-fn format_switch(
-    value: &Expression,
-    cases: &Vec<SwitchCase>,
-    default: &Option<Vec<Statement>>,
-) -> String {
+fn format_switch(value: &Expression, cases: &Vec<SwitchCase>, default: &Option<Body>) -> String {
     let mut s = String::new();
     for case in cases {
         let val = match &case.value {
@@ -433,19 +429,22 @@ fn format_switch(
             SwitchCaseValue::Literal(x) => format_literal(&x),
         };
         s += &format!("case {}: {{\n", val);
-        for statement in &case.statements {
+        for statement in &case.body.statements {
             s += &format_statement(&statement);
             s += ";\n";
         }
         s += "}\n";
     }
-    if default.is_some() {
-        s += "default: {\n";
-        for statement in default.as_ref().unwrap() {
-            s += &format_statement(&statement);
-            s += ";\n";
+    match default {
+        None => {}
+        Some(b) => {
+            s += "default: {\n";
+            for statement in &b.statements {
+                s += &format_statement(statement);
+                s += ";\n";
+            }
+            s += "}\n";
         }
-        s += "}\n";
     }
     return format!(
         "switch ({}) {{\n{}\n}}",

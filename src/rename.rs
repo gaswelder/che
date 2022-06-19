@@ -163,13 +163,13 @@ fn rename_statement(s: &mut Statement, prefix: &String, names: &Vec<String>) {
                     }
                     SwitchCaseValue::Literal(_) => {}
                 }
-                for s in &mut c.statements {
+                for s in &mut c.body.statements {
                     rename_statement(s, prefix, names);
                 }
             }
             match default {
                 Some(ss) => {
-                    for s in ss {
+                    for s in &mut ss.statements {
                         rename_statement(s, prefix, names);
                     }
                 }
