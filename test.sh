@@ -16,6 +16,7 @@ libtest() {
 libtest lib/crypt/md5.test.c
 libtest lib/clip/arr.test.c
 libtest lib/os/exec.test.c
+libtest lib/bitreader.test.c
 
 
 cd test
