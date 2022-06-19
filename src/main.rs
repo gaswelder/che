@@ -4,6 +4,7 @@ mod format;
 mod lexer;
 mod nodes;
 mod parser;
+#[cfg(test)]
 mod rename;
 mod translator;
 use md5;

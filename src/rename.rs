@@ -200,7 +200,7 @@ fn rename_typename(t: &mut Typename, prefix: &String, names: &Vec<String>) {
 
 fn expr(e: &mut Expression, prefix: &String, names: &Vec<String>) {
     match e {
-        Expression::Literal(x) => {}
+        Expression::Literal(_) => {}
         Expression::StructLiteral { members } => {
             for m in members {
                 expr(&mut m.value, prefix, names);

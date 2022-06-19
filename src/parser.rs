@@ -1,4 +1,6 @@
-use crate::lexer::{for_file, for_string, Lexer, Token};
+#[cfg(test)]
+use crate::lexer::for_string;
+use crate::lexer::{for_file, Lexer, Token};
 use crate::nodes::*;
 use std::env;
 use std::path::Path;
