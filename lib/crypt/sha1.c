@@ -1,32 +1,39 @@
 #import mem
 
-pub typedef uint32_t sha1sum_t[5];
+pub typedef { uint32_t values[5]; } sha1sum_t;
 
 /*
- * Computes digest for the string 's' and stores it in 'md'.
+ * Returns computed digest for the string `s`.
  */
-pub bool sha1_str(const char *s, sha1sum_t h)
-{
-	return sha1_buf(s, strlen(s), h);
+pub sha1sum_t sha1_str(const char *s) {
+	return sha1_buf(s, strlen(s));
 }
 
 /*
- * Computes digest for the data in the 'buf' and stores in 'md'.
+ * Returns computed digest for the data in buffer `buf` of length `n`.
  */
-pub bool sha1_buf(const char *buf, size_t len, sha1sum_t h)
-{
+pub sha1sum_t sha1_buf(const char *buf, size_t n) {
 	mem_t *z = memopen();
-	int n = memwrite(z, buf, len);
+	assert((size_t) memwrite(z, buf, n) == n);
 	memrewind(z);
-	assert((size_t) n == len);
-	sha1(z, h);
+
+	sha1sum_t r = {};
+	sha1(z, r.values);
 	memclose(z);
-	return true;
+	return r;
 }
 
-pub void sha1_print(sha1sum_t h)
-{
-	printf("%08x %08x %08x %08x %08x", h[0], h[1], h[2], h[3], h[4]);
+/*
+ * Writes a hexademical representation of the sum `h` to the given buffer `buf`
+ * of length `n`. `n` must be at least 41 bytes. Returns false on failure.
+ */
+pub bool sha1_hex(sha1sum_t h, char *buf, size_t n) {
+	if (n <= 40) {
+		return false;
+	}
+
+	int r = sprintf(buf, "%08x%08x%08x%08x%08x", h.values[0], h.values[1], h.values[2], h.values[3], h.values[4]);
+	return r == 40;
 }
 
 /*

@@ -117,6 +117,21 @@ pub bool is_dir(const char *path)
 	return S_ISDIR(s.st_mode);
 }
 
+pub bool fileutil_writefile(const char *path, const char *data, size_t n) {
+	FILE *f = fopen(path, "wb");
+	if (!f) {
+		return false;
+	}
+	if (fwrite(data, 1, n, f) != n) {
+		fclose(f);
+		return false;
+	}
+	if (fclose(f)) {
+		return false;
+	}
+	return true;
+}
+
 
 pub int append_file( const char *path_to, const char *path_from )
 {
