@@ -14,7 +14,7 @@ pub fn depused(m: &Module, dep: &Module) -> bool {
             TypedefTarget::Typename(t) => {
                 list.push(t.name);
             }
-            TypedefTarget::AnonymousStruct { .. } => {}
+            TypedefTarget::AnonymousStruct { .. } => list.push(x.form.alias),
         }
     }
     for obj in &m.elements {
