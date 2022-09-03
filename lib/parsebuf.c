@@ -91,6 +91,17 @@ pub void buf_skip_set(parsebuf_t *b, const char *set) {
 	}
 }
 
+/*
+ * Skips one character if it's equal to c.
+ */
+pub bool buf_skip(parsebuf_t *b, char c) {
+	if (buf_peek(b) == c) {
+		buf_get(b);
+		return true;
+	}
+	return false;
+}
+
 pub char *buf_read_set(parsebuf_t *b, const char *set) {
 	char *s = calloc(10000, 1);
 	char *p = s;

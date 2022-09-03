@@ -1,201 +1,90 @@
-#import cli
-
 pub typedef {
-	__table *t;
-} map;
+	int size;
+	const char *keys[200];
+	void *values[200];
+} map_t;
 
 /*
- * An element of the hash table
+ * Creates a new map instance.
  */
-#define MAXKEY 256
-pub typedef {
-	__item *next;
-	char key[MAXKEY];
-	void *value;
-	int intval;
-} __item;
-
-pub typedef {
-	int nitems; // how many items
-	int nbuckets; // how many buckets
-	__item **buckets;
-} __table;
-
-
-pub map *map_new()
-{
-	map *m = alloc(1, sizeof(*m));
-	m->t = create_table(16);
+pub map_t *map_new() {
+	map_t *m = calloc(1, sizeof(*m));
 	return m;
 }
 
-pub void map_free(map *m)
-{
-	free_table(m->t);
+/*
+ * Frees the given instance of map.
+ */
+pub void map_free(map_t *m) {
 	free(m);
-}
-
-/*
- * Returns true if given key exists
- */
-pub bool map_exists(map *m, const char *key)
-{
-	__item *i = find(m->t, key);
-	if (i) {
-		return true;
-	}
-	return false;
-}
-
-/*
- * Returns value from given key
- */
-pub void *map_get(map *m, const char *key)
-{
-	__item *i = find(m->t, key);
-	return i->value;
-}
-
-pub int map_geti(map *m, const char *key)
-{
-	__item *i = find(m->t, key);
-	return i->intval;
 }
 
 /*
  * Assigns value to given key
  */
-pub void map_set(map *m, const char *key, void *val)
-{
-	__item *i = find(m->t, key);
-	/*
-	 * If already exists, just change the value.
-	 */
-	if(i) {
-		i->value = val;
-		return;
+pub void map_set(map_t *m, const char *key, void *val) {
+	int pos = find(m, key);
+	if (pos < 0) {
+		pos = m->size++;
 	}
-	/*
-	 * Grow the table if needed and insert new item
-	 */
-	if(m->t->nitems / m->t->nbuckets > 10) {
-		grow(m);
-	}
-	insert(m->t, key, val, 0);
-}
-
-pub void map_seti(map *m, const char *key, int val)
-{
-	__item *i = find(m->t, key);
-	if(i) {
-		i->intval = val;
-		return;
-	}
-	if(m->t->nitems / m->t->nbuckets > 10) {
-		grow(m);
-	}
-	insert(m->t, key, NULL, val);
-}
-
-// ---
-
-/*
- * Grows the table
- */
-void grow(map *m)
-{
-	__table *old = m->t;
-
-	/*
-	 * Create new table and reinsert values into it
-	 */
-	__table *new = create_table(old->nbuckets * 2);
-	for(int j = 0; j < old->nbuckets; j++) {
-		__item *i = old->buckets[j];
-		while(i) {
-			insert(new, i->key, i->value, i->intval);
-			i = i->next;
-		}
-	}
-
-	free_table(old);
-	m->t = new;
+	m->keys[pos] = key;
+	m->values[pos] = val;
 }
 
 /*
- * Finds an item in a single bucket
+ * Returns true if given key exists.
  */
-__item *find(__table *t, const char *key)
-{
-	__item *i = t->buckets[hash(key) % t->nbuckets];
-	while(i) {
-		if(strcmp(i->key, key) == 0) {
+pub bool map_has(map_t *m, const char *key) {
+	return find(m, key) >= 0;
+}
+
+/*
+ * Returns the value from the given key.
+ * Returns null if there is no entry with the given key.
+ * If entries can themselves be nulls, use map_has for explicit checks.
+ */
+pub void *map_get(map_t *m, const char *key) {
+	int pos = find(m, key);
+	if (pos < 0) {
+		return NULL;
+	}
+	return m->values[pos];
+}
+
+int find(map_t *m, const char *key) {
+	for (int i = 0; i < m->size; i++) {
+		if (!strcmp(key, m->keys[i])) {
 			return i;
 		}
-		i = i->next;
-
 	}
-	return NULL;
+	return -1;
 }
 
-void insert(__table *t, const char *key, void *val, int intval)
-{
-	if(strlen(key) >= MAXKEY) {
-		fatal("Key too long: %s", key);
-	}
+pub typedef { map_t *map; int pos; } map_iter_t;
 
-	__item *i = alloc(1, sizeof(*i));
-	strcpy(i->key, key);
-	i->value = val;
-	i->intval = intval;
-
-	int pos = hash(key) % t->nbuckets;
-	__item *b = t->buckets[pos];
-	i->next = b;
-	t->buckets[pos] = i;
-
-	t->nitems++;
+pub map_iter_t *map_iter(map_t *m) {
+	map_iter_t *it = calloc(1, sizeof(map_iter_t));
+	it->map = m;
+	it->pos = -1;
+	return it;
 }
 
-__table *create_table(int size)
-{
-	__table *t = alloc(1, sizeof(*t));
-	t->buckets = alloc(size, sizeof(t->buckets[0]));
-	t->nbuckets = size;
-	return t;
+pub bool map_iter_next(map_iter_t *it) {
+	if (it->pos + 1 >= it->map->size) {
+		return false;
+	}
+	it->pos++;
+	return true;
 }
 
-void free_table(__table *t)
-{
-	for (int k = 0; k < t->nbuckets; k++) {
-		__item *i = t->buckets[k];
-		while (i) {
-			__item *next = i->next;
-			free(i);
-			i = next;
-		}
-	}
-	free(t);
+pub const char *map_iter_key(map_iter_t *it) {
+	return it->map->keys[it->pos];
 }
 
-/*
- * Home-made hash function for strings
- */
-int hash(const char *s)
-{
-	uint32_t h = 0;
-	while (*s) {
-		h = (h * *s  + 2020181) % 2605013;
-		s++;
-	}
-	return (int) h;
+pub void *map_iter_val(map_iter_t *it) {
+	return it->map->values[it->pos];
 }
 
-void *alloc(size_t n, size_t size)
-{
-	void *m = calloc(n, size);
-	if(!m) {
-		fatal("Couldn't allocate %zux%zu bytes", n, size);
-	}
-	return m;
+pub void map_iter_free(map_iter_t *it) {
+	free(it);
 }
