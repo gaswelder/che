@@ -106,15 +106,22 @@ fn read_number(buf: &mut Buf) -> Token {
     }
 
     let pos = buf.pos();
-    let alpha = "0123456789";
-    let mut num = buf.read_set(alpha.to_string());
-
+    let digits = "0123456789";
     let mut modifiers = String::from("UL");
+    let mut num = buf.read_set(digits.to_string());
 
     if buf.more() && buf.peek().unwrap() == '.' {
         modifiers += "f";
         num += &buf.get().unwrap().to_string();
-        num += &buf.read_set(alpha.to_string());
+        num += &buf.read_set(digits.to_string());
+    }
+
+    if buf.more() && (buf.peek().unwrap() == 'e' || buf.peek().unwrap() == 'E') {
+        num += &buf.get().unwrap().to_string();
+        if buf.peek().unwrap() == '-' {
+            num += &buf.get().unwrap().to_string();
+        }
+        num += &buf.read_set(digits.to_string());
     }
 
     num += &buf.read_set(modifiers);
@@ -359,6 +366,18 @@ mod tests {
                 input: "\"abc\" \"def\" 123",
                 kind: "string",
                 content: "abcdef",
+                pos: "1:1",
+            },
+            C {
+                input: "1e6",
+                kind: "num",
+                content: "1e6",
+                pos: "1:1",
+            },
+            C {
+                input: "3.917609E-2",
+                kind: "num",
+                content: "3.917609E-2",
                 pos: "1:1",
             },
         ];
