@@ -47,43 +47,6 @@ void init_gen(random_gen *rg)
     memcpy(rg,&rgNull,sizeof(rgNull));
 }
 
-float __sexpo(random_gen *rg)
-{
-static float q[8] = {
-    0.6931472,0.9333737,0.9888778,0.9984959,0.9998293,0.9999833,0.9999986,1.0
-};
- register long i;
- register float a,u;
- static float sexpo,ustar,umin;
- static float *q1 = q;
-    a = 0.0;
-    u = __ranf(rg);
-    goto S30;
-S20:
-    a += *q1;
-S30:
-    u += u;
-    if(u <= 1.0) goto S20;
-    u -= 1.0;
-    if(u > *q1) goto S60;
-    sexpo = a+u;
-    return sexpo;
-S60:
-    i = 1;
-    ustar = __ranf(rg);
-    umin = ustar;
-S70:
-    ustar = __ranf(rg);
-    if(ustar < umin) umin = ustar;
-    i += 1;
-    if(u > *(q+i-1)) goto S70;
-    sexpo = a+umin**q1;
-    return sexpo;
-}
-float sexpo()
-{
-    return __sexpo(&rgGlobal);
-}
 float __genexp(random_gen *rg, float av)
 {
 static float genexp;
