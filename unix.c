@@ -58,17 +58,6 @@ float genexp(float av)
     return __genexp(&rgGlobal,av);
 }
 
-
-float __gennor(random_gen *rg,float av,float sd)
-{
-static float gennor;
-    gennor = sd*__snorm(rg)+av;
-    return gennor;
-}
-float gennor(float av, float sd)
-{
-    return __gennor(&rgGlobal,av,sd);
-}
 float __genunf(random_gen *rg,float low,float high)
 {
 static float genunf;

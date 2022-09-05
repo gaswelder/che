@@ -18,10 +18,14 @@ int main() {
     printf("%f\n", sexpo());
     printf("%f\n", sexpo());
     printf("%f\n", sexpo());
-    printf("------ global_snorm\n");
+    printf("------ snorm\n");
     printf("%f\n", snorm());
     printf("%f\n", snorm());
     printf("%f\n", snorm());
+    printf("------ gennor\n");
+    printf("%f\n", gennor(0, 10));
+    printf("%f\n", gennor(0, 10));
+    printf("%f\n", gennor(0, 10));
 }
 
 double __ranf(random_gen *rg) {
@@ -263,7 +267,14 @@ float __snorm(random_gen *rg)
         }
     }
 }
-float snorm()
-{
+
+float snorm() {
     return __snorm(&rgGlobal);
+}
+
+float __gennor(random_gen *rg,float av,float sd) {
+    return sd * __snorm(rg)+av;
+}
+float gennor(float av, float sd) {
+    return __gennor(&rgGlobal,av,sd);
 }
