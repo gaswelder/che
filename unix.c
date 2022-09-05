@@ -287,49 +287,42 @@ void ClosingTag(ObjDesc *od)
     xmlprintf(xmlout,"</%s>\n",od->name);
 }
 
-void SplitDoc()
-{
+void SplitDoc() {
     int i;
     int oldstackdepth=stackdepth;
-    for (i=oldstackdepth-1; i>=0; i--)
-        {
-            indent_level-=indent_inc;
-            ClosingTag(stack[i]);
-        }
+    for (int i = oldstackdepth-1; i>=0; i--) {
+        indent_level -= indent_inc;
+        ClosingTag(stack[i]);
+    }
+
     if (xmlout!=stdout) {
         fclose(xmlout);
     }
     if (outputname) {
-        if (split) {
-            xmlout = OpenOutput_split(outputname, global_split_fileno++);
-        } else {
-            xmlout = fopen(outputname, "w");
-        }
+        xmlout = OpenOutput_split(outputname, global_split_fileno++);
         if (!xmlout) {
             fflush(stdout);
             fprintf(stderr, "Can't open file %s\n", outputname);
             exit(EXIT_FAILURE);
         }
     }
-    for (i=0; i<oldstackdepth; i++)
-        {
-            OpeningTag(stack[i]);
-            indent_level+=indent_inc;
-        }
+    for (int i=0; i<oldstackdepth; i++) {
+        OpeningTag(stack[i]);
+        indent_level+=indent_inc;
+    }
     splitcnt=0;
 }
 void GenSubtree(ObjDesc *od)
 {
-    static int splitnow=0;
+    static bool splitnow = false;
     int i=0;
     ElmDesc *ed;
     ((void) 0);
     if (od->type&0x10) return;
-    if (splitnow)
-        {
-            SplitDoc();
-            splitnow=0;
-        }
+    if (splitnow) {
+        SplitDoc();
+        splitnow = false;
+    }
     OpeningTag(od);
     indent_level+=indent_inc;
     od->flag++;
@@ -355,8 +348,9 @@ void GenSubtree(ObjDesc *od)
             }
     indent_level-=indent_inc;
     ClosingTag(od);
-    if (split && (od->type&0x20 || (od->type&0x40 && splitcnt++>split)))
-        splitnow=1;
+    if (split && (od->type&0x20 || (od->type&0x40 && splitcnt++>split))) {
+        splitnow = true;
+    }
     od->flag--;
     ((void) 0);
 }
