@@ -102,37 +102,18 @@ int split=0;
 int splitcnt=0;
 int (*xmlprintf)(FILE *stream, const char *format, ...)=fprintf;
 
-void OpenOutput_split() {
-    static int fileno=0;
-    char *newname = outputname;
-    if (!outputname) {
-        return;
-    }
+int global_split_fileno = 0;
+
+FILE *OpenOutput_split(const char *outputname, int fileno) {
     if (fileno > 99999) {
-        fprintf(stderr,"Warning: More than %d files.\n",99999);
+        fprintf(stderr,"Warning: More than %d files.\n", 99999);
     }
-    newname = malloc(strlen(outputname)+7);
-    sprintf(newname,"%s%0*d", outputname, 5, fileno++);
-
-    if ((xmlout=fopen(newname,"w"))==NULL) {
-        fflush(stdout);
-        fprintf(stderr,"Can't open file %s\n",newname);
-        exit(EXIT_FAILURE);
-    }
+    char *newname = newstr("%s%0*d", outputname, 5, fileno);
+    FILE *f = fopen(newname,"w");
     free(newname);
+    return f;
 }
 
-void OpenOutput() {
-    char *newname = outputname;
-    if (!outputname) {
-        return;
-    }
-    if ((xmlout=fopen(newname,"w"))==NULL) {
-        fflush(stdout);
-        fprintf(stderr,"Can't open file %s\n",newname);
-        exit(EXIT_FAILURE);
-    }
-}
 int hasID(ObjDesc *od)
 {
     int i;
@@ -305,6 +286,7 @@ void ClosingTag(ObjDesc *od)
     if ((od->att[0].name[0]) && !(od->elm[0].id!=0)) return;
     xmlprintf(xmlout,"</%s>\n",od->name);
 }
+
 void SplitDoc()
 {
     int i;
@@ -317,10 +299,17 @@ void SplitDoc()
     if (xmlout!=stdout) {
         fclose(xmlout);
     }
-    if (split) {
-        OpenOutput_split();
-    } else {
-        OpenOutput();
+    if (outputname) {
+        if (split) {
+            xmlout = OpenOutput_split(outputname, global_split_fileno++);
+        } else {
+            xmlout = fopen(outputname, "w");
+        }
+        if (!xmlout) {
+            fflush(stdout);
+            fprintf(stderr, "Can't open file %s\n", outputname);
+            exit(EXIT_FAILURE);
+        }
     }
     for (i=0; i<oldstackdepth; i++)
         {
@@ -500,10 +489,17 @@ int main(int argc, char **argv)
     if (xmlout!=stdout) {
         fclose(xmlout);
     }
-    if (split) {
-        OpenOutput_split();
-    } else {
-        OpenOutput();
+    if (outputname) {
+        if (split) {
+            xmlout = OpenOutput_split(outputname, global_split_fileno++);
+        } else {
+            xmlout = fopen(outputname, "w");
+        }
+        if (!xmlout) {
+            fflush(stdout);
+            fprintf(stderr, "Can't open file %s\n", outputname);
+            exit(EXIT_FAILURE);
+        }
     }
     if (dumpdtd)
         {
