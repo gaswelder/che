@@ -1,27 +1,23 @@
-typedef struct
-{
+typedef {
     int id;
     ProbDesc pd;
     char rec;
-}
-ElmDesc;
-typedef struct
-{
+} ElmDesc;
+
+typedef {
     char name[20];
     int type;
     int ref;
     ProbDesc pd;
     float prcnt;
-}
-AttDesc;
-typedef struct SetDesc
-{
+} AttDesc;
+
+typedef {
     int size,id;
-    struct SetDesc *next;
-}
-SetDesc;
-typedef struct
-{
+    SetDesc *next;
+} SetDesc;
+
+typedef {
     int id;
     char *name;
     ElmDesc elm[20];
@@ -30,8 +26,7 @@ typedef struct
     int kids;
     SetDesc set;
     int flag;
-}
-ObjDesc;
+} ObjDesc;
 
 random_gen rgGlobal={-3};
 static random_gen rgNull,rgSeed;
