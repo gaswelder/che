@@ -57,14 +57,7 @@ int signuin(int seed, int low, int high)
     return __ignuin(&rgSeed,low,high);
 }
 
-void MakeRandomString(char *string, int length)
-{
-    int i;
-    length=(((0)<(length)?(length):(0)));
-    for (i=0;i<length;i++)
-        string[i]=65+(int)(ranf()*26);
-    string[i]=0;
-}
+
 int indent_level=0;
 int fmt_width=79;
 int xmlfmtprintf(FILE *xfp, const char *fmt, ...)
