@@ -102,31 +102,35 @@ int split=0;
 int splitcnt=0;
 int (*xmlprintf)(FILE *stream, const char *format, ...)=fprintf;
 
-
-void OpenOutput() {
+void OpenOutput_split() {
     static int fileno=0;
     char *newname = outputname;
     if (!outputname) {
         return;
     }
-    if (xmlout!=stdout) {
-        fclose(xmlout);
+    if (fileno > 99999) {
+        fprintf(stderr,"Warning: More than %d files.\n",99999);
     }
-    if (split) {
-        if (fileno > 99999) {
-            fprintf(stderr,"Warning: More than %d files.\n",99999);
-        }
-        newname = malloc(strlen(outputname)+7);
-        sprintf(newname,"%s%0*d", outputname, 5, fileno++);
-    }
+    newname = malloc(strlen(outputname)+7);
+    sprintf(newname,"%s%0*d", outputname, 5, fileno++);
 
     if ((xmlout=fopen(newname,"w"))==NULL) {
         fflush(stdout);
         fprintf(stderr,"Can't open file %s\n",newname);
         exit(EXIT_FAILURE);
     }
-    if (split) {
-        free(newname);
+    free(newname);
+}
+
+void OpenOutput() {
+    char *newname = outputname;
+    if (!outputname) {
+        return;
+    }
+    if ((xmlout=fopen(newname,"w"))==NULL) {
+        fflush(stdout);
+        fprintf(stderr,"Can't open file %s\n",newname);
+        exit(EXIT_FAILURE);
     }
 }
 int hasID(ObjDesc *od)
@@ -310,7 +314,14 @@ void SplitDoc()
             indent_level-=indent_inc;
             ClosingTag(stack[i]);
         }
-    OpenOutput();
+    if (xmlout!=stdout) {
+        fclose(xmlout);
+    }
+    if (split) {
+        OpenOutput_split();
+    } else {
+        OpenOutput();
+    }
     for (i=0; i<oldstackdepth; i++)
         {
             OpeningTag(stack[i]);
@@ -486,7 +497,14 @@ int main(int argc, char **argv)
         }
     if (stop) exit(EXIT_SUCCESS);
     if (timing) timediff();
-    OpenOutput();
+    if (xmlout!=stdout) {
+        fclose(xmlout);
+    }
+    if (split) {
+        OpenOutput_split();
+    } else {
+        OpenOutput();
+    }
     if (dumpdtd)
         {
             printdtd();
