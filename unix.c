@@ -28,14 +28,6 @@ typedef {
     int flag;
 } ObjDesc;
 
-random_gen rgGlobal={-3};
-static random_gen rgNull,rgSeed;
-
-void init_gen(random_gen *rg)
-{
-    memcpy(rg,&rgNull,sizeof(rgNull));
-}
-
 int indent_level=0;
 int fmt_width=79;
 int xmlfmtprintf(FILE *xfp, const char *fmt, ...)
@@ -7121,7 +7113,6 @@ static void InitRepro(struct idrepro *rep, int max, int brosmax)
     rep->dir=0;
     rep->mydir=direction++;
     rep->cur=0;
-    init_gen(&rep->rk);
 }
 void InitReproPair(struct idrepro *rep1, struct idrepro *rep2,
                    int max1, int max2)
