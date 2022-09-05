@@ -114,16 +114,14 @@ FILE *OpenOutput_split(const char *outputname, int fileno) {
     return f;
 }
 
-int hasID(ObjDesc *od)
-{
-    int i;
-    for(i=0;i<5;i++)
-        {
-            if (od->att[i].type==0) break;
-            if (od->att[i].type==1) return 1;
-        }
-    return 0;
+bool hasID(ObjDesc *od) {
+    for (int i=0;i<5;i++) {
+        if (od->att[i].type == 0) break;
+        if (od->att[i].type == 1) return true;
+    }
+    return false;
 }
+
 int GenRef(ProbDesc *pd, int type)
 {
     ObjDesc* od=objs+type;
@@ -143,7 +141,6 @@ int GenRef(ProbDesc *pd, int type)
 }
 void FixDist(ProbDesc *pd, double val)
 {
-    ((void) 0);
     pd->min=pd->max=val;
     pd->type=0;
 }
