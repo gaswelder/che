@@ -30,22 +30,33 @@ typedef {
 
 int indent_level=0;
 int fmt_width=79;
+
+
 int xmlfmtprintf(FILE *xfp, const char *fmt, ...)
 {
-    static char buf[20000], *blank=0, *lstblank=0, *start=0, *write=0;
-    static int width=0, indent=0;
+    static char buf[20000];
+    static char *blank=0;
+    static char *lstblank=0;
+    static char *start=0;
+    static char *write=0;
+    static int width=0;
+    static int indent=0;
+
     int newindent=-1;
     char *trail;
-    va_list ap;
+    
     if (!blank)
         {
             write=start=lstblank=blank=buf;
             indent=indent_level;
             width=indent-1;
         }
+
+    va_list ap;
     va_start (ap,fmt);
     vsprintf(write, fmt, ap);
     va_end(ap);
+
     trail=write;
     if (start==trail) indent=indent_level;
     while(*trail)
@@ -79,6 +90,7 @@ int xmlfmtprintf(FILE *xfp, const char *fmt, ...)
     write=trail;
     return width;
 }
+
 FILE *xmlout=0;
 char *outputname=0;
 int indent_inc=0;
@@ -89,26 +101,33 @@ int stackatt=0;
 int split=0;
 int splitcnt=0;
 int (*xmlprintf)(FILE *stream, const char *format, ...)=fprintf;
-void OpenOutput()
-{
+
+
+void OpenOutput() {
     static int fileno=0;
-    char *newname=outputname;
-    if (!outputname) return;
-    if (xmlout!=stdout) fclose(xmlout);
-    if (split)
-        {
-            if (fileno>99999)
-                fprintf(stderr,"Warning: More than %d files.\n",99999);
-            newname=(char*)malloc(strlen(outputname)+7);
-            sprintf(newname,"%s%0*d",outputname,5,fileno++);
+    char *newname = outputname;
+    if (!outputname) {
+        return;
+    }
+    if (xmlout!=stdout) {
+        fclose(xmlout);
+    }
+    if (split) {
+        if (fileno > 99999) {
+            fprintf(stderr,"Warning: More than %d files.\n",99999);
         }
-    if ((xmlout=fopen(newname,"w"))==NULL)
-        {
-            fflush(stdout);
-            fprintf(stderr,"Can't open file %s\n",newname);
-            exit(EXIT_FAILURE);
-        }
-    if (split) free(newname);
+        newname = malloc(strlen(outputname)+7);
+        sprintf(newname,"%s%0*d", outputname, 5, fileno++);
+    }
+
+    if ((xmlout=fopen(newname,"w"))==NULL) {
+        fflush(stdout);
+        fprintf(stderr,"Can't open file %s\n",newname);
+        exit(EXIT_FAILURE);
+    }
+    if (split) {
+        free(newname);
+    }
 }
 int hasID(ObjDesc *od)
 {
