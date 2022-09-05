@@ -35,28 +35,11 @@ ObjDesc;
 
 random_gen rgGlobal={-3};
 static random_gen rgNull,rgSeed;
+
 void init_gen(random_gen *rg)
 {
     memcpy(rg,&rgNull,sizeof(rgNull));
 }
-
-
-int __ignuin(random_gen *rg,int low, int high)
-{
-    int f=(int)(__ranf(rg)*(high-low+1));
-    return low+f;
-}
-int ignuin(int low, int high)
-{
-    return __ignuin(&rgGlobal,low,high);
-}
-int signuin(int seed, int low, int high)
-{
-    init_gen(&rgSeed);
-    rgSeed.idum=seed;
-    return __ignuin(&rgSeed,low,high);
-}
-
 
 int indent_level=0;
 int fmt_width=79;
@@ -466,8 +449,6 @@ int main(int argc, char **argv)
                     break;
                 case 'f':
                     scale_factor=atof(pmoptarg);
-                    if (correction)
-                        scale_factor=correction(scale_factor);
                     break;
                 case 'o':
                     outputname=(char*)malloc(strlen(pmoptarg)+1);
@@ -513,7 +494,7 @@ int main(int argc, char **argv)
     ClearFlags();
     CheckRecursion();
     ClearFlags();
-    if (InitHook) InitHook();
+    initialize();
     Preamble(document_type);
     GenSubtree(root);
   wrapup:
@@ -568,8 +549,6 @@ struct idrepro
     int current;
     random_gen rk;
 };
-void InitReproPair(struct idrepro *, struct idrepro *,int , int );
-int GenItemIdRef(struct idrepro *, int *);
 int firstnames_len=10000;
 char *firstnames[10000]={
     "Frederique","Shigeichiro","Xinan","Takahira","Rildo","IEEE","Weiru",
@@ -6883,8 +6862,8 @@ void PrintSentence(int w)
 }
 static char *markup[3]={"emph","keyword","bold"};
 static char tick[3];
-void PrintANY()
-{
+
+void PrintANY() {
     int sen=1+(int)genexp(20);
     int i;
     static int st[3];
@@ -7132,15 +7111,11 @@ void GenAttCDATA(ObjDesc *od, char *attName, char *cdata)
             sprintf(cdata,"%.2f",(((9876)<(d)?(d):(9876))));
         }
 }
-extern double scale_factor;
-double fixscale(double factor)
-{
-    double df=scale_factor;
-    return df;
-}
-void (*InitHook)(void) = initialize;
+
+
+
 int (*IdRefHook)(ObjDesc *od, int type, int *iRef) = ItemIdRef;
-double (*correction)(double) = fixscale;
+
 static void InitRepro(struct idrepro *rep, int max, int brosmax)
 {
     static int direction=0;

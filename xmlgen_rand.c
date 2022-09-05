@@ -44,6 +44,11 @@ int main() {
     printf("%f\n", GenRandomNum(&pdnew));
     printf("%f\n", GenRandomNum(&pdnew));
     printf("%f\n", GenRandomNum(&pdnew));
+
+    printf("------ ignuin\n");
+    printf("%d\n", ignuin(10, 20));
+    printf("%d\n", ignuin(10, 20));
+    printf("%d\n", ignuin(10, 20));
 }
 
 double __ranf(random_gen *rg) {
@@ -350,4 +355,13 @@ float __genunf(random_gen *rg,float low,float high) {
         panic("LOW > HIGH in GENUNF: LOW %16.6E HIGH: %16.6E\n",low,high);
     }
     return low + (high-low) * __ranf(rg);
+}
+
+int __ignuin(random_gen *rg,int low, int high) {
+    int f=(int)(__ranf(rg)*(high-low+1));
+    return low+f;
+}
+
+int ignuin(int low, int high) {
+    return __ignuin(&rgGlobal,low,high);
 }
