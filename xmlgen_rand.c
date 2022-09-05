@@ -1,3 +1,5 @@
+#import panic
+
 // public domain:
 // https://projects.cwi.nl/xmark/downloads.html
 
@@ -7,6 +9,11 @@ typedef {
     double r[98];
     int ipos;
 } random_gen;
+
+typedef {
+    int type;
+    double mean, dev, min, max;
+} ProbDesc;
 
 random_gen rgGlobal={.idum = -3};
 
@@ -23,9 +30,20 @@ int main() {
     printf("%f\n", snorm());
     printf("%f\n", snorm());
     printf("------ gennor\n");
-    printf("%f\n", gennor(0, 10));
-    printf("%f\n", gennor(0, 10));
-    printf("%f\n", gennor(0, 10));
+    printf("%lf\n", gennor(0.2, 10));
+    printf("%lf\n", gennor(0.2, 10));
+    printf("%lf\n", gennor(0.2, 10));
+
+    ProbDesc pdnew;
+    pdnew.min=0;
+    pdnew.max=10;
+    pdnew.type=2;
+    pdnew.mean=20;
+    pdnew.dev=1;
+    printf("------ GenRandomNum\n");
+    printf("%f\n", GenRandomNum(&pdnew));
+    printf("%f\n", GenRandomNum(&pdnew));
+    printf("%f\n", GenRandomNum(&pdnew));
 }
 
 double __ranf(random_gen *rg) {
@@ -277,4 +295,59 @@ float __gennor(random_gen *rg,float av,float sd) {
 }
 float gennor(float av, float sd) {
     return __gennor(&rgGlobal,av,sd);
+}
+
+double GenRandomNum(ProbDesc *pd)
+{
+    double res=0;
+    if (pd->max>0)
+        switch(pd->type)
+            {
+            case 0:
+                if (pd->min==pd->max && pd->min>0)
+                    {
+                        res=pd->min;
+                        break;
+                    }
+                fprintf(stderr,"undefined probdesc.\n");
+                exit(EXIT_FAILURE);
+            case 1:
+                res=genunf(pd->min,pd->max);
+                break;
+            case 3:
+                res = pd->min + genexp(pd->mean);
+                if (res > pd->max) {
+                    res = pd->max;
+                }
+                break;
+            case 2:
+                res = gennor(pd->mean,pd->dev);
+                if (res > pd->max) res = pd->max;
+                if (res < pd->min) res = pd->min;
+                break;
+            default:
+                fprintf(stderr,"woops! undefined distribution.\n");
+                exit(EXIT_FAILURE);
+        }
+    return res;
+}
+
+float genexp(float av)
+{
+    return __genexp(&rgGlobal,av);
+}
+
+float __genexp(random_gen *rg, float av) {
+    return __sexpo(rg) * av;
+}
+
+float genunf(float low, float high) {
+    return __genunf(&rgGlobal,low,high);
+}
+
+float __genunf(random_gen *rg,float low,float high) {
+    if (low > high) {
+        panic("LOW > HIGH in GENUNF: LOW %16.6E HIGH: %16.6E\n",low,high);
+    }
+    return low + (high-low) * __ranf(rg);
 }

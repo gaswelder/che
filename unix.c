@@ -1,10 +1,3 @@
-
-typedef struct
-{
-    int type;
-    double mean, dev, min, max;
-}
-ProbDesc;
 typedef struct
 {
     int id;
@@ -47,32 +40,7 @@ void init_gen(random_gen *rg)
     memcpy(rg,&rgNull,sizeof(rgNull));
 }
 
-float __genexp(random_gen *rg, float av)
-{
-static float genexp;
-    genexp = __sexpo(rg)*av;
-    return genexp;
-}
-float genexp(float av)
-{
-    return __genexp(&rgGlobal,av);
-}
 
-float __genunf(random_gen *rg,float low,float high)
-{
-static float genunf;
-    if(!(low > high)) goto S10;
-    fprintf(stderr,"LOW > HIGH in GENUNF: LOW %16.6E HIGH: %16.6E\n",low,high);
-    fputs("Abort",stderr);
-    exit(1);
-S10:
-    genunf = low+(high-low)*__ranf(rg);
-    return genunf;
-}
-float genunf(float low, float high)
-{
-    return __genunf(&rgGlobal,low,high);
-}
 int __ignuin(random_gen *rg,int low, int high)
 {
     int f=(int)(__ranf(rg)*(high-low+1));
@@ -88,37 +56,7 @@ int signuin(int seed, int low, int high)
     rgSeed.idum=seed;
     return __ignuin(&rgSeed,low,high);
 }
-double GenRandomNum(ProbDesc *pd)
-{
-    double res=0;
-    if (pd->max>0)
-        switch(pd->type)
-            {
-            case 0:
-                if (pd->min==pd->max && pd->min>0)
-                    {
-                        res=pd->min;
-                        break;
-                    }
-                fprintf(stderr,"undefined probdesc.\n");
-                exit(EXIT_FAILURE);
-            case 1:
-                res=genunf(pd->min,pd->max);
-                break;
-            case 3:
-                res=pd->min+genexp(pd->mean);
-                res=(((pd->max)>(res)?(res):(pd->max)));
-                break;
-            case 2:
-                res=gennor(pd->mean,pd->dev);
-                res=(((pd->min)<((((pd->max)>(res)?(res):(pd->max))))?((((pd->max)>(res)?(res):(pd->max)))):(pd->min)));
-                break;
-            default:
-                fprintf(stderr,"woops! undefined distribution.\n");
-                exit(EXIT_FAILURE);
-        }
-    return res;
-}
+
 void MakeRandomString(char *string, int length)
 {
     int i;
@@ -223,9 +161,6 @@ int GenRef(ProbDesc *pd, int type)
 {
     ObjDesc* od=objs+type;
     static ProbDesc pdnew;
-    ((void) 0);
-    ((void) 0);
-    ((void) 0);
     if (pd->type!=0)
         {
             pdnew.min=0;
