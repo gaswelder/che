@@ -544,17 +544,7 @@ int pmgetopt(int argc, char * const argv[], const char *optstring)
     else if (*tr) { pp++; next--; }
     return (int)*option;
 }
-unsigned long timediff(void)
-{
-    static struct timeval last;
-    struct timeval time;
-    unsigned long diff;
-    gettimeofday(&time,0);
-    diff=(time.tv_sec-last.tv_sec )*1000000L+(time.tv_usec-last.tv_usec);
-    last.tv_sec=time.tv_sec;
-    last.tv_usec=time.tv_usec;
-    return diff;
-}
+
 struct idrepro
 {
     int cur, out, brosout;
