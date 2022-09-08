@@ -28,69 +28,6 @@ typedef {
     int flag;
 } ObjDesc;
 
-int indent_level=0;
-int fmt_width=79;
-
-
-int xmlfmtprintf(FILE *xfp, const char *fmt, ...)
-{
-    static char buf[20000];
-    static char *blank=0;
-    static char *lstblank=0;
-    static char *start=0;
-    static char *write=0;
-    static int width=0;
-    static int indent=0;
-
-    int newindent=-1;
-    char *trail;
-    
-    if (!blank)
-        {
-            write=start=lstblank=blank=buf;
-            indent=indent_level;
-            width=indent-1;
-        }
-
-    va_list ap;
-    va_start (ap,fmt);
-    vsprintf(write, fmt, ap);
-    va_end(ap);
-
-    trail=write;
-    if (start==trail) indent=indent_level;
-    while(*trail)
-        {
-            width++;
-            if (*trail=='\n') newindent=indent_level;
-            if (*trail=='\t' || *trail==' ')
-                {
-                    *trail=' ';
-                    blank=trail;
-                    if (width==fmt_width && lstblank!=blank) *trail='\n';
-                }
-            if (*trail=='\n')
-                {
-                    *trail='\0';
-                    fprintf(xfp,"%*s%s\n",indent,"",start);
-                    start=lstblank=blank=trail+1;
-                    width=indent-1;
-                    if (newindent>=0) indent=newindent;
-                    if (!trail+1) blank=0;
-                }
-            if (width==fmt_width && lstblank!=blank)
-                {
-                    *blank='\0';
-                    fprintf(xfp,"%*s%s\n",indent,"",start);
-                    lstblank=start=trail=++blank;
-                    width=indent;
-                }
-            trail++;
-        }
-    write=trail;
-    return width;
-}
-
 FILE *xmlout=0;
 char *outputname=0;
 int indent_inc=0;
