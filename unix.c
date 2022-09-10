@@ -463,14 +463,14 @@ int main(int argc, char **argv)
     return 0;
 }
 
-struct idrepro
-{
+typedef {
     int cur, out, brosout;
     int max, brosmax;
     int dir, mydir;
     int current;
     random_gen rk;
-};
+} idrepro;
+
 int firstnames_len=10000;
 char *firstnames[10000]={
     "Frederique","Shigeichiro","Xinan","Takahira","Rildo","IEEE","Weiru",
@@ -6271,22 +6271,8 @@ char *words[17000]={
     "fehemently","flushing","wotting","ensnareth","solicitation",
     "sugared","recoverable","purged","adjoining","preventions"
 };
-extern int firstnames_len;
-extern char *firstnames[];
-extern int lastnames_len;
-extern char *lastnames[];
-extern int words_len;
-extern char *words[];
-extern int provinces_len;
-extern char *provinces[];
-extern int countries_len;
-extern int countries_USA;
-extern char *countries[];
-extern int emails_len;
-extern char *emails[];
-extern int cities_len;
-extern char *cities[];
-static struct idrepro idr[2];
+
+struct idrepro idr[2] = {};
 char dtd_name[128]="auction.dtd";
 enum {
     ERROR_OBJ,
