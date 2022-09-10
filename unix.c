@@ -122,7 +122,6 @@ void FixReferenceSets(ObjDesc *od)
 void FixSetSize(ObjDesc *od)
 {
     int i;
-    ((void) 0);
     if (od->flag++) return;
     for (i=0;i<od->kids;i++)
         {
@@ -165,7 +164,6 @@ void FixSetByEdge(char *father_name, char *son_name, int size)
                         }
                 }
         }
-    ((void) 0);
 }
 void ClearFlags()
 {
@@ -179,8 +177,6 @@ void OpeningTag(ObjDesc *od)
     static char cdata[1024]="yes";
     int i;
     AttDesc *att=0;
-    ((void) 0);
-    ((void) 0);
     stack[stackdepth++]=od;
     xmlprintf(xmlout,"<%s",od->name);
     for (i=0;i<5;i++)
@@ -227,7 +223,6 @@ void OpeningTag(ObjDesc *od)
 }
 void ClosingTag(ObjDesc *od)
 {
-    ((void) 0);
     stackdepth--;
     if (od->type&0x01) xmlprintf(xmlout,"\n");
     if ((od->att[0].name[0]) && !(od->elm[0].id!=0)) return;
@@ -264,7 +259,6 @@ void GenSubtree(ObjDesc *od)
     static bool splitnow = false;
     int i=0;
     ElmDesc *ed;
-    ((void) 0);
     if (od->type&0x10) return;
     if (splitnow) {
         SplitDoc();
@@ -299,7 +293,6 @@ void GenSubtree(ObjDesc *od)
         splitnow = true;
     }
     od->flag--;
-    ((void) 0);
 }
 void Preamble(int type)
 {
@@ -6821,7 +6814,6 @@ void PrintANY() {
     int stptr=0;
     for (i=0;i<sen;i++)
         {
-            ((void) 0);
             if (genunf(0,1)<0.1 && stptr<3-1)
                 {
                     do
@@ -7106,7 +7098,6 @@ int GenItemIdRef(struct idrepro *rep, int *idref)
             *idref=rep->cur++;
             res=1;
         }
-    ((void) 0);
     return res;
 }
 
