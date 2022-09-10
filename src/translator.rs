@@ -113,6 +113,17 @@ fn translate_module_object(x: &ModuleObject) -> Vec<CompatModuleObject> {
             type_name: type_name.clone(),
             form: form.clone(),
         }],
+        ModuleObject::FuncTypedef(FuncTypedef {
+            is_pub,
+            return_type,
+            name,
+            params,
+        }) => vec![CompatModuleObject::FuncTypedef {
+            is_pub: *is_pub,
+            return_type: return_type.clone(),
+            name: name.clone(),
+            params: params.clone(),
+        }],
         ModuleObject::StructTypedef(StructTypedef {
             is_pub,
             fields,

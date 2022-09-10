@@ -124,13 +124,16 @@ fn format_anonymous_typeform(node: &AnonymousTypeform) -> String {
     return s;
 }
 
-fn format_anonymous_parameters(node: &AnonymousParameters) -> String {
+fn format_anonymous_parameters(params: &AnonymousParameters) -> String {
     let mut s = String::from("(");
-    for (i, form) in node.forms.iter().enumerate() {
+    for (i, form) in params.forms.iter().enumerate() {
         if i > 0 {
             s += ", ";
         }
         s += &format_anonymous_typeform(form);
+    }
+    if params.ellipsis {
+        s += ", ...";
     }
     s += ")";
     return s;
@@ -461,6 +464,17 @@ pub fn format_compat_module(node: &CompatModule) -> String {
             CompatModuleObject::Typedef {
                 type_name, form, ..
             } => format_typedef(&type_name, &form),
+            CompatModuleObject::FuncTypedef {
+                return_type,
+                name,
+                params,
+                is_pub: _,
+            } => format!(
+                "typedef {} (*{}){};\n",
+                format_type(return_type),
+                name,
+                format_anonymous_parameters(params)
+            ),
             CompatModuleObject::CompatMacro(x) => format_compat_macro(&x),
             CompatModuleObject::CompatInclude(x) => format!("#include {}\n", x),
             CompatModuleObject::Enum { members, .. } => {

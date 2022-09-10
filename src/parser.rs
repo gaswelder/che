@@ -356,17 +356,25 @@ fn parse_anonymous_typeform(lexer: &mut Lexer) -> Result<AnonymousTypeform, Stri
 }
 
 fn parse_anonymous_parameters(lexer: &mut Lexer) -> Result<AnonymousParameters, String> {
-    let mut forms: Vec<AnonymousTypeform> = Vec::new();
+    let mut params = AnonymousParameters {
+        ellipsis: false,
+        forms: Vec::new(),
+    };
     expect(lexer, "(", Some("anonymous function parameters")).unwrap();
     if !lexer.follows(")") {
-        forms.push(parse_anonymous_typeform(lexer).unwrap());
+        params.forms.push(parse_anonymous_typeform(lexer).unwrap());
         while lexer.follows(",") {
             lexer.get();
-            forms.push(parse_anonymous_typeform(lexer).unwrap());
+            if lexer.follows("...") {
+                lexer.get();
+                params.ellipsis = true;
+                break;
+            }
+            params.forms.push(parse_anonymous_typeform(lexer).unwrap());
         }
     }
     expect(lexer, ")", Some("anonymous function parameters"))?;
-    return Ok(AnonymousParameters { forms });
+    return Ok(params);
 }
 
 fn parse_literal(lexer: &mut Lexer) -> Result<Literal, String> {
@@ -872,9 +880,6 @@ fn parse_compat_macro(lexer: &mut Lexer) -> Result<CompatMacro, String> {
 }
 
 fn parse_typedef(is_pub: bool, lexer: &mut Lexer, ctx: &Ctx) -> Result<ModuleObject, String> {
-    // typedef void *f(int a)[20];
-    // typedef foo bar;
-    // typedef struct foo foo_t;
     expect(lexer, "typedef", None)?;
 
     if lexer.follows("{") {
@@ -902,30 +907,38 @@ fn parse_typedef(is_pub: bool, lexer: &mut Lexer, ctx: &Ctx) -> Result<ModuleObj
         }));
     }
 
-    // typedef int (?);
+    // typedef void *f(int a)[20];
+    // typedef foo bar;
+    // typedef struct foo foo_t;
     let type_name = parse_typename(lexer, Some("typedef"))?;
-    let form = parse_typedef_form(lexer)?;
-    expect(lexer, ";", Some("typedef"))?;
-    return Ok(ModuleObject::Typedef(Typedef {
-        is_pub,
-        type_name,
-        form,
-    }));
-}
 
-fn parse_typedef_form(lexer: &mut Lexer) -> Result<TypedefForm, String> {
+    if lexer.follows("(") {
+        // Function pointer type:
+        // typedef int (*func_t)(FILE*, const char *, ...);
+        lexer.get();
+        expect(lexer, "*", Some("function pointer typedef"))?;
+        let name = parse_identifier(lexer)?;
+        expect(lexer, ")", Some("function pointer typedef"))?;
+        let params = parse_anonymous_parameters(lexer)?;
+        expect(lexer, ";", Some("typedef"))?;
+        return Ok(ModuleObject::FuncTypedef(FuncTypedef {
+            is_pub,
+            return_type: type_name,
+            name,
+            params,
+        }));
+    }
+
     let mut stars = String::new();
     while lexer.follows("*") {
         stars += &lexer.get().unwrap().kind;
     }
-
     let alias = parse_identifier(lexer)?;
 
     let mut params: Option<AnonymousParameters> = None;
     if lexer.follows("(") {
         params = Some(parse_anonymous_parameters(lexer)?);
     }
-
     let mut size: usize = 0;
     if lexer.follows("[") {
         lexer.get();
@@ -938,12 +951,19 @@ fn parse_typedef_form(lexer: &mut Lexer) -> Result<TypedefForm, String> {
         expect(lexer, "]", None)?;
     }
 
-    return Ok(TypedefForm {
+    let form = TypedefForm {
         stars,
         params,
         size,
         alias,
-    });
+    };
+
+    expect(lexer, ";", Some("typedef"))?;
+    return Ok(ModuleObject::Typedef(Typedef {
+        is_pub,
+        type_name,
+        form,
+    }));
 }
 
 fn parse_type_and_forms(lexer: &mut Lexer, ctx: &Ctx) -> Result<TypeAndForms, String> {

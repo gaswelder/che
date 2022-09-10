@@ -32,10 +32,27 @@ pub fn depused(m: &Module, dep: &Module) -> bool {
                 }
             }
             ModuleObject::Typedef(Typedef {
-                is_pub, type_name, ..
+                is_pub: _,
+                type_name,
+                ..
             }) => {
-                if *is_pub && has(&type_name.name, &list) {
+                if has(&type_name.name, &list) {
                     return true;
+                }
+            }
+            ModuleObject::FuncTypedef(FuncTypedef {
+                is_pub: _,
+                return_type,
+                params,
+                name: _,
+            }) => {
+                if has(&return_type.name, &list) {
+                    return true;
+                }
+                for p in &params.forms {
+                    if has(&p.type_name.name, &list) {
+                        return true;
+                    }
                 }
             }
             ModuleObject::StructTypedef(StructTypedef { is_pub, name, .. }) => {

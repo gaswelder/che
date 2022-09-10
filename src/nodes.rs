@@ -11,6 +11,7 @@ pub enum ModuleObject {
     Enum(Enum),
     Typedef(Typedef),
     StructTypedef(StructTypedef),
+    FuncTypedef(FuncTypedef),
     ModuleVariable(ModuleVariable),
     FunctionDeclaration(FunctionDeclaration),
 }
@@ -27,6 +28,14 @@ pub struct StructTypedef {
     pub is_pub: bool,
     pub fields: Vec<StructEntry>,
     pub name: String,
+}
+
+#[derive(Debug, Clone)]
+pub struct FuncTypedef {
+    pub is_pub: bool,
+    pub return_type: Typename,
+    pub name: String,
+    pub params: AnonymousParameters,
 }
 
 #[derive(Debug, Clone)]
@@ -299,6 +308,7 @@ pub struct TypedefForm {
 
 #[derive(Debug, Clone)]
 pub struct AnonymousParameters {
+    pub ellipsis: bool,
     pub forms: Vec<AnonymousTypeform>,
 }
 
@@ -322,6 +332,12 @@ pub enum CompatModuleObject {
         is_pub: bool,
         type_name: Typename,
         form: TypedefForm,
+    },
+    FuncTypedef {
+        is_pub: bool,
+        return_type: Typename,
+        name: String,
+        params: AnonymousParameters,
     },
     CompatMacro(CompatMacro),
     CompatInclude(String),
