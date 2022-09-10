@@ -747,8 +747,11 @@ fn parse_function_declaration(
     form: Form,
     ctx: &Ctx,
 ) -> Result<ModuleObject, String> {
+    // void cuespl {WE ARE HERE} (cue_t *c, mp3file *m) {...}
+
     let mut parameters: Vec<TypeAndForms> = vec![];
     let mut variadic = false;
+
     expect(lexer, "(", None)?;
     if !lexer.follows(")") {
         parameters.push(parse_function_parameter(lexer, ctx)?);
@@ -762,7 +765,7 @@ fn parse_function_declaration(
             parameters.push(parse_function_parameter(lexer, ctx)?);
         }
     }
-    expect(lexer, ")", None)?;
+    expect(lexer, ")", Some("parse_function_declaration"))?;
     let body = parse_body(lexer, ctx)?;
     return Ok(ModuleObject::FunctionDeclaration(FunctionDeclaration {
         is_pub,
@@ -873,12 +876,34 @@ fn parse_typedef(is_pub: bool, lexer: &mut Lexer, ctx: &Ctx) -> Result<ModuleObj
     // typedef foo bar;
     // typedef struct foo foo_t;
     expect(lexer, "typedef", None)?;
-    let type_name;
+
     if lexer.follows("{") {
-        type_name = parse_anonymous_struct(lexer, ctx)?;
-    } else {
-        type_name = TypedefTarget::Typename(parse_typename(lexer, Some("typedef"))?);
+        // typedef {int hour, minute, second} time;
+
+        // Parse the struct
+        let mut fields: Vec<StructEntry> = vec![];
+        expect(lexer, "{", Some("struct type definition"))?;
+        while lexer.more() && lexer.peek().unwrap().kind != "}" {
+            if lexer.peek().unwrap().kind == "union" {
+                fields.push(StructEntry::Union(parse_union(lexer, ctx)?));
+            } else {
+                fields.push(StructEntry::Plain(parse_type_and_forms(lexer, ctx)?));
+            }
+        }
+        expect(lexer, "}", None)?;
+
+        // Parse the name
+        let name = parse_identifier(lexer)?;
+        expect(lexer, ";", Some("typedef"))?;
+        return Ok(ModuleObject::StructTypedef(StructTypedef {
+            is_pub,
+            fields,
+            name,
+        }));
     }
+
+    // typedef int (?);
+    let type_name = parse_typename(lexer, Some("typedef"))?;
     let form = parse_typedef_form(lexer)?;
     expect(lexer, ";", Some("typedef"))?;
     return Ok(ModuleObject::Typedef(Typedef {
@@ -918,23 +943,6 @@ fn parse_typedef_form(lexer: &mut Lexer) -> Result<TypedefForm, String> {
         params,
         size,
         alias,
-    });
-}
-
-fn parse_anonymous_struct(l: &mut Lexer, ctx: &Ctx) -> Result<TypedefTarget, String> {
-    let mut fieldlists: Vec<StructEntry> = vec![];
-    expect(l, "{", Some("struct type definition"))?;
-    while l.more() && l.peek().unwrap().kind != "}" {
-        if l.peek().unwrap().kind == "union" {
-            fieldlists.push(StructEntry::Union(parse_union(l, ctx)?));
-        } else {
-            fieldlists.push(StructEntry::Plain(parse_type_and_forms(l, ctx)?));
-        }
-    }
-    expect(l, "}", None)?;
-
-    return Ok(TypedefTarget::AnonymousStruct {
-        entries: fieldlists,
     });
 }
 
@@ -1151,8 +1159,15 @@ fn parse_module(lexer: &mut Lexer, ctx: &Ctx) -> Result<Vec<ModuleObject>, Strin
                 let module = get_module(&p)?;
                 for element in module.elements {
                     match element {
-                        ModuleObject::Typedef(Typedef { form, .. }) => {
-                            ctx2.typenames.push(form.alias);
+                        ModuleObject::Typedef(Typedef { form, is_pub, .. }) => {
+                            if is_pub {
+                                ctx2.typenames.push(form.alias);
+                            }
+                        }
+                        ModuleObject::StructTypedef(StructTypedef { name, is_pub, .. }) => {
+                            if is_pub {
+                                ctx2.typenames.push(name);
+                            }
                         }
                         _ => {}
                     }

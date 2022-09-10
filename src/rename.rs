@@ -47,24 +47,24 @@ fn mod_obj(obj: &mut ModuleObject, prefix: &String, names: &Vec<String>) {
                 None => {}
             }
             form.alias = rename(&form.alias, prefix, names);
-
-            match type_name {
-                TypedefTarget::AnonymousStruct { entries } => {
-                    for e in entries {
-                        match e {
-                            StructEntry::Plain(x) => {
-                                rename_typename(&mut x.type_name, prefix, names);
-                            }
-                            StructEntry::Union(x) => {
-                                for f in &mut x.fields {
-                                    rename_typename(&mut f.type_name, prefix, names);
-                                }
-                            }
+            rename_typename(type_name, prefix, names);
+        }
+        ModuleObject::StructTypedef(StructTypedef {
+            fields,
+            name: _,
+            is_pub: _,
+        }) => {
+            // form.alias = rename(&form.alias, prefix, names);
+            for e in fields {
+                match e {
+                    StructEntry::Plain(x) => {
+                        rename_typename(&mut x.type_name, prefix, names);
+                    }
+                    StructEntry::Union(x) => {
+                        for f in &mut x.fields {
+                            rename_typename(&mut f.type_name, prefix, names);
                         }
                     }
-                }
-                TypedefTarget::Typename(x) => {
-                    rename_typename(x, prefix, names);
                 }
             }
         }

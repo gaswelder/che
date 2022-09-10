@@ -10,12 +10,10 @@ pub fn depused(m: &Module, dep: &Module) -> bool {
         list.push(x.form.name);
     }
     for x in exports.types {
-        match x.type_name {
-            TypedefTarget::Typename(t) => {
-                list.push(t.name);
-            }
-            TypedefTarget::AnonymousStruct { .. } => list.push(x.form.alias),
-        }
+        list.push(x.form.alias);
+    }
+    for x in exports.structs {
+        list.push(x.name);
     }
     for obj in &m.elements {
         match obj {
@@ -33,14 +31,18 @@ pub fn depused(m: &Module, dep: &Module) -> bool {
                     }
                 }
             }
-            ModuleObject::Typedef(x) => match &x.type_name {
-                TypedefTarget::AnonymousStruct { .. } => {}
-                TypedefTarget::Typename(t) => {
-                    if has(&t.name, &list) {
-                        return true;
-                    }
+            ModuleObject::Typedef(Typedef {
+                is_pub, type_name, ..
+            }) => {
+                if *is_pub && has(&type_name.name, &list) {
+                    return true;
                 }
-            },
+            }
+            ModuleObject::StructTypedef(StructTypedef { is_pub, name, .. }) => {
+                if *is_pub && has(&name, &list) {
+                    return true;
+                }
+            }
             ModuleObject::ModuleVariable(x) => {
                 if has(&x.type_name.name, &list) || used_in_expr(&x.value, &list) {
                     return true;
@@ -270,6 +272,7 @@ pub struct Exports {
     pub consts: Vec<EnumItem>,
     pub fns: Vec<FunctionDeclaration>,
     pub types: Vec<Typedef>,
+    pub structs: Vec<StructTypedef>,
 }
 
 pub fn get_exports(m: &Module) -> Exports {
@@ -277,6 +280,7 @@ pub fn get_exports(m: &Module) -> Exports {
         consts: Vec::new(),
         fns: Vec::new(),
         types: Vec::new(),
+        structs: Vec::new(),
     };
     for e in &m.elements {
         match e {
@@ -290,6 +294,11 @@ pub fn get_exports(m: &Module) -> Exports {
             ModuleObject::Typedef(x) => {
                 if x.is_pub {
                     exports.types.push(x.clone());
+                }
+            }
+            ModuleObject::StructTypedef(x) => {
+                if x.is_pub {
+                    exports.structs.push(x.clone());
                 }
             }
             ModuleObject::FunctionDeclaration(f) => {

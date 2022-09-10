@@ -108,7 +108,62 @@ fn translate_module_object(x: &ModuleObject) -> Vec<CompatModuleObject> {
             is_pub,
             type_name,
             form,
-        }) => translate_typedef(*is_pub, type_name, form),
+        }) => vec![CompatModuleObject::Typedef {
+            is_pub: *is_pub,
+            type_name: type_name.clone(),
+            form: form.clone(),
+        }],
+        ModuleObject::StructTypedef(StructTypedef {
+            is_pub,
+            fields,
+            name,
+        }) => {
+            // A sugary "typedef {int a} foo_t" is translated to
+            // "struct __foo_t_struct {int a}; typedef __foo_t_struct foo_t;".
+            // And remember that the struct definition itself is sugar that
+            // should be translated as well.
+            let struct_name = format!("__{}_struct", name);
+
+            // Build the compat struct fields.
+            let mut compat_fields: Vec<CompatStructEntry> = Vec::new();
+            for entry in fields {
+                match entry {
+                    // One fieldlist is multiple fields of the same type.
+                    StructEntry::Plain(x) => {
+                        for f in &x.forms {
+                            compat_fields.push(CompatStructEntry::CompatStructField {
+                                type_name: x.type_name.clone(),
+                                form: f.clone(),
+                            });
+                        }
+                    }
+                    StructEntry::Union(x) => {
+                        compat_fields.push(CompatStructEntry::Union(x.clone()));
+                    }
+                }
+            }
+            vec![
+                CompatModuleObject::CompatStructForwardDeclaration(struct_name.clone()),
+                CompatModuleObject::CompatStructDefinition(CompatStructDefinition {
+                    name: struct_name.clone(),
+                    fields: compat_fields,
+                    is_pub: *is_pub,
+                }),
+                CompatModuleObject::Typedef {
+                    is_pub: *is_pub,
+                    type_name: Typename {
+                        is_const: false,
+                        name: format!("struct {}", struct_name.clone()),
+                    },
+                    form: TypedefForm {
+                        stars: "".to_string(),
+                        size: 0,
+                        params: None,
+                        alias: name.clone(),
+                    },
+                },
+            ]
+        }
         ModuleObject::Import { path } => {
             let module = parser::get_module(&path).unwrap();
             let compat = translate(&module);
@@ -136,69 +191,6 @@ fn translate_module_object(x: &ModuleObject) -> Vec<CompatModuleObject> {
         }
         ModuleObject::ModuleVariable(x) => vec![CompatModuleObject::ModuleVariable(x.clone())],
         // ModuleObject::CompatInclude(x) => vec![CompatModuleObject::CompatInclude(x.clone())],
-    }
-}
-
-fn translate_typedef(
-    is_pub: bool,
-    target: &TypedefTarget,
-    form: &TypedefForm,
-) -> Vec<CompatModuleObject> {
-    match &target {
-        // A sugary "typedef {int a} foo_t" is translated to
-        // "struct __foo_t_struct {int a}; typedef __foo_t_struct foo_t;".
-        // And remember that the struct definition itself is sugar that
-        // should be translated as well.
-        TypedefTarget::AnonymousStruct { entries } => {
-            let struct_name = format!("__{}_struct", form.alias);
-
-            // Build the compat struct fields.
-            let mut fields: Vec<CompatStructEntry> = Vec::new();
-            for entry in entries {
-                match entry {
-                    // One fieldlist is multiple fields of the same type.
-                    StructEntry::Plain(x) => {
-                        for f in &x.forms {
-                            fields.push(CompatStructEntry::CompatStructField {
-                                type_name: x.type_name.clone(),
-                                form: f.clone(),
-                            });
-                        }
-                    }
-                    StructEntry::Union(x) => {
-                        fields.push(CompatStructEntry::Union(x.clone()));
-                    }
-                }
-            }
-            vec![
-                CompatModuleObject::CompatStructForwardDeclaration(struct_name.clone()),
-                CompatModuleObject::CompatStructDefinition(CompatStructDefinition {
-                    name: struct_name.clone(),
-                    fields,
-                    is_pub,
-                }),
-                CompatModuleObject::Typedef {
-                    is_pub,
-                    type_name: TypedefTarget::Typename(Typename {
-                        is_const: false,
-                        name: format!("struct {}", struct_name.clone()),
-                    }),
-                    form: TypedefForm {
-                        stars: "".to_string(),
-                        size: 0,
-                        params: None,
-                        alias: form.alias.clone(),
-                    },
-                },
-            ]
-        }
-        _ => {
-            return vec![CompatModuleObject::Typedef {
-                is_pub,
-                type_name: target.clone(),
-                form: form.clone(),
-            }];
-        }
     }
 }
 

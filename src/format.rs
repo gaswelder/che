@@ -342,18 +342,6 @@ fn format_module_variable(node: &ModuleVariable) -> String {
     );
 }
 
-fn format_type_and_forms(node: &TypeAndForms) -> String {
-    let mut s = format_type(&node.type_name) + " ";
-    for (i, form) in node.forms.iter().enumerate() {
-        if i > 0 {
-            s += ", ";
-        }
-        s += &format_form(&form);
-    }
-    s += ";";
-    return s;
-}
-
 fn format_statement(node: &Statement) -> String {
     match node {
         Statement::VariableDeclaration {
@@ -453,7 +441,7 @@ fn format_switch(value: &Expression, cases: &Vec<SwitchCase>, default: &Option<B
     );
 }
 
-pub fn format_typedef(type_name: &TypedefTarget, form: &TypedefForm) -> String {
+pub fn format_typedef(type_name: &Typename, form: &TypedefForm) -> String {
     let mut formstr = form.stars.clone() + &form.alias;
     if form.params.is_some() {
         formstr += &format_anonymous_parameters(&form.params.as_ref().unwrap());
@@ -461,23 +449,8 @@ pub fn format_typedef(type_name: &TypedefTarget, form: &TypedefForm) -> String {
     if form.size > 0 {
         formstr += &format!("[{}]", form.size);
     }
-    let t = match &type_name {
-        TypedefTarget::AnonymousStruct { entries } => format_anonymous_struct(entries),
-        TypedefTarget::Typename(x) => format_type(&x),
-    };
+    let t = format_type(type_name);
     return format!("typedef {} {};\n", t, formstr);
-}
-
-fn format_anonymous_struct(entries: &Vec<StructEntry>) -> String {
-    let mut s = String::new();
-    for fieldlist in entries {
-        s += &match fieldlist {
-            StructEntry::Plain(x) => format_type_and_forms(&x),
-            StructEntry::Union(x) => format_union(&x),
-        };
-        s += "\n";
-    }
-    return format!("{{\n{}}}", indent(&s));
 }
 
 pub fn format_compat_module(node: &CompatModule) -> String {

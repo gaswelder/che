@@ -10,8 +10,23 @@ pub enum ModuleObject {
     Import { path: String },
     Enum(Enum),
     Typedef(Typedef),
+    StructTypedef(StructTypedef),
     ModuleVariable(ModuleVariable),
     FunctionDeclaration(FunctionDeclaration),
+}
+
+#[derive(Debug, Clone)]
+pub struct Typedef {
+    pub is_pub: bool,
+    pub type_name: Typename,
+    pub form: TypedefForm,
+}
+
+#[derive(Debug, Clone)]
+pub struct StructTypedef {
+    pub is_pub: bool,
+    pub fields: Vec<StructEntry>,
+    pub name: String,
 }
 
 #[derive(Debug, Clone)]
@@ -24,13 +39,6 @@ pub struct Enum {
 pub struct EnumItem {
     pub id: String,
     pub value: Option<Expression>,
-}
-
-#[derive(Debug, Clone)]
-pub struct Typedef {
-    pub is_pub: bool,
-    pub type_name: TypedefTarget,
-    pub form: TypedefForm,
 }
 
 #[derive(Debug, Clone)]
@@ -282,12 +290,6 @@ pub struct CompatMacro {
 }
 
 #[derive(Debug, Clone)]
-pub enum TypedefTarget {
-    AnonymousStruct { entries: Vec<StructEntry> },
-    Typename(Typename),
-}
-
-#[derive(Debug, Clone)]
 pub struct TypedefForm {
     pub stars: String,
     pub params: Option<AnonymousParameters>,
@@ -318,7 +320,7 @@ pub enum CompatModuleObject {
     ModuleVariable(ModuleVariable),
     Typedef {
         is_pub: bool,
-        type_name: TypedefTarget,
+        type_name: Typename,
         form: TypedefForm,
     },
     CompatMacro(CompatMacro),
