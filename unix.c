@@ -32,12 +32,15 @@ FILE *xmlout=0;
 char *outputname=0;
 int indent_inc=0;
 double scale_factor=1;
-ObjDesc *stack[64];
+ObjDesc *stack[64] = {};
 int stackdepth=0;
 int stackatt=0;
 int split=0;
 int splitcnt=0;
-int (*xmlprintf)(FILE *stream, const char *format, ...)=fprintf;
+
+typedef int printfunc_t(FILE *, const char *, ...);
+
+printfunc_t *xmlprintf = &fprintf;
 
 int global_split_fileno = 0;
 
