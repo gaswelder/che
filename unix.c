@@ -172,9 +172,11 @@ void ClearFlags()
     for(i=0;i<nobj;i++)
         objs[i].flag=0;
 }
+
+char global_OpeningTag_cdata[1024] = "yes";
+
 void OpeningTag(ObjDesc *od)
 {
-    static char cdata[1024]="yes";
     int i;
     AttDesc *att=0;
     stack[stackdepth++]=od;
@@ -186,26 +188,25 @@ void OpeningTag(ObjDesc *od)
             if (att->name[0]=='\0') break;
             if (att->name[0]=='\1') attname=objs[att->ref].name;
             else attname=att->name;
-            switch(att->type)
-                {
+            switch(att->type) {
                 case 1:
                     xmlprintf(xmlout," %s=\"%s%d\"",
                               attname,od->name,od->set.id++);
                     break;
                 case 2:
-                {
+                
                     int ref=0;
                     if (!IdRefHook || !IdRefHook(od,att->ref,&ref))
                         ref=GenRef(&att->pd,att->ref);
                     xmlprintf(xmlout," %s=\"%s%d\"",
                             attname,objs[att->ref].name,ref);
-                }
+                
                 break;
                 case 3:
                     if (genunf(0,1)<att->prcnt)
                         {
-                            GenAttCDATA(od,attname,cdata);
-                            xmlprintf(xmlout," %s=\"%s\"",attname,cdata);
+                            GenAttCDATA(od,attname,global_OpeninTag_cdata);
+                            xmlprintf(xmlout," %s=\"%s\"",attname,global_OpeninTag_cdata);
                         }
                     break;
                 default:
@@ -254,15 +255,17 @@ void SplitDoc() {
     }
     splitcnt=0;
 }
+
+bool GenSubtree_splitnow = false;
+
 void GenSubtree(ObjDesc *od)
 {
-    static bool splitnow = false;
     int i=0;
     ElmDesc *ed;
     if (od->type&0x10) return;
-    if (splitnow) {
+    if (GenSubtree_splitnow) {
         SplitDoc();
-        splitnow = false;
+        GenSubtree_splitnow = false;
     }
     OpeningTag(od);
     indent_level+=indent_inc;
@@ -290,7 +293,7 @@ void GenSubtree(ObjDesc *od)
     indent_level-=indent_inc;
     ClosingTag(od);
     if (split && (od->type&0x20 || (od->type&0x40 && splitcnt++>split))) {
-        splitnow = true;
+        GenSubtree_splitnow = true;
     }
     od->flag--;
 }
@@ -320,7 +323,8 @@ void Usage(char *progname)
     fprintf(stderr, "Usage: %s [ %ch ] [ %cditve ] [ %cf <factor> ] [ %co <file> ] [ %cs <cnt> ]\n",progname,dash,dash,dash,dash,dash);
     exit(EXIT_FAILURE);
 }
-void AlignObjs(void)
+
+void AlignObjs()
 {
     int i=0,j;
     ObjDesc * newobjs;
@@ -373,7 +377,6 @@ void printdtd()
 int main(int argc, char **argv)
 {
     int opt,stop=0,timing=0,dumpdtd=0;
-    extern char *pmoptarg;
     int document_type=1;
     ObjDesc *root;
     if (argc==1) Usage(argv[0]);
@@ -435,11 +438,14 @@ int main(int argc, char **argv)
             exit(EXIT_FAILURE);
         }
     }
-    if (dumpdtd)
-        {
-            printdtd();
-            goto wrapup;
+    if (dumpdtd) {
+        printdtd();
+        fclose(xmlout);
+        if (timing) {
+            fprintf(stderr,"Elapsed time: %.3f sec\n",timediff()/1E6);
         }
+        return 0;
+    }
     AlignObjs();
     root=objs+1;
     FixSetSize(root);
@@ -451,16 +457,17 @@ int main(int argc, char **argv)
     initialize();
     Preamble(document_type);
     GenSubtree(root);
-  wrapup:
     fclose(xmlout);
     if (timing)
         fprintf(stderr,"Elapsed time: %.3f sec\n",timediff()/1E6);
     return 0;
 }
-char *pmoptarg;
-int pmoptind;
+
+char *pmoptarg = NULL;
+int pmoptind = -1;
 char dash='-';
-int pmgetopt(int argc, char * const argv[], const char *optstring)
+
+int pmgetopt(int argc, char *argv[], const char *optstring)
 {
     static int next=1,pp=0;
     int i=0,found=0,len=0;
