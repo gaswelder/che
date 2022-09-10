@@ -62,22 +62,23 @@ bool hasID(ObjDesc *od) {
     return false;
 }
 
+ProbDesc global_GenRef_pdnew = {};
+
 int GenRef(ProbDesc *pd, int type)
 {
     ObjDesc* od=objs+type;
-    static ProbDesc pdnew;
     if (pd->type!=0)
         {
-            pdnew.min=0;
-            pdnew.max=od->set.size-1;
-            pdnew.type=pd->type;
+            global_GenRef_pdnew.min=0;
+            global_GenRef_pdnew.max=od->set.size-1;
+            global_GenRef_pdnew.type=pd->type;
             if (pd->type!=1)
                 {
-                    pdnew.mean=pd->mean*pdnew.max;
-                    pdnew.dev=pd->dev*pdnew.max;
+                    global_GenRef_pdnew.mean=pd->mean*global_GenRef_pdnew.max;
+                    global_GenRef_pdnew.dev=pd->dev*global_GenRef_pdnew.max;
                 }
         }
-    return (int)GenRandomNum(&pdnew);
+    return (int)GenRandomNum(&global_RenRef_pdnew);
 }
 void FixDist(ProbDesc *pd, double val)
 {
@@ -87,7 +88,6 @@ void FixDist(ProbDesc *pd, double val)
 void FixReferenceSets(ObjDesc *od)
 {
     int i,j,maxref=0;
-    ((void) 0);
     if (od->flag++) return;
     for (i=0;i<od->kids;i++)
         {
@@ -101,12 +101,18 @@ void FixReferenceSets(ObjDesc *od)
                     for (j=0;j<5;j++)
                         {
                             if (son->att[j].name[0]=='\0') break;
-                            maxref=(((maxref)<(objs[son->att[j].ref].set.size)?(objs[son->att[j].ref].set.size):(maxref)));
+                            if (maxref < objs[son->att[j].ref].set.size) {
+                                maxref = objs[son->att[j].ref].set.size;
+                            }
                         }
                     if (!maxref) break;
                     local_factor=maxref/ed->pd.max;
                     size=(int)(GenRandomNum(&ed->pd)+0.5);
-                    size=(int)(((1)<(size*local_factor)?(size*local_factor):(1)));
+                    if (size*local_factor > 1) {
+                        size = (int)(size*local_factor);
+                    } else {
+                        size = 1;
+                    }
                     son->set.size+=size;
                     FixDist(&ed->pd,size);
                 }
@@ -127,7 +133,11 @@ void FixSetSize(ObjDesc *od)
             if (ed->pd.min>1 && (hasID(son) || (son->type&0x04)))
                 {
                     int size=(int)(GenRandomNum(&ed->pd)+0.5);
-                    size=(int)(((1)<(size*scale_factor)?(size*scale_factor):(1)));
+                    if (size*scale_factor > 1) {
+                        size = (int)(size*scale_factor);
+                    } else {
+                        size = 1;
+                    }
                     son->set.size+=size;
                     FixDist(&ed->pd,size);
                 }
