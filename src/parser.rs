@@ -365,7 +365,7 @@ fn parse_anonymous_parameters(lexer: &mut Lexer) -> Result<AnonymousParameters, 
             forms.push(parse_anonymous_typeform(lexer).unwrap());
         }
     }
-    expect(lexer, ")", Some("anonymous function parameters")).unwrap();
+    expect(lexer, ")", Some("anonymous function parameters"))?;
     return Ok(AnonymousParameters { forms });
 }
 
