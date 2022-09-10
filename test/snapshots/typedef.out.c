@@ -1,6 +1,6 @@
 
 
-/* -------test/snapshots/forms.c------- */
+/* -------test/snapshots/typedef.c------- */
 
 
 /* -------------- */
