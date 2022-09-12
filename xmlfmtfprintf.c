@@ -1,10 +1,8 @@
 int main() {
-    for (int i = 0; i < 100; i++) {
-        xmlfmtprintf(stdout, "bakabakabakabakaba ", i);
-        // for (int j = 0; j < i % 30; j++) {
-        //     xmlfmtprintf(stdout, "%c", 32 + (j%90));
-        // }
-        // xmlfmtprintf(stdout, " ");
+    char buf[4096] = "";
+    while (!feof(stdin)) {
+        fgets(buf, 4096, stdin);
+        xmlfmtprintf(stdout, "%s", buf);
     }
     return 0;
 }
