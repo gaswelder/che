@@ -6718,7 +6718,7 @@ ObjDesc objs[]={
         BUYER, "buyer",
         {{0,{0,0,0,0,0}}},
         {
-            {"\1",2,PERSON,{2,.5,.10,0,0}}
+            {"\1",2,PERSON,{2,0.5,0.10,0,0}}
         }
     },
     {
@@ -6742,11 +6742,15 @@ ObjDesc objs[]={
 };
 void PrintName(int *lastout)
 {
-    int fst,lst;
-    fst=(int)genexp(firstnames_len/3.);
-    lst=(int)genexp(lastnames_len/3.);
-    fst=(((firstnames_len-1)>(fst)?(fst):(firstnames_len-1)));
-    lst=(((lastnames_len-1)>(lst)?(lst):(lastnames_len-1)));
+    int fst=(int)genexp(firstnames_len/3);
+    int lst=(int)genexp(lastnames_len/3);
+
+    if (fst >= firstnames_len-1) {
+        fst = firstnames_len-1;
+    }
+    if (lst >= lastnames_len-1) {
+        lst = lastnames_len-1;
+    }
     xmlprintf(xmlout,"%s %s",firstnames[fst],lastnames[lst]);
     if (lastout) *lastout=lst;
 }
@@ -6757,19 +6761,18 @@ void PrintEmail()
     j=ignuin(0,lastnames_len-1);
     xmlprintf(xmlout,"%s@%s.com",firstnames[i],lastnames[j]);
 }
-void PrintSentence(int w)
-{
-    int i;
-    for (i=0;i<w;i++)
-        {
-            int word=(int)genexp(words_len/5.);
-            word=(((words_len-1)>(word)?(word):(words_len-1)));
-            xmlprintf(xmlout,words[word]);
-            xmlprintf(xmlout," ");
+void PrintSentence(int w) {
+    for (int i=0; i<w; i++) {
+        int word=(int)genexp(words_len/5.0);
+        if (word >= words_len - 1) {
+            word = words_len - 1;
         }
+        xmlprintf(xmlout,words[word]);
+        xmlprintf(xmlout," ");
+    }
 }
-static char *markup[3]={"emph","keyword","bold"};
-static char tick[3];
+char *markup[3]={"emph","keyword","bold"};
+char tick[3] = "";
 
 void PrintANY() {
     int sen=1+(int)genexp(20);
