@@ -6774,36 +6774,36 @@ void PrintSentence(int w) {
 char *markup[3]={"emph","keyword","bold"};
 char tick[3] = "";
 
+int PrintANY_st[3] = {};
+
 void PrintANY() {
     int sen=1+(int)genexp(20);
-    int i;
-    static int st[3];
     int stptr=0;
-    for (i=0;i<sen;i++)
+    for (int i=0;i<sen;i++)
         {
             if (genunf(0,1)<0.1 && stptr<3-1)
                 {
                     do
-                        st[stptr]=ignuin(0,3-1);
-                    while(tick[st[stptr]]);
-                    tick[st[stptr]]=1;
-                    xmlprintf(xmlout,"<%s> ",markup[st[stptr]]);
+                        PrintANY_st[stptr]=ignuin(0,3-1);
+                    while(tick[PrintANY_st[stptr]]);
+                    tick[PrintANY_st[stptr]]=1;
+                    xmlprintf(xmlout,"<%s> ",markup[PrintANY_st[stptr]]);
                     stptr++;
                 }
             else
                 if (genunf(0,1)<0.8 && stptr)
                     {
                         --stptr;
-                        xmlprintf(xmlout,"</%s> ",markup[st[stptr]]);
-                        tick[st[stptr]]=0;
+                        xmlprintf(xmlout,"</%s> ",markup[PrintANY_st[stptr]]);
+                        tick[PrintANY_st[stptr]]=0;
                     }
             PrintSentence(1+(int)genexp(4));
        }
     while(stptr)
         {
             --stptr;
-            xmlprintf(xmlout,"</%s> ",markup[st[stptr]]);
-            tick[st[stptr]]=0;
+            xmlprintf(xmlout,"</%s> ",markup[PrintANY_st[stptr]]);
+            tick[PrintANY_st[stptr]]=0;
         }
 }
 int GenContents(ObjDesc *od)
