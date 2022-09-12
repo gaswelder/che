@@ -78,37 +78,21 @@ pub struct Literal {
 }
 
 #[derive(Debug, Clone)]
-pub struct ArrayLiteral {
-    pub values: Vec<ArrayLiteralEntry>,
+pub struct CompositeLiteral {
+    pub entries: Vec<CompositeLiteralEntry>,
 }
 
 #[derive(Debug, Clone)]
-pub struct ArrayLiteralEntry {
-    pub index: ArrayLiteralKey,
-    pub value: ArrayLiteralValue,
-}
-
-#[derive(Debug, Clone)]
-pub enum ArrayLiteralKey {
-    None,
-    Identifier(String),
-    Literal(Literal),
-}
-
-#[derive(Debug, Clone)]
-pub enum ArrayLiteralValue {
-    ArrayLiteral(ArrayLiteral),
-    Identifier(String),
-    Literal(Literal),
+pub struct CompositeLiteralEntry {
+    pub is_index: bool,
+    pub key: Option<Expression>,
+    pub value: Expression,
 }
 
 #[derive(Debug, Clone)]
 pub enum Expression {
     Literal(Literal),
-    StructLiteral {
-        members: Vec<StructLiteralMember>,
-    },
-    ArrayLiteral(Box<ArrayLiteral>),
+    CompositeLiteral(CompositeLiteral),
     Identifier(String),
     BinaryOp {
         op: String,

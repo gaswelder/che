@@ -86,15 +86,22 @@ pub fn depused(m: &Module, dep: &Module) -> bool {
 fn used_in_expr(e: &Expression, list: &Vec<String>) -> bool {
     match e {
         Expression::Literal(_) => false,
-        Expression::StructLiteral { members } => {
-            for m in members {
-                if used_in_expr(&m.value, list) {
+        Expression::CompositeLiteral(CompositeLiteral { entries }) => {
+            for e in entries {
+                match &e.key {
+                    Some(expr) => {
+                        if used_in_expr(&expr, list) {
+                            return true;
+                        }
+                    }
+                    None => {}
+                }
+                if used_in_expr(&e.value, list) {
                     return true;
                 }
             }
             return false;
         }
-        Expression::ArrayLiteral(x) => used_in_array_literal(x, list),
         Expression::Identifier(x) => has(x, list),
         Expression::BinaryOp { op: _, a, b } => used_in_expr(a, list) || used_in_expr(b, list),
         Expression::PrefixOperator {
@@ -130,34 +137,6 @@ fn used_in_expr(e: &Expression, list: &Vec<String>) -> bool {
             used_in_expr(array, list) || used_in_expr(index, list)
         }
     }
-}
-
-fn used_in_array_literal(x: &ArrayLiteral, list: &Vec<String>) -> bool {
-    for e in &x.values {
-        match &e.index {
-            ArrayLiteralKey::None => {}
-            ArrayLiteralKey::Literal(_) => {}
-            ArrayLiteralKey::Identifier(s) => {
-                if has(&s, list) {
-                    return true;
-                }
-            }
-        }
-        match &e.value {
-            ArrayLiteralValue::Literal(_) => {}
-            ArrayLiteralValue::Identifier(s) => {
-                if has(&s, list) {
-                    return true;
-                }
-            }
-            ArrayLiteralValue::ArrayLiteral(a) => {
-                if used_in_array_literal(&a, list) {
-                    return true;
-                }
-            }
-        }
-    }
-    return false;
 }
 
 fn has(name: &String, list: &Vec<String>) -> bool {

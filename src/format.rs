@@ -59,19 +59,32 @@ fn format_expression(expr: &Expression) -> String {
         }
         Expression::Literal(x) => format_literal(x),
         Expression::Identifier(x) => x.clone(),
-        Expression::StructLiteral { members } => {
-            let mut s = String::from("{\n");
-            for member in members {
-                s += &format!(
-                    "\t.{} = {},\n",
-                    member.name,
-                    format_expression(&member.value)
-                );
+        Expression::CompositeLiteral(CompositeLiteral { entries }) => {
+            if entries.len() == 0 {
+                // Print {0} to avoid "ISO C forbids empty initializers".
+                return String::from("{0}");
             }
-            s += "}\n";
+            let mut s = String::from("{");
+            for (i, e) in entries.iter().enumerate() {
+                if i > 0 {
+                    s += ", ";
+                }
+                let v = format_expression(&e.value);
+                match &e.key {
+                    Some(expr) => {
+                        let k = format_expression(expr);
+                        if e.is_index {
+                            s += &format!("[{}] = {}", k, v)
+                        } else {
+                            s += &format!(".{} = {}", k, v)
+                        }
+                    }
+                    None => s += &v,
+                }
+            }
+            s += "}";
             return s;
         }
-        Expression::ArrayLiteral(x) => format_array_literal(x),
         Expression::Sizeof { argument } => {
             let arg = match &**argument {
                 SizeofArgument::Typename(x) => format_type(&x),
@@ -136,31 +149,6 @@ fn format_anonymous_parameters(params: &AnonymousParameters) -> String {
         s += ", ...";
     }
     s += ")";
-    return s;
-}
-
-fn format_array_literal(node: &ArrayLiteral) -> String {
-    let mut s = String::from("{");
-    if !node.values.is_empty() {
-        for (i, entry) in node.values.iter().enumerate() {
-            if i > 0 {
-                s += ", ";
-            }
-            s += &match &entry.index {
-                ArrayLiteralKey::None => String::from(""),
-                ArrayLiteralKey::Identifier(x) => format!("[{}] = ", x),
-                ArrayLiteralKey::Literal(x) => format!("[{}] = ", format_literal(&x)),
-            };
-            s += &match &entry.value {
-                ArrayLiteralValue::ArrayLiteral(x) => format_array_literal(&x),
-                ArrayLiteralValue::Identifier(x) => x.clone(),
-                ArrayLiteralValue::Literal(x) => format_literal(&x),
-            };
-        }
-    } else {
-        s += "0";
-    }
-    s += "}";
     return s;
 }
 

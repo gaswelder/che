@@ -201,27 +201,13 @@ fn rename_typename(t: &mut Typename, prefix: &String, names: &Vec<String>) {
 fn expr(e: &mut Expression, prefix: &String, names: &Vec<String>) {
     match e {
         Expression::Literal(_) => {}
-        Expression::StructLiteral { members } => {
-            for m in members {
-                expr(&mut m.value, prefix, names);
-            }
-        }
-        Expression::ArrayLiteral(x) => {
-            for v in &mut x.values {
-                match &v.index {
-                    ArrayLiteralKey::Identifier(s) => {
-                        v.index = ArrayLiteralKey::Identifier(rename(s, prefix, names))
-                    }
-                    ArrayLiteralKey::None => {}
-                    ArrayLiteralKey::Literal(_) => {}
+        Expression::CompositeLiteral(x) => {
+            for e in &mut x.entries {
+                if e.key.is_some() {
+                    let x = e.key.as_mut().unwrap();
+                    expr(x, prefix, names);
                 }
-                match &v.value {
-                    ArrayLiteralValue::Identifier(s) => {
-                        v.value = ArrayLiteralValue::Identifier(rename(s, prefix, names))
-                    }
-                    ArrayLiteralValue::ArrayLiteral(_) => {}
-                    ArrayLiteralValue::Literal(_) => {}
-                }
+                expr(&mut e.value, prefix, names);
             }
         }
         Expression::Identifier(x) => *e = Expression::Identifier(rename(x, prefix, names)),

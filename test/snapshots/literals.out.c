@@ -24,3 +24,4 @@
 /* -------------- */
 static char *a[] = {"a", "b", "c"};
 static char *b[] = {"a", "b", "c"};
+static int a[] = {1, 2, 0x04 | 0x40};

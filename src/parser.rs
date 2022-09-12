@@ -209,10 +209,9 @@ fn expr_id(l: &mut Lexer, ctx: &Ctx) -> Result<Expression, String> {
     // Composite literal?
     if next.kind == "{" {
         l.unget(next);
-        if l.peek_n(1).unwrap().kind == "." {
-            return parse_struct_literal(l, ctx);
-        }
-        return Ok(Expression::ArrayLiteral(Box::new(parse_array_literal(l)?)));
+        return Ok(Expression::CompositeLiteral(parse_composite_literal(
+            l, ctx,
+        )?));
     }
     return Err(format!("id: unexpected token {}", next));
 }
@@ -377,27 +376,37 @@ fn parse_anonymous_parameters(lexer: &mut Lexer) -> Result<AnonymousParameters, 
     return Ok(params);
 }
 
-fn parse_literal(lexer: &mut Lexer) -> Result<Literal, String> {
-    let types = ["string", "num", "char"];
-    for t in types.iter() {
-        if lexer.peek().unwrap().kind != t.to_string() {
-            continue;
-        }
-        let value = lexer.get().unwrap().content.unwrap();
+fn parse_literal(l: &mut Lexer) -> Result<Literal, String> {
+    let next = l.peek().unwrap();
+    if next.kind == "string".to_string() {
+        let value = l.get().unwrap().content.unwrap();
         return Ok(Literal {
-            type_name: t.to_string(),
-            value: value,
+            type_name: "string".to_string(),
+            value,
         });
     }
-    let next = lexer.peek().unwrap();
+    if next.kind == "num".to_string() {
+        let value = l.get().unwrap().content.unwrap();
+        return Ok(Literal {
+            type_name: "num".to_string(),
+            value,
+        });
+    }
+    if next.kind == "char".to_string() {
+        let value = l.get().unwrap().content.unwrap();
+        return Ok(Literal {
+            type_name: "char".to_string(),
+            value,
+        });
+    }
     if next.kind == "word" && next.content.as_ref().unwrap() == "NULL" {
-        lexer.get();
+        l.get();
         return Ok(Literal {
             type_name: "null".to_string(),
             value: "NULL".to_string(),
         });
     }
-    return Err(format!("literal expected, got {}", lexer.peek().unwrap()));
+    return Err(format!("literal expected, got {}", l.peek().unwrap()));
 }
 
 fn parse_enum(lexer: &mut Lexer, is_pub: bool, ctx: &Ctx) -> Result<ModuleObject, String> {
@@ -423,67 +432,58 @@ fn parse_enum(lexer: &mut Lexer, is_pub: bool, ctx: &Ctx) -> Result<ModuleObject
     return Ok(ModuleObject::Enum(Enum { is_pub, members }));
 }
 
-fn parse_array_literal(lexer: &mut Lexer) -> Result<ArrayLiteral, String> {
-    let mut values: Vec<ArrayLiteralEntry> = Vec::new();
-    expect(lexer, "{", Some("array literal"))?;
-    if !lexer.follows("}") {
-        values.push(parse_array_literal_entry(lexer)?);
-        while lexer.eat(",") {
-            if lexer.peek_skipping_comments().unwrap().kind == "}" {
-                break;
-            }
-            values.push(parse_array_literal_entry(lexer)?);
-        }
-    }
-    expect(lexer, "}", Some("array literal"))?;
-    return Ok(ArrayLiteral { values });
-}
-
-fn parse_array_literal_entry(lexer: &mut Lexer) -> Result<ArrayLiteralEntry, String> {
-    let mut index: ArrayLiteralKey = ArrayLiteralKey::None;
-    if lexer.follows("[") {
-        lexer.get();
-        if lexer.follows("word") {
-            index = ArrayLiteralKey::Identifier(parse_identifier(lexer)?);
-        } else {
-            index = ArrayLiteralKey::Literal(parse_literal(lexer)?);
-        }
-        expect(lexer, "]", Some("array literal entry"))?;
-        expect(lexer, "=", Some("array literal entry"))?;
-    }
-    let value: ArrayLiteralValue;
-    if lexer.follows("{") {
-        value = ArrayLiteralValue::ArrayLiteral(parse_array_literal(lexer)?);
-    } else if lexer.follows("word") {
-        value = ArrayLiteralValue::Identifier(parse_identifier(lexer)?);
-    } else {
-        value = ArrayLiteralValue::Literal(parse_literal(lexer)?);
-    }
-
-    return Ok(ArrayLiteralEntry { index, value });
-}
-
-fn parse_struct_literal(lexer: &mut Lexer, ctx: &Ctx) -> Result<Expression, String> {
-    let mut members: Vec<StructLiteralMember> = Vec::new();
-    expect(lexer, "{", Some("struct literal"))?;
+fn parse_composite_literal(l: &mut Lexer, ctx: &Ctx) -> Result<CompositeLiteral, String> {
+    let mut result = CompositeLiteral {
+        entries: Vec::new(),
+    };
+    expect(l, "{", Some("composite literal"))?;
     loop {
-        expect(lexer, ".", Some("struct literal member"))?;
-        let member_name = parse_identifier(lexer)?;
-        expect(lexer, "=", Some("struct literal member"))?;
-        let member_value = expr(lexer, 0, ctx)?;
-        members.push(StructLiteralMember {
-            name: member_name,
-            value: member_value,
-        });
-        if lexer.follows(",") {
-            lexer.get();
-            continue;
+        if l.peek_skipping_comments().unwrap().kind == "}" {
+            break;
+        }
+        result.entries.push(parse_composite_literal_entry(l, ctx)?);
+        if l.peek().unwrap().kind == "," {
+            l.get();
         } else {
             break;
         }
     }
-    expect(lexer, "}", Some("struct literal"))?;
-    return Ok(Expression::StructLiteral { members });
+    expect(l, "}", Some("struct literal"))?;
+    return Ok(result);
+}
+
+fn parse_composite_literal_entry(
+    l: &mut Lexer,
+    ctx: &Ctx,
+) -> Result<CompositeLiteralEntry, String> {
+    if l.peek().unwrap().kind == "." {
+        expect(l, ".", Some("struct literal member"))?;
+        let key = Expression::Identifier(parse_identifier(l)?);
+        expect(l, "=", Some("struct literal member"))?;
+        let value = expr(l, 0, ctx)?;
+        return Ok(CompositeLiteralEntry {
+            is_index: false,
+            key: Some(key),
+            value,
+        });
+    }
+    if l.follows("[") {
+        l.get();
+        let key = expr(l, 0, ctx)?;
+        expect(l, "]", Some("array literal index"))?;
+        expect(l, "=", Some("array literal index"))?;
+        let value = expr(l, 0, ctx)?;
+        return Ok(CompositeLiteralEntry {
+            is_index: true,
+            key: Some(key),
+            value,
+        });
+    }
+    return Ok(CompositeLiteralEntry {
+        is_index: false,
+        key: None,
+        value: expr(l, 0, ctx)?,
+    });
 }
 
 fn parse_sizeof(lexer: &mut Lexer, ctx: &Ctx) -> Result<Expression, String> {
