@@ -194,13 +194,11 @@ void OpeningTag(ObjDesc *od)
                               attname,od->name,od->set.id++);
                     break;
                 case 2:
-                
                     int ref=0;
-                    if (!IdRefHook || !IdRefHook(od,att->ref,&ref))
+                    if (!ItemIdRef(od,att->ref,&ref)) {
                         ref=GenRef(&att->pd,att->ref);
-                    xmlprintf(xmlout," %s=\"%s%d\"",
-                            attname,objs[att->ref].name,ref);
-                
+                    }
+                    xmlprintf(xmlout," %s=\"%s%d\"", attname,objs[att->ref].name,ref);
                 break;
                 case 3:
                     if (genunf(0,1)<att->prcnt)
@@ -471,7 +469,7 @@ typedef {
     random_gen rk;
 } idrepro;
 
-struct idrepro idr[2] = {};
+idrepro idr[2] = {};
 char dtd_name[128]="auction.dtd";
 enum {
     ERROR_OBJ,
@@ -981,14 +979,17 @@ void PrintANY() {
     for (int i=0;i<sen;i++)
         {
             if (genunf(0,1)<0.1 && stptr<3-1)
-                {
-                    do
-                        PrintANY_st[stptr]=ignuin(0,3-1);
-                    while(tick[PrintANY_st[stptr]]);
-                    tick[PrintANY_st[stptr]]=1;
-                    xmlprintf(xmlout,"<%s> ",markup[PrintANY_st[stptr]]);
-                    stptr++;
+            {
+                while (true) {
+                    PrintANY_st[stptr]=ignuin(0,3-1);
+                    if (!tick[PrintANY_st[stptr]]) {
+                        break;
+                    }
                 }
+                tick[PrintANY_st[stptr]]=1;
+                xmlprintf(xmlout,"<%s> ",markup[PrintANY_st[stptr]]);
+                stptr++;
+            }
             else
                 if (genunf(0,1)<0.8 && stptr)
                     {
@@ -1005,175 +1006,170 @@ void PrintANY() {
             tick[PrintANY_st[stptr]]=0;
         }
 }
-int GenContents(ObjDesc *od)
-{
+
+int GenContents_lstname = 0;
+int GenContents_country = -1;
+int GenContents_email = 0;
+int GenContents_quantity = 0;
+double GenContents_initial = 0;
+double GenContents_increases = 0;
+char *GenContents_auction_type[]={"Regular","Featured"};
+char *GenContents_education[]={"High School","College", "Graduate School","Other"};
+char *GenContents_money[]={"Money order","Creditcard", "Personal Check","Cash"};
+char *GenContents_yesno[]={"Yes","No"};
+char *GenContents_shipping[]={
+                "Will ship only within country",
+                "Will ship internationally",
+                "Buyer pays fixed shipping charges",
+                "See description for charges"};
+
+int GenContents(ObjDesc *od) {
     int r,i,result=1;
-    static int lstname=0;
-    static int country=-1;
-    static int email=0;
-    static int quantity=0;
-    static double initial=0;
-    static double increases=0;
-    switch(od->id)
-        {
+    switch(od->id) {
         case CITY:
             xmlprintf(xmlout,cities[ignuin(0,cities_len-1)]);
             break;
         case TYPE:
-        {
-            static char *auction_type[]={"Regular","Featured"};
-            xmlprintf(xmlout,auction_type[ignuin(0,1)]);
-            if (quantity>1 && ignuin(0,1)) xmlprintf(xmlout,", Dutch");
-        }
-        break;
+            xmlprintf(xmlout,GenContents_auction_type[ignuin(0,1)]);
+            if (GenContents_quantity>1 && ignuin(0,1)) xmlprintf(xmlout,", Dutch");
+            break;
         case LOCATION:
         case COUNTRY:
-            if (genunf(0,1)<0.75) country=countries_USA;
-            else country=ignuin(0,countries_len-1);
-            xmlprintf(xmlout,countries[country]);
+            if (genunf(0,1)<0.75) GenContents_country=countries_USA;
+            else GenContents_country=ignuin(0,countries_len-1);
+            xmlprintf(xmlout,countries[GenContents_country]);
             break;
         case PROVINCE:
-            if (country==countries_USA)
+            if (GenContents_country==countries_USA)
                 xmlprintf(xmlout,provinces[ignuin(0,provinces_len-1)]);
             else
                 xmlprintf(xmlout,lastnames[ignuin(0,lastnames_len-1)]);
             break;
-        case EDUCATION:
-        {
-            static char *education[]={"High School","College",
-                                      "Graduate School","Other"};
-            xmlprintf(xmlout,education[ignuin(0,3)]);
-        }
-        break;
+        case EDUCATION:            
+            xmlprintf(xmlout,GenContents_education[ignuin(0,3)]);
+            break;
         case STATUS:
         case HAPPINESS:
             xmlprintf(xmlout,"%d",ignuin(1,10));
             break;
         case HOMEPAGE:
-            xmlprintf(xmlout,"http://www.%s/~%s",
-                    emails[email],lastnames[lstname]);
+            xmlprintf(xmlout,"http://www.%s/~%s", emails[GenContents_email],lastnames[GenContents_lstname]);
             break;
         case STREET:
             r=ignuin(0,lastnames_len-1);
             xmlprintf(xmlout,"%d %s St",ignuin(1,100),lastnames[r]);
             break;
         case PHONE:
-        {
             int contry=ignuin(1,99);
             int area=ignuin(10,999);
             int number=ignuin(123456,98765432);
             xmlprintf(xmlout,"+%d (%d) %d",country,area,number);
-        }
             break;
         case CREDITCARD:
-            for(i=0;i<4;i++)
-                xmlprintf(xmlout,"%d%s",ignuin(1000,9999),(i<3?" ":""));
+            for(int i=0;i<4;i++) {
+                char *s = "";
+                if (i < 3) {
+                    s = " ";
+                }
+                xmlprintf(xmlout,"%d%s",ignuin(1000,9999), s);
+            }
             break;
         case PAYMENT:
-        {
-            static char *money[]={"Money order","Creditcard",
-                                  "Personal Check","Cash"};
             r=0;
-            for (i=0;i<4;i++)
-                if (ignuin(0,1))
-                    xmlprintf(xmlout,"%s%s",(r++?", ":""),money[(((i)>(3)?(3):(i)))]);
-        }
-        break;
+            for (int i=0;i<4;i++)
+                if (ignuin(0,1)) {
+                    char *x = "";
+                    if (r++) {
+                        x = ", ";
+                    }
+                    xmlprintf(xmlout, "%s%s", x, GenContents_money[i % 4]);
+                }
+            break;
         case SHIPPING:
-        {
-            static char *shipping[]={
-                "Will ship only within country",
-                "Will ship internationally",
-                "Buyer pays fixed shipping charges",
-                "See description for charges"};
             r=0;
-            for (i=0;i<4;i++)
-                if (ignuin(0,1))
-                    xmlprintf(xmlout,"%s%s",(r++?", ":""),shipping[(((i)>(3)?(3):(i)))]);
-        }
+            for (int i=0;i<4;i++)
+                if (ignuin(0,1)) {
+                    char *s = "";
+                    if (r++) s = ", ";
+                    xmlprintf(xmlout,"%s%s",s,GenContents_shipping[i % 4]);
+                }
             break;
         case TIME:
-        {
             int hrs=ignuin(0,23);
             int min=ignuin(0,59);
             int sec=ignuin(0,59);
             xmlprintf(xmlout,"%02d:%02d:%02d",hrs,min,sec);
-        }
             break;
         case AGE:
             r=(int)gennor(30,15);
-            xmlprintf(xmlout,"%d",(((18)<(r)?(r):(18))));
+            if (r < 18) r = 18;
+            xmlprintf(xmlout,"%d", r);
             break;
         case ZIPCODE:
             r=ignuin(3,4);
-            {
-                int cd=10,j;
-                for (j=0;j<r;j++) cd*=10;
-                r=ignuin(j,(10*j)-1);
-            }
+            int cd=10;
+            for (int j=0;j<r;j++) cd*=10;
+            r=ignuin(j,(10*j)-1);
             xmlprintf(xmlout,"%d",r);
             break;
         case BUSINESS:
         case PRIVACY:
-        {
-            static char *yesno[]={"Yes","No"};
-            xmlprintf(xmlout,yesno[ignuin(0,1)]);
-        }
-        break;
+            xmlprintf(xmlout,GenContents_yesno[ignuin(0,1)]);
+            break;
         case XDATE:
         case START:
         case END:
-        {
             int month=ignuin(1,12);
             int day=ignuin(1,28);
             int year=ignuin(1998,2001);
             xmlprintf(xmlout,"%02d/%02d/%4d",month,day,year);
-        }
             break;
         case CATNAME:
         case ITEMNAME:
             PrintSentence(ignuin(1,4));
             break;
         case NAME:
-            PrintName(&lstname);
+            PrintName(&GenContents_lstname);
             break;
         case FROM:
         case TO:
-            PrintName(&lstname);
+            PrintName(&GenContents_lstname);
             xmlprintf(xmlout," ");
         case EMAIL:
-            email=ignuin(0,emails_len-1);
-            xmlprintf(xmlout,"mailto:%s@%s",lastnames[lstname],emails[email]);
+            GenContents_email=ignuin(0,emails_len-1);
+            xmlprintf(xmlout,"mailto:%s@%s",lastnames[GenContents_lstname],emails[GenContents_email]);
             break;
         case GENDER:
             r=ignuin(0,1);
-            xmlprintf(xmlout,"%s",(r<1?"male":"female"));
+            if (r < 1) {
+                xmlprintf(xmlout,"%s","male");
+            } else {
+                xmlprintf(xmlout,"%s","female");
+            }
             break;
         case QUANTITY:
-            quantity=1+(int)genexp(0.4);
-            xmlprintf(xmlout,"%d",quantity);
+            GenContents_quantity=1+(int)genexp(0.4);
+            xmlprintf(xmlout,"%d",GenContents_quantity);
             break;
         case INCREASE:
-        {
             double d=1.5 *(1+(int)genexp(10));
             xmlprintf(xmlout,"%.2f",d);
-            increases+=d;
-        }
+            GenContents_increases+=d;
         break;
         case CURRENT:
-            xmlprintf(xmlout,"%.2f",initial+increases);
+            xmlprintf(xmlout,"%.2f",GenContents_initial+GenContents_increases);
             break;
         case INIT_PRICE:
-            initial=genexp(100);
-            increases=0;
-            xmlprintf(xmlout,"%.2f",initial);
+            GenContents_initial=genexp(100);
+            GenContents_increases=0;
+            xmlprintf(xmlout,"%.2f",GenContents_initial);
             break;
         case AMOUNT:
         case PRICE:
             xmlprintf(xmlout,"%.2f",genexp(100));
             break;
         case RESERVE:
-            xmlprintf(xmlout,"%.2f",initial*(1.2+genexp(2.5)));
+            xmlprintf(xmlout,"%.2f",GenContents_initial*(1.2+genexp(2.5)));
             break;
         case TEXT:
             PrintANY();
@@ -1183,7 +1179,7 @@ int GenContents(ObjDesc *od)
         }
     return result;
 }
-int NumberOfObjs(void)
+int NumberOfObjs()
 {
     return (sizeof(objs) / sizeof(*objs));
 }
@@ -1196,7 +1192,7 @@ int ItemIdRef(ObjDesc *odSon, int type, int *iRef)
     if (od->id==CLOSED_TRANS) return GenItemIdRef(&idr[1],iRef);
     return 0;
 }
-void initialize(void)
+void initialize()
 {
     int nobj=NumberOfObjs();
     int search[3]={ITEM,OPEN_TRANS,CLOSED_TRANS};
@@ -1213,36 +1209,34 @@ void initialize(void)
 }
 void GenAttCDATA(ObjDesc *od, char *attName, char *cdata)
 {
-    double d;
-    if (!strcmp(attName,"income"))
-        {
-            d=gennor(40000,30000);
-            sprintf(cdata,"%.2f",(((9876)<(d)?(d):(9876))));
+    if (!strcmp(attName,"income")) {
+        double d = gennor(40000,30000);
+        if (d < 9876) {
+            d = 9876;
         }
+        sprintf(cdata,"%.2f",d);
+    }
 }
 
-
-
-int (*IdRefHook)(ObjDesc *od, int type, int *iRef) = ItemIdRef;
-
-static void InitRepro(struct idrepro *rep, int max, int brosmax)
+int InitRepro_direction=0;
+void InitRepro(idrepro *rep, int max, int brosmax)
 {
-    static int direction=0;
     rep->out=0;
     rep->cur=rep->brosout=0;
     rep->max=max;
     rep->brosmax=brosmax;
     rep->dir=0;
-    rep->mydir=direction++;
+    rep->mydir=InitRepro_direction++;
     rep->cur=0;
 }
-void InitReproPair(struct idrepro *rep1, struct idrepro *rep2,
+
+void InitReproPair(idrepro *rep1, idrepro *rep2,
                    int max1, int max2)
 {
     InitRepro(rep1,max1,max2);
     InitRepro(rep2,max2,max1);
 }
-int GenItemIdRef(struct idrepro *rep, int *idref)
+int GenItemIdRef(idrepro *rep, int *idref)
 {
     int res=0;
     if (rep->out>=rep->max) return 0;
