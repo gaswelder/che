@@ -1,5 +1,7 @@
 #import xmlgen_rand.c
 #import strutil
+#import xmlgen_gen.c
+#import opt
 
 typedef {
     int id;
@@ -32,13 +34,12 @@ typedef {
 } ObjDesc;
 
 FILE *xmlout=0;
-char *outputname=0;
+char *global_outputname=0;
 int indent_inc=0;
-double scale_factor=1;
-ObjDesc *stack[64] = {};
+double global_scale_factor=1;
 int stackdepth=0;
 int stackatt=0;
-int split=0;
+int global_split=0;
 int splitcnt=0;
 
 typedef int printfunc_t(FILE *, const char *, ...);
@@ -47,11 +48,575 @@ printfunc_t *xmlprintf = &fprintf;
 
 int global_split_fileno = 0;
 
-FILE *OpenOutput_split(const char *outputname, int fileno) {
+ObjDesc *stack[64] = {};
+ObjDesc objs[]={
+    {
+        .id = 0,
+        .name = "*error*"
+    },
+    {
+        .id = AUCTION_SITE,
+        .name = "site",
+        .elm = {
+            {REGION,{1,0,0,1,1}, 0},
+            {CATEGORY_LIST,{1,0,0,1,1}, 0},
+            {CATGRAPH,{1,0,0,1,1}, 0},
+            {PERSON_LIST,{1,0,0,1,1}, 0},
+            {OPEN_TRANS_LIST,{1,0,0,1,1}, 0},
+            {CLOSED_TRANS_LIST,{1,0,0,1,1}, 0}
+        }
+    },
+    {
+        .id = CATEGORY_LIST,
+        .name = "categories",
+        .elm = {
+            {CATEGORY,{1,0,0,1000,1000}, 0}
+        }
+    },
+    {
+        .id = REGION,
+        .name = "regions",
+        .elm = {
+            {AFRICA,{1,0,0,1,1}, 0},
+            {ASIA,{1,0,0,1,1}, 0},
+            {AUSTRALIA,{1,0,0,1,1}, 0},
+            {EUROPE,{1,0,0,1,1}, 0},
+            {NAMERICA,{1,0,0,1,1}, 0},
+            {SAMERICA,{1,0,0,1,1}, 0}
+        }
+    },
+    {
+        .id = EUROPE,
+        .name = "europe",
+        .elm = {
+            {ITEM,{1,0,0,6000,6000}, 0}
+        }
+    },
+    {
+        .id = AUSTRALIA,
+        .name = "australia",
+        .elm = {
+            {ITEM,{1,0,0,2200,2200}, 0}
+        }
+    },
+    {
+        .id = AFRICA,
+        .name = "africa",
+        .elm = {
+            {ITEM,{1,0,0,550,550}, 0}
+        }
+    },
+    {
+        .id = NAMERICA,
+        .name = "namerica",
+        .elm = {
+            {ITEM,{1,0,0,10000,10000}, 0}
+        }
+    },
+    {
+        .id = SAMERICA,
+        .name = "samerica",
+        .elm = {
+            {ITEM,{1,0,0,1000,1000}, 0}
+        }
+    },
+    {
+        .id = ASIA,
+        .name = "asia",
+        .elm = {
+            {ITEM,{1,0,0,2000,2000}, 0}
+        }
+    },
+    {
+        .id = CATGRAPH,
+        .name = "catgraph",
+        .elm = {
+            {EDGE,{1,0,0,3800,3800}, 0}
+        },
+        .att = {
+            {
+                .name = "",
+                .type = 0,
+                .ref = 0,
+                .pd = {0,0,0,0,0}
+            }
+        },
+        0x20
+    },
+    {
+        .id = EDGE,
+        .name = "edge",
+        .elm = {
+            {0,{0,0,0,0,0}, 0}
+        },
+        .att = {
+            {
+                .name = "from",
+                .type = 2,
+                CATEGORY,
+                {1,0,0,0,0}
+            },
+            {
+                .name = "to",
+                .type = 2,CATEGORY,{1,0,0,0,0}}
+        }
+    },
+    {
+        .id = CATEGORY,
+        .name = "category",
+        .elm = {
+            {CATNAME,{1,0,0,1,1}, 0},
+            {DESCRIPTION,{1,0,0,1,1}, 0},
+        },
+        .att = {
+            {
+                .name = "id",
+                .type = 1,0,{0,0,0,0,0}
+            }
+        }
+    },
+    {
+        .id = ITEM,
+        .name = "item",
+        .elm = {
+            {LOCATION,{1,0,0,1,1}, 0},
+            {QUANTITY,{1,0,0,1,1}, 0},
+            {ITEMNAME,{1,0,0,1,1}, 0},
+            {PAYMENT,{1,0,0,1,1}, 0},
+            {DESCRIPTION,{1,0,0,1,1}, 0},
+            {SHIPPING,{1,0,0,1,1}, 0},
+            {INCATEGORY,{3,3,0,1,10}, 0},
+            {MAILBOX,{1,0,0,1,1}, 0}
+        },
+        .att = {
+            {
+                .name = "id",
+                .type = 1,0,{0,0,0,0,0}},
+            {
+                .name = "featured",
+                .type = 3,0,{0,0,0,0,0},0.1}
+        },
+        0x40
+    },
+    { .id = LOCATION, .name = "location" },
+    { .id = QUANTITY, .name = "quantity" },
+    { .id = PAYMENT, .name = "payment" },
+    { .id = NAME, .name = "name" },
+    { .id = ITEMNAME, .name = "name" },
+    { .id = CATNAME, .name = "name" },
+    {
+        .id = DESCRIPTION,
+        .name = "description",
+        .elm = {
+            {TEXT,{1,0.7,0,0,0}, 0},
+            {PARLIST,{1,0.3,0,0,0}, 0}
+        },
+        .att = {
+            {
+                .name = "",
+                .type = 0,
+                0,{0,0,0,0,0}
+            }
+        },
+        0x02
+    },
+    {
+        .id = PARLIST,
+        .name = "parlist",
+        .elm = {
+            {LISTITEM,{3,1,0,2,5}, 0}
+        }
+    },
+    {
+        .id = TEXT,
+        .name = "text",
+        .elm = {
+            {0,{0,0,0,0,0}, 0}
+        },
+        .att = {{.name = "",0,0,{0,0,0,0,0}}},
+        0x01
+    },
+    {
+        .id = LISTITEM,
+        .name = "listitem",
+        .elm = {
+            {TEXT,{1,0.8,0,0,0}, 0},
+            {PARLIST,{1,0.2,0,0,0}, 0}
+        },
+        .att = {
+            {
+                .name = "",
+                .type = 0,0,{0,0,0,0,0}
+            }
+        },
+        0x02
+    },
+    {
+        .id = SHIPPING,
+        .name = "shipping"
+    },
+    {
+        .id = RESERVE,
+        .name = "reserve"
+    },
+    {
+        .id = INCATEGORY,
+        .name = "incategory",
+        .elm = {{0,{0,0,0,0,0}, 0}},
+        .att = {
+            {
+                .name = "\1",
+                .type = 2,
+                CATEGORY,{1,0,0,0,0}
+            }
+        }
+    },
+    {
+        .id = MAILBOX,
+        .name = "mailbox",
+        .elm = {
+            {MAIL,{3,1,0,0,250}, 0}
+        }
+    },
+    {
+        .id = MAIL,
+        .name = "mail",
+        .elm = {
+            {FROM,{1,0,0,1,1}, 0},
+            {TO,{1,0,0,1,1}, 0},
+            {XDATE,{1,0,0,1,1}, 0},
+            {TEXT,{1,0,0,1,1}, 0}
+        }
+    },
+    {
+        .id = FROM,
+        .name = "from"
+    },
+    {
+        .id = TO,
+        .name = "to"
+    },
+    {
+        .id = XDATE,
+        .name = "date"
+    },
+    {
+        .id = PERSON_LIST,
+        .name = "people",
+        .elm = {
+            {PERSON,{1,0,0,25500,25500}, 0}
+        }
+    },
+    {
+        .id = PERSON,
+        .name = "person",
+        .elm = {
+            {NAME,{1,0,0,1,1}, 0},
+            {EMAIL,{1,0,0,1,1}, 0},
+            {PHONE, {1,0,0,0,1}, 0},
+            {ADDRESS, {1,0,0,0,1}, 0},
+            {HOMEPAGE, {1,0,0,0,1}, 0},
+            {CREDITCARD, {1,0,0,0,1}, 0},
+            {PROFILE, {1,0,0,0,1}, 0},
+            {WATCHES, {1,0,0,0,1}, 0}
+        },
+        .att = {
+            {
+                .name = "id",
+                .type = 1,0,{0,0,0,0,0}, 0}
+        },
+        0x40
+    },
+    {
+        .id = EMAIL,
+        .name = "emailaddress"
+    },
+    {
+        .id = PHONE,
+        .name = "phone"
+    },
+    {
+        .id = HOMEPAGE,
+        .name = "homepage"
+    },
+    {
+        .id = CREDITCARD,
+        .name = "creditcard"
+    },
+    {
+        .id = ADDRESS,
+        .name = "address",
+        .elm = {
+            {STREET,{1,0,0,1,1}, 0},
+            {CITY,{1,0,0,1,1}, 0},
+            {COUNTRY,{1,0,0,1,1}, 0},
+            {PROVINCE, {1,0,0,0,1}, 0},
+            {ZIPCODE,{1,0,0,1,1}, 0}
+        }
+    },
+    {
+        .id = STREET,
+        .name = "street"
+    },
+    {
+        .id = CITY,
+        .name = "city"
+    },
+    {
+        .id = PROVINCE,
+        .name = "province"
+    },
+    {
+        .id = ZIPCODE,
+        .name = "zipcode"
+    },
+    {
+        .id = COUNTRY,
+        .name = "country"
+    },
+    {
+        .id = PROFILE,
+        .name = "profile",
+        .elm = {
+            {INTEREST,{3,3,0,0,25}, 0},
+            {EDUCATION, {1,0,0,0,1}, 0},
+            {GENDER, {1,0,0,0,1}, 0},
+            {BUSINESS,{1,0,0,1,1}, 0},
+            {AGE, {1,0,0,0,1}, 0}
+        },
+        .att = {
+            {
+                .name = "income",
+                .type = 3,0,{0,0,0,0,0},1}
+        }
+    },
+    {
+        .id = EDUCATION,
+        .name = "education"
+    },
+    {
+        .id = INCOME,
+        .name = "income"
+    },
+    {
+        .id = GENDER,
+        .name = "gender"
+    },
+    {
+        .id = BUSINESS,
+        .name = "business"
+    },
+    {
+        .id = AGE,
+        .name = "age"
+    },
+    {
+        .id = INTEREST,
+        .name = "interest",
+        .elm = {{0,{0,0,0,0,0}, 0}},
+        .att = {
+            {
+                .name = "\1",
+                .type = 2,CATEGORY,{1,0,0,0,0}}
+        }
+    },
+    {
+        .id = WATCHES,
+        .name = "watches",
+        .elm = {
+            {WATCH,{3,4,0,0,100}, 0},
+        }
+    },
+    {
+        .id = WATCH,
+        .name = "watch",
+        .elm = {{0,{0,0,0,0,0}, 0}},
+        .att = {
+            {.name = "\1", .type = 2,OPEN_TRANS,{1,0,0,0,0}}
+        }
+    },
+    {
+        .id = OPEN_TRANS_LIST,
+        .name = "open_auctions",
+        .elm = {
+            {OPEN_TRANS,{1,0,0,12000,12000}, 0}
+        }
+    },
+    {
+        .id = OPEN_TRANS,
+        .name = "open_auction",
+        .elm = {
+            {INIT_PRICE,{1,0,0,1,1}, .rec = 0},
+            {RESERVE, {1,0,0,0,1}, .rec = 0},
+            {BIDDER,{3,5,0,0,200}, .rec = 0},
+            {CURRENT,{1,0,0,1,1}, .rec = 0},
+            {PRIVACY, {1,0,0,0,1}, .rec = 0},
+            {ITEMREF,{1,0,0,1,1}, .rec = 0},
+            {SELLER,{1,0,0,1,1}, .rec = 0},
+            {ANNOTATION,{1,0,0,1,1}, .rec = 0},
+            {QUANTITY,{1,0,0,1,1}, .rec = 0},
+            {TYPE,{1,0,0,1,1}, .rec = 0},
+            {INTERVAL,{1,0,0,1,1}, .rec = 0}
+        },
+        .att = {
+            {.name = "id", .type = 1,0,{0,0,0,0,0}}
+        },
+        0x04|0x40
+    },
+    {
+        .id = PRIVACY,
+        .name = "privacy"
+    },
+    {
+        .id = AMOUNT,
+        .name = "amount"
+    },
+    {
+        .id = CURRENT,
+        .name = "current"
+    },
+    {
+        .id = INCREASE,
+        .name = "increase"
+    },
+    {
+        .id = TYPE,
+        .name = "type"
+    },
+    {
+        .id = ITEMREF,
+        .name = "itemref",
+        .elm = {{0,{0,0,0,0,0}, .rec = 0}},
+        .att = {
+            {.name = "\1", .type = 2,ITEM,{1,0,0,0,0}}
+        }
+    },
+    {
+        .id = BIDDER,
+        .name = "bidder",
+        .elm = {
+            {XDATE,{1,0,0,1,1}, .rec = 0},
+            {TIME,{1,0,0,1,1}, .rec = 0},
+            {PERSONREF,{1,0,0,1,1}, .rec = 0},
+            {INCREASE,{1,0,0,1,1}, .rec = 0}
+        }
+    },
+    {
+        .id = TIME,
+        .name = "time"
+    },
+    {
+        .id = STATUS,
+        .name = "status",
+    },
+    {
+        .id = INIT_PRICE,
+        .name = "initial"
+    },
+    {
+        .id = PERSONREF,
+        .name = "personref",
+        .elm = {{0,{0,0,0,0,0}, .rec = 0}},
+        .att = {
+            {
+                .name = "\1",
+                .type = 2,
+                PERSON,{1,0,0,0,0}
+            }
+        }
+    },
+    {
+        .id = SELLER,
+        .name = "seller",
+        .elm = {{0,{0,0,0,0,0}, .rec = 0}},
+        .att = {
+            {.name = "\1",
+            .type = 2,PERSON,{2,0.5,0.10,0,0}}
+        }
+    },
+    {
+        .id = INTERVAL,
+        .name = "interval",
+        .elm = {
+            {START,{1,0,0,1,1}, .rec = 0},
+            {END,{1,0,0,1,1}, .rec = 0}
+        }
+    },
+    {
+        .id = START,
+        .name = "start"
+    },
+    {
+        .id = END,
+        .name = "end"
+    },
+    {
+        .id = CLOSED_TRANS_LIST,
+        .name = "closed_auctions",
+        .elm = {
+            {CLOSED_TRANS,{1,0,0,3000,3000}, .rec = 0}
+        }
+    },
+    {
+        .id = CLOSED_TRANS,
+        .name = "closed_auction",
+        .elm = {
+            {SELLER,{1,0,0,1,1}, .rec = 0},
+            {BUYER,{1,0,0,1,1}, .rec = 0},
+            {ITEMREF,{1,0,0,1,1}, .rec = 0},
+            {PRICE,{1,0,0,1,1}, .rec = 0},
+            {XDATE,{1,0,0,1,1}, .rec = 0},
+            {QUANTITY,{1,0,0,1,1}, .rec = 0},
+            {TYPE,{1,0,0,1,1}, .rec = 0},
+            {ANNOTATION,{1,0,0,1,1}, .rec = 0}
+        },
+        .att = {
+            {.name = "",
+            .type = 0,0,{0,0,0,0,0}}
+        },
+        0x04|0x40
+    },
+    {
+        .id = PRICE,
+        .name = "price"
+    },
+    {
+        .id = BUYER,
+        .name = "buyer",
+        .elm = {{0,{0,0,0,0,0}, .rec = 0}},
+        .att = {
+            {.name = "\1",.type = 2,PERSON,{2,0.5,0.10,0,0}}
+        }
+    },
+    {
+        .id = ANNOTATION,
+        .name = "annotation",
+        .elm = {
+            {AUTHOR,{1,0,0,1,1}, .rec = 0},
+            {DESCRIPTION,{1,0,0,1,1}, .rec = 0},
+            {HAPPINESS,{1,0,0,1,1}, .rec = 0}
+        }
+    },
+    {
+        .id = HAPPINESS,
+        .name = "happiness"
+    },
+    {
+        .id = AUTHOR,
+        .name = "author",
+        .elm = {{0,{0,0,0,0,0}, .rec = 0}},
+        .att = {
+            {.name = "\1",
+            .type = 2,PERSON,{1,0,0,1,1}}
+        }
+    }
+};
+
+FILE *OpenOutput_split(const char *global_outputname, int fileno) {
     if (fileno > 99999) {
         fprintf(stderr,"Warning: More than %d files.\n", 99999);
     }
-    char *newname = newstr("%s%0*d", outputname, 5, fileno);
+    char *newname = newstr("%s%0*d", global_outputname, 5, fileno);
     FILE *f = fopen(newname,"w");
     free(newname);
     return f;
@@ -66,6 +631,7 @@ bool hasID(ObjDesc *od) {
 }
 
 ProbDesc global_GenRef_pdnew = {};
+char dtd_name[128]="auction.dtd";
 
 int GenRef(ProbDesc *pd, int type)
 {
@@ -81,7 +647,7 @@ int GenRef(ProbDesc *pd, int type)
                     global_GenRef_pdnew.dev=pd->dev*global_GenRef_pdnew.max;
                 }
         }
-    return (int)GenRandomNum(&global_RenRef_pdnew);
+    return (int)GenRandomNum(&global_GenRef_pdnew);
 }
 void FixDist(ProbDesc *pd, double val)
 {
@@ -135,8 +701,8 @@ void FixSetSize(ObjDesc *od)
             if (ed->pd.min>1 && (hasID(son) || (son->type&0x04)))
                 {
                     int size=(int)(GenRandomNum(&ed->pd)+0.5);
-                    if (size*scale_factor > 1) {
-                        size = (int)(size*scale_factor);
+                    if (size*global_scale_factor > 1) {
+                        size = (int)(size*global_scale_factor);
                     } else {
                         size = 1;
                     }
@@ -149,25 +715,20 @@ void FixSetSize(ObjDesc *od)
 void FixSetByEdge(char *father_name, char *son_name, int size)
 {
     int nobj=NumberOfObjs();
-    int i,j,fixed=0;
-    for (i=0;i<nobj;i++)
-        {
-            if (!strcmp(father_name,objs[i].name))
-                {
-                    ObjDesc *od=objs+i;
-                    for (j=0;j<od->kids;j++)
-                        {
-                            ElmDesc *ed=&(od->elm[j]);
-                            ObjDesc *son=objs+ed->id;
-                            if (!strcmp(son_name,son->name))
-                                {
-                                    FixDist(&ed->pd,size);
-                                    fixed=1;
-                                }
-                        }
+    for (int i=0;i<nobj;i++) {
+        if (!strcmp(father_name,objs[i].name)) {
+            ObjDesc *od=objs+i;
+            for (int j=0;j<od->kids;j++) {
+                ElmDesc *ed=&(od->elm[j]);
+                ObjDesc *son=objs+ed->id;
+                if (!strcmp(son_name,son->name)) {
+                    FixDist(&ed->pd,size);
                 }
+            }
         }
+    }
 }
+
 void ClearFlags()
 {
     int i;
@@ -206,8 +767,8 @@ void OpeningTag(ObjDesc *od)
                 case 3:
                     if (genunf(0,1)<att->prcnt)
                         {
-                            GenAttCDATA(od,attname,global_OpeninTag_cdata);
-                            xmlprintf(xmlout," %s=\"%s\"",attname,global_OpeninTag_cdata);
+                            GenAttCDATA(od,attname,global_OpeningTag_cdata);
+                            xmlprintf(xmlout," %s=\"%s\"",attname,global_OpeningTag_cdata);
                         }
                     break;
                 default:
@@ -231,8 +792,9 @@ void ClosingTag(ObjDesc *od)
     xmlprintf(xmlout,"</%s>\n",od->name);
 }
 
+int indent_level = 0;
+
 void SplitDoc() {
-    int i;
     int oldstackdepth=stackdepth;
     for (int i = oldstackdepth-1; i>=0; i--) {
         indent_level -= indent_inc;
@@ -242,11 +804,11 @@ void SplitDoc() {
     if (xmlout!=stdout) {
         fclose(xmlout);
     }
-    if (outputname) {
-        xmlout = OpenOutput_split(outputname, global_split_fileno++);
+    if (global_outputname) {
+        xmlout = OpenOutput_split(global_outputname, global_split_fileno++);
         if (!xmlout) {
             fflush(stdout);
-            fprintf(stderr, "Can't open file %s\n", outputname);
+            fprintf(stderr, "Can't open file %s\n", global_outputname);
             exit(EXIT_FAILURE);
         }
     }
@@ -295,7 +857,7 @@ void GenSubtree(ObjDesc *od)
             }
     indent_level-=indent_inc;
     ClosingTag(od);
-    if (split && (od->type&0x20 || (od->type&0x40 && splitcnt++>split))) {
+    if (global_split && (od->type&0x20 || (od->type&0x40 && splitcnt++>global_split))) {
         GenSubtree_splitnow = true;
     }
     od->flag--;
@@ -320,12 +882,7 @@ void Version()
 {
     fprintf(stderr,"This is xmlgen, version %s.%s\n%s\n","0","92","by Florian Waas (flw@mx4.org)");
 }
-void Usage(char *progname)
-{
-    Version();
-    fprintf(stderr, "Usage: %s [ %ch ] [ %cditve ] [ %cf <factor> ] [ %co <file> ] [ %cs <cnt> ]\n",progname,dash,dash,dash,dash,dash);
-    exit(EXIT_FAILURE);
-}
+
 
 void AlignObjs()
 {
@@ -371,78 +928,168 @@ void CheckRecursion()
                 root->elm[j].rec=FindRec(&objs[root->elm[j].id],root);
         }
 }
-void printdtd()
-{
-    int i;
-    for (i=0;i<dtd_len;i++)
-        fprintf(xmlout,dtd[i]);
-}
+
+int dtd_len=98;
+char *dtd[98]={
+    "<!ELEMENT site            (regions, categories, catgraph, people, open_auctions, closed_auctions)>\n",
+    "<!ELEMENT categories      (category+)>\n",
+    "<!ELEMENT category        (name, description)>\n",
+    "<!ATTLIST category        id ID #REQUIRED>\n",
+    "<!ELEMENT name            (#PCDATA)>\n",
+    "<!ELEMENT description     (text | parlist)>\n",
+    "<!ELEMENT text            (#PCDATA | bold | keyword | emph)*>\n",
+    "<!ELEMENT bold		  (#PCDATA | bold | keyword | emph)*>\n",
+    "<!ELEMENT keyword	  (#PCDATA | bold | keyword | emph)*>\n",
+    "<!ELEMENT emph		  (#PCDATA | bold | keyword | emph)*>\n",
+    "<!ELEMENT parlist	  (listitem)*>\n",
+    "<!ELEMENT listitem        (text | parlist)*>\n","\n",
+    "<!ELEMENT catgraph        (edge*)>\n",
+    "<!ELEMENT edge            EMPTY>\n",
+    "<!ATTLIST edge            from IDREF #REQUIRED to IDREF #REQUIRED>\n",
+    "\n",
+    "<!ELEMENT regions         (africa, asia, australia, europe, namerica, samerica)>\n",
+    "<!ELEMENT africa          (item*)>\n",
+    "<!ELEMENT asia            (item*)>\n",
+    "<!ELEMENT australia       (item*)>\n",
+    "<!ELEMENT namerica        (item*)>\n",
+    "<!ELEMENT samerica        (item*)>\n",
+    "<!ELEMENT europe          (item*)>\n",
+    "<!ELEMENT item            (location, quantity, name, payment, description, shipping, incategory+, mailbox)>\n",
+    "<!ATTLIST item            id ID #REQUIRED\n",
+    "                          featured CDATA #IMPLIED>\n",
+    "<!ELEMENT location        (#PCDATA)>\n",
+    "<!ELEMENT quantity        (#PCDATA)>\n",
+    "<!ELEMENT payment         (#PCDATA)>\n",
+    "<!ELEMENT shipping        (#PCDATA)>\n",
+    "<!ELEMENT reserve         (#PCDATA)>\n",
+    "<!ELEMENT incategory      EMPTY>\n",
+    "<!ATTLIST incategory      category IDREF #REQUIRED>\n",
+    "<!ELEMENT mailbox         (mail*)>\n",
+    "<!ELEMENT mail            (from, to, date, text)>\n",
+    "<!ELEMENT from            (#PCDATA)>\n",
+    "<!ELEMENT to              (#PCDATA)>\n",
+    "<!ELEMENT date            (#PCDATA)>\n",
+    "<!ELEMENT itemref         EMPTY>\n",
+    "<!ATTLIST itemref         item IDREF #REQUIRED>\n",
+    "<!ELEMENT personref       EMPTY>\n",
+    "<!ATTLIST personref       person IDREF #REQUIRED>\n","\n",
+    "<!ELEMENT people          (person*)>\n",
+    "<!ELEMENT person          (name, emailaddress, phone?, address?, homepage?, creditcard?, profile?, watches?)>\n",
+    "<!ATTLIST person          id ID #REQUIRED>\n",
+    "<!ELEMENT emailaddress    (#PCDATA)>\n",
+    "<!ELEMENT phone           (#PCDATA)>\n",
+    "<!ELEMENT address         (street, city, country, province?, zipcode)>\n",
+    "<!ELEMENT street          (#PCDATA)>\n",
+    "<!ELEMENT city            (#PCDATA)>\n",
+    "<!ELEMENT province        (#PCDATA)>\n",
+    "<!ELEMENT zipcode         (#PCDATA)>\n",
+    "<!ELEMENT country         (#PCDATA)>\n",
+    "<!ELEMENT homepage        (#PCDATA)>\n",
+    "<!ELEMENT creditcard      (#PCDATA)>\n",
+    "<!ELEMENT profile         (interest*, education?, gender?, business, age?)>\n",
+    "<!ATTLIST profile         income CDATA #IMPLIED>\n",
+    "<!ELEMENT interest        EMPTY>\n",
+    "<!ATTLIST interest        category IDREF #REQUIRED>\n",
+    "<!ELEMENT education       (#PCDATA)>\n",
+    "<!ELEMENT income          (#PCDATA)>\n",
+    "<!ELEMENT gender          (#PCDATA)>\n",
+    "<!ELEMENT business        (#PCDATA)>\n",
+    "<!ELEMENT age             (#PCDATA)>\n",
+    "<!ELEMENT watches         (watch*)>\n",
+    "<!ELEMENT watch           EMPTY>\n",
+    "<!ATTLIST watch           open_auction IDREF #REQUIRED>\n","\n",
+    "<!ELEMENT open_auctions   (open_auction*)>\n",
+    "<!ELEMENT open_auction    (initial, reserve?, bidder*, current, privacy?, itemref, seller, annotation, quantity, type, interval)>\n",
+    "<!ATTLIST open_auction    id ID #REQUIRED>\n",
+    "<!ELEMENT privacy         (#PCDATA)>\n",
+    "<!ELEMENT initial         (#PCDATA)>\n",
+    "<!ELEMENT bidder          (date, time, personref, increase)>\n",
+    "<!ELEMENT seller          EMPTY>\n",
+    "<!ATTLIST seller          person IDREF #REQUIRED>\n",
+    "<!ELEMENT current         (#PCDATA)>\n",
+    "<!ELEMENT increase        (#PCDATA)>\n",
+    "<!ELEMENT type            (#PCDATA)>\n",
+    "<!ELEMENT interval        (start, end)>\n",
+    "<!ELEMENT start           (#PCDATA)>\n",
+    "<!ELEMENT end             (#PCDATA)>\n",
+    "<!ELEMENT time            (#PCDATA)>\n",
+    "<!ELEMENT status          (#PCDATA)>\n",
+    "<!ELEMENT amount          (#PCDATA)>\n","\n",
+    "<!ELEMENT closed_auctions (closed_auction*)>\n",
+    "<!ELEMENT closed_auction  (seller, buyer, itemref, price, date, quantity, type, annotation?)>\n",
+    "<!ELEMENT buyer           EMPTY>\n",
+    "<!ATTLIST buyer           person IDREF #REQUIRED>\n",
+    "<!ELEMENT price           (#PCDATA)>\n",
+    "<!ELEMENT annotation      (author, description?, happiness)>\n","\n",
+    "<!ELEMENT author          EMPTY>\n",
+    "<!ATTLIST author          person IDREF #REQUIRED>\n",
+    "<!ELEMENT happiness       (#PCDATA)>\n"
+};
+
 int main(int argc, char **argv)
 {
-    int opt,stop=0,timing=0,dumpdtd=0;
-    int document_type=1;
-    ObjDesc *root;
-    if (argc==1) Usage(argv[0]);
-    xmlout=stdout;
-    while((opt=pmgetopt(argc,argv,
-                      "edf:o:ihvs:tw:"
-        ))!=-1)
-        {
-            switch(opt)
-                {
-                case 'e':
-                    dumpdtd=1;
-                    break;
-                case 'f':
-                    scale_factor=atof(pmoptarg);
-                    break;
-                case 'o':
-                    outputname=(char*)malloc(strlen(pmoptarg)+1);
-                    strcpy(outputname,pmoptarg);
-                    break;
-                case 's':
-                    split=atoi(pmoptarg);
-                    break;
-                case 'd':
-                    document_type=2;
-                    break;
-                case 'i':
-                    indent_inc=2;
-                    xmlprintf=xmlfmtprintf;
-                    break;
-                case 'v':
-                    Version();
-                    stop=1;
-                    break;
-                case 't':
-                    timing=1;
-                    break;
-                case 'w':
-                    fmt_width=atoi(pmoptarg);
-                    break;
-                default:
-                    Usage(argv[0]);
-                }
-        }
-    if (stop) exit(EXIT_SUCCESS);
-    if (timing) timediff();
-    if (xmlout!=stdout) {
-        fclose(xmlout);
+    opt.summary("%s [ -h ] [ -ditve ] [ -f <factor> ] [ -o <file> ] [ -s <cnt> ]");
+
+    bool dumpdtd = false;
+    opt.opt(OPT_BOOL, "e", "dumpdtd", &dumpdtd);
+    bool doctype_is_2 = false;
+    opt.opt(OPT_BOOL, "d", "document_type=2", &doctype_is_2);
+    bool show_version = false;
+    opt.opt(OPT_BOOL, "v", "show version", &show_version);
+    bool iflag = false;
+    opt.opt(OPT_BOOL, "i", "indent_inc=2, fmt", &iflag);
+    bool timing = false;
+    opt.opt(OPT_BOOL, "t", "timing", &timing);
+    int fmt_width = 79;
+    opt.opt(OPT_INT, "w", "fmt_width", &fmt_width);
+
+    opt.opt(OPT_FLOAT, "f", "global_scale_factor", &global_scale_factor);
+    opt.opt(OPT_STR, "o", "global_outputname", &global_outputname);
+    opt.opt(OPT_INT, "s", "global_split", &global_split);
+
+    if (argc==1) {
+        Version();
+        opt.usage();
+        return 1;
     }
-    if (outputname) {
-        if (split) {
-            xmlout = OpenOutput_split(outputname, global_split_fileno++);
+
+    opt.parse(argc, argv);
+
+    int document_type=1;
+    if (doctype_is_2) {
+        document_type=2;
+    }
+
+    if (show_version) {
+        Version();
+        return 0;
+    }
+
+    if (iflag) {
+        indent_inc=2;
+        xmlprintf=xmlfmtprintf;
+    }
+    
+    ObjDesc *root;
+    if (timing) timediff();
+    
+    xmlout=stdout;
+    if (global_outputname) {
+        if (global_split) {
+            xmlout = OpenOutput_split(global_outputname, global_split_fileno++);
         } else {
-            xmlout = fopen(outputname, "w");
+            xmlout = fopen(global_outputname, "w");
         }
         if (!xmlout) {
             fflush(stdout);
-            fprintf(stderr, "Can't open file %s\n", outputname);
+            fprintf(stderr, "Can't open file %s\n", global_outputname);
             exit(EXIT_FAILURE);
         }
     }
     if (dumpdtd) {
-        printdtd();
+        for (int i=0;i<dtd_len;i++) {
+            fprintf(xmlout, dtd[i]);
+        }
         fclose(xmlout);
         if (timing) {
             fprintf(stderr,"Elapsed time: %.3f sec\n",timediff()/1E6);
@@ -475,7 +1122,7 @@ typedef {
 } idrepro;
 
 idrepro idr[2] = {};
-char dtd_name[128]="auction.dtd";
+
 enum {
     ERROR_OBJ,
     AUCTION_SITE,
@@ -493,455 +1140,7 @@ enum {
     STATUS, PERSONREF, INIT_PRICE, START, END, BUYER, PRICE, ANNOTATION,
     HAPPINESS, AUTHOR
 };
-ObjDesc objs[]={
-    {
-        0, "*error*"
-    },
-    {
-        AUCTION_SITE, "site",
-        {
-            {REGION,{1,0,0,1,1}},
-            {CATEGORY_LIST,{1,0,0,1,1}},
-            {CATGRAPH,{1,0,0,1,1}},
-            {PERSON_LIST,{1,0,0,1,1}},
-            {OPEN_TRANS_LIST,{1,0,0,1,1}},
-            {CLOSED_TRANS_LIST,{1,0,0,1,1}}
-        }
-    },
-    {
-        CATEGORY_LIST, "categories",
-        {
-            {CATEGORY,{1,0,0,1000,1000}}
-        }
-    },
-    {
-        REGION, "regions",
-        {
-            {AFRICA,{1,0,0,1,1}},
-            {ASIA,{1,0,0,1,1}},
-            {AUSTRALIA,{1,0,0,1,1}},
-            {EUROPE,{1,0,0,1,1}},
-            {NAMERICA,{1,0,0,1,1}},
-            {SAMERICA,{1,0,0,1,1}}
-        }
-    },
-    {
-        EUROPE, "europe",
-        {
-            {ITEM,{1,0,0,6000,6000}}
-        }
-    },
-    {
-        AUSTRALIA, "australia",
-        {
-            {ITEM,{1,0,0,2200,2200}}
-        }
-    },
-    {
-        AFRICA, "africa",
-        {
-            {ITEM,{1,0,0,550,550}}
-        }
-    },
-    {
-        NAMERICA, "namerica",
-        {
-            {ITEM,{1,0,0,10000,10000}}
-        }
-    },
-    {
-        SAMERICA, "samerica",
-        {
-            {ITEM,{1,0,0,1000,1000}}
-        }
-    },
-    {
-        ASIA, "asia",
-        {
-            {ITEM,{1,0,0,2000,2000}}
-        }
-    },
-    {
-        CATGRAPH, "catgraph",
-        {
-            {EDGE,{1,0,0,3800,3800}}
-        },
-        {{"",0,0,{0,0,0,0,0}}},
-        0x20
-    },
-    {
-        EDGE, "edge",
-        {{0,{0,0,0,0,0}}},
-        {
-            {"from",2,CATEGORY,{1,0,0,0,0}},
-            {"to",2,CATEGORY,{1,0,0,0,0}}
-        }
-    },
-    {
-        CATEGORY, "category",
-        {
-            {CATNAME,{1,0,0,1,1}},
-            {DESCRIPTION,{1,0,0,1,1}},
-        },
-        {
-            {"id",1,0,{0,0,0,0,0}}
-        }
-    },
-    {
-        ITEM, "item",
-        {
-            {LOCATION,{1,0,0,1,1}},
-            {QUANTITY,{1,0,0,1,1}},
-            {ITEMNAME,{1,0,0,1,1}},
-            {PAYMENT,{1,0,0,1,1}},
-            {DESCRIPTION,{1,0,0,1,1}},
-            {SHIPPING,{1,0,0,1,1}},
-            {INCATEGORY,{3,3,0,1,10}},
-            {MAILBOX,{1,0,0,1,1}}
-        },
-        {
-            {"id",1,0,{0,0,0,0,0}},
-            {"featured",3,0,{0,0,0,0,0},0.1}
-        },
-        0x40
-    },
-    {
-        LOCATION, "location"
-    },
-    {
-        QUANTITY, "quantity"
-    },
-    {
-        PAYMENT, "payment"
-    },
-    {
-        NAME, "name"
-    },
-    {
-        ITEMNAME, "name"
-    },
-    {
-        CATNAME, "name"
-    },
-    {
-        DESCRIPTION, "description",
-        {
-            {TEXT,{1,0.7,0,0,0}},
-            {PARLIST,{1,0.3,0,0,0}}
-        },
-        {{"",0,0,{0,0,0,0,0}}},
-        0x02
-    },
-    {
-        PARLIST, "parlist",
-        {
-            {LISTITEM,{3,1,0,2,5}}
-        }
-    },
-    {
-        TEXT, "text",
-        {{0,{0,0,0,0,0}}},
-        {{"",0,0,{0,0,0,0,0}}},
-        0x01
-    },
-    {
-        LISTITEM, "listitem",
-        {
-            {TEXT,{1,0.8,0,0,0}},
-            {PARLIST,{1,0.2,0,0,0}}
-        },
-        {{"",0,0,{0,0,0,0,0}}},
-        0x02
-    },
-    {
-        SHIPPING, "shipping"
-    },
-    {
-        RESERVE, "reserve"
-    },
-    {
-        INCATEGORY, "incategory",
-        {{0,{0,0,0,0,0}}},
-        {
-            {"\1",2,CATEGORY,{1,0,0,0,0}}
-        }
-    },
-    {
-        MAILBOX, "mailbox",
-        {
-            {MAIL,{3,1,0,0,250}}
-        }
-    },
-    {
-        MAIL, "mail",
-        {
-            {FROM,{1,0,0,1,1}},
-            {TO,{1,0,0,1,1}},
-            {XDATE,{1,0,0,1,1}},
-            {TEXT,{1,0,0,1,1}}
-        }
-    },
-    {
-        FROM, "from"
-    },
-    {
-        TO, "to"
-    },
-    {
-        XDATE, "date"
-    },
-    {
-        PERSON_LIST, "people",
-        {
-            {PERSON,{1,0,0,25500,25500}}
-        }
-    },
-    {
-        PERSON, "person",
-        {
-            {NAME,{1,0,0,1,1}},
-            {EMAIL,{1,0,0,1,1}},
-            {PHONE, {1,0,0,0,1}},
-            {ADDRESS, {1,0,0,0,1}},
-            {HOMEPAGE, {1,0,0,0,1}},
-            {CREDITCARD, {1,0,0,0,1}},
-            {PROFILE, {1,0,0,0,1}},
-            {WATCHES, {1,0,0,0,1}}
-        },
-        {
-            {"id",1,0,{0,0,0,0,0}}
-        },
-        0x40
-    },
-    {
-        EMAIL, "emailaddress"
-    },
-    {
-        PHONE, "phone"
-    },
-    {
-        HOMEPAGE, "homepage"
-    },
-    {
-        CREDITCARD, "creditcard"
-    },
-    {
-        ADDRESS, "address",
-        {
-            {STREET,{1,0,0,1,1}},
-            {CITY,{1,0,0,1,1}},
-            {COUNTRY,{1,0,0,1,1}},
-            {PROVINCE, {1,0,0,0,1}},
-            {ZIPCODE,{1,0,0,1,1}}
-        }
-    },
-    {
-        STREET, "street"
-    },
-    {
-        CITY, "city"
-    },
-    {
-        PROVINCE, "province"
-    },
-    {
-        ZIPCODE, "zipcode"
-    },
-    {
-        COUNTRY, "country"
-    },
-    {
-        PROFILE, "profile",
-        {
-            {INTEREST,{3,3,0,0,25}},
-            {EDUCATION, {1,0,0,0,1}},
-            {GENDER, {1,0,0,0,1}},
-            {BUSINESS,{1,0,0,1,1}},
-            {AGE, {1,0,0,0,1}}
-        },
-        {
-            {"income",3,0,{0,0,0,0,0},1}
-        }
-    },
-    {
-        EDUCATION, "education"
-    },
-    {
-        INCOME, "income"
-    },
-    {
-        GENDER, "gender"
-    },
-    {
-        BUSINESS, "business"
-    },
-    {
-        AGE, "age"
-    },
-    {
-        INTEREST, "interest",
-        {{0,{0,0,0,0,0}}},
-        {
-            {"\1",2,CATEGORY,{1,0,0,0,0}}
-        }
-    },
-    {
-        WATCHES, "watches",
-        {
-            {WATCH,{3,4,0,0,100}},
-        }
-    },
-    {
-        WATCH, "watch",
-        {{0,{0,0,0,0,0}}},
-        {
-            {"\1",2,OPEN_TRANS,{1,0,0,0,0}}
-        }
-    },
-    {
-        OPEN_TRANS_LIST, "open_auctions",
-        {
-            {OPEN_TRANS,{1,0,0,12000,12000}}
-        }
-    },
-    {
-        OPEN_TRANS, "open_auction",
-        {
-            {INIT_PRICE,{1,0,0,1,1}},
-            {RESERVE, {1,0,0,0,1}},
-            {BIDDER,{3,5,0,0,200}},
-            {CURRENT,{1,0,0,1,1}},
-            {PRIVACY, {1,0,0,0,1}},
-            {ITEMREF,{1,0,0,1,1}},
-            {SELLER,{1,0,0,1,1}},
-            {ANNOTATION,{1,0,0,1,1}},
-            {QUANTITY,{1,0,0,1,1}},
-            {TYPE,{1,0,0,1,1}},
-            {INTERVAL,{1,0,0,1,1}}
-        },
-        {
-            {"id",1,0,{0,0,0,0,0}}
-        },
-        0x04|0x40
-    },
-    {
-        PRIVACY, "privacy"
-    },
-    {
-        AMOUNT, "amount"
-    },
-    {
-        CURRENT, "current"
-    },
-    {
-        INCREASE, "increase"
-    },
-    {
-        TYPE, "type"
-    },
-    {
-        ITEMREF, "itemref",
-        {{0,{0,0,0,0,0}}},
-        {
-            {"\1",2,ITEM,{1,0,0,0,0}}
-        }
-    },
-    {
-        BIDDER, "bidder",
-        {
-            {XDATE,{1,0,0,1,1}},
-            {TIME,{1,0,0,1,1}},
-            {PERSONREF,{1,0,0,1,1}},
-            {INCREASE,{1,0,0,1,1}}
-        }
-    },
-    {
-        TIME, "time"
-    },
-    {
-        STATUS, "status",
-    },
-    {
-        INIT_PRICE, "initial"
-    },
-    {
-        PERSONREF, "personref",
-        {{0,{0,0,0,0,0}}},
-        {
-            {"\1",2,PERSON,{1,0,0,0,0}}
-        }
-    },
-    {
-        SELLER, "seller",
-        {{0,{0,0,0,0,0}}},
-        {
-            {"\1",2,PERSON,{2,0.5,0.10,0,0}}
-        }
-    },
-    {
-        INTERVAL, "interval",
-        {
-            {START,{1,0,0,1,1}},
-            {END,{1,0,0,1,1}}
-        }
-    },
-    {
-        START, "start"
-    },
-    {
-        END, "end"
-    },
-    {
-        CLOSED_TRANS_LIST, "closed_auctions",
-        {
-            {CLOSED_TRANS,{1,0,0,3000,3000}}
-        }
-    }
-    ,
-    {
-        CLOSED_TRANS, "closed_auction",
-        {
-            {SELLER,{1,0,0,1,1}},
-            {BUYER,{1,0,0,1,1}},
-            {ITEMREF,{1,0,0,1,1}},
-            {PRICE,{1,0,0,1,1}},
-            {XDATE,{1,0,0,1,1}},
-            {QUANTITY,{1,0,0,1,1}},
-            {TYPE,{1,0,0,1,1}},
-            {ANNOTATION,{1,0,0,1,1}}
-        },
-        {{"",0,0,{0,0,0,0,0}}},
-        0x04|0x40
-    },
-    {
-        PRICE, "price"
-    },
-    {
-        BUYER, "buyer",
-        {{0,{0,0,0,0,0}}},
-        {
-            {"\1",2,PERSON,{2,0.5,0.10,0,0}}
-        }
-    },
-    {
-        ANNOTATION, "annotation",
-        {
-            {AUTHOR,{1,0,0,1,1}},
-            {DESCRIPTION,{1,0,0,1,1}},
-            {HAPPINESS,{1,0,0,1,1}}
-        }
-    },
-    {
-        HAPPINESS, "happiness"
-    },
-    {
-        AUTHOR, "author",
-        {{0,{0,0,0,0,0}}},
-        {
-            {"\1",2,PERSON,{1,0,0,1,1}}
-        }
-    }
-};
+
 void PrintName(int *lastout)
 {
     int fst=(int)genexp(firstnames_len/3);

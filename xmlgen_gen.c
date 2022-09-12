@@ -47,7 +47,7 @@ char *GenContents_shipping[]={
                 "Buyer pays fixed shipping charges",
                 "See description for charges"};
 
-int GenContents(FILE *xmlout, int type) {
+pub int GenContents(FILE *xmlout, int type) {
     int r,i,result=1;
     switch(type) {
         case CITY:

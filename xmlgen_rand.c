@@ -302,7 +302,7 @@ float gennor(float av, float sd) {
     return __gennor(&rgGlobal,av,sd);
 }
 
-double GenRandomNum(ProbDesc *pd)
+pub double GenRandomNum(ProbDesc *pd)
 {
     double res=0;
     if (pd->max>0)
@@ -346,7 +346,7 @@ float __genexp(random_gen *rg, float av) {
     return __sexpo(rg) * av;
 }
 
-float genunf(float low, float high) {
+pub float genunf(float low, float high) {
     return __genunf(&rgGlobal,low,high);
 }
 
