@@ -64,11 +64,12 @@ fn format_expression(expr: &Expression) -> String {
                 // Print {0} to avoid "ISO C forbids empty initializers".
                 return String::from("{0}");
             }
-            let mut s = String::from("{");
+            let mut s = String::from("{\n");
             for (i, e) in entries.iter().enumerate() {
                 if i > 0 {
-                    s += ", ";
+                    s += ",\n";
                 }
+                s += "\t";
                 let v = format_expression(&e.value);
                 match &e.key {
                     Some(expr) => {
@@ -82,7 +83,7 @@ fn format_expression(expr: &Expression) -> String {
                     None => s += &v,
                 }
             }
-            s += "}";
+            s += "\n}";
             return s;
         }
         Expression::Sizeof { argument } => {
