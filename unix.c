@@ -1,3 +1,6 @@
+#import xmlgen_rand.c
+#import strutil
+
 typedef {
     int id;
     ProbDesc pd;

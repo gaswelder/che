@@ -3,14 +3,14 @@
 // public domain:
 // https://projects.cwi.nl/xmark/downloads.html
 
-typedef {
+pub typedef {
     int idum,iff;
     long ix1,ix2,ix3;
     double r[98];
     int ipos;
 } random_gen;
 
-typedef {
+pub typedef {
     int type;
     double mean, dev, min, max;
 } ProbDesc;
