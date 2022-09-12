@@ -156,7 +156,7 @@ fn build(argv: &[String]) -> Result<(), String> {
         "-Werror",
         "-pedantic",
         "-pedantic-errors",
-        "-fmax-errors=3",
+        "-fmax-errors=1",
         "-Wno-parentheses",
         "-g",
     ]);
