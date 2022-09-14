@@ -795,12 +795,9 @@ void ClosingTag(ObjDesc *od)
     xmlprintf(xmlout,"</%s>\n",od->name);
 }
 
-int indent_level = 0;
-
 void SplitDoc() {
     int oldstackdepth=stackdepth;
     for (int i = oldstackdepth-1; i>=0; i--) {
-        indent_level -= indent_inc;
         ClosingTag(stack[i]);
     }
 
@@ -817,14 +814,13 @@ void SplitDoc() {
     }
     for (int i=0; i<oldstackdepth; i++) {
         OpeningTag(stack[i]);
-        indent_level+=indent_inc;
     }
     splitcnt=0;
 }
 
 bool GenSubtree_splitnow = false;
 
-void GenSubtree(ObjDesc *od)
+void GenSubtree(FILE *out, ObjDesc *od)
 {
     int i=0;
     ElmDesc *ed;
@@ -833,11 +829,13 @@ void GenSubtree(ObjDesc *od)
         SplitDoc();
         GenSubtree_splitnow = false;
     }
+
     OpeningTag(od);
-    indent_level+=indent_inc;
+    
     od->flag++;
-    if (GenContents(xmlout, od->id) && (od->elm[0].id != 0)) {
-        xmlprintf(xmlout,"\n");
+
+    if (GenContents(out, od->id) && (od->elm[0].id != 0)) {
+        xmlprintf(out,"\n");
     }
     if (od->type&0x02)
         {
@@ -847,7 +845,7 @@ void GenSubtree(ObjDesc *od)
                 while (i<od->kids-1 && od->elm[i].rec) i++;
             else
                 while (i<od->kids-1 && (sum+=od->elm[i].pd.mean)<alt) i++;
-            GenSubtree(objs+od->elm[i].id);
+            GenSubtree(out, objs+od->elm[i].id);
         }
     else
         for (i=0;i<od->kids;i++)
@@ -856,9 +854,8 @@ void GenSubtree(ObjDesc *od)
                 ed=&od->elm[i];
                 num=(int)(GenRandomNum(&ed->pd)+0.5);
                 while(num--)
-                    GenSubtree(objs+ed->id);
+                    GenSubtree(out, objs+ed->id);
             }
-    indent_level-=indent_inc;
     ClosingTag(od);
     if (global_split && (od->type&0x20 || (od->type&0x40 && splitcnt++>global_split))) {
         GenSubtree_splitnow = true;
@@ -881,11 +878,6 @@ void Preamble(int type)
             exit(EXIT_FAILURE);
         }
 }
-void Version()
-{
-    fprintf(stderr,"This is xmlgen, version %s.%s\n%s\n","0","92","by Florian Waas (flw@mx4.org)");
-}
-
 
 void AlignObjs()
 {
@@ -1044,7 +1036,6 @@ int main(int argc, char **argv)
     opt.opt(OPT_INT, "s", "global_split", &global_split);
 
     if (argc==1) {
-        Version();
         opt.usage();
         return 1;
     }
@@ -1057,7 +1048,7 @@ int main(int argc, char **argv)
     }
 
     if (show_version) {
-        Version();
+        fprintf(stderr, "This is xmlgen, version ? by Florian Waas (flw@mx4.org)");
         return 0;
     }
 
@@ -1097,7 +1088,7 @@ int main(int argc, char **argv)
     ClearFlags();
     initialize();
     Preamble(document_type);
-    GenSubtree(root);
+    GenSubtree(xmlout, root);
     fclose(xmlout);
     return 0;
 }
