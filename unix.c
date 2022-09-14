@@ -1033,8 +1033,6 @@ char *dtd[98]={
 
 int main(int argc, char **argv)
 {
-    opt.summary("%s [ -h ] [ -ditve ] [ -f <factor> ] [ -o <file> ] [ -s <cnt> ]");
-
     bool dumpdtd = false;
     opt.opt(OPT_BOOL, "e", "dumpdtd", &dumpdtd);
     bool doctype_is_2 = false;

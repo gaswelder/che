@@ -185,16 +185,16 @@ pub void opt_summary(const char *s) {
 	summary = s;
 }
 
+/*
+ * Prints a usage string generated from the flags to stderr.
+ */
 pub void opt_usage()
 {
-	if( summary ) {
-		fprintf( stderr, "Usage: %s\n", summary );
-	} else {
-		fprintf( stderr, "Usage: %s [options] [arguments]\n", progname );
+	if (summary) {
+		fprintf(stderr, "%s\n", summary);
 	}
-
-	for (int i = 0; i < flags_num; i++)
-	{
+	fprintf(stderr, "Options:\n");
+	for (int i = 0; i < flags_num; i++) {
 		fprintf( stderr, "\t-%s", specs[i].name );
 		switch( specs[i].type )
 		{
