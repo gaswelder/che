@@ -39,7 +39,6 @@ double global_scale_factor=1;
 int stackdepth=0;
 int global_split=0;
 int splitcnt=0;
-int global_fmt_width=79;
 
 typedef int printfunc_t(FILE *, const char *, ...);
 
@@ -1039,9 +1038,7 @@ int main(int argc, char **argv)
     bool show_version = false;
     opt.opt(OPT_BOOL, "v", "show version", &show_version);
     bool iflag = false;
-    opt.opt(OPT_BOOL, "i", "indent_inc=2, fmt", &iflag);
-    opt.opt(OPT_INT, "w", "global_fmt_width", &global_fmt_width);
-
+    opt.opt(OPT_BOOL, "i", "indent_inc=2", &iflag);
     opt.opt(OPT_FLOAT, "f", "global_scale_factor", &global_scale_factor);
     opt.opt(OPT_STR, "o", "global_outputname", &global_outputname);
     opt.opt(OPT_INT, "s", "global_split", &global_split);
@@ -1066,7 +1063,6 @@ int main(int argc, char **argv)
 
     if (iflag) {
         indent_inc=2;
-        xmlprintf=xmlfmtprintf;
     }
     
     ObjDesc *root;
@@ -1238,67 +1234,6 @@ int GenItemIdRef(idrepro *rep, int *idref)
             res=1;
         }
     return res;
-}
-
-char global_fmt_buffer[20000] = {};
-char *global_fmt_blank=0;
-char *global_fmt_lstblank=0;
-char *global_fmt_start=0;
-char *global_fmt_write=0;
-int global_fmt_curwidth=0;
-int global_fmt_indent=0;
-int global_fmt_indent_level=0;
-
-int xmlfmtprintf(FILE *xfp, const char *fmt, ...) {
-    int newindent=-1;
-    char *trail;
-    
-    if (!global_fmt_blank) {
-        global_fmt_write=global_fmt_start=global_fmt_lstblank=global_fmt_blank=global_fmt_buffer;
-        global_fmt_indent=global_fmt_indent_level;
-        global_fmt_curwidth = global_fmt_indent - 1;
-    }
-
-    // Printf the input string, use the "global_fmt_write" cursor.
-    va_list ap;
-    va_start (ap,fmt);
-    vsprintf(global_fmt_write, fmt, ap);
-    va_end(ap);
-
-    if (global_fmt_start == global_fmt_write) {
-        global_fmt_indent = global_fmt_indent_level;
-    }
-
-    trail=global_fmt_write;
-    while (*trail) {
-        global_fmt_curwidth++;
-        if (*trail=='\n') newindent=global_fmt_indent_level;
-        if (*trail=='\t') *trail=' ';
-        if (*trail==' ') {
-            global_fmt_blank=trail;
-            if (global_fmt_curwidth == global_fmt_width && global_fmt_lstblank != global_fmt_blank) {
-                *trail='\n';
-            }
-        }
-        if (*trail=='\n') {
-            *trail='\0';
-            fprintf(xfp,"%*s%s\n",global_fmt_indent,"",global_fmt_start);
-            global_fmt_start=global_fmt_lstblank=global_fmt_blank=trail+1;
-            global_fmt_curwidth=global_fmt_indent-1;
-            if (newindent>=0) global_fmt_indent=newindent;
-            if (!trail+1) global_fmt_blank=0;
-        }
-        if (global_fmt_curwidth==global_fmt_width && global_fmt_lstblank!=global_fmt_blank)
-            {
-                *global_fmt_blank='\0';
-                fprintf(xfp,"%*s%s\n",global_fmt_indent,"",global_fmt_start);
-                global_fmt_lstblank=global_fmt_start=trail=++global_fmt_blank;
-                global_fmt_curwidth=global_fmt_indent;
-            }
-        trail++;
-    }
-    global_fmt_write=trail;
-    return global_fmt_curwidth;
 }
 
 // enum {
