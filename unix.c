@@ -835,7 +835,7 @@ void GenSubtree(FILE *out, ObjDesc *od)
     od->flag++;
 
     int r;
-    int result = 1;
+    bool has_content = true;
     switch(od->id) {
         case CITY:
             xmlprintf(out, "%s", cities[ignuin(0,cities_len-1)]);
@@ -989,11 +989,12 @@ void GenSubtree(FILE *out, ObjDesc *od)
             PrintANY();
             break;
         default:
-            result=0;
+            has_content = false;
     }
-    if (result && (od->elm[0].id != 0)) {
+    if (has_content && od->elm[0].id != 0) {
         xmlprintf(out,"\n");
     }
+
     if (od->type&0x02)
         {
             double sum=0,alt=genunf(0,1);
