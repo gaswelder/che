@@ -17,40 +17,6 @@ pub typedef {
 
 random_gen rgGlobal={.idum = -3};
 
-int main() {
-    printf("%f\n", __ranf(&rgGlobal));
-    printf("%f\n", __ranf(&rgGlobal));
-    printf("%f\n", ranf());
-    printf("------\n");
-    printf("%f\n", sexpo());
-    printf("%f\n", sexpo());
-    printf("%f\n", sexpo());
-    printf("------ snorm\n");
-    printf("%f\n", snorm());
-    printf("%f\n", snorm());
-    printf("%f\n", snorm());
-    printf("------ gennor\n");
-    printf("%lf\n", gennor(0.2, 10));
-    printf("%lf\n", gennor(0.2, 10));
-    printf("%lf\n", gennor(0.2, 10));
-
-    ProbDesc pdnew;
-    pdnew.min=0;
-    pdnew.max=10;
-    pdnew.type=2;
-    pdnew.mean=20;
-    pdnew.dev=1;
-    printf("------ GenRandomNum\n");
-    printf("%f\n", GenRandomNum(&pdnew));
-    printf("%f\n", GenRandomNum(&pdnew));
-    printf("%f\n", GenRandomNum(&pdnew));
-
-    printf("------ ignuin\n");
-    printf("%d\n", ignuin(10, 20));
-    printf("%d\n", ignuin(10, 20));
-    printf("%d\n", ignuin(10, 20));
-}
-
 double __ranf(random_gen *rg) {
     if (rg->idum<0 || rg->iff==0) {
         rg->iff=1;
@@ -78,15 +44,9 @@ double __ranf(random_gen *rg) {
     return temp;
 }
 
-double ranf() {
-    return __ranf(&rgGlobal);
-}
-
 float global_sexpo_q[8] = {
     0.6931472,0.9333737,0.9888778,0.9984959,0.9998293,0.9999833,0.9999986,1.0
 };
-
-
 
 float global_sexpo_umin = 0;
 float *global_sexpo_q1 = global_sexpo_q;
@@ -143,11 +103,6 @@ float __sexpo(random_gen *rg)
                 break;
         }
     }
-}
-
-float sexpo()
-{
-    return __sexpo(&rgGlobal);
 }
 
 float snorm_A[32] = {
@@ -291,14 +246,10 @@ float __snorm(random_gen *rg)
     }
 }
 
-float snorm() {
-    return __snorm(&rgGlobal);
-}
-
 float __gennor(random_gen *rg,float av,float sd) {
     return sd * __snorm(rg)+av;
 }
-float gennor(float av, float sd) {
+pub float gennor(float av, float sd) {
     return __gennor(&rgGlobal,av,sd);
 }
 
@@ -337,7 +288,7 @@ pub double GenRandomNum(ProbDesc *pd)
     return res;
 }
 
-float genexp(float av)
+pub float genexp(float av)
 {
     return __genexp(&rgGlobal,av);
 }
@@ -357,11 +308,11 @@ float __genunf(random_gen *rg,float low,float high) {
     return low + (high-low) * __ranf(rg);
 }
 
-int __ignuin(random_gen *rg,int low, int high) {
+pub int __ignuin(random_gen *rg,int low, int high) {
     int f=(int)(__ranf(rg)*(high-low+1));
     return low+f;
 }
 
-int ignuin(int low, int high) {
+pub int ignuin(int low, int high) {
     return __ignuin(&rgGlobal,low,high);
 }

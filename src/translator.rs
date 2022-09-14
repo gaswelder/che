@@ -45,7 +45,7 @@ pub fn translate(m: &Module) -> CompatModule {
     // Reorder the elements so that typedefs and similar preamble elements
     // come first.
     let mut groups: Vec<Vec<CompatModuleObject>> =
-        vec![vec![], vec![], vec![], vec![], vec![], vec![]];
+        vec![vec![], vec![], vec![], vec![], vec![], vec![], vec![]];
     let mut set: HashSet<String> = HashSet::new();
     for element in elements {
         let order = match element {
@@ -56,7 +56,8 @@ pub fn translate(m: &Module) -> CompatModule {
             CompatModuleObject::CompatStructDefinition(_) => 3,
             CompatModuleObject::Enum { .. } => 3,
             CompatModuleObject::CompatFunctionForwardDeclaration(_) => 4,
-            _ => 5,
+            CompatModuleObject::ModuleVariable(_) => 5,
+            _ => 6,
         };
 
         match &element {
