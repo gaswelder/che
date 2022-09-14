@@ -1,7 +1,6 @@
 #import xmlgen_rand.c
 #import strutil
 #import opt
-#import os/misc
 
 typedef {
     int id;
@@ -1041,8 +1040,6 @@ int main(int argc, char **argv)
     opt.opt(OPT_BOOL, "v", "show version", &show_version);
     bool iflag = false;
     opt.opt(OPT_BOOL, "i", "indent_inc=2, fmt", &iflag);
-    bool timing = false;
-    opt.opt(OPT_BOOL, "t", "timing", &timing);
     opt.opt(OPT_INT, "w", "global_fmt_width", &global_fmt_width);
 
     opt.opt(OPT_FLOAT, "f", "global_scale_factor", &global_scale_factor);
@@ -1073,7 +1070,6 @@ int main(int argc, char **argv)
     }
     
     ObjDesc *root;
-    if (timing) timediff();
     
     xmlout=stdout;
     if (global_outputname) {
@@ -1093,9 +1089,6 @@ int main(int argc, char **argv)
             fprintf(xmlout, "%s", dtd[i]);
         }
         fclose(xmlout);
-        if (timing) {
-            fprintf(stderr,"Elapsed time: %.3f sec\n",timediff()/1E6);
-        }
         return 0;
     }
     AlignObjs();
@@ -1110,8 +1103,6 @@ int main(int argc, char **argv)
     Preamble(document_type);
     GenSubtree(root);
     fclose(xmlout);
-    if (timing)
-        fprintf(stderr,"Elapsed time: %.3f sec\n",timediff()/1E6);
     return 0;
 }
 
@@ -1309,20 +1300,6 @@ int xmlfmtprintf(FILE *xfp, const char *fmt, ...) {
     global_fmt_write=trail;
     return global_fmt_curwidth;
 }
-
-timeval_t global_timediff_last = {};
-
-/*
- * Returns diff in ms
- */
-float timediff()
-{
-    timeval_t now = get_time();
-    int32_t diff = time_usec(&now) - time_usec(&global_timediff_last);
-    memcpy(&global_timediff_last, &now, sizeof(global_timediff_last));
-    return (float)diff / 1000;
-}
-
 
 // enum {
 //     CATNAME,
