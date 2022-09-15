@@ -101,14 +101,14 @@ fn build(argv: &[String]) -> Result<(), String> {
     };
 
     // Get the module we're building.
-    let m = parser::get_module(&path)?;
+    let main_module = parser::get_module(&path)?;
 
     // Get all modules that our module depends on. This includes our module as
     // well, so this is a complete list of modules required for the build.
-    let mods = resolve_deps(&m);
+    let all_modules = resolve_deps(&main_module);
 
     // Dome some checks.
-    for m in &mods {
+    for m in &all_modules {
         for imp in module_imports(m) {
             let dep = parser::get_module(&imp.path)?;
             if !checkers::depused(&m, &dep) {
@@ -118,21 +118,29 @@ fn build(argv: &[String]) -> Result<(), String> {
     }
 
     // Convert all modules to C modules.
-    let c_mods: Vec<nodes::CompatModule> = mods.iter().map(|m| translator::translate(&m)).collect();
+    let c_modules: Vec<nodes::CompatModule> = all_modules
+        .iter()
+        .map(|m| translator::translate(&m))
+        .collect();
 
-    // Save all C modules somewhere.
-    let tmppath = format!("{}/tmp", parser::homepath());
-    if fs::metadata(&tmppath).is_err() {
-        fs::create_dir(&tmppath).unwrap();
+    // Decide where we'll stash all generated C code.
+    let tmp_dir_path = format!("{}/tmp", parser::homepath());
+    if fs::metadata(&tmp_dir_path).is_err() {
+        fs::create_dir(&tmp_dir_path).unwrap();
     }
+
+    // Write the generated C source files in the temp directory and build the
+    // mapping of the generated C file path to the original source file path,
+    // that will be used to trace C compiler's errors at least to the original
+    // files.
     struct PathId {
         path: String,
         id: String,
     }
     let mut paths: Vec<PathId> = Vec::new();
-    for module in &c_mods {
+    for module in &c_modules {
         let src = format::format_compat_module(&module);
-        let path = format!("{}/{:x}.c", tmppath, md5::compute(&module.id));
+        let path = format!("{}/{:x}.c", tmp_dir_path, md5::compute(&module.id));
         paths.push(PathId {
             path: String::from(&path),
             id: String::from(&module.id),
@@ -140,8 +148,12 @@ fn build(argv: &[String]) -> Result<(), String> {
         fs::write(&path, &src).unwrap();
     }
 
+    // Determine the list of OS libraries to link. "m" is the library for code
+    // in included <math.h>. For simplicity both the header and the library are
+    // always included.
+    // Other libraries are simply taked from the #link hints in the source code.
     let mut link: Vec<String> = vec!["m".to_string()];
-    for module in &c_mods {
+    for module in &c_modules {
         for l in &module.link {
             if link.iter().position(|x| x == l).is_none() {
                 link.push(l.clone());
