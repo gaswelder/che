@@ -19,7 +19,7 @@ use std::string::String;
 
 #[test]
 fn test_rename() {
-    let mut m = parser::get_module(&"json".to_string()).unwrap();
+    let mut m = parser::get_module(&"json".to_string(), &String::from(".")).unwrap();
     let exports = checkers::get_exports(&m);
     let mut names: Vec<String> = Vec::new();
     for e in exports.consts {
@@ -57,6 +57,11 @@ fn main() {
     exit(1);
 }
 
+fn get_first_module(path: &String) -> Result<nodes::Module, String> {
+    let name = String::from(Path::new(path).file_name().unwrap().to_str().unwrap());
+    return parser::get_module(&name, &path);
+}
+
 #[test]
 fn snapshots() {
     for entry in fs::read_dir("test/snapshots").unwrap() {
@@ -68,7 +73,7 @@ fn snapshots() {
         println!("{}", path);
 
         // get the output
-        let m = parser::get_module(&path.to_string()).unwrap();
+        let m = get_first_module(&path.to_string()).unwrap();
         let mods = resolve_deps(&m);
         let c_mods: Vec<nodes::CompatModule> =
             mods.iter().map(|m| translator::translate(&m)).collect();
@@ -88,7 +93,7 @@ fn build(argv: &[String]) -> Result<(), String> {
         return Err(String::from("Usage: build <source-path> [<output-path>]"));
     }
     let path = &argv[0];
-    let name = if argv.len() == 2 {
+    let output_name = if argv.len() == 2 {
         argv[1].clone()
     } else {
         Path::new(&path)
@@ -101,7 +106,7 @@ fn build(argv: &[String]) -> Result<(), String> {
     };
 
     // Get the module we're building.
-    let main_module = parser::get_module(&path)?;
+    let main_module = get_first_module(&path)?;
 
     // Get all modules that our module depends on. This includes our module as
     // well, so this is a complete list of modules required for the build.
@@ -110,7 +115,7 @@ fn build(argv: &[String]) -> Result<(), String> {
     // Dome some checks.
     for m in &all_modules {
         for imp in module_imports(m) {
-            let dep = parser::get_module(&imp.path)?;
+            let dep = parser::get_module(&imp.path, &m.source_path)?;
             if !checkers::depused(&m, &dep) {
                 return Err(format!("{}: imported {} is not used", m.id, dep.id));
             }
@@ -175,7 +180,7 @@ fn build(argv: &[String]) -> Result<(), String> {
     for p in &paths {
         cmd.arg(p.path.clone());
     }
-    cmd.args(&["-o", &name]);
+    cmd.args(&["-o", &output_name]);
     for l in link {
         cmd.args(&["-l", &l.trim()]);
     }
@@ -198,7 +203,7 @@ fn resolve_deps(m: &nodes::Module) -> Vec<nodes::Module> {
     let mut deps: Vec<nodes::Module> = vec![m.clone()];
     let mut present = vec![m.id.clone()];
     for imp in module_imports(&m) {
-        let sub = parser::get_module(&imp.path).unwrap();
+        let sub = parser::get_module(&imp.path, &m.source_path).unwrap();
         for dep in resolve_deps(&sub) {
             if present.contains(&&dep.id) {
                 continue;
@@ -231,7 +236,7 @@ fn deptree(argv: &[String]) -> i32 {
         return 1;
     }
     let path = &argv[0];
-    let m = parser::get_module(&path).unwrap();
+    let m = get_first_module(path).unwrap();
     let tree = build_tree(&m);
     let r = render_tree(&tree);
     println!("{}", r.join("\n"));
@@ -243,15 +248,15 @@ struct DepNode {
     deps: Vec<DepNode>,
 }
 
-fn build_tree(module: &nodes::Module) -> DepNode {
-    let imports = module_imports(module);
+fn build_tree(m: &nodes::Module) -> DepNode {
+    let imports = module_imports(m);
     let mut deps = vec![];
     for import in imports {
-        let m = parser::get_module(&import.path).unwrap();
+        let m = parser::get_module(&import.path, &m.source_path).unwrap();
         deps.push(build_tree(&m));
     }
     return DepNode {
-        name: module.id.clone(),
+        name: m.id.clone(),
         deps,
     };
 }
@@ -284,7 +289,7 @@ fn indent_tree(lines: Vec<String>, first: &str, cont: &str) -> Vec<String> {
 
 fn exports(argv: &[String]) -> i32 {
     for path in argv {
-        let m = parser::get_module(&path.to_string()).unwrap();
+        let m = get_first_module(&path.to_string()).unwrap();
         println!("mod {}", m.id);
         let exports = checkers::get_exports(&m);
         if !exports.consts.is_empty() {

@@ -2,6 +2,7 @@
 pub struct Module {
     pub id: String,
     pub elements: Vec<ModuleObject>,
+    pub source_path: String,
 }
 
 #[derive(Debug, Clone)]

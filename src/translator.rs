@@ -22,7 +22,7 @@ pub fn translate(m: &Module) -> CompatModule {
     // but some are not and have to be converted to their "Compat..." analogs.
     let mut elements: Vec<CompatModuleObject> = Vec::new();
     for element in &m.elements {
-        for node in translate_module_object(element) {
+        for node in translate_module_object(element, m) {
             elements.push(node)
         }
     }
@@ -103,8 +103,8 @@ pub fn translate(m: &Module) -> CompatModule {
     };
 }
 
-fn translate_module_object(x: &ModuleObject) -> Vec<CompatModuleObject> {
-    match x {
+fn translate_module_object(element: &ModuleObject, m: &Module) -> Vec<CompatModuleObject> {
+    match element {
         ModuleObject::Typedef(Typedef {
             is_pub,
             type_name,
@@ -177,7 +177,7 @@ fn translate_module_object(x: &ModuleObject) -> Vec<CompatModuleObject> {
             ]
         }
         ModuleObject::Import { path } => {
-            let module = parser::get_module(&path).unwrap();
+            let module = parser::get_module(&path, &m.source_path).unwrap();
             let compat = translate(&module);
             return get_module_synopsis(compat);
         }

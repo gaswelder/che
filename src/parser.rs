@@ -1108,12 +1108,16 @@ pub fn homepath() -> String {
     return env::var("CHELANG_HOME").unwrap_or(String::from("."));
 }
 
-pub fn get_module(name: &String) -> Result<Module, String> {
-    // If requested module name ends with ".c", we look for it at the given
-    // location. If ".c" is omitted, we look for it inside the hardcoded lib
-    // directory.
+pub fn get_module(name: &String, importing_module_path: &String) -> Result<Module, String> {
+    // If requested module name ends with ".c", we look for it relative to the
+    // importing module's location. If ".c" is omitted, we look for it inside
+    // the lib directory.
     let module_path = if name.ends_with(".c") {
-        name.clone()
+        let p = Path::new(importing_module_path)
+            .parent()
+            .unwrap()
+            .join(name);
+        String::from(p.to_str().unwrap())
     } else {
         format!("{}/lib/{}.c", homepath(), name)
     };
@@ -1130,7 +1134,7 @@ pub fn get_module(name: &String) -> Result<Module, String> {
         modnames: get_file_deps(&module_path)?,
     };
     let mut lexer = for_file(&module_path)?;
-    let elements = parse_module(&mut lexer, &ctx);
+    let elements = parse_module(&mut lexer, &ctx, &module_path);
     if elements.is_err() {
         let next = lexer.peek().unwrap();
         let wher = format!("{}: {}", module_path, lexer.peek().unwrap().pos);
@@ -1142,6 +1146,7 @@ pub fn get_module(name: &String) -> Result<Module, String> {
     return Ok(Module {
         elements: els,
         id: format!("{}", Path::new(&module_path).display()),
+        source_path: String::from(&module_path),
     });
 }
 
@@ -1163,7 +1168,11 @@ fn token_to_string(token: &Token) -> String {
     return format!("[{}, {}]", token.kind, c);
 }
 
-fn parse_module(lexer: &mut Lexer, ctx: &Ctx) -> Result<Vec<ModuleObject>, String> {
+fn parse_module(
+    lexer: &mut Lexer,
+    ctx: &Ctx,
+    module_path: &String,
+) -> Result<Vec<ModuleObject>, String> {
     let mut elements: Vec<ModuleObject> = vec![];
     let mut ctx2 = Ctx {
         modnames: ctx.modnames.clone(),
@@ -1176,7 +1185,7 @@ fn parse_module(lexer: &mut Lexer, ctx: &Ctx) -> Result<Vec<ModuleObject>, Strin
                 let path = tok.content.unwrap();
                 let p = path.clone();
                 elements.push(ModuleObject::Import { path });
-                let module = get_module(&p)?;
+                let module = get_module(&p, module_path)?;
                 for element in module.elements {
                     match element {
                         ModuleObject::Typedef(Typedef { form, is_pub, .. }) => {
