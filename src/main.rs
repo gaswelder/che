@@ -15,6 +15,7 @@ use std::fs;
 use std::io::BufRead;
 use std::path::Path;
 use std::process::{exit, Command, Stdio};
+use std::str;
 use std::string::String;
 
 #[test]
@@ -54,7 +55,71 @@ fn main() {
     if args[1] == "exports" {
         exit(exports(&args[2..]));
     }
+    if args[1] == "test" {
+        match run_tests(&args[2..]) {
+            Err(s) => {
+                eprintln!("{}", s);
+                exit(1);
+            }
+            Ok(_) => {
+                exit(0);
+            }
+        }
+    }
     exit(1);
+}
+
+fn find_tests(dirpath: &String) -> Result<Vec<String>, String> {
+    let mut paths: Vec<String> = Vec::new();
+    for entry_result in fs::read_dir(dirpath).unwrap() {
+        let result = entry_result.unwrap();
+        let path = result.path();
+        if path.to_str().unwrap().ends_with(".test.c") {
+            paths.push(String::from(path.to_str().unwrap()));
+        } else if path.is_dir() {
+            paths.append(&mut find_tests(&String::from(path.to_str().unwrap())).unwrap())
+        }
+    }
+    return Ok(paths);
+}
+
+fn run_tests(args: &[String]) -> Result<(), String> {
+    let mut fails = 0;
+    let mut total = 0;
+    for arg in args {
+        let tests = find_tests(arg)?;
+        for path in tests {
+            build_prog(&path, &String::from("test.out")).unwrap();
+            let output = Command::new("./test.out").output().unwrap();
+            let errstr = str::from_utf8(&output.stderr).unwrap();
+            let outstr = str::from_utf8(&output.stdout).unwrap().trim_end();
+            let mark = if output.status.success() {
+                "OK"
+            } else {
+                "FAIL "
+            };
+            if !output.status.success() {
+                fails += 1;
+            }
+            if outstr != "" {
+                println!("{} {}: {}", mark, path, outstr);
+            } else {
+                println!("{} {}", mark, path);
+            }
+            if errstr != "" {
+                println!("stderr:\n{}", errstr);
+            }
+            total += 1
+        }
+        println!("{} tests", total)
+    }
+    if fails > 1 {
+        return Err(format!("{} tests failed", fails));
+    }
+    if fails == 1 {
+        return Err(format!("1 test failed"));
+    }
+    return Ok(());
 }
 
 fn get_first_module(path: &String) -> Result<nodes::Module, String> {
@@ -88,25 +153,9 @@ fn snapshots() {
     }
 }
 
-fn build(argv: &[String]) -> Result<(), String> {
-    if argv.len() < 1 || argv.len() > 2 {
-        return Err(String::from("Usage: build <source-path> [<output-path>]"));
-    }
-    let path = &argv[0];
-    let output_name = if argv.len() == 2 {
-        argv[1].clone()
-    } else {
-        Path::new(&path)
-            .with_extension("")
-            .file_name()
-            .unwrap()
-            .to_str()
-            .unwrap()
-            .to_string()
-    };
-
+fn build_prog(source_path: &String, output_name: &String) -> Result<(), String> {
     // Get the module we're building.
-    let main_module = get_first_module(&path)?;
+    let main_module = get_first_module(source_path)?;
 
     // Get all modules that our module depends on. This includes our module as
     // well, so this is a complete list of modules required for the build.
@@ -196,7 +245,35 @@ fn build(argv: &[String]) -> Result<(), String> {
         println!("{}", &line);
     }
     let r = proc.wait().unwrap();
-    exit(r.code().unwrap());
+    if r.success() {
+        return Ok(());
+    }
+    return Err(String::from("build failed"));
+}
+
+fn build(argv: &[String]) -> Result<(), String> {
+    if argv.len() < 1 || argv.len() > 2 {
+        return Err(String::from("Usage: build <source-path> [<output-path>]"));
+    }
+    let path = &argv[0];
+    let output_name = if argv.len() == 2 {
+        argv[1].clone()
+    } else {
+        Path::new(&path)
+            .with_extension("")
+            .file_name()
+            .unwrap()
+            .to_str()
+            .unwrap()
+            .to_string()
+    };
+    match build_prog(path, &output_name) {
+        Ok(()) => exit(0),
+        Err(s) => {
+            eprintln!("{}", s);
+            exit(1)
+        }
+    }
 }
 
 fn resolve_deps(m: &nodes::Module) -> Vec<nodes::Module> {

@@ -1,24 +1,11 @@
 #!/bin/sh
 
-cargo test || exit 1
-cargo build || exit 1
-
 export CHELANG_HOME=`pwd`
 che=$CHELANG_HOME/target/debug/che
 
-## ...
-libtest() {
-	cd `dirname "$1"`
-	$che build `basename $1` test.out
-	./test.out || exit 1
-	cd $CHELANG_HOME
-}
-libtest lib/crypt/md5.test.c
-libtest lib/clip/arr.test.c
-libtest lib/os/exec.test.c
-libtest lib/bitreader.test.c
-libtest lib/crypt/sha1.test.c
-libtest lib/fileutil.test.c
+cargo test || exit 1
+cargo build || exit 1
+che test lib || exit 1
 
 
 cd test

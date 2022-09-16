@@ -21,9 +21,7 @@ bool test() {
 
 int main() {
 	if (test()) {
-		puts("OK lib/fileutil test");
 		return 0;
 	}
-	puts("FAIL lib/fileutil test");
 	return 1;
 }

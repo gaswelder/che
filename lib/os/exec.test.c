@@ -1,7 +1,7 @@
 #import os/exec
 
 bool test() {
-    char *argv[] = {"/bin/ls", "exec.c", NULL};
+    char *argv[] = {"/bin/echo", "this is a test from /bin/echo", NULL};
     char *env[] = {NULL};
     exec_t *r = exec(argv, env, stdin, stdout, stderr);
 
@@ -19,9 +19,7 @@ bool test() {
 
 int main() {
 	if (test()) {
-        puts("OK os/exec test");
 		return 0;
 	}
-	puts("FAIL os/exec test");
 	return 1;
 }

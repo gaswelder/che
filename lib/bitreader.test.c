@@ -28,9 +28,7 @@ bool test() {
 
 int main() {
 	if (test()) {
-		puts("OK lib/bitreader test");
 		return 0;
 	}
-	puts("FAIL lib/bitreader test");
 	return 1;
 }

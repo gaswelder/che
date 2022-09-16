@@ -34,7 +34,6 @@ bool rfctest() {
 
 int main() {
 	if (rfctest()) {
-        puts("OK crypt/md5 rfctest");
 		return 0;
 	}
 	return 1;

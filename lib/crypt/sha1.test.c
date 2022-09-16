@@ -16,12 +16,9 @@ bool test() {
 }
 
 int main() {
-	int fails = 0;
 	if (test()) {
-		puts("OK crypt/sha1 test");
+		return 0;
 	} else {
-		puts("FAIL crypt/sha1 test");
-		fails++;
+		return 1;
 	}
-	return fails;
 }

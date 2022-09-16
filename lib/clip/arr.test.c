@@ -26,9 +26,7 @@ bool test()
 
 int main() {
 	if (test()) {
-        puts("OK clip/arr test");
 		return 0;
 	}
-	puts("FAIL clip/arr test");
 	return 1;
 }
