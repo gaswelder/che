@@ -1,23 +1,4 @@
-uint32_t get16le(uint8_t *buf, int pos) {
-    return buf[pos] + buf[pos + 1] * 256;
-}
-
-uint32_t get32le(uint8_t *buf, int pos) {
-    return (buf[pos]) | (buf[pos+1] << 8) | (buf[pos+2] << 16) | (buf[pos+3] << 24);
-}
-
-void set_u16le(uint8_t *buf, int pos, uint16_t v) {
-    buf[pos] = (v >> 0) & 0xff;
-    buf[pos + 1] = (v >> 8) & 0xff;
-}
-
-void set_u32le(uint8_t *buf, int pos, uint32_t v) {
-    buf[pos] = (v >> 0) & 0xff;
-    buf[pos + 1] = (v >> 8) & 0xff;
-    buf[pos + 2] = (v >> 16) & 0xff;
-    buf[pos + 3] = (v >> 24) & 0xff;
-}
-
+#import endian
 
 /**
  * The type of PNG image. It determines how the pixels are stored.
@@ -223,9 +204,9 @@ pub uint32_t libattopng_get_pixel(libattopng_t* png, size_t x, size_t y) {
         return (uint32_t) png->data[x + y * png->width];
     }
     if (png->type == PNG_GRAYSCALE_ALPHA) {
-        return (uint32_t) get16le(png->data, 2 * (x + y * png->width));
+        return (uint32_t) get_u16le(png->data, 2 * (x + y * png->width));
     }
-    return get32le(png->data, 4 * (x + y * png->width));
+    return get_u32le(png->data, 4 * (x + y * png->width));
 }
 
 /**

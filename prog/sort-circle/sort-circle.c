@@ -7,6 +7,7 @@
 #import ppm
 #import prng/pcg32
 #import fileutil
+#import endian
 
 /*
  * The array that's being shuffled and sorted.
@@ -123,28 +124,6 @@ int main(int argc, char **argv)
             frame();
         }
     }
-}
-
-void emit_u32le(uint32_t v, FILE *f)
-{
-    fputc((v >>  0) & 0xff, f);
-    fputc((v >>  8) & 0xff, f);
-    fputc((v >> 16) & 0xff, f);
-    fputc((v >> 24) & 0xff, f);
-}
-
-void emit_u32be(uint32_t v, FILE *f)
-{
-    fputc((v >> 24) & 0xff, f);
-    fputc((v >> 16) & 0xff, f);
-    fputc((v >>  8) & 0xff, f);
-    fputc((v >>  0) & 0xff, f);
-}
-
-void emit_u16le(unsigned v, FILE *f)
-{
-    fputc((v >> 0) & 0xff, f);
-    fputc((v >> 8) & 0xff, f);
 }
 
 uint32_t hue(int v)
