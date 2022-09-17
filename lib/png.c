@@ -164,7 +164,7 @@ pub int png_set_palette(png_t *png, uint32_t *palette, size_t length) {
 
 /**
  * Sets the pixel's color at coordinate (x, y).
-
+ *
  * @param color The pixel value, depending on the type this is
  *              - the 8bit palette index (\ref PNG_PALETTE)
  *              - the 8bit gray value (\ref PNG_GRAYSCALE)
@@ -518,17 +518,9 @@ pub int png_save(png_t *png, const char *filename) {
 }
 
 /**
- * @function png_destroy
- *
- * @brief Destroys the reference to a PNG image and free all associated memory.
- *
- * @param png Reference to the image
- *
+ * Frees all memory associated with the given image.
  */
 pub void png_destroy(png_t *png) {
-    if (!png) {
-        return;
-    }
     free(png->palette);
     png->palette = NULL;
     free(png->out);
