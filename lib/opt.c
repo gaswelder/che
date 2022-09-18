@@ -69,7 +69,7 @@ pub char **opt_parse( int argc, char **argv )
 	progname = argv[0];
 
 	// Compose optstr for getopt
-	char *optstr = calloc(1, MAX_FLAGS * 2 + 2);
+	char *optstr = calloc(MAX_FLAGS * 2 + 2, 1);
 	char *p = optstr;
 	*p++ = ':';
 	for (int i = 0; i < flags_num; i++) {
@@ -119,7 +119,7 @@ void setflag(int c)
 
 	switch( flag->type ) {
 		case OPT_BOOL:
-			*( (int *) flag->value_pointer ) = 1;
+			*( (bool *) flag->value_pointer ) = true;
 			break;
 		case OPT_STR:
 			*( (char **) flag->value_pointer ) = optarg;
@@ -156,16 +156,15 @@ void setflag(int c)
 				}
 				*( (size_t *) flag->value_pointer ) = val;
 			}
-			else
-			{
+			else {
 				int val = 0;
-				if( sscanf(optarg, "%d", &val) < 1 ) {
+				if (sscanf(optarg, "%d", &val) < 1) {
 					fprintf(stderr, "Couldn't parse value");
 					exit(1);
 				}
-				*( (int *) flag->value_pointer ) = val;
+				int *p = flag->value_pointer;
+				*p = val;
 			}
-
 			break;
 		case OPT_FLOAT:
 			float val = 0;
