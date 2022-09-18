@@ -8,7 +8,7 @@
 /*
  * Option value types for use in the 'opt' function
  */
-pub enum {
+enum {
 	OPT_STR = 's',
 	OPT_INT = 'i',
 	OPT_UINT = 'u',
@@ -43,7 +43,7 @@ const char *summary = NULL;
  * 'desc' is text description.
  * 'value_pointer' is a pointer to save the flag value at.
  */
-pub void opt_opt(int type, const char *name, const char *desc, void *value_pointer) {
+void opt_opt(int type, const char *name, const char *desc, void *value_pointer) {
 	if (strlen(name) > 1) {
 		fprintf(stderr, "Only one-letter flags are supported\n");
 		exit(1);
@@ -57,6 +57,25 @@ pub void opt_opt(int type, const char *name, const char *desc, void *value_point
 	specs[flags_num].desc = desc;
 	specs[flags_num].value_pointer = value_pointer;
 	flags_num++;
+}
+
+pub void opt_str(const char *name, *desc, char **pointer) {
+	opt_opt(OPT_STR, name, desc, pointer);
+}
+pub void opt_int(const char *name, *desc, int *pointer) {
+	opt_opt(OPT_INT, name, desc, pointer);
+}
+pub void opt_uint(const char *name, *desc, unsigned *pointer) {
+	opt_opt(OPT_UINT, name, desc, pointer);
+}
+pub void opt_bool(const char *name, *desc, bool *pointer) {
+	opt_opt(OPT_BOOL, name, desc, pointer);
+}
+pub void opt_size(const char *name, *desc, size_t *pointer) {
+	opt_opt(OPT_SIZE, name, desc, pointer);
+}
+pub void opt_float(const char *name, *desc, float *pointer) {
+	opt_opt(OPT_FLOAT, name, desc, pointer);
 }
 
 /*

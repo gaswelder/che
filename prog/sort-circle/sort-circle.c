@@ -66,19 +66,19 @@ int main(int argc, char **argv)
      * Parse the flags.
      */
     bool help = false;
-    opt.opt(OPT_BOOL, "h", "print the help message", &help);
+    opt.bool("h", "print the help message", &help);
     bool hide_shuffle = false;
-    opt.opt(OPT_BOOL, "q", "don't draw the shuffle", &hide_shuffle);
+    opt.bool("q", "don't draw the shuffle", &hide_shuffle);
     bool slow_shuffle = false;
-    opt.opt(OPT_BOOL, "y", "slow down shuffle animation", &slow_shuffle);
-    const char *audio_output = NULL;
-    opt.opt(OPT_STR, "a", "name of audio output (WAV)", &audio_output);
+    opt.bool("y", "slow down shuffle animation", &slow_shuffle);
+    char *audio_output = NULL;
+    opt.str("a", "name of audio output (WAV)", &audio_output);
     int sort_number = 0;
-    opt.opt(OPT_INT, "s", "animate sort number N", &sort_number);
+    opt.int("s", "animate sort number N", &sort_number);
     int delay = 0;
-    opt.opt(OPT_INT, "w", "insert a delay of N frames", &delay);
-    const char *seed_str = NULL;
-    opt.opt(OPT_STR, "x", "seed for shuffling (64-bit HEX string)", &seed_str);
+    opt.int("w", "insert a delay of N frames", &delay);
+    char *seed_str = NULL;
+    opt.str("x", "seed for shuffling (64-bit HEX string)", &seed_str);
     opt.parse(argc, argv);
 
     if (help) {

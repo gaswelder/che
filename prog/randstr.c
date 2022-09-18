@@ -8,9 +8,9 @@ int main(int argc, char **argv)
 	size_t n = 1;
 	size_t len = 16;
 	size_t seed = (size_t) time(NULL);
-	opt.opt(OPT_UINT, "n", "number of strings to generate", &n);
-	opt.opt(OPT_UINT, "l", "string length", &len);
-	opt.opt(OPT_UINT, "s", "seed value", &seed);
+	opt.size("n", "number of strings to generate", &n);
+	opt.size("l", "string length", &len);
+	opt.size("s", "seed value", &seed);
 	opt.parse(argc, argv);
 
 	mt.seed((uint32_t) seed);

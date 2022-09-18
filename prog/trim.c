@@ -20,10 +20,10 @@ int lf = L_SAME;
 
 int main( int argc, char *argv[] )
 {
-	const char *line_format = "unix";
+	char *line_format = "unix";
 
-	opt.summary( "trim [-l unix/win/same] path..." );
-	opt.opt( OPT_STR, "l", "Convert line format ('unix', 'win' or 'same')", &line_format );
+	opt.summary("trim [-l unix/win/same] path...");
+	opt.str("l", "Convert line format ('unix', 'win' or 'same')", &line_format);
 
 	char **path = opt_parse( argc, argv );
 	if( !path ) {

@@ -35,7 +35,7 @@ typedef {
 FILE *xmlout=0;
 char *global_outputname=0;
 int indent_inc=0;
-double global_scale_factor=1;
+float global_scale_factor = 1;
 int stackdepth=0;
 int global_split=0;
 int splitcnt=0;
@@ -1182,16 +1182,16 @@ char *dtd[98]={
 int main(int argc, char **argv)
 {
     bool dumpdtd = false;
-    opt.opt(OPT_BOOL, "e", "dumpdtd", &dumpdtd);
+    opt.bool("e", "dumpdtd", &dumpdtd);
     bool doctype_is_2 = false;
-    opt.opt(OPT_BOOL, "d", "document_type=2", &doctype_is_2);
+    opt.bool("d", "document_type=2", &doctype_is_2);
     bool show_version = false;
-    opt.opt(OPT_BOOL, "v", "show version", &show_version);
+    opt.bool("v", "show version", &show_version);
     bool iflag = false;
-    opt.opt(OPT_BOOL, "i", "indent_inc=2", &iflag);
-    opt.opt(OPT_FLOAT, "f", "global_scale_factor", &global_scale_factor);
-    opt.opt(OPT_STR, "o", "global_outputname", &global_outputname);
-    opt.opt(OPT_INT, "s", "global_split", &global_split);
+    opt.bool("i", "indent_inc=2", &iflag);
+    opt.float("f", "global_scale_factor", &global_scale_factor);
+    opt.str("o", "global_outputname", &global_outputname);
+    opt.int("s", "global_split", &global_split);
 
     if (argc==1) {
         opt.usage();

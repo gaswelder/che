@@ -4,12 +4,12 @@
 
 int main(int argc, char **argv)
 {
-	const char *addr = "127.0.0.1:25";
-	const char *subj = "";
+	char *addr = "127.0.0.1:25";
+	char *subj = "";
 
 	opt_summary("post [-a addr] [-s subject] <from> <to>");
-	opt.opt(OPT_STR, "a", "SMTP server address", &addr);
-	opt.opt(OPT_STR, "s", "Mail subject", &subj);
+	opt.str("a", "SMTP server address", &addr);
+	opt.str("s", "Mail subject", &subj);
 	argv = opt_parse(argc, argv);
 
 	if(!*argv || !*(argv + 1)) {

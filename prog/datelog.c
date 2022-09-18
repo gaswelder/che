@@ -11,20 +11,19 @@
  */
 int main(int argc, char *argv[])
 {
-	const char *pername = "month";
-	const char *dir = ".";
-	const char *static_name = NULL;
-	int output = 0;
+	char *pername = "month";
+	char *dir = ".";
+	char *static_name = NULL;
+	bool output = false;
 
 	/*
 	 * Parse the arguments.
 	 */
 	opt.summary( "datelog [-o] [-p period] [-d dir] [-c current logname]" );
-	opt.opt(OPT_STR, "p",
-		"Log period ('month'/'day'/'hour'/'minute'/'second')", &pername);
-	opt.opt(OPT_STR, "d", "Directory for log files", &dir);
-	opt.opt(OPT_STR, "c", "File name for current log file", &static_name);
-	opt.opt(OPT_BOOL, "o", "Output received lines to stdout", &output);
+	opt.str("p", "Log period ('month'/'day'/'hour'/'minute'/'second')", &pername);
+	opt.str("d", "Directory for log files", &dir);
+	opt.str("c", "File name for current log file", &static_name);
+	opt.bool("o", "Output received lines to stdout", &output);
 
 	char **args = opt_parse(argc, argv);
 	if( !args ) {

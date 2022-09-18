@@ -2,23 +2,21 @@
 
 int main() {
 	char *s = NULL;
-	opt.opt(OPT_STR, "s", "some string", &s);
+	opt.str("s", "some string", &s);
 	int i = 0;
-	opt.opt(OPT_INT, "i", "some int", &i);
+	opt.int("i", "some int", &i);
 	float f = 0;
-	opt.opt(OPT_FLOAT, "f", "some float", &f);
+	opt.float("f", "some float", &f);
 	bool p = false;
-	opt.opt(OPT_BOOL, "p", "some bool1", &p);
+	opt.bool("p", "some bool1", &p);
 	bool q = false;
-	opt.opt(OPT_BOOL, "q", "some bool2", &q);
+	opt.bool("q", "some bool2", &q);
 
 	char *argv[] = {"progname", "-s", "foo", "-i", "10", "-pq", "-f", "3.14", "one", "two", NULL};
 	int argc = 0;
 	while (argv[argc]) {
 		argc++;
 	}
-
-	printf("&i = %p\n", (void*) &i);
 
 	char **args = opt.parse(argc, argv);
 	bool fail = false;

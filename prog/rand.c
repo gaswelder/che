@@ -5,7 +5,7 @@
 int main(int argc, char **argv)
 {
 	size_t n = 10;
-	opt.opt(OPT_SIZE, "n", "Number of values to generate", &n);
+	opt.size("n", "Number of values to generate", &n);
 	opt.summary("rand [-n num]");
 
 	argv = opt.parse(argc, argv);
