@@ -93,18 +93,16 @@ fn run_tests(args: &[String]) -> Result<(), String> {
             let output = Command::new("./test.out").output().unwrap();
             let errstr = str::from_utf8(&output.stderr).unwrap();
             let outstr = str::from_utf8(&output.stdout).unwrap().trim_end();
-            let mark = if output.status.success() {
-                "OK"
+            if output.status.success() {
+                if outstr != "" {
+                    println!("OK {}: {}", path, outstr);
+                } else {
+                    println!("OK {}", path);
+                }
             } else {
-                "FAIL "
-            };
-            if !output.status.success() {
                 fails += 1;
-            }
-            if outstr != "" {
-                println!("{} {}: {}", mark, path, outstr);
-            } else {
-                println!("{} {}", mark, path);
+                println!("FAIL {}", path);
+                println!("stdout:\n{}", outstr);
             }
             if errstr != "" {
                 println!("stderr:\n{}", errstr);
