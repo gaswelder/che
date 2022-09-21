@@ -1,10 +1,3 @@
-#define _X_OPEN_SOURCE 700
-#include <unistd.h>
-/*
- * getopt.h is a GNU quirk, probably. It's not POSIX.
- */
-#include <getopt.h>
-
 /*
  * Option value types for use in the 'opt' function
  */
@@ -84,119 +77,129 @@ pub void opt_float(const char *name, *desc, float *pointer) {
  */
 pub char **opt_parse( int argc, char **argv )
 {
+	(void) argc;
 	// Set global prognme from the given args vector.
 	progname = argv[0];
 
-	// Compose optstr for getopt
-	char *optstr = calloc(MAX_FLAGS * 2 + 2, 1);
-	char *p = optstr;
-	*p++ = ':';
-	for (int i = 0; i < flags_num; i++) {
-		*p++ = specs[i].name[0];
-		if(specs[i].type != OPT_BOOL) {
-			*p++ = ':';
-		}
-	}
-	*p = '\0';
-
-	opterr = 0;
-	int c = 0;
-	while((c = getopt(argc, argv, optstr)) != -1) {
-		if(c == ':') {
-			fprintf( stderr, "'%c' flag requires an argument\n", optopt );
-			opt_usage();
-			exit(1);
-		}
-		if(c == '?') {
-			fprintf(stderr, "Unknown flag: '%c'\n", optopt );
-			opt_usage();
-			exit(1);
-		}
-		setflag(c);
-	}
-	argv += optind;
-	return argv;
-}
-
-void setflag(int c)
-{
-	/*
-	 * Find the flag.
-	 */
-	int pos = -1;
-	for(int i = 0; i < flags_num; i++) {
-		if( specs[i].name[0] == c ) {
-			pos = i;
+	char **arg = argv + 1;
+	while (*arg) {
+		if (!strcmp(*arg, "-") || *arg[0] != '-') {
 			break;
 		}
-	}
-	if( pos == -1 ) {
-		fprintf(stderr, "Couldn't find spec for flag %c\n", c);
+
+		// Group of flags (-abc) - must be a run of booleans.
+		if (strlen(*arg) > 2) {
+			for (char *c = *arg + 1; *c; c++) {
+				optspec_t *flag = find(*c);
+				if (!flag) {
+					fprintf(stderr, "unknown flag: '%c'\n", *c);
+					exit(1);
+				}
+				if (flag->type != OPT_BOOL) {
+					fprintf(stderr, "flag %c requires a value\n", *c);
+					exit(1);
+				}
+				*((bool*) flag->value_pointer) = true;
+			}
+			arg++;
+			continue;
+		}
+
+		// Single flag (-k)
+		if (strlen(*arg) == 2) {
+			char *d = *arg + 1;
+			char c = *d;
+			optspec_t *flag = find(c);
+			if (!flag) {
+				fprintf(stderr, "unknown flag: %c\n", c);
+				exit(1);
+			}
+			if (flag->type == OPT_BOOL) {
+				*((bool*) flag->value_pointer) = true;
+				arg++;
+				continue;
+			}
+
+			arg++;
+			if (!arg) {
+				fprintf(stderr, "%c flag requires an argument\n", c);
+				exit(1);
+			}
+
+			switch( flag->type ) {
+				case OPT_STR:
+					*( (char **) flag->value_pointer ) = *arg;
+					break;
+				case OPT_INT:
+				case OPT_UINT:
+				case OPT_SIZE:
+					if (!is_numeric( *arg )) {
+						fprintf(stderr, "Option %c expects a numeric argument\n", c );
+						exit(1);
+					}
+					if( flag->type == OPT_UINT || flag->type == OPT_SIZE )
+					{
+						if( *arg[0] == '-' ) {
+							fprintf(stderr, "Option %c expects a non-negative argument\n", c );
+							exit(1);
+						}
+					}
+					if( flag->type == OPT_UINT )
+					{
+						unsigned val = 0;
+						if( sscanf(*arg, "%u", &val) < 1 ) {
+							fprintf(stderr, "Couldn't parse value");
+							exit(1);
+						}
+						*( (unsigned *) flag->value_pointer ) = val;
+					}
+					else if( flag->type == OPT_SIZE )
+					{
+						size_t val = 0;
+						if( sscanf(*arg, "%zu", &val) < 1 ) {
+							fprintf(stderr, "Couldn't parse value");
+							exit(1);
+						}
+						*( (size_t *) flag->value_pointer ) = val;
+					}
+					else {
+						int val = 0;
+						if (sscanf(*arg, "%d", &val) < 1) {
+							fprintf(stderr, "Couldn't parse value");
+							exit(1);
+						}
+						int *p = flag->value_pointer;
+						*p = val;
+					}
+					break;
+				case OPT_FLOAT:
+					float val = 0;
+					if (sscanf(*arg, "%f", &val) < 1) {
+						fprintf(stderr, "Couldn't parse value for flag '%c': %s", c, *arg);
+						exit(1);
+					}
+					*( (float *) flag->value_pointer ) = val;
+					break;
+				default:
+					fprintf(stderr, "Unhandled flag type: %c\n", flag->type);
+					exit(1);
+			}
+			arg++;
+			continue;
+		}
+		fprintf(stderr, "couldn't parse flag group: %s\n", *arg);
 		exit(1);
 	}
-	optspec_t *flag = &specs[pos];
+	return arg;
+}
 
-	switch( flag->type ) {
-		case OPT_BOOL:
-			*( (bool *) flag->value_pointer ) = true;
-			break;
-		case OPT_STR:
-			*( (char **) flag->value_pointer ) = optarg;
-			break;
-		case OPT_INT:
-		case OPT_UINT:
-		case OPT_SIZE:
-			if (!is_numeric( optarg )) {
-				fprintf(stderr, "Option %c expects a numeric argument\n", c );
-				exit(1);
-			}
-			if( flag->type == OPT_UINT || flag->type == OPT_SIZE )
-			{
-				if( optarg[0] == '-' ) {
-					fprintf(stderr, "Option %c expects a non-negative argument\n", c );
-					exit(1);
-				}
-			}
-			if( flag->type == OPT_UINT )
-			{
-				unsigned val = 0;
-				if( sscanf(optarg, "%u", &val) < 1 ) {
-					fprintf(stderr, "Couldn't parse value");
-					exit(1);
-				}
-				*( (unsigned *) flag->value_pointer ) = val;
-			}
-			else if( flag->type == OPT_SIZE )
-			{
-				size_t val = 0;
-				if( sscanf(optarg, "%zu", &val) < 1 ) {
-					fprintf(stderr, "Couldn't parse value");
-					exit(1);
-				}
-				*( (size_t *) flag->value_pointer ) = val;
-			}
-			else {
-				int val = 0;
-				if (sscanf(optarg, "%d", &val) < 1) {
-					fprintf(stderr, "Couldn't parse value");
-					exit(1);
-				}
-				int *p = flag->value_pointer;
-				*p = val;
-			}
-			break;
-		case OPT_FLOAT:
-			float val = 0;
-			if (sscanf(optarg, "%f", &val) < 1) {
-				fprintf(stderr, "Couldn't parse value for flag '%c': %s", c, optarg);
-				exit(1);
-			}
-			*( (float *) flag->value_pointer ) = val;
-			break;
-		default:
-			fprintf(stderr, "Unhandled flag type: %c\n", flag->type);
-			exit(1);
+optspec_t *find(int c) {
+	for(int i = 0; i < flags_num; i++) {
+		if( specs[i].name[0] == c ) {
+			return &specs[i];
+		}
 	}
+	return NULL;
 }
 
 pub void opt_summary(const char *s) {
