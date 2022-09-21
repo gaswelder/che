@@ -1,8 +1,3 @@
-#define _X_OPEN_SOURCE 700
-#include <sys/stat.h>
-
-typedef struct stat stat_t;
-
 /*
  * Reads file at 'path' and returns a pointer to the file's
  * contents in memory. The contents size is put into 'size'.
@@ -57,20 +52,6 @@ pub char *readfile_str(const char *path)
 	return new;
 }
 
-/*
- * Puts size of the file at 'path' and return true.
- * Returns false on failure.
- */
-pub bool filesize(const char *path, size_t *size)
-{
-	stat_t s = {};
-	if(stat(path, &s) < 0) {
-		return false;
-	}
-	*size = (size_t) s.st_size;
-	return true;
-}
-
 int fsize(FILE *f, size_t *s)
 {
 	if(fseek(f, 0, SEEK_END) != 0) {
@@ -103,18 +84,6 @@ int readf( FILE *f, char *data, size_t size)
 		size--;
 	}
 	return 1;
-}
-
-/*
- * Returns true if given path exists and points to a directory.
- */
-pub bool is_dir(const char *path)
-{
-	stat_t s = {};
-	if(stat(path, &s) < 0) {
-		return false;
-	}
-	return S_ISDIR(s.st_mode);
 }
 
 pub bool fileutil_writefile(const char *path, const char *data, size_t n) {

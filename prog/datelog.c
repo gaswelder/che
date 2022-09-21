@@ -2,6 +2,7 @@
 #import fileutil
 #import strutil
 #import time
+#import os/fs
 
 #define MAXPATH 255
 

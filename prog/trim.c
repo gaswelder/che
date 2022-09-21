@@ -1,7 +1,7 @@
 #import mem
 #import opt
-#import fileutil
 #import cli
+#import os/fs
 
 enum {
 	L_SAME,
