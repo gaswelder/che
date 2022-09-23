@@ -3,11 +3,7 @@
 #import opt
 #import words.c
 
-typedef {
-    int id;
-    ProbDesc pd;
-    char rec;
-} ElmDesc;
+typedef { int id; ProbDesc pd; char rec; } ElmDesc;
 
 typedef {
     char name[20];
@@ -17,13 +13,13 @@ typedef {
     float prcnt;
 } AttDesc;
 
-typedef {
-    int size,id;
-    SetDesc *next;
-} SetDesc;
+typedef { int size, id; SetDesc *next; } SetDesc;
 
 typedef {
     int id;
+    /*
+     * Element name, the string inside the angle brackets.
+     */
     char *name;
     ElmDesc elm[20];
     AttDesc att[5];
@@ -51,10 +47,7 @@ const int COUNTRIES_USA = 0;
 
 ObjDesc *stack[64] = {};
 ObjDesc objs[]={
-    {
-        .id = 0,
-        .name = "*error*"
-    },
+    { .id = 0, .name = "*error*" },
     {
         .id = AUCTION_SITE,
         .name = "site",
@@ -252,14 +245,8 @@ ObjDesc objs[]={
         },
         0x02
     },
-    {
-        .id = SHIPPING,
-        .name = "shipping"
-    },
-    {
-        .id = RESERVE,
-        .name = "reserve"
-    },
+    { .id = SHIPPING, .name = "shipping" },
+    { .id = RESERVE, .name = "reserve" },
     {
         .id = INCATEGORY,
         .name = "incategory",
@@ -289,18 +276,9 @@ ObjDesc objs[]={
             {TEXT,{1,0,0,1,1}, 0}
         }
     },
-    {
-        .id = FROM,
-        .name = "from"
-    },
-    {
-        .id = TO,
-        .name = "to"
-    },
-    {
-        .id = XDATE,
-        .name = "date"
-    },
+    { .id = FROM, .name = "from" },
+    { .id = TO, .name = "to" },
+    { .id = XDATE, .name = "date" },
     {
         .id = PERSON_LIST,
         .name = "people",
@@ -328,22 +306,10 @@ ObjDesc objs[]={
         },
         0x40
     },
-    {
-        .id = EMAIL,
-        .name = "emailaddress"
-    },
-    {
-        .id = PHONE,
-        .name = "phone"
-    },
-    {
-        .id = HOMEPAGE,
-        .name = "homepage"
-    },
-    {
-        .id = CREDITCARD,
-        .name = "creditcard"
-    },
+    { .id = EMAIL, .name = "emailaddress" },
+    { .id = PHONE, .name = "phone" },
+    { .id = HOMEPAGE, .name = "homepage" },
+    { .id = CREDITCARD, .name = "creditcard" },
     {
         .id = ADDRESS,
         .name = "address",
@@ -355,26 +321,11 @@ ObjDesc objs[]={
             {ZIPCODE,{1,0,0,1,1}, 0}
         }
     },
-    {
-        .id = STREET,
-        .name = "street"
-    },
-    {
-        .id = CITY,
-        .name = "city"
-    },
-    {
-        .id = PROVINCE,
-        .name = "province"
-    },
-    {
-        .id = ZIPCODE,
-        .name = "zipcode"
-    },
-    {
-        .id = COUNTRY,
-        .name = "country"
-    },
+    { .id = STREET, .name = "street" },
+    { .id = CITY, .name = "city" },
+    { .id = PROVINCE, .name = "province" },
+    { .id = ZIPCODE, .name = "zipcode" },
+    { .id = COUNTRY, .name = "country" },
     {
         .id = PROFILE,
         .name = "profile",
@@ -391,26 +342,11 @@ ObjDesc objs[]={
                 .type = 3,0,{0,0,0,0,0},1}
         }
     },
-    {
-        .id = EDUCATION,
-        .name = "education"
-    },
-    {
-        .id = INCOME,
-        .name = "income"
-    },
-    {
-        .id = GENDER,
-        .name = "gender"
-    },
-    {
-        .id = BUSINESS,
-        .name = "business"
-    },
-    {
-        .id = AGE,
-        .name = "age"
-    },
+    { .id = EDUCATION, .name = "education" },
+    { .id = INCOME, .name = "income" },
+    { .id = GENDER, .name = "gender" },
+    { .id = BUSINESS, .name = "business" },
+    { .id = AGE, .name = "age" },
     {
         .id = INTEREST,
         .name = "interest",
@@ -464,26 +400,11 @@ ObjDesc objs[]={
         },
         0x04|0x40
     },
-    {
-        .id = PRIVACY,
-        .name = "privacy"
-    },
-    {
-        .id = AMOUNT,
-        .name = "amount"
-    },
-    {
-        .id = CURRENT,
-        .name = "current"
-    },
-    {
-        .id = INCREASE,
-        .name = "increase"
-    },
-    {
-        .id = TYPE,
-        .name = "type"
-    },
+    { .id = PRIVACY, .name = "privacy" },
+    { .id = AMOUNT, .name = "amount" },
+    { .id = CURRENT, .name = "current" },
+    { .id = INCREASE, .name = "increase" },
+    { .id = TYPE, .name = "type" },
     {
         .id = ITEMREF,
         .name = "itemref",
@@ -502,18 +423,9 @@ ObjDesc objs[]={
             {INCREASE,{1,0,0,1,1}, .rec = 0}
         }
     },
-    {
-        .id = TIME,
-        .name = "time"
-    },
-    {
-        .id = STATUS,
-        .name = "status",
-    },
-    {
-        .id = INIT_PRICE,
-        .name = "initial"
-    },
+    { .id = TIME, .name = "time" },
+    { .id = STATUS, .name = "status" },
+    { .id = INIT_PRICE, .name = "initial" },
     {
         .id = PERSONREF,
         .name = "personref",
@@ -543,14 +455,8 @@ ObjDesc objs[]={
             {END,{1,0,0,1,1}, .rec = 0}
         }
     },
-    {
-        .id = START,
-        .name = "start"
-    },
-    {
-        .id = END,
-        .name = "end"
-    },
+    { .id = START, .name = "start" },
+    { .id = END, .name = "end" },
     {
         .id = CLOSED_TRANS_LIST,
         .name = "closed_auctions",
@@ -577,10 +483,7 @@ ObjDesc objs[]={
         },
         0x04|0x40
     },
-    {
-        .id = PRICE,
-        .name = "price"
-    },
+    { .id = PRICE, .name = "price" },
     {
         .id = BUYER,
         .name = "buyer",
@@ -598,10 +501,7 @@ ObjDesc objs[]={
             {HAPPINESS,{1,0,0,1,1}, .rec = 0}
         }
     },
-    {
-        .id = HAPPINESS,
-        .name = "happiness"
-    },
+    { .id = HAPPINESS, .name = "happiness" },
     {
         .id = AUTHOR,
         .name = "author",
@@ -624,8 +524,8 @@ FILE *OpenOutput_split(const char *global_outputname, int fileno) {
 }
 
 bool hasID(ObjDesc *od) {
-    for (int i=0;i<5;i++) {
-        if (od->att[i].type == 0) break;
+    for (size_t i = 0; i < nelem(od->att); i++) {
+        if (od->att[i].type == 0) return false;
         if (od->att[i].type == 1) return true;
     }
     return false;
@@ -689,136 +589,120 @@ void FixReferenceSets(ObjDesc *od)
             FixReferenceSets(son);
         }
 }
-void FixSetSize(ObjDesc *od)
-{
-    int i;
-    if (od->flag++) return;
-    for (i=0;i<od->kids;i++)
-        {
-            ObjDesc *son;
-            ElmDesc *ed=&(od->elm[i]);
-            son=&objs[ed->id];
-            if (!son) continue;
-            if (ed->pd.min>1 && (hasID(son) || (son->type&0x04)))
-                {
-                    int size=(int)(GenRandomNum(&ed->pd)+0.5);
-                    if (size*global_scale_factor > 1) {
-                        size = (int)(size*global_scale_factor);
-                    } else {
-                        size = 1;
-                    }
-                    son->set.size+=size;
-                    FixDist(&ed->pd,size);
-                }
-            FixSetSize(son);
+void FixSetSize(ObjDesc *od) {
+    if (od->flag++) {
+        return;
+    }
+    for (int i = 0; i < od->kids; i++) {
+        ElmDesc *ed = &(od->elm[i]);
+        ObjDesc *son = &objs[ed->id];
+        if (!son) continue;
+        if (ed->pd.min>1 && (hasID(son) || (son->type&0x04))) {
+            int size=(int)(GenRandomNum(&ed->pd)+0.5);
+            if (size*global_scale_factor > 1) {
+                size = (int)(size*global_scale_factor);
+            } else {
+                size = 1;
+            }
+            son->set.size+=size;
+            FixDist(&ed->pd,size);
         }
+        FixSetSize(son);
+    }
 }
 void FixSetByEdge(char *father_name, char *son_name, int size)
 {
-    int nobj=NumberOfObjs();
-    for (int i=0;i<nobj;i++) {
-        if (!strcmp(father_name,objs[i].name)) {
-            ObjDesc *od=objs+i;
-            for (int j=0;j<od->kids;j++) {
-                ElmDesc *ed=&(od->elm[j]);
-                ObjDesc *son=objs+ed->id;
-                if (!strcmp(son_name,son->name)) {
-                    FixDist(&ed->pd,size);
-                }
+    int nobj=nelem(objs);
+    for (int i=0; i<nobj; i++) {
+        if (strcmp(father_name,objs[i].name)) {
+            continue;
+        }
+        ObjDesc *od=objs+i;
+        for (int j=0;j<od->kids;j++) {
+            ElmDesc *ed=&(od->elm[j]);
+            ObjDesc *son=objs+ed->id;
+            if (!strcmp(son_name,son->name)) {
+                FixDist(&ed->pd,size);
             }
         }
     }
 }
 
-void ClearFlags()
-{
-    int i;
-    int nobj=NumberOfObjs();
-    for(i=0;i<nobj;i++)
-        objs[i].flag=0;
-}
-
-char global_OpeningTag_cdata[1024] = "yes";
+enum {
+    ATTR_TYPE_1 = 1,
+    ATTR_TYPE_2 = 2,
+    ATTR_TYPE_3 = 3
+};
 
 void OpeningTag(ObjDesc *od)
 {
     AttDesc *att=0;
     stack[stackdepth++]=od;
     xmlprintf(xmlout,"<%s",od->name);
-    for (int i=0;i<5;i++)
-        {
-            char *attname;
-            att=&od->att[i];
-            if (att->name[0]=='\0') break;
-            if (att->name[0]=='\1') attname=objs[att->ref].name;
-            else attname=att->name;
-            switch(att->type) {
-                case 1:
-                    xmlprintf(xmlout," %s=\"%s%d\"", attname,od->name,od->set.id++);
-                    break;
-                case 2:
-                    int ref=0;
-                    if (!ItemIdRef(od, &ref)) {
-                        ref=GenRef(&att->pd,att->ref);
-                    }
-                    xmlprintf(xmlout," %s=\"%s%d\"", attname,objs[att->ref].name,ref);
+    for (int i=0;i<5;i++) {
+        
+        att=&od->att[i];
+        if (att->name[0]=='\0') {
+            break;
+        }
+
+        char *attname;
+        if (att->name[0]=='\1') {
+            attname=objs[att->ref].name;
+        } else {
+            attname=att->name;
+        }
+
+        switch(att->type) {
+            case ATTR_TYPE_1:
+                xmlprintf(xmlout," %s=\"%s%d\"", attname,od->name,od->set.id++);
                 break;
-                case 3:
-                    if (genunf(0,1)<att->prcnt)
-                        {
-                            if (!strcmp(attname,"income")) {
-                                double d = gennor(40000,30000);
-                                if (d < 9876) {
-                                    d = 9876;
-                                }
-                                sprintf(global_OpeningTag_cdata, "%.2f", d);
-                            }
-                            xmlprintf(xmlout," %s=\"%s\"",attname,global_OpeningTag_cdata);
-                        }
-                    break;
-                default:
-                    fflush(xmlout);
-                    fprintf(stderr,"unknown ATT type %s\n",attname);
-                    exit(EXIT_FAILURE);
+            case ATTR_TYPE_2:
+                int ref=0;
+                if (!ItemIdRef(od, &ref)) {
+                    ref=GenRef(&att->pd,att->ref);
                 }
+                xmlprintf(xmlout," %s=\"%s%d\"", attname,objs[att->ref].name,ref);
+            break;
+            case ATTR_TYPE_3:
+                if (genunf(0,1)<att->prcnt) {
+                    if (!strcmp(attname,"income")) {
+                        double d = gennor(40000,30000);
+                        if (d < 9876) {
+                            d = 9876;
+                        }
+                        xmlprintf(xmlout," %s=\"%.2f\"",attname, d);
+                    } else {
+                        xmlprintf(xmlout," %s=\"yes\"",attname);
+                    }
+                }
+                break;
+            default:
+                fflush(xmlout);
+                fprintf(stderr,"unknown ATT type %s\n",attname);
+                exit(EXIT_FAILURE);
         }
-    if (!(od->elm[0].id!=0) && (od->att[0].name[0])) xmlprintf(xmlout,"/>\n");
-    else
-        {
-            xmlprintf(xmlout,">");
-            if ((od->elm[0].id!=0) || od->type&0x01) xmlprintf(xmlout,"\n");
+    }
+    if (od->elm[0].id == 0 && (od->att[0].name[0])) {
+        xmlprintf(xmlout,"/>\n");
+    } else {
+        xmlprintf(xmlout,">");
+        if (od->elm[0].id != 0 || od->type & 0x01) {
+            xmlprintf(xmlout,"\n");
         }
+    }
 }
 
 void ClosingTag(ObjDesc *od)
 {
     stackdepth--;
-    if (od->type&0x01) xmlprintf(xmlout,"\n");
-    if ((od->att[0].name[0]) && !(od->elm[0].id!=0)) return;
+    if (od->type & 0x01) {
+        xmlprintf(xmlout,"\n");
+    }
+    if ((od->att[0].name[0]) && !(od->elm[0].id!=0)) {
+        return;
+    }
     xmlprintf(xmlout,"</%s>\n",od->name);
-}
-
-void SplitDoc() {
-    int oldstackdepth=stackdepth;
-    for (int i = oldstackdepth-1; i>=0; i--) {
-        ClosingTag(stack[i]);
-    }
-
-    if (xmlout!=stdout) {
-        fclose(xmlout);
-    }
-    if (global_outputname) {
-        xmlout = OpenOutput_split(global_outputname, global_split_fileno++);
-        if (!xmlout) {
-            fflush(stdout);
-            fprintf(stderr, "Can't open file %s\n", global_outputname);
-            exit(EXIT_FAILURE);
-        }
-    }
-    for (int i=0; i<oldstackdepth; i++) {
-        OpeningTag(stack[i]);
-    }
-    splitcnt=0;
 }
 
 bool GenSubtree_splitnow = false;
@@ -829,7 +713,28 @@ void GenSubtree(FILE *out, ObjDesc *od)
     ElmDesc *ed;
     if (od->type&0x10) return;
     if (GenSubtree_splitnow) {
-        SplitDoc();
+        // split doc
+        int oldstackdepth = stackdepth;
+        for (int i = oldstackdepth-1; i>=0; i--) {
+            ClosingTag(stack[i]);
+        }
+
+        if (xmlout!=stdout) {
+            fclose(xmlout);
+        }
+        if (global_outputname) {
+            xmlout = OpenOutput_split(global_outputname, global_split_fileno++);
+            if (!xmlout) {
+                fflush(stdout);
+                fprintf(stderr, "Can't open file %s\n", global_outputname);
+                exit(EXIT_FAILURE);
+            }
+        }
+        for (int i=0; i<oldstackdepth; i++) {
+            OpeningTag(stack[i]);
+        }
+        splitcnt=0;
+
         GenSubtree_splitnow = false;
     }
 
@@ -1024,8 +929,10 @@ void GenSubtree(FILE *out, ObjDesc *od)
                     GenSubtree(out, objs+ed->id);
             }
     ClosingTag(od);
-    if (global_split && (od->type&0x20 || (od->type&0x40 && splitcnt++>global_split))) {
-        GenSubtree_splitnow = true;
+    if (global_split) {
+        if (od->type & 0x20 || (od->type & 0x40 && splitcnt++>global_split)) {
+            GenSubtree_splitnow = true;
+        }
     }
     od->flag--;
 }
@@ -1046,19 +953,18 @@ void Preamble(int type)
         }
 }
 
-void AlignObjs()
-{
-    int i=0,j;
-    ObjDesc * newobjs;
-    int nobj=NumberOfObjs();
-    newobjs=(ObjDesc*)malloc(sizeof(ObjDesc)*nobj);
-    memset(newobjs,0,sizeof(ObjDesc)*nobj);
-    for (i=0;i<nobj;i++)
-        memcpy(&newobjs[objs[i].id], &objs[i],sizeof(ObjDesc));
+void AlignObjs() {
+    int nobj = nelem(objs);
+    ObjDesc *newobjs = calloc(nobj, sizeof(ObjDesc));
+    for (int i = 0; i < nobj; i++) {
+        void *dest = &newobjs[objs[i].id];
+        void *src = &objs[i];
+        memcpy(dest, src, sizeof(ObjDesc));
+    }
     memcpy(objs,newobjs,sizeof(ObjDesc)*nobj);
     free(newobjs);
-    for (i=0;i<nobj;i++)
-        for (j=0;j<20;j++)
+    for (int i = 0; i < nobj; i++)
+        for (int j=0; j<20; j++)
             if (objs[i].elm[j].id!=0) objs[i].kids++;
 }
 int FindRec(ObjDesc *od, ObjDesc *search)
@@ -1080,7 +986,7 @@ int FindRec(ObjDesc *od, ObjDesc *search)
 void CheckRecursion()
 {
     int i,j;
-    int nobj=NumberOfObjs();
+    int nobj=nelem(objs);
     ObjDesc *root;
     for (i=1;i<nobj;i++)
         {
@@ -1190,39 +1096,43 @@ char *dtd[]={
 int main(int argc, char **argv)
 {
     bool dumpdtd = false;
-    opt.bool("e", "dumpdtd", &dumpdtd);
     bool doctype_is_2 = false;
-    opt.bool("d", "document_type=2", &doctype_is_2);
     bool show_version = false;
-    opt.bool("v", "show version", &show_version);
     bool iflag = false;
+
+    opt.bool("e", "dumpdtd", &dumpdtd);
+    opt.bool("d", "document_type=2", &doctype_is_2);    
+    opt.bool("v", "show version", &show_version);
     opt.bool("i", "indent_inc=2", &iflag);
     opt.float("f", "global_scale_factor", &global_scale_factor);
     opt.str("o", "global_outputname", &global_outputname);
     opt.int("s", "global_split", &global_split);
 
-    if (argc==1) {
+    if (argc == 1) {
         opt.usage();
         return 1;
     }
 
     opt.parse(argc, argv);
 
-    int document_type=1;
-    if (doctype_is_2) {
-        document_type=2;
-    }
-
     if (show_version) {
         fprintf(stderr, "This is xmlgen, version ? by Florian Waas (flw@mx4.org)");
         return 0;
     }
+    if (dumpdtd) {
+        for (size_t i = 0; i < nelem(dtd); i++) {
+            fprintf(stdout, "%s", dtd[i]);
+        }
+        return 0;
+    }
 
+    int document_type=1;
+    if (doctype_is_2) {
+        document_type=2;
+    }
     if (iflag) {
         indent_inc=2;
     }
-    
-    ObjDesc *root;
     
     xmlout=stdout;
     if (global_outputname) {
@@ -1232,26 +1142,26 @@ int main(int argc, char **argv)
             xmlout = fopen(global_outputname, "w");
         }
         if (!xmlout) {
-            fflush(stdout);
             fprintf(stderr, "Can't open file %s\n", global_outputname);
             exit(EXIT_FAILURE);
         }
     }
-    if (dumpdtd) {
-        for (size_t i = 0; i < nelem(dtd); i++) {
-            fprintf(xmlout, "%s", dtd[i]);
-        }
-        fclose(xmlout);
-        return 0;
-    }
+
     AlignObjs();
+    ObjDesc *root;
     root=objs+1;
     FixSetSize(root);
-    ClearFlags();
+    for (size_t i = 0; i < nelem(objs); i++) {
+        objs[i].flag = 0;
+    }
     FixReferenceSets(root);
-    ClearFlags();
+    for (size_t i = 0; i < nelem(objs); i++) {
+        objs[i].flag = 0;
+    }
     CheckRecursion();
-    ClearFlags();
+    for (size_t i = 0; i < nelem(objs); i++) {
+        objs[i].flag = 0;
+    }
     initialize();
     Preamble(document_type);
     GenSubtree(xmlout, root);
@@ -1326,11 +1236,6 @@ void PrintANY() {
         }
 }
 
-
-int NumberOfObjs()
-{
-    return (sizeof(objs) / sizeof(*objs));
-}
 int ItemIdRef(ObjDesc *odSon, int *iRef)
 {
     ObjDesc *od;
@@ -1342,16 +1247,17 @@ int ItemIdRef(ObjDesc *odSon, int *iRef)
 }
 void initialize()
 {
-    int nobj=NumberOfObjs();
-    int search[3]={ITEM,OPEN_TRANS,CLOSED_TRANS};
-    int f[3]={0,0,0},items,open,closed;
-    int i,j;
-    for (i=0;i<nobj;i++)
-        for (j=0;j<3;j++)
-            if (objs[i].id==search[j]) f[j]=i;
-    items=objs[f[0]].set.size;
-    open=objs[f[1]].set.size;
-    closed=items-open;
+    int items = -1;
+    int open = -1;
+    for (size_t i = 0; i < nelem(objs); i++) {
+        if (objs[i].id == ITEM) {
+            items = objs[i].set.size;
+        }
+        if (objs[i].id == OPEN_TRANS) {
+            open = objs[i].set.size;
+        }
+    }
+    int closed = items - open;
     FixSetByEdge("closed_auctions","closed_auction",closed);
     InitRepro(&idr[0], open, closed);
     InitRepro(&idr[1], closed, open);
