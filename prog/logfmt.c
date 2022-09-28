@@ -7,8 +7,8 @@ int main() {
     while (fgets(buf, 4096, stdin)) {
         json_node *e = json_parse(buf);
         if (!e) {
-            puts("failed to parse");
-            return 1;
+            printf("%s", buf);
+            continue;
         }
 
         const char *level = json_getstr(e, "level");

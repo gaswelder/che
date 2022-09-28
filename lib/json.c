@@ -76,16 +76,16 @@ const char *typename(int type) {
 	return "?";
 }
 
-json_node *json_newerror(const char *s) {
-	json_node *n = newnode(JSON_ERR);
-	if(!n) return NULL;
-	n->val.str = newstr("%s", s);
-	if(!n->val.str) {
-		free(n);
-		return NULL;
-	}
-	return n;
-}
+// json_node *json_newerror(const char *s) {
+// 	json_node *n = newnode(JSON_ERR);
+// 	if(!n) return NULL;
+// 	n->val.str = newstr("%s", s);
+// 	if(!n->val.str) {
+// 		free(n);
+// 		return NULL;
+// 	}
+// 	return n;
+// }
 
 /*
  * Returns a new node of type "object".
@@ -476,37 +476,31 @@ pub json_node *json_parse(const char *s) {
 	parser_t p = {};
 
 	p.buf = buf_new(s);
-	if(!p.buf) {
+	if (!p.buf) {
 		return NULL;
 	}
 	p.next.type = EOF;
 
-	json_node *n = NULL;
-
-	if(peek(&p) == EOF) {
-		n = json_newerror("No content");
+	if (peek(&p) == EOF) {
 		buf_free(p.buf);
-		return n;
+		return NULL;
 	}
 
-	// <node>
-	n = read_node(&p);
-	if(!n) {
-		n = json_newerror(p.err);
+	json_node *result = read_node(&p);
+	if (!result) {
 		buf_free(p.buf);
-		return n;
+		return NULL;
 	}
 
-	// <eof>
-	if(peek(&p) != EOF) {
-		json_free(n);
-		n = json_newerror("End of file expected");
+	// Expect end of file at this point.
+	if (peek(&p) != EOF) {
+		json_free(result);
 		buf_free(p.buf);
-		return n;
+		return NULL;
 	}
-
+	
 	buf_free(p.buf);
-	return n;
+	return result;
 }
 
 /*
@@ -539,7 +533,6 @@ json_node *read_node(parser_t *p)
 		case T_NULL:
 			return json_newnull();
 	}
-	assert(false);
 	return NULL;
 }
 
@@ -647,13 +640,11 @@ bool expect(parser_t *p, int toktype)
  * Puts a formatted error message to the parser's
  * context and returns NULL.
  */
-void *error(parser_t *p, const char *fmt, ...)
-{
+void *error(parser_t *p, const char *fmt, ...) {
 	va_list args = {};
 	va_start(args, fmt);
 	vsnprintf(p->err, sizeof(p->err), fmt, args);
 	va_end(args);
-	printf("error: %s\n", p->err);
 	return NULL;
 }
 
