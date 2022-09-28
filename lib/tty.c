@@ -1,4 +1,4 @@
-enum {
+pub enum {
     RESET_ALL = 0,
     BRIGHT = 1,
     DIM = 2,
@@ -26,14 +26,6 @@ enum {
     WHITE_BG = 47
 };
 
-void ttycolor(int color) {
+pub void ttycolor(int color) {
     printf("\033[%dm", color);
-}
-
-int main() {
-    ttycolor(RED);
-    printf("ERROR");
-    ttycolor(RESET_ALL);
-    printf(" - sample error\n");
-    return 0;
 }

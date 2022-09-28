@@ -4,15 +4,15 @@
 #import string
 #import mem
 
-enum {
-	JSON_UND,
-	JSON_ERR,
-	JSON_ARR,
-	JSON_OBJ,
-	JSON_STR,
-	JSON_NUM,
-	JSON_BOOL,
-	JSON_NULL
+pub enum {
+	JSON_UND = 0,
+	JSON_ERR = 1,
+	JSON_ARR = 2,
+	JSON_OBJ = 3,
+	JSON_STR = 4,
+	JSON_NUM = 5,
+	JSON_BOOL = 6,
+	JSON_NULL = 7
 };
 
 pub typedef {
@@ -472,8 +472,7 @@ void *mcopy( const void *src, size_t size )
 /*
  * Parses given JSON string and returns a json_node object.
  */
-pub json_node *json_parse(const char *s)
-{
+pub json_node *json_parse(const char *s) {
 	parser_t p = {};
 
 	p.buf = buf_new(s);
