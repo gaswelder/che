@@ -1,148 +1,87 @@
-#import cli
-
-int usage()
-{
-	fprintf(stderr, "Usage: stats [-s] [-a] [-n] [-h]\n"
-		"	-s	print sum\n"
-		"	-a	print average\n"
-		"	-n	print count\n"
-		"	-h	print header\n");
-	return 1;
-}
-
 int main(int argc, char **argv)
 {
-	if( argc == 1 ) {
-		return usage();
-	}
-	char cols[4] = "";
-	int ncols = 0;
-
-	bool header = false;
-
-	argv++;
-	while( *argv && *argv[0] == '-' )
-	{
-		char *arg = *argv++;
-		if( strcmp(arg, "-h") == 0) {
-			header = true;
-			continue;
-		}
-
-		arg++;
-		if( strlen(arg) != 1 ) {
-			fatal("Invalid argument: %s", arg);
-		}
-
-		switch (arg[0]) {
-			case 's':
-			case 'a':
-			case 'n':
-				for(int i = 0; i < ncols; i++) {
-					if(cols[i] == arg[0]) {
-						fatal("Duplicate -%c argument", arg[0]);
-					}
-				}
-				cols[ncols++] = arg[0];
-				break;
-			default:
-				fatal("Unknown flag: -%c", arg[0]);
-		}
+	if (argc != 2) {
+		fprintf(stderr, "Usage: stats <stats-list>\n"
+		"	<stats-list> if a sequence of characers that specify which stats to calculate:"
+		"	a - average\n"
+		"	s - sum\n"
+		"	m - min\n"
+		"	x - max\n"
+		"	n - count\n");
+		return 1;
 	}
 
-	if( *argv ) {
-		err("Unknown argument: %s", *argv);
-		return usage();
-	}
-
-	if( ncols == 0 ) {
-		return usage();
-	}
-
-	return process(cols, ncols, header);
-}
-
-int process(char *cols, int ncols, bool header)
-{
-	bool calc_avg = false;
-	for(int i = 0; i < ncols; i++) {
-		if( cols[i] == 'a' ) {
-			calc_avg = true;
-			break;
-		}
-	}
-
-	double sum = 0;
+	size_t num = 0;
 	double avg = 0;
-	int num = 0;
+	double sum = 0;
+	double min = 0;
+	bool min_init = false;
+	double max = 0;
+	bool max_init = false;
 
-	while( 1 )
-	{
-		double x = 0;
-		int r = scanf("%lf\n", &x);
-		if( r == EOF ) {
+	bool avg_needed = false;
+	bool sum_needed = false;
+	bool min_needed = false;
+	bool max_needed = false;
+
+	for (char *p = argv[1]; *p; p++) {
+		switch (*p) {
+			case 'a': avg_needed = true; break;
+			case 's': sum_needed = true; break;
+			case 'm': min_needed = true; break;
+			case 'x': max_needed = true; break;
+			case 'n': break;
+			default:
+				fprintf(stderr, "unknown stats character: %c\n", *p);
+				return 1;
+		}
+	}
+
+	while (true) {
+		double val = 0;
+		int r = scanf("%lf\n", &val);
+		if (r == EOF) {
 			break;
 		}
-		if( r != 1 ) {
-			fatal("scanf error");
+		if (r != 1) {
+			fprintf(stderr, "failed to parse the number\n");
+			return 1;
 		}
 
-		sum += x;
 		num++;
-		if( calc_avg ) {
-			avg = avg * (num-1)/num + x/num;
-		}
-	}
-
-	/*
-	 * Print the results.
-	 */
-	if( header )
-	{
-		char *name = NULL;
-		for(int i = 0; i < ncols; i++)
-		{
-			if(i > 0) {
-				putchar('\t');
+		if (sum_needed) sum += val;
+		if (avg_needed) avg = avg * (num-1)/num + val/num;
+		if (min_needed) {
+			if (min_init == false) {
+				min = val;
+				min_init = true;
+			} else if (val < min) {
+				min = val;
 			}
-			switch(cols[i]) {
-				case 'a':
-					name = "avg";
-					break;
-				case 's':
-					name = "sum";
-					break;
-				case 'n':
-					name = "num";
-					break;
-				default:
-					fatal("Unknown column: %c", cols[i]);
+		}
+		if (max_needed) {
+			if (max_init == false) {
+				max = val;
+				max_init = true;
+			} else if (val > max) {
+				max = val;
 			}
-
-			printf("%s", name);
-		}
-		putchar('\n');
-	}
-
-	for(int i = 0; i < ncols; i++)
-	{
-		if(i > 0) {
-			putchar('\t');
-		}
-		switch(cols[i]) {
-			case 'a':
-				printf("%f", avg);
-				break;
-			case 's':
-				printf("%f", sum);
-				break;
-			case 'n':
-				printf("%d", num);
-				break;
-			default:
-				fatal("Unknown column: %c", cols[i]);
 		}
 	}
-	putchar('\n');
+
+	for (char *p = argv[1]; *p; p++) {
+		if (p > argv[1]) {
+			printf("\t");
+		}
+		switch (*p) {
+			case 's': printf("%f", sum); break;
+			case 'a': printf("%f", avg); break;
+			case 'n': printf("%lu", num); break;
+			case 'm': printf("%f", min); break;
+			case 'x': printf("%f", max); break;
+			default: abort();
+		}
+		printf("\n");
+	}
 	return 0;
 }
