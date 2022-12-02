@@ -81,7 +81,7 @@ int main(int argc, char **argv)
 			case 'x': printf("%f", max); break;
 			default: abort();
 		}
-		printf("\n");
 	}
+	printf("\n");
 	return 0;
 }
