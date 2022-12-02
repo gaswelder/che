@@ -2,7 +2,7 @@
 
 int usage()
 {
-	fprintf(stderr, "Usage: stat [-s] [-a] [-n] [-h]\n"
+	fprintf(stderr, "Usage: stats [-s] [-a] [-n] [-h]\n"
 		"	-s	print sum\n"
 		"	-a	print average\n"
 		"	-n	print count\n"
