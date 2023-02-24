@@ -12,6 +12,9 @@ int main() {
         }
 
         const char *level = json_getstr(e, "level");
+        if (level == NULL) {
+            level = "none";
+        }
         if (strcmp(level, "error") == 0) {
             ttycolor(RED);
         } else if (strcmp(level, "info") == 0) {
