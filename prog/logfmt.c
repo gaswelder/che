@@ -9,8 +9,6 @@ int main(int argc, char **argv) {
     opt.str("f", "fields to print as columns after the timestamp", &fields_string);
     opt.parse(argc, argv);
 
-    puts(fields_string);
-
     int nreqfields = 0;
     char *reqfields[100];
 
@@ -25,7 +23,6 @@ int main(int argc, char **argv) {
                     m[i++] = *a;
                     a++;
                 }
-                printf("got %s\n", m);
                 reqfields[nreqfields++] = m;
                 a = p+1;
             }
@@ -73,11 +70,12 @@ int main(int argc, char **argv) {
 
         // Print the requested fields.
         for (int i = 0; i < nreqfields; i++) {
-            const char *v = json_getstr(e, reqfields[i]);
-            if (v == NULL) {
-                printf("\t(?%s)", reqfields[i]);
+            json_node *v = json_get(e, reqfields[i]);
+            if (v != NULL) {
+                printf("\t");
+                print_node(reqfields[i], e, v);
             } else {
-                printf("\t%s", v);
+                printf("\t(?%s)", reqfields[i]);
             }
         }
 
@@ -108,30 +106,32 @@ int main(int argc, char **argv) {
             if (isreq) {
                 continue;
             }
-
-            
             json_node *val = json_val(e, i);
             printf(" %s=", key);
-            switch (json_type(val)) {
-                case JSON_STR:
-                    printf("%s", json_getstr(e, key));
-                    break;
-                case JSON_NUM:
-                    double val = json_getdbl(e, key);
-                    if (round(val) - val < 1e-10) {
-                        printf("%d", (int) val);
-                    } else {
-                        printf("%f", val);
-                    }
-                    break;
-                case JSON_OBJ:
-                    printf("(object)");
-                    break;
-                default:
-                    printf("unknown type: %d\n", json_type(val));
-            }
+            print_node(key, e, val);
         }
         puts("");
     }
     return 0;
+}
+
+void print_node(const char *key, json_node *e, *val) {
+    switch (json_type(val)) {
+        case JSON_STR:
+            printf("%s", json_getstr(e, key));
+            break;
+        case JSON_NUM:
+            double val = json_getdbl(e, key);
+            if (round(val) - val < 1e-10) {
+                printf("%d", (int) val);
+            } else {
+                printf("%f", val);
+            }
+            break;
+        case JSON_OBJ:
+            printf("(object)");
+            break;
+        default:
+            printf("unknown type: %d\n", json_type(val));
+    }
 }
