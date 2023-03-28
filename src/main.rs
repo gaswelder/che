@@ -388,7 +388,10 @@ fn exports(argv: &[String]) -> i32 {
             }
         }
         if !exports.fns.is_empty() {
-            println!("functions");
+            let mut type_width = 0;
+            let mut types: Vec<String> = Vec::new();
+            let mut forms: Vec<String> = Vec::new();
+
             for c in exports.fns {
                 let mut params = String::from("(");
                 for (i, parameter) in c.parameters.list.iter().enumerate() {
@@ -406,10 +409,23 @@ fn exports(argv: &[String]) -> i32 {
                 }
                 params += ")";
 
-                let form = format::format_form(&c.form);
-                let mut s = String::new();
-                s += &format!("{}\t{} {}", format::format_type(&c.type_name), form, params);
-                println!("\t{}", s);
+                let t = format::format_type(&c.type_name);
+                if t.len() > type_width {
+                    type_width = t.len();
+                }
+                types.push(String::from(t));
+                forms.push(format!("{} {}", &format::format_form(&c.form), &params));
+            }
+            println!("functions");
+            for (i, t) in types.iter().enumerate() {
+                print!("\t{}", t);
+                for _ in 0..(type_width-t.len() + 2) {
+                    print!(" ");
+                }
+                if !forms[i].starts_with("*") {
+                    print!(" ");
+                }
+                print!("{}\n", forms[i]);
             }
         }
     }
