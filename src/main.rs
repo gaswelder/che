@@ -40,6 +40,9 @@ fn test_rename() {
 
 fn main() {
     let args: Vec<String> = env::args().collect();
+    if args.len() == 1 {
+        usage();
+    }
     if args[1] == "build" {
         match build(&args[2..]) {
             Ok(_) => exit(0),
@@ -66,6 +69,11 @@ fn main() {
             }
         }
     }
+    usage();
+}
+
+fn usage() {
+    eprintln!("usage: che build | deptree | exports | test");
     exit(1);
 }
 
