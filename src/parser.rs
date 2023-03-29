@@ -5,6 +5,7 @@ use crate::nodes::*;
 use std::env;
 use std::path::Path;
 
+#[derive(Clone)]
 struct Ctx {
     typenames: Vec<String>,
     modnames: Vec<String>,
@@ -1142,9 +1143,8 @@ pub fn get_module(name: &String, importing_module_path: &String) -> Result<Modul
         return Err(format!("{}: {}: {}...", wher, what, token_to_string(next)));
     }
 
-    let els = elements.unwrap();
     return Ok(Module {
-        elements: els,
+        elements: elements.unwrap(),
         id: format!("{}", Path::new(&module_path).display()),
         source_path: String::from(&module_path),
     });
@@ -1169,19 +1169,16 @@ fn token_to_string(token: &Token) -> String {
 }
 
 fn parse_module(
-    lexer: &mut Lexer,
+    l: &mut Lexer,
     ctx: &Ctx,
     module_path: &String,
 ) -> Result<Vec<ModuleObject>, String> {
     let mut elements: Vec<ModuleObject> = vec![];
-    let mut ctx2 = Ctx {
-        modnames: ctx.modnames.clone(),
-        typenames: ctx.typenames.clone(),
-    };
-    while lexer.more() {
-        match lexer.peek().unwrap().kind.as_str() {
+    let mut ctx2 = ctx.clone();
+    while l.more() {
+        match l.peek().unwrap().kind.as_str() {
             "import" => {
-                let tok = lexer.get().unwrap();
+                let tok = l.get().unwrap();
                 let path = tok.content.unwrap();
                 let p = path.clone();
                 elements.push(ModuleObject::Import { path });
@@ -1203,10 +1200,10 @@ fn parse_module(
                 }
             }
             "macro" => {
-                elements.push(ModuleObject::CompatMacro(parse_compat_macro(lexer)?));
+                elements.push(ModuleObject::CompatMacro(parse_compat_macro(l)?));
             }
             _ => {
-                elements.push(parse_module_object(lexer, &ctx2)?);
+                elements.push(parse_module_object(l, &ctx2)?);
             }
         }
     }
