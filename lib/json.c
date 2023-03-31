@@ -4,15 +4,17 @@
 #import string
 #import mem
 
+// JSON data is represented as a tree where each node is an object of type `json_node`.
+// A node can be of one of the following types:
 pub enum {
 	JSON_UND = 0,
 	JSON_ERR = 1,
-	JSON_ARR = 2,
-	JSON_OBJ = 3,
-	JSON_STR = 4,
-	JSON_NUM = 5,
-	JSON_BOOL = 6,
-	JSON_NULL = 7
+	JSON_ARR = 2, // array
+	JSON_OBJ = 3, // object
+	JSON_STR = 4, // string
+	JSON_NUM = 5, // number
+	JSON_BOOL = 6, // true or false
+	JSON_NULL = 7 // null value
 };
 
 pub typedef {
@@ -468,9 +470,18 @@ void *mcopy( const void *src, size_t size )
 	return copy;
 }
 
-
 /*
- * Parses given JSON string and returns a json_node object.
+ * Parses a given JSON string and returns a pointer to a json_node object.
+ *
+ * If the parsing succeeds, the node will be a valid one.
+ * In the case of error, a special error node is returned.
+ * The user should check the returned node using the `json_error` function.
+ * The returned node has to be freed using the `json_free` in both cases.
+ * The `json_free` function must be called only on root nodes.
+ *
+ * There is no need to check the returned value for equality to `NULL`
+ * because `json_error` will do that and return the "not enough memory" message
+ * (which is the sole cause for the `NULL` return value).
  */
 pub json_node *json_parse(const char *s) {
 	parser_t p = {};
