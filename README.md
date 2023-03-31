@@ -15,10 +15,9 @@ Some libraries (for example, [net](lib/os/net.c)) depend on POSIX, so not
 everything can be compiled on Windows. There was multi-platform support
 initially, but I don't use Windows anymore.
 
-The language differences are outlined below.
+## Language differences
 
-## No include headers
-
+_No include headers_.
 The C languange specifies a library that's well known and constant. There is no
 point in writing these headers every time, so hello world program can be just
 this:
@@ -29,8 +28,7 @@ int main() {
 }
 ```
 
-## No function prototypes
-
+_No function prototypes_.
 Forward declarations and prototypes are necessary for a single-pass C compiler.
 Here, it's not necessary, and the translator will make a pre-pass and generate
 all prototypes automatically, so this example will work:
@@ -45,8 +43,7 @@ void func2() {
 }
 ```
 
-## No need in `struct`
-
+_No need in `struct`_.
 Instead of this:
 
 ```c
@@ -66,8 +63,7 @@ typedef {
 } foo_t;
 ```
 
-## Declaration lists
-
+_Declaration lists_.
 In C it is possible to declare multiple variables with a common type like this:
 
 ```c
@@ -81,6 +77,23 @@ In Che it is also possible to do that also with function parameters:
 
 ```c
 int sum(int a, b, c) {
+	...
+}
+```
+
+_The `nelem` macro_.
+One common idiom to get a static array's length is:
+
+```c
+for (int i = 0; i < sizeof(a) / sizeof(a[0]); i++) {
+	...
+}
+```
+
+Since it's often defined as macro, one of those is built in:
+
+```c
+for (int i = 0; i < nelem(a); i++) {
 	...
 }
 ```
@@ -118,20 +131,17 @@ regular C through ".h" files.
 All the modules are compiled and linked in a correct order automatically, the
 build command is `che main.c`, as opposed to `c99 module1.c module2.c main.c`.
 
-## The `pub` keyword
-
 In C, in order to make functions private to the module, they are declared as
-`static`. But it's more typicaly to export things, not hide them, so `static` is
-gone, and `pub` is introduced:
+`static`. Here, `static` is gone, and `pub` is introduced:
 
 ```c
-// f1 will be accessible from importing moduled, but f2 will not and will be
-// compiled static.
+// f1 will be accessible from importing modules, but f2 will not and will be
+// compiled as static.
 pub int f1() {...}
 int f2() {...}
 ```
 
-`main` doesn't have to be marked public, so “hello world” still is:
+As an exception, `main` doesn't have to be marked public, so “hello world” still is:
 
 ```c
 int main() {
@@ -159,11 +169,11 @@ long foo() {
 }
 ```
 
-Function-local static variables are gone. Module-local variables are always
-assumed static, a module can't export a variable, so there is no `pub` for
-variables.
+Function-local static variables are gone.
+Module-local variables are always assumed static, and a module can't export its variables, so there is no `pub` for variables.
 
 ```c
+// these variables can be accessed only inside this module.
 long seed = 42;
 int current_count = 0;
 
@@ -177,10 +187,8 @@ pub long foo() {
 }
 ```
 
-## Private enums and typedefs
-
-Enums and typedefs may be marked `pub` to become importable. By default all
-`enum` and `typedef` declarations are private.
+Enums and typedefs may be marked `pub` to become importable.
+By default all `enum` and `typedef` declarations are private.
 
 ## Module prefixes
 
@@ -202,20 +210,31 @@ int main() {
 }
 ```
 
-## The nelem macro
+## Testing
 
-One common idiom to get a static array's length is:
-
-```c
-for (int i = 0; i < sizeof(a) / sizeof(a[0]); i++) {
-	...
-}
-```
-
-Since it's often defined as macro, one of those is built in:
+che has a built-in test runner.
+Invoking `che test <dir>` will compile and run every `*.test.c` file in the given directory.
+A `*.test.c` file is a regular program with `main`:
 
 ```c
-for (int i = 0; i < nelem(a); i++) {
-	...
+// md5.test.c
+#import crypt/md5
+
+int main() {
+	md5sum_t s = {0};
+	md5str_t buf = "";
+
+	char *expected = "0cc175b9c0f1b6a831c399e269772661";
+	char *input = "a";
+	md5_str(input, s);
+	md5_sprint(s, buf);
+	if (!strcmp(buf, want) == 0) {
+		printf("* FAIL (%s != %s)\n", buf, want);
+		return 1;
+	}
+	return 0;
 }
+
 ```
+
+If it returns a non-zero exit status, the runner will display the test as failed and will add the test's output.
