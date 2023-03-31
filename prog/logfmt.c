@@ -37,7 +37,7 @@ int main(int argc, char **argv) {
     // fgets will end up delivering whole lines, one line at a time, - and that
     // all lines fit into the buffer.
     while (fgets(buf, 4096, stdin)) {
-        json_node *current_object = json_parse(buf);
+        json.node *current_object = json.parse(buf);
         // If line couldn't be parsed as json - print it as is.
         if (!current_object) {
             printf("%s", buf);
@@ -46,7 +46,7 @@ int main(int argc, char **argv) {
 
         // Print the level in color. If the level field is missing, print a
         // placeholder ("none").
-        const char *level = json_getstr(current_object, "level");
+        const char *level = json.getstr(current_object, "level");
         if (level == NULL) {
             level = "none";
         }
@@ -61,7 +61,7 @@ int main(int argc, char **argv) {
         ttycolor(RESET_ALL);
 
         // Print the timestamp or a placeholder.
-        const char *ts = json_getstr(current_object, "t");
+        const char *ts = json.getstr(current_object, "t");
         if (ts == NULL) {
             printf("\t(?time)");
         } else {
@@ -70,7 +70,7 @@ int main(int argc, char **argv) {
 
         // Print the requested fields.
         for (int i = 0; i < nreqfields; i++) {
-            json_node *v = json_get(current_object, reqfields[i]);
+            json.node *v = json.get(current_object, reqfields[i]);
             if (v != NULL) {
                 printf("\t");
                 print_node(reqfields[i], current_object, v);
@@ -80,7 +80,7 @@ int main(int argc, char **argv) {
         }
 
         // Print the message.
-        const char *msg = json_getstr(current_object, "msg");
+        const char *msg = json.getstr(current_object, "msg");
         if (msg != NULL) {
             printf("\t%s", msg);
         } else {
@@ -88,9 +88,9 @@ int main(int argc, char **argv) {
         }
 
         // Print the remaining fields as k=v
-        size_t n = json_size(current_object);
+        size_t n = json.size(current_object);
         for (size_t i = 0; i < n; i++) {
-            const char *key = json_key(current_object, i);
+            const char *key = json.key(current_object, i);
 
             // Skip if we have already printed this field.
             if (!strcmp(key, "t") || !strcmp(key, "msg") || !strcmp(key, "level")) {
@@ -106,7 +106,7 @@ int main(int argc, char **argv) {
             if (isreq) {
                 continue;
             }
-            json_node *val = json_val(current_object, i);
+            json.node *val = json.val(current_object, i);
             printf(" %s=", key);
             print_node(key, current_object, val);
         }
@@ -116,12 +116,12 @@ int main(int argc, char **argv) {
 }
 
 void print_node(const char *key, json_node *e, *val) {
-    switch (json_type(val)) {
+    switch (json.type(val)) {
         case JSON_STR:
-            printf("%s", json_getstr(e, key));
+            printf("%s", json.getstr(e, key));
             break;
         case JSON_NUM:
-            double val = json_getdbl(e, key);
+            double val = json.getdbl(e, key);
             if (round(val) - val < 1e-10) {
                 printf("%d", (int) val);
             } else {
@@ -132,6 +132,6 @@ void print_node(const char *key, json_node *e, *val) {
             printf("(object)");
             break;
         default:
-            printf("unknown type: %d\n", json_type(val));
+            printf("unknown type: %d\n", json.type(val));
     }
 }
