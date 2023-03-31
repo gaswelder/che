@@ -41,3 +41,36 @@ pub char *trim(char *s) {
 
 	return left;
 }
+
+/*
+ * Splits string `str` using `separator` and puts allocated substrings into
+ * `result`. Stops when the whole string is processed or when the number of
+ * substrings gets to `result_size`. Returns the number of substrings put into
+ * `result`.
+ * If `str` is null, returns 0.
+*/
+pub int strutil_split(char separator, char *str, char **result, size_t result_size) {
+	if (!str) {
+		return 0;
+	}
+	char *p = str;
+	char *a = str;
+	int count = 0;
+	while ((size_t) count < result_size) {
+		if (*p == separator || *p == '\0') {
+			char *m = calloc(p - a + 1, 1);
+			int i = 0;
+			while (a != p) {
+				m[i++] = *a;
+				a++;
+			}
+			result[count++] = m;
+			a = p+1;
+		}
+		if (*p == '\0') {
+			break;
+		}
+		p++;
+	}
+	return count;
+}
