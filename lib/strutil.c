@@ -30,16 +30,19 @@ pub char *trim(char *s) {
 	char *left = s;
 	while (*left && isspace(*left)) left++;
 
-	char *right = left;
+	rtrim(left, " \t\r\n");
+	return left;
+}
+
+pub void rtrim(char *s, *set) {
+	char *right = s;
 	while (*right) right++;
 	right--;
 
-	while (right > left && isspace(*right)) {
+	while (right > s && strchr(set, *right)) {
 		*right = '\0';
 		right--;
 	}
-
-	return left;
 }
 
 /*
