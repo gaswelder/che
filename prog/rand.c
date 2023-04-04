@@ -1,4 +1,4 @@
-#import prng/mt
+#import mt
 #import opt
 #import cli
 

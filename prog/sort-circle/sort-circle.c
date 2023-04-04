@@ -5,7 +5,7 @@
 #import opt
 #import cli
 #import ppm
-#import prng/pcg32
+#import pcg32
 #import fileutil
 #import endian
 

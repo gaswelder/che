@@ -193,7 +193,7 @@ By default all `enum` and `typedef` declarations are private.
 ## Module prefixes
 
 ```c
-#import prng/mt
+#import mt
 int main() {
 	printf("%f\n", mt.randf());
 	return 0;
@@ -203,7 +203,7 @@ int main() {
 is syntax sugar for
 
 ```c
-#import prng/mt
+#import mt
 int main() {
 	printf("%f\n", mt_randf());
 	return 0;

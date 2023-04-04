@@ -1,4 +1,4 @@
-#import clip/arr
+#import arr
 #import strutil
 #import parsebuf
 #import string

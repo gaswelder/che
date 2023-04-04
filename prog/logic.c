@@ -1,6 +1,6 @@
 #import parsebuf
 #import panic
-#import clip/map
+#import map
 
 enum { FUNC, VAR, CONST };
 
