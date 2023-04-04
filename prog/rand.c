@@ -1,20 +1,35 @@
 #import mt
 #import opt
-#import cli
 
-int main(int argc, char **argv)
-{
-	size_t n = 10;
-	opt.size("n", "Number of values to generate", &n);
-	opt.summary("rand [-n num]");
+int main(int argc, char **argv) {
+	size_t n = 1;
+	size_t len = 16;
+	size_t seed = (size_t) time(NULL);
+	char *a = "an";
+	opt.size("n", "number of values to generate", &n);
+	opt.size("l", "string length", &len);
+	opt.size("s", "seed value", &seed);
+	opt.str("a", "alphabet (n is numberic, an is alphanumeric)", &a);
+	opt.parse(argc, argv);
 
-	argv = opt.parse(argc, argv);
-	if(*argv) {
-		fatal("Unknown argument: %s", *argv);
+	const char *alpha;
+	if (!strcmp(a, "an")) {
+		alpha = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890";
+	} else if (!strcmp(a, "n")) {
+		alpha = "0123456789";
+	} else {
+		fprintf(stderr, "unknown alphabet name: %s\n", a);
+		return 1;
 	}
+	size_t alphasize = strlen(alpha);
 
-	mt.seed( (uint32_t) time(NULL) );
-	while(n-- > 0) {
-		printf("%f\n", mt.randf());
+	mt.seed((uint32_t) seed);
+
+	while (n-- > 0) {
+		for (size_t i = 0; i < len; i++) {
+			putchar(alpha[mt.rand32() % alphasize]);
+		}
+		putchar('\n');
 	}
+	return 0;
 }
