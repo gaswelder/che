@@ -1,6 +1,5 @@
 #import arr
 #import strutil
-#import parsebuf
 #import string
 #import mem
 #import jsontok
@@ -472,6 +471,17 @@ void *mcopy( const void *src, size_t size )
 }
 
 /*
+ * Parsing context.
+ */
+typedef {
+	/*
+	 * First error reported during parsing.
+	 */
+	char err[256];
+	json_tokenizer_t *lexer;
+} parser_t;
+
+/*
  * Parses a given JSON string and returns a pointer to a json_node object.
  *
  * If the parsing succeeds, the node will be a valid one.
@@ -486,32 +496,34 @@ void *mcopy( const void *src, size_t size )
  */
 pub json_node *json_parse(const char *s) {
 	parser_t p = {};
-
-	p.buf = buf_new(s);
-	if (!p.buf) {
+	p.lexer = new_json_tokenizer(s);
+	if (!p.lexer) {
 		return NULL;
 	}
-	p.next.type = EOF;
-
-	if (peek(&p) == EOF) {
-		buf_free(p.buf);
+	if (!lexer_read_next(p.lexer)) {
+		error(&p, "%s", p.lexer->next.str);
+		free_json_tokenizer(p.lexer);
+		return NULL;
+	}
+	if (p.lexer->next.type == EOF) {
+		free_json_tokenizer(p.lexer);
 		return NULL;
 	}
 
 	json_node *result = read_node(&p);
 	if (!result) {
-		buf_free(p.buf);
+		free_json_tokenizer(p.lexer);
 		return NULL;
 	}
 
 	// Expect end of file at this point.
-	if (peek(&p) != EOF) {
+	if (p.lexer->next.type != EOF) {
 		json_free(result);
-		buf_free(p.buf);
+		free_json_tokenizer(p.lexer);
 		return NULL;
 	}
 	
-	buf_free(p.buf);
+	free_json_tokenizer(p.lexer);
 	return result;
 }
 
@@ -521,7 +533,7 @@ pub json_node *json_parse(const char *s) {
  */
 json_node *read_node(parser_t *p)
 {
-	switch(peek(p)) {
+	switch (lexer_curr(p->lexer)->type) {
 		case EOF:
 			return error(p, "Unexpected end of file");
 		case '[':
@@ -529,20 +541,27 @@ json_node *read_node(parser_t *p)
 		case '{':
 			return read_dict(p);
 		case T_STR:
-			json_token_t t = {};
-			get(p, &t);
-			json_node *n = json_newstr(t.str);
-			free(t.str);
+			json_node *n = json_newstr(lexer_curr(p->lexer)->str);
+			lexer_read_next(p->lexer);
+			if (lexer_curr(p->lexer)->type == T_ERR) {
+				error(p, "%s", lexer_curr(p->lexer)->str);
+			}
 			return n;
 		case T_NUM:
-			json_token_t t = {};
-			get(p, &t);
-			return json_newnum(t.num);
+			double n = lexer_curr(p->lexer)->num;
+			lexer_read_next(p->lexer);
+			if (lexer_curr(p->lexer)->type == T_ERR) {
+				error(p, "%s", lexer_curr(p->lexer)->str);
+			}
+			return json_newnum(n);
 		case T_TRUE:
+			lexer_read_next(p->lexer);
 			return json_newbool(true);
 		case T_FALSE:
+			lexer_read_next(p->lexer);
 			return json_newbool(false);
 		case T_NULL:
+			lexer_read_next(p->lexer);
 			return json_newnull();
 	}
 	return NULL;
@@ -555,95 +574,122 @@ json_node *read_array(parser_t *p)
 	}
 
 	json_node *a = json_newarr();
+	if (lexer_curr(p->lexer)->type == ']') {
+		lexer_read_next(p->lexer);
+		if (lexer_curr(p->lexer)->type == T_ERR) {
+			error(p, "%s", lexer_curr(p->lexer)->str);
+		}
+		return a;
+	}
 
-	if(peek(p) != ']') {
-		while(peek(p) != EOF) {
-			json_node *v = read_node(p);
-			if(!v) {
-				json_free(a);
-				return NULL;
-			}
-
-			json_push(a, v);
-
-			if(peek(p) != ',') {
-				break;
-			}
-			get(p, NULL);
+	while (lexer_curr(p->lexer)->type != EOF) {
+		json_node *v = read_node(p);
+		if (!v) {
+			json_free(a);
+			return NULL;
+		}
+		json_push(a, v);
+		if(lexer_curr(p->lexer)->type != ',') {
+			break;
+		}
+		lexer_read_next(p->lexer);
+		if (lexer_curr(p->lexer)->type == T_ERR) {
+			error(p, "%s", lexer_curr(p->lexer)->str);
 		}
 	}
-	if(!expect(p, ']')) {
+	if (lexer_curr(p->lexer)->type != ']') {
 		json_free(a);
 		return NULL;
 	}
-
+	lexer_read_next(p->lexer);
+	if (lexer_curr(p->lexer)->type == T_ERR) {
+		error(p, "%s", lexer_curr(p->lexer)->str);
+	}
 	return a;
+}
+
+bool consume(parser_t *p, int toktype) {
+	if (lexer_curr(p->lexer)->type != toktype) {
+		return false;
+	}
+	lexer_read_next(p->lexer);
+	if (lexer_curr(p->lexer)->type == T_ERR) {
+		error(p, "%s", lexer_curr(p->lexer)->str);
+	}
+	return true;
 }
 
 json_node *read_dict(parser_t *p)
 {
-	if(!expect(p, '{')) {
+	if (!expect(p, '{')) {
 		return NULL;
 	}
-
 	json_node *o = json_newobj();
-	if(!o) return NULL;
-
-	if(peek(p) != '}') {
-		json_token_t t = {};
-
-		while(peek(p) != EOF) {
-
-			if(peek(p) != T_STR) {
-				json_free(o);
-				return error(p, "Key expected");
-			}
-
-			get(p, &t);
-			char *key = t.str;
-
-			if(!expect(p, ':')) {
-				free(key);
-				json_free(o);
-				return NULL;
-			}
-
-			json_node *val = read_node(p);
-			if(!val) {
-				free(key);
-				json_free(o);
-				return NULL;
-			}
-
-			if(!json_put(o, key, val)) {
-				free(key);
-				json_free(val);
-				json_free(o);
-				return NULL;
-			}
-
-			if(peek(p) != ',') {
-				break;
-			}
-			get(p, NULL);
-		}
+	if (!o) {
+		return NULL;
+	}
+	if (consume(p, '}')) {
+		return o;
 	}
 
-	if(!expect(p, '}')) {
+	while (lexer_curr(p->lexer)->type != EOF) {
+		// Get the field name string.
+		if (lexer_curr(p->lexer)->type != T_STR) {
+			json_free(o);
+			return error(p, "Key expected");
+		}
+		char *key = newstr("%s", lexer_curr(p->lexer)->str);
+		if (!key) {
+			json_free(o);
+			return error(p, "No memory");
+		}
+		lexer_read_next(p->lexer);
+
+		// Get the ":"
+		if (!expect(p, ':')) {
+			free(key);
+			json_free(o);
+			return NULL;
+		}
+
+		json_node *val = read_node(p);
+		if (!val) {
+			free(key);
+			json_free(o);
+			return NULL;
+		}
+
+		if (!json_put(o, key, val)) {
+			free(key);
+			json_free(o);
+			json_free(val);
+			return NULL;
+		}
+
+		if (lexer_curr(p->lexer)->type != ',') {
+			break;
+		}
+		lexer_read_next(p->lexer);
+		if (lexer_curr(p->lexer)->type == T_ERR) {
+			error(p, "%s", lexer_curr(p->lexer)->str);
+		}
+	}
+	if (!expect(p, '}')) {
 		json_free(o);
 		return NULL;
 	}
-
 	return o;
 }
 
 bool expect(parser_t *p, int toktype)
 {
-	json_token_t t = {};
-	get(p, &t);
-	if(t.type != toktype) {
-		error(p, "'%c' expected", toktype);
+	if (lexer_curr(p->lexer)->type != toktype) {
+		error(p, "'%c' expected, got '%c'", toktype, lexer_curr(p->lexer)->type);
 		return false;
+	}
+	lexer_read_next(p->lexer);
+	if (lexer_curr(p->lexer)->type == T_ERR) {
+		error(p, "%s", lexer_curr(p->lexer)->str);
 	}
 	return true;
 }
@@ -660,61 +706,6 @@ void *error(parser_t *p, const char *fmt, ...) {
 	return NULL;
 }
 
-
-
-
-
-
-/*
- * Parsing context.
- */
-typedef {
-	/*
-	 * First error reported during parsing.
-	 */
-	char err[256];
-	parsebuf_t *buf;
-	/*
-	 * Look-ahead cache.
-	 */
-	json_token_t next;
-} parser_t;
-
-/*
- * Returns type of the next token
- */
-int peek(parser_t *p)
-{
-	if(p->next.type == EOF && buf_more(p->buf)) {
-		readtok(p->buf, &(p->next));
-		if (p->next.type == T_ERR) {
-			error(p, "%s", p->next.str);
-		}
-	}
-	return p->next.type;
-}
-
-void get(parser_t *p, json_token_t *t)
-{
-	/*
-	 * Read next value into the cache if necessary.
-	 */
-	if(p->next.type == EOF) {
-		peek(p);
-	}
-
-	/*
-	 * If t is given, copy the token there.
-	 */
-	if(t) {
-		memcpy(t, &(p->next), sizeof(*t));
-	}
-
-	/*
-	 * Remove the token from the cache.
-	 */
-	p->next.type = EOF;
-}
 
 pub char *json_format(json_node *n)
 {

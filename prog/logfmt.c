@@ -111,7 +111,20 @@ void print_node(const char *key, json_node *e, *val) {
         case JSON_OBJ:
             printf("(object)");
             break;
+        case JSON_NULL:
+            printf("null");
+            break;
+        case JSON_ARR:
+            printf("(array)");
+            break;
+	    case JSON_BOOL:
+            if (val->val.boolval) {
+                printf("true");
+            } else {
+                printf("false");
+            }
+            break;
         default:
-            printf("unknown type: %d\n", json.type(val));
+            printf("(unknown type %d)", json.type(val));
     }
 }

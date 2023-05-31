@@ -36,66 +36,107 @@ pub enum {
 	T_NUM
 };
 
-// pub typedef {
-//     parsebuf_t *b;
-//     json_token_t t;
-// } json_tokenizer_t;
+// json_tokenizer_t *tmp = new_json_tokenizer(s);
+	// while (true) {
+	// 	lexer_read_next(tmp);
+	// 	json_token_t *t = lexer_curr(tmp);
+	// 	switch (t->type) {
+	// 		case T_ERR: printf("err(%s)\n", t->str); break;
+	// 		case T_TRUE: printf("T_TRUE\n"); break;
+	// 		case T_FALSE: printf("T_FALSE\n"); break;
+	// 		case T_NULL: printf("T_NULL\n"); break;
+	// 		case T_STR: printf("T_STR(%s)\n", t->str); break;
+	// 		case T_NUM: printf("T_NUM(%f)\n", t->num); break;
+	// 		case '[': printf("[\n"); break;
+	// 		case ']': printf("]\n"); break;
+	// 		case '{': printf("{\n"); break;
+	// 		case '}': printf("}\n"); break;
+	// 		case ',': printf(",\n"); break;
+	// 		case ':': printf(":\n"); break;
+	// 		case '"': printf("\"\n"); break;
+    //     	default: printf("unknown type\n"); return NULL;
+	// 	}
+	// }
 
-// pub json_tokenizer_t *new_json_tokenizer(const char *s) {
-//     json_tokenizer_t *t = calloc(1, sizeof(json_tokenizer_t));
-//     if (!t) {
-//         return t;
+// const char *toktypestring(int t) {
+//     switch (t) {
+//         case T_ERR: return "T_ERR";
+// 	    case T_TRUE: return "T_TRUE";
+// 	    case T_FALSE: return "T_FALSE";
+// 	    case T_NULL: return "T_NULL";
+// 	    case T_STR: return "T_STR";
+// 	    case T_NUM: return "T_NUM";
+//         case '[': return "[";
+//         case ']': return "]";
+//         case '{': return "{";
+//         case '}': return "}";
+//         case ',': return ",";
+//         case ':': return ":";
+//         case '"': return "\"";
+//         default: return "(unknown type)";
 //     }
-//     t->b = buf_new(s);
-//     if (!t->b) {
-//         free(t);
-//         return NULL;
-//     }
-//     return t;
 // }
 
-// pub void free_json_tokenizer(json_tokenizer_t *t) {
-//     buf_free(t->b);
-//     free(t);
-// }
+pub typedef {
+    parsebuf_t *buf;
+    json_token_t next;
+} json_tokenizer_t;
 
-pub void readtok(parsebuf_t *b, json_token_t *t)
-{
+pub json_tokenizer_t *new_json_tokenizer(const char *s) {
+    json_tokenizer_t *t = calloc(1, sizeof(json_tokenizer_t));
+    if (!t) {
+        return t;
+    }
+    t->buf = buf_new(s);
+    if (!t->buf) {
+        free(t);
+        return NULL;
+    }
+    return t;
+}
+
+pub void free_json_tokenizer(json_tokenizer_t *t) {
+    buf_free(t->buf);
+    free(t);
+}
+
+/**
+ * Reads next token into the local buffer.
+ * Returns false if there was an error.
+ */
+pub bool lexer_read_next(json_tokenizer_t *t) {
 	// Skip spaces
-	while (isspace(buf_peek(b))) {
-		buf_get(b);
+	while (isspace(buf_peek(t->buf))) {
+		buf_get(t->buf);
 	}
-
-	int c = buf_peek(b);
-	switch(c)
-	{
-		case EOF:
-			return;
-		case '"':
-			readstr(b, t);
-			return;
-		case ':':
-		case ',':
-		case '{':
-		case '}':
-		case '[':
-		case ']':
-			t->type = buf_get(b);
-			return;
+    int c = buf_peek(t->buf);
+    if (c == EOF) {
+        t->next.type = EOF;
+    }
+    else if (c == '"') {
+        readstr(t->buf, &t->next);
+    }
+    else if (c == ':' || c == ',' || c == '{' || c == '}' || c == '[' || c == ']') {
+        t->next.type = buf_get(t->buf);
+    }
+    else if (c == '-' || isdigit(c)) {
+		readnum(t->buf, &t->next);
 	}
-
-	if(c == '-' || isdigit(c)) {
-		readnum(b, t);
-		return;
+    else if (isalpha(c)) {
+		readkw(t->buf, &t->next);
 	}
+    else {
+        t->next.type = T_ERR;
+	    t->next.str = "Unexpected character";
+    }
+	if (t->next.type == T_ERR) {
+        return false;
+    }
+    return true;
+}
 
-	if(isalpha(c)) {
-		readkw0(b, t);
-		return;
-	}
-
-	t->type = T_ERR;
-	t->str = "Unexpected character";
+pub json_token_t *lexer_curr(json_tokenizer_t *t) {
+    return &t->next;
 }
 
 /*
@@ -182,24 +223,24 @@ void readnum(parsebuf_t *b, json_token_t *t)
 	t->num = num;
 }
 
-void readkw0(parsebuf_t *b, json_token_t *t)
+void readkw(parsebuf_t *b, json_token_t *t)
 {
 	char kw[8] = {};
 	int i = 0;
 
-	while(isalpha(buf_peek(b)) && i < 7) {
+	while (isalpha(buf_peek(b)) && i < 7) {
 		kw[i] = buf_get(b);
 		i++;
 	}
 	kw[i] = '\0';
 
-	if(strcmp(kw, "true") == 0) {
+	if (strcmp(kw, "true") == 0) {
 		t->type = T_TRUE;
 	}
-	else if(strcmp(kw, "false") == 0) {
+	else if (strcmp(kw, "false") == 0) {
 		t->type = T_FALSE;
 	}
-	else if(strcmp(kw, "null") == 0) {
+	else if (strcmp(kw, "null") == 0) {
 		t->type = T_NULL;
 	}
 	else {
