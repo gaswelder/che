@@ -36,6 +36,29 @@ pub enum {
 	T_NUM
 };
 
+// pub typedef {
+//     parsebuf_t *b;
+//     json_token_t t;
+// } json_tokenizer_t;
+
+// pub json_tokenizer_t *new_json_tokenizer(const char *s) {
+//     json_tokenizer_t *t = calloc(1, sizeof(json_tokenizer_t));
+//     if (!t) {
+//         return t;
+//     }
+//     t->b = buf_new(s);
+//     if (!t->b) {
+//         free(t);
+//         return NULL;
+//     }
+//     return t;
+// }
+
+// pub void free_json_tokenizer(json_tokenizer_t *t) {
+//     buf_free(t->b);
+//     free(t);
+// }
+
 pub void readtok(parsebuf_t *b, json_token_t *t)
 {
 	// Skip spaces
