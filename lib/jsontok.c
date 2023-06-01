@@ -1,5 +1,4 @@
 #import parsebuf
-#import string
 
 /*
  * Tokenizer
@@ -19,7 +18,7 @@ pub typedef {
 	 * be one of the constants in the enumeration below.
 	 */
 	int type;
-	const char *str;
+	char *str;
 	double num;
 } json_token_t;
 
@@ -80,6 +79,8 @@ pub enum {
 pub typedef {
     parsebuf_t *buf;
     json_token_t next;
+	size_t strlen;
+	size_t strcap;
 } json_tokenizer_t;
 
 pub json_tokenizer_t *new_json_tokenizer(const char *s) {
@@ -92,6 +93,13 @@ pub json_tokenizer_t *new_json_tokenizer(const char *s) {
         free(t);
         return NULL;
     }
+	t->strcap = 4096;
+	t->next.str = calloc(1, 4096);
+	if (!t->next.str) {
+		buf_free(t->buf);
+		free(t);
+		return NULL;
+	}
     return t;
 }
 
@@ -258,15 +266,12 @@ void readstr(json_tokenizer_t *l)
 		seterror(l, "'\"' expected");
 		return;
 	}
-	
-	str *s = str_new();
+	resetstr(l);
 
-	while(buf_more(b) && buf_peek(b) != '"') {
-		/*
-		 * Get next string character
-		 */
+	while (buf_more(b) && buf_peek(b) != '"') {
+		// Get next string character
 		int ch = buf_get(b);
-		if(ch == '\\') {
+		if (ch == '\\') {
 			ch = buf_get(b);
 			if (ch == EOF) {
 				seterror(l, "Unexpected end of input");
@@ -274,11 +279,8 @@ void readstr(json_tokenizer_t *l)
 			}
 		}
 
-		/*
-		 * Append it to the string
-		 */
-		if(!str_addc(s, ch)) {
-			str_free(s);
+		// Append it to the string
+		if (!addchar(l, ch)) {
 			seterror(l, "Out of memory");
 			return;
 		}
@@ -289,24 +291,69 @@ void readstr(json_tokenizer_t *l)
 		seterror(l, "'\"' expected");
 		return;
 	}
-
-	/*
-	 * Create a plain copy of the string
-	 */
-	char *copy = malloc(str_len(s) + 1);
-	if (!copy) {
-		free(s);
-		seterror(l, "Out of memory");
-		return;
-	}
-
-	strcpy(copy, str_raw(s));
-	str_free(s);
 	t->type = T_STR;
-	t->str = copy;
 }
 
 void seterror(json_tokenizer_t *l, const char *s) {
 	l->next.type = T_ERR;
-	l->next.str = s;
+	putstring(l, "%s", s);
+}
+
+bool addchar(json_tokenizer_t *l, int c) {
+	// if no space, resize
+	if (l->strlen >= l->strcap) {
+		l->strcap *= 2;
+		l->next.str = realloc(l->next.str, l->strcap);
+		if (!l->next.str) {
+			return false;
+		}
+	}
+	l->next.str[l->strlen++] = c;
+	l->next.str[l->strlen] = '\0';
+	return true;
+}
+
+void resetstr(json_tokenizer_t *l) {
+	l->strlen = 0;
+}
+
+/*
+ * Puts a formatted string into the lexer's local buffer.
+ * Returns false in case of error.
+ */
+bool putstring(json_tokenizer_t *l, const char *format, ...) {
+	va_list args = {};
+
+	// get the total length
+	va_start(args, format);
+	int len = vsnprintf(NULL, 0, format, args);
+	va_end(args);
+	if (len < 0) {
+		return false;
+	}
+
+	// if buffer is smaller, resize the buffer
+	if (l->strlen < (size_t)len + 1) {
+		size_t newsize = findsize(len + 1);
+		l->next.str = realloc(l->next.str, newsize);
+		l->strlen = newsize;
+		if (l->next.str == NULL) {
+			return false;
+		}
+	}
+
+	// put the string
+	va_start(args, format);
+	vsnprintf(l->next.str, l->strlen, format, args);
+	va_end(args);
+	return true;
+}
+
+size_t findsize(int len) {
+	size_t r = 1;
+	size_t n = (size_t) len;
+	while (r < n) {
+		r *= 2;
+	}
+	return r;
 }
