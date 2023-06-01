@@ -1,25 +1,15 @@
 #import parsebuf
 
 /*
- * Tokenizer
- */
-
-
-/*
- * A text will be split into tokens. Most of them
- * are simply characters like '{', but there are
- * also "string" and "number" tokens that have additional
- * value.
+ * A text will be split into tokens. Most of them are simply characters
+ * like '{', but there are also "string" and "number" tokens that have
+ * additional value.
  */
 pub typedef {
-	/*
-	 * The "type" will be the same as the character in case
-	 * of tokens like '{' or ','. For special cases it will
-	 * be one of the constants in the enumeration below.
-	 */
+	// One of the "T_" constance below.
 	int type;
+	// Token payload, for tokens of type T_ERR, T_STR and T_NUM.
 	char *str;
-	double num;
 } json_token_t;
 
 /*
@@ -142,8 +132,21 @@ pub bool lexer_read_next(json_tokenizer_t *t) {
     return true;
 }
 
-pub json_token_t *lexer_curr(json_tokenizer_t *t) {
-    return &t->next;
+/*
+ * Returns the type of the current token.
+ */
+pub int lexer_currtype(json_tokenizer_t *l) {
+	return l->next.type;
+}
+
+/*
+ * Returns current token's string value.
+ */
+pub const char *lexer_currstr(json_tokenizer_t *l) {
+	if (l->next.type != T_STR && l->next.type != T_ERR && l->next.type != T_NUM) {
+		return NULL;
+	}
+	return l->next.str;
 }
 
 /*
@@ -153,80 +156,58 @@ void readnum(json_tokenizer_t *l)
 {
 	parsebuf_t *b = l->buf;
 	json_token_t *t = &l->next;
-	bool minus = false;
-	double num = 0.0;
+	resetstr(l);
 
-	// minus
-	if(buf_peek(b) == '-') {
-		minus = true;
-		buf_get(b);
+	// Optional minus
+	if (buf_peek(b) == '-') {
+		addchar(l, buf_get(b));
 	}
 
-	// int
+	// Integer part
 	if (!isdigit(buf_peek(b))) {
 		seterror(l, "Digit expected");
 		return;
 	}
 	while (isdigit(buf_peek(b))) {
-		num *= 10;
-		num += buf_get(b) - '0';
+		addchar(l, buf_get(b));
 	}
 
-	// frac
-	if(buf_peek(b) == '.') {
-		buf_get(b);
+	// Optional fractional part
+	if (buf_peek(b) == '.') {
+		addchar(l, buf_get(b));
 		if (!isdigit(buf_peek(b))) {
 			seterror(l, "Digit expected");
 			return;
 		}
-
-		double pow = 0.1;
-		while(isdigit(buf_peek(b))) {
-			int d = buf_get(b) - '0';
-			num += d * pow;
-			pow /= 10;
+		while (isdigit(buf_peek(b))) {
+			addchar(l, buf_get(b));
 		}
 	}
 
-	// exp
+	// Optional exponent
 	int c = buf_peek(b);
-	if(c == 'e' || c == 'E') {
-		bool eminus = false;
-		buf_get(b);
+	if (c == 'e' || c == 'E') {
+		addchar(l, buf_get(b));
+		
+		// Optional - or +
 		c = buf_peek(b);
-
-		// [minus/plus] digit...
-		if(c == '-') {
-			eminus = true;
-			buf_get(b);
+		if (c == '-') {
+			addchar(l, buf_get(b));
 		}
-		else if(c == '+') {
-			eminus = false;
-			buf_get(b);
+		else if (c == '+') {
+			addchar(l, buf_get(b));
 		}
 
+		// Sequence of exponent digits
 		if (!isdigit(buf_peek(b))) {
 			seterror(l, "Digit expected");
 			return;
 		}
-
-		int e = 0;
-		while(isdigit(buf_peek(b))) {
-			e *= 10;
-			e += buf_get(b) - '0';
-		}
-
-		double mul = 0;
-		if (eminus) mul = 0.1;
-		else mul = 10;
-		while(e-- > 0) {
-			num *= mul;
+		while (isdigit(buf_peek(b))) {
+			addchar(l, buf_get(b));
 		}
 	}
-
-	if(minus) num *= -1;
 	t->type = T_NUM;
-	t->num = num;
 }
 
 void readkw(json_tokenizer_t *l)

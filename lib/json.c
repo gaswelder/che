@@ -533,7 +533,7 @@ pub json_node *json_parse(const char *s) {
  */
 json_node *read_node(parser_t *p)
 {
-	switch (lexer_curr(p->lexer)->type) {
+	switch (lexer_currtype(p->lexer)) {
 		case EOF:
 			return error(p, "Unexpected end of file");
 		case '[':
@@ -541,17 +541,21 @@ json_node *read_node(parser_t *p)
 		case '{':
 			return read_dict(p);
 		case T_STR:
-			json_node *n = json_newstr(lexer_curr(p->lexer)->str);
+			json_node *n = json_newstr(lexer_currstr(p->lexer));
 			lexer_read_next(p->lexer);
-			if (lexer_curr(p->lexer)->type == T_ERR) {
-				error(p, "%s", lexer_curr(p->lexer)->str);
+			if (lexer_currtype(p->lexer) == T_ERR) {
+				error(p, "%s", lexer_currstr(p->lexer));
 			}
 			return n;
 		case T_NUM:
-			double n = lexer_curr(p->lexer)->num;
+			const char *val = lexer_currstr(p->lexer);
+			double n;
+			if (sscanf(val, "%lf", &n) < 1) {
+				error(p, "failed to parser number: %s", val);
+			}
 			lexer_read_next(p->lexer);
-			if (lexer_curr(p->lexer)->type == T_ERR) {
-				error(p, "%s", lexer_curr(p->lexer)->str);
+			if (lexer_currtype(p->lexer) == T_ERR) {
+				error(p, "%s", lexer_currstr(p->lexer));
 			}
 			return json_newnum(n);
 		case T_TRUE:
@@ -574,47 +578,47 @@ json_node *read_array(parser_t *p)
 	}
 
 	json_node *a = json_newarr();
-	if (lexer_curr(p->lexer)->type == ']') {
+	if (lexer_currtype(p->lexer) == ']') {
 		lexer_read_next(p->lexer);
-		if (lexer_curr(p->lexer)->type == T_ERR) {
-			error(p, "%s", lexer_curr(p->lexer)->str);
+		if (lexer_currtype(p->lexer) == T_ERR) {
+			error(p, "%s", lexer_currstr(p->lexer));
 		}
 		return a;
 	}
 
-	while (lexer_curr(p->lexer)->type != EOF) {
+	while (lexer_currtype(p->lexer) != EOF) {
 		json_node *v = read_node(p);
 		if (!v) {
 			json_free(a);
 			return NULL;
 		}
 		json_push(a, v);
-		if(lexer_curr(p->lexer)->type != ',') {
+		if(lexer_currtype(p->lexer) != ',') {
 			break;
 		}
 		lexer_read_next(p->lexer);
-		if (lexer_curr(p->lexer)->type == T_ERR) {
-			error(p, "%s", lexer_curr(p->lexer)->str);
+		if (lexer_currtype(p->lexer) == T_ERR) {
+			error(p, "%s", lexer_currstr(p->lexer));
 		}
 	}
-	if (lexer_curr(p->lexer)->type != ']') {
+	if (lexer_currtype(p->lexer) != ']') {
 		json_free(a);
 		return NULL;
 	}
 	lexer_read_next(p->lexer);
-	if (lexer_curr(p->lexer)->type == T_ERR) {
-		error(p, "%s", lexer_curr(p->lexer)->str);
+	if (lexer_currtype(p->lexer) == T_ERR) {
+		error(p, "%s", lexer_currstr(p->lexer));
 	}
 	return a;
 }
 
 bool consume(parser_t *p, int toktype) {
-	if (lexer_curr(p->lexer)->type != toktype) {
+	if (lexer_currtype(p->lexer) != toktype) {
 		return false;
 	}
 	lexer_read_next(p->lexer);
-	if (lexer_curr(p->lexer)->type == T_ERR) {
-		error(p, "%s", lexer_curr(p->lexer)->str);
+	if (lexer_currtype(p->lexer) == T_ERR) {
+		error(p, "%s", lexer_currstr(p->lexer));
 	}
 	return true;
 }
@@ -632,13 +636,13 @@ json_node *read_dict(parser_t *p)
 		return o;
 	}
 
-	while (lexer_curr(p->lexer)->type != EOF) {
+	while (lexer_currtype(p->lexer) != EOF) {
 		// Get the field name string.
-		if (lexer_curr(p->lexer)->type != T_STR) {
+		if (lexer_currtype(p->lexer) != T_STR) {
 			json_free(o);
 			return error(p, "Key expected");
 		}
-		char *key = newstr("%s", lexer_curr(p->lexer)->str);
+		char *key = newstr("%s", lexer_currstr(p->lexer));
 		if (!key) {
 			json_free(o);
 			return error(p, "No memory");
@@ -666,12 +670,12 @@ json_node *read_dict(parser_t *p)
 			return NULL;
 		}
 
-		if (lexer_curr(p->lexer)->type != ',') {
+		if (lexer_currtype(p->lexer) != ',') {
 			break;
 		}
 		lexer_read_next(p->lexer);
-		if (lexer_curr(p->lexer)->type == T_ERR) {
-			error(p, "%s", lexer_curr(p->lexer)->str);
+		if (lexer_currtype(p->lexer) == T_ERR) {
+			error(p, "%s", lexer_currstr(p->lexer));
 		}
 	}
 	if (!expect(p, '}')) {
@@ -683,13 +687,13 @@ json_node *read_dict(parser_t *p)
 
 bool expect(parser_t *p, int toktype)
 {
-	if (lexer_curr(p->lexer)->type != toktype) {
-		error(p, "'%c' expected, got '%c'", toktype, lexer_curr(p->lexer)->type);
+	if (lexer_currtype(p->lexer) != toktype) {
+		error(p, "'%c' expected, got '%c'", toktype, lexer_currtype(p->lexer));
 		return false;
 	}
 	lexer_read_next(p->lexer);
-	if (lexer_curr(p->lexer)->type == T_ERR) {
-		error(p, "%s", lexer_curr(p->lexer)->str);
+	if (lexer_currtype(p->lexer) == T_ERR) {
+		error(p, "%s", lexer_currstr(p->lexer));
 	}
 	return true;
 }
