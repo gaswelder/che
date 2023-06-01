@@ -19,7 +19,7 @@ pub typedef {
 	 * be one of the constants in the enumeration below.
 	 */
 	int type;
-	char *str;
+	const char *str;
 	double num;
 } json_token_t;
 
@@ -114,20 +114,19 @@ pub bool lexer_read_next(json_tokenizer_t *t) {
         t->next.type = EOF;
     }
     else if (c == '"') {
-        readstr(t->buf, &t->next);
+        readstr(t);
     }
     else if (c == ':' || c == ',' || c == '{' || c == '}' || c == '[' || c == ']') {
         t->next.type = buf_get(t->buf);
     }
     else if (c == '-' || isdigit(c)) {
-		readnum(t->buf, &t->next);
+		readnum(t);
 	}
     else if (isalpha(c)) {
-		readkw(t->buf, &t->next);
+		readkw(t);
 	}
     else {
-        t->next.type = T_ERR;
-	    t->next.str = "Unexpected character";
+		seterror(t, "Unexpected character");
     }
 	if (t->next.type == T_ERR) {
         return false;
@@ -142,8 +141,10 @@ pub json_token_t *lexer_curr(json_tokenizer_t *t) {
 /*
  * number = [ minus ] int [ frac ] [ exp ]
  */
-void readnum(parsebuf_t *b, json_token_t *t)
+void readnum(json_tokenizer_t *l)
 {
+	parsebuf_t *b = l->buf;
+	json_token_t *t = &l->next;
 	bool minus = false;
 	double num = 0.0;
 
@@ -154,12 +155,11 @@ void readnum(parsebuf_t *b, json_token_t *t)
 	}
 
 	// int
-	if(!isdigit(buf_peek(b))) {
-		t->type = T_ERR;
-		t->str = "Digit expected";
+	if (!isdigit(buf_peek(b))) {
+		seterror(l, "Digit expected");
 		return;
 	}
-	while(isdigit(buf_peek(b))) {
+	while (isdigit(buf_peek(b))) {
 		num *= 10;
 		num += buf_get(b) - '0';
 	}
@@ -167,9 +167,8 @@ void readnum(parsebuf_t *b, json_token_t *t)
 	// frac
 	if(buf_peek(b) == '.') {
 		buf_get(b);
-		if(!isdigit(buf_peek(b))) {
-			t->type = T_ERR;
-			t->str = "Digit expected";
+		if (!isdigit(buf_peek(b))) {
+			seterror(l, "Digit expected");
 			return;
 		}
 
@@ -198,9 +197,8 @@ void readnum(parsebuf_t *b, json_token_t *t)
 			buf_get(b);
 		}
 
-		if(!isdigit(buf_peek(b))) {
-			t->type = T_ERR;
-			t->str = "Digit expected";
+		if (!isdigit(buf_peek(b))) {
+			seterror(l, "Digit expected");
 			return;
 		}
 
@@ -223,8 +221,10 @@ void readnum(parsebuf_t *b, json_token_t *t)
 	t->num = num;
 }
 
-void readkw(parsebuf_t *b, json_token_t *t)
+void readkw(json_tokenizer_t *l)
 {
+	parsebuf_t *b = l->buf;
+	json_token_t *t = &l->next;
 	char kw[8] = {};
 	int i = 0;
 
@@ -244,17 +244,18 @@ void readkw(parsebuf_t *b, json_token_t *t)
 		t->type = T_NULL;
 	}
 	else {
-		t->type = T_ERR;
-		t->str = "Unknown keyword";
+		seterror(l, "Unknown keyword");
 	}
 }
 
-void readstr(parsebuf_t *b, json_token_t *t)
+void readstr(json_tokenizer_t *l)
 {
+	parsebuf_t *b = l->buf;
+	json_token_t *t = &l->next;
+
 	char g = buf_get(b);
 	if (g != '"') {
-		t->type = T_ERR;
-		t->str = "'\"' expected";
+		seterror(l, "'\"' expected");
 		return;
 	}
 	
@@ -267,9 +268,8 @@ void readstr(parsebuf_t *b, json_token_t *t)
 		int ch = buf_get(b);
 		if(ch == '\\') {
 			ch = buf_get(b);
-			if(ch == EOF) {
-				t->type = T_ERR;
-				t->str = "Unexpected end of file";
+			if (ch == EOF) {
+				seterror(l, "Unexpected end of input");
 				return;
 			}
 		}
@@ -279,16 +279,14 @@ void readstr(parsebuf_t *b, json_token_t *t)
 		 */
 		if(!str_addc(s, ch)) {
 			str_free(s);
-			t->str = "Out of memory";
-			t->type = T_ERR;
+			seterror(l, "Out of memory");
 			return;
 		}
 	}
 
 	g = buf_get(b);
 	if (g != '"') {
-		t->str = "'\"' expected";
-		t->type = T_ERR;
+		seterror(l, "'\"' expected");
 		return;
 	}
 
@@ -296,10 +294,9 @@ void readstr(parsebuf_t *b, json_token_t *t)
 	 * Create a plain copy of the string
 	 */
 	char *copy = malloc(str_len(s) + 1);
-	if(!copy) {
+	if (!copy) {
 		free(s);
-		t->str = "Out of memory";
-		t->type = T_ERR;
+		seterror(l, "Out of memory");
 		return;
 	}
 
@@ -307,4 +304,9 @@ void readstr(parsebuf_t *b, json_token_t *t)
 	str_free(s);
 	t->type = T_STR;
 	t->str = copy;
+}
+
+void seterror(json_tokenizer_t *l, const char *s) {
+	l->next.type = T_ERR;
+	l->next.str = s;
 }
