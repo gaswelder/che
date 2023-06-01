@@ -534,11 +534,11 @@ fn parse_while(lexer: &mut Lexer, ctx: &Ctx) -> Result<Statement, String> {
     expect(lexer, "(", None)?;
     let condition = expr(lexer, 0, ctx)?;
     expect(lexer, ")", None)?;
-    let body = parse_body(lexer, ctx)?;
+    let body = parse_statements_block(lexer, ctx)?;
     return Ok(Statement::While { condition, body });
 }
 
-fn parse_body(lexer: &mut Lexer, ctx: &Ctx) -> Result<Body, String> {
+fn parse_statements_block(lexer: &mut Lexer, ctx: &Ctx) -> Result<Body, String> {
     let mut statements: Vec<Statement> = Vec::new();
     if lexer.follows("{") {
         expect(lexer, "{", None)?;
@@ -655,10 +655,10 @@ fn parse_if(lexer: &mut Lexer, ctx: &Ctx) -> Result<Statement, String> {
     expect(lexer, "(", Some("if statement"))?;
     condition = expr(lexer, 0, ctx)?;
     expect(lexer, ")", Some("if statement"))?;
-    body = parse_body(lexer, ctx)?;
+    body = parse_statements_block(lexer, ctx)?;
     if lexer.follows("else") {
         lexer.get();
-        else_body = Some(parse_body(lexer, ctx)?);
+        else_body = Some(parse_statements_block(lexer, ctx)?);
     }
     return Ok(Statement::If {
         condition,
@@ -696,7 +696,7 @@ fn parse_for(lexer: &mut Lexer, ctx: &Ctx) -> Result<Statement, String> {
     expect(lexer, ";", None)?;
     let action = expr(lexer, 0, ctx)?;
     expect(lexer, ")", None)?;
-    let body = parse_body(lexer, ctx)?;
+    let body = parse_statements_block(lexer, ctx)?;
 
     return Ok(Statement::For {
         init,
@@ -775,7 +775,7 @@ fn parse_function_declaration(
         }
     }
     expect(lexer, ")", Some("parse_function_declaration"))?;
-    let body = parse_body(lexer, ctx)?;
+    let body = parse_statements_block(lexer, ctx)?;
     return Ok(ModuleObject::FunctionDeclaration(FunctionDeclaration {
         is_pub,
         type_name,
