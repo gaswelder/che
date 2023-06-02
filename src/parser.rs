@@ -1081,7 +1081,10 @@ fn get_file_deps(path: &str) -> Result<Vec<String>, String> {
     return Ok(list);
 }
 
-fn get_file_typenames(path: &str) -> Result<Vec<String>, String> {
+// Takes a module path and returns a list of types directly defined in that
+// module. This is a required step before full parsing because parsing requires
+// knowin in advance what typenames exist.
+fn get_module_typenames(path: &str) -> Result<Vec<String>, String> {
     // Scan file tokens for 'typedef' keywords
     let mut lexer = for_file(path)?;
     let mut list: Vec<String> = vec![];
@@ -1090,13 +1093,14 @@ fn get_file_typenames(path: &str) -> Result<Vec<String>, String> {
         if t.is_none() {
             break;
         }
-
         let tt = t.unwrap();
-        // When a 'typedef' is encountered, look ahead
-        // to find the type name
+        // When a 'typedef' is encountered, look ahead to find the type name.
         if tt.kind == "typedef" {
             list.push(get_typename(&mut lexer)?);
         }
+        // The special #type hint tells for a fact that a type name exists
+        // without defining it. It's used in modules that interface with the
+        // OS headers.
         if tt.kind == "macro" && tt.content.as_ref().unwrap().starts_with("#type") {
             let name = tt.content.unwrap()[6..].trim().to_string();
             list.push(name);
@@ -1131,7 +1135,7 @@ pub fn get_module(name: &String, importing_module_path: &String) -> Result<Modul
     }
 
     let ctx = Ctx {
-        typenames: get_file_typenames(&module_path)?,
+        typenames: get_module_typenames(&module_path)?,
         modnames: get_file_deps(&module_path)?,
     };
     let mut lexer = for_file(&module_path)?;
