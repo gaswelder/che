@@ -633,7 +633,7 @@ fn parse_form(lexer: &mut Lexer, ctx: &Ctx) -> Result<Form, String> {
     }
 
     while lexer.follows("[") {
-        &lexer.get().unwrap();
+        lexer.get().unwrap();
         let e: Option<Expression>;
         if lexer.more() && lexer.peek().unwrap().kind != "]" {
             e = Some(expr(lexer, 0, ctx)?);
