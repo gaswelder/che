@@ -1,8 +1,118 @@
+use crate::checkers;
+use crate::format;
 use crate::nodes;
 use crate::parser;
+use crate::translator;
+use md5;
+use std::fs;
+use std::io::BufRead;
+use std::path::Path;
+use std::process::{Command, Stdio};
 
 pub struct Import {
     pub path: String,
+}
+
+fn basename(path: &String) -> String {
+    return String::from(Path::new(path).file_name().unwrap().to_str().unwrap());
+}
+
+pub fn build_prog(source_path: &String, output_name: &String) -> Result<(), String> {
+    // Get the module we're building.
+    let main_module = parser::get_module(&basename(source_path), &source_path)?;
+
+    // Get all modules that our module depends on. This includes our module as
+    // well, so this is a complete list of modules required for the build.
+    let all_modules = resolve_deps(&main_module);
+
+    // Dome some checks.
+    for m in &all_modules {
+        for imp in module_imports(m) {
+            let dep = parser::get_module(&imp.path, &m.source_path)?;
+            if !checkers::depused(&m, &dep) {
+                return Err(format!("{}: imported {} is not used", m.id, dep.id));
+            }
+        }
+    }
+
+    // Convert all modules to C modules.
+    let c_modules: Vec<nodes::CompatModule> = all_modules
+        .iter()
+        .map(|m| translator::translate(&m))
+        .collect();
+
+    // Decide where we'll stash all generated C code.
+    let tmp_dir_path = format!("{}/tmp", parser::homepath());
+    if fs::metadata(&tmp_dir_path).is_err() {
+        fs::create_dir(&tmp_dir_path).unwrap();
+    }
+
+    // Write the generated C source files in the temp directory and build the
+    // mapping of the generated C file path to the original source file path,
+    // that will be used to trace C compiler's errors at least to the original
+    // files.
+    struct PathId {
+        path: String,
+        id: String,
+    }
+    let mut paths: Vec<PathId> = Vec::new();
+    for module in &c_modules {
+        let src = format::format_compat_module(&module);
+        let path = format!("{}/{:x}.c", tmp_dir_path, md5::compute(&module.id));
+        paths.push(PathId {
+            path: String::from(&path),
+            id: String::from(&module.id),
+        });
+        fs::write(&path, &src).unwrap();
+    }
+
+    // Determine the list of OS libraries to link. "m" is the library for code
+    // in included <math.h>. For simplicity both the header and the library are
+    // always included.
+    // Other libraries are simply taked from the #link hints in the source code.
+    let mut link: Vec<String> = vec!["m".to_string()];
+    for module in &c_modules {
+        for l in &module.link {
+            if link.iter().position(|x| x == l).is_none() {
+                link.push(l.clone());
+            }
+        }
+    }
+
+    let mut cmd = Command::new("c99");
+    cmd.args(&[
+        "-Wall",
+        "-Wextra",
+        "-Werror",
+        "-pedantic",
+        "-pedantic-errors",
+        "-fmax-errors=1",
+        "-Wno-parentheses",
+        "-g",
+    ]);
+    for p in &paths {
+        cmd.arg(p.path.clone());
+    }
+    cmd.args(&["-o", &output_name]);
+    for l in link {
+        cmd.args(&["-l", &l.trim()]);
+    }
+    cmd.stderr(Stdio::piped());
+    let mut proc = cmd.spawn().unwrap();
+    let out = proc.stderr.as_mut().unwrap();
+    let reader = std::io::BufReader::new(out);
+    for liner in reader.lines() {
+        let mut line = liner.unwrap();
+        for p in &paths {
+            line = line.replace(&p.path, &format!("{} -> {}", &p.id, &p.path));
+        }
+        println!("{}", &line);
+    }
+    let r = proc.wait().unwrap();
+    if r.success() {
+        return Ok(());
+    }
+    return Err(String::from("build failed"));
 }
 
 // Returns a list of import nodes from the module.
