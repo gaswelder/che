@@ -1,3 +1,5 @@
+use substring::Substring;
+
 #[cfg(test)]
 use crate::lexer::for_string;
 use crate::lexer::{for_file, Lexer, Token};
@@ -1113,15 +1115,12 @@ pub fn homepath() -> String {
     return env::var("CHELANG_HOME").unwrap_or(String::from("."));
 }
 
-pub fn get_module(name: &String, importing_module_path: &String) -> Result<Module, String> {
+pub fn get_module(name: &String, current_path: &String) -> Result<Module, String> {
     // If requested module name ends with ".c", we look for it relative to the
     // importing module's location. If ".c" is omitted, we look for it inside
     // the lib directory.
     let module_path = if name.ends_with(".c") {
-        let p = Path::new(importing_module_path)
-            .parent()
-            .unwrap()
-            .join(name);
+        let p = Path::new(current_path).parent().unwrap().join(name);
         String::from(p.to_str().unwrap())
     } else {
         format!("{}/lib/{}.c", homepath(), name)
@@ -1175,20 +1174,33 @@ fn token_to_string(token: &Token) -> String {
 fn parse_module(
     l: &mut Lexer,
     ctx: &Ctx,
-    module_path: &String,
+    current_path: &String,
 ) -> Result<Vec<ModuleObject>, String> {
-    let mut elements: Vec<ModuleObject> = vec![];
+    let mut module_objects: Vec<ModuleObject> = vec![];
     let mut ctx2 = ctx.clone();
+
     while l.more() {
         match l.peek().unwrap().kind.as_str() {
             "import" => {
                 let tok = l.get().unwrap();
                 let path = tok.content.unwrap();
+
+                // Get the module's local name.
+                // Module's local name is how an imported module is referred to
+                // inside this module, such as opt.bool for the #import opt
+                // or util.f for an #import util.c.
+                let modname = if path.ends_with(".c") {
+                    path.substring(0, path.len() - 2).clone()
+                } else {
+                    path.as_str()
+                };
+                ctx2.modnames.push(String::from(modname));
+
                 let p = path.clone();
-                elements.push(ModuleObject::Import { path });
-                let module = get_module(&p, module_path)?;
-                for element in module.elements {
-                    match element {
+                module_objects.push(ModuleObject::Import { path });
+                let module = get_module(&p, current_path)?;
+                for obj in module.elements {
+                    match obj {
                         ModuleObject::Typedef(Typedef { form, is_pub, .. }) => {
                             if is_pub {
                                 ctx2.typenames.push(form.alias);
@@ -1204,12 +1216,12 @@ fn parse_module(
                 }
             }
             "macro" => {
-                elements.push(ModuleObject::CompatMacro(parse_compat_macro(l)?));
+                module_objects.push(ModuleObject::CompatMacro(parse_compat_macro(l)?));
             }
             _ => {
-                elements.push(parse_module_object(l, &ctx2)?);
+                module_objects.push(parse_module_object(l, &ctx2)?);
             }
         }
     }
-    return Ok(elements);
+    return Ok(module_objects);
 }

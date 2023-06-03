@@ -3,7 +3,6 @@
 # scoped identifiers test
 cargo run build test/scoped/main.c && ./main || exit 1
 
-
 # all the rest
 export CHELANG_HOME=`pwd`
 che=$CHELANG_HOME/target/debug/che
