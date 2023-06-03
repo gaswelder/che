@@ -1,4 +1,5 @@
 mod buf;
+mod build;
 mod checkers;
 mod format;
 mod lexer;
@@ -169,7 +170,7 @@ fn build_prog(source_path: &String, output_name: &String) -> Result<(), String> 
 
     // Dome some checks.
     for m in &all_modules {
-        for imp in module_imports(m) {
+        for imp in build::module_imports(m) {
             let dep = parser::get_module(&imp.path, &m.source_path)?;
             if !checkers::depused(&m, &dep) {
                 return Err(format!("{}: imported {} is not used", m.id, dep.id));
@@ -285,7 +286,7 @@ fn build(argv: &[String]) -> Result<(), String> {
 fn resolve_deps(m: &nodes::Module) -> Vec<nodes::Module> {
     let mut deps: Vec<nodes::Module> = vec![m.clone()];
     let mut present = vec![m.id.clone()];
-    for imp in module_imports(&m) {
+    for imp in build::module_imports(&m) {
         let sub = parser::get_module(&imp.path, &m.source_path).unwrap();
         for dep in resolve_deps(&sub) {
             if present.contains(&&dep.id) {
@@ -296,21 +297,6 @@ fn resolve_deps(m: &nodes::Module) -> Vec<nodes::Module> {
         }
     }
     return deps;
-}
-
-struct Import {
-    path: String,
-}
-
-fn module_imports(module: &nodes::Module) -> Vec<Import> {
-    let mut list: Vec<Import> = vec![];
-    for element in &module.elements {
-        match element {
-            nodes::ModuleObject::Import { path } => list.push(Import { path: path.clone() }),
-            _ => {}
-        }
-    }
-    return list;
 }
 
 fn deptree(argv: &[String]) -> i32 {
@@ -332,7 +318,7 @@ struct DepNode {
 }
 
 fn build_tree(m: &nodes::Module) -> DepNode {
-    let imports = module_imports(m);
+    let imports = build::module_imports(m);
     let mut deps = vec![];
     for import in imports {
         let m = parser::get_module(&import.path, &m.source_path).unwrap();
@@ -419,7 +405,7 @@ fn exports(argv: &[String]) -> i32 {
             println!("functions");
             for (i, t) in types.iter().enumerate() {
                 print!("\t{}", t);
-                for _ in 0..(type_width-t.len() + 2) {
+                for _ in 0..(type_width - t.len() + 2) {
                     print!(" ");
                 }
                 if !forms[i].starts_with("*") {
