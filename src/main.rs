@@ -129,9 +129,8 @@ fn run_tests(args: &[String]) -> Result<(), String> {
     return Ok(());
 }
 
-fn get_first_module(path: &String) -> Result<nodes::Module, String> {
-    let name = String::from(Path::new(path).file_name().unwrap().to_str().unwrap());
-    return parser::get_module(&name, &path);
+fn basename(path: &String) -> String {
+    return String::from(Path::new(path).file_name().unwrap().to_str().unwrap());
 }
 
 #[test]
@@ -145,7 +144,8 @@ fn snapshots() {
         println!("{}", path);
 
         // get the output
-        let m = get_first_module(&path.to_string()).unwrap();
+        let p = &path.to_string();
+        let m = parser::get_module(&basename(p), &p).unwrap();
         let mods = resolve_deps(&m);
         let c_mods: Vec<nodes::CompatModule> =
             mods.iter().map(|m| translator::translate(&m)).collect();
@@ -162,7 +162,7 @@ fn snapshots() {
 
 fn build_prog(source_path: &String, output_name: &String) -> Result<(), String> {
     // Get the module we're building.
-    let main_module = get_first_module(source_path)?;
+    let main_module = parser::get_module(&basename(source_path), &source_path)?;
 
     // Get all modules that our module depends on. This includes our module as
     // well, so this is a complete list of modules required for the build.
@@ -305,7 +305,7 @@ fn deptree(argv: &[String]) -> i32 {
         return 1;
     }
     let path = &argv[0];
-    let m = get_first_module(path).unwrap();
+    let m = parser::get_module(&basename(path), &path).unwrap();
     let tree = build_tree(&m);
     let r = render_tree(&tree);
     println!("{}", r.join("\n"));
@@ -358,7 +358,7 @@ fn indent_tree(lines: Vec<String>, first: &str, cont: &str) -> Vec<String> {
 
 fn exports(argv: &[String]) -> i32 {
     for path in argv {
-        let m = get_first_module(&path.to_string()).unwrap();
+        let m = parser::get_module(&basename(path), &path).unwrap();
         println!("mod {}", m.id);
         let exports = checkers::get_exports(&m);
         if !exports.consts.is_empty() {
