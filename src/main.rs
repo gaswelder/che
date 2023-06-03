@@ -146,7 +146,7 @@ fn snapshots() {
         // get the output
         let p = &path.to_string();
         let m = parser::get_module(&basename(p), &p).unwrap();
-        let mods = resolve_deps(&m);
+        let mods = build::resolve_deps(&m);
         let c_mods: Vec<nodes::CompatModule> =
             mods.iter().map(|m| translator::translate(&m)).collect();
         let result = format::format_compat_module(&c_mods[0]);
@@ -166,7 +166,7 @@ fn build_prog(source_path: &String, output_name: &String) -> Result<(), String> 
 
     // Get all modules that our module depends on. This includes our module as
     // well, so this is a complete list of modules required for the build.
-    let all_modules = resolve_deps(&main_module);
+    let all_modules = build::resolve_deps(&main_module);
 
     // Dome some checks.
     for m in &all_modules {
@@ -281,22 +281,6 @@ fn build(argv: &[String]) -> Result<(), String> {
             exit(1)
         }
     }
-}
-
-fn resolve_deps(m: &nodes::Module) -> Vec<nodes::Module> {
-    let mut deps: Vec<nodes::Module> = vec![m.clone()];
-    let mut present = vec![m.id.clone()];
-    for imp in build::module_imports(&m) {
-        let sub = parser::get_module(&imp.path, &m.source_path).unwrap();
-        for dep in resolve_deps(&sub) {
-            if present.contains(&&dep.id) {
-                continue;
-            }
-            present.push(dep.id.clone());
-            deps.push(dep);
-        }
-    }
-    return deps;
 }
 
 fn deptree(argv: &[String]) -> i32 {
