@@ -5,6 +5,7 @@ mod format;
 mod lexer;
 mod main_deptree;
 mod main_exports;
+mod main_genc;
 mod main_test;
 mod nodes;
 mod parser;
@@ -12,6 +13,7 @@ mod parser;
 mod rename;
 mod translator;
 use std::env;
+
 use std::path::Path;
 use std::process::exit;
 use std::string::String;
@@ -25,6 +27,9 @@ fn main() {
     match args[1].as_str() {
         "build" => {
             exit(build(&args[2..]));
+        }
+        "genc" => {
+            exit(main_genc::run(&args[2..]));
         }
         "deptree" => {
             exit(main_deptree::run(&args[2..]));

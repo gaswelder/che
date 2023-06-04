@@ -18,53 +18,14 @@ fn basename(path: &String) -> String {
 }
 
 pub fn build_prog(source_path: &String, output_name: &String) -> Result<(), String> {
-    // Get the module we're building.
-    let main_module = parser::get_module(&basename(source_path), &source_path)?;
-
-    // Get all modules that our module depends on. This includes our module as
-    // well, so this is a complete list of modules required for the build.
-    let all_modules = resolve_deps(&main_module);
-
-    // Dome some checks.
-    for m in &all_modules {
-        for imp in module_imports(m) {
-            let dep = parser::get_module(&imp.path, &m.source_path)?;
-            if !checkers::depused(&m, &dep) {
-                return Err(format!("{}: imported {} is not used", m.id, dep.id));
-            }
-        }
-    }
-
-    // Convert all modules to C modules.
-    let c_modules: Vec<nodes::CompatModule> = all_modules
-        .iter()
-        .map(|m| translator::translate(&m))
-        .collect();
-
     // Decide where we'll stash all generated C code.
     let tmp_dir_path = format!("{}/tmp", parser::homepath());
     if fs::metadata(&tmp_dir_path).is_err() {
         fs::create_dir(&tmp_dir_path).unwrap();
     }
 
-    // Write the generated C source files in the temp directory and build the
-    // mapping of the generated C file path to the original source file path,
-    // that will be used to trace C compiler's errors at least to the original
-    // files.
-    struct PathId {
-        path: String,
-        id: String,
-    }
-    let mut paths: Vec<PathId> = Vec::new();
-    for module in &c_modules {
-        let src = format::format_compat_module(&module);
-        let path = format!("{}/{:x}.c", tmp_dir_path, md5::compute(&module.id));
-        paths.push(PathId {
-            path: String::from(&path),
-            id: String::from(&module.id),
-        });
-        fs::write(&path, &src).unwrap();
-    }
+    let c_modules = translate(source_path)?;
+    let pathsmap = write_c99(&c_modules, &tmp_dir_path).unwrap();
 
     // Determine the list of OS libraries to link. "m" is the library for code
     // in included <math.h>. For simplicity both the header and the library are
@@ -90,7 +51,7 @@ pub fn build_prog(source_path: &String, output_name: &String) -> Result<(), Stri
         "-Wno-parentheses",
         "-g",
     ]);
-    for p in &paths {
+    for p in &pathsmap {
         cmd.arg(p.path.clone());
     }
     cmd.args(&["-o", &output_name]);
@@ -103,7 +64,7 @@ pub fn build_prog(source_path: &String, output_name: &String) -> Result<(), Stri
     let reader = std::io::BufReader::new(out);
     for liner in reader.lines() {
         let mut line = liner.unwrap();
-        for p in &paths {
+        for p in &pathsmap {
             line = line.replace(&p.path, &format!("{} -> {}", &p.id, &p.path));
         }
         println!("{}", &line);
@@ -113,6 +74,55 @@ pub fn build_prog(source_path: &String, output_name: &String) -> Result<(), Stri
         return Ok(());
     }
     return Err(String::from("build failed"));
+}
+
+pub fn translate(source_path: &String) -> Result<Vec<nodes::CompatModule>, String> {
+    // Get the module we're building.
+    let main_module = parser::get_module(&basename(source_path), &source_path)?;
+
+    // Get all modules that our module depends on. This includes our module as
+    // well, so this is a complete list of modules required for the build.
+    let all_modules = resolve_deps(&main_module);
+
+    // Dome some checks.
+    for m in &all_modules {
+        for imp in module_imports(m) {
+            let dep = parser::get_module(&imp.path, &m.source_path)?;
+            if !checkers::depused(&m, &dep) {
+                return Err(format!("{}: imported {} is not used", m.id, dep.id));
+            }
+        }
+    }
+    return Ok(all_modules
+        .iter()
+        .map(|m| translator::translate(&m))
+        .collect());
+}
+
+pub struct PathId {
+    path: String,
+    id: String,
+}
+
+pub fn write_c99(
+    c_modules: &Vec<nodes::CompatModule>,
+    dirpath: &String,
+) -> Result<Vec<PathId>, String> {
+    // Write the generated C source files in the temp directory and build the
+    // mapping of the generated C file path to the original source file path,
+    // that will be used to trace C compiler's errors at least to the original
+    // files.
+    let mut paths: Vec<PathId> = Vec::new();
+    for module in c_modules {
+        let src = format::format_compat_module(&module);
+        let path = format!("{}/{:x}.c", dirpath, md5::compute(&module.id));
+        paths.push(PathId {
+            path: String::from(&path),
+            id: String::from(&module.id),
+        });
+        fs::write(&path, &src).unwrap();
+    }
+    return Ok(paths);
 }
 
 // Returns a list of import nodes from the module.
