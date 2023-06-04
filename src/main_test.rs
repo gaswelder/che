@@ -4,7 +4,7 @@ use std::process::Command;
 use std::str;
 use std::string::String;
 
-pub fn run_tests(args: &[String]) -> Result<(), String> {
+pub fn run(args: &[String]) -> Result<(), String> {
     let mut fails = 0;
     let mut total = 0;
     for arg in args {
