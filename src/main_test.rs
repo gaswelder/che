@@ -4,41 +4,56 @@ use std::process::Command;
 use std::str;
 use std::string::String;
 
-pub fn run(args: &[String]) -> Result<(), String> {
-    let mut fails = 0;
-    let mut total = 0;
+struct Stats {
+    total: i32,
+    fails: i32,
+}
+
+pub fn run(args: &[String]) -> i32 {
+    let mut s = Stats { total: 0, fails: 0 };
     for arg in args {
-        let tests = find_tests(arg)?;
-        for path in tests {
-            build::build_prog(&path, &String::from("test.out")).unwrap();
-            let output = Command::new("./test.out").output().unwrap();
-            let errstr = str::from_utf8(&output.stderr).unwrap();
-            let outstr = str::from_utf8(&output.stdout).unwrap().trim_end();
-            if output.status.success() {
-                if outstr != "" {
-                    println!("OK {}: {}", path, outstr);
-                } else {
-                    println!("OK {}", path);
-                }
-            } else {
-                fails += 1;
-                println!("FAIL {}", path);
-                println!("stdout:\n{}", outstr);
+        match run_arg(arg) {
+            Ok(stats1) => {
+                s.total += stats1.total;
+                s.fails += stats1.fails;
             }
-            if errstr != "" {
-                println!("stderr:\n{}", errstr);
+            Err(err) => {
+                println!("{}", err);
             }
-            total += 1
         }
-        println!("{} tests", total)
     }
-    if fails > 1 {
-        return Err(format!("{} tests failed", fails));
+    println!("fails: {}, total: {}", s.fails, s.total);
+    return s.fails;
+}
+
+fn run_arg(arg: &String) -> Result<Stats, String> {
+    let tests = find_tests(arg)?;
+    let mut stats = Stats {
+        total: tests.len() as i32,
+        fails: 0,
+    };
+    for path in tests {
+        build::build_prog(&path, &String::from("test.out"))?;
+        let output = Command::new("./test.out").output().unwrap();
+        let errstr = str::from_utf8(&output.stderr).unwrap();
+        let outstr = str::from_utf8(&output.stdout).unwrap().trim_end();
+        if output.status.success() {
+            if outstr != "" {
+                println!("OK {}: {}", path, outstr);
+            } else {
+                println!("OK {}", path);
+            }
+        } else {
+            stats.fails += 1;
+            println!("FAIL {}", path);
+            println!("stdout:\n{}", outstr);
+        }
+        if errstr != "" {
+            println!("stderr:\n{}", errstr);
+        }
     }
-    if fails == 1 {
-        return Err(format!("1 test failed"));
-    }
-    return Ok(());
+    println!("{} tests", stats.total);
+    return Ok(stats);
 }
 
 fn find_tests(dirpath: &String) -> Result<Vec<String>, String> {

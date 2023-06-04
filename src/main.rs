@@ -20,44 +20,36 @@ fn main() {
     let args: Vec<String> = env::args().collect();
     if args.len() == 1 {
         usage();
+        exit(1);
     }
-    if args[1] == "build" {
-        match build(&args[2..]) {
-            Ok(_) => exit(0),
-            Err(m) => {
-                eprintln!("{}", m);
-                exit(1);
-            }
+    match args[1].as_str() {
+        "build" => {
+            exit(build(&args[2..]));
+        }
+        "deptree" => {
+            exit(main_deptree::run(&args[2..]));
+        }
+        "exports" => {
+            exit(main_exports::run(&args[2..]));
+        }
+        "test" => {
+            exit(main_test::run(&args[2..]));
+        }
+        _ => {
+            usage();
+            exit(1);
         }
     }
-    if args[1] == "deptree" {
-        exit(main_deptree::run(&args[2..]));
-    }
-    if args[1] == "exports" {
-        exit(main_exports::run(&args[2..]));
-    }
-    if args[1] == "test" {
-        match main_test::run(&args[2..]) {
-            Err(s) => {
-                eprintln!("{}", s);
-                exit(1);
-            }
-            Ok(_) => {
-                exit(0);
-            }
-        }
-    }
-    usage();
 }
 
 fn usage() {
     eprintln!("usage: che build | deptree | exports | test");
-    exit(1);
 }
 
-fn build(argv: &[String]) -> Result<(), String> {
+fn build(argv: &[String]) -> i32 {
     if argv.len() < 1 || argv.len() > 2 {
-        return Err(String::from("Usage: build <source-path> [<output-path>]"));
+        eprintln!("usage: build <source-path> [<output-path>]");
+        return 1;
     }
     let path = &argv[0];
     let output_name = if argv.len() == 2 {
@@ -72,10 +64,12 @@ fn build(argv: &[String]) -> Result<(), String> {
             .to_string()
     };
     match build::build_prog(path, &output_name) {
-        Ok(()) => exit(0),
+        Ok(()) => {
+            return 0;
+        }
         Err(s) => {
             eprintln!("{}", s);
-            exit(1)
+            return 1;
         }
     }
 }
