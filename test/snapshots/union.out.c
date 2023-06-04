@@ -1,6 +1,6 @@
 
 
-/* -------test/snapshots/union.c------- */
+/* -------test/snapshots/union.in.c------- */
 
 
 /* -------------- */

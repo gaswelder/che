@@ -1,6 +1,6 @@
 
 
-/* -------test/snapshots/literals.c------- */
+/* -------test/snapshots/literals.in.c------- */
 
 
 /* -------------- */

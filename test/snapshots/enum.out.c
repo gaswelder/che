@@ -1,6 +1,6 @@
 
 
-/* -------test/snapshots/enum.c------- */
+/* -------test/snapshots/enum.in.c------- */
 
 
 /* -------------- */

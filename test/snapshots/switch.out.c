@@ -1,6 +1,6 @@
 
 
-/* -------test/snapshots/switch.c------- */
+/* -------test/snapshots/switch.in.c------- */
 
 
 /* -------------- */

@@ -1,6 +1,6 @@
 
 
-/* -------test/snapshots/brace.c------- */
+/* -------test/snapshots/brace.in.c------- */
 
 
 /* -------------- */

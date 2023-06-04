@@ -1,6 +1,6 @@
 
 
-/* -------test/snapshots/ellipsis.c------- */
+/* -------test/snapshots/ellipsis.in.c------- */
 
 
 /* -------------- */

@@ -1,6 +1,6 @@
 
 
-/* -------test/snapshots/expressions.c------- */
+/* -------test/snapshots/expressions.in.c------- */
 
 
 /* -------------- */

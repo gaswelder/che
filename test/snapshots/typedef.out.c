@@ -1,6 +1,6 @@
 
 
-/* -------test/snapshots/typedef.c------- */
+/* -------test/snapshots/typedef.in.c------- */
 
 
 /* -------------- */

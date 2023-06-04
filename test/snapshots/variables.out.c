@@ -1,6 +1,6 @@
 
 
-/* -------test/snapshots/variables.c------- */
+/* -------test/snapshots/variables.in.c------- */
 
 
 /* -------------- */
