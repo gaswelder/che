@@ -11,9 +11,9 @@ pub fn translate(m: &Module) -> CModule {
     let mut link: Vec<String> = Vec::new();
     for node in &m.elements {
         match node {
-            ModuleObject::CompatMacro(x) => {
-                if x.name == "link" {
-                    link.push(x.value.clone())
+            ModuleObject::Macro { name, value } => {
+                if name == "link" {
+                    link.push(value.clone())
                 }
             }
             _ => {}
@@ -216,13 +216,13 @@ fn translate_module_object(element: &ModuleObject, m: &Module) -> Vec<CModuleObj
                 is_hidden: !is_pub,
             }];
         }
-        ModuleObject::CompatMacro(x) => {
-            if x.name == "type" || x.name == "link" {
+        ModuleObject::Macro { name, value } => {
+            if name == "type" || name == "link" {
                 return vec![];
             } else {
                 return vec![CModuleObject::Macro {
-                    name: x.name.clone(),
-                    value: x.value.clone(),
+                    name: name.clone(),
+                    value: value.clone(),
                 }];
             }
         }

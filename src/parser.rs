@@ -1,6 +1,5 @@
 use crate::lexer::{for_file, Lexer, Token};
 use crate::nodes::*;
-use crate::nodes_c::*;
 use std::env;
 use std::path::Path;
 use substring::Substring;
@@ -809,7 +808,7 @@ fn parse_module_object(lexer: &mut Lexer, ctx: &Ctx) -> Result<ModuleObject, Str
     return Err("unexpected input".to_string());
 }
 
-fn parse_compat_macro(lexer: &mut Lexer) -> Result<CompatMacro, String> {
+fn parse_compat_macro(lexer: &mut Lexer) -> Result<ModuleObject, String> {
     let content = expect(lexer, "macro", None)
         .unwrap()
         .content
@@ -821,7 +820,7 @@ fn parse_compat_macro(lexer: &mut Lexer) -> Result<CompatMacro, String> {
     }
     let (name, value) = content.split_at(pos.unwrap());
 
-    return Ok(CompatMacro {
+    return Ok(ModuleObject::Macro {
         name: name[1..].to_string(),
         value: value.to_string(),
     });
@@ -1161,7 +1160,7 @@ fn parse_module(
                 }
             }
             "macro" => {
-                module_objects.push(ModuleObject::CompatMacro(parse_compat_macro(l)?));
+                module_objects.push(parse_compat_macro(l)?);
             }
             _ => {
                 module_objects.push(parse_module_object(l, &ctx2)?);

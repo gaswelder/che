@@ -11,7 +11,7 @@ pub struct Module {
 
 #[derive(Debug, Clone)]
 pub enum ModuleObject {
-    CompatMacro(CompatMacro),
+    Macro { name: String, value: String },
     Import { path: String },
     Enum(Enum),
     Typedef(Typedef),

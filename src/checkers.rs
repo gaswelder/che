@@ -17,7 +17,7 @@ pub fn depused(m: &Module, dep: &Module) -> bool {
     }
     for obj in &m.elements {
         match obj {
-            ModuleObject::CompatMacro(_) => {}
+            ModuleObject::Macro { .. } => {}
             ModuleObject::Import { .. } => {}
             ModuleObject::Enum(x) => {
                 for m in &x.members {
