@@ -76,7 +76,7 @@ pub fn build_prog(source_path: &String, output_name: &String) -> Result<(), Stri
     return Err(String::from("build failed"));
 }
 
-pub fn translate(source_path: &String) -> Result<Vec<nodes::CompatModule>, String> {
+pub fn translate(source_path: &String) -> Result<Vec<nodes::CModule>, String> {
     // Get the module we're building.
     let main_module = parser::get_module(&basename(source_path), &source_path)?;
 
@@ -104,10 +104,7 @@ pub struct PathId {
     id: String,
 }
 
-pub fn write_c99(
-    c_modules: &Vec<nodes::CompatModule>,
-    dirpath: &String,
-) -> Result<Vec<PathId>, String> {
+pub fn write_c99(c_modules: &Vec<nodes::CModule>, dirpath: &String) -> Result<Vec<PathId>, String> {
     // Write the generated C source files in the temp directory and build the
     // mapping of the generated C file path to the original source file path,
     // that will be used to trace C compiler's errors at least to the original

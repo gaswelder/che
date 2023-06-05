@@ -1,3 +1,5 @@
+// Che
+
 #[derive(Clone)]
 pub struct Module {
     pub id: String,
@@ -16,6 +18,97 @@ pub enum ModuleObject {
     ModuleVariable(ModuleVariable),
     FunctionDeclaration(FunctionDeclaration),
 }
+
+#[derive(Debug, Clone)]
+pub struct FunctionDeclaration {
+    pub is_pub: bool,
+    pub type_name: Typename,
+    pub form: Form,
+    pub parameters: FunctionParameters,
+    pub body: Body,
+}
+
+// C
+
+#[derive(Debug, Clone)]
+pub struct CModule {
+    pub id: String,
+    pub elements: Vec<CModuleObject>,
+    pub link: Vec<String>,
+}
+
+#[derive(Debug, Clone)]
+pub enum CModuleObject {
+    ModuleVariable(ModuleVariable),
+    Typedef {
+        is_pub: bool,
+        type_name: Typename,
+        form: TypedefForm,
+    },
+    FuncTypedef {
+        is_pub: bool,
+        return_type: Typename,
+        name: String,
+        params: AnonymousParameters,
+    },
+    CompatMacro(CompatMacro),
+    CompatInclude(String),
+    Enum {
+        members: Vec<EnumItem>,
+        is_hidden: bool,
+    },
+    CompatStructForwardDeclaration(String),
+    CompatStructDefinition(CompatStructDefinition),
+    CompatFunctionForwardDeclaration(CompatFunctionForwardDeclaration),
+    CompatFunctionDeclaration(CompatFunctionDeclaration),
+    CompatSplit {
+        text: String,
+    },
+}
+
+#[derive(Debug, Clone)]
+pub struct CompatFunctionForwardDeclaration {
+    pub is_static: bool,
+    pub type_name: Typename,
+    pub form: Form,
+    pub parameters: CompatFunctionParameters,
+}
+
+#[derive(Debug, Clone)]
+pub struct CompatFunctionDeclaration {
+    pub is_static: bool,
+    pub type_name: Typename,
+    pub form: Form,
+    pub parameters: CompatFunctionParameters,
+    pub body: Body,
+}
+
+#[derive(Debug, Clone)]
+pub struct CompatFunctionParameters {
+    pub list: Vec<CompatFunctionParameter>,
+    pub variadic: bool,
+}
+
+#[derive(Debug, Clone)]
+pub struct CompatFunctionParameter {
+    pub type_name: Typename,
+    pub form: Form,
+}
+
+#[derive(Debug, Clone)]
+pub struct CompatStructDefinition {
+    pub name: String,
+    pub fields: Vec<CompatStructEntry>,
+    pub is_pub: bool,
+}
+
+#[derive(Debug, Clone)]
+pub enum CompatStructEntry {
+    CompatStructField { type_name: Typename, form: Form },
+    Union(Union),
+}
+
+// Both
 
 #[derive(Debug, Clone)]
 pub struct Typedef {
@@ -49,15 +142,6 @@ pub struct Enum {
 pub struct EnumItem {
     pub id: String,
     pub value: Option<Expression>,
-}
-
-#[derive(Debug, Clone)]
-pub struct FunctionDeclaration {
-    pub is_pub: bool,
-    pub type_name: Typename,
-    pub form: Form,
-    pub parameters: FunctionParameters,
-    pub body: Body,
 }
 
 #[derive(Debug, Clone)]
@@ -211,21 +295,9 @@ pub struct FunctionParameters {
 }
 
 #[derive(Debug, Clone)]
-pub struct CompatFunctionParameters {
-    pub list: Vec<CompatFunctionParameter>,
-    pub variadic: bool,
-}
-
-#[derive(Debug, Clone)]
 pub struct TypeAndForms {
     pub type_name: Typename,
     pub forms: Vec<Form>,
-}
-
-#[derive(Debug, Clone)]
-pub struct CompatFunctionParameter {
-    pub type_name: Typename,
-    pub form: Form,
 }
 
 #[derive(Debug, Clone)]
@@ -245,36 +317,6 @@ pub struct ModuleVariable {
     pub type_name: Typename,
     pub form: Form,
     pub value: Expression,
-}
-
-#[derive(Debug, Clone)]
-pub struct CompatFunctionForwardDeclaration {
-    pub is_static: bool,
-    pub type_name: Typename,
-    pub form: Form,
-    pub parameters: CompatFunctionParameters,
-}
-
-#[derive(Debug, Clone)]
-pub struct CompatFunctionDeclaration {
-    pub is_static: bool,
-    pub type_name: Typename,
-    pub form: Form,
-    pub parameters: CompatFunctionParameters,
-    pub body: Body,
-}
-
-#[derive(Debug, Clone)]
-pub struct CompatStructDefinition {
-    pub name: String,
-    pub fields: Vec<CompatStructEntry>,
-    pub is_pub: bool,
-}
-
-#[derive(Debug, Clone)]
-pub enum CompatStructEntry {
-    CompatStructField { type_name: Typename, form: Form },
-    Union(Union),
 }
 
 #[derive(Debug, Clone)]
@@ -301,40 +343,4 @@ pub struct AnonymousParameters {
 pub enum StructEntry {
     Plain(TypeAndForms),
     Union(Union),
-}
-
-#[derive(Debug, Clone)]
-pub struct CompatModule {
-    pub elements: Vec<CompatModuleObject>,
-    pub link: Vec<String>,
-    pub id: String,
-}
-
-#[derive(Debug, Clone)]
-pub enum CompatModuleObject {
-    ModuleVariable(ModuleVariable),
-    Typedef {
-        is_pub: bool,
-        type_name: Typename,
-        form: TypedefForm,
-    },
-    FuncTypedef {
-        is_pub: bool,
-        return_type: Typename,
-        name: String,
-        params: AnonymousParameters,
-    },
-    CompatMacro(CompatMacro),
-    CompatInclude(String),
-    Enum {
-        members: Vec<EnumItem>,
-        is_hidden: bool,
-    },
-    CompatStructForwardDeclaration(String),
-    CompatStructDefinition(CompatStructDefinition),
-    CompatFunctionForwardDeclaration(CompatFunctionForwardDeclaration),
-    CompatFunctionDeclaration(CompatFunctionDeclaration),
-    CompatSplit {
-        text: String,
-    },
 }

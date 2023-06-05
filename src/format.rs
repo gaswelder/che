@@ -1,15 +1,15 @@
 use crate::nodes::*;
 use crate::parser;
 
-pub fn format_module(node: &CompatModule) -> String {
+pub fn format_module(node: &CModule) -> String {
     let mut s = String::new();
     for e in &node.elements {
         s += &match e {
-            CompatModuleObject::ModuleVariable(x) => format_module_variable(&x),
-            CompatModuleObject::Typedef {
+            CModuleObject::ModuleVariable(x) => format_module_variable(&x),
+            CModuleObject::Typedef {
                 type_name, form, ..
             } => format_typedef(&type_name, &form),
-            CompatModuleObject::FuncTypedef {
+            CModuleObject::FuncTypedef {
                 return_type,
                 name,
                 params,
@@ -20,9 +20,9 @@ pub fn format_module(node: &CompatModule) -> String {
                 name,
                 format_anonymous_parameters(params)
             ),
-            CompatModuleObject::CompatMacro(x) => format_compat_macro(&x),
-            CompatModuleObject::CompatInclude(x) => format!("#include {}\n", x),
-            CompatModuleObject::Enum { members, .. } => {
+            CModuleObject::CompatMacro(x) => format_compat_macro(&x),
+            CModuleObject::CompatInclude(x) => format!("#include {}\n", x),
+            CModuleObject::Enum { members, .. } => {
                 let mut s1 = String::from("enum {\n");
                 for (i, member) in members.iter().enumerate() {
                     if i > 0 {
@@ -33,15 +33,13 @@ pub fn format_module(node: &CompatModule) -> String {
                 s1 += "\n};\n";
                 s1
             }
-            CompatModuleObject::CompatStructForwardDeclaration(x) => format!("struct {};\n", x),
-            CompatModuleObject::CompatStructDefinition(x) => format_compat_struct_definition(&x),
-            CompatModuleObject::CompatFunctionForwardDeclaration(x) => {
+            CModuleObject::CompatStructForwardDeclaration(x) => format!("struct {};\n", x),
+            CModuleObject::CompatStructDefinition(x) => format_compat_struct_definition(&x),
+            CModuleObject::CompatFunctionForwardDeclaration(x) => {
                 format_compat_function_forward_declaration(&x)
             }
-            CompatModuleObject::CompatFunctionDeclaration(x) => {
-                format_compat_function_declaration(&x)
-            }
-            CompatModuleObject::CompatSplit { text } => format!("\n\n{}\n", text),
+            CModuleObject::CompatFunctionDeclaration(x) => format_compat_function_declaration(&x),
+            CModuleObject::CompatSplit { text } => format!("\n\n{}\n", text),
         }
     }
     return s;

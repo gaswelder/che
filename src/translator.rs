@@ -3,7 +3,7 @@ use crate::nodes::*;
 use crate::parser;
 use std::collections::HashSet;
 
-pub fn translate(m: &Module) -> CompatModule {
+pub fn translate(m: &Module) -> CModule {
     // Build the list of modules to link.
     // These are specified using the #link macros.
     let mut link: Vec<String> = Vec::new();
@@ -20,7 +20,7 @@ pub fn translate(m: &Module) -> CompatModule {
 
     // Translate each node into a C node. Some nodes are valid C nodes already,
     // but some are not and have to be converted to their "Compat..." analogs.
-    let mut elements: Vec<CompatModuleObject> = Vec::new();
+    let mut elements: Vec<CModuleObject> = Vec::new();
     for element in &m.elements {
         for node in translate_module_object(element, m) {
             elements.push(node)
@@ -35,33 +35,33 @@ pub fn translate(m: &Module) -> CompatModule {
         "stdio", "stdlib", "string", "time", "setjmp",
     ];
     for n in std {
-        elements.push(CompatModuleObject::CompatInclude(format!("<{}.h>", n)));
+        elements.push(CModuleObject::CompatInclude(format!("<{}.h>", n)));
     }
-    elements.push(CompatModuleObject::CompatMacro(CompatMacro {
+    elements.push(CModuleObject::CompatMacro(CompatMacro {
         name: "define".to_string(),
         value: "nelem(x) (sizeof (x)/sizeof (x)[0])".to_string(),
     }));
 
     // Reorder the elements so that typedefs and similar preamble elements
     // come first.
-    let mut groups: Vec<Vec<CompatModuleObject>> =
+    let mut groups: Vec<Vec<CModuleObject>> =
         vec![vec![], vec![], vec![], vec![], vec![], vec![], vec![]];
     let mut set: HashSet<String> = HashSet::new();
     for element in elements {
         let order = match element {
-            CompatModuleObject::CompatInclude(_) => 0,
-            CompatModuleObject::CompatMacro(_) => 0,
-            CompatModuleObject::CompatStructForwardDeclaration(_) => 1,
-            CompatModuleObject::Typedef { .. } => 2,
-            CompatModuleObject::CompatStructDefinition(_) => 3,
-            CompatModuleObject::Enum { .. } => 3,
-            CompatModuleObject::CompatFunctionForwardDeclaration(_) => 4,
-            CompatModuleObject::ModuleVariable(_) => 5,
+            CModuleObject::CompatInclude(_) => 0,
+            CModuleObject::CompatMacro(_) => 0,
+            CModuleObject::CompatStructForwardDeclaration(_) => 1,
+            CModuleObject::Typedef { .. } => 2,
+            CModuleObject::CompatStructDefinition(_) => 3,
+            CModuleObject::Enum { .. } => 3,
+            CModuleObject::CompatFunctionForwardDeclaration(_) => 4,
+            CModuleObject::ModuleVariable(_) => 5,
             _ => 6,
         };
 
         match &element {
-            CompatModuleObject::Typedef {
+            CModuleObject::Typedef {
                 type_name, form, ..
             } => {
                 let s = format::format_typedef(&type_name, &form);
@@ -70,7 +70,7 @@ pub fn translate(m: &Module) -> CompatModule {
                 }
                 set.insert(s);
             }
-            CompatModuleObject::CompatStructDefinition(x) => {
+            CModuleObject::CompatStructDefinition(x) => {
                 let s = format::format_compat_struct_definition(&x);
                 if set.contains(&s) {
                     continue;
@@ -81,14 +81,14 @@ pub fn translate(m: &Module) -> CompatModule {
         }
         groups[order].push(element);
     }
-    let mut sorted_elements: Vec<CompatModuleObject> = vec![CompatModuleObject::CompatSplit {
+    let mut sorted_elements: Vec<CModuleObject> = vec![CModuleObject::CompatSplit {
         text: String::from(format!("/* -------{}------- */", &m.id)),
     }];
     for group in groups {
         if group.len() == 0 {
             continue;
         }
-        sorted_elements.push(CompatModuleObject::CompatSplit {
+        sorted_elements.push(CModuleObject::CompatSplit {
             text: String::from("/* -------------- */"),
         });
         for e in group {
@@ -96,20 +96,20 @@ pub fn translate(m: &Module) -> CompatModule {
         }
     }
 
-    return CompatModule {
+    return CModule {
         id: m.id.clone(),
         elements: sorted_elements,
         link,
     };
 }
 
-fn translate_module_object(element: &ModuleObject, m: &Module) -> Vec<CompatModuleObject> {
+fn translate_module_object(element: &ModuleObject, m: &Module) -> Vec<CModuleObject> {
     match element {
         ModuleObject::Typedef(Typedef {
             is_pub,
             type_name,
             form,
-        }) => vec![CompatModuleObject::Typedef {
+        }) => vec![CModuleObject::Typedef {
             is_pub: *is_pub,
             type_name: type_name.clone(),
             form: form.clone(),
@@ -119,7 +119,7 @@ fn translate_module_object(element: &ModuleObject, m: &Module) -> Vec<CompatModu
             return_type,
             name,
             params,
-        }) => vec![CompatModuleObject::FuncTypedef {
+        }) => vec![CModuleObject::FuncTypedef {
             is_pub: *is_pub,
             return_type: return_type.clone(),
             name: name.clone(),
@@ -155,13 +155,13 @@ fn translate_module_object(element: &ModuleObject, m: &Module) -> Vec<CompatModu
                 }
             }
             vec![
-                CompatModuleObject::CompatStructForwardDeclaration(struct_name.clone()),
-                CompatModuleObject::CompatStructDefinition(CompatStructDefinition {
+                CModuleObject::CompatStructForwardDeclaration(struct_name.clone()),
+                CModuleObject::CompatStructDefinition(CompatStructDefinition {
                     name: struct_name.clone(),
                     fields: compat_fields,
                     is_pub: *is_pub,
                 }),
-                CompatModuleObject::Typedef {
+                CModuleObject::Typedef {
                     is_pub: *is_pub,
                     type_name: Typename {
                         is_const: false,
@@ -189,7 +189,7 @@ fn translate_module_object(element: &ModuleObject, m: &Module) -> Vec<CompatModu
             body,
         }) => translate_function_declaration(*is_pub, type_name, form, parameters, body),
         ModuleObject::Enum(Enum { is_pub, members }) => {
-            return vec![CompatModuleObject::Enum {
+            return vec![CModuleObject::Enum {
                 members: members.clone(),
                 is_hidden: !is_pub,
             }];
@@ -198,51 +198,49 @@ fn translate_module_object(element: &ModuleObject, m: &Module) -> Vec<CompatModu
             if x.name == "type" || x.name == "link" {
                 return vec![];
             } else {
-                return vec![CompatModuleObject::CompatMacro(x.clone())];
+                return vec![CModuleObject::CompatMacro(x.clone())];
             }
         }
-        ModuleObject::ModuleVariable(x) => vec![CompatModuleObject::ModuleVariable(x.clone())],
+        ModuleObject::ModuleVariable(x) => vec![CModuleObject::ModuleVariable(x.clone())],
         // ModuleObject::CompatInclude(x) => vec![CompatModuleObject::CompatInclude(x.clone())],
     }
 }
 
-fn compat_function_forward_declaration(node: &CompatFunctionDeclaration) -> CompatModuleObject {
-    return CompatModuleObject::CompatFunctionForwardDeclaration(
-        CompatFunctionForwardDeclaration {
-            is_static: node.is_static,
-            type_name: node.type_name.clone(),
-            form: node.form.clone(),
-            parameters: node.parameters.clone(),
-        },
-    );
+fn compat_function_forward_declaration(node: &CompatFunctionDeclaration) -> CModuleObject {
+    return CModuleObject::CompatFunctionForwardDeclaration(CompatFunctionForwardDeclaration {
+        is_static: node.is_static,
+        type_name: node.type_name.clone(),
+        form: node.form.clone(),
+        parameters: node.parameters.clone(),
+    });
 }
 
 // Module synopsis is what you would usually extract into a header file:
 // function prototypes, typedefs, struct declarations.
-fn get_module_synopsis(module: CompatModule) -> Vec<CompatModuleObject> {
-    let mut elements: Vec<CompatModuleObject> = vec![];
+fn get_module_synopsis(module: CModule) -> Vec<CModuleObject> {
+    let mut elements: Vec<CModuleObject> = vec![];
 
     for element in module.elements {
         match element {
-            CompatModuleObject::Typedef { is_pub, .. } => {
+            CModuleObject::Typedef { is_pub, .. } => {
                 if is_pub {
                     elements.push(element.clone())
                 }
             }
-            CompatModuleObject::CompatStructDefinition(x) => {
+            CModuleObject::CompatStructDefinition(x) => {
                 if x.is_pub {
-                    elements.push(CompatModuleObject::CompatStructDefinition(x))
+                    elements.push(CModuleObject::CompatStructDefinition(x))
                 }
             }
-            CompatModuleObject::CompatFunctionForwardDeclaration(x) => {
+            CModuleObject::CompatFunctionForwardDeclaration(x) => {
                 if !x.is_static {
-                    elements.push(CompatModuleObject::CompatFunctionForwardDeclaration(x))
+                    elements.push(CModuleObject::CompatFunctionForwardDeclaration(x))
                 }
             }
-            CompatModuleObject::CompatMacro(x) => elements.push(CompatModuleObject::CompatMacro(x)),
-            CompatModuleObject::Enum { is_hidden, members } => {
+            CModuleObject::CompatMacro(x) => elements.push(CModuleObject::CompatMacro(x)),
+            CModuleObject::Enum { is_hidden, members } => {
                 if !is_hidden {
-                    elements.push(CompatModuleObject::Enum { is_hidden, members })
+                    elements.push(CModuleObject::Enum { is_hidden, members })
                 }
             }
             _ => {}
@@ -275,7 +273,7 @@ fn translate_function_declaration(
     form: &Form,
     parameters: &FunctionParameters,
     body: &Body,
-) -> Vec<CompatModuleObject> {
+) -> Vec<CModuleObject> {
     let func = CompatFunctionDeclaration {
         is_static: !is_pub,
         type_name: typename.clone(),
@@ -284,7 +282,7 @@ fn translate_function_declaration(
         body: body.clone(),
     };
     let decl = compat_function_forward_declaration(&func);
-    let mut r = vec![CompatModuleObject::CompatFunctionDeclaration(func)];
+    let mut r = vec![CModuleObject::CompatFunctionDeclaration(func)];
     if format::format_form(&form) != "main" {
         r.push(decl);
     }
