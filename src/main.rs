@@ -3,6 +3,7 @@ mod build;
 mod checkers;
 mod format;
 mod lexer;
+mod main_build;
 mod main_deptree;
 mod main_exports;
 mod main_genc;
@@ -13,8 +14,6 @@ mod parser;
 mod rename;
 mod translator;
 use std::env;
-
-use std::path::Path;
 use std::process::exit;
 use std::string::String;
 
@@ -26,7 +25,7 @@ fn main() {
     }
     match args[1].as_str() {
         "build" => {
-            exit(build(&args[2..]));
+            exit(main_build::run(&args[2..]));
         }
         "genc" => {
             exit(main_genc::run(&args[2..]));
@@ -49,34 +48,6 @@ fn main() {
 
 fn usage() {
     eprintln!("usage: che build | deptree | exports | test");
-}
-
-fn build(argv: &[String]) -> i32 {
-    if argv.len() < 1 || argv.len() > 2 {
-        eprintln!("usage: build <source-path> [<output-path>]");
-        return 1;
-    }
-    let path = &argv[0];
-    let output_name = if argv.len() == 2 {
-        argv[1].clone()
-    } else {
-        Path::new(&path)
-            .with_extension("")
-            .file_name()
-            .unwrap()
-            .to_str()
-            .unwrap()
-            .to_string()
-    };
-    match build::build_prog(path, &output_name) {
-        Ok(()) => {
-            return 0;
-        }
-        Err(s) => {
-            eprintln!("{}", s);
-            return 1;
-        }
-    }
 }
 
 #[cfg(test)]
