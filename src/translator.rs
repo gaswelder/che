@@ -55,7 +55,7 @@ pub fn translate(m: &Module) -> CModule {
             CModuleObject::Typedef { .. } => 2,
             CModuleObject::StructDefinition { .. } => 3,
             CModuleObject::Enum { .. } => 3,
-            CModuleObject::CompatFunctionForwardDeclaration(_) => 4,
+            CModuleObject::FunctionForwardDeclaration { .. } => 4,
             CModuleObject::ModuleVariable(_) => 5,
             _ => 6,
         };
@@ -210,15 +210,6 @@ fn translate_module_object(element: &ModuleObject, m: &Module) -> Vec<CModuleObj
     }
 }
 
-fn compat_function_forward_declaration(node: &CompatFunctionDeclaration) -> CModuleObject {
-    return CModuleObject::CompatFunctionForwardDeclaration(CompatFunctionForwardDeclaration {
-        is_static: node.is_static,
-        type_name: node.type_name.clone(),
-        form: node.form.clone(),
-        parameters: node.parameters.clone(),
-    });
-}
-
 // Module synopsis is what you would usually extract into a header file:
 // function prototypes, typedefs, struct declarations.
 fn get_module_synopsis(module: CModule) -> Vec<CModuleObject> {
@@ -244,9 +235,19 @@ fn get_module_synopsis(module: CModule) -> Vec<CModuleObject> {
                     })
                 }
             }
-            CModuleObject::CompatFunctionForwardDeclaration(x) => {
-                if !x.is_static {
-                    elements.push(CModuleObject::CompatFunctionForwardDeclaration(x))
+            CModuleObject::FunctionForwardDeclaration {
+                is_static,
+                type_name,
+                form,
+                parameters,
+            } => {
+                if !is_static {
+                    elements.push(CModuleObject::FunctionForwardDeclaration {
+                        is_static,
+                        type_name,
+                        form,
+                        parameters,
+                    })
                 }
             }
             CModuleObject::CompatMacro(x) => elements.push(CModuleObject::CompatMacro(x)),
@@ -293,7 +294,12 @@ fn translate_function_declaration(
         parameters: translate_function_parameters(&parameters),
         body: body.clone(),
     };
-    let decl = compat_function_forward_declaration(&func);
+    let decl = CModuleObject::FunctionForwardDeclaration {
+        is_static: func.is_static,
+        type_name: func.type_name.clone(),
+        form: func.form.clone(),
+        parameters: func.parameters.clone(),
+    };
     let mut r = vec![CModuleObject::CompatFunctionDeclaration(func)];
     if format::format_form(&form) != "main" {
         r.push(decl);

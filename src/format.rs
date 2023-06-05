@@ -39,9 +39,12 @@ pub fn format_module(node: &CModule) -> String {
                 fields,
                 is_pub: _,
             } => format_compat_struct_definition(name, fields),
-            CModuleObject::CompatFunctionForwardDeclaration(x) => {
-                format_compat_function_forward_declaration(&x)
-            }
+            CModuleObject::FunctionForwardDeclaration {
+                is_static,
+                type_name,
+                form,
+                parameters,
+            } => format_function_forward_declaration(*is_static, type_name, form, parameters),
             CModuleObject::CompatFunctionDeclaration(x) => format_compat_function_declaration(&x),
             CModuleObject::CompatSplit { text } => format!("\n\n{}\n", text),
         }
@@ -278,17 +281,22 @@ fn format_compat_function_declaration(node: &CompatFunctionDeclaration) -> Strin
     return s;
 }
 
-fn format_compat_function_forward_declaration(node: &CompatFunctionForwardDeclaration) -> String {
+fn format_function_forward_declaration(
+    is_static: bool,
+    type_name: &Typename,
+    form: &Form,
+    parameters: &CompatFunctionParameters,
+) -> String {
     let mut s = String::new();
-    let form = format_form(&node.form);
-    if node.is_static && form != "main" {
+    let form = format_form(form);
+    if is_static && form != "main" {
         s += "static ";
     }
     s += &format!(
         "{} {} {};\n",
-        format_type(&node.type_name),
+        format_type(type_name),
         form,
-        format_compat_function_parameters(&node.parameters)
+        format_compat_function_parameters(parameters)
     );
     return s;
 }

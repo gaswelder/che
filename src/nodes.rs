@@ -63,19 +63,16 @@ pub enum CModuleObject {
         fields: Vec<CompatStructEntry>,
         is_pub: bool,
     },
-    CompatFunctionForwardDeclaration(CompatFunctionForwardDeclaration),
+    FunctionForwardDeclaration {
+        is_static: bool,
+        type_name: Typename,
+        form: Form,
+        parameters: CompatFunctionParameters,
+    },
     CompatFunctionDeclaration(CompatFunctionDeclaration),
     CompatSplit {
         text: String,
     },
-}
-
-#[derive(Debug, Clone)]
-pub struct CompatFunctionForwardDeclaration {
-    pub is_static: bool,
-    pub type_name: Typename,
-    pub form: Form,
-    pub parameters: CompatFunctionParameters,
 }
 
 #[derive(Debug, Clone)]
