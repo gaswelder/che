@@ -6,7 +6,16 @@ pub fn format_module(node: &CModule) -> String {
     let mut s = String::new();
     for e in &node.elements {
         s += &match e {
-            CModuleObject::ModuleVariable(x) => format_module_variable(&x),
+            CModuleObject::ModuleVariable {
+                type_name,
+                form,
+                value,
+            } => format!(
+                "static {} {} = {};\n",
+                format_type(type_name),
+                format_form(form),
+                format_expression(value)
+            ),
             CModuleObject::Typedef {
                 type_name, form, ..
             } => format_typedef(&type_name, &form),
@@ -380,15 +389,6 @@ fn format_literal(node: &Literal) -> String {
 
 fn format_compat_macro(node: &CompatMacro) -> String {
     format!("#{} {}\n", node.name, node.value)
-}
-
-fn format_module_variable(node: &ModuleVariable) -> String {
-    return format!(
-        "static {} {} = {};\n",
-        format_type(&node.type_name),
-        format_form(&node.form),
-        format_expression(&node.value)
-    );
 }
 
 fn format_statement(node: &Statement) -> String {

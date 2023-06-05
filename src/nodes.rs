@@ -41,7 +41,11 @@ pub struct CModule {
 
 #[derive(Debug, Clone)]
 pub enum CModuleObject {
-    ModuleVariable(ModuleVariable),
+    ModuleVariable {
+        type_name: Typename,
+        form: Form,
+        value: Expression,
+    },
     Typedef {
         is_pub: bool,
         type_name: Typename,

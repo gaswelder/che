@@ -57,7 +57,7 @@ pub fn translate(m: &Module) -> CModule {
             CModuleObject::StructDefinition { .. } => 3,
             CModuleObject::Enum { .. } => 3,
             CModuleObject::FunctionForwardDeclaration { .. } => 4,
-            CModuleObject::ModuleVariable(_) => 5,
+            CModuleObject::ModuleVariable { .. } => 5,
             _ => 6,
         };
 
@@ -206,7 +206,11 @@ fn translate_module_object(element: &ModuleObject, m: &Module) -> Vec<CModuleObj
                 return vec![CModuleObject::CompatMacro(x.clone())];
             }
         }
-        ModuleObject::ModuleVariable(x) => vec![CModuleObject::ModuleVariable(x.clone())],
+        ModuleObject::ModuleVariable(x) => vec![CModuleObject::ModuleVariable {
+            type_name: x.type_name.clone(),
+            form: x.form.clone(),
+            value: x.value.clone(),
+        }],
         // ModuleObject::CompatInclude(x) => vec![CompatModuleObject::CompatInclude(x.clone())],
     }
 }
