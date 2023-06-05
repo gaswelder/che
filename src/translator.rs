@@ -53,7 +53,7 @@ pub fn translate(m: &Module) -> CModule {
             CModuleObject::CompatMacro(_) => 0,
             CModuleObject::CompatStructForwardDeclaration(_) => 1,
             CModuleObject::Typedef { .. } => 2,
-            CModuleObject::CompatStructDefinition(_) => 3,
+            CModuleObject::StructDefinition { .. } => 3,
             CModuleObject::Enum { .. } => 3,
             CModuleObject::CompatFunctionForwardDeclaration(_) => 4,
             CModuleObject::ModuleVariable(_) => 5,
@@ -70,8 +70,12 @@ pub fn translate(m: &Module) -> CModule {
                 }
                 set.insert(s);
             }
-            CModuleObject::CompatStructDefinition(x) => {
-                let s = format::format_compat_struct_definition(&x);
+            CModuleObject::StructDefinition {
+                name,
+                fields,
+                is_pub: _,
+            } => {
+                let s = format::format_compat_struct_definition(name, fields);
                 if set.contains(&s) {
                     continue;
                 }
@@ -156,11 +160,11 @@ fn translate_module_object(element: &ModuleObject, m: &Module) -> Vec<CModuleObj
             }
             vec![
                 CModuleObject::CompatStructForwardDeclaration(struct_name.clone()),
-                CModuleObject::CompatStructDefinition(CompatStructDefinition {
+                CModuleObject::StructDefinition {
                     name: struct_name.clone(),
                     fields: compat_fields,
                     is_pub: *is_pub,
-                }),
+                },
                 CModuleObject::Typedef {
                     is_pub: *is_pub,
                     type_name: Typename {
@@ -227,9 +231,17 @@ fn get_module_synopsis(module: CModule) -> Vec<CModuleObject> {
                     elements.push(element.clone())
                 }
             }
-            CModuleObject::CompatStructDefinition(x) => {
-                if x.is_pub {
-                    elements.push(CModuleObject::CompatStructDefinition(x))
+            CModuleObject::StructDefinition {
+                name,
+                fields,
+                is_pub,
+            } => {
+                if is_pub {
+                    elements.push(CModuleObject::StructDefinition {
+                        name: name.clone(),
+                        fields: fields.clone(),
+                        is_pub,
+                    })
                 }
             }
             CModuleObject::CompatFunctionForwardDeclaration(x) => {

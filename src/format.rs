@@ -34,7 +34,11 @@ pub fn format_module(node: &CModule) -> String {
                 s1
             }
             CModuleObject::CompatStructForwardDeclaration(x) => format!("struct {};\n", x),
-            CModuleObject::CompatStructDefinition(x) => format_compat_struct_definition(&x),
+            CModuleObject::StructDefinition {
+                name,
+                fields,
+                is_pub: _,
+            } => format_compat_struct_definition(name, fields),
             CModuleObject::CompatFunctionForwardDeclaration(x) => {
                 format_compat_function_forward_declaration(&x)
             }
@@ -289,9 +293,9 @@ fn format_compat_function_forward_declaration(node: &CompatFunctionForwardDeclar
     return s;
 }
 
-pub fn format_compat_struct_definition(node: &CompatStructDefinition) -> String {
+pub fn format_compat_struct_definition(name: &String, fields: &Vec<CompatStructEntry>) -> String {
     let mut s = String::new();
-    for entry in &node.fields {
+    for entry in fields {
         match entry {
             CompatStructEntry::CompatStructField { type_name, form } => {
                 s += &format!("{} {};\n", format_type(&type_name), format_form(&form));
@@ -303,7 +307,7 @@ pub fn format_compat_struct_definition(node: &CompatStructDefinition) -> String 
     }
     return format!(
         "struct {name} {{\n{contents}\n}};\n",
-        name = node.name,
+        name = name,
         contents = indent(&s)
     );
 }

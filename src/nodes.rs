@@ -58,7 +58,11 @@ pub enum CModuleObject {
         is_hidden: bool,
     },
     CompatStructForwardDeclaration(String),
-    CompatStructDefinition(CompatStructDefinition),
+    StructDefinition {
+        name: String,
+        fields: Vec<CompatStructEntry>,
+        is_pub: bool,
+    },
     CompatFunctionForwardDeclaration(CompatFunctionForwardDeclaration),
     CompatFunctionDeclaration(CompatFunctionDeclaration),
     CompatSplit {
@@ -93,13 +97,6 @@ pub struct CompatFunctionParameters {
 pub struct CompatFunctionParameter {
     pub type_name: Typename,
     pub form: Form,
-}
-
-#[derive(Debug, Clone)]
-pub struct CompatStructDefinition {
-    pub name: String,
-    pub fields: Vec<CompatStructEntry>,
-    pub is_pub: bool,
 }
 
 #[derive(Debug, Clone)]
