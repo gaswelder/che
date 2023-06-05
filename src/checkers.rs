@@ -19,8 +19,8 @@ pub fn depused(m: &Module, dep: &Module) -> bool {
         match obj {
             ModuleObject::Macro { .. } => {}
             ModuleObject::Import { .. } => {}
-            ModuleObject::Enum(x) => {
-                for m in &x.members {
+            ModuleObject::Enum { is_pub: _, members } => {
+                for m in members {
                     match &m.value {
                         Some(e) => {
                             if used_in_expr(e, &list) {
@@ -280,9 +280,9 @@ pub fn get_exports(m: &Module) -> Exports {
     };
     for e in &m.elements {
         match e {
-            ModuleObject::Enum(x) => {
-                if x.is_pub {
-                    for member in &x.members {
+            ModuleObject::Enum { is_pub, members } => {
+                if *is_pub {
+                    for member in members {
                         exports.consts.push(member.clone());
                     }
                 }

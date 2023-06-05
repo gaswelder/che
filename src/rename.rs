@@ -27,7 +27,7 @@ fn mod_obj(obj: &mut ModuleObject, prefix: &String, names: &Vec<String>) {
             expr(&mut x.value, prefix, names);
             rename_form(&mut x.form, prefix, names);
         }
-        ModuleObject::Enum(Enum { is_pub, members }) => {
+        ModuleObject::Enum { is_pub, members } => {
             if !*is_pub {
                 return;
             }

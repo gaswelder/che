@@ -380,7 +380,7 @@ fn parse_enum(lexer: &mut Lexer, is_pub: bool, ctx: &Ctx) -> Result<ModuleObject
     }
     expect(lexer, "}", Some("enum definition"))?;
     expect(lexer, ";", Some("enum definition"))?;
-    return Ok(ModuleObject::Enum(Enum { is_pub, members }));
+    return Ok(ModuleObject::Enum { is_pub, members });
 }
 
 fn parse_composite_literal(l: &mut Lexer, ctx: &Ctx) -> Result<CompositeLiteral, String> {

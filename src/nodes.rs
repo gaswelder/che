@@ -11,9 +11,17 @@ pub struct Module {
 
 #[derive(Debug, Clone)]
 pub enum ModuleObject {
-    Macro { name: String, value: String },
-    Import { path: String },
-    Enum(Enum),
+    Macro {
+        name: String,
+        value: String,
+    },
+    Import {
+        path: String,
+    },
+    Enum {
+        is_pub: bool,
+        members: Vec<EnumItem>,
+    },
     Typedef(Typedef),
     StructTypedef(StructTypedef),
     FuncTypedef(FuncTypedef),
@@ -138,12 +146,6 @@ pub struct FuncTypedef {
     pub return_type: Typename,
     pub name: String,
     pub params: AnonymousParameters,
-}
-
-#[derive(Debug, Clone)]
-pub struct Enum {
-    pub is_pub: bool,
-    pub members: Vec<EnumItem>,
 }
 
 #[derive(Debug, Clone)]

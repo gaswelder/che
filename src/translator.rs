@@ -203,7 +203,7 @@ fn translate_module_object(element: &ModuleObject, m: &Module) -> Vec<CModuleObj
             parameters,
             body,
         }) => translate_function_declaration(*is_pub, type_name, form, parameters, body),
-        ModuleObject::Enum(Enum { is_pub, members }) => {
+        ModuleObject::Enum { is_pub, members } => {
             let mut tm: Vec<CEnumItem> = Vec::new();
             for m in members {
                 tm.push(CEnumItem {
