@@ -24,13 +24,6 @@ fn expr(l: &mut Lexer, n: usize, ctx: &Ctx) -> Result<Expression, String> {
     panic!("unexpected n: {}", n)
 }
 
-fn parens(l: &mut Lexer, ctx: &Ctx) -> Result<Expression, String> {
-    expect(l, "(", Some("parenthesized expression"))?;
-    let e = expr(l, 0, ctx);
-    expect(l, ")", Some("parenthesized expression"))?;
-    return e;
-}
-
 fn seq(l: &mut Lexer, n: usize, ctx: &Ctx) -> Result<Expression, String> {
     let mut r = expr(l, n + 1, ctx)?;
     while op_follows(l, n) {
@@ -162,8 +155,9 @@ fn expr_id(l: &mut Lexer, ctx: &Ctx) -> Result<Expression, String> {
         return Ok(Expression::Literal(parse_literal(l)?));
     }
     if next.kind == "(" {
-        l.unget(next);
-        return parens(l, ctx);
+        let e = expr(l, 0, ctx);
+        expect(l, ")", Some("parenthesized expression"))?;
+        return e;
     }
     // Composite literal?
     if next.kind == "{" {
