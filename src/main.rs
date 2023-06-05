@@ -23,31 +23,19 @@ fn main() {
         usage();
         exit(1);
     }
-    match args[1].as_str() {
-        "build" => {
-            exit(main_build::run(&args[2..]));
-        }
-        "genc" => {
-            exit(main_genc::run(&args[2..]));
-        }
-        "deptree" => {
-            exit(main_deptree::run(&args[2..]));
-        }
-        "exports" => {
-            exit(main_exports::run(&args[2..]));
-        }
-        "test" => {
-            exit(main_test::run(&args[2..]));
-        }
-        _ => {
-            usage();
-            exit(1);
-        }
-    }
+    exit(match args[1].as_str() {
+        "build" => main_build::run(&args[2..]),
+        "deptree" => main_deptree::run(&args[2..]),
+        "exports" => main_exports::run(&args[2..]),
+        "genc" => main_genc::run(&args[2..]),
+        "test" => main_test::run(&args[2..]),
+        _ => usage(),
+    });
 }
 
-fn usage() {
-    eprintln!("usage: che build | deptree | exports | test");
+fn usage() -> i32 {
+    eprintln!("usage: che <build|deptree|exports|genc|test>");
+    return 1;
 }
 
 #[cfg(test)]
