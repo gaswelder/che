@@ -1,6 +1,7 @@
 use crate::checkers;
 use crate::format;
 use crate::nodes;
+use crate::nodes_c::CModule;
 use crate::parser;
 use crate::translator;
 use md5;
@@ -76,7 +77,7 @@ pub fn build_prog(source_path: &String, output_name: &String) -> Result<(), Stri
     return Err(String::from("build failed"));
 }
 
-pub fn translate(source_path: &String) -> Result<Vec<nodes::CModule>, String> {
+pub fn translate(source_path: &String) -> Result<Vec<CModule>, String> {
     // Get the module we're building.
     let main_module = parser::get_module(&basename(source_path), &source_path)?;
 
@@ -104,7 +105,7 @@ pub struct PathId {
     id: String,
 }
 
-pub fn write_c99(c_modules: &Vec<nodes::CModule>, dirpath: &String) -> Result<Vec<PathId>, String> {
+pub fn write_c99(c_modules: &Vec<CModule>, dirpath: &String) -> Result<Vec<PathId>, String> {
     // Write the generated C source files in the temp directory and build the
     // mapping of the generated C file path to the original source file path,
     // that will be used to trace C compiler's errors at least to the original

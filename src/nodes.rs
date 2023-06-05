@@ -1,5 +1,3 @@
-use crate::nodes_c::*;
-
 #[derive(Clone)]
 pub struct Module {
     pub id: String,
@@ -40,84 +38,6 @@ pub struct FunctionDeclaration {
     pub body: Body,
 }
 
-// C
-
-#[derive(Debug, Clone)]
-pub struct CModule {
-    pub id: String,
-    pub elements: Vec<CModuleObject>,
-    pub link: Vec<String>,
-}
-
-#[derive(Debug, Clone)]
-pub enum CModuleObject {
-    Include(String),
-    Macro {
-        name: String,
-        value: String,
-    },
-    EnumDefinition {
-        members: Vec<CEnumItem>,
-        is_hidden: bool,
-    },
-    Typedef {
-        is_pub: bool,
-        type_name: CTypename,
-        form: CTypedefForm,
-    },
-    FuncTypedef {
-        is_pub: bool,
-        return_type: CTypename,
-        name: String,
-        params: CAnonymousParameters,
-    },
-    StructForwardDeclaration(String),
-    StructDefinition {
-        name: String,
-        fields: Vec<CStructItem>,
-        is_pub: bool,
-    },
-    ModuleVariable {
-        type_name: CTypename,
-        form: CForm,
-        value: CExpression,
-    },
-    FunctionForwardDeclaration {
-        is_static: bool,
-        type_name: CTypename,
-        form: CForm,
-        parameters: CompatFunctionParameters,
-    },
-    FunctionDefinition {
-        is_static: bool,
-        type_name: CTypename,
-        form: CForm,
-        parameters: CompatFunctionParameters,
-        body: CBody,
-    },
-    Split {
-        text: String,
-    },
-}
-
-#[derive(Debug, Clone)]
-pub struct CompatFunctionParameters {
-    pub list: Vec<CTypeForm>,
-    pub variadic: bool,
-}
-
-#[derive(Debug, Clone)]
-pub struct CTypeForm {
-    pub type_name: CTypename,
-    pub form: CForm,
-}
-
-#[derive(Debug, Clone)]
-pub enum CStructItem {
-    Field(CTypeForm),
-    Union(CUnion),
-}
-
 #[derive(Debug, Clone)]
 pub struct Typedef {
     pub is_pub: bool,
@@ -155,12 +75,6 @@ pub struct EnumItem {
 }
 
 #[derive(Debug, Clone)]
-pub struct CEnumItem {
-    pub id: String,
-    pub value: Option<CExpression>,
-}
-
-#[derive(Debug, Clone)]
 pub struct Typename {
     pub is_const: bool,
     pub name: String,
@@ -173,12 +87,6 @@ pub struct AnonymousTypeform {
 }
 
 #[derive(Debug, Clone)]
-pub struct Literal {
-    pub type_name: String,
-    pub value: String,
-}
-
-#[derive(Debug, Clone)]
 pub struct CompositeLiteral {
     pub entries: Vec<CompositeLiteralEntry>,
 }
@@ -188,18 +96,6 @@ pub struct CompositeLiteralEntry {
     pub is_index: bool,
     pub key: Option<Expression>,
     pub value: Expression,
-}
-
-#[derive(Debug, Clone)]
-pub struct CCompositeLiteral {
-    pub entries: Vec<CCompositeLiteralEntry>,
-}
-
-#[derive(Debug, Clone)]
-pub struct CCompositeLiteralEntry {
-    pub is_index: bool,
-    pub key: Option<CExpression>,
-    pub value: CExpression,
 }
 
 #[derive(Debug, Clone)]
@@ -238,60 +134,14 @@ pub enum Expression {
 }
 
 #[derive(Debug, Clone)]
-pub enum CExpression {
-    Literal(Literal),
-    CompositeLiteral(CCompositeLiteral),
-    Identifier(String),
-    BinaryOp {
-        op: String,
-        a: Box<CExpression>,
-        b: Box<CExpression>,
-    },
-    PrefixOperator {
-        operator: String,
-        operand: Box<CExpression>,
-    },
-    PostfixOperator {
-        operator: String,
-        operand: Box<CExpression>,
-    },
-    Cast {
-        type_name: CAnonymousTypeform,
-        operand: Box<CExpression>,
-    },
-    FunctionCall {
-        function: Box<CExpression>,
-        arguments: Vec<CExpression>,
-    },
-    Sizeof {
-        argument: Box<CSizeofArgument>,
-    },
-    ArrayIndex {
-        array: Box<CExpression>,
-        index: Box<CExpression>,
-    },
-}
-
-#[derive(Debug, Clone)]
 pub enum SizeofArgument {
     Typename(Typename),
     Expression(Expression),
 }
 
 #[derive(Debug, Clone)]
-pub enum CSizeofArgument {
-    Typename(CTypename),
-    Expression(CExpression),
-}
-
-#[derive(Debug, Clone)]
 pub struct Body {
     pub statements: Vec<Statement>,
-}
-
-#[derive(Debug, Clone)]
-pub struct CBody {
-    pub statements: Vec<CStatement>,
 }
 
 #[derive(Debug, Clone)]
@@ -328,50 +178,10 @@ pub enum Statement {
 }
 
 #[derive(Debug, Clone)]
-pub enum CStatement {
-    VariableDeclaration {
-        type_name: CTypename,
-        forms: Vec<CForm>,
-        values: Vec<Option<CExpression>>,
-    },
-    If {
-        condition: CExpression,
-        body: CBody,
-        else_body: Option<CBody>,
-    },
-    For {
-        init: CForInit,
-        condition: CExpression,
-        action: CExpression,
-        body: CBody,
-    },
-    While {
-        condition: CExpression,
-        body: CBody,
-    },
-    Return {
-        expression: Option<CExpression>,
-    },
-    Switch {
-        value: CExpression,
-        cases: Vec<CSwitchCase>,
-        default: Option<CBody>,
-    },
-    Expression(CExpression),
-}
-
-#[derive(Debug, Clone)]
 pub struct Form {
     pub stars: String,
     pub name: String,
     pub indexes: Vec<Option<Expression>>,
-}
-
-#[derive(Debug, Clone)]
-pub struct CForm {
-    pub stars: String,
-    pub name: String,
-    pub indexes: Vec<Option<CExpression>>,
 }
 
 #[derive(Debug, Clone)]
@@ -385,31 +195,21 @@ pub enum ForInit {
 }
 
 #[derive(Debug, Clone)]
-pub enum CForInit {
-    Expression(CExpression),
-    LoopCounterDeclaration {
-        type_name: CTypename,
-        form: CForm,
-        value: CExpression,
-    },
-}
-
-#[derive(Debug, Clone)]
 pub enum SwitchCaseValue {
     Identifier(String),
     Literal(Literal),
 }
 
 #[derive(Debug, Clone)]
-pub struct SwitchCase {
-    pub value: SwitchCaseValue,
-    pub body: Body,
+pub struct Literal {
+    pub type_name: String,
+    pub value: String,
 }
 
 #[derive(Debug, Clone)]
-pub struct CSwitchCase {
+pub struct SwitchCase {
     pub value: SwitchCaseValue,
-    pub body: CBody,
+    pub body: Body,
 }
 
 #[derive(Debug, Clone)]
@@ -437,35 +237,9 @@ pub struct UnionField {
 }
 
 #[derive(Debug, Clone)]
-pub struct CUnion {
-    pub form: CForm,
-    pub fields: Vec<CUnionField>,
-}
-
-#[derive(Debug, Clone)]
-pub struct CUnionField {
-    pub type_name: CTypename,
-    pub form: CForm,
-}
-
-#[derive(Debug, Clone)]
-pub struct CTypedefForm {
-    pub stars: String,
-    pub params: Option<CAnonymousParameters>,
-    pub size: usize,
-    pub alias: String,
-}
-
-#[derive(Debug, Clone)]
 pub struct AnonymousParameters {
     pub ellipsis: bool,
     pub forms: Vec<AnonymousTypeform>,
-}
-
-#[derive(Debug, Clone)]
-pub struct CAnonymousParameters {
-    pub ellipsis: bool,
-    pub forms: Vec<CAnonymousTypeform>,
 }
 
 #[derive(Debug, Clone)]

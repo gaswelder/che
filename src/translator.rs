@@ -290,7 +290,10 @@ fn translate_expression(e: &Expression) -> CExpression {
             }
             CExpression::CompositeLiteral(CCompositeLiteral { entries })
         }
-        Expression::Literal(x) => CExpression::Literal(x.clone()),
+        Expression::Literal(x) => CExpression::Literal(CLiteral {
+            type_name: x.type_name.clone(),
+            value: x.value.clone(),
+        }),
         Expression::Identifier(x) => CExpression::Identifier(x.clone()),
         Expression::PrefixOperator { operator, operand } => CExpression::PrefixOperator {
             operator: operator.clone(),
@@ -510,9 +513,12 @@ fn translate_body(b: &Body) -> CBody {
                     tcases.push(CSwitchCase {
                         value: match &c.value {
                             SwitchCaseValue::Identifier(x) => {
-                                SwitchCaseValue::Identifier(x.clone())
+                                CSwitchCaseValue::Identifier(x.clone())
                             }
-                            SwitchCaseValue::Literal(x) => SwitchCaseValue::Literal(x.clone()),
+                            SwitchCaseValue::Literal(x) => CSwitchCaseValue::Literal(CLiteral {
+                                type_name: x.type_name.clone(),
+                                value: x.value.clone(),
+                            }),
                         },
                         body: translate_body(&c.body),
                     })

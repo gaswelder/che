@@ -1,4 +1,3 @@
-use crate::nodes::*;
 use crate::nodes_c::*;
 use crate::parser;
 
@@ -391,7 +390,7 @@ fn format_compat_function_parameters(parameters: &CompatFunctionParameters) -> S
     return s;
 }
 
-fn format_literal(node: &Literal) -> String {
+fn format_literal(node: &CLiteral) -> String {
     match node.type_name.as_str() {
         "string" => format!("\"{}\"", node.value),
         "char" => format!("\'{}\'", node.value),
@@ -470,8 +469,8 @@ fn format_switch(value: &CExpression, cases: &Vec<CSwitchCase>, default: &Option
     let mut s = String::new();
     for case in cases {
         let val = match &case.value {
-            SwitchCaseValue::Identifier(x) => x.clone(),
-            SwitchCaseValue::Literal(x) => format_literal(&x),
+            CSwitchCaseValue::Identifier(x) => x.clone(),
+            CSwitchCaseValue::Literal(x) => format_literal(&x),
         };
         s += &format!("case {}: {{\n", val);
         for statement in &case.body.statements {
