@@ -152,20 +152,20 @@ fn translate_module_object(element: &ModuleObject, m: &Module) -> Vec<CModuleObj
             let struct_name = format!("__{}_struct", name);
 
             // Build the compat struct fields.
-            let mut compat_fields: Vec<CompatStructEntry> = Vec::new();
+            let mut compat_fields: Vec<CStructItem> = Vec::new();
             for entry in fields {
                 match entry {
                     // One fieldlist is multiple fields of the same type.
                     StructEntry::Plain(x) => {
                         for f in &x.forms {
-                            compat_fields.push(CompatStructEntry::CompatStructField {
+                            compat_fields.push(CStructItem::Field(CTypeForm {
                                 type_name: translate_typename(&x.type_name),
                                 form: translate_form(f),
-                            });
+                            }));
                         }
                     }
                     StructEntry::Union(x) => {
-                        compat_fields.push(CompatStructEntry::Union(translate_union(x)));
+                        compat_fields.push(CStructItem::Union(translate_union(x)));
                     }
                 }
             }
@@ -414,10 +414,10 @@ fn get_module_synopsis(module: CModule) -> Vec<CModuleObject> {
 fn translate_function_parameters(node: &FunctionParameters) -> CompatFunctionParameters {
     // One parameter, like in structs, is one type and multiple entries,
     // while the C parameters are always one type and one entry.
-    let mut parameters: Vec<CompatFunctionParameter> = Vec::new();
+    let mut parameters: Vec<CTypeForm> = Vec::new();
     for parameter in &node.list {
         for form in &parameter.forms {
-            parameters.push(CompatFunctionParameter {
+            parameters.push(CTypeForm {
                 type_name: translate_typename(&parameter.type_name),
                 form: translate_form(form),
             })

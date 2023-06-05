@@ -314,14 +314,18 @@ fn format_function_forward_declaration(
     return s;
 }
 
-pub fn format_compat_struct_definition(name: &String, fields: &Vec<CompatStructEntry>) -> String {
+fn format_typeform(x: &CTypeForm) -> String {
+    return format!("{} {};\n", format_type(&x.type_name), format_form(&x.form));
+}
+
+pub fn format_compat_struct_definition(name: &String, fields: &Vec<CStructItem>) -> String {
     let mut s = String::new();
     for entry in fields {
         match entry {
-            CompatStructEntry::CompatStructField { type_name, form } => {
-                s += &format!("{} {};\n", format_type(&type_name), format_form(&form));
+            CStructItem::Field(x) => {
+                s += &format_typeform(x);
             }
-            CompatStructEntry::Union(x) => {
+            CStructItem::Union(x) => {
                 s += &format_union(&x);
             }
         }

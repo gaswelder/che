@@ -74,7 +74,7 @@ pub enum CModuleObject {
     StructForwardDeclaration(String),
     StructDefinition {
         name: String,
-        fields: Vec<CompatStructEntry>,
+        fields: Vec<CStructItem>,
         is_pub: bool,
     },
     ModuleVariable {
@@ -102,23 +102,21 @@ pub enum CModuleObject {
 
 #[derive(Debug, Clone)]
 pub struct CompatFunctionParameters {
-    pub list: Vec<CompatFunctionParameter>,
+    pub list: Vec<CTypeForm>,
     pub variadic: bool,
 }
 
 #[derive(Debug, Clone)]
-pub struct CompatFunctionParameter {
+pub struct CTypeForm {
     pub type_name: CTypename,
     pub form: CForm,
 }
 
 #[derive(Debug, Clone)]
-pub enum CompatStructEntry {
-    CompatStructField { type_name: CTypename, form: CForm },
+pub enum CStructItem {
+    Field(CTypeForm),
     Union(CUnion),
 }
-
-// Both
 
 #[derive(Debug, Clone)]
 pub struct Typedef {
