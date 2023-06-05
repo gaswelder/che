@@ -118,6 +118,14 @@ pub struct Typedef {
 }
 
 #[derive(Debug, Clone)]
+pub struct TypedefForm {
+    pub stars: String,
+    pub params: Option<AnonymousParameters>,
+    pub size: usize,
+    pub alias: String,
+}
+
+#[derive(Debug, Clone)]
 pub struct StructTypedef {
     pub is_pub: bool,
     pub fields: Vec<StructEntry>,
@@ -159,12 +167,6 @@ pub struct Typename {
 #[derive(Debug, Clone)]
 pub struct AnonymousTypeform {
     pub type_name: Typename,
-    pub ops: Vec<String>,
-}
-
-#[derive(Debug, Clone)]
-pub struct CAnonymousTypeform {
-    pub type_name: CTypename,
     pub ops: Vec<String>,
 }
 
@@ -266,12 +268,6 @@ pub enum CExpression {
         array: Box<CExpression>,
         index: Box<CExpression>,
     },
-}
-
-#[derive(Debug, Clone)]
-pub struct StructLiteralMember {
-    pub name: String,
-    pub value: Expression,
 }
 
 #[derive(Debug, Clone)]
@@ -455,14 +451,6 @@ pub struct ModuleVariable {
     pub type_name: Typename,
     pub form: Form,
     pub value: Expression,
-}
-
-#[derive(Debug, Clone)]
-pub struct TypedefForm {
-    pub stars: String,
-    pub params: Option<AnonymousParameters>,
-    pub size: usize,
-    pub alias: String,
 }
 
 #[derive(Debug, Clone)]
