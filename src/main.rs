@@ -2,6 +2,7 @@ mod buf;
 mod build;
 mod checkers;
 mod format;
+mod format_che;
 mod lexer;
 mod main_build;
 mod main_deptree;

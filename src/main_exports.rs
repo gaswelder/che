@@ -1,5 +1,5 @@
 use crate::checkers;
-use crate::format;
+use crate::format_che;
 use crate::parser;
 use std::path::Path;
 
@@ -35,10 +35,10 @@ pub fn run(argv: &[String]) -> i32 {
                     if i > 0 {
                         params += ", ";
                     }
-                    params += &format::format_type(&parameter.type_name);
+                    params += &format_che::format_type(&parameter.type_name);
                     params += " ";
                     for form in &parameter.forms {
-                        params += &format::format_form(&form);
+                        params += &format_che::format_form(&form);
                     }
                 }
                 if c.parameters.variadic {
@@ -46,12 +46,12 @@ pub fn run(argv: &[String]) -> i32 {
                 }
                 params += ")";
 
-                let t = format::format_type(&c.type_name);
+                let t = format_che::format_type(&c.type_name);
                 if t.len() > type_width {
                     type_width = t.len();
                 }
                 types.push(String::from(t));
-                forms.push(format!("{} {}", &format::format_form(&c.form), &params));
+                forms.push(format!("{} {}", &format_che::format_form(&c.form), &params));
             }
             println!("functions");
             for (i, t) in types.iter().enumerate() {
