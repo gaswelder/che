@@ -24,6 +24,12 @@ pub fn run(argv: &[String]) -> i32 {
                 println!("\t{}", c.form.alias);
             }
         }
+        if !exports.structs.is_empty() {
+            println!("structs");
+            for c in exports.structs {
+                println!("\t{}", c.name);
+            }
+        }
         if !exports.fns.is_empty() {
             let mut type_width = 0;
             let mut types: Vec<String> = Vec::new();

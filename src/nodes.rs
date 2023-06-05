@@ -18,6 +18,12 @@ pub enum ModuleObject {
         is_pub: bool,
         members: Vec<EnumItem>,
     },
+    // typedef struct tm tm_t;
+    StructAliasTypedef {
+        is_pub: bool,
+        struct_name: String,
+        type_alias: String,
+    },
     Typedef(Typedef),
     StructTypedef(StructTypedef),
     FuncTypedef(FuncTypedef),

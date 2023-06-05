@@ -120,6 +120,23 @@ fn translate_module_object(element: &ModuleObject, m: &Module) -> Vec<CModuleObj
             type_name: translate_typename(type_name),
             form: translate_typedef_form(form),
         }],
+        ModuleObject::StructAliasTypedef {
+            is_pub,
+            struct_name,
+            type_alias,
+        } => vec![CModuleObject::Typedef {
+            is_pub: *is_pub,
+            type_name: CTypename {
+                is_const: false,
+                name: format!("struct {}", struct_name),
+            },
+            form: CTypedefForm {
+                stars: String::new(),
+                params: None,
+                size: 0,
+                alias: type_alias.clone(),
+            },
+        }],
         ModuleObject::FuncTypedef(FuncTypedef {
             is_pub,
             return_type,

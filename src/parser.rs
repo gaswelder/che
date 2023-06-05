@@ -852,9 +852,21 @@ fn parse_typedef(is_pub: bool, l: &mut Lexer, ctx: &Ctx) -> Result<ModuleObject,
         }));
     }
 
+    // typedef struct foo foo_t;
+    if l.eat("struct") {
+        let struct_name = expect(l, "word", None)?.content.unwrap();
+        let type_alias = expect(l, "word", None)?.content.unwrap();
+        expect(l, ";", Some("typedef"))?;
+        return Ok(ModuleObject::StructAliasTypedef {
+            is_pub,
+            struct_name,
+            type_alias,
+        });
+    }
+
     // typedef void *f(int a)[20];
     // typedef foo bar;
-    // typedef struct foo foo_t;
+
     let typename = parse_typename(l, Some("typedef"))?;
 
     if l.follows("(") {

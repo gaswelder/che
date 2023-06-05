@@ -31,6 +31,7 @@ pub fn depused(m: &Module, dep: &Module) -> bool {
                     }
                 }
             }
+            ModuleObject::StructAliasTypedef { .. } => {}
             ModuleObject::Typedef(Typedef {
                 is_pub: _,
                 type_name,
@@ -299,6 +300,19 @@ pub fn get_exports(m: &Module) -> Exports {
             ModuleObject::StructTypedef(x) => {
                 if x.is_pub {
                     exports.structs.push(x.clone());
+                }
+            }
+            ModuleObject::StructAliasTypedef {
+                is_pub,
+                struct_name: _,
+                type_alias,
+            } => {
+                if *is_pub {
+                    exports.structs.push(StructTypedef {
+                        fields: Vec::new(),
+                        is_pub: *is_pub,
+                        name: type_alias.clone(),
+                    })
                 }
             }
             ModuleObject::FunctionDeclaration(f) => {
