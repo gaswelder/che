@@ -296,22 +296,20 @@ fn translate_function_declaration(
     parameters: &FunctionParameters,
     body: &Body,
 ) -> Vec<CModuleObject> {
-    let func = CompatFunctionDeclaration {
+    let mut r = vec![CModuleObject::FunctionDefinition {
         is_static: !is_pub,
         type_name: typename.clone(),
         form: form.clone(),
         parameters: translate_function_parameters(&parameters),
         body: body.clone(),
-    };
-    let decl = CModuleObject::FunctionForwardDeclaration {
-        is_static: func.is_static,
-        type_name: func.type_name.clone(),
-        form: func.form.clone(),
-        parameters: func.parameters.clone(),
-    };
-    let mut r = vec![CModuleObject::FunctionDefinition(func)];
+    }];
     if format::format_form(&form) != "main" {
-        r.push(decl);
+        r.push(CModuleObject::FunctionForwardDeclaration {
+            is_static: !is_pub,
+            type_name: typename.clone(),
+            form: form.clone(),
+            parameters: translate_function_parameters(&parameters),
+        });
     }
     return r;
 }

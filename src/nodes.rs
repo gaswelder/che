@@ -78,19 +78,16 @@ pub enum CModuleObject {
         form: Form,
         parameters: CompatFunctionParameters,
     },
-    FunctionDefinition(CompatFunctionDeclaration),
+    FunctionDefinition {
+        is_static: bool,
+        type_name: Typename,
+        form: Form,
+        parameters: CompatFunctionParameters,
+        body: Body,
+    },
     Split {
         text: String,
     },
-}
-
-#[derive(Debug, Clone)]
-pub struct CompatFunctionDeclaration {
-    pub is_static: bool,
-    pub type_name: Typename,
-    pub form: Form,
-    pub parameters: CompatFunctionParameters,
-    pub body: Body,
 }
 
 #[derive(Debug, Clone)]
