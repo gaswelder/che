@@ -280,7 +280,7 @@ fn expect(lexer: &mut Lexer, kind: &str, comment: Option<&str>) -> Result<Token,
     return Ok(lexer.get().unwrap());
 }
 
-fn parse_identifier(lexer: &mut Lexer) -> Result<String, String> {
+fn read_identifier(lexer: &mut Lexer) -> Result<String, String> {
     let identifier = String::from(expect(lexer, "word", None)?.content.unwrap());
     return Ok(identifier);
 }
@@ -365,7 +365,7 @@ fn parse_enum(lexer: &mut Lexer, is_pub: bool, ctx: &Ctx) -> Result<ModuleObject
     expect(lexer, "enum", Some("enum definition"))?;
     expect(lexer, "{", Some("enum definition"))?;
     loop {
-        let id = parse_identifier(lexer)?;
+        let id = read_identifier(lexer)?;
         let value: Option<Expression> = if lexer.eat("=") {
             Some(parse_expr(lexer, 0, ctx)?)
         } else {
@@ -409,7 +409,7 @@ fn parse_composite_literal_entry(
 ) -> Result<CompositeLiteralEntry, String> {
     if l.peek().unwrap().kind == "." {
         expect(l, ".", Some("struct literal member"))?;
-        let key = Expression::Identifier(parse_identifier(l)?);
+        let key = Expression::Identifier(read_identifier(l)?);
         expect(l, "=", Some("struct literal member"))?;
         let value = parse_expr(l, 0, ctx)?;
         return Ok(CompositeLiteralEntry {
@@ -662,7 +662,7 @@ fn parse_switch(lexer: &mut Lexer, ctx: &Ctx) -> Result<Statement, String> {
     while lexer.follows("case") {
         expect(lexer, "case", None)?;
         let case_value = if lexer.follows("word") {
-            SwitchCaseValue::Identifier(parse_identifier(lexer)?)
+            SwitchCaseValue::Identifier(read_identifier(lexer)?)
         } else {
             SwitchCaseValue::Literal(parse_literal(lexer)?)
         };
@@ -825,27 +825,26 @@ fn parse_compat_macro(lexer: &mut Lexer) -> Result<ModuleObject, String> {
     });
 }
 
-fn parse_typedef(is_pub: bool, lexer: &mut Lexer, ctx: &Ctx) -> Result<ModuleObject, String> {
-    expect(lexer, "typedef", None)?;
+fn parse_typedef(is_pub: bool, l: &mut Lexer, ctx: &Ctx) -> Result<ModuleObject, String> {
+    expect(l, "typedef", None)?;
 
-    if lexer.follows("{") {
-        // typedef {int hour, minute, second} time;
-
-        // Parse the struct
-        let mut fields: Vec<StructEntry> = vec![];
-        expect(lexer, "{", Some("struct type definition"))?;
-        while lexer.more() && lexer.peek().unwrap().kind != "}" {
-            if lexer.peek().unwrap().kind == "union" {
-                fields.push(StructEntry::Union(parse_union(lexer, ctx)?));
-            } else {
-                fields.push(StructEntry::Plain(parse_type_and_forms(lexer, ctx)?));
+    // typedef {int hour, minute, second} time_t;
+    if l.follows("{") {
+        // struct body
+        let mut fields: Vec<StructEntry> = Vec::new();
+        expect(l, "{", Some("struct type definition"))?;
+        while l.more() {
+            match l.peek().unwrap().kind.as_str() {
+                "}" => break,
+                "union" => fields.push(StructEntry::Union(parse_union(l, ctx)?)),
+                _ => fields.push(StructEntry::Plain(parse_type_and_forms(l, ctx)?)),
             }
         }
-        expect(lexer, "}", None)?;
+        expect(l, "}", None)?;
 
-        // Parse the name
-        let name = parse_identifier(lexer)?;
-        expect(lexer, ";", Some("typedef"))?;
+        // type name
+        let name = read_identifier(l)?;
+        expect(l, ";", Some("typedef"))?;
         return Ok(ModuleObject::StructTypedef(StructTypedef {
             is_pub,
             fields,
@@ -856,45 +855,45 @@ fn parse_typedef(is_pub: bool, lexer: &mut Lexer, ctx: &Ctx) -> Result<ModuleObj
     // typedef void *f(int a)[20];
     // typedef foo bar;
     // typedef struct foo foo_t;
-    let type_name = parse_typename(lexer, Some("typedef"))?;
+    let typename = parse_typename(l, Some("typedef"))?;
 
-    if lexer.follows("(") {
+    if l.follows("(") {
         // Function pointer type:
         // typedef int (*func_t)(FILE*, const char *, ...);
-        lexer.get();
-        expect(lexer, "*", Some("function pointer typedef"))?;
-        let name = parse_identifier(lexer)?;
-        expect(lexer, ")", Some("function pointer typedef"))?;
-        let params = parse_anonymous_parameters(lexer)?;
-        expect(lexer, ";", Some("typedef"))?;
+        l.get();
+        expect(l, "*", Some("function pointer typedef"))?;
+        let name = read_identifier(l)?;
+        expect(l, ")", Some("function pointer typedef"))?;
+        let params = parse_anonymous_parameters(l)?;
+        expect(l, ";", Some("typedef"))?;
         return Ok(ModuleObject::FuncTypedef(FuncTypedef {
             is_pub,
-            return_type: type_name,
+            return_type: typename,
             name,
             params,
         }));
     }
 
     let mut stars = String::new();
-    while lexer.follows("*") {
-        stars += &lexer.get().unwrap().kind;
+    while l.follows("*") {
+        stars += &l.get().unwrap().kind;
     }
-    let alias = parse_identifier(lexer)?;
+    let alias = read_identifier(l)?;
 
     let mut params: Option<AnonymousParameters> = None;
-    if lexer.follows("(") {
-        params = Some(parse_anonymous_parameters(lexer)?);
+    if l.follows("(") {
+        params = Some(parse_anonymous_parameters(l)?);
     }
     let mut size: usize = 0;
-    if lexer.follows("[") {
-        lexer.get();
-        size = expect(lexer, "num", None)
+    if l.follows("[") {
+        l.get();
+        size = expect(l, "num", None)
             .unwrap()
             .content
             .unwrap()
             .parse()
             .unwrap();
-        expect(lexer, "]", None)?;
+        expect(l, "]", None)?;
     }
 
     let form = TypedefForm {
@@ -904,10 +903,10 @@ fn parse_typedef(is_pub: bool, lexer: &mut Lexer, ctx: &Ctx) -> Result<ModuleObj
         alias,
     };
 
-    expect(lexer, ";", Some("typedef"))?;
+    expect(l, ";", Some("typedef"))?;
     return Ok(ModuleObject::Typedef(Typedef {
         is_pub,
-        type_name,
+        type_name: typename,
         form,
     }));
 }
