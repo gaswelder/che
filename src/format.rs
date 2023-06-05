@@ -29,9 +29,9 @@ pub fn format_module(node: &CModule) -> String {
                 name,
                 format_anonymous_parameters(params)
             ),
-            CModuleObject::CompatMacro { name, value } => format!("#{} {}\n", name, value),
-            CModuleObject::CompatInclude(x) => format!("#include {}\n", x),
-            CModuleObject::Enum { members, .. } => {
+            CModuleObject::Macro { name, value } => format!("#{} {}\n", name, value),
+            CModuleObject::Include(x) => format!("#include {}\n", x),
+            CModuleObject::EnumDefinition { members, .. } => {
                 let mut s1 = String::from("enum {\n");
                 for (i, member) in members.iter().enumerate() {
                     if i > 0 {
@@ -42,7 +42,7 @@ pub fn format_module(node: &CModule) -> String {
                 s1 += "\n};\n";
                 s1
             }
-            CModuleObject::CompatStructForwardDeclaration(x) => format!("struct {};\n", x),
+            CModuleObject::StructForwardDeclaration(x) => format!("struct {};\n", x),
             CModuleObject::StructDefinition {
                 name,
                 fields,
@@ -54,8 +54,8 @@ pub fn format_module(node: &CModule) -> String {
                 form,
                 parameters,
             } => format_function_forward_declaration(*is_static, type_name, form, parameters),
-            CModuleObject::CompatFunctionDeclaration(x) => format_compat_function_declaration(&x),
-            CModuleObject::CompatSplit { text } => format!("\n\n{}\n", text),
+            CModuleObject::FunctionDefinition(x) => format_compat_function_declaration(&x),
+            CModuleObject::Split { text } => format!("\n\n{}\n", text),
         }
     }
     return s;

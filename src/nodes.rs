@@ -41,10 +41,14 @@ pub struct CModule {
 
 #[derive(Debug, Clone)]
 pub enum CModuleObject {
-    ModuleVariable {
-        type_name: Typename,
-        form: Form,
-        value: Expression,
+    Include(String),
+    Macro {
+        name: String,
+        value: String,
+    },
+    EnumDefinition {
+        members: Vec<EnumItem>,
+        is_hidden: bool,
     },
     Typedef {
         is_pub: bool,
@@ -57,20 +61,16 @@ pub enum CModuleObject {
         name: String,
         params: AnonymousParameters,
     },
-    CompatMacro {
-        name: String,
-        value: String,
-    },
-    CompatInclude(String),
-    Enum {
-        members: Vec<EnumItem>,
-        is_hidden: bool,
-    },
-    CompatStructForwardDeclaration(String),
+    StructForwardDeclaration(String),
     StructDefinition {
         name: String,
         fields: Vec<CompatStructEntry>,
         is_pub: bool,
+    },
+    ModuleVariable {
+        type_name: Typename,
+        form: Form,
+        value: Expression,
     },
     FunctionForwardDeclaration {
         is_static: bool,
@@ -78,8 +78,8 @@ pub enum CModuleObject {
         form: Form,
         parameters: CompatFunctionParameters,
     },
-    CompatFunctionDeclaration(CompatFunctionDeclaration),
-    CompatSplit {
+    FunctionDefinition(CompatFunctionDeclaration),
+    Split {
         text: String,
     },
 }

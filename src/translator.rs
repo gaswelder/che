@@ -35,9 +35,9 @@ pub fn translate(m: &Module) -> CModule {
         "stdio", "stdlib", "string", "time", "setjmp",
     ];
     for n in std {
-        elements.push(CModuleObject::CompatInclude(format!("<{}.h>", n)));
+        elements.push(CModuleObject::Include(format!("<{}.h>", n)));
     }
-    elements.push(CModuleObject::CompatMacro {
+    elements.push(CModuleObject::Macro {
         name: "define".to_string(),
         value: "nelem(x) (sizeof (x)/sizeof (x)[0])".to_string(),
     });
@@ -49,12 +49,12 @@ pub fn translate(m: &Module) -> CModule {
     let mut set: HashSet<String> = HashSet::new();
     for element in elements {
         let order = match element {
-            CModuleObject::CompatInclude(_) => 0,
-            CModuleObject::CompatMacro { .. } => 0,
-            CModuleObject::CompatStructForwardDeclaration(_) => 1,
+            CModuleObject::Include(_) => 0,
+            CModuleObject::Macro { .. } => 0,
+            CModuleObject::StructForwardDeclaration(_) => 1,
             CModuleObject::Typedef { .. } => 2,
             CModuleObject::StructDefinition { .. } => 3,
-            CModuleObject::Enum { .. } => 3,
+            CModuleObject::EnumDefinition { .. } => 3,
             CModuleObject::FunctionForwardDeclaration { .. } => 4,
             CModuleObject::ModuleVariable { .. } => 5,
             _ => 6,
@@ -85,14 +85,14 @@ pub fn translate(m: &Module) -> CModule {
         }
         groups[order].push(element);
     }
-    let mut sorted_elements: Vec<CModuleObject> = vec![CModuleObject::CompatSplit {
+    let mut sorted_elements: Vec<CModuleObject> = vec![CModuleObject::Split {
         text: String::from(format!("/* -------{}------- */", &m.id)),
     }];
     for group in groups {
         if group.len() == 0 {
             continue;
         }
-        sorted_elements.push(CModuleObject::CompatSplit {
+        sorted_elements.push(CModuleObject::Split {
             text: String::from("/* -------------- */"),
         });
         for e in group {
@@ -159,7 +159,7 @@ fn translate_module_object(element: &ModuleObject, m: &Module) -> Vec<CModuleObj
                 }
             }
             vec![
-                CModuleObject::CompatStructForwardDeclaration(struct_name.clone()),
+                CModuleObject::StructForwardDeclaration(struct_name.clone()),
                 CModuleObject::StructDefinition {
                     name: struct_name.clone(),
                     fields: compat_fields,
@@ -193,7 +193,7 @@ fn translate_module_object(element: &ModuleObject, m: &Module) -> Vec<CModuleObj
             body,
         }) => translate_function_declaration(*is_pub, type_name, form, parameters, body),
         ModuleObject::Enum(Enum { is_pub, members }) => {
-            return vec![CModuleObject::Enum {
+            return vec![CModuleObject::EnumDefinition {
                 members: members.clone(),
                 is_hidden: !is_pub,
             }];
@@ -202,7 +202,7 @@ fn translate_module_object(element: &ModuleObject, m: &Module) -> Vec<CModuleObj
             if x.name == "type" || x.name == "link" {
                 return vec![];
             } else {
-                return vec![CModuleObject::CompatMacro {
+                return vec![CModuleObject::Macro {
                     name: x.name.clone(),
                     value: x.value.clone(),
                 }];
@@ -257,12 +257,12 @@ fn get_module_synopsis(module: CModule) -> Vec<CModuleObject> {
                     })
                 }
             }
-            CModuleObject::CompatMacro { name, value } => {
-                elements.push(CModuleObject::CompatMacro { name, value })
+            CModuleObject::Macro { name, value } => {
+                elements.push(CModuleObject::Macro { name, value })
             }
-            CModuleObject::Enum { is_hidden, members } => {
+            CModuleObject::EnumDefinition { is_hidden, members } => {
                 if !is_hidden {
-                    elements.push(CModuleObject::Enum { is_hidden, members })
+                    elements.push(CModuleObject::EnumDefinition { is_hidden, members })
                 }
             }
             _ => {}
@@ -309,7 +309,7 @@ fn translate_function_declaration(
         form: func.form.clone(),
         parameters: func.parameters.clone(),
     };
-    let mut r = vec![CModuleObject::CompatFunctionDeclaration(func)];
+    let mut r = vec![CModuleObject::FunctionDefinition(func)];
     if format::format_form(&form) != "main" {
         r.push(decl);
     }
