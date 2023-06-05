@@ -1,4 +1,5 @@
 use crate::nodes::*;
+use crate::nodes_c::*;
 use crate::parser;
 
 pub fn format_module(node: &CModule) -> String {

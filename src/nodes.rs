@@ -1,3 +1,5 @@
+use crate::nodes_c::*;
+
 // Che
 
 #[derive(Clone)]
@@ -311,12 +313,6 @@ pub struct ModuleVariable {
     pub type_name: Typename,
     pub form: Form,
     pub value: Expression,
-}
-
-#[derive(Debug, Clone)]
-pub struct CompatMacro {
-    pub name: String,
-    pub value: String,
 }
 
 #[derive(Debug, Clone)]

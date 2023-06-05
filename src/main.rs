@@ -9,6 +9,7 @@ mod main_exports;
 mod main_genc;
 mod main_test;
 mod nodes;
+mod nodes_c;
 mod parser;
 #[cfg(test)]
 mod rename;
