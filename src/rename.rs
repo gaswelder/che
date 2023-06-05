@@ -22,10 +22,14 @@ pub fn globalize_module(m: &mut Module, prefix: &String) {
 
 fn mod_obj(obj: &mut ModuleObject, prefix: &String, names: &Vec<String>) {
     match obj {
-        ModuleObject::ModuleVariable(x) => {
-            rename_typename(&mut x.type_name, prefix, names);
-            expr(&mut x.value, prefix, names);
-            rename_form(&mut x.form, prefix, names);
+        ModuleObject::ModuleVariable {
+            form,
+            type_name,
+            value,
+        } => {
+            rename_typename(type_name, prefix, names);
+            expr(value, prefix, names);
+            rename_form(form, prefix, names);
         }
         ModuleObject::Enum { is_pub, members } => {
             if !*is_pub {

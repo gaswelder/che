@@ -226,10 +226,14 @@ fn translate_module_object(element: &ModuleObject, m: &Module) -> Vec<CModuleObj
                 }];
             }
         }
-        ModuleObject::ModuleVariable(x) => vec![CModuleObject::ModuleVariable {
-            type_name: translate_typename(&x.type_name),
-            form: translate_form(&x.form),
-            value: translate_expression(&x.value),
+        ModuleObject::ModuleVariable {
+            form,
+            type_name,
+            value,
+        } => vec![CModuleObject::ModuleVariable {
+            type_name: translate_typename(type_name),
+            form: translate_form(form),
+            value: translate_expression(value),
         }],
         // ModuleObject::CompatInclude(x) => vec![CompatModuleObject::CompatInclude(x.clone())],
     }

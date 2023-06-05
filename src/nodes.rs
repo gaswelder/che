@@ -1,7 +1,5 @@
 use crate::nodes_c::*;
 
-// Che
-
 #[derive(Clone)]
 pub struct Module {
     pub id: String,
@@ -25,7 +23,11 @@ pub enum ModuleObject {
     Typedef(Typedef),
     StructTypedef(StructTypedef),
     FuncTypedef(FuncTypedef),
-    ModuleVariable(ModuleVariable),
+    ModuleVariable {
+        type_name: Typename,
+        form: Form,
+        value: Expression,
+    },
     FunctionDeclaration(FunctionDeclaration),
 }
 
@@ -446,13 +448,6 @@ pub struct CUnion {
 pub struct CUnionField {
     pub type_name: CTypename,
     pub form: CForm,
-}
-
-#[derive(Debug, Clone)]
-pub struct ModuleVariable {
-    pub type_name: Typename,
-    pub form: Form,
-    pub value: Expression,
 }
 
 #[derive(Debug, Clone)]

@@ -60,8 +60,12 @@ pub fn depused(m: &Module, dep: &Module) -> bool {
                     return true;
                 }
             }
-            ModuleObject::ModuleVariable(x) => {
-                if has(&x.type_name.name, &list) || used_in_expr(&x.value, &list) {
+            ModuleObject::ModuleVariable {
+                form: _,
+                type_name,
+                value,
+            } => {
+                if has(&type_name.name, &list) || used_in_expr(&value, &list) {
                     return true;
                 }
             }

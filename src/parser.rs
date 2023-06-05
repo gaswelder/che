@@ -798,12 +798,11 @@ fn parse_module_object(lexer: &mut Lexer, ctx: &Ctx) -> Result<ModuleObject, Str
         lexer.get();
         let value = parse_expr(lexer, 0, ctx)?;
         expect(lexer, ";", Some("module variable declaration"))?;
-        let var = ModuleVariable {
+        return Ok(ModuleObject::ModuleVariable {
             type_name,
             form,
             value,
-        };
-        return Ok(ModuleObject::ModuleVariable(var));
+        });
     }
     return Err("unexpected input".to_string());
 }
