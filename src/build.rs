@@ -114,7 +114,7 @@ pub fn write_c99(
     // files.
     let mut paths: Vec<PathId> = Vec::new();
     for module in c_modules {
-        let src = format::format_compat_module(&module);
+        let src = format::format_module(&module);
         let path = format!("{}/{:x}.c", dirpath, md5::compute(&module.id));
         paths.push(PathId {
             path: String::from(&path),

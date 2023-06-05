@@ -51,6 +51,6 @@ mod test {
         let mut m = parser::get_module(&"json".to_string(), &String::from(".")).unwrap();
         rename::globalize_module(&mut m, &"kek".to_string());
         let c = translator::translate(&m);
-        fs::write("out.c", format::format_compat_module(&c)).unwrap();
+        fs::write("out.c", format::format_module(&c)).unwrap();
     }
 }
