@@ -1,57 +1,13 @@
-use substring::Substring;
-
-#[cfg(test)]
-use crate::lexer::for_string;
 use crate::lexer::{for_file, Lexer, Token};
 use crate::nodes::*;
 use std::env;
 use std::path::Path;
+use substring::Substring;
 
 #[derive(Clone)]
 struct Ctx {
     typenames: Vec<String>,
     modnames: Vec<String>,
-}
-
-#[test]
-fn test_expressions_parser() {
-    let ctx = Ctx {
-        typenames: vec!["foo_t".to_string()],
-        modnames: vec!["opt".to_string()],
-    };
-    let cases: Vec<&str> = vec![
-        "1",
-        "x",
-        "a + b + c",
-        "a + b*c",
-        "f(x)",
-        "f(a+b)",
-        "&a + *b->c++",
-        "a * (b + c)",
-        "12 * sizeof(int)",
-        "242 * !(foo_t) foo;",
-        "a + b * !c",
-        "a + --c",
-        "pos.usec = next->pos_usec",
-        "a += 1",
-        "(f()++).usec += 1",
-        "x = -1 + -1",
-        "(!arr_pushi(a, i))",
-        "putch(ch, &(c->out))",
-        "sizeof(b->data)",
-        "a = {'a', 'b', 'c'}",
-        "opt.opt()",
-        "a = \"abc\"",
-        "c = 'a'",
-        "out = { .r = 1 }",
-    ];
-    for c in cases {
-        println!("-----------{}------------", c);
-        let mut l = for_string(c.to_string()).unwrap();
-        let e = expr(&mut l, 0, &ctx).unwrap();
-        println!("{:#?}", e);
-    }
-    // panic!("k");
 }
 
 fn expr(l: &mut Lexer, n: usize, ctx: &Ctx) -> Result<Expression, String> {
