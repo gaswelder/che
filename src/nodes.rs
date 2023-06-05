@@ -57,7 +57,10 @@ pub enum CModuleObject {
         name: String,
         params: AnonymousParameters,
     },
-    CompatMacro(CompatMacro),
+    CompatMacro {
+        name: String,
+        value: String,
+    },
     CompatInclude(String),
     Enum {
         members: Vec<EnumItem>,

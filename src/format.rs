@@ -1,5 +1,4 @@
 use crate::nodes::*;
-use crate::nodes_c::*;
 use crate::parser;
 
 pub fn format_module(node: &CModule) -> String {
@@ -30,7 +29,7 @@ pub fn format_module(node: &CModule) -> String {
                 name,
                 format_anonymous_parameters(params)
             ),
-            CModuleObject::CompatMacro(x) => format_compat_macro(&x),
+            CModuleObject::CompatMacro { name, value } => format!("#{} {}\n", name, value),
             CModuleObject::CompatInclude(x) => format!("#include {}\n", x),
             CModuleObject::Enum { members, .. } => {
                 let mut s1 = String::from("enum {\n");
@@ -385,10 +384,6 @@ fn format_literal(node: &Literal) -> String {
         "char" => format!("\'{}\'", node.value),
         _ => node.value.clone(),
     }
-}
-
-fn format_compat_macro(node: &CompatMacro) -> String {
-    format!("#{} {}\n", node.name, node.value)
 }
 
 fn format_statement(node: &Statement) -> String {

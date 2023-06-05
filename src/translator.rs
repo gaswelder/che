@@ -1,6 +1,5 @@
 use crate::format;
 use crate::nodes::*;
-use crate::nodes_c::*;
 use crate::parser;
 use std::collections::HashSet;
 
@@ -38,10 +37,10 @@ pub fn translate(m: &Module) -> CModule {
     for n in std {
         elements.push(CModuleObject::CompatInclude(format!("<{}.h>", n)));
     }
-    elements.push(CModuleObject::CompatMacro(CompatMacro {
+    elements.push(CModuleObject::CompatMacro {
         name: "define".to_string(),
         value: "nelem(x) (sizeof (x)/sizeof (x)[0])".to_string(),
-    }));
+    });
 
     // Reorder the elements so that typedefs and similar preamble elements
     // come first.
@@ -51,7 +50,7 @@ pub fn translate(m: &Module) -> CModule {
     for element in elements {
         let order = match element {
             CModuleObject::CompatInclude(_) => 0,
-            CModuleObject::CompatMacro(_) => 0,
+            CModuleObject::CompatMacro { .. } => 0,
             CModuleObject::CompatStructForwardDeclaration(_) => 1,
             CModuleObject::Typedef { .. } => 2,
             CModuleObject::StructDefinition { .. } => 3,
@@ -203,7 +202,10 @@ fn translate_module_object(element: &ModuleObject, m: &Module) -> Vec<CModuleObj
             if x.name == "type" || x.name == "link" {
                 return vec![];
             } else {
-                return vec![CModuleObject::CompatMacro(x.clone())];
+                return vec![CModuleObject::CompatMacro {
+                    name: x.name.clone(),
+                    value: x.value.clone(),
+                }];
             }
         }
         ModuleObject::ModuleVariable(x) => vec![CModuleObject::ModuleVariable {
@@ -255,7 +257,9 @@ fn get_module_synopsis(module: CModule) -> Vec<CModuleObject> {
                     })
                 }
             }
-            CModuleObject::CompatMacro(x) => elements.push(CModuleObject::CompatMacro(x)),
+            CModuleObject::CompatMacro { name, value } => {
+                elements.push(CModuleObject::CompatMacro { name, value })
+            }
             CModuleObject::Enum { is_hidden, members } => {
                 if !is_hidden {
                     elements.push(CModuleObject::Enum { is_hidden, members })
