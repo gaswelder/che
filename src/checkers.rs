@@ -1,5 +1,6 @@
 use crate::nodes::*;
 
+// Tells whether any of the exports of dep are used in m.
 pub fn depused(m: &Module, dep: &Module) -> bool {
     let exports = get_exports(dep);
     let mut list: Vec<String> = Vec::new();
@@ -23,7 +24,7 @@ pub fn depused(m: &Module, dep: &Module) -> bool {
                 for m in members {
                     match &m.value {
                         Some(e) => {
-                            if used_in_expr(e, &list) {
+                            if used_in_expr(e, &list, &dep.id.id) {
                                 return true;
                             }
                         }
@@ -37,7 +38,7 @@ pub fn depused(m: &Module, dep: &Module) -> bool {
                 type_name,
                 ..
             }) => {
-                if has(&type_name.name, &list) {
+                if type_name.name.namespace == dep.id.id {
                     return true;
                 }
             }
@@ -51,20 +52,21 @@ pub fn depused(m: &Module, dep: &Module) -> bool {
                 type_name,
                 value,
             } => {
-                if has(&type_name.name, &list) || used_in_expr(&value, &list) {
+                if type_name.name.namespace == dep.id.id || used_in_expr(&value, &list, &dep.id.id)
+                {
                     return true;
                 }
             }
             ModuleObject::FunctionDeclaration(x) => {
-                if has(&x.type_name.name, &list) {
+                if x.type_name.name.namespace == dep.id.id {
                     return true;
                 }
                 for p in &x.parameters.list {
-                    if has(&p.type_name.name, &list) {
+                    if p.type_name.name.namespace == dep.id.id {
                         return true;
                     }
                 }
-                if used_in_body(&x.body, &list) {
+                if used_in_body(&x.body, &list, &dep.id.id) {
                     return true;
                 }
             }
@@ -73,58 +75,60 @@ pub fn depused(m: &Module, dep: &Module) -> bool {
     return false;
 }
 
-fn used_in_expr(e: &Expression, list: &Vec<String>) -> bool {
+fn used_in_expr(e: &Expression, list: &Vec<String>, dep_id: &String) -> bool {
     match e {
         Expression::Literal(_) => false,
         Expression::CompositeLiteral(CompositeLiteral { entries }) => {
             for e in entries {
                 match &e.key {
                     Some(expr) => {
-                        if used_in_expr(&expr, list) {
+                        if used_in_expr(&expr, list, dep_id) {
                             return true;
                         }
                     }
                     None => {}
                 }
-                if used_in_expr(&e.value, list) {
+                if used_in_expr(&e.value, list, dep_id) {
                     return true;
                 }
             }
             return false;
         }
         Expression::Identifier(x) => has(x, list),
-        Expression::BinaryOp { op: _, a, b } => used_in_expr(a, list) || used_in_expr(b, list),
+        Expression::BinaryOp { op: _, a, b } => {
+            used_in_expr(a, list, dep_id) || used_in_expr(b, list, dep_id)
+        }
         Expression::PrefixOperator {
             operator: _,
             operand,
-        } => used_in_expr(operand, list),
+        } => used_in_expr(operand, list, dep_id),
         Expression::PostfixOperator {
             operand,
             operator: _,
-        } => used_in_expr(operand, list),
+        } => used_in_expr(operand, list, dep_id),
         Expression::Cast { type_name, operand } => {
-            has(&type_name.type_name.name, list) || used_in_expr(operand, list)
+            type_name.type_name.name.namespace == *dep_id || used_in_expr(operand, list, dep_id)
         }
         Expression::FunctionCall {
             function,
             arguments,
         } => {
-            if used_in_expr(function, list) {
+            if used_in_expr(function, list, dep_id) {
                 return true;
             }
             for a in arguments {
-                if used_in_expr(a, list) {
+                if used_in_expr(a, list, dep_id) {
                     return true;
                 }
             }
             return false;
         }
         Expression::Sizeof { argument } => match &**argument {
-            SizeofArgument::Expression(e) => used_in_expr(e, list),
-            SizeofArgument::Typename(t) => has(&t.name, list),
+            SizeofArgument::Expression(e) => used_in_expr(e, list, dep_id),
+            SizeofArgument::Typename(t) => t.name.namespace == *dep_id,
         },
         Expression::ArrayIndex { array, index } => {
-            used_in_expr(array, list) || used_in_expr(index, list)
+            used_in_expr(array, list, dep_id) || used_in_expr(index, list, dep_id)
         }
     }
 }
@@ -133,7 +137,7 @@ fn has(name: &String, list: &Vec<String>) -> bool {
     return list.contains(name);
 }
 
-fn used_in_body(body: &Body, list: &Vec<String>) -> bool {
+fn used_in_body(body: &Body, list: &Vec<String>, dep_id: &String) -> bool {
     for s in &body.statements {
         match s {
             Statement::VariableDeclaration {
@@ -141,13 +145,13 @@ fn used_in_body(body: &Body, list: &Vec<String>) -> bool {
                 forms: _,
                 values,
             } => {
-                if has(&type_name.name, list) {
+                if type_name.name.namespace == *dep_id {
                     return true;
                 }
                 for v in values {
                     match v {
                         Some(e) => {
-                            if used_in_expr(&e, list) {
+                            if used_in_expr(&e, list, dep_id) {
                                 return true;
                             }
                         }
@@ -160,12 +164,12 @@ fn used_in_body(body: &Body, list: &Vec<String>) -> bool {
                 body,
                 else_body,
             } => {
-                if used_in_expr(&condition, list) || used_in_body(&body, list) {
+                if used_in_expr(&condition, list, dep_id) || used_in_body(&body, list, dep_id) {
                     return true;
                 }
                 match else_body {
                     Some(e) => {
-                        if used_in_body(&e, list) {
+                        if used_in_body(&e, list, dep_id) {
                             return true;
                         }
                     }
@@ -178,15 +182,15 @@ fn used_in_body(body: &Body, list: &Vec<String>) -> bool {
                 action,
                 body,
             } => {
-                if used_in_expr(&condition, list)
-                    || used_in_expr(&action, list)
-                    || used_in_body(&body, list)
+                if used_in_expr(&condition, list, dep_id)
+                    || used_in_expr(&action, list, dep_id)
+                    || used_in_body(&body, list, dep_id)
                 {
                     return true;
                 }
                 match init {
                     ForInit::Expression(e) => {
-                        if used_in_expr(e, list) {
+                        if used_in_expr(e, list, dep_id) {
                             return true;
                         }
                     }
@@ -195,23 +199,23 @@ fn used_in_body(body: &Body, list: &Vec<String>) -> bool {
                         value,
                         form: _,
                     } => {
-                        if used_in_expr(&value, list) {
+                        if used_in_expr(&value, list, dep_id) {
                             return true;
                         }
-                        if has(&type_name.name, list) {
+                        if type_name.name.namespace == *dep_id {
                             return true;
                         }
                     }
                 }
             }
             Statement::While { condition, body } => {
-                if used_in_expr(&condition, list) || used_in_body(&body, list) {
+                if used_in_expr(&condition, list, dep_id) || used_in_body(&body, list, dep_id) {
                     return true;
                 }
             }
             Statement::Return { expression } => match expression {
                 Some(e) => {
-                    if used_in_expr(&e, list) {
+                    if used_in_expr(&e, list, dep_id) {
                         return true;
                     }
                 }
@@ -222,12 +226,12 @@ fn used_in_body(body: &Body, list: &Vec<String>) -> bool {
                 cases,
                 default,
             } => {
-                if used_in_expr(&value, list) {
+                if used_in_expr(&value, list, dep_id) {
                     return true;
                 }
                 match default {
                     Some(d) => {
-                        if used_in_body(&d, list) {
+                        if used_in_body(&d, list, dep_id) {
                             return true;
                         }
                     }
@@ -245,7 +249,7 @@ fn used_in_body(body: &Body, list: &Vec<String>) -> bool {
                 }
             }
             Statement::Expression(x) => {
-                if used_in_expr(&x, list) {
+                if used_in_expr(&x, list, dep_id) {
                     return true;
                 }
             }

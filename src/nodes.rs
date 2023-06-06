@@ -1,8 +1,13 @@
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct Module {
-    pub id: String,
+    pub id: ModuleRef,
     pub elements: Vec<ModuleObject>,
+}
+
+#[derive(Debug, Clone)]
+pub struct ModuleRef {
     pub source_path: String,
+    pub id: String,
 }
 
 #[derive(Debug, Clone)]
@@ -77,6 +82,12 @@ pub struct EnumItem {
 #[derive(Debug, Clone)]
 pub struct Typename {
     pub is_const: bool,
+    pub name: NsName,
+}
+
+#[derive(Debug, Clone)]
+pub struct NsName {
+    pub namespace: String,
     pub name: String,
 }
 

@@ -88,9 +88,9 @@ pub fn translate(source_path: &String) -> Result<Vec<CModule>, String> {
     // Dome some checks.
     for m in &all_modules {
         for imp in module_imports(m) {
-            let dep = parser::get_module(&imp.path, &m.source_path)?;
+            let dep = parser::get_module(&imp.path, &m.id.source_path)?;
             if !checkers::depused(&m, &dep) {
-                return Err(format!("{}: imported {} is not used", m.id, dep.id));
+                return Err(format!("{}: imported {} is not used", m.id.id, dep.id.id));
             }
         }
     }
@@ -139,14 +139,14 @@ pub fn module_imports(m: &nodes::Module) -> Vec<Import> {
 // the same module.
 pub fn resolve_deps(m: &nodes::Module) -> Vec<nodes::Module> {
     let mut deps: Vec<nodes::Module> = vec![m.clone()];
-    let mut present = vec![m.id.clone()];
+    let mut present = vec![m.id.id.clone()];
     for imp in module_imports(&m) {
-        let sub = parser::get_module(&imp.path, &m.source_path).unwrap();
+        let sub = parser::get_module(&imp.path, &m.id.source_path).unwrap();
         for dep in resolve_deps(&sub) {
-            if present.contains(&&dep.id) {
+            if present.contains(&&dep.id.id) {
                 continue;
             }
-            present.push(dep.id.clone());
+            present.push(dep.id.id.clone());
             deps.push(dep);
         }
     }

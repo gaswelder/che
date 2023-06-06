@@ -216,7 +216,9 @@ fn rename_form(f: &mut Form, prefix: &String, names: &Vec<String>) {
 }
 
 fn rename_typename(t: &mut Typename, prefix: &String, names: &Vec<String>) {
-    t.name = rename(&t.name, prefix, names);
+    if t.name.namespace != "" {
+        t.name.name = rename(&t.name.name, prefix, names);
+    }
 }
 
 fn expr(e: &mut Expression, prefix: &String, names: &Vec<String>) {

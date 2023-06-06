@@ -10,7 +10,7 @@ fn basename(path: &String) -> String {
 pub fn run(argv: &[String]) -> i32 {
     for path in argv {
         let m = parser::get_module(&basename(path), &path).unwrap();
-        println!("mod {}", m.id);
+        println!("mod {}", m.id.id);
         let exports = checkers::get_exports(&m);
         if !exports.consts.is_empty() {
             println!("constants");

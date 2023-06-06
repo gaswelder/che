@@ -98,7 +98,12 @@ pub fn format_expression(expr: &Expression) -> String {
 }
 
 pub fn format_type(t: &Typename) -> String {
-    return format!("{}{}", if t.is_const { "const " } else { "" }, t.name);
+    let name = if t.name.namespace != "" {
+        format!("{}.{}", t.name.namespace, t.name.name)
+    } else {
+        t.name.name.clone()
+    };
+    return format!("{}{}", if t.is_const { "const " } else { "" }, name);
 }
 
 pub fn format_form(node: &Form) -> String {

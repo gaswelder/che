@@ -31,11 +31,11 @@ fn build_tree(m: &nodes::Module) -> DepNode {
     let imports = build::module_imports(m);
     let mut deps = vec![];
     for import in imports {
-        let m = parser::get_module(&import.path, &m.source_path).unwrap();
+        let m = parser::get_module(&import.path, &m.id.source_path).unwrap();
         deps.push(build_tree(&m));
     }
     return DepNode {
-        name: m.id.clone(),
+        name: m.id.id.clone(),
         deps,
     };
 }
