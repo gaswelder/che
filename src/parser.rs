@@ -1,14 +1,9 @@
 use crate::lexer::{for_file, Lexer, Token};
 use crate::nodes::*;
+use crate::preparser::{self, Ctx};
 use std::env;
 use std::path::Path;
 use substring::Substring;
-
-#[derive(Clone, Debug)]
-struct Ctx {
-    typenames: Vec<String>,
-    modnames: Vec<String>,
-}
 
 pub fn get_module(name: &String, current_path: &String) -> Result<Module, String> {
     // If requested module name ends with ".c", we look for it relative to the
@@ -28,46 +23,7 @@ pub fn get_module(name: &String, current_path: &String) -> Result<Module, String
         ));
     }
 
-    // Modules this module imports.
-    let mut modnames: Vec<String> = vec![];
-    // Types directly defined in this module. This is needed because parsing
-    // requires knowing in advance what typenames exist.
-    let mut typenames: Vec<String> = vec![];
-    let mut pre_lexer = for_file(&module_path)?;
-    loop {
-        match pre_lexer.get() {
-            None => break,
-            Some(t) => match t.kind.as_str() {
-                "import" => {
-                    let path = t.content.unwrap();
-                    let ns = if path.contains("/") {
-                        path.split("/").last().unwrap().to_string()
-                    } else {
-                        path
-                    };
-                    modnames.push(ns);
-                }
-                "typedef" => {
-                    // When a 'typedef' is encountered, look ahead to find the type name.
-                    typenames.push(get_typename(&mut pre_lexer)?);
-                }
-                _ => {
-                    // The special #type hint tells for a fact that a type name exists
-                    // without defining it. It's used in modules that interface with the
-                    // OS headers.
-                    if t.kind == "macro" && t.content.as_ref().unwrap().starts_with("#type") {
-                        let name = t.content.unwrap()[6..].trim().to_string();
-                        typenames.push(name);
-                    }
-                }
-            },
-        }
-    }
-
-    let ctx = Ctx {
-        typenames,
-        modnames,
-    };
+    let ctx = preparser::preparse(&module_path)?;
     let mut lexer = for_file(&module_path)?;
     return parse_module(&mut lexer, &ctx, &module_path).map_err(|err| {
         let next = lexer.peek().unwrap();
@@ -247,8 +203,28 @@ fn base(l: &mut Lexer, ctx: &Ctx) -> Result<Expression, String> {
 }
 
 fn type_follows(l: &Lexer, ctx: &Ctx) -> bool {
-    let token = l.peek().unwrap();
-    return token.kind == "word" && is_type(token.content.as_ref().unwrap(), &ctx.typenames);
+    if !l.peek().is_some() || l.peek().unwrap().kind != "word" {
+        return false;
+    }
+    // // <mod>.<name> where <mod> is any imported module that has exported <name>?
+    // if l.peek_n(2).is_some()
+    //     && l.peek_n(1).unwrap().kind == "."
+    //     && l.peek_n(2).unwrap().kind == "word"
+    // {
+    //     let a = l.peek_n(0).unwrap();
+    //     let b = l.peek_n(1).unwrap();
+    //     let c = l.peek_n(2).unwrap();
+    //     let pos = ctx.deps.iter().position(|x| x.name == a.content.unwrap());
+    //     if pos.is_some()
+    //         && ctx.deps[pos.unwrap()]
+    //             .typenames
+    //             .contains(c.content.unwrap().as_str())
+    //     {
+    //         return true;
+    //     }
+    // }
+    // any of locally defined types?
+    return is_type(l.peek().unwrap().content.as_ref().unwrap(), &ctx.typenames);
 }
 
 // foo.bar where foo is a module
@@ -1053,78 +1029,6 @@ fn parse_type_and_forms(lexer: &mut Lexer, ctx: &Ctx) -> Result<TypeAndForms, St
 
     expect(lexer, ";", None)?;
     return Ok(TypeAndForms { type_name, forms });
-}
-
-fn skip_brackets(lexer: &mut Lexer) {
-    expect(lexer, "{", None).unwrap();
-    while lexer.more() {
-        if lexer.follows("{") {
-            skip_brackets(lexer);
-            continue;
-        }
-        if lexer.follows("}") {
-            break;
-        }
-        lexer.get();
-    }
-    expect(lexer, "}", None).unwrap();
-}
-
-fn get_typename(lexer: &mut Lexer) -> Result<String, String> {
-    // The type name is at the end of the typedef statement.
-    // typedef foo bar;
-    // typedef {...} bar;
-    // typedef struct foo bar;
-
-    if lexer.follows("{") {
-        skip_brackets(lexer);
-        let name = expect(lexer, "word", None).unwrap().content.unwrap();
-        expect(lexer, ";", None)?;
-        return Ok(name);
-    }
-
-    // Get all tokens until the semicolon.
-    let mut buf: Vec<Token> = vec![];
-    while !lexer.ended() {
-        let t = lexer.get().unwrap();
-        if t.kind == ";" {
-            break;
-        }
-        buf.push(t);
-    }
-
-    if buf.is_empty() {
-        return Err("No tokens after 'typedef'".to_string());
-    }
-
-    buf.reverse();
-
-    // We assume that function typedefs end with "(...)".
-    // In that case we omit that part.
-    if buf[0].kind == ")" {
-        while !buf.is_empty() {
-            let t = buf.remove(0);
-            if t.kind == "(" {
-                break;
-            }
-        }
-    }
-
-    let mut name: Option<String> = None;
-
-    // The last "word" token is assumed to be the type name.
-    while !buf.is_empty() {
-        let t = buf.remove(0);
-        if t.kind == "word" {
-            name = Some(t.content.unwrap());
-            break;
-        }
-    }
-
-    if name.is_none() {
-        return Err("Type name expected in the typedef".to_string());
-    }
-    return Ok(name.unwrap());
 }
 
 pub fn homepath() -> String {

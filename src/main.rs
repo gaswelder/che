@@ -12,6 +12,7 @@ mod main_test;
 mod nodes;
 mod nodes_c;
 mod parser;
+mod preparser;
 #[cfg(test)]
 mod rename;
 mod translator;
