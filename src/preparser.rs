@@ -1,14 +1,25 @@
 use crate::lexer::{self, Lexer, Token};
+use crate::resolve;
+use substring::Substring;
 
 #[derive(Clone, Debug)]
 pub struct Ctx {
     pub typenames: Vec<String>,
     pub modnames: Vec<String>,
+    pub deps: Vec<Dep>,
+}
+
+#[derive(Clone, Debug)]
+pub struct Dep {
+    pub namespace: String,
+    pub imported_as: String,
+    pub typenames: Vec<String>,
 }
 
 pub fn preparse(module_path: &String) -> Result<Ctx, String> {
     let mut modnames: Vec<String> = vec![];
     let mut typenames: Vec<String> = vec![];
+    let mut deps: Vec<Dep> = Vec::new();
 
     let mut pre_lexer = lexer::for_file(module_path)?;
     loop {
@@ -17,12 +28,20 @@ pub fn preparse(module_path: &String) -> Result<Ctx, String> {
             Some(t) => match t.kind.as_str() {
                 "import" => {
                     let path = t.content.unwrap();
-                    let ns = if path.contains("/") {
-                        path.split("/").last().unwrap().to_string()
+                    let basename = path.split("/").last().unwrap().to_string();
+                    let ns = if path.ends_with(".c") {
+                        basename.substring(0, basename.len() - 2).to_string()
                     } else {
-                        path
+                        basename
                     };
-                    modnames.push(ns);
+                    modnames.push(ns.clone());
+                    let filepath = resolve::resolve_import(module_path, &path)?;
+                    let subctx = preparse(&filepath)?;
+                    deps.push(Dep {
+                        namespace: ns,
+                        imported_as: path,
+                        typenames: subctx.typenames,
+                    })
                 }
                 "typedef" => {
                     // When a 'typedef' is encountered, look ahead to find the type name.
@@ -43,6 +62,7 @@ pub fn preparse(module_path: &String) -> Result<Ctx, String> {
     return Ok(Ctx {
         typenames,
         modnames,
+        deps,
     });
 }
 
