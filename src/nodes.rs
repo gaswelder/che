@@ -26,7 +26,6 @@ pub enum ModuleObject {
     },
     Typedef(Typedef),
     StructTypedef(StructTypedef),
-    FuncTypedef(FuncTypedef),
     ModuleVariable {
         type_name: Typename,
         form: Form,

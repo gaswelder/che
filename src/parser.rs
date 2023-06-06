@@ -859,28 +859,10 @@ fn parse_typedef(is_pub: bool, l: &mut Lexer, ctx: &Ctx) -> Result<ModuleObject,
         });
     }
 
-    // typedef void *f(int a)[20];
+    // typedef void *thr_func(void *)
     // typedef foo bar;
 
     let typename = parse_typename(l, Some("typedef"))?;
-
-    if l.follows("(") {
-        // Function pointer type:
-        // typedef int (*func_t)(FILE*, const char *, ...);
-        l.get();
-        expect(l, "*", Some("function pointer typedef"))?;
-        let name = read_identifier(l)?;
-        expect(l, ")", Some("function pointer typedef"))?;
-        let params = parse_anonymous_parameters(l)?;
-        expect(l, ";", Some("typedef"))?;
-        return Ok(ModuleObject::FuncTypedef(FuncTypedef {
-            is_pub,
-            return_type: typename,
-            name,
-            params,
-        }));
-    }
-
     let mut stars = String::new();
     while l.follows("*") {
         stars += &l.get().unwrap().kind;

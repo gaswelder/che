@@ -18,17 +18,6 @@ pub fn format_module(node: &CModule) -> String {
             CModuleObject::Typedef {
                 type_name, form, ..
             } => format_typedef(&type_name, &form),
-            CModuleObject::FuncTypedef {
-                return_type,
-                name,
-                params,
-                is_pub: _,
-            } => format!(
-                "typedef {} (*{}){};\n",
-                format_type(return_type),
-                name,
-                format_anonymous_parameters(params)
-            ),
             CModuleObject::Macro { name, value } => format!("#{} {}\n", name, value),
             CModuleObject::Include(x) => format!("#include {}\n", x),
             CModuleObject::EnumDefinition { members, .. } => {

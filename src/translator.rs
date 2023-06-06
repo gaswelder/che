@@ -137,26 +137,6 @@ fn translate_module_object(element: &ModuleObject, m: &Module) -> Vec<CModuleObj
                 alias: type_alias.clone(),
             },
         }],
-        ModuleObject::FuncTypedef(FuncTypedef {
-            is_pub,
-            return_type,
-            name,
-            params,
-        }) => {
-            let mut forms: Vec<CAnonymousTypeform> = Vec::new();
-            for f in &params.forms {
-                forms.push(translate_anonymous_typeform(&f));
-            }
-            vec![CModuleObject::FuncTypedef {
-                is_pub: *is_pub,
-                return_type: translate_typename(return_type),
-                name: name.clone(),
-                params: CAnonymousParameters {
-                    ellipsis: params.ellipsis,
-                    forms,
-                },
-            }]
-        }
         ModuleObject::StructTypedef(StructTypedef {
             is_pub,
             fields,

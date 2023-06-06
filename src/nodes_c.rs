@@ -27,12 +27,6 @@ pub enum CModuleObject {
         type_name: CTypename,
         form: CTypedefForm,
     },
-    FuncTypedef {
-        is_pub: bool,
-        return_type: CTypename,
-        name: String,
-        params: CAnonymousParameters,
-    },
     StructForwardDeclaration(String),
     StructDefinition {
         name: String,
