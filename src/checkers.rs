@@ -10,7 +10,7 @@ pub fn depused(m: &Module, dep: &Module) -> bool {
         list.push(x.form.name);
     }
     for x in exports.types {
-        list.push(x.form.alias);
+        list.push(x.alias);
     }
     for x in exports.structs {
         list.push(x.name);

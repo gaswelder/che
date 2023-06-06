@@ -114,11 +114,28 @@ fn translate_module_object(element: &ModuleObject, m: &Module) -> Vec<CModuleObj
         ModuleObject::Typedef(Typedef {
             is_pub,
             type_name,
-            form,
+            alias,
+            array_size,
+            dereference_count,
+            function_parameters,
         }) => vec![CModuleObject::Typedef {
             is_pub: *is_pub,
             type_name: translate_typename(type_name),
-            form: translate_typedef_form(form),
+            form: CTypedefForm {
+                stars: "*".repeat(*dereference_count),
+                params: function_parameters.as_ref().map(|x| {
+                    let mut forms: Vec<CAnonymousTypeform> = Vec::new();
+                    for f in &x.forms {
+                        forms.push(translate_anonymous_typeform(&f));
+                    }
+                    CAnonymousParameters {
+                        ellipsis: x.ellipsis,
+                        forms,
+                    }
+                }),
+                size: *array_size,
+                alias: alias.clone(),
+            },
         }],
         ModuleObject::StructAliasTypedef {
             is_pub,
@@ -336,24 +353,6 @@ fn translate_anonymous_typeform(x: &AnonymousTypeform) -> CAnonymousTypeform {
     return CAnonymousTypeform {
         type_name: translate_typename(&x.type_name),
         ops: x.ops.clone(),
-    };
-}
-
-fn translate_typedef_form(x: &TypedefForm) -> CTypedefForm {
-    return CTypedefForm {
-        stars: "*".repeat(x.dereference_count),
-        params: x.function_parameters.as_ref().map(|x| {
-            let mut forms: Vec<CAnonymousTypeform> = Vec::new();
-            for f in &x.forms {
-                forms.push(translate_anonymous_typeform(&f));
-            }
-            CAnonymousParameters {
-                ellipsis: x.ellipsis,
-                forms,
-            }
-        }),
-        size: x.array_size,
-        alias: x.alias.clone(),
     };
 }
 

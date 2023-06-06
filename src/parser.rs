@@ -890,12 +890,10 @@ fn parse_typedef(is_pub: bool, l: &mut Lexer, ctx: &Ctx) -> Result<ModuleObject,
     return Ok(ModuleObject::Typedef(Typedef {
         is_pub,
         type_name: typename,
-        form: TypedefForm {
-            dereference_count: stars,
-            function_parameters: params,
-            array_size: size,
-            alias,
-        },
+        dereference_count: stars,
+        function_parameters: params,
+        array_size: size,
+        alias,
     }));
 }
 
@@ -1131,9 +1129,9 @@ fn parse_module(
                 let module = get_module(&p, current_path)?;
                 for obj in module.elements {
                     match obj {
-                        ModuleObject::Typedef(Typedef { form, is_pub, .. }) => {
+                        ModuleObject::Typedef(Typedef { alias, is_pub, .. }) => {
                             if is_pub {
-                                ctx2.typenames.push(form.alias);
+                                ctx2.typenames.push(alias);
                             }
                         }
                         ModuleObject::StructTypedef(StructTypedef { name, is_pub, .. }) => {

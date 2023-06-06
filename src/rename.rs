@@ -12,7 +12,7 @@ pub fn globalize_module(m: &mut Module, prefix: &String) {
         names.push(f.form.name);
     }
     for t in exports.types {
-        names.push(t.form.alias);
+        names.push(t.alias);
     }
     println!("{:?}", names);
     for obj in &mut m.elements {
@@ -53,10 +53,13 @@ fn mod_obj(obj: &mut ModuleObject, prefix: &String, names: &Vec<String>) {
         }
         ModuleObject::Typedef(Typedef {
             type_name,
-            form,
             is_pub: _,
+            alias,
+            array_size: _,
+            dereference_count: _,
+            function_parameters,
         }) => {
-            match &mut form.function_parameters {
+            match function_parameters {
                 Some(x) => {
                     for tf in &mut x.forms {
                         rename_typename(&mut tf.type_name, prefix, names);
@@ -64,7 +67,7 @@ fn mod_obj(obj: &mut ModuleObject, prefix: &String, names: &Vec<String>) {
                 }
                 None => {}
             }
-            form.alias = rename(&form.alias, prefix, names);
+            rename(alias, prefix, names);
             rename_typename(type_name, prefix, names);
         }
         ModuleObject::StructTypedef(StructTypedef {

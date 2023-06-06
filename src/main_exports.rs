@@ -21,7 +21,7 @@ pub fn run(argv: &[String]) -> i32 {
         if !exports.types.is_empty() {
             println!("types");
             for c in exports.types {
-                println!("\t{}", c.form.alias);
+                println!("\t{}", c.alias);
             }
         }
         if !exports.structs.is_empty() {

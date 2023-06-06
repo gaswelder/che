@@ -46,16 +46,11 @@ pub struct FunctionDeclaration {
 #[derive(Debug, Clone)]
 pub struct Typedef {
     pub is_pub: bool,
-    pub type_name: Typename,
-    pub form: TypedefForm,
-}
-
-#[derive(Debug, Clone)]
-pub struct TypedefForm {
-    pub dereference_count: usize,
-    pub function_parameters: Option<AnonymousParameters>,
-    pub array_size: usize,
     pub alias: String,
+    pub type_name: Typename,
+    pub dereference_count: usize,
+    pub array_size: usize,
+    pub function_parameters: Option<AnonymousParameters>,
 }
 
 #[derive(Debug, Clone)]
