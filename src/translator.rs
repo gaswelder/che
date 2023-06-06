@@ -341,8 +341,8 @@ fn translate_anonymous_typeform(x: &AnonymousTypeform) -> CAnonymousTypeform {
 
 fn translate_typedef_form(x: &TypedefForm) -> CTypedefForm {
     return CTypedefForm {
-        stars: x.stars.clone(),
-        params: x.params.as_ref().map(|x| {
+        stars: "*".repeat(x.dereference_count),
+        params: x.function_parameters.as_ref().map(|x| {
             let mut forms: Vec<CAnonymousTypeform> = Vec::new();
             for f in &x.forms {
                 forms.push(translate_anonymous_typeform(&f));
@@ -352,7 +352,7 @@ fn translate_typedef_form(x: &TypedefForm) -> CTypedefForm {
                 forms,
             }
         }),
-        size: x.size,
+        size: x.array_size,
         alias: x.alias.clone(),
     };
 }

@@ -56,7 +56,7 @@ fn mod_obj(obj: &mut ModuleObject, prefix: &String, names: &Vec<String>) {
             form,
             is_pub: _,
         }) => {
-            match &mut form.params {
+            match &mut form.function_parameters {
                 Some(x) => {
                     for tf in &mut x.forms {
                         rename_typename(&mut tf.type_name, prefix, names);

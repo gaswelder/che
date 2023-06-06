@@ -863,9 +863,10 @@ fn parse_typedef(is_pub: bool, l: &mut Lexer, ctx: &Ctx) -> Result<ModuleObject,
     // typedef foo bar;
     // typedef uint32_t md5sum_t[4];
     let typename = parse_typename(l, Some("typedef"))?;
-    let mut stars = String::new();
+    let mut stars: usize = 0;
     while l.follows("*") {
-        stars += &l.get().unwrap().kind;
+        l.get();
+        stars += 1;
     }
     let alias = read_identifier(l)?;
 
@@ -890,9 +891,9 @@ fn parse_typedef(is_pub: bool, l: &mut Lexer, ctx: &Ctx) -> Result<ModuleObject,
         is_pub,
         type_name: typename,
         form: TypedefForm {
-            stars,
-            params,
-            size,
+            dereference_count: stars,
+            function_parameters: params,
+            array_size: size,
             alias,
         },
     }));

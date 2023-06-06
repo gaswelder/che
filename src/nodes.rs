@@ -52,9 +52,9 @@ pub struct Typedef {
 
 #[derive(Debug, Clone)]
 pub struct TypedefForm {
-    pub stars: String,
-    pub params: Option<AnonymousParameters>,
-    pub size: usize,
+    pub dereference_count: usize,
+    pub function_parameters: Option<AnonymousParameters>,
+    pub array_size: usize,
     pub alias: String,
 }
 
