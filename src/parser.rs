@@ -287,12 +287,7 @@ fn read_identifier(lexer: &mut Lexer) -> Result<String, String> {
 
 fn parse_typename(l: &mut Lexer, comment: Option<&str>) -> Result<Typename, String> {
     let is_const = l.eat("const");
-    let name = if l.eat("struct") {
-        let name = expect(l, "word", comment)?.content.unwrap();
-        format!("struct {}", name)
-    } else {
-        expect(l, "word", comment)?.content.unwrap()
-    };
+    let name = expect(l, "word", comment)?.content.unwrap();
     return Ok(Typename { is_const, name });
 }
 
