@@ -10,6 +10,46 @@ struct Ctx {
     modnames: Vec<String>,
 }
 
+pub fn get_module(name: &String, current_path: &String) -> Result<Module, String> {
+    // If requested module name ends with ".c", we look for it relative to the
+    // importing module's location. If ".c" is omitted, we look for it inside
+    // the lib directory.
+    let module_path = if name.ends_with(".c") {
+        let p = Path::new(current_path).parent().unwrap().join(name);
+        String::from(p.to_str().unwrap())
+    } else {
+        format!("{}/lib/{}.c", homepath(), name)
+    };
+
+    if std::fs::metadata(&module_path).is_err() {
+        return Err(format!(
+            "can't find module '{}' (looked at {})",
+            name, module_path
+        ));
+    }
+
+    let ctx = Ctx {
+        typenames: get_module_typenames(&module_path)?,
+        modnames: get_file_deps(&module_path)?,
+    };
+    let mut lexer = for_file(&module_path)?;
+    let elements = parse_module(&mut lexer, &ctx, &module_path);
+    if elements.is_err() {
+        let next = lexer.peek().unwrap();
+        let wher = format!("{}: {}", module_path, lexer.peek().unwrap().pos);
+        let what = elements.err().unwrap();
+        return Err(format!("{}: {}: {}...", wher, what, token_to_string(next)));
+    }
+
+    return Ok(Module {
+        elements: elements.unwrap(),
+        id: ModuleRef {
+            id: format!("{}", Path::new(&module_path).display()),
+            source_path: String::from(&module_path),
+        },
+    });
+}
+
 fn parse_expr(l: &mut Lexer, strength: usize, ctx: &Ctx) -> Result<Expression, String> {
     let prefix_strength = operator_strength("prefix");
     if strength < prefix_strength {
@@ -1059,46 +1099,6 @@ fn get_module_typenames(path: &str) -> Result<Vec<String>, String> {
 
 pub fn homepath() -> String {
     return env::var("CHELANG_HOME").unwrap_or(String::from("."));
-}
-
-pub fn get_module(name: &String, current_path: &String) -> Result<Module, String> {
-    // If requested module name ends with ".c", we look for it relative to the
-    // importing module's location. If ".c" is omitted, we look for it inside
-    // the lib directory.
-    let module_path = if name.ends_with(".c") {
-        let p = Path::new(current_path).parent().unwrap().join(name);
-        String::from(p.to_str().unwrap())
-    } else {
-        format!("{}/lib/{}.c", homepath(), name)
-    };
-
-    if std::fs::metadata(&module_path).is_err() {
-        return Err(format!(
-            "can't find module '{}' (looked at {})",
-            name, module_path
-        ));
-    }
-
-    let ctx = Ctx {
-        typenames: get_module_typenames(&module_path)?,
-        modnames: get_file_deps(&module_path)?,
-    };
-    let mut lexer = for_file(&module_path)?;
-    let elements = parse_module(&mut lexer, &ctx, &module_path);
-    if elements.is_err() {
-        let next = lexer.peek().unwrap();
-        let wher = format!("{}: {}", module_path, lexer.peek().unwrap().pos);
-        let what = elements.err().unwrap();
-        return Err(format!("{}: {}: {}...", wher, what, token_to_string(next)));
-    }
-
-    return Ok(Module {
-        elements: elements.unwrap(),
-        id: ModuleRef {
-            id: format!("{}", Path::new(&module_path).display()),
-            source_path: String::from(&module_path),
-        },
-    });
 }
 
 fn token_to_string(token: &Token) -> String {
