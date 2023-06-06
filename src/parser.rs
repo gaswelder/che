@@ -861,7 +861,7 @@ fn parse_typedef(is_pub: bool, l: &mut Lexer, ctx: &Ctx) -> Result<ModuleObject,
 
     // typedef void *thr_func(void *)
     // typedef foo bar;
-
+    // typedef uint32_t md5sum_t[4];
     let typename = parse_typename(l, Some("typedef"))?;
     let mut stars = String::new();
     while l.follows("*") {
@@ -869,10 +869,11 @@ fn parse_typedef(is_pub: bool, l: &mut Lexer, ctx: &Ctx) -> Result<ModuleObject,
     }
     let alias = read_identifier(l)?;
 
-    let mut params: Option<AnonymousParameters> = None;
-    if l.follows("(") {
-        params = Some(parse_anonymous_parameters(l)?);
-    }
+    let params = if l.follows("(") {
+        Some(parse_anonymous_parameters(l)?)
+    } else {
+        None
+    };
     let mut size: usize = 0;
     if l.follows("[") {
         l.get();
@@ -884,19 +885,16 @@ fn parse_typedef(is_pub: bool, l: &mut Lexer, ctx: &Ctx) -> Result<ModuleObject,
             .unwrap();
         expect(l, "]", None)?;
     }
-
-    let form = TypedefForm {
-        stars,
-        params,
-        size,
-        alias,
-    };
-
     expect(l, ";", Some("typedef"))?;
     return Ok(ModuleObject::Typedef(Typedef {
         is_pub,
         type_name: typename,
-        form,
+        form: TypedefForm {
+            stars,
+            params,
+            size,
+            alias,
+        },
     }));
 }
 
