@@ -33,9 +33,9 @@ pub fn get_module(name: &String, current_path: &String) -> Result<Module, String
     // Types directly defined in this module. This is needed because parsing
     // requires knowing in advance what typenames exist.
     let mut typenames: Vec<String> = vec![];
-    let mut lexer = for_file(&module_path)?;
+    let mut pre_lexer = for_file(&module_path)?;
     loop {
-        match lexer.get() {
+        match pre_lexer.get() {
             None => break,
             Some(t) => match t.kind.as_str() {
                 "import" => {
@@ -49,7 +49,7 @@ pub fn get_module(name: &String, current_path: &String) -> Result<Module, String
                 }
                 "typedef" => {
                     // When a 'typedef' is encountered, look ahead to find the type name.
-                    typenames.push(get_typename(&mut lexer)?);
+                    typenames.push(get_typename(&mut pre_lexer)?);
                 }
                 _ => {
                     // The special #type hint tells for a fact that a type name exists
@@ -68,21 +68,66 @@ pub fn get_module(name: &String, current_path: &String) -> Result<Module, String
         typenames,
         modnames,
     };
-
     let mut lexer = for_file(&module_path)?;
-    let elements = parse_module(&mut lexer, &ctx, &module_path);
-    if elements.is_err() {
+    return parse_module(&mut lexer, &ctx, &module_path).map_err(|err| {
         let next = lexer.peek().unwrap();
-        let wher = format!("{}: {}", module_path, lexer.peek().unwrap().pos);
-        let what = elements.err().unwrap();
-        return Err(format!("{}: {}: {}...", wher, what, token_to_string(next)));
-    }
+        let position = format!("{}: {}", module_path, lexer.peek().unwrap().pos);
+        format!("{}: {}: {}...", position, err, token_to_string(next))
+    });
+}
 
+fn parse_module(l: &mut Lexer, ctx: &Ctx, module_path: &String) -> Result<Module, String> {
+    let mut module_objects: Vec<ModuleObject> = vec![];
+    let mut ctx2 = ctx.clone();
+    while l.more() {
+        match l.peek().unwrap().kind.as_str() {
+            "import" => {
+                let tok = l.get().unwrap();
+                let path = tok.content.unwrap();
+
+                // Get the module's local name.
+                // Module's local name is how an imported module is referred to
+                // inside this module, such as opt.bool for the #import opt
+                // or util.f for an #import util.c.
+                let modname = if path.ends_with(".c") {
+                    path.substring(0, path.len() - 2).clone()
+                } else {
+                    path.as_str()
+                };
+                ctx2.modnames.push(String::from(modname));
+
+                let p = path.clone();
+                module_objects.push(ModuleObject::Import { path });
+                let module = get_module(&p, &module_path)?;
+                for obj in module.elements {
+                    match obj {
+                        ModuleObject::Typedef(Typedef { alias, is_pub, .. }) => {
+                            if is_pub {
+                                ctx2.typenames.push(alias);
+                            }
+                        }
+                        ModuleObject::StructTypedef(StructTypedef { name, is_pub, .. }) => {
+                            if is_pub {
+                                ctx2.typenames.push(name);
+                            }
+                        }
+                        _ => {}
+                    }
+                }
+            }
+            "macro" => {
+                module_objects.push(parse_compat_macro(l)?);
+            }
+            _ => {
+                module_objects.push(parse_module_object(l, &ctx2)?);
+            }
+        }
+    }
     return Ok(Module {
-        elements: elements.unwrap(),
+        elements: module_objects,
         id: ModuleRef {
-            id: format!("{}", Path::new(&module_path).display()),
-            source_path: String::from(&module_path),
+            id: format!("{}", Path::new(module_path).display()),
+            source_path: String::from(module_path),
         },
     });
 }
@@ -1102,59 +1147,4 @@ fn token_to_string(token: &Token) -> String {
     c = c.replace("\n", "\\n");
     c = c.replace("\t", "\\t");
     return format!("[{}, {}]", token.kind, c);
-}
-
-fn parse_module(
-    l: &mut Lexer,
-    ctx: &Ctx,
-    current_path: &String,
-) -> Result<Vec<ModuleObject>, String> {
-    let mut module_objects: Vec<ModuleObject> = vec![];
-    let mut ctx2 = ctx.clone();
-
-    while l.more() {
-        match l.peek().unwrap().kind.as_str() {
-            "import" => {
-                let tok = l.get().unwrap();
-                let path = tok.content.unwrap();
-
-                // Get the module's local name.
-                // Module's local name is how an imported module is referred to
-                // inside this module, such as opt.bool for the #import opt
-                // or util.f for an #import util.c.
-                let modname = if path.ends_with(".c") {
-                    path.substring(0, path.len() - 2).clone()
-                } else {
-                    path.as_str()
-                };
-                ctx2.modnames.push(String::from(modname));
-
-                let p = path.clone();
-                module_objects.push(ModuleObject::Import { path });
-                let module = get_module(&p, current_path)?;
-                for obj in module.elements {
-                    match obj {
-                        ModuleObject::Typedef(Typedef { alias, is_pub, .. }) => {
-                            if is_pub {
-                                ctx2.typenames.push(alias);
-                            }
-                        }
-                        ModuleObject::StructTypedef(StructTypedef { name, is_pub, .. }) => {
-                            if is_pub {
-                                ctx2.typenames.push(name);
-                            }
-                        }
-                        _ => {}
-                    }
-                }
-            }
-            "macro" => {
-                module_objects.push(parse_compat_macro(l)?);
-            }
-            _ => {
-                module_objects.push(parse_module_object(l, &ctx2)?);
-            }
-        }
-    }
-    return Ok(module_objects);
 }
