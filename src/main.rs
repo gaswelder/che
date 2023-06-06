@@ -15,6 +15,7 @@ mod parser;
 mod preparser;
 #[cfg(test)]
 mod rename;
+mod resolve;
 mod translator;
 use std::env;
 use std::process::exit;

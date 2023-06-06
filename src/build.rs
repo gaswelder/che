@@ -3,6 +3,7 @@ use crate::format;
 use crate::nodes;
 use crate::nodes_c::CModule;
 use crate::parser;
+use crate::resolve;
 use crate::translator;
 use md5;
 use std::fs;
@@ -20,7 +21,7 @@ fn basename(path: &String) -> String {
 
 pub fn build_prog(source_path: &String, output_name: &String) -> Result<(), String> {
     // Decide where we'll stash all generated C code.
-    let tmp_dir_path = format!("{}/tmp", parser::homepath());
+    let tmp_dir_path = format!("{}/tmp", resolve::homepath());
     if fs::metadata(&tmp_dir_path).is_err() {
         fs::create_dir(&tmp_dir_path).unwrap();
     }

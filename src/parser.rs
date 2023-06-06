@@ -1,28 +1,12 @@
 use crate::lexer::{for_file, Lexer, Token};
 use crate::nodes::*;
 use crate::preparser::{self, Ctx};
-use std::env;
+use crate::resolve;
 use std::path::Path;
 use substring::Substring;
 
 pub fn get_module(name: &String, current_path: &String) -> Result<Module, String> {
-    // If requested module name ends with ".c", we look for it relative to the
-    // importing module's location. If ".c" is omitted, we look for it inside
-    // the lib directory.
-    let module_path = if name.ends_with(".c") {
-        let p = Path::new(current_path).parent().unwrap().join(name);
-        String::from(p.to_str().unwrap())
-    } else {
-        format!("{}/lib/{}.c", homepath(), name)
-    };
-
-    if std::fs::metadata(&module_path).is_err() {
-        return Err(format!(
-            "can't find module '{}' (looked at {})",
-            name, module_path
-        ));
-    }
-
+    let module_path = resolve::resolve_import(current_path, name)?;
     let ctx = preparser::preparse(&module_path)?;
     let mut lexer = for_file(&module_path)?;
     return parse_module(&mut lexer, &ctx, &module_path).map_err(|err| {
@@ -1029,10 +1013,6 @@ fn parse_type_and_forms(lexer: &mut Lexer, ctx: &Ctx) -> Result<TypeAndForms, St
 
     expect(lexer, ";", None)?;
     return Ok(TypeAndForms { type_name, forms });
-}
-
-pub fn homepath() -> String {
-    return env::var("CHELANG_HOME").unwrap_or(String::from("."));
 }
 
 fn token_to_string(token: &Token) -> String {
