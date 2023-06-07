@@ -7,7 +7,14 @@ pub fn run(args: &[String]) -> i32 {
     if fs::metadata(&dirpath).is_err() {
         fs::create_dir(&dirpath).unwrap();
     }
-    let c_modules = build::translate(&modpath).unwrap();
-    build::write_c99(&c_modules, &dirpath).unwrap();
-    return 0;
+    match build::translate(&modpath) {
+        Ok(c_modules) => {
+            build::write_c99(&c_modules, &dirpath).unwrap();
+            return 0;
+        }
+        Err(s) => {
+            eprintln!("{}", s);
+            return 1;
+        }
+    }
 }
