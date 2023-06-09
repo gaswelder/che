@@ -8,22 +8,16 @@ use crate::parser;
 use crate::preparser;
 use crate::preparser::Ctx;
 use crate::preparser::Dep;
+use crate::preparser::Imp1;
 use crate::rename;
 use crate::resolve;
-use crate::resolve::resolve_import;
 use crate::translator;
 use md5;
 use std::fs;
 use std::io::BufRead;
 use std::process::{Command, Stdio};
 
-#[derive(Debug, Clone)]
-pub struct Imp1 {
-    pub ns: String,
-    pub path: String,
-}
-
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct Build {
     pub paths: Vec<String>,
     pub typenames: Vec<Vec<String>>,
@@ -36,11 +30,6 @@ pub struct Build {
 pub struct PathId {
     path: String,
     id: String,
-}
-
-struct Kek {
-    imports: Vec<Imp1>,
-    typenames: Vec<String>,
 }
 
 pub fn build_prog(source_path: &String, output_name: &String) -> Result<(), String> {
@@ -113,7 +102,7 @@ pub fn parse(mainpath: &String) -> Result<Build, String> {
         c: Vec::new(),
     };
 
-    let kek = load_import(mainpath)?;
+    let kek = preparser::preparse(mainpath)?;
     work.typenames.push(kek.typenames);
     work.imports.push(kek.imports);
 
@@ -137,7 +126,7 @@ pub fn parse(mainpath: &String) -> Result<Build, String> {
         let imp = missing.unwrap();
         println!("adding missing {}", &imp.path);
         work.paths.push(imp.path.clone());
-        let kek = load_import(&imp.path)?;
+        let kek = preparser::preparse(&imp.path)?;
         work.typenames.push(kek.typenames.clone());
         work.imports.push(kek.imports.clone());
     }
@@ -232,20 +221,4 @@ pub fn write_c99(work: &Build, dirpath: &String) -> Result<Vec<PathId>, String> 
         fs::write(&path, &src).unwrap();
     }
     return Ok(paths);
-}
-
-fn load_import(mainpath: &String) -> Result<Kek, String> {
-    let prep = preparser::preparse(mainpath)?;
-    let mut imports: Vec<Imp1> = Vec::new();
-    for x in prep.imports {
-        let res = resolve_import(mainpath, &x.path)?;
-        imports.push(Imp1 {
-            ns: x.ns,
-            path: res.path,
-        })
-    }
-    return Ok(Kek {
-        imports,
-        typenames: prep.typenames,
-    });
 }

@@ -3,12 +3,6 @@ use crate::resolve::{self};
 use substring::Substring;
 
 #[derive(Clone, Debug)]
-pub struct Preparse {
-    pub typenames: Vec<String>,
-    pub imports: Vec<ModuleImport>,
-}
-
-#[derive(Clone, Debug)]
 pub struct ModuleImport {
     pub path: String, // import path, not normalized
     pub ns: String,   // alias (lib/foo.c -> foo)
@@ -39,9 +33,21 @@ pub struct Dep {
     pub typenames: Vec<String>,
 }
 
+#[derive(Debug)]
+pub struct Preparse {
+    pub imports: Vec<Imp1>,
+    pub typenames: Vec<String>,
+}
+
+#[derive(Debug, Clone)]
+pub struct Imp1 {
+    pub ns: String,
+    pub path: String,
+}
+
 pub fn preparse(path: &String) -> Result<Preparse, String> {
     let mut typenames: Vec<String> = vec![];
-    let mut imports: Vec<ModuleImport> = Vec::new();
+    let mut imports: Vec<Imp1> = Vec::new();
     let mut l = lexer::for_file(path)?;
     loop {
         match l.get() {
@@ -56,9 +62,9 @@ pub fn preparse(path: &String) -> Result<Preparse, String> {
                         basename
                     };
                     let res = resolve::resolve_import(path, &import_path)?;
-                    imports.push(ModuleImport {
-                        ns,
-                        path: import_path.clone(),
+                    imports.push(Imp1 {
+                        ns: res.ns,
+                        path: res.path,
                     });
                 }
                 "typedef" => {
@@ -77,11 +83,7 @@ pub fn preparse(path: &String) -> Result<Preparse, String> {
             },
         }
     }
-    return Ok(Preparse {
-        typenames,
-        // deps,
-        imports,
-    });
+    return Ok(Preparse { imports, typenames });
 }
 
 fn get_typename(lexer: &mut Lexer) -> Result<String, String> {
