@@ -1,9 +1,9 @@
 use crate::nodes_c::*;
 use crate::parser;
 
-pub fn format_module(node: &CModule) -> String {
+pub fn format_module(cm: &CModule) -> String {
     let mut s = String::new();
-    for e in &node.elements {
+    for e in &cm.elements {
         s += &match e {
             CModuleObject::ModuleVariable {
                 type_name,

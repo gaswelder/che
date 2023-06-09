@@ -6,7 +6,7 @@ pub struct CEnumItem {
 
 #[derive(Debug, Clone)]
 pub struct CModule {
-    pub id: String,
+    // pub id: String,
     pub elements: Vec<CModuleObject>,
     pub link: Vec<String>,
 }

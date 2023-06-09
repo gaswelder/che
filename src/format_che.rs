@@ -10,6 +10,7 @@ pub fn format_expression(expr: &Expression) -> String {
                 format_expression(&operand)
             );
         }
+        Expression::NsName(n) => format!("{}.{}", &n.namespace, &n.name),
         Expression::FunctionCall {
             function,
             arguments,

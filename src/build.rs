@@ -1,22 +1,46 @@
 use crate::checkers;
 use crate::format;
-use crate::nodes;
+use crate::lexer;
+use crate::nodes::Module;
 use crate::nodes_c::CModule;
+use crate::nodes_c::CModuleObject;
 use crate::parser;
+use crate::preparser;
+use crate::preparser::Ctx;
+use crate::preparser::Dep;
+use crate::rename;
 use crate::resolve;
+use crate::resolve::resolve_import;
 use crate::translator;
 use md5;
 use std::fs;
 use std::io::BufRead;
-use std::path::Path;
 use std::process::{Command, Stdio};
 
-pub struct Import {
+#[derive(Debug, Clone)]
+pub struct Imp1 {
+    pub ns: String,
     pub path: String,
 }
 
-fn basename(path: &String) -> String {
-    return String::from(Path::new(path).file_name().unwrap().to_str().unwrap());
+#[derive(Debug, Clone)]
+pub struct Build {
+    pub paths: Vec<String>,
+    pub typenames: Vec<Vec<String>>,
+    pub imports: Vec<Vec<Imp1>>,
+    pub ctx: Vec<Ctx>,
+    pub m: Vec<Module>,
+    pub c: Vec<CModule>,
+}
+
+pub struct PathId {
+    path: String,
+    id: String,
+}
+
+struct Kek {
+    imports: Vec<Imp1>,
+    typenames: Vec<String>,
 }
 
 pub fn build_prog(source_path: &String, output_name: &String) -> Result<(), String> {
@@ -26,16 +50,17 @@ pub fn build_prog(source_path: &String, output_name: &String) -> Result<(), Stri
         fs::create_dir(&tmp_dir_path).unwrap();
     }
 
-    let c_modules = translate(source_path)?;
-    let pathsmap = write_c99(&c_modules, &tmp_dir_path).unwrap();
+    let mut work = parse(source_path)?;
+    translate(&mut work)?;
+    let pathsmap = write_c99(&work, &tmp_dir_path).unwrap();
 
     // Determine the list of OS libraries to link. "m" is the library for code
     // in included <math.h>. For simplicity both the header and the library are
     // always included.
     // Other libraries are simply taked from the #link hints in the source code.
     let mut link: Vec<String> = vec!["m".to_string()];
-    for module in &c_modules {
-        for l in &module.link {
+    for c in work.c {
+        for l in &c.link {
             if link.iter().position(|x| x == l).is_none() {
                 link.push(l.clone());
             }
@@ -78,78 +103,149 @@ pub fn build_prog(source_path: &String, output_name: &String) -> Result<(), Stri
     return Err(String::from("build failed"));
 }
 
-pub fn translate(source_path: &String) -> Result<Vec<CModule>, String> {
-    // Get the module we're building.
-    let main_module = parser::get_module(&basename(source_path), &source_path)?;
+pub fn parse(mainpath: &String) -> Result<Build, String> {
+    let mut work = Build {
+        paths: vec![mainpath.clone()],
+        typenames: Vec::new(),
+        imports: Vec::new(),
+        ctx: Vec::new(),
+        m: Vec::new(),
+        c: Vec::new(),
+    };
 
-    // Get all modules that our module depends on. This includes our module as
-    // well, so this is a complete list of modules required for the build.
-    let all_modules = resolve_deps(&main_module);
+    let kek = load_import(mainpath)?;
+    work.typenames.push(kek.typenames);
+    work.imports.push(kek.imports);
+
+    loop {
+        // find an unresolved import
+        let mut missing: Option<&Imp1> = None;
+        for imps in &work.imports {
+            for imp in imps {
+                if !work.paths.contains(&imp.path) {
+                    missing = Some(imp);
+                    break;
+                }
+            }
+            if missing.is_some() {
+                break;
+            }
+        }
+        if missing.is_none() {
+            break;
+        }
+        let imp = missing.unwrap();
+        println!("adding missing {}", &imp.path);
+        work.paths.push(imp.path.clone());
+        let kek = load_import(&imp.path)?;
+        work.typenames.push(kek.typenames.clone());
+        work.imports.push(kek.imports.clone());
+    }
+
+    work.paths.reverse();
+    work.typenames.reverse();
+    work.imports.reverse();
+
+    for (i, path) in work.paths.iter().enumerate() {
+        let mut deps: Vec<Dep> = Vec::new();
+        for imp in &work.imports[i] {
+            let pos = work.paths.iter().position(|x| *x == imp.path).unwrap();
+            deps.push(Dep {
+                ns: imp.ns.clone(),
+                typenames: work.typenames[pos].clone(),
+            });
+        }
+        work.ctx.push(Ctx {
+            typenames: work.typenames[i].clone(),
+            path: path.clone(),
+            deps,
+        });
+    }
+
+    // Parse each item.
+    for (i, path) in work.paths.iter().enumerate() {
+        let mut l = lexer::for_file(&path)?;
+        let ctx = &work.ctx[i];
+        work.m.push(parser::parse_module(&mut l, ctx)?);
+    }
 
     // Dome some checks.
-    for m in &all_modules {
-        for imp in module_imports(m) {
-            let dep = parser::get_module(&imp.path, &m.id.source_path)?;
-            if !checkers::depused(&m, &dep) {
-                return Err(format!("{}: imported {} is not used", m.id.id, dep.id.id));
+    for (i, m) in work.m.iter().enumerate() {
+        for imp in &work.imports[i] {
+            let pos = work.paths.iter().position(|x| *x == imp.path).unwrap();
+            let depm = &work.m[pos];
+            if !checkers::depused(&m, &depm, &imp.ns) {
+                return Err(format!(
+                    "{}: imported {} is not used",
+                    work.paths[i], &imp.ns
+                ));
             }
         }
     }
-    return Ok(all_modules
-        .iter()
-        .map(|m| translator::translate(&m))
-        .collect());
+
+    return Ok(work);
 }
 
-pub struct PathId {
-    path: String,
-    id: String,
+pub fn translate(work: &mut Build) -> Result<(), String> {
+    // Globalize all modules
+    for m in work.m.iter_mut() {
+        rename::globalize_module(m, &String::from("kek"));
+    }
+    println!("globaized");
+
+    // Translate each node.
+    for (i, m) in work.m.iter().enumerate() {
+        let mut cnodes: Vec<CModuleObject> = Vec::new();
+        for imp in &work.imports[i] {
+            let pos = work.paths.iter().position(|x| *x == imp.path).unwrap();
+            let c = &work.c[pos];
+            let syn = translator::get_module_synopsis(&c);
+            for obj in syn {
+                cnodes.push(obj);
+            }
+        }
+        let ctx = &work.ctx[i];
+        let mut c = translator::translate(m, ctx);
+        for e in c.elements {
+            cnodes.push(e);
+        }
+        c.elements = cnodes;
+        work.c.push(c);
+    }
+
+    return Ok(());
 }
 
-pub fn write_c99(c_modules: &Vec<CModule>, dirpath: &String) -> Result<Vec<PathId>, String> {
+pub fn write_c99(work: &Build, dirpath: &String) -> Result<Vec<PathId>, String> {
     // Write the generated C source files in the temp directory and build the
     // mapping of the generated C file path to the original source file path,
     // that will be used to trace C compiler's errors at least to the original
     // files.
     let mut paths: Vec<PathId> = Vec::new();
-    for module in c_modules {
-        let src = format::format_module(&module);
-        let path = format!("{}/{:x}.c", dirpath, md5::compute(&module.id));
+    for (i, cm) in work.c.iter().enumerate() {
+        let src = format::format_module(&cm);
+        let path = format!("{}/{:x}.c", dirpath, md5::compute(&work.paths[i]));
         paths.push(PathId {
             path: String::from(&path),
-            id: String::from(&module.id),
+            id: String::from(&work.paths[i]),
         });
         fs::write(&path, &src).unwrap();
     }
     return Ok(paths);
 }
 
-// Returns a list of import nodes from the module.
-pub fn module_imports(m: &nodes::Module) -> Vec<Import> {
-    let mut list: Vec<Import> = vec![];
-    for element in &m.elements {
-        match element {
-            nodes::ModuleObject::Import { path } => list.push(Import { path: path.clone() }),
-            _ => {}
-        }
+fn load_import(mainpath: &String) -> Result<Kek, String> {
+    let prep = preparser::preparse(mainpath)?;
+    let mut imports: Vec<Imp1> = Vec::new();
+    for x in prep.imports {
+        let res = resolve_import(mainpath, &x.path)?;
+        imports.push(Imp1 {
+            ns: x.ns,
+            path: res.path,
+        })
     }
-    return list;
-}
-
-// Returns a list of all modules required to build the given module, including
-// the same module.
-pub fn resolve_deps(m: &nodes::Module) -> Vec<nodes::Module> {
-    let mut deps: Vec<nodes::Module> = vec![m.clone()];
-    let mut present = vec![m.id.id.clone()];
-    for imp in module_imports(&m) {
-        let sub = parser::get_module(&imp.path, &m.id.source_path).unwrap();
-        for dep in resolve_deps(&sub) {
-            if present.contains(&&dep.id.id) {
-                continue;
-            }
-            present.push(dep.id.id.clone());
-            deps.push(dep);
-        }
-    }
-    return deps;
+    return Ok(Kek {
+        imports,
+        typenames: prep.typenames,
+    });
 }

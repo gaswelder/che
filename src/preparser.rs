@@ -1,51 +1,69 @@
 use crate::lexer::{self, Lexer, Token};
-use crate::resolve;
+use crate::resolve::{self};
 use substring::Substring;
 
 #[derive(Clone, Debug)]
-pub struct Ctx {
+pub struct Preparse {
     pub typenames: Vec<String>,
-    pub modnames: Vec<String>,
+    pub imports: Vec<ModuleImport>,
+}
+
+#[derive(Clone, Debug)]
+pub struct ModuleImport {
+    pub path: String, // import path, not normalized
+    pub ns: String,   // alias (lib/foo.c -> foo)
+}
+
+#[derive(Clone, Debug)]
+pub struct Ctx {
+    pub path: String,
+    pub typenames: Vec<String>,
     pub deps: Vec<Dep>,
+}
+
+impl Ctx {
+    pub fn has_ns(&self, ns: &String) -> bool {
+        for dep in &self.deps {
+            if dep.ns == *ns {
+                return true;
+            }
+        }
+        return false;
+    }
 }
 
 #[derive(Clone, Debug)]
 pub struct Dep {
-    pub namespace: String,
-    pub imported_as: String,
+    // pub path: String,
+    pub ns: String,
     pub typenames: Vec<String>,
 }
 
-pub fn preparse(module_path: &String) -> Result<Ctx, String> {
-    let mut modnames: Vec<String> = vec![];
+pub fn preparse(path: &String) -> Result<Preparse, String> {
     let mut typenames: Vec<String> = vec![];
-    let mut deps: Vec<Dep> = Vec::new();
-
-    let mut pre_lexer = lexer::for_file(module_path)?;
+    let mut imports: Vec<ModuleImport> = Vec::new();
+    let mut l = lexer::for_file(path)?;
     loop {
-        match pre_lexer.get() {
+        match l.get() {
             None => break,
             Some(t) => match t.kind.as_str() {
                 "import" => {
-                    let path = t.content.unwrap();
-                    let basename = path.split("/").last().unwrap().to_string();
-                    let ns = if path.ends_with(".c") {
+                    let import_path = t.content.unwrap();
+                    let basename = import_path.split("/").last().unwrap().to_string();
+                    let ns = if import_path.ends_with(".c") {
                         basename.substring(0, basename.len() - 2).to_string()
                     } else {
                         basename
                     };
-                    modnames.push(ns.clone());
-                    let filepath = resolve::resolve_import(module_path, &path)?;
-                    let subctx = preparse(&filepath)?;
-                    deps.push(Dep {
-                        namespace: ns,
-                        imported_as: path,
-                        typenames: subctx.typenames,
-                    })
+                    let res = resolve::resolve_import(path, &import_path)?;
+                    imports.push(ModuleImport {
+                        ns,
+                        path: import_path.clone(),
+                    });
                 }
                 "typedef" => {
                     // When a 'typedef' is encountered, look ahead to find the type name.
-                    typenames.push(get_typename(&mut pre_lexer)?);
+                    typenames.push(get_typename(&mut l)?);
                 }
                 _ => {
                     // The special #type hint tells for a fact that a type name exists
@@ -59,10 +77,10 @@ pub fn preparse(module_path: &String) -> Result<Ctx, String> {
             },
         }
     }
-    return Ok(Ctx {
+    return Ok(Preparse {
         typenames,
-        modnames,
-        deps,
+        // deps,
+        imports,
     });
 }
 

@@ -2,10 +2,16 @@ use crate::format;
 use crate::format_che;
 use crate::nodes::*;
 use crate::nodes_c::*;
-use crate::parser;
+use crate::preparser::Ctx;
+use crate::preparser::Dep;
 use std::collections::HashSet;
 
-pub fn translate(m: &Module) -> CModule {
+pub fn module_gid(dep: &Dep) -> String {
+    return format!("__ns_{}", dep.ns);
+    // return format!("{:x}", md5::compute(namespace));
+}
+
+pub fn translate(m: &Module, ctx: &Ctx) -> CModule {
     // Build the list of modules to link.
     // These are specified using the #link macros.
     let mut link: Vec<String> = Vec::new();
@@ -20,21 +26,29 @@ pub fn translate(m: &Module) -> CModule {
         }
     }
 
-    // Translate each node into a C node. Some nodes are valid C nodes already,
-    // but some are not and have to be converted to their "Compat..." analogs.
     let mut elements: Vec<CModuleObject> = Vec::new();
-    let mut imports: Vec<ModuleRef> = Vec::new();
-    for node in &m.elements {
-        match node {
-            ModuleObject::Import { path } => {
-                let module = parser::get_module(&path, &m.id.source_path).unwrap();
-                imports.push(module.id.clone());
-            }
-            _ => {}
-        }
-    }
+    // let mut imports: Vec<ModuleRef> = Vec::new();
+    // for node in &m.elements {
+    //     match node {
+    //         ModuleObject::Import { path } => {
+    //             // let module = parser::get_module(&path, &m.id.source_path).unwrap();
+    //             // imports.push(module.id.clone());
+    //         }
+    //         _ => {}
+    //     }
+    // }
+    // for element in &m.elements {
+    //     match element {
+    //         ModuleObject::Import { path } => {
+    //             let module = parser::get_module(&path, &m.id.source_path).unwrap();
+    //             let compat = translate(&module);
+    //             return get_module_synopsis(compat);
+    //         }
+    //         _ => {}
+    //     }
+    // }
     for element in &m.elements {
-        for node in translate_module_object(element, m, &imports) {
+        for node in translate_module_object(element, m, ctx) {
             elements.push(node)
         }
     }
@@ -98,7 +112,7 @@ pub fn translate(m: &Module) -> CModule {
         groups[order].push(element);
     }
     let mut sorted_elements: Vec<CModuleObject> = vec![CModuleObject::Split {
-        text: String::from(format!("/* -------{}------- */", &m.id.id)),
+        text: String::from(format!("/* -------{}------- */", &ctx.path)),
     }];
     for group in groups {
         if group.len() == 0 {
@@ -113,17 +127,13 @@ pub fn translate(m: &Module) -> CModule {
     }
 
     return CModule {
-        id: m.id.id.clone(),
+        // id: m.id.id.clone(),
         elements: sorted_elements,
         link,
     };
 }
 
-fn translate_module_object(
-    element: &ModuleObject,
-    m: &Module,
-    imports: &Vec<ModuleRef>,
-) -> Vec<CModuleObject> {
+fn translate_module_object(element: &ModuleObject, m: &Module, ctx: &Ctx) -> Vec<CModuleObject> {
     match element {
         ModuleObject::Typedef(Typedef {
             is_pub,
@@ -134,13 +144,13 @@ fn translate_module_object(
             function_parameters,
         }) => vec![CModuleObject::Typedef {
             is_pub: *is_pub,
-            type_name: translate_typename(type_name, imports),
+            type_name: translate_typename(type_name, ctx),
             form: CTypedefForm {
                 stars: "*".repeat(*dereference_count),
                 params: function_parameters.as_ref().map(|x| {
                     let mut forms: Vec<CAnonymousTypeform> = Vec::new();
                     for f in &x.forms {
-                        forms.push(translate_anonymous_typeform(&f, imports));
+                        forms.push(translate_anonymous_typeform(&f, ctx));
                     }
                     CAnonymousParameters {
                         ellipsis: x.ellipsis,
@@ -187,13 +197,13 @@ fn translate_module_object(
                     StructEntry::Plain(x) => {
                         for f in &x.forms {
                             compat_fields.push(CStructItem::Field(CTypeForm {
-                                type_name: translate_typename(&x.type_name, imports),
-                                form: translate_form(f, imports),
+                                type_name: translate_typename(&x.type_name, ctx),
+                                form: translate_form(f, ctx),
                             }));
                         }
                     }
                     StructEntry::Union(x) => {
-                        compat_fields.push(CStructItem::Union(translate_union(x, imports)));
+                        compat_fields.push(CStructItem::Union(translate_union(x, ctx)));
                     }
                 }
             }
@@ -220,9 +230,10 @@ fn translate_module_object(
             ]
         }
         ModuleObject::Import { path } => {
-            let module = parser::get_module(&path, &m.id.source_path).unwrap();
-            let compat = translate(&module);
-            return get_module_synopsis(compat);
+            return Vec::new();
+            // let module = parser::get_module(&path, &m.id.source_path).unwrap();
+            // let compat = translate(&module);
+            // return get_module_synopsis(compat);
         }
         ModuleObject::FunctionDeclaration(FunctionDeclaration {
             is_pub,
@@ -230,13 +241,13 @@ fn translate_module_object(
             form,
             parameters,
             body,
-        }) => translate_function_declaration(*is_pub, type_name, form, parameters, body, imports),
+        }) => translate_function_declaration(*is_pub, type_name, form, parameters, body, ctx),
         ModuleObject::Enum { is_pub, members } => {
             let mut tm: Vec<CEnumItem> = Vec::new();
-            for m in members {
+            for member in members {
                 tm.push(CEnumItem {
-                    id: m.id.clone(),
-                    value: m.value.as_ref().map(|v| translate_expression(&v, imports)),
+                    id: member.id.clone(),
+                    value: member.value.as_ref().map(|v| translate_expression(&v, ctx)),
                 })
             }
             return vec![CModuleObject::EnumDefinition {
@@ -259,19 +270,19 @@ fn translate_module_object(
             type_name,
             value,
         } => vec![CModuleObject::ModuleVariable {
-            type_name: translate_typename(type_name, imports),
-            form: translate_form(form, imports),
-            value: translate_expression(value, imports),
+            type_name: translate_typename(type_name, ctx),
+            form: translate_form(form, ctx),
+            value: translate_expression(value, ctx),
         }],
         // ModuleObject::CompatInclude(x) => vec![CompatModuleObject::CompatInclude(x.clone())],
     }
 }
 
-fn translate_form(f: &Form, imports: &Vec<ModuleRef>) -> CForm {
+fn translate_form(f: &Form, ctx: &Ctx) -> CForm {
     let mut indexes: Vec<Option<CExpression>> = vec![];
     for index in &f.indexes {
         indexes.push(match index {
-            Some(e) => Some(translate_expression(&e, imports)),
+            Some(e) => Some(translate_expression(&e, ctx)),
             None => None,
         })
     }
@@ -282,38 +293,39 @@ fn translate_form(f: &Form, imports: &Vec<ModuleRef>) -> CForm {
     };
 }
 
-fn translate_union(x: &Union, imports: &Vec<ModuleRef>) -> CUnion {
+fn translate_union(x: &Union, ctx: &Ctx) -> CUnion {
     let mut fields: Vec<CUnionField> = Vec::new();
     for f in &x.fields {
         fields.push(CUnionField {
-            type_name: translate_typename(&f.type_name, imports),
-            form: translate_form(&f.form, imports),
+            type_name: translate_typename(&f.type_name, ctx),
+            form: translate_form(&f.form, ctx),
         })
     }
     return CUnion {
-        form: translate_form(&x.form, imports),
+        form: translate_form(&x.form, ctx),
         fields,
     };
 }
 
-fn translate_expression(e: &Expression, imports: &Vec<ModuleRef>) -> CExpression {
+fn translate_expression(e: &Expression, ctx: &Ctx) -> CExpression {
     return match e {
+        Expression::NsName(n) => CExpression::Identifier(translate_ns_name(n, ctx)),
         Expression::ArrayIndex { array, index } => CExpression::ArrayIndex {
-            array: Box::new(translate_expression(array, imports)),
-            index: Box::new(translate_expression(index, imports)),
+            array: Box::new(translate_expression(array, ctx)),
+            index: Box::new(translate_expression(index, ctx)),
         },
         Expression::BinaryOp { op, a, b } => CExpression::BinaryOp {
             op: op.clone(),
-            a: Box::new(translate_expression(a, imports)),
-            b: Box::new(translate_expression(b, imports)),
+            a: Box::new(translate_expression(a, ctx)),
+            b: Box::new(translate_expression(b, ctx)),
         },
         Expression::CompositeLiteral(x) => {
             let mut entries: Vec<CCompositeLiteralEntry> = Vec::new();
             for e in &x.entries {
                 entries.push(CCompositeLiteralEntry {
                     is_index: e.is_index,
-                    key: e.key.as_ref().map(|x| translate_expression(&x, imports)),
-                    value: translate_expression(&e.value, imports),
+                    key: e.key.as_ref().map(|x| translate_expression(&x, ctx)),
+                    value: translate_expression(&e.value, ctx),
                 })
             }
             CExpression::CompositeLiteral(CCompositeLiteral { entries })
@@ -325,15 +337,15 @@ fn translate_expression(e: &Expression, imports: &Vec<ModuleRef>) -> CExpression
         Expression::Identifier(x) => CExpression::Identifier(x.clone()),
         Expression::PrefixOperator { operator, operand } => CExpression::PrefixOperator {
             operator: operator.clone(),
-            operand: Box::new(translate_expression(operand, imports)),
+            operand: Box::new(translate_expression(operand, ctx)),
         },
         Expression::PostfixOperator { operator, operand } => CExpression::PostfixOperator {
             operator: operator.clone(),
-            operand: Box::new(translate_expression(operand, imports)),
+            operand: Box::new(translate_expression(operand, ctx)),
         },
         Expression::Cast { type_name, operand } => CExpression::Cast {
-            type_name: translate_anonymous_typeform(type_name, imports),
-            operand: Box::new(translate_expression(operand, imports)),
+            type_name: translate_anonymous_typeform(type_name, ctx),
+            operand: Box::new(translate_expression(operand, ctx)),
         },
         Expression::FunctionCall {
             function,
@@ -341,10 +353,10 @@ fn translate_expression(e: &Expression, imports: &Vec<ModuleRef>) -> CExpression
         } => {
             let mut targs: Vec<CExpression> = Vec::new();
             for arg in arguments {
-                targs.push(translate_expression(arg, imports))
+                targs.push(translate_expression(arg, ctx))
             }
             CExpression::FunctionCall {
-                function: Box::new(translate_expression(function, imports)),
+                function: Box::new(translate_expression(function, ctx)),
                 arguments: targs,
             }
         }
@@ -352,10 +364,10 @@ fn translate_expression(e: &Expression, imports: &Vec<ModuleRef>) -> CExpression
             let c = *argument.clone();
             let arg = match c {
                 SizeofArgument::Expression(x) => {
-                    CSizeofArgument::Expression(translate_expression(&x, imports))
+                    CSizeofArgument::Expression(translate_expression(&x, ctx))
                 }
                 SizeofArgument::Typename(x) => {
-                    CSizeofArgument::Typename(translate_typename(&x, imports))
+                    CSizeofArgument::Typename(translate_typename(&x, ctx))
                 }
             };
             CExpression::Sizeof {
@@ -365,25 +377,22 @@ fn translate_expression(e: &Expression, imports: &Vec<ModuleRef>) -> CExpression
     };
 }
 
-fn translate_anonymous_typeform(
-    x: &AnonymousTypeform,
-    imports: &Vec<ModuleRef>,
-) -> CAnonymousTypeform {
+fn translate_anonymous_typeform(x: &AnonymousTypeform, ctx: &Ctx) -> CAnonymousTypeform {
     return CAnonymousTypeform {
-        type_name: translate_typename(&x.type_name, imports),
+        type_name: translate_typename(&x.type_name, ctx),
         ops: x.ops.clone(),
     };
 }
 
 // Module synopsis is what you would usually extract into a header file:
 // function prototypes, typedefs, struct declarations.
-fn get_module_synopsis(module: CModule) -> Vec<CModuleObject> {
+pub fn get_module_synopsis(module: &CModule) -> Vec<CModuleObject> {
     let mut elements: Vec<CModuleObject> = vec![];
 
-    for element in module.elements {
+    for element in &module.elements {
         match element {
             CModuleObject::Typedef { is_pub, .. } => {
-                if is_pub {
+                if *is_pub {
                     elements.push(element.clone())
                 }
             }
@@ -392,11 +401,11 @@ fn get_module_synopsis(module: CModule) -> Vec<CModuleObject> {
                 fields,
                 is_pub,
             } => {
-                if is_pub {
+                if *is_pub {
                     elements.push(CModuleObject::StructDefinition {
                         name: name.clone(),
                         fields: fields.clone(),
-                        is_pub,
+                        is_pub: *is_pub,
                     })
                 }
             }
@@ -406,21 +415,25 @@ fn get_module_synopsis(module: CModule) -> Vec<CModuleObject> {
                 form,
                 parameters,
             } => {
-                if !is_static {
+                if !*is_static {
                     elements.push(CModuleObject::FunctionForwardDeclaration {
-                        is_static,
-                        type_name,
-                        form,
-                        parameters,
+                        is_static: *is_static,
+                        type_name: type_name.clone(),
+                        form: form.clone(),
+                        parameters: parameters.clone(),
                     })
                 }
             }
-            CModuleObject::Macro { name, value } => {
-                elements.push(CModuleObject::Macro { name, value })
-            }
+            CModuleObject::Macro { name, value } => elements.push(CModuleObject::Macro {
+                name: name.clone(),
+                value: value.clone(),
+            }),
             CModuleObject::EnumDefinition { is_hidden, members } => {
-                if !is_hidden {
-                    elements.push(CModuleObject::EnumDefinition { is_hidden, members })
+                if !*is_hidden {
+                    elements.push(CModuleObject::EnumDefinition {
+                        is_hidden: *is_hidden,
+                        members: members.clone(),
+                    })
                 }
             }
             _ => {}
@@ -429,18 +442,15 @@ fn get_module_synopsis(module: CModule) -> Vec<CModuleObject> {
     return elements;
 }
 
-fn translate_function_parameters(
-    node: &FunctionParameters,
-    imports: &Vec<ModuleRef>,
-) -> CompatFunctionParameters {
+fn translate_function_parameters(node: &FunctionParameters, ctx: &Ctx) -> CompatFunctionParameters {
     // One parameter, like in structs, is one type and multiple entries,
     // while the C parameters are always one type and one entry.
     let mut parameters: Vec<CTypeForm> = Vec::new();
     for parameter in &node.list {
         for form in &parameter.forms {
             parameters.push(CTypeForm {
-                type_name: translate_typename(&parameter.type_name, imports),
-                form: translate_form(form, imports),
+                type_name: translate_typename(&parameter.type_name, ctx),
+                form: translate_form(form, ctx),
             })
         }
     }
@@ -456,51 +466,50 @@ fn translate_function_declaration(
     form: &Form,
     parameters: &FunctionParameters,
     body: &Body,
-    imports: &Vec<ModuleRef>,
+    ctx: &Ctx,
 ) -> Vec<CModuleObject> {
     let mut r = vec![CModuleObject::FunctionDefinition {
         is_static: !is_pub,
-        type_name: translate_typename(typename, imports),
-        form: translate_form(form, imports),
-        parameters: translate_function_parameters(&parameters, imports),
-        body: translate_body(body, imports),
+        type_name: translate_typename(typename, ctx),
+        form: translate_form(form, ctx),
+        parameters: translate_function_parameters(&parameters, ctx),
+        body: translate_body(body, ctx),
     }];
     if format_che::format_form(&form) != "main" {
         r.push(CModuleObject::FunctionForwardDeclaration {
             is_static: !is_pub,
-            type_name: translate_typename(typename, imports),
-            form: translate_form(form, imports),
-            parameters: translate_function_parameters(&parameters, imports),
+            type_name: translate_typename(typename, ctx),
+            form: translate_form(form, ctx),
+            parameters: translate_function_parameters(&parameters, ctx),
         });
     }
     return r;
 }
 
-fn translate_typename(t: &Typename, imports: &Vec<ModuleRef>) -> CTypename {
+fn translate_typename(t: &Typename, ctx: &Ctx) -> CTypename {
     return CTypename {
         is_const: t.is_const,
-        name: translate_ns_name(&t.name, imports),
+        name: translate_ns_name(&t.name, ctx),
     };
 }
 
-fn translate_ns_name(x: &NsName, imports: &Vec<ModuleRef>) -> String {
-    if x.namespace != "" {
+fn translate_ns_name(nsid: &NsName, ctx: &Ctx) -> String {
+    if nsid.namespace != "" {
         // get the module that was imported here as <namespace>.
-        let pos = imports.iter().position(|y| y.id == x.namespace).unwrap();
-        let module = &imports[pos];
+        let dep = ctx.deps.iter().find(|d| d.ns == nsid.namespace).unwrap();
 
         // Replace with the module's "id".
-        let id = format!("{:x}", md5::compute(&module.id));
-        return format!("{}__{}", id, x.name);
+        let id = module_gid(&dep);
+        return format!("{}__{}", id, nsid.name);
     }
-    return x.name.clone();
+    return nsid.name.clone();
 }
 
-fn translate_body(b: &Body, imports: &Vec<ModuleRef>) -> CBody {
+fn translate_body(b: &Body, ctx: &Ctx) -> CBody {
     let mut statements: Vec<CStatement> = Vec::new();
     for s in &b.statements {
         statements.push(match s {
-            Statement::Expression(x) => CStatement::Expression(translate_expression(&x, imports)),
+            Statement::Expression(x) => CStatement::Expression(translate_expression(&x, ctx)),
             Statement::For {
                 init,
                 condition,
@@ -508,36 +517,32 @@ fn translate_body(b: &Body, imports: &Vec<ModuleRef>) -> CBody {
                 body,
             } => CStatement::For {
                 init: match init {
-                    ForInit::Expression(x) => {
-                        CForInit::Expression(translate_expression(x, imports))
-                    }
+                    ForInit::Expression(x) => CForInit::Expression(translate_expression(x, ctx)),
                     ForInit::LoopCounterDeclaration {
                         type_name,
                         form,
                         value,
                     } => CForInit::LoopCounterDeclaration {
-                        type_name: translate_typename(type_name, imports),
-                        form: translate_form(form, imports),
-                        value: translate_expression(value, imports),
+                        type_name: translate_typename(type_name, ctx),
+                        form: translate_form(form, ctx),
+                        value: translate_expression(value, ctx),
                     },
                 },
-                condition: translate_expression(condition, imports),
-                action: translate_expression(action, imports),
-                body: translate_body(body, imports),
+                condition: translate_expression(condition, ctx),
+                action: translate_expression(action, ctx),
+                body: translate_body(body, ctx),
             },
             Statement::If {
                 condition,
                 body,
                 else_body,
             } => CStatement::If {
-                condition: translate_expression(condition, imports),
-                body: translate_body(body, imports),
-                else_body: else_body.as_ref().map(|x| translate_body(&x, imports)),
+                condition: translate_expression(condition, ctx),
+                body: translate_body(body, ctx),
+                else_body: else_body.as_ref().map(|x| translate_body(&x, ctx)),
             },
             Statement::Return { expression } => CStatement::Return {
-                expression: expression
-                    .as_ref()
-                    .map(|e| translate_expression(&e, imports)),
+                expression: expression.as_ref().map(|e| translate_expression(&e, ctx)),
             },
             Statement::Switch {
                 value,
@@ -556,13 +561,13 @@ fn translate_body(b: &Body, imports: &Vec<ModuleRef>) -> CBody {
                                 value: x.value.clone(),
                             }),
                         },
-                        body: translate_body(&c.body, imports),
+                        body: translate_body(&c.body, ctx),
                     })
                 }
                 CStatement::Switch {
-                    value: translate_expression(value, imports),
+                    value: translate_expression(value, ctx),
                     cases: tcases,
-                    default: default.as_ref().map(|x| translate_body(&x, imports)),
+                    default: default.as_ref().map(|x| translate_body(&x, ctx)),
                 }
             }
             Statement::VariableDeclaration {
@@ -572,21 +577,21 @@ fn translate_body(b: &Body, imports: &Vec<ModuleRef>) -> CBody {
             } => {
                 let mut tforms: Vec<CForm> = Vec::new();
                 for f in forms {
-                    tforms.push(translate_form(f, imports))
+                    tforms.push(translate_form(f, ctx))
                 }
                 let mut tvalues: Vec<Option<CExpression>> = Vec::new();
                 for e in values {
-                    tvalues.push(e.as_ref().map(|x| translate_expression(&x, imports)));
+                    tvalues.push(e.as_ref().map(|x| translate_expression(&x, ctx)));
                 }
                 CStatement::VariableDeclaration {
-                    type_name: translate_typename(type_name, imports),
+                    type_name: translate_typename(type_name, ctx),
                     forms: tforms,
                     values: tvalues,
                 }
             }
             Statement::While { condition, body } => CStatement::While {
-                condition: translate_expression(condition, imports),
-                body: translate_body(body, imports),
+                condition: translate_expression(condition, ctx),
+                body: translate_body(body, ctx),
             },
         });
     }

@@ -1,6 +1,5 @@
 #[derive(Debug, Clone)]
 pub struct Module {
-    pub id: ModuleRef,
     pub elements: Vec<ModuleObject>,
 }
 
@@ -114,6 +113,7 @@ pub enum Expression {
     CompositeLiteral(CompositeLiteral),
     Literal(Literal),
     Identifier(String),
+    NsName(NsName),
     BinaryOp {
         op: String,
         a: Box<Expression>,

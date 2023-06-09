@@ -1,75 +1,90 @@
-use crate::lexer::{for_file, Lexer, Token};
+use crate::lexer::{Lexer, Token};
 use crate::nodes::*;
-use crate::preparser::{self, Ctx};
-use crate::resolve;
-use std::path::Path;
-use substring::Substring;
+use crate::preparser::Ctx;
 
-pub fn get_module(name: &String, current_path: &String) -> Result<Module, String> {
-    let module_path = resolve::resolve_import(current_path, name)?;
-    let ctx = preparser::preparse(&module_path)?;
-    let mut lexer = for_file(&module_path)?;
-    return parse_module(&mut lexer, &ctx, &module_path).map_err(|err| {
-        let next = lexer.peek().unwrap();
-        let position = format!("{}: {}", module_path, lexer.peek().unwrap().pos);
+pub fn parse_module(l: &mut Lexer, ctx: &Ctx) -> Result<Module, String> {
+    return parse_module0(l, &ctx).map_err(|err| {
+        let next = l.peek().unwrap();
+        let position = format!("{}: {}", &ctx.path, l.peek().unwrap().pos);
         format!("{}: {}: {}...", position, err, token_to_string(next))
     });
 }
 
-fn parse_module(l: &mut Lexer, ctx: &Ctx, module_path: &String) -> Result<Module, String> {
+fn parse_module0(l: &mut Lexer, ctx: &Ctx) -> Result<Module, String> {
     let mut module_objects: Vec<ModuleObject> = vec![];
-    let mut ctx2 = ctx.clone();
     while l.more() {
         match l.peek().unwrap().kind.as_str() {
             "import" => {
-                let tok = l.get().unwrap();
-                let path = tok.content.unwrap();
-
-                // Get the module's local name.
-                // Module's local name is how an imported module is referred to
-                // inside this module, such as opt.bool for the #import opt
-                // or util.f for an #import util.c.
-                let modname = if path.ends_with(".c") {
-                    path.substring(0, path.len() - 2).clone()
-                } else {
-                    path.as_str()
-                };
-                ctx2.modnames.push(String::from(modname));
-
-                let p = path.clone();
-                module_objects.push(ModuleObject::Import { path });
-                let module = get_module(&p, &module_path)?;
-                for obj in module.elements {
-                    match obj {
-                        ModuleObject::Typedef(Typedef { alias, is_pub, .. }) => {
-                            if is_pub {
-                                ctx2.typenames.push(alias);
-                            }
-                        }
-                        ModuleObject::StructTypedef(StructTypedef { name, is_pub, .. }) => {
-                            if is_pub {
-                                ctx2.typenames.push(name);
-                            }
-                        }
-                        _ => {}
-                    }
-                }
+                l.get();
+                // All is in the context already.
             }
             "macro" => {
                 module_objects.push(parse_compat_macro(l)?);
             }
             _ => {
-                module_objects.push(parse_module_object(l, &ctx2)?);
+                module_objects.push(parse_module_object(l, ctx)?);
             }
         }
     }
     return Ok(Module {
         elements: module_objects,
-        id: ModuleRef {
-            id: format!("{}", Path::new(module_path).display()),
-            source_path: String::from(module_path),
-        },
     });
+}
+
+fn parse_compat_macro(lexer: &mut Lexer) -> Result<ModuleObject, String> {
+    let content = expect(lexer, "macro", None)
+        .unwrap()
+        .content
+        .unwrap()
+        .clone();
+    let pos = content.find(" ");
+    if pos.is_none() {
+        return Err(format!("can't get macro name from '{}'", content));
+    }
+    let (name, value) = content.split_at(pos.unwrap());
+
+    return Ok(ModuleObject::Macro {
+        name: name[1..].to_string(),
+        value: value.to_string(),
+    });
+}
+
+fn parse_module_object(l: &mut Lexer, ctx: &Ctx) -> Result<ModuleObject, String> {
+    let mut is_pub = false;
+    if l.follows("pub") {
+        l.get();
+        is_pub = true;
+    }
+    if l.follows("enum") {
+        return parse_enum(l, is_pub, ctx);
+    }
+    if l.follows("typedef") {
+        return parse_typedef(is_pub, l, ctx);
+    }
+    let type_name = parse_typename(l, None, ctx)?;
+    let form = parse_form(l, ctx)?;
+    if l.peek().unwrap().kind == "(" {
+        return parse_function_declaration(l, is_pub, type_name, form, ctx);
+    }
+
+    if l.peek().unwrap().kind != "=" {
+        return Err("module variable: '=' expected".to_string());
+    }
+
+    if l.peek().unwrap().kind == "=" {
+        if is_pub {
+            return Err("module variables can't be exported".to_string());
+        }
+        l.get();
+        let value = parse_expr(l, 0, ctx)?;
+        expect(l, ";", Some("module variable declaration"))?;
+        return Ok(ModuleObject::ModuleVariable {
+            type_name,
+            form,
+            value,
+        });
+    }
+    return Err("unexpected input".to_string());
 }
 
 fn parse_expr(l: &mut Lexer, strength: usize, ctx: &Ctx) -> Result<Expression, String> {
@@ -190,32 +205,44 @@ fn type_follows(l: &Lexer, ctx: &Ctx) -> bool {
     if !l.peek().is_some() || l.peek().unwrap().kind != "word" {
         return false;
     }
-    // // <mod>.<name> where <mod> is any imported module that has exported <name>?
-    // if l.peek_n(2).is_some()
-    //     && l.peek_n(1).unwrap().kind == "."
-    //     && l.peek_n(2).unwrap().kind == "word"
-    // {
-    //     let a = l.peek_n(0).unwrap();
-    //     let b = l.peek_n(1).unwrap();
-    //     let c = l.peek_n(2).unwrap();
-    //     let pos = ctx.deps.iter().position(|x| x.name == a.content.unwrap());
-    //     if pos.is_some()
-    //         && ctx.deps[pos.unwrap()]
-    //             .typenames
-    //             .contains(c.content.unwrap().as_str())
-    //     {
-    //         return true;
-    //     }
-    // }
+    // <mod>.<name> where <mod> is any imported module that has exported <name>?
+    if l.peek_n(2).is_some()
+        && l.peek_n(1).unwrap().kind == "."
+        && l.peek_n(2).unwrap().kind == "word"
+    {
+        let a = l.peek_n(0).unwrap();
+        let c = l.peek_n(2).unwrap();
+
+        let pos = ctx
+            .deps
+            .iter()
+            .position(|x| x.ns == *a.content.as_ref().unwrap());
+        dbg!(&a, &c, &pos, ctx);
+        if pos.is_some()
+            && ctx.deps[pos.unwrap()]
+                .typenames
+                .contains(c.content.as_ref().unwrap())
+        {
+            return true;
+        }
+    }
     // any of locally defined types?
     return is_type(l.peek().unwrap().content.as_ref().unwrap(), &ctx.typenames);
+}
+
+fn ns_follows(l: &mut Lexer, ctx: &Ctx) -> bool {
+    if !l.more() {
+        return false;
+    }
+    let t = l.peek().unwrap();
+    return t.kind == "word" && ctx.has_ns(l.peek().unwrap().content.as_ref().unwrap());
 }
 
 // foo.bar where foo is a module
 // or just bar
 fn read_ns_id(l: &mut Lexer, ctx: &Ctx) -> Result<NsName, String> {
     let a = expect(l, "word", None)?;
-    if ctx.modnames.contains(a.content.as_ref().unwrap())
+    if ctx.has_ns(a.content.as_ref().unwrap())
         && l.peek_n(0).unwrap().kind == "."
         && l.peek_n(1).unwrap().kind == "word"
     {
@@ -236,23 +263,11 @@ fn expr_id(l: &mut Lexer, ctx: &Ctx) -> Result<Expression, String> {
     if !l.more() {
         return Err(String::from("id: unexpected end of input"));
     }
-    let next = l.get().unwrap();
-
-    // mod "." word ?
-    if next.kind == "word"
-        && ctx.modnames.contains(&next.content.as_ref().unwrap())
-        && l.peek().unwrap().kind == "."
-        && l.peek_n(1).unwrap().kind == "word"
-    {
-        expect(l, ".", Some("namespaced identifier"))?;
-        let t = expect(l, "word", Some("namespaced identifier"))?;
-        return Ok(Expression::Identifier(format!(
-            "{}_{}",
-            next.content.unwrap(),
-            t.content.unwrap()
-        )));
+    if ns_follows(l, ctx) {
+        return Ok(Expression::NsName(read_ns_id(l, ctx)?));
     }
 
+    let next = l.get().unwrap();
     if next.kind == "word" {
         return Ok(Expression::Identifier(next.content.unwrap()));
     }
@@ -382,7 +397,12 @@ fn expect(lexer: &mut Lexer, kind: &str, comment: Option<&str>) -> Result<Token,
     if next.kind != kind {
         return Err(with_comment(
             comment,
-            format!("expected '{}', got '{}' at {}", kind, next.kind, next.pos),
+            format!(
+                "expected '{}', got '{}' at {}",
+                kind,
+                token_to_string(next),
+                next.pos
+            ),
         ));
     }
     return Ok(lexer.get().unwrap());
@@ -589,7 +609,8 @@ fn parse_statements_block(lexer: &mut Lexer, ctx: &Ctx) -> Result<Body, String> 
     if lexer.follows("{") {
         expect(lexer, "{", None)?;
         while !lexer.follows("}") {
-            statements.push(parse_statement(lexer, ctx)?);
+            let s = parse_statement(lexer, ctx)?;
+            statements.push(s);
         }
         expect(lexer, "}", None)?;
     } else {
@@ -862,62 +883,6 @@ fn parse_union(lexer: &mut Lexer, ctx: &Ctx) -> Result<Union, String> {
     let form = parse_form(lexer, ctx)?;
     expect(lexer, ";", None)?;
     return Ok(Union { form, fields });
-}
-
-fn parse_module_object(lexer: &mut Lexer, ctx: &Ctx) -> Result<ModuleObject, String> {
-    let mut is_pub = false;
-    if lexer.follows("pub") {
-        lexer.get();
-        is_pub = true;
-    }
-    if lexer.follows("enum") {
-        return parse_enum(lexer, is_pub, ctx);
-    }
-    if lexer.follows("typedef") {
-        return parse_typedef(is_pub, lexer, ctx);
-    }
-    let type_name = parse_typename(lexer, None, ctx)?;
-    let form = parse_form(lexer, ctx)?;
-    if lexer.peek().unwrap().kind == "(" {
-        return parse_function_declaration(lexer, is_pub, type_name, form, ctx);
-    }
-
-    if lexer.peek().unwrap().kind != "=" {
-        return Err("module variable: '=' expected".to_string());
-    }
-
-    if lexer.peek().unwrap().kind == "=" {
-        if is_pub {
-            return Err("module variables can't be exported".to_string());
-        }
-        lexer.get();
-        let value = parse_expr(lexer, 0, ctx)?;
-        expect(lexer, ";", Some("module variable declaration"))?;
-        return Ok(ModuleObject::ModuleVariable {
-            type_name,
-            form,
-            value,
-        });
-    }
-    return Err("unexpected input".to_string());
-}
-
-fn parse_compat_macro(lexer: &mut Lexer) -> Result<ModuleObject, String> {
-    let content = expect(lexer, "macro", None)
-        .unwrap()
-        .content
-        .unwrap()
-        .clone();
-    let pos = content.find(" ");
-    if pos.is_none() {
-        return Err(format!("can't get macro name from '{}'", content));
-    }
-    let (name, value) = content.split_at(pos.unwrap());
-
-    return Ok(ModuleObject::Macro {
-        name: name[1..].to_string(),
-        value: value.to_string(),
-    });
 }
 
 fn parse_typedef(is_pub: bool, l: &mut Lexer, ctx: &Ctx) -> Result<ModuleObject, String> {

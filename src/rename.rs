@@ -12,9 +12,8 @@ pub fn globalize_module(m: &mut Module, prefix: &String) {
         names.push(f.form.name);
     }
     for t in exports.types {
-        names.push(t.alias);
+        names.push(t);
     }
-    println!("{:?}", names);
     for obj in &mut m.elements {
         mod_obj(obj, prefix, &names);
     }
@@ -36,7 +35,7 @@ fn mod_obj(obj: &mut ModuleObject, prefix: &String, names: &Vec<String>) {
                 return;
             }
             for mut m in members {
-                m.id = rename(&m.id, prefix, names);
+                m.id = newname(&m.id, prefix, names);
             }
         }
         ModuleObject::FunctionDeclaration(FunctionDeclaration {
@@ -67,15 +66,15 @@ fn mod_obj(obj: &mut ModuleObject, prefix: &String, names: &Vec<String>) {
                 }
                 None => {}
             }
-            rename(alias, prefix, names);
+            *alias = newname(alias, prefix, names);
             rename_typename(type_name, prefix, names);
         }
         ModuleObject::StructTypedef(StructTypedef {
             fields,
-            name: _,
+            name,
             is_pub: _,
         }) => {
-            // form.alias = rename(&form.alias, prefix, names);
+            *name = newname(name, prefix, names);
             for e in fields {
                 match e {
                     StructEntry::Plain(x) => {
@@ -180,7 +179,7 @@ fn rename_statement(s: &mut Statement, prefix: &String, names: &Vec<String>) {
             for c in cases {
                 match &c.value {
                     SwitchCaseValue::Identifier(x) => {
-                        c.value = SwitchCaseValue::Identifier(rename(x, prefix, names))
+                        c.value = SwitchCaseValue::Identifier(newname(x, prefix, names))
                     }
                     SwitchCaseValue::Literal(_) => {}
                 }
@@ -204,7 +203,7 @@ fn rename_statement(s: &mut Statement, prefix: &String, names: &Vec<String>) {
 }
 
 fn rename_form(f: &mut Form, prefix: &String, names: &Vec<String>) {
-    f.name = rename(&f.name, prefix, names);
+    f.name = newname(&f.name, prefix, names);
     for i in &mut f.indexes {
         match i {
             Some(e) => {
@@ -216,13 +215,18 @@ fn rename_form(f: &mut Form, prefix: &String, names: &Vec<String>) {
 }
 
 fn rename_typename(t: &mut Typename, prefix: &String, names: &Vec<String>) {
-    if t.name.namespace != "" {
-        t.name.name = rename(&t.name.name, prefix, names);
+    if t.name.namespace == "" {
+        t.name.name = newname(&t.name.name, prefix, names);
     }
 }
 
 fn expr(e: &mut Expression, prefix: &String, names: &Vec<String>) {
     match e {
+        Expression::NsName(n) => {
+            if n.namespace == "" {
+                n.name = newname(&n.name, prefix, names);
+            }
+        }
         Expression::Literal(_) => {}
         Expression::CompositeLiteral(x) => {
             for e in &mut x.entries {
@@ -233,7 +237,7 @@ fn expr(e: &mut Expression, prefix: &String, names: &Vec<String>) {
                 expr(&mut e.value, prefix, names);
             }
         }
-        Expression::Identifier(x) => *e = Expression::Identifier(rename(x, prefix, names)),
+        Expression::Identifier(x) => *e = Expression::Identifier(newname(x, prefix, names)),
         Expression::BinaryOp { op: _, a, b } => {
             expr(a, prefix, names);
             expr(b, prefix, names);
@@ -278,7 +282,7 @@ fn expr(e: &mut Expression, prefix: &String, names: &Vec<String>) {
     }
 }
 
-fn rename(current: &String, prefix: &String, names: &Vec<String>) -> String {
+fn newname(current: &String, prefix: &String, names: &Vec<String>) -> String {
     return if names.contains(current) {
         format!("{}_{}", prefix, current)
     } else {

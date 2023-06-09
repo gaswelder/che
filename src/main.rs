@@ -13,7 +13,6 @@ mod nodes;
 mod nodes_c;
 mod parser;
 mod preparser;
-#[cfg(test)]
 mod rename;
 mod resolve;
 mod translator;
@@ -40,21 +39,4 @@ fn main() {
 fn usage() -> i32 {
     eprintln!("usage: che <build|deptree|exports|genc|test>");
     return 1;
-}
-
-#[cfg(test)]
-mod test {
-    use crate::format;
-    use crate::parser;
-    use crate::rename;
-    use crate::translator;
-    use std::fs;
-
-    #[test]
-    fn test_rename() {
-        let mut m = parser::get_module(&"json".to_string(), &String::from(".")).unwrap();
-        rename::globalize_module(&mut m, &"kek".to_string());
-        let c = translator::translate(&m);
-        fs::write("out.c", format::format_module(&c)).unwrap();
-    }
 }
