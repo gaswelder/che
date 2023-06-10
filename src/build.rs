@@ -131,7 +131,7 @@ pub struct BuildError {
 
 pub fn parse(mainpath: &String) -> Result<Build, Vec<BuildError>> {
     let mut work = Build {
-        paths: vec![mainpath.clone()],
+        paths: Vec::new(),
         typenames: Vec::new(),
         imports: Vec::new(),
         ctx: Vec::new(),
@@ -139,49 +139,42 @@ pub fn parse(mainpath: &String) -> Result<Build, Vec<BuildError>> {
         c: Vec::new(),
     };
 
-    let mainprep = preparser::preparse(mainpath).map_err(|message| {
-        vec![BuildError {
-            path: mainpath.clone(),
-            message: message,
-            pos: String::from(""),
-        }]
-    })?;
-    work.typenames.push(mainprep.typenames);
-    work.imports.push(mainprep.imports);
+    // Load pre-parsed modules in their dependency order.
+    let mut preps = HashMap::new();
+    let mut i = 0;
+    let mut deppath: Vec<String> = vec![mainpath.clone()];
+    while i < deppath.len() {
+        let p = &deppath[i];
+        if !preps.contains_key(p) {
+            let prep = preparser::preparse(p).map_err(|message| {
+                vec![BuildError {
+                    message,
+                    pos: "".to_string(),
+                    path: p.clone(),
+                }]
+            })?;
+            preps.insert(p.clone(), prep);
+        }
+        let prep = preps.get(p).unwrap();
+        for imp in &prep.imports {
+            deppath.push(imp.path.clone());
+        }
+        i += 1;
+    }
+    deppath.reverse();
 
-    loop {
-        // find an unresolved import
-        let mut missing: Option<&Import> = None;
-        for imps in &work.imports {
-            for imp in imps {
-                if !work.paths.contains(&imp.path) {
-                    missing = Some(imp);
-                    break;
-                }
-            }
-            if missing.is_some() {
-                break;
-            }
+    // Load the resolved dependencies into the build in reverse order,
+    // skipping duplicates on the way. This basically achieves topological
+    // ordering of the dependencies.
+    for p in deppath {
+        if work.paths.contains(&p) {
+            continue;
         }
-        if missing.is_none() {
-            break;
-        }
-        let imp = missing.unwrap();
-        work.paths.push(imp.path.clone());
-        let prep = preparser::preparse(&imp.path).map_err(|message| {
-            vec![BuildError {
-                message,
-                pos: "".to_string(),
-                path: imp.path.clone(),
-            }]
-        })?;
+        let prep = preps.get(&p).unwrap();
+        work.paths.push(p);
         work.typenames.push(prep.typenames.clone());
         work.imports.push(prep.imports.clone());
     }
-
-    work.paths.reverse();
-    work.typenames.reverse();
-    work.imports.reverse();
 
     for (i, path) in work.paths.iter().enumerate() {
         let mut deps: Vec<Dep> = Vec::new();
@@ -284,11 +277,12 @@ pub fn translate(work: &mut Build) {
             name: "define".to_string(),
             value: "nelem(x) (sizeof (x)/sizeof (x)[0])".to_string(),
         });
-        for imp in &work.imports[i] {
+
+        let node_imports = &work.imports[i];
+        for imp in node_imports {
             let pos = work.paths.iter().position(|x| *x == imp.path).unwrap();
-            let c = &work.c[pos];
-            let syn = translator::get_module_synopsis(&c);
-            for obj in syn {
+            let cmodule = &work.c[pos];
+            for obj in translator::get_module_synopsis(&cmodule) {
                 cnodes.push(obj);
             }
         }
