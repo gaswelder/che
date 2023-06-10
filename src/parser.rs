@@ -1,6 +1,6 @@
 use crate::build::Ctx;
 use crate::lexer::{Lexer, Token};
-use crate::nodes::*;
+use crate::{c, nodes::*};
 
 pub fn parse_module(l: &mut Lexer, ctx: &Ctx) -> Result<Module, String> {
     return parse_module0(l, &ctx).map_err(|err| {
@@ -346,39 +346,15 @@ fn is_prefix_op(op: &str) -> bool {
 }
 
 fn is_type(name: &str, typenames: &Vec<String>) -> bool {
-    let types = [
-        "struct",
-        "enum",
-        "union",
-        "void",
-        "char",
-        "short",
-        "int",
-        "long",
-        "float",
-        "double",
-        "unsigned",
-        "bool",
-        "va_list",
-        "FILE",
-        "ptrdiff_t",
-        "size_t",
-        "wchar_t",
-        "int8_t",
-        "int16_t",
-        "int32_t",
-        "int64_t",
-        "uint8_t",
-        "uint16_t",
-        "uint32_t",
-        "uint64_t",
-        "clock_t",
-        "time_t",
-        "fd_set",
-        "socklen_t",
-        "ssize_t",
+    let keywords = [
+        "struct", "enum", "union",
+        // "fd_set",
+        // "socklen_t",
+        // "ssize_t",
     ];
-    return types.to_vec().contains(&name)
+
+    return c::CTYPES.contains(&name)
+        || keywords.to_vec().contains(&name)
         || typenames.to_vec().contains(&String::from(name))
         || name.ends_with("_t");
 }

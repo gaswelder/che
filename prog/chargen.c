@@ -12,7 +12,7 @@
 #import log
 
 typedef {
-	net_t *conn;
+	net.net_t *conn;
 	char data[2048];
 	int len;
 } nbuf_t;
@@ -30,50 +30,50 @@ char linechars[] =
 int main()
 {
 	char address[] = "0.0.0.0:1900";
-	net_t *l = net.net_listen("tcp", address);
+	net.net_t *l = net.net_listen("tcp", address);
 	if(!l) {
-		fatal("listen failed: %s", net_error());
+		cli.fatal("listen failed: %s", net.net_error());
 	}
-	logmsg("listening at %s", address);
+	log.logmsg("listening at %s", address);
 
 	while(1) {
-		net_t *s = net_accept(l);
+		net.net_t *s = net.net_accept(l);
 		if(!s) {
-			err("accept error");
+			cli.err("accept error");
 			continue;
 		}
 
-		client_t *c = calloc(1, sizeof(*c));
+		client_t *c = calloc(1, sizeof(client_t));
 		c->out.conn = s;
 		process_client(c);
 		//th_detach(th_start(&process_client, c));
 	}
 
-	net_close(l);
+	net.net_close(l);
 	return 0;
 }
 
 void *process_client(client_t *c)
 {
-	net_t *conn = c->out.conn;
-	logmsg("%s connected", net_addr(conn));
+	net.net_t *conn = c->out.conn;
+	log.logmsg("%s connected", net.net_addr(conn));
 	char buf[256] = {};
 
 	while(1) {
-		if(net_incoming(conn)) {
-			if(net_read(conn, buf, sizeof(buf)) == 0) {
+		if(net.net_incoming(conn)) {
+			if(net.net_read(conn, buf, sizeof(buf)) == 0) {
 				break;
 			}
 			continue;
 		}
 
 		if(!send_line(c)) {
-			err("send_line error");
+			cli.err("send_line error");
 			break;
 		}
 	}
-	logmsg("%s disconnected", net_addr(conn));
-	net_close(conn);
+	log.logmsg("%s disconnected", net.net_addr(conn));
+	net.net_close(conn);
 	free(c);
 	return NULL;
 }

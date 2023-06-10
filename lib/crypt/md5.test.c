@@ -22,8 +22,8 @@ bool rfctest() {
 	md5str_t buf = "";
 
 	for (size_t i = 0; i < nelem(tests); i++) {
-		md5_str(tests[i].s, s);
-		md5_sprint(s, buf);
+		md5.md5_str(tests[i].s, s);
+		md5.md5_sprint(s, buf);
 		if (!strcmp(buf, tests[i].d) == 0) {
 			printf("* FAIL (%s != %s)\n", buf, tests[i].d);
 			return false;

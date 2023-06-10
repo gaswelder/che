@@ -34,7 +34,6 @@ pub void memrewind(mem_t *m) {
  * Returns current position in the stream
  */
 pub long memtell(mem_t *m) {
-	assert(m->pos <= LONG_MAX);
 	return (long) m->pos;
 }
 

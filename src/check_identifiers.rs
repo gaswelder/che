@@ -1,4 +1,4 @@
-use crate::{exports::Exports, nodes::*};
+use crate::{c, exports::Exports, nodes::*};
 use std::collections::HashMap;
 
 pub struct Error {
@@ -9,6 +9,11 @@ pub struct Error {
 pub fn run(m: &Module, exports: &HashMap<String, &Exports>) -> Vec<Error> {
     let mut errors: Vec<Error> = Vec::new();
     let mut scope = vec![
+        // should be fixed
+        "assert",
+        "break",
+        "continue",
+        // stdlib
         "acos",
         "calloc",
         "cos",
@@ -24,6 +29,7 @@ pub fn run(m: &Module, exports: &HashMap<String, &Exports>) -> Vec<Error> {
         "fputc",
         "fseek",
         "ftell",
+        "fread",
         "free",
         "fwrite",
         "localtime",
@@ -35,11 +41,16 @@ pub fn run(m: &Module, exports: &HashMap<String, &Exports>) -> Vec<Error> {
         "puts",
         "realloc",
         "roundf",
+        "SEEK_SET",
+        "SEEK_END",
         "sin",
         "snprintf",
         "strcmp",
         "strcpy",
         "strlen",
+        "stdin",
+        "stdout",
+        "stderr",
         "time",
         "tmpfile",
         "true",
@@ -48,7 +59,16 @@ pub fn run(m: &Module, exports: &HashMap<String, &Exports>) -> Vec<Error> {
         "vfprintf",
         "vprintf",
         "vsnprintf",
+        "sprintf",
+        "strftime",
+        "errno",
+        "strerror",
+        // custom
+        "nelem",
     ];
+    for s in c::CTYPES {
+        scope.push(s);
+    }
     for e in &m.elements {
         match e {
             ModuleObject::FunctionDeclaration(f) => {
@@ -64,6 +84,28 @@ pub fn run(m: &Module, exports: &HashMap<String, &Exports>) -> Vec<Error> {
                     let mut parts = value.trim().split(" ");
                     scope.push(parts.next().unwrap());
                 }
+                if name == "type" {
+                    scope.push(value.trim());
+                }
+            }
+            ModuleObject::ModuleVariable {
+                type_name,
+                form,
+                value,
+            } => {
+                check_ns_id(&type_name.name, &mut errors, &scope, exports);
+                check_expr(value, &mut errors, &scope, exports);
+                scope.push(form.name.as_str());
+            }
+            ModuleObject::StructTypedef(x) => {
+                scope.push(x.name.name.as_str());
+            }
+            ModuleObject::StructAliasTypedef {
+                is_pub: _,
+                struct_name: _,
+                type_alias,
+            } => {
+                scope.push(type_alias.as_str());
             }
             _ => {}
         }
@@ -72,7 +114,7 @@ pub fn run(m: &Module, exports: &HashMap<String, &Exports>) -> Vec<Error> {
     for e in &m.elements {
         match e {
             ModuleObject::Typedef(x) => {
-                check_ns_id(&x.type_name.name, &mut errors, exports);
+                check_ns_id(&x.type_name.name, &mut errors, &scope, exports);
             }
             ModuleObject::Enum { is_pub: _, members } => {
                 for m in members {
@@ -100,7 +142,7 @@ pub fn run(m: &Module, exports: &HashMap<String, &Exports>) -> Vec<Error> {
                 form: _,
                 value,
             } => {
-                check_ns_id(&type_name.name, &mut errors, exports);
+                check_ns_id(&type_name.name, &mut errors, &scope, exports);
                 check_expr(value, &mut errors, &scope, exports);
             }
             ModuleObject::StructAliasTypedef { .. } => {}
@@ -108,7 +150,7 @@ pub fn run(m: &Module, exports: &HashMap<String, &Exports>) -> Vec<Error> {
                 for f in &x.fields {
                     match f {
                         StructEntry::Plain(x) => {
-                            check_ns_id(&x.type_name.name, &mut errors, exports);
+                            check_ns_id(&x.type_name.name, &mut errors, &scope, exports);
                         }
                         StructEntry::Union(_) => todo!(),
                     }
@@ -144,7 +186,7 @@ fn check_body(
                         form,
                         value,
                     } => {
-                        check_ns_id(&type_name.name, errors, exports);
+                        check_ns_id(&type_name.name, errors, loop_scope, exports);
                         check_expr(value, errors, loop_scope, exports);
                         loop_scope.push(form.name.as_str());
                     }
@@ -197,7 +239,7 @@ fn check_body(
                 forms,
                 values,
             } => {
-                check_ns_id(&type_name.name, errors, exports);
+                check_ns_id(&type_name.name, errors, &scope, exports);
                 for v in values {
                     if v.is_some() {
                         check_expr(v.as_ref().unwrap(), errors, &scope, exports);
@@ -233,15 +275,11 @@ fn check_expr(
             }
         }
         Expression::Cast { type_name, operand } => {
-            check_ns_id(&type_name.type_name.name, errors, exports);
+            check_ns_id(&type_name.type_name.name, errors, scope, exports);
             check_expr(operand, errors, scope, exports);
         }
         Expression::CompositeLiteral(x) => {
             for e in &x.entries {
-                match &e.key {
-                    Some(x) => check_expr(x, errors, scope, exports),
-                    None => {}
-                }
                 check_expr(&e.value, errors, scope, exports);
             }
         }
@@ -259,7 +297,7 @@ fn check_expr(
         }
         Expression::Literal(_) => {}
         Expression::NsName(x) => {
-            check_ns_id(x, errors, exports);
+            check_ns_id(x, errors, scope, exports);
         }
         Expression::PostfixOperator {
             operator: _,
@@ -286,7 +324,12 @@ fn check_expr(
     }
 }
 
-fn check_ns_id(x: &NsName, errors: &mut Vec<Error>, exports: &HashMap<String, &Exports>) {
+fn check_ns_id(
+    x: &NsName,
+    errors: &mut Vec<Error>,
+    scope: &Vec<&str>,
+    exports: &HashMap<String, &Exports>,
+) {
     if x.namespace != "" {
         let e = exports.get(&x.namespace).unwrap();
         for f in &e.fns {
@@ -301,6 +344,13 @@ fn check_ns_id(x: &NsName, errors: &mut Vec<Error>, exports: &HashMap<String, &E
             message: format!("{} doesn't have exported {}", x.namespace, x.name),
             pos: x.pos.clone(),
         });
+    } else {
+        if !scope.contains(&x.name.as_str()) {
+            errors.push(Error {
+                message: format!("unknown identifier: {}", x.name),
+                pos: x.pos.clone(),
+            });
+        }
     }
 }
 

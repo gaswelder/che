@@ -15,6 +15,9 @@ typedef struct sockaddr_in sockaddr_in_t;
 typedef struct addrinfo addrinfo_t;
 typedef struct timeval timeval_t;
 
+#type fd_set
+#type socklen_t
+
 #known accept
 #known AF_INET
 #known ai_protocol
@@ -29,7 +32,17 @@ typedef struct timeval timeval_t;
 #known send
 #known setsockopt
 #known SOCK_STREAM
-
+#known recv
+#known MSG_NOSIGNAL
+#known ntohs
+#known socket
+#known close
+#known SOL_SOCKET
+#known SO_REUSEADDR
+#known FD_ZERO
+#known FD_SET
+#known freeaddrinfo
+#known inet_ntoa
 
 pub typedef {
 	int sock;
@@ -74,7 +87,7 @@ pub int net_write(net_t *c, const char *buf, size_t n)
 	 * a full transmission.
 	 */
 	if((size_t) r < n) {
-		fatal("incomplete net_write: %d of %zu (errno=%d, %s)\n",
+		cli.fatal("incomplete net_write: %d of %zu (errno=%d, %s)\n",
 			r, n, errno, strerror(errno));
 	}
 

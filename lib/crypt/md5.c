@@ -16,7 +16,7 @@
  * a length mark that is a multiple of 512 bits (64 bytes).
  */
 typedef {
-	mem_t *stream; // data stream
+	mem.mem_t *stream; // data stream
 
 	uint64_t length; // current message length in bits
 	bool more_data; // set to false after the end of data
@@ -31,7 +31,7 @@ typedef {
 /*
  * Process the stream and put the digest in 'digest'.
  */
-void md5(mem_t *stream, uint32_t digest[4])
+void md5(mem.mem_t *stream, uint32_t digest[4])
 {
 	src_t s = {
 		.stream = stream,
@@ -91,7 +91,7 @@ uint32_t next_word(src_t *s)
 uint8_t next_byte(src_t *s)
 {
 	if(s->more_data) {
-		int c = memgetc(s->stream);
+		int c = mem.memgetc(s->stream);
 		if(c != EOF) {
 			s->length += 8;
 			return (uint8_t) c;
@@ -196,12 +196,12 @@ pub bool md5_str(const char *s, uint32_t md[4])
  */
 pub bool md5_buf(const char *buf, size_t len, uint32_t md[4])
 {
-	mem_t *z = memopen();
-	int n = memwrite(z, buf, len);
-	memrewind(z);
+	mem_t *z = mem.memopen();
+	int n = mem.memwrite(z, buf, len);
+	mem.memrewind(z);
 	assert((size_t) n == len);
 	md5(z, md);
-	memclose(z);
+	mem.memclose(z);
 	return true;
 }
 

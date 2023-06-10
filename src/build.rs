@@ -230,7 +230,6 @@ pub fn translate(work: &mut Build) -> Result<(), String> {
         let path = &work.paths[i];
         rename::globalize_module(m, &translator::module_gid(path));
     }
-    println!("globaized");
 
     // Translate each node.
     for (i, m) in work.m.iter().enumerate() {
