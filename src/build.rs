@@ -267,6 +267,13 @@ pub fn translate(work: &mut Build) {
     // Translate each node.
     for (i, m) in work.m.iter().enumerate() {
         let mut cnodes: Vec<CModuleObject> = Vec::new();
+
+        // A hack to make os libs build on Linux.
+        cnodes.push(CModuleObject::Macro {
+            name: "define".to_string(),
+            value: "_XOPEN_SOURCE 700".to_string(),
+        });
+
         // Include all standard C library everywhere.
         let std = vec![
             "assert", "ctype", "errno", "limits", "math", "stdarg", "stdbool", "stddef", "stdint",

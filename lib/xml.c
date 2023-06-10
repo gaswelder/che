@@ -62,7 +62,7 @@ pub xml *xml_open(const char *path)
 {
 	FILE *f = fopen(path, "rb");
 	if(!f) {
-		cli.fatal("fopen(%s) failed", path);
+		cli.cli.fatal("fopen(%s) failed", path);
 	}
 
 	xml *x = calloc(1, sizeof(xml));
@@ -188,7 +188,7 @@ pub bool xml_enter(xml *x)
 			x->node.type = T_NULL;
 			return true;
 	}
-	cli.fatal("xml error 0152");
+	cli.cli.fatal("xml error 0152");
 	return false;
 }
 
@@ -236,7 +236,7 @@ pub void xml_next(xml *x)
 			return;
 
 		default:
-			fatal("xml: error 0209");
+			cli.fatal("xml: error 0209");
 	}
 }
 
@@ -298,7 +298,7 @@ pub long xml_filepos(xml *x)
 void pushparent(xml *x)
 {
 	if(x->pathlen >= MAXSTACK) {
-		cli.fatal("Reached max stack depth: %d", MAXSTACK);
+		cli.cli.fatal("Reached max stack depth: %d", MAXSTACK);
 	}
 	strcpy(x->path[x->pathlen], x->node.name);
 	x->pathlen++;
@@ -374,7 +374,7 @@ void read_tag(xml *x)
 		}
 
 		if(t->nattrs >= MAXATTRS) {
-			fatal("too many attributes");
+			cli.fatal("too many attributes");
 		}
 		__attr *a = &(t->attrs[t->nattrs++]);
 
@@ -382,7 +382,7 @@ void read_tag(xml *x)
 		int len = 0;
 		while(isalpha(peek(x))) {
 			if(len >= MAXNAME-1) {
-				fatal("attrname too long: %s", a->name);
+				cli.fatal("attrname too long: %s", a->name);
 			}
 			a->name[len] = get(x);
 			len++;
@@ -396,7 +396,7 @@ void read_tag(xml *x)
 		len = 0;
 		while(peek(x) != EOF && peek(x) != '"') {
 			if(len >= MAXVALUE-1) {
-				fatal("attrvalue too long: %s", a->value);
+				cli.fatal("attrvalue too long: %s", a->value);
 			}
 			a->value[len] = get(x);
 			len++;

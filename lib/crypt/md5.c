@@ -196,7 +196,7 @@ pub bool md5_str(const char *s, uint32_t md[4])
  */
 pub bool md5_buf(const char *buf, size_t len, uint32_t md[4])
 {
-	mem_t *z = mem.memopen();
+	mem.mem_t *z = mem.memopen();
 	int n = mem.memwrite(z, buf, len);
 	mem.memrewind(z);
 	assert((size_t) n == len);
@@ -208,7 +208,7 @@ pub bool md5_buf(const char *buf, size_t len, uint32_t md[4])
 /*
  * Returns true if message digests 'a' and 'b' are equal.
  */
-pub bool md5_eq(md5sum_t a, md5sum_t b)
+pub bool md5_eq(md5sum_t a, b)
 {
 	for(int i = 0; i < 4; i++) {
 		if(a[i] != b[i]) {

@@ -10,6 +10,17 @@ pub fn run(m: &Module, exports: &HashMap<String, &Exports>) -> Vec<Error> {
         "continue",
         // stdlib
         "acos",
+        "isspace",
+        "strchr",
+        "fgets",
+        "fputs",
+        "rename",
+        "setvbuf",
+        "BUFSIZ",
+        "_IOLBF",
+        "isalpha",
+        "strstr",
+        "remove",
         "calloc",
         "cos",
         "EOF",
@@ -58,6 +69,9 @@ pub fn run(m: &Module, exports: &HashMap<String, &Exports>) -> Vec<Error> {
         "strftime",
         "errno",
         "strerror",
+        "SIZE_MAX",
+        "sscanf",
+        "isdigit",
         // custom
         "nelem",
     ];
@@ -84,16 +98,17 @@ pub fn run(m: &Module, exports: &HashMap<String, &Exports>) -> Vec<Error> {
                 }
             }
             ModuleObject::ModuleVariable {
-                type_name,
+                type_name: _,
                 form,
-                value,
+                value: _,
             } => {
-                check_ns_id(&type_name.name, &mut errors, &scope, exports);
-                check_expr(value, &mut errors, &scope, exports);
                 scope.push(form.name.as_str());
             }
             ModuleObject::StructTypedef(x) => {
                 scope.push(x.name.name.as_str());
+            }
+            ModuleObject::Typedef(x) => {
+                scope.push(x.alias.name.as_str());
             }
             ModuleObject::StructAliasTypedef {
                 is_pub: _,
@@ -102,7 +117,6 @@ pub fn run(m: &Module, exports: &HashMap<String, &Exports>) -> Vec<Error> {
             } => {
                 scope.push(type_alias.as_str());
             }
-            _ => {}
         }
     }
 
@@ -119,8 +133,10 @@ pub fn run(m: &Module, exports: &HashMap<String, &Exports>) -> Vec<Error> {
                 }
             }
             ModuleObject::FunctionDeclaration(f) => {
+                check_ns_id(&f.type_name.name, &mut errors, &scope, exports);
                 let mut function_scope = scope.clone();
                 for pl in &f.parameters.list {
+                    check_ns_id(&pl.type_name.name, &mut errors, &scope, exports);
                     for f in &pl.forms {
                         function_scope.push(&f.name);
                     }
@@ -147,7 +163,7 @@ pub fn run(m: &Module, exports: &HashMap<String, &Exports>) -> Vec<Error> {
                         StructEntry::Plain(x) => {
                             check_ns_id(&x.type_name.name, &mut errors, &scope, exports);
                         }
-                        StructEntry::Union(_) => todo!(),
+                        StructEntry::Union(_) => {}
                     }
                 }
             }

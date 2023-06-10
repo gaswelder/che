@@ -67,7 +67,7 @@ pub enum {
 // }
 
 pub typedef {
-    parsebuf_t *buf;
+    parsebuf.parsebuf_t *buf;
     json_token_t next;
 	size_t strlen;
 	size_t strcap;
@@ -78,7 +78,7 @@ pub json_tokenizer_t *new_json_tokenizer(const char *s) {
     if (!t) {
         return t;
     }
-    t->buf = buf_new(s);
+    t->buf = parsebuf.buf_new(s);
     if (!t->buf) {
         free(t);
         return NULL;
@@ -86,7 +86,7 @@ pub json_tokenizer_t *new_json_tokenizer(const char *s) {
 	t->strcap = 4096;
 	t->next.str = calloc(1, 4096);
 	if (!t->next.str) {
-		buf_free(t->buf);
+		parsebuf.buf_free(t->buf);
 		free(t);
 		return NULL;
 	}
@@ -94,7 +94,7 @@ pub json_tokenizer_t *new_json_tokenizer(const char *s) {
 }
 
 pub void free_json_tokenizer(json_tokenizer_t *t) {
-    buf_free(t->buf);
+    parsebuf.buf_free(t->buf);
     free(t);
 }
 
@@ -104,10 +104,10 @@ pub void free_json_tokenizer(json_tokenizer_t *t) {
  */
 pub bool lexer_read_next(json_tokenizer_t *t) {
 	// Skip spaces
-	while (isspace(buf_peek(t->buf))) {
-		buf_get(t->buf);
+	while (isspace(parsebuf.buf_peek(t->buf))) {
+		parsebuf.buf_get(t->buf);
 	}
-    int c = buf_peek(t->buf);
+    int c = parsebuf.buf_peek(t->buf);
     if (c == EOF) {
         t->next.type = EOF;
     }
@@ -115,7 +115,7 @@ pub bool lexer_read_next(json_tokenizer_t *t) {
         readstr(t);
     }
     else if (c == ':' || c == ',' || c == '{' || c == '}' || c == '[' || c == ']') {
-        t->next.type = buf_get(t->buf);
+        t->next.type = parsebuf.buf_get(t->buf);
     }
     else if (c == '-' || isdigit(c)) {
 		readnum(t);
@@ -154,57 +154,57 @@ pub const char *lexer_currstr(json_tokenizer_t *l) {
  */
 void readnum(json_tokenizer_t *l)
 {
-	parsebuf_t *b = l->buf;
+	parsebuf.parsebuf_t *b = l->buf;
 	json_token_t *t = &l->next;
 	resetstr(l);
 
 	// Optional minus
-	if (buf_peek(b) == '-') {
-		addchar(l, buf_get(b));
+	if (parsebuf.buf_peek(b) == '-') {
+		addchar(l, parsebuf.buf_get(b));
 	}
 
 	// Integer part
-	if (!isdigit(buf_peek(b))) {
+	if (!isdigit(parsebuf.buf_peek(b))) {
 		seterror(l, "Digit expected");
 		return;
 	}
-	while (isdigit(buf_peek(b))) {
-		addchar(l, buf_get(b));
+	while (isdigit(parsebuf.buf_peek(b))) {
+		addchar(l, parsebuf.buf_get(b));
 	}
 
 	// Optional fractional part
-	if (buf_peek(b) == '.') {
-		addchar(l, buf_get(b));
-		if (!isdigit(buf_peek(b))) {
+	if (parsebuf.buf_peek(b) == '.') {
+		addchar(l, parsebuf.buf_get(b));
+		if (!isdigit(parsebuf.buf_peek(b))) {
 			seterror(l, "Digit expected");
 			return;
 		}
-		while (isdigit(buf_peek(b))) {
-			addchar(l, buf_get(b));
+		while (isdigit(parsebuf.buf_peek(b))) {
+			addchar(l, parsebuf.buf_get(b));
 		}
 	}
 
 	// Optional exponent
-	int c = buf_peek(b);
+	int c = parsebuf.buf_peek(b);
 	if (c == 'e' || c == 'E') {
-		addchar(l, buf_get(b));
+		addchar(l, parsebuf.buf_get(b));
 		
 		// Optional - or +
-		c = buf_peek(b);
+		c = parsebuf.buf_peek(b);
 		if (c == '-') {
-			addchar(l, buf_get(b));
+			addchar(l, parsebuf.buf_get(b));
 		}
 		else if (c == '+') {
-			addchar(l, buf_get(b));
+			addchar(l, parsebuf.buf_get(b));
 		}
 
 		// Sequence of exponent digits
-		if (!isdigit(buf_peek(b))) {
+		if (!isdigit(parsebuf.buf_peek(b))) {
 			seterror(l, "Digit expected");
 			return;
 		}
-		while (isdigit(buf_peek(b))) {
-			addchar(l, buf_get(b));
+		while (isdigit(parsebuf.buf_peek(b))) {
+			addchar(l, parsebuf.buf_get(b));
 		}
 	}
 	t->type = T_NUM;
@@ -212,13 +212,13 @@ void readnum(json_tokenizer_t *l)
 
 void readkw(json_tokenizer_t *l)
 {
-	parsebuf_t *b = l->buf;
+	parsebuf.parsebuf_t *b = l->buf;
 	json_token_t *t = &l->next;
 	char kw[8] = {};
 	int i = 0;
 
-	while (isalpha(buf_peek(b)) && i < 7) {
-		kw[i] = buf_get(b);
+	while (isalpha(parsebuf.buf_peek(b)) && i < 7) {
+		kw[i] = parsebuf.buf_get(b);
 		i++;
 	}
 	kw[i] = '\0';
@@ -239,21 +239,21 @@ void readkw(json_tokenizer_t *l)
 
 void readstr(json_tokenizer_t *l)
 {
-	parsebuf_t *b = l->buf;
+	parsebuf.parsebuf_t *b = l->buf;
 	json_token_t *t = &l->next;
 
-	char g = buf_get(b);
+	char g = parsebuf.buf_get(b);
 	if (g != '"') {
 		seterror(l, "'\"' expected");
 		return;
 	}
 	resetstr(l);
 
-	while (buf_more(b) && buf_peek(b) != '"') {
+	while (parsebuf.buf_more(b) && parsebuf.buf_peek(b) != '"') {
 		// Get next string character
-		int ch = buf_get(b);
+		int ch = parsebuf.buf_get(b);
 		if (ch == '\\') {
-			ch = buf_get(b);
+			ch = parsebuf.buf_get(b);
 			if (ch == EOF) {
 				seterror(l, "Unexpected end of input");
 				return;
@@ -267,7 +267,7 @@ void readstr(json_tokenizer_t *l)
 		}
 	}
 
-	g = buf_get(b);
+	g = parsebuf.buf_get(b);
 	if (g != '"') {
 		seterror(l, "'\"' expected");
 		return;

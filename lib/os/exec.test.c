@@ -3,10 +3,10 @@
 bool test() {
     char *argv[] = {"/bin/echo", "this is a test from /bin/echo", NULL};
     char *env[] = {NULL};
-    exec_t *r = exec(argv, env, stdin, stdout, stderr);
+    exec.exec_t *r = exec.exec(argv, env, stdin, stdout, stderr);
 
     int status = 0;
-    if (!exec_wait(r, &status)) {
+    if (!exec.exec_wait(r, &status)) {
         fprintf(stderr, "wait failed: %s\n", strerror(errno));
         return false;
     }

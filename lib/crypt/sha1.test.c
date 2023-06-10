@@ -5,10 +5,10 @@ bool test() {
 	memset(input, 'a', 1000000);
 	input[1000000] = '\0';
 
-	sha1sum_t sum = sha1.str(input);
+	sha1.sha1sum_t sum = sha1.sha1_str(input);
 
 	char hex[41] = "";
-	if (!sha1.hex(sum, hex, 41)) {
+	if (!sha1.sha1_hex(sum, hex, 41)) {
 		return false;
 	}
 

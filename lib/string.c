@@ -7,7 +7,7 @@ pub typedef {
 
 pub str *str_new()
 {
-	str *s = calloc(1, sizeof(*s));
+	str *s = calloc(1, sizeof(str));
 	return s;
 }
 

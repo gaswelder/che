@@ -10,49 +10,49 @@
 int main()
 {
 	const char *addr = "0.0.0.0:7000";
-	net_t *l = net_listen("tcp", addr);
+	net.net_t *l = net.net_listen("tcp", addr);
 	if(!l) {
-		fatal("listen failed: %s", net_error());
+		cli.fatal("listen failed: %s", net.net_error());
 	}
-	logmsg("listening at %s", addr);
+	log.logmsg("listening at %s", addr);
 
 	while(1) {
-		net_t *s = net_accept(l);
+		net.net_t *s = net.net_accept(l);
 		if(!s) {
-			err("accept error: %s", net_error());
+			cli.err("accept error: %s", net.net_error());
 			continue;
 		}
-		thr_t *t = thr_new(process_client, s);
+		threads.thr_t *t = threads.thr_new(process_client, s);
 		assert(t);
-		thr_detach(t);
+		threads.thr_detach(t);
 	}
 
-	net_close(l);
+	net.net_close(l);
 	return 0;
 }
 
 void *process_client(void *arg)
 {
-	net_t *c = (net_t *) arg;
-	logmsg("%s connected", net_addr(c));
+	net.net_t *c = arg;
+	log.logmsg("%s connected", net.net_addr(c));
 	char buf[256] = {0};
 
 	while(1) {
-		int len = net_read(c, buf, sizeof(buf));
+		int len = net.net_read(c, buf, sizeof(buf));
 		if(len == -1) {
-			err("read error");
+			cli.err("read error");
 			break;
 		}
 		if(len == 0) {
 			break;
 		}
 
-		if(net_write(c, buf, len) < len) {
-			err("write error");
+		if(net.net_write(c, buf, len) < len) {
+			cli.err("write error");
 			break;
 		}
 	}
-	logmsg("%s disconnected", net_addr(c));
-	net_close(c);
+	log.logmsg("%s disconnected", net.net_addr(c));
+	net.net_close(c);
 	return NULL;
 }

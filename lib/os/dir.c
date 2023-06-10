@@ -1,5 +1,8 @@
 #include <dirent.h>
 #type DIR
+#known opendir
+#known readdir
+#known closedir
 
 pub typedef {
 	DIR *d;
@@ -13,7 +16,7 @@ typedef struct dirent dirent_t;
  */
 pub dir_t *dir_open(const char *path)
 {
-	dir_t *d = calloc(1, sizeof(*d));
+	dir_t *d = calloc(1, sizeof(dir_t));
 	if(!d) return NULL;
 
 	d->d = opendir(path);

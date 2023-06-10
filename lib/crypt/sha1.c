@@ -13,13 +13,13 @@ pub sha1sum_t sha1_str(const char *s) {
  * Returns computed digest for the data in buffer `buf` of length `n`.
  */
 pub sha1sum_t sha1_buf(const char *buf, size_t n) {
-	mem_t *z = memopen();
-	assert((size_t) memwrite(z, buf, n) == n);
-	memrewind(z);
+	mem.mem_t *z = mem.memopen();
+	assert((size_t) mem.memwrite(z, buf, n) == n);
+	mem.memrewind(z);
 
 	sha1sum_t r = {};
 	sha1(z, r.values);
-	memclose(z);
+	mem.memclose(z);
 	return r;
 }
 
@@ -53,7 +53,7 @@ pub bool sha1_hex(sha1sum_t h, char *buf, size_t n) {
  * a length mark that is a multiple of 512 bits (64 bytes).
  */
 typedef {
-	mem_t *stream; // data stream
+	mem.mem_t *stream; // data stream
 
 	uint64_t length; // current message length in bits
 	bool more_data; // set to false after the end of data
@@ -65,7 +65,7 @@ typedef {
 	bool more;
 } src_t;
 
-void src_init(src_t *s, mem_t *data)
+void src_init(src_t *s, mem.mem_t *data)
 {
 	s->stream = data;
 	s->length = 0;
@@ -96,7 +96,7 @@ uint32_t next_word(src_t *s)
 uint8_t next_byte(src_t *s)
 {
 	if(s->more_data) {
-		int c = memgetc(s->stream);
+		int c = mem.memgetc(s->stream);
 		if(c != EOF) {
 			s->length += 8;
 			return (uint8_t) c;
@@ -170,7 +170,7 @@ void init_padding(src_t *s)
  * http://csrc.nist.gov/publications/fips/fips180-4/fips-180-4.pdf
  */
 
-void sha1(mem_t *data, uint32_t sum[5])
+void sha1(mem.mem_t *data, uint32_t sum[5])
 {
 	sum[0] = 0x67452301;
 	sum[1] = 0xefcdab89;

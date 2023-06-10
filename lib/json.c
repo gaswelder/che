@@ -22,8 +22,8 @@ pub typedef {
 	union {
 		char *str;
 		double num;
-		arr_t *arr;
-		arr_t *obj;
+		arr.arr_t *arr;
+		arr.arr_t *obj;
 		bool boolval;
 	} val;
 } json_node;
@@ -45,7 +45,7 @@ pub const char *json_err(json_node *n)
 }
 
 json_node *newnode(int type) {
-	json_node *n = calloc(1, sizeof(*n));
+	json_node *n = calloc(1, sizeof(json_node));
 	if(!n) return NULL;
 	n->type = type;
 	return n;
@@ -81,7 +81,7 @@ const char *typename(int type) {
 // json_node *json_newerror(const char *s) {
 // 	json_node *n = newnode(JSON_ERR);
 // 	if(!n) return NULL;
-// 	n->val.str = newstr("%s", s);
+// 	n->val.str = strutil.newstr("%s", s);
 // 	if(!n->val.str) {
 // 		free(n);
 // 		return NULL;
@@ -97,7 +97,7 @@ pub json_node *json_newobj()
 	json_node *n = newnode(JSON_OBJ);
 	if(!n) return NULL;
 
-	n->val.obj = arr_new();
+	n->val.obj = arr.arr_new();
 	if(!n->val.obj) {
 		free(n);
 		return NULL;
@@ -113,7 +113,7 @@ pub json_node *json_newarr()
 	json_node *n = newnode(JSON_ARR);
 	if(!n) return NULL;
 
-	n->val.obj = arr_new();
+	n->val.obj = arr.arr_new();
 	if(!n->val.obj) {
 		free(n);
 		return NULL;
@@ -195,7 +195,7 @@ pub size_t json_size(json_node *n)
 	if(!n || n->type != JSON_OBJ) {
 		return 0;
 	}
-	return arr_len(n->val.obj);
+	return arr.arr_len(n->val.obj);
 }
 
 /*
@@ -206,10 +206,10 @@ pub const char *json_key(json_node *n, size_t i)
 	if(!n || n->type != JSON_OBJ) {
 		return NULL;
 	}
-	arr_t *a = n->val.obj;
-	size_t len = arr_len(a);
+	arr.arr_t *a = n->val.obj;
+	size_t len = arr.arr_len(a);
 	if(i >= len) return NULL;
-	kv_t *kv = arr_get(a, i);
+	kv_t *kv = arr.arr_get(a, i);
 	return kv->key;
 }
 
@@ -218,13 +218,15 @@ pub const char *json_key(json_node *n, size_t i)
  */
 pub json_node *json_val(json_node *n, size_t i)
 {
-	if(!n || n->type != JSON_OBJ) {
+	if (!n || n->type != JSON_OBJ) {
 		return NULL;
 	}
-	arr_t *a = n->val.obj;
-	size_t len = arr_len(a);
-	if(i >= len) return NULL;
-	kv_t *kv = arr_get(a, i);
+	arr.arr_t *a = n->val.obj;
+	size_t len = arr.arr_len(a);
+	if (i >= len) {
+		return NULL;
+	}
+	kv_t *kv = arr.arr_get(a, i);
 	return kv->val;
 }
 
@@ -235,15 +237,14 @@ pub json_node *json_val(json_node *n, size_t i)
  */
 pub json_node *json_get(json_node *n, const char *key)
 {
-	if(!n || n->type != JSON_OBJ) {
+	if (!n || n->type != JSON_OBJ) {
 		return NULL;
 	}
-
-	arr_t *a = n->val.obj;
-	size_t len = arr_len(a);
-	for(size_t i = 0; i < len; i++) {
-		kv_t *kv = arr_get(a, i);
-		if(strcmp(kv->key, key) == 0) {
+	arr.arr_t *a = n->val.obj;
+	size_t len = arr.arr_len(a);
+	for (size_t i = 0; i < len; i++) {
+		kv_t *kv = arr.arr_get(a, i);
+		if (strcmp(kv->key, key) == 0) {
 			return kv->val;
 		}
 	}
@@ -255,16 +256,16 @@ pub json_node *json_get(json_node *n, const char *key)
  * Returns NULL if the given node is not an array or the given
  * index is out of bounds.
  */
-pub json_node *json_at( json_node *n, int index )
+pub json_node *json_at(json_node *n, int index)
 {
-	if( !n || n->type != JSON_ARR ) {
+	if (!n || n->type != JSON_ARR) {
 		return NULL;
 	}
-	arr_t *a = n->val.arr;
-	if( index < 0 || (size_t) index >= arr_len(a) ) {
+	arr.arr_t *a = n->val.arr;
+	if( index < 0 || (size_t) index >= arr.arr_len(a) ) {
 		return NULL;
 	}
-	return arr_get(a, index);
+	return arr.arr_get(a, index);
 }
 
 /*
@@ -276,7 +277,7 @@ pub int json_len( json_node *obj )
 	if( !obj || obj->type != JSON_ARR ) {
 		return 0;
 	}
-	return arr_len(obj->val.arr);
+	return arr.arr_len(obj->val.arr);
 }
 
 /*
@@ -288,24 +289,24 @@ pub void json_free( json_node *node )
 
 	if( node->type == JSON_OBJ )
 	{
-		arr_t *a = node->val.obj;
-		size_t n = arr_len(a);
+		arr.arr_t *a = node->val.obj;
+		size_t n = arr.arr_len(a);
 		for(size_t i = 0; i < n; i++) {
-			kv_t *kv = arr_get(a, i);
+			kv_t *kv = arr.arr_get(a, i);
 			free(kv->key);
 			json_free(kv->val);
 			free(kv);
 		}
-		arr_free(a);
+		arr.arr_free(a);
 	}
 	else if( node->type == JSON_ARR )
 	{
-		arr_t *a = node->val.obj;
-		size_t n = arr_len(a);
+		arr.arr_t *a = node->val.obj;
+		size_t n = arr.arr_len(a);
 		for(size_t i = 0; i < n; i++) {
-			json_free(arr_get(a, i));
+			json_free(arr.arr_get(a, i));
 		}
-		arr_free(a);
+		arr.arr_free(a);
 	}
 	else if( node->type == JSON_STR || node->type == JSON_ERR ) {
 		free(node->val.str);
@@ -330,7 +331,7 @@ pub json_node *json_copy( json_node *obj )
 	{
 		size_t n = json_size(obj);
 		for(size_t i = 0; i < n; i++) {
-			char *k = newstr("%s", json_key(obj, i));
+			char *k = strutil.newstr("%s", json_key(obj, i));
 			json_node *v = json_copy(json_val(obj, i));
 			if(!k || !v || !json_put(copy, k, v)) {
 				free(k);
@@ -354,7 +355,7 @@ pub json_node *json_copy( json_node *obj )
 	}
 	else if( obj->type == JSON_STR )
 	{
-		copy->val.str = newstr("%s", obj->val.str);
+		copy->val.str = strutil.newstr("%s", obj->val.str);
 		if(!copy->val.str) {
 			free(copy);
 			return NULL;
@@ -420,10 +421,10 @@ pub bool json_put( json_node *n, const char *key, json_node *val )
 	 * Find if the given key already exists.
 	 */
 	kv_t *kv = NULL;
-	arr_t *a = n->val.obj;
-	size_t len = arr_len(a);
+	arr.arr_t *a = n->val.obj;
+	size_t len = arr.arr_len(a);
 	for(size_t i = 0; i < len; i++) {
-		kv = arr_get(a, i);
+		kv = arr.arr_get(a, i);
 		if(strcmp(kv->key, key) == 0) {
 			break;
 		}
@@ -439,8 +440,8 @@ pub bool json_put( json_node *n, const char *key, json_node *val )
 	}
 	else {
 		kv = calloc(1, sizeof(*kv));
-		kv->key = newstr("%s", key);
-		arr_push(a, kv);
+		kv->key = strutil.newstr("%s", key);
+		arr.arr_push(a, kv);
 	}
 
 	kv->val = val;
@@ -457,7 +458,7 @@ pub bool json_push( json_node *n, json_node *val )
 		return false;
 	}
 
-	return arr_push(n->val.arr, val);
+	return arr.arr_push(n->val.arr, val);
 }
 
 void *mcopy( const void *src, size_t size )
@@ -478,7 +479,7 @@ typedef {
 	 * First error reported during parsing.
 	 */
 	char err[256];
-	json_tokenizer_t *lexer;
+	jsontok.json_tokenizer_t *lexer;
 } parser_t;
 
 /*
@@ -496,34 +497,34 @@ typedef {
  */
 pub json_node *json_parse(const char *s) {
 	parser_t p = {};
-	p.lexer = new_json_tokenizer(s);
+	p.lexer = jsontok.new_json_tokenizer(s);
 	if (!p.lexer) {
 		return NULL;
 	}
-	if (!lexer_read_next(p.lexer)) {
+	if (!jsontok.lexer_read_next(p.lexer)) {
 		error(&p, "%s", p.lexer->next.str);
-		free_json_tokenizer(p.lexer);
+		jsontok.free_json_tokenizer(p.lexer);
 		return NULL;
 	}
 	if (p.lexer->next.type == EOF) {
-		free_json_tokenizer(p.lexer);
+		jsontok.free_json_tokenizer(p.lexer);
 		return NULL;
 	}
 
 	json_node *result = read_node(&p);
 	if (!result) {
-		free_json_tokenizer(p.lexer);
+		jsontok.free_json_tokenizer(p.lexer);
 		return NULL;
 	}
 
 	// Expect end of file at this point.
 	if (p.lexer->next.type != EOF) {
 		json_free(result);
-		free_json_tokenizer(p.lexer);
+		jsontok.free_json_tokenizer(p.lexer);
 		return NULL;
 	}
 	
-	free_json_tokenizer(p.lexer);
+	jsontok.free_json_tokenizer(p.lexer);
 	return result;
 }
 
@@ -533,7 +534,7 @@ pub json_node *json_parse(const char *s) {
  */
 json_node *read_node(parser_t *p)
 {
-	switch (lexer_currtype(p->lexer)) {
+	switch (jsontok.lexer_currtype(p->lexer)) {
 		case EOF:
 			return error(p, "Unexpected end of file");
 		case '[':
@@ -541,31 +542,31 @@ json_node *read_node(parser_t *p)
 		case '{':
 			return read_dict(p);
 		case T_STR:
-			json_node *n = json_newstr(lexer_currstr(p->lexer));
-			lexer_read_next(p->lexer);
-			if (lexer_currtype(p->lexer) == T_ERR) {
-				error(p, "%s", lexer_currstr(p->lexer));
+			json_node *n = json_newstr(jsontok.lexer_currstr(p->lexer));
+			jsontok.lexer_read_next(p->lexer);
+			if (jsontok.lexer_currtype(p->lexer) == jsontok.T_ERR) {
+				error(p, "%s", jsontok.lexer_currstr(p->lexer));
 			}
 			return n;
 		case T_NUM:
-			const char *val = lexer_currstr(p->lexer);
+			const char *val = jsontok.lexer_currstr(p->lexer);
 			double n;
 			if (sscanf(val, "%lf", &n) < 1) {
 				error(p, "failed to parser number: %s", val);
 			}
-			lexer_read_next(p->lexer);
-			if (lexer_currtype(p->lexer) == T_ERR) {
-				error(p, "%s", lexer_currstr(p->lexer));
+			jsontok.lexer_read_next(p->lexer);
+			if (jsontok.lexer_currtype(p->lexer) == jsontok.T_ERR) {
+				error(p, "%s", jsontok.lexer_currstr(p->lexer));
 			}
 			return json_newnum(n);
 		case T_TRUE:
-			lexer_read_next(p->lexer);
+			jsontok.lexer_read_next(p->lexer);
 			return json_newbool(true);
 		case T_FALSE:
-			lexer_read_next(p->lexer);
+			jsontok.lexer_read_next(p->lexer);
 			return json_newbool(false);
 		case T_NULL:
-			lexer_read_next(p->lexer);
+			jsontok.lexer_read_next(p->lexer);
 			return json_newnull();
 	}
 	return NULL;
@@ -578,47 +579,47 @@ json_node *read_array(parser_t *p)
 	}
 
 	json_node *a = json_newarr();
-	if (lexer_currtype(p->lexer) == ']') {
-		lexer_read_next(p->lexer);
-		if (lexer_currtype(p->lexer) == T_ERR) {
-			error(p, "%s", lexer_currstr(p->lexer));
+	if (jsontok.lexer_currtype(p->lexer) == ']') {
+		jsontok.lexer_read_next(p->lexer);
+		if (jsontok.lexer_currtype(p->lexer) == jsontok.T_ERR) {
+			error(p, "%s", jsontok.lexer_currstr(p->lexer));
 		}
 		return a;
 	}
 
-	while (lexer_currtype(p->lexer) != EOF) {
+	while (jsontok.lexer_currtype(p->lexer) != EOF) {
 		json_node *v = read_node(p);
 		if (!v) {
 			json_free(a);
 			return NULL;
 		}
 		json_push(a, v);
-		if(lexer_currtype(p->lexer) != ',') {
+		if(jsontok.lexer_currtype(p->lexer) != ',') {
 			break;
 		}
-		lexer_read_next(p->lexer);
-		if (lexer_currtype(p->lexer) == T_ERR) {
-			error(p, "%s", lexer_currstr(p->lexer));
+		jsontok.lexer_read_next(p->lexer);
+		if (jsontok.lexer_currtype(p->lexer) == jsontok.T_ERR) {
+			error(p, "%s", jsontok.lexer_currstr(p->lexer));
 		}
 	}
-	if (lexer_currtype(p->lexer) != ']') {
+	if (jsontok.lexer_currtype(p->lexer) != ']') {
 		json_free(a);
 		return NULL;
 	}
-	lexer_read_next(p->lexer);
-	if (lexer_currtype(p->lexer) == T_ERR) {
-		error(p, "%s", lexer_currstr(p->lexer));
+	jsontok.lexer_read_next(p->lexer);
+	if (jsontok.lexer_currtype(p->lexer) == jsontok.T_ERR) {
+		error(p, "%s", jsontok.lexer_currstr(p->lexer));
 	}
 	return a;
 }
 
 bool consume(parser_t *p, int toktype) {
-	if (lexer_currtype(p->lexer) != toktype) {
+	if (jsontok.lexer_currtype(p->lexer) != toktype) {
 		return false;
 	}
-	lexer_read_next(p->lexer);
-	if (lexer_currtype(p->lexer) == T_ERR) {
-		error(p, "%s", lexer_currstr(p->lexer));
+	jsontok.lexer_read_next(p->lexer);
+	if (jsontok.lexer_currtype(p->lexer) == jsontok.T_ERR) {
+		error(p, "%s", jsontok.lexer_currstr(p->lexer));
 	}
 	return true;
 }
@@ -636,18 +637,18 @@ json_node *read_dict(parser_t *p)
 		return o;
 	}
 
-	while (lexer_currtype(p->lexer) != EOF) {
+	while (jsontok.lexer_currtype(p->lexer) != EOF) {
 		// Get the field name string.
-		if (lexer_currtype(p->lexer) != T_STR) {
+		if (jsontok.lexer_currtype(p->lexer) != T_STR) {
 			json_free(o);
 			return error(p, "Key expected");
 		}
-		char *key = newstr("%s", lexer_currstr(p->lexer));
+		char *key = strutil.newstr("%s", jsontok.lexer_currstr(p->lexer));
 		if (!key) {
 			json_free(o);
 			return error(p, "No memory");
 		}
-		lexer_read_next(p->lexer);
+		jsontok.lexer_read_next(p->lexer);
 
 		// Get the ":"
 		if (!expect(p, ':')) {
@@ -670,12 +671,12 @@ json_node *read_dict(parser_t *p)
 			return NULL;
 		}
 
-		if (lexer_currtype(p->lexer) != ',') {
+		if (jsontok.lexer_currtype(p->lexer) != ',') {
 			break;
 		}
-		lexer_read_next(p->lexer);
-		if (lexer_currtype(p->lexer) == T_ERR) {
-			error(p, "%s", lexer_currstr(p->lexer));
+		jsontok.lexer_read_next(p->lexer);
+		if (jsontok.lexer_currtype(p->lexer) == jsontok.T_ERR) {
+			error(p, "%s", jsontok.lexer_currstr(p->lexer));
 		}
 	}
 	if (!expect(p, '}')) {
@@ -687,13 +688,13 @@ json_node *read_dict(parser_t *p)
 
 bool expect(parser_t *p, int toktype)
 {
-	if (lexer_currtype(p->lexer) != toktype) {
-		error(p, "'%c' expected, got '%c'", toktype, lexer_currtype(p->lexer));
+	if (jsontok.lexer_currtype(p->lexer) != toktype) {
+		error(p, "'%c' expected, got '%c'", toktype, jsontok.lexer_currtype(p->lexer));
 		return false;
 	}
-	lexer_read_next(p->lexer);
-	if (lexer_currtype(p->lexer) == T_ERR) {
-		error(p, "%s", lexer_currstr(p->lexer));
+	jsontok.lexer_read_next(p->lexer);
+	if (jsontok.lexer_currtype(p->lexer) == jsontok.T_ERR) {
+		error(p, "%s", jsontok.lexer_currstr(p->lexer));
 	}
 	return true;
 }
@@ -713,19 +714,19 @@ void *error(parser_t *p, const char *fmt, ...) {
 
 pub char *json_format(json_node *n)
 {
-	mem_t *z = memopen();
+	mem_t *z = mem.memopen();
 	json_write(z, n);
-	memrewind(z);
+	mem.memrewind(z);
 
-	str *s = str_new();
+	string.str *s = string.str_new();
 	while(1) {
-		char c = memgetc(z);
+		char c = mem.memgetc(z);
 		if(c == EOF) break;
-		str_addc(s, c);
+		string.str_addc(s, c);
 	}
-	char *str1 = newstr("%s", str_raw(s));
-	str_free(s);
-	memclose(z);
+	char *str1 = strutil.newstr("%s", string.str_raw(s));
+	string.str_free(s);
+	mem.memclose(z);
 	return str1;
 }
 
@@ -735,27 +736,27 @@ void json_write(mem_t *z, json_node *n)
 	{
 		case JSON_OBJ:
 			size_t len = json_size(n);
-			memprintf(z, "{");
+			mem.memprintf(z, "{");
 			for(size_t i = 0; i < len; i++) {
-				memprintf(z, "\"%s\":", json_key(n, i));
+				mem.memprintf(z, "\"%s\":", json_key(n, i));
 				json_write(z, json_val(n, i));
 				if(i + 1 < len) {
-					memprintf(z, ",");
+					mem.memprintf(z, ",");
 				}
 			}
-			memprintf(z, "}");
+			mem.memprintf(z, "}");
 			break;
 
 		case JSON_ARR:
 			size_t len = json_len(n);
-			memprintf(z, "[");
+			mem.memprintf(z, "[");
 			for(size_t i = 0; i < len; i++) {
 				json_write(z, json_at(n, i));
 				if(i + 1 < len) {
-					memprintf(z, ",");
+					mem.memprintf(z, ",");
 				}
 			}
-			memprintf(z, "]");
+			mem.memprintf(z, "]");
 			break;
 
 		case JSON_STR:
@@ -763,19 +764,19 @@ void json_write(mem_t *z, json_node *n)
 			break;
 
 		case JSON_NUM:
-			memprintf(z, "%f", json_dbl(n));
+			mem.memprintf(z, "%f", json_dbl(n));
 			break;
 
 		case JSON_BOOL:
 			if (json_bool(n)) {
-				memprintf(z, "true");
+				mem.memprintf(z, "true");
 			} else {
-				memprintf(z, "false");
+				mem.memprintf(z, "false");
 			}
 			break;
 
 		case JSON_NULL:
-			memprintf(z, "null");
+			mem.memprintf(z, "null");
 			break;
 	}
 }
@@ -787,23 +788,23 @@ void write_string(mem_t *z, json_node *node) {
 	const char *content = json_str(node);
 	
 	size_t n = strlen(content);
-	memputc('"', z);
+	mem.memputc('"', z);
 	for (size_t i = 0; i < n; i++) {
 		const char c = content[i];
 		if (c == '\n') {
-			memputc('\\', z);
-			memputc('n', z);
+			mem.memputc('\\', z);
+			mem.memputc('n', z);
 			continue;
 		}
 		if (c == '\t') {
-			memputc('\\', z);
-			memputc('t', z);
+			mem.memputc('\\', z);
+			mem.memputc('t', z);
 			continue;
 		}
 		if (c == '\\' || c == '\"' || c == '/') {
-			memputc('\\', z);
+			mem.memputc('\\', z);
 		}
-		memputc(c, z);
+		mem.memputc(c, z);
 	}
-	memputc('"', z);
+	mem.memputc('"', z);
 }

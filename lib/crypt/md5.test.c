@@ -18,8 +18,8 @@ kv_t tests[] = {
 };
 
 bool rfctest() {
-	md5sum_t s = {0};
-	md5str_t buf = "";
+	md5.md5sum_t s = {0};
+	md5.md5str_t buf = "";
 
 	for (size_t i = 0; i < nelem(tests); i++) {
 		md5.md5_str(tests[i].s, s);

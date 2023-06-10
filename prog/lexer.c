@@ -34,7 +34,7 @@ const char *keywords[] = {
 
 typedef {
 	char *source;
-	parsebuf_t *buf;
+	parsebuf.parsebuf_t *buf;
 } lexer_t;
 
 bool streq(char *a, char *b) {
@@ -72,13 +72,13 @@ int main() {
 }
 
 char *read_stdin() {
-	str *s = str_new();
+	string.str *s = string.str_new();
 	while (!feof(stdin)) {
 		char c = fgetc(stdin);
 		if (c == EOF) break;
-		str_addc(s, c);
+		string.str_addc(s, c);
 	}
-	return str_unpack(s);
+	return string.str_unpack(s);
 }
 
 
@@ -86,12 +86,12 @@ char *read_stdin() {
 lexer_t *lexer_make(char *source) {
 	lexer_t *l = calloc(1, sizeof(lexer_t));
 	l->source = source;
-	l->buf = buf_new(source);
+	l->buf = parsebuf.buf_new(source);
 	return l;
 }
 
 void lexer_free(lexer_t *l) {
-	buf_free(l->buf);
+	parsebuf.buf_free(l->buf);
 	free(l);
 }
 
@@ -127,23 +127,23 @@ void tok_free(tok_t *t) {
 }
 
 char *tok_json(tok_t *t) {
-	json_node *tok = json_newobj();
-	json_put(tok, "type", json_newstr(t->name));
-	json_put(tok, "content", json_newstr(t->content));
-	json_put(tok, "pos", json_newstr(t->pos));
-	return json_format(tok);
-	// return newstr("* %s - %s", t->name, t->content);
+	json.json_node *tok = json.json_newobj();
+	json.json_put(tok, "type", json.json_newstr(t->name));
+	json.json_put(tok, "content", json.json_newstr(t->content));
+	json.json_put(tok, "pos", json.json_newstr(t->pos));
+	return json.json_format(tok);
+	// return strutil.newstr("* %s - %s", t->name, t->content);
 }
 
 tok_t *lexer_read(lexer_t *l) {
-	parsebuf_t *b = l->buf;
+	parsebuf.parsebuf_t *b = l->buf;
 
-	buf_skip_set(b, " \r\n\t");
-	if (!buf_more(b)) {
+	parsebuf.buf_skip_set(b, " \r\n\t");
+	if (!parsebuf.buf_more(b)) {
 		return NULL;
 	}
 
-	char peek = buf_peek(b);
+	char peek = parsebuf.buf_peek(b);
 
 	if (peek == '#') {
 		// puts("macro");
@@ -161,29 +161,29 @@ tok_t *lexer_read(lexer_t *l) {
 		// puts("char");
 		return read_char(b);
 	}
-	if (buf_literal_follows(b, "/*")) {
+	if (parsebuf.buf_literal_follows(b, "/*")) {
 		// puts("mcomm");
 		return read_multiline_comment(b);
 	}
-	if (buf_literal_follows(b, "//")) {
+	if (parsebuf.buf_literal_follows(b, "//")) {
 		// puts("comm");
 		return read_line_comment(b);
 	}
 
 	
-	char *pos = buf_pos(b);
+	char *pos = parsebuf.buf_pos(b);
 	for (size_t i = 0; i < nelem(keywords); i++) {
 		const char *keyword = keywords[i];
-		if (buf_skip_literal(b, keyword)) {
+		if (pasebuf.buf_skip_literal(b, keyword)) {
 			// puts("keyword");
-			return tok_make(newstr("%s", keyword), NULL, pos);
+			return tok_make(strutil.newstr("%s", keyword), NULL, pos);
 		}
 	}
 	for (size_t i = 0; i < nelem(symbols); i++) {
 		const char *symbol = symbols[i];
-		if (buf_skip_literal(b, symbol)) {
+		if (pasebuf.buf_skip_literal(b, symbol)) {
 			// puts("symbol");
-			return tok_make(newstr("%s", symbol), NULL, pos);
+			return tok_make(strutil.newstr("%s", symbol), NULL, pos);
 		}
 	}
 	free(pos);
@@ -192,79 +192,79 @@ tok_t *lexer_read(lexer_t *l) {
 		// puts("ident");
 		return read_identifier(b);
 	}
-	return tok_make("error", newstr("unexpected character: '%c'", peek), buf_pos(b));
+	return tok_make("error", strutil.newstr("unexpected character: '%c'", peek), parsebuf.buf_pos(b));
 	
 }
 
-tok_t *read_macro(parsebuf_t *b) {
-	char *s = buf_skip_until(b, "\n");
-	return tok_make("macro", s, buf_pos(b));
+tok_t *read_macro(parsebuf.parsebuf_t *b) {
+	char *s = parsebuf.buf_skip_until(b, "\n");
+	return tok_make("macro", s, parsebuf.buf_pos(b));
 }
 
-tok_t *read_number(parsebuf_t *b) {
+tok_t *read_number(parsebuf.parsebuf_t *b) {
 	// If "0x" follows, read a hexademical constant.
-	if (buf_skip_literal(b, "0x")) {
+	if (pasebuf.buf_skip_literal(b, "0x")) {
 		return read_hex_number(b);
 	}
 
-	char *pos = buf_pos(b);
-	char *num = buf_read_set(b, "0123456789");
-	if (buf_peek(b) == '.') {
-		buf_get(b);
-		char *frac = buf_read_set(b, "0123456789");
-		char *modifiers = buf_read_set(b, "ULf");
+	char *pos = parsebuf.buf_pos(b);
+	char *num = parsebuf.buf_read_set(b, "0123456789");
+	if (parsebuf.buf_peek(b) == '.') {
+		parsebuf.buf_get(b);
+		char *frac = parsebuf.buf_read_set(b, "0123456789");
+		char *modifiers = parsebuf.buf_read_set(b, "ULf");
 		// defer free(modifiers);
 		// defer free(frac);
-		return tok_make("num", newstr("%s.%s%s", num, frac, modifiers), pos);
+		return tok_make("num", strutil.newstr("%s.%s%s", num, frac, modifiers), pos);
 	}
 
-	char *modifiers = buf_read_set(b, "UL");
+	char *modifiers = parsebuf.buf_read_set(b, "UL");
 
-	if (buf_more(b) && isalpha(buf_peek(b))) {
-		return tok_make("error", newstr("unknown modifier: %c", buf_peek(b)), pos);
+	if (parsebuf.buf_more(b) && isalpha(parsebuf.buf_peek(b))) {
+		return tok_make("error", strutil.newstr("unknown modifier: %c", parsebuf.buf_peek(b)), pos);
 	}
 
-	char *result = newstr("%s%s", num, modifiers);
+	char *result = strutil.newstr("%s%s", num, modifiers);
 	free(num);
 	free(modifiers);
 	return tok_make("num", result, pos);
 }
 
-tok_t *read_hex_number(parsebuf_t *b) {
+tok_t *read_hex_number(parsebuf.parsebuf_t *b) {
 	// Skip "0x"
-	buf_get(b);
-	buf_get(b);
+	parsebuf.buf_get(b);
+	parsebuf.buf_get(b);
 
-	char *num = buf_read_set(b, "0123456789ABCDEFabcdef");
-	char *modifiers = buf_read_set(b, "UL");
+	char *num = parsebuf.buf_read_set(b, "0123456789ABCDEFabcdef");
+	char *modifiers = parsebuf.buf_read_set(b, "UL");
 	// defer free(num);
 	// defer free(modifiers);
-	return tok_make("num", newstr("0x%s%s", num, modifiers), buf_pos(b));
+	return tok_make("num", strutil.newstr("0x%s%s", num, modifiers), parsebuf.buf_pos(b));
 }
 
 // // TODO: clip/str: str_new() -> str_new(template, args...)
 
-tok_t *read_string(parsebuf_t *b) {
-	char *pos = buf_pos(b);
+tok_t *read_string(parsebuf.parsebuf_t *b) {
+	char *pos = parsebuf.buf_pos(b);
 
 	// Skip the opening quote
-	buf_get(b);
-	str *s = str_new();
+	parsebuf.buf_get(b);
+	string.str *s = string.str_new();
 
-	while (buf_more(b)) {
-		char c = buf_get(b);
+	while (parsebuf.buf_more(b)) {
+		char c = parsebuf.buf_get(b);
 		if (c == '"') {
-			return tok_make("string", str_unpack(s), pos);
+			return tok_make("string", string.str_unpack(s), pos);
 		}
-		str_addc(s, c);
+		string.str_addc(s, c);
 		if (c == '\\') {
-			str_addc(s, buf_get(b));
+			string.str_addc(s, parsebuf.buf_get(b));
 		}
 	}
-	return tok_make("error", newstr("double quote expected"), pos);
+	return tok_make("error", strutil.newstr("double quote expected"), pos);
 
 	// // Expect the closing quote
-	// if (buf_get(b) != '"') {
+	// if (parsebuf.buf_get(b) != '"') {
 		
 	// }
 
@@ -284,57 +284,57 @@ tok_t *read_string(parsebuf_t *b) {
 		// }
 
 
-	// return tok_make("error", "double quote expected", buf_pos(b));
+	// return tok_make("error", "double quote expected", parsebuf.buf_pos(b));
 }
 
-tok_t *read_char(parsebuf_t *b) {
+tok_t *read_char(parsebuf.parsebuf_t *b) {
 	char *s = calloc(3, 1);
 	char *p = s;
-	char *pos = buf_pos(b);
+	char *pos = parsebuf.buf_pos(b);
 	
-	buf_get(b);
+	parsebuf.buf_get(b);
 
-	if (buf_peek(b) == '\\') {
-		*p++ = buf_get(b);
+	if (parsebuf.buf_peek(b) == '\\') {
+		*p++ = parsebuf.buf_get(b);
 	}
-	*p++ = buf_get(b);
+	*p++ = parsebuf.buf_get(b);
 
-	if (buf_peek(b) != '\'') {
+	if (parsebuf.buf_peek(b) != '\'') {
 		free(s);
-		return tok_make("error", newstr("single quote expected"), pos);
+		return tok_make("error", strutil.newstr("single quote expected"), pos);
 	}
-	buf_get(b);
+	parsebuf.buf_get(b);
 	return tok_make("char", s, pos);
 }
 
 
-tok_t *read_multiline_comment(parsebuf_t *b) {
-	char *pos = buf_pos(b);
-	buf_skip_literal(b, "/*");
-	char *comment = buf_skip_until(b, "*/");
-	if (!buf_skip_literal(b, "*/")) {
+tok_t *read_multiline_comment(parsebuf.parsebuf_t *b) {
+	char *pos = parsebuf.buf_pos(b);
+	pasebuf.buf_skip_literal(b, "/*");
+	char *comment = parsebuf.buf_skip_until(b, "*/");
+	if (!pasebuf.buf_skip_literal(b, "*/")) {
 		free(comment);
-		return tok_make("error", newstr("'*/' expected"), pos);
+		return tok_make("error", strutil.newstr("'*/' expected"), pos);
 	}
 	return tok_make("comment", comment, pos);
 }
 
-tok_t *read_line_comment(parsebuf_t *b) {
-	char *pos = buf_pos(b);
-	buf_skip_literal(b, "//");
-	return tok_make("comment", buf_skip_until(b, "\n"), pos);
+tok_t *read_line_comment(parsebuf.parsebuf_t *b) {
+	char *pos = parsebuf.buf_pos(b);
+	pasebuf.buf_skip_literal(b, "//");
+	return tok_make("comment", parsebuf.buf_skip_until(b, "\n"), pos);
 }
 
-tok_t *read_identifier(parsebuf_t *b) {
-	str *s = str_new();
-	char *pos = buf_pos(b);
+tok_t *read_identifier(parsebuf.parsebuf_t *b) {
+	string.str *s = string.str_new();
+	char *pos = parsebuf.buf_pos(b);
 
-	while (buf_more(b)) {
-		char c = buf_peek(b);
+	while (parsebuf.buf_more(b)) {
+		char c = parsebuf.buf_peek(b);
 		if (!isalpha(c) && !isdigit(c) && c != '_') {
 			break;
 		}
-		str_addc(s, buf_get(b));
+		string.str_addc(s, parsebuf.buf_get(b));
 	}
-	return tok_make("word", str_unpack(s), pos);
+	return tok_make("word", string.str_unpack(s), pos);
 }

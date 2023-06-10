@@ -2,6 +2,14 @@
 #include <unistd.h>
 #include <sys/wait.h>
 
+#known pipe
+#known fdopen
+#known fork
+#known waitpid
+#known dup
+#known fileno
+#known execve
+
 pub typedef { int pid; char *error; } exec_t;
 pub typedef { FILE *read, *write; } pipe_t;
 

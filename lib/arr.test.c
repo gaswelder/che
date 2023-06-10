@@ -3,22 +3,22 @@
 
 bool test()
 {
-	arr_t *a = arr_new();
+	arr.arr_t *a = arr.arr_new();
 
 	int expected = 0;
 
 	for(int i = 0; i < 1000; i++) {
-		if(!arr_pushi(a, i)) {
-			fatal("failed");
+		if(!arr.arr_pushi(a, i)) {
+			cli.fatal("failed");
 		}
 		expected += i;
 	}
 
-	arr_t *c = arr_copy(a);
+	arr.arr_t *c = arr.arr_copy(a);
 
 	int actual = 0;
-	for (size_t i = 0; i < arr_len(c); i++) {
-		actual += arr_geti(c, i);
+	for (size_t i = 0; i < arr.arr_len(c); i++) {
+		actual += arr.arr_geti(c, i);
 	}
 
 	return expected == actual;

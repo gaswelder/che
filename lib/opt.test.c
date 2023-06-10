@@ -2,15 +2,15 @@
 
 int main() {
 	char *s = NULL;
-	opt.str("s", "some string", &s);
+	opt.opt_str("s", "some string", &s);
 	int i = 0;
-	opt.int("i", "some int", &i);
+	opt.opt_int("i", "some int", &i);
 	float f = 0;
-	opt.float("f", "some float", &f);
+	opt.opt_float("f", "some float", &f);
 	bool p = false;
-	opt.bool("p", "some bool1", &p);
+	opt.opt_bool("p", "some bool1", &p);
 	bool q = false;
-	opt.bool("q", "some bool2", &q);
+	opt.opt_bool("q", "some bool2", &q);
 
 	char *argv[] = {"progname", "-s", "foo", "-i", "10", "-pq", "-f", "3.14", "one", "two", NULL};
 	int argc = 0;
@@ -18,7 +18,7 @@ int main() {
 		argc++;
 	}
 
-	char **args = opt.parse(argc, argv);
+	char **args = opt.opt_parse(argc, argv);
 	bool fail = false;
 	if (i != 10) {
 		fprintf(stderr, "i: %d != %d\n", i, 10);

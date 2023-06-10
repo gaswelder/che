@@ -373,10 +373,14 @@ pub fn get_module_synopsis(module: &CModule) -> Vec<CModuleObject> {
                     })
                 }
             }
-            // CModuleObject::Macro { name, value } => elements.push(CModuleObject::Macro {
-            //     name: name.clone(),
-            //     value: value.clone(),
-            // }),
+            CModuleObject::Macro { name, value } => {
+                // if name == "include" {
+                elements.push(CModuleObject::Macro {
+                    name: name.clone(),
+                    value: value.clone(),
+                })
+                // }
+            }
             CModuleObject::EnumDefinition { is_hidden, members } => {
                 if !*is_hidden {
                     elements.push(CModuleObject::EnumDefinition {

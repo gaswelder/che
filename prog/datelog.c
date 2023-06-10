@@ -20,15 +20,15 @@ int main(int argc, char *argv[])
 	/*
 	 * Parse the arguments.
 	 */
-	opt.summary( "datelog [-o] [-p period] [-d dir] [-c current logname]" );
-	opt.str("p", "Log period ('month'/'day'/'hour'/'minute'/'second')", &pername);
-	opt.str("d", "Directory for log files", &dir);
-	opt.str("c", "File name for current log file", &static_name);
-	opt.bool("o", "Output received lines to stdout", &output);
+	opt.opt_summary( "datelog [-o] [-p period] [-d dir] [-c current logname]" );
+	opt.opt_str("p", "Log period ('month'/'day'/'hour'/'minute'/'second')", &pername);
+	opt.opt_str("d", "Directory for log files", &dir);
+	opt.opt_str("c", "File name for current log file", &static_name);
+	opt.opt_bool("o", "Output received lines to stdout", &output);
 
-	char **args = opt_parse(argc, argv);
+	char **args = opt.opt_parse(argc, argv);
 	if( !args ) {
-		opt_usage();
+		opt.opt_usage();
 		return 1;
 	}
 	if( *args ) {
@@ -94,7 +94,7 @@ dlog_t *dlog_init( const char *pername, const char *dir,
 	/*
 	 * Check if the directory exists.
 	 */
-	if( !is_dir( dir ) ) {
+	if( !fs.is_dir( dir ) ) {
 		return NULL;
 	}
 
@@ -106,7 +106,7 @@ dlog_t *dlog_init( const char *pername, const char *dir,
 
 	log->per = per;
 	if( dir ) {
-		log->dir = newstr("%s", dir);
+		log->dir = strutil.newstr("%s", dir);
 	}
 	if( static_name ) {
 		log->static_path = create_static_path( log, static_name );
@@ -162,7 +162,7 @@ period_t *find_period( const char *pername )
  */
 char *create_static_path( dlog_t *log, const char *static_name )
 {
-	char *static_path = static_path = malloc( MAXPATH );
+	char *static_path = malloc( MAXPATH );
 	if( !static_path ) {
 		fprintf(stderr, "Memory allocation failed.\n");
 		return NULL;
@@ -245,8 +245,8 @@ int close_log( dlog_t *log )
 	 * Move the contents from the temporary path to the corresponding
 	 * file.
 	 */
-	if( file_exists( log->current_path ) ) {
-		if( !append_file( log->current_path, log->static_path ) ) {
+	if( fileutil.file_exists( log->current_path ) ) {
+		if( !fileutil.append_file( log->current_path, log->static_path ) ) {
 			fprintf( stderr, "Couldn't append %s to %s\n",
 				log->static_path, log->current_path );
 			return 0;
@@ -270,7 +270,7 @@ int close_log( dlog_t *log )
 bool format_path( dlog_t *log, char *buf, size_t len )
 {
 	char name[200] = {};
-	if( !time_format(name, sizeof(name), log->per->format) ) {
+	if( !time.time_format(name, sizeof(name), log->per->format) ) {
 		return false;
 	}
 

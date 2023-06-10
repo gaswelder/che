@@ -2,6 +2,18 @@
 #type pthread_t
 #type pthread_mutex_t
 #type pthread_cond_t
+#known pthread_create
+#known pthread_join
+#known pthread_detach
+#known pthread_mutex_init
+#known pthread_mutex_destroy
+#known pthread_mutex_lock
+#known pthread_mutex_unlock
+#known pthread_cond_init
+#known pthread_cond_destroy
+#known pthread_cond_wait
+#known pthread_cond_signal
+#known pthread_cond_broadcast
 #include <pthread.h>
 
 pub typedef void *thr_func(void *);
@@ -58,7 +70,7 @@ pub typedef {
  */
 pub mtx_t *mtx_new()
 {
-	mtx_t *m = calloc(1, sizeof(*m));
+	mtx_t *m = calloc(1, sizeof(mtx_t));
 	if(!m) return NULL;
 
 	int r = pthread_mutex_init(&m->m, NULL);
@@ -94,7 +106,7 @@ pub int mtx_unlock(mtx_t *mtx) {
  */
 pub cnd_t *cnd_new()
 {
-	cnd_t *c = calloc(1, sizeof(*c));
+	cnd_t *c = calloc(1, sizeof(cnd_t));
 	if(!c) return NULL;
 
 	int r = pthread_cond_init(&c->c, NULL);
