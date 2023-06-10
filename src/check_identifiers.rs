@@ -33,6 +33,7 @@ pub fn run(m: &Module, exports: &HashMap<String, &Exports>) -> Vec<Error> {
         "log",
         "sqrt",
         "RAND_MAX",
+        "vasprintf",
         "fputs",
         "rename",
         "setvbuf",

@@ -20,6 +20,7 @@ typedef struct timeval timeval_t;
 
 #known accept
 #known AF_INET
+#known AI_PASSIVE
 #known ai_protocol
 #known ai_socktype
 #known bind
@@ -114,60 +115,53 @@ pub net_t *net_open(const char *proto, const char *addr)
 	return c;
 }
 
-pub net_t *net_listen(const char *proto, const char *addr)
-{
+pub net_t *net_listen(const char *proto, const char *addr) {
 	net_t *c = newconn(proto, addr);
 	if(!c) {
 		return NULL;
 	}
-
 	int yes = 1;
-	if(setsockopt(c->sock, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(int)) != 0) {
+	if (setsockopt(c->sock, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(int)) != 0) {
 		error = "setsockopt failed";
 		free(c);
 		return NULL;
 	}
-
-	if(bind(c->sock, &(c->ai_addr), c->addrlen) != 0) {
+	if (bind(c->sock, &(c->ai_addr), c->addrlen) != 0) {
 		error = "bind failed";
 		free(c);
 		return NULL;
 	}
-
-	if(listen(c->sock, 16) != 0) {
+	int backlog = 16;
+	if (listen(c->sock, backlog) != 0) {
 		error = "listen failed";
 		free(c);
 		return NULL;
 	}
-
 	return c;
 }
 
 pub net_t *net_accept(net_t *l)
 {
-	net_t *c = calloc(1, sizeof(net_t));
-	if(!c) {
+	net_t *newconn = calloc(1, sizeof(net_t));
+	if (!newconn) {
 		error = "no memory for new socket";
 		return NULL;
 	}
-
 	socklen_t size = sizeof(sockaddr_t);
-	int s = accept(l->sock, &(c->ai_addr), &size);
-	if(s == -1) {
+	int s = accept(l->sock, &(newconn->ai_addr), &size);
+	if (s == -1) {
 		error = "accept failed";
-		free(c);
+		free(newconn);
 		return NULL;
 	}
-
-	if(!format_address(&(c->ai_addr), c->addrstr, sizeof(c->addrstr))) {
+	if (!format_address(&(newconn->ai_addr), newconn->addrstr, sizeof(newconn->addrstr))) {
 		error = "couldn't format address";
-		free(c);
+		free(newconn);
 		close(s);
 		return NULL;
 	}
-
-	c->sock = s;
-	return c;
+	newconn->sock = s;
+	return newconn;
 }
 
 pub void net_close(net_t *c)
@@ -201,68 +195,60 @@ pub int net_incoming(net_t *c)
 	return 0;
 }
 
-net_t *newconn(const char *proto, const char *addr)
-{
-	/*
-	 * Only TCP is implemented
-	 */
-	if(strcmp(proto, "tcp") != 0) {
+/*
+ * Creates a connection wrapper for given protocol and address.
+ */
+net_t *newconn(const char *proto, const char *addr) {
+	if (strcmp(proto, "tcp") != 0) {
 		error = "Unknown protocol";
 		return NULL;
 	}
-
 	net_t *c = calloc(1, sizeof(net_t));
-	if( !c ) {
+	if (!c) {
 		error = "malloc failed";
 		return NULL;
 	}
-
-	if(strlen(addr) > sizeof(c->addrstr)) {
+	if (strlen(addr) > sizeof(c->addrstr)) {
 		error = "address string too long";
+		free(c);
 		return NULL;
 	}
 	strcpy(c->addrstr, addr);
-
-	if( !getsock(c, addr) ) {
+	if (!getlistensock(c, addr)) {
 		free(c);
 		return NULL;
 	}
 	return c;
 }
 
-int getsock(net_t *c, const char *addr)
+int getlistensock(net_t *c, const char *addr)
 {
-	/*
-	 * Split the address into a hostname and a portname
-	 */
-	if(!parseaddr(c, addr)) {
+	// Split the address into a hostname and a portname.
+	if (!parseaddr(c, addr)) {
 		return 0;
 	}
 
 	addrinfo_t query = {
 		.ai_socktype = SOCK_STREAM,
-		.ai_protocol = IPPROTO_TCP
+		.ai_protocol = IPPROTO_TCP,
 	};
 	addrinfo_t *result = NULL;
-	if(getaddrinfo(c->host, c->port, &query, &result) != 0) {
+	if (getaddrinfo(c->host, c->port, &query, &result) != 0) {
 		error = "getaddrinfo error";
 		return 0;
 	}
-
 	addrinfo_t *i = NULL;
-	for(i = result; i != NULL; i = i->ai_next)
-	{
+	for (i = result; i != NULL; i = i->ai_next) {
 		c->sock = socket( i->ai_family, i->ai_socktype, i->ai_protocol );
-		if( c->sock > 0 ) {
+		if (c->sock > 0) {
 			memcpy(&(c->ai_addr), i->ai_addr, sizeof(sockaddr_t));
 			c->addrlen = i->ai_addrlen;
 			c->ai_family = i->ai_family;
 			break;
 		}
 	}
-
 	freeaddrinfo( result );
-	if( c->sock <= 0 ) {
+	if (c->sock <= 0) {
 		error = "no suitable addrinfo";
 		return 0;
 	}

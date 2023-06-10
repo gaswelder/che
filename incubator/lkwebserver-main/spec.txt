@@ -1,0 +1,118 @@
+Todo:
+- support cgi request post with body content
+- specify chunked transfer encoding 
+
+config file:
+------------
+serverhost=127.0.0.1
+port=5000
+
+# testsite.xyz
+hostname testsite.xyz
+homedir=www/testsite
+cgidir=cgi-bin
+alias latest=latest.html
+alias about=about.html
+alias cgitest=cgi-bin/index.pl
+
+# Redirect newsboard.littlekitten.xyz to localhost:8001 server
+hostname newsboard.littlekitten.xyz
+proxyhost=localhost:8001
+
+# littlekitten.xyz
+hostname littlekitten.xyz
+homedir=www/littlekitten
+
+cgi post docs:
+https://www.oreilly.com/library/view/cgi-programming-on/9781565921689/07_chapter-04.html
+
+
+python simplehttpserver returns the following:
+127.0.0.1 - - [11/Mar/2023 14:05:46] "GET /index3.html HTTP/1.1" 200 - 
+
+127.0.0.1 - - [11/Mar/2023 14:05:46] code 501, message Unsupported method ('POST')
+127.0.0.1 - - [11/Mar/2023 14:05:46] "POST /index3.html HTTP/1.1" 501 - 
+
+127.0.0.1 - - [11/Mar/2023 14:05:46] "HEAD /index3.html HTTP/1.1" 200 - 
+
+
+curl --head output:
+// html file
+HTTP/1.0 200 OK
+Server: SimpleHTTP/0.6 Python/3.10.6
+Date: Sat, 11 Mar 2023 06:12:05 GMT
+Content-Type: text/html
+Content-Length: 1219
+Last-Modified: Wed, 04 Jan 2023 07:35:30 GMT
+
+// image file
+HTTP/1.0 200 OK
+Server: SimpleHTTP/0.6 Python/3.10.6
+Date: Sat, 11 Mar 2023 06:12:05 GMT
+Content-Type: image/jpeg
+Content-Length: 95714
+Last-Modified: Sat, 11 Mar 2003 06:16:50 GMT
+
+// file not found
+HTTP/1.0 404 File not found
+Server: SimpleHTTP/0.6 Python/3.10.6
+Date: Sat, 11 Mar 2023 06:12:05 GMT
+Connection: close
+Content-Type: text/html;charset=utf-8
+Content-Length: 469
+
+handle POST?
+405 Method Not Allowed
+501 Not Implemented
+with basic html containing error message:
+<title>Error response</title>
+<h1>Error response</h1>
+<p>Error code: 501</p>
+<p>Message: Unsupported method ('POST').</p>
+
+curl post test:
+curl -X POST -H "Content-Type: application/json" -d '{"id": 123, "name": "rob"}' http://localhost:5000
+
+nginx:
+Server: nginx/1.18.0
+
+Content-Type possibilities:
+https://stackoverflow.com/questions/23714383/what-are-all-the-possible-values-for-http-content-type-header
+
+text/css csv html javascript(obsolete) plain xml
+image/gif jpeg png tiff svg+xml
+application/javascript json xml zip pdf
+audio/mpeg
+video/mpeg mp4 quicktime webm
+
+cgi:
+https://docstore.mik.ua/orelly/linux/cgi/ch03_03.htm
+The Status header is different than the other headers because it does not map directly to an HTTP header, although it is associated with the status line. This field is used only to exchange information between the CGI script and the web server. It specifies the status code the server should include in the status line of the request. This field is optional: if you do not print it, the web server will automatically add a status of 200 OK to your output if you print a Content-type header, and a status of 302 Found if you print a Location header.
+
+https://www.tutorialspoint.com/perl-cgi-environment-variables
+https://www.oreilly.com/openbook/cgi/ch02_02.html
+http://www.cgi101.com/book/ch3/text.html
+
+SERVER_NAME = robdelacruz.xyz   // hostname())
+SERVER_SOFTWARE = nginx/1.18.0
+DOCUMENT_ROOT = /var/www/robdelacruz.xyz  // realpath()
+SERVER_PROTOCOL = HTTP/1.1
+SERVER_PORT = 443 // request header Host: robdelacruz.xyz:5000
+
+HTTP_USER_AGENT = Chrome/108.0.0.0 // request header User-Agent
+HTTP_HOST = robdelacruz.xyz // request header Host: robdelacruz.xyz:5000
+REQUEST_METHOD = GET
+SCRIPT_FILENAME = /var/www/robdelacruz.xyz/cgi-bin/rob.pl  // DOCUMENT_ROOT + uri
+SCRIPT_NAME = /cgi-bin/rob.pl // uri
+REQUEST_URI = /cgi-bin/rob.pl?abc=123 // uri
+QUERY_STRING = abc=123&def=45 // uri
+CONTENT_TYPE = ??? (mime type of query data such as "text/html")
+CONTENT_LENGTH = ??? (length of data in bytes passed to cgi program through std input)
+
+REMOTE_ADDR = 180.190.63.221 (visitor's ip addr)
+REMOTE_PORT = 15046
+HTTP_COOKIE
+HTTP_REFERER
+HTTPS ("on" if https)
+PATH
+
