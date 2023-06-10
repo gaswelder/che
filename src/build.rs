@@ -210,6 +210,19 @@ pub fn translate(work: &mut Build) -> Result<(), String> {
     // Translate each node.
     for (i, m) in work.m.iter().enumerate() {
         let mut cnodes: Vec<CModuleObject> = Vec::new();
+        // Include all standard C library everywhere.
+        let std = vec![
+            "assert", "ctype", "errno", "limits", "math", "stdarg", "stdbool", "stddef", "stdint",
+            "stdio", "stdlib", "string", "time", "setjmp",
+        ];
+        for n in std {
+            cnodes.push(CModuleObject::Include(format!("<{}.h>", n)));
+        }
+        // Include custom utils
+        cnodes.push(CModuleObject::Macro {
+            name: "define".to_string(),
+            value: "nelem(x) (sizeof (x)/sizeof (x)[0])".to_string(),
+        });
         for imp in &work.imports[i] {
             let pos = work.paths.iter().position(|x| *x == imp.path).unwrap();
             let c = &work.c[pos];

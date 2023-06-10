@@ -31,19 +31,6 @@ pub fn translate(m: &Module, ctx: &Ctx) -> CModule {
         }
     }
 
-    // Include all standard C library everywhere.
-    let std = vec![
-        "assert", "ctype", "errno", "limits", "math", "stdarg", "stdbool", "stddef", "stdint",
-        "stdio", "stdlib", "string", "time", "setjmp",
-    ];
-    for n in std {
-        elements.push(CModuleObject::Include(format!("<{}.h>", n)));
-    }
-    elements.push(CModuleObject::Macro {
-        name: "define".to_string(),
-        value: "nelem(x) (sizeof (x)/sizeof (x)[0])".to_string(),
-    });
-
     // Reorder the elements so that typedefs and similar preamble elements
     // come first.
     let mut groups: Vec<Vec<CModuleObject>> =
