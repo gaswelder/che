@@ -61,7 +61,7 @@ fn parse_module_object(l: &mut Lexer, ctx: &Ctx) -> Result<ModuleObject, String>
     if l.follows("typedef") {
         return parse_typedef(is_pub, l, ctx);
     }
-    let type_name = parse_typename(l, None, ctx)?;
+    let type_name = parse_typename(l, ctx)?;
     let form = parse_form(l, ctx)?;
     if l.peek().unwrap().kind == "(" {
         return parse_function_declaration(l, is_pub, type_name, form, ctx);
@@ -413,14 +413,14 @@ fn read_identifier(lexer: &mut Lexer) -> Result<String, String> {
     return Ok(identifier);
 }
 
-fn parse_typename(l: &mut Lexer, comment: Option<&str>, ctx: &Ctx) -> Result<Typename, String> {
+fn parse_typename(l: &mut Lexer, ctx: &Ctx) -> Result<Typename, String> {
     let is_const = l.eat("const");
     let name = read_ns_id(l, ctx)?;
     return Ok(Typename { is_const, name });
 }
 
 fn parse_anonymous_typeform(lexer: &mut Lexer, ctx: &Ctx) -> Result<AnonymousTypeform, String> {
-    let type_name = parse_typename(lexer, None, ctx).unwrap();
+    let type_name = parse_typename(lexer, ctx).unwrap();
     let mut ops: Vec<String> = Vec::new();
     while lexer.follows("*") {
         ops.push(lexer.get().unwrap().kind);
@@ -564,7 +564,7 @@ fn parse_sizeof(l: &mut Lexer, ctx: &Ctx) -> Result<Expression, String> {
     expect(l, "sizeof", None)?;
     expect(l, "(", None)?;
     let argument = if type_follows(l, ctx) {
-        SizeofArgument::Typename(parse_typename(l, None, ctx)?)
+        SizeofArgument::Typename(parse_typename(l, ctx)?)
     } else {
         SizeofArgument::Expression(parse_expr(l, 0, ctx).unwrap())
     };
@@ -639,7 +639,7 @@ fn parse_statement(l: &mut Lexer, ctx: &Ctx) -> Result<Statement, String> {
 }
 
 fn parse_variable_declaration(l: &mut Lexer, ctx: &Ctx) -> Result<Statement, String> {
-    let type_name = parse_typename(l, None, ctx)?;
+    let type_name = parse_typename(l, ctx)?;
     let mut forms = vec![];
     let mut values = vec![];
     loop {
@@ -740,7 +740,7 @@ fn parse_for(l: &mut Lexer, ctx: &Ctx) -> Result<Statement, String> {
     if l.peek().unwrap().kind == "word"
         && is_type(&l.peek().unwrap().content.as_ref().unwrap(), &ctx.typenames)
     {
-        let type_name = parse_typename(l, None, ctx)?;
+        let type_name = parse_typename(l, ctx)?;
         let form = parse_form(l, ctx)?;
         expect(l, "=", None)?;
         let value = parse_expr(l, 0, ctx)?;
@@ -852,7 +852,7 @@ fn parse_function_declaration(
 
 fn parse_function_parameter(lexer: &mut Lexer, ctx: &Ctx) -> Result<TypeAndForms, String> {
     let mut forms: Vec<Form> = vec![];
-    let type_name = parse_typename(lexer, None, ctx)?;
+    let type_name = parse_typename(lexer, ctx)?;
     forms.push(parse_form(lexer, ctx)?);
     while lexer.follows(",")
         && lexer.peek_n(1).unwrap().kind != "..."
@@ -874,7 +874,7 @@ fn parse_union(lexer: &mut Lexer, ctx: &Ctx) -> Result<Union, String> {
     expect(lexer, "union", None)?;
     expect(lexer, "{", None)?;
     while !lexer.follows("}") {
-        let type_name = parse_typename(lexer, None, ctx)?;
+        let type_name = parse_typename(lexer, ctx)?;
         let form = parse_form(lexer, ctx)?;
         expect(lexer, ";", None)?;
         fields.push(UnionField { type_name, form });
@@ -927,7 +927,7 @@ fn parse_typedef(is_pub: bool, l: &mut Lexer, ctx: &Ctx) -> Result<ModuleObject,
     // typedef void *thr_func(void *)
     // typedef foo bar;
     // typedef uint32_t md5sum_t[4];
-    let typename = parse_typename(l, Some("typedef"), ctx)?;
+    let typename = parse_typename(l, ctx)?;
     let mut stars: usize = 0;
     while l.follows("*") {
         l.get();
@@ -967,7 +967,7 @@ fn parse_type_and_forms(lexer: &mut Lexer, ctx: &Ctx) -> Result<TypeAndForms, St
         return Err("can't parse nested structs, please consider a typedef".to_string());
     }
 
-    let type_name = parse_typename(lexer, None, ctx)?;
+    let type_name = parse_typename(lexer, ctx)?;
 
     let mut forms: Vec<Form> = vec![];
     forms.push(parse_form(lexer, ctx)?);
