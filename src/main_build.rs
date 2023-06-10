@@ -22,8 +22,10 @@ pub fn run(argv: &[String]) -> i32 {
         Ok(()) => {
             return 0;
         }
-        Err(s) => {
-            eprintln!("{}", s);
+        Err(errors) => {
+            for err in errors {
+                eprintln!("{}:{}: {}", err.path, err.pos, err.message);
+            }
             return 1;
         }
     }

@@ -1,10 +1,5 @@
-use crate::{c, exports::Exports, nodes::*};
+use crate::{c, exports::Exports, nodes::*, parser::Error};
 use std::collections::HashMap;
-
-pub struct Error {
-    pub message: String,
-    pub pos: String,
-}
 
 pub fn run(m: &Module, exports: &HashMap<String, &Exports>) -> Vec<Error> {
     let mut errors: Vec<Error> = Vec::new();

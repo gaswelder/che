@@ -33,7 +33,16 @@ fn run_arg(arg: &String) -> Result<Stats, String> {
         fails: 0,
     };
     for path in tests {
-        build::build_prog(&path, &String::from("test.out"))?;
+        match build::build_prog(&path, &String::from("test.out")) {
+            Ok(_) => {}
+            Err(errors) => {
+                for err in errors {
+                    eprintln!("{}:{}: {}", err.path, err.pos, err.message);
+                }
+                println!("FAIL {}", path);
+                continue;
+            }
+        }
         let output = Command::new("./test.out").output().unwrap();
         let errstr = str::from_utf8(&output.stderr).unwrap();
         let outstr = str::from_utf8(&output.stdout).unwrap().trim_end();

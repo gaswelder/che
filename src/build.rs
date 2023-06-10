@@ -58,7 +58,7 @@ pub struct PathId {
     id: String,
 }
 
-pub fn build_prog(source_path: &String, output_name: &String) -> Result<(), String> {
+pub fn build_prog(source_path: &String, output_name: &String) -> Result<(), Vec<BuildError>> {
     // Decide where we'll stash all generated C code.
     let tmp_dir_path = format!("{}/tmp", resolve::homepath());
     if fs::metadata(&tmp_dir_path).is_err() {
@@ -66,7 +66,7 @@ pub fn build_prog(source_path: &String, output_name: &String) -> Result<(), Stri
     }
 
     let mut work = parse(source_path)?;
-    translate(&mut work)?;
+    translate(&mut work);
     let pathsmap = write_c99(&work, &tmp_dir_path).unwrap();
 
     // Determine the list of OS libraries to link. "m" is the library for code
@@ -115,10 +115,20 @@ pub fn build_prog(source_path: &String, output_name: &String) -> Result<(), Stri
     if r.success() {
         return Ok(());
     }
-    return Err(String::from("build failed"));
+    return Err(vec![BuildError {
+        message: String::from("build failed"),
+        path: String::from(""),
+        pos: String::from(""),
+    }]);
 }
 
-pub fn parse(mainpath: &String) -> Result<Build, String> {
+pub struct BuildError {
+    pub path: String,
+    pub pos: String,
+    pub message: String,
+}
+
+pub fn parse(mainpath: &String) -> Result<Build, Vec<BuildError>> {
     let mut work = Build {
         paths: vec![mainpath.clone()],
         typenames: Vec::new(),
@@ -128,9 +138,15 @@ pub fn parse(mainpath: &String) -> Result<Build, String> {
         c: Vec::new(),
     };
 
-    let kek = preparser::preparse(mainpath)?;
-    work.typenames.push(kek.typenames);
-    work.imports.push(kek.imports);
+    let mainprep = preparser::preparse(mainpath).map_err(|message| {
+        vec![BuildError {
+            path: mainpath.clone(),
+            message: message,
+            pos: String::from(""),
+        }]
+    })?;
+    work.typenames.push(mainprep.typenames);
+    work.imports.push(mainprep.imports);
 
     loop {
         // find an unresolved import
@@ -151,9 +167,15 @@ pub fn parse(mainpath: &String) -> Result<Build, String> {
         }
         let imp = missing.unwrap();
         work.paths.push(imp.path.clone());
-        let kek = preparser::preparse(&imp.path)?;
-        work.typenames.push(kek.typenames.clone());
-        work.imports.push(kek.imports.clone());
+        let prep = preparser::preparse(&imp.path).map_err(|message| {
+            vec![BuildError {
+                message,
+                pos: "".to_string(),
+                path: imp.path.clone(),
+            }]
+        })?;
+        work.typenames.push(prep.typenames.clone());
+        work.imports.push(prep.imports.clone());
     }
 
     work.paths.reverse();
@@ -179,9 +201,16 @@ pub fn parse(mainpath: &String) -> Result<Build, String> {
 
     // Parse each item.
     for (i, path) in work.paths.iter().enumerate() {
-        let mut l = lexer::for_file(&path)?;
+        let mut l = lexer::for_file(&path).unwrap();
         let ctx = &work.ctx[i];
-        work.m.push(parser::parse_module(&mut l, ctx)?);
+        work.m
+            .push(parser::parse_module(&mut l, ctx).map_err(|err| {
+                vec![BuildError {
+                    message: err.message,
+                    pos: err.pos,
+                    path: path.clone(),
+                }]
+            })?);
     }
 
     //
@@ -195,15 +224,17 @@ pub fn parse(mainpath: &String) -> Result<Build, String> {
         exports_by_path.insert(path, get_exports(m));
     }
 
+    let mut errors: Vec<BuildError> = Vec::new();
     for (i, m) in work.m.iter().enumerate() {
         for imp in &work.imports[i] {
             let pos = work.paths.iter().position(|x| *x == imp.path).unwrap();
             let depm = &work.m[pos];
             if !checkers::depused(&m, &depm, &imp.ns) {
-                return Err(format!(
-                    "{}: imported {} is not used",
-                    work.paths[i], &imp.ns
-                ));
+                errors.push(BuildError {
+                    path: work.paths[i].clone(),
+                    message: format!("imported {} is not used", &imp.ns),
+                    pos: "?".to_string(),
+                });
             }
         }
 
@@ -212,19 +243,21 @@ pub fn parse(mainpath: &String) -> Result<Build, String> {
         for imp in &work.imports[i] {
             exports.insert(imp.ns.clone(), exports_by_path.get(&imp.path).unwrap());
         }
-        let errors = check_identifiers::run(m, &exports);
-        if errors.len() > 0 {
-            let mut lines: Vec<String> = Vec::new();
-            for err in errors {
-                lines.push(format!("{} at {}:{}", err.message, work.paths[i], err.pos))
-            }
-            return Err(lines.join("\n"));
+        for err in check_identifiers::run(m, &exports) {
+            errors.push(BuildError {
+                message: err.message,
+                path: work.paths[i].clone(),
+                pos: err.pos,
+            });
         }
+    }
+    if errors.len() > 0 {
+        return Err(errors);
     }
     return Ok(work);
 }
 
-pub fn translate(work: &mut Build) -> Result<(), String> {
+pub fn translate(work: &mut Build) {
     // Globalize all modules
     for (i, m) in work.m.iter_mut().enumerate() {
         let path = &work.paths[i];
@@ -263,8 +296,6 @@ pub fn translate(work: &mut Build) -> Result<(), String> {
         c.elements = cnodes;
         work.c.push(c);
     }
-
-    return Ok(());
 }
 
 pub fn write_c99(work: &Build, dirpath: &String) -> Result<Vec<PathId>, String> {

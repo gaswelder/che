@@ -2,15 +2,21 @@ use crate::build::Ctx;
 use crate::lexer::{Lexer, Token};
 use crate::{c, nodes::*};
 
-pub fn parse_module(l: &mut Lexer, ctx: &Ctx) -> Result<Module, String> {
+pub struct Error {
+    pub message: String,
+    pub pos: String,
+}
+
+pub fn parse_module(l: &mut Lexer, ctx: &Ctx) -> Result<Module, Error> {
     return parse_module0(l, &ctx).map_err(|err| {
-        let next = l.peek().unwrap();
-        let position = format!("{}: {}", &ctx.path, l.peek().unwrap().pos);
-        format!("{}: {}: {}...", position, err, token_to_string(next))
+        // let next = l.peek().unwrap();
+        // let position = format!("{}: {}", &ctx.path, l.peek().unwrap().pos);
+        // format!("{}: {}: {}...", position, err, token_to_string(next))
+        err
     });
 }
 
-fn parse_module0(l: &mut Lexer, ctx: &Ctx) -> Result<Module, String> {
+fn parse_module0(l: &mut Lexer, ctx: &Ctx) -> Result<Module, Error> {
     let mut module_objects: Vec<ModuleObject> = vec![];
     while l.more() {
         match l.peek().unwrap().kind.as_str() {
@@ -31,15 +37,15 @@ fn parse_module0(l: &mut Lexer, ctx: &Ctx) -> Result<Module, String> {
     });
 }
 
-fn parse_compat_macro(lexer: &mut Lexer) -> Result<ModuleObject, String> {
-    let content = expect(lexer, "macro", None)
-        .unwrap()
-        .content
-        .unwrap()
-        .clone();
+fn parse_compat_macro(lexer: &mut Lexer) -> Result<ModuleObject, Error> {
+    let tok = expect(lexer, "macro", None)?;
+    let content = tok.content.unwrap().clone();
     let pos = content.find(" ");
     if pos.is_none() {
-        return Err(format!("can't get macro name from '{}'", content));
+        return Err(Error {
+            message: format!("can't get macro name from '{}'", content),
+            pos: tok.pos,
+        });
     }
     let (name, value) = content.split_at(pos.unwrap());
 
@@ -49,8 +55,9 @@ fn parse_compat_macro(lexer: &mut Lexer) -> Result<ModuleObject, String> {
     });
 }
 
-fn parse_module_object(l: &mut Lexer, ctx: &Ctx) -> Result<ModuleObject, String> {
+fn parse_module_object(l: &mut Lexer, ctx: &Ctx) -> Result<ModuleObject, Error> {
     let mut is_pub = false;
+    let pos = l.peek().unwrap().pos.clone();
     if l.follows("pub") {
         l.get();
         is_pub = true;
@@ -67,27 +74,23 @@ fn parse_module_object(l: &mut Lexer, ctx: &Ctx) -> Result<ModuleObject, String>
         return parse_function_declaration(l, is_pub, type_name, form, ctx);
     }
 
-    if l.peek().unwrap().kind != "=" {
-        return Err("module variable: '=' expected".to_string());
-    }
-
-    if l.peek().unwrap().kind == "=" {
-        if is_pub {
-            return Err("module variables can't be exported".to_string());
-        }
-        l.get();
-        let value = parse_expr(l, 0, ctx)?;
-        expect(l, ";", Some("module variable declaration"))?;
-        return Ok(ModuleObject::ModuleVariable {
-            type_name,
-            form,
-            value,
+    expect(l, "=", Some("module variable"))?;
+    if is_pub {
+        return Err(Error {
+            message: "module variables can't be exported".to_string(),
+            pos,
         });
     }
-    return Err("unexpected input".to_string());
+    let value = parse_expr(l, 0, ctx)?;
+    expect(l, ";", Some("module variable declaration"))?;
+    return Ok(ModuleObject::ModuleVariable {
+        type_name,
+        form,
+        value,
+    });
 }
 
-fn parse_expr(l: &mut Lexer, strength: usize, ctx: &Ctx) -> Result<Expression, String> {
+fn parse_expr(l: &mut Lexer, strength: usize, ctx: &Ctx) -> Result<Expression, Error> {
     let prefix_strength = operator_strength("prefix");
     if strength < prefix_strength {
         return parse_seq_expr(l, strength, ctx);
@@ -101,7 +104,7 @@ fn parse_expr(l: &mut Lexer, strength: usize, ctx: &Ctx) -> Result<Expression, S
     panic!("unexpected n: {}", strength)
 }
 
-fn parse_seq_expr(l: &mut Lexer, strength: usize, ctx: &Ctx) -> Result<Expression, String> {
+fn parse_seq_expr(l: &mut Lexer, strength: usize, ctx: &Ctx) -> Result<Expression, Error> {
     let mut r = parse_expr(l, strength + 1, ctx)?;
     while l.more() {
         // Continue if next is an operator with the same strength.
@@ -120,7 +123,7 @@ fn parse_seq_expr(l: &mut Lexer, strength: usize, ctx: &Ctx) -> Result<Expressio
     return Ok(r);
 }
 
-fn parse_prefix_expr(l: &mut Lexer, ctx: &Ctx) -> Result<Expression, String> {
+fn parse_prefix_expr(l: &mut Lexer, ctx: &Ctx) -> Result<Expression, Error> {
     let token = l.get().unwrap();
 
     // *{we are here}*foo
@@ -156,7 +159,7 @@ fn parse_prefix_expr(l: &mut Lexer, ctx: &Ctx) -> Result<Expression, String> {
     return base(l, ctx);
 }
 
-fn base(l: &mut Lexer, ctx: &Ctx) -> Result<Expression, String> {
+fn base(l: &mut Lexer, ctx: &Ctx) -> Result<Expression, Error> {
     // println!("      base(): {:?}", l.peek());
     let mut r = expr_id(l, ctx)?;
     while l.more() {
@@ -239,7 +242,7 @@ fn ns_follows(l: &mut Lexer, ctx: &Ctx) -> bool {
 
 // foo.bar where foo is a module
 // or just bar
-fn read_ns_id(l: &mut Lexer, ctx: &Ctx) -> Result<NsName, String> {
+fn read_ns_id(l: &mut Lexer, ctx: &Ctx) -> Result<NsName, Error> {
     let a = expect(l, "word", None)?;
     if ctx.has_ns(a.content.as_ref().unwrap())
         && l.peek_n(0).unwrap().kind == "."
@@ -260,9 +263,12 @@ fn read_ns_id(l: &mut Lexer, ctx: &Ctx) -> Result<NsName, String> {
     });
 }
 
-fn expr_id(l: &mut Lexer, ctx: &Ctx) -> Result<Expression, String> {
+fn expr_id(l: &mut Lexer, ctx: &Ctx) -> Result<Expression, Error> {
     if !l.more() {
-        return Err(String::from("id: unexpected end of input"));
+        return Err(Error {
+            message: String::from("id: unexpected end of input"),
+            pos: String::from("EOF"),
+        });
     }
     if ns_follows(l, ctx) {
         return Ok(Expression::NsName(read_ns_id(l, ctx)?));
@@ -291,7 +297,10 @@ fn expr_id(l: &mut Lexer, ctx: &Ctx) -> Result<Expression, String> {
             l, ctx,
         )?));
     }
-    return Err(format!("id: unexpected token {}", next));
+    return Err(Error {
+        message: format!("id: unexpected token {}", next),
+        pos: next.pos,
+    });
 }
 
 fn is_op(token_type: &str) -> bool {
@@ -366,42 +375,40 @@ fn with_comment(comment: Option<&str>, message: String) -> String {
     }
 }
 
-fn expect(lexer: &mut Lexer, kind: &str, comment: Option<&str>) -> Result<Token, String> {
-    if !lexer.more() {
-        return Err(with_comment(
-            comment,
-            format!("expected '{}', got end of file", kind),
-        ));
+fn expect(l: &mut Lexer, kind: &str, comment: Option<&str>) -> Result<Token, Error> {
+    if !l.more() {
+        return Err(Error {
+            message: with_comment(comment, format!("expected '{}', got end of file", kind)),
+            pos: String::from("EOF"),
+        });
     }
-    let next = lexer.peek().unwrap();
+    let next = l.peek().unwrap();
     if next.kind != kind {
-        return Err(with_comment(
-            comment,
-            format!(
-                "expected '{}', got '{}' at {}",
-                kind,
-                token_to_string(next),
-                next.pos
+        return Err(Error {
+            message: with_comment(
+                comment,
+                format!("expected '{}', got '{}'", kind, token_to_string(next),),
             ),
-        ));
+            pos: next.pos.clone(),
+        });
     }
-    return Ok(lexer.get().unwrap());
+    return Ok(l.get().unwrap());
 }
 
-fn read_identifier(lexer: &mut Lexer) -> Result<Identifier, String> {
+fn read_identifier(lexer: &mut Lexer) -> Result<Identifier, Error> {
     let tok = expect(lexer, "word", None)?;
     let name = String::from(tok.content.unwrap());
     return Ok(Identifier { name, pos: tok.pos });
 }
 
-fn parse_typename(l: &mut Lexer, ctx: &Ctx) -> Result<Typename, String> {
+fn parse_typename(l: &mut Lexer, ctx: &Ctx) -> Result<Typename, Error> {
     let is_const = l.eat("const");
     let name = read_ns_id(l, ctx)?;
     return Ok(Typename { is_const, name });
 }
 
-fn parse_anonymous_typeform(lexer: &mut Lexer, ctx: &Ctx) -> Result<AnonymousTypeform, String> {
-    let type_name = parse_typename(lexer, ctx).unwrap();
+fn parse_anonymous_typeform(lexer: &mut Lexer, ctx: &Ctx) -> Result<AnonymousTypeform, Error> {
+    let type_name = parse_typename(lexer, ctx)?;
     let mut ops: Vec<String> = Vec::new();
     while lexer.follows("*") {
         ops.push(lexer.get().unwrap().kind);
@@ -409,14 +416,14 @@ fn parse_anonymous_typeform(lexer: &mut Lexer, ctx: &Ctx) -> Result<AnonymousTyp
     return Ok(AnonymousTypeform { type_name, ops });
 }
 
-fn parse_anonymous_parameters(l: &mut Lexer, ctx: &Ctx) -> Result<AnonymousParameters, String> {
+fn parse_anonymous_parameters(l: &mut Lexer, ctx: &Ctx) -> Result<AnonymousParameters, Error> {
     let mut params = AnonymousParameters {
         ellipsis: false,
         forms: Vec::new(),
     };
-    expect(l, "(", Some("anonymous function parameters")).unwrap();
+    expect(l, "(", Some("anonymous function parameters"))?;
     if !l.follows(")") {
-        params.forms.push(parse_anonymous_typeform(l, ctx).unwrap());
+        params.forms.push(parse_anonymous_typeform(l, ctx)?);
         while l.follows(",") {
             l.get();
             if l.follows("...") {
@@ -424,14 +431,14 @@ fn parse_anonymous_parameters(l: &mut Lexer, ctx: &Ctx) -> Result<AnonymousParam
                 params.ellipsis = true;
                 break;
             }
-            params.forms.push(parse_anonymous_typeform(l, ctx).unwrap());
+            params.forms.push(parse_anonymous_typeform(l, ctx)?);
         }
     }
     expect(l, ")", Some("anonymous function parameters"))?;
     return Ok(params);
 }
 
-fn parse_literal(l: &mut Lexer) -> Result<Literal, String> {
+fn parse_literal(l: &mut Lexer) -> Result<Literal, Error> {
     let next = l.peek().unwrap();
     if next.kind == "string".to_string() {
         let value = l.get().unwrap().content.unwrap();
@@ -461,10 +468,13 @@ fn parse_literal(l: &mut Lexer) -> Result<Literal, String> {
             value: "NULL".to_string(),
         });
     }
-    return Err(format!("literal expected, got {}", l.peek().unwrap()));
+    return Err(Error {
+        message: format!("literal expected, got {}", l.peek().unwrap()),
+        pos: l.peek().unwrap().pos.clone(),
+    });
 }
 
-fn parse_enum(lexer: &mut Lexer, is_pub: bool, ctx: &Ctx) -> Result<ModuleObject, String> {
+fn parse_enum(lexer: &mut Lexer, is_pub: bool, ctx: &Ctx) -> Result<ModuleObject, Error> {
     let mut members: Vec<EnumItem> = Vec::new();
     expect(lexer, "enum", Some("enum definition"))?;
     expect(lexer, "{", Some("enum definition"))?;
@@ -487,7 +497,7 @@ fn parse_enum(lexer: &mut Lexer, is_pub: bool, ctx: &Ctx) -> Result<ModuleObject
     return Ok(ModuleObject::Enum { is_pub, members });
 }
 
-fn parse_composite_literal(l: &mut Lexer, ctx: &Ctx) -> Result<CompositeLiteral, String> {
+fn parse_composite_literal(l: &mut Lexer, ctx: &Ctx) -> Result<CompositeLiteral, Error> {
     let mut result = CompositeLiteral {
         entries: Vec::new(),
     };
@@ -507,10 +517,7 @@ fn parse_composite_literal(l: &mut Lexer, ctx: &Ctx) -> Result<CompositeLiteral,
     return Ok(result);
 }
 
-fn parse_composite_literal_entry(
-    l: &mut Lexer,
-    ctx: &Ctx,
-) -> Result<CompositeLiteralEntry, String> {
+fn parse_composite_literal_entry(l: &mut Lexer, ctx: &Ctx) -> Result<CompositeLiteralEntry, Error> {
     if l.peek().unwrap().kind == "." {
         expect(l, ".", Some("struct literal member"))?;
         let key = Expression::Identifier(read_identifier(l)?);
@@ -541,13 +548,13 @@ fn parse_composite_literal_entry(
     });
 }
 
-fn parse_sizeof(l: &mut Lexer, ctx: &Ctx) -> Result<Expression, String> {
+fn parse_sizeof(l: &mut Lexer, ctx: &Ctx) -> Result<Expression, Error> {
     expect(l, "sizeof", None)?;
     expect(l, "(", None)?;
     let argument = if type_follows(l, ctx) {
         SizeofArgument::Typename(parse_typename(l, ctx)?)
     } else {
-        SizeofArgument::Expression(parse_expr(l, 0, ctx).unwrap())
+        SizeofArgument::Expression(parse_expr(l, 0, ctx)?)
     };
     expect(l, ")", None)?;
     return Ok(Expression::Sizeof {
@@ -559,7 +566,7 @@ fn parse_function_call(
     l: &mut Lexer,
     ctx: &Ctx,
     function_name: Expression,
-) -> Result<Expression, String> {
+) -> Result<Expression, Error> {
     let mut arguments: Vec<Expression> = Vec::new();
     expect(l, "(", None)?;
     if l.more() && l.peek().unwrap().kind != ")" {
@@ -576,16 +583,16 @@ fn parse_function_call(
     });
 }
 
-fn parse_while(lexer: &mut Lexer, ctx: &Ctx) -> Result<Statement, String> {
-    expect(lexer, "while", None)?;
-    expect(lexer, "(", None)?;
-    let condition = parse_expr(lexer, 0, ctx)?;
-    expect(lexer, ")", None)?;
-    let body = parse_statements_block(lexer, ctx)?;
+fn parse_while(l: &mut Lexer, ctx: &Ctx) -> Result<Statement, Error> {
+    expect(l, "while", None)?;
+    expect(l, "(", None)?;
+    let condition = parse_expr(l, 0, ctx)?;
+    expect(l, ")", None)?;
+    let body = parse_statements_block(l, ctx)?;
     return Ok(Statement::While { condition, body });
 }
 
-fn parse_statements_block(lexer: &mut Lexer, ctx: &Ctx) -> Result<Body, String> {
+fn parse_statements_block(lexer: &mut Lexer, ctx: &Ctx) -> Result<Body, Error> {
     let mut statements: Vec<Statement> = Vec::new();
     if lexer.follows("{") {
         expect(lexer, "{", None)?;
@@ -600,7 +607,7 @@ fn parse_statements_block(lexer: &mut Lexer, ctx: &Ctx) -> Result<Body, String> 
     return Ok(Body { statements });
 }
 
-fn parse_statement(l: &mut Lexer, ctx: &Ctx) -> Result<Statement, String> {
+fn parse_statement(l: &mut Lexer, ctx: &Ctx) -> Result<Statement, Error> {
     let next = l.peek().unwrap();
     if type_follows(l, ctx) || next.kind == "const" {
         return parse_variable_declaration(l, ctx);
@@ -619,7 +626,7 @@ fn parse_statement(l: &mut Lexer, ctx: &Ctx) -> Result<Statement, String> {
     };
 }
 
-fn parse_variable_declaration(l: &mut Lexer, ctx: &Ctx) -> Result<Statement, String> {
+fn parse_variable_declaration(l: &mut Lexer, ctx: &Ctx) -> Result<Statement, Error> {
     let type_name = parse_typename(l, ctx)?;
     let mut forms = vec![];
     let mut values = vec![];
@@ -642,20 +649,20 @@ fn parse_variable_declaration(l: &mut Lexer, ctx: &Ctx) -> Result<Statement, Str
     });
 }
 
-fn parse_return(lexer: &mut Lexer, ctx: &Ctx) -> Result<Statement, String> {
-    expect(lexer, "return", None)?;
-    if lexer.peek().unwrap().kind == ";" {
-        lexer.get();
+fn parse_return(l: &mut Lexer, ctx: &Ctx) -> Result<Statement, Error> {
+    expect(l, "return", None)?;
+    if l.peek().unwrap().kind == ";" {
+        l.get();
         return Ok(Statement::Return { expression: None });
     }
-    let expression = parse_expr(lexer, 0, ctx)?;
-    expect(lexer, ";", None)?;
+    let expression = parse_expr(l, 0, ctx)?;
+    expect(l, ";", None)?;
     return Ok(Statement::Return {
         expression: Some(expression),
     });
 }
 
-fn parse_form(lexer: &mut Lexer, ctx: &Ctx) -> Result<Form, String> {
+fn parse_form(lexer: &mut Lexer, ctx: &Ctx) -> Result<Form, Error> {
     // *argv[]
     // linechars[]
     // buf[SIZE * 2]
@@ -669,12 +676,16 @@ fn parse_form(lexer: &mut Lexer, ctx: &Ctx) -> Result<Form, String> {
         node.stars += &lexer.get().unwrap().kind;
     }
 
-    match expect(lexer, "word", None)?.content {
+    let tok = expect(lexer, "word", None)?;
+    match tok.content {
         Some(x) => {
             node.name = String::from(x);
         }
         None => {
-            return Err(String::from("missing word content"));
+            return Err(Error {
+                message: String::from("missing word content"),
+                pos: tok.pos,
+            });
         }
     }
 
@@ -692,7 +703,7 @@ fn parse_form(lexer: &mut Lexer, ctx: &Ctx) -> Result<Form, String> {
     return Ok(node);
 }
 
-fn parse_if(lexer: &mut Lexer, ctx: &Ctx) -> Result<Statement, String> {
+fn parse_if(lexer: &mut Lexer, ctx: &Ctx) -> Result<Statement, Error> {
     let condition;
     let body;
     let mut else_body = None;
@@ -713,7 +724,7 @@ fn parse_if(lexer: &mut Lexer, ctx: &Ctx) -> Result<Statement, String> {
     });
 }
 
-fn parse_for(l: &mut Lexer, ctx: &Ctx) -> Result<Statement, String> {
+fn parse_for(l: &mut Lexer, ctx: &Ctx) -> Result<Statement, Error> {
     expect(l, "for", None)?;
     expect(l, "(", None)?;
 
@@ -749,7 +760,7 @@ fn parse_for(l: &mut Lexer, ctx: &Ctx) -> Result<Statement, String> {
     });
 }
 
-fn parse_switch(lexer: &mut Lexer, ctx: &Ctx) -> Result<Statement, String> {
+fn parse_switch(lexer: &mut Lexer, ctx: &Ctx) -> Result<Statement, Error> {
     expect(lexer, "switch", None)?;
     expect(lexer, "(", None)?;
     let value = parse_expr(lexer, 0, ctx)?;
@@ -798,7 +809,7 @@ fn parse_function_declaration(
     type_name: Typename,
     form: Form,
     ctx: &Ctx,
-) -> Result<ModuleObject, String> {
+) -> Result<ModuleObject, Error> {
     // void cuespl {WE ARE HERE} (cue_t *c, mp3file *m) {...}
 
     let mut parameters: Vec<TypeAndForms> = vec![];
@@ -831,7 +842,7 @@ fn parse_function_declaration(
     }));
 }
 
-fn parse_function_parameter(lexer: &mut Lexer, ctx: &Ctx) -> Result<TypeAndForms, String> {
+fn parse_function_parameter(lexer: &mut Lexer, ctx: &Ctx) -> Result<TypeAndForms, Error> {
     let mut forms: Vec<Form> = vec![];
     let type_name = parse_typename(lexer, ctx)?;
     forms.push(parse_form(lexer, ctx)?);
@@ -850,23 +861,23 @@ fn parse_function_parameter(lexer: &mut Lexer, ctx: &Ctx) -> Result<TypeAndForms
     return Ok(TypeAndForms { type_name, forms });
 }
 
-fn parse_union(lexer: &mut Lexer, ctx: &Ctx) -> Result<Union, String> {
+fn parse_union(l: &mut Lexer, ctx: &Ctx) -> Result<Union, Error> {
     let mut fields: Vec<UnionField> = vec![];
-    expect(lexer, "union", None)?;
-    expect(lexer, "{", None)?;
-    while !lexer.follows("}") {
-        let type_name = parse_typename(lexer, ctx)?;
-        let form = parse_form(lexer, ctx)?;
-        expect(lexer, ";", None)?;
+    expect(l, "union", None)?;
+    expect(l, "{", None)?;
+    while !l.follows("}") {
+        let type_name = parse_typename(l, ctx)?;
+        let form = parse_form(l, ctx)?;
+        expect(l, ";", None)?;
         fields.push(UnionField { type_name, form });
     }
-    expect(lexer, "}", None)?;
-    let form = parse_form(lexer, ctx)?;
-    expect(lexer, ";", None)?;
+    expect(l, "}", None)?;
+    let form = parse_form(l, ctx)?;
+    expect(l, ";", None)?;
     return Ok(Union { form, fields });
 }
 
-fn parse_typedef(is_pub: bool, l: &mut Lexer, ctx: &Ctx) -> Result<ModuleObject, String> {
+fn parse_typedef(is_pub: bool, l: &mut Lexer, ctx: &Ctx) -> Result<ModuleObject, Error> {
     expect(l, "typedef", None)?;
 
     // typedef {int hour, minute, second} time_t;
@@ -924,12 +935,8 @@ fn parse_typedef(is_pub: bool, l: &mut Lexer, ctx: &Ctx) -> Result<ModuleObject,
     let mut size: usize = 0;
     if l.follows("[") {
         l.get();
-        size = expect(l, "num", None)
-            .unwrap()
-            .content
-            .unwrap()
-            .parse()
-            .unwrap();
+        let num = expect(l, "num", None)?;
+        size = num.content.unwrap().parse().unwrap();
         expect(l, "]", None)?;
     }
     expect(l, ";", Some("typedef"))?;
@@ -943,9 +950,12 @@ fn parse_typedef(is_pub: bool, l: &mut Lexer, ctx: &Ctx) -> Result<ModuleObject,
     }));
 }
 
-fn parse_type_and_forms(lexer: &mut Lexer, ctx: &Ctx) -> Result<TypeAndForms, String> {
+fn parse_type_and_forms(lexer: &mut Lexer, ctx: &Ctx) -> Result<TypeAndForms, Error> {
     if lexer.follows("struct") {
-        return Err("can't parse nested structs, please consider a typedef".to_string());
+        return Err(Error {
+            message: "Unexpected struct".to_string(),
+            pos: lexer.peek().unwrap().pos.clone(),
+        });
     }
 
     let type_name = parse_typename(lexer, ctx)?;

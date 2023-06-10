@@ -7,20 +7,16 @@ pub fn run(args: &[String]) -> i32 {
     if fs::metadata(&dirpath).is_err() {
         fs::create_dir(&dirpath).unwrap();
     }
-    match genc(&modpath, &dirpath) {
-        Ok(()) => {
-            return 0;
-        }
-        Err(s) => {
-            eprintln!("{}", s);
+    let mut work = match build::parse(modpath) {
+        Ok(work) => work,
+        Err(errors) => {
+            for err in errors {
+                eprintln!("{}:{}: {}", err.path, err.pos, err.message);
+            }
             return 1;
         }
-    }
-}
-
-fn genc(mainpath: &String, dirpath: &String) -> Result<(), String> {
-    let mut work = build::parse(mainpath)?;
-    build::translate(&mut work)?;
-    build::write_c99(&work, dirpath)?;
-    return Ok(());
+    };
+    build::translate(&mut work);
+    build::write_c99(&work, dirpath).unwrap();
+    return 0;
 }

@@ -4,13 +4,22 @@ use crate::format_che;
 
 pub fn run(argv: &[String]) -> i32 {
     for path in argv {
-        let build = build::parse(path).unwrap();
-        let pos = build.m.len() - 1;
-        let m = &build.m[pos];
-        let path = &build.paths[pos];
-        println!("mod {}", path);
-        let exports = get_exports(&m);
-        print_exports(exports);
+        match build::parse(path) {
+            Ok(build) => {
+                let pos = build.m.len() - 1;
+                let m = &build.m[pos];
+                let path = &build.paths[pos];
+                println!("mod {}", path);
+                let exports = get_exports(&m);
+                print_exports(exports);
+            }
+            Err(errors) => {
+                for err in errors {
+                    eprintln!("{}:{}: {}", err.path, err.pos, err.message);
+                }
+                return 1;
+            }
+        }
     }
     return 0;
 }

@@ -7,14 +7,23 @@ pub fn run(argv: &[String]) -> i32 {
         return 1;
     }
     let path = &argv[0];
-    let build = build::parse(path).unwrap();
-    let pos = build.paths.len();
-    let mut p = Printer {
-        indent: 0,
-        first_line: true,
-    };
-    render_tree(&mut p, &build, pos - 1);
-    return 0;
+    match build::parse(path) {
+        Ok(build) => {
+            let pos = build.paths.len();
+            let mut p = Printer {
+                indent: 0,
+                first_line: true,
+            };
+            render_tree(&mut p, &build, pos - 1);
+            return 0;
+        }
+        Err(errors) => {
+            for err in errors {
+                eprintln!("{}:{}: {}", err.path, err.pos, err.message);
+            }
+            return 1;
+        }
+    }
 }
 
 struct Printer {
