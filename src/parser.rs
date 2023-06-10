@@ -760,25 +760,25 @@ fn parse_for(l: &mut Lexer, ctx: &Ctx) -> Result<Statement, Error> {
     });
 }
 
-fn parse_switch(lexer: &mut Lexer, ctx: &Ctx) -> Result<Statement, Error> {
-    expect(lexer, "switch", None)?;
-    expect(lexer, "(", None)?;
-    let value = parse_expr(lexer, 0, ctx)?;
+fn parse_switch(l: &mut Lexer, ctx: &Ctx) -> Result<Statement, Error> {
+    expect(l, "switch", None)?;
+    expect(l, "(", None)?;
+    let value = parse_expr(l, 0, ctx)?;
     let mut cases: Vec<SwitchCase> = vec![];
-    expect(lexer, ")", None)?;
-    expect(lexer, "{", None)?;
-    while lexer.follows("case") {
-        expect(lexer, "case", None)?;
-        let case_value = if lexer.follows("word") {
-            SwitchCaseValue::Identifier(read_identifier(lexer)?)
+    expect(l, ")", None)?;
+    expect(l, "{", None)?;
+    while l.follows("case") {
+        expect(l, "case", None)?;
+        let case_value = if l.follows("word") {
+            SwitchCaseValue::Identifier(read_ns_id(l, ctx)?)
         } else {
-            SwitchCaseValue::Literal(parse_literal(lexer)?)
+            SwitchCaseValue::Literal(parse_literal(l)?)
         };
-        expect(lexer, ":", None)?;
+        expect(l, ":", None)?;
         let until = ["case", "break", "default", "}"];
         let mut statements: Vec<Statement> = vec![];
-        while lexer.more() && !until.contains(&lexer.peek().unwrap().kind.as_str()) {
-            statements.push(parse_statement(lexer, ctx)?);
+        while l.more() && !until.contains(&l.peek().unwrap().kind.as_str()) {
+            statements.push(parse_statement(l, ctx)?);
         }
         cases.push(SwitchCase {
             value: case_value,
@@ -786,16 +786,16 @@ fn parse_switch(lexer: &mut Lexer, ctx: &Ctx) -> Result<Statement, Error> {
         });
     }
     let mut default: Option<Body> = None;
-    if lexer.follows("default") {
-        expect(lexer, "default", None)?;
-        expect(lexer, ":", None)?;
+    if l.follows("default") {
+        expect(l, "default", None)?;
+        expect(l, ":", None)?;
         let mut def: Vec<Statement> = vec![];
-        while lexer.more() && lexer.peek().unwrap().kind != "}" {
-            def.push(parse_statement(lexer, ctx)?);
+        while l.more() && l.peek().unwrap().kind != "}" {
+            def.push(parse_statement(l, ctx)?);
         }
         default = Some(Body { statements: def });
     }
-    expect(lexer, "}", None)?;
+    expect(l, "}", None)?;
     return Ok(Statement::Switch {
         value,
         cases,

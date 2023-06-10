@@ -214,7 +214,7 @@ pub enum ForInit {
 
 #[derive(Debug, Clone)]
 pub enum SwitchCaseValue {
-    Identifier(Identifier),
+    Identifier(NsName),
     Literal(Literal),
 }
 

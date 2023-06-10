@@ -8,41 +8,41 @@ int main()
 		return 1;
 	}
 
-	if (strcmp(xml_nodename(x), "root") != 0) {
+	if (strcmp(xml.xml_nodename(x), "root") != 0) {
 		return 1;
 	}
-	if (!xml_enter(x)) {
+	if (!xml.xml_enter(x)) {
 		return 1;
 	}
 
-	while(xml_nodename(x)) {
-		printf("dir %s\n", xml_attr(x, "name"));
-		if (strcmp(xml_nodename(x), "dir") != 0) {
+	while(xml.xml_nodename(x)) {
+		printf("dir %s\n", xml.xml_attr(x, "name"));
+		if (strcmp(xml.xml_nodename(x), "dir") != 0) {
 			return 1;
 		}
-		if(!xml_enter(x)) {
-			xml_next(x);
+		if(!xml.xml_enter(x)) {
+			xml.xml_next(x);
 			continue;
 		}
 		process_dir(x);
-		xml_leave(x);
+		xml.xml_leave(x);
 	}
-	xml_leave(x);
+	xml.xml_leave(x);
 
-	if (xml_nodename(x)) {
+	if (xml.xml_nodename(x)) {
 		return 1;
 	}
-	xml_close(x);
+	xml.xml_close(x);
 	return 0;
 }
 
-void process_dir(xml *x)
+void process_dir(xml.xml *x)
 {
-	while(xml_nodename(x)) {
-		if (strcmp(xml_nodename(x), "file") 1= 0) {
+	while(xml.xml_nodename(x)) {
+		if (strcmp(xml.xml_nodename(x), "file") != 0) {
 			exit(1);
 		}
-		printf("  file %s\n", xml_attr(x, "name"));
-		xml_next(x);
+		printf("  file %s\n", xml.xml_attr(x, "name"));
+		xml.xml_next(x);
 	}
 }

@@ -507,7 +507,7 @@ fn translate_body(b: &Body, ctx: &Ctx) -> CBody {
                     tcases.push(CSwitchCase {
                         value: match &c.value {
                             SwitchCaseValue::Identifier(x) => {
-                                CSwitchCaseValue::Identifier(x.name.clone())
+                                CSwitchCaseValue::Identifier(translate_ns_name(x, ctx))
                             }
                             SwitchCaseValue::Literal(x) => CSwitchCaseValue::Literal(CLiteral {
                                 type_name: x.type_name.clone(),

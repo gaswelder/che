@@ -235,7 +235,7 @@ fn check_body(
                 for c in cases {
                     match &c.value {
                         SwitchCaseValue::Identifier(x) => {
-                            check_id(x, errors, &scope);
+                            check_ns_id(x, errors, &scope, exports);
                         }
                         SwitchCaseValue::Literal(_) => {}
                     }
