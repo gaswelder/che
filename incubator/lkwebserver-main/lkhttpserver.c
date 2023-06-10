@@ -1,6 +1,7 @@
 #import net
 #import lkconfig.c
 #import lkalloc.c
+#import mime
 
 pub typedef {
     lkconfig.LKConfig *cfg;
@@ -374,7 +375,7 @@ void serve_files(LKHttpServer *server, LKContext *ctx, LKHostConfig *hc) {
             }
         } else {
             z = read_path_file(hc->homedir_abspath->s, path->s, resp->body);
-            char *content_type = (char *) lk_lookup(mimetypes_tbl, fileext(path->s));
+            const char *content_type = mime.lookup(fileext(path->s));
             if (content_type == NULL) {
                 content_type = "text/plain";
             }
