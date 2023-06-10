@@ -2,6 +2,7 @@
 #import strutil
 #import opt
 #import words.c
+#import rnd
 
 typedef { int id; xmlgen_rand.ProbDesc pd; char rec; } ElmDesc;
 
@@ -667,7 +668,7 @@ void OpeningTag(ObjDesc *od)
             case ATTR_TYPE_3:
                 if (xmlgen_rand.genunf(0,1)<att->prcnt) {
                     if (!strcmp(attname,"income")) {
-                        double d = xmlgen_rand.gennor(40000,30000);
+                        double d = 40000 + 30000 * rnd.gauss();
                         if (d < 9876) {
                             d = 9876;
                         }
@@ -825,7 +826,7 @@ void GenSubtree(FILE *out, ObjDesc *od)
             xmlprintf(out,"%02d:%02d:%02d",hrs,min,sec);
             break;
         case AGE:
-            r=(int)xmlgen_rand.gennor(30,15);
+            r= (int) (30 + 15 * rnd.gauss());
             if (r < 18) r = 18;
             xmlprintf(out,"%d", r);
             break;

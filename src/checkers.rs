@@ -246,6 +246,9 @@ fn used_in_body(body: &Body, list: &Vec<String>, depns: &String) -> bool {
                         }
                         SwitchCaseValue::Literal(_) => {}
                     }
+                    if used_in_body(&c.body, list, depns) {
+                        return true;
+                    }
                 }
             }
             Statement::Expression(x) => {
