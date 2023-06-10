@@ -27,35 +27,13 @@ pub fn translate(m: &Module, ctx: &Ctx) -> CModule {
     }
 
     let mut elements: Vec<CModuleObject> = Vec::new();
-    // let mut imports: Vec<ModuleRef> = Vec::new();
-    // for node in &m.elements {
-    //     match node {
-    //         ModuleObject::Import { path } => {
-    //             // let module = parser::get_module(&path, &m.id.source_path).unwrap();
-    //             // imports.push(module.id.clone());
-    //         }
-    //         _ => {}
-    //     }
-    // }
-    // for element in &m.elements {
-    //     match element {
-    //         ModuleObject::Import { path } => {
-    //             let module = parser::get_module(&path, &m.id.source_path).unwrap();
-    //             let compat = translate(&module);
-    //             return get_module_synopsis(compat);
-    //         }
-    //         _ => {}
-    //     }
-    // }
     for element in &m.elements {
         for node in translate_module_object(element, m, ctx) {
             elements.push(node)
         }
     }
 
-    // Since we all know what the standard C library is, just include it all
-    // everywhere. We could analyze the module contents and add only those
-    // headers that are required, but why bother.
+    // Include all standard C library everywhere.
     let std = vec![
         "assert", "ctype", "errno", "limits", "math", "stdarg", "stdbool", "stddef", "stdint",
         "stdio", "stdlib", "string", "time", "setjmp",
@@ -111,23 +89,13 @@ pub fn translate(m: &Module, ctx: &Ctx) -> CModule {
         }
         groups[order].push(element);
     }
-    let mut sorted_elements: Vec<CModuleObject> = vec![CModuleObject::Split {
-        text: String::from(format!("/* -------{}------- */", &ctx.path)),
-    }];
+    let mut sorted_elements: Vec<CModuleObject> = vec![];
     for group in groups {
-        if group.len() == 0 {
-            continue;
-        }
-        sorted_elements.push(CModuleObject::Split {
-            text: String::from("/* -------------- */"),
-        });
         for e in group {
             sorted_elements.push(e)
         }
     }
-
     return CModule {
-        // id: m.id.id.clone(),
         elements: sorted_elements,
         link,
     };

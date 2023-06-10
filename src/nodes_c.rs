@@ -51,9 +51,6 @@ pub enum CModuleObject {
         parameters: CompatFunctionParameters,
         body: CBody,
     },
-    Split {
-        text: String,
-    },
 }
 
 #[derive(Debug, Clone)]

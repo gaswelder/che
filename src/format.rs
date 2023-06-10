@@ -64,7 +64,6 @@ pub fn format_module(cm: &CModule) -> String {
                 );
                 s
             }
-            CModuleObject::Split { text } => format!("\n\n{}\n", text),
         }
     }
     return s;
