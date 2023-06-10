@@ -63,22 +63,10 @@ cd test
 ./tests.sh
 cd ..
 
+#
+# Build and test the world.
+#
 cd prog
-	for i in *.c; do
-		name=`basename $i .c`
-		$che build "$i" "$name.out" || exit 1
-		echo OK build $name
-	done
-
-	# Run all tests
-	for i in *.test.sh; do
-		name=`basename $i .test.sh`
-		./$i && echo "OK $name" || exit 1
-	done
-	rm *.out
-	rm -rf tmp
-
-	# Build all in folders
 	for i in */; do
 		cd $i
 		name=`basename $i`
