@@ -11,18 +11,18 @@
 int main(int argc, char *argv[])
 {
 	if(argc != 3) {
-		fatal("Usage: mp3spl <mp3file> <m:s.sss...>,<m:s.sss...>,...");
+		cli.fatal("Usage: mp3spl <mp3file> <m:s.sss...>,<m:s.sss...>,...");
 	}
 
 	const char *path = argv[1];
-	mp3file *f = mp3open(path);
-	if(mp3err(f)) {
-		fatal("%s", mp3err(f));
+	mp3.mp3file *f = mp3.mp3open(path);
+	if(mp3.mp3err(f)) {
+		cli.fatal("%s", mp3.mp3err(f));
 	}
 
-	mp3time_t points[20] = {};
-	if(!parse_times(points, argv[2], 20)) {
-		fatal("Couldn't parse time positions");
+	mp3.mp3time_t points[20] = {};
+	if (!parse_times(points, argv[2], 20)) {
+		cli.fatal("Couldn't parse time positions");
 	}
 
 	size_t len = strlen(path);
@@ -54,20 +54,19 @@ int main(int argc, char *argv[])
 
 	free(namebase);
 	free(newname);
-	mp3close(f);
+	mp3.mp3close(f);
 }
 
-bool parse_times(mp3time_t *a, const char *spec, size_t maxsize)
+bool parse_times(mp3.mp3time_t *a, const char *spec, size_t maxsize)
 {
-	size_t i = 0;
-
-	if(maxsize == 0) {
-		fatal("zero maxsize");
+	if (maxsize == 0) {
+		cli.fatal("zero maxsize");
 	}
 
+	size_t i = 0;
 	while(*spec) {
 		if(i + 1 >= maxsize) {
-			err("maxsize reached");
+			cli.err("maxsize reached");
 			return false;
 		}
 
@@ -76,7 +75,7 @@ bool parse_times(mp3time_t *a, const char *spec, size_t maxsize)
 		int usec = 0;
 
 		if(!isdigit(*spec)) {
-			err("Unexpected char: %c in %s\n", *spec, spec);
+			cli.err("Unexpected char: %c in %s\n", *spec, spec);
 			return false;
 		}
 
@@ -89,14 +88,14 @@ bool parse_times(mp3time_t *a, const char *spec, size_t maxsize)
 
 		// :
 		if(*spec != ':') {
-			err("':' expected");
+			cli.err("':' expected");
 			return false;
 		}
 		spec++;
 
 		// sec
 		if(!isdigit(*spec)) {
-			err("Unexpected char: %c in %s", *spec, spec);
+			cli.err("Unexpected char: %c in %s", *spec, spec);
 			return false;
 		}
 		while(isdigit(*spec)) {
@@ -107,7 +106,7 @@ bool parse_times(mp3time_t *a, const char *spec, size_t maxsize)
 		if(*spec == '.') {
 			spec++;
 			if(!isdigit(*spec)) {
-				err("Digits expected after point: %s", spec);
+				cli.err("Digits expected after point: %s", spec);
 				return false;
 			}
 			int pow = 100000;
@@ -123,7 +122,7 @@ bool parse_times(mp3time_t *a, const char *spec, size_t maxsize)
 		}
 
 		if(min >= 60 || sec >= 60) {
-			err("Incorrect time: %d:%d", min, sec);
+			cli.err("Incorrect time: %d:%d", min, sec);
 			return false;
 		}
 
@@ -139,17 +138,15 @@ bool parse_times(mp3time_t *a, const char *spec, size_t maxsize)
 	return true;
 }
 
-void out(mp3file *f, const char *path, mp3time_t t)
+void out(mp3.mp3file *f, const char *path, mp3.mp3time_t t)
 {
-	if(mp3err(f)) {
-		fatal("%s", mp3err(f));
+	if (mp3.mp3err(f)) {
+		cli.fatal("%s", mp3.mp3err(f));
 	}
-
 	FILE *out = fopen(path, "wb");
-	if(!out) {
-		fatal("fopen(%s) failed", path);
+	if (!out) {
+		cli.fatal("fopen(%s) failed", path);
 	}
-
-	mp3out(f, out, t);
+	mp3.mp3out(f, out, t);
 	fclose(out);
 }

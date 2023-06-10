@@ -266,7 +266,7 @@ pub double GenRandomNum(ProbDesc *pd)
                         break;
                     }
                 fprintf(stderr,"undefined probdesc.\n");
-                exit(EXIT_FAILURE);
+                exit(1);
             case 1:
                 res=genunf(pd->min,pd->max);
                 break;
@@ -283,7 +283,7 @@ pub double GenRandomNum(ProbDesc *pd)
                 break;
             default:
                 fprintf(stderr,"woops! undefined distribution.\n");
-                exit(EXIT_FAILURE);
+                exit(1);
         }
     return res;
 }
@@ -303,7 +303,7 @@ pub float genunf(float low, float high) {
 
 float __genunf(random_gen *rg,float low,float high) {
     if (low > high) {
-        panic("LOW > HIGH in GENUNF: LOW %16.6E HIGH: %16.6E\n",low,high);
+        panic.panic("LOW > HIGH in GENUNF: LOW %16.6E HIGH: %16.6E\n",low,high);
     }
     return low + (high-low) * __ranf(rg);
 }

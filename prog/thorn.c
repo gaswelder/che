@@ -1,6 +1,6 @@
 #import png
 
-const double M_PI = 3.141592653589793;
+const double PI = 3.141592653589793;
 
 int main() {
     srand(time(NULL));
@@ -9,10 +9,10 @@ int main() {
     const int height = 1000;
     double cr = (rand() % 10000) / 500.0 - 10; // -10 -> 10;
     double ci = (rand() % 10000) / 500.0 - 10;
-    double xmin = -M_PI;
-    double xmax =  M_PI;
-    double ymin = -M_PI;
-    double ymax =  M_PI;
+    double xmin = -PI;
+    double xmax =  PI;
+    double ymin = -PI;
+    double ymax =  PI;
 
     uint8_t *values = calloc(width*height, sizeof(uint8_t));
     for (int i = 0; i < width; i++) {
@@ -28,14 +28,14 @@ int main() {
     /*
      * Render the buffer as an image.
      */
-    png_t *img = png_new(width, height, PNG_GRAYSCALE);
+    png.png_t *img = png.png_new(width, height, png.PNG_GRAYSCALE);
     for (int j=0; j < height; j++) {
         for (int i=0; i < width; i++) {
-            png_set_pixel(img, i, j, values[j*width+i]);
+            png.png_set_pixel(img, i, j, values[j*width+i]);
         }
     }
-    png_save(img, "thorn.png");
-    png_destroy(img);
+    png.png_save(img, "thorn.png");
+    png.png_destroy(img);
 	return 0;
 }
 

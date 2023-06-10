@@ -8,7 +8,7 @@ pub typedef {
  * Creates a new map instance.
  */
 pub map_t *map_new() {
-	map_t *m = calloc(1, sizeof(*m));
+	map_t *m = calloc(1, sizeof(map_t));
 	return m;
 }
 

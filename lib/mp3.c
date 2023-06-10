@@ -58,7 +58,9 @@ pub typedef {
 pub mp3file *mp3open(const char *path)
 {
 	FILE *f = fopen(path, "rb");
-	if(!f) return NULL;
+	if (!f) {
+		return NULL;
+	}
 
 	mp3file *m = calloc(1, sizeof(mp3file));
 	if(!m) {
@@ -106,11 +108,11 @@ pub const char *mp3err(mp3file *f)
 bool nextframe(mp3file *f)
 {
 	if(f->err) {
-		fatal("can't nextframe: %s", f->err);
+		cli.fatal("can't nextframe: %s", f->err);
 	}
 
 	if(fseek(f->file, f->nextpos, SEEK_SET) < 0) {
-		fatal("fseek failed");
+		cli.fatal("fseek failed");
 	}
 
 	if(!read_header(f)) {
@@ -136,10 +138,9 @@ pub void mp3out(mp3file *f, FILE *out, mp3time_t pos)
 	 * nframes * samples_per_frame / 44100 <= time_sec
 	 */
 	size_t usec = 0;
-	if(pos.min == -1) {
+	if (pos.min == -1) {
 		usec = SIZE_MAX;
-	}
-	else {
+	} else {
 		usec = pos.usec + 1000000 * (pos.sec + 60*pos.min);
 	}
 
@@ -166,7 +167,7 @@ pub void write_frame(mp3file *f, FILE *out)
 	 * Go back 4 bytes to the header
 	 */
 	if(fseek(f->file, -4, SEEK_CUR) < 0) {
-		fatal("fseek(-4) failed");
+		cli.fatal("fseek(-4) failed");
 	}
 
 	size_t len = f->nextpos - ftell(f->file);
@@ -180,11 +181,13 @@ pub void write_frame(mp3file *f, FILE *out)
 
 bool read_header(mp3file *f)
 {
-	bits_t *s = bits_new(f->file);
+	bitreader.bits_t *s = bitreader.bits_new(f->file);
 	bool r = _read_header(s, &f->h);
-	bits_free(s);
+	bitreader.bits_free(s);
 
-	if(!r) return r;
+	if (!r) {
+		return false;
+	}
 
 	/*
 	 * Calculate the length of the frame.
@@ -201,41 +204,41 @@ bool read_header(mp3file *f)
 	return r;
 }
 
-bool _read_header(bits_t *s, header_t *h)
+bool _read_header(bitreader.bits_t *s, header_t *h)
 {
 	// 8 bits: FF
-	if(bits_getn(s, 8) != 0xFF) {
+	if(bitreader.bits_getn(s, 8) != 0xFF) {
 		return false;
 	}
 
 	// 4 bits: F
-	if(bits_getn(s, 4) != 0xF) {
+	if(bitreader.bits_getn(s, 4) != 0xF) {
 		return false;
 	}
 
 	// 1 bit: version
 	// '1' for MPEG1
-	if(bits_getn(s, 1) != 1) {
+	if(bitreader.bits_getn(s, 1) != 1) {
 		return false;
 	}
 
 	// 2 bits: layer
-	if(bits_getn(s, 2) != L3) {
+	if(bitreader.bits_getn(s, 2) != L3) {
 		return false;
 	}
 
 	// 1 bit: error protection
-	if(bits_getn(s, 1) == 0) {
+	if(bitreader.bits_getn(s, 1) == 0) {
 		// 16-bit CRC will be somewhere
-		fatal("+CRC");
+		cli.fatal("+CRC");
 	}
 
 	// 4 bits: bitrate
-	int index = bits_getn(s, 4);
+	int index = bitreader.bits_getn(s, 4);
 	h->bitrate = bitrates[index];
 
 	// 2: freq
-	index = bits_getn(s, 2);
+	index = bitreader.bits_getn(s, 2);
 	if(index < 0 || (size_t)index >= nelem(frequencies)) {
 		return false;
 	}
@@ -245,7 +248,7 @@ bool _read_header(bits_t *s, header_t *h)
 	 * the regular 44100 Hz format.
 	 */
 	if(h->freq != 44100) {
-		fatal("Unsupported sampling frequency: %d", h->freq);
+		cli.fatal("Unsupported sampling frequency: %d", h->freq);
 	}
 	/*
 	 * General support will have to assume variable frequency
@@ -254,22 +257,22 @@ bool _read_header(bits_t *s, header_t *h)
 	 */
 
 	// 1: padding?
-	h->padded = (bool) bits_getn(s, 1);
+	h->padded = (bool) bitreader.bits_getn(s, 1);
 
 	// 1: private
-	bits_getn(s, 1);
+	bitreader.bits_getn(s, 1);
 
 	// 2: mode
-	h->mode = bits_getn(s, 2);
+	h->mode = bitreader.bits_getn(s, 2);
 
 	// 2: ext
-	bits_getn(s, 2);
+	bitreader.bits_getn(s, 2);
 	// 1: copyright?
-	bits_getn(s, 1);
+	bitreader.bits_getn(s, 1);
 	// 1: original?
-	bits_getn(s, 1);
+	bitreader.bits_getn(s, 1);
 	// 2: emphasis
-	bits_getn(s, 2);
+	bitreader.bits_getn(s, 2);
 
 	return true;
 }

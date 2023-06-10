@@ -6,6 +6,15 @@
 #include <sys/termios.h>
 #include <sys/mman.h>
 
+#type fd_set
+#known FD_ZERO
+#known FD_SET
+#known select
+#known gettimeofday
+#known tcgetattr
+#known tcsetattr
+#known STDIN_FILENO
+
 pub typedef struct timeval timeval_t;
 
 pub bool stdin_has_input() {

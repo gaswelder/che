@@ -182,9 +182,9 @@ pub void png_set_pixel(png_t *png, size_t x, size_t y, uint32_t color) {
     if (png->type == PNG_PALETTE || png->type == PNG_GRAYSCALE) {
         png->data[x + y * png->width] = (uint8_t) color;
     } else if (png->type == PNG_GRAYSCALE_ALPHA) {
-        set_u16le(png->data, 2 * (x + y * png->width), (uint16_t) color);
+        endian.set_u16le(png->data, 2 * (x + y * png->width), (uint16_t) color);
     } else {
-        set_u32le(png->data, 4 * (x + y * png->width), color);
+        endian.set_u32le(png->data, 4 * (x + y * png->width), color);
     }
 }
 
@@ -208,9 +208,9 @@ pub uint32_t png_get_pixel(png_t* png, size_t x, size_t y) {
         return (uint32_t) png->data[x + y * png->width];
     }
     if (png->type == PNG_GRAYSCALE_ALPHA) {
-        return (uint32_t) get_u16le(png->data, 2 * (x + y * png->width));
+        return (uint32_t) endian.get_u16le(png->data, 2 * (x + y * png->width));
     }
-    return get_u32le(png->data, 4 * (x + y * png->width));
+    return endian.get_u32le(png->data, 4 * (x + y * png->width));
 }
 
 /**
@@ -252,9 +252,9 @@ pub void png_put_pixel(png_t* png, uint32_t color) {
     if (png->type == PNG_PALETTE || png->type == PNG_GRAYSCALE) {
         png->data[x + y * png->width] = (char) (color & 0xff);
     } else if (png->type == PNG_GRAYSCALE_ALPHA) {
-        set_u16le(png->data, 2 * (x + y * png->width), (uint16_t) color);
+        endian.set_u16le(png->data, 2 * (x + y * png->width), (uint16_t) color);
     } else {
-        set_u32le(png->data, 4 * (x + y * png->width), color);
+        endian.set_u32le(png->data, 4 * (x + y * png->width), color);
     }
     x++;
     if(x >= png->width) {

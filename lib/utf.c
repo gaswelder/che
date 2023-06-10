@@ -75,7 +75,7 @@
  */
 pub typedef uint32_t Rune;
 
-void *memccpy (void *dest, *src, int c, size_t n) {
+void *nih_memcpy (void *dest, *src, int c, size_t n) {
 	uint8_t *from = (uint8_t *) src;
 	uint8_t *to = (uint8_t *) dest;
 	while (n > 0) {
@@ -284,9 +284,7 @@ enum
 	Rune4	= (1<<(Bit4+3*Bitx))-1,		/* 0011 1111 1111 1111 1111 1111 */
 
 	Maskx	= (1<<Bitx)-1,			/* 0011 1111 */
-	Testx	= Maskx ^ 0xFF,			/* 1100 0000 */
-
-	Bad	= Runeerror
+	Testx	= Maskx ^ 0xFF			/* 1100 0000 */
 };
 
 // copies at most UTFmax bytes starting at s to one rune at r and returns the number of bytes copied.
@@ -312,17 +310,17 @@ pub int chartorune(Rune *rune, char *str)
 	 */
 	int c1 = *(uint8_t*)(str+1) ^ Tx;
 	if(c1 & Testx) {
-		*rune = Bad;
+		*rune = Runeerror;
 		return 1;
 	}
 	if(c < T3) {
 		if(c < T2) {
-			*rune = Bad;
+			*rune = Runeerror;
 			return 1;
 		}
 		l = ((c << Bitx) | c1) & Rune2;
 		if(l <= Rune1) {
-			*rune = Bad;
+			*rune = Runeerror;
 			return 1;
 		}
 		*rune = l;
@@ -335,13 +333,13 @@ pub int chartorune(Rune *rune, char *str)
 	 */
 	c2 = *(uint8_t*)(str+2) ^ Tx;
 	if(c2 & Testx) {
-		*rune = Bad;
+		*rune = Runeerror;
 		return 1;
 	}
 	if(c < T4) {
 		l = ((((c << Bitx) | c1) << Bitx) | c2) & Rune3;
 		if(l <= Rune2) {
-			*rune = Bad;
+			*rune = Runeerror;
 			return 1;
 		}
 		*rune = l;
@@ -355,13 +353,13 @@ pub int chartorune(Rune *rune, char *str)
 	if(UTFmax >= 4) {
 		c3 = *(uint8_t*)(str+3) ^ Tx;
 		if(c3 & Testx) {
-			*rune = Bad;
+			*rune = Runeerror;
 			return 1;
 		}
 		if(c < T5) {
 			l = ((((((c << Bitx) | c1) << Bitx) | c2) << Bitx) | c3) & Rune4;
 			if(l <= Rune3 || l > Runemax) {
-				*rune = Bad;
+				*rune = Runeerror;
 				return 1;
 			}
 			*rune = l;
@@ -369,7 +367,7 @@ pub int chartorune(Rune *rune, char *str)
 		}
 	}
 
-	*rune = Bad;
+	*rune = Runeerror;
 	return 1;
 }
 
@@ -1633,7 +1631,7 @@ pub char* utfecpy(char *to, char *e, char *from)
 
 	if(to >= e)
 		return to;
-	end = memccpy(to, from, '\0', e - to);
+	end = nih_memcpy(to, from, '\0', e - to);
 	if (end == NULL) {
 		end = e-1;
 		while(end>to && (*--end&0xC0)==0x80) {}

@@ -174,14 +174,14 @@ tok_t *lexer_read(lexer_t *l) {
 	char *pos = parsebuf.buf_pos(b);
 	for (size_t i = 0; i < nelem(keywords); i++) {
 		const char *keyword = keywords[i];
-		if (pasebuf.buf_skip_literal(b, keyword)) {
+		if (parsebuf.buf_skip_literal(b, keyword)) {
 			// puts("keyword");
 			return tok_make(strutil.newstr("%s", keyword), NULL, pos);
 		}
 	}
 	for (size_t i = 0; i < nelem(symbols); i++) {
 		const char *symbol = symbols[i];
-		if (pasebuf.buf_skip_literal(b, symbol)) {
+		if (parsebuf.buf_skip_literal(b, symbol)) {
 			// puts("symbol");
 			return tok_make(strutil.newstr("%s", symbol), NULL, pos);
 		}
@@ -203,7 +203,7 @@ tok_t *read_macro(parsebuf.parsebuf_t *b) {
 
 tok_t *read_number(parsebuf.parsebuf_t *b) {
 	// If "0x" follows, read a hexademical constant.
-	if (pasebuf.buf_skip_literal(b, "0x")) {
+	if (parsebuf.buf_skip_literal(b, "0x")) {
 		return read_hex_number(b);
 	}
 
@@ -310,9 +310,9 @@ tok_t *read_char(parsebuf.parsebuf_t *b) {
 
 tok_t *read_multiline_comment(parsebuf.parsebuf_t *b) {
 	char *pos = parsebuf.buf_pos(b);
-	pasebuf.buf_skip_literal(b, "/*");
+	parsebuf.buf_skip_literal(b, "/*");
 	char *comment = parsebuf.buf_skip_until(b, "*/");
-	if (!pasebuf.buf_skip_literal(b, "*/")) {
+	if (!parsebuf.buf_skip_literal(b, "*/")) {
 		free(comment);
 		return tok_make("error", strutil.newstr("'*/' expected"), pos);
 	}
@@ -321,7 +321,7 @@ tok_t *read_multiline_comment(parsebuf.parsebuf_t *b) {
 
 tok_t *read_line_comment(parsebuf.parsebuf_t *b) {
 	char *pos = parsebuf.buf_pos(b);
-	pasebuf.buf_skip_literal(b, "//");
+	parsebuf.buf_skip_literal(b, "//");
 	return tok_make("comment", parsebuf.buf_skip_until(b, "\n"), pos);
 }
 

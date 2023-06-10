@@ -9,6 +9,7 @@ pub const CTYPES: &[&str] = &[
     "long",
     "float",
     "double",
+    "jmp_buf",
     "unsigned",
     "bool",
     "void",

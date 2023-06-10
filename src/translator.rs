@@ -340,9 +340,17 @@ pub fn get_module_synopsis(module: &CModule) -> Vec<CModuleObject> {
 
     for element in &module.elements {
         match element {
-            CModuleObject::Typedef { is_pub, .. } => {
+            CModuleObject::Typedef {
+                is_pub,
+                form,
+                type_name,
+            } => {
                 if *is_pub {
-                    elements.push(element.clone())
+                    elements.push(CModuleObject::Typedef {
+                        is_pub: true,
+                        type_name: type_name.clone(),
+                        form: form.clone(),
+                    })
                 }
             }
             CModuleObject::StructDefinition {

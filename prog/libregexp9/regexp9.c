@@ -132,12 +132,12 @@ pub typedef {
 	union
 	{
 		char *sp;
-		Rune *rsp;
+		utf.Rune *rsp;
 	}s;
 	union
 	{
 		char *ep;
-		Rune *rep;
+		utf.Rune *rep;
 	}e;
 } Resub;
 
@@ -166,11 +166,11 @@ typedef	{
 	Relist*	relist[2];
 	Relist*	reliste[2];
 	int	starttype;
-	Rune	startchar;
+	utf.Rune	startchar;
 	char*	starts;
 	char*	eol;
-	Rune*	rstarts;
-	Rune*	reol;
+	utf.Rune*	rstarts;
+	utf.Rune*	reol;
 } Reljunk;
 
 
@@ -179,8 +179,8 @@ typedef	{
  *	character class, each pair of rune's defines a range
  */
 pub typedef {
-	Rune	*end;
-	Rune	spans[64];
+	utf.Rune	*end;
+	utf.Rune	spans[64];
 } Reclass;
 
 /*
@@ -190,7 +190,7 @@ pub typedef {
 	int	type;
 	union	{
 		Reclass	*cp;		/* class pointer */
-		Rune	r;		/* character */
+		utf.Rune	r;		/* character */
 		int	subid;		/* sub-expression id for RBRA and LBRA */
 		Reinst	*right;		/* right child of OR */
 	}u1;
@@ -216,35 +216,54 @@ pub typedef {
  *	02xx are operators, value == precedence
  *	03xx are tokens, i.e. operands for operators
  */
-#define RUNE		0177
-#define	OPERATOR	0200	/* Bitmask of all operators */
-#define	START		0200	/* Start, used for marker on stack */
-#define	RBRA		0201	/* Right bracket, ) */
-#define	LBRA		0202	/* Left bracket, ( */
-#define	OR		0203	/* Alternation, | */
-#define	CAT		0204	/* Concatentation, implicit operator */
-#define	STAR		0205	/* Closure, * */
-#define	PLUS		0206	/* a+ == aa* */
-#define	QUEST		0207	/* a? == a|nothing, i.e. 0 or 1 a's */
-#define	ANY		0300	/* Any character except newline, . */
-#define	ANYNL		0301	/* Any character including newline, . */
-#define	NOP		0302	/* No operation, internal use only */
-#define	BOL		0303	/* Beginning of line, ^ */
-#define	EOL		0304	/* End of line, $ */
-#define	CCLASS		0305	/* Character class, [] */
-#define	NCCLASS		0306	/* Negated character class, [] */
-#define	END		0377	/* Terminate: match found */
+enum {
+	RUNE = 0177,
+	OPERATOR = 0200, /* Bitmask of all operators */
+	START = 0200, /* Start, used for marker on stack */
+	RBRA = 0201, /* Right bracket, ) */
+	LBRA = 0202, /* Left bracket, ( */
+	OR = 0203, /* Alternation, | */
+	CAT = 0204, /* Concatentation, implicit operator */
+	STAR = 0205, /* Closure, * */
+	PLUS = 0206, /* a+ == aa* */
+	QUEST = 0207, /* a? == a|nothing, i.e. 0 or 1 a's */
+	ANY = 0300, /* Any character except newline, . */
+	ANYNL = 0301, /* Any character including newline, . */
+	NOP = 0302, /* No operation, internal use only */
+	BOL = 0303, /* Beginning of line, ^ */
+	EOL = 0304, /* End of line, $ */
+	CCLASS = 0305, /* Character class, [] */
+	NCCLASS = 0306, /* Negated character class, [] */
+	END = 0377	/* Terminate: match found */
+};
+// #define RUNE		0177
+// #define	OPERATOR	0200	/* Bitmask of all operators */
+// #define	START		0200	/* Start, used for marker on stack */
+// #define	RBRA		0201	/* Right bracket, ) */
+// #define	LBRA		0202	/* Left bracket, ( */
+// #define	OR		0203	/* Alternation, | */
+// #define	CAT		0204	/* Concatentation, implicit operator */
+// #define	STAR		0205	/* Closure, * */
+// #define	PLUS		0206	/* a+ == aa* */
+// #define	QUEST		0207	/* a? == a|nothing, i.e. 0 or 1 a's */
+// #define	ANY		0300	/* Any character except newline, . */
+// #define	ANYNL		0301	/* Any character including newline, . */
+// #define	NOP		0302	/* No operation, internal use only */
+// #define	BOL		0303	/* Beginning of line, ^ */
+// #define	EOL		0304	/* End of line, $ */
+// #define	CCLASS		0305	/* Character class, [] */
+// #define	NCCLASS		0306	/* Negated character class, [] */
+// #define	END		0377	/* Terminate: match found */
 
 /*
  *  regexec execution lists
  */
-#define LISTSIZE	10
-#define BIGLISTSIZE	(25*LISTSIZE)
+const int LISTSIZE = 10;
+const int BIGLISTSIZE = 250; //	(25*LISTSIZE)
 
-/* max rune ranges per character class is nelem(classp->spans)/2 */
-#define NCCRUNE	nelem(classp->spans)
-
-#define	NSTACK 20
+enum {
+	NSTACK = 20
+};
 Node	andstack[NSTACK] = {};
 Node	*andp = NULL;
 int	atorstack[NSTACK] = {};
@@ -257,10 +276,14 @@ int	nbra = 0;
 char*	exprp = NULL;		/* pointer to next character in source expression */
 int	lexdone = 0;
 int	nclass = 0;
+
 Reclass *classp = NULL;
+/* max rune ranges per character class is nelem(classp->spans)/2 */
+
+
 Reinst *freep = NULL;
 int	errors = 0;
-Rune	yyrune = 0;		/* last lex'd rune */
+utf.Rune	yyrune = 0;		/* last lex'd rune */
 Reclass *yyclassp = 0;	/* last lex'd class */
 
 jmp_buf regkaboom = {};
@@ -582,7 +605,7 @@ void dumpstack() {
 void dump(Reprog *pp)
 {
 	Reinst *l = NULL;
-	Rune *p = NULL;
+	utf.Rune *p = NULL;
 
 	l = pp->firstinst;
 	while (true) {
@@ -616,16 +639,14 @@ Reclass* newclass() {
 	return &(classp[nclass++]);
 }
 
-int
-nextc(Rune *rp)
-{
-	if(lexdone){
+int nextc(utf.Rune *rp) {
+	if (lexdone) {
 		*rp = 0;
 		return 1;
 	}
-	exprp += chartorune(rp, exprp);
+	exprp += utf.chartorune(rp, exprp);
 	if(*rp == '\\'){
-		exprp += chartorune(rp, exprp);
+		exprp += utf.chartorune(rp, exprp);
 		return 1;
 	}
 	if(*rp == 0)
@@ -671,9 +692,9 @@ lex(int literal, int dot_type)
 }
 
 int bldcclass() {
-	Rune r[NCCRUNE] = {};
-	Rune *p = NULL, *ep = NULL, *np = NULL;
-	Rune rune = 0;
+	utf.Rune r[nelem(classp->spans)] = {};
+	utf.Rune *p = NULL, *ep = NULL, *np = NULL;
+	utf.Rune rune = 0;
 	int quoted = 0;
 
 	/* we have already seen the '[' */
@@ -692,7 +713,7 @@ int bldcclass() {
 	}
 
 	/* parse class into a set of spans */
-	while(ep < &r[NCCRUNE-1]){
+	while(ep < &r[nelem(classp->spans)-1]){
 		if(rune == 0){
 			rcerror("malformed '[]'");
 			return 0;
@@ -716,7 +737,7 @@ int bldcclass() {
 		}
 		quoted = nextc(&rune);
 	}
-	if(ep >= &r[NCCRUNE-1]) {
+	if(ep >= &r[nelem(classp->spans)-1]) {
 		rcerror("char class too large; increase Reclass.spans size");
 		return 0;
 	}
@@ -866,7 +887,7 @@ Relist*
 _rrenewemptythread(Relist *lp,
 	Reinst *ip,
 	int ms,
-	Rune *rsp)
+	utf.Rune *rsp)
 {
 	Relist *p = NULL;
 
@@ -915,7 +936,7 @@ regexec1(Reprog *progp,
 	Relist *tlp;
 	char *s;
 	int i, checkstart;
-	Rune r, *rp, *ep;
+	utf.Rune r, *rp, *ep;
 	int n;
 	Relist* tl;		/* This list, next list */
 	Relist* nl;
@@ -941,7 +962,7 @@ regexec1(Reprog *progp,
 		if(checkstart) {
 			switch(j->starttype) {
 			case RUNE:
-				p = utfrune(s, j->startchar);
+				p = utf.utfrune(s, j->startchar);
 				if(p == 0 || s == j->eol)
 					return match;
 				s = p;
@@ -949,7 +970,7 @@ regexec1(Reprog *progp,
 			case BOL:
 				if(s == bol)
 					break;
-				p = utfrune(s, '\n');
+				p = utf.utfrune(s, '\n');
 				if(p == 0 || s == j->eol)
 					return match;
 				s = p+1;
@@ -957,10 +978,10 @@ regexec1(Reprog *progp,
 			}
 		}
 		r = *(uint8_t*)s;
-		if(r < Runeself)
+		if(r < utf.Runeself)
 			n = 1;
 		else
-			n = chartorune(&r, s);
+			n = utf.chartorune(&r, s);
 
 		/* switch run lists */
 		tl = j->relist[flag];
@@ -1109,7 +1130,7 @@ pub int regexec(Reprog *progp, char *bol, Resub *mp, int ms) {
 	}
 	j.starttype = 0;
 	j.startchar = 0;
-	if(progp->startinst->type == RUNE && progp->startinst->u1.r < Runeself) {
+	if(progp->startinst->type == RUNE && progp->startinst->u1.r < utf.Runeself) {
 		j.starttype = RUNE;
 		j.startchar = progp->startinst->u1.r;
 	}
@@ -1202,7 +1223,7 @@ pub void regsub(char *sp, *dp, int dlen, Resub *mp, int ms) {
 /* number of elements at mp */
 int
 rregexec1(Reprog *progp,
-	Rune *bol,
+	utf.Rune *bol,
 	Resub *mp,
 	int ms,
 	Reljunk *j)
@@ -1210,15 +1231,15 @@ rregexec1(Reprog *progp,
 	int flag=0;
 	Reinst *inst;
 	Relist *tlp;
-	Rune *s;
+	utf.Rune *s;
 	int i, checkstart;
-	Rune r, *rp, *ep;
+	utf.Rune r, *rp, *ep;
 	Relist* tl;		/* This list, next list */
 	Relist* nl;
 	Relist* tle;		/* ends of this and next list */
 	Relist* nle;
 	int match;
-	Rune *p;
+	utf.Rune *p;
 
 	match = 0;
 	checkstart = j->startchar;
@@ -1237,7 +1258,7 @@ rregexec1(Reprog *progp,
 		if(checkstart) {
 			switch(j->starttype) {
 			case RUNE:
-				p = runestrchr(s, j->startchar);
+				p = utf.runestrchr(s, j->startchar);
 				if(p == 0 || s == j->reol)
 					return match;
 				s = p;
@@ -1245,7 +1266,7 @@ rregexec1(Reprog *progp,
 			case BOL:
 				if(s == bol)
 					break;
-				p = runestrchr(s, '\n');
+				p = utf.runestrchr(s, '\n');
 				if(p == 0 || s == j->reol)
 					return match;
 				s = p+1;
@@ -1348,7 +1369,7 @@ rregexec1(Reprog *progp,
 /* number of elements at mp */
 int
 rregexec2(Reprog *progp,
-	Rune *bol,
+	utf.Rune *bol,
 	Resub *mp,
 	int ms,
 	Reljunk *j
@@ -1369,7 +1390,7 @@ rregexec2(Reprog *progp,
 /* string to run machine on */
 /* subexpression elements */
 /* number of elements at mp */
-pub int rregexec(Reprog *progp, Rune *bol, Resub *mp, int ms) {
+pub int rregexec(Reprog *progp, utf.Rune *bol, Resub *mp, int ms) {
 	Reljunk j;
 	Relist relist0[LISTSIZE], relist1[LISTSIZE];
 	int rv;
@@ -1387,7 +1408,7 @@ pub int rregexec(Reprog *progp, Rune *bol, Resub *mp, int ms) {
 	}
 	j.starttype = 0;
 	j.startchar = 0;
-	if(progp->startinst->type == RUNE && progp->startinst->u1.r < Runeself) {
+	if(progp->startinst->type == RUNE && progp->startinst->u1.r < utf.Runeself) {
 		j.starttype = RUNE;
 		j.startchar = progp->startinst->u1.r;
 	}
@@ -1414,11 +1435,11 @@ pub int rregexec(Reprog *progp, Rune *bol, Resub *mp, int ms) {
 /* dp is destination string */
 /* mp is subexpression elements */
 /* ms is number of elements pointed to by mp */
-pub void rregsub(Rune *sp, Rune *dp, int dlen, Resub *mp, int ms) {
-	Rune *ssp, *ep;
+pub void rregsub(utf.Rune *sp, utf.Rune *dp, int dlen, Resub *mp, int ms) {
+	utf.Rune *ssp, *ep;
 	int i;
 
-	ep = dp+(dlen/sizeof(Rune))-1;
+	ep = dp+(dlen/sizeof(utf.Rune))-1;
 	while(*sp != '\0'){
 		if(*sp == '\\'){
 			switch(*++sp){

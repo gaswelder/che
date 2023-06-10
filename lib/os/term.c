@@ -6,6 +6,13 @@
 #include <sys/termios.h>
 #include <sys/mman.h>
 
+#known STDIN_FILENO
+#known ICANON
+#known ECHO
+#known TCSANOW
+#known tcgetattr
+#known tcsetattr
+
 pub typedef struct termios _termios_t;
 
 pub typedef {

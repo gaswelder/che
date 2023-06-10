@@ -15,6 +15,7 @@ use crate::resolve;
 use crate::translator;
 use md5;
 use std::collections::HashMap;
+use std::collections::HashSet;
 use std::fs;
 use std::io::BufRead;
 use std::process::{Command, Stdio};
@@ -279,11 +280,38 @@ pub fn translate(work: &mut Build) {
         });
 
         let node_imports = &work.imports[i];
+        let mut present = HashSet::new();
         for imp in node_imports {
             let pos = work.paths.iter().position(|x| *x == imp.path).unwrap();
             let cmodule = &work.c[pos];
             for obj in translator::get_module_synopsis(&cmodule) {
-                cnodes.push(obj);
+                match &obj {
+                    CModuleObject::Typedef {
+                        is_pub: _,
+                        type_name: _,
+                        form,
+                    } => {
+                        if present.contains(&form.alias) {
+                            continue;
+                        }
+                        present.insert(form.alias.clone());
+                        cnodes.push(obj)
+                    }
+                    CModuleObject::StructDefinition {
+                        name,
+                        fields: _,
+                        is_pub: _,
+                    } => {
+                        if present.contains(name) {
+                            continue;
+                        }
+                        present.insert(name.clone());
+                        cnodes.push(obj)
+                    }
+                    _ => {
+                        cnodes.push(obj);
+                    }
+                }
             }
         }
         let ctx = &work.ctx[i];

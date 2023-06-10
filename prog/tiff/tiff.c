@@ -19,61 +19,61 @@ int main(int argc, char *argv[])
 	char *mode = argv[1];
 	char *filepath = argv[2];
 
-	TIFFFile *tiff = tiff_open( filepath );
+	tiff.TIFFFile *tiff = tiff.tiff_open( filepath );
 	if( !tiff ){
 		return err("Could not open the file");
 	}
 
 	if (strcmp(mode, "info") == 0) {
 		int status = info(tiff);
-		tiff_close( tiff );
+		tiff.tiff_close( tiff );
 		return status;
 	}
 	if (strcmp(mode, "dump") == 0) {
 		int status = dump(tiff);
-		tiff_close( tiff );
+		tiff.tiff_close( tiff );
 		return status;
 	}
-	tiff_close( tiff );
+	tiff.tiff_close( tiff );
 	return usage();
 }
 
-size_t tiff_dircount(TIFFFile *tiff) {
+size_t tiff_dircount(tiff.TIFFFile *tiff) {
 	return tiff->directories_count;
 }
 
-TIFFDirectory *tiff_dir(TIFFFile *tiff, size_t index) {
+tiff.TIFFDirectory *tiff_dir(tiff.TIFFFile *tiff, size_t index) {
 	return tiff->directories[index];
 }
 
-size_t tiff_entrycount(TIFFDirectory *dir) {
+size_t tiff_entrycount(tiff.TIFFDirectory *dir) {
 	return dir->entries_count;
 }
 
-TIFFEntry *tiff_entry(TIFFDirectory *dir, size_t index) {
+tiff.TIFFEntry *tiff_entry(tiff.TIFFDirectory *dir, size_t index) {
 	return dir->entries[index];
 }
 
 
-int info( TIFFFile *tiff )
+int info( tiff.TIFFFile *tiff )
 {
 	for (size_t dir_index = 0; dir_index < tiff_dircount(tiff); dir_index++) {
 		printf( "-- Directory #%lu --\n", dir_index );
-		TIFFDirectory *dir = tiff_dir(tiff, dir_index);
+		tiff.TIFFDirectory *dir = tiff_dir(tiff, dir_index);
 
 		for( size_t entry_index = 0; entry_index < tiff_entrycount(dir); entry_index++ )
 		{
-			TIFFEntry *entry = tiff_entry(dir, entry_index);
+			tiff.TIFFEntry *entry = tiff_entry(dir, entry_index);
 			printf("%-10s\t(x%lu)\t%-24s\t%u\n",
-				tiff_typename(entry->type),
+				tiff.tiff_typename(entry->type),
 				entry->count,
-				tiff_tagname(entry->tag),
+				tiff.tiff_tagname(entry->tag),
 				entry->value
 			);
 
 			// If the entry is a string, also print the contents.
-			if (entry->type == TIFF_ASCII) {
-				char *str = tiff_get_string(entry);
+			if (entry->type == tiff.TIFF_ASCII) {
+				char *str = tiff.tiff_get_string(entry);
 				if (!str) {
 					fprintf(stderr, "failed to get ASCII value\n");
 					continue;
@@ -87,9 +87,9 @@ int info( TIFFFile *tiff )
 	return 0;
 }
 
-int dump( TIFFFile *tiff )
+int dump( tiff.TIFFFile *tiff )
 {
-	TIFFDirectory *dir = tiff->directories[0];
+	tiff.TIFFDirectory *dir = tiff->directories[0];
 	int width = 0;
 	// int height = 0;
 	int bits_per_sample = 0;
@@ -101,22 +101,22 @@ int dump( TIFFFile *tiff )
 
 	for( int i = 0; i < dir->entries_count; i++ )
 	{
-		TIFFEntry *entry = dir->entries[i];
+		tiff.TIFFEntry *entry = dir->entries[i];
 		switch( entry->tag )
 		{
-			case TIFF_ImageWidth:
+			case tiff.TIFF_ImageWidth:
 				width = entry->value;
 				break;
-			case TIFF_ImageLength:
+			case tiff.TIFF_ImageLength:
 				// height = entry->value;
 				break;
-			case TIFF_BitsPerSample:
+			case tiff.TIFF_BitsPerSample:
 				bits_per_sample = entry->value;
 				break;
-			case TIFF_RowsPerStrip:
+			case tiff.TIFF_RowsPerStrip:
 				rows_per_strip = entry->value;
 				break;
-			case TIFF_StripOffsets:
+			case tiff.TIFF_StripOffsets:
 				if( strips_per_image == 0 ){
 					strips_per_image = entry->count;
 				} else {
@@ -128,10 +128,10 @@ int dump( TIFFFile *tiff )
 				strip_offsets = malloc( sizeof( size_t ) * entry->count );
 				fseek( tiff->file, entry->value, SEEK_SET );
 				for( size_t j = 0; j < entry->count; j++ ){
-					strip_offsets[j] = tiff_read_bytes( tiff, 4 );
+					strip_offsets[j] = tiff.tiff_read_bytes( tiff, 4 );
 				}
 				break;
-			case TIFF_StripByteCounts:
+			case tiff.TIFF_StripByteCounts:
 				if( strips_per_image == 0 ){
 					strips_per_image = entry->count;
 				} else {
@@ -143,7 +143,7 @@ int dump( TIFFFile *tiff )
 				strip_byte_counts = malloc( sizeof( size_t ) * entry->count );
 				fseek( tiff->file, entry->value, SEEK_SET );
 				for( size_t j = 0; j < entry->count; j++ ){
-					strip_byte_counts[j] = tiff_read_bytes( tiff, 4 );
+					strip_byte_counts[j] = tiff.tiff_read_bytes( tiff, 4 );
 				}
 				break;
 		}
@@ -165,7 +165,7 @@ int dump( TIFFFile *tiff )
 		for( int row = 0; row < rows_per_strip; row++ )
 		{
 			for( int col = 0; col < width; col++ ){
-				printf( "%u ", tiff_read_bytes( tiff, bits_per_sample / 8 ) );
+				printf( "%u ", tiff.tiff_read_bytes( tiff, bits_per_sample / 8 ) );
 			}
 			printf( "\n" );
 		}

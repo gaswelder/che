@@ -28,7 +28,7 @@ void print_term(term *t) {
     }
 }
 
-map_t *unify(term *x, *y, map_t *subst) {
+map.map_t *unify(term *x, *y, map.map_t *subst) {
     if (eq(x, y)) {
         return subst;
     }
@@ -42,7 +42,7 @@ map_t *unify(term *x, *y, map_t *subst) {
         if (!streq(x->name, y->name) || x->args_length != y->args_length) {
             return NULL;
         }
-        map_t *r = subst;
+        map.map_t *r = subst;
         for (int i = 0; i < x->args_length; i++) {
             r = unify(x->args[i], y->args[i], r);
             if (!r) {
@@ -55,28 +55,28 @@ map_t *unify(term *x, *y, map_t *subst) {
 }
 
 // Unifies variable v with term x, using subst.
-map_t *unify_variable(term *v, term *x, map_t *subst) {
-    if (map_has(subst, v->name)) {
-        return unify(map_get(subst, v->name), x, subst);
+map.map_t *unify_variable(term *v, term *x, map.map_t *subst) {
+    if (map.map_has(subst, v->name)) {
+        return unify(map.map_get(subst, v->name), x, subst);
     }
-    if (x->type == VAR && map_has(subst, x->name)) {
-        return unify(v, map_get(subst, x->name), subst);
+    if (x->type == VAR && map.map_has(subst, x->name)) {
+        return unify(v, map.map_get(subst, x->name), subst);
     }
     if (term_has_var(v, x, subst)) {
         return NULL;
     }
     // v is not yet in subst and can't simplify x. Extend subst.
-    map_set(subst, v->name, x);
+    map.map_set(subst, v->name, x);
     return subst;
 }
 
 // Does the variable v occur anywhere inside term?
-bool term_has_var(term *t, *v, map_t *subst) {
+bool term_has_var(term *t, *v, map.map_t *subst) {
     if (eq(v, t)) {
         return true;
     }
-    if (t->type == VAR && map_has(subst, t->name)) {
-        return term_has_var(map_get(subst, t->name), v, subst);
+    if (t->type == VAR && map.map_has(subst, t->name)) {
+        return term_has_var(map.map_get(subst, t->name), v, subst);
     }
     if (t->type == FUNC) {
         for (int i = 0; i < t->args_length; i++) {
@@ -106,12 +106,12 @@ bool eq(term *x, *y) {
     return true;
 }
 
-term *parse_term1(parsebuf_t *b) {
+term *parse_term1(parsebuf.parsebuf_t *b) {
     term *t = calloc(1, sizeof(term));
 
     int n = 0;
-    while (isalpha(buf_peek(b))) {
-        t->name[n++] = buf_get(b);
+    while (isalpha(parsebuf.buf_peek(b))) {
+        t->name[n++] = parsebuf.buf_get(b);
     }
 
     if (allupper(t->name)) {
@@ -119,18 +119,18 @@ term *parse_term1(parsebuf_t *b) {
         return t;
     }
 
-    if (buf_skip(b, '(')) {
+    if (parsebuf.buf_skip(b, '(')) {
         t->type = FUNC;
         while (true) {
             t->args[t->args_length++] = parse_term1(b);
-            if (buf_skip(b, ',')) {
-                buf_skip_set(b, " ");
+            if (parsebuf.buf_skip(b, ',')) {
+                parsebuf.buf_skip_set(b, " ");
                 continue;
             }
             break;
         }
-        if (!buf_skip(b, ')')) {
-            panic("missing closing brace: '%c'", buf_peek(b));
+        if (!parsebuf.buf_skip(b, ')')) {
+            panic.panic("missing closing brace: '%c'", parsebuf.buf_peek(b));
         }
         return t;
     }
@@ -139,26 +139,26 @@ term *parse_term1(parsebuf_t *b) {
 }
 
 term *parse_term(char *s) {
-    return parse_term1(buf_new(s));
+    return parse_term1(parsebuf.buf_new(s));
 }
 
-void print_map(map_t *m) {
-    map_iter_t *it = map_iter(m);
+void print_map(map.map_t *m) {
+    map.map_iter_t *it = map.map_iter(m);
     bool first = true;
-    while (map_iter_next(it)) {
+    while (map.map_iter_next(it)) {
         if (first) {
             first = false;
         } else {
             fprintf(stdout, " ");
         }
-        fprintf(stdout, "%s=", map_iter_key(it));
-        print_term(map_iter_val(it));
+        fprintf(stdout, "%s=", map.map_iter_key(it));
+        print_term(map.map_iter_val(it));
     }
-    map_iter_free(it);
+    map.map_iter_free(it);
 }
 
 void run(char *t1, *t2) {
-    map_t *s = unify(parse_term(t1), parse_term(t2), map_new());
+    map.map_t *s = unify(parse_term(t1), parse_term(t2), map.map_new());
     if (s) {
         print_map(s);
         printf("\n");

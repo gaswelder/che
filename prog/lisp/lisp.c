@@ -24,7 +24,7 @@ char *intern(char *sym) {
     exit(1);
   }
 
-  symbols[i] = newstr("%s", sym);
+  symbols[i] = strutil.newstr("%s", sym);
   return symbols[i];
 }
 
@@ -51,11 +51,11 @@ item_t *cons(item_t *data, item_t *next) {
 
 item_t *car(item_t *x) {
   if (!x) {
-    panic("car: NULL");
+    panic.panic("car: NULL");
   }
   if (!x->list) {
     print(x);
-    panic("car: item not a list");
+    panic.panic("car: item not a list");
   }
   return x->data;
 }
@@ -65,18 +65,18 @@ char *desc(item_t *x) {
     return "NULL";
   }
   if (x->list) {
-    return newstr("list (%s, %s)", desc((item_t *)x->data), desc(x->next));
+    return strutil.newstr("list (%s, %s)", desc((item_t *)x->data), desc(x->next));
   }
-  return newstr("sym(%s)", x->data);
+  return strutil.newstr("sym(%s)", x->data);
 }
 
 item_t *cdr(item_t *x) {
   if (!x) {
-    panic("cdr: NULL");
+    panic.panic("cdr: NULL");
   }
   if (!x->list) {
     print(x);
-    panic("cdr: item not a list: %s", desc(x));
+    panic.panic("cdr: item not a list: %s", desc(x));
   }
   return x->next;
 }
@@ -199,7 +199,7 @@ item_t *runfunc(char *name, item_t *args) {
     }
     return NULL;
   }
-  panic("unknown function %s", name);
+  panic.panic("unknown function %s", name);
   return NULL;
 }
 

@@ -3,13 +3,13 @@
 #import opt
 #import words.c
 
-typedef { int id; ProbDesc pd; char rec; } ElmDesc;
+typedef { int id; xmlgen_rand.ProbDesc pd; char rec; } ElmDesc;
 
 typedef {
     char name[20];
     int type;
     int ref;
-    ProbDesc pd;
+    xmlgen_rand.ProbDesc pd;
     float prcnt;
 } AttDesc;
 
@@ -517,7 +517,7 @@ FILE *OpenOutput_split(const char *global_outputname, int fileno) {
     if (fileno > 99999) {
         fprintf(stderr,"Warning: More than %d files.\n", 99999);
     }
-    char *newname = newstr("%s%0*d", global_outputname, 5, fileno);
+    char *newname = strutil.newstr("%s%0*d", global_outputname, 5, fileno);
     FILE *f = fopen(newname,"w");
     free(newname);
     return f;
@@ -531,10 +531,10 @@ bool hasID(ObjDesc *od) {
     return false;
 }
 
-ProbDesc global_GenRef_pdnew = {};
+xmlgen_rand.ProbDesc global_GenRef_pdnew = {};
 char dtd_name[128]="auction.dtd";
 
-int GenRef(ProbDesc *pd, int type)
+int GenRef(xmlgen_rand.ProbDesc *pd, int type)
 {
     ObjDesc* od=objs+type;
     if (pd->type!=0)
@@ -548,9 +548,9 @@ int GenRef(ProbDesc *pd, int type)
                     global_GenRef_pdnew.dev=pd->dev*global_GenRef_pdnew.max;
                 }
         }
-    return (int)GenRandomNum(&global_GenRef_pdnew);
+    return (int)xmlgen_rand.GenRandomNum(&global_GenRef_pdnew);
 }
-void FixDist(ProbDesc *pd, double val)
+void FixDist(xmlgen_rand.ProbDesc *pd, double val)
 {
     pd->min=pd->max=val;
     pd->type=0;
@@ -577,7 +577,7 @@ void FixReferenceSets(ObjDesc *od)
                         }
                     if (!maxref) break;
                     local_factor=maxref/ed->pd.max;
-                    size=(int)(GenRandomNum(&ed->pd)+0.5);
+                    size=(int)(xmlgen_rand.GenRandomNum(&ed->pd)+0.5);
                     if (size*local_factor > 1) {
                         size = (int)(size*local_factor);
                     } else {
@@ -598,7 +598,7 @@ void FixSetSize(ObjDesc *od) {
         ObjDesc *son = &objs[ed->id];
         if (!son) continue;
         if (ed->pd.min>1 && (hasID(son) || (son->type&0x04))) {
-            int size=(int)(GenRandomNum(&ed->pd)+0.5);
+            int size=(int)(xmlgen_rand.GenRandomNum(&ed->pd)+0.5);
             if (size*global_scale_factor > 1) {
                 size = (int)(size*global_scale_factor);
             } else {
@@ -665,9 +665,9 @@ void OpeningTag(ObjDesc *od)
                 xmlprintf(xmlout," %s=\"%s%d\"", attname,objs[att->ref].name,ref);
             break;
             case ATTR_TYPE_3:
-                if (genunf(0,1)<att->prcnt) {
+                if (xmlgen_rand.genunf(0,1)<att->prcnt) {
                     if (!strcmp(attname,"income")) {
-                        double d = gennor(40000,30000);
+                        double d = xmlgen_rand.gennor(40000,30000);
                         if (d < 9876) {
                             d = 9876;
                         }
@@ -680,7 +680,7 @@ void OpeningTag(ObjDesc *od)
             default:
                 fflush(xmlout);
                 fprintf(stderr,"unknown ATT type %s\n",attname);
-                exit(EXIT_FAILURE);
+                exit(1);
         }
     }
     if (od->elm[0].id == 0 && (od->att[0].name[0])) {
@@ -727,7 +727,7 @@ void GenSubtree(FILE *out, ObjDesc *od)
             if (!xmlout) {
                 fflush(stdout);
                 fprintf(stderr, "Can't open file %s\n", global_outputname);
-                exit(EXIT_FAILURE);
+                exit(1);
             }
         }
         for (int i=0; i<oldstackdepth; i++) {
@@ -746,48 +746,48 @@ void GenSubtree(FILE *out, ObjDesc *od)
     bool has_content = true;
     switch(od->id) {
         case CITY:
-            xmlprintf(out, "%s", dictentry("cities", ignuin(0, dictlen("cities")-1)));
+            xmlprintf(out, "%s", words.dictentry("cities", xmlgen_rand.ignuin(0, words.dictlen("cities")-1)));
             break;
         case TYPE:
-            xmlprintf(out, "%s", GenContents_auction_type[ignuin(0,1)]);
-            if (GenContents_quantity>1 && ignuin(0,1)) xmlprintf(out,", Dutch");
+            xmlprintf(out, "%s", GenContents_auction_type[xmlgen_rand.ignuin(0,1)]);
+            if (GenContents_quantity>1 && xmlgen_rand.ignuin(0,1)) xmlprintf(out,", Dutch");
             break;
         case LOCATION:
         case COUNTRY:
-            if (genunf(0,1)<0.75) {
+            if (xmlgen_rand.genunf(0,1)<0.75) {
                 GenContents_country = COUNTRIES_USA;
             } else {
-                GenContents_country = ignuin(0, dictlen("countries") - 1);
+                GenContents_country = xmlgen_rand.ignuin(0, words.dictlen("countries") - 1);
             }
-            xmlprintf(out, "%s", dictentry("countries", GenContents_country));
+            xmlprintf(out, "%s", words.dictentry("countries", GenContents_country));
             break;
         case PROVINCE:
             if (GenContents_country == COUNTRIES_USA) {
-                xmlprintf(out, "%s", dictentry("provinces", ignuin(0, dictlen("provinces") - 1)));
+                xmlprintf(out, "%s", words.dictentry("provinces", xmlgen_rand.ignuin(0, words.dictlen("provinces") - 1)));
             } else {
-                xmlprintf(out, "%s", dictentry("lastnames", ignuin(0, dictlen("lastnames")-  1)));
+                xmlprintf(out, "%s", words.dictentry("lastnames", xmlgen_rand.ignuin(0, words.dictlen("lastnames")-  1)));
             }
             break;
         case EDUCATION:            
-            xmlprintf(out, "%s", GenContents_education[ignuin(0,3)]);
+            xmlprintf(out, "%s", GenContents_education[xmlgen_rand.ignuin(0,3)]);
             break;
         case STATUS:
         case HAPPINESS:
-            xmlprintf(out,"%d",ignuin(1,10));
+            xmlprintf(out,"%d",xmlgen_rand.ignuin(1,10));
             break;
         case HOMEPAGE:
             xmlprintf(out, "http://www.%s/~%s",
-                dictentry("emails", GenContents_email),
-                dictentry("lastnames", GenContents_lstname));
+                words.dictentry("emails", GenContents_email),
+                words.dictentry("lastnames", GenContents_lstname));
             break;
         case STREET:
             xmlprintf(out, "%d %s St",
-                ignuin(1,100),
-                dictentry("lastnames", ignuin(0, dictlen("lastnames")-1)));
+                xmlgen_rand.ignuin(1,100),
+                words.dictentry("lastnames", xmlgen_rand.ignuin(0, words.dictlen("lastnames")-1)));
             break;
         case PHONE:
             // +country (area) number
-            xmlprintf(out,"+%d (%d) %d", ignuin(1,99), ignuin(10,999), ignuin(123456,98765432));
+            xmlprintf(out,"+%d (%d) %d", xmlgen_rand.ignuin(1,99), xmlgen_rand.ignuin(10,999), xmlgen_rand.ignuin(123456,98765432));
             break;
         case CREDITCARD:
             for(int i=0;i<4;i++) {
@@ -795,13 +795,13 @@ void GenSubtree(FILE *out, ObjDesc *od)
                 if (i < 3) {
                     s = " ";
                 }
-                xmlprintf(out,"%d%s",ignuin(1000,9999), s);
+                xmlprintf(out,"%d%s",xmlgen_rand.ignuin(1000,9999), s);
             }
             break;
         case PAYMENT:
             r=0;
             for (int i=0;i<4;i++)
-                if (ignuin(0,1)) {
+                if (xmlgen_rand.ignuin(0,1)) {
                     char *x = "";
                     if (r++) {
                         x = ", ";
@@ -812,47 +812,47 @@ void GenSubtree(FILE *out, ObjDesc *od)
         case SHIPPING:
             r=0;
             for (int i=0;i<4;i++)
-                if (ignuin(0,1)) {
+                if (xmlgen_rand.ignuin(0,1)) {
                     char *s = "";
                     if (r++) s = ", ";
                     xmlprintf(out,"%s%s",s,GenContents_shipping[i % 4]);
                 }
             break;
         case TIME:
-            int hrs=ignuin(0,23);
-            int min=ignuin(0,59);
-            int sec=ignuin(0,59);
+            int hrs=xmlgen_rand.ignuin(0,23);
+            int min=xmlgen_rand.ignuin(0,59);
+            int sec=xmlgen_rand.ignuin(0,59);
             xmlprintf(out,"%02d:%02d:%02d",hrs,min,sec);
             break;
         case AGE:
-            r=(int)gennor(30,15);
+            r=(int)xmlgen_rand.gennor(30,15);
             if (r < 18) r = 18;
             xmlprintf(out,"%d", r);
             break;
         case ZIPCODE:
-            r=ignuin(3,4);
+            r=xmlgen_rand.ignuin(3,4);
             int cd = 10;
             for (int j = 0; j < r; j++) {
                 cd*=10;
             }
-            r=ignuin(r, 10*r - 1);
+            r=xmlgen_rand.ignuin(r, 10*r - 1);
             xmlprintf(out,"%d",r);
             break;
         case BUSINESS:
         case PRIVACY:
-            xmlprintf(out,GenContents_yesno[ignuin(0,1)]);
+            xmlprintf(out,GenContents_yesno[xmlgen_rand.ignuin(0,1)]);
             break;
         case XDATE:
         case START:
         case END:
-            int month=ignuin(1,12);
-            int day=ignuin(1,28);
-            int year=ignuin(1998,2001);
+            int month=xmlgen_rand.ignuin(1,12);
+            int day=xmlgen_rand.ignuin(1,28);
+            int year=xmlgen_rand.ignuin(1998,2001);
             xmlprintf(out,"%02d/%02d/%4d",month,day,year);
             break;
         case CATNAME:
         case ITEMNAME:
-            PrintSentence(ignuin(1,4));
+            PrintSentence(xmlgen_rand.ignuin(1,4));
             break;
         case NAME:
             PrintName(&GenContents_lstname);
@@ -863,24 +863,24 @@ void GenSubtree(FILE *out, ObjDesc *od)
             xmlprintf(out," ");
             break;
         case EMAIL:
-            GenContents_email = ignuin(0, dictlen("emails") - 1);
+            GenContents_email = xmlgen_rand.ignuin(0, words.dictlen("emails") - 1);
             xmlprintf(out, "mailto:%s@%s",
-                dictentry("lastnames", GenContents_lstname),
-                dictentry("emails", GenContents_email));
+                words.dictentry("lastnames", GenContents_lstname),
+                words.dictentry("emails", GenContents_email));
             break;
         case GENDER:
-            if (ignuin(0,1) < 1) {
+            if (xmlgen_rand.ignuin(0,1) < 1) {
                 xmlprintf(out, "%s", "male");
             } else {
                 xmlprintf(out, "%s", "female");
             }
             break;
         case QUANTITY:
-            GenContents_quantity=1+(int)genexp(0.4);
+            GenContents_quantity=1+(int)xmlgen_rand.genexp(0.4);
             xmlprintf(out,"%d",GenContents_quantity);
             break;
         case INCREASE:
-            double d=1.5 *(1+(int)genexp(10));
+            double d=1.5 *(1+(int)xmlgen_rand.genexp(10));
             xmlprintf(out,"%.2f",d);
             GenContents_increases+=d;
         break;
@@ -888,16 +888,16 @@ void GenSubtree(FILE *out, ObjDesc *od)
             xmlprintf(out,"%.2f",GenContents_initial+GenContents_increases);
             break;
         case INIT_PRICE:
-            GenContents_initial=genexp(100);
+            GenContents_initial=xmlgen_rand.genexp(100);
             GenContents_increases=0;
             xmlprintf(out,"%.2f",GenContents_initial);
             break;
         case AMOUNT:
         case PRICE:
-            xmlprintf(out,"%.2f",genexp(100));
+            xmlprintf(out,"%.2f",xmlgen_rand.genexp(100));
             break;
         case RESERVE:
-            xmlprintf(out,"%.2f",GenContents_initial*(1.2+genexp(2.5)));
+            xmlprintf(out,"%.2f",GenContents_initial*(1.2+xmlgen_rand.genexp(2.5)));
             break;
         case TEXT:
             PrintANY();
@@ -911,7 +911,7 @@ void GenSubtree(FILE *out, ObjDesc *od)
 
     if (od->type&0x02)
         {
-            double sum=0,alt=genunf(0,1);
+            double sum=0,alt=xmlgen_rand.genunf(0,1);
             i=0;
             if (od->flag>2-1)
                 while (i<od->kids-1 && od->elm[i].rec) i++;
@@ -924,7 +924,7 @@ void GenSubtree(FILE *out, ObjDesc *od)
             {
                 int num;
                 ed=&od->elm[i];
-                num=(int)(GenRandomNum(&ed->pd)+0.5);
+                num=(int)(xmlgen_rand.GenRandomNum(&ed->pd)+0.5);
                 while(num--)
                     GenSubtree(out, objs+ed->id);
             }
@@ -949,7 +949,7 @@ void Preamble(int type)
             break;
         case 3:
             xmlprintf(stderr,"Not yet implemented.\n");
-            exit(EXIT_FAILURE);
+            exit(1);
         }
 }
 
@@ -1100,20 +1100,20 @@ int main(int argc, char **argv)
     bool show_version = false;
     bool iflag = false;
 
-    opt.bool("e", "dumpdtd", &dumpdtd);
-    opt.bool("d", "document_type=2", &doctype_is_2);    
-    opt.bool("v", "show version", &show_version);
-    opt.bool("i", "indent_inc=2", &iflag);
-    opt.float("f", "global_scale_factor", &global_scale_factor);
-    opt.str("o", "global_outputname", &global_outputname);
-    opt.int("s", "global_split", &global_split);
+    opt.opt_bool("e", "dumpdtd", &dumpdtd);
+    opt.opt_bool("d", "document_type=2", &doctype_is_2);    
+    opt.opt_bool("v", "show version", &show_version);
+    opt.opt_bool("i", "indent_inc=2", &iflag);
+    opt.opt_float("f", "global_scale_factor", &global_scale_factor);
+    opt.opt_str("o", "global_outputname", &global_outputname);
+    opt.opt_int("s", "global_split", &global_split);
 
     if (argc == 1) {
-        opt.usage();
+        opt.opt_usage();
         return 1;
     }
 
-    opt.parse(argc, argv);
+    opt.opt_parse(argc, argv);
 
     if (show_version) {
         fprintf(stderr, "This is xmlgen, version ? by Florian Waas (flw@mx4.org)");
@@ -1143,7 +1143,7 @@ int main(int argc, char **argv)
         }
         if (!xmlout) {
             fprintf(stderr, "Can't open file %s\n", global_outputname);
-            exit(EXIT_FAILURE);
+            exit(1);
         }
     }
 
@@ -1174,7 +1174,7 @@ typedef {
     int max, brosmax;
     int dir, mydir;
     int current;
-    random_gen rk;
+    xmlgen_rand.random_gen rk;
 } idrepro;
 
 idrepro idr[2] = {};
@@ -1203,14 +1203,14 @@ char tick[3] = "";
 int PrintANY_st[3] = {};
 
 void PrintANY() {
-    int sen=1+(int)genexp(20);
+    int sen=1+(int)xmlgen_rand.genexp(20);
     int stptr=0;
     for (int i=0;i<sen;i++)
         {
-            if (genunf(0,1)<0.1 && stptr<3-1)
+            if (xmlgen_rand.genunf(0,1)<0.1 && stptr<3-1)
             {
                 while (true) {
-                    PrintANY_st[stptr]=ignuin(0,3-1);
+                    PrintANY_st[stptr]=xmlgen_rand.ignuin(0,3-1);
                     if (!tick[PrintANY_st[stptr]]) {
                         break;
                     }
@@ -1220,13 +1220,13 @@ void PrintANY() {
                 stptr++;
             }
             else
-                if (genunf(0,1)<0.8 && stptr)
+                if (xmlgen_rand.genunf(0,1)<0.8 && stptr)
                     {
                         --stptr;
                         xmlprintf(xmlout,"</%s> ",markup[PrintANY_st[stptr]]);
                         tick[PrintANY_st[stptr]]=0;
                     }
-            PrintSentence(1+(int)genexp(4));
+            PrintSentence(1+(int)xmlgen_rand.genexp(4));
        }
     while(stptr)
         {
@@ -1286,12 +1286,12 @@ int GenItemIdRef(idrepro *rep, int *idref)
     }
     else
         {
-            rep->dir=__ignuin(&rep->rk,0,1);
+            rep->dir=xmlgen_rand.__ignuin(&rep->rk,0,1);
             while(rep->dir!=rep->mydir && rep->brosout<rep->brosmax)
                 {
                     rep->brosout++;
                     rep->cur++;
-                    rep->dir=__ignuin(&rep->rk,0,1);
+                    rep->dir=xmlgen_rand.__ignuin(&rep->rk,0,1);
                 }
             *idref=rep->cur++;
             res=1;
@@ -1349,29 +1349,29 @@ char *GenContents_shipping[]={
                 "See description for charges"};
 
 void PrintName(int *lastout) {
-    int fst=(int)genexp(dictlen("firstnames")/3);
-    if (fst >= dictlen("firstnames")-1) {
-        fst = dictlen("firstnames")-1;
+    int fst=(int)xmlgen_rand.genexp(words.dictlen("firstnames")/3);
+    if (fst >= words.dictlen("firstnames")-1) {
+        fst = words.dictlen("firstnames")-1;
     }
 
-    int lst=(int)genexp( dictlen("lastnames")/3);
-    if (lst >= dictlen("lastnames")-1) {
-        lst = dictlen("lastnames")-1;
+    int lst=(int)xmlgen_rand.genexp( words.dictlen("lastnames")/3);
+    if (lst >= words.dictlen("lastnames")-1) {
+        lst = words.dictlen("lastnames")-1;
     }
-    xmlprintf(xmlout,"%s %s", dictentry("firstnames", fst), dictentry("lastnames", lst));
+    xmlprintf(xmlout,"%s %s", words.dictentry("firstnames", fst), words.dictentry("lastnames", lst));
     if (lastout) {
         *lastout = lst;
     }
 }
 
 void PrintSentence(int w) {
-    int n = dictlen("words");
+    int n = words.dictlen("words");
     for (int i=0; i<w; i++) {
-        int word=(int)genexp(n/5.0);
+        int word=(int)xmlgen_rand.genexp(n/5.0);
         if (word >= n - 1) {
             word = n - 1;
         }
-        xmlprintf(xmlout, dictentry("words", word));
+        xmlprintf(xmlout, words.dictentry("words", word));
         xmlprintf(xmlout," ");
     }
 }

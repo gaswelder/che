@@ -73,7 +73,7 @@ enum
     OP_TRAP    /* execute trap */
 };
 
-term_t *term = NULL;
+term.term_t *term = NULL;
 bool running = true;
 
 int main(int argc, char *argv[]) {
@@ -104,8 +104,8 @@ int main(int argc, char *argv[]) {
 
     signal(SIGINT, handle_interrupt);
 
-    term = term_get_stdin();
-    term_disable_input_buffering(term);
+    term = term.term_get_stdin();
+    term.term_disable_input_buffering(term);
 
     reg[R_COND] = FL_ZRO;
     reg[R_PC] = PC_START;
@@ -136,7 +136,7 @@ int main(int argc, char *argv[]) {
         }
     }
     
-    term_restore(term);
+    term.term_restore(term);
 }
 
 
@@ -166,7 +166,7 @@ uint16_t mem_read(uint16_t address)
 {
     if (address == MR_KBSR)
     {
-        if (stdin_has_input())
+        if (misc.stdin_has_input())
         {
             memory[MR_KBSR] = (1 << 15);
             memory[MR_KBDR] = getchar();
@@ -181,7 +181,7 @@ uint16_t mem_read(uint16_t address)
 
 
 void handle_interrupt(int signal) {
-    term_restore(term);
+    term.term_restore(term);
     printf("exit on signal %d\n", signal);
     exit(-2);
 }

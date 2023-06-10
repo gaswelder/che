@@ -16,13 +16,13 @@ int main(int ac, char **av) {
 }
 
 void test(char *av, *re, *s) {
-	Resub rs[10] = {0};
+	regexp9.Resub rs[10] = {0};
 	char dst[128];
 
 	printf("%s VIA %s", av, re);
-	Reprog *p = regcomp(re);
-	if (regexec(p, av, rs, 10)){
-		regsub(s, dst, sizeof(dst), rs, 10);
+	regexp9.Reprog *p = regexp9.regcomp(re);
+	if (regexp9.regexec(p, av, rs, 10)){
+		regexp9.regsub(s, dst, sizeof(dst), rs, 10);
 		printf(" sub %s -> %s", s, dst);
 	}
 	printf("\n");

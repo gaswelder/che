@@ -639,7 +639,7 @@ json_node *read_dict(parser_t *p)
 
 	while (jsontok.lexer_currtype(p->lexer) != EOF) {
 		// Get the field name string.
-		if (jsontok.lexer_currtype(p->lexer) != T_STR) {
+		if (jsontok.lexer_currtype(p->lexer) != jsontok.T_STR) {
 			json_free(o);
 			return error(p, "Key expected");
 		}
@@ -714,7 +714,7 @@ void *error(parser_t *p, const char *fmt, ...) {
 
 pub char *json_format(json_node *n)
 {
-	mem_t *z = mem.memopen();
+	mem.mem_t *z = mem.memopen();
 	json_write(z, n);
 	mem.memrewind(z);
 
@@ -730,7 +730,7 @@ pub char *json_format(json_node *n)
 	return str1;
 }
 
-void json_write(mem_t *z, json_node *n)
+void json_write(mem.mem_t *z, json_node *n)
 {
 	switch(json_type(n))
 	{
@@ -784,7 +784,7 @@ void json_write(mem_t *z, json_node *n)
 /*
  * Writes a node's escaped string contents.
  */
-void write_string(mem_t *z, json_node *node) {
+void write_string(mem.mem_t *z, json_node *node) {
 	const char *content = json_str(node);
 	
 	size_t n = strlen(content);

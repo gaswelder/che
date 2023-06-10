@@ -4,7 +4,7 @@
 
 typedef {
     FILE *out;
-    exec_t *child;
+    exec.exec_t *child;
 } client_t;
 
 client_t tl_exec(char **args) {
@@ -22,8 +22,8 @@ client_t tl_exec(char **args) {
     argv[i++] = NULL;
 
     char **env = {NULL};
-    pipe_t pipe = exec_makepipe();
-    exec_t *child = exec(argv, env, stdin, pipe.write, stderr);
+    exec.pipe_t pipe = exec.exec_makepipe();
+    exec.exec_t *child = exec.exec(argv, env, stdin, pipe.write, stderr);
     fclose(pipe.write);
     client_t r = {
         .out = pipe.read,
@@ -34,7 +34,7 @@ client_t tl_exec(char **args) {
 
 void tl_close(client_t c) {
     int status = 0;
-    if (!exec_wait(c.child, &status)) {
+    if (!exec.exec_wait(c.child, &status)) {
         fprintf(stderr, "wait failed: %s\n", strerror(errno));
     }
 }
@@ -67,7 +67,7 @@ pub bool tl_getval(char *id, char *param, char *out, size_t n) {
     char buf[1000] = {};
     bool ok = false;
     while (fgets(buf, sizeof(buf), c.out)) {
-        char *line = trim(buf);
+        char *line = strutil.trim(buf);
         puts(line);
         if (strstr(line, param) == line) {
             char *from = line + strlen(param) + strlen(": ");
@@ -104,7 +104,7 @@ pub void torrents(torr_t **items, size_t *size) {
     torr_t *list = malloc(cap * sizeof(torr_t));
     char buf[1000] = {};
     while (fgets(buf, sizeof(buf), client.out)) {
-        char *line = trim(buf);
+        char *line = strutil.trim(buf);
         torr_t t = parseline(line);
         if (!strcmp(t.id, "ID") || !strcmp(t.id, "Sum:")) {
             continue;
@@ -131,10 +131,10 @@ torr_t parseline(char *line)
 	// 41     n/a        None  Unknown      0.0     0.0   None  Idle          Books
 	// 38*    n/a        None  Unknown      0.0     0.0   None  Stopped       name
 
-    parsebuf_t *b = buf_new(line);
+    parsebuf.parsebuf_t *b = parsebuf.buf_new(line);
 
     torr_t t = {};
-    buf_skip_set(b, " \t");
+    parsebuf.buf_skip_set(b, " \t");
     // ID: 1 | 38*
     word(b, t.id, sizeof(t.id));
     // "Done": 20% | n/a
@@ -148,7 +148,7 @@ torr_t parseline(char *line)
     word(b, t.down, sizeof(t.down));
     word(b, t.ratio, sizeof(t.ratio));
     // "Status": Idle | Stopped | Up & Down
-    if (buf_skip_literal(b, "Up & Down")) {
+    if (parsebuf.buf_skip_literal(b, "Up & Down")) {
         strcpy(t.status, "Up & Down");
     }
     else word(b, t.status, sizeof(t.status));
@@ -158,27 +158,27 @@ torr_t parseline(char *line)
     return t;
 }
 
-void word(parsebuf_t *b, char *p, size_t n) {
-    while (buf_more(b) && buf_peek(b) != ' ') {
+void word(parsebuf.parsebuf_t *b, char *p, size_t n) {
+    while (parsebuf.buf_more(b) && parsebuf.buf_peek(b) != ' ') {
         if (n == 0) return;
         n--;
-        *p++ = buf_get(b);
+        *p++ = parsebuf.buf_get(b);
     }
     spaces(b);
 }
 
-void spaces(parsebuf_t *b) {
-    while (buf_more(b) && buf_peek(b) == ' ') {
-        buf_get(b);
+void spaces(parsebuf.parsebuf_t *b) {
+    while (parsebuf.buf_more(b) && parsebuf.buf_peek(b) == ' ') {
+        parsebuf.buf_get(b);
     }
 }
 
-void size(parsebuf_t *b, char *p, size_t n) {
-    if (isdigit(buf_peek(b))) {
-        while (buf_more(b) && buf_peek(b) != ' ') {
+void size(parsebuf.parsebuf_t *b, char *p, size_t n) {
+    if (isdigit(parsebuf.buf_peek(b))) {
+        while (parsebuf.buf_more(b) && parsebuf.buf_peek(b) != ' ') {
             if (n == 0) return;
             n--;
-            *p++ = buf_get(b);
+            *p++ = parsebuf.buf_get(b);
         }
         spaces(b);
         word(b, p, n);
@@ -187,10 +187,10 @@ void size(parsebuf_t *b, char *p, size_t n) {
     }
 }
 
-void rest(parsebuf_t *b, char *p, size_t n) {
-    while (buf_more(b)) {
+void rest(parsebuf.parsebuf_t *b, char *p, size_t n) {
+    while (parsebuf.buf_more(b)) {
         if (n == 0) return;
         n--;
-        *p++ = buf_get(b);
+        *p++ = parsebuf.buf_get(b);
     }
 }

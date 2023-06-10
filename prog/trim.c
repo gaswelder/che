@@ -22,12 +22,12 @@ int main( int argc, char *argv[] )
 {
 	char *line_format = "unix";
 
-	opt.summary("trim [-l unix/win/same] path...");
-	opt.str("l", "Convert line format ('unix', 'win' or 'same')", &line_format);
+	opt.opt_summary("trim [-l unix/win/same] path...");
+	opt.opt_str("l", "Convert line format ('unix', 'win' or 'same')", &line_format);
 
-	char **path = opt_parse( argc, argv );
+	char **path = opt.opt_parse( argc, argv );
 	if( !path ) {
-		opt_usage();
+		opt.opt_usage();
 		return 1;
 	}
 
@@ -47,7 +47,7 @@ int main( int argc, char *argv[] )
 
 	while( *path )
 	{
-		if( is_dir( *path ) ) {
+		if( fs.is_dir( *path ) ) {
 			//fprintf( stderr, "trim: skipping directory %s\n", *path );
 			path++;
 			continue;
@@ -85,8 +85,8 @@ bool trim_file(const char *path)
 	FILE *f = fopen(path, "rb");
 	if(!f) return false;
 
-	mem_t *out = memopen();
-	if (!out) fatal("Out of memory");
+	mem.mem_t *out = mem.memopen();
+	if (!out) cli.fatal("Out of memory");
 
 	bool changed = ftrim(f, out, path);
 	fclose(f);
@@ -98,7 +98,7 @@ bool trim_file(const char *path)
 	return true;
 }
 
-bool ftrim(FILE *in, mem_t *out, const char *fpath)
+bool ftrim(FILE *in, mem.mem_t *out, const char *fpath)
 {
 	linebuf_t buf = {0};
 
@@ -159,9 +159,9 @@ bool read_line(FILE *in, linebuf_t *buf, const char *fpath)
 		if(c == '\r') {
 			if(fpeek(in) != '\n') {
 				if(feof(in)) {
-					err("WTF! %c", fgetc(in));
+					cli.err("WTF! %c", fgetc(in));
 				}
-				err("%s: unknown eol sequence at line %d: (%d,%d)",
+				cli.err("%s: unknown eol sequence at line %d: (%d,%d)",
 					fpath, buf->num, c, fpeek(in));
 				return false;
 			}
@@ -180,7 +180,7 @@ bool read_line(FILE *in, linebuf_t *buf, const char *fpath)
 		}
 
 		if((size_t) len >= buf->maxsize && !growbuf(buf)) {
-			fatal("Couldn't allocate > %zu bytes for line", buf->maxsize);
+			cli.fatal("Couldn't allocate > %zu bytes for line", buf->maxsize);
 		}
 		buf->line[len] = c;
 		len++;
@@ -204,25 +204,25 @@ bool growbuf(linebuf_t *buf)
 	return true;
 }
 
-void write_line(linebuf_t *buf, mem_t *out)
+void write_line(linebuf_t *buf, mem.mem_t *out)
 {
 	for(int i = 0; i < buf->eol_pos; i++) {
-		memputc(buf->line[i], out);
+		mem.memputc(buf->line[i], out);
 	}
 	switch(buf->lf) {
 		case L_UNIX:
-			memputc('\n', out);
+			mem.memputc('\n', out);
 			break;
 		case L_WIN:
-			assert(memputc('\r', out) != EOF);
-			assert(memputc('\n', out) != EOF);
+			assert(mem.memputc('\r', out) != EOF);
+			assert(mem.memputc('\n', out) != EOF);
 			break;
 		default:
-			fatal("write_line: unhandled eol type: %d", buf->lf);
+			cli.fatal("write_line: unhandled eol type: %d", buf->lf);
 	}
 }
 
-int save(mem_t *mem, const char *path )
+int save(mem.mem_t *mem, const char *path )
 {
 	FILE *fp = fopen( path, "wb" );
 	if( !fp ) {
@@ -230,10 +230,10 @@ int save(mem_t *mem, const char *path )
 		return 0;
 	}
 
-	memrewind( mem );
+	mem.memrewind( mem );
 	int ok = 1;
 	while( 1 ) {
-		int ch = memgetc( mem );
+		int ch = mem.memgetc( mem );
 		if(ch == EOF) {
 			break;
 		}

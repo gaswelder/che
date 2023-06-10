@@ -5,45 +5,47 @@
 
 int main(int argc, char *argv[])
 {
-	if(argc != 3) {
-		fatal("Usage: mp3cuespl <cuefile> <mp3file>");
+	if (argc != 3) {
+		cli.fatal("Usage: mp3cuespl <cuefile> <mp3.mp3file>");
 	}
 
 	const char *cuepath = argv[1];
 	const char *mp3path = argv[2];
 
-	char *s = readfile_str(cuepath);
-	if(!s) fatal("Couldn't read %s", cuepath);
+	char *s = fileutil.readfile_str(cuepath);
+	if (!s) {
+		cli.fatal("Couldn't read %s", cuepath);
+	}
 
 	char *err = NULL;
-	cue_t *c = cue_parse(s, &err);
+	cue.cue_t *c = cue.cue_parse(s, &err);
 	free(s);
 	if (!c) {
 		fprintf(stderr, "Couldn't parse the cue file: %s\n", err);
 		return 1;
 	}
 
-	mp3file *m = mp3open(mp3path);
-	if(!m) fatal("Couldn't open '%s'", mp3path);
+	mp3.mp3file *m = mp3.mp3open(mp3path);
+	if(!m) cli.fatal("Couldn't open '%s'", mp3path);
 
 	cuespl(c, m);
-	cue_free(c);
-	mp3close(m);
+	cue.cue_free(c);
+	mp3.mp3close(m);
 
 	return 0;
 }
 
-void cuespl(cue_t *c, mp3file *m) {
-	int n = cue_ntracks(c);
+void cuespl(cue.cue_t *c, mp3.mp3file *m) {
+	int n = cue.cue_ntracks(c);
 	for(int i = 0; i < n; i++) {
-		cuetrack_t *track = cue_track(c, i);
+		cue.cuetrack_t *track = cue.cue_track(c, i);
 
 		char fname[1000] = {};
 		snprintf(fname, sizeof(fname), "%02d. %s.mp3", i+1, track->title);
 
-		mp3time_t pos = {0};
+		mp3.mp3time_t pos = {0};
 		if(i+1 < n) {
-			cuetrack_t *next = cue_track(c, i+1);
+			cue.cuetrack_t *next = cue.cue_track(c, i+1);
 			pos.usec = next->pos_usec;
 		}
 		else {
@@ -53,10 +55,10 @@ void cuespl(cue_t *c, mp3file *m) {
 
 		printf("%s\n", fname);
 		FILE *out = fopen(fname, "wb");
-		if(!out) {
-			fatal("Couldn't create %s", fname);
+		if (!out) {
+			cli.fatal("Couldn't create %s", fname);
 		}
-		mp3out(m, out, pos);
+		mp3.mp3out(m, out, pos);
 		fclose(out);
 	}
 }

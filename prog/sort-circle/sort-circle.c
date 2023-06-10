@@ -42,7 +42,7 @@ const char *sort_names[] = {
  * PPM buffer
  */
 const int S = 800;
-ppm_t *ppm = NULL;
+ppm.ppm_t *ppm = NULL;
 
 #define FPS   60            // output framerate
 
@@ -54,50 +54,49 @@ int swaps[N] = {};
 const char *message = "";
 FILE *wav = NULL;
 
-int main(int argc, char **argv)
-{
+int main(int argc, char **argv) {
     if (!load_font("prog/sort-circle-font.bin")) {
-        fatal("couldn't load font at 'prog/sort-circle-font.bin'");
+        cli.fatal("couldn't load font at 'prog/sort-circle-font.bin'");
     }
 
-    ppm = ppm_init(S, S);
+    ppm = ppm.init(S, S);
 
     /*
      * Parse the flags.
      */
     bool help = false;
-    opt.bool("h", "print the help message", &help);
+    opt.opt_bool("h", "print the help message", &help);
     bool hide_shuffle = false;
-    opt.bool("q", "don't draw the shuffle", &hide_shuffle);
+    opt.opt_bool("q", "don't draw the shuffle", &hide_shuffle);
     bool slow_shuffle = false;
-    opt.bool("y", "slow down shuffle animation", &slow_shuffle);
+    opt.opt_bool("y", "slow down shuffle animation", &slow_shuffle);
     char *audio_output = NULL;
-    opt.str("a", "name of audio output (WAV)", &audio_output);
+    opt.opt_str("a", "name of audio output (WAV)", &audio_output);
     int sort_number = 0;
-    opt.int("s", "animate sort number N", &sort_number);
+    opt.opt_int("s", "animate sort number N", &sort_number);
     int delay = 0;
-    opt.int("w", "insert a delay of N frames", &delay);
+    opt.opt_int("w", "insert a delay of N frames", &delay);
     char *seed_str = NULL;
-    opt.str("x", "seed for shuffling (64-bit HEX string)", &seed_str);
-    opt.parse(argc, argv);
+    opt.opt_str("x", "seed for shuffling (64-bit HEX string)", &seed_str);
+    opt.opt_parse(argc, argv);
 
     if (help) {
-        opt.usage();
+        opt.opt_usage();
         for (int i = 1; i < SORTS_TOTAL; i++) {
             fprintf(stderr, "  %d: %s\n", i, sort_names[i]);
         }
-        exit(EXIT_SUCCESS);
+        exit(0);
     }
 
     if (seed_str) {
-        pcg32_seed(strtoull(seed_str, NULL, 16));
+        pcg32.pcg32_seed(strtoull(seed_str, NULL, 16));
     }
 
     if (audio_output) {
         wav = wav_init(audio_output);
         if (!wav) {
             fprintf(stderr, "%s: %s: %s\n", argv[0], strerror(errno), audio_output);
-            exit(EXIT_FAILURE);
+            exit(0);
         }
     }
 
@@ -160,7 +159,7 @@ void frame() {
         float py = r * y + S / 2.0f;
 
         int32_t c = hue(array[i]);
-        rgb_t color = {
+        ppm.rgb_t color = {
             .r = ((c >> 16) / 255.0f),
             .g = (((c >> 8) & 0xff) / 255.0f),
             .b = ((c & 0xff) / 255.0f)
@@ -170,8 +169,8 @@ void frame() {
     if (message) {
         draw_string(ppm, message);
     }
-    ppm_write(ppm, stdout);
-    ppm_clear(ppm);
+    ppm.write(ppm, stdout);
+    ppm.clear(ppm);
     fflush(stdout);
 
     /* Output audio */
@@ -203,7 +202,7 @@ void frame() {
         /* Write out 16-bit samples */
         for (int i = 0; i < nsamples; i++) {
             int s = samples[i] * 0x7fff;
-            emit_u16le(s, wav);
+            endian.emit_u16le(s, wav);
         }
         fflush(wav);
     }
@@ -350,7 +349,7 @@ sort_radix_lsd(int array[N], int b)
 void shuffle(int array[N], bool hide, slow) {
     message = "Fisher-Yates";
     for (int i = N - 1; i > 0; i--) {
-        uint32_t r = pcg32() % (i + 1);
+        uint32_t r = pcg32.pcg32() % (i + 1);
         swap(array, i, r);
         if (hide) {
             continue;
@@ -397,26 +396,26 @@ FILE *wav_init(const char *file)
 {
     FILE *f = fopen(file, "wb");
     if (f) {
-        emit_u32be(0x52494646UL, f); // "RIFF"
-        emit_u32le(0xffffffffUL, f); // file length
-        emit_u32be(0x57415645UL, f); // "WAVE"
-        emit_u32be(0x666d7420UL, f); // "fmt "
-        emit_u32le(16,           f); // struct size
-        emit_u16le(1,            f); // PCM
-        emit_u16le(1,            f); // mono
-        emit_u32le(HZ,           f); // sample rate (i.e. 44.1 kHz)
-        emit_u32le(HZ * 2,       f); // byte rate
-        emit_u16le(2,            f); // block size
-        emit_u16le(16,           f); // bits per sample
-        emit_u32be(0x64617461UL, f); // "data"
-        emit_u32le(0xffffffffUL, f); // byte length
+        endian.emit_u32be(0x52494646UL, f); // "RIFF"
+        endian.emit_u32le(0xffffffffUL, f); // file length
+        endian.emit_u32be(0x57415645UL, f); // "WAVE"
+        endian.emit_u32be(0x666d7420UL, f); // "fmt "
+        endian.emit_u32le(16,           f); // struct size
+        endian.emit_u16le(1,            f); // PCM
+        endian.emit_u16le(1,            f); // mono
+        endian.emit_u32le(HZ,           f); // sample rate (i.e. 44.1 kHz)
+        endian.emit_u32le(HZ * 2,       f); // byte rate
+        endian.emit_u16le(2,            f); // block size
+        endian.emit_u16le(16,           f); // bits per sample
+        endian.emit_u32be(0x64617461UL, f); // "data"
+        endian.emit_u32le(0xffffffffUL, f); // byte length
     }
     return f;
 }
 
 #define R0    (S / 400.0f)  // dot inner radius
 #define R1    (S / 200.0f)  // dot outer radius
-void ppm_dot(ppm_t *p, float x, y, rgb_t color)
+void ppm_dot(ppm.ppm_t *p, float x, y, ppm.rgb_t color)
 {
     int miny = floorf(y - R1 - 1);
     int maxy = ceilf(y + R1 + 1);
@@ -429,7 +428,7 @@ void ppm_dot(ppm_t *p, float x, y, rgb_t color)
             float dx = px - x;
             float d = sqrtf(dy * dy + dx * dx);
             float alpha = smoothstep(R1, R0, d);
-            ppm_merge(p, px, py, color, alpha);
+            ppm.merge(p, px, py, color, alpha);
         }
     }
 }
@@ -453,9 +452,9 @@ float clamp(float x, float lower, float upper)
 const int PAD = 800 / 128;     // message padding
 #define FONT_W 16
 #define FONT_H 33
-void draw_string(ppm_t *p, const char *message)
+void draw_string(ppm.ppm_t *p, const char *message)
 {
-    rgb_t fontcolor = {1.0, 1.0, 1.0};
+    ppm.rgb_t fontcolor = {1.0, 1.0, 1.0};
     for (int c = 0; message[c]; c++) {
         int x = c * FONT_W + PAD;
         int y = PAD;
@@ -463,7 +462,7 @@ void draw_string(ppm_t *p, const char *message)
             for (int dx = 0; dx < FONT_W; dx++) {
                 float alpha = font_value(message[c], dx, dy);
                 if (alpha > 0.0f) {
-                    ppm_merge(p, x + dx, y + dy, fontcolor, alpha);
+                    ppm.merge(p, x + dx, y + dy, fontcolor, alpha);
                 }
             }
         }
@@ -473,7 +472,7 @@ void draw_string(ppm_t *p, const char *message)
 uint8_t *font = NULL;
 
 bool load_font(const char *path) {
-    font = (uint8_t *) readfile(path, NULL);
+    font = (uint8_t *) fileutil.readfile(path, NULL);
     return font != NULL;
 }
 

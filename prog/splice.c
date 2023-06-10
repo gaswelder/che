@@ -6,11 +6,11 @@ int main(int argc, char *argv[]) {
     size_t size = 2;
     size_t cols = 0;
 
-    opt.size("n", "number of columns", &size);
-    opt.parse(argc, argv);
+    opt.opt_size("n", "number of columns", &size);
+    opt.opt_parse(argc, argv);
 
     while (fgets(buf, 4096, stdin)) {
-        rtrim(buf, "\n");
+        strutil.rtrim(buf, "\n");
         if (cols > 0) {
             putchar('\t');
         }

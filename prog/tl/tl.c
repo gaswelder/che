@@ -34,7 +34,7 @@ int cmd_add(int argc, char **argv) {
     }
 
     for (char **url = argv + 1; *url; url++) {
-        tl_add(*url);
+        client.tl_add(*url);
     }
     return 0;
 }
@@ -44,13 +44,13 @@ int cmd_hide(int argc, char **argv) {
         fprintf(stderr, "usage: %s <torrent id> ...\n", argv[0]);
         return 1;
     }
-    torr_t *tt = NULL;
+    client.torr_t *tt = NULL;
     size_t len = 0;
-    torrents(&tt, &len);
+    client.torrents(&tt, &len);
     FILE *f = fopen("tl.list", "a+");
     for (char **id = argv + 1; *id; id++) {
         for (size_t i = 0; i < len; i++) {
-            torr_t l = tt[i];
+            client.torr_t l = tt[i];
             if (!strcmp(*id, l.id)) {
                 fprintf(f, "%s\n", l.name);
                 break;
@@ -64,27 +64,27 @@ int cmd_hide(int argc, char **argv) {
 
 int cmd_list(int argc, char **argv) {
     bool all = false;
-    opt.bool("a", "show all torrents", &all);
+    opt.opt_bool("a", "show all torrents", &all);
     bool hidden = false;
-    opt.bool("i", "show hidden torrents", &hidden);
+    opt.opt_bool("i", "show hidden torrents", &hidden);
     bool order = false;
-    opt.bool("r", "order by seed ratio", &order);
-    opt.parse(argc, argv);
+    opt.opt_bool("r", "order by seed ratio", &order);
+    opt.opt_parse(argc, argv);
 
     bool showhidden = all || hidden;
     bool showvisible = all || !hidden;
 
-    torr_t *tt = NULL;
+    client.torr_t *tt = NULL;
     size_t len = 0;
-    torrents(&tt, &len);
+    client.torrents(&tt, &len);
     if (order) {
-        qsort(tt, len, sizeof(torr_t), &cmp);
+        qsort(tt, len, sizeof(client.torr_t), &cmp);
     }
 
     FILE *f = fopen("tl.list", "r");
 
     for (size_t i = 0; i < len; i++) {
-        torr_t l = tt[i];
+        client.torr_t l = tt[i];
 
         if (!showhidden && ishidden(f, l.name)) {
             continue;
@@ -111,7 +111,7 @@ bool ishidden(FILE *f, char *name) {
     bool r = false;
     char buf[1000] = {};
     while (fgets(buf, sizeof(buf), f)) {
-        if (!strcmp(trim(buf), name)) {
+        if (!strcmp(strutil.trim(buf), name)) {
             r = true;
             break;
         }
@@ -120,8 +120,8 @@ bool ishidden(FILE *f, char *name) {
 }
 
 int cmp(const void *va, *vb) {
-    torr_t *a = (torr_t *) va;
-    torr_t *b = (torr_t *) vb;
+    const client.torr_t *a = va;
+    const client.torr_t *b = vb;
     float ar = 0;
     float br = 0;
     sscanf(a->ratio, "%f", &ar);
@@ -139,20 +139,20 @@ int cmd_rm(int argc, char **argv) {
 
     for (char **id = argv + 1; *id; id++) {
         char dir[1000] = {};
-        if (!tl_getval(*id, "Location", dir, sizeof(dir))) {
+        if (!client.tl_getval(*id, "Location", dir, sizeof(dir))) {
             fprintf(stderr, "failed to get location for torrent %s\n", *id);
             continue;
         }
         char name[1000] = {};
-        if (!tl_getval(*id, "Name", name, sizeof(name))) {
+        if (!client.tl_getval(*id, "Name", name, sizeof(name))) {
             fprintf(stderr, "failed to get name for torrent %s\n", *id);
             continue;
         }
 
-        tl_rm(*id);
+        client.tl_rm(*id);
 
-        char *path = newstr("%s/%s", dir, name);
-        char *newpath = newstr("%s/__%s", dir, name);
+        char *path = strutil.newstr("%s/%s", dir, name);
+        char *newpath = strutil.newstr("%s/__%s", dir, name);
         if (rename(path, newpath) < 0) {
             fprintf(stderr, "failed rename torrent to '%s': %s\n", newpath, strerror(errno));
         }
@@ -180,9 +180,9 @@ int cmd_unhide(int argc, char **argv) {
         return 1;
     }
 
-    torr_t *tt = NULL;
+    client.torr_t *tt = NULL;
     size_t len = 0;
-    torrents(&tt, &len);
+    client.torrents(&tt, &len);
 
     show(tt, len, f, tmp, argv + 1);
 
@@ -197,14 +197,14 @@ int cmd_unhide(int argc, char **argv) {
     return 0;
 }
 
-void show(torr_t *tt, size_t len, FILE *f, *tmp, char **ids) {
+void show(client.torr_t *tt, size_t len, FILE *f, *tmp, char **ids) {
     char buf[1000] = {};
     while (fgets(buf, sizeof(buf), f)) {
-        char *name = trim(buf);
+        char *name = strutil.trim(buf);
         /*
          * Find the torrent with this name
          */
-        torr_t *t = NULL;
+        client.torr_t *t = NULL;
         for (size_t i = 0; i < len; i++) {
             if (!strcmp(tt[i].name, name)) {
                 t = tt + i;

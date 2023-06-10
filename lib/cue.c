@@ -1,12 +1,9 @@
 /*
  * CUE format parser
+ * http://wiki.hydrogenaud.io/index.php?title=Cue_sheet
  */
 #import cli
 #import parsebuf
-
-/*
- * http://wiki.hydrogenaud.io/index.php?title=Cue_sheet
- */
 
 /*
  * Track info: title and position in microseconds
@@ -33,7 +30,7 @@ pub typedef {
  */
 typedef {
 	char cmd[40];
-	parsebuf_t *buf;
+	parsebuf.parsebuf_t *buf;
 } context_t;
 
 /*
@@ -74,7 +71,7 @@ pub cue_t *cue_parse(const char *s, char **err)
 {
 	context_t c = {};
 
-	c.buf = buf_new(s);
+	c.buf = parsebuf.buf_new(s);
 	if (!c.buf) {
 		*err = strerror(errno);
 		return NULL;
@@ -82,19 +79,19 @@ pub cue_t *cue_parse(const char *s, char **err)
 
 	cue_t *cue = calloc(1, sizeof(cue_t));
 	if (!cue) {
-		buf_free(c.buf);
+		parsebuf.buf_free(c.buf);
 		*err = strerror(errno);
 		return NULL;
 	}
 
 	/*
-	 * Skip UTF-8 mark
+	 * Skip the UTF-8 mark
 	 */
-	if((uint8_t) buf_peek(c.buf) == 0xEF) {
-		buf_get(c.buf);
-		if((uint8_t) buf_get(c.buf) != 0xBB || (uint8_t) buf_get(c.buf) != 0xBF) {
+	if((uint8_t) parsebuf.buf_peek(c.buf) == 0xEF) {
+		parsebuf.buf_get(c.buf);
+		if((uint8_t) parsebuf.buf_get(c.buf) != 0xBB || (uint8_t) parsebuf.buf_get(c.buf) != 0xBF) {
 			free(cue);
-			buf_free(c.buf);
+			parsebuf.buf_free(c.buf);
 			*err = "Unknown byte-order mark";
 			return NULL;
 		}
@@ -120,27 +117,27 @@ pub cue_t *cue_parse(const char *s, char **err)
 		while(strcmp(c.cmd, "TRACK") == 0) {
 			if(cue->ntracks == MAXTRACKS) {
 				free(cue);
-				buf_free(c.buf);
+				parsebuf.buf_free(c.buf);
 				*err = makeerr("too many tracks (limit = %d)", MAXTRACKS);
 				return NULL;
 			}
 			if (!read_track(&c, &cue->tracks[cue->ntracks], err)) {
 				free(cue);
-				buf_free(c.buf);
+				parsebuf.buf_free(c.buf);
 				return NULL;
 			}
 			cue->ntracks++;
 		}
 	}
 
-	if(buf_more(c.buf)) {
+	if(parsebuf.buf_more(c.buf)) {
 		free(cue);
-		buf_free(c.buf);
+		parsebuf.buf_free(c.buf);
 		*err = makeerr("unexpected command: '%s'", c.cmd);
 		return NULL;
 	}
 
-	buf_free(c.buf);
+	parsebuf.buf_free(c.buf);
 	return cue;
 }
 
@@ -167,8 +164,8 @@ bool read_track(context_t *c, cuetrack_t *track, char **err)
 		}
 
 		int i = 0;
-		while(buf_more(c->buf)) {
-			int ch = buf_get(c->buf);
+		while(parsebuf.buf_more(c->buf)) {
+			int ch = parsebuf.buf_get(c->buf);
 			val[i++] = ch;
 			if(ch == '\n') break;
 		}
@@ -222,13 +219,13 @@ bool read_track(context_t *c, cuetrack_t *track, char **err)
 /*
  * Discards rest of the current line
  */
-void skip_line(parsebuf_t *b)
+void skip_line(parsebuf.parsebuf_t *b)
 {
-	while(buf_more(b) && buf_peek(b) != '\n') {
-		buf_get(b);
+	while(parsebuf.buf_more(b) && parsebuf.buf_peek(b) != '\n') {
+		parsebuf.buf_get(b);
 	}
-	if(buf_peek(b) == '\n') {
-		buf_get(b);
+	if(parsebuf.buf_peek(b) == '\n') {
+		parsebuf.buf_get(b);
 	}
 }
 
@@ -237,17 +234,17 @@ void skip_line(parsebuf_t *b)
  */
 void read_command(context_t *c)
 {
-	while(buf_peek(c->buf) == ' ' || buf_peek(c->buf) == '\t') {
-		buf_get(c->buf);
+	while(parsebuf.buf_peek(c->buf) == ' ' || parsebuf.buf_peek(c->buf) == '\t') {
+		parsebuf.buf_get(c->buf);
 	}
 	int i = 0;
-	while(isalpha(buf_peek(c->buf))) {
-		c->cmd[i] = buf_get(c->buf);
+	while(isalpha(parsebuf.buf_peek(c->buf))) {
+		c->cmd[i] = parsebuf.buf_get(c->buf);
 		i++;
 	}
 	c->cmd[i] = '\0';
-	while(isspace(buf_peek(c->buf))) {
-		buf_get(c->buf);
+	while(isspace(parsebuf.buf_peek(c->buf))) {
+		parsebuf.buf_get(c->buf);
 	}
 }
 
