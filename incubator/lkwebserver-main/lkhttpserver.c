@@ -661,6 +661,21 @@ void write_proxy_request(LKHttpServer *server, LKContext *ctx) {
     }
 }
 
+// Similar to lk_write_all(), but sending buflist buf's sequentially.
+int lk_buflist_write_all(int fd, FDType fd_type, LKRefList *buflist) {
+    if (buflist->items_cur >= buflist->items_len) {
+        return Z_EOF;
+    }
+
+    LKBuffer *buf = buflist->items[buflist->items_cur];
+    int z = lk_write_all(fd, fd_type, buf);
+    if (z == Z_EOF) {
+        buflist->items_cur++;
+        z = Z_OPEN;
+    }
+    return z;
+}
+
 void pipe_proxy_response(LKHttpServer *server, LKContext *ctx) {
     int z = lk_pipe_all(ctx->proxyfd, ctx->clientfd, FD_SOCK, ctx->proxy_respbuf);
     if (z == Z_OPEN || z == Z_BLOCK) {

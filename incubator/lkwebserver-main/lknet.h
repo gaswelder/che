@@ -207,9 +207,6 @@ int lk_write_all(int fd, FDType fd_type, LKBuffer *buf);
 int lk_write_all_sock(int fd, LKBuffer *buf);
 int lk_write_all_file(int fd, LKBuffer *buf);
 
-// Similar to lk_write_all(), but sending buflist buf's sequentially.
-int lk_buflist_write_all(int fd, FDType fd_type, LKRefList *buflist);
-
 // Pipe all available nonblocking readfd bytes into writefd.
 // Uses buf as buffer for queued up bytes waiting to be written.
 // Returns one of the following:

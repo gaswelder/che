@@ -43,13 +43,6 @@ void *lk_reflist_get(LKRefList *l, unsigned int i) {
     return l->items[i];
 }
 
-void *lk_reflist_get_cur(LKRefList *l) {
-    if (l->items_cur >= l->items_len) {
-        return NULL;
-    }
-    return l->items[l->items_cur];
-}
-
 void lk_reflist_remove(LKRefList *l, unsigned int i) {
     if (l->items_len == 0) return;
     if (i >= l->items_len) return;

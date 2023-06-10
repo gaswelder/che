@@ -380,22 +380,6 @@ int lk_write_all_file(int fd, LKBuffer *buf) {
     return lk_write_all(fd, FD_FILE, buf);
 }
 
-// Similar to lk_write_all(), but sending buflist buf's sequentially.
-int lk_buflist_write_all(int fd, FDType fd_type, LKRefList *buflist) {
-    if (buflist->items_cur >= buflist->items_len) {
-        return Z_EOF;
-    }
-
-    LKBuffer *buf = lk_reflist_get_cur(buflist);
-    assert(buf != NULL);
-    int z = lk_write_all(fd, fd_type, buf);
-    if (z == Z_EOF) {
-        buflist->items_cur++;
-        z = Z_OPEN;
-    }
-    return z;
-}
-
 // Pipe all available nonblocking readfd bytes into writefd.
 // Uses buf as buffer for queued up bytes waiting to be written.
 // Returns one of the following:
