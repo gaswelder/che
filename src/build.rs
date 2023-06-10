@@ -6,7 +6,6 @@ use crate::nodes_c::CModule;
 use crate::nodes_c::CModuleObject;
 use crate::parser;
 use crate::preparser;
-use crate::preparser::Ctx;
 use crate::preparser::Dep;
 use crate::preparser::Imp1;
 use crate::rename;
@@ -16,6 +15,24 @@ use md5;
 use std::fs;
 use std::io::BufRead;
 use std::process::{Command, Stdio};
+
+#[derive(Clone, Debug)]
+pub struct Ctx {
+    pub path: String,
+    pub typenames: Vec<String>,
+    pub deps: Vec<Dep>,
+}
+
+impl Ctx {
+    pub fn has_ns(&self, ns: &String) -> bool {
+        for dep in &self.deps {
+            if dep.ns == *ns {
+                return true;
+            }
+        }
+        return false;
+    }
+}
 
 #[derive(Debug)]
 pub struct Build {

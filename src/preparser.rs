@@ -3,30 +3,6 @@ use crate::resolve::{self};
 use substring::Substring;
 
 #[derive(Clone, Debug)]
-pub struct ModuleImport {
-    pub path: String, // import path, not normalized
-    pub ns: String,   // alias (lib/foo.c -> foo)
-}
-
-#[derive(Clone, Debug)]
-pub struct Ctx {
-    pub path: String,
-    pub typenames: Vec<String>,
-    pub deps: Vec<Dep>,
-}
-
-impl Ctx {
-    pub fn has_ns(&self, ns: &String) -> bool {
-        for dep in &self.deps {
-            if dep.ns == *ns {
-                return true;
-            }
-        }
-        return false;
-    }
-}
-
-#[derive(Clone, Debug)]
 pub struct Dep {
     // pub path: String,
     pub ns: String,
