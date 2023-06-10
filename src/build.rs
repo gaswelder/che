@@ -37,6 +37,7 @@ impl Ctx {
 pub struct Dep {
     pub ns: String,
     pub typenames: Vec<String>,
+    pub path: String,
 }
 
 #[derive(Debug)]
@@ -164,6 +165,7 @@ pub fn parse(mainpath: &String) -> Result<Build, String> {
             deps.push(Dep {
                 ns: imp.ns.clone(),
                 typenames: work.typenames[pos].clone(),
+                path: imp.path.clone(),
             });
         }
         work.ctx.push(Ctx {
@@ -199,8 +201,9 @@ pub fn parse(mainpath: &String) -> Result<Build, String> {
 
 pub fn translate(work: &mut Build) -> Result<(), String> {
     // Globalize all modules
-    for m in work.m.iter_mut() {
-        rename::globalize_module(m, &String::from("kek"));
+    for (i, m) in work.m.iter_mut().enumerate() {
+        let path = &work.paths[i];
+        rename::globalize_module(m, &translator::module_gid(path));
     }
     println!("globaized");
 

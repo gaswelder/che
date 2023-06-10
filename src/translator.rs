@@ -1,14 +1,12 @@
 use crate::build::Ctx;
-use crate::build::Dep;
 use crate::format;
 use crate::format_che;
 use crate::nodes::*;
 use crate::nodes_c::*;
 use std::collections::HashSet;
 
-pub fn module_gid(dep: &Dep) -> String {
-    return format!("__ns_{}", dep.ns);
-    // return format!("{:x}", md5::compute(namespace));
+pub fn module_gid(path: &String) -> String {
+    return format!("ns_{}", path.replace("/", "_"));
 }
 
 pub fn translate(m: &Module, ctx: &Ctx) -> CModule {
@@ -463,7 +461,7 @@ fn translate_ns_name(nsid: &NsName, ctx: &Ctx) -> String {
         let dep = ctx.deps.iter().find(|d| d.ns == nsid.namespace).unwrap();
 
         // Replace with the module's "id".
-        let id = module_gid(&dep);
+        let id = module_gid(&dep.path);
         return format!("{}__{}", id, nsid.name);
     }
     return nsid.name.clone();
