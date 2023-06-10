@@ -1,5 +1,5 @@
 pub typedef { int a; } foo_t;
-pub void lib_f() {
+pub void f() {
     foo_t x = {};
     puts("OK");
 }

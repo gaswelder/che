@@ -6,7 +6,7 @@ use crate::nodes_c::*;
 use std::collections::HashSet;
 
 pub fn module_gid(path: &String) -> String {
-    return format!("ns_{}", path.replace("/", "_"));
+    return format!("ns_{}", path.replace("/", "_").replace(".", "_"));
 }
 
 pub fn translate(m: &Module, ctx: &Ctx) -> CModule {

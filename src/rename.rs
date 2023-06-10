@@ -284,7 +284,7 @@ fn expr(e: &mut Expression, prefix: &String, names: &Vec<String>) {
 
 fn newname(current: &String, prefix: &String, names: &Vec<String>) -> String {
     return if names.contains(current) {
-        format!("{}_{}", prefix, current)
+        format!("{}__{}", prefix, current)
     } else {
         current.clone()
     };
