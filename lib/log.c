@@ -4,7 +4,7 @@ pub bool logmsg(const char *fmt, ...)
 {
 	char timestamp[64] = "";
 
-	if (!time_format(timestamp, sizeof(timestamp), "%F %T")) {
+	if (!time.time_format(timestamp, sizeof(timestamp), "%F %T")) {
 		return false;
 	}
 

@@ -9,7 +9,7 @@ pub typedef {
     int width, height;
 } ppm_t;
 
-pub ppm_t *ppm_init(int width, height) {
+pub ppm_t *init(int width, height) {
     ppm_t *p = calloc(1, sizeof(ppm_t));
     p->width = width;
     p->height = height;
@@ -20,7 +20,7 @@ pub ppm_t *ppm_init(int width, height) {
 /**
  * Sets pixel color at given frame coordinates.
  */
-pub void ppm_set(ppm_t *p, int x, y, rgb_t color)
+pub void set(ppm_t *p, int x, y, rgb_t color)
 {
     p->frame[x + y * p->width] = color;
 }
@@ -28,25 +28,25 @@ pub void ppm_set(ppm_t *p, int x, y, rgb_t color)
 /**
  * Returns pixel color at given frame coordinates.
 */
-pub rgb_t ppm_get(ppm_t *p, int x, y)
+pub rgb_t get(ppm_t *p, int x, y)
 {
     return p->frame[x + p->width * y];
 }
 
-pub void ppm_merge(ppm_t *p, int x, y, rgb_t color, float a)
+pub void merge(ppm_t *p, int x, y, rgb_t color, float a)
 {
-    rgb_t newcolor = ppm_get(p, x, y);
+    rgb_t newcolor = get(p, x, y);
     newcolor.r = a * color.r + (a - 1) * newcolor.r;
     newcolor.g = a * color.g + (a - 1) * newcolor.g;
     newcolor.b = a * color.b + (a - 1) * newcolor.b;
-    ppm_set(p, x, y, newcolor);
+    set(p, x, y, newcolor);
 }
 
 /**
  * Writes the current frame buffer to the given file and clears the frame
  * buffer.
  */
-pub void ppm_write(ppm_t *p, FILE *f)
+pub void write(ppm_t *p, FILE *f)
 {
     fprintf(f, "P6\n%d %d\n255\n", p->width, p->height);
     int size = p->width * p->height;
@@ -57,7 +57,7 @@ pub void ppm_write(ppm_t *p, FILE *f)
     }
 }
 
-pub void ppm_clear(ppm_t *p)
+pub void clear(ppm_t *p)
 {
     memset(p->frame, 0, p->width * p->height * sizeof(rgb_t));
 }

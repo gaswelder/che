@@ -50,7 +50,7 @@ pub struct FunctionDeclaration {
 #[derive(Debug, Clone)]
 pub struct Typedef {
     pub is_pub: bool,
-    pub alias: String,
+    pub alias: Identifier,
     pub type_name: Typename,
     pub dereference_count: usize,
     pub array_size: usize,
@@ -61,7 +61,7 @@ pub struct Typedef {
 pub struct StructTypedef {
     pub is_pub: bool,
     pub fields: Vec<StructEntry>,
-    pub name: String,
+    pub name: Identifier,
 }
 
 #[derive(Debug, Clone)]
@@ -74,7 +74,7 @@ pub struct FuncTypedef {
 
 #[derive(Debug, Clone)]
 pub struct EnumItem {
-    pub id: String,
+    pub id: Identifier,
     pub value: Option<Expression>,
 }
 
@@ -110,37 +110,37 @@ pub struct CompositeLiteralEntry {
 
 #[derive(Debug, Clone)]
 pub enum Expression {
-    CompositeLiteral(CompositeLiteral),
-    Literal(Literal),
-    Identifier(String),
-    NsName(NsName),
+    ArrayIndex {
+        array: Box<Expression>,
+        index: Box<Expression>,
+    },
     BinaryOp {
         op: String,
         a: Box<Expression>,
         b: Box<Expression>,
     },
-    PrefixOperator {
-        operator: String,
-        operand: Box<Expression>,
-    },
-    PostfixOperator {
-        operator: String,
-        operand: Box<Expression>,
-    },
     Cast {
         type_name: AnonymousTypeform,
         operand: Box<Expression>,
     },
+    CompositeLiteral(CompositeLiteral),
     FunctionCall {
         function: Box<Expression>,
         arguments: Vec<Expression>,
     },
+    Identifier(Identifier),
+    Literal(Literal),
+    NsName(NsName),
+    PostfixOperator {
+        operator: String,
+        operand: Box<Expression>,
+    },
+    PrefixOperator {
+        operator: String,
+        operand: Box<Expression>,
+    },
     Sizeof {
         argument: Box<SizeofArgument>,
-    },
-    ArrayIndex {
-        array: Box<Expression>,
-        index: Box<Expression>,
     },
 }
 
@@ -153,6 +153,12 @@ pub enum SizeofArgument {
 #[derive(Debug, Clone)]
 pub struct Body {
     pub statements: Vec<Statement>,
+}
+
+#[derive(Debug, Clone)]
+pub struct Identifier {
+    pub name: String,
+    pub pos: String,
 }
 
 #[derive(Debug, Clone)]
@@ -207,7 +213,7 @@ pub enum ForInit {
 
 #[derive(Debug, Clone)]
 pub enum SwitchCaseValue {
-    Identifier(String),
+    Identifier(Identifier),
     Literal(Literal),
 }
 

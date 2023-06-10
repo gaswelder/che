@@ -2,6 +2,10 @@
 #include <unistd.h>
 #include <sys/stat.h>
 
+#known unlink
+#known stat
+#known S_ISDIR
+
 typedef struct stat stat_t;
 
 pub bool fs_unlink(const char *path) {

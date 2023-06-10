@@ -5,7 +5,7 @@ pub fn depused(m: &Module, dep: &Module, depns: &String) -> bool {
     let exports = get_exports(dep);
     let mut list: Vec<String> = Vec::new();
     for x in exports.consts {
-        list.push(x.id);
+        list.push(x.id.name);
     }
     for x in exports.fns {
         list.push(x.form.name);
@@ -43,7 +43,7 @@ pub fn depused(m: &Module, dep: &Module, depns: &String) -> bool {
                 }
             }
             ModuleObject::StructTypedef(StructTypedef { is_pub, name, .. }) => {
-                if *is_pub && has(&name, &list) {
+                if *is_pub && has(&name.name, &list) {
                     return true;
                 }
             }
@@ -94,7 +94,7 @@ fn used_in_expr(e: &Expression, list: &Vec<String>, depns: &String) -> bool {
             }
             return false;
         }
-        Expression::Identifier(x) => has(x, list),
+        Expression::Identifier(x) => has(&x.name, list),
         Expression::BinaryOp { op: _, a, b } => {
             used_in_expr(a, list, depns) || used_in_expr(b, list, depns)
         }
@@ -240,7 +240,7 @@ fn used_in_body(body: &Body, list: &Vec<String>, depns: &String) -> bool {
                 for c in cases {
                     match &c.value {
                         SwitchCaseValue::Identifier(x) => {
-                            if has(&x, list) {
+                            if has(&x.name, list) {
                                 return true;
                             }
                         }
@@ -284,12 +284,12 @@ pub fn get_exports(m: &Module) -> Exports {
             }
             ModuleObject::Typedef(x) => {
                 if x.is_pub {
-                    exports.types.push(x.alias.clone());
+                    exports.types.push(x.alias.name.clone());
                 }
             }
             ModuleObject::StructTypedef(x) => {
                 if x.is_pub {
-                    exports.types.push(x.name.clone());
+                    exports.types.push(x.name.name.clone());
                 }
             }
             // ModuleObject::StructAliasTypedef {

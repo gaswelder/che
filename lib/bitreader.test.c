@@ -5,23 +5,23 @@ bool test() {
 	fputc(128, f);
 	fseek(f, 0, SEEK_SET);
 	
-	bits_t *b = bits_new(f);
+	bitreader.bits_t *b = bitreader.bits_new(f);
 	int r = 0;
 	for (int i = 0; i < 8; i++) {
-		r = r * 2 + bits_getn(b, 1);
+		r = r * 2 + bitreader.bits_getn(b, 1);
 	}
 	if (r != 128) {
-		bits_free(b);
+		bitreader.bits_free(b);
 		fclose(f);
 		return false;
 	}
 
-	if (bits_getn(b, 1) != EOF) {
-		bits_free(b);
+	if (bitreader.bits_getn(b, 1) != EOF) {
+		bitreader.bits_free(b);
 		fclose(f);
 		return false;
 	}
-	bits_free(b);
+	bitreader.bits_free(b);
 	fclose(f);
 	return true;
 }

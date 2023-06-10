@@ -22,7 +22,7 @@ int main() {
     const double maxD = acos( 1.4 / 2.0 );
 
 
-    ppm_t *ppm = ppm_init(WIDTH, HEIGHT);
+    ppm.ppm_t *ppm = ppm.init(WIDTH, HEIGHT);
 
     for (int i = 0; i < FRAMES; i++) {
         /*
@@ -31,13 +31,13 @@ int main() {
         double sensitivity = 0.02;
         for (int y = 0; y < HEIGHT; y++) {
             for (int x = 0; x < WIDTH; x++) {
-                rgb_t current_color = ppm_get(ppm, x, y);            
-                rgb_t out = {
+                ppm.rgb_t current_color = ppm.get(ppm, x, y);
+                ppm.rgb_t out = {
                     .r = (1.0 - exp( -sensitivity * current_color.r )),
                     .g = (1.0 - exp( -sensitivity * current_color.g )),
                     .b = (1.0 - exp( -sensitivity * current_color.b ))
                 };
-                ppm_set(ppm, x, y, out);
+                ppm.set(ppm, x, y, out);
             }
         }
 
@@ -49,7 +49,7 @@ int main() {
         double b = cos( minB + p * (maxB - minB) ) * 2.0;
         double c = cos( minC + p * (maxC - minC) ) * 2.0;
         double d = cos( minD + p * (maxD - minD) ) * 2.0;
-        rgb_t color = create_hue(p);
+        ppm.rgb_t color = create_hue(p);
         double x = 0.0;
         double y = 0.0;
         for (int j = 0; j < iters; j++) {
@@ -69,20 +69,20 @@ int main() {
             int xi = (int) wtfx;
             int yi = (int) wtfy;
             if ( xi >= 0 && xi < WIDTH && yi >= 0 && yi < HEIGHT ) {
-                ppm_merge(ppm, xi, yi, color, 0.9);
+                ppm.merge(ppm, xi, yi, color, 0.9);
             }
         }
 
-        ppm_write(ppm, stdout);
+        ppm.write(ppm, stdout);
     }
 
     return 0;
 }
 
-rgb_t create_hue( double h ) {
+ppm.rgb_t create_hue( double h ) {
     h *= 6.0;
     double hf = h - (int) h;
-    rgb_t r = {};
+    ppm.rgb_t r = {};
     switch( (int)h % 6 ) {
         case 0:
             r.r = 1.0;

@@ -111,7 +111,7 @@ fn translate_module_object(element: &ModuleObject, ctx: &Ctx) -> Vec<CModuleObje
                     }
                 }),
                 size: *array_size,
-                alias: alias.clone(),
+                alias: alias.name.clone(),
             },
         }],
         ModuleObject::StructAliasTypedef {
@@ -140,7 +140,7 @@ fn translate_module_object(element: &ModuleObject, ctx: &Ctx) -> Vec<CModuleObje
             // "struct __foo_t_struct {int a}; typedef __foo_t_struct foo_t;".
             // And remember that the struct definition itself is sugar that
             // should be translated as well.
-            let struct_name = format!("__{}_struct", name);
+            let struct_name = format!("__{}_struct", name.name);
 
             // Build the compat struct fields.
             let mut compat_fields: Vec<CStructItem> = Vec::new();
@@ -177,7 +177,7 @@ fn translate_module_object(element: &ModuleObject, ctx: &Ctx) -> Vec<CModuleObje
                         stars: "".to_string(),
                         size: 0,
                         params: None,
-                        alias: name.clone(),
+                        alias: name.name.clone(),
                     },
                 },
             ]
@@ -196,7 +196,7 @@ fn translate_module_object(element: &ModuleObject, ctx: &Ctx) -> Vec<CModuleObje
             let mut tm: Vec<CEnumItem> = Vec::new();
             for member in members {
                 tm.push(CEnumItem {
-                    id: member.id.clone(),
+                    id: member.id.name.clone(),
                     value: member.value.as_ref().map(|v| translate_expression(&v, ctx)),
                 })
             }
@@ -206,7 +206,7 @@ fn translate_module_object(element: &ModuleObject, ctx: &Ctx) -> Vec<CModuleObje
             }];
         }
         ModuleObject::Macro { name, value } => {
-            if name == "type" || name == "link" {
+            if name == "type" || name == "link" || name == "known" {
                 return vec![];
             } else {
                 return vec![CModuleObject::Macro {
@@ -283,7 +283,7 @@ fn translate_expression(e: &Expression, ctx: &Ctx) -> CExpression {
             type_name: x.type_name.clone(),
             value: x.value.clone(),
         }),
-        Expression::Identifier(x) => CExpression::Identifier(x.clone()),
+        Expression::Identifier(x) => CExpression::Identifier(x.name.clone()),
         Expression::PrefixOperator { operator, operand } => CExpression::PrefixOperator {
             operator: operator.clone(),
             operand: Box::new(translate_expression(operand, ctx)),
@@ -503,7 +503,7 @@ fn translate_body(b: &Body, ctx: &Ctx) -> CBody {
                     tcases.push(CSwitchCase {
                         value: match &c.value {
                             SwitchCaseValue::Identifier(x) => {
-                                CSwitchCaseValue::Identifier(x.clone())
+                                CSwitchCaseValue::Identifier(x.name.clone())
                             }
                             SwitchCaseValue::Literal(x) => CSwitchCaseValue::Literal(CLiteral {
                                 type_name: x.type_name.clone(),

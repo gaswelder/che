@@ -30,7 +30,7 @@ char linechars[] =
 int main()
 {
 	char address[] = "0.0.0.0:1900";
-	net_t *l = net_listen("tcp", address);
+	net_t *l = net.net_listen("tcp", address);
 	if(!l) {
 		fatal("listen failed: %s", net_error());
 	}
@@ -108,7 +108,7 @@ int putch(int ch, nbuf_t *b)
 {
 	b->data[b->len++] = ch;
 	if(b->len == sizeof(b->data)) {
-		if(net_write(b->conn, b->data, b->len) < b->len) {
+		if(net.net_write(b->conn, b->data, b->len) < b->len) {
 			return EOF;
 		}
 		b->len = 0;

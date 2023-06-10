@@ -86,7 +86,7 @@ int readf( FILE *f, char *data, size_t size)
 	return 1;
 }
 
-pub bool fileutil_writefile(const char *path, const char *data, size_t n) {
+pub bool writefile(const char *path, const char *data, size_t n) {
 	FILE *f = fopen(path, "wb");
 	if (!f) {
 		return false;

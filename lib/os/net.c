@@ -15,6 +15,22 @@ typedef struct sockaddr_in sockaddr_in_t;
 typedef struct addrinfo addrinfo_t;
 typedef struct timeval timeval_t;
 
+#known accept
+#known AF_INET
+#known ai_protocol
+#known ai_socktype
+#known bind
+#known connect
+#known FD_ISSET
+#known getaddrinfo
+#known IPPROTO_TCP
+#known listen
+#known select
+#known send
+#known setsockopt
+#known SOCK_STREAM
+
+
 pub typedef {
 	int sock;
 	char host[256];

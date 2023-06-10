@@ -1,3 +1,4 @@
+use crate::check_identifiers;
 use crate::checkers;
 use crate::format;
 use crate::lexer;
@@ -147,7 +148,6 @@ pub fn parse(mainpath: &String) -> Result<Build, String> {
             break;
         }
         let imp = missing.unwrap();
-        println!("adding missing {}", &imp.path);
         work.paths.push(imp.path.clone());
         let kek = preparser::preparse(&imp.path)?;
         work.typenames.push(kek.typenames.clone());
@@ -194,8 +194,15 @@ pub fn parse(mainpath: &String) -> Result<Build, String> {
                 ));
             }
         }
+        let errors = check_identifiers::run(m);
+        if errors.len() > 0 {
+            let mut lines: Vec<String> = Vec::new();
+            for err in errors {
+                lines.push(format!("{} at {}:{}", err.message, work.paths[i], err.pos))
+            }
+            return Err(lines.join("\n"));
+        }
     }
-
     return Ok(work);
 }
 

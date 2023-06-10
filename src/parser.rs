@@ -217,7 +217,6 @@ fn type_follows(l: &Lexer, ctx: &Ctx) -> bool {
             .deps
             .iter()
             .position(|x| x.ns == *a.content.as_ref().unwrap());
-        dbg!(&a, &c, &pos, ctx);
         if pos.is_some()
             && ctx.deps[pos.unwrap()]
                 .typenames
@@ -269,7 +268,10 @@ fn expr_id(l: &mut Lexer, ctx: &Ctx) -> Result<Expression, String> {
 
     let next = l.get().unwrap();
     if next.kind == "word" {
-        return Ok(Expression::Identifier(next.content.unwrap()));
+        return Ok(Expression::Identifier(Identifier {
+            name: next.content.unwrap(),
+            pos: next.pos,
+        }));
     }
     if next.kind == "num" || next.kind == "string" || next.kind == "char" {
         l.unget(next);
@@ -408,9 +410,10 @@ fn expect(lexer: &mut Lexer, kind: &str, comment: Option<&str>) -> Result<Token,
     return Ok(lexer.get().unwrap());
 }
 
-fn read_identifier(lexer: &mut Lexer) -> Result<String, String> {
-    let identifier = String::from(expect(lexer, "word", None)?.content.unwrap());
-    return Ok(identifier);
+fn read_identifier(lexer: &mut Lexer) -> Result<Identifier, String> {
+    let tok = expect(lexer, "word", None)?;
+    let name = String::from(tok.content.unwrap());
+    return Ok(Identifier { name, pos: tok.pos });
 }
 
 fn parse_typename(l: &mut Lexer, ctx: &Ctx) -> Result<Typename, String> {

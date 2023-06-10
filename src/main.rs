@@ -1,5 +1,6 @@
 mod buf;
 mod build;
+mod check_identifiers;
 mod checkers;
 mod format;
 mod format_che;

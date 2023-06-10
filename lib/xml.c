@@ -62,7 +62,7 @@ pub xml *xml_open(const char *path)
 {
 	FILE *f = fopen(path, "rb");
 	if(!f) {
-		fatal("fopen(%s) failed", path);
+		cli.fatal("fopen(%s) failed", path);
 	}
 
 	xml *x = calloc(1, sizeof(xml));
@@ -188,7 +188,7 @@ pub bool xml_enter(xml *x)
 			x->node.type = T_NULL;
 			return true;
 	}
-	fatal("xml error 0152");
+	cli.fatal("xml error 0152");
 	return false;
 }
 
@@ -298,7 +298,7 @@ pub long xml_filepos(xml *x)
 void pushparent(xml *x)
 {
 	if(x->pathlen >= MAXSTACK) {
-		fatal("Reached max stack depth: %d", MAXSTACK);
+		cli.fatal("Reached max stack depth: %d", MAXSTACK);
 	}
 	strcpy(x->path[x->pathlen], x->node.name);
 	x->pathlen++;

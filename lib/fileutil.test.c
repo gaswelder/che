@@ -9,7 +9,7 @@ bool test() {
 	bool ok = fileutil.writefile(PATH, str, n);
 	char *data = NULL;
 	if (ok) {
-		data = readfile_str(PATH);
+		data = fileutil.readfile_str(PATH);
 		ok = data != NULL;
 	}
 	if (ok) {

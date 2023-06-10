@@ -6,7 +6,7 @@ pub fn globalize_module(m: &mut Module, prefix: &String) {
     let exports = checkers::get_exports(&m);
     let mut names: Vec<String> = Vec::new();
     for e in exports.consts {
-        names.push(e.id);
+        names.push(e.id.name);
     }
     for f in exports.fns {
         names.push(f.form.name);
@@ -35,7 +35,7 @@ fn mod_obj(obj: &mut ModuleObject, prefix: &String, names: &Vec<String>) {
                 return;
             }
             for mut m in members {
-                m.id = newname(&m.id, prefix, names);
+                m.id.name = newname(&m.id.name, prefix, names);
             }
         }
         ModuleObject::FunctionDeclaration(FunctionDeclaration {
@@ -66,7 +66,7 @@ fn mod_obj(obj: &mut ModuleObject, prefix: &String, names: &Vec<String>) {
                 }
                 None => {}
             }
-            *alias = newname(alias, prefix, names);
+            alias.name = newname(&alias.name, prefix, names);
             rename_typename(type_name, prefix, names);
         }
         ModuleObject::StructTypedef(StructTypedef {
@@ -74,7 +74,7 @@ fn mod_obj(obj: &mut ModuleObject, prefix: &String, names: &Vec<String>) {
             name,
             is_pub: _,
         }) => {
-            *name = newname(name, prefix, names);
+            name.name = newname(&name.name, prefix, names);
             for e in fields {
                 match e {
                     StructEntry::Plain(x) => {
@@ -176,10 +176,10 @@ fn rename_statement(s: &mut Statement, prefix: &String, names: &Vec<String>) {
             default,
         } => {
             expr(value, prefix, names);
-            for c in cases {
-                match &c.value {
+            for c in cases.iter_mut() {
+                match &mut c.value {
                     SwitchCaseValue::Identifier(x) => {
-                        c.value = SwitchCaseValue::Identifier(newname(x, prefix, names))
+                        x.name = newname(&x.name, prefix, names);
                     }
                     SwitchCaseValue::Literal(_) => {}
                 }
@@ -237,7 +237,9 @@ fn expr(e: &mut Expression, prefix: &String, names: &Vec<String>) {
                 expr(&mut e.value, prefix, names);
             }
         }
-        Expression::Identifier(x) => *e = Expression::Identifier(newname(x, prefix, names)),
+        Expression::Identifier(x) => {
+            x.name = newname(&x.name, prefix, names);
+        }
         Expression::BinaryOp { op: _, a, b } => {
             expr(a, prefix, names);
             expr(b, prefix, names);
