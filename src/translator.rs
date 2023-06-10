@@ -1,9 +1,9 @@
 use crate::build::Ctx;
+use crate::build::Dep;
 use crate::format;
 use crate::format_che;
 use crate::nodes::*;
 use crate::nodes_c::*;
-use crate::preparser::Dep;
 use std::collections::HashSet;
 
 pub fn module_gid(dep: &Dep) -> String {

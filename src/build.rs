@@ -6,7 +6,6 @@ use crate::nodes_c::CModule;
 use crate::nodes_c::CModuleObject;
 use crate::parser;
 use crate::preparser;
-use crate::preparser::Dep;
 use crate::preparser::Imp1;
 use crate::rename;
 use crate::resolve;
@@ -32,6 +31,12 @@ impl Ctx {
         }
         return false;
     }
+}
+
+#[derive(Clone, Debug)]
+pub struct Dep {
+    pub ns: String,
+    pub typenames: Vec<String>,
 }
 
 #[derive(Debug)]

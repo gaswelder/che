@@ -2,13 +2,6 @@ use crate::lexer::{self, Lexer, Token};
 use crate::resolve::{self};
 use substring::Substring;
 
-#[derive(Clone, Debug)]
-pub struct Dep {
-    // pub path: String,
-    pub ns: String,
-    pub typenames: Vec<String>,
-}
-
 #[derive(Debug)]
 pub struct Preparse {
     pub imports: Vec<Imp1>,
