@@ -28,7 +28,7 @@ pub fn translate(m: &Module, ctx: &Ctx) -> CModule {
 
     let mut elements: Vec<CModuleObject> = Vec::new();
     for element in &m.elements {
-        for node in translate_module_object(element, m, ctx) {
+        for node in translate_module_object(element, ctx) {
             elements.push(node)
         }
     }
@@ -101,7 +101,7 @@ pub fn translate(m: &Module, ctx: &Ctx) -> CModule {
     };
 }
 
-fn translate_module_object(element: &ModuleObject, m: &Module, ctx: &Ctx) -> Vec<CModuleObject> {
+fn translate_module_object(element: &ModuleObject, ctx: &Ctx) -> Vec<CModuleObject> {
     match element {
         ModuleObject::Typedef(Typedef {
             is_pub,
@@ -197,11 +197,8 @@ fn translate_module_object(element: &ModuleObject, m: &Module, ctx: &Ctx) -> Vec
                 },
             ]
         }
-        ModuleObject::Import { path } => {
+        ModuleObject::Import { .. } => {
             return Vec::new();
-            // let module = parser::get_module(&path, &m.id.source_path).unwrap();
-            // let compat = translate(&module);
-            // return get_module_synopsis(compat);
         }
         ModuleObject::FunctionDeclaration(FunctionDeclaration {
             is_pub,
@@ -242,7 +239,6 @@ fn translate_module_object(element: &ModuleObject, m: &Module, ctx: &Ctx) -> Vec
             form: translate_form(form, ctx),
             value: translate_expression(value, ctx),
         }],
-        // ModuleObject::CompatInclude(x) => vec![CompatModuleObject::CompatInclude(x.clone())],
     }
 }
 
