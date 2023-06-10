@@ -64,11 +64,10 @@ cd test
 cd ..
 
 cd prog
-	# Build all on top
 	for i in *.c; do
 		name=`basename $i .c`
-		echo build $name
 		$che build "$i" "$name.out" || exit 1
+		echo OK build $name
 	done
 
 	# Run all tests
@@ -83,11 +82,11 @@ cd prog
 	for i in */; do
 		cd $i
 		name=`basename $i`
-		echo build "$name"
 		$che build "$name.c" "$name.out" || exit 1
+		echo OK build "$name"
 		if [ -f test.sh ]; then
 			./test.sh || exit 1
-			echo OK $i
+			echo OK test $i
 		fi
 		rm *.out
 		cd ..
