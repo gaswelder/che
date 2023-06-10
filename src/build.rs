@@ -1,5 +1,6 @@
 use crate::check_identifiers;
 use crate::checkers;
+use crate::exports::get_exports;
 use crate::format;
 use crate::lexer;
 use crate::nodes::Module;
@@ -12,6 +13,7 @@ use crate::rename;
 use crate::resolve;
 use crate::translator;
 use md5;
+use std::collections::HashMap;
 use std::fs;
 use std::io::BufRead;
 use std::process::{Command, Stdio};
@@ -182,7 +184,17 @@ pub fn parse(mainpath: &String) -> Result<Build, String> {
         work.m.push(parser::parse_module(&mut l, ctx)?);
     }
 
+    //
     // Dome some checks.
+    //
+
+    // path -> exports map
+    let mut exports_by_path = HashMap::new();
+    for (i, m) in work.m.iter().enumerate() {
+        let path = &work.paths[i];
+        exports_by_path.insert(path, get_exports(m));
+    }
+
     for (i, m) in work.m.iter().enumerate() {
         for imp in &work.imports[i] {
             let pos = work.paths.iter().position(|x| *x == imp.path).unwrap();
@@ -194,7 +206,13 @@ pub fn parse(mainpath: &String) -> Result<Build, String> {
                 ));
             }
         }
-        let errors = check_identifiers::run(m);
+
+        // import alias -> exports map for this module
+        let mut exports = HashMap::new();
+        for imp in &work.imports[i] {
+            exports.insert(imp.ns.clone(), exports_by_path.get(&imp.path).unwrap());
+        }
+        let errors = check_identifiers::run(m, &exports);
         if errors.len() > 0 {
             let mut lines: Vec<String> = Vec::new();
             for err in errors {

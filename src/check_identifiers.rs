@@ -1,11 +1,12 @@
-use crate::nodes::*;
+use crate::{exports::Exports, nodes::*};
+use std::collections::HashMap;
 
 pub struct Error {
     pub message: String,
     pub pos: String,
 }
 
-pub fn run(m: &Module) -> Vec<Error> {
+pub fn run(m: &Module, exports: &HashMap<String, &Exports>) -> Vec<Error> {
     let mut messages: Vec<Error> = Vec::new();
     let mut scope = vec![
         "acos",
@@ -83,7 +84,7 @@ pub fn run(m: &Module) -> Vec<Error> {
                         function_scope.push(&f.name);
                     }
                 }
-                check_body(&f.body, &mut messages, &function_scope);
+                check_body(&f.body, &mut messages, &function_scope, exports);
             }
             ModuleObject::Macro { name, value } => {
                 if name == "known" {
@@ -112,12 +113,17 @@ pub fn run(m: &Module) -> Vec<Error> {
     return messages;
 }
 
-fn check_body(body: &Body, errors: &mut Vec<Error>, known: &Vec<&str>) {
-    let mut scope: Vec<&str> = known.clone();
+fn check_body(
+    body: &Body,
+    errors: &mut Vec<Error>,
+    parent_scope: &Vec<&str>,
+    exports: &HashMap<String, &Exports>,
+) {
+    let mut scope: Vec<&str> = parent_scope.clone();
     for s in &body.statements {
         match s {
             Statement::Expression(e) => {
-                check_expr(e, errors, &scope);
+                check_expr(e, errors, &scope, exports);
             }
             Statement::For {
                 init,
@@ -125,36 +131,35 @@ fn check_body(body: &Body, errors: &mut Vec<Error>, known: &Vec<&str>) {
                 action,
                 body,
             } => {
-                let ss = &mut scope.clone();
+                let loop_scope = &mut scope.clone();
                 match init {
                     ForInit::LoopCounterDeclaration {
                         type_name,
                         form,
                         value,
                     } => {
-                        ss.push(form.name.as_str());
+                        loop_scope.push(form.name.as_str());
                     }
                     ForInit::Expression(x) => {
-                        check_expr(x, errors, ss);
+                        check_expr(x, errors, loop_scope, exports);
                     }
                 }
-                check_body(body, errors, ss);
+                check_body(body, errors, loop_scope, exports);
             }
             Statement::If {
                 condition,
                 body,
                 else_body,
             } => {
-                let ss = &scope.clone();
-                check_expr(condition, errors, ss);
-                check_body(body, errors, ss);
+                check_expr(condition, errors, &scope, exports);
+                check_body(body, errors, &scope, exports);
                 if else_body.is_some() {
-                    check_body(else_body.as_ref().unwrap(), errors, ss);
+                    check_body(else_body.as_ref().unwrap(), errors, &scope, exports);
                 }
             }
             Statement::Return { expression } => match expression {
                 Some(x) => {
-                    check_expr(x, errors, &scope);
+                    check_expr(x, errors, &scope, exports);
                 }
                 None => {}
             },
@@ -172,7 +177,7 @@ fn check_body(body: &Body, errors: &mut Vec<Error>, known: &Vec<&str>) {
             } => {
                 for v in values {
                     if v.is_some() {
-                        check_expr(v.as_ref().unwrap(), errors, &scope);
+                        check_expr(v.as_ref().unwrap(), errors, &scope, exports);
                     }
                 }
                 for f in forms {
@@ -186,35 +191,40 @@ fn check_body(body: &Body, errors: &mut Vec<Error>, known: &Vec<&str>) {
     }
 }
 
-fn check_expr(e: &Expression, errors: &mut Vec<Error>, scope: &Vec<&str>) {
+fn check_expr(
+    e: &Expression,
+    errors: &mut Vec<Error>,
+    scope: &Vec<&str>,
+    exports: &HashMap<String, &Exports>,
+) {
     match e {
         Expression::ArrayIndex { array, index } => {
-            check_expr(array, errors, scope);
-            check_expr(index, errors, scope);
+            check_expr(array, errors, scope, exports);
+            check_expr(index, errors, scope, exports);
         }
         Expression::BinaryOp { op, a, b } => {
             if op != "->" && op != "." {
-                check_expr(a, errors, scope);
-                check_expr(b, errors, scope);
+                check_expr(a, errors, scope, exports);
+                check_expr(b, errors, scope, exports);
             }
         }
         Expression::Cast { type_name, operand } => {
-            check_expr(operand, errors, scope);
+            check_expr(operand, errors, scope, exports);
         }
         Expression::CompositeLiteral(x) => {
             for e in &x.entries {
                 match &e.key {
-                    Some(x) => check_expr(x, errors, scope),
+                    Some(x) => check_expr(x, errors, scope, exports),
                     None => {}
                 }
-                check_expr(&e.value, errors, scope);
+                check_expr(&e.value, errors, scope, exports);
             }
         }
         Expression::FunctionCall {
             function,
             arguments,
         } => {
-            check_expr(function, errors, scope);
+            check_expr(function, errors, scope, exports);
         }
         Expression::Identifier(x) => {
             if !scope.contains(&x.name.as_str()) {
@@ -228,19 +238,31 @@ fn check_expr(e: &Expression, errors: &mut Vec<Error>, scope: &Vec<&str>) {
             //
         }
         Expression::NsName(x) => {
-            todo!();
+            if x.namespace != "" {
+                let e = exports.get(&x.namespace).unwrap();
+                for f in &e.fns {
+                    if f.form.name == x.name {
+                        return;
+                    }
+                }
+                errors.push(Error {
+                    message: format!("{} doesn't have exported {}", x.namespace, x.name),
+                    pos: x.pos.clone(),
+                });
+                return;
+            }
         }
         Expression::PostfixOperator {
             operator: _,
             operand,
         } => {
-            check_expr(operand, errors, scope);
+            check_expr(operand, errors, scope, exports);
         }
         Expression::PrefixOperator {
             operator: _,
             operand,
         } => {
-            check_expr(operand, errors, scope);
+            check_expr(operand, errors, scope, exports);
         }
         Expression::Sizeof { argument } => {
             match argument.as_ref() {
@@ -248,7 +270,7 @@ fn check_expr(e: &Expression, errors: &mut Vec<Error>, scope: &Vec<&str>) {
                     //
                 }
                 SizeofArgument::Expression(x) => {
-                    check_expr(&x, errors, scope);
+                    check_expr(&x, errors, scope, exports);
                 }
             }
         }

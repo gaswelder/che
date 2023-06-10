@@ -250,11 +250,13 @@ fn read_ns_id(l: &mut Lexer, ctx: &Ctx) -> Result<NsName, String> {
         return Ok(NsName {
             namespace: a.content.unwrap(),
             name: b.content.unwrap(),
+            pos: a.pos,
         });
     }
     return Ok(NsName {
         namespace: String::new(),
         name: a.content.unwrap(),
+        pos: a.pos,
     });
 }
 

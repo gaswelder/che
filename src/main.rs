@@ -2,6 +2,7 @@ mod buf;
 mod build;
 mod check_identifiers;
 mod checkers;
+mod exports;
 mod format;
 mod format_che;
 mod lexer;

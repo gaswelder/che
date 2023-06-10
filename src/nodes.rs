@@ -88,6 +88,7 @@ pub struct Typename {
 pub struct NsName {
     pub namespace: String,
     pub name: String,
+    pub pos: String,
 }
 
 #[derive(Debug, Clone)]
