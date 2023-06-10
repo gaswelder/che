@@ -182,9 +182,9 @@ fn translate_module_object(element: &ModuleObject, ctx: &Ctx) -> Vec<CModuleObje
                 },
             ]
         }
-        ModuleObject::Import { .. } => {
-            return Vec::new();
-        }
+        // ModuleObject::Import { .. } => {
+        //     return Vec::new();
+        // }
         ModuleObject::FunctionDeclaration(FunctionDeclaration {
             is_pub,
             type_name,

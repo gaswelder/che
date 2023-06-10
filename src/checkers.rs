@@ -19,7 +19,7 @@ pub fn depused(m: &Module, dep: &Module, depns: &String) -> bool {
     for obj in &m.elements {
         match obj {
             ModuleObject::Macro { .. } => {}
-            ModuleObject::Import { .. } => {}
+            // ModuleObject::Import { .. } => {}
             ModuleObject::Enum { is_pub: _, members } => {
                 for m in members {
                     match &m.value {

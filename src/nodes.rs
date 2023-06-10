@@ -15,9 +15,9 @@ pub enum ModuleObject {
         name: String,
         value: String,
     },
-    Import {
-        path: String,
-    },
+    // Import {
+    //     path: String,
+    // },
     Enum {
         is_pub: bool,
         members: Vec<EnumItem>,
