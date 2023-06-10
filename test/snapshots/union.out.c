@@ -1,9 +1,4 @@
-
-
-/* -------test/snapshots/union.in.c------- */
-
-
-/* -------------- */
+#define _XOPEN_SOURCE 700
 #include <assert.h>
 #include <ctype.h>
 #include <errno.h>
@@ -19,17 +14,8 @@
 #include <time.h>
 #include <setjmp.h>
 #define nelem(x) (sizeof (x)/sizeof (x)[0])
-
-
-/* -------------- */
 struct __foo_struct;
-
-
-/* -------------- */
 typedef struct __foo_struct foo;
-
-
-/* -------------- */
 struct __foo_struct {
 	size_t len;
 	union {

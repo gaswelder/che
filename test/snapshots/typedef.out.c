@@ -1,9 +1,4 @@
-
-
-/* -------test/snapshots/typedef.in.c------- */
-
-
-/* -------------- */
+#define _XOPEN_SOURCE 700
 #include <assert.h>
 #include <ctype.h>
 #include <errno.h>
@@ -19,10 +14,7 @@
 #include <time.h>
 #include <setjmp.h>
 #define nelem(x) (sizeof (x)/sizeof (x)[0])
-
-
-/* -------------- */
-typedef void *thr_func(void*);
-typedef int bob_int_t;
-typedef int four_ints_t[5];
+typedef void *ns_test_snapshots_typedef_in_c__thr_func(void*);
+typedef int ns_test_snapshots_typedef_in_c__bob_int_t;
+typedef int ns_test_snapshots_typedef_in_c__four_ints_t[5];
 typedef int *func_t(FILE*, const char*, ...);

@@ -1,9 +1,4 @@
-
-
-/* -------test/snapshots/variables.in.c------- */
-
-
-/* -------------- */
+#define _XOPEN_SOURCE 700
 #include <assert.h>
 #include <ctype.h>
 #include <errno.h>
@@ -19,9 +14,6 @@
 #include <time.h>
 #include <setjmp.h>
 #define nelem(x) (sizeof (x)/sizeof (x)[0])
-
-
-/* -------------- */
 int main () {
 	int a, b = 1, c = 2;
 }

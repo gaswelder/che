@@ -1,9 +1,4 @@
-
-
-/* -------test/snapshots/parameters.in.c------- */
-
-
-/* -------------- */
+#define _XOPEN_SOURCE 700
 #include <assert.h>
 #include <ctype.h>
 #include <errno.h>
@@ -19,13 +14,7 @@
 #include <time.h>
 #include <setjmp.h>
 #define nelem(x) (sizeof (x)/sizeof (x)[0])
-
-
-/* -------------- */
 static double src_init (int *s, float *data);
-
-
-/* -------------- */
 static double src_init (int *s, float *data) {
 	return 1;
 }
