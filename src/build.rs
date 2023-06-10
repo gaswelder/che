@@ -6,7 +6,7 @@ use crate::nodes_c::CModule;
 use crate::nodes_c::CModuleObject;
 use crate::parser;
 use crate::preparser;
-use crate::preparser::Imp1;
+use crate::preparser::Import;
 use crate::rename;
 use crate::resolve;
 use crate::translator;
@@ -43,7 +43,7 @@ pub struct Dep {
 pub struct Build {
     pub paths: Vec<String>,
     pub typenames: Vec<Vec<String>>,
-    pub imports: Vec<Vec<Imp1>>,
+    pub imports: Vec<Vec<Import>>,
     pub ctx: Vec<Ctx>,
     pub m: Vec<Module>,
     pub c: Vec<CModule>,
@@ -130,7 +130,7 @@ pub fn parse(mainpath: &String) -> Result<Build, String> {
 
     loop {
         // find an unresolved import
-        let mut missing: Option<&Imp1> = None;
+        let mut missing: Option<&Import> = None;
         for imps in &work.imports {
             for imp in imps {
                 if !work.paths.contains(&imp.path) {

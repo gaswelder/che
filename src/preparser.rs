@@ -1,37 +1,30 @@
 use crate::lexer::{self, Lexer, Token};
-use crate::resolve::{self};
-use substring::Substring;
+use crate::resolve;
 
 #[derive(Debug)]
 pub struct Preparse {
-    pub imports: Vec<Imp1>,
+    pub imports: Vec<Import>,
     pub typenames: Vec<String>,
 }
 
 #[derive(Debug, Clone)]
-pub struct Imp1 {
+pub struct Import {
     pub ns: String,
     pub path: String,
 }
 
 pub fn preparse(path: &String) -> Result<Preparse, String> {
     let mut typenames: Vec<String> = vec![];
-    let mut imports: Vec<Imp1> = Vec::new();
+    let mut imports: Vec<Import> = Vec::new();
     let mut l = lexer::for_file(path)?;
     loop {
         match l.get() {
             None => break,
             Some(t) => match t.kind.as_str() {
                 "import" => {
-                    let import_path = t.content.unwrap();
-                    let basename = import_path.split("/").last().unwrap().to_string();
-                    let ns = if import_path.ends_with(".c") {
-                        basename.substring(0, basename.len() - 2).to_string()
-                    } else {
-                        basename
-                    };
-                    let res = resolve::resolve_import(path, &import_path)?;
-                    imports.push(Imp1 {
+                    let relpath = t.content.unwrap();
+                    let res = resolve::resolve_import(path, &relpath)?;
+                    imports.push(Import {
                         ns: res.ns,
                         path: res.path,
                     });
