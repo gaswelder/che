@@ -351,6 +351,11 @@ fn check_ns_id(
         if e.types.contains(&x.name) {
             return;
         }
+        for c in &e.consts {
+            if c.id.name == x.name {
+                return;
+            }
+        }
         errors.push(Error {
             message: format!("{} doesn't have exported {}", x.namespace, x.name),
             pos: x.pos.clone(),
