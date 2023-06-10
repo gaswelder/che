@@ -1,6 +1,5 @@
 use crate::build;
-use crate::checkers;
-use crate::checkers::Exports;
+use crate::exports::{get_exports, Exports};
 use crate::format_che;
 
 pub fn run(argv: &[String]) -> i32 {
@@ -10,7 +9,7 @@ pub fn run(argv: &[String]) -> i32 {
         let m = &build.m[pos];
         let path = &build.paths[pos];
         println!("mod {}", path);
-        let exports = checkers::get_exports(&m);
+        let exports = get_exports(&m);
         print_exports(exports);
     }
     return 0;

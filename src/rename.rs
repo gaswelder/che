@@ -1,9 +1,9 @@
-use crate::checkers;
+use crate::exports::get_exports;
 use crate::nodes::*;
 
 // globalize a module: prefix each exported name with modid_
 pub fn globalize_module(m: &mut Module, prefix: &String) {
-    let exports = checkers::get_exports(&m);
+    let exports = get_exports(&m);
     let mut names: Vec<String> = Vec::new();
     for e in exports.consts {
         names.push(e.id.name);

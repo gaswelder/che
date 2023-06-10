@@ -7,7 +7,7 @@ pub struct Error {
 }
 
 pub fn run(m: &Module, exports: &HashMap<String, &Exports>) -> Vec<Error> {
-    let mut messages: Vec<Error> = Vec::new();
+    let mut errors: Vec<Error> = Vec::new();
     let mut scope = vec![
         "acos",
         "calloc",
@@ -72,10 +72,14 @@ pub fn run(m: &Module, exports: &HashMap<String, &Exports>) -> Vec<Error> {
     for e in &m.elements {
         match e {
             ModuleObject::Typedef(x) => {
-                //
+                check_ns_id(&x.type_name.name, &mut errors, exports);
             }
-            ModuleObject::Enum { is_pub, members } => {
-                //
+            ModuleObject::Enum { is_pub: _, members } => {
+                for m in members {
+                    if m.value.is_some() {
+                        check_expr(m.value.as_ref().unwrap(), &mut errors, &scope, exports);
+                    }
+                }
             }
             ModuleObject::FunctionDeclaration(f) => {
                 let mut function_scope = scope.clone();
@@ -84,7 +88,7 @@ pub fn run(m: &Module, exports: &HashMap<String, &Exports>) -> Vec<Error> {
                         function_scope.push(&f.name);
                     }
                 }
-                check_body(&f.body, &mut messages, &function_scope, exports);
+                check_body(&f.body, &mut errors, &function_scope, exports);
             }
             ModuleObject::Macro { name, value } => {
                 if name == "known" {
@@ -93,24 +97,26 @@ pub fn run(m: &Module, exports: &HashMap<String, &Exports>) -> Vec<Error> {
             }
             ModuleObject::ModuleVariable {
                 type_name,
-                form,
+                form: _,
                 value,
             } => {
-                //
+                check_ns_id(&type_name.name, &mut errors, exports);
+                check_expr(value, &mut errors, &scope, exports);
             }
-            ModuleObject::StructAliasTypedef {
-                is_pub,
-                struct_name,
-                type_alias,
-            } => {
-                //
-            }
+            ModuleObject::StructAliasTypedef { .. } => {}
             ModuleObject::StructTypedef(x) => {
-                //
+                for f in &x.fields {
+                    match f {
+                        StructEntry::Plain(x) => {
+                            check_ns_id(&x.type_name.name, &mut errors, exports);
+                        }
+                        StructEntry::Union(_) => todo!(),
+                    }
+                }
             }
         }
     }
-    return messages;
+    return errors;
 }
 
 fn check_body(
@@ -138,12 +144,16 @@ fn check_body(
                         form,
                         value,
                     } => {
+                        check_ns_id(&type_name.name, errors, exports);
+                        check_expr(value, errors, loop_scope, exports);
                         loop_scope.push(form.name.as_str());
                     }
                     ForInit::Expression(x) => {
                         check_expr(x, errors, loop_scope, exports);
                     }
                 }
+                check_expr(condition, errors, loop_scope, exports);
+                check_expr(action, errors, loop_scope, exports);
                 check_body(body, errors, loop_scope, exports);
             }
             Statement::If {
@@ -168,13 +178,26 @@ fn check_body(
                 cases,
                 default,
             } => {
-                //
+                check_expr(value, errors, &scope, exports);
+                for c in cases {
+                    match &c.value {
+                        SwitchCaseValue::Identifier(x) => {
+                            check_id(x, errors, &scope);
+                        }
+                        SwitchCaseValue::Literal(_) => {}
+                    }
+                    check_body(&c.body, errors, &scope, exports);
+                }
+                if default.is_some() {
+                    check_body(default.as_ref().unwrap(), errors, &scope, exports);
+                }
             }
             Statement::VariableDeclaration {
                 type_name,
                 forms,
                 values,
             } => {
+                check_ns_id(&type_name.name, errors, exports);
                 for v in values {
                     if v.is_some() {
                         check_expr(v.as_ref().unwrap(), errors, &scope, exports);
@@ -185,7 +208,8 @@ fn check_body(
                 }
             }
             Statement::While { condition, body } => {
-                //
+                check_expr(condition, errors, &scope, exports);
+                check_body(body, errors, &scope, exports);
             }
         }
     }
@@ -209,6 +233,7 @@ fn check_expr(
             }
         }
         Expression::Cast { type_name, operand } => {
+            check_ns_id(&type_name.type_name.name, errors, exports);
             check_expr(operand, errors, scope, exports);
         }
         Expression::CompositeLiteral(x) => {
@@ -225,32 +250,16 @@ fn check_expr(
             arguments,
         } => {
             check_expr(function, errors, scope, exports);
+            for x in arguments {
+                check_expr(x, errors, scope, exports);
+            }
         }
         Expression::Identifier(x) => {
-            if !scope.contains(&x.name.as_str()) {
-                errors.push(Error {
-                    message: format!("unknown identifier: {}", x.name),
-                    pos: x.pos.clone(),
-                });
-            }
+            check_id(x, errors, scope);
         }
-        Expression::Literal(x) => {
-            //
-        }
+        Expression::Literal(_) => {}
         Expression::NsName(x) => {
-            if x.namespace != "" {
-                let e = exports.get(&x.namespace).unwrap();
-                for f in &e.fns {
-                    if f.form.name == x.name {
-                        return;
-                    }
-                }
-                errors.push(Error {
-                    message: format!("{} doesn't have exported {}", x.namespace, x.name),
-                    pos: x.pos.clone(),
-                });
-                return;
-            }
+            check_ns_id(x, errors, exports);
         }
         Expression::PostfixOperator {
             operator: _,
@@ -274,5 +283,32 @@ fn check_expr(
                 }
             }
         }
+    }
+}
+
+fn check_ns_id(x: &NsName, errors: &mut Vec<Error>, exports: &HashMap<String, &Exports>) {
+    if x.namespace != "" {
+        let e = exports.get(&x.namespace).unwrap();
+        for f in &e.fns {
+            if f.form.name == x.name {
+                return;
+            }
+        }
+        if e.types.contains(&x.name) {
+            return;
+        }
+        errors.push(Error {
+            message: format!("{} doesn't have exported {}", x.namespace, x.name),
+            pos: x.pos.clone(),
+        });
+    }
+}
+
+fn check_id(x: &Identifier, errors: &mut Vec<Error>, scope: &Vec<&str>) {
+    if !scope.contains(&x.name.as_str()) {
+        errors.push(Error {
+            message: format!("unknown identifier: {}", x.name),
+            pos: x.pos.clone(),
+        });
     }
 }
