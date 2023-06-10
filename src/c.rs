@@ -1,3 +1,7 @@
+pub const CLIBS: &[&str] = &[
+    "assert", "ctype", "errno", "limits", "math", "stdarg", "stdbool", "stddef", "stdint", "stdio",
+    "stdlib", "string", "time", "setjmp",
+];
 pub const CTYPES: &[&str] = &[
     "char",
     "short",

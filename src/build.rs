@@ -1,3 +1,4 @@
+use crate::c;
 use crate::check_identifiers;
 use crate::checkers;
 use crate::exports::get_exports;
@@ -274,12 +275,8 @@ pub fn translate(work: &mut Build) {
             value: "_XOPEN_SOURCE 700".to_string(),
         });
 
-        // Include all standard C library everywhere.
-        let std = vec![
-            "assert", "ctype", "errno", "limits", "math", "stdarg", "stdbool", "stddef", "stdint",
-            "stdio", "stdlib", "string", "time", "setjmp",
-        ];
-        for n in std {
+        // Include all standard C library.
+        for n in c::CLIBS {
             cnodes.push(CModuleObject::Include(format!("<{}.h>", n)));
         }
         // Include custom utils
