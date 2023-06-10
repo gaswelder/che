@@ -4,7 +4,7 @@ This is a modified variant of C. The main goal is to get rid of the manual
 hassle the standard C has: forward declarations, headers, build dependencies
 and other annoyances.
 
-It's a translator that converts the dialect into standard C99 and calls the
+It's a translator that converts a dialect into standard C99 and calls the
 `c99` command installed in the system to produce the executable.
 [`c99`](http://pubs.opengroup.org/onlinepubs/9699919799//utilities/c99.html)
 is a command specified by POSIX, and GCC or Clang packages typically have this
@@ -12,15 +12,15 @@ binding installed. If not, you'd have to create a `c99` wrapper yourself for
 whatever c99-compliant compiler you have.
 
 Some libraries (for example, [net](lib/os/net.c)) depend on POSIX, so not
-everything can be compiled on Windows. There was multi-platform support
-initially, but I don't use Windows anymore.
+everything can be compiled on Windows or Mac. There was multi-platform support
+initially, but that's not a goal just yet.
 
 ## Language differences
 
 _No include headers_.
-The C languange specifies a library that's well known and constant. There is no
-point in writing these headers every time, so hello world program can be just
-this:
+The C languange standard library is well defined, so there is no point in
+writing its headers manually every time, so hello world program can be just
+this, without any #includes:
 
 ```c
 int main() {
@@ -30,8 +30,8 @@ int main() {
 
 _No function prototypes_.
 Forward declarations and prototypes are necessary for a single-pass C compiler.
-Here, it's not necessary, and the translator will make a pre-pass and generate
-all prototypes automatically, so this example will work:
+This one is a multi-pass translator, so it can as well generate all needed
+prototypes for the underlying C compiler. So this example will work:
 
 ```c
 int main() {
@@ -73,7 +73,7 @@ struct vec {
 };
 ```
 
-In Che it is also possible to do that also with function parameters:
+Here it is also possible to do that with function parameters:
 
 ```c
 int sum(int a, b, c) {
@@ -90,7 +90,7 @@ for (int i = 0; i < sizeof(a) / sizeof(a[0]); i++) {
 }
 ```
 
-Since it's often defined as macro, one of those is built in:
+It's often defined as macro in various places, so one of those is built in:
 
 ```c
 for (int i = 0; i < nelem(a); i++) {
@@ -101,15 +101,15 @@ for (int i = 0; i < nelem(a); i++) {
 ## Modules
 
 A single C source file used is called a "module". It's compiled independently
-and linked with other compiled modules by the linker. Che makes this more
-explicit with import statements:
+and linked with other compiled modules by the linker. Here this was taken
+furtner to full-fledged import system:
 
     // main.c:
     ----------------
     #import module2
 
     int main() {
-    	foo();
+    	module2.foo();
     }
     ----------------
 
@@ -123,13 +123,6 @@ explicit with import statements:
     // command line:
     $ che main.c
     ----------------
-
-The translator will replace every import statement with type declarations and
-function prototypes for the imported module. This is what you would do with
-regular C through ".h" files.
-
-All the modules are compiled and linked in a correct order automatically, the
-build command is `che main.c`, as opposed to `c99 module1.c module2.c main.c`.
 
 In C, in order to make functions private to the module, they are declared as
 `static`. Here, `static` is gone, and `pub` is introduced:
@@ -149,8 +142,16 @@ int main() {
 }
 ```
 
-In C variables can be `static` too. There are two kinds of those. One is
-function-local, the other is module-local:
+Note also that instead of `foo` the importing module is calling `module2.foo`.
+The translator will convert those namespaced calles into global names suitable
+for a regular C compiler, taking care of possible name conflicts.
+
+All the modules are automatically compiled and linked in the right order.
+The build command is `che main.c`, as opposed to `c99 module1.c module2.c main.c`.
+
+_No static variables_.
+In C variables can be marked `static` in two cases. One is function-local,
+the other is module-local. Both are essentially module globals:
 
 ```c
 // *** C ***
@@ -169,8 +170,8 @@ long foo() {
 }
 ```
 
-Function-local static variables are gone.
-Module-local variables are always assumed static, and a module can't export its variables, so there is no `pub` for variables.
+Here static variable are gone. Module variables are always assumed static,
+and a module can't export variables, so there is no `pub` for them.
 
 ```c
 // these variables can be accessed only inside this module.
@@ -190,26 +191,6 @@ pub long foo() {
 Enums and typedefs may be marked `pub` to become importable.
 By default all `enum` and `typedef` declarations are private.
 
-## Module prefixes
-
-```c
-#import mt
-int main() {
-	printf("%f\n", mt.randf());
-	return 0;
-}
-```
-
-is syntax sugar for
-
-```c
-#import mt
-int main() {
-	printf("%f\n", mt_randf());
-	return 0;
-}
-```
-
 ## Testing
 
 che has a built-in test runner.
@@ -221,13 +202,13 @@ A `*.test.c` file is a regular program with `main`:
 #import crypt/md5
 
 int main() {
-	md5sum_t s = {0};
-	md5str_t buf = "";
+	md5.md5sum_t s = {0};
+	md5.md5str_t buf = "";
 
 	char *expected = "0cc175b9c0f1b6a831c399e269772661";
 	char *input = "a";
-	md5_str(input, s);
-	md5_sprint(s, buf);
+	md5.md5_str(input, s);
+	md5.md5_sprint(s, buf);
 	if (!strcmp(buf, want) == 0) {
 		printf("* FAIL (%s != %s)\n", buf, want);
 		return 1;
