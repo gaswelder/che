@@ -2,18 +2,16 @@ use crate::build;
 use crate::checkers;
 use crate::checkers::Exports;
 use crate::format_che;
-use std::path::Path;
-
-fn basename(path: &String) -> String {
-    return String::from(Path::new(path).file_name().unwrap().to_str().unwrap());
-}
 
 pub fn run(argv: &[String]) -> i32 {
     for path in argv {
-        // let nodes = build::parse(path).unwrap();
-        // let m = nodes[0].m.as_ref().unwrap();
-        // println!("mod {}", nodes[0].ctx.path);
-        // let exports = checkers::get_exports(&m);
+        let build = build::parse(path).unwrap();
+        let pos = build.m.len() - 1;
+        let m = &build.m[pos];
+        let path = &build.paths[pos];
+        println!("mod {}", path);
+        let exports = checkers::get_exports(&m);
+        print_exports(exports);
     }
     return 0;
 }

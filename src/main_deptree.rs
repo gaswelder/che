@@ -1,16 +1,5 @@
-use crate::build;
-use std::path::Path;
-use std::str;
+use crate::build::{self, Build};
 use std::string::String;
-
-fn basename(path: &String) -> String {
-    return String::from(Path::new(path).file_name().unwrap().to_str().unwrap());
-}
-
-struct DepNode {
-    name: String,
-    deps: Vec<DepNode>,
-}
 
 pub fn run(argv: &[String]) -> i32 {
     if argv.len() != 1 {
@@ -18,34 +7,49 @@ pub fn run(argv: &[String]) -> i32 {
         return 1;
     }
     let path = &argv[0];
-    // let tree = build::gettree(path).unwrap();
-    // let r = render_tree(&tree);
-    // println!("{}", r.join("\n"));
+    let build = build::parse(path).unwrap();
+    let pos = build.paths.len();
+    let mut p = Printer {
+        indent: 0,
+        first_line: true,
+    };
+    render_tree(&mut p, &build, pos - 1);
     return 0;
 }
 
-// fn render_tree(tree: &TreeNode) -> Vec<String> {
-//     let mut lines: Vec<String> = vec![tree.ctx.path.clone()];
-//     let n = tree.dependencies.len();
-//     for (i, dep) in tree.dependencies.iter().enumerate() {
-//         let r = render_tree(&dep.node);
-//         if i == n - 1 {
-//             lines.append(&mut indent_tree(r, " └", "  "));
-//         } else {
-//             lines.append(&mut indent_tree(r, " ├", " │"));
-//         }
-//     }
-//     return lines;
-// }
+struct Printer {
+    indent: usize,
+    first_line: bool,
+}
 
-// fn indent_tree(lines: Vec<String>, first: &str, cont: &str) -> Vec<String> {
-//     let mut result: Vec<String> = Vec::new();
-//     for (i, line) in lines.iter().enumerate() {
-//         if i == 0 {
-//             result.push(format!("{}{}", first, line))
-//         } else {
-//             result.push(format!("{}{}", cont, line));
-//         }
-//     }
-//     return result;
-// }
+impl Printer {
+    fn writeline(&mut self, s: &String) {
+        for _ in 0..self.indent {
+            print!(" ");
+        }
+        if self.indent > 0 && self.first_line {
+            print!("{}", if self.first_line { " └" } else { " ├" });
+        }
+        println!("{}", s);
+        self.first_line = false;
+    }
+    fn indent(&mut self) {
+        self.indent += 1;
+        self.first_line = true;
+    }
+    fn unindent(&mut self) {
+        self.indent -= 1;
+        self.first_line = true;
+    }
+}
+
+fn render_tree(p: &mut Printer, build: &Build, pos: usize) {
+    let path = &build.paths[pos];
+    p.writeline(path);
+    p.indent();
+    for imp in &build.imports[pos] {
+        let deppos = build.paths.iter().position(|x| *x == imp.path).unwrap();
+        render_tree(p, build, deppos);
+    }
+    p.unindent();
+}
