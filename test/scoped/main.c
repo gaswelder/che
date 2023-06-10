@@ -19,11 +19,11 @@ int main() {
             puts("not one");
     }
 
-    f(val);
+    f(10, val);
     return 0;
 }
 
 // Can use an imported type as an argument.
-void f(lib.foo_t x) {
-    printf("a = %d\n", x.a);
+void f(const int y, lib.foo_t x, ...) {
+    printf("y=%d, a = %d\n", y, x.a);
 }

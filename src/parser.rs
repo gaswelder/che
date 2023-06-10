@@ -205,7 +205,13 @@ fn base(l: &mut Lexer, ctx: &Ctx) -> Result<Expression, Error> {
 }
 
 fn type_follows(l: &Lexer, ctx: &Ctx) -> bool {
-    if !l.peek().is_some() || l.peek().unwrap().kind != "word" {
+    if !l.peek().is_some() {
+        return false;
+    }
+    if l.peek().unwrap().kind == "const" {
+        return true;
+    }
+    if l.peek().unwrap().kind != "word" {
         return false;
     }
     // <mod>.<name> where <mod> is any imported module that has exported <name>?
@@ -364,8 +370,8 @@ fn is_type(name: &str, typenames: &Vec<String>) -> bool {
 
     return c::CTYPES.contains(&name)
         || keywords.to_vec().contains(&name)
-        || typenames.to_vec().contains(&String::from(name))
-        || name.ends_with("_t");
+        || typenames.to_vec().contains(&String::from(name));
+    // || name.ends_with("_t");
 }
 
 fn with_comment(comment: Option<&str>, message: String) -> String {
@@ -804,7 +810,7 @@ fn parse_switch(l: &mut Lexer, ctx: &Ctx) -> Result<Statement, Error> {
 }
 
 fn parse_function_declaration(
-    lexer: &mut Lexer,
+    l: &mut Lexer,
     is_pub: bool,
     type_name: Typename,
     form: Form,
@@ -815,21 +821,21 @@ fn parse_function_declaration(
     let mut parameters: Vec<TypeAndForms> = vec![];
     let mut variadic = false;
 
-    expect(lexer, "(", None)?;
-    if !lexer.follows(")") {
-        parameters.push(parse_function_parameter(lexer, ctx)?);
-        while lexer.follows(",") {
-            lexer.get();
-            if lexer.follows("...") {
-                lexer.get();
-                variadic = true;
-                break;
-            }
-            parameters.push(parse_function_parameter(lexer, ctx)?);
+    // (const int a,b, float c, ...)
+    expect(l, "(", None)?;
+    while type_follows(l, ctx) {
+        parameters.push(parse_function_parameter(l, ctx)?);
+        if !l.eat(",") {
+            break;
         }
     }
-    expect(lexer, ")", Some("parse_function_declaration"))?;
-    let body = parse_statements_block(lexer, ctx)?;
+    if l.follows("...") {
+        l.get();
+        variadic = true;
+    }
+    expect(l, ")", Some("parse_function_declaration"))?;
+
+    let body = parse_statements_block(l, ctx)?;
     return Ok(ModuleObject::FunctionDeclaration(FunctionDeclaration {
         is_pub,
         type_name,
@@ -842,21 +848,19 @@ fn parse_function_declaration(
     }));
 }
 
-fn parse_function_parameter(lexer: &mut Lexer, ctx: &Ctx) -> Result<TypeAndForms, Error> {
-    let mut forms: Vec<Form> = vec![];
-    let type_name = parse_typename(lexer, ctx)?;
-    forms.push(parse_form(lexer, ctx)?);
-    while lexer.follows(",")
-        && lexer.peek_n(1).unwrap().kind != "..."
-        && lexer.peek_n(1).unwrap().kind != "const"
-        && !(lexer.peek_n(1).unwrap().kind == "word"
-            && is_type(
-                lexer.peek_n(1).unwrap().content.as_ref().unwrap(),
-                &ctx.typenames,
-            ))
-    {
-        lexer.get();
-        forms.push(parse_form(lexer, ctx)?);
+fn parse_function_parameter(l: &mut Lexer, ctx: &Ctx) -> Result<TypeAndForms, Error> {
+    // int a,b
+    // const char *s
+    let type_name = parse_typename(l, ctx)?;
+    let mut forms: Vec<Form> = Vec::new();
+    forms.push(parse_form(l, ctx)?);
+    while l.follows(",") {
+        let t = l.get().unwrap();
+        if type_follows(l, ctx) || l.follows("...") {
+            l.unget(t);
+            break;
+        }
+        forms.push(parse_form(l, ctx)?);
     }
     return Ok(TypeAndForms { type_name, forms });
 }
