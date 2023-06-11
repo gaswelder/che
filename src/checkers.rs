@@ -42,9 +42,23 @@ pub fn depused(m: &Module, dep: &Module, depns: &String) -> bool {
                     return true;
                 }
             }
-            ModuleObject::StructTypedef(StructTypedef { is_pub, name, .. }) => {
+            ModuleObject::StructTypedef(StructTypedef {
+                is_pub,
+                name,
+                fields,
+            }) => {
                 if *is_pub && has(&name.name, &list) {
                     return true;
+                }
+                for f in fields {
+                    match f {
+                        StructEntry::Plain(e) => {
+                            if e.type_name.name.namespace == *depns {
+                                return true;
+                            }
+                        }
+                        StructEntry::Union(_) => {}
+                    }
                 }
             }
             ModuleObject::ModuleVariable {
