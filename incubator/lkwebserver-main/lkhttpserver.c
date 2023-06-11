@@ -9,6 +9,8 @@ pub typedef {
     fd_set readfds;
     fd_set writefds;
     int maxfd;
+    // The listening connection.
+    net.net_t *listen_conn;
 } LKHttpServer;
 
 pub LKHttpServer *lk_httpserver_new(lkconfig.LKConfig *cfg) {
@@ -57,21 +59,42 @@ pub int lk_httpserver_serve(lkconfig.LKConfig *cfg) {
     LKHttpServer *httpserver = lkhttpserver.lk_httpserver_new(cfg);
 
     char *addr = strutil.newstr("%s:%s", cfg->serverhost->s, cfg->port->s);
-    int s0 = net.net_listen("tcp", addr);
-    if (!s0) {
+    int httpserver->listen_conn = net.net_listen("tcp", addr);
+    if (!httpserver->listen_conn) {
         free(addr);
         return -1;
     }
     printf("Serving HTTP at %s\n", addr);
+    free(addr);
 
     clearenv();
     set_cgi_env1(server);
 
     FD_ZERO(&server->readfds);
     FD_ZERO(&server->writefds);
-    FD_SET_READ(s0, server);
+
+    FD_SET(s0, &server->readfds);
+    server->maxfd = s0;
 
     while (1) {
+        // New client connection?
+        if (net.has_data(server->listen_conn)) {
+            net_t *client = net.net_accept(server->listen_conn);
+            if (!client) {
+                lk_print_err("accept()");
+                continue;
+            }
+
+            // hack
+            int clientfd = client->sock;
+
+            // Add new client socket to list of read sockets.
+            FD_SET_READ(clientfd, server);
+            LKContext *ctx = create_initial_context(clientfd, &sa);
+            add_new_client_context(&server->ctxhead, ctx);
+            continue;
+        }
+
         // readfds contain the master list of read sockets
         fd_set cur_readfds = server->readfds;
         fd_set cur_writefds = server->writefds;
@@ -91,42 +114,22 @@ pub int lk_httpserver_serve(lkconfig.LKConfig *cfg) {
         // fds now contain list of clients with data available to be read.
         for (int i=0; i <= server->maxfd; i++) {
             if (FD_ISSET(i, &cur_readfds)) {
-                // New client connection
-                if (i == s0) {
-                    socklen_t sa_len = sizeof(struct sockaddr_in);
-                    struct sockaddr_in sa;
-                    int clientfd = accept(s0, (struct sockaddr*)&sa, &sa_len);
-                    if (clientfd == -1) {
-                        lk_print_err("accept()");
-                        continue;
-                    }
-
-                    // Add new client socket to list of read sockets.
-                    FD_SET_READ(clientfd, server);
-
-                    LKContext *ctx = create_initial_context(clientfd, &sa);
-                    add_new_client_context(&server->ctxhead, ctx);
+                //printf("read fd %d\n", i);
+                int selectfd = i;
+                LKContext *ctx = match_select_ctx(server->ctxhead, selectfd);
+                if (ctx == NULL) {
+                    printf("read selectfd %d not in ctx list\n", selectfd);
+                    terminate_fd(selectfd, FD_SOCK, FD_READ, server);
                     continue;
+                }
+                if (ctx->type == CTX_READ_REQ) {
+                    read_request(server, ctx);
+                } else if (ctx->type == CTX_READ_CGI_OUTPUT) {
+                    read_cgi_output(server, ctx);
+                } else if (ctx->type == CTX_PROXY_PIPE_RESP) {
+                    pipe_proxy_response(server, ctx);
                 } else {
-                    //printf("read fd %d\n", i);
-
-                    int selectfd = i;
-                    LKContext *ctx = match_select_ctx(server->ctxhead, selectfd);
-                    if (ctx == NULL) {
-                        printf("read selectfd %d not in ctx list\n", selectfd);
-                        terminate_fd(selectfd, FD_SOCK, FD_READ, server);
-                        continue;
-                    }
-
-                    if (ctx->type == CTX_READ_REQ) {
-                        read_request(server, ctx);
-                    } else if (ctx->type == CTX_READ_CGI_OUTPUT) {
-                        read_cgi_output(server, ctx);
-                    } else if (ctx->type == CTX_PROXY_PIPE_RESP) {
-                        pipe_proxy_response(server, ctx);
-                    } else {
-                        printf("read selectfd %d with unknown ctx type %d\n", selectfd, ctx->type);
-                    }
+                    printf("read selectfd %d with unknown ctx type %d\n", selectfd, ctx->type);
                 }
             } else if (FD_ISSET(i, &cur_writefds)) {
                 //printf("write fd %d\n", i);
