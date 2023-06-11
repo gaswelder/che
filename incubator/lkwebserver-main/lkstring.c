@@ -38,17 +38,6 @@ pub LKString *lk_string_new(char *s) {
     return lks;
 }
 
-LKString *lk_string_size_new(size_t size) {
-    LKString *lks = lkalloc.lk_malloc(sizeof(LKString), "lk_string_size_new");
-
-    lks->s_len = 0;
-    lks->s_size = size;
-    lks->s = lkalloc.lk_malloc(lks->s_size+1, "lk_string_size_new_s");
-    zero_s(lks);
-
-    return lks;
-}
-
 pub void lk_string_free(LKString *lks) {
     assert(lks->s != NULL);
 
@@ -56,9 +45,6 @@ pub void lk_string_free(LKString *lks) {
     lkalloc.lk_free(lks->s);
     lks->s = NULL;
     lkalloc.lk_free(lks);
-}
-void lk_string_voidp_free(void *plkstr) {
-    lk_string_free((LKString *) plkstr);
 }
 
 pub void lk_string_assign(LKString *lks, char *s) {
@@ -70,63 +56,6 @@ pub void lk_string_assign(LKString *lks, char *s) {
     zero_s(lks);
     strncpy(lks->s, s, s_len);
     lks->s_len = s_len;
-}
-
-pub void lk_string_assign_sf(LKString *lks, char *fmt, ...) {
-    char sbuf[LK_BUFSIZE_MEDIUM];
-
-    // Try to use static buffer first, to avoid allocation.
-    va_list args;
-    va_start(args, fmt);
-    int z = vsnprintf(sbuf, sizeof(sbuf), fmt, args);
-    va_end(args);
-    if (z < 0) return;
-
-    // If snprintf() truncated output to sbuf due to space,
-    // use asprintf() instead.
-    if (z >= sizeof(sbuf)) {
-        va_list args;
-        char *ps;
-        va_start(args, fmt);
-        int z = vasprintf(&ps, fmt, args);
-        va_end(args);
-        if (z == -1) return;
-
-        lk_string_assign(lks, ps);
-        free(ps);
-        return;
-    }
-
-    lk_string_assign(lks, sbuf);
-}
-
-//$$ Duplicate code from lk_string_sprintf().
-pub void lk_string_append_sprintf(LKString *lks, char *fmt, ...) {
-    char sbuf[LK_BUFSIZE_MEDIUM];
-
-    // Try to use static buffer first, to avoid allocation.
-    va_list args;
-    va_start(args, fmt);
-    int z = vsnprintf(sbuf, sizeof(sbuf), fmt, args);
-    va_end(args);
-    if (z < 0) return;
-
-    // If snprintf() truncated output to sbuf due to space,
-    // use asprintf() instead.
-    if (z >= sizeof(sbuf)) {
-        va_list args;
-        char *ps;
-        va_start(args, fmt);
-        int z = vasprintf(&ps, fmt, args);
-        va_end(args);
-        if (z == -1) return;
-
-        lk_string_assign(lks, ps);
-        free(ps);
-        return;
-    }
-
-    lk_string_append(lks, sbuf);
 }
 
 pub void lk_string_append(LKString *lks, char *s) {
@@ -173,10 +102,6 @@ pub int lk_string_sz_equal(LKString *lks1, char *s2) {
         return 1;
     }
     return 0;
-}
-
-pub int lk_string_equal(LKString *lks1, LKString *lks2) {
-    return lk_string_sz_equal(lks1, lks2->s);
 }
 
 // Return if string starts with s.
@@ -237,21 +162,6 @@ void lk_string_trim(LKString *lks) {
 
     size_t new_len = endi-starti+1;
     memmove(lks->s, lks->s + starti, new_len);
-    memset(lks->s + new_len, 0, lks->s_len - new_len);
-    lks->s_len = new_len;
-}
-
-void lk_string_chop_start(LKString *lks, char *s) {
-    size_t s_len = strlen(s);
-    if (s_len > lks->s_len) {
-        return;
-    }
-    if (strncmp(lks->s, s, s_len)) {
-        return;
-    }
-
-    size_t new_len = lks->s_len - s_len;
-    memmove(lks->s, lks->s + s_len, lks->s_len - s_len);
     memset(lks->s + new_len, 0, lks->s_len - new_len);
     lks->s_len = new_len;
 }

@@ -39,48 +39,30 @@ void lkstring_test() {
     assert(strcmp(lks->s, "") == 0);
     lkstring.lk_string_free(lks);
 
-    lks = lk_string_size_new(10);
-    assert(lks->s_len == 0);
-    assert(lks->s_size == 10);
-    assert(strcmp(lks->s, "") == 0);
-    lkstring.lk_string_free(lks);
-
     // lks, lks2
     lks = lk_string_new("abc def");
     lks2 = lk_string_new("abc ");
     assert(lks->s_len == 7);
     assert(lks->s_size >= lks->s_len);
-    assert(!lk_string_equal(lks, lks2));
     assert(strcmp(lks->s, "abc "));
     assert(strcmp(lks->s, "abc def2"));
     assert(!strcmp(lks->s, "abc def"));
 
     lk_string_append(lks2, "def");
     assert(!strcmp(lks->s, lks2->s));
-    assert(lk_string_equal(lks, lks2));
 
     lk_string_assign(lks2, "abc def");
-    assert(lk_string_equal(lks, lks2));
 
     lk_string_assign(lks2, "");
-    assert(!lk_string_equal(lks, lks2));
 
     lk_string_assign_sprintf(lks2, "abc %s", "def");
     assert(!strcmp(lks->s, lks2->s));
-    assert(lk_string_equal(lks, lks2));
 
     lk_string_assign_sprintf(lks, "abc%ddef%d", 123, 456);
     lk_string_assign_sprintf(lks2, "%s123%s456", "abc", "def");
     assert(!strcmp(lks->s, lks2->s));
-    assert(lk_string_equal(lks, lks2));
     lkstring.lk_string_free(lks);
     lkstring.lk_string_free(lks2);
-
-    lks = lk_string_new("prompt: ");
-    lk_string_append_sprintf(lks, "a:%d, b:%d, c:%d", 1, 2, 3);
-    assert(lk_string_sz_equal(lks, "prompt: a:1, b:2, c:3"));
-    assert(!lk_string_sz_equal(lks, "prompt: a: 1, b:2, c:3"));
-    lkstring.lk_string_free(lks);
 
     // Test very large strings.
     lks = lk_string_new("");
@@ -136,18 +118,12 @@ void lkstring_test() {
     lkstring.lk_string_free(lks);
 
     lks = lk_string_new("/testsite/");
-    lk_string_chop_start(lks, "abc");
     assert(lk_string_sz_equal(lks, "/testsite/"));
-    lk_string_chop_start(lks, "");
     assert(lk_string_sz_equal(lks, "/testsite/"));
-    lk_string_chop_start(lks, "///");
     assert(lk_string_sz_equal(lks, "/testsite/"));
 
-    lk_string_chop_start(lks, "/");
     assert(lk_string_sz_equal(lks, "testsite/"));
-    lk_string_chop_start(lks, "test");
     assert(lk_string_sz_equal(lks, "site/"));
-    lk_string_chop_start(lks, "si1");
     assert(lk_string_sz_equal(lks, "site/"));
 
     lk_string_assign(lks, "/testsite/");
@@ -166,11 +142,9 @@ void lkstring_test() {
     assert(lk_string_sz_equal(lks, "/test"));
 
     lk_string_assign(lks, "");
-    lk_string_chop_start(lks, "");
     assert(lk_string_sz_equal(lks, ""));
     lk_string_chop_end(lks, "");
     assert(lk_string_sz_equal(lks, ""));
-    lk_string_chop_start(lks, "abc");
     assert(lk_string_sz_equal(lks, ""));
     lk_string_chop_end(lks, "def");
     assert(lk_string_sz_equal(lks, ""));
@@ -190,20 +164,6 @@ void lkstring_test() {
     lks = lk_string_new("abc");
     lk_string_prepend(lks, "def ");
     assert(lk_string_sz_equal(lks, "def abc"));
-    lkstring.lk_string_free(lks);
-
-    lks = lk_string_size_new(25);
-    lk_string_prepend(lks, " World");
-    lk_string_prepend(lks, "Hello");
-    lk_string_prepend(lks, "1. ");
-    assert(lk_string_sz_equal(lks, "1. Hello World"));
-    lkstring.lk_string_free(lks);
-
-    lks = lk_string_size_new(2);
-    lk_string_assign(lks, "Little Kitten Webserver written in C");
-    lk_string_prepend(lks, "A ");
-    lk_string_append(lks, ".");
-    assert(lk_string_sz_equal(lks, "A Little Kitten Webserver written in C."));
     lkstring.lk_string_free(lks);
 
     lks = lk_string_new("");
