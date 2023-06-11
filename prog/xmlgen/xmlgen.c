@@ -942,34 +942,35 @@ void AlignObjs() {
         for (int j=0; j<20; j++)
             if (objs[i].elm[j].id!=0) objs[i].kids++;
 }
-int FindRec(ObjDesc *od, ObjDesc *search)
-{
-    int i,r=0;
-    if (od==search) r=1;
-    else
-        {
-            if(!od->flag)
-                {
-                    od->flag=1;
-                    for (i=0;i<od->kids;i++)
-                        r+=FindRec(objs+od->elm[i].id,search);
-                }
+
+void CheckRecursion() {
+    int n = nelem(objs);
+    for (int i = 1; i < n; i++) {
+        ObjDesc *root = &objs[i];
+        if (root->type != 0x02) {
+            continue;
         }
+        for (int j=0; j < root->kids; j++) {
+            root->elm[j].rec = FindRec(&objs[root->elm[j].id], root);
+        }
+    }
+}
+
+int FindRec(ObjDesc *od, ObjDesc *search) {
+    if (od == search) {
+        od->flag=0;
+        return 1;
+    }
+
+    int r = 0;
+    if (!od->flag) {
+        od->flag = 1;
+        for (int i=0; i < od->kids; i++) {
+            r += FindRec(objs + od->elm[i].id, search);
+        }
+    }
     od->flag=0;
     return r;
-}
-void CheckRecursion()
-{
-    int i,j;
-    int nobj=nelem(objs);
-    ObjDesc *root;
-    for (i=1;i<nobj;i++)
-        {
-            root=objs+i;
-            if (!(root->type&0x02)) continue;
-            for (j=0;j<root->kids;j++)
-                root->elm[j].rec=FindRec(&objs[root->elm[j].id],root);
-        }
 }
 
 int main(int argc, char **argv)
