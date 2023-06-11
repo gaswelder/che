@@ -666,7 +666,7 @@ void OpeningTag(ObjDesc *od)
                 xmlprintf(xmlout," %s=\"%s%d\"", attname,objs[att->ref].name,ref);
             break;
             case ATTR_TYPE_3:
-                if (xmlgen_rand.genunf(0,1)<att->prcnt) {
+                if (rnd.uniform(0, 1) < att->prcnt) {
                     if (!strcmp(attname,"income")) {
                         double d = 40000 + 30000 * rnd.gauss();
                         if (d < 9876) {
@@ -755,7 +755,7 @@ void GenSubtree(FILE *out, ObjDesc *od)
             break;
         case LOCATION:
         case COUNTRY:
-            if (xmlgen_rand.genunf(0,1)<0.75) {
+            if (rnd.uniform(0, 1) < 0.75) {
                 GenContents_country = COUNTRIES_USA;
             } else {
                 GenContents_country = xmlgen_rand.ignuin(0, words.dictlen("countries") - 1);
@@ -877,11 +877,11 @@ void GenSubtree(FILE *out, ObjDesc *od)
             }
             break;
         case QUANTITY:
-            GenContents_quantity=1+(int)xmlgen_rand.genexp(0.4);
+            GenContents_quantity=1+(int)rnd.exponential(0.4);
             xmlprintf(out,"%d",GenContents_quantity);
             break;
         case INCREASE:
-            double d=1.5 *(1+(int)xmlgen_rand.genexp(10));
+            double d=1.5 *(1+(int)rnd.exponential(10));
             xmlprintf(out,"%.2f",d);
             GenContents_increases+=d;
         break;
@@ -889,16 +889,16 @@ void GenSubtree(FILE *out, ObjDesc *od)
             xmlprintf(out,"%.2f",GenContents_initial+GenContents_increases);
             break;
         case INIT_PRICE:
-            GenContents_initial=xmlgen_rand.genexp(100);
+            GenContents_initial=rnd.exponential(100);
             GenContents_increases=0;
             xmlprintf(out,"%.2f",GenContents_initial);
             break;
         case AMOUNT:
         case PRICE:
-            xmlprintf(out,"%.2f",xmlgen_rand.genexp(100));
+            xmlprintf(out,"%.2f",rnd.exponential(100));
             break;
         case RESERVE:
-            xmlprintf(out,"%.2f",GenContents_initial*(1.2+xmlgen_rand.genexp(2.5)));
+            xmlprintf(out,"%.2f",GenContents_initial*(1.2+rnd.exponential(2.5)));
             break;
         case TEXT:
             PrintANY();
@@ -912,7 +912,8 @@ void GenSubtree(FILE *out, ObjDesc *od)
 
     if (od->type&0x02)
         {
-            double sum=0,alt=xmlgen_rand.genunf(0,1);
+            double sum = 0;
+            double alt = rnd.uniform(0, 1);
             i=0;
             if (od->flag>2-1)
                 while (i<od->kids-1 && od->elm[i].rec) i++;
@@ -1204,11 +1205,11 @@ char tick[3] = "";
 int PrintANY_st[3] = {};
 
 void PrintANY() {
-    int sen=1+(int)xmlgen_rand.genexp(20);
+    int sen=1+(int)rnd.exponential(20);
     int stptr=0;
     for (int i=0;i<sen;i++)
         {
-            if (xmlgen_rand.genunf(0,1)<0.1 && stptr<3-1)
+            if (rnd.uniform(0, 1) < 0.1 && stptr<3-1)
             {
                 while (true) {
                     PrintANY_st[stptr]=xmlgen_rand.ignuin(0,3-1);
@@ -1221,13 +1222,13 @@ void PrintANY() {
                 stptr++;
             }
             else
-                if (xmlgen_rand.genunf(0,1)<0.8 && stptr)
+                if (rnd.uniform(0, 1) < 0.8 && stptr)
                     {
                         --stptr;
                         xmlprintf(xmlout,"</%s> ",markup[PrintANY_st[stptr]]);
                         tick[PrintANY_st[stptr]]=0;
                     }
-            PrintSentence(1+(int)xmlgen_rand.genexp(4));
+            PrintSentence(1+(int)rnd.exponential(4));
        }
     while(stptr)
         {
@@ -1350,12 +1351,12 @@ char *GenContents_shipping[]={
                 "See description for charges"};
 
 void PrintName(int *lastout) {
-    int fst=(int)xmlgen_rand.genexp(words.dictlen("firstnames")/3);
+    int fst=(int)rnd.exponential(words.dictlen("firstnames")/3);
     if (fst >= words.dictlen("firstnames")-1) {
         fst = words.dictlen("firstnames")-1;
     }
 
-    int lst=(int)xmlgen_rand.genexp( words.dictlen("lastnames")/3);
+    int lst=(int)rnd.exponential( words.dictlen("lastnames")/3);
     if (lst >= words.dictlen("lastnames")-1) {
         lst = words.dictlen("lastnames")-1;
     }
@@ -1368,7 +1369,7 @@ void PrintName(int *lastout) {
 void PrintSentence(int w) {
     int n = words.dictlen("words");
     for (int i=0; i<w; i++) {
-        int word=(int)xmlgen_rand.genexp(n/5.0);
+        int word=(int)rnd.exponential(n/5.0);
         if (word >= n - 1) {
             word = n - 1;
         }

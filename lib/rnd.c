@@ -9,6 +9,14 @@ pub double gauss() {
     return v / (n+1) - 0.5;
 }
 
-pub void noop() {
-    //
+pub double uniform(double low, high) {
+    return low + (high-low) * u();
+}
+
+pub double exponential(double mean) {
+    return mean * -log(u());
+}
+
+double u() {
+    return (double) rand() / RAND_MAX;
 }
