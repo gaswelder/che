@@ -140,8 +140,7 @@ pub net_t *net_listen(const char *proto, const char *addr) {
 	return c;
 }
 
-pub net_t *net_accept(net_t *l)
-{
+pub net_t *net_accept(net_t *l) {
 	net_t *newconn = calloc(1, sizeof(net_t));
 	if (!newconn) {
 		error = "no memory for new socket";
@@ -171,28 +170,18 @@ pub void net_close(net_t *c)
 }
 
 /*
- * Returns true if there is data to be read
- * from the given connection.
+ * Returns true if there is data to be read from the given connection.
  */
-pub int net_incoming(net_t *c)
-{
+pub bool has_data(net_t *c) {
+	timeval_t t = {0};
 	fd_set read = {0};
 	FD_ZERO(&read);
 	FD_SET(c->sock, &read);
-
-	timeval_t t = {0};
-	memset(&t, 0, sizeof(timeval_t));
-
-	if(select(c->sock + 1, &read, NULL, NULL, &t) == -1) {
+	if (select(c->sock + 1, &read, NULL, NULL, &t) == -1) {
 		error = "select error";
-		return 0;
+		return false;
 	}
-
-	if(FD_ISSET(c->sock, &read)) {
-		return 1;
-	}
-
-	return 0;
+	return FD_ISSET(c->sock, &read);
 }
 
 /*
@@ -286,20 +275,18 @@ int parseaddr(net_t *c, const char *addr)
 	return 1;
 }
 
-int format_address(sockaddr_t *a, char *buf, size_t n)
-{
-	if(a->sa_family != AF_INET) {
+/**
+ * Writes the socket a's address into the buffer buf.
+ * Returns false on failure.
+ */
+bool format_address(sockaddr_t *a, char *buf, size_t n) {
+	if (a->sa_family != AF_INET) {
 		error = "unknown sa_family";
-		return 0;
+		return false;
 	}
 	sockaddr_in_t *ai = (sockaddr_in_t *) a;
-	int r = snprintf( buf, n, "%s:%u",
-		inet_ntoa( ai->sin_addr ),
-		ntohs( ai->sin_port )
-	);
-	/*
-	 * If r == n, then the string has been trimmed.
-	 */
+	int r = snprintf(buf, n, "%s:%u", inet_ntoa(ai->sin_addr), ntohs(ai->sin_port));
+	// If r == n, then the string has been trimmed.
 	return r > 0 && (size_t) r < n;
 }
 
