@@ -1002,7 +1002,8 @@ int main(int argc, char **argv)
     if (dumpdtd) {
         char **line = schema.getdtd();
         while (*line) {
-            fprintf(stdout, "%s", *line);
+            fprintf(stdout, "%s\n", *line);
+            line++;
         }
         return 0;
     }
