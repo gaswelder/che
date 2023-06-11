@@ -549,7 +549,7 @@ xmlgen_rand.ProbDesc global_GenRef_pdnew = {};
 
 int GenRef(xmlgen_rand.ProbDesc *pd, int type)
 {
-    ObjDesc* od=objs+type;
+    ObjDesc* od = GetSchemaNode(type);
     if (pd->type!=0)
         {
             global_GenRef_pdnew.min=0;
@@ -575,7 +575,7 @@ void FixReferenceSets(ObjDesc *od)
     for (i=0;i<od->kids;i++)
         {
             ElmDesc *ed=&(od->elm[i]);
-            ObjDesc *son=&objs[ed->id];
+            ObjDesc *son = GetSchemaNode(ed->id);
             if (!son) continue;
             if (ed->pd.min>1 && !hasID(son))
                 {
@@ -608,7 +608,7 @@ void FixSetSize(ObjDesc *od) {
     }
     for (int i = 0; i < od->kids; i++) {
         ElmDesc *ed = &(od->elm[i]);
-        ObjDesc *son = &objs[ed->id];
+        ObjDesc *son = GetSchemaNode(ed->id);
         if (!son) continue;
         if (ed->pd.min>1 && (hasID(son) || (son->type&0x04))) {
             int size=(int)(xmlgen_rand.GenRandomNum(&ed->pd)+0.5);
@@ -722,7 +722,6 @@ bool GenSubtree_splitnow = false;
 
 void GenSubtree(FILE *out, ObjDesc *od)
 {
-    int i=0;
     ElmDesc *ed;
     if (od->type&0x10) return;
     if (GenSubtree_splitnow) {
@@ -883,26 +882,35 @@ void GenSubtree(FILE *out, ObjDesc *od)
         xmlprintf(out,"\n");
     }
 
-    if (od->type&0x02)
-        {
+    if (od->type & 0x02) {
+        ObjDesc *root;
+        if (od->flag > 2-1) {
+            int i = 0;
+            while (i < od->kids-1 && od->elm[i].rec) {
+                i++;
+            }
+            root = GetSchemaNode(od->elm[i].id);
+        } else {
             double sum = 0;
             double alt = rnd.uniform(0, 1);
-            i=0;
-            if (od->flag>2-1)
-                while (i<od->kids-1 && od->elm[i].rec) i++;
-            else
-                while (i<od->kids-1 && (sum+=od->elm[i].pd.mean)<alt) i++;
-            GenSubtree(out, objs+od->elm[i].id);
-        }
-    else
-        for (i=0;i<od->kids;i++)
-            {
-                int num;
-                ed=&od->elm[i];
-                num=(int)(xmlgen_rand.GenRandomNum(&ed->pd)+0.5);
-                while(num--)
-                    GenSubtree(out, objs+ed->id);
+            int i = 0;
+            while (i < od->kids-1 && (sum += od->elm[i].pd.mean) < alt) {
+                i++;
             }
+            root = GetSchemaNode(od->elm[i].id);
+        }
+        GenSubtree(out, root);
+    }
+    else {
+        for (int i = 0; i < od->kids; i++) {
+            int num;
+            ed = &od->elm[i];
+            num = (int)(xmlgen_rand.GenRandomNum(&ed->pd)+0.5);
+            while (num--) {
+                GenSubtree(out, GetSchemaNode(ed->id));
+            }
+        }
+    }
     ClosingTag(od);
     if (global_split) {
         if (od->type & 0x20 || (od->type & 0x40 && splitcnt++>global_split)) {
@@ -911,6 +919,11 @@ void GenSubtree(FILE *out, ObjDesc *od)
     }
     od->flag--;
 }
+
+ObjDesc *GetSchemaNode(int id) {
+    return objs + id;
+}
+
 void Preamble(int type)
 {
     switch(type)
@@ -928,19 +941,60 @@ void Preamble(int type)
         }
 }
 
-void AlignObjs() {
+idrepro idr[2] = {};
+
+void InitializeSchema() {
     int nobj = nelem(objs);
+    
+    // Reorder the schema so that a node with id "x"
+    // is at the same index "x" in the array.
     ObjDesc *newobjs = calloc(nobj, sizeof(ObjDesc));
     for (int i = 0; i < nobj; i++) {
-        void *dest = &newobjs[objs[i].id];
         void *src = &objs[i];
+        void *dest = &newobjs[objs[i].id];
         memcpy(dest, src, sizeof(ObjDesc));
     }
     memcpy(objs,newobjs,sizeof(ObjDesc)*nobj);
     free(newobjs);
-    for (int i = 0; i < nobj; i++)
-        for (int j=0; j<20; j++)
-            if (objs[i].elm[j].id!=0) objs[i].kids++;
+
+    // Initialize the "kids" field on each node:
+    // the count of items it has in its "elm" field.
+    for (int i = 0; i < nobj; i++) {
+        for (int j=0; j<20; j++) {
+            if (objs[i].elm[j].id != 0) {
+                objs[i].kids++;
+            }
+        }
+    }
+
+    ObjDesc *root = GetSchemaNode(1);
+    FixSetSize(root);
+    for (int i = 0; i < nobj; i++) {
+        objs[i].flag = 0;
+    }
+    FixReferenceSets(root);
+    for (int i = 0; i < nobj; i++) {
+        objs[i].flag = 0;
+    }
+    CheckRecursion();
+    for (int i = 0; i < nobj; i++) {
+        objs[i].flag = 0;
+    }
+
+    int items = -1;
+    int open = -1;
+    for (int i = 0; i < nobj; i++) {
+        if (objs[i].id == ITEM) {
+            items = objs[i].set.size;
+        }
+        if (objs[i].id == OPEN_TRANS) {
+            open = objs[i].set.size;
+        }
+    }
+    int closed = items - open;
+    FixSetByEdge("closed_auctions","closed_auction",closed);
+    InitRepro(&idr[0], open, closed);
+    InitRepro(&idr[1], closed, open);
 }
 
 void CheckRecursion() {
@@ -1029,24 +1083,10 @@ int main(int argc, char **argv)
         }
     }
 
-    AlignObjs();
-    ObjDesc *root;
-    root=objs+1;
-    FixSetSize(root);
-    for (size_t i = 0; i < nelem(objs); i++) {
-        objs[i].flag = 0;
-    }
-    FixReferenceSets(root);
-    for (size_t i = 0; i < nelem(objs); i++) {
-        objs[i].flag = 0;
-    }
-    CheckRecursion();
-    for (size_t i = 0; i < nelem(objs); i++) {
-        objs[i].flag = 0;
-    }
-    initialize();
+    InitializeSchema();
     Preamble(document_type);
-    GenSubtree(xmlout, root);
+
+    GenSubtree(xmlout, GetSchemaNode(1));
     fclose(xmlout);
     return 0;
 }
@@ -1059,7 +1099,7 @@ typedef {
     xmlgen_rand.random_gen rk;
 } idrepro;
 
-idrepro idr[2] = {};
+
 
 enum {
     ERROR_OBJ,
@@ -1125,23 +1165,8 @@ int ItemIdRef(ObjDesc *odSon, int *iRef)
     if (od->id==CLOSED_TRANS) return GenItemIdRef(&idr[1],iRef);
     return 0;
 }
-void initialize()
-{
-    int items = -1;
-    int open = -1;
-    for (size_t i = 0; i < nelem(objs); i++) {
-        if (objs[i].id == ITEM) {
-            items = objs[i].set.size;
-        }
-        if (objs[i].id == OPEN_TRANS) {
-            open = objs[i].set.size;
-        }
-    }
-    int closed = items - open;
-    FixSetByEdge("closed_auctions","closed_auction",closed);
-    InitRepro(&idr[0], open, closed);
-    InitRepro(&idr[1], closed, open);
-}
+
+
 
 int InitRepro_direction=0;
 void InitRepro(idrepro *rep, int max, int brosmax)
