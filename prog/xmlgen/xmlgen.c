@@ -4,6 +4,7 @@
 #import words.c
 #import rnd
 #import ipsum.c
+#import schema.c
 
 typedef { int id; xmlgen_rand.ProbDesc pd; char rec; } ElmDesc;
 
@@ -545,7 +546,6 @@ bool hasID(ObjDesc *od) {
 }
 
 xmlgen_rand.ProbDesc global_GenRef_pdnew = {};
-char dtd_name[128]="auction.dtd";
 
 int GenRef(xmlgen_rand.ProbDesc *pd, int type)
 {
@@ -919,8 +919,8 @@ void Preamble(int type)
             xmlprintf(xmlout,"<?xml version=\"1.0\" standalone=\"yes\"?>\n");
             break;
         case 2:
-            xmlprintf(xmlout,"<?xml version=\"1.0\"?>\n<!DOCTYPE %s SYSTEM \"%s\">\n",
-                    objs[1].name,dtd_name);
+            xmlprintf(xmlout, "<?xml version=\"1.0\"?>\n");
+            xmlprintf(xmlout, "<!DOCTYPE %s SYSTEM \"auction.dtd\">\n", objs[1].name);
             break;
         case 3:
             xmlprintf(stderr,"Not yet implemented.\n");
@@ -972,102 +972,6 @@ void CheckRecursion()
         }
 }
 
-char *dtd[]={
-    "<!ELEMENT site            (regions, categories, catgraph, people, open_auctions, closed_auctions)>\n",
-    "<!ELEMENT categories      (category+)>\n",
-    "<!ELEMENT category        (name, description)>\n",
-    "<!ATTLIST category        id ID #REQUIRED>\n",
-    "<!ELEMENT name            (#PCDATA)>\n",
-    "<!ELEMENT description     (text | parlist)>\n",
-    "<!ELEMENT text            (#PCDATA | bold | keyword | emph)*>\n",
-    "<!ELEMENT bold		  (#PCDATA | bold | keyword | emph)*>\n",
-    "<!ELEMENT keyword	  (#PCDATA | bold | keyword | emph)*>\n",
-    "<!ELEMENT emph		  (#PCDATA | bold | keyword | emph)*>\n",
-    "<!ELEMENT parlist	  (listitem)*>\n",
-    "<!ELEMENT listitem        (text | parlist)*>\n","\n",
-    "<!ELEMENT catgraph        (edge*)>\n",
-    "<!ELEMENT edge            EMPTY>\n",
-    "<!ATTLIST edge            from IDREF #REQUIRED to IDREF #REQUIRED>\n",
-    "\n",
-    "<!ELEMENT regions         (africa, asia, australia, europe, namerica, samerica)>\n",
-    "<!ELEMENT africa          (item*)>\n",
-    "<!ELEMENT asia            (item*)>\n",
-    "<!ELEMENT australia       (item*)>\n",
-    "<!ELEMENT namerica        (item*)>\n",
-    "<!ELEMENT samerica        (item*)>\n",
-    "<!ELEMENT europe          (item*)>\n",
-    "<!ELEMENT item            (location, quantity, name, payment, description, shipping, incategory+, mailbox)>\n",
-    "<!ATTLIST item            id ID #REQUIRED\n",
-    "                          featured CDATA #IMPLIED>\n",
-    "<!ELEMENT location        (#PCDATA)>\n",
-    "<!ELEMENT quantity        (#PCDATA)>\n",
-    "<!ELEMENT payment         (#PCDATA)>\n",
-    "<!ELEMENT shipping        (#PCDATA)>\n",
-    "<!ELEMENT reserve         (#PCDATA)>\n",
-    "<!ELEMENT incategory      EMPTY>\n",
-    "<!ATTLIST incategory      category IDREF #REQUIRED>\n",
-    "<!ELEMENT mailbox         (mail*)>\n",
-    "<!ELEMENT mail            (from, to, date, text)>\n",
-    "<!ELEMENT from            (#PCDATA)>\n",
-    "<!ELEMENT to              (#PCDATA)>\n",
-    "<!ELEMENT date            (#PCDATA)>\n",
-    "<!ELEMENT itemref         EMPTY>\n",
-    "<!ATTLIST itemref         item IDREF #REQUIRED>\n",
-    "<!ELEMENT personref       EMPTY>\n",
-    "<!ATTLIST personref       person IDREF #REQUIRED>\n","\n",
-    "<!ELEMENT people          (person*)>\n",
-    "<!ELEMENT person          (name, emailaddress, phone?, address?, homepage?, creditcard?, profile?, watches?)>\n",
-    "<!ATTLIST person          id ID #REQUIRED>\n",
-    "<!ELEMENT emailaddress    (#PCDATA)>\n",
-    "<!ELEMENT phone           (#PCDATA)>\n",
-    "<!ELEMENT address         (street, city, country, province?, zipcode)>\n",
-    "<!ELEMENT street          (#PCDATA)>\n",
-    "<!ELEMENT city            (#PCDATA)>\n",
-    "<!ELEMENT province        (#PCDATA)>\n",
-    "<!ELEMENT zipcode         (#PCDATA)>\n",
-    "<!ELEMENT country         (#PCDATA)>\n",
-    "<!ELEMENT homepage        (#PCDATA)>\n",
-    "<!ELEMENT creditcard      (#PCDATA)>\n",
-    "<!ELEMENT profile         (interest*, education?, gender?, business, age?)>\n",
-    "<!ATTLIST profile         income CDATA #IMPLIED>\n",
-    "<!ELEMENT interest        EMPTY>\n",
-    "<!ATTLIST interest        category IDREF #REQUIRED>\n",
-    "<!ELEMENT education       (#PCDATA)>\n",
-    "<!ELEMENT income          (#PCDATA)>\n",
-    "<!ELEMENT gender          (#PCDATA)>\n",
-    "<!ELEMENT business        (#PCDATA)>\n",
-    "<!ELEMENT age             (#PCDATA)>\n",
-    "<!ELEMENT watches         (watch*)>\n",
-    "<!ELEMENT watch           EMPTY>\n",
-    "<!ATTLIST watch           open_auction IDREF #REQUIRED>\n","\n",
-    "<!ELEMENT open_auctions   (open_auction*)>\n",
-    "<!ELEMENT open_auction    (initial, reserve?, bidder*, current, privacy?, itemref, seller, annotation, quantity, type, interval)>\n",
-    "<!ATTLIST open_auction    id ID #REQUIRED>\n",
-    "<!ELEMENT privacy         (#PCDATA)>\n",
-    "<!ELEMENT initial         (#PCDATA)>\n",
-    "<!ELEMENT bidder          (date, time, personref, increase)>\n",
-    "<!ELEMENT seller          EMPTY>\n",
-    "<!ATTLIST seller          person IDREF #REQUIRED>\n",
-    "<!ELEMENT current         (#PCDATA)>\n",
-    "<!ELEMENT increase        (#PCDATA)>\n",
-    "<!ELEMENT type            (#PCDATA)>\n",
-    "<!ELEMENT interval        (start, end)>\n",
-    "<!ELEMENT start           (#PCDATA)>\n",
-    "<!ELEMENT end             (#PCDATA)>\n",
-    "<!ELEMENT time            (#PCDATA)>\n",
-    "<!ELEMENT status          (#PCDATA)>\n",
-    "<!ELEMENT amount          (#PCDATA)>\n","\n",
-    "<!ELEMENT closed_auctions (closed_auction*)>\n",
-    "<!ELEMENT closed_auction  (seller, buyer, itemref, price, date, quantity, type, annotation?)>\n",
-    "<!ELEMENT buyer           EMPTY>\n",
-    "<!ATTLIST buyer           person IDREF #REQUIRED>\n",
-    "<!ELEMENT price           (#PCDATA)>\n",
-    "<!ELEMENT annotation      (author, description?, happiness)>\n","\n",
-    "<!ELEMENT author          EMPTY>\n",
-    "<!ATTLIST author          person IDREF #REQUIRED>\n",
-    "<!ELEMENT happiness       (#PCDATA)>\n"
-};
-
 int main(int argc, char **argv)
 {
     bool dumpdtd = false;
@@ -1095,8 +999,9 @@ int main(int argc, char **argv)
         return 0;
     }
     if (dumpdtd) {
-        for (size_t i = 0; i < nelem(dtd); i++) {
-            fprintf(stdout, "%s", dtd[i]);
+        char **line = schema.getdtd();
+        while (*line) {
+            fprintf(stdout, "%s", *line);
         }
         return 0;
     }
