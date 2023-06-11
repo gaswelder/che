@@ -8,15 +8,6 @@ pub struct Error {
 }
 
 pub fn parse_module(l: &mut Lexer, ctx: &Ctx) -> Result<Module, Error> {
-    return parse_module0(l, &ctx).map_err(|err| {
-        // let next = l.peek().unwrap();
-        // let position = format!("{}: {}", &ctx.path, l.peek().unwrap().pos);
-        // format!("{}: {}: {}...", position, err, token_to_string(next))
-        err
-    });
-}
-
-fn parse_module0(l: &mut Lexer, ctx: &Ctx) -> Result<Module, Error> {
     let mut module_objects: Vec<ModuleObject> = vec![];
     while l.more() {
         match l.peek().unwrap().kind.as_str() {
