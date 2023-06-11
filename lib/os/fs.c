@@ -2,14 +2,17 @@
 #include <unistd.h>
 #include <sys/stat.h>
 
-#known unlink
 #known stat
 #known S_ISDIR
 
 typedef struct stat stat_t;
 
-pub bool fs_unlink(const char *path) {
-    return unlink(path) == 0;
+/**
+ * Deletes the file with the given path.
+ * Returns false on error.
+ */
+pub bool unlink(const char *path) {
+    return OS.unlink(path) == 0;
 }
 
 /*

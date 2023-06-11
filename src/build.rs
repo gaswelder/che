@@ -187,6 +187,12 @@ pub fn parse(mainpath: &String) -> Result<Build, Vec<BuildError>> {
                 path: imp.path.clone(),
             });
         }
+        // Add a fake dep for OS calls.
+        deps.push(Dep {
+            ns: String::from("OS"),
+            typenames: Vec::new(),
+            path: String::from(""),
+        });
         work.ctx.push(Ctx {
             typenames: work.typenames[i].clone(),
             path: path.clone(),
@@ -198,14 +204,14 @@ pub fn parse(mainpath: &String) -> Result<Build, Vec<BuildError>> {
     for (i, path) in work.paths.iter().enumerate() {
         let mut l = lexer::for_file(&path).unwrap();
         let ctx = &work.ctx[i];
-        work.m
-            .push(parser::parse_module(&mut l, ctx).map_err(|err| {
-                vec![BuildError {
-                    message: err.message,
-                    pos: err.pos,
-                    path: path.clone(),
-                }]
-            })?);
+        let m = parser::parse_module(&mut l, ctx).map_err(|err| {
+            vec![BuildError {
+                message: err.message,
+                pos: err.pos,
+                path: path.clone(),
+            }]
+        })?;
+        work.m.push(m);
     }
 
     //

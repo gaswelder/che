@@ -458,6 +458,9 @@ fn translate_typename(t: &Typename, ctx: &Ctx) -> CTypename {
 }
 
 fn translate_ns_name(nsid: &NsName, ctx: &Ctx) -> String {
+    if nsid.namespace == "OS" {
+        return nsid.name.clone();
+    }
     if nsid.namespace != "" {
         // get the module that was imported here as <namespace>.
         let dep = ctx.deps.iter().find(|d| d.ns == nsid.namespace).unwrap();

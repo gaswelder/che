@@ -15,7 +15,7 @@ bool test() {
 	if (ok) {
 		ok = !strcmp(data, str);
 	}
-	fs.fs_unlink(PATH);
+	fs.unlink(PATH);
 	return ok;
 }
 

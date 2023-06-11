@@ -377,6 +377,9 @@ fn check_ns_id(
     scope: &Vec<&str>,
     exports: &HashMap<String, &Exports>,
 ) {
+    if x.namespace == "OS" {
+        return;
+    }
     if x.namespace != "" {
         let e = exports.get(&x.namespace).unwrap();
         for f in &e.fns {

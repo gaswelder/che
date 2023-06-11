@@ -234,17 +234,19 @@ fn ns_follows(l: &mut Lexer, ctx: &Ctx) -> bool {
         return false;
     }
     let t = l.peek().unwrap();
-    return t.kind == "word" && ctx.has_ns(l.peek().unwrap().content.as_ref().unwrap());
+    if t.kind != "word" {
+        return false;
+    }
+    let name = l.peek().unwrap().content.as_ref().unwrap();
+    return ctx.has_ns(name);
 }
 
 // foo.bar where foo is a module
 // or just bar
 fn read_ns_id(l: &mut Lexer, ctx: &Ctx) -> Result<NsName, Error> {
     let a = expect(l, "word", None)?;
-    if ctx.has_ns(a.content.as_ref().unwrap())
-        && l.peek_n(0).unwrap().kind == "."
-        && l.peek_n(1).unwrap().kind == "word"
-    {
+    let name = a.content.as_ref().unwrap();
+    if ctx.has_ns(name) && l.peek_n(0).unwrap().kind == "." && l.peek_n(1).unwrap().kind == "word" {
         l.get();
         let b = l.get().unwrap();
         return Ok(NsName {

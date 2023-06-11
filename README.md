@@ -11,10 +11,6 @@ is a command specified by POSIX, and GCC or Clang packages typically have this
 binding installed. If not, you'd have to create a `c99` wrapper yourself for
 whatever c99-compliant compiler you have.
 
-Some libraries (for example, [net](lib/os/net.c)) depend on POSIX, so not
-everything can be compiled on Windows or Mac. There was multi-platform support
-initially, but that's not a goal just yet.
-
 ## Language differences
 
 _No include headers_.
@@ -100,9 +96,9 @@ for (int i = 0; i < nelem(a); i++) {
 
 ## Modules
 
-A single C source file used is called a "module". It's compiled independently
-and linked with other compiled modules by the linker. Here this was taken
-furtner to full-fledged import system:
+A single C source file is called a "module". It's compiled independently and
+linked with other compiled modules by the linker. Here this approach was taken
+furtner to an import system:
 
     // main.c:
     ----------------
@@ -219,3 +215,20 @@ int main() {
 ```
 
 If it returns a non-zero exit status, the runner will display the test as failed and will add the test's output.
+
+## OS interoperability
+
+Some libraries (for example, [net](lib/os/net.c)) depend on POSIX, so not
+everything can be compiled on Windows or Mac. There was multi-platform support
+initially, but that's not a goal just yet.
+
+If a module needs to call an os function, it will have to include the C headers,
+and add hints for types and functions. To avoid name conflicts with the OS
+functions, the special OS namespace can be used:
+
+```c
+// this is a wrapper around the OS's unlink.
+pub bool unlink(const char *path) {
+    return OS.unlink(path) == 0;
+}
+```
