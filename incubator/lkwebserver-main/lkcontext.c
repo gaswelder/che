@@ -1,3 +1,33 @@
+#import lkbuffer.c
+
+pub typedef {
+    int selectfd;
+    int clientfd;
+    LKContextType type;
+    LKContext *next;         // link to next ctx
+
+    // Used by CTX_READ_REQ:
+    LKString *client_ipaddr;          // client ip address string
+    int client_port;       // client port number
+    LKString *req_line;               // current request line
+    lkbuffer.LKBuffer *req_buf;                // current request bytes buffer
+    LKSocketReader *sr;               // input buffer for reading lines
+    LKHttpRequestParser *reqparser;   // parser for httprequest
+    LKHttpRequest *req;               // http request in process
+
+    // Used by CTX_WRITE_REQ:
+    LKHttpResponse *resp;             // http response to be sent
+    LKRefList *buflist;               // Buffer list of things to send/recv
+
+    // Used by CTX_READ_CGI:
+    int cgifd;
+    lkbuffer.LKBuffer *cgi_outputbuf;          // receive cgi stdout bytes here
+    lkbuffer.LKBuffer *cgi_inputbuf;           // input bytes to pass to cgi stdin
+
+    // Used by CTX_PROXY_WRITE_REQ:
+    int proxyfd;
+    lkbuffer.LKBuffer *proxy_respbuf;
+} LKContext;
 
 /*** LKContext functions ***/
 LKContext *lk_context_new() {
@@ -28,16 +58,12 @@ LKContext *lk_context_new() {
     return ctx;
 }
 
-LKContext *create_initial_context(int fd, struct sockaddr_in *sa) {
+LKContext *create_initial_context(int fd) {
     LKContext *ctx = lk_malloc(sizeof(LKContext), "create_initial_context");
     ctx->selectfd = fd;
     ctx->clientfd = fd;
     ctx->type = CTX_READ_REQ;
     ctx->next = NULL;
-
-    ctx->client_sa = *sa;
-    ctx->client_ipaddr = lk_get_ipaddr_string((struct sockaddr *) sa);
-    ctx->client_port = lk_get_sockaddr_port((struct sockaddr *) sa);
 
     ctx->req_line = lk_string_new("");
     ctx->req_buf = lk_buffer_new(0);
@@ -95,7 +121,6 @@ void lk_context_free(LKContext *ctx) {
     ctx->selectfd = 0;
     ctx->clientfd = 0;
     ctx->next = NULL;
-    memset(&ctx->client_sa, 0, sizeof(struct sockaddr_in));
     ctx->client_ipaddr = NULL;
     ctx->req_line = NULL;
     ctx->req_buf = NULL;

@@ -1,12 +1,10 @@
-#define _GNU_SOURCE
-#include <stdio.h>
-#include <stdlib.h>
-#include <stdarg.h>
-#include <string.h>
-#include <unistd.h>
-#include <errno.h>
-#include <assert.h>
-#include "lklib.h"
+/*** LKBuffer - Dynamic bytes buffer ***/
+pub typedef {
+    char *bytes;        // bytes buffer
+    size_t bytes_cur;   // index to current buffer position
+    size_t bytes_len;   // length of buffer
+    size_t bytes_size;  // capacity of buffer in bytes
+} LKBuffer;
 
 LKBuffer *lk_buffer_new(size_t bytes_size) {
     if (bytes_size == 0) {

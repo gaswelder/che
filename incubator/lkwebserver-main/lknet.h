@@ -61,83 +61,6 @@ typedef struct {
     unsigned int content_length;    // value of Content-Length header
 } LKHttpRequestParser;
 
-LKHttpRequestParser *lk_httprequestparser_new();
-void lk_httprequestparser_free(LKHttpRequestParser *parser);
-void lk_httprequestparser_reset(LKHttpRequestParser *parser);
-void lk_httprequestparser_parse_line(LKHttpRequestParser *parser, LKString *line, LKHttpRequest *req);
-void lk_httprequestparser_parse_bytes(LKHttpRequestParser *parser, LKBuffer *buf, LKHttpRequest *req);
-
-/*** CGI Parser ***/
-void parse_cgi_output(LKBuffer *buf, LKHttpResponse *resp);
-
-
-/*** LKContext ***/
-typedef enum {
-    CTX_READ_REQ,
-    CTX_READ_CGI_OUTPUT,
-    CTX_WRITE_CGI_INPUT,
-    CTX_WRITE_RESP,
-    CTX_PROXY_WRITE_REQ,
-    CTX_PROXY_PIPE_RESP,
-} LKContextType;
-
-typedef struct lkcontext_s {
-    int selectfd;
-    int clientfd;
-    LKContextType type;
-    struct lkcontext_s *next;         // link to next ctx
-
-    // Used by CTX_READ_REQ:
-    struct sockaddr_in client_sa;     // client address
-    LKString *client_ipaddr;          // client ip address string
-    unsigned short client_port;       // client port number
-    LKString *req_line;               // current request line
-    LKBuffer *req_buf;                // current request bytes buffer
-    LKSocketReader *sr;               // input buffer for reading lines
-    LKHttpRequestParser *reqparser;   // parser for httprequest
-    LKHttpRequest *req;               // http request in process
-
-    // Used by CTX_WRITE_REQ:
-    LKHttpResponse *resp;             // http response to be sent
-    LKRefList *buflist;               // Buffer list of things to send/recv
-
-    // Used by CTX_READ_CGI:
-    int cgifd;
-    LKBuffer *cgi_outputbuf;          // receive cgi stdout bytes here
-    LKBuffer *cgi_inputbuf;           // input bytes to pass to cgi stdin
-
-    // Used by CTX_PROXY_WRITE_REQ:
-    int proxyfd;
-    LKBuffer *proxy_respbuf;
-} LKContext;
-
-LKContext *lk_context_new();
-LKContext *create_initial_context(int fd, struct sockaddr_in *sa);
-void lk_context_free(LKContext *ctx);
-
-void add_new_client_context(LKContext **pphead, LKContext *ctx);
-void add_context(LKContext **pphead, LKContext *ctx);
-int remove_client_context(LKContext **pphead, int clientfd);
-void remove_client_contexts(LKContext **pphead, int clientfd);
-LKContext *match_select_ctx(LKContext *phead, int selectfd);
-int remove_selectfd_context(LKContext **pphead, int selectfd);
-
-
-LKConfig *lk_config_new();
-void lk_config_free(LKConfig *cfg);
-int lk_config_read_configfile(LKConfig *cfg, char *configfile);
-void lk_config_print(LKConfig *cfg);
-LKHostConfig *lk_config_add_hostconfig(LKConfig *cfg, LKHostConfig *hc);
-LKHostConfig *lk_config_find_hostconfig(LKConfig *cfg, char *hostname);
-LKHostConfig *lk_config_create_get_hostconfig(LKConfig *cfg, char *hostname);
-void lk_config_finalize(LKConfig *cfg);
-
-LKHostConfig *lk_hostconfig_new(char *hostname);
-void lk_hostconfig_free(LKHostConfig *hc);
-
-
-
-
 typedef enum {
     LKHTTPSERVEROPT_HOMEDIR,
     LKHTTPSERVEROPT_PORT,
@@ -160,7 +83,6 @@ typedef enum {
 #define Z_BLOCK -2
 
 typedef enum {FD_SOCK, FD_FILE} FDType;
-typedef enum {FD_READ, FD_WRITE, FD_READWRITE} FDAction;
 
 // Read nonblocking fd count bytes to buf.
 // Returns one of the following:

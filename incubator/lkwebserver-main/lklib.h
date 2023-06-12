@@ -22,19 +22,3 @@
 // get_localtime_string(timestr, sizeof(timestr))
 #define TIME_STRING_SIZE 25
 
-
-/*** LKBuffer - Dynamic bytes buffer ***/
-typedef struct {
-    char *bytes;        // bytes buffer
-    size_t bytes_cur;   // index to current buffer position
-    size_t bytes_len;   // length of buffer
-    size_t bytes_size;  // capacity of buffer in bytes
-} LKBuffer;
-
-/*** LKRefList ***/
-typedef struct {
-    void **items;
-    size_t items_len;
-    size_t items_size;
-    size_t items_cur;
-} LKRefList;

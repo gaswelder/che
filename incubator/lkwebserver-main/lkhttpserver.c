@@ -2,10 +2,24 @@
 #import lkconfig.c
 #import lkalloc.c
 #import mime
+#import lkcontext.c
+#import lkhostconfig.c
+#import lkbuffer.c
+#import lkreflist.c
+
+/*** LKContext ***/
+enum {
+    CTX_READ_REQ,
+    CTX_READ_CGI_OUTPUT,
+    CTX_WRITE_CGI_INPUT,
+    CTX_WRITE_RESP,
+    CTX_PROXY_WRITE_REQ,
+    CTX_PROXY_PIPE_RESP
+}; // LKContextType;
 
 pub typedef {
     lkconfig.LKConfig *cfg;
-    LKContext *ctxhead;
+    lkcontext.LKContext *ctxhead;
     // The listening connection.
     net.net_t *listen_conn;
 } LKHttpServer;
@@ -76,9 +90,9 @@ pub int lk_httpserver_serve(lkconfig.LKConfig *cfg) {
     lkconfig.lk_config_free(server->cfg);
 
     // Free ctx linked list
-    LKContext *ctx = server->ctxhead;
+    lkcontext.LKContext *ctx = server->ctxhead;
     while (ctx != NULL) {
-        LKContext *ptmp = ctx;
+        lkcontext.LKContext *ptmp = ctx;
         ctx = ctx->next;
         lk_context_free(ptmp);
     }
@@ -107,7 +121,7 @@ void set_cgi_env1(LKHttpServer *server) {
 }
 
 // Sets the cgi environment variables that vary for each http request.
-void set_cgi_env2(LKHttpServer *server, LKContext *ctx, LKHostConfig *hc) {
+void set_cgi_env2(LKHttpServer *server, lkcontext.LKContext *ctx, lkhostconfig.LKHostConfig *hc) {
     LKHttpRequest *req = ctx->req;
 
     setenv("DOCUMENT_ROOT", hc->homedir_abspath->s, 1);
@@ -147,7 +161,7 @@ void set_cgi_env2(LKHttpServer *server, LKContext *ctx, LKHostConfig *hc) {
     setenv("REMOTE_PORT", portstr, 1);
 }
 
-void read_request(LKHttpServer *server, LKContext *ctx) {
+void read_request(LKHttpServer *server, lkcontext.LKContext *ctx) {
     int z = 0;
 
     while (1) {
@@ -183,7 +197,7 @@ void read_request(LKHttpServer *server, LKContext *ctx) {
 }
 
 // Send cgi_inputbuf input bytes to cgi program stdin set in selectfd.
-void write_cgi_input(LKHttpServer *server, LKContext *ctx) {
+void write_cgi_input(LKHttpServer *server, lkcontext.LKContext *ctx) {
     assert(ctx->cgi_inputbuf != NULL);
     int z = lk_write_all_file(ctx->selectfd, ctx->cgi_inputbuf);
     if (z == Z_BLOCK) {
@@ -207,7 +221,7 @@ void write_cgi_input(LKHttpServer *server, LKContext *ctx) {
 }
 
 // Read cgi output to cgi_outputbuf.
-void read_cgi_output(LKHttpServer *server, LKContext *ctx) {
+void read_cgi_output(LKHttpServer *server, lkcontext.LKContext *ctx) {
     int z = lk_read_all_file(ctx->selectfd, ctx->cgi_outputbuf);
     if (z == Z_BLOCK) {
         return;
@@ -235,9 +249,9 @@ void read_cgi_output(LKHttpServer *server, LKContext *ctx) {
     process_response(server, ctx);
 }
 
-void process_request(LKHttpServer *server, LKContext *ctx) {
+void process_request(LKHttpServer *server, lkcontext.LKContext *ctx) {
     char *hostname = lk_stringtable_get(ctx->req->headers, "Host");
-    LKHostConfig *hc = lk_config_find_hostconfig(server->cfg, hostname);
+    lkhostconfig.LKHostConfig *hc = lk_config_find_hostconfig(server->cfg, hostname);
     if (hc == NULL) {
         process_error_response(server, ctx, 404, "LittleKitten webserver: hostconfig not found.");
         return;
@@ -271,15 +285,15 @@ void process_request(LKHttpServer *server, LKContext *ctx) {
 }
 
 // Generate an http response to an http request.
-#define POSTTEST
-void serve_files(LKHttpServer *server, LKContext *ctx, LKHostConfig *hc) {
+bool POSTTEST = true;
+void serve_files(LKHttpServer *server, lkcontext.LKContext *ctx, lkhostconfig.LKHostConfig *hc) {
     int z;
-    static char *html_error_start = 
+    char *html_error_start = 
        "<!DOCTYPE html>\n"
        "<html>\n"
        "<head><title>Error response</title></head>\n"
        "<body><h1>Error response</h1>\n";
-    static char *html_error_end =
+    char *html_error_end =
        "</body></html>\n";
 
     LKHttpRequest *req = ctx->req;
@@ -291,7 +305,7 @@ void serve_files(LKHttpServer *server, LKContext *ctx, LKHostConfig *hc) {
         // For root, default to index.html, ...
         if (path->s_len == 0) {
             char *default_files[] = {"/index.html", "/index.htm", "/default.html", "/default.htm"};
-            for (int i=0; i < sizeof(default_files) / sizeof(char *); i++) {
+            for (int i=0; i < nelem(default_files); i++) {
                 z = read_path_file(hc->homedir_abspath->s, default_files[i], resp->body);
                 if (z >= 0) {
                     lk_httpresponse_add_header(resp, "Content-Type", "text/html");
@@ -317,25 +331,25 @@ void serve_files(LKHttpServer *server, LKContext *ctx, LKHostConfig *hc) {
         }
         return;
     }
-#ifdef POSTTEST
-    if (lk_string_sz_equal(method, "POST")) {
-        static char *html_start =
-           "<!DOCTYPE html>\n"
-           "<html>\n"
-           "<head><title>Little Kitten Sample Response</title></head>\n"
-           "<body>\n";
-        static char *html_end =
-           "</body></html>\n";
+    if (POSTTEST) {
+        if (lk_string_sz_equal(method, "POST")) {
+            char *html_start =
+            "<!DOCTYPE html>\n"
+            "<html>\n"
+            "<head><title>Little Kitten Sample Response</title></head>\n"
+            "<body>\n";
+            char *html_end =
+            "</body></html>\n";
 
-        lk_httpresponse_add_header(resp, "Content-Type", "text/html");
-        lk_buffer_append(resp->body, html_start, strlen(html_start));
-        lk_buffer_append_sz(resp->body, "<pre>\n");
-        lk_buffer_append(resp->body, req->body->bytes, req->body->bytes_len);
-        lk_buffer_append_sz(resp->body, "\n</pre>\n");
-        lk_buffer_append(resp->body, html_end, strlen(html_end));
-        return;
+            lk_httpresponse_add_header(resp, "Content-Type", "text/html");
+            lk_buffer_append(resp->body, html_start, strlen(html_start));
+            lk_buffer_append_sz(resp->body, "<pre>\n");
+            lk_buffer_append(resp->body, req->body->bytes, req->body->bytes_len);
+            lk_buffer_append_sz(resp->body, "\n</pre>\n");
+            lk_buffer_append(resp->body, html_end, strlen(html_end));
+            return;
+        }
     }
-#endif
 
     resp->status = 501;
     lk_string_assign_sprintf(resp->statustext, "Unsupported method ('%s')", method);
@@ -347,7 +361,7 @@ void serve_files(LKHttpServer *server, LKContext *ctx, LKHostConfig *hc) {
     lk_buffer_append(resp->body, html_error_end, strlen(html_error_end));
 }
 
-void serve_cgi(LKHttpServer *server, LKContext *ctx, LKHostConfig *hc) {
+void serve_cgi(LKHttpServer *server, lkcontext.LKContext *ctx, lkhostconfig.LKHostConfig *hc) {
     LKHttpRequest *req = ctx->req;
     LKHttpResponse *resp = ctx->resp;
     char *path = req->path->s;
@@ -398,7 +412,7 @@ void serve_cgi(LKHttpServer *server, LKContext *ctx, LKHostConfig *hc) {
 
     // If req is POST with body, pass it to cgi process stdin.
     if (req->body->bytes_len > 0) {
-        LKContext *ctx_in = lk_context_new();
+        lkcontext.LKContext *ctx_in = lk_context_new();
         add_context(&server->ctxhead, ctx_in);
 
         ctx_in->selectfd = fd_in;
@@ -413,7 +427,7 @@ void serve_cgi(LKHttpServer *server, LKContext *ctx, LKHostConfig *hc) {
     }
 }
 
-void process_response(LKHttpServer *server, LKContext *ctx) {
+void process_response(LKHttpServer *server, lkcontext.LKContext *ctx) {
     LKHttpRequest *req = ctx->req;
     LKHttpResponse *resp = ctx->resp;
 
@@ -445,7 +459,7 @@ void process_response(LKHttpServer *server, LKContext *ctx) {
     return;
 }
 
-void process_error_response(LKHttpServer *server, LKContext *ctx, int status, char *msg) {
+void process_error_response(LKHttpServer *server, lkcontext.LKContext *ctx, int status, char *msg) {
     LKHttpResponse *resp = ctx->resp;
     resp->status = status;
     lk_string_assign(resp->statustext, msg);
@@ -470,7 +484,7 @@ int open_path_file(char *home_dir, char *path) {
 
 // Read <home_dir>/<uri> file into buffer.
 // Return number of bytes read or -1 for error.
-int read_path_file(char *home_dir, char *path, LKBuffer *buf) {
+int read_path_file(char *home_dir, char *path, lkbuffer.LKBuffer *buf) {
     int z;
     // full_path = home_dir + path
     // Ex. "/path/to" + "/index.html"
@@ -528,7 +542,7 @@ char *fileext(char *filepath) {
     return filepath;
 }
 
-void write_response(LKHttpServer *server, LKContext *ctx) {
+void write_response(LKHttpServer *server, lkcontext.LKContext *ctx) {
     int z = lk_buflist_write_all(ctx->selectfd, FD_SOCK, ctx->buflist);
     if (z == Z_BLOCK) {
         return;
@@ -544,7 +558,7 @@ void write_response(LKHttpServer *server, LKContext *ctx) {
     }
 }
 
-void serve_proxy(LKHttpServer *server, LKContext *ctx, char *targethost) {
+void serve_proxy(LKHttpServer *server, lkcontext.LKContext *ctx, char *targethost) {
     int proxyfd = lk_open_connect_socket(targethost, "", NULL);
     if (proxyfd == -1) {
         lk_print_err("lk_open_connect_socket()");
@@ -562,7 +576,7 @@ void serve_proxy(LKHttpServer *server, LKContext *ctx, char *targethost) {
     lk_reflist_append(ctx->buflist, ctx->req->body);
 }
 
-void write_proxy_request(LKHttpServer *server, LKContext *ctx) {
+void write_proxy_request(LKHttpServer *server, lkcontext.LKContext *ctx) {
     int z = lk_buflist_write_all(ctx->selectfd, FD_SOCK, ctx->buflist);
     if (z == Z_BLOCK) {
         return;
@@ -589,12 +603,12 @@ void write_proxy_request(LKHttpServer *server, LKContext *ctx) {
 }
 
 // Similar to lk_write_all(), but sending buflist buf's sequentially.
-int lk_buflist_write_all(int fd, FDType fd_type, LKRefList *buflist) {
+int lk_buflist_write_all(int fd, int fd_type, lkreflist.LKRefList *buflist) {
     if (buflist->items_cur >= buflist->items_len) {
         return Z_EOF;
     }
 
-    LKBuffer *buf = buflist->items[buflist->items_cur];
+    lkbuffer.LKBuffer *buf = buflist->items[buflist->items_cur];
     int z = lk_write_all(fd, fd_type, buf);
     if (z == Z_EOF) {
         buflist->items_cur++;
@@ -603,7 +617,7 @@ int lk_buflist_write_all(int fd, FDType fd_type, LKRefList *buflist) {
     return z;
 }
 
-void pipe_proxy_response(LKHttpServer *server, LKContext *ctx) {
+void pipe_proxy_response(LKHttpServer *server, lkcontext.LKContext *ctx) {
     int z = lk_pipe_all(ctx->proxyfd, ctx->clientfd, FD_SOCK, ctx->proxy_respbuf);
     if (z == Z_OPEN || z == Z_BLOCK) {
         return;
@@ -637,64 +651,14 @@ void pipe_proxy_response(LKHttpServer *server, LKContext *ctx) {
     terminate_client_session(server, ctx);
 }
 
-//$$ read_proxy_response() and write_response() were
-//   replaced by pipe_proxy_response().
-#if 0
-void read_proxy_response(LKHttpServer *server, LKContext *ctx) {
-    int z = lk_read_all_sock(ctx->selectfd, ctx->proxy_respbuf);
-    if (z == Z_BLOCK) {
-        return;
-    }
-    if (z == Z_ERR) {
-        lk_print_err("lk_read_all_sock()");
-        z = terminate_fd(ctx->proxyfd, FD_SOCK, FD_READ, server);
-        if (z == 0) {
-            ctx->proxyfd = 0;
-        }
-        process_error_response(server, ctx, 500, "Error reading proxy response.");
-        return;
-    }
-
-    // EOF - finished reading proxy response.
-    assert(z == 0);
-
-    // Remove proxy from read list.
-    z = terminate_fd(ctx->proxyfd, FD_SOCK, FD_READ, server);
-    if (z == 0) {
-        ctx->proxyfd = 0;
-    }
-
-    LKHttpRequest *req = ctx->req;
-    char time_str[TIME_STRING_SIZE];
-    get_localtime_string(time_str, sizeof(time_str));
-    printf("%s [%s] \"%s %s\" --> proxyhost\n",
-        ctx->client_ipaddr->s, time_str, req->method->s, req->uri->s);
-
-    ctx->type = CTX_PROXY_WRITE_RESP;
-    ctx->selectfd = ctx->clientfd;
-    FD_SET_WRITE(ctx->clientfd, server);
-}
-
-void write_proxy_response(LKHttpServer *server, LKContext *ctx) {
-    assert(ctx->proxy_respbuf != NULL);
-    int z = lk_write_all_sock(ctx->selectfd, ctx->proxy_respbuf);
-    if (z == Z_BLOCK) {
-        return;
-    }
-    if (z == Z_ERR) {
-        lk_print_err("write_proxy_response lk_write_all_sock()");
-        process_error_response(server, ctx, 500, "Error sending proxy response.");
-        return;
-    }
-    if (z == Z_EOF) {
-        // Completed sending http response.
-        terminate_client_session(server, ctx);
-    }
-}
-#endif
+enum {
+    FD_READ,
+    FD_WRITE,
+    FD_READWRITE
+}; // fd_action
 
 // Clear fd from select()'s, shutdown, and close.
-int terminate_fd(int fd, FDType fd_type, FDAction fd_action, LKHttpServer *server) {
+int terminate_fd(int fd, int fd_type, int fd_action, LKHttpServer *server) {
     int z;
     if (fd_action == FD_READ || fd_action == FD_READWRITE) {
         FD_CLR_READ(fd, server);
@@ -724,7 +688,7 @@ int terminate_fd(int fd, FDType fd_type, FDAction fd_action, LKHttpServer *serve
 }
 
 // Disconnect from client.
-void terminate_client_session(LKHttpServer *server, LKContext *ctx) {
+void terminate_client_session(LKHttpServer *server, lkcontext.LKContext *ctx) {
     if (ctx->clientfd) {
         terminate_fd(ctx->clientfd, FD_SOCK, FD_READWRITE, server);
     }
@@ -739,19 +703,20 @@ void terminate_client_session(LKHttpServer *server, LKContext *ctx) {
 }
 
 
-void add_client() {
+void add_client(LKHttpServer *server) {
     // hack
     int clientfd = client->sock;
     FD_SET_READ(clientfd, server);
-    LKContext *ctx = create_initial_context(clientfd, &sa);
+    lkcontext.LKContext *ctx = create_initial_context(clientfd);
     add_new_client_context(&server->ctxhead, ctx);
 }
 
-void read_client() {
+void read_client(LKHttpServer *server, net.net_t *client) {
+    // hack
     //printf("read fd %d\n", i);
-    int selectfd = i;
+    int selectfd = client->fd;
 
-    LKContext *ctx = match_select_ctx(server->ctxhead, selectfd);
+    lkcontext.LKContext *ctx = match_select_ctx(server->ctxhead, selectfd);
     if (ctx == NULL) {
         printf("read selectfd %d not in ctx list\n", selectfd);
         terminate_fd(selectfd, FD_SOCK, FD_READ, server);
@@ -768,9 +733,10 @@ void read_client() {
     }
 }
 
-void write_client() {
-    int selectfd = i;
-    LKContext *ctx = match_select_ctx(server->ctxhead, selectfd);
+void write_client(LKHttpServer *server, net.net_t *client) {
+    // hack
+    int selectfd = client->fd;
+    lkcontext.LKContext *ctx = match_select_ctx(server->ctxhead, selectfd);
     if (ctx == NULL) {
         printf("write selectfd %d not in ctx list\n", selectfd);
         terminate_fd(selectfd, FD_SOCK, FD_WRITE, server);
