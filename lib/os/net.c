@@ -46,7 +46,8 @@ typedef struct timeval timeval_t;
 #known inet_ntoa
 
 pub typedef {
-	int sock;
+	int fd; // OS's socket (file) descriptor.
+
 	char host[256];
 	char port[16];
 
@@ -54,6 +55,9 @@ pub typedef {
 	sockaddr_t ai_addr;
 	socklen_t addrlen;
 	char addrstr[300];
+	bool is_readable;
+	bool is_writable;
+	bool has_error;
 } net_t;
 
 pub const char *net_error() {
@@ -65,7 +69,7 @@ pub const char *net_addr(net_t *c) {
 }
 
 pub int net_read(net_t *c, char *buf, size_t size) {
-	return recv(c->sock, buf, size, 0);
+	return recv(c->fd, buf, size, 0);
 }
 
 /*
@@ -77,7 +81,7 @@ pub int net_write(net_t *c, const char *buf, size_t n)
 	/*
 	 * MSG_NOSIGNAL prevents SIGPIPE signals
 	 */
-	int r = send(c->sock, buf, n, MSG_NOSIGNAL);
+	int r = send(c->fd, buf, n, MSG_NOSIGNAL);
 	if(r < 0) {
 		printf("error %d: %s\n", errno, strerror(errno));
 		return r;
@@ -106,7 +110,7 @@ pub net_t *net_open(const char *proto, const char *addr)
 		return NULL;
 	}
 
-	if( connect( c->sock, &(c->ai_addr), c->addrlen ) == -1 ) {
+	if (connect(c->fd, &(c->ai_addr), c->addrlen) == -1 ) {
 		error = "connect failed";
 		free(c);
 		return NULL;
@@ -121,18 +125,18 @@ pub net_t *net_listen(const char *proto, const char *addr) {
 		return NULL;
 	}
 	int yes = 1;
-	if (setsockopt(c->sock, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(int)) != 0) {
+	if (setsockopt(c->fd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(int)) != 0) {
 		error = "setsockopt failed";
 		free(c);
 		return NULL;
 	}
-	if (bind(c->sock, &(c->ai_addr), c->addrlen) != 0) {
+	if (bind(c->fd, &(c->ai_addr), c->addrlen) != 0) {
 		error = "bind failed";
 		free(c);
 		return NULL;
 	}
 	int backlog = 16;
-	if (listen(c->sock, backlog) != 0) {
+	if (listen(c->fd, backlog) != 0) {
 		error = "listen failed";
 		free(c);
 		return NULL;
@@ -147,7 +151,7 @@ pub net_t *net_accept(net_t *l) {
 		return NULL;
 	}
 	socklen_t size = sizeof(sockaddr_t);
-	int s = accept(l->sock, &(newconn->ai_addr), &size);
+	int s = accept(l->fd, &(newconn->ai_addr), &size);
 	if (s == -1) {
 		error = "accept failed";
 		free(newconn);
@@ -159,13 +163,13 @@ pub net_t *net_accept(net_t *l) {
 		close(s);
 		return NULL;
 	}
-	newconn->sock = s;
+	newconn->fd = s;
 	return newconn;
 }
 
 pub void net_close(net_t *c)
 {
-	close(c->sock);
+	close(c->fd);
 	free(c);
 }
 
@@ -176,12 +180,12 @@ pub bool has_data(net_t *c) {
 	timeval_t t = {0};
 	fd_set read = {0};
 	FD_ZERO(&read);
-	FD_SET(c->sock, &read);
-	if (select(c->sock + 1, &read, NULL, NULL, &t) == -1) {
+	FD_SET(c->fd, &read);
+	if (select(c->fd + 1, &read, NULL, NULL, &t) == -1) {
 		error = "select error";
 		return false;
 	}
-	return FD_ISSET(c->sock, &read);
+	return FD_ISSET(c->fd, &read);
 }
 
 /*
@@ -228,8 +232,8 @@ int getlistensock(net_t *c, const char *addr)
 	}
 	addrinfo_t *i = NULL;
 	for (i = result; i != NULL; i = i->ai_next) {
-		c->sock = socket( i->ai_family, i->ai_socktype, i->ai_protocol );
-		if (c->sock > 0) {
+		c->fd = socket( i->ai_family, i->ai_socktype, i->ai_protocol );
+		if (c->fd > 0) {
 			memcpy(&(c->ai_addr), i->ai_addr, sizeof(sockaddr_t));
 			c->addrlen = i->ai_addrlen;
 			c->ai_family = i->ai_family;
@@ -237,7 +241,7 @@ int getlistensock(net_t *c, const char *addr)
 		}
 	}
 	freeaddrinfo( result );
-	if (c->sock <= 0) {
+	if (c->fd <= 0) {
 		error = "no suitable addrinfo";
 		return 0;
 	}
@@ -363,4 +367,29 @@ pub void net_printf(net_t *c, const char *fmt, ...)
 
 	net_puts(buf, c);
 	free(buf);
+}
+
+pub bool update_status(net_t **conns) {
+    fd_set readset = {0};
+    fd_set writeset = {0};
+    fd_set errorset = {0};
+    int max = 0;
+    for (net_t *c = *conns; c; c++) {
+        FD_SET(c->fd, &readset);
+        FD_SET(c->fd, &writeset);
+        FD_SET(c->fd, &errorset);
+        if (c->fd > max) {
+            max = c->fd;
+        }
+    }
+    int r = select(max + 1, &readset, &writeset, &errorset, NULL);
+    if (r < 0) {
+        return false;
+    }
+    for (net_t *c = *conns; c; c++) {
+        c->is_readable = FD_ISSET(c->fd, &readset);
+        c->is_writable = FD_ISSET(c->fd, &writeset);
+        c->has_error = FD_ISSET(c->fd, &errorset);
+    }
+    return true;
 }

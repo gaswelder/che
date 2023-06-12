@@ -1,4 +1,4 @@
-#import net
+#import os/net
 #import lkconfig.c
 #import lkalloc.c
 #import mime
@@ -6,60 +6,18 @@
 pub typedef {
     lkconfig.LKConfig *cfg;
     LKContext *ctxhead;
-    fd_set readfds;
-    fd_set writefds;
-    int maxfd;
     // The listening connection.
     net.net_t *listen_conn;
 } LKHttpServer;
 
-pub LKHttpServer *lk_httpserver_new(lkconfig.LKConfig *cfg) {
-    LKHttpServer *server = lkalloc.lk_malloc(sizeof(LKHttpServer), "lk_httpserver_new");
-    server->cfg = cfg;
-    server->ctxhead = NULL;
-    server->maxfd = 0;
-    return server;
-}
-
-pub void lk_httpserver_free(LKHttpServer *server) {
-    lkconfig.lk_config_free(server->cfg);
-
-    // Free ctx linked list
-    LKContext *ctx = server->ctxhead;
-    while (ctx != NULL) {
-        LKContext *ptmp = ctx;
-        ctx = ctx->next;
-        lk_context_free(ptmp);
-    }
-
-    memset(server, 0, sizeof(LKHttpServer));
-    lk_free(server);
-}
-
-void FD_SET_READ(int fd, LKHttpServer *server) {
-    FD_SET(fd, &server->readfds);
-    if (fd > server->maxfd) {
-        server->maxfd = fd;
-    }
-}
-void FD_SET_WRITE(int fd, LKHttpServer *server) {
-    FD_SET(fd, &server->writefds);
-    if (fd > server->maxfd) {
-        server->maxfd = fd;
-    }
-}
-void FD_CLR_READ(int fd, LKHttpServer *server) {
-    FD_CLR(fd, &server->readfds);
-}
-void FD_CLR_WRITE(int fd, LKHttpServer *server) {
-    FD_CLR(fd, &server->writefds);
-}
-
 pub int lk_httpserver_serve(lkconfig.LKConfig *cfg) {
-    LKHttpServer *httpserver = lkhttpserver.lk_httpserver_new(cfg);
+    LKHttpServer httpserver = {
+        .cfg = cfg,
+        .ctxhead = NULL
+    };
 
     char *addr = strutil.newstr("%s:%s", cfg->serverhost->s, cfg->port->s);
-    int httpserver->listen_conn = net.net_listen("tcp", addr);
+    httpserver->listen_conn = net.net_listen("tcp", addr);
     if (!httpserver->listen_conn) {
         free(addr);
         return -1;
@@ -70,95 +28,61 @@ pub int lk_httpserver_serve(lkconfig.LKConfig *cfg) {
     clearenv();
     set_cgi_env1(server);
 
-    FD_ZERO(&server->readfds);
-    FD_ZERO(&server->writefds);
+    while (true) {
+        // put all connections into set
+        net.net_t *set[100] = {};
+        int n = 0;
+        for (int i = 0; i < 100; i++) {
+            if (!server->connections[i]) {
+                continue;
+            }
+            set[n++] = connections[i];
+            if (n == 100) {
+                abort("too many connections");
+            }
+        }
 
-    FD_SET(s0, &server->readfds);
-    server->maxfd = s0;
+        if (!update_socket_status(set)) {
+            if (errno == EINTR) {
+                continue;
+            }
+            lk_print_err("select()");
+            return -1;
+        }
 
-    while (1) {
-        // New client connection?
-        if (net.has_data(server->listen_conn)) {
+        if (server->connections[0]->is_readable) {
             net_t *client = net.net_accept(server->listen_conn);
             if (!client) {
                 lk_print_err("accept()");
                 continue;
             }
-
-            // hack
-            int clientfd = client->sock;
-
-            // Add new client socket to list of read sockets.
-            FD_SET_READ(clientfd, server);
-            LKContext *ctx = create_initial_context(clientfd, &sa);
-            add_new_client_context(&server->ctxhead, ctx);
-            continue;
+            add_client(httpserver, client);
         }
 
-        // readfds contain the master list of read sockets
-        fd_set cur_readfds = server->readfds;
-        fd_set cur_writefds = server->writefds;
-        z = select(server->maxfd+1, &cur_readfds, &cur_writefds, NULL, NULL);
-        if (z == -1 && errno == EINTR) {
-            continue;
-        }
-        if (z == -1) {
-            lk_print_err("select()");
-            return z;
-        }
-        if (z == 0) {
-            // timeout returned
-            continue;
-        }
-
-        // fds now contain list of clients with data available to be read.
-        for (int i=0; i <= server->maxfd; i++) {
-            if (FD_ISSET(i, &cur_readfds)) {
-                //printf("read fd %d\n", i);
-                int selectfd = i;
-                LKContext *ctx = match_select_ctx(server->ctxhead, selectfd);
-                if (ctx == NULL) {
-                    printf("read selectfd %d not in ctx list\n", selectfd);
-                    terminate_fd(selectfd, FD_SOCK, FD_READ, server);
-                    continue;
-                }
-                if (ctx->type == CTX_READ_REQ) {
-                    read_request(server, ctx);
-                } else if (ctx->type == CTX_READ_CGI_OUTPUT) {
-                    read_cgi_output(server, ctx);
-                } else if (ctx->type == CTX_PROXY_PIPE_RESP) {
-                    pipe_proxy_response(server, ctx);
-                } else {
-                    printf("read selectfd %d with unknown ctx type %d\n", selectfd, ctx->type);
-                }
-            } else if (FD_ISSET(i, &cur_writefds)) {
-                //printf("write fd %d\n", i);
-
-                int selectfd = i;
-                LKContext *ctx = match_select_ctx(server->ctxhead, selectfd);
-                if (ctx == NULL) {
-                    printf("write selectfd %d not in ctx list\n", selectfd);
-                    terminate_fd(selectfd, FD_SOCK, FD_WRITE, server);
-                    continue;
-                }
-
-                if (ctx->type == CTX_WRITE_RESP) {
-                    assert(ctx->resp != NULL);
-                    assert(ctx->resp->head != NULL);
-                    write_response(server, ctx);
-                } else if (ctx->type == CTX_WRITE_CGI_INPUT) {
-                    write_cgi_input(server, ctx);
-                } else if (ctx->type == CTX_PROXY_WRITE_REQ) {
-                    assert(ctx->req != NULL);
-                    assert(ctx->req->head != NULL);
-                    write_proxy_request(server, ctx);
-                } else {
-                    printf("write selectfd %d with unknown ctx type %d\n", selectfd, ctx->type);
-                }
+        for (int i = 1; i < 100; i++) {
+            net.net_t *conn = set[i];
+            if (!conn) {
+                continue;
+            }
+            if (conn->is_readable) {
+                read_client();
+            }
+            if (conn->is_writable && havedata) {
+                write();
             }
         }
-    } // while (1)
+    }
 
+    lkconfig.lk_config_free(server->cfg);
+
+    // Free ctx linked list
+    LKContext *ctx = server->ctxhead;
+    while (ctx != NULL) {
+        LKContext *ptmp = ctx;
+        ctx = ctx->next;
+        lk_context_free(ptmp);
+    }
+    memset(server, 0, sizeof(LKHttpServer));
     return 0;
 }
 
@@ -814,3 +738,56 @@ void terminate_client_session(LKHttpServer *server, LKContext *ctx) {
     remove_client_context(&server->ctxhead, ctx->clientfd);
 }
 
+
+void add_client() {
+    // hack
+    int clientfd = client->sock;
+    FD_SET_READ(clientfd, server);
+    LKContext *ctx = create_initial_context(clientfd, &sa);
+    add_new_client_context(&server->ctxhead, ctx);
+}
+
+void read_client() {
+    //printf("read fd %d\n", i);
+    int selectfd = i;
+
+    LKContext *ctx = match_select_ctx(server->ctxhead, selectfd);
+    if (ctx == NULL) {
+        printf("read selectfd %d not in ctx list\n", selectfd);
+        terminate_fd(selectfd, FD_SOCK, FD_READ, server);
+        continue;
+    }
+    if (ctx->type == CTX_READ_REQ) {
+        read_request(server, ctx);
+    } else if (ctx->type == CTX_READ_CGI_OUTPUT) {
+        read_cgi_output(server, ctx);
+    } else if (ctx->type == CTX_PROXY_PIPE_RESP) {
+        pipe_proxy_response(server, ctx);
+    } else {
+        printf("read selectfd %d with unknown ctx type %d\n", selectfd, ctx->type);
+    }
+}
+
+void write_client() {
+    int selectfd = i;
+    LKContext *ctx = match_select_ctx(server->ctxhead, selectfd);
+    if (ctx == NULL) {
+        printf("write selectfd %d not in ctx list\n", selectfd);
+        terminate_fd(selectfd, FD_SOCK, FD_WRITE, server);
+        continue;
+    }
+
+    if (ctx->type == CTX_WRITE_RESP) {
+        assert(ctx->resp != NULL);
+        assert(ctx->resp->head != NULL);
+        write_response(server, ctx);
+    } else if (ctx->type == CTX_WRITE_CGI_INPUT) {
+        write_cgi_input(server, ctx);
+    } else if (ctx->type == CTX_PROXY_WRITE_REQ) {
+        assert(ctx->req != NULL);
+        assert(ctx->req->head != NULL);
+        write_proxy_request(server, ctx);
+    } else {
+        printf("write selectfd %d with unknown ctx type %d\n", selectfd, ctx->type);
+    }
+}
