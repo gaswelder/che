@@ -16,9 +16,5 @@
 #define strndup(s, n) (lk_strndup((s), (n), "strndup"))
 #endif
 
-// Return localtime in server format: 11/Mar/2023 14:05:46
-// Usage:
-// char timestr[TIME_STRING_SIZE];
-// get_localtime_string(timestr, sizeof(timestr))
 #define TIME_STRING_SIZE 25
 

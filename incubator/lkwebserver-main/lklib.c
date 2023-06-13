@@ -1,16 +1,16 @@
 
 // Print the last error message corresponding to errno.
-void lk_print_err(char *s) {
+pub void lk_print_err(char *s) {
     fprintf(stderr, "%s: %s\n", s, strerror(errno));
 }
 
-void lk_exit_err(char *s) {
+pub void lk_exit_err(char *s) {
     lk_print_err(s);
     exit(1);
 }
 
 // Return whether line is empty, ignoring whitespace chars ' ', \r, \n
-int is_empty_line(char *s) {
+pub int is_empty_line(char *s) {
     int slen = strlen(s);
     for (int i=0; i < slen; i++) {
         // Not an empty line if non-whitespace char is present.
@@ -22,7 +22,7 @@ int is_empty_line(char *s) {
 }
 
 // Return whether string ends with \n char.
-int ends_with_newline(char *s) {
+pub int ends_with_newline(char *s) {
     int slen = strlen(s);
     if (slen == 0) {
         return 0;
@@ -35,7 +35,7 @@ int ends_with_newline(char *s) {
 
 
 // Like popen() but returning input, output, error fds for cmd.
-int lk_popen3(char *cmd, int *fd_in, int *fd_out, int *fd_err) {
+pub int lk_popen3(char *cmd, int *fd_in, int *fd_out, int *fd_err) {
     int z;
     int in[2] = {0, 0};
     int out[2] = {0, 0};
@@ -109,7 +109,7 @@ int lk_popen3(char *cmd, int *fd_in, int *fd_out, int *fd_err) {
     return 0;
 }
 
-void close_pipes(int pair1[2], int pair2[2], int pair3[2]) {
+pub void close_pipes(int pair1[2], int pair2[2], int pair3[2]) {
     int z;
     int tmp_errno = errno;
     if (pair1[0] != 0) {
@@ -150,18 +150,4 @@ void close_pipes(int pair1[2], int pair2[2], int pair3[2]) {
     }
     errno = tmp_errno;
     return;
-}
-
-void get_localtime_string(char *time_str, size_t time_str_len) {
-    time_t t = time(NULL);
-    struct tm tmtime; 
-    void *pz = localtime_r(&t, &tmtime);
-    if (pz != NULL) {
-        int z = strftime(time_str, time_str_len, "%d/%b/%Y %H:%M:%S", &tmtime);
-        if (z == 0) {
-            sprintf(time_str, "???");
-        }
-    } else {
-        sprintf(time_str, "???");
-    }
 }

@@ -9,7 +9,7 @@ pub typedef {
 
 const int SIZEOF_VOIDP = 8; // sizeof(void *), TODO
 
-LKRefList *lk_reflist_new() {
+pub LKRefList *lk_reflist_new() {
     LKRefList *l = lk_malloc(sizeof(LKRefList), "lk_reflist_new");
     l->items_size = N_GROW_REFLIST;
     l->items_len = 0;
@@ -20,7 +20,7 @@ LKRefList *lk_reflist_new() {
     return l;
 }
 
-void lk_reflist_free(LKRefList *l) {
+pub void lk_reflist_free(LKRefList *l) {
     assert(l->items != NULL);
 
     memset(l->items, 0, l->items_size * SIZEOF_VOIDP);
@@ -29,7 +29,7 @@ void lk_reflist_free(LKRefList *l) {
     lk_free(l);
 }
 
-void lk_reflist_append(LKRefList *l, void *p) {
+pub void lk_reflist_append(LKRefList *l, void *p) {
     assert(l->items_len <= l->items_size);
 
     if (l->items_len == l->items_size) {
@@ -46,13 +46,13 @@ void lk_reflist_append(LKRefList *l, void *p) {
     assert(l->items_len <= l->items_size);
 }
 
-void *lk_reflist_get(LKRefList *l, size_t i) {
+pub void *lk_reflist_get(LKRefList *l, size_t i) {
     if (l->items_len == 0) return NULL;
     if (i >= l->items_len) return NULL;
     return l->items[i];
 }
 
-void lk_reflist_remove(LKRefList *l, size_t i) {
+pub void lk_reflist_remove(LKRefList *l, size_t i) {
     if (l->items_len == 0) return;
     if (i >= l->items_len) return;
 
@@ -62,9 +62,8 @@ void lk_reflist_remove(LKRefList *l, size_t i) {
     l->items_len--;
 }
 
-void lk_reflist_clear(LKRefList *l) {
+pub void lk_reflist_clear(LKRefList *l) {
     memset(l->items, 0, l->items_size * SIZEOF_VOIDP);
     l->items_len = 0;
     l->items_cur = 0;
 }
-

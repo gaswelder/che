@@ -1,6 +1,5 @@
-
-
 #define ALLOCITEMS_SIZE 8192
+
 typedef {
     void *p;
     char *label;
@@ -8,12 +7,12 @@ typedef {
 
 allocitem allocitems[ALLOCITEMS_SIZE] = {};
 
-void lk_alloc_init() {
+pub void lk_alloc_init() {
     memset(allocitems, 0, sizeof(allocitems));
 }
 
 // Add p to end of allocitems[].
-void add_p(void *p, char *label) {
+pub void add_p(void *p, char *label) {
     int i;
     for (i=0; i < ALLOCITEMS_SIZE; i++) {
         if (allocitems[i].p == NULL) {
@@ -26,7 +25,7 @@ void add_p(void *p, char *label) {
 }
 
 // Replace matching allocitems[] p with newp.
-void replace_p(void *p, void *newp, char *label) {
+pub void replace_p(void *p, void *newp, char *label) {
     int i;
     for (i=0; i < ALLOCITEMS_SIZE; i++) {
         if (allocitems[i].p ==  p) {
@@ -39,7 +38,7 @@ void replace_p(void *p, void *newp, char *label) {
 }
 
 // Clear matching allocitems[] p.
-void clear_p(void *p) {
+pub void clear_p(void *p) {
     int i;
     for (i=0; i < ALLOCITEMS_SIZE; i++) {
         if (allocitems[i].p == p) {
@@ -71,13 +70,13 @@ pub void lk_free(void *p) {
     free(p);
 }
 
-char *lk_strdup(const char *s, char *label) {
+pub char *lk_strdup(const char *s, char *label) {
     char *sdup = strdup(s);
     add_p(sdup, label);
     return sdup;
 }
 
-char *lk_strndup(const char *s, size_t n, char *label) {
+pub char *lk_strndup(const char *s, size_t n, char *label) {
     char *sdup = strndup(s, n);
     add_p(sdup, label);
     return sdup;

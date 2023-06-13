@@ -196,31 +196,21 @@ net_t *newconn(const char *proto, const char *addr) {
 		error = "Unknown protocol";
 		return NULL;
 	}
+	if (strlen(addr) > 200) {
+		error = "address string too long";
+		return NULL;
+	}
 	net_t *c = calloc(1, sizeof(net_t));
 	if (!c) {
 		error = "malloc failed";
 		return NULL;
 	}
-	if (strlen(addr) > sizeof(c->addrstr)) {
-		error = "address string too long";
-		free(c);
-		return NULL;
-	}
 	strcpy(c->addrstr, addr);
-	if (!getlistensock(c, addr)) {
-		free(c);
-		return NULL;
-	}
-	return c;
-}
-
-int getlistensock(net_t *c, const char *addr)
-{
 	// Split the address into a hostname and a portname.
 	if (!parseaddr(c, addr)) {
+		free(c);
 		return 0;
 	}
-
 	addrinfo_t query = {
 		.ai_socktype = SOCK_STREAM,
 		.ai_protocol = IPPROTO_TCP,
@@ -228,7 +218,8 @@ int getlistensock(net_t *c, const char *addr)
 	addrinfo_t *result = NULL;
 	if (getaddrinfo(c->host, c->port, &query, &result) != 0) {
 		error = "getaddrinfo error";
-		return 0;
+		free(c);
+		return NULL;
 	}
 	addrinfo_t *i = NULL;
 	for (i = result; i != NULL; i = i->ai_next) {
@@ -243,9 +234,10 @@ int getlistensock(net_t *c, const char *addr)
 	freeaddrinfo( result );
 	if (c->fd <= 0) {
 		error = "no suitable addrinfo";
-		return 0;
+		free(c);
+		return NULL;
 	}
-	return 1;
+	return c;
 }
 
 int parseaddr(net_t *c, const char *addr)

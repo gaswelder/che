@@ -11,7 +11,7 @@ pub typedef {
 
 const int HOSTCONFIGS_INITIAL_SIZE = 10;
 
-LKConfig *lk_config_new() {
+pub LKConfig *lk_config_new() {
     LKConfig *cfg = lkalloc.lk_malloc(sizeof(LKConfig), "lk_config_new");
     cfg->serverhost = lkstring.lk_string_new("");
     cfg->port = lkstring.lk_string_new("");
@@ -21,7 +21,7 @@ LKConfig *lk_config_new() {
     return cfg;
 }
 
-void lk_config_free(LKConfig *cfg) {
+pub void lk_config_free(LKConfig *cfg) {
     lkstring.lk_string_free(cfg->serverhost);
     lkstring.lk_string_free(cfg->port);
     for (int i=0; i < cfg->hostconfigs_len; i++) {
@@ -78,7 +78,8 @@ void lk_config_free(LKConfig *cfg) {
 // is read, indicating the start of the next host config section.
 //
 enum {CFG_ROOT, CFG_HOSTSECTION};
-int lk_config_read_configfile(LKConfig *cfg, char *configfile) {
+
+pub int lk_config_read_configfile(LKConfig *cfg, char *configfile) {
     FILE *f = fopen(configfile, "r");
     if (f == NULL) {
         lk_print_err("lk_read_configfile fopen()");
@@ -175,7 +176,7 @@ int lk_config_read_configfile(LKConfig *cfg, char *configfile) {
     return 0;
 }
 
-lkhostconfig.LKHostConfig *lk_config_add_hostconfig(LKConfig *cfg, lkhostconfig.LKHostConfig *hc) {
+pub lkhostconfig.LKHostConfig *lk_config_add_hostconfig(LKConfig *cfg, lkhostconfig.LKHostConfig *hc) {
     assert(cfg->hostconfigs_len <= cfg->hostconfigs_size);
 
     // Increase size if no more space.
@@ -192,7 +193,7 @@ lkhostconfig.LKHostConfig *lk_config_add_hostconfig(LKConfig *cfg, lkhostconfig.
 // Return hostconfig matching hostname,
 // or if hostname parameter is NULL, return hostconfig matching "*".
 // Return NULL if no matching hostconfig.
-lkhostconfig.LKHostConfig *lk_config_find_hostconfig(LKConfig *cfg, char *hostname) {
+pub lkhostconfig.LKHostConfig *lk_config_find_hostconfig(LKConfig *cfg, char *hostname) {
     if (hostname != NULL) {
         for (int i=0; i < cfg->hostconfigs_len; i++) {
             lkhostconfig.LKHostConfig *hc = cfg->hostconfigs[i];
@@ -212,7 +213,7 @@ lkhostconfig.LKHostConfig *lk_config_find_hostconfig(LKConfig *cfg, char *hostna
 }
 
 // Return hostconfig with hostname or NULL if not found.
-lkhostconfig.LKHostConfig *get_hostconfig(LKConfig *cfg, char *hostname) {
+pub lkhostconfig.LKHostConfig *get_hostconfig(LKConfig *cfg, char *hostname) {
     for (int i=0; i < cfg->hostconfigs_len; i++) {
         lkhostconfig.LKHostConfig *hc = cfg->hostconfigs[i];
         if (lkstring.lk_string_sz_equal(hc->hostname, hostname)) {
@@ -224,7 +225,7 @@ lkhostconfig.LKHostConfig *get_hostconfig(LKConfig *cfg, char *hostname) {
 
 // Return hostconfig with hostname if it exists.
 // Create new hostconfig with hostname if not found. Never returns null.
-lkhostconfig.LKHostConfig *lk_config_create_get_hostconfig(LKConfig *cfg, char *hostname) {
+pub lkhostconfig.LKHostConfig *lk_config_create_get_hostconfig(LKConfig *cfg, char *hostname) {
     lkhostconfig.LKHostConfig *hc = get_hostconfig(cfg, hostname);
     if (hc == NULL) {
         hc = lk_hostconfig_new(hostname);
@@ -233,7 +234,7 @@ lkhostconfig.LKHostConfig *lk_config_create_get_hostconfig(LKConfig *cfg, char *
     return hc;
 }
 
-void lk_config_print(LKConfig *cfg) {
+pub void lk_config_print(LKConfig *cfg) {
     printf("serverhost: %s\n", cfg->serverhost->s);
     printf("port: %s\n", cfg->port->s);
 
@@ -257,7 +258,7 @@ void lk_config_print(LKConfig *cfg) {
 }
 
 // Fill in default values for unspecified settings.
-void lk_config_finalize(LKConfig *cfg) {
+pub void lk_config_finalize(LKConfig *cfg) {
     // serverhost defaults to localhost if not specified.
     if (cfg->serverhost->s_len == 0) {
         lkstring.lk_string_assign(cfg->serverhost, "localhost");
@@ -328,7 +329,7 @@ void lk_config_finalize(LKConfig *cfg) {
 }
 
 
-lkhostconfig.LKHostConfig *lk_hostconfig_new(char *hostname) {
+pub lkhostconfig.LKHostConfig *lk_hostconfig_new(char *hostname) {
     lkhostconfig.LKHostConfig *hc = lkalloc.lk_malloc(sizeof(lkhostconfig.LKHostConfig), "lk_hostconfig_new");
 
     hc->hostname = lkstring.lk_string_new(hostname);
@@ -342,7 +343,7 @@ lkhostconfig.LKHostConfig *lk_hostconfig_new(char *hostname) {
     return hc;
 }
 
-void lk_hostconfig_free(lkhostconfig.LKHostConfig *hc) {
+pub void lk_hostconfig_free(lkhostconfig.LKHostConfig *hc) {
     lkstring.lk_string_free(hc->hostname);
     lkstring.lk_string_free(hc->homedir);
     lkstring.lk_string_free(hc->homedir_abspath);
@@ -361,4 +362,3 @@ void lk_hostconfig_free(lkhostconfig.LKHostConfig *hc) {
 
     lkalloc.lk_free(hc);
 }
-

@@ -5,6 +5,7 @@
 #include <sys/types.h>
 #include <sys/termios.h>
 #include <sys/mman.h>
+#include <stdlib.h>
 
 #type fd_set
 #known FD_ZERO
@@ -40,4 +41,8 @@ pub timeval_t get_time() {
  */
 pub int32_t time_usec(timeval_t *t) {
     return t->tv_sec * 1000000L + t->tv_usec;
+}
+
+pub bool setenv(const char *name, *value, int overwrite) {
+    return OS.setenv(name, value, overwrite) == 0;
 }

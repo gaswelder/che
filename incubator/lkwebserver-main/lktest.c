@@ -410,11 +410,11 @@ void lkreflist_test() {
     LKString *jkl = lk_string_new("jkl");
     LKString *mno = lk_string_new("mno");
     LKRefList *l = lk_reflist_new();
-    lk_reflist_append(l, abc);
-    lk_reflist_append(l, def);
-    lk_reflist_append(l, ghi);
-    lk_reflist_append(l, jkl);
-    lk_reflist_append(l, mno);
+    lkreflist.lk_reflist_append(l, abc);
+    lkreflist.lk_reflist_append(l, def);
+    lkreflist.lk_reflist_append(l, ghi);
+    lkreflist.lk_reflist_append(l, jkl);
+    lkreflist.lk_reflist_append(l, mno);
     assert(l->items_len == 5);
 
     LKString *s = lk_reflist_get(l, 0);

@@ -132,10 +132,11 @@ pub int append_file( const char *path_to, const char *path_from )
 	return ok;
 }
 
-pub int file_exists( const char *path )
-{
-	FILE *f = fopen( path, "r" );
-	if( !f ) return 0;
-	fclose( f );
-	return 1;
+pub bool file_exists(const char *path) {
+	FILE *f = fopen(path, "r");
+	if (!f) {
+		return false;
+	}
+	fclose(f);
+	return true;
 }

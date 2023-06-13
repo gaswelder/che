@@ -6,7 +6,7 @@ pub typedef {
     size_t bytes_size;  // capacity of buffer in bytes
 } LKBuffer;
 
-LKBuffer *lk_buffer_new(size_t bytes_size) {
+pub LKBuffer *lk_buffer_new(size_t bytes_size) {
     if (bytes_size == 0) {
         bytes_size = LK_BUFSIZE_SMALL;
     }
@@ -19,14 +19,14 @@ LKBuffer *lk_buffer_new(size_t bytes_size) {
     return buf;
 }
 
-void lk_buffer_free(LKBuffer *buf) {
+pub void lk_buffer_free(LKBuffer *buf) {
     assert(buf->bytes != NULL);
     lk_free(buf->bytes);
     buf->bytes = NULL;
     lk_free(buf);
 }
 
-void lk_buffer_resize(LKBuffer *buf, size_t bytes_size) {
+pub void lk_buffer_resize(LKBuffer *buf, size_t bytes_size) {
     buf->bytes_size = bytes_size;
     if (buf->bytes_len > buf->bytes_size) {
         buf->bytes_len = buf->bytes_size;
@@ -37,13 +37,13 @@ void lk_buffer_resize(LKBuffer *buf, size_t bytes_size) {
     buf->bytes = lk_realloc(buf->bytes, buf->bytes_size, "lk_buffer_resize");
 }
 
-void lk_buffer_clear(LKBuffer *buf) {
+pub void lk_buffer_clear(LKBuffer *buf) {
     memset(buf->bytes, 0, buf->bytes_len);
     buf->bytes_len = 0;
     buf->bytes_cur = 0;
 }
 
-int lk_buffer_append(LKBuffer *buf, char *bytes, size_t len) {
+pub int lk_buffer_append(LKBuffer *buf, char *bytes, size_t len) {
     // If not enough capacity to append bytes, expand the bytes buffer.
     if (len > buf->bytes_size - buf->bytes_len) {
         char *bs = lk_realloc(buf->bytes, buf->bytes_size + len, "lk_buffer_append");
@@ -60,11 +60,11 @@ int lk_buffer_append(LKBuffer *buf, char *bytes, size_t len) {
     return 0;
 }
 
-int lk_buffer_append_sz(LKBuffer *buf, char *s) {
+pub int lk_buffer_append_sz(LKBuffer *buf, char *s) {
     return lk_buffer_append(buf, s, strlen(s));
 }
 
-void lk_buffer_append_sprintf(LKBuffer *buf, const char *fmt, ...) {
+pub void lk_buffer_append_sprintf(LKBuffer *buf, const char *fmt, ...) {
     char sbuf[LK_BUFSIZE_MEDIUM];
 
     // Try to use static buffer first, to avoid allocation.
@@ -96,7 +96,7 @@ void lk_buffer_append_sprintf(LKBuffer *buf, const char *fmt, ...) {
 // buf->bytes_cur is updated to point to the first char of next line.
 // If dst doesn't have enough chars for line, partial line is copied.
 // Returns number of bytes read.
-size_t lk_buffer_readline(LKBuffer *buf, char *dst, size_t dst_len) {
+pub size_t lk_buffer_readline(LKBuffer *buf, char *dst, size_t dst_len) {
     assert(dst_len > 2); // Reserve space for \n and \0.
 
     size_t nread = 0;
@@ -117,4 +117,3 @@ size_t lk_buffer_readline(LKBuffer *buf, char *dst, size_t dst_len) {
     dst[nread] = '\0';
     return nread;
 }
-

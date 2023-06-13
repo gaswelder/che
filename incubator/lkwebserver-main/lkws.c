@@ -39,7 +39,7 @@ int main(int argc, char *argv[]) {
 
     // Update the config from the file, if it's given.
     if (configfile) {
-        lk_config_read_configfile(cfg, configfile);
+        lkconfig.lk_config_read_configfile(cfg, configfile);
     }
     // Override port and host, if set in the flags.
     if (port) {
@@ -67,7 +67,7 @@ int main(int argc, char *argv[]) {
     //     }
     // }
 
-    lk_config_finalize(cfg);
+    lkconfig.lk_config_finalize(cfg);
     return lkhttpserver.lk_httpserver_serve(cfg);
 }
 
@@ -79,8 +79,8 @@ void handle_sigint(int sig) {
 }
 
 void handle_sigchld(int sig) {
-    int tmp_errno = errno;
-    while (waitpid(-1, NULL, WNOHANG) > 0) {
-    }
-    errno = tmp_errno;
+    abort("todo: wait for child processes");
+    // int tmp_errno = errno;
+    // while (waitpid(-1, NULL, WNOHANG) > 0) {}
+    // errno = tmp_errno;
 }

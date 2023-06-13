@@ -1,4 +1,5 @@
 #import lkbuffer.c
+#import socketreader.c
 
 pub typedef {
     int selectfd;
@@ -11,7 +12,7 @@ pub typedef {
     int client_port;       // client port number
     LKString *req_line;               // current request line
     lkbuffer.LKBuffer *req_buf;                // current request bytes buffer
-    LKSocketReader *sr;               // input buffer for reading lines
+    socketreader.LKSocketReader *sr;               // input buffer for reading lines
     LKHttpRequestParser *reqparser;   // parser for httprequest
     LKHttpRequest *req;               // http request in process
 
@@ -30,7 +31,7 @@ pub typedef {
 } LKContext;
 
 /*** LKContext functions ***/
-LKContext *lk_context_new() {
+pub LKContext *lk_context_new() {
     LKContext *ctx = lk_malloc(sizeof(LKContext), "lk_context_new");
     ctx->selectfd = 0;
     ctx->clientfd = 0;
@@ -58,7 +59,7 @@ LKContext *lk_context_new() {
     return ctx;
 }
 
-LKContext *create_initial_context(int fd) {
+pub LKContext *create_initial_context(int fd) {
     LKContext *ctx = lk_malloc(sizeof(LKContext), "create_initial_context");
     ctx->selectfd = fd;
     ctx->clientfd = fd;
@@ -83,7 +84,7 @@ LKContext *create_initial_context(int fd) {
     return ctx;
 }
 
-void lk_context_free(LKContext *ctx) {
+pub void lk_context_free(LKContext *ctx) {
     if (ctx->client_ipaddr) {
         lkstring.lk_string_free(ctx->client_ipaddr);
     }
@@ -139,7 +140,7 @@ void lk_context_free(LKContext *ctx) {
 
 // Add new client ctx to end of ctx linked list.
 // Skip if ctx clientfd already in list.
-void add_new_client_context(LKContext **pphead, LKContext *ctx) {
+pub void add_new_client_context(LKContext **pphead, LKContext *ctx) {
     assert(pphead != NULL);
 
     if (*pphead == NULL) {
@@ -160,7 +161,7 @@ void add_new_client_context(LKContext **pphead, LKContext *ctx) {
 }
 
 // Add ctx to end of ctx linked list, allowing duplicate clientfds.
-void add_context(LKContext **pphead, LKContext *ctx) {
+pub void add_context(LKContext **pphead, LKContext *ctx) {
     assert(pphead != NULL);
 
     if (*pphead == NULL) {
@@ -179,7 +180,7 @@ void add_context(LKContext **pphead, LKContext *ctx) {
 
 // Delete first ctx having clientfd from linked list.
 // Returns 1 if context was deleted, 0 if no deletion made.
-int remove_client_context(LKContext **pphead, int clientfd) {
+pub int remove_client_context(LKContext **pphead, int clientfd) {
     assert(pphead != NULL);
 
     if (*pphead == NULL) {
@@ -210,18 +211,8 @@ int remove_client_context(LKContext **pphead, int clientfd) {
     return 0;
 }
 
-// Delete all ctx's having clientfd.
-//$$ todo: unused, remove this?
-void remove_client_contexts(LKContext **pphead, int clientfd) {
-    int z = 1;
-    // Keep trying to remove matching clientfd's until none left.
-    while (z != 0) {
-        z = remove_client_context(pphead, clientfd);
-    }
-}
-
 // Return ctx matching selectfd.
-LKContext *match_select_ctx(LKContext *phead, int selectfd) {
+pub LKContext *match_select_ctx(LKContext *phead, int selectfd) {
     LKContext *ctx = phead;
     while (ctx != NULL) {
         if (ctx->selectfd == selectfd) {
@@ -234,7 +225,7 @@ LKContext *match_select_ctx(LKContext *phead, int selectfd) {
 
 // Delete first ctx having selectfd from linked list.
 // Returns 1 if context was deleted, 0 if no deletion made.
-int remove_selectfd_context(LKContext **pphead, int selectfd) {
+pub int remove_selectfd_context(LKContext **pphead, int selectfd) {
     assert(pphead != NULL);
 
     if (*pphead == NULL) {
@@ -264,6 +255,3 @@ int remove_selectfd_context(LKContext **pphead, int selectfd) {
 
     return 0;
 }
-
-
-
