@@ -15,3 +15,11 @@ pub bool streq(const char *a, *b) {
 pub int fails() {
     return _fails;
 }
+
+pub bool truth(const char *comment, bool result) {
+    if (!result) {
+        printf("FAIL: %s\n", comment);
+        _fails++;
+    }
+    return result;
+}

@@ -77,3 +77,16 @@ pub int strutil_split(char separator, char *str, char **result, size_t result_si
 	}
 	return count;
 }
+
+pub bool casecmp(const char *a, *b) {
+	const char *x = a;
+	const char *y = b;
+	while (*x && *y) {
+		if (tolower(*x) != tolower(*y)) {
+			return false;
+		}
+		x++;
+		y++;
+	}
+	return *x == '\0' && *y == '\0';
+}

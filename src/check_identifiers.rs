@@ -14,6 +14,8 @@ pub fn run(m: &Module, exports: &HashMap<String, &Exports>) -> Vec<Error> {
         "islower",
         "isspace",
         "strrchr",
+        "tolower",
+        "toupper",
         "strncmp",
         "setjmp",
         "longjmp",

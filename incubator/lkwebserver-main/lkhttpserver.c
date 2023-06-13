@@ -2,6 +2,7 @@
 #import mime
 #import os/misc
 #import os/net
+#import strings
 #import time
 
 #import lkalloc.c
@@ -522,11 +523,11 @@ int is_valid_http_method(char *method) {
         return 0;
     }
 
-    if (!strcasecmp(method, "GET")      ||
-        !strcasecmp(method, "POST")     || 
-        !strcasecmp(method, "PUT")      || 
-        !strcasecmp(method, "DELETE")   ||
-        !strcasecmp(method, "HEAD"))  {
+    if (!strings.casecmp(method, "GET")      ||
+        !strings.casecmp(method, "POST")     ||
+        !strings.casecmp(method, "PUT")      ||
+        !strings.casecmp(method, "DELETE")   ||
+        !strings.casecmp(method, "HEAD"))  {
         return 1;
     }
 
