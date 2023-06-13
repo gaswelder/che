@@ -110,14 +110,7 @@ pub int lk_string_sz_equal(LKString *lks1, char *s2) {
 
 // Return if string starts with s.
 pub int lk_string_starts_with(LKString *lks, char *s) {
-    size_t s_len = strlen(s);
-    if (s_len > lks->s_len) {
-        return 0;
-    }
-    if (!strncmp(lks->s, s, s_len)) {
-        return 1;
-    }
-    return 0;
+    return strings.starts_with(lks->s, s);
 }
 
 // Return if string ends with s.

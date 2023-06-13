@@ -394,7 +394,10 @@ void serve_cgi(LKHttpServer *server, lkcontext.LKContext *ctx, lkhostconfig.LKHo
 
     // real_path should start with cgidir_abspath
     // real_path file should exist
-    if (pz == NULL || strncmp(real_path, hc->cgidir_abspath->s, hc->cgidir_abspath->s_len) || !fileutil.file_exists(real_path)) {
+    if (pz == NULL
+        || !strings.starts_with(real_path, hc->cgidir_abspath->s)
+        || !fileutil.file_exists(real_path)
+    ) {
         resp->status = 404;
         lkstring.lk_string_assign_sprintf(resp->statustext, "File not found '%s'", path);
         lknet.lk_httpresponse_add_header(resp, "Content-Type", "text/plain");

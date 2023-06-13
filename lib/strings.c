@@ -90,3 +90,16 @@ pub bool casecmp(const char *a, *b) {
 	}
 	return *x == '\0' && *y == '\0';
 }
+
+pub bool starts_with(const char *string, *prefix) {
+	const char *x = string;
+	const char *y = prefix;
+	while (*x && *y) {
+		if (*x != *y) {
+			return false;
+		}
+		x++;
+		y++;
+	}
+	return *y == '\0';
+}
