@@ -1,5 +1,5 @@
 #import arr
-#import strutil
+#import strings
 #import string
 #import mem
 #import jsontok
@@ -81,7 +81,7 @@ const char *typename(int type) {
 // json_node *json_newerror(const char *s) {
 // 	json_node *n = newnode(JSON_ERR);
 // 	if(!n) return NULL;
-// 	n->val.str = strutil.newstr("%s", s);
+// 	n->val.str = strings.newstr("%s", s);
 // 	if(!n->val.str) {
 // 		free(n);
 // 		return NULL;
@@ -331,7 +331,7 @@ pub json_node *json_copy( json_node *obj )
 	{
 		size_t n = json_size(obj);
 		for(size_t i = 0; i < n; i++) {
-			char *k = strutil.newstr("%s", json_key(obj, i));
+			char *k = strings.newstr("%s", json_key(obj, i));
 			json_node *v = json_copy(json_val(obj, i));
 			if(!k || !v || !json_put(copy, k, v)) {
 				free(k);
@@ -355,7 +355,7 @@ pub json_node *json_copy( json_node *obj )
 	}
 	else if( obj->type == JSON_STR )
 	{
-		copy->val.str = strutil.newstr("%s", obj->val.str);
+		copy->val.str = strings.newstr("%s", obj->val.str);
 		if(!copy->val.str) {
 			free(copy);
 			return NULL;
@@ -440,7 +440,7 @@ pub bool json_put( json_node *n, const char *key, json_node *val )
 	}
 	else {
 		kv = calloc(1, sizeof(*kv));
-		kv->key = strutil.newstr("%s", key);
+		kv->key = strings.newstr("%s", key);
 		arr.arr_push(a, kv);
 	}
 
@@ -643,7 +643,7 @@ json_node *read_dict(parser_t *p)
 			json_free(o);
 			return error(p, "Key expected");
 		}
-		char *key = strutil.newstr("%s", jsontok.lexer_currstr(p->lexer));
+		char *key = strings.newstr("%s", jsontok.lexer_currstr(p->lexer));
 		if (!key) {
 			json_free(o);
 			return error(p, "No memory");
@@ -724,7 +724,7 @@ pub char *json_format(json_node *n)
 		if(c == EOF) break;
 		string.str_addc(s, c);
 	}
-	char *str1 = strutil.newstr("%s", string.str_raw(s));
+	char *str1 = strings.newstr("%s", string.str_raw(s));
 	string.str_free(s);
 	mem.memclose(z);
 	return str1;

@@ -1,4 +1,4 @@
-#import strutil
+#import strings
 #import panic
 
 int main() {
@@ -24,7 +24,7 @@ char *intern(char *sym) {
     exit(1);
   }
 
-  symbols[i] = strutil.newstr("%s", sym);
+  symbols[i] = strings.newstr("%s", sym);
   return symbols[i];
 }
 
@@ -65,9 +65,9 @@ char *desc(item_t *x) {
     return "NULL";
   }
   if (x->list) {
-    return strutil.newstr("list (%s, %s)", desc((item_t *)x->data), desc(x->next));
+    return strings.newstr("list (%s, %s)", desc((item_t *)x->data), desc(x->next));
   }
-  return strutil.newstr("sym(%s)", x->data);
+  return strings.newstr("sym(%s)", x->data);
 }
 
 item_t *cdr(item_t *x) {

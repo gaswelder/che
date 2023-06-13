@@ -1,7 +1,7 @@
 #import json
 #import tty
 #import opt
-#import strutil
+#import strings
 
 char *reqfields[100] = {};
 int nreqfields = 0;
@@ -12,7 +12,7 @@ int main(int argc, char **argv) {
     char *fields_string = NULL;
     opt.opt_str("f", "fields to print as columns after the timestamp", &fields_string);
     opt.opt_parse(argc, argv);
-    nreqfields = strutil.strutil_split(',', fields_string, reqfields, 100);
+    nreqfields = strings.strutil_split(',', fields_string, reqfields, 100);
 
     // This assumes that stdin has the default "line discipline" - that is,
     // fgets will end up delivering whole lines, one line at a time, - and that

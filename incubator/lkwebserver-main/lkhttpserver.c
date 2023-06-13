@@ -40,7 +40,7 @@ pub int lk_httpserver_serve(lkconfig.LKConfig *cfg) {
         .ctxhead = NULL
     };
 
-    char *addr = strutil.newstr("%s:%s", cfg->serverhost->s, cfg->port->s);
+    char *addr = strings.newstr("%s:%s", cfg->serverhost->s, cfg->port->s);
     httpserver->listen_conn = net.net_listen("tcp", addr);
     if (!httpserver->listen_conn) {
         free(addr);

@@ -1,5 +1,5 @@
 #import xmlgen_rand.c
-#import strutil
+#import strings
 #import opt
 #import words.c
 #import rnd
@@ -531,7 +531,7 @@ FILE *OpenOutput_split(const char *global_outputname, int fileno) {
     if (fileno > 99999) {
         fprintf(stderr,"Warning: More than %d files.\n", 99999);
     }
-    char *newname = strutil.newstr("%s%0*d", global_outputname, 5, fileno);
+    char *newname = strings.newstr("%s%0*d", global_outputname, 5, fileno);
     FILE *f = fopen(newname,"w");
     free(newname);
     return f;

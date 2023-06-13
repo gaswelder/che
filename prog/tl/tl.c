@@ -1,4 +1,4 @@
-#import strutil
+#import strings
 #import opt
 #import client.c
 
@@ -111,7 +111,7 @@ bool ishidden(FILE *f, char *name) {
     bool r = false;
     char buf[1000] = {};
     while (fgets(buf, sizeof(buf), f)) {
-        if (!strcmp(strutil.trim(buf), name)) {
+        if (!strcmp(strings.trim(buf), name)) {
             r = true;
             break;
         }
@@ -151,8 +151,8 @@ int cmd_rm(int argc, char **argv) {
 
         client.tl_rm(*id);
 
-        char *path = strutil.newstr("%s/%s", dir, name);
-        char *newpath = strutil.newstr("%s/__%s", dir, name);
+        char *path = strings.newstr("%s/%s", dir, name);
+        char *newpath = strings.newstr("%s/__%s", dir, name);
         if (rename(path, newpath) < 0) {
             fprintf(stderr, "failed rename torrent to '%s': %s\n", newpath, strerror(errno));
         }
@@ -200,7 +200,7 @@ int cmd_unhide(int argc, char **argv) {
 void show(client.torr_t *tt, size_t len, FILE *f, *tmp, char **ids) {
     char buf[1000] = {};
     while (fgets(buf, sizeof(buf), f)) {
-        char *name = strutil.trim(buf);
+        char *name = strings.trim(buf);
         /*
          * Find the torrent with this name
          */

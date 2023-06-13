@@ -1,6 +1,6 @@
 #import opt
 #import fileutil
-#import strutil
+#import strings
 #import time
 #import os/fs
 
@@ -106,7 +106,7 @@ dlog_t *dlog_init( const char *pername, const char *dir,
 
 	log->per = per;
 	if( dir ) {
-		log->dir = strutil.newstr("%s", dir);
+		log->dir = strings.newstr("%s", dir);
 	}
 	if( static_name ) {
 		log->static_path = create_static_path( log, static_name );

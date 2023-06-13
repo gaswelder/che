@@ -1,5 +1,5 @@
 #import opt
-#import strutil
+#import strings
 
 int main(int argc, char *argv[]) {
     char buf[4096] = {};
@@ -10,7 +10,7 @@ int main(int argc, char *argv[]) {
     opt.opt_parse(argc, argv);
 
     while (fgets(buf, 4096, stdin)) {
-        strutil.rtrim(buf, "\n");
+        strings.rtrim(buf, "\n");
         if (cols > 0) {
             putchar('\t');
         }

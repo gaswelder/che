@@ -1,6 +1,6 @@
 #import parsebuf
 #import string
-#import strutil
+#import strings
 #import json
 
 /*
@@ -132,7 +132,6 @@ char *tok_json(tok_t *t) {
 	json.json_put(tok, "content", json.json_newstr(t->content));
 	json.json_put(tok, "pos", json.json_newstr(t->pos));
 	return json.json_format(tok);
-	// return strutil.newstr("* %s - %s", t->name, t->content);
 }
 
 tok_t *lexer_read(lexer_t *l) {
@@ -176,14 +175,14 @@ tok_t *lexer_read(lexer_t *l) {
 		const char *keyword = keywords[i];
 		if (parsebuf.buf_skip_literal(b, keyword)) {
 			// puts("keyword");
-			return tok_make(strutil.newstr("%s", keyword), NULL, pos);
+			return tok_make(strings.newstr("%s", keyword), NULL, pos);
 		}
 	}
 	for (size_t i = 0; i < nelem(symbols); i++) {
 		const char *symbol = symbols[i];
 		if (parsebuf.buf_skip_literal(b, symbol)) {
 			// puts("symbol");
-			return tok_make(strutil.newstr("%s", symbol), NULL, pos);
+			return tok_make(strings.newstr("%s", symbol), NULL, pos);
 		}
 	}
 	free(pos);
@@ -192,7 +191,7 @@ tok_t *lexer_read(lexer_t *l) {
 		// puts("ident");
 		return read_identifier(b);
 	}
-	return tok_make("error", strutil.newstr("unexpected character: '%c'", peek), parsebuf.buf_pos(b));
+	return tok_make("error", strings.newstr("unexpected character: '%c'", peek), parsebuf.buf_pos(b));
 	
 }
 
@@ -215,16 +214,16 @@ tok_t *read_number(parsebuf.parsebuf_t *b) {
 		char *modifiers = parsebuf.buf_read_set(b, "ULf");
 		// defer free(modifiers);
 		// defer free(frac);
-		return tok_make("num", strutil.newstr("%s.%s%s", num, frac, modifiers), pos);
+		return tok_make("num", strings.newstr("%s.%s%s", num, frac, modifiers), pos);
 	}
 
 	char *modifiers = parsebuf.buf_read_set(b, "UL");
 
 	if (parsebuf.buf_more(b) && isalpha(parsebuf.buf_peek(b))) {
-		return tok_make("error", strutil.newstr("unknown modifier: %c", parsebuf.buf_peek(b)), pos);
+		return tok_make("error", strings.newstr("unknown modifier: %c", parsebuf.buf_peek(b)), pos);
 	}
 
-	char *result = strutil.newstr("%s%s", num, modifiers);
+	char *result = strings.newstr("%s%s", num, modifiers);
 	free(num);
 	free(modifiers);
 	return tok_make("num", result, pos);
@@ -239,7 +238,7 @@ tok_t *read_hex_number(parsebuf.parsebuf_t *b) {
 	char *modifiers = parsebuf.buf_read_set(b, "UL");
 	// defer free(num);
 	// defer free(modifiers);
-	return tok_make("num", strutil.newstr("0x%s%s", num, modifiers), parsebuf.buf_pos(b));
+	return tok_make("num", strings.newstr("0x%s%s", num, modifiers), parsebuf.buf_pos(b));
 }
 
 // // TODO: clip/str: str_new() -> str_new(template, args...)
@@ -261,7 +260,7 @@ tok_t *read_string(parsebuf.parsebuf_t *b) {
 			string.str_addc(s, parsebuf.buf_get(b));
 		}
 	}
-	return tok_make("error", strutil.newstr("double quote expected"), pos);
+	return tok_make("error", strings.newstr("double quote expected"), pos);
 
 	// // Expect the closing quote
 	// if (parsebuf.buf_get(b) != '"') {
@@ -301,7 +300,7 @@ tok_t *read_char(parsebuf.parsebuf_t *b) {
 
 	if (parsebuf.buf_peek(b) != '\'') {
 		free(s);
-		return tok_make("error", strutil.newstr("single quote expected"), pos);
+		return tok_make("error", strings.newstr("single quote expected"), pos);
 	}
 	parsebuf.buf_get(b);
 	return tok_make("char", s, pos);
@@ -314,7 +313,7 @@ tok_t *read_multiline_comment(parsebuf.parsebuf_t *b) {
 	char *comment = parsebuf.buf_skip_until(b, "*/");
 	if (!parsebuf.buf_skip_literal(b, "*/")) {
 		free(comment);
-		return tok_make("error", strutil.newstr("'*/' expected"), pos);
+		return tok_make("error", strings.newstr("'*/' expected"), pos);
 	}
 	return tok_make("comment", comment, pos);
 }

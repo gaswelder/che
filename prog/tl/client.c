@@ -1,6 +1,6 @@
 #import os/exec
 #import parsebuf
-#import strutil
+#import strings
 
 typedef {
     FILE *out;
@@ -67,7 +67,7 @@ pub bool tl_getval(char *id, char *param, char *out, size_t n) {
     char buf[1000] = {};
     bool ok = false;
     while (fgets(buf, sizeof(buf), c.out)) {
-        char *line = strutil.trim(buf);
+        char *line = strings.trim(buf);
         puts(line);
         if (strstr(line, param) == line) {
             char *from = line + strlen(param) + strlen(": ");
@@ -104,7 +104,7 @@ pub void torrents(torr_t **items, size_t *size) {
     torr_t *list = malloc(cap * sizeof(torr_t));
     char buf[1000] = {};
     while (fgets(buf, sizeof(buf), client.out)) {
-        char *line = strutil.trim(buf);
+        char *line = strings.trim(buf);
         torr_t t = parseline(line);
         if (!strcmp(t.id, "ID") || !strcmp(t.id, "Sum:")) {
             continue;
