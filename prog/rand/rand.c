@@ -1,4 +1,4 @@
-#import mt
+#import rnd
 #import opt
 
 int main(int argc, char **argv) {
@@ -23,11 +23,11 @@ int main(int argc, char **argv) {
 	}
 	size_t alphasize = strlen(alpha);
 
-	mt.mt_seed((uint32_t) seed);
+	rnd.seed((uint64_t) seed);
 
 	while (n-- > 0) {
 		for (size_t i = 0; i < len; i++) {
-			putchar(alpha[mt.mt_rand32() % alphasize]);
+			putchar(alpha[rnd.u32() % alphasize]);
 		}
 		putchar('\n');
 	}

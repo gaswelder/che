@@ -5,7 +5,7 @@
 #import opt
 #import cli
 #import ppm
-#import pcg32
+#import rnd
 #import fileutil
 #import endian
 
@@ -89,7 +89,7 @@ int main(int argc, char **argv) {
     }
 
     if (seed_str) {
-        pcg32.pcg32_seed(strtoull(seed_str, NULL, 16));
+        rnd.seed(strtoull(seed_str, NULL, 16));
     }
 
     if (audio_output) {
@@ -349,7 +349,7 @@ sort_radix_lsd(int array[N], int b)
 void shuffle(int array[N], bool hide, slow) {
     message = "Fisher-Yates";
     for (int i = N - 1; i > 0; i--) {
-        uint32_t r = pcg32.pcg32() % (i + 1);
+        uint32_t r = rnd.u32() % (i + 1);
         swap(array, i, r);
         if (hide) {
             continue;

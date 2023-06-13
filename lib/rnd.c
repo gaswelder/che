@@ -18,5 +18,23 @@ pub double exponential(double mean) {
 }
 
 double u() {
-    return (double) rand() / RAND_MAX;
+    return (double) pcg32() / 0xffffffff;
+}
+
+pub uint32_t u32() {
+    return pcg32();
+}
+
+uint64_t pcg32_value = 0;
+uint64_t pcg32_m = 0x9b60933458e17d7d;
+uint64_t pcg32_a = 0xd737232eeccdf7ed;
+
+pub void seed(uint64_t s) {
+    pcg32_value = s;
+}
+
+uint32_t pcg32() {
+    pcg32_value = pcg32_value * pcg32_m + pcg32_a;
+    int shift = 29 - (pcg32_value >> 61);
+    return pcg32_value >> shift;
 }
