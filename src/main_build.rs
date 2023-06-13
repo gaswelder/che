@@ -23,9 +23,11 @@ pub fn run(argv: &[String]) -> i32 {
             return 0;
         }
         Err(errors) => {
+            let n = errors.len();
             for err in errors {
                 eprintln!("{}:{}: {}", err.path, err.pos, err.message);
             }
+            eprintln!("{} errors", n);
             return 1;
         }
     }
