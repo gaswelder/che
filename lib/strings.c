@@ -24,7 +24,7 @@ pub char *newstr(const char *format, ... )
 /**
  * Trims `s` by adding zeros at the end and adjusting the pointer at the
  * beginning. Modifies the buffer and returns the adjusted pointer. Don't
- * pass readonly buffers life those from static strings.
+ * pass readonly buffers like those from static strings.
  */
 pub char *trim(char *s) {
 	char *left = s;
