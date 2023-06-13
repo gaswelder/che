@@ -1,3 +1,4 @@
+#import lkalloc.c
 #import lkbuffer.c
 #import lkstring.c
 #import lknet.c
@@ -9,7 +10,18 @@ pub typedef {
     int sockclosed;
 } LKSocketReader;
 
-void lk_socketreader_free(LKSocketReader *sr) {
+pub LKSocketReader *lk_socketreader_new(int sock, size_t buf_size) {
+    LKSocketReader *sr = lkalloc.lk_malloc(sizeof(LKSocketReader), "lk_socketreader_new");
+    if (buf_size == 0) {
+        buf_size = 1024;
+    }
+    sr->sock = sock;
+    sr->buf = lkbuffer.lk_buffer_new(buf_size);
+    sr->sockclosed = 0;
+    return sr;
+}
+
+pub void lk_socketreader_free(LKSocketReader *sr) {
     lk_buffer_free(sr->buf);
     sr->buf = NULL;
     lk_free(sr);
@@ -21,7 +33,7 @@ void lk_socketreader_free(LKSocketReader *sr) {
 // Z_EOF (end of file)
 // Z_ERR (errno set with error detail)
 // Z_BLOCK (fd blocked, no data)
-int lk_socketreader_readline(LKSocketReader *sr, lkstring.LKString *line) {
+pub int lk_socketreader_readline(LKSocketReader *sr, lkstring.LKString *line) {
     int z = lknet.Z_OPEN;
     lk_string_assign(line, "");
 
@@ -71,14 +83,14 @@ int lk_socketreader_readline(LKSocketReader *sr, lkstring.LKString *line) {
     }
 }
 
-int lk_socketreader_recv(LKSocketReader *sr, lkbuffer.LKBuffer *buf_dest) {
+pub int lk_socketreader_recv(LKSocketReader *sr, lkbuffer.LKBuffer *buf_dest) {
     lk_buffer_clear(buf_dest);
     lkbuffer.LKBuffer *buf = sr->buf;
 
     // Append any unread buffer bytes into buf_dest.
     if (buf->bytes_cur < buf->bytes_len) {
         int ncopy = buf->bytes_len - buf->bytes_cur;
-        lk_buffer_append(buf_dest, buf->bytes + buf->bytes_cur, ncopy);
+        lkbuffer.lk_buffer_append(buf_dest, buf->bytes + buf->bytes_cur, ncopy);
         buf->bytes_cur += ncopy;
     }
 

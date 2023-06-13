@@ -5,15 +5,19 @@
 #import strings
 #import time
 
-#import lkalloc.c
 #import lkbuffer.c
 #import lkconfig.c
 #import lkcontext.c
+#import lkhttpcgiparser.c
+#import lkhttprequestparser.c
 #import lkhostconfig.c
 #import lklib.c
 #import lknet.c
 #import lkreflist.c
+#import lkstring.c
+#import lkstringtable.c
 #import request.c
+#import socketreader.c
 
 
 enum {FD_SOCK, FD_FILE};
@@ -51,7 +55,7 @@ pub int lk_httpserver_serve(lkconfig.LKConfig *cfg) {
     free(addr);
 
     clearenv();
-    set_cgi_env1(server);
+    set_cgi_env1(httpserver);
 
     while (true) {
         // put all connections into set
@@ -67,7 +71,7 @@ pub int lk_httpserver_serve(lkconfig.LKConfig *cfg) {
             }
         }
 
-        if (!update_socket_status(set)) {
+        if (!net.update_status(set)) {
             if (errno == EINTR) {
                 continue;
             }
@@ -76,12 +80,15 @@ pub int lk_httpserver_serve(lkconfig.LKConfig *cfg) {
         }
 
         if (server->connections[0]->is_readable) {
-            net_t *client = net.net_accept(server->listen_conn);
+            net.net_t *client = net.net_accept(server->listen_conn);
             if (!client) {
                 lklib.lk_print_err("accept()");
                 continue;
             }
-            add_client(httpserver, client);
+            // hack
+            int clientfd = client->sock;
+            lkcontext.LKContext *ctx = lkcontext.create_initial_context(clientfd);
+            lkcontext.add_new_client_context(&server->ctxhead, ctx);
         }
 
         for (int i = 1; i < 100; i++) {
@@ -92,7 +99,7 @@ pub int lk_httpserver_serve(lkconfig.LKConfig *cfg) {
             if (conn->is_readable) {
                 read_client();
             }
-            if (conn->is_writable && havedata) {
+            if (conn->is_writable) {
                 write();
             }
         }
@@ -105,9 +112,9 @@ pub int lk_httpserver_serve(lkconfig.LKConfig *cfg) {
     while (ctx != NULL) {
         lkcontext.LKContext *ptmp = ctx;
         ctx = ctx->next;
-        lk_context_free(ptmp);
+        lkcontext.lk_context_free(ptmp);
     }
-    memset(server, 0, sizeof(LKHttpServer));
+    memset(httpserver, 0, sizeof(LKHttpServer));
     return 0;
 }
 
@@ -137,16 +144,16 @@ void set_cgi_env2(LKHttpServer *server, lkcontext.LKContext *ctx, lkhostconfig.L
 
     misc.setenv("DOCUMENT_ROOT", hc->homedir_abspath->s, 1);
 
-    char *http_user_agent = lk_stringtable_get(req->headers, "User-Agent");
+    char *http_user_agent = lkstringtable.lk_stringtable_get(req->headers, "User-Agent");
     if (!http_user_agent) http_user_agent = "";
     misc.setenv("HTTP_USER_AGENT", http_user_agent, 1);
 
-    char *http_host = lk_stringtable_get(req->headers, "Host");
+    char *http_host = lkstringtable.lk_stringtable_get(req->headers, "Host");
     if (!http_host) http_host = "";
     misc.setenv("HTTP_HOST", http_host, 1);
 
-    lkstring.LKString *lkscript_filename = lk_string_new(hc->homedir_abspath->s);
-    lk_string_append(lkscript_filename, req->path->s);
+    lkstring.LKString *lkscript_filename = lkstring.lk_string_new(hc->homedir_abspath->s);
+    lkstring.lk_string_append(lkscript_filename, req->path->s);
     misc.setenv("SCRIPT_FILENAME", lkscript_filename->s, 1);
     lkstring.lk_string_free(lkscript_filename);
 
@@ -155,7 +162,7 @@ void set_cgi_env2(LKHttpServer *server, lkcontext.LKContext *ctx, lkhostconfig.L
     misc.setenv("REQUEST_URI", req->uri->s, 1);
     misc.setenv("QUERY_STRING", req->querystring->s, 1);
 
-    char *content_type = lk_stringtable_get(req->headers, "Content-Type");
+    char *content_type = lkstringtable.lk_stringtable_get(req->headers, "Content-Type");
     if (content_type == NULL) {
         content_type = "";
     }
@@ -177,26 +184,26 @@ void read_request(LKHttpServer *server, lkcontext.LKContext *ctx) {
 
     while (1) {
         if (!ctx->reqparser->head_complete) {
-            z = lk_socketreader_readline(ctx->sr, ctx->req_line);
+            z = socketreader.lk_socketreader_readline(ctx->sr, ctx->req_line);
             if (z == lknet.Z_ERR) {
                 lklib.lk_print_err("lksocketreader_readline()");
                 break;
             }
-            lk_httprequestparser_parse_line(ctx->reqparser, ctx->req_line, ctx->req);
+            lkhttprequestparser.lk_httprequestparser_parse_line(ctx->reqparser, ctx->req_line, ctx->req);
         } else {
-            z = lk_socketreader_recv(ctx->sr, ctx->req_buf);
+            z = socketreader.lk_socketreader_recv(ctx->sr, ctx->req_buf);
             if (z == lknet.Z_ERR) {
                 lklib.lk_print_err("lksocketreader_readbytes()");
                 break;
             }
-            lk_httprequestparser_parse_bytes(ctx->reqparser, ctx->req_buf, ctx->req);
+            lkhttprequestparser.lk_httprequestparser_parse_bytes(ctx->reqparser, ctx->req_buf, ctx->req);
         }
         // No more data coming in.
         if (ctx->sr->sockclosed) {
             ctx->reqparser->body_complete = 1;
         }
         if (ctx->reqparser->body_complete) {
-            FD_CLR_READ(ctx->selectfd, server);
+            // FD_CLR_READ(ctx->selectfd, server);
             shutdown(ctx->selectfd, SHUT_RD);
             process_request(server, ctx);
             break;
@@ -210,30 +217,30 @@ void read_request(LKHttpServer *server, lkcontext.LKContext *ctx) {
 // Send cgi_inputbuf input bytes to cgi program stdin set in selectfd.
 void write_cgi_input(LKHttpServer *server, lkcontext.LKContext *ctx) {
     assert(ctx->cgi_inputbuf != NULL);
-    int z = lk_write_all_file(ctx->selectfd, ctx->cgi_inputbuf);
+    int z = lknet.lk_write_all_file(ctx->selectfd, ctx->cgi_inputbuf);
     if (z == lknet.Z_BLOCK) {
         return;
     }
     if (z == lknet.Z_ERR) {
-        lklib.lk_print_err("write_cgi_input lk_write_all_file()");
+        lklib.lk_print_err("write_cgi_input lknet.lk_write_all_file()");
         z = terminate_fd(ctx->cgifd, FD_WRITE, server);
         if (z == 0) {
             ctx->cgifd = 0;
         }
-        remove_selectfd_context(&server->ctxhead, ctx->selectfd);
+        lkcontext.remove_selectfd_context(&server->ctxhead, ctx->selectfd);
         return;
     }
     if (z == lknet.Z_EOF) {
         // Completed writing input bytes.
-        FD_CLR_WRITE(ctx->selectfd, server);
-        shutdown(ctx->selectfd, SHUT_WR);
-        remove_selectfd_context(&server->ctxhead, ctx->selectfd);
+        // FD_CLR_WRITE(ctx->selectfd, server);
+        // shutdown(ctx->selectfd, SHUT_WR);
+        lkcontext.remove_selectfd_context(&server->ctxhead, ctx->selectfd);
     }
 }
 
 // Read cgi output to cgi_outputbuf.
 void read_cgi_output(LKHttpServer *server, lkcontext.LKContext *ctx) {
-    int z = lk_read_all_file(ctx->selectfd, ctx->cgi_outputbuf);
+    int z = lknet.lk_read_all_file(ctx->selectfd, ctx->cgi_outputbuf);
     if (z == lknet.Z_BLOCK) {
         return;
     }
@@ -256,13 +263,13 @@ void read_cgi_output(LKHttpServer *server, lkcontext.LKContext *ctx) {
         ctx->cgifd = 0;
     }
 
-    parse_cgi_output(ctx->cgi_outputbuf, ctx->resp);
+    lkhttpcgiparser.parse_cgi_output(ctx->cgi_outputbuf, ctx->resp);
     process_response(server, ctx);
 }
 
 void process_request(LKHttpServer *server, lkcontext.LKContext *ctx) {
-    char *hostname = lk_stringtable_get(ctx->req->headers, "Host");
-    lkhostconfig.LKHostConfig *hc = lk_config_find_hostconfig(server->cfg, hostname);
+    char *hostname = lkstring.lkstringtable.lk_stringtable_get(ctx->req->headers, "Host");
+    lkhostconfig.LKHostConfig *hc = lkconfig.lk_config_find_hostconfig(server->cfg, hostname);
     if (hc == NULL) {
         process_error_response(server, ctx, 404, "LittleKitten webserver: hostconfig not found.");
         return;
@@ -280,7 +287,7 @@ void process_request(LKHttpServer *server, lkcontext.LKContext *ctx) {
     }
 
     // Replace path with any matching alias.
-    char *match = lk_stringtable_get(hc->aliases, ctx->req->path->s);
+    char *match = lkstringtable.lk_stringtable_get(hc->aliases, ctx->req->path->s);
     if (match != NULL) {
         lkstring.lk_string_assign(ctx->req->path, match);
     }
@@ -308,7 +315,7 @@ void serve_files(LKHttpServer *server, lkcontext.LKContext *ctx, lkhostconfig.LK
        "</body></html>\n";
 
     request.LKHttpRequest *req = ctx->req;
-    LKHttpResponse *resp = ctx->resp;
+    request.LKHttpResponse *resp = ctx->resp;
     lkstring.LKString *method = req->method;
     lkstring.LKString *path = req->path;
 
@@ -336,7 +343,7 @@ void serve_files(LKHttpServer *server, lkcontext.LKContext *ctx, lkhostconfig.LK
         if (z == -1) {
             // path not found
             resp->status = 404;
-            lk_string_assign_sprintf(resp->statustext, "File not found '%s'", path->s);
+            lkstring.lk_string_assign_sprintf(resp->statustext, "File not found '%s'", path->s);
             lknet.lk_httpresponse_add_header(resp, "Content-Type", "text/plain");
             lkbuffer.lk_buffer_append_sprintf(resp->body, "File not found '%s'\n", path->s);
         }
@@ -363,7 +370,7 @@ void serve_files(LKHttpServer *server, lkcontext.LKContext *ctx, lkhostconfig.LK
     }
 
     resp->status = 501;
-    lk_string_assign_sprintf(resp->statustext, "Unsupported method ('%s')", method);
+    lkstring.lk_string_assign_sprintf(resp->statustext, "Unsupported method ('%s')", method);
 
     lknet.lk_httpresponse_add_header(resp, "Content-Type", "text/html");
     lkbuffer.lk_buffer_append(resp->body, html_error_start, strlen(html_error_start));
@@ -374,11 +381,11 @@ void serve_files(LKHttpServer *server, lkcontext.LKContext *ctx, lkhostconfig.LK
 
 void serve_cgi(LKHttpServer *server, lkcontext.LKContext *ctx, lkhostconfig.LKHostConfig *hc) {
     request.LKHttpRequest *req = ctx->req;
-    LKHttpResponse *resp = ctx->resp;
+    request.LKHttpResponse *resp = ctx->resp;
     char *path = req->path->s;
 
-    lkstring.LKString *cgifile = lk_string_new(hc->homedir_abspath->s);
-    lk_string_append(cgifile, req->path->s);
+    lkstring.LKString *cgifile = lkstring.lk_string_new(hc->homedir_abspath->s);
+    lkstring.lk_string_append(cgifile, req->path->s);
 
     // Expand "/../", etc. into real_path.
     char real_path[PATH_MAX];
@@ -389,7 +396,7 @@ void serve_cgi(LKHttpServer *server, lkcontext.LKContext *ctx, lkhostconfig.LKHo
     // real_path file should exist
     if (pz == NULL || strncmp(real_path, hc->cgidir_abspath->s, hc->cgidir_abspath->s_len) || !fileutil.file_exists(real_path)) {
         resp->status = 404;
-        lk_string_assign_sprintf(resp->statustext, "File not found '%s'", path);
+        lkstring.lk_string_assign_sprintf(resp->statustext, "File not found '%s'", path);
         lknet.lk_httpresponse_add_header(resp, "Content-Type", "text/plain");
         lkbuffer.lk_buffer_append_sprintf(resp->body, "File not found '%s'\n", path);
 
@@ -405,7 +412,7 @@ void serve_cgi(LKHttpServer *server, lkcontext.LKContext *ctx, lkhostconfig.LKHo
     int z = lk_popen3(real_path, &fd_in, &fd_out, NULL);
     if (z == -1) {
         resp->status = 500;
-        lk_string_assign_sprintf(resp->statustext, "Server error '%s'", strerror(errno));
+        lkstring.lk_string_assign_sprintf(resp->statustext, "Server error '%s'", strerror(errno));
         lknet.lk_httpresponse_add_header(resp, "Content-Type", "text/plain");
         lkbuffer.lk_buffer_append_sprintf(resp->body, "Server error '%s'\n", strerror(errno));
         process_response(server, ctx);
@@ -418,35 +425,34 @@ void serve_cgi(LKHttpServer *server, lkcontext.LKContext *ctx, lkhostconfig.LKHo
     ctx->selectfd = fd_out;
     ctx->cgifd = fd_out;
     ctx->type = CTX_READ_CGI_OUTPUT;
-    ctx->cgi_outputbuf = lk_buffer_new(0);
-    FD_SET_READ(ctx->selectfd, server);
+    ctx->cgi_outputbuf = lkbuffer.lk_buffer_new(0);
 
     // If req is POST with body, pass it to cgi process stdin.
     if (req->body->bytes_len > 0) {
-        lkcontext.LKContext *ctx_in = lk_context_new();
-        add_context(&server->ctxhead, ctx_in);
+        lkcontext.LKContext *ctx_in = lkcontext.lk_context_new();
+        lkcontext.add_context(&server->ctxhead, ctx_in);
 
         ctx_in->selectfd = fd_in;
         ctx_in->cgifd = fd_in;
         ctx_in->clientfd = ctx->clientfd;
         ctx_in->type = CTX_WRITE_CGI_INPUT;
 
-        ctx_in->cgi_inputbuf = lk_buffer_new(0);
+        ctx_in->cgi_inputbuf = lkbuffer.lk_buffer_new(0);
         lkbuffer.lk_buffer_append(ctx_in->cgi_inputbuf, req->body->bytes, req->body->bytes_len);
 
-        FD_SET_WRITE(ctx_in->selectfd, server);
+        // FD_SET_WRITE(ctx_in->selectfd, server);
     }
 }
 
 void process_response(LKHttpServer *server, lkcontext.LKContext *ctx) {
     request.LKHttpRequest *req = ctx->req;
-    LKHttpResponse *resp = ctx->resp;
+    request.LKHttpResponse *resp = ctx->resp;
 
-    lk_httpresponse_finalize(resp);
+    lknet.lk_httpresponse_finalize(resp);
 
     // Clear response body on HEAD request.
     if (lkstring.lk_string_sz_equal(req->method, "HEAD")) {
-        lk_buffer_clear(resp->body);
+        lkbuffer.lk_buffer_clear(resp->body);
     }
 
     char time_str[TIME_STRING_SIZE];
@@ -463,7 +469,7 @@ void process_response(LKHttpServer *server, lkcontext.LKContext *ctx) {
 
     ctx->selectfd = ctx->clientfd;
     ctx->type = CTX_WRITE_RESP;
-    FD_SET_WRITE(ctx->selectfd, server);
+    // FD_SET_WRITE(ctx->selectfd, server);
     lkreflist.lk_reflist_clear(ctx->buflist);
     lkreflist.lk_reflist_append(ctx->buflist, resp->head);
     lkreflist.lk_reflist_append(ctx->buflist, resp->body);
@@ -471,7 +477,7 @@ void process_response(LKHttpServer *server, lkcontext.LKContext *ctx) {
 }
 
 void process_error_response(LKHttpServer *server, lkcontext.LKContext *ctx, int status, char *msg) {
-    LKHttpResponse *resp = ctx->resp;
+    request.LKHttpResponse *resp = ctx->resp;
     resp->status = status;
     lkstring.lk_string_assign(resp->statustext, msg);
     lknet.lk_httpresponse_add_header(resp, "Content-Type", "text/plain");
@@ -485,8 +491,8 @@ void process_error_response(LKHttpServer *server, lkcontext.LKContext *ctx, int 
 int open_path_file(char *home_dir, char *path) {
     // full_path = home_dir + path
     // Ex. "/path/to" + "/index.html"
-    lkstring.LKString *full_path = lk_string_new(home_dir);
-    lk_string_append(full_path, path);
+    lkstring.LKString *full_path = lkstring.lk_string_new(home_dir);
+    lkstring.lk_string_append(full_path, path);
 
     int z = open(full_path->s, O_RDONLY | O_NONBLOCK);
     lkstring.lk_string_free(full_path);
@@ -499,8 +505,8 @@ int read_path_file(char *home_dir, char *path, lkbuffer.LKBuffer *buf) {
     int z;
     // full_path = home_dir + path
     // Ex. "/path/to" + "/index.html"
-    lkstring.LKString *full_path = lk_string_new(home_dir);
-    lk_string_append(full_path, path);
+    lkstring.LKString *full_path = lkstring.lk_string_new(home_dir);
+    lkstring.lk_string_append(full_path, path);
 
     // Expand "/../", etc. into real_path.
     char real_path[PATH_MAX];
@@ -513,7 +519,7 @@ int read_path_file(char *home_dir, char *path, lkbuffer.LKBuffer *buf) {
         return z;
     }
 
-    z = lk_readfile(real_path, buf);
+    z = lknet.lk_readfile(real_path, buf);
     lkstring.lk_string_free(full_path);
     return z;
 }
@@ -584,7 +590,7 @@ void serve_proxy(LKHttpServer *server, lkcontext.LKContext *ctx, char *targethos
     ctx->proxyfd = proxyfd;
     ctx->selectfd = proxyfd;
     ctx->type = CTX_PROXY_WRITE_REQ;
-    FD_SET_WRITE(proxyfd, server);
+    // FD_SET_WRITE(proxyfd, server);
     lkreflist.lk_reflist_clear(ctx->buflist);
     lkreflist.lk_reflist_append(ctx->buflist, ctx->req->head);
     lkreflist.lk_reflist_append(ctx->buflist, ctx->req->body);
@@ -606,13 +612,13 @@ void write_proxy_request(LKHttpServer *server, lkcontext.LKContext *ctx) {
     }
     if (z == lknet.Z_EOF) {
         // Completed sending http request.
-        FD_CLR_WRITE(ctx->selectfd, server);
-        shutdown(ctx->selectfd, SHUT_WR);
+        // FD_CLR_WRITE(ctx->selectfd, server);
+        // shutdown(ctx->selectfd, SHUT_WR);
 
         // Pipe proxy response from ctx->proxyfd to ctx->clientfd
         ctx->type = CTX_PROXY_PIPE_RESP;
-        ctx->proxy_respbuf = lk_buffer_new(0);
-        FD_SET_READ(ctx->selectfd, server);
+        ctx->proxy_respbuf = lkbuffer.lk_buffer_new(0);
+        // FD_SET_READ(ctx->selectfd, server);
     }
 }
 
@@ -675,10 +681,10 @@ enum {
 int terminate_fd(int fd, int fd_action, LKHttpServer *server) {
     int z;
     if (fd_action == FD_READ || fd_action == FD_READWRITE) {
-        FD_CLR_READ(fd, server);
+        // FD_CLR_READ(fd, server);
     }
     if (fd_action == FD_WRITE || fd_action == FD_READWRITE) {
-        FD_CLR_WRITE(fd, server);
+        // FD_CLR_WRITE(fd, server);
     }
     z = close(fd);
     if (z == -1) {
@@ -689,10 +695,10 @@ int terminate_fd(int fd, int fd_action, LKHttpServer *server) {
 
 int terminate_sock(int fd, int fd_action, LKHttpServer *server) {
     if (fd_action == FD_READ || fd_action == FD_READWRITE) {
-        FD_CLR_READ(fd, server);
+        // FD_CLR_READ(fd, server);
     }
     if (fd_action == FD_WRITE || fd_action == FD_READWRITE) {
-        FD_CLR_WRITE(fd, server);
+        // FD_CLR_WRITE(fd, server);
     }
     int z = close(fd);
     if (z == -1) {
@@ -714,15 +720,6 @@ void terminate_client_session(LKHttpServer *server, lkcontext.LKContext *ctx) {
     }
     // Remove from linked list and free ctx.
     lkcontext.remove_client_context(&server->ctxhead, ctx->clientfd);
-}
-
-
-void add_client(LKHttpServer *server) {
-    // hack
-    int clientfd = client->sock;
-    FD_SET_READ(clientfd, server);
-    lkcontext.LKContext *ctx = lkcontext.create_initial_context(clientfd);
-    lkcontext.add_new_client_context(&server->ctxhead, ctx);
 }
 
 void read_client(LKHttpServer *server, net.net_t *client) {

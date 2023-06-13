@@ -1,3 +1,5 @@
+#import lkalloc.c
+
 #define N_GROW_REFLIST 10
 
 pub typedef {
@@ -10,12 +12,12 @@ pub typedef {
 const int SIZEOF_VOIDP = 8; // sizeof(void *), TODO
 
 pub LKRefList *lk_reflist_new() {
-    LKRefList *l = lk_malloc(sizeof(LKRefList), "lk_reflist_new");
+    LKRefList *l = lkalloc.lk_malloc(sizeof(LKRefList), "lk_reflist_new");
     l->items_size = N_GROW_REFLIST;
     l->items_len = 0;
     l->items_cur = 0;
 
-    l->items = lk_malloc(l->items_size * SIZEOF_VOIDP, "lk_reflist_new_items");
+    l->items = lkalloc.lk_malloc(l->items_size * SIZEOF_VOIDP, "lk_reflist_new_items");
     memset(l->items, 0, l->items_size * SIZEOF_VOIDP);
     return l;
 }
@@ -24,16 +26,16 @@ pub void lk_reflist_free(LKRefList *l) {
     assert(l->items != NULL);
 
     memset(l->items, 0, l->items_size * SIZEOF_VOIDP);
-    lk_free(l->items);
+    lkalloc.lk_free(l->items);
     l->items = NULL;
-    lk_free(l);
+    lkalloc.lk_free(l);
 }
 
 pub void lk_reflist_append(LKRefList *l, void *p) {
     assert(l->items_len <= l->items_size);
 
     if (l->items_len == l->items_size) {
-        void **pitems = lk_realloc(l->items, (l->items_size+N_GROW_REFLIST) * SIZEOF_VOIDP, "lk_reflist_append");
+        void **pitems = lkalloc.lk_realloc(l->items, (l->items_size+N_GROW_REFLIST) * SIZEOF_VOIDP, "lk_reflist_append");
         if (pitems == NULL) {
             return;
         }

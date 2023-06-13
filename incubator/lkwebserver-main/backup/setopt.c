@@ -43,12 +43,12 @@ void lk_httpserver_setopt(LKHttpServer *server, LKHttpServerOpt opt, ...) {
     case LKHTTPSERVEROPT_ALIAS:
         k = va_arg(args, char*);
         v = va_arg(args, char*);
-        lk_stringtable_set(settings->aliases, k, v);
+        lkstringtable.lk_stringtable_set(settings->aliases, k, v);
         break;
     case LKHTTPSERVEROPT_PROXYPASS:
         k = va_arg(args, char*);
         v = va_arg(args, char*);
-        lk_stringtable_set(settings->proxypass, k, v);
+        lkstringtable.lk_stringtable_set(settings->proxypass, k, v);
         break;
     default:
         break;

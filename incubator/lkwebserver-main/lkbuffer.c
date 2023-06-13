@@ -1,3 +1,5 @@
+#import lkalloc.c
+
 /*** LKBuffer - Dynamic bytes buffer ***/
 pub typedef {
     char *bytes;        // bytes buffer
@@ -11,19 +13,19 @@ pub LKBuffer *lk_buffer_new(size_t bytes_size) {
         bytes_size = LK_BUFSIZE_SMALL;
     }
 
-    LKBuffer *buf = lk_malloc(sizeof(LKBuffer), "lk_buffer_new");
+    LKBuffer *buf = lkalloc.lk_malloc(sizeof(LKBuffer), "lk_buffer_new");
     buf->bytes_cur = 0;
     buf->bytes_len = 0;
     buf->bytes_size = bytes_size;
-    buf->bytes = lk_malloc(buf->bytes_size, "lk_buffer_new_bytes");
+    buf->bytes = lkalloc.lk_malloc(buf->bytes_size, "lk_buffer_new_bytes");
     return buf;
 }
 
 pub void lk_buffer_free(LKBuffer *buf) {
     assert(buf->bytes != NULL);
-    lk_free(buf->bytes);
+    lkalloc.lk_free(buf->bytes);
     buf->bytes = NULL;
-    lk_free(buf);
+    lkalloc.lk_free(buf);
 }
 
 pub void lk_buffer_resize(LKBuffer *buf, size_t bytes_size) {
@@ -34,7 +36,7 @@ pub void lk_buffer_resize(LKBuffer *buf, size_t bytes_size) {
     if (buf->bytes_cur >= buf->bytes_len) {
         buf->bytes_cur = buf->bytes_len-1;
     }
-    buf->bytes = lk_realloc(buf->bytes, buf->bytes_size, "lk_buffer_resize");
+    buf->bytes = lkalloc.lk_realloc(buf->bytes, buf->bytes_size, "lk_buffer_resize");
 }
 
 pub void lk_buffer_clear(LKBuffer *buf) {
@@ -46,7 +48,7 @@ pub void lk_buffer_clear(LKBuffer *buf) {
 pub int lk_buffer_append(LKBuffer *buf, char *bytes, size_t len) {
     // If not enough capacity to append bytes, expand the bytes buffer.
     if (len > buf->bytes_size - buf->bytes_len) {
-        char *bs = lk_realloc(buf->bytes, buf->bytes_size + len, "lk_buffer_append");
+        char *bs = lkalloc.lk_realloc(buf->bytes, buf->bytes_size + len, "lk_buffer_append");
         if (bs == NULL) {
             return -1;
         }

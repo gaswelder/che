@@ -1,4 +1,10 @@
+#import lkalloc.c
 #import lkbuffer.c
+#import lkhttprequestparser.c
+#import lkreflist.c
+#import lkstring.c
+#import lklib.c
+#import request.c
 #import socketreader.c
 
 pub typedef {
@@ -8,16 +14,16 @@ pub typedef {
     LKContext *next;         // link to next ctx
 
     // Used by CTX_READ_REQ:
-    LKString *client_ipaddr;          // client ip address string
+    lkstring.LKString *client_ipaddr;          // client ip address string
     int client_port;       // client port number
-    LKString *req_line;               // current request line
-    lkbuffer.LKBuffer *req_buf;                // current request bytes buffer
+    lkstring.LKString *req_line;               // current lklib line
+    lkbuffer.LKBuffer *req_buf;                // current lklib bytes buffer
     socketreader.LKSocketReader *sr;               // input buffer for reading lines
     LKHttpRequestParser *reqparser;   // parser for httprequest
-    LKHttpRequest *req;               // http request in process
+    request.LKHttpRequest *req;               // http lklib in process
 
     // Used by CTX_WRITE_REQ:
-    LKHttpResponse *resp;             // http response to be sent
+    request.LKHttpResponse *resp;             // http response to be sent
     LKRefList *buflist;               // Buffer list of things to send/recv
 
     // Used by CTX_READ_CGI:
@@ -32,7 +38,7 @@ pub typedef {
 
 /*** LKContext functions ***/
 pub LKContext *lk_context_new() {
-    LKContext *ctx = lk_malloc(sizeof(LKContext), "lk_context_new");
+    LKContext *ctx = lkalloc.lk_malloc(sizeof(LKContext), "lk_context_new");
     ctx->selectfd = 0;
     ctx->clientfd = 0;
     ctx->type = 0;
@@ -60,19 +66,19 @@ pub LKContext *lk_context_new() {
 }
 
 pub LKContext *create_initial_context(int fd) {
-    LKContext *ctx = lk_malloc(sizeof(LKContext), "create_initial_context");
+    LKContext *ctx = lkalloc.lk_malloc(sizeof(LKContext), "create_initial_context");
     ctx->selectfd = fd;
     ctx->clientfd = fd;
     ctx->type = CTX_READ_REQ;
     ctx->next = NULL;
 
-    ctx->req_line = lk_string_new("");
-    ctx->req_buf = lk_buffer_new(0);
-    ctx->sr = lk_socketreader_new(fd, 0);
-    ctx->reqparser = lk_httprequestparser_new();
-    ctx->req = lk_httprequest_new();
-    ctx->resp = lk_httpresponse_new();
-    ctx->buflist = lk_reflist_new();
+    ctx->req_line = lkstring.lk_string_new("");
+    ctx->req_buf = lkbuffer.lk_buffer_new(0);
+    ctx->sr = socketreader.lk_socketreader_new(fd, 0);
+    ctx->reqparser = lkhttprequestparser.lk_httprequestparser_new();
+    ctx->req = request.lk_httprequest_new();
+    ctx->resp = request.lk_httpresponse_new();
+    ctx->buflist = lkreflist.lk_reflist_new();
 
     ctx->cgifd = 0;
     ctx->cgi_outputbuf = NULL;
@@ -92,31 +98,31 @@ pub void lk_context_free(LKContext *ctx) {
         lkstring.lk_string_free(ctx->req_line);
     }
     if (ctx->req_buf) {
-        lk_buffer_free(ctx->req_buf);
+        lkbuffer.lk_buffer_free(ctx->req_buf);
     }
     if (ctx->sr) {
-        lk_socketreader_free(ctx->sr);
+        socketreader.lk_socketreader_free(ctx->sr);
     }
     if (ctx->reqparser) {
         lk_httprequestparser_free(ctx->reqparser);
     }
     if (ctx->req) {
-        lk_httprequest_free(ctx->req);
+        request.lk_httprequest_free(ctx->req);
     }
     if (ctx->resp) {
-        lk_httpresponse_free(ctx->resp);
+        request.lk_httpresponse_free(ctx->resp);
     }
     if (ctx->buflist) {
-        lk_reflist_free(ctx->buflist);
+        lkreflist.lk_reflist_free(ctx->buflist);
     }
     if (ctx->cgi_outputbuf) {
-        lk_buffer_free(ctx->cgi_outputbuf);
+        lkbuffer.lk_buffer_free(ctx->cgi_outputbuf);
     }
     if (ctx->cgi_inputbuf) {
-        lk_buffer_free(ctx->cgi_inputbuf);
+        lkbuffer.lk_buffer_free(ctx->cgi_inputbuf);
     }
     if (ctx->proxy_respbuf) {
-        lk_buffer_free(ctx->proxy_respbuf);
+        lkbuffer.lk_buffer_free(ctx->proxy_respbuf);
     }
 
     ctx->selectfd = 0;
@@ -135,7 +141,7 @@ pub void lk_context_free(LKContext *ctx) {
     ctx->cgi_inputbuf = NULL;
     ctx->proxyfd = 0;
     ctx->proxy_respbuf = NULL;
-    lk_free(ctx);
+    lkalloc.lk_free(ctx);
 }
 
 // Add new client ctx to end of ctx linked list.

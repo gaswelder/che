@@ -6,19 +6,19 @@ pub typedef {
     size_t s_size;
 } LKString;
 
-typedef {
+pub typedef {
     LKString **items;
     size_t items_len;
     size_t items_size;
 } LKStringList;
 
 // Zero out entire size
-void zero_s(LKString *lks) {
+pub void zero_s(LKString *lks) {
     memset(lks->s, 0, lks->s_size+1);
 }
 
 // Zero out the free unused space
-void zero_unused_s(LKString *lks) {
+pub void zero_unused_s(LKString *lks) {
     memset(lks->s + lks->s_len, '\0', lks->s_size+1 - lks->s_len);
 }
 
@@ -56,6 +56,10 @@ pub void lk_string_assign(LKString *lks, char *s) {
     zero_s(lks);
     strncpy(lks->s, s, s_len);
     lks->s_len = s_len;
+}
+
+pub void lk_string_assign_sprintf(LKString *lks, char *fmt, ...) {
+    abort("TODO");
 }
 
 pub void lk_string_append(LKString *lks, char *s) {
@@ -117,7 +121,7 @@ pub int lk_string_starts_with(LKString *lks, char *s) {
 }
 
 // Return if string ends with s.
-int lk_string_ends_with(LKString *lks, char *s) {
+pub int lk_string_ends_with(LKString *lks, char *s) {
     size_t s_len = strlen(s);
     if (s_len > lks->s_len) {
         return 0;
@@ -130,7 +134,7 @@ int lk_string_ends_with(LKString *lks, char *s) {
 }
 
 // Remove leading and trailing white from string.
-void lk_string_trim(LKString *lks) {
+pub void lk_string_trim(LKString *lks) {
     if (lks->s_len == 0) {
         return;
     }
@@ -166,7 +170,7 @@ void lk_string_trim(LKString *lks) {
     lks->s_len = new_len;
 }
 
-void lk_string_chop_end(LKString *lks, char *s) {
+pub void lk_string_chop_end(LKString *lks, char *s) {
     size_t s_len = strlen(s);
     if (s_len > lks->s_len) {
         return;
@@ -181,11 +185,11 @@ void lk_string_chop_end(LKString *lks, char *s) {
 }
 
 // Return whether delim matches the first delim_len chars of s.
-int match_delim(char *s, char *delim, size_t delim_len) {
+pub int match_delim(char *s, char *delim, size_t delim_len) {
     return !strncmp(s, delim, delim_len);
 }
 
-LKStringList *lk_string_split(LKString *lks, char *delim) {
+pub LKStringList *lk_string_split(LKString *lks, char *delim) {
     LKStringList *sl = lk_stringlist_new();
     size_t delim_len = strlen(delim);
 
@@ -223,7 +227,7 @@ pub void lk_string_split_assign(LKString *s, char *delim, LKString *k, LKString 
 
 #define N_GROW_STRINGLIST 10
 
-LKStringList *lk_stringlist_new() {
+pub LKStringList *lk_stringlist_new() {
     LKStringList *sl = lkalloc.lk_malloc(sizeof(LKStringList), "lk_stringlist_new");
     sl->items_size = N_GROW_STRINGLIST;
     sl->items_len = 0;
@@ -233,7 +237,7 @@ LKStringList *lk_stringlist_new() {
     return sl;
 }
 
-void lk_stringlist_free(LKStringList *sl) {
+pub void lk_stringlist_free(LKStringList *sl) {
     assert(sl->items != NULL);
 
     for (int i=0; i < sl->items_len; i++) {
@@ -246,7 +250,7 @@ void lk_stringlist_free(LKStringList *sl) {
     lkalloc.lk_free(sl);
 }
 
-void lk_stringlist_append_lkstring(LKStringList *sl, LKString *lks) {
+pub void lk_stringlist_append_lkstring(LKStringList *sl, LKString *lks) {
     assert(sl->items_len <= sl->items_size);
 
     if (sl->items_len == sl->items_size) {
@@ -263,11 +267,11 @@ void lk_stringlist_append_lkstring(LKStringList *sl, LKString *lks) {
     assert(sl->items_len <= sl->items_size);
 }
 
-void lk_stringlist_append(LKStringList *sl, char *s) {
+pub void lk_stringlist_append(LKStringList *sl, char *s) {
     lk_stringlist_append_lkstring(sl, lk_string_new(s));
 }
 
-void lk_stringlist_append_sprintf(LKStringList *sl, const char *fmt, ...) {
+pub void lk_stringlist_append_sprintf(LKStringList *sl, const char *fmt, ...) {
     va_list args;
     char *ps;
     va_start(args, fmt);
@@ -279,13 +283,13 @@ void lk_stringlist_append_sprintf(LKStringList *sl, const char *fmt, ...) {
     free(ps);
 }
 
-LKString *lk_stringlist_get(LKStringList *sl, uint32_t i) {
+pub LKString *lk_stringlist_get(LKStringList *sl, uint32_t i) {
     if (sl->items_len == 0) return NULL;
     if (i >= sl->items_len) return NULL;
     return sl->items[i];
 }
 
-void lk_stringlist_remove(LKStringList *sl, uint32_t i) {
+pub void lk_stringlist_remove(LKStringList *sl, uint32_t i) {
     if (sl->items_len == 0) return;
     if (i >= sl->items_len) return;
 

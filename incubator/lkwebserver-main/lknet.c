@@ -1,3 +1,4 @@
+#import lkalloc.c
 #import lklib.c
 #import lkbuffer.c
 #import request.c
@@ -80,7 +81,7 @@ pub int lk_read(int fd, int fd_type, lkbuffer.LKBuffer *buf, size_t count, size_
             break;
         }
         assert(z > 0);
-        lk_buffer_append(buf, readbuf, z);
+        lkbuffer.lk_buffer_append(buf, readbuf, z);
         nread += z;
     }
     if (z > 0) {
@@ -131,7 +132,7 @@ pub int lk_read_all(int fd, int fd_type, lkbuffer.LKBuffer *buf) {
             break;
         }
         assert(z > 0);
-        lk_buffer_append(buf, readbuf, z);
+        lkbuffer.lk_buffer_append(buf, readbuf, z);
     }
     assert(z <= 0);
     return z;
@@ -250,23 +251,6 @@ pub int lk_write_all_file(int fd, lkbuffer.LKBuffer *buf) {
     return lk_write_all(fd, FD_FILE, buf);
 }
 
-
-
-/** lksocketreader functions **/
-
-pub LKSocketReader *lk_socketreader_new(int sock, size_t buf_size) {
-    LKSocketReader *sr = lk_malloc(sizeof(LKSocketReader), "lk_socketreader_new");
-    if (buf_size == 0) {
-        buf_size = 1024;
-    }
-    sr->sock = sock;
-    sr->buf = lk_buffer_new(buf_size);
-    sr->sockclosed = 0;
-    return sr;
-}
-
-
-
 pub void debugprint_buf(char *buf, size_t buf_size) {
     printf("buf: ");
     for (int i=0; i < buf_size; i++) {
@@ -280,49 +264,13 @@ pub void debugprint_buf(char *buf, size_t buf_size) {
 
 
 /*** request.LKHttpRequest functions ***/
-pub request.LKHttpRequest *lk_httprequest_new() {
-    request.LKHttpRequest *req = lk_malloc(sizeof(request.LKHttpRequest), "lk_httprequest_new");
-    req->method = lk_string_new("");
-    req->uri = lk_string_new("");
-    req->path = lk_string_new("");
-    req->filename = lk_string_new("");
-    req->querystring = lk_string_new("");
-    req->version = lk_string_new("");
-    req->headers = lk_stringtable_new();
-    req->head = lk_buffer_new(0);
-    req->body = lk_buffer_new(0);
-    return req;
-}
-
-pub void lk_httprequest_free(request.LKHttpRequest *req) {
-    lkstring.lk_string_free(req->method);
-    lkstring.lk_string_free(req->uri);
-    lkstring.lk_string_free(req->path);
-    lkstring.lk_string_free(req->filename);
-    lkstring.lk_string_free(req->querystring);
-    lkstring.lk_string_free(req->version);
-    lk_stringtable_free(req->headers);
-    lk_buffer_free(req->head);
-    lk_buffer_free(req->body);
-
-    req->method = NULL;
-    req->uri = NULL;
-    req->path = NULL;
-    req->filename = NULL;
-    req->querystring = NULL;
-    req->version = NULL;
-    req->headers = NULL;
-    req->head = NULL;
-    req->body = NULL;
-    lk_free(req);
-}
 
 pub void lk_httprequest_add_header(request.LKHttpRequest *req, char *k, char *v) {
-    lk_stringtable_set(req->headers, k, v);
+    lkstringtable.lk_stringtable_set(req->headers, k, v);
 }
 
 pub void lk_httprequest_append_body(request.LKHttpRequest *req, char *bytes, int bytes_len) {
-    lk_buffer_append(req->body, bytes, bytes_len);
+    lkbuffer.lk_buffer_append(req->body, bytes, bytes_len);
 }
 
 pub void lk_httprequest_finalize(request.LKHttpRequest *req) {
@@ -332,14 +280,14 @@ pub void lk_httprequest_finalize(request.LKHttpRequest *req) {
     if (lk_string_sz_equal(req->version, "")) {
         lk_string_assign(req->version, "HTTP/1.0");
     }
-    lk_buffer_append_sprintf(req->head, "%s %s %s\n", req->method->s, req->uri->s, req->version->s);
+    lkbuffer.lk_buffer_append_sprintf(req->head, "%s %s %s\n", req->method->s, req->uri->s, req->version->s);
     if (req->body->bytes_len > 0) {
-        lk_buffer_append_sprintf(req->head, "Content-Length: %ld\n", req->body->bytes_len);
+        lkbuffer.lk_buffer_append_sprintf(req->head, "Content-Length: %ld\n", req->body->bytes_len);
     }
     for (int i=0; i < req->headers->items_len; i++) {
-        lk_buffer_append_sprintf(req->head, "%s: %s\n", req->headers->items[i].k->s, req->headers->items[i].v->s);
+        lkbuffer.lk_buffer_append_sprintf(req->head, "%s: %s\n", req->headers->items[i].k->s, req->headers->items[i].v->s);
     }
-    lk_buffer_append(req->head, "\r\n", 2);
+    lkbuffer.lk_buffer_append(req->head, "\r\n", 2);
 }
 
 
@@ -372,34 +320,9 @@ pub void lk_httprequest_debugprint(request.LKHttpRequest *req) {
 
 
 /** httpresp functions **/
-pub request.LKHttpResponse *lk_httpresponse_new() {
-    request.LKHttpResponse *resp = lk_malloc(sizeof(request.LKHttpResponse), "lk_httpresponse_new");
-    resp->status = 0;
-    resp->statustext = lk_string_new("");
-    resp->version = lk_string_new("");
-    resp->headers = lk_stringtable_new();
-    resp->head = lk_buffer_new(0);
-    resp->body = lk_buffer_new(0);
-    return resp;
-}
-
-pub void lk_httpresponse_free(request.LKHttpResponse *resp) {
-    lkstring.lk_string_free(resp->statustext);
-    lkstring.lk_string_free(resp->version);
-    lk_stringtable_free(resp->headers);
-    lk_buffer_free(resp->head);
-    lk_buffer_free(resp->body);
-
-    resp->statustext = NULL;
-    resp->version = NULL;
-    resp->headers = NULL;
-    resp->head = NULL;
-    resp->body = NULL;
-    lk_free(resp);
-}
 
 pub void lk_httpresponse_add_header(request.LKHttpResponse *resp, char *k, char *v) {
-    lk_stringtable_set(resp->headers, k, v);
+    lkstringtable.lk_stringtable_set(resp->headers, k, v);
 }
 
 // Finalize the http response by setting head buffer.
@@ -416,12 +339,12 @@ pub void lk_httpresponse_finalize(request.LKHttpResponse *resp) {
     if (lk_string_sz_equal(resp->version, "")) {
         lk_string_assign(resp->version, "HTTP/1.0");
     }
-    lk_buffer_append_sprintf(resp->head, "%s %d %s\n", resp->version->s, resp->status, resp->statustext->s);
-    lk_buffer_append_sprintf(resp->head, "Content-Length: %ld\n", resp->body->bytes_len);
+    lkbuffer.lk_buffer_append_sprintf(resp->head, "%s %d %s\n", resp->version->s, resp->status, resp->statustext->s);
+    lkbuffer.lk_buffer_append_sprintf(resp->head, "Content-Length: %ld\n", resp->body->bytes_len);
     for (int i=0; i < resp->headers->items_len; i++) {
-        lk_buffer_append_sprintf(resp->head, "%s: %s\n", resp->headers->items[i].k->s, resp->headers->items[i].v->s);
+        lkbuffer.lk_buffer_append_sprintf(resp->head, "%s: %s\n", resp->headers->items[i].k->s, resp->headers->items[i].v->s);
     }
-    lk_buffer_append(resp->head, "\r\n", 2);
+    lkbuffer.lk_buffer_append(resp->head, "\r\n", 2);
 }
 
 pub void lk_httpresponse_debugprint(request.LKHttpResponse *resp) {
@@ -487,7 +410,7 @@ pub ssize_t lk_readfd(int fd, lkbuffer.LKBuffer *buf) {
         if (z == 0) {
             break;
         }
-        lk_buffer_append(buf, tmpbuf, z);
+        lkbuffer.lk_buffer_append(buf, tmpbuf, z);
         nread += z;
     }
     return nread;
@@ -497,7 +420,7 @@ pub ssize_t lk_readfd(int fd, lkbuffer.LKBuffer *buf) {
 // Return new pointer to dest.
 pub char *lk_astrncat(char *dest, char *src, size_t src_len) {
     int dest_len = strlen(dest);
-    dest = lk_realloc(dest, dest_len + src_len + 1, "lk_astrncat");
+    dest = lkalloc.lk_realloc(dest, dest_len + src_len + 1, "lk_astrncat");
     strncat(dest, src, src_len);
     return dest;
 }

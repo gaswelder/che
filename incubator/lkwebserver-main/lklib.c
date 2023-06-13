@@ -109,7 +109,7 @@ pub int lk_popen3(char *cmd, int *fd_in, int *fd_out, int *fd_err) {
     return 0;
 }
 
-pub void close_pipes(int pair1[2], int pair2[2], int pair3[2]) {
+void close_pipes(int pair1[2], int pair2[2], int pair3[2]) {
     int z;
     int tmp_errno = errno;
     if (pair1[0] != 0) {

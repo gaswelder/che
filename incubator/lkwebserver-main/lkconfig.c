@@ -1,5 +1,7 @@
-#import lkstring.c
 #import lkhostconfig.c
+#import lklib.c
+#import lkstring.c
+#import lkstringtable.c
 
 pub typedef {
     lkstring.LKString *serverhost;
@@ -82,7 +84,7 @@ enum {CFG_ROOT, CFG_HOSTSECTION};
 pub int lk_config_read_configfile(LKConfig *cfg, char *configfile) {
     FILE *f = fopen(configfile, "r");
     if (f == NULL) {
-        lk_print_err("lk_read_configfile fopen()");
+        lklib.lk_print_err("lk_read_configfile fopen()");
         return -1;
     }
 
@@ -159,7 +161,7 @@ pub int lk_config_read_configfile(LKConfig *cfg, char *configfile) {
                 if (!lkstring.lk_string_starts_with(aliasv, "/")) {
                     lkstring.lk_string_prepend(aliasv, "/");
                 }
-                lk_stringtable_set(hc->aliases, aliask->s, aliasv->s);
+                lkstringtable.lk_stringtable_set(hc->aliases, aliask->s, aliasv->s);
                 continue;
             }
             continue;
@@ -337,7 +339,7 @@ pub lkhostconfig.LKHostConfig *lk_hostconfig_new(char *hostname) {
     hc->homedir_abspath = lkstring.lk_string_new("");
     hc->cgidir = lkstring.lk_string_new("");
     hc->cgidir_abspath = lkstring.lk_string_new("");
-    hc->aliases = lk_stringtable_new();
+    hc->aliases = lkstringtable.lk_stringtable_new();
     hc->proxyhost = lkstring.lk_string_new("");
 
     return hc;
@@ -349,7 +351,7 @@ pub void lk_hostconfig_free(lkhostconfig.LKHostConfig *hc) {
     lkstring.lk_string_free(hc->homedir_abspath);
     lkstring.lk_string_free(hc->cgidir);
     lkstring.lk_string_free(hc->cgidir_abspath);
-    lk_stringtable_free(hc->aliases);
+    lkstringtable.lk_stringtable_free(hc->aliases);
     lkstring.lk_string_free(hc->proxyhost);
 
     hc->hostname = NULL;

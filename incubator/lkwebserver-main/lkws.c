@@ -53,19 +53,19 @@ int main(int argc, char *argv[]) {
     signal(SIGINT, handle_sigint);      // exit on CTRL-C
     signal(SIGCHLD, handle_sigchld);
 
-    // if (cgidir) {
-    //     lkhostconfig.LKHostConfig *default_hc = lk_config_create_get_hostconfig(cfg, "*");
-    //     lkstring.lk_string_assign(default_hc->cgidir, cgidir);
-    // }
+    if (cgidir) {
+        lkhostconfig.LKHostConfig *default_hc = lkconfig.lk_config_create_get_hostconfig(cfg, "*");
+        lkstring.lk_string_assign(default_hc->cgidir, cgidir);
+    }
     
-    // if (homedir) {
-    //     lkhostconfig.LKHostConfig *hc0 = lk_config_create_get_hostconfig(cfg, "*");
-    //     lkstring.lk_string_assign(hc0->homedir, homedir);
-    //     // cgidir default to cgi-bin
-    //     if (hc0->cgidir->s_len == 0) {
-    //         lkstring.lk_string_assign(hc0->cgidir, "/cgi-bin/");
-    //     }
-    // }
+    if (homedir) {
+        lkhostconfig.LKHostConfig *hc0 = lkconfig.lk_config_create_get_hostconfig(cfg, "*");
+        lkstring.lk_string_assign(hc0->homedir, homedir);
+        // cgidir default to cgi-bin
+        if (hc0->cgidir->s_len == 0) {
+            lkstring.lk_string_assign(hc0->cgidir, "/cgi-bin/");
+        }
+    }
 
     lkconfig.lk_config_finalize(cfg);
     return lkhttpserver.lk_httpserver_serve(cfg);
