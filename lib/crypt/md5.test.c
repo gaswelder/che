@@ -1,40 +1,24 @@
 #import crypt/md5
+#import test
 
-typedef {
-	const char *d;
-	const char *s;
-} kv_t;
+md5.md5str_t buf = "";
 
-kv_t tests[] = {
-	{"d41d8cd98f00b204e9800998ecf8427e", ""},
-	{"0cc175b9c0f1b6a831c399e269772661", "a"},
-	{"900150983cd24fb0d6963f7d28e17f72", "abc"},
-	{"f96b697d7cb7938d525a2f31aaf161d0", "message digest"},
-	{"c3fcd3d76192e4007dfb496cca67e13b", "abcdefghijklmnopqrstuvwxyz"},
-	{"d174ab98d277d9f5a5611c2c9f419d9f",
-		"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"},
-	{"57edf4a22be3c955ac49da2e2107b67a", "12345678901234567890"
-		"123456789012345678901234567890123456789012345678901234567890"}
-};
-
-bool rfctest() {
-	md5.md5sum_t s = {0};
-	md5.md5str_t buf = "";
-
-	for (size_t i = 0; i < nelem(tests); i++) {
-		md5.md5_str(tests[i].s, s);
-		md5.md5_sprint(s, buf);
-		if (!strcmp(buf, tests[i].d) == 0) {
-			printf("* FAIL (%s != %s)\n", buf, tests[i].d);
-			return false;
-		}
-	}
-	return true;
+const char *hash(const char *input) {
+	md5.md5sum_t md = {0};
+	md5.md5_str(input, md);
+	md5.md5_sprint(md, buf);
+	return buf;
 }
 
 int main() {
-	if (rfctest()) {
-		return 0;
-	}
-	return 1;
+	test.streq("d41d8cd98f00b204e9800998ecf8427e", hash(""));
+	test.streq("0cc175b9c0f1b6a831c399e269772661", hash("a"));
+	test.streq("900150983cd24fb0d6963f7d28e17f72", hash("abc"));
+	test.streq("f96b697d7cb7938d525a2f31aaf161d0", hash("message digest"));
+	test.streq("c3fcd3d76192e4007dfb496cca67e13b", hash("abcdefghijklmnopqrstuvwxyz"));
+	test.streq("d174ab98d277d9f5a5611c2c9f419d9f",
+		hash("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"));
+	test.streq("57edf4a22be3c955ac49da2e2107b67a",
+		hash("12345678901234567890" "123456789012345678901234567890123456789012345678901234567890"));
+	return test.fails();
 }
