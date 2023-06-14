@@ -79,7 +79,11 @@ int main(int argc, char *argv[]) {
 
     lkconfig.lk_config_finalize(cfg);
     lkconfig.print(cfg);
-    return lkhttpserver.lk_httpserver_serve(cfg);
+    if (!lkhttpserver.lk_httpserver_serve(cfg)) {
+        fprintf(stderr, "server failed: %s\n", strerror(errno));
+        return 1;
+    }
+    return 0;
 }
 
 // void handle_sigint(int sig) {

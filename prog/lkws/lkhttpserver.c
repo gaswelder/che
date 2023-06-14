@@ -32,26 +32,23 @@ pub typedef {
     lkconfig.LKConfig *cfg;
     lkcontext.LKContext *ctxhead;
     
-    // The listening connection.
-    net.net_t *listen_conn;
-
     // Sparse list of client connections.
     net.net_t *clients[MAX_CLIENTS];
 } LKHttpServer;
 
-pub int lk_httpserver_serve(lkconfig.LKConfig *cfg) {
+pub bool lk_httpserver_serve(lkconfig.LKConfig *cfg) {
     LKHttpServer httpserver = {
         .cfg = cfg,
         .ctxhead = NULL
     };
 
     char *addr = strings.newstr("%s:%s", cfg->serverhost, cfg->port);
-    httpserver.listen_conn = net.net_listen("tcp", addr);
-    if (!httpserver.listen_conn) {
+    net.net_t *listen_conn = net.net_listen("tcp", addr);
+    if (!listen_conn) {
         free(addr);
-        return -1;
+        return false;
     }
-    printf("Serving HTTP at %s\n", addr);
+    printf("Serving at http://%s\n", net.net_addr(listen_conn));
     free(addr);
 
     // clearenv();
@@ -59,8 +56,8 @@ pub int lk_httpserver_serve(lkconfig.LKConfig *cfg) {
 
     while (true) {
         // Check the listening connection and accept if there is something.
-        if (net.has_data(httpserver.listen_conn)) {
-            net.net_t *client = net.net_accept(httpserver.listen_conn);
+        if (net.has_data(listen_conn)) {
+            net.net_t *client = net.net_accept(listen_conn);
             if (!client) {
                 lk_print_err("accept()");
                 continue;
@@ -89,7 +86,7 @@ pub int lk_httpserver_serve(lkconfig.LKConfig *cfg) {
                 continue;
             }
             lk_print_err("select()");
-            return -1;
+            return false;
         }
         for (int i = 1; i < MAX_CLIENTS; i++) {
             net.net_t *conn = set[i];
@@ -121,7 +118,7 @@ pub int lk_httpserver_serve(lkconfig.LKConfig *cfg) {
         lkcontext.lk_context_free(ptmp);
     }
     memset(&httpserver, 0, sizeof(LKHttpServer));
-    return 0;
+    return true;
 }
 
 void read_client(LKHttpServer *server, lkcontext.LKContext *ctx, net.net_t *client) {
