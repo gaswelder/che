@@ -1,12 +1,13 @@
 #import fs
+#import strings
 
 #import lkhostconfig.c
 #import lkstring.c
 #import lkstringtable.c
 
 pub typedef {
-    lkstring.LKString *serverhost;
-    lkstring.LKString *port;
+    char *serverhost;
+    char *port;
     lkhostconfig.LKHostConfig **hostconfigs;
     size_t hostconfigs_len;
     size_t hostconfigs_size;
@@ -16,8 +17,8 @@ const int HOSTCONFIGS_INITIAL_SIZE = 10;
 
 pub LKConfig *lk_config_new() {
     LKConfig *cfg = calloc(1, sizeof(LKConfig));
-    cfg->serverhost = lkstring.lk_string_new("");
-    cfg->port = lkstring.lk_string_new("");
+    cfg->serverhost = strings.newstr("%s", "localhost");
+    cfg->port = strings.newstr("8000");
     cfg->hostconfigs = calloc(HOSTCONFIGS_INITIAL_SIZE, sizeof(lkhostconfig.LKHostConfig));
     cfg->hostconfigs_len = 0;
     cfg->hostconfigs_size = HOSTCONFIGS_INITIAL_SIZE;
@@ -25,19 +26,15 @@ pub LKConfig *lk_config_new() {
 }
 
 pub void lk_config_free(LKConfig *cfg) {
-    lkstring.lk_string_free(cfg->serverhost);
-    lkstring.lk_string_free(cfg->port);
+    free(cfg->serverhost);
+    free(cfg->port);
     for (size_t i = 0; i < cfg->hostconfigs_len; i++) {
         lkhostconfig.LKHostConfig *hc = cfg->hostconfigs[i];
         lk_hostconfig_free(hc);
     }
     memset(cfg->hostconfigs, 0, sizeof(lkhostconfig.LKHostConfig) * cfg->hostconfigs_size);
     free(cfg->hostconfigs);
-
-    cfg->serverhost = NULL;
-    cfg->port = NULL;
     cfg->hostconfigs = NULL;
-    
     free(cfg);
 }
 
@@ -127,10 +124,12 @@ pub int lk_config_read_configfile(LKConfig *cfg, char *configfile) {
             // port=8000
             lkstring.lk_string_split_assign(l, "=", k, v); // l:"k=v", assign k and v
             if (lkstring.lk_string_sz_equal(k, "serverhost")) {
-                lkstring.lk_string_assign(cfg->serverhost, v->s);
+                free(cfg->serverhost);
+                cfg->serverhost = strings.newstr("%s", v->s);
                 continue;
             } else if (lkstring.lk_string_sz_equal(k, "port")) {
-                lkstring.lk_string_assign(cfg->port, v->s);
+                free(cfg->port);
+                cfg->port = strings.newstr("%s", v->s);
                 continue;
             }
             continue;
@@ -238,8 +237,8 @@ pub lkhostconfig.LKHostConfig *lk_config_create_get_hostconfig(LKConfig *cfg, ch
 }
 
 pub void lk_config_print(LKConfig *cfg) {
-    printf("serverhost: %s\n", cfg->serverhost->s);
-    printf("port: %s\n", cfg->port->s);
+    printf("serverhost: %s\n", cfg->serverhost);
+    printf("port: %s\n", cfg->port);
 
     for (size_t i = 0; i < cfg->hostconfigs_len; i++) {
         lkhostconfig.LKHostConfig *hc = cfg->hostconfigs[i];
@@ -262,15 +261,6 @@ pub void lk_config_print(LKConfig *cfg) {
 
 // Fill in default values for unspecified settings.
 pub void lk_config_finalize(LKConfig *cfg) {
-    // serverhost defaults to localhost if not specified.
-    if (cfg->serverhost->s_len == 0) {
-        lkstring.lk_string_assign(cfg->serverhost, "localhost");
-    }
-    // port defaults to 8000 if not specified.
-    if (cfg->port->s_len == 0) {
-        lkstring.lk_string_assign(cfg->port, "8000");
-    }
-
     // Get current working directory.
     lkstring.LKString *current_dir = lkstring.lk_string_new("");
     char *s = get_current_dir_name();

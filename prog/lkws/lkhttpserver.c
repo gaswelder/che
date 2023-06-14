@@ -45,7 +45,7 @@ pub int lk_httpserver_serve(lkconfig.LKConfig *cfg) {
         .ctxhead = NULL
     };
 
-    char *addr = strings.newstr("%s:%s", cfg->serverhost->s, cfg->port->s);
+    char *addr = strings.newstr("%s:%s", cfg->serverhost, cfg->port);
     httpserver.listen_conn = net.net_listen("tcp", addr);
     if (!httpserver.listen_conn) {
         free(addr);
@@ -170,7 +170,7 @@ void set_cgi_env1(LKHttpServer *server) {
     misc.setenv("SERVER_NAME", hostname, 1);
     misc.setenv("SERVER_SOFTWARE", "littlekitten/0.1", 1);
     misc.setenv("SERVER_PROTOCOL", "HTTP/1.0", 1);
-    misc.setenv("SERVER_PORT", cfg->port->s, 1);
+    misc.setenv("SERVER_PORT", cfg->port, 1);
 
 }
 

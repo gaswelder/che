@@ -1,8 +1,10 @@
 #import opt
+#import strings
+
 #import lkconfig.c
-#import lkstring.c
 #import lkhostconfig.c
 #import lkhttpserver.c
+#import lkstring.c
 
 // lkws -d /var/www/testsite/ -c=cgi-bin
 int main(int argc, char *argv[]) {
@@ -42,10 +44,12 @@ int main(int argc, char *argv[]) {
     }
     // Override port and host, if set in the flags.
     if (port) {
-        lkstring.lk_string_assign(cfg->port, port);
+        free(cfg->port);
+        cfg->port = strings.newstr("%s", port);
     }
     if (host) {
-        lkstring.lk_string_assign(cfg->serverhost, host);
+        free(cfg->serverhost);
+        cfg->serverhost = strings.newstr("%s", host);
     }
 
     // TODO
@@ -66,6 +70,9 @@ int main(int argc, char *argv[]) {
             lkstring.lk_string_assign(hc0->cgidir, "/cgi-bin/");
         }
     }
+
+    printf("host = %s\n", cfg->serverhost);
+    printf("port = %s\n", cfg->port);
 
     lkconfig.lk_config_finalize(cfg);
     return lkhttpserver.lk_httpserver_serve(cfg);
