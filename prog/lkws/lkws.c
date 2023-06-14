@@ -77,10 +77,8 @@ int main(int argc, char *argv[]) {
         }
     }
 
-    printf("host = %s\n", cfg->serverhost);
-    printf("port = %s\n", cfg->port);
-
     lkconfig.lk_config_finalize(cfg);
+    lkconfig.print(cfg);
     return lkhttpserver.lk_httpserver_serve(cfg);
 }
 

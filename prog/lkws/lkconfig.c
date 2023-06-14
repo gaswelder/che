@@ -21,6 +21,36 @@ pub LKConfig *lk_config_new() {
     return cfg;
 }
 
+pub void print(LKConfig *cfg) {
+    printf("serverhost: %s\n", cfg->serverhost);
+    printf("port: %s\n", cfg->port);
+
+    for (size_t i = 0; i < cfg->hostconfigs_size; i++) {
+        lkhostconfig.LKHostConfig *hc = cfg->hostconfigs[i];
+        printf("%2lu. hostname %s\n", i+1, hc->hostname->s);
+        if (hc->homedir->s_len > 0) {
+            printf("    homedir: %s\n", hc->homedir->s);
+        }
+        if (hc->cgidir->s_len > 0) {
+            printf("    cgidir: %s\n", hc->cgidir->s);
+        }
+        if (hc->proxyhost->s_len > 0) {
+            printf("    proxyhost: %s\n", hc->proxyhost->s);
+        }
+        for (size_t j = 0; j < hc->aliases->items_len; j++) {
+            printf("    alias %s=%s\n", hc->aliases->items[j].k->s, hc->aliases->items[j].v->s);
+        }
+    }
+    printf("\n");
+}
+
+void add_hostconfig(LKConfig *cfg, lkhostconfig.LKHostConfig *hc) {
+    if (cfg->hostconfigs_size >= MAX_HOST_CONFIGS) {
+        abort();
+    }
+    cfg->hostconfigs[cfg->hostconfigs_size++] = hc;
+}
+
 pub void lk_config_free(LKConfig *cfg) {
     for (size_t i = 0; i < cfg->hostconfigs_size; i++) {
         lkhostconfig.LKHostConfig *hc = cfg->hostconfigs[i];
@@ -65,67 +95,36 @@ pub lkhostconfig.LKHostConfig *get_hostconfig(LKConfig *cfg, char *hostname) {
     return NULL;
 }
 
+
+
 // Return hostconfig with hostname if it exists.
 // Create new hostconfig with hostname if not found. Never returns null.
 pub lkhostconfig.LKHostConfig *lk_config_create_get_hostconfig(LKConfig *cfg, char *hostname) {
     lkhostconfig.LKHostConfig *hc = get_hostconfig(cfg, hostname);
     if (hc == NULL) {
         hc = lk_hostconfig_new(hostname);
-        if (cfg->hostconfigs_size >= MAX_HOST_CONFIGS) {
-            abort();
-        }
-        cfg->hostconfigs[cfg->hostconfigs_size++] = hc;
+        add_hostconfig(cfg, hc);
     }
     return hc;
 }
 
-pub void lk_config_print(LKConfig *cfg) {
-    printf("serverhost: %s\n", cfg->serverhost);
-    printf("port: %s\n", cfg->port);
 
-    for (size_t i = 0; i < cfg->hostconfigs_size; i++) {
-        lkhostconfig.LKHostConfig *hc = cfg->hostconfigs[i];
-        printf("%2lu. hostname %s\n", i+1, hc->hostname->s);
-        if (hc->homedir->s_len > 0) {
-            printf("    homedir: %s\n", hc->homedir->s);
-        }
-        if (hc->cgidir->s_len > 0) {
-            printf("    cgidir: %s\n", hc->cgidir->s);
-        }
-        if (hc->proxyhost->s_len > 0) {
-            printf("    proxyhost: %s\n", hc->proxyhost->s);
-        }
-        for (size_t j = 0; j < hc->aliases->items_len; j++) {
-            printf("    alias %s=%s\n", hc->aliases->items[j].k->s, hc->aliases->items[j].v->s);
-        }
+
+lkhostconfig.LKHostConfig *default_hostconfig() {
+    lkhostconfig.LKHostConfig *hc = lk_hostconfig_new("*");
+    if (!hc) {
+        return NULL;
     }
-    printf("\n");
+    lkstring.lk_string_assign(hc->homedir, get_current_dir_name());
+    lkstring.lk_string_assign(hc->cgidir, "/cgi-bin/");
+    return hc;
 }
 
 // Fill in default values for unspecified settings.
 pub void lk_config_finalize(LKConfig *cfg) {
-    // Get current working directory.
-    lkstring.LKString *current_dir = lkstring.lk_string_new("");
-    char *s = get_current_dir_name();
-    if (s != NULL) {
-        lkstring.lk_string_assign(current_dir, s);
-        free(s);
-    } else {
-        lkstring.lk_string_assign(current_dir, ".");
-    }
-
-    // Set fallthrough defaults only if no other hostconfigs specified
-    // Note: If other hostconfigs are set, such as in a config file,
-    // the fallthrough '*' hostconfig should be set explicitly. 
+    // If no hostconfigs, add a fallthrough '*' hostconfig.
     if (cfg->hostconfigs_size == 0) {
-        // homedir default to current directory
-        lkhostconfig.LKHostConfig *hc = lk_config_create_get_hostconfig(cfg, "*");
-        lkstring.lk_string_assign(hc->homedir, current_dir->s);
-
-        // cgidir default to cgi-bin
-        if (hc->cgidir->s_len == 0) {
-            lkstring.lk_string_assign(hc->cgidir, "/cgi-bin/");
-        }
+        add_hostconfig(cfg, default_hostconfig());
     }
 
     // Set homedir absolute paths for hostconfigs.
@@ -159,8 +158,6 @@ pub void lk_config_finalize(LKConfig *cfg) {
             lkstring.lk_string_append(hc->cgidir_abspath, hc->cgidir->s);
         }
     }
-
-    lkstring.lk_string_free(current_dir);
 }
 
 
