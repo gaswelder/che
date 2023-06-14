@@ -28,29 +28,7 @@ typedef struct clientctx {
     struct clientctx *next;           // link to next client
 } clientctx_t;
 
-clientctx_t *clientctx_new(int sock);
-void clientctx_free(clientctx_t *ctx);
-void add_clientctx(clientctx_t **pphead, clientctx_t *ctx);
-void remove_clientctx(clientctx_t **pphead, int sock);
 
-void print_err(char *s);
-void exit_err(char *s);
-int ends_with_newline(char *s);
-char *append_string(char *dst, char *s);
-void *addrinfo_sin_addr(struct addrinfo *addr);
-void handle_sigint(int sig);
-void handle_sigchld(int sig);
-
-void read_request_from_client(int clientfd);
-void process_line(clientctx_t *ctx, char *line);
-void process_req(LKHttpRequest *req, LKHttpResponse *resp);
-char *fileext(char *filepath);
-
-void send_response_to_client(int clientfd);
-void send_buf_bytes(int sock, LKBuffer *buf);
-void terminate_client_session(int clientfd);
-
-void serve_file_handler(LKHttpRequest *req, LKHttpResponse *resp);
 
 clientctx_t *ctxhead = NULL;
 fd_set readfds;
@@ -606,5 +584,17 @@ int is_valid_http_method(char *method) {
         return 1;
     }
 
+    return 0;
+}
+
+// Return whether string ends with \n char.
+int ends_with_newline(char *s) {
+    int slen = strlen(s);
+    if (slen == 0) {
+        return 0;
+    }
+    if (s[slen-1] == '\n') {
+        return 1;
+    }
     return 0;
 }

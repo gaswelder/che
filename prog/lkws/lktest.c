@@ -1,20 +1,4 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <unistd.h>
-#include <errno.h>
-#include <assert.h>
-#include "lklib.h"
-#include "lknet.h"
-
 #define LK_BUFSIZE_XXL 8192
-
-void lkstring_test();
-void lkstringmap_test();
-void lkbuffer_test();
-void lkstringlist_test();
-void lkreflist_test();
-void lkconfig_test();
 
 int main(int argc, char *argv[]) {
 

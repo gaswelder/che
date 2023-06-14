@@ -1,10 +1,10 @@
 #import strings
 
 #import lkbuffer.c
-#import lklib.c
 #import lknet.c
 #import lkstringtable.c
 #import request.c
+#import utils.c
 
 #define LK_BUFSIZE_MEDIUM 1024
 
@@ -18,7 +18,7 @@ pub void parse_cgi_output(lkbuffer.LKBuffer *buf, request.LKHttpResponse *resp) 
         lknet.lk_chomp(cgiline);
 
         // Empty CRLF line ends the headers section
-        if (lklib.is_empty_line(cgiline)) {
+        if (utils.is_empty_line(cgiline)) {
             has_crlf = 1;
             break;
         }

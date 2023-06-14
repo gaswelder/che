@@ -23,11 +23,11 @@ pub typedef {
     // Used by CTX_READ_REQ:
     lkstring.LKString *client_ipaddr;          // client ip address string
     int client_port;       // client port number
-    lkstring.LKString *req_line;               // current lklib line
-    lkbuffer.LKBuffer *req_buf;                // current lklib bytes buffer
+    lkstring.LKString *req_line;               // current line
+    lkbuffer.LKBuffer *req_buf;                // current bytes buffer
     socketreader.LKSocketReader *sr;               // input buffer for reading lines
     lkhttprequestparser.LKHttpRequestParser *reqparser;   // parser for httprequest
-    request.LKHttpRequest *req;               // http lklib in process
+    request.LKHttpRequest *req;               // http in process
 
     // Used by CTX_WRITE_REQ:
     request.LKHttpResponse *resp;             // http response to be sent

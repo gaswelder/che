@@ -1,10 +1,10 @@
 #import strings
 
 #import lkbuffer.c
-#import lklib.c
 #import lknet.c
 #import lkstring.c
 #import request.c
+#import utils.c
 
 pub typedef {
     lkstring.LKString *partial_line;
@@ -77,7 +77,7 @@ void parse_line(LKHttpRequestParser *parser, char *line, request.LKHttpRequest *
     // Header lines
     if (!parser->head_complete) {
         // Empty CRLF line ends the headers section
-        if (lklib.is_empty_line(line)) {
+        if (utils.is_empty_line(line)) {
             parser->head_complete = 1;
 
             // No body to read (Content-Length: 0)

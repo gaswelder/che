@@ -12,7 +12,6 @@
 #import lkhostconfig.c
 #import lkhttpcgiparser.c
 #import lkhttprequestparser.c
-#import lklib.c
 #import lknet.c
 #import lkreflist.c
 #import lkstring.c
@@ -63,7 +62,7 @@ pub int lk_httpserver_serve(lkconfig.LKConfig *cfg) {
         if (net.has_data(httpserver.listen_conn)) {
             net.net_t *client = net.net_accept(httpserver.listen_conn);
             if (!client) {
-                lklib.lk_print_err("accept()");
+                lk_print_err("accept()");
                 continue;
             }
             // hack
@@ -89,7 +88,7 @@ pub int lk_httpserver_serve(lkconfig.LKConfig *cfg) {
             if (errno == OS.EINTR) {
                 continue;
             }
-            lklib.lk_print_err("select()");
+            lk_print_err("select()");
             return -1;
         }
         for (int i = 1; i < MAX_CLIENTS; i++) {
@@ -163,7 +162,7 @@ void set_cgi_env1(LKHttpServer *server) {
     char hostname[LK_BUFSIZE_SMALL];
     z = OS.gethostname(hostname, sizeof(hostname)-1);
     if (z == -1) {
-        lklib.lk_print_err("gethostname()");
+        lk_print_err("gethostname()");
         hostname[0] = '\0';
     }
     hostname[sizeof(hostname)-1] = '\0';
@@ -222,7 +221,7 @@ void read_request(LKHttpServer *server, lkcontext.LKContext *ctx, net.net_t *cli
     while (1) {
         if (!ctx->reqparser->head_complete) {
             if (!net.net_gets(buf, sizeof(buf), client_conn)) {
-                lklib.lk_print_err("lksocketreader_readline()");
+                lk_print_err("lksocketreader_readline()");
                 break;
             }
             // lksocketreader.LKSocketReader *sr = ctx->sr;
@@ -232,7 +231,7 @@ void read_request(LKHttpServer *server, lkcontext.LKContext *ctx, net.net_t *cli
         } else {
             z = socketreader.lk_socketreader_recv(ctx->sr, ctx->req_buf);
             if (z == lknet.Z_ERR) {
-                lklib.lk_print_err("lksocketreader_readbytes()");
+                lk_print_err("lksocketreader_readbytes()");
                 break;
             }
             lkhttprequestparser.lk_httprequestparser_parse_bytes(ctx->reqparser, ctx->req_buf, ctx->req);
@@ -261,7 +260,7 @@ void write_cgi_input(LKHttpServer *server, lkcontext.LKContext *ctx) {
         return;
     }
     if (z == lknet.Z_ERR) {
-        lklib.lk_print_err("write_cgi_input lknet.lk_write_all_file()");
+        lk_print_err("write_cgi_input lknet.lk_write_all_file()");
         z = terminate_fd(ctx->cgifd, FD_WRITE, server);
         if (z == 0) {
             ctx->cgifd = 0;
@@ -284,7 +283,7 @@ void read_cgi_output(LKHttpServer *server, lkcontext.LKContext *ctx) {
         return;
     }
     if (z == lknet.Z_ERR) {
-        lklib.lk_print_err("lk_read_all_file()");
+        lk_print_err("lk_read_all_file()");
         z = terminate_fd(ctx->cgifd, FD_READ, server);
         if (z == 0) {
             ctx->cgifd = 0;
@@ -586,7 +585,7 @@ void write_response(LKHttpServer *server, lkcontext.LKContext *ctx) {
         return;
     }
     if (z == lknet.Z_ERR) {
-        lklib.lk_print_err("write_response lk_buflist_write_all()");
+        lk_print_err("write_response lk_buflist_write_all()");
         terminate_client_session(server, ctx);
         return;
     }
@@ -599,7 +598,7 @@ void write_response(LKHttpServer *server, lkcontext.LKContext *ctx) {
 void serve_proxy(LKHttpServer *server, lkcontext.LKContext *ctx, char *targethost) {
     net.net_t *proxyconn = net.net_open("tcp", targethost);
     if (!proxyconn) {
-        lklib.lk_print_err("lk_open_connect_socket()");
+        lk_print_err("lk_open_connect_socket()");
         process_error_response(server, ctx, 500, "Error opening proxy socket.");
         return;
     }
@@ -623,7 +622,7 @@ void write_proxy_request(LKHttpServer *server, lkcontext.LKContext *ctx) {
         return;
     }
     if (z == lknet.Z_ERR) {
-        lklib.lk_print_err("write_proxy_request lk_buflist_write_all");
+        lk_print_err("write_proxy_request lk_buflist_write_all");
         z = terminate_sock(ctx->proxyfd, FD_WRITE, server);
         if (z == 0) {
             ctx->proxyfd = 0;
@@ -664,7 +663,7 @@ void pipe_proxy_response(LKHttpServer *server, lkcontext.LKContext *ctx) {
         return;
     }
     if (z == lknet.Z_ERR) {
-        lklib.lk_print_err("pipe_proxy_response lk_pipe_all()");
+        lk_print_err("pipe_proxy_response lk_pipe_all()");
         z = terminate_sock(ctx->proxyfd, FD_READ, server);
         if (z == 0) {
             ctx->proxyfd = 0;
@@ -710,7 +709,7 @@ int terminate_fd(int fd, int fd_action, LKHttpServer *server) {
     }
     z = OS.close(fd);
     if (z == -1) {
-        lklib.lk_print_err("OS.close()");
+        lk_print_err("OS.close()");
     }
     return z;
 }
@@ -725,7 +724,7 @@ int terminate_sock(int fd, int fd_action, LKHttpServer *server) {
     }
     int z = OS.close(fd);
     if (z == -1) {
-        lklib.lk_print_err("OS.close()");
+        lk_print_err("OS.close()");
     }
     return z;
 }
@@ -905,4 +904,8 @@ void close_pipes(int pair1[2], int pair2[2], int pair3[2]) {
     }
     errno = tmp_errno;
     return;
+}
+
+void lk_print_err(char *s) {
+    fprintf(stderr, "%s: %s\n", s, strerror(errno));
 }

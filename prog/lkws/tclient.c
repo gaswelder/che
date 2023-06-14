@@ -1,20 +1,3 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <unistd.h>
-#include <errno.h>
-
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <netdb.h>
-#include <arpa/inet.h>
-#include <netinet/in.h>
-
-#include "lklib.h"
-#include "lknet.h"
-
-ssize_t sendbytes(int sock, char *buf, size_t count);
-ssize_t recvbytes(int sock, char *buf, size_t count);
 
 int main(int argc, char *argv[]) {
     int z;
@@ -147,3 +130,12 @@ ssize_t recvbytes(int sock, char *buf, size_t count) {
     return nread;
 }
 
+
+void lk_exit_err(char *s) {
+    lk_print_err(s);
+    exit(1);
+}
+
+void lk_print_err(char *s) {
+    fprintf(stderr, "%s: %s\n", s, strerror(errno));
+}

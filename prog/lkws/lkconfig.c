@@ -1,7 +1,6 @@
 #import fs
 
 #import lkhostconfig.c
-#import lklib.c
 #import lkstring.c
 #import lkstringtable.c
 
@@ -86,7 +85,7 @@ enum {CFG_ROOT, CFG_HOSTSECTION};
 pub int lk_config_read_configfile(LKConfig *cfg, char *configfile) {
     FILE *f = fopen(configfile, "r");
     if (f == NULL) {
-        lklib.lk_print_err("lk_read_configfile fopen()");
+        lk_print_err("lk_read_configfile fopen()");
         return -1;
     }
 
@@ -309,7 +308,7 @@ pub void lk_config_finalize(LKConfig *cfg) {
 
         // Set absolute path to homedir
         if (!fs.realpath(hc->homedir->s, homedir_abspath, sizeof(homedir_abspath))) {
-            lklib.lk_print_err("realpath()");
+            lk_print_err("realpath()");
             homedir_abspath[0] = '\0';
         }
         lkstring.lk_string_assign(hc->homedir_abspath, homedir_abspath);
@@ -366,4 +365,8 @@ pub void lk_hostconfig_free(lkhostconfig.LKHostConfig *hc) {
 
 char *get_current_dir_name() {
     return "todo";
+}
+
+void lk_print_err(char *s) {
+    fprintf(stderr, "%s: %s\n", s, strerror(errno));
 }
