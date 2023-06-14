@@ -1,4 +1,5 @@
 #import fileutil
+#import fs
 #import mime
 #import os/misc
 #import os/net
@@ -389,12 +390,12 @@ void serve_cgi(LKHttpServer *server, lkcontext.LKContext *ctx, lkhostconfig.LKHo
 
     // Expand "/../", etc. into real_path.
     char real_path[PATH_MAX];
-    char *pz = realpath(cgifile->s, real_path);
+    bool pathok = fs.realpath(cgifile->s, real_path, sizeof(real_path));
     lkstring.lk_string_free(cgifile);
 
     // real_path should start with cgidir_abspath
     // real_path file should exist
-    if (pz == NULL
+    if (!pathok
         || !strings.starts_with(real_path, hc->cgidir_abspath->s)
         || !fileutil.file_exists(real_path)
     ) {
@@ -513,9 +514,9 @@ int read_path_file(char *home_dir, char *path, lkbuffer.LKBuffer *buf) {
 
     // Expand "/../", etc. into real_path.
     char real_path[PATH_MAX];
-    char *pz = realpath(full_path->s, real_path);
+    bool pathok = fs.realpath(full_path->s, real_path, sizeof(real_path));
     // real_path should start with home_dir
-    if (pz == NULL || strncmp(real_path, home_dir, strlen(home_dir))) {
+    if (!pathok || strncmp(real_path, home_dir, strlen(home_dir))) {
         lkstring.lk_string_free(full_path);
         z = -1;
         errno = EPERM;

@@ -1,3 +1,5 @@
+#import fs
+
 #import lkhostconfig.c
 #import lklib.c
 #import lkstring.c
@@ -306,8 +308,7 @@ pub void lk_config_finalize(LKConfig *cfg) {
         }
 
         // Set absolute path to homedir
-        char *pz = realpath(hc->homedir->s, homedir_abspath);
-        if (pz == NULL) {
+        if (!fs.realpath(hc->homedir->s, homedir_abspath, sizeof(homedir_abspath))) {
             lk_print_err("realpath()");
             homedir_abspath[0] = '\0';
         }
