@@ -291,33 +291,57 @@ pub fn translate(work: &mut Build) {
             let pos = work.paths.iter().position(|x| *x == imp.path).unwrap();
             let cmodule = &work.c[pos];
             for obj in translator::get_module_synopsis(&cmodule) {
-                match &obj {
+                // This naive synopsis generation produces duplicates when
+                // a module encounters another module in dependencies more than
+                // once.
+                let id = match &obj {
+                    CModuleObject::EnumDefinition {
+                        members,
+                        is_hidden: _,
+                    } => {
+                        let mut names: Vec<String> = Vec::new();
+                        for m in members {
+                            names.push(m.id.clone());
+                        }
+                        format!("enum-{}", names.join(","))
+                    }
                     CModuleObject::Typedef {
                         is_pub: _,
                         type_name: _,
                         form,
-                    } => {
-                        if present.contains(&form.alias) {
-                            continue;
-                        }
-                        present.insert(form.alias.clone());
-                        cnodes.push(obj)
-                    }
+                    } => form.alias.clone(),
                     CModuleObject::StructDefinition {
                         name,
                         fields: _,
                         is_pub: _,
-                    } => {
-                        if present.contains(name) {
-                            continue;
-                        }
-                        present.insert(name.clone());
-                        cnodes.push(obj)
-                    }
-                    _ => {
-                        cnodes.push(obj);
-                    }
+                    } => name.clone(),
+                    CModuleObject::Include(x) => x.clone(),
+                    CModuleObject::Macro { name: _, value } => value.clone(),
+                    CModuleObject::StructForwardDeclaration(x) => x.clone(),
+                    CModuleObject::ModuleVariable {
+                        type_name: _,
+                        form: _,
+                        value: _,
+                    } => String::new(), // We shouldn't see module variables here, they are unexportable.
+                    CModuleObject::FunctionForwardDeclaration {
+                        is_static: _,
+                        type_name: _,
+                        form,
+                        parameters: _,
+                    } => form.name.clone(),
+                    CModuleObject::FunctionDefinition {
+                        is_static: _,
+                        type_name: _,
+                        form: _,
+                        parameters: _,
+                        body: _,
+                    } => String::new(), // Shouldn't see functions here.
+                };
+                if present.contains(&id) {
+                    continue;
                 }
+                present.insert(id);
+                cnodes.push(obj)
             }
         }
         let ctx = &work.ctx[i];
