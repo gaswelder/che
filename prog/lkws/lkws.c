@@ -31,6 +31,8 @@ int main(int argc, char *argv[]) {
         exit(1);
     }
 
+    puts("Loading configs");
+
     // Create the config.
     lkconfig.LKConfig *cfg = lkconfig.lk_config_new();
 
