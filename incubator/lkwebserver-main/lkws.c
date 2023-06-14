@@ -2,7 +2,6 @@
 #import lkconfig.c
 #import lkstring.c
 #import lkhostconfig.c
-#import lkalloc.c
 #import lkhttpserver.c
 
 // lkws -d /var/www/testsite/ -c=cgi-bin
@@ -32,8 +31,6 @@ int main(int argc, char *argv[]) {
         exit(1);
     }
 
-    lkalloc.lk_alloc_init();
-
     // Create the config.
     lkconfig.LKConfig *cfg = lkconfig.lk_config_new();
 
@@ -44,7 +41,7 @@ int main(int argc, char *argv[]) {
     // Override port and host, if set in the flags.
     if (port) {
         lkstring.lk_string_assign(cfg->port, port);
-    } 
+    }
     if (host) {
         lkstring.lk_string_assign(cfg->serverhost, host);
     }
@@ -75,7 +72,6 @@ int main(int argc, char *argv[]) {
 // void handle_sigint(int sig) {
 //     printf("SIGINT received: %d\n", sig);
 //     fflush(stdout);
-//     lkalloc.lk_print_allocitems();
 //     exit(0);
 // }
 

@@ -1,4 +1,3 @@
-#import lkalloc.c
 #import lkstring.c
 #import lkstringtable.c
 #import lkbuffer.c
@@ -16,7 +15,7 @@ pub typedef {
 } LKHttpRequest;
 
 pub LKHttpRequest *lk_httprequest_new() {
-    LKHttpRequest *req = lkalloc.lk_malloc(sizeof(LKHttpRequest), "lk_httprequest_new");
+    LKHttpRequest *req = calloc(1, sizeof(LKHttpRequest));
     req->method = lkstring.lk_string_new("");
     req->uri = lkstring.lk_string_new("");
     req->path = lkstring.lk_string_new("");
@@ -49,7 +48,7 @@ pub void lk_httprequest_free(LKHttpRequest *req) {
     req->headers = NULL;
     req->head = NULL;
     req->body = NULL;
-    lkalloc.lk_free(req);
+    free(req);
 }
 
 pub void lk_httprequest_add_header(LKHttpRequest *req, char *k, char *v) {
@@ -67,7 +66,7 @@ pub typedef {
 } LKHttpResponse;
 
 pub LKHttpResponse *lk_httpresponse_new() {
-    LKHttpResponse *resp = lkalloc.lk_malloc(sizeof(LKHttpResponse), "lk_httpresponse_new");
+    LKHttpResponse *resp = calloc(1, sizeof(LKHttpResponse));
     resp->status = 0;
     resp->statustext = lkstring.lk_string_new("");
     resp->version = lkstring.lk_string_new("");
@@ -89,5 +88,5 @@ pub void lk_httpresponse_free(LKHttpResponse *resp) {
     resp->headers = NULL;
     resp->head = NULL;
     resp->body = NULL;
-    lkalloc.lk_free(resp);
+    free(resp);
 }

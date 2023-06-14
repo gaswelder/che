@@ -1,4 +1,3 @@
-#import lkalloc.c
 #import lkstring.c
 
 pub typedef {
@@ -13,12 +12,10 @@ pub typedef {
 } LKStringTable;
 
 pub LKStringTable *lk_stringtable_new() {
-    LKStringTable *st = lkalloc.lk_malloc(sizeof(LKStringTable), "lk_stringtable_new");
+    LKStringTable *st = calloc(1, sizeof(LKStringTable));
     st->items_size = 1; // start with room for n items
     st->items_len = 0;
-
-    st->items = lkalloc.lk_malloc(st->items_size * sizeof(LKStringTableItem), "lk_stringtable_new_items");
-    memset(st->items, 0, st->items_size * sizeof(LKStringTableItem));
+    st->items = calloc(st->items_size, sizeof(LKStringTableItem));
     return st;
 }
 
@@ -31,9 +28,9 @@ pub void lk_stringtable_free(LKStringTable *st) {
     }
     memset(st->items, 0, st->items_size * sizeof(LKStringTableItem));
 
-    lkalloc.lk_free(st->items);
+    free(st->items);
     st->items = NULL;
-    lkalloc.lk_free(st);
+    free(st);
 }
 
 pub void lk_stringtable_set(LKStringTable *st, const char *ks, const char *v) {
@@ -50,7 +47,7 @@ pub void lk_stringtable_set(LKStringTable *st, const char *ks, const char *v) {
     // If reached capacity, expand the array and add new item.
     if (st->items_len == st->items_size) {
         st->items_size += 10;
-        st->items = lkalloc.lk_realloc(st->items, st->items_size * sizeof(LKStringTableItem), "lk_stringtable_set");
+        st->items = realloc(st->items, st->items_size * sizeof(LKStringTableItem));
         memset(st->items + st->items_len, 0,
                (st->items_size - st->items_len) * sizeof(LKStringTableItem));
     }

@@ -1,4 +1,3 @@
-#import lkalloc.c
 #import lkbuffer.c
 #import lknet.c
 
@@ -12,7 +11,7 @@ pub typedef {
 enum {FD_SOCK, FD_FILE};
 
 pub LKSocketReader *lk_socketreader_new(int sock, size_t buf_size) {
-    LKSocketReader *sr = lkalloc.lk_malloc(sizeof(LKSocketReader), "lk_socketreader_new");
+    LKSocketReader *sr = calloc(1, sizeof(LKSocketReader));
     if (buf_size == 0) {
         buf_size = 1024;
     }
@@ -25,7 +24,7 @@ pub LKSocketReader *lk_socketreader_new(int sock, size_t buf_size) {
 pub void lk_socketreader_free(LKSocketReader *sr) {
     lkbuffer.lk_buffer_free(sr->buf);
     sr->buf = NULL;
-    lkalloc.lk_free(sr);
+    free(sr);
 }
 
 // // Read one line from buffered socket including the \n char if present.

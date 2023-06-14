@@ -1,6 +1,5 @@
 #import strings
 
-#import lkalloc.c
 #import lkbuffer.c
 #import lklib.c
 #import lknet.c
@@ -16,7 +15,7 @@ pub typedef {
 } LKHttpRequestParser;
 
 pub LKHttpRequestParser *lk_httprequestparser_new() {
-    LKHttpRequestParser *parser = lkalloc.lk_malloc(sizeof(LKHttpRequestParser), "lk_httprequest_parser_new");
+    LKHttpRequestParser *parser = calloc(1, sizeof(LKHttpRequestParser));
     parser->partial_line = lkstring.lk_string_new("");
     parser->nlinesread = 0;
     parser->content_length = 0;
@@ -28,7 +27,7 @@ pub LKHttpRequestParser *lk_httprequestparser_new() {
 pub void lk_httprequestparser_free(LKHttpRequestParser *parser) {
     lkstring.lk_string_free(parser->partial_line);
     parser->partial_line = NULL;
-    lkalloc.lk_free(parser);
+    free(parser);
 }
 
 // Clear any pending state.
@@ -100,7 +99,7 @@ void parse_request_line(char *line, request.LKHttpRequest *req) {
 
     char *saveptr;
     char *delim = " \t";
-    char *linetmp = lkalloc.lk_strdup(line, "parse_request_line");
+    char *linetmp = strings.newstr("%s", line);
     lknet.lk_chomp(linetmp);
     char *p = linetmp;
     while (ntoksread < 3) {
@@ -126,7 +125,7 @@ void parse_request_line(char *line, request.LKHttpRequest *req) {
 
     parse_uri(req->uri, req->path, req->filename, req->querystring);
 
-    lkalloc.lk_free(linetmp);
+    free(linetmp);
 }
 
 // Parse uri into its components.
@@ -163,11 +162,11 @@ void parse_header_line(LKHttpRequestParser *parser, char *line, request.LKHttpRe
     char *saveptr;
     char *delim = ":";
 
-    char *linetmp = lkalloc.lk_strdup(line, "parse_header_line");
+    char *linetmp = strings.newstr("%s", line);
     lknet.lk_chomp(linetmp);
     char *k = OS.strtok_r(linetmp, delim, &saveptr);
     if (k == NULL) {
-        lkalloc.lk_free(linetmp);
+        free(linetmp);
         return;
     }
     char *v = OS.strtok_r(NULL, delim, &saveptr);
@@ -186,7 +185,7 @@ void parse_header_line(LKHttpRequestParser *parser, char *line, request.LKHttpRe
         parser->content_length = content_length;
     }
 
-    lkalloc.lk_free(linetmp);
+    free(linetmp);
 }
 
 

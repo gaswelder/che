@@ -2,7 +2,6 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 
-#import lkalloc.c
 #import lkbuffer.c
 #import lkstring.c
 #import request.c
@@ -345,7 +344,7 @@ pub void lk_httpresponse_debugprint(request.LKHttpResponse *resp) {
 // Return new pointer to dest.
 pub char *lk_astrncat(char *dest, char *src, size_t src_len) {
     int dest_len = strlen(dest);
-    dest = lkalloc.lk_realloc(dest, dest_len + src_len + 1, "lk_astrncat");
+    dest = realloc(dest, dest_len + src_len + 1);
     strncat(dest, src, src_len);
     return dest;
 }

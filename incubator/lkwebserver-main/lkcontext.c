@@ -1,4 +1,3 @@
-#import lkalloc.c
 #import lkbuffer.c
 #import lkhttprequestparser.c
 #import lkreflist.c
@@ -46,7 +45,7 @@ pub typedef {
 
 /*** LKContext functions ***/
 pub LKContext *lk_context_new() {
-    LKContext *ctx = lkalloc.lk_malloc(sizeof(LKContext), "lk_context_new");
+    LKContext *ctx = calloc(1, sizeof(LKContext));
     ctx->selectfd = 0;
     ctx->clientfd = 0;
     ctx->type = 0;
@@ -74,7 +73,7 @@ pub LKContext *lk_context_new() {
 }
 
 pub LKContext *create_initial_context(int fd) {
-    LKContext *ctx = lkalloc.lk_malloc(sizeof(LKContext), "create_initial_context");
+    LKContext *ctx = calloc(1, sizeof(LKContext));
     ctx->selectfd = fd;
     ctx->clientfd = fd;
     ctx->type = CTX_READ_REQ;
@@ -149,7 +148,7 @@ pub void lk_context_free(LKContext *ctx) {
     ctx->cgi_inputbuf = NULL;
     ctx->proxyfd = 0;
     ctx->proxy_respbuf = NULL;
-    lkalloc.lk_free(ctx);
+    free(ctx);
 }
 
 // Add new client ctx to end of ctx linked list.

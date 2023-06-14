@@ -1,6 +1,5 @@
 #import fs
 
-#import lkalloc.c
 #import lkhostconfig.c
 #import lklib.c
 #import lkstring.c
@@ -17,10 +16,10 @@ pub typedef {
 const int HOSTCONFIGS_INITIAL_SIZE = 10;
 
 pub LKConfig *lk_config_new() {
-    LKConfig *cfg = lkalloc.lk_malloc(sizeof(LKConfig), "lk_config_new");
+    LKConfig *cfg = calloc(1, sizeof(LKConfig));
     cfg->serverhost = lkstring.lk_string_new("");
     cfg->port = lkstring.lk_string_new("");
-    cfg->hostconfigs = lkalloc.lk_malloc(sizeof(lkhostconfig.LKHostConfig) * HOSTCONFIGS_INITIAL_SIZE, "lk_config_new_hostconfigs");
+    cfg->hostconfigs = calloc(HOSTCONFIGS_INITIAL_SIZE, sizeof(lkhostconfig.LKHostConfig));
     cfg->hostconfigs_len = 0;
     cfg->hostconfigs_size = HOSTCONFIGS_INITIAL_SIZE;
     return cfg;
@@ -34,13 +33,13 @@ pub void lk_config_free(LKConfig *cfg) {
         lk_hostconfig_free(hc);
     }
     memset(cfg->hostconfigs, 0, sizeof(lkhostconfig.LKHostConfig) * cfg->hostconfigs_size);
-    lkalloc.lk_free(cfg->hostconfigs);
+    free(cfg->hostconfigs);
 
     cfg->serverhost = NULL;
     cfg->port = NULL;
     cfg->hostconfigs = NULL;
     
-    lkalloc.lk_free(cfg);
+    free(cfg);
 }
 
 
@@ -187,7 +186,7 @@ pub lkhostconfig.LKHostConfig *lk_config_add_hostconfig(LKConfig *cfg, lkhostcon
     // Increase size if no more space.
     if (cfg->hostconfigs_len == cfg->hostconfigs_size) {
         cfg->hostconfigs_size++;
-        cfg->hostconfigs = lkalloc.lk_realloc(cfg->hostconfigs, sizeof(lkhostconfig.LKHostConfig) * cfg->hostconfigs_size, "lk_config_add_hostconfig");
+        cfg->hostconfigs = realloc(cfg->hostconfigs, sizeof(lkhostconfig.LKHostConfig) * cfg->hostconfigs_size);
     }
     cfg->hostconfigs[cfg->hostconfigs_len] = hc;
     cfg->hostconfigs_len++;
@@ -334,8 +333,7 @@ pub void lk_config_finalize(LKConfig *cfg) {
 
 
 pub lkhostconfig.LKHostConfig *lk_hostconfig_new(char *hostname) {
-    lkhostconfig.LKHostConfig *hc = lkalloc.lk_malloc(sizeof(lkhostconfig.LKHostConfig), "lk_hostconfig_new");
-
+    lkhostconfig.LKHostConfig *hc = calloc(1, sizeof(lkhostconfig.LKHostConfig));
     hc->hostname = lkstring.lk_string_new(hostname);
     hc->homedir = lkstring.lk_string_new("");
     hc->homedir_abspath = lkstring.lk_string_new("");
@@ -343,7 +341,6 @@ pub lkhostconfig.LKHostConfig *lk_hostconfig_new(char *hostname) {
     hc->cgidir_abspath = lkstring.lk_string_new("");
     hc->aliases = lkstringtable.lk_stringtable_new();
     hc->proxyhost = lkstring.lk_string_new("");
-
     return hc;
 }
 
@@ -364,7 +361,7 @@ pub void lk_hostconfig_free(lkhostconfig.LKHostConfig *hc) {
     hc->aliases = NULL;
     hc->proxyhost = NULL;
 
-    lkalloc.lk_free(hc);
+    free(hc);
 }
 
 char *get_current_dir_name() {

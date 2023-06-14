@@ -1,4 +1,3 @@
-#import lkalloc.c
 #import strings
 
 pub typedef {
@@ -29,10 +28,10 @@ pub LKString *lk_string_new(const char *s) {
     }
     size_t s_len = strlen(s);
 
-    LKString *lks = lkalloc.lk_malloc(sizeof(LKString), "lk_string_new");
+    LKString *lks = calloc(1, sizeof(LKString));
     lks->s_len = s_len;
     lks->s_size = s_len;
-    lks->s = lkalloc.lk_malloc(lks->s_size+1, "lk_string_new_s");
+    lks->s = calloc(1, lks->s_size+1);
     zero_s(lks);
     strncpy(lks->s, s, s_len);
 
@@ -43,16 +42,16 @@ pub void lk_string_free(LKString *lks) {
     assert(lks->s != NULL);
 
     zero_s(lks);
-    lkalloc.lk_free(lks->s);
+    free(lks->s);
     lks->s = NULL;
-    lkalloc.lk_free(lks);
+    free(lks);
 }
 
 pub void lk_string_assign(LKString *lks, const char *s) {
     size_t s_len = strlen(s);
     if (s_len > lks->s_size) {
         lks->s_size = s_len;
-        lks->s = lkalloc.lk_realloc(lks->s, lks->s_size+1, "lk_string_assign");
+        lks->s = realloc(lks->s, lks->s_size+1);
     }
     zero_s(lks);
     strncpy(lks->s, s, s_len);
@@ -85,7 +84,7 @@ pub void lk_string_append(LKString *lks, const char *s) {
     size_t s_len = strlen(s);
     if (lks->s_len + s_len > lks->s_size) {
         lks->s_size = lks->s_len + s_len;
-        lks->s = lkalloc.lk_realloc(lks->s, lks->s_size+1, "lk_string_append");
+        lks->s = realloc(lks->s, lks->s_size+1);
         zero_unused_s(lks);
     }
 
@@ -97,7 +96,7 @@ pub void lk_string_append_char(LKString *lks, char c) {
     if (lks->s_len + 1 > lks->s_size) {
         // Grow string by ^2
         lks->s_size = lks->s_len + ((lks->s_len+1) * 2);
-        lks->s = lkalloc.lk_realloc(lks->s, lks->s_size+1, "lk_string_append_char");
+        lks->s = realloc(lks->s, lks->s_size+1);
         zero_unused_s(lks);
     }
 
@@ -110,7 +109,7 @@ pub void lk_string_prepend(LKString *lks, const char *s) {
     size_t s_len = strlen(s);
     if (lks->s_len + s_len > lks->s_size) {
         lks->s_size = lks->s_len + s_len;
-        lks->s = lkalloc.lk_realloc(lks->s, lks->s_size+1, "lk_string_prepend");
+        lks->s = realloc(lks->s, lks->s_size+1);
         zero_unused_s(lks);
     }
 
@@ -240,12 +239,10 @@ pub void lk_string_split_assign(LKString *s, const char *delim, LKString *k, LKS
 #define N_GROW_STRINGLIST 10
 
 pub LKStringList *lk_stringlist_new() {
-    LKStringList *sl = lkalloc.lk_malloc(sizeof(LKStringList), "lk_stringlist_new");
+    LKStringList *sl = calloc(1, sizeof(LKStringList));
     sl->items_size = N_GROW_STRINGLIST;
     sl->items_len = 0;
-
-    sl->items = lkalloc.lk_malloc(sl->items_size * sizeof(LKString), "lk_stringlist_new_items");
-    memset(sl->items, 0, sl->items_size * sizeof(LKString));
+    sl->items = calloc(sl->items_size, sizeof(LKString));
     return sl;
 }
 
@@ -257,16 +254,16 @@ pub void lk_stringlist_free(LKStringList *sl) {
     }
     memset(sl->items, 0, sl->items_size * sizeof(LKString));
 
-    lkalloc.lk_free(sl->items);
+    free(sl->items);
     sl->items = NULL;
-    lkalloc.lk_free(sl);
+    free(sl);
 }
 
 pub void lk_stringlist_append_lkstring(LKStringList *sl, LKString *lks) {
     assert(sl->items_len <= sl->items_size);
 
     if (sl->items_len == sl->items_size) {
-        LKString **pitems = lkalloc.lk_realloc(sl->items, (sl->items_size+N_GROW_STRINGLIST) * sizeof(LKString), "lk_stringlist_append_lkstring");
+        LKString **pitems = realloc(sl->items, (sl->items_size+N_GROW_STRINGLIST) * sizeof(LKString));
         if (pitems == NULL) {
             return;
         }

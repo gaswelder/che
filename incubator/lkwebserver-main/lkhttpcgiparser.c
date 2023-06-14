@@ -1,6 +1,5 @@
 #import strings
 
-#import lkalloc.c
 #import lkbuffer.c
 #import lklib.c
 #import lknet.c
@@ -49,11 +48,11 @@ void parse_cgi_header_line(char *line, request.LKHttpResponse *resp) {
     char *saveptr;
     char *delim = ":";
 
-    char *linetmp = lkalloc.lk_strdup(line, "parse_cgi_header_line");
+    char *linetmp = strings.newstr("%s", line);
     lknet.lk_chomp(linetmp);
     char *k = OS.strtok_r(linetmp, delim, &saveptr);
     if (k == NULL) {
-        lkalloc.lk_free(linetmp);
+        free(linetmp);
         return;
     }
     char *v = OS.strtok_r(NULL, delim, &saveptr);
@@ -72,5 +71,5 @@ void parse_cgi_header_line(char *line, request.LKHttpResponse *resp) {
         resp->status = status;
     }
 
-    lkalloc.lk_free(linetmp);
+    free(linetmp);
 }

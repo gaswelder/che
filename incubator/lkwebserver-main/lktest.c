@@ -17,7 +17,6 @@ void lkreflist_test();
 void lkconfig_test();
 
 int main(int argc, char *argv[]) {
-    lk_alloc_init();
 
     lkstring_test();
     lkstringmap_test();
