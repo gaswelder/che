@@ -42,6 +42,8 @@ pub const CCONST: &[&str] = &[
     "SIZE_MAX",
 ];
 pub const CFUNCS: &[&str] = &[
+    "atoi",
+    "strncat",
     "islower",
     "isspace",
     "acos",
