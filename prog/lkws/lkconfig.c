@@ -5,59 +5,39 @@
 #import lkstring.c
 #import lkstringtable.c
 
+#define MAX_HOST_CONFIGS 256
+
 pub typedef {
     char *serverhost;
     char *port;
-    lkhostconfig.LKHostConfig **hostconfigs;
-    size_t hostconfigs_len;
+    lkhostconfig.LKHostConfig *hostconfigs[256];
     size_t hostconfigs_size;
 } LKConfig;
-
-const int HOSTCONFIGS_INITIAL_SIZE = 10;
 
 pub LKConfig *lk_config_new() {
     LKConfig *cfg = calloc(1, sizeof(LKConfig));
     cfg->serverhost = strings.newstr("%s", "localhost");
     cfg->port = strings.newstr("8000");
-    cfg->hostconfigs = calloc(HOSTCONFIGS_INITIAL_SIZE, sizeof(lkhostconfig.LKHostConfig));
-    cfg->hostconfigs_len = 0;
-    cfg->hostconfigs_size = HOSTCONFIGS_INITIAL_SIZE;
     return cfg;
 }
 
 pub void lk_config_free(LKConfig *cfg) {
-    free(cfg->serverhost);
-    free(cfg->port);
-    for (size_t i = 0; i < cfg->hostconfigs_len; i++) {
+    for (size_t i = 0; i < cfg->hostconfigs_size; i++) {
         lkhostconfig.LKHostConfig *hc = cfg->hostconfigs[i];
         lk_hostconfig_free(hc);
     }
-    memset(cfg->hostconfigs, 0, sizeof(lkhostconfig.LKHostConfig) * cfg->hostconfigs_size);
-    free(cfg->hostconfigs);
-    cfg->hostconfigs = NULL;
+    free(cfg->serverhost);
+    free(cfg->port);
     free(cfg);
 }
 
-pub lkhostconfig.LKHostConfig *lk_config_add_hostconfig(LKConfig *cfg, lkhostconfig.LKHostConfig *hc) {
-    assert(cfg->hostconfigs_len <= cfg->hostconfigs_size);
-
-    // Increase size if no more space.
-    if (cfg->hostconfigs_len == cfg->hostconfigs_size) {
-        cfg->hostconfigs_size++;
-        cfg->hostconfigs = realloc(cfg->hostconfigs, sizeof(lkhostconfig.LKHostConfig) * cfg->hostconfigs_size);
-    }
-    cfg->hostconfigs[cfg->hostconfigs_len] = hc;
-    cfg->hostconfigs_len++;
-
-    return hc;
-}
 
 // Return hostconfig matching hostname,
 // or if hostname parameter is NULL, return hostconfig matching "*".
 // Return NULL if no matching hostconfig.
 pub lkhostconfig.LKHostConfig *lk_config_find_hostconfig(LKConfig *cfg, char *hostname) {
     if (hostname != NULL) {
-        for (size_t i = 0; i < cfg->hostconfigs_len; i++) {
+        for (size_t i = 0; i < cfg->hostconfigs_size; i++) {
             lkhostconfig.LKHostConfig *hc = cfg->hostconfigs[i];
             if (lkstring.lk_string_sz_equal(hc->hostname, hostname)) {
                 return hc;
@@ -65,7 +45,7 @@ pub lkhostconfig.LKHostConfig *lk_config_find_hostconfig(LKConfig *cfg, char *ho
         }
     }
     // If hostname not found, return hostname * (fallthrough hostname).
-    for (size_t i = 0; i < cfg->hostconfigs_len; i++) {
+    for (size_t i = 0; i < cfg->hostconfigs_size; i++) {
         lkhostconfig.LKHostConfig *hc = cfg->hostconfigs[i];
         if (lkstring.lk_string_sz_equal(hc->hostname, "*")) {
             return hc;
@@ -76,7 +56,7 @@ pub lkhostconfig.LKHostConfig *lk_config_find_hostconfig(LKConfig *cfg, char *ho
 
 // Return hostconfig with hostname or NULL if not found.
 pub lkhostconfig.LKHostConfig *get_hostconfig(LKConfig *cfg, char *hostname) {
-    for (size_t i = 0; i < cfg->hostconfigs_len; i++) {
+    for (size_t i = 0; i < cfg->hostconfigs_size; i++) {
         lkhostconfig.LKHostConfig *hc = cfg->hostconfigs[i];
         if (lkstring.lk_string_sz_equal(hc->hostname, hostname)) {
             return hc;
@@ -91,7 +71,10 @@ pub lkhostconfig.LKHostConfig *lk_config_create_get_hostconfig(LKConfig *cfg, ch
     lkhostconfig.LKHostConfig *hc = get_hostconfig(cfg, hostname);
     if (hc == NULL) {
         hc = lk_hostconfig_new(hostname);
-        lk_config_add_hostconfig(cfg, hc);
+        if (cfg->hostconfigs_size >= MAX_HOST_CONFIGS) {
+            abort();
+        }
+        cfg->hostconfigs[cfg->hostconfigs_size++] = hc;
     }
     return hc;
 }
@@ -100,7 +83,7 @@ pub void lk_config_print(LKConfig *cfg) {
     printf("serverhost: %s\n", cfg->serverhost);
     printf("port: %s\n", cfg->port);
 
-    for (size_t i = 0; i < cfg->hostconfigs_len; i++) {
+    for (size_t i = 0; i < cfg->hostconfigs_size; i++) {
         lkhostconfig.LKHostConfig *hc = cfg->hostconfigs[i];
         printf("%2lu. hostname %s\n", i+1, hc->hostname->s);
         if (hc->homedir->s_len > 0) {
@@ -134,7 +117,7 @@ pub void lk_config_finalize(LKConfig *cfg) {
     // Set fallthrough defaults only if no other hostconfigs specified
     // Note: If other hostconfigs are set, such as in a config file,
     // the fallthrough '*' hostconfig should be set explicitly. 
-    if (cfg->hostconfigs_len == 0) {
+    if (cfg->hostconfigs_size == 0) {
         // homedir default to current directory
         lkhostconfig.LKHostConfig *hc = lk_config_create_get_hostconfig(cfg, "*");
         lkstring.lk_string_assign(hc->homedir, current_dir->s);
@@ -148,7 +131,7 @@ pub void lk_config_finalize(LKConfig *cfg) {
     // Set homedir absolute paths for hostconfigs.
     // Adjust /cgi-bin/ paths.
     char homedir_abspath[PATH_MAX];
-    for (size_t i = 0; i < cfg->hostconfigs_len; i++) {
+    for (size_t i = 0; i < cfg->hostconfigs_size; i++) {
         lkhostconfig.LKHostConfig *hc = cfg->hostconfigs[i];
 
         // Skip hostconfigs that don't have have homedir.
