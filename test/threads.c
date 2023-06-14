@@ -38,7 +38,7 @@ void *threadmain(void *arg)
 	int val = *((int *) arg);
 	//sleep(val);
 
-	int *r = malloc(sizeof(int));
+	int *r = calloc(1, sizeof(int));
 	*r = val * val;
 	return r;
 }

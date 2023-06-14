@@ -164,12 +164,10 @@ pub Rune* runestrstr(Rune *s1, Rune *s2) {
 pub Rune*
 runestrdup(Rune *s)
 {
-	Rune *ns = NULL;
-
-	ns = malloc(sizeof(Rune)*(runestrlen(s) + 1));
-	if(ns == 0)
+	Rune *ns = calloc(runestrlen(s) + 1, sizeof(Rune));
+	if (!ns) {
 		return 0;
-
+	}
 	return runestrcpy(ns, s);
 }
 

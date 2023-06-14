@@ -15,8 +15,8 @@ pub char *readfile(const char *path, size_t *size)
 		return NULL;
 	}
 
-	char *data = malloc(len);
-	if(!data) {
+	char *data = calloc(len, 1);
+	if (!data) {
 		fclose(f);
 		return NULL;
 	}

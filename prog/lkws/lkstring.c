@@ -68,7 +68,7 @@ pub void lk_string_assign_sprintf(LKString *lks, const char *format, ...) {
         abort();
     }
 	
-	char *buf = malloc(len + 1);
+	char *buf = calloc(len + 1, 1);
 	if (!buf) {
         abort();
     }
@@ -286,7 +286,7 @@ pub void lk_stringlist_append_sprintf(LKStringList *sl, const char *format, ...)
 	int len = vsnprintf(NULL, 0, format, args);
 	va_end(args);
 	if (len < 0) abort();
-	char *buf = malloc(len + 1);
+	char *buf = calloc(len + 1, 1);
 	if (!buf) abort();
 	va_start(args, format);
 	vsnprintf(buf, len + 1, format, args);

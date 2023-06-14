@@ -169,7 +169,7 @@ int main(int argc, char *argv[]) {
 }
 
 clientctx_t *clientctx_new(int sock) {
-    clientctx_t *ctx = malloc(sizeof(clientctx_t));
+    clientctx_t *ctx = calloc(1, sizeof(clientctx_t));
     ctx->sock = sock;
     ctx->sr = lk_socketreader_new(sock, 0);
     ctx->reqparser = lk_httprequestparser_new();

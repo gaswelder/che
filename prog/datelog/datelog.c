@@ -162,8 +162,8 @@ period_t *find_period( const char *pername )
  */
 char *create_static_path( dlog_t *log, const char *static_name )
 {
-	char *static_path = malloc( MAXPATH );
-	if( !static_path ) {
+	char *static_path = calloc(MAXPATH, 1);
+	if (!static_path) {
 		fprintf(stderr, "Memory allocation failed.\n");
 		return NULL;
 	}

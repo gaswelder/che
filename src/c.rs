@@ -93,7 +93,7 @@ pub const CFUNCS: &[&str] = &[
     "free",
     "fwrite",
     "localtime",
-    "malloc",
+    // "malloc",
     "memcpy",
     "memset",
     "printf",

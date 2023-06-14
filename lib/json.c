@@ -461,13 +461,12 @@ pub bool json_push( json_node *n, json_node *val )
 	return arr.arr_push(n->val.arr, val);
 }
 
-void *mcopy( const void *src, size_t size )
-{
-	void *copy = malloc( size );
-	if( !copy ) {
+void *mcopy( const void *src, size_t size ) {
+	void *copy = calloc(size, 1);
+	if (!copy) {
 		return NULL;
 	}
-	memcpy( copy, src, size );
+	memcpy(copy, src, size);
 	return copy;
 }
 

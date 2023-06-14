@@ -11,7 +11,7 @@ pub char *newstr(const char *format, ... )
 
 	if (len < 0) return NULL;
 	
-	char *buf = malloc(len + 1);
+	char *buf = calloc(len + 1, 1);
 	if (!buf) return NULL;
 
 	va_start(args, format);

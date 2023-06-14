@@ -76,7 +76,7 @@ pub void lk_buffer_append_sprintf(LKBuffer *buf, const char *format, ...) {
 	if (len < 0) {
         abort();
     }
-	char *tmp = malloc(len + 1);
+	char *tmp = calloc(len + 1, 1);
 	if (!tmp) {
         abort();
     }
