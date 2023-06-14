@@ -2,6 +2,7 @@
 #import strings
 
 #import lkconfig.c
+#import configparser.c
 #import lkhostconfig.c
 #import lkhttpserver.c
 #import lkstring.c
@@ -36,11 +37,16 @@ int main(int argc, char *argv[]) {
     puts("Loading configs");
 
     // Create the config.
-    lkconfig.LKConfig *cfg = lkconfig.lk_config_new();
+    lkconfig.LKConfig *cfg = NULL;
 
-    // Update the config from the file, if it's given.
     if (configfile) {
-        lkconfig.lk_config_read_configfile(cfg, configfile);
+        cfg = configparser.read_file(configfile);
+        if (!cfg) {
+            fprintf(stderr, "failed to parse config file %s: %s", configfile, strerror(errno));
+            return 1;
+        }
+    } else {
+        cfg = lkconfig.lk_config_new();
     }
     // Override port and host, if set in the flags.
     if (port) {
