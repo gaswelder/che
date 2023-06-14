@@ -1,20 +1,22 @@
+#include <unistd.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+
 #import lkalloc.c
 #import lkbuffer.c
 #import lkstring.c
 #import request.c
+#import lkstringtable.c
+
+#define LK_BUFSIZE_LARGE 2048
 
 enum {FD_SOCK, FD_FILE};
 
-// Function return values:
-// Z_OPEN (fd still OS.open)
-// Z_EOF (end of file)
-// Z_ERR (errno set with error detail)
-// Z_BLOCK (fd blocked, no data)
 pub enum {
-    Z_OPEN = 1,
-    Z_EOF = 0,
-    Z_ERR = -1,
-    Z_BLOCK = -2
+    Z_OPEN = 1, // fd still open
+    Z_EOF = 0, // end of file
+    Z_ERR = -1, // error, check errno
+    Z_BLOCK = -2 // fd blocked, no data
 };
 
 // Remove trailing CRLF or LF (\n) from string.
@@ -44,7 +46,7 @@ pub int lk_read(int fd, int fd_type, lkbuffer.LKBuffer *buf, size_t count, size_
     while (nread < count) {
         // read minimum of sizeof(readbuf) and count-nread
         int nblock = count-nread;
-        if (nblock > sizeof(readbuf)) nblock = sizeof(readbuf);
+        if ((size_t)nblock > sizeof(readbuf)) nblock = sizeof(readbuf);
 
         if (fd_type == FD_SOCK) {
             z = OS.recv(fd, readbuf, nblock, OS.MSG_DONTWAIT);
@@ -184,11 +186,7 @@ pub int lk_write_file(int fd, lkbuffer.LKBuffer *buf, size_t count, size_t *nbyt
 }
 
 // Write buf bytes to nonblocking fd.
-// Returns one of the following:
-//    0 (Z_EOF) for all buf bytes sent
-//    1 (Z_OPEN) for socket OS.open
-//   -1 (Z_ERR) for error
-//   -2 (Z_BLOCK) for blocked socket (no data)
+// Returns one of the Z_* statuses.
 //
 // Note: This keeps track of last buf position written.
 // Used to cumulatively write data into buf.
@@ -253,7 +251,7 @@ pub void lk_httprequest_finalize(request.LKHttpRequest *req) {
     if (req->body->bytes_len > 0) {
         lkbuffer.lk_buffer_append_sprintf(req->head, "Content-Length: %ld\n", req->body->bytes_len);
     }
-    for (int i=0; i < req->headers->items_len; i++) {
+    for (size_t i=0; i < req->headers->items_len; i++) {
         lkbuffer.lk_buffer_append_sprintf(req->head, "%s: %s\n", req->headers->items[i].k->s, req->headers->items[i].v->s);
     }
     lkbuffer.lk_buffer_append(req->head, "\r\n", 2);
@@ -275,13 +273,13 @@ pub void lk_httprequest_debugprint(request.LKHttpRequest *req) {
     printf("headers_len: %ld\n", req->headers->items_len);
 
     printf("Headers:\n");
-    for (int i=0; i < req->headers->items_len; i++) {
+    for (size_t i=0; i < req->headers->items_len; i++) {
         lkstring.LKString *v = req->headers->items[i].v;
         printf("%s: %s\n", req->headers->items[i].k->s, v->s);
     }
 
     printf("Body:\n---\n");
-    for (int i=0; i < req->body->bytes_len; i++) {
+    for (size_t i=0; i < req->body->bytes_len; i++) {
         putchar(req->body->bytes[i]);
     }
     printf("\n---\n");
@@ -290,7 +288,7 @@ pub void lk_httprequest_debugprint(request.LKHttpRequest *req) {
 
 /** httpresp functions **/
 
-pub void lk_httpresponse_add_header(request.LKHttpResponse *resp, char *k, char *v) {
+pub void lk_httpresponse_add_header(request.LKHttpResponse *resp, const char *k, *v) {
     lkstringtable.lk_stringtable_set(resp->headers, k, v);
 }
 
@@ -310,7 +308,7 @@ pub void lk_httpresponse_finalize(request.LKHttpResponse *resp) {
     }
     lkbuffer.lk_buffer_append_sprintf(resp->head, "%s %d %s\n", resp->version->s, resp->status, resp->statustext->s);
     lkbuffer.lk_buffer_append_sprintf(resp->head, "Content-Length: %ld\n", resp->body->bytes_len);
-    for (int i=0; i < resp->headers->items_len; i++) {
+    for (size_t i=0; i < resp->headers->items_len; i++) {
         lkbuffer.lk_buffer_append_sprintf(resp->head, "%s: %s\n", resp->headers->items[i].k->s, resp->headers->items[i].v->s);
     }
     lkbuffer.lk_buffer_append(resp->head, "\r\n", 2);
@@ -330,13 +328,13 @@ pub void lk_httpresponse_debugprint(request.LKHttpResponse *resp) {
     printf("headers_len: %ld\n", resp->headers->items_len);
 
     printf("Headers:\n");
-    for (int i=0; i < resp->headers->items_len; i++) {
+    for (size_t i=0; i < resp->headers->items_len; i++) {
         lkstring.LKString *v = resp->headers->items[i].v;
         printf("%s: %s\n", resp->headers->items[i].k->s, v->s);
     }
 
     printf("Body:\n---\n");
-    for (int i=0; i < resp->body->bytes_len; i++) {
+    for (size_t i=0; i < resp->body->bytes_len; i++) {
         putchar(resp->body->bytes[i]);
     }
     printf("\n---\n");

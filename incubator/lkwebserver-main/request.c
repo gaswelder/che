@@ -1,3 +1,4 @@
+#import lkalloc.c
 #import lkstring.c
 #import lkstringtable.c
 #import lkbuffer.c

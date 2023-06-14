@@ -68,32 +68,25 @@ pub int lk_buffer_append_sz(LKBuffer *buf, char *s) {
     return lk_buffer_append(buf, s, strlen(s));
 }
 
-pub void lk_buffer_append_sprintf(LKBuffer *buf, const char *fmt, ...) {
-    char sbuf[LK_BUFSIZE_MEDIUM];
+#define LK_BUFSIZE_MEDIUM 1024
 
-    // Try to use static buffer first, to avoid allocation.
-    va_list args;
-    va_start(args, fmt);
-    int z = vsnprintf(sbuf, sizeof(sbuf), fmt, args);
-    if (z < 0) return;
-    va_end(args);
-
-    // If snprintf() truncated output to sbuf due to space,
-    // use asprintf() instead.
-    if (z >= sizeof(sbuf)) {
-        va_list args;
-        char *ps;
-        va_start(args, fmt);
-        int z = vasprintf(&ps, fmt, args);
-        if (z == -1) return;
-        va_end(args);
-
-        lk_buffer_append(buf, ps, z);
-        free(ps);
-        return;
+pub void lk_buffer_append_sprintf(LKBuffer *buf, const char *format, ...) {
+    va_list args = {};
+	va_start(args, format);
+	int len = vsnprintf(NULL, 0, format, args);
+	va_end(args);
+	if (len < 0) {
+        abort();
     }
-
-    lk_buffer_append(buf, sbuf, z);
+	char *tmp = malloc(len + 1);
+	if (!tmp) {
+        abort();
+    }
+	va_start(args, format);
+	vsnprintf(tmp, len + 1, format, args);
+	va_end(args);
+    lk_buffer_append(buf, tmp, len);
+    free(tmp);
 }
 
 // Read CR-terminated line from buffer starting from buf->bytes_cur position.

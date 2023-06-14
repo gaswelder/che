@@ -1,4 +1,5 @@
 #import lkalloc.c
+#import strings
 
 pub typedef {
     char *s;
@@ -22,7 +23,7 @@ pub void zero_unused_s(LKString *lks) {
     memset(lks->s + lks->s_len, '\0', lks->s_size+1 - lks->s_len);
 }
 
-pub LKString *lk_string_new(char *s) {
+pub LKString *lk_string_new(const char *s) {
     if (s == NULL) {
         s = "";
     }
@@ -47,7 +48,7 @@ pub void lk_string_free(LKString *lks) {
     lkalloc.lk_free(lks);
 }
 
-pub void lk_string_assign(LKString *lks, char *s) {
+pub void lk_string_assign(LKString *lks, const char *s) {
     size_t s_len = strlen(s);
     if (s_len > lks->s_size) {
         lks->s_size = s_len;
@@ -58,11 +59,29 @@ pub void lk_string_assign(LKString *lks, char *s) {
     lks->s_len = s_len;
 }
 
-pub void lk_string_assign_sprintf(LKString *lks, char *fmt, ...) {
-    abort("TODO");
+pub void lk_string_assign_sprintf(LKString *lks, const char *format, ...) {
+    va_list args = {};
+	va_start(args, format);
+	int len = vsnprintf(NULL, 0, format, args);
+	va_end(args);
+
+	if (len < 0) {
+        abort();
+    }
+	
+	char *buf = malloc(len + 1);
+	if (!buf) {
+        abort();
+    }
+
+	va_start(args, format);
+	vsnprintf(buf, len + 1, format, args);
+	va_end(args);
+    lk_string_assign(lks, buf);
+    free(buf);
 }
 
-pub void lk_string_append(LKString *lks, char *s) {
+pub void lk_string_append(LKString *lks, const char *s) {
     size_t s_len = strlen(s);
     if (lks->s_len + s_len > lks->s_size) {
         lks->s_size = lks->s_len + s_len;
@@ -87,7 +106,7 @@ pub void lk_string_append_char(LKString *lks, char c) {
     lks->s_len++;
 }
 
-pub void lk_string_prepend(LKString *lks, char *s) {
+pub void lk_string_prepend(LKString *lks, const char *s) {
     size_t s_len = strlen(s);
     if (lks->s_len + s_len > lks->s_size) {
         lks->s_size = lks->s_len + s_len;
@@ -101,7 +120,7 @@ pub void lk_string_prepend(LKString *lks, char *s) {
 }
 
 
-pub int lk_string_sz_equal(LKString *lks1, char *s2) {
+pub int lk_string_sz_equal(LKString *lks1, const char *s2) {
     if (!strcmp(lks1->s, s2)) {
         return 1;
     }
@@ -109,12 +128,12 @@ pub int lk_string_sz_equal(LKString *lks1, char *s2) {
 }
 
 // Return if string starts with s.
-pub int lk_string_starts_with(LKString *lks, char *s) {
+pub int lk_string_starts_with(LKString *lks, const char *s) {
     return strings.starts_with(lks->s, s);
 }
 
 // Return if string ends with s.
-pub int lk_string_ends_with(LKString *lks, char *s) {
+pub int lk_string_ends_with(LKString *lks, const char *s) {
     size_t s_len = strlen(s);
     if (s_len > lks->s_len) {
         return 0;
@@ -138,18 +157,18 @@ pub void lk_string_trim(LKString *lks) {
     int endi = lks->s_len-1;
     assert(endi >= starti);
 
-    for (int i=0; i < lks->s_len; i++) {
+    for (size_t i = 0; i < lks->s_len; i++) {
         if (!isspace(lks->s[i])) {
             break;
         }
         starti++;
     }
     // All chars are whitespace.
-    if (starti >= lks->s_len) {
+    if ((size_t)starti >= lks->s_len) {
         lk_string_assign(lks, "");
         return;
     }
-    for (int i=lks->s_len-1; i >= 0; i--) {
+    for (int i = (int)lks->s_len-1; i >= 0; i--) {
         if (!isspace(lks->s[i])) {
             break;
         }
@@ -163,7 +182,7 @@ pub void lk_string_trim(LKString *lks) {
     lks->s_len = new_len;
 }
 
-pub void lk_string_chop_end(LKString *lks, char *s) {
+pub void lk_string_chop_end(LKString *lks, const char *s) {
     size_t s_len = strlen(s);
     if (s_len > lks->s_len) {
         return;
@@ -178,16 +197,16 @@ pub void lk_string_chop_end(LKString *lks, char *s) {
 }
 
 // Return whether delim matches the first delim_len chars of s.
-pub int match_delim(char *s, char *delim, size_t delim_len) {
+pub int match_delim(char *s, const char *delim, size_t delim_len) {
     return !strncmp(s, delim, delim_len);
 }
 
-pub LKStringList *lk_string_split(LKString *lks, char *delim) {
+pub LKStringList *lk_string_split(LKString *lks, const char *delim) {
     LKStringList *sl = lk_stringlist_new();
     size_t delim_len = strlen(delim);
 
     LKString *segment = lk_string_new("");
-    for (int i=0; i < lks->s_len; i++) {
+    for (size_t i = 0; i < lks->s_len; i++) {
         if (match_delim(lks->s + i, delim, delim_len)) {
             lk_stringlist_append_lkstring(sl, segment);
             segment = lk_string_new("");
@@ -203,7 +222,7 @@ pub LKStringList *lk_string_split(LKString *lks, char *delim) {
 }
 
 // Given a "k<delim>v" string, assign k and v.
-pub void lk_string_split_assign(LKString *s, char *delim, LKString *k, LKString *v) {
+pub void lk_string_split_assign(LKString *s, const char *delim, LKString *k, LKString *v) {
     LKStringList *ss = lk_string_split(s, delim);
     if (k != NULL) {
         lk_string_assign(k, ss->items[0]->s);
@@ -233,8 +252,8 @@ pub LKStringList *lk_stringlist_new() {
 pub void lk_stringlist_free(LKStringList *sl) {
     assert(sl->items != NULL);
 
-    for (int i=0; i < sl->items_len; i++) {
-        lkstring.lk_string_free(sl->items[i]);
+    for (size_t i = 0; i < sl->items_len; i++) {
+        lk_string_free(sl->items[i]);
     }
     memset(sl->items, 0, sl->items_size * sizeof(LKString));
 
@@ -260,20 +279,24 @@ pub void lk_stringlist_append_lkstring(LKStringList *sl, LKString *lks) {
     assert(sl->items_len <= sl->items_size);
 }
 
-pub void lk_stringlist_append(LKStringList *sl, char *s) {
+pub void lk_stringlist_append(LKStringList *sl, const char *s) {
     lk_stringlist_append_lkstring(sl, lk_string_new(s));
 }
 
-pub void lk_stringlist_append_sprintf(LKStringList *sl, const char *fmt, ...) {
-    va_list args;
-    char *ps;
-    va_start(args, fmt);
-    int z = vasprintf(&ps, fmt, args);
-    va_end(args);
-    if (z == -1) return;
+pub void lk_stringlist_append_sprintf(LKStringList *sl, const char *format, ...) {
+    va_list args = {};
+	va_start(args, format);
+	int len = vsnprintf(NULL, 0, format, args);
+	va_end(args);
+	if (len < 0) abort();
+	char *buf = malloc(len + 1);
+	if (!buf) abort();
+	va_start(args, format);
+	vsnprintf(buf, len + 1, format, args);
+	va_end(args);
 
-    lk_stringlist_append(sl, ps);
-    free(ps);
+    lk_stringlist_append(sl, buf);
+    free(buf);
 }
 
 pub LKString *lk_stringlist_get(LKStringList *sl, uint32_t i) {
@@ -286,7 +309,7 @@ pub void lk_stringlist_remove(LKStringList *sl, uint32_t i) {
     if (sl->items_len == 0) return;
     if (i >= sl->items_len) return;
 
-    lkstring.lk_string_free(sl->items[i]);
+    lk_string_free(sl->items[i]);
 
     int num_items_after = sl->items_len-i-1;
     memmove(sl->items+i, sl->items+i+1, num_items_after * sizeof(LKString));

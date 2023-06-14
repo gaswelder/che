@@ -1,10 +1,13 @@
 #import strings
 
+#import lkalloc.c
 #import lkbuffer.c
 #import lklib.c
 #import lknet.c
 #import lkstringtable.c
 #import request.c
+
+#define LK_BUFSIZE_MEDIUM 1024
 
 pub void parse_cgi_output(lkbuffer.LKBuffer *buf, request.LKHttpResponse *resp) {
     char cgiline[LK_BUFSIZE_MEDIUM];

@@ -44,7 +44,6 @@ void handle_sigchld(int sig);
 void read_request_from_client(int clientfd);
 void process_line(clientctx_t *ctx, char *line);
 void process_req(LKHttpRequest *req, LKHttpResponse *resp);
-int is_valid_http_method(char *method);
 char *fileext(char *filepath);
 
 void send_response_to_client(int clientfd);
@@ -594,3 +593,18 @@ void terminate_client_session(int clientfd) {
 }
 
 
+int is_valid_http_method(char *method) {
+    if (method == NULL) {
+        return 0;
+    }
+
+    if (!strings.casecmp(method, "GET")      ||
+        !strings.casecmp(method, "POST")     ||
+        !strings.casecmp(method, "PUT")      ||
+        !strings.casecmp(method, "DELETE")   ||
+        !strings.casecmp(method, "HEAD"))  {
+        return 1;
+    }
+
+    return 0;
+}

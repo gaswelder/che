@@ -101,21 +101,3 @@ pub int lk_socketreader_recv(LKSocketReader *sr, lkbuffer.LKBuffer *buf_dest) {
     }
     return z;
 }
-
-void lk_socketreader_debugprint(LKSocketReader *sr) {
-    printf("buf_size: %ld\n", sr->buf->bytes_size);
-    printf("buf_len: %ld\n", sr->buf->bytes_len);
-    printf("buf cur: %ld\n", sr->buf->bytes_cur);
-    printf("sockclosed: %d\n", sr->sockclosed);
-    debugprint_buf(sr->buf->bytes, sr->buf->bytes_size);
-    printf("\n");
-}
-
-void debugprint_buf(char *buf, size_t buf_size) {
-    printf("buf: ");
-    for (int i=0; i < buf_size; i++) {
-        putchar(buf[i]);
-    }
-    putchar('\n');
-    printf("buf_size: %ld\n", buf_size);
-}

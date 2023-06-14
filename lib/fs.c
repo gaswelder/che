@@ -1,7 +1,7 @@
 #include <limits.h>
 #include <stdlib.h>
 
-pub bool *realpath(const char *path, char *buf, size_t n) {
+pub bool realpath(const char *path, char *buf, size_t n) {
     char tmp[PATH_MAX] = {};
     if (!OS.realpath(path, buf)) {
         return false;

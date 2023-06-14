@@ -1,5 +1,6 @@
 #import fs
 
+#import lkalloc.c
 #import lkhostconfig.c
 #import lklib.c
 #import lkstring.c
@@ -28,7 +29,7 @@ pub LKConfig *lk_config_new() {
 pub void lk_config_free(LKConfig *cfg) {
     lkstring.lk_string_free(cfg->serverhost);
     lkstring.lk_string_free(cfg->port);
-    for (int i=0; i < cfg->hostconfigs_len; i++) {
+    for (size_t i = 0; i < cfg->hostconfigs_len; i++) {
         lkhostconfig.LKHostConfig *hc = cfg->hostconfigs[i];
         lk_hostconfig_free(hc);
     }
@@ -86,7 +87,7 @@ enum {CFG_ROOT, CFG_HOSTSECTION};
 pub int lk_config_read_configfile(LKConfig *cfg, char *configfile) {
     FILE *f = fopen(configfile, "r");
     if (f == NULL) {
-        lklib.lklib.lk_print_err("lk_read_configfile fopen()");
+        lklib.lk_print_err("lk_read_configfile fopen()");
         return -1;
     }
 
@@ -199,7 +200,7 @@ pub lkhostconfig.LKHostConfig *lk_config_add_hostconfig(LKConfig *cfg, lkhostcon
 // Return NULL if no matching hostconfig.
 pub lkhostconfig.LKHostConfig *lk_config_find_hostconfig(LKConfig *cfg, char *hostname) {
     if (hostname != NULL) {
-        for (int i=0; i < cfg->hostconfigs_len; i++) {
+        for (size_t i = 0; i < cfg->hostconfigs_len; i++) {
             lkhostconfig.LKHostConfig *hc = cfg->hostconfigs[i];
             if (lkstring.lk_string_sz_equal(hc->hostname, hostname)) {
                 return hc;
@@ -207,7 +208,7 @@ pub lkhostconfig.LKHostConfig *lk_config_find_hostconfig(LKConfig *cfg, char *ho
         }
     }
     // If hostname not found, return hostname * (fallthrough hostname).
-    for (int i=0; i < cfg->hostconfigs_len; i++) {
+    for (size_t i = 0; i < cfg->hostconfigs_len; i++) {
         lkhostconfig.LKHostConfig *hc = cfg->hostconfigs[i];
         if (lkstring.lk_string_sz_equal(hc->hostname, "*")) {
             return hc;
@@ -218,7 +219,7 @@ pub lkhostconfig.LKHostConfig *lk_config_find_hostconfig(LKConfig *cfg, char *ho
 
 // Return hostconfig with hostname or NULL if not found.
 pub lkhostconfig.LKHostConfig *get_hostconfig(LKConfig *cfg, char *hostname) {
-    for (int i=0; i < cfg->hostconfigs_len; i++) {
+    for (size_t i = 0; i < cfg->hostconfigs_len; i++) {
         lkhostconfig.LKHostConfig *hc = cfg->hostconfigs[i];
         if (lkstring.lk_string_sz_equal(hc->hostname, hostname)) {
             return hc;
@@ -242,9 +243,9 @@ pub void lk_config_print(LKConfig *cfg) {
     printf("serverhost: %s\n", cfg->serverhost->s);
     printf("port: %s\n", cfg->port->s);
 
-    for (int i=0; i < cfg->hostconfigs_len; i++) {
+    for (size_t i = 0; i < cfg->hostconfigs_len; i++) {
         lkhostconfig.LKHostConfig *hc = cfg->hostconfigs[i];
-        printf("%2d. hostname %s\n", i+1, hc->hostname->s);
+        printf("%2lu. hostname %s\n", i+1, hc->hostname->s);
         if (hc->homedir->s_len > 0) {
             printf("    homedir: %s\n", hc->homedir->s);
         }
@@ -254,7 +255,7 @@ pub void lk_config_print(LKConfig *cfg) {
         if (hc->proxyhost->s_len > 0) {
             printf("    proxyhost: %s\n", hc->proxyhost->s);
         }
-        for (int j=0; j < hc->aliases->items_len; j++) {
+        for (size_t j = 0; j < hc->aliases->items_len; j++) {
             printf("    alias %s=%s\n", hc->aliases->items[j].k->s, hc->aliases->items[j].v->s);
         }
     }
@@ -274,7 +275,7 @@ pub void lk_config_finalize(LKConfig *cfg) {
 
     // Get current working directory.
     lkstring.LKString *current_dir = lkstring.lk_string_new("");
-    char *s = OS.get_current_dir_name();
+    char *s = get_current_dir_name();
     if (s != NULL) {
         lkstring.lk_string_assign(current_dir, s);
         free(s);
@@ -299,7 +300,7 @@ pub void lk_config_finalize(LKConfig *cfg) {
     // Set homedir absolute paths for hostconfigs.
     // Adjust /cgi-bin/ paths.
     char homedir_abspath[PATH_MAX];
-    for (int i=0; i < cfg->hostconfigs_len; i++) {
+    for (size_t i = 0; i < cfg->hostconfigs_len; i++) {
         lkhostconfig.LKHostConfig *hc = cfg->hostconfigs[i];
 
         // Skip hostconfigs that don't have have homedir.
@@ -364,4 +365,8 @@ pub void lk_hostconfig_free(lkhostconfig.LKHostConfig *hc) {
     hc->proxyhost = NULL;
 
     lkalloc.lk_free(hc);
+}
+
+char *get_current_dir_name() {
+    return "todo";
 }

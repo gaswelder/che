@@ -7,6 +7,8 @@
 #include "lklib.h"
 #include "lknet.h"
 
+#define LK_BUFSIZE_XXL 8192
+
 void lkstring_test();
 void lkstringmap_test();
 void lkbuffer_test();
@@ -231,18 +233,6 @@ void lkstringmap_test() {
     lk_stringtable_set(st, "hij", "HIJ");
     lk_stringtable_set(st, "klm", "KLM");
     assert(st->items_len == 5);
-
-    lk_stringtable_remove(st, "ab");
-    assert(st->items_len == 5);
-    lk_stringtable_remove(st, "");
-    assert(st->items_len == 5);
-    lk_stringtable_remove(st, "ghi");
-    assert(st->items_len == 4);
-    lk_stringtable_remove(st, "klm");
-    assert(st->items_len == 3);
-    lk_stringtable_remove(st, "hij");
-    lk_stringtable_remove(st, "hij");
-    assert(st->items_len == 2);
 
     lk_stringtable_set(st, "123", "one two three");
     lk_stringtable_set(st, "  ", "space space");

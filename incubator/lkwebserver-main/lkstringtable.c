@@ -25,7 +25,7 @@ pub LKStringTable *lk_stringtable_new() {
 pub void lk_stringtable_free(LKStringTable *st) {
     assert(st->items != NULL);
 
-    for (int i=0; i < st->items_len; i++) {
+    for (size_t i = 0; i < st->items_len; i++) {
         lkstring.lk_string_free(st->items[i].k);
         lkstring.lk_string_free(st->items[i].v);
     }
@@ -36,11 +36,11 @@ pub void lk_stringtable_free(LKStringTable *st) {
     lkalloc.lk_free(st);
 }
 
-pub void lk_stringtable_set(LKStringTable *st, char *ks, char *v) {
+pub void lk_stringtable_set(LKStringTable *st, const char *ks, const char *v) {
     assert(st->items_size >= st->items_len);
 
     // If item already exists, overwrite it.
-    for (int i=0; i < st->items_len; i++) {
+    for (size_t i = 0; i < st->items_len; i++) {
         if (lkstring.lk_string_sz_equal(st->items[i].k, ks)) {
             lkstring.lk_string_assign(st->items[i].v, v);
             return;
@@ -60,26 +60,11 @@ pub void lk_stringtable_set(LKStringTable *st, char *ks, char *v) {
     st->items_len++;
 }
 
-pub char *lk_stringtable_get(LKStringTable *st, char *ks) {
-    for (int i=0; i < st->items_len; i++) {
+pub char *lk_stringtable_get(LKStringTable *st, const char *ks) {
+    for (size_t i = 0; i < st->items_len; i++) {
         if (lkstring.lk_string_sz_equal(st->items[i].k, ks)) {
             return st->items[i].v->s;
         }
     }
     return NULL;
-}
-
-void lk_stringtable_remove(LKStringTable *st, char *ks) {
-    for (int i=0; i < st->items_len; i++) {
-        if (lkstring.lk_string_sz_equal(st->items[i].k, ks)) {
-            lkstring.lk_string_free(st->items[i].k);
-            lkstring.lk_string_free(st->items[i].v);
-
-            int num_items_after = st->items_len-i-1;
-            memmove(st->items+i, st->items+i+1, num_items_after * sizeof(LKStringTableItem));
-            memset(st->items+st->items_len-1, 0, sizeof(LKStringTableItem));
-            st->items_len--;
-            return;
-        }
-    }
 }
