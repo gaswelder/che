@@ -1,12 +1,12 @@
 #import lkalloc.c
-#import lklib.c
 #import lkbuffer.c
+#import lkstring.c
 #import request.c
 
 enum {FD_SOCK, FD_FILE};
 
 // Function return values:
-// Z_OPEN (fd still open)
+// Z_OPEN (fd still OS.open)
 // Z_EOF (end of file)
 // Z_ERR (errno set with error detail)
 // Z_BLOCK (fd blocked, no data)
@@ -29,20 +29,9 @@ pub void lk_chomp(char* s) {
     }
 }
 
-pub void lk_set_sock_nonblocking(int sock) {
-    fcntl(sock, F_SETFL, O_NONBLOCK);
-}
-
-pub int nonblocking_error(int z) {
-    if (z == -1 && (errno == EAGAIN || errno == EWOULDBLOCK)) {
-        return 1;
-    }
-    return 0;
-}
-
 // Read nonblocking fd count bytes to buf.
 // Returns one of the following:
-//    1 (Z_OPEN) for socket open
+//    1 (Z_OPEN) for socket OS.open
 //    0 (Z_EOF) for EOF
 //   -1 (Z_ERR) for error
 //   -2 (Z_BLOCK) for blocked socket (no data)
@@ -58,9 +47,9 @@ pub int lk_read(int fd, int fd_type, lkbuffer.LKBuffer *buf, size_t count, size_
         if (nblock > sizeof(readbuf)) nblock = sizeof(readbuf);
 
         if (fd_type == FD_SOCK) {
-            z = recv(fd, readbuf, nblock, MSG_DONTWAIT);
+            z = OS.recv(fd, readbuf, nblock, OS.MSG_DONTWAIT);
         } else {
-            z = read(fd, readbuf, nblock);
+            z = OS.read(fd, readbuf, nblock);
         }
         // EOF
         if (z == 0) {
@@ -68,10 +57,10 @@ pub int lk_read(int fd, int fd_type, lkbuffer.LKBuffer *buf, size_t count, size_
             break;
         }
         // interrupt occured during read, retry read.
-        if (z == -1 && errno == EINTR) {
+        if (z == -1 && errno == OS.EINTR) {
             continue;
         }
-        if (z == -1 && (errno == EAGAIN || errno == EWOULDBLOCK)) {
+        if (z == -1 && (errno == OS.EAGAIN || errno == OS.EWOULDBLOCK)) {
             z = Z_BLOCK;
             break;
         }
@@ -110,19 +99,19 @@ pub int lk_read_all(int fd, int fd_type, lkbuffer.LKBuffer *buf) {
     char readbuf[LK_BUFSIZE_LARGE];
     while (1) {
         if (fd_type == FD_SOCK) {
-            z = recv(fd, readbuf, sizeof(readbuf), MSG_DONTWAIT);
+            z = OS.recv(fd, readbuf, sizeof(readbuf), OS.MSG_DONTWAIT);
         } else {
-            z = read(fd, readbuf, sizeof(readbuf));
+            z = OS.read(fd, readbuf, sizeof(readbuf));
         }
         // EOF
         if (z == 0) {
             z = Z_EOF;
             break;
         }
-        if (z == -1 && errno == EINTR) {
+        if (z == -1 && errno == OS.EINTR) {
             continue;
         }
-        if (z == -1 && (errno == EAGAIN || errno == EWOULDBLOCK)) {
+        if (z == -1 && (errno == OS.EAGAIN || errno == OS.EWOULDBLOCK)) {
             z = Z_BLOCK;
             break;
         }
@@ -137,9 +126,7 @@ pub int lk_read_all(int fd, int fd_type, lkbuffer.LKBuffer *buf) {
     assert(z <= 0);
     return z;
 }
-pub int lk_read_all_sock(int fd, lkbuffer.LKBuffer *buf) {
-    return lk_read_all(fd, FD_SOCK, buf);
-}
+
 pub int lk_read_all_file(int fd, lkbuffer.LKBuffer *buf) {
     return lk_read_all(fd, FD_FILE, buf);
 }
@@ -147,12 +134,12 @@ pub int lk_read_all_file(int fd, lkbuffer.LKBuffer *buf) {
 
 // Write count buf bytes to nonblocking fd.
 // Returns one of the following:
-//    1 (Z_OPEN) for socket open
+//    1 (Z_OPEN) for socket OS.open
 //   -1 (Z_ERR) for error
 //   -2 (Z_BLOCK) for blocked socket (no data)
 // On return, nbytes contains the number of bytes written.
 //
-// Note: use open(O_NONBLOCK) to open nonblocking file.
+// Note: use OS.open(O_NONBLOCK) to OS.open nonblocking file.
 pub int lk_write(int fd, int fd_type, lkbuffer.LKBuffer *buf, size_t count, size_t *nbytes) {
     int z;
     if (count > buf->bytes_len) {
@@ -161,15 +148,15 @@ pub int lk_write(int fd, int fd_type, lkbuffer.LKBuffer *buf, size_t count, size
     size_t nwrite = 0;
     while (nwrite < count) {
         if (fd_type == FD_SOCK) {
-            z = send(fd, buf->bytes+nwrite, count-nwrite, MSG_DONTWAIT | MSG_NOSIGNAL);
+            z = OS.send(fd, buf->bytes+nwrite, count-nwrite, OS.MSG_DONTWAIT | OS.MSG_NOSIGNAL);
         } else {
-            z = write(fd, buf->bytes+nwrite, count-nwrite);
+            z = OS.write(fd, buf->bytes+nwrite, count-nwrite);
         }
         // interrupt occured during read, retry read.
-        if (z == -1 && errno == EINTR) {
+        if (z == -1 && errno == OS.EINTR) {
             continue;
         }
-        if (z == -1 && (errno == EAGAIN || errno == EWOULDBLOCK)) {
+        if (z == -1 && (errno == OS.EAGAIN || errno == OS.EWOULDBLOCK)) {
             z = Z_BLOCK;
             break;
         }
@@ -199,7 +186,7 @@ pub int lk_write_file(int fd, lkbuffer.LKBuffer *buf, size_t count, size_t *nbyt
 // Write buf bytes to nonblocking fd.
 // Returns one of the following:
 //    0 (Z_EOF) for all buf bytes sent
-//    1 (Z_OPEN) for socket open
+//    1 (Z_OPEN) for socket OS.open
 //   -1 (Z_ERR) for error
 //   -2 (Z_BLOCK) for blocked socket (no data)
 //
@@ -214,20 +201,20 @@ pub int lk_write_all(int fd, int fd_type, lkbuffer.LKBuffer *buf) {
             break;
         }
         if (fd_type == FD_SOCK) {
-            z = send(fd,
+            z = OS.send(fd,
                      buf->bytes + buf->bytes_cur, 
                      buf->bytes_len - buf->bytes_cur,
-                     MSG_DONTWAIT | MSG_NOSIGNAL);
+                     OS.MSG_DONTWAIT | OS.MSG_NOSIGNAL);
         } else {
-            z = write(fd,
+            z = OS.write(fd,
                       buf->bytes + buf->bytes_cur, 
                       buf->bytes_len - buf->bytes_cur);
         }
         // interrupt occured during read, retry read.
-        if (z == -1 && errno == EINTR) {
+        if (z == -1 && errno == OS.EINTR) {
             continue;
         }
-        if (z == -1 && (errno == EAGAIN || errno == EWOULDBLOCK)) {
+        if (z == -1 && (errno == OS.EAGAIN || errno == OS.EWOULDBLOCK)) {
             z = Z_BLOCK;
             break;
         }
@@ -251,34 +238,16 @@ pub int lk_write_all_file(int fd, lkbuffer.LKBuffer *buf) {
     return lk_write_all(fd, FD_FILE, buf);
 }
 
-pub void debugprint_buf(char *buf, size_t buf_size) {
-    printf("buf: ");
-    for (int i=0; i < buf_size; i++) {
-        putchar(buf[i]);
-    }
-    putchar('\n');
-    printf("buf_size: %ld\n", buf_size);
-}
-
-
-
 
 /*** request.LKHttpRequest functions ***/
 
-pub void lk_httprequest_add_header(request.LKHttpRequest *req, char *k, char *v) {
-    lkstringtable.lk_stringtable_set(req->headers, k, v);
-}
-
-pub void lk_httprequest_append_body(request.LKHttpRequest *req, char *bytes, int bytes_len) {
-    lkbuffer.lk_buffer_append(req->body, bytes, bytes_len);
-}
 
 pub void lk_httprequest_finalize(request.LKHttpRequest *req) {
-    lk_buffer_clear(req->head);
+    lkbuffer.lk_buffer_clear(req->head);
 
     // Default to HTTP version.
-    if (lk_string_sz_equal(req->version, "")) {
-        lk_string_assign(req->version, "HTTP/1.0");
+    if (lkstring.lk_string_sz_equal(req->version, "")) {
+        lkstring.lk_string_assign(req->version, "HTTP/1.0");
     }
     lkbuffer.lk_buffer_append_sprintf(req->head, "%s %s %s\n", req->method->s, req->uri->s, req->version->s);
     if (req->body->bytes_len > 0) {
@@ -307,7 +276,7 @@ pub void lk_httprequest_debugprint(request.LKHttpRequest *req) {
 
     printf("Headers:\n");
     for (int i=0; i < req->headers->items_len; i++) {
-        LKString *v = req->headers->items[i].v;
+        lkstring.LKString *v = req->headers->items[i].v;
         printf("%s: %s\n", req->headers->items[i].k->s, v->s);
     }
 
@@ -328,16 +297,16 @@ pub void lk_httpresponse_add_header(request.LKHttpResponse *resp, char *k, char 
 // Finalize the http response by setting head buffer.
 // Writes the status line, headers and CRLF blank string to head buffer.
 pub void lk_httpresponse_finalize(request.LKHttpResponse *resp) {
-    lk_buffer_clear(resp->head);
+    lkbuffer.lk_buffer_clear(resp->head);
 
     // Default to 200 OK if no status set.
     if (resp->status == 0) {
         resp->status = 200;
-        lk_string_assign(resp->statustext, "OK");
+        lkstring.lk_string_assign(resp->statustext, "OK");
     }
     // Default to HTTP version.
-    if (lk_string_sz_equal(resp->version, "")) {
-        lk_string_assign(resp->version, "HTTP/1.0");
+    if (lkstring.lk_string_sz_equal(resp->version, "")) {
+        lkstring.lk_string_assign(resp->version, "HTTP/1.0");
     }
     lkbuffer.lk_buffer_append_sprintf(resp->head, "%s %d %s\n", resp->version->s, resp->status, resp->statustext->s);
     lkbuffer.lk_buffer_append_sprintf(resp->head, "Content-Length: %ld\n", resp->body->bytes_len);
@@ -362,7 +331,7 @@ pub void lk_httpresponse_debugprint(request.LKHttpResponse *resp) {
 
     printf("Headers:\n");
     for (int i=0; i < resp->headers->items_len; i++) {
-        LKString *v = resp->headers->items[i].v;
+        lkstring.LKString *v = resp->headers->items[i].v;
         printf("%s: %s\n", resp->headers->items[i].k->s, v->s);
     }
 
@@ -373,48 +342,6 @@ pub void lk_httpresponse_debugprint(request.LKHttpResponse *resp) {
     printf("\n---\n");
 }
 
-// Open and read entire file contents into buf.
-// Return number of bytes read or -1 for error.
-pub ssize_t lk_readfile(char *filepath, lkbuffer.LKBuffer *buf) {
-    int fd = open(filepath, O_RDONLY);
-    if (fd == -1) {
-        return -1;
-    }
-    int z = lk_readfd(fd, buf);
-    if (z == -1) {
-        int tmperrno = errno;
-        close(fd);
-        errno = tmperrno;
-        return z;
-    }
-
-    close(fd);
-    return z;
-}
-
-// Read entire file descriptor contents into buf.
-// Return number of bytes read or -1 for error.
-#define TMPBUF_SIZE 512
-pub ssize_t lk_readfd(int fd, lkbuffer.LKBuffer *buf) {
-    char tmpbuf[TMPBUF_SIZE];
-
-    int nread = 0;
-    while (1) {
-        int z = read(fd, tmpbuf, TMPBUF_SIZE);
-        if (z == -1 && errno == EINTR) {
-            continue;
-        }
-        if (z == -1) {
-            return z;
-        }
-        if (z == 0) {
-            break;
-        }
-        lkbuffer.lk_buffer_append(buf, tmpbuf, z);
-        nread += z;
-    }
-    return nread;
-}
 
 // Append src to dest, allocating new memory in dest if needed.
 // Return new pointer to dest.

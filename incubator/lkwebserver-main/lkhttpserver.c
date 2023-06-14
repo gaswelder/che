@@ -9,9 +9,9 @@
 #import lkbuffer.c
 #import lkconfig.c
 #import lkcontext.c
+#import lkhostconfig.c
 #import lkhttpcgiparser.c
 #import lkhttprequestparser.c
-#import lkhostconfig.c
 #import lklib.c
 #import lknet.c
 #import lkreflist.c
@@ -21,23 +21,21 @@
 #import socketreader.c
 
 
+#define LK_BUFSIZE_SMALL 512
+
 enum {FD_SOCK, FD_FILE};
 
-/*** LKContext ***/
-enum {
-    CTX_READ_REQ,
-    CTX_READ_CGI_OUTPUT,
-    CTX_WRITE_CGI_INPUT,
-    CTX_WRITE_RESP,
-    CTX_PROXY_WRITE_REQ,
-    CTX_PROXY_PIPE_RESP
-}; // LKContextType;
+const int MAX_CLIENTS = 1000;
 
 pub typedef {
     lkconfig.LKConfig *cfg;
     lkcontext.LKContext *ctxhead;
+    
     // The listening connection.
     net.net_t *listen_conn;
+
+    // Sparse list of client connections.
+    net.net_t *clients[MAX_CLIENTS];
 } LKHttpServer;
 
 pub int lk_httpserver_serve(lkconfig.LKConfig *cfg) {
@@ -55,32 +53,12 @@ pub int lk_httpserver_serve(lkconfig.LKConfig *cfg) {
     printf("Serving HTTP at %s\n", addr);
     free(addr);
 
-    clearenv();
+    OS.clearenv();
     set_cgi_env1(httpserver);
 
     while (true) {
-        // put all connections into set
-        net.net_t *set[100] = {};
-        int n = 0;
-        for (int i = 0; i < 100; i++) {
-            if (!server->connections[i]) {
-                continue;
-            }
-            set[n++] = connections[i];
-            if (n == 100) {
-                abort("too many connections");
-            }
-        }
-
-        if (!net.update_status(set)) {
-            if (errno == EINTR) {
-                continue;
-            }
-            lklib.lk_print_err("select()");
-            return -1;
-        }
-
-        if (server->connections[0]->is_readable) {
+        // Check the listening connection and accept if there is something.
+        if (net.has_data(server->listen_conn)) {
             net.net_t *client = net.net_accept(server->listen_conn);
             if (!client) {
                 lklib.lk_print_err("accept()");
@@ -90,25 +68,51 @@ pub int lk_httpserver_serve(lkconfig.LKConfig *cfg) {
             int clientfd = client->sock;
             lkcontext.LKContext *ctx = lkcontext.create_initial_context(clientfd);
             lkcontext.add_new_client_context(&server->ctxhead, ctx);
+            continue;
         }
 
-        for (int i = 1; i < 100; i++) {
+        // Check all client connections.
+        net.net_t *set[MAX_CLIENTS] = {};
+        int n = 0;
+        for (int i = 0; i < MAX_CLIENTS; i++) {
+            if (!server->clients[i]) {
+                continue;
+            }
+            set[n++] = server->clients[i];
+            if (n == MAX_CLIENTS) {
+                abort("too many connections");
+            }
+        }
+        if (!net.update_status(set)) {
+            if (errno == OS.EINTR) {
+                continue;
+            }
+            lklib.lk_print_err("select()");
+            return -1;
+        }
+        for (int i = 1; i < MAX_CLIENTS; i++) {
             net.net_t *conn = set[i];
             if (!conn) {
                 continue;
+            }
+            // hack
+            int selectfd = client->fd;
+            lkcontext.LKContext *ctx = lkcontext.match_select_ctx(server->ctxhead, selectfd);
+            if (ctx == NULL) {
+                printf("selectfd %d not in ctx list\n", selectfd);
+                terminate_sock(selectfd, FD_READ, httpserver);
+                return;
             }
             if (conn->is_readable) {
                 read_client();
             }
             if (conn->is_writable) {
-                write();
+                write_client();
             }
         }
     }
 
     lkconfig.lk_config_free(server->cfg);
-
-    // Free ctx linked list
     lkcontext.LKContext *ctx = server->ctxhead;
     while (ctx != NULL) {
         lkcontext.LKContext *ptmp = ctx;
@@ -119,13 +123,43 @@ pub int lk_httpserver_serve(lkconfig.LKConfig *cfg) {
     return 0;
 }
 
+void read_client(LKHttpServer *server, lkcontext.LKContext *ctx, net.net_t *client) {
+    if (ctx->type == lkcontext.CTX_READ_REQ) {
+        read_request(server, ctx);
+    } else if (ctx->type == lkcontext.CTX_READ_CGI_OUTPUT) {
+        read_cgi_output(server, ctx);
+    } else if (ctx->type == lkcontext.CTX_PROXY_PIPE_RESP) {
+        pipe_proxy_response(server, ctx);
+    } else {
+        printf("read_client: unknown ctx type %d\n", ctx->type);
+    }
+}
+
+void write_client(LKHttpServer *server, lkcontext.LKContext *ctx, net.net_t *client) {
+    if (ctx->type == lkcontext.CTX_WRITE_RESP) {
+        assert(ctx->resp != NULL);
+        assert(ctx->resp->head != NULL);
+        write_response(server, ctx);
+    } else if (ctx->type == lkcontext.CTX_WRITE_CGI_INPUT) {
+        write_cgi_input(server, ctx);
+    } else if (ctx->type == lkcontext.CTX_PROXY_WRITE_REQ) {
+        assert(ctx->req != NULL);
+        assert(ctx->req->head != NULL);
+        write_proxy_request(server, ctx);
+    } else {
+        printf("write_client: unknown ctx type %d\n", ctx->type);
+    }
+}
+
+
+
 // Sets the cgi environment variables that stay the same across http requests.
 void set_cgi_env1(LKHttpServer *server) {
     int z;
     lkconfig.LKConfig *cfg = server->cfg;
 
     char hostname[LK_BUFSIZE_SMALL];
-    z = gethostname(hostname, sizeof(hostname)-1);
+    z = OS.gethostname(hostname, sizeof(hostname)-1);
     if (z == -1) {
         lklib.lk_print_err("gethostname()");
         hostname[0] = '\0';
@@ -180,16 +214,18 @@ void set_cgi_env2(LKHttpServer *server, lkcontext.LKContext *ctx, lkhostconfig.L
     misc.setenv("REMOTE_PORT", portstr, 1);
 }
 
-void read_request(LKHttpServer *server, lkcontext.LKContext *ctx) {
+void read_request(LKHttpServer *server, lkcontext.LKContext *ctx, net.net_t *client_conn) {
     int z = 0;
-
+    char buf[4096] = {0};
     while (1) {
         if (!ctx->reqparser->head_complete) {
-            z = socketreader.lk_socketreader_readline(ctx->sr, ctx->req_line);
-            if (z == lknet.Z_ERR) {
+            if (!net.net_gets(buf, sizeof(buf), client_conn)) {
                 lklib.lk_print_err("lksocketreader_readline()");
                 break;
             }
+            // lksocketreader.LKSocketReader *sr = ctx->sr;
+            lkstring.LKString *line = ctx->req_line;
+            lkstring.lk_string_assign(line, buf);          
             lkhttprequestparser.lk_httprequestparser_parse_line(ctx->reqparser, ctx->req_line, ctx->req);
         } else {
             z = socketreader.lk_socketreader_recv(ctx->sr, ctx->req_buf);
@@ -205,7 +241,7 @@ void read_request(LKHttpServer *server, lkcontext.LKContext *ctx) {
         }
         if (ctx->reqparser->body_complete) {
             // FD_CLR_READ(ctx->selectfd, server);
-            shutdown(ctx->selectfd, SHUT_RD);
+            // shutdown(ctx->selectfd, SHUT_RD);
             process_request(server, ctx);
             break;
         }
@@ -423,12 +459,12 @@ void serve_cgi(LKHttpServer *server, lkcontext.LKContext *ctx, lkhostconfig.LKHo
         return;
     }
 
-    close(fd_in);
+    OS.close(fd_in);
 
     // Read cgi output in select()
     ctx->selectfd = fd_out;
     ctx->cgifd = fd_out;
-    ctx->type = CTX_READ_CGI_OUTPUT;
+    ctx->type = lkcontext.CTX_READ_CGI_OUTPUT;
     ctx->cgi_outputbuf = lkbuffer.lk_buffer_new(0);
 
     // If req is POST with body, pass it to cgi process stdin.
@@ -439,7 +475,7 @@ void serve_cgi(LKHttpServer *server, lkcontext.LKContext *ctx, lkhostconfig.LKHo
         ctx_in->selectfd = fd_in;
         ctx_in->cgifd = fd_in;
         ctx_in->clientfd = ctx->clientfd;
-        ctx_in->type = CTX_WRITE_CGI_INPUT;
+        ctx_in->type = lkcontext.CTX_WRITE_CGI_INPUT;
 
         ctx_in->cgi_inputbuf = lkbuffer.lk_buffer_new(0);
         lkbuffer.lk_buffer_append(ctx_in->cgi_inputbuf, req->body->bytes, req->body->bytes_len);
@@ -472,7 +508,7 @@ void process_response(LKHttpServer *server, lkcontext.LKContext *ctx) {
     }
 
     ctx->selectfd = ctx->clientfd;
-    ctx->type = CTX_WRITE_RESP;
+    ctx->type = lkcontext.CTX_WRITE_RESP;
     // FD_SET_WRITE(ctx->selectfd, server);
     lkreflist.lk_reflist_clear(ctx->buflist);
     lkreflist.lk_reflist_append(ctx->buflist, resp->head);
@@ -490,23 +526,9 @@ void process_error_response(LKHttpServer *server, lkcontext.LKContext *ctx, int 
     process_response(server, ctx);
 }
 
-// Open <home_dir>/<uri> file in nonblocking mode.
-// Returns 0 for success, -1 for error.
-int open_path_file(char *home_dir, char *path) {
-    // full_path = home_dir + path
-    // Ex. "/path/to" + "/index.html"
-    lkstring.LKString *full_path = lkstring.lk_string_new(home_dir);
-    lkstring.lk_string_append(full_path, path);
-
-    int z = open(full_path->s, O_RDONLY | O_NONBLOCK);
-    lkstring.lk_string_free(full_path);
-    return z;
-}
-
 // Read <home_dir>/<uri> file into buffer.
 // Return number of bytes read or -1 for error.
 int read_path_file(char *home_dir, char *path, lkbuffer.LKBuffer *buf) {
-    int z;
     // full_path = home_dir + path
     // Ex. "/path/to" + "/index.html"
     lkstring.LKString *full_path = lkstring.lk_string_new(home_dir);
@@ -518,14 +540,21 @@ int read_path_file(char *home_dir, char *path, lkbuffer.LKBuffer *buf) {
     // real_path should start with home_dir
     if (!pathok || strncmp(real_path, home_dir, strlen(home_dir))) {
         lkstring.lk_string_free(full_path);
-        z = -1;
-        errno = EPERM;
-        return z;
+        return -1;
     }
 
-    z = lknet.lk_readfile(real_path, buf);
+    // Open and read entire file contents into buf.
+    // Return number of bytes read or -1 for error.
+    size_t size = 0;
+    char *data = fileutil.readfile(real_path, &size);
+    if (!data) {
+        lkstring.lk_string_free(full_path);
+        return -1;
+    }
+    lkbuffer.lk_buffer_append(buf, data, size);
+    free(data);
     lkstring.lk_string_free(full_path);
-    return z;
+    return (int) size;
 }
 
 int is_valid_http_method(char *method) {
@@ -593,7 +622,7 @@ void serve_proxy(LKHttpServer *server, lkcontext.LKContext *ctx, char *targethos
     lknet.lk_httprequest_finalize(ctx->req);
     ctx->proxyfd = proxyfd;
     ctx->selectfd = proxyfd;
-    ctx->type = CTX_PROXY_WRITE_REQ;
+    ctx->type = lkcontext.CTX_PROXY_WRITE_REQ;
     // FD_SET_WRITE(proxyfd, server);
     lkreflist.lk_reflist_clear(ctx->buflist);
     lkreflist.lk_reflist_append(ctx->buflist, ctx->req->head);
@@ -620,7 +649,7 @@ void write_proxy_request(LKHttpServer *server, lkcontext.LKContext *ctx) {
         // shutdown(ctx->selectfd, SHUT_WR);
 
         // Pipe proxy response from ctx->proxyfd to ctx->clientfd
-        ctx->type = CTX_PROXY_PIPE_RESP;
+        ctx->type = lkcontext.CTX_PROXY_PIPE_RESP;
         ctx->proxy_respbuf = lkbuffer.lk_buffer_new(0);
         // FD_SET_READ(ctx->selectfd, server);
     }
@@ -681,7 +710,7 @@ enum {
     FD_READWRITE
 }; // fd_action
 
-// Clear fd from select()'s, shutdown, and close.
+// Clear fd from select()'s, shutdown, and OS.close.
 int terminate_fd(int fd, int fd_action, LKHttpServer *server) {
     int z;
     if (fd_action == FD_READ || fd_action == FD_READWRITE) {
@@ -690,9 +719,9 @@ int terminate_fd(int fd, int fd_action, LKHttpServer *server) {
     if (fd_action == FD_WRITE || fd_action == FD_READWRITE) {
         // FD_CLR_WRITE(fd, server);
     }
-    z = close(fd);
+    z = OS.close(fd);
     if (z == -1) {
-        lklib.lk_print_err("close()");
+        lklib.lk_print_err("OS.close()");
     }
     return z;
 }
@@ -704,9 +733,9 @@ int terminate_sock(int fd, int fd_action, LKHttpServer *server) {
     if (fd_action == FD_WRITE || fd_action == FD_READWRITE) {
         // FD_CLR_WRITE(fd, server);
     }
-    int z = close(fd);
+    int z = OS.close(fd);
     if (z == -1) {
-        lklib.lk_print_err("close()");
+        lklib.lk_print_err("OS.close()");
     }
     return z;
 }
@@ -726,52 +755,7 @@ void terminate_client_session(LKHttpServer *server, lkcontext.LKContext *ctx) {
     lkcontext.remove_client_context(&server->ctxhead, ctx->clientfd);
 }
 
-void read_client(LKHttpServer *server, net.net_t *client) {
-    // hack
-    //printf("read fd %d\n", i);
-    int selectfd = client->fd;
 
-    lkcontext.LKContext *ctx = lkcontext.match_select_ctx(server->ctxhead, selectfd);
-    if (ctx == NULL) {
-        printf("read selectfd %d not in ctx list\n", selectfd);
-        terminate_sock(selectfd, FD_READ, server);
-        continue;
-    }
-    if (ctx->type == CTX_READ_REQ) {
-        read_request(server, ctx);
-    } else if (ctx->type == CTX_READ_CGI_OUTPUT) {
-        read_cgi_output(server, ctx);
-    } else if (ctx->type == CTX_PROXY_PIPE_RESP) {
-        pipe_proxy_response(server, ctx);
-    } else {
-        printf("read selectfd %d with unknown ctx type %d\n", selectfd, ctx->type);
-    }
-}
-
-void write_client(LKHttpServer *server, net.net_t *client) {
-    // hack
-    int selectfd = client->fd;
-    lkcontext.LKContext *ctx = lkcontext.match_select_ctx(server->ctxhead, selectfd);
-    if (ctx == NULL) {
-        printf("write selectfd %d not in ctx list\n", selectfd);
-        terminate_sock(selectfd, FD_WRITE, server);
-        continue;
-    }
-
-    if (ctx->type == CTX_WRITE_RESP) {
-        assert(ctx->resp != NULL);
-        assert(ctx->resp->head != NULL);
-        write_response(server, ctx);
-    } else if (ctx->type == CTX_WRITE_CGI_INPUT) {
-        write_cgi_input(server, ctx);
-    } else if (ctx->type == CTX_PROXY_WRITE_REQ) {
-        assert(ctx->req != NULL);
-        assert(ctx->req->head != NULL);
-        write_proxy_request(server, ctx);
-    } else {
-        printf("write selectfd %d with unknown ctx type %d\n", selectfd, ctx->type);
-    }
-}
 
 // localtime in server format: 11/Mar/2023 14:05:46
 void get_localtime_string(char *buf, size_t size) {
@@ -784,7 +768,7 @@ void get_localtime_string(char *buf, size_t size) {
 // Uses buf as buffer for queued up bytes waiting to be written.
 // Returns one of the following:
 //    0 (lknet.Z_EOF) for read/write complete.
-//    1 (lknet.Z_OPEN) for writefd socket open
+//    1 (lknet.Z_OPEN) for writefd socket OS.open
 //   -1 (lknet.Z_ERR) for read/write error.
 //   -2 (lknet.Z_BLOCK) for blocked readfd/writefd socket
 int lk_pipe_all(int readfd, int writefd, int fd_type, lkbuffer.LKBuffer *buf) {
@@ -813,4 +797,122 @@ int lk_pipe_all(int readfd, int writefd, int fd_type, lkbuffer.LKBuffer *buf) {
         writez = lknet.Z_OPEN;
     }
     return writez;
+}
+
+// Like popen() but returning input, output, error fds for cmd.
+int lk_popen3(char *cmd, int *fd_in, int *fd_out, int *fd_err) {
+    int z;
+    int in[2] = {0, 0};
+    int out[2] = {0, 0};
+    int err[2] = {0, 0};
+
+    z = OS.pipe(in);
+    if (z == -1) {
+        return z;
+    }
+    z = OS.pipe(out);
+    if (z == -1) {
+        close_pipes(in, out, err);
+        return z;
+    }
+    z = OS.pipe(err);
+    if (z == -1) {
+        close_pipes(in, out, err);
+        return z;
+    }
+
+    int pid = OS.fork();
+    if (pid == 0) {
+        // child proc
+        z = OS.dup2(in[0], OS.STDIN_FILENO);
+        if (z == -1) {
+            close_pipes(in, out, err);
+            return z;
+        }
+        z = OS.dup2(out[1], OS.STDOUT_FILENO);
+        if (z == -1) {
+            close_pipes(in, out, err);
+            return z;
+        }
+        // If fd_err parameter provided, use separate fd for stderr.
+        // If fd_err is NULL, combine stdout and stderr into fd_out.
+        if (fd_err != NULL) {
+            z = OS.dup2(err[1], OS.STDERR_FILENO);
+            if (z == -1) {
+                close_pipes(in, out, err);
+                return z;
+            }
+        } else {
+            z = OS.dup2(out[1], OS.STDERR_FILENO);
+            if (z == -1) {
+                close_pipes(in, out, err);
+                return z;
+            }
+        }
+
+        close_pipes(in, out, err);
+        z = OS.execl("/bin/sh", "sh",  "-c", cmd, NULL);
+        return z;
+    }
+
+    // parent proc
+    if (fd_in != NULL) {
+        *fd_in = in[1]; // return the other end of the OS.dup2() OS.pipe
+    }
+    OS.close(in[0]);
+
+    if (fd_out != NULL) {
+        *fd_out = out[0];
+    }
+    OS.close(out[1]);
+
+    if (fd_err != NULL) {
+        *fd_err = err[0];
+    }
+    OS.close(err[1]);
+
+    return 0;
+}
+
+void close_pipes(int pair1[2], int pair2[2], int pair3[2]) {
+    int z;
+    int tmp_errno = errno;
+    if (pair1[0] != 0) {
+        z = OS.close(pair1[0]);
+        if (z == 0) {
+            pair1[0] = 0;
+        }
+    }
+    if (pair1[1] != 0) {
+        z = OS.close(pair1[1]);
+        if (z == 0) {
+            pair1[1] = 0;
+        }
+    }
+    if (pair2[0] != 0) {
+        z = OS.close(pair2[0]);
+        if (z == 0) {
+            pair2[0] = 0;
+        }
+    }
+    if (pair2[1] != 0) {
+        z = OS.close(pair2[1]);
+        if (z == 0) {
+            pair2[1] = 0;
+        }
+    }
+    if (pair3[0] != 0) {
+        z = OS.close(pair3[0]);
+        if (z == 0) {
+            pair3[0] = 0;
+        }
+    }
+    if (pair3[1] != 0) {
+        z = OS.close(pair3[1]);
+        if (z == 0) {
+            pair3[1] = 0;
+        }
+    }
+    errno = tmp_errno;
+    return;
 }

@@ -42,7 +42,7 @@ pub void lk_stringtable_set(LKStringTable *st, char *ks, char *v) {
     // If item already exists, overwrite it.
     for (int i=0; i < st->items_len; i++) {
         if (lkstring.lk_string_sz_equal(st->items[i].k, ks)) {
-            lk_string_assign(st->items[i].v, v);
+            lkstring.lk_string_assign(st->items[i].v, v);
             return;
         }
     }

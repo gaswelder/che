@@ -1,3 +1,5 @@
+#import strings
+
 #define ALLOCITEMS_SIZE 8192
 
 typedef {
@@ -71,13 +73,7 @@ pub void lk_free(void *p) {
 }
 
 pub char *lk_strdup(const char *s, char *label) {
-    char *sdup = strdup(s);
-    add_p(sdup, label);
-    return sdup;
-}
-
-pub char *lk_strndup(const char *s, size_t n, char *label) {
-    char *sdup = strndup(s, n);
+    char *sdup = strings.newstr("%s", s);
     add_p(sdup, label);
     return sdup;
 }

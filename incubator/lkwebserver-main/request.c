@@ -48,7 +48,11 @@ pub void lk_httprequest_free(LKHttpRequest *req) {
     req->headers = NULL;
     req->head = NULL;
     req->body = NULL;
-    lk_free(req);
+    lkalloc.lk_free(req);
+}
+
+pub void lk_httprequest_add_header(LKHttpRequest *req, char *k, char *v) {
+    lkstringtable.lk_stringtable_set(req->headers, k, v);
 }
 
 
@@ -84,5 +88,5 @@ pub void lk_httpresponse_free(LKHttpResponse *resp) {
     resp->headers = NULL;
     resp->head = NULL;
     resp->body = NULL;
-    lk_free(resp);
+    lkalloc.lk_free(resp);
 }

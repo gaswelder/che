@@ -3,14 +3,22 @@
 #import lkhttprequestparser.c
 #import lkreflist.c
 #import lkstring.c
-#import lklib.c
 #import request.c
 #import socketreader.c
+
+pub enum {
+    CTX_READ_REQ,
+    CTX_READ_CGI_OUTPUT,
+    CTX_WRITE_CGI_INPUT,
+    CTX_WRITE_RESP,
+    CTX_PROXY_WRITE_REQ,
+    CTX_PROXY_PIPE_RESP
+}; // LKContextType;
 
 pub typedef {
     int selectfd;
     int clientfd;
-    LKContextType type;
+    int type;
     LKContext *next;         // link to next ctx
 
     // Used by CTX_READ_REQ:
@@ -19,12 +27,12 @@ pub typedef {
     lkstring.LKString *req_line;               // current lklib line
     lkbuffer.LKBuffer *req_buf;                // current lklib bytes buffer
     socketreader.LKSocketReader *sr;               // input buffer for reading lines
-    LKHttpRequestParser *reqparser;   // parser for httprequest
+    lkhttprequestparser.LKHttpRequestParser *reqparser;   // parser for httprequest
     request.LKHttpRequest *req;               // http lklib in process
 
     // Used by CTX_WRITE_REQ:
     request.LKHttpResponse *resp;             // http response to be sent
-    LKRefList *buflist;               // Buffer list of things to send/recv
+    lkreflist.LKRefList *buflist;               // Buffer list of things to send/recv
 
     // Used by CTX_READ_CGI:
     int cgifd;
@@ -104,7 +112,7 @@ pub void lk_context_free(LKContext *ctx) {
         socketreader.lk_socketreader_free(ctx->sr);
     }
     if (ctx->reqparser) {
-        lk_httprequestparser_free(ctx->reqparser);
+        lkhttprequestparser.lk_httprequestparser_free(ctx->reqparser);
     }
     if (ctx->req) {
         request.lk_httprequest_free(ctx->req);

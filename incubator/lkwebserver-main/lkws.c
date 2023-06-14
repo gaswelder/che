@@ -49,9 +49,10 @@ int main(int argc, char *argv[]) {
         lkstring.lk_string_assign(cfg->serverhost, host);
     }
 
-    signal(SIGPIPE, SIG_IGN);           // Don't abort on SIGPIPE
-    signal(SIGINT, handle_sigint);      // exit on CTRL-C
-    signal(SIGCHLD, handle_sigchld);
+    // TODO
+    // signal(SIGPIPE, SIG_IGN);           // Don't abort on SIGPIPE
+    // signal(SIGINT, handle_sigint);      // exit on CTRL-C
+    // signal(SIGCHLD, handle_sigchld);
 
     if (cgidir) {
         lkhostconfig.LKHostConfig *default_hc = lkconfig.lk_config_create_get_hostconfig(cfg, "*");

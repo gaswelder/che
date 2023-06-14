@@ -7,9 +7,8 @@
 #import lkstring.c
 #import request.c
 
-/*** LKHttpRequestParser ***/
 pub typedef {
-    LKString *partial_line;
+    lkstring.LKString *partial_line;
     size_t nlinesread;
     int head_complete;              // flag indicating header lines complete
     int body_complete;              // flag indicating request body complete
@@ -101,16 +100,16 @@ void parse_request_line(char *line, request.LKHttpRequest *req) {
 
     char *saveptr;
     char *delim = " \t";
-    char *linetmp = lk_strdup(line, "parse_request_line");
+    char *linetmp = lkalloc.lk_strdup(line, "parse_request_line");
     lknet.lk_chomp(linetmp);
     char *p = linetmp;
     while (ntoksread < 3) {
-        toks[ntoksread] = strtok_r(p, delim, &saveptr);
+        toks[ntoksread] = OS.strtok_r(p, delim, &saveptr);
         if (toks[ntoksread] == NULL) {
             break;
         }
         ntoksread++;
-        p = NULL; // for the next call to strtok_r()
+        p = NULL; // for the next call to OS.strtok_r()
     }
 
     char *method = "";
@@ -164,14 +163,14 @@ void parse_header_line(LKHttpRequestParser *parser, char *line, request.LKHttpRe
     char *saveptr;
     char *delim = ":";
 
-    char *linetmp = lk_strdup(line, "parse_header_line");
+    char *linetmp = lkalloc.lk_strdup(line, "parse_header_line");
     lknet.lk_chomp(linetmp);
-    char *k = strtok_r(linetmp, delim, &saveptr);
+    char *k = OS.strtok_r(linetmp, delim, &saveptr);
     if (k == NULL) {
         lkalloc.lk_free(linetmp);
         return;
     }
-    char *v = strtok_r(NULL, delim, &saveptr);
+    char *v = OS.strtok_r(NULL, delim, &saveptr);
     if (v == NULL) {
         v = "";
     }

@@ -86,7 +86,7 @@ enum {CFG_ROOT, CFG_HOSTSECTION};
 pub int lk_config_read_configfile(LKConfig *cfg, char *configfile) {
     FILE *f = fopen(configfile, "r");
     if (f == NULL) {
-        lklib.lk_print_err("lk_read_configfile fopen()");
+        lklib.lklib.lk_print_err("lk_read_configfile fopen()");
         return -1;
     }
 
@@ -274,7 +274,7 @@ pub void lk_config_finalize(LKConfig *cfg) {
 
     // Get current working directory.
     lkstring.LKString *current_dir = lkstring.lk_string_new("");
-    char *s = get_current_dir_name();
+    char *s = OS.get_current_dir_name();
     if (s != NULL) {
         lkstring.lk_string_assign(current_dir, s);
         free(s);
@@ -309,7 +309,7 @@ pub void lk_config_finalize(LKConfig *cfg) {
 
         // Set absolute path to homedir
         if (!fs.realpath(hc->homedir->s, homedir_abspath, sizeof(homedir_abspath))) {
-            lk_print_err("realpath()");
+            lklib.lk_print_err("realpath()");
             homedir_abspath[0] = '\0';
         }
         lkstring.lk_string_assign(hc->homedir_abspath, homedir_abspath);

@@ -8,6 +8,8 @@ pub typedef {
     size_t bytes_size;  // capacity of buffer in bytes
 } LKBuffer;
 
+#define LK_BUFSIZE_SMALL 512
+
 pub LKBuffer *lk_buffer_new(size_t bytes_size) {
     if (bytes_size == 0) {
         bytes_size = LK_BUFSIZE_SMALL;

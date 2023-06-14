@@ -46,14 +46,14 @@ void parse_cgi_header_line(char *line, request.LKHttpResponse *resp) {
     char *saveptr;
     char *delim = ":";
 
-    char *linetmp = lk_strdup(line, "parse_cgi_header_line");
+    char *linetmp = lkalloc.lk_strdup(line, "parse_cgi_header_line");
     lknet.lk_chomp(linetmp);
-    char *k = strtok_r(linetmp, delim, &saveptr);
+    char *k = OS.strtok_r(linetmp, delim, &saveptr);
     if (k == NULL) {
         lkalloc.lk_free(linetmp);
         return;
     }
-    char *v = strtok_r(NULL, delim, &saveptr);
+    char *v = OS.strtok_r(NULL, delim, &saveptr);
     if (v == NULL) {
         v = "";
     }
