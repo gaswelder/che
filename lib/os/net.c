@@ -173,19 +173,83 @@ pub void net_close(net_t *c)
 	free(c);
 }
 
-/*
- * Returns true if there is data to be read from the given connection.
- */
-pub bool has_data(net_t *c) {
-	timeval_t t = {0};
-	fd_set read = {0};
-	FD_ZERO(&read);
-	FD_SET(c->fd, &read);
-	if (select(c->fd + 1, &read, NULL, NULL, &t) == -1) {
-		error = "select error";
-		return false;
+pub typedef {
+	net_t *conn;
+	bool read;
+	bool write;
+} event_t;
+
+pub typedef {
+    size_t size;
+    event_t events[1000];
+	net_t *conns[100];
+} pool_t;
+
+pub pool_t *new_pool() {
+	pool_t *p = calloc(1, sizeof(pool_t));
+	return p;
+}
+
+pub bool pool_add(pool_t *p, net_t *conn) {
+	for (int i = 0; i < 100; i++) {
+		if (p->conns[i]) {
+			continue;
+		}
+		p->conns[i] = conn;
+		return true;
 	}
-	return FD_ISSET(c->fd, &read);
+	return false;
+}
+
+pub bool pool_remove(pool_t *p, net_t *conn) {
+	for (int i = 0; i < 100; i++) {
+		if (p->conns[i] == conn) {
+			p->conns[i] = NULL;
+			return true;
+		}	
+	}
+	return false;
+}
+
+pub event_t *get_event(pool_t *p) {
+    while (p->size == 0) {
+		printf("empty, getting events\n");
+        fd_set readset = {0};
+    	// fd_set writeset = {0};
+    	// fd_set errorset = {0};
+    	int max = 0;
+		for (int i = 0; i < 100; i++) {
+			net_t *c = p->conns[i];
+			if (!c) {
+				continue;
+			}
+			printf("fd = %d\n", c->fd);
+			FD_SET(c->fd, &readset);
+			// FD_SET(c->fd, &writeset);
+			// FD_SET(c->fd, &errorset);
+			if (c->fd > max) {
+				max = c->fd;
+			}
+		}
+		// int r = select(max + 1, &readset, &writeset, &errorset, NULL);
+		int r = select(max + 1, &readset, NULL, NULL, NULL);
+		if (r < 0) {
+			return NULL;
+		}
+		for (int i = 0; i < 100; i++) {
+			net_t *c = p->conns[i];
+			if (!c) {
+				continue;
+			}
+			p->events[p->size].conn = c;
+			p->events[p->size].read = FD_ISSET(c->fd, &readset);
+			// p->events[p->size].write = FD_ISSET(c->fd, &writeset);
+			printf("fd = %d, r=%d, w=%d\n", c->fd, p->events[p->size].read, p->events[p->size].write);
+			p->size++;
+		}
+    }
+	p->size--;
+    return &p->events[p->size];
 }
 
 /*
@@ -359,29 +423,4 @@ pub void net_printf(net_t *c, const char *fmt, ...)
 
 	net_puts(buf, c);
 	free(buf);
-}
-
-pub bool update_status(net_t **conns) {
-    fd_set readset = {0};
-    fd_set writeset = {0};
-    fd_set errorset = {0};
-    int max = 0;
-    for (net_t *c = *conns; c; c++) {
-        FD_SET(c->fd, &readset);
-        FD_SET(c->fd, &writeset);
-        FD_SET(c->fd, &errorset);
-        if (c->fd > max) {
-            max = c->fd;
-        }
-    }
-    int r = select(max + 1, &readset, &writeset, &errorset, NULL);
-    if (r < 0) {
-        return false;
-    }
-    for (net_t *c = *conns; c; c++) {
-        c->is_readable = FD_ISSET(c->fd, &readset);
-        c->is_writable = FD_ISSET(c->fd, &writeset);
-        c->has_error = FD_ISSET(c->fd, &errorset);
-    }
-    return true;
 }

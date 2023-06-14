@@ -51,62 +51,49 @@ pub bool lk_httpserver_serve(lkconfig.LKConfig *cfg) {
     printf("Serving at http://%s\n", net.net_addr(listen_conn));
     free(addr);
 
+    net.pool_t *p = net.new_pool();
+    if (!p) {
+        abort();
+    }
+    net.pool_add(p, listen_conn);
+
     // clearenv();
     set_cgi_env1(&httpserver);
 
     while (true) {
-        // Check the listening connection and accept if there is something.
-        if (net.has_data(listen_conn)) {
+        net.event_t *ev = net.get_event(p);
+        printf("got event, conn = %d, read = %d\n", ev->conn->fd, ev->read);
+        if (ev->conn == listen_conn && ev->read) {
+            printf("accepting on %d\n", ev->conn->fd);
             net.net_t *client = net.net_accept(listen_conn);
             if (!client) {
-                lk_print_err("accept()");
+                fprintf(stderr, "accept failed: %s, %s\n", net.net_error(), strerror(errno));
                 continue;
             }
             // hack
             int clientfd = client->fd;
             lkcontext.LKContext *ctx = lkcontext.create_initial_context(clientfd);
             lkcontext.add_new_client_context(&httpserver.ctxhead, ctx);
+            net.pool_add(p, client);
             continue;
         }
 
-        // Check all client connections.
-        net.net_t *set[MAX_CLIENTS] = {};
-        int n = 0;
-        for (int i = 0; i < MAX_CLIENTS; i++) {
-            if (!httpserver.clients[i]) {
-                continue;
-            }
-            set[n++] = httpserver.clients[i];
-            if (n == MAX_CLIENTS) {
-                abort();
-            }
+        // hack
+        int selectfd = ev->conn->fd;
+        lkcontext.LKContext *ctx = lkcontext.match_select_ctx(httpserver.ctxhead, selectfd);
+        if (ctx == NULL) {
+            printf("selectfd %d not in ctx list\n", selectfd);
+            terminate_sock(selectfd, FD_READ, &httpserver);
+            net.pool_remove(p, ev->conn);
+            continue;
         }
-        if (!net.update_status(set)) {
-            if (errno == OS.EINTR) {
-                continue;
-            }
-            lk_print_err("select()");
-            return false;
+        if (ev->read) {
+            read_client(&httpserver, ctx, ev->conn);
+            // net.pool_remove(p, conn);
         }
-        for (int i = 1; i < MAX_CLIENTS; i++) {
-            net.net_t *conn = set[i];
-            if (!conn) {
-                continue;
-            }
-            // hack
-            int selectfd = conn->fd;
-            lkcontext.LKContext *ctx = lkcontext.match_select_ctx(httpserver.ctxhead, selectfd);
-            if (ctx == NULL) {
-                printf("selectfd %d not in ctx list\n", selectfd);
-                terminate_sock(selectfd, FD_READ, &httpserver);
-                continue;
-            }
-            if (conn->is_readable) {
-                read_client(&httpserver, ctx, conn);
-            }
-            if (conn->is_writable) {
-                write_client(&httpserver, ctx);
-            }
+        if (ev->write) {
+            write_client(&httpserver, ctx);
+            // net.pool_remove(p, conn);
         }
     }
 
