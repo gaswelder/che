@@ -85,9 +85,9 @@ void expect(net.net_t *n, int code)
 	if(_error) return;
 
 	char buf[256] = {};
-	int len = net.net_read(n, buf, 255);
-	if( len < 0 ) {
-		cli.err("net_read error");
+	int len = net.readconn(n, buf, 255);
+	if (len < 0) {
+		fprintf(stderr, "net.readconn error: %s\n", strerror(errno));
 		_error = 1;
 		return;
 	}

@@ -60,11 +60,8 @@ void *process_client(client_t *c)
 	char buf[256] = {};
 
 	while(1) {
-		if (net.has_data(conn)) {
-			if (net.net_read(conn, buf, sizeof(buf)) == 0) {
-				break;
-			}
-			continue;
+		if (net.readconn(conn, buf, sizeof(buf)) == 0) {
+			break;
 		}
 
 		if(!send_line(c)) {

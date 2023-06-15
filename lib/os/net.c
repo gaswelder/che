@@ -55,9 +55,6 @@ pub typedef {
 	sockaddr_t ai_addr;
 	socklen_t addrlen;
 	char addrstr[300];
-	bool is_readable;
-	bool is_writable;
-	bool has_error;
 } net_t;
 
 pub const char *net_error() {
@@ -68,7 +65,12 @@ pub const char *net_addr(net_t *c) {
 	return c->addrstr;
 }
 
-pub int net_read(net_t *c, char *buf, size_t size) {
+/**
+ * Reads at most size bytes into the buffer buf.
+ * Blocks if there is no data ready for reading.
+ * Returns the number of bytes read or -1 on error.
+ */
+pub int readconn(net_t *c, char *buf, size_t size) {
 	return recv(c->fd, buf, size, 0);
 }
 
@@ -360,7 +362,7 @@ pub char *net_gets(char *s, int size, net_t *c)
 	// read at most size-1 chars
 	for(pos = 0; pos < size-1; pos++) {
 		char ch = 0;
-		int r = net_read(c, &ch, 1);
+		int r = readconn(c, &ch, 1);
 
 		// on read error return NULL
 		if(r < 0) {

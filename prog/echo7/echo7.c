@@ -38,9 +38,9 @@ void *process_client(void *arg)
 	char buf[256] = {0};
 
 	while(1) {
-		int len = net.net_read(c, buf, sizeof(buf));
-		if(len == -1) {
-			cli.err("read error");
+		int len = net.readconn(c, buf, sizeof(buf));
+		if (len == -1) {
+			fprintf(stderr, "read error: %s\n", strerror(errno));
 			break;
 		}
 		if(len == 0) {
