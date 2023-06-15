@@ -133,15 +133,7 @@ pub int lk_string_starts_with(LKString *lks, const char *s) {
 
 // Return if string ends with s.
 pub int lk_string_ends_with(LKString *lks, const char *s) {
-    size_t s_len = strlen(s);
-    if (s_len > lks->s_len) {
-        return 0;
-    }
-    size_t i = lks->s_len - s_len;
-    if (!strncmp(lks->s + i, s, s_len)) {
-        return 1;
-    }
-    return 0;
+    return strings.ends_with(lks->s, s);
 }
 
 // Remove leading and trailing white from string.
