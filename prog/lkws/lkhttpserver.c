@@ -88,7 +88,17 @@ pub bool lk_httpserver_serve(lkconfig.LKConfig *cfg) {
             continue;
         }
         if (ev->read) {
-            read_client(&httpserver, ctx, ev->conn);
+            printf("read_client\n");
+            if (ctx->type == lkcontext.CTX_READ_REQ) {
+                printf("read_request\n");
+                read_request(&httpserver, ctx, ev->conn);
+            } else if (ctx->type == lkcontext.CTX_READ_CGI_OUTPUT) {
+                read_cgi_output(&httpserver, ctx);
+            } else if (ctx->type == lkcontext.CTX_PROXY_PIPE_RESP) {
+                pipe_proxy_response(&httpserver, ctx);
+            } else {
+                printf("read_client: unknown ctx type %d\n", ctx->type);
+            }
             // net.pool_remove(p, conn);
         }
         if (ev->write) {
@@ -106,18 +116,6 @@ pub bool lk_httpserver_serve(lkconfig.LKConfig *cfg) {
     }
     memset(&httpserver, 0, sizeof(LKHttpServer));
     return true;
-}
-
-void read_client(LKHttpServer *server, lkcontext.LKContext *ctx, net.net_t *client) {
-    if (ctx->type == lkcontext.CTX_READ_REQ) {
-        read_request(server, ctx, client);
-    } else if (ctx->type == lkcontext.CTX_READ_CGI_OUTPUT) {
-        read_cgi_output(server, ctx);
-    } else if (ctx->type == lkcontext.CTX_PROXY_PIPE_RESP) {
-        pipe_proxy_response(server, ctx);
-    } else {
-        printf("read_client: unknown ctx type %d\n", ctx->type);
-    }
 }
 
 void write_client(LKHttpServer *server, lkcontext.LKContext *ctx) {
@@ -201,16 +199,19 @@ void set_cgi_env2(lkcontext.LKContext *ctx, lkhostconfig.LKHostConfig *hc) {
 
 void read_request(LKHttpServer *server, lkcontext.LKContext *ctx, net.net_t *client_conn) {
     int z = 0;
-    char buf[4096] = {0};
+    char buf[4097] = {0};
     while (1) {
         if (!ctx->reqparser->head_complete) {
-            if (!net.net_gets(buf, sizeof(buf), client_conn)) {
-                lk_print_err("lksocketreader_readline()");
+            printf("reading head\n");
+            int r = net.readconn(client_conn, buf, sizeof(buf));
+            if (r < 0) {
+                fprintf(stderr, "readconn failed: %s\n", strerror(errno));
                 break;
             }
+            buf[r] = '\0';
+            printf("read: %s\n", buf);
             // lksocketreader.LKSocketReader *sr = ctx->sr;
-            lkstring.LKString *line = ctx->req_line;
-            lkstring.lk_string_assign(line, buf);          
+            lkstring.lk_string_assign(ctx->req_line, buf);
             lkhttprequestparser.lk_httprequestparser_parse_line(ctx->reqparser, ctx->req_line, ctx->req);
         } else {
             z = socketreader.lk_socketreader_recv(ctx->sr, ctx->req_buf);
