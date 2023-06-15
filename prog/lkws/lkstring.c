@@ -13,12 +13,12 @@ pub typedef {
 } LKStringList;
 
 // Zero out entire size
-pub void zero_s(LKString *lks) {
+void zero_s(LKString *lks) {
     memset(lks->s, 0, lks->s_size+1);
 }
 
 // Zero out the free unused space
-pub void zero_unused_s(LKString *lks) {
+void zero_unused_s(LKString *lks) {
     memset(lks->s + lks->s_len, '\0', lks->s_size+1 - lks->s_len);
 }
 
@@ -138,58 +138,22 @@ pub int lk_string_ends_with(LKString *lks, const char *s) {
 
 // Remove leading and trailing white from string.
 pub void lk_string_trim(LKString *lks) {
-    if (lks->s_len == 0) {
-        return;
-    }
-
-    // starti: index to first non-whitespace char
-    // endi: index to last non-whitespace char
-    int starti = 0;
-    int endi = lks->s_len-1;
-    assert(endi >= starti);
-
-    for (size_t i = 0; i < lks->s_len; i++) {
-        if (!isspace(lks->s[i])) {
-            break;
-        }
-        starti++;
-    }
-    // All chars are whitespace.
-    if ((size_t)starti >= lks->s_len) {
-        lk_string_assign(lks, "");
-        return;
-    }
-    for (int i = (int)lks->s_len-1; i >= 0; i--) {
-        if (!isspace(lks->s[i])) {
-            break;
-        }
-        endi--;
-    }
-    assert(endi >= starti);
-
-    size_t new_len = endi-starti+1;
-    memmove(lks->s, lks->s + starti, new_len);
-    memset(lks->s + new_len, 0, lks->s_len - new_len);
-    lks->s_len = new_len;
+    char *copy = strings.newstr("%s", lks->s);
+    char *r = strings.trim(copy);
+    lk_string_assign(lks, r);
+    free(copy);
 }
 
 pub void lk_string_chop_end(LKString *lks, const char *s) {
+    if (!strings.ends_with(lks->s, s)) {
+        return;
+    }
+    char *copy = strings.newstr("%s", lks->s);
+    size_t full_len = strlen(copy);
     size_t s_len = strlen(s);
-    if (s_len > lks->s_len) {
-        return;
-    }
-    if (strncmp(lks->s + lks->s_len - s_len, s, s_len)) {
-        return;
-    }
-
-    size_t new_len = lks->s_len - s_len;
-    memset(lks->s + new_len, 0, s_len);
-    lks->s_len = new_len;
-}
-
-// Return whether delim matches the first delim_len chars of s.
-pub int match_delim(char *s, const char *delim, size_t delim_len) {
-    return !strncmp(s, delim, delim_len);
+    copy[full_len - s_len] = '\0';
+    lk_string_assign(lks, copy);
+    free(copy);
 }
 
 pub LKStringList *lk_string_split(LKString *lks, const char *delim) {
@@ -198,7 +162,7 @@ pub LKStringList *lk_string_split(LKString *lks, const char *delim) {
 
     LKString *segment = lk_string_new("");
     for (size_t i = 0; i < lks->s_len; i++) {
-        if (match_delim(lks->s + i, delim, delim_len)) {
+        if (!strncmp(lks->s, delim, delim_len)) {
             lk_stringlist_append_lkstring(sl, segment);
             segment = lk_string_new("");
             i += delim_len-1; // need to -1 to account for for loop incrementor i++
