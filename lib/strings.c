@@ -22,9 +22,11 @@ pub char *newstr(const char *format, ... )
 }
 
 /**
- * Trims `s` by adding zeros at the end and adjusting the pointer at the
- * beginning. Modifies the buffer and returns the adjusted pointer. Don't
- * pass readonly buffers like those from static strings.
+ * Trims all characters from the set at the beginning and at the end of string s
+ * by adding zeros at the end and adjusting the pointer at the beginning.
+ *
+ * Modifies the buffer and returns the adjusted pointer.
+ * Don't pass readonly buffers such as stack allocated or static data.
  */
 pub char *trim(char *s) {
 	char *left = s;
@@ -34,6 +36,12 @@ pub char *trim(char *s) {
 	return left;
 }
 
+/**
+ * Trims all characters from the set at the end of string s by inserting zeros.
+ *
+ * Modifies the buffer.
+ * Don't pass readonly buffers such as stack allocated or static data.
+ */
 pub void rtrim(char *s, *set) {
 	char *right = s;
 	while (*right) right++;

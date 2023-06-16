@@ -1,4 +1,5 @@
 #import strings
+#import http
 
 #import lkbuffer.c
 #import lknet.c
@@ -92,83 +93,42 @@ void parse_line(LKHttpRequestParser *parser, char *line, request.LKHttpRequest *
 }
 
 // Parse initial request line in the format:
-// GET /path/to/index.html HTTP/1.0
+// GET /path/blog/file1.html?a=1&b=2 HTTP/1.0
 void parse_request_line(char *line, request.LKHttpRequest *req) {
-    char *toks[3];
-    int ntoksread = 0;
+    http.request_line_t r = {};
+    if (!http.parse_request_line(line, &r)) {
+        abort();
+    }
 
-    char *saveptr;
-    char *delim = " \t";
-    char *linetmp = strings.newstr("%s", line);
-    lknet.lk_chomp(linetmp);
-    char *p = linetmp;
-    while (ntoksread < 3) {
-        toks[ntoksread] = OS.strtok_r(p, delim, &saveptr);
-        if (toks[ntoksread] == NULL) {
-            break;
+    // Read full path
+    char path[1024] = {0};
+    char *pathp = path;
+    const char *p = r.path;
+    while (*p && *p != '?') {
+        *pathp++ = *p++;
+    }
+    // Read query string
+    char qs[1024] = {0};
+    if (*p == '?') {
+        p++;
+        char *qsp = qs;
+        while (*p) {
+            *qsp++ = *p++;
         }
-        ntoksread++;
-        p = NULL; // for the next call to OS.strtok_r()
     }
 
-    char *method = "";
-    char *uri = "";
-    char *version = "";
-
-    if (ntoksread > 0) method = toks[0];
-    if (ntoksread > 1) uri = toks[1];
-    if (ntoksread > 2) version = toks[2];
-
-    if (strlen(method) + 1 > sizeof(req->method)) {
-        abort();
-    }
-    if (strlen(uri) + 1 > sizeof(req->uri)) {
-        abort();
-    }
-    strcpy(req->method, method);
-    strcpy(req->uri, uri);
-    lkstring.lk_string_assign(req->version, version);
-
-    lkstring.LKString *uriwrapper = lkstring.lk_string_new(uri);
-    lkstring.LKString *pathwrapper = lkstring.lk_string_new(req->path);
-    lkstring.LKString *filenamewrapper = lkstring.lk_string_new(req->filename);
-    parse_uri(uriwrapper, pathwrapper, filenamewrapper, req->querystring);
-    strcpy(req->uri, uriwrapper->s);
-    strcpy(req->path, pathwrapper->s);
-    strcpy(req->filename, filenamewrapper->s);
-    lkstring.lk_string_free(uriwrapper);
-    lkstring.lk_string_free(pathwrapper);
-    lkstring.lk_string_free(filenamewrapper);
-
-    free(linetmp);
-}
-
-// Parse uri into its components.
-// Given: lks_uri   = "/path/blog/file1.html?a=1&b=2"
-// lks_path         = "/path/blog/file1.html"
-// lks_filename     = "file1.html"
-// lks_qs           = "a=1&b=2"
-void parse_uri(lkstring.LKString *lks_uri, lkstring.LKString *lks_path, lkstring.LKString *lks_filename, lkstring.LKString *lks_qs) { 
-    // Get path and querystring
-    // "/path/blog/file1.html?a=1&b=2" ==> "/path/blog/file1.html" and "a=1&b=2"
-    lkstring.LKStringList *uri_ss = lkstring.lk_string_split(lks_uri, "?");
-    lkstring.lk_string_assign(lks_path, uri_ss->items[0]->s);
-    if (uri_ss->items_len > 1) {
-        lkstring.lk_string_assign(lks_qs, uri_ss->items[1]->s);
-    } else {
-        lkstring.lk_string_assign(lks_qs, "");
-    }
-
-    // Remove any trailing slash from uri. "/path/blog/" ==> "/path/blog"
-    lkstring.lk_string_chop_end(lks_path, "/");
+    // Remove trailing slashes from path
+    strings.rtrim(path, "/");
 
     // Extract filename from path. "/path/blog/file1.html" ==> "file1.html"
-    lkstring.LKStringList *path_ss = lkstring.lk_string_split(lks_path, "/");
-    assert(path_ss->items_len > 0);
-    lkstring.lk_string_assign(lks_filename, path_ss->items[path_ss->items_len-1]->s);
+    char *filename = strrchr(path, '/');
 
-    lkstring.lk_stringlist_free(uri_ss);
-    lkstring.lk_stringlist_free(path_ss);
+    strcpy(req->method, r.method);
+    strcpy(req->uri, r.path);
+    strcpy(req->path, path);
+    strcpy(req->filename, filename);
+    lkstring.lk_string_assign(req->querystring, qs);
+    lkstring.lk_string_assign(req->version, r.version);
 }
 
 
