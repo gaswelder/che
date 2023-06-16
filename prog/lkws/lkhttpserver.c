@@ -178,7 +178,7 @@ void set_cgi_env2(lkcontext.LKContext *ctx, lkhostconfig.LKHostConfig *hc) {
     misc.setenv("REQUEST_METHOD", req->method, 1);
     misc.setenv("SCRIPT_NAME", req->path, 1);
     misc.setenv("REQUEST_URI", req->uri, 1);
-    misc.setenv("QUERY_STRING", req->querystring->s, 1);
+    misc.setenv("QUERY_STRING", req->querystring, 1);
 
     char *content_type = lkstringtable.lk_stringtable_get(req->headers, "Content-Type");
     if (content_type == NULL) {

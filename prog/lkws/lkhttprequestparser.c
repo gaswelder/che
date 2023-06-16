@@ -127,8 +127,8 @@ void parse_request_line(char *line, request.LKHttpRequest *req) {
     strcpy(req->uri, r.path);
     strcpy(req->path, path);
     strcpy(req->filename, filename);
-    lkstring.lk_string_assign(req->querystring, qs);
-    lkstring.lk_string_assign(req->version, r.version);
+    strcpy(req->querystring, qs);
+    strcpy(req->version, r.version);
 }
 
 
