@@ -119,11 +119,26 @@ void parse_request_line(char *line, request.LKHttpRequest *req) {
     if (ntoksread > 1) uri = toks[1];
     if (ntoksread > 2) version = toks[2];
 
-    lkstring.lk_string_assign(req->method, method);
-    lkstring.lk_string_assign(req->uri, uri);
+    if (strlen(method) + 1 > sizeof(req->method)) {
+        abort();
+    }
+    if (strlen(uri) + 1 > sizeof(req->uri)) {
+        abort();
+    }
+    strcpy(req->method, method);
+    strcpy(req->uri, uri);
     lkstring.lk_string_assign(req->version, version);
 
-    parse_uri(req->uri, req->path, req->filename, req->querystring);
+    lkstring.LKString *uriwrapper = lkstring.lk_string_new(uri);
+    lkstring.LKString *pathwrapper = lkstring.lk_string_new(req->path);
+    lkstring.LKString *filenamewrapper = lkstring.lk_string_new(req->filename);
+    parse_uri(uriwrapper, pathwrapper, filenamewrapper, req->querystring);
+    strcpy(req->uri, uriwrapper->s);
+    strcpy(req->path, pathwrapper->s);
+    strcpy(req->filename, filenamewrapper->s);
+    lkstring.lk_string_free(uriwrapper);
+    lkstring.lk_string_free(pathwrapper);
+    lkstring.lk_string_free(filenamewrapper);
 
     free(linetmp);
 }

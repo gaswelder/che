@@ -3,10 +3,10 @@
 #import lkbuffer.c
 
 pub typedef {
-    lkstring.LKString *method;       // GET
-    lkstring.LKString *uri;          // "/path/to/index.html?p=1&start=5"
-    lkstring.LKString *path;         // "/path/to/index.html"
-    lkstring.LKString *filename;     // "index.html"
+    char method[10]; // GET
+    char uri[1024]; // "/path/to/index.html?p=1&start=5"
+    char path[1024];         // "/path/to/index.html"
+    char filename[1024];     // "index.html"
     lkstring.LKString *querystring;  // "p=1&start=5"
     lkstring.LKString *version;      // HTTP/1.0
     lkstringtable.LKStringTable *headers;
@@ -16,10 +16,6 @@ pub typedef {
 
 pub LKHttpRequest *lk_httprequest_new() {
     LKHttpRequest *req = calloc(1, sizeof(LKHttpRequest));
-    req->method = lkstring.lk_string_new("");
-    req->uri = lkstring.lk_string_new("");
-    req->path = lkstring.lk_string_new("");
-    req->filename = lkstring.lk_string_new("");
     req->querystring = lkstring.lk_string_new("");
     req->version = lkstring.lk_string_new("");
     req->headers = lkstringtable.lk_stringtable_new();
@@ -29,20 +25,12 @@ pub LKHttpRequest *lk_httprequest_new() {
 }
 
 pub void lk_httprequest_free(LKHttpRequest *req) {
-    lkstring.lk_string_free(req->method);
-    lkstring.lk_string_free(req->uri);
-    lkstring.lk_string_free(req->path);
-    lkstring.lk_string_free(req->filename);
     lkstring.lk_string_free(req->querystring);
     lkstring.lk_string_free(req->version);
     lkstringtable.lk_stringtable_free(req->headers);
     lkbuffer.lk_buffer_free(req->head);
     lkbuffer.lk_buffer_free(req->body);
 
-    req->method = NULL;
-    req->uri = NULL;
-    req->path = NULL;
-    req->filename = NULL;
     req->querystring = NULL;
     req->version = NULL;
     req->headers = NULL;

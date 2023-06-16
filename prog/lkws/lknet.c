@@ -246,7 +246,7 @@ pub void lk_httprequest_finalize(request.LKHttpRequest *req) {
     if (lkstring.lk_string_sz_equal(req->version, "")) {
         lkstring.lk_string_assign(req->version, "HTTP/1.0");
     }
-    lkbuffer.lk_buffer_append_sprintf(req->head, "%s %s %s\n", req->method->s, req->uri->s, req->version->s);
+    lkbuffer.lk_buffer_append_sprintf(req->head, "%s %s %s\n", req->method, req->uri, req->version->s);
     if (req->body->bytes_len > 0) {
         lkbuffer.lk_buffer_append_sprintf(req->head, "Content-Length: %ld\n", req->body->bytes_len);
     }
@@ -258,14 +258,12 @@ pub void lk_httprequest_finalize(request.LKHttpRequest *req) {
 
 
 pub void lk_httprequest_debugprint(request.LKHttpRequest *req) {
-    assert(req->method != NULL);
-    assert(req->uri != NULL);
     assert(req->version != NULL);
     assert(req->head != NULL);
     assert(req->body != NULL);
 
-    printf("method: %s\n", req->method->s);
-    printf("uri: %s\n", req->uri->s);
+    printf("method: %s\n", req->method);
+    printf("uri: %s\n", req->uri);
     printf("version: %s\n", req->version->s);
 
     printf("headers_size: %ld\n", req->headers->items_size);

@@ -171,13 +171,13 @@ void set_cgi_env2(lkcontext.LKContext *ctx, lkhostconfig.LKHostConfig *hc) {
     misc.setenv("HTTP_HOST", http_host, 1);
 
     lkstring.LKString *lkscript_filename = lkstring.lk_string_new(hc->homedir_abspath->s);
-    lkstring.lk_string_append(lkscript_filename, req->path->s);
+    lkstring.lk_string_append(lkscript_filename, req->path);
     misc.setenv("SCRIPT_FILENAME", lkscript_filename->s, 1);
     lkstring.lk_string_free(lkscript_filename);
 
-    misc.setenv("REQUEST_METHOD", req->method->s, 1);
-    misc.setenv("SCRIPT_NAME", req->path->s, 1);
-    misc.setenv("REQUEST_URI", req->uri->s, 1);
+    misc.setenv("REQUEST_METHOD", req->method, 1);
+    misc.setenv("SCRIPT_NAME", req->path, 1);
+    misc.setenv("REQUEST_URI", req->uri, 1);
     misc.setenv("QUERY_STRING", req->querystring->s, 1);
 
     char *content_type = lkstringtable.lk_stringtable_get(req->headers, "Content-Type");
@@ -310,13 +310,16 @@ void process_request(LKHttpServer *server, lkcontext.LKContext *ctx) {
     }
 
     // Replace path with any matching alias.
-    char *match = lkstringtable.lk_stringtable_get(hc->aliases, ctx->req->path->s);
+    char *match = lkstringtable.lk_stringtable_get(hc->aliases, ctx->req->path);
     if (match != NULL) {
-        lkstring.lk_string_assign(ctx->req->path, match);
+        if (strlen(match) + 1 > sizeof(ctx->req->path)) {
+            abort();
+        }
+        strcpy(ctx->req->path, match);
     }
 
     // Run cgi script if uri falls under cgidir
-    if (hc->cgidir->s_len > 0 && lkstring.lk_string_starts_with(ctx->req->path, hc->cgidir->s)) {
+    if (hc->cgidir->s_len > 0 && strings.starts_with(ctx->req->path, hc->cgidir->s)) {
         serve_cgi(server, ctx, hc);
         return;
     }
@@ -339,12 +342,12 @@ void serve_files(lkcontext.LKContext *ctx, lkhostconfig.LKHostConfig *hc) {
 
     request.LKHttpRequest *req = ctx->req;
     request.LKHttpResponse *resp = ctx->resp;
-    lkstring.LKString *method = req->method;
-    lkstring.LKString *path = req->path;
+    const char *method = req->method;
+    const char *path = req->path;
 
-    if (lkstring.lk_string_sz_equal(method, "GET") || lkstring.lk_string_sz_equal(method, "HEAD")) {
+    if (!strcmp(method, "GET") || !strcmp(method, "HEAD")) {
         // For root, default to index.html, ...
-        if (path->s_len == 0) {
+        if (strlen(path) == 0) {
             char *default_files[] = {"/index.html", "/index.htm", "/default.html", "/default.htm"};
             for (size_t i=0; i < nelem(default_files); i++) {
                 z = read_path_file(hc->homedir_abspath->s, default_files[i], resp->body);
@@ -353,11 +356,14 @@ void serve_files(lkcontext.LKContext *ctx, lkhostconfig.LKHostConfig *hc) {
                     break;
                 }
                 // Update path with default file for File not found error message.
-                lkstring.lk_string_assign(path, default_files[i]);
+                if (strlen(path) + strlen(default_files[i]) + 1 > sizeof(req->path)) {
+                    abort();
+                }
+                strcat(req->path, default_files[i]);
             }
         } else {
-            z = read_path_file(hc->homedir_abspath->s, path->s, resp->body);
-            const char *content_type = mime.lookup(fileext(path->s));
+            z = read_path_file(hc->homedir_abspath->s, path, resp->body);
+            const char *content_type = mime.lookup(fileext(path));
             if (content_type == NULL) {
                 content_type = "text/plain";
             }
@@ -366,14 +372,14 @@ void serve_files(lkcontext.LKContext *ctx, lkhostconfig.LKHostConfig *hc) {
         if (z == -1) {
             // path not found
             resp->status = 404;
-            lkstring.lk_string_assign_sprintf(resp->statustext, "File not found '%s'", path->s);
+            lkstring.lk_string_assign_sprintf(resp->statustext, "File not found '%s'", path);
             lknet.lk_httpresponse_add_header(resp, "Content-Type", "text/plain");
-            lkbuffer.lk_buffer_append_sprintf(resp->body, "File not found '%s'\n", path->s);
+            lkbuffer.lk_buffer_append_sprintf(resp->body, "File not found '%s'\n", path);
         }
         return;
     }
     if (POSTTEST) {
-        if (lkstring.lk_string_sz_equal(method, "POST")) {
+        if (!strcmp(method, "POST")) {
             char *html_start =
             "<!DOCTYPE html>\n"
             "<html>\n"
@@ -405,10 +411,10 @@ void serve_files(lkcontext.LKContext *ctx, lkhostconfig.LKHostConfig *hc) {
 void serve_cgi(LKHttpServer *server, lkcontext.LKContext *ctx, lkhostconfig.LKHostConfig *hc) {
     request.LKHttpRequest *req = ctx->req;
     request.LKHttpResponse *resp = ctx->resp;
-    char *path = req->path->s;
+    char *path = req->path;
 
     lkstring.LKString *cgifile = lkstring.lk_string_new(hc->homedir_abspath->s);
-    lkstring.lk_string_append(cgifile, req->path->s);
+    lkstring.lk_string_append(cgifile, path);
 
     // Expand "/../", etc. into real_path.
     char real_path[PATH_MAX];
@@ -478,7 +484,7 @@ void process_response(LKHttpServer *server, lkcontext.LKContext *ctx) {
     lknet.lk_httpresponse_finalize(resp);
 
     // Clear response body on HEAD request.
-    if (lkstring.lk_string_sz_equal(req->method, "HEAD")) {
+    if (!strcmp(req->method, "HEAD")) {
         lkbuffer.lk_buffer_clear(resp->body);
     }
 
@@ -486,7 +492,7 @@ void process_response(LKHttpServer *server, lkcontext.LKContext *ctx) {
     get_localtime_string(time_str, sizeof(time_str));
     printf("%s [%s] \"%s %s %s\" %d\n", 
         ctx->client_ipaddr->s, time_str,
-        req->method->s, req->uri->s, resp->version->s,
+        req->method, req->uri, resp->version->s,
         resp->status);
     if (resp->status >= 500 && resp->status < 600 && resp->statustext->s_len > 0) {
         printf("%s [%s] %d - %s\n", 
@@ -515,7 +521,7 @@ void process_error_response(LKHttpServer *server, lkcontext.LKContext *ctx, int 
 
 // Read <home_dir>/<uri> file into buffer.
 // Return number of bytes read or -1 for error.
-int read_path_file(char *home_dir, char *path, lkbuffer.LKBuffer *buf) {
+int read_path_file(const char *home_dir, *path, lkbuffer.LKBuffer *buf) {
     // full_path = home_dir + path
     // Ex. "/path/to" + "/index.html"
     lkstring.LKString *full_path = lkstring.lk_string_new(home_dir);
@@ -546,15 +552,15 @@ int read_path_file(char *home_dir, char *path, lkbuffer.LKBuffer *buf) {
 
 
 // Return ptr to start of file extension within filepath.
-// Ex. "path/to/index.html" returns "index.html"
-char *fileext(char *filepath) {
+// Ex. "path/to/index.html" returns "html"
+const char *fileext(const char *filepath) {
     int filepath_len = strlen(filepath);
     // filepath of "" returns ext of "".
     if (filepath_len == 0) {
         return filepath;
     }
 
-    char *p = filepath + strlen(filepath) - 1;
+    const char *p = filepath + strlen(filepath) - 1;
     while (p >= filepath) {
         if (*p == '.') {
             return p+1;
@@ -670,7 +676,7 @@ void pipe_proxy_response(LKHttpServer *server, lkcontext.LKContext *ctx) {
     char time_str[TIME_STRING_SIZE];
     get_localtime_string(time_str, sizeof(time_str));
     printf("%s [%s] \"%s %s\" --> proxyhost\n",
-        ctx->client_ipaddr->s, time_str, req->method->s, req->uri->s);
+        ctx->client_ipaddr->s, time_str, req->method, req->uri);
 
     // Completed sending proxy response.
     terminate_client_session(server, ctx);

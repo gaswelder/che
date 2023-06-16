@@ -335,8 +335,7 @@ void process_line(clientctx_t *ctx, char *line) {
     lk_httprequestparser_parse_line(ctx->reqparser, line);
     if (ctx->reqparser->body_complete) {
         LKHttpRequest *req = ctx->reqparser->req;
-        printf("127.0.0.1 [11/Mar/2023 14:05:46] \"%s %s HTTP/1.1\" %d\n", 
-            req->method->s, req->uri->s, 200);
+        printf("127.0.0.1 [11/Mar/2023 14:05:46] \"%s %s HTTP/1.1\" %d\n", req->method, req->uri, 200);
 
         ctx->resp = lk_httpresponse_new();
         if (default_handler) {
@@ -373,8 +372,8 @@ void serve_file_handler(LKHttpRequest *req, LKHttpResponse *resp) {
        "<p>Hello Little Kitten!</p>\n"
        "</body></html>\n";
 
-    char *method = req->method->s;
-    char *uri = req->uri->s;
+    char *method = req->method;
+    char *uri = req->uri;
 
     //$$ instead of this hack, check index.html, index.html, default.html if exists
     if (!strcmp(uri, "/")) {
