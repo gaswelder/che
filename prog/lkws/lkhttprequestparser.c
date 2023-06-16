@@ -68,7 +68,16 @@ pub void lk_httprequestparser_parse_line(LKHttpRequestParser *parser, lkstring.L
 void parse_line(LKHttpRequestParser *parser, char *line, request.LKHttpRequest *req) {
     // First line: parse initial request line.
     if (parser->nlinesread == 0) {
-        parse_request_line(line, req);
+        http.request_line_t r = {};
+        if (!http.parse_request_line(line, &r)) {
+            abort();
+        }
+        strcpy(req->method, r.method);
+        strcpy(req->uri, r.uri);
+        strcpy(req->path, r.path);
+        strcpy(req->filename, r.filename);
+        strcpy(req->querystring, r.query);
+        strcpy(req->version, r.version);
         parser->nlinesread++;
         return;
     }
@@ -91,46 +100,6 @@ void parse_line(LKHttpRequestParser *parser, char *line, request.LKHttpRequest *
         return;
     }
 }
-
-// Parse initial request line in the format:
-// GET /path/blog/file1.html?a=1&b=2 HTTP/1.0
-void parse_request_line(char *line, request.LKHttpRequest *req) {
-    http.request_line_t r = {};
-    if (!http.parse_request_line(line, &r)) {
-        abort();
-    }
-
-    // Read full path
-    char path[1024] = {0};
-    char *pathp = path;
-    const char *p = r.path;
-    while (*p && *p != '?') {
-        *pathp++ = *p++;
-    }
-    // Read query string
-    char qs[1024] = {0};
-    if (*p == '?') {
-        p++;
-        char *qsp = qs;
-        while (*p) {
-            *qsp++ = *p++;
-        }
-    }
-
-    // Remove trailing slashes from path
-    strings.rtrim(path, "/");
-
-    // Extract filename from path. "/path/blog/file1.html" ==> "file1.html"
-    char *filename = strrchr(path, '/');
-
-    strcpy(req->method, r.method);
-    strcpy(req->uri, r.path);
-    strcpy(req->path, path);
-    strcpy(req->filename, filename);
-    strcpy(req->querystring, qs);
-    strcpy(req->version, r.version);
-}
-
 
 // Parse header line in the format Ex. User-Agent: browser
 void parse_header_line(LKHttpRequestParser *parser, char *line, request.LKHttpRequest *req) {
