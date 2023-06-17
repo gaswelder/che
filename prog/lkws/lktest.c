@@ -5,7 +5,6 @@ int main(int argc, char *argv[]) {
     lkstring_test();
     lkstringmap_test();
     lkbuffer_test();
-    lkstringlist_test();
     lkreflist_test();
     lkconfig_test();
 
@@ -151,54 +150,6 @@ void lkstring_test() {
     assert(lk_string_sz_equal(lks, "def abc"));
     lkstring.lk_string_free(lks);
 
-    lks = lk_string_new("");
-    LKStringList *parts = lk_string_split(lks, "a");
-    assert(parts->items_len == 1);
-    assert(lk_string_sz_equal(parts->items[0], ""));
-    lk_stringlist_free(parts);
-
-    parts = lk_string_split(lks, "abc");
-    assert(parts->items_len == 1);
-    assert(lk_string_sz_equal(parts->items[0], ""));
-    lk_stringlist_free(parts);
-
-    parts = lk_string_split(lks, "");
-    assert(parts->items_len == 1);
-    assert(lk_string_sz_equal(parts->items[0], ""));
-    lk_stringlist_free(parts);
-
-    lk_string_assign(lks, "abc def ghijkl");
-    parts = lk_string_split(lks, " ");
-    assert(parts->items_len == 3);
-    assert(lk_string_sz_equal(parts->items[0], "abc"));
-    assert(lk_string_sz_equal(parts->items[1], "def"));
-    assert(lk_string_sz_equal(parts->items[2], "ghijkl"));
-    lk_stringlist_free(parts);
-    parts = lk_string_split(lks, "--");
-    assert(parts->items_len == 1);
-    assert(lk_string_sz_equal(parts->items[0], "abc def ghijkl"));
-    lk_stringlist_free(parts);
-
-    lk_string_assign(lks, "12 little kitten 12 web server 12 written in C");
-    parts = lk_string_split(lks, "12 ");
-    assert(parts->items_len == 4);
-    assert(lk_string_sz_equal(parts->items[0], ""));
-    assert(lk_string_sz_equal(parts->items[1], "little kitten "));
-    assert(lk_string_sz_equal(parts->items[2], "web server "));
-    assert(lk_string_sz_equal(parts->items[3], "written in C"));
-    lk_stringlist_free(parts);
-
-    lk_string_assign(lks, "12 little kitten 12 web server 12 written in C 12 ");
-    parts = lk_string_split(lks, "12 ");
-    assert(parts->items_len == 5);
-    assert(lk_string_sz_equal(parts->items[0], ""));
-    assert(lk_string_sz_equal(parts->items[1], "little kitten "));
-    assert(lk_string_sz_equal(parts->items[2], "web server "));
-    assert(lk_string_sz_equal(parts->items[3], "written in C "));
-    assert(lk_string_sz_equal(parts->items[4], ""));
-    lk_stringlist_free(parts);
-    lkstring.lk_string_free(lks);
-
     printf("Done.\n");
 }
 
@@ -322,55 +273,6 @@ void lkbuffer_test() {
     assert(buf->bytes[buf->bytes_len-3] == 'a');
     lk_buffer_free(buf);
 
-    printf("Done.\n");
-}
-
-void lkstringlist_test() {
-    LKStringList *sl;
-
-    printf("Running LKStringList tests... ");
-    sl = lk_stringlist_new();
-    assert(sl->items_len == 0);
-    lk_stringlist_append(sl, "abc");
-    lk_stringlist_append_sprintf(sl, "Hello %s", "abc");
-    LKString *lks123 = lk_string_new("123");
-    lk_stringlist_append_lkstring(sl, lks123);
-    assert(sl->items_len == 3);
-
-    LKString *s0 = lk_stringlist_get(sl, 0);
-    LKString *s1 = lk_stringlist_get(sl, 1);
-    LKString *s2 = lk_stringlist_get(sl, 2);
-    LKString *s3 = lk_stringlist_get(sl, 3);
-    assert(s0 != NULL);
-    assert(s1 != NULL);
-    assert(s2 != NULL);
-    assert(s3 == NULL);
-    assert(!strcmp(s0->s, "abc"));
-    assert(!strcmp(s1->s, "Hello abc"));
-    assert(!strcmp(s2->s, "123"));
-
-    lk_stringlist_remove(sl, 0); // remove "abc"
-    assert(sl->items_len == 2);
-    s0 = lk_stringlist_get(sl, 0);
-    s1 = lk_stringlist_get(sl, 1);
-    s2 = lk_stringlist_get(sl, 2);
-    assert(s0 != NULL);
-    assert(s1 != NULL);
-    assert(s2 == NULL);
-    assert(!strcmp(s0->s, "Hello abc"));
-    assert(!strcmp(s1->s, "123"));
-
-    lk_stringlist_remove(sl, 1); // remove "123"
-    assert(sl->items_len == 1);
-    s0 = lk_stringlist_get(sl, 0);
-    s1 = lk_stringlist_get(sl, 1);
-    s2 = lk_stringlist_get(sl, 2);
-    assert(s0 != NULL);
-    assert(s1 == NULL);
-    assert(s2 == NULL);
-    assert(!strcmp(s0->s, "Hello abc"));
-
-    lk_stringlist_free(sl);
     printf("Done.\n");
 }
 

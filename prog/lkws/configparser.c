@@ -5,6 +5,16 @@
 #import lkstring.c
 #import lkstringtable.c
 
+#define N_GROW_STRINGLIST 10
+
+typedef {
+    lkstring.LKString **items;
+    size_t items_len;
+    size_t items_size;
+} LKStringList;
+
+
+
 // Read config file and set config structure.
 //
 // Config file format:
@@ -76,7 +86,7 @@ pub lkconfig.LKConfig *read_file(const char *configfile) {
         }
 
         // hostname littlekitten.xyz
-        lkstring.lk_string_split_assign(l, " ", k, v); // l:"k v", assign k and v
+        lk_string_split_assign(l, " ", k, v); // l:"k v", assign k and v
         if (lkstring.lk_string_sz_equal(k, "hostname")) {
             // hostname littlekitten.xyz
             hc = lkconfig.lk_config_create_get_hostconfig(cfg, v->s);
@@ -89,7 +99,7 @@ pub lkconfig.LKConfig *read_file(const char *configfile) {
 
             // serverhost=127.0.0.1
             // port=8000
-            lkstring.lk_string_split_assign(l, "=", k, v); // l:"k=v", assign k and v
+            lk_string_split_assign(l, "=", k, v); // l:"k=v", assign k and v
             if (lkstring.lk_string_sz_equal(k, "serverhost")) {
                 free(cfg->serverhost);
                 cfg->serverhost = strings.newstr("%s", v->s);
@@ -107,7 +117,7 @@ pub lkconfig.LKConfig *read_file(const char *configfile) {
             // homedir=testsite
             // cgidir=cgi-bin
             // proxyhost=localhost:8001
-            lkstring.lk_string_split_assign(l, "=", k, v);
+            lk_string_split_assign(l, "=", k, v);
             if (lkstring.lk_string_sz_equal(k, "homedir")) {
                 lkstring.lk_string_assign(hc->homedir, v->s);
                 continue;
@@ -119,9 +129,9 @@ pub lkconfig.LKConfig *read_file(const char *configfile) {
                 continue;
             }
             // alias latest=latest.html
-            lkstring.lk_string_split_assign(l, " ", k, v);
+            lk_string_split_assign(l, " ", k, v);
             if (lkstring.lk_string_sz_equal(k, "alias")) {
-                lkstring.lk_string_split_assign(v, "=", aliask, aliasv);
+                lk_string_split_assign(v, "=", aliask, aliasv);
                 if (!lkstring.lk_string_starts_with(aliask, "/")) {
                     lkstring.lk_string_prepend(aliask, "/");
                 }
@@ -143,4 +153,73 @@ pub lkconfig.LKConfig *read_file(const char *configfile) {
 
     fclose(f);
     return cfg;
+}
+
+LKStringList *lk_stringlist_new() {
+    LKStringList *sl = calloc(1, sizeof(LKStringList));
+    sl->items_size = N_GROW_STRINGLIST;
+    sl->items_len = 0;
+    sl->items = calloc(sl->items_size, sizeof(lkstring.LKString));
+    return sl;
+}
+
+// Given a "k<delim>v" string, assign k and v.
+void lk_string_split_assign(lkstring.LKString *lks, const char *delim, lkstring.LKString *k, *v) {
+    LKStringList *sl = lk_stringlist_new();
+    size_t delim_len = strlen(delim);
+    lkstring.LKString *segment = lkstring.lk_string_new("");
+    for (size_t i = 0; i < lks->s_len; i++) {
+        if (!strncmp(lks->s, delim, delim_len)) {
+            lk_stringlist_append_lkstring(sl, segment);
+            segment = lkstring.lk_string_new("");
+            i += delim_len-1; // need to -1 to account for for loop incrementor i++
+            continue;
+        }
+
+        lkstring.lk_string_append_char(segment, lks->s[i]);
+    }
+    lk_stringlist_append_lkstring(sl, segment);
+
+    LKStringList *ss = sl;
+    if (k != NULL) {
+        lkstring.lk_string_assign(k, ss->items[0]->s);
+    }
+    if (v != NULL) {
+        if (ss->items_len >= 2) {
+            lkstring.lk_string_assign(v, ss->items[1]->s);
+        } else {
+            lkstring.lk_string_assign(v, "");
+        }
+    }
+    lk_stringlist_free(ss);
+}
+
+void lk_stringlist_free(LKStringList *sl) {
+    assert(sl->items != NULL);
+
+    for (size_t i = 0; i < sl->items_len; i++) {
+        lkstring.lk_string_free(sl->items[i]);
+    }
+    memset(sl->items, 0, sl->items_size * sizeof(lkstring.LKString));
+
+    free(sl->items);
+    sl->items = NULL;
+    free(sl);
+}
+
+void lk_stringlist_append_lkstring(LKStringList *sl, lkstring.LKString *lks) {
+    assert(sl->items_len <= sl->items_size);
+
+    if (sl->items_len == sl->items_size) {
+        lkstring.LKString **pitems = realloc(sl->items, (sl->items_size+N_GROW_STRINGLIST) * sizeof(lkstring.LKString));
+        if (pitems == NULL) {
+            return;
+        }
+        sl->items = pitems;
+        sl->items_size += N_GROW_STRINGLIST;
+    }
+    sl->items[sl->items_len] = lks;
+    sl->items_len++;
+
+    assert(sl->items_len <= sl->items_size);
 }
