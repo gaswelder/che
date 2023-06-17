@@ -3,6 +3,7 @@
 #import mime
 #import os/misc
 #import os/net
+#import panic
 #import strings
 #import time
 
@@ -17,7 +18,6 @@
 #import lkstring.c
 #import lkstringtable.c
 #import request.c
-#import socketreader.c
 
 
 #define LK_BUFSIZE_SMALL 512
@@ -198,43 +198,67 @@ void set_cgi_env2(lkcontext.LKContext *ctx, lkhostconfig.LKHostConfig *hc) {
 }
 
 void read_request(LKHttpServer *server, lkcontext.LKContext *ctx, net.net_t *client_conn) {
-    int z = 0;
-    char buf[4097] = {0};
-    while (1) {
-        if (!ctx->reqparser->head_complete) {
-            printf("reading head\n");
-            int r = net.readconn(client_conn, buf, sizeof(buf));
-            if (r < 0) {
-                fprintf(stderr, "readconn failed: %s\n", strerror(errno));
-                break;
-            }
-            buf[r] = '\0';
-            printf("read: %s\n", buf);
-            // lksocketreader.LKSocketReader *sr = ctx->sr;
-            lkstring.lk_string_assign(ctx->req_line, buf);
-            lkhttprequestparser.lk_httprequestparser_parse_line(ctx->reqparser, ctx->req_line, ctx->req);
-        } else {
-            z = socketreader.lk_socketreader_recv(ctx->sr, ctx->req_buf);
-            if (z == lknet.Z_ERR) {
-                lk_print_err("lksocketreader_readbytes()");
-                break;
-            }
-            lkhttprequestparser.lk_httprequestparser_parse_bytes(ctx->reqparser, ctx->req_buf, ctx->req);
+    // Put incoming data into the client's buffer.
+    int r = net.readconn(client_conn,
+        ctx->input_buffer + ctx->input_buffer_len,
+        sizeof(ctx->input_buffer) - ctx->input_buffer_len);
+    if (r < 0) {
+        fprintf(stderr, "readconn failed: %s\n", strerror(errno));
+        return;
+    }
+    ctx->input_buffer_len += r;
+    char tmp[4096] = {0};
+    memcpy(tmp, ctx->input_buffer, ctx->input_buffer_len);
+    fprintf(stderr, "got %d bytes of data: %s\n", r, tmp);
+
+    while (ctx->input_buffer_len > 0) {
+        // Try processing the new data.
+        // If it doesn't return true, the new data wasn't enough to change
+        // the state, so return until more data comes in.
+        if (!try_process_data(ctx)) {
+            return;
         }
-        // No more data coming in.
-        if (ctx->sr->sockclosed) {
-            ctx->reqparser->body_complete = 1;
-        }
+        // If new data did change the state, see if the request has formed
+        // already to be processed.
         if (ctx->reqparser->body_complete) {
-            // FD_CLR_READ(ctx->selectfd, server);
-            // shutdown(ctx->selectfd, SHUT_RD);
+            fprintf(stderr, "request body complete, trying to process it\n");
             process_request(server, ctx);
             break;
         }
-        if (z != lknet.Z_OPEN) {
-            break;
-        }
+
+        panic.panic("try_process_data: unhandled branch\n");
+        break;
     }
+}
+
+bool try_process_data(lkcontext.LKContext *ctx) {
+    if (!ctx->reqparser->head_complete) {
+        fprintf(stderr, "reading head\n");
+        char *lf = strchr(ctx->input_buffer, '\n');
+        if (!lf || (size_t)(lf - ctx->input_buffer) > ctx->input_buffer_len) {
+            fprintf(stderr, "no complete line yet\n");
+            return false;
+        }
+        lf++;
+
+        char line[4096] = {0};
+        size_t linelen = lf - ctx->input_buffer;
+        memcpy(line, ctx->input_buffer, linelen);
+        fprintf(stderr, "got line: '%s'\n", line);
+        ctx->input_buffer_len -= linelen;
+        memmove(ctx->input_buffer, lf, ctx->input_buffer_len);
+
+        lkhttprequestparser.parse_head_line(ctx->reqparser, line, ctx->req);
+        return true;
+    }
+
+    if (!ctx->reqparser->body_complete) {
+        panic.panic("parsing body\n");
+        lkhttprequestparser.lk_httprequestparser_parse_bytes(ctx->reqparser, ctx->req_buf, ctx->req);
+        return true;
+    }
+
+    return false;
 }
 
 // Send cgi_inputbuf input bytes to cgi program stdin set in selectfd.

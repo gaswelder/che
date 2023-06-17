@@ -15,6 +15,11 @@ pub enum {
 }; // LKContextType;
 
 pub typedef {
+    // Input data to be processed.
+    char input_buffer[4096];
+    size_t input_buffer_len;
+
+
     int selectfd;
     int clientfd;
     int type;

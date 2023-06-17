@@ -40,32 +40,7 @@ pub void lk_httprequestparser_reset(LKHttpRequestParser *parser) {
     parser->body_complete = 0;
 }
 
-// Parse one line and cumulatively compile results into req.
-// You can check the state of the parser through the following fields:
-// parser->head_complete   Request Line and Headers complete
-// parser->body_complete   httprequest is complete
-pub void lk_httprequestparser_parse_line(LKHttpRequestParser *parser, lkstring.LKString *line, request.LKHttpRequest *req) {
-    // If there's a previous partial line, combine it with current line.
-    if (parser->partial_line->s_len > 0) {
-        lkstring.lk_string_append(parser->partial_line, line->s);
-        if (lkstring.lk_string_ends_with(parser->partial_line, "\n")) {
-            parse_line(parser, parser->partial_line->s, req);
-            lkstring.lk_string_assign(parser->partial_line, "");
-        }
-        return;
-    }
-
-    // If current line is only partial line (not newline terminated), remember it for
-    // next read.
-    if (!lkstring.lk_string_ends_with(line, "\n")) {
-        lkstring.lk_string_assign(parser->partial_line, line->s);
-        return;
-    }
-
-    parse_line(parser, line->s, req);
-}
-
-void parse_line(LKHttpRequestParser *parser, char *line, request.LKHttpRequest *req) {
+pub void parse_head_line(LKHttpRequestParser *parser, char *line, request.LKHttpRequest *req) {
     // First line: parse initial request line.
     if (parser->nlinesread == 0) {
         http.request_line_t r = {};
