@@ -1,8 +1,8 @@
 #import arr
-#import strings
-#import string
-#import mem
 #import jsontok
+#import mem
+#import str
+#import strings
 
 // JSON data is represented as a tree where each node is an object of type `json_node`.
 // A node can be of one of the following types:
@@ -637,7 +637,7 @@ json_node *read_dict(parser_t *p)
 	}
 
 	while (jsontok.lexer_currtype(p->lexer) != EOF) {
-		// Get the field name string.
+		// Get the field name str.
 		if (jsontok.lexer_currtype(p->lexer) != jsontok.T_STR) {
 			json_free(o);
 			return error(p, "Key expected");
@@ -717,14 +717,14 @@ pub char *json_format(json_node *n)
 	json_write(z, n);
 	mem.memrewind(z);
 
-	string.str *s = string.str_new();
+	str.str *s = str.str_new();
 	while(1) {
 		char c = mem.memgetc(z);
 		if(c == EOF) break;
-		string.str_addc(s, c);
+		str.str_addc(s, c);
 	}
-	char *str1 = strings.newstr("%s", string.str_raw(s));
-	string.str_free(s);
+	char *str1 = strings.newstr("%s", str.str_raw(s));
+	str.str_free(s);
 	mem.memclose(z);
 	return str1;
 }

@@ -1,7 +1,7 @@
-#import parsebuf
-#import string
-#import strings
 #import json
+#import parsebuf
+#import str
+#import strings
 
 /*
  * Sorted by length, longest first.
@@ -72,13 +72,13 @@ int main() {
 }
 
 char *read_stdin() {
-	string.str *s = string.str_new();
+	str.str *s = str.str_new();
 	while (!feof(stdin)) {
 		char c = fgetc(stdin);
 		if (c == EOF) break;
-		string.str_addc(s, c);
+		str.str_addc(s, c);
 	}
-	return string.str_unpack(s);
+	return str.str_unpack(s);
 }
 
 
@@ -248,16 +248,16 @@ tok_t *read_string(parsebuf.parsebuf_t *b) {
 
 	// Skip the opening quote
 	parsebuf.buf_get(b);
-	string.str *s = string.str_new();
+	str.str *s = str.str_new();
 
 	while (parsebuf.buf_more(b)) {
 		char c = parsebuf.buf_get(b);
 		if (c == '"') {
-			return tok_make("string", string.str_unpack(s), pos);
+			return tok_make("string", str.str_unpack(s), pos);
 		}
-		string.str_addc(s, c);
+		str.str_addc(s, c);
 		if (c == '\\') {
-			string.str_addc(s, parsebuf.buf_get(b));
+			str.str_addc(s, parsebuf.buf_get(b));
 		}
 	}
 	return tok_make("error", strings.newstr("double quote expected"), pos);
@@ -325,7 +325,7 @@ tok_t *read_line_comment(parsebuf.parsebuf_t *b) {
 }
 
 tok_t *read_identifier(parsebuf.parsebuf_t *b) {
-	string.str *s = string.str_new();
+	str.str *s = str.str_new();
 	char *pos = parsebuf.buf_pos(b);
 
 	while (parsebuf.buf_more(b)) {
@@ -333,7 +333,7 @@ tok_t *read_identifier(parsebuf.parsebuf_t *b) {
 		if (!isalpha(c) && !isdigit(c) && c != '_') {
 			break;
 		}
-		string.str_addc(s, parsebuf.buf_get(b));
+		str.str_addc(s, parsebuf.buf_get(b));
 	}
-	return tok_make("word", string.str_unpack(s), pos);
+	return tok_make("word", str.str_unpack(s), pos);
 }
