@@ -419,11 +419,13 @@ pub struct Lexer {
 }
 
 pub fn for_file(filename: &str) -> Result<Lexer, String> {
-    let contents = fs::read_to_string(filename).expect("Something went wrong reading the file");
-    return for_string(contents);
+    return match fs::read_to_string(filename) {
+        Ok(contents) => Ok(for_string(contents)),
+        Err(e) => Err(format!("could not read {}: {}", filename, e)),
+    };
 }
 
-pub fn for_string(contents: String) -> Result<Lexer, String> {
+pub fn for_string(contents: String) -> Lexer {
     let mut toks: Vec<Token> = Vec::new();
     let mut b = crate::buf::new(contents);
     loop {
@@ -431,15 +433,10 @@ pub fn for_string(contents: String) -> Result<Lexer, String> {
         if r.is_none() {
             break;
         }
-        let tok = r.unwrap();
-        if tok.kind == "error" {
-            let err = format!("{} at {}", tok.content.unwrap(), tok.pos);
-            return Err(err);
-        }
-        toks.push(tok)
+        toks.push(r.unwrap());
     }
     toks.reverse();
-    return Ok(Lexer { toks });
+    return Lexer { toks };
 }
 
 impl Lexer {

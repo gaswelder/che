@@ -1,28 +1,29 @@
 #!/bin/sh
 
-# utils
-cleardir () {
-	if [ ! -d $1 ]; then return 0; fi
-	n=`ls $1 | wc -l`
-	if [ $n -gt 0 ]; then rm $1/*; fi
-}
-
-#
-# build and use it
-#
-cargo build || exit 1
-export CHELANG_HOME=`pwd`
-che=$CHELANG_HOME/target/debug/che
-
 #
 # internal test
 #
 cargo test || exit 1
 
 #
-# scoped identifiers test
+# build and use the latest build
 #
-che build test/scoped/main.c && ./main || exit 1
+cargo build || exit 1
+export CHELANG_HOME=`pwd`
+che=$CHELANG_HOME/target/debug/che
+
+#
+# compile and test sample projects
+#
+sampletest () {
+	name=$1
+	che build samples/$name/main.c || return 1
+	./main > tmp/output || return 1
+	diff tmp/output samples/$name/out.snapshot || return 1
+}
+for n in `ls samples`; do
+	sampletest $n && echo OK sample $n || exit 1
+done
 
 #
 # self-hosted lib tests

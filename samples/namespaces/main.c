@@ -6,7 +6,7 @@ int main() {
     printf("size = %zu\n", sizeof(val));
 
     // Can use an imported constant.
-    printf("one = %d\b", lib.ONE);
+    printf("one = %d\n", lib.ONE);
 
     // Can call an imported function.
     lib.f();
