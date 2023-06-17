@@ -17,7 +17,22 @@ pub void free(t *r) {
     free(r);
 }
 
-pub bool consume(t *r, char c) {
+/**
+ * Consumes as many characters as required from the string.
+ * Returns the number of consumed characters.
+ */
+pub size_t consume(t *r, const char *s) {
+    const char *p = s;
+    while (*p) {
+        if (!consumechar(r, *p)) {
+            break;
+        }
+        p++;
+    }
+    return p - s;
+}
+
+bool consumechar(t *r, char c) {
     if (r->_done || r->_err) {
         return false;
     }
@@ -34,6 +49,9 @@ pub bool consume(t *r, char c) {
     return true;
 }
 
+/**
+ * Resets the reader's state so it can consume another line.
+ */
 pub void reset(t *r) {
     r->output_size = 0;
     r->_done = false;
