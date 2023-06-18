@@ -6,10 +6,12 @@
 #import socketreader.c
 
 pub enum {
-    CTX_READ_REQ,
+    CTX_READ_REQ, // reading request head
+    CTX_WRITE_RESP,
+
     CTX_READ_CGI_OUTPUT,
     CTX_WRITE_CGI_INPUT,
-    CTX_WRITE_RESP,
+    
     CTX_PROXY_WRITE_REQ,
     CTX_PROXY_PIPE_RESP
 }; // LKContextType;
@@ -19,10 +21,11 @@ pub typedef {
     char input_buffer[4096];
     size_t input_buffer_len;
 
+    int type; // state, one of CTX_* constants
 
     int selectfd;
     int clientfd;
-    int type;
+    
     LKContext *next;         // link to next ctx
 
     // Used by CTX_READ_REQ:

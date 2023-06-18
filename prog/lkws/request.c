@@ -1,3 +1,5 @@
+#import http
+
 #import lkstring.c
 #import lkstringtable.c
 #import lkbuffer.c
@@ -10,34 +12,39 @@ pub typedef {
     char querystring[1024];  // "p=1&start=5"
     char version[20];      // HTTP/1.0
 
-    lkstringtable.LKStringTable *headers;
+    http.header_t headers[100];
+    size_t nheaders;
+
     lkbuffer.LKBuffer *head;
     lkbuffer.LKBuffer *body;
 } LKHttpRequest;
 
+pub http.header_t *get_header(LKHttpRequest *r, const char *name) {
+    http.header_t *h = NULL;
+    for (size_t i = 0; i < r->nheaders; i++) {
+        h = &r->headers[i];
+        if (!strcmp(name, h->name)) {
+            return h;
+        }
+    }
+    return NULL;
+}
+
 pub LKHttpRequest *lk_httprequest_new() {
     LKHttpRequest *req = calloc(1, sizeof(LKHttpRequest));
-    req->headers = lkstringtable.lk_stringtable_new();
     req->head = lkbuffer.lk_buffer_new(0);
     req->body = lkbuffer.lk_buffer_new(0);
     return req;
 }
 
 pub void lk_httprequest_free(LKHttpRequest *req) {
-    lkstringtable.lk_stringtable_free(req->headers);
     lkbuffer.lk_buffer_free(req->head);
     lkbuffer.lk_buffer_free(req->body);
 
-    req->headers = NULL;
     req->head = NULL;
     req->body = NULL;
     free(req);
 }
-
-pub void lk_httprequest_add_header(LKHttpRequest *req, char *k, char *v) {
-    lkstringtable.lk_stringtable_set(req->headers, k, v);
-}
-
 
 pub typedef {
     int status;             // 404

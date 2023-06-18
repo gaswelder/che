@@ -2,6 +2,8 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 
+#import http
+
 #import lkbuffer.c
 #import lkstring.c
 #import request.c
@@ -250,8 +252,9 @@ pub void lk_httprequest_finalize(request.LKHttpRequest *req) {
     if (req->body->bytes_len > 0) {
         lkbuffer.lk_buffer_append_sprintf(req->head, "Content-Length: %ld\n", req->body->bytes_len);
     }
-    for (size_t i=0; i < req->headers->items_len; i++) {
-        lkbuffer.lk_buffer_append_sprintf(req->head, "%s: %s\n", req->headers->items[i].k->s, req->headers->items[i].v->s);
+    for (size_t i = 0; i < req->nheaders; i++) {
+        http.header_t *h = &req->headers[i];
+        lkbuffer.lk_buffer_append_sprintf(req->head, "%s: %s\n", h->name, h->value);
     }
     lkbuffer.lk_buffer_append(req->head, "\r\n", 2);
 }
@@ -265,13 +268,12 @@ pub void lk_httprequest_debugprint(request.LKHttpRequest *req) {
     printf("uri: %s\n", req->uri);
     printf("version: %s\n", req->version);
 
-    printf("headers_size: %ld\n", req->headers->items_size);
-    printf("headers_len: %ld\n", req->headers->items_len);
+    printf("headers_len: %ld\n", req->nheaders);
 
     printf("Headers:\n");
-    for (size_t i=0; i < req->headers->items_len; i++) {
-        lkstring.LKString *v = req->headers->items[i].v;
-        printf("%s: %s\n", req->headers->items[i].k->s, v->s);
+    for (size_t i = 0; i < req->nheaders; i++) {
+        http.header_t *h = &req->headers[i];
+        printf("%s: %s\n", h->name, h->value);
     }
 
     printf("Body:\n---\n");

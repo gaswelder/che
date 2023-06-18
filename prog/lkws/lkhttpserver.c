@@ -5,13 +5,13 @@
 #import os/net
 #import strings
 #import time
+#import http
 
 #import lkbuffer.c
 #import lkconfig.c
 #import lkcontext.c
 #import lkhostconfig.c
 #import lkhttpcgiparser.c
-#import lkhttprequestparser.c
 #import lknet.c
 #import lkreflist.c
 #import lkstring.c
@@ -161,13 +161,31 @@ void set_cgi_env2(lkcontext.LKContext *ctx, lkhostconfig.LKHostConfig *hc) {
 
     misc.setenv("DOCUMENT_ROOT", hc->homedir_abspath->s, 1);
 
-    char *http_user_agent = lkstringtable.lk_stringtable_get(req->headers, "User-Agent");
-    if (!http_user_agent) http_user_agent = "";
-    misc.setenv("HTTP_USER_AGENT", http_user_agent, 1);
+    http.header_t *h = NULL;
+    
+    h = request.get_header(req, "User-Agent");
+    if (h) {
+        misc.setenv("HTTP_USER_AGENT", h->value, 1);
+    } else {
+        misc.setenv("HTTP_USER_AGENT", "", 1);
+    }
 
-    char *http_host = lkstringtable.lk_stringtable_get(req->headers, "Host");
-    if (!http_host) http_host = "";
-    misc.setenv("HTTP_HOST", http_host, 1);
+    h = request.get_header(req, "Host");
+    if (h) {
+        misc.setenv("HTTP_HOST", h->value, 1);
+    } else {
+        misc.setenv("HTTP_HOST", "", 1);
+    }
+
+    h = request.get_header(req, "Content-Type");
+    if (h) {
+        misc.setenv("CONTENT_TYPE", h->value, 1);
+    } else {
+        misc.setenv("CONTENT_TYPE", "", 1);
+    }
+
+    
+    
 
     lkstring.LKString *lkscript_filename = lkstring.lk_string_new(hc->homedir_abspath->s);
     lkstring.lk_string_append(lkscript_filename, req->path);
@@ -179,11 +197,7 @@ void set_cgi_env2(lkcontext.LKContext *ctx, lkhostconfig.LKHostConfig *hc) {
     misc.setenv("REQUEST_URI", req->uri, 1);
     misc.setenv("QUERY_STRING", req->querystring, 1);
 
-    char *content_type = lkstringtable.lk_stringtable_get(req->headers, "Content-Type");
-    if (content_type == NULL) {
-        content_type = "";
-    }
-    misc.setenv("CONTENT_TYPE", content_type, 1);
+    
 
     char content_length[10];
     snprintf(content_length, sizeof(content_length), "%ld", req->body->bytes_len);
@@ -210,54 +224,82 @@ void read_request(LKHttpServer *server, lkcontext.LKContext *ctx, net.net_t *cli
     memcpy(tmp, ctx->input_buffer, ctx->input_buffer_len);
     fprintf(stderr, "got %d bytes of data: %s\n", r, tmp);
 
-    while (ctx->input_buffer_len > 0) {
+    while (true) {
         // Try processing the new data.
         // If it doesn't return true, the new data wasn't enough to change
         // the state, so return until more data comes in.
-        if (!try_process_data(ctx)) {
-            return;
-        }
-        // If new data did change the state, see if the request has formed
-        // already to be processed.
-        if (ctx->reqparser->body_complete) {
-            fprintf(stderr, "request body complete, trying to process it\n");
-            process_request(server, ctx);
+        printf("ctx state = %d\n", ctx->type);
+        switch (ctx->type) {
+        case lkcontext.CTX_READ_REQ:
+            if (!try_read_header(ctx)) {
+                return;
+            }
             break;
+        case lkcontext.CTX_WRITE_RESP:
+            if (!process_request(server, ctx)) {
+                return;
+            }
+            break;
+        default:
+            panic("unhandled ctx state: %d", ctx->type);
         }
-
-        panic("try_process_data: unhandled branch\n");
-        break;
     }
 }
 
-bool try_process_data(lkcontext.LKContext *ctx) {
-    if (!ctx->reqparser->head_complete) {
-        fprintf(stderr, "reading head\n");
-        char *lf = strchr(ctx->input_buffer, '\n');
-        if (!lf || (size_t)(lf - ctx->input_buffer) > ctx->input_buffer_len) {
-            fprintf(stderr, "no complete line yet\n");
-            return false;
+bool try_read_header(lkcontext.LKContext *ctx) {
+    fprintf(stderr, "reading head\n");
+
+    char *split = strstr(ctx->input_buffer, "\r\n\r\n");
+    if (!split || (size_t)(split - ctx->input_buffer) > ctx->input_buffer_len) {
+        fprintf(stderr, "no complete line yet\n");
+        return false;
+    }
+    split += 4;
+
+    char head[4096] = {0};
+    size_t headlen = split - ctx->input_buffer;
+    memcpy(head, ctx->input_buffer, headlen);
+    fprintf(stderr, "got head: -----[%s]----\n", head);
+    
+
+    /*
+     * Parse the request
+     */
+    char *lines[100] = {0};
+    size_t nlines = strings.split("\r\n", head, lines, sizeof(lines));
+    if (nlines == sizeof(lines)) {
+        panic("lines buffer too small: %zu", sizeof(lines));
+    }
+    http.request_line_t r = {};
+    if (!http.parse_request_line(lines[0], &r)) {
+        panic("failed to parse the request line: '%s'", lines[0]);
+    }
+    strcpy(ctx->req->method, r.method);
+    strcpy(ctx->req->uri, r.uri);
+    strcpy(ctx->req->path, r.path);
+    strcpy(ctx->req->filename, r.filename);
+    strcpy(ctx->req->querystring, r.query);
+    strcpy(ctx->req->version, r.version);
+    for (size_t i = 1; i < nlines; i++) {
+        if (!strcmp(lines[i], "")) {
+            break;
         }
-        lf++;
-
-        char line[4096] = {0};
-        size_t linelen = lf - ctx->input_buffer;
-        memcpy(line, ctx->input_buffer, linelen);
-        fprintf(stderr, "got line: '%s'\n", line);
-        ctx->input_buffer_len -= linelen;
-        memmove(ctx->input_buffer, lf, ctx->input_buffer_len);
-
-        lkhttprequestparser.parse_head_line(ctx->reqparser, line, ctx->req);
-        return true;
+        if (!http.parse_header_line(lines[i], &ctx->req->headers[ctx->req->nheaders])) {
+            panic("failed to parse header line '%s'", lines[i]);
+        }
+        ctx->req->nheaders++;
+    }
+    for (size_t i = 0; i < nlines; i++) {
+        free(lines[i]);
     }
 
-    if (!ctx->reqparser->body_complete) {
-        panic("parsing body\n");
-        lkhttprequestparser.lk_httprequestparser_parse_bytes(ctx->reqparser, ctx->req_buf, ctx->req);
-        return true;
-    }
+    // Shift the buffer data
+    ctx->input_buffer_len -= headlen;
+    memmove(ctx->input_buffer, split, ctx->input_buffer_len);
 
-    return false;
+    // Switch to service the request.
+    ctx->type = lkcontext.CTX_WRITE_RESP;
+    return true;
 }
 
 // Send cgi_inputbuf input bytes to cgi program stdin set in selectfd.
@@ -313,23 +355,28 @@ void read_cgi_output(LKHttpServer *server, lkcontext.LKContext *ctx) {
     process_response(server, ctx);
 }
 
-void process_request(LKHttpServer *server, lkcontext.LKContext *ctx) {
-    char *hostname = lkstringtable.lk_stringtable_get(ctx->req->headers, "Host");
+bool process_request(LKHttpServer *server, lkcontext.LKContext *ctx) {
+    char *hostname = NULL;
+    http.header_t *host = request.get_header(ctx->req, "Host");
+    if (host) {
+        hostname = host->value;
+    }
+
     lkhostconfig.LKHostConfig *hc = lkconfig.lk_config_find_hostconfig(server->cfg, hostname);
     if (hc == NULL) {
         process_error_response(server, ctx, 404, "LittleKitten webserver: hostconfig not found.");
-        return;
+        return true;
     }
 
     // Forward request to proxyhost if proxyhost specified.
     if (hc->proxyhost->s_len > 0) {
         serve_proxy(server, ctx, hc->proxyhost->s);
-        return;
+        return true;
     }
 
     if (hc->homedir->s_len == 0) {
         process_error_response(server, ctx, 404, "LittleKitten webserver: hostconfig homedir not specified.");
-        return;
+        return true;
     }
 
     // Replace path with any matching alias.
@@ -344,11 +391,12 @@ void process_request(LKHttpServer *server, lkcontext.LKContext *ctx) {
     // Run cgi script if uri falls under cgidir
     if (hc->cgidir->s_len > 0 && strings.starts_with(ctx->req->path, hc->cgidir->s)) {
         serve_cgi(server, ctx, hc);
-        return;
+        return true;
     }
 
     serve_files(ctx, hc);
     process_response(server, ctx);
+    return true;
 }
 
 // Generate an http response to an http request.
