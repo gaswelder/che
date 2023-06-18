@@ -5,30 +5,11 @@
 #import lkbuffer.c
 
 pub typedef {
-    char method[10]; // GET
-    char uri[1024]; // "/path/to/index.html?p=1&start=5"
-    char path[1024];         // "/path/to/index.html"
-    char filename[1024];     // "index.html"
-    char querystring[1024];  // "p=1&start=5"
-    char version[20];      // HTTP/1.0
-
-    http.header_t headers[100];
-    size_t nheaders;
+    http.request_t req;
 
     lkbuffer.LKBuffer *head;
     lkbuffer.LKBuffer *body;
 } LKHttpRequest;
-
-pub http.header_t *get_header(LKHttpRequest *r, const char *name) {
-    http.header_t *h = NULL;
-    for (size_t i = 0; i < r->nheaders; i++) {
-        h = &r->headers[i];
-        if (!strcmp(name, h->name)) {
-            return h;
-        }
-    }
-    return NULL;
-}
 
 pub LKHttpRequest *lk_httprequest_new() {
     LKHttpRequest *req = calloc(1, sizeof(LKHttpRequest));

@@ -72,13 +72,13 @@ pub void rtrim(char *s, *set) {
  * `result`.
  * If `str` is null, returns 0.
 */
-pub size_t split(char *separator, char *str, char **result, size_t result_size) {
+pub size_t split(const char *separator, const char *str, char **result, size_t result_size) {
 	if (!str) {
 		return 0;
 	}
 	size_t count = 0;
 	const int sepsize = strlen(separator);
-	char *current = str;
+	const char *current = str;
 
 	while (true) {
 		// If there's only one slot left in the output list, put the whole

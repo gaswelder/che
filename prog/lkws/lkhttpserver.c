@@ -157,27 +157,28 @@ void set_cgi_env1(LKHttpServer *server) {
 
 // Sets the cgi environment variables that vary for each http request.
 void set_cgi_env2(lkcontext.LKContext *ctx, lkhostconfig.LKHostConfig *hc) {
-    request.LKHttpRequest *req = ctx->req;
+    request.LKHttpRequest *wreq = ctx->req;
+    http.request_t *req = &wreq->req;
 
     misc.setenv("DOCUMENT_ROOT", hc->homedir_abspath->s, 1);
 
     http.header_t *h = NULL;
     
-    h = request.get_header(req, "User-Agent");
+    h = http.get_header(req, "User-Agent");
     if (h) {
         misc.setenv("HTTP_USER_AGENT", h->value, 1);
     } else {
         misc.setenv("HTTP_USER_AGENT", "", 1);
     }
 
-    h = request.get_header(req, "Host");
+    h = http.get_header(req, "Host");
     if (h) {
         misc.setenv("HTTP_HOST", h->value, 1);
     } else {
         misc.setenv("HTTP_HOST", "", 1);
     }
 
-    h = request.get_header(req, "Content-Type");
+    h = http.get_header(req, "Content-Type");
     if (h) {
         misc.setenv("CONTENT_TYPE", h->value, 1);
     } else {
@@ -195,12 +196,12 @@ void set_cgi_env2(lkcontext.LKContext *ctx, lkhostconfig.LKHostConfig *hc) {
     misc.setenv("REQUEST_METHOD", req->method, 1);
     misc.setenv("SCRIPT_NAME", req->path, 1);
     misc.setenv("REQUEST_URI", req->uri, 1);
-    misc.setenv("QUERY_STRING", req->querystring, 1);
+    misc.setenv("QUERY_STRING", req->query, 1);
 
     
 
     char content_length[10];
-    snprintf(content_length, sizeof(content_length), "%ld", req->body->bytes_len);
+    snprintf(content_length, sizeof(content_length), "%ld", wreq->body->bytes_len);
     content_length[sizeof(content_length)-1] = '\0';
     misc.setenv("CONTENT_LENGTH", content_length, 1);
 
@@ -265,32 +266,8 @@ bool try_read_header(lkcontext.LKContext *ctx) {
     /*
      * Parse the request
      */
-    char *lines[100] = {0};
-    size_t nlines = strings.split("\r\n", head, lines, sizeof(lines));
-    if (nlines == sizeof(lines)) {
-        panic("lines buffer too small: %zu", sizeof(lines));
-    }
-    http.request_line_t r = {};
-    if (!http.parse_request_line(lines[0], &r)) {
-        panic("failed to parse the request line: '%s'", lines[0]);
-    }
-    strcpy(ctx->req->method, r.method);
-    strcpy(ctx->req->uri, r.uri);
-    strcpy(ctx->req->path, r.path);
-    strcpy(ctx->req->filename, r.filename);
-    strcpy(ctx->req->querystring, r.query);
-    strcpy(ctx->req->version, r.version);
-    for (size_t i = 1; i < nlines; i++) {
-        if (!strcmp(lines[i], "")) {
-            break;
-        }
-        if (!http.parse_header_line(lines[i], &ctx->req->headers[ctx->req->nheaders])) {
-            panic("failed to parse header line '%s'", lines[i]);
-        }
-        ctx->req->nheaders++;
-    }
-    for (size_t i = 0; i < nlines; i++) {
-        free(lines[i]);
+    if (!http.parse_request(&ctx->req->req, head)) {
+        panic("failed to parse the request");
     }
 
     // Shift the buffer data
@@ -356,8 +333,9 @@ void read_cgi_output(LKHttpServer *server, lkcontext.LKContext *ctx) {
 }
 
 bool process_request(LKHttpServer *server, lkcontext.LKContext *ctx) {
+    http.request_t *req = &ctx->req->req;
     char *hostname = NULL;
-    http.header_t *host = request.get_header(ctx->req, "Host");
+    http.header_t *host = http.get_header(req, "Host");
     if (host) {
         hostname = host->value;
     }
@@ -380,16 +358,16 @@ bool process_request(LKHttpServer *server, lkcontext.LKContext *ctx) {
     }
 
     // Replace path with any matching alias.
-    char *match = lkstringtable.lk_stringtable_get(hc->aliases, ctx->req->path);
+    char *match = lkstringtable.lk_stringtable_get(hc->aliases, req->path);
     if (match != NULL) {
-        if (strlen(match) + 1 > sizeof(ctx->req->path)) {
+        if (strlen(match) + 1 > sizeof(req->path)) {
             abort();
         }
-        strcpy(ctx->req->path, match);
+        strcpy(req->path, match);
     }
 
     // Run cgi script if uri falls under cgidir
-    if (hc->cgidir->s_len > 0 && strings.starts_with(ctx->req->path, hc->cgidir->s)) {
+    if (hc->cgidir->s_len > 0 && strings.starts_with(req->path, hc->cgidir->s)) {
         serve_cgi(server, ctx, hc);
         return true;
     }
@@ -411,7 +389,7 @@ void serve_files(lkcontext.LKContext *ctx, lkhostconfig.LKHostConfig *hc) {
     char *html_error_end =
        "</body></html>\n";
 
-    request.LKHttpRequest *req = ctx->req;
+    http.request_t *req = &ctx->req->req;
     request.LKHttpResponse *resp = ctx->resp;
     const char *method = req->method;
     const char *path = req->path;
@@ -462,7 +440,7 @@ void serve_files(lkcontext.LKContext *ctx, lkhostconfig.LKHostConfig *hc) {
             lknet.lk_httpresponse_add_header(resp, "Content-Type", "text/html");
             lkbuffer.lk_buffer_append(resp->body, html_start, strlen(html_start));
             lkbuffer.lk_buffer_append_sz(resp->body, "<pre>\n");
-            lkbuffer.lk_buffer_append(resp->body, req->body->bytes, req->body->bytes_len);
+            lkbuffer.lk_buffer_append(resp->body, ctx->req->body->bytes, ctx->req->body->bytes_len);
             lkbuffer.lk_buffer_append_sz(resp->body, "\n</pre>\n");
             lkbuffer.lk_buffer_append(resp->body, html_end, strlen(html_end));
             return;
@@ -482,7 +460,7 @@ void serve_files(lkcontext.LKContext *ctx, lkhostconfig.LKHostConfig *hc) {
 void serve_cgi(LKHttpServer *server, lkcontext.LKContext *ctx, lkhostconfig.LKHostConfig *hc) {
     request.LKHttpRequest *req = ctx->req;
     request.LKHttpResponse *resp = ctx->resp;
-    char *path = req->path;
+    char *path = ctx->req->req.path;
 
     lkstring.LKString *cgifile = lkstring.lk_string_new(hc->homedir_abspath->s);
     lkstring.lk_string_append(cgifile, path);
@@ -549,7 +527,7 @@ void serve_cgi(LKHttpServer *server, lkcontext.LKContext *ctx, lkhostconfig.LKHo
 
 void process_response(LKHttpServer *server, lkcontext.LKContext *ctx) {
     (void) server;
-    request.LKHttpRequest *req = ctx->req;
+    http.request_t *req = &ctx->req->req;
     request.LKHttpResponse *resp = ctx->resp;
 
     lknet.lk_httpresponse_finalize(resp);
@@ -743,7 +721,7 @@ void pipe_proxy_response(LKHttpServer *server, lkcontext.LKContext *ctx) {
         ctx->proxyfd = 0;
     }
 
-    request.LKHttpRequest *req = ctx->req;
+    http.request_t *req = &ctx->req->req;
     char time_str[TIME_STRING_SIZE];
     get_localtime_string(time_str, sizeof(time_str));
     printf("%s [%s] \"%s %s\" --> proxyhost\n",

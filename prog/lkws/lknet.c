@@ -241,29 +241,31 @@ pub int lk_write_all_file(int fd, lkbuffer.LKBuffer *buf) {
 /*** request.LKHttpRequest functions ***/
 
 
-pub void lk_httprequest_finalize(request.LKHttpRequest *req) {
-    lkbuffer.lk_buffer_clear(req->head);
+pub void lk_httprequest_finalize(request.LKHttpRequest *wreq) {
+    http.request_t *req = &wreq->req;
+    lkbuffer.lk_buffer_clear(wreq->head);
 
     // Default to HTTP version.
     if (!strcmp(req->version, "")) {
         strcpy(req->version, "HTTP/1.0");
     }
-    lkbuffer.lk_buffer_append_sprintf(req->head, "%s %s %s\n", req->method, req->uri, req->version);
-    if (req->body->bytes_len > 0) {
-        lkbuffer.lk_buffer_append_sprintf(req->head, "Content-Length: %ld\n", req->body->bytes_len);
+    lkbuffer.lk_buffer_append_sprintf(wreq->head, "%s %s %s\n", req->method, req->uri, req->version);
+    if (wreq->body->bytes_len > 0) {
+        lkbuffer.lk_buffer_append_sprintf(wreq->head, "Content-Length: %ld\n", wreq->body->bytes_len);
     }
     for (size_t i = 0; i < req->nheaders; i++) {
         http.header_t *h = &req->headers[i];
-        lkbuffer.lk_buffer_append_sprintf(req->head, "%s: %s\n", h->name, h->value);
+        lkbuffer.lk_buffer_append_sprintf(wreq->head, "%s: %s\n", h->name, h->value);
     }
-    lkbuffer.lk_buffer_append(req->head, "\r\n", 2);
+    lkbuffer.lk_buffer_append(wreq->head, "\r\n", 2);
 }
 
 
-pub void lk_httprequest_debugprint(request.LKHttpRequest *req) {
-    assert(req->head != NULL);
-    assert(req->body != NULL);
+pub void lk_httprequest_debugprint(request.LKHttpRequest *wreq) {
+    assert(wreq->head != NULL);
+    assert(wreq->body != NULL);
 
+    http.request_t *req = &wreq->req;
     printf("method: %s\n", req->method);
     printf("uri: %s\n", req->uri);
     printf("version: %s\n", req->version);
@@ -277,8 +279,8 @@ pub void lk_httprequest_debugprint(request.LKHttpRequest *req) {
     }
 
     printf("Body:\n---\n");
-    for (size_t i=0; i < req->body->bytes_len; i++) {
-        putchar(req->body->bytes[i]);
+    for (size_t i=0; i < wreq->body->bytes_len; i++) {
+        putchar(wreq->body->bytes[i]);
     }
     printf("\n---\n");
 }

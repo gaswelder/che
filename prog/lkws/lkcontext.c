@@ -21,6 +21,8 @@ pub typedef {
     char input_buffer[4096];
     size_t input_buffer_len;
 
+    request.LKHttpRequest *req;               // http in process
+
     int type; // state, one of CTX_* constants
 
     int selectfd;
@@ -35,7 +37,7 @@ pub typedef {
     lkbuffer.LKBuffer *req_buf;                // current bytes buffer
     socketreader.LKSocketReader *sr;               // input buffer for reading lines
     lkhttprequestparser.LKHttpRequestParser *reqparser;   // parser for httprequest
-    request.LKHttpRequest *req;               // http in process
+    
 
     // Used by CTX_WRITE_REQ:
     request.LKHttpResponse *resp;             // http response to be sent
