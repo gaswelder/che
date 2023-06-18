@@ -72,28 +72,34 @@ pub void rtrim(char *s, *set) {
  * `result`.
  * If `str` is null, returns 0.
 */
-pub int strutil_split(char separator, char *str, char **result, size_t result_size) {
+pub size_t split(char *separator, char *str, char **result, size_t result_size) {
 	if (!str) {
 		return 0;
 	}
-	char *p = str;
-	char *a = str;
-	int count = 0;
-	while ((size_t) count < result_size) {
-		if (*p == separator || *p == '\0') {
-			char *m = calloc(p - a + 1, 1);
-			int i = 0;
-			while (a != p) {
-				m[i++] = *a;
-				a++;
-			}
-			result[count++] = m;
-			a = p+1;
-		}
-		if (*p == '\0') {
+	size_t count = 0;
+	const int sepsize = strlen(separator);
+	char *current = str;
+
+	while (true) {
+		// If there's only one slot left in the output list, put the whole
+		// remaining string there and return.
+		if (count == result_size - 1) {
+			result[count++] = newstr("%s", current);
 			break;
 		}
-		p++;
+
+		// Find next separator position.
+		char *pos = strstr(current, separator);
+		if (pos) {
+			// Push string from current to pos and jump after the found separator.
+			result[count++] = newsubstr(current, 0, pos - current);
+			current = pos + sepsize;
+			continue;
+		} else {
+			// Push the remaining string.
+			result[count++] = newstr("%s", current);
+			break;
+		}
 	}
 	return count;
 }

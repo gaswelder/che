@@ -21,5 +21,12 @@ int main() {
     test.truth("abc ends with bc", strings.ends_with("abc", "bc"));
     test.truth("bc doesn't end with abc", !strings.ends_with("bc", "abc"));
     test.truth("abc doesn't end with ab", !strings.ends_with("abc", "ab"));
+
+    // split
+    char *split_output[10];
+    test.truth("n(split) == 2", strings.split("bb", "aabbcc", split_output, sizeof(split_output)) == 2);
+    test.streq(split_output[0], "aa");
+    test.streq(split_output[1], "cc");
+
     return test.fails();
 }

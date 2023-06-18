@@ -12,7 +12,7 @@ int main(int argc, char **argv) {
     char *fields_string = NULL;
     opt.opt_str("f", "fields to print as columns after the timestamp", &fields_string);
     opt.opt_parse(argc, argv);
-    nreqfields = strings.strutil_split(',', fields_string, reqfields, 100);
+    nreqfields = strings.split(",", fields_string, reqfields, sizeof(reqfields));
 
     // This assumes that stdin has the default "line discipline" - that is,
     // fgets will end up delivering whole lines, one line at a time, - and that
