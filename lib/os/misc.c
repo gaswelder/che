@@ -46,3 +46,12 @@ pub int32_t time_usec(timeval_t *t) {
 pub bool setenv(const char *name, *value, int overwrite) {
     return OS.setenv(name, value, overwrite) == 0;
 }
+
+pub bool get_hostname(char *buf, size_t bufsize) {
+    return OS.gethostname(buf, bufsize) == 0;
+}
+
+pub bool clearenv() {
+    fprintf(stderr, "TODO: clearenv\n");
+    return false;
+}

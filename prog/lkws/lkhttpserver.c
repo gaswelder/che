@@ -42,6 +42,24 @@ pub bool lk_httpserver_serve(lkconfig.LKConfig *cfg) {
         .ctxhead = NULL
     };
 
+    /*
+     * Get the hostname and set common env for future CGI children.
+     */
+    char hostname[1024] = {0};
+    if (!misc.get_hostname(hostname, sizeof(hostname))) {
+        fprintf(stderr, "failed to get hostname: %s\n", strerror(errno));
+        exit(1);
+    }
+    printf("hostname = %s\n", hostname);
+    misc.clearenv();
+    misc.setenv("SERVER_NAME", hostname, 1);
+    misc.setenv("SERVER_SOFTWARE", "littlekitten/0.1", 1);
+    misc.setenv("SERVER_PROTOCOL", "HTTP/1.0", 1);
+    misc.setenv("SERVER_PORT", cfg->port, 1);
+
+    /*
+     * Start listening and create a pool for incoming connections.
+     */
     char *addr = strings.newstr("%s:%s", cfg->serverhost, cfg->port);
     net.net_t *listen_conn = net.net_listen("tcp", addr);
     if (!listen_conn) {
@@ -50,15 +68,13 @@ pub bool lk_httpserver_serve(lkconfig.LKConfig *cfg) {
     }
     printf("Serving at http://%s\n", net.net_addr(listen_conn));
     free(addr);
-
     net.pool_t *p = net.new_pool();
     if (!p) {
-        abort();
+        fprintf(stderr, "failed to create a connections pool\n");
+        exit(1);
     }
     net.pool_add(p, listen_conn);
-
-    // clearenv();
-    set_cgi_env1(&httpserver);
+    
 
     while (true) {
         net.event_t *ev = net.get_event(p);
@@ -135,27 +151,6 @@ void write_client(LKHttpServer *server, lkcontext.LKContext *ctx) {
     }
 }
 
-
-
-// Sets the cgi environment variables that stay the same across http requests.
-void set_cgi_env1(LKHttpServer *server) {
-    int z;
-    lkconfig.LKConfig *cfg = server->cfg;
-
-    char hostname[LK_BUFSIZE_SMALL];
-    z = OS.gethostname(hostname, sizeof(hostname)-1);
-    if (z == -1) {
-        lk_print_err("gethostname()");
-        hostname[0] = '\0';
-    }
-    hostname[sizeof(hostname)-1] = '\0';
-    
-    misc.setenv("SERVER_NAME", hostname, 1);
-    misc.setenv("SERVER_SOFTWARE", "littlekitten/0.1", 1);
-    misc.setenv("SERVER_PROTOCOL", "HTTP/1.0", 1);
-    misc.setenv("SERVER_PORT", cfg->port, 1);
-
-}
 
 // Sets the cgi environment variables that vary for each http request.
 void set_cgi_env2(lkcontext.LKContext *ctx, lkhostconfig.LKHostConfig *hc) {
