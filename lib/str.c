@@ -17,23 +17,20 @@ pub void str_free(str *s)
 	free(s);
 }
 
-pub bool str_addc(str *s, int ch)
-{
-	if(s->len + 1 >= s->max) {
-		if(!grow(s)) {
+pub bool str_addc(str *s, int ch) {
+	if (s->len + 1 >= s->max) {
+		if (!grow(s)) {
 			return false;
 		}
 	}
-
 	s->data[s->len++] = ch;
 	return true;
 }
 
-pub bool str_adds(str *s, const char *a)
-{
+pub bool str_adds(str *s, const char *a) {
 	const char *c = a;
-	while(*c) {
-		if(!str_addc(s, *c)) {
+	while (*c) {
+		if (!str_addc(s, *c)) {
 			return false;
 		}
 		c++;

@@ -1,6 +1,5 @@
 #import arr
 #import jsontok
-#import mem
 #import str
 #import strings
 
@@ -711,99 +710,97 @@ void *error(parser_t *p, const char *fmt, ...) {
 }
 
 
-pub char *json_format(json_node *n)
-{
-	mem.mem_t *z = mem.memopen();
-	json_write(z, n);
-	mem.memrewind(z);
-
+pub char *format(json_node *n) {
 	str.str *s = str.str_new();
-	while(1) {
-		char c = mem.memgetc(z);
-		if(c == EOF) break;
-		str.str_addc(s, c);
+	if (!s) {
+		return NULL;
 	}
-	char *str1 = strings.newstr("%s", str.str_raw(s));
-	str.str_free(s);
-	mem.memclose(z);
-	return str1;
+	if (!writenode(n, s)) {
+		str.str_free(s);
+		return NULL;
+	}
+	return str.str_unpack(s);
 }
 
-void json_write(mem.mem_t *z, json_node *n)
-{
-	switch(json_type(n))
-	{
-		case JSON_OBJ:
-			size_t len = json_size(n);
-			mem.memprintf(z, "{");
-			for(size_t i = 0; i < len; i++) {
-				mem.memprintf(z, "\"%s\":", json_key(n, i));
-				json_write(z, json_val(n, i));
-				if(i + 1 < len) {
-					mem.memprintf(z, ",");
-				}
-			}
-			mem.memprintf(z, "}");
-			break;
-
-		case JSON_ARR:
-			size_t len = json_len(n);
-			mem.memprintf(z, "[");
-			for(size_t i = 0; i < len; i++) {
-				json_write(z, json_at(n, i));
-				if(i + 1 < len) {
-					mem.memprintf(z, ",");
-				}
-			}
-			mem.memprintf(z, "]");
-			break;
-
-		case JSON_STR:
-			write_string(z, n);
-			break;
-
-		case JSON_NUM:
-			mem.memprintf(z, "%f", json_dbl(n));
-			break;
-
-		case JSON_BOOL:
-			if (json_bool(n)) {
-				mem.memprintf(z, "true");
-			} else {
-				mem.memprintf(z, "false");
-			}
-			break;
-
-		case JSON_NULL:
-			mem.memprintf(z, "null");
-			break;
-	}
+bool writenode(json_node *n, str.str *s) {
+	switch(json_type(n)) {
+        case JSON_OBJ: return writeobj(n, s);
+        case JSON_ARR: return writearr(n, s);
+        case JSON_STR: return writestr(n, s);
+        case JSON_NUM: return writenum(n, s);
+        case JSON_BOOL: return writebool(n, s);
+        case JSON_NULL: return str.str_adds(s, "null");
+        default: panic("unhandled json node type: %d", json_type(n));
+    }
 }
 
-/*
- * Writes a node's escaped string contents.
- */
-void write_string(mem.mem_t *z, json_node *node) {
-	const char *content = json_str(node);
-	
-	size_t n = strlen(content);
-	mem.memputc('"', z);
-	for (size_t i = 0; i < n; i++) {
+bool writeobj(json_node *n, str.str *s) {
+	size_t len = json_size(n);
+	bool ok = str.str_adds(s, "{");
+	for (size_t i = 0; i < len; i++) {
+		ok = ok
+            && str.str_adds(s, "\"")
+            && str.str_adds(s, json_key(n, i))
+            && str.str_adds(s, "\":")
+            && writenode(json_val(n, i), s);
+		if (i + 1 < len) {
+			ok = ok && str.str_adds(s, ",");
+		}
+	}
+	ok = ok && str.str_adds(s, "}");
+	return ok;
+}
+
+bool writearr(json_node *n, str.str *s) {
+    size_t len = json_len(n);
+    bool ok = str.str_adds(s, "[");
+    for (size_t i = 0; i < len; i++) {
+        ok = ok && writenode(json_at(n, i), s);
+        if (i + 1 < len) {
+			ok = ok && str.str_adds(s, ",");
+		}
+    }
+    ok = ok && str.str_adds(s, "]");
+	return ok;
+}
+
+bool writestr(json_node *n, str.str *s) {
+	const char *content = json_str(n);
+	size_t len = strlen(content);
+    bool ok = str.str_adds(s, "\"");
+	for (size_t i = 0; i < len; i++) {
 		const char c = content[i];
 		if (c == '\n') {
-			mem.memputc('\\', z);
-			mem.memputc('n', z);
+			ok = ok
+                && str.str_addc(s, '\\')
+                && str.str_addc(s, 'n');
 			continue;
 		}
 		if (c == '\t') {
-			mem.memputc('\\', z);
-			mem.memputc('t', z);
+			ok = ok
+                && str.str_addc(s, '\\')
+                && str.str_addc(s, 't');
 			continue;
 		}
 		if (c == '\\' || c == '\"' || c == '/') {
-			mem.memputc('\\', z);
+			ok = ok && str.str_addc(s, '\\');
 		}
-		mem.memputc(c, z);
+		ok = ok && str.str_addc(s, c);
 	}
-	mem.memputc('"', z);
+	ok = ok && str.str_addc(s, '"');
+    return ok;
+}
+
+bool writenum(json_node *n, str.str *s) {
+    char buf[100] = {0};
+    sprintf(buf, "%f", json_dbl(n));
+    return str.str_adds(s, buf);
+}
+
+bool writebool(json_node *n, str.str *s) {
+    if (json_bool(n)) {
+        return str.str_adds(s, "true");
+    } else {
+        return str.str_adds(s, "false");
+    }
 }
