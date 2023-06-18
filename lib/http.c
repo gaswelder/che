@@ -12,6 +12,11 @@ pub typedef {
     char query[1024];
 } request_line_t;
 
+pub typedef {
+    char name[1024];
+    char value[1024];
+} header_t;
+
 /**
  * Parses an HTTP request line in format "GET /path/blog/file1.html?a=1&b=2 HTTP/1.0".
  * Puts the values into the provided struct r.
@@ -78,5 +83,27 @@ bool parse_query(request_line_t *r) {
         filename++;
     }
     strcpy(r->filename, filename);
+    return true;
+}
+
+pub bool parse_header_line(const char *line, header_t *h) {
+    const char *p = line;
+
+    char *n = h->name;
+    while (*p && *p != ':') {
+        *n++ = *p++;
+    }
+    *n = '\0';
+
+    if (*p != ':') {
+        return false;
+    }
+    p++;
+    while (*p && isspace(*p)) p++;
+
+    char *v = h->value;
+    while (*p) {
+        *v++ = *p++;
+    }
     return true;
 }
