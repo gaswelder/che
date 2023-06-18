@@ -388,6 +388,9 @@ fn format_literal(node: &CLiteral) -> String {
 
 fn format_statement(node: &CStatement) -> String {
     match node {
+        CStatement::Block { statements } => format_body(&CBody {
+            statements: statements.clone(),
+        }),
         CStatement::VariableDeclaration {
             type_name,
             forms,

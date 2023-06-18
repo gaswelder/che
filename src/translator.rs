@@ -511,6 +511,51 @@ fn translate_body(b: &Body, ctx: &Ctx) -> CBody {
             Statement::Return { expression } => CStatement::Return {
                 expression: expression.as_ref().map(|e| translate_expression(&e, ctx)),
             },
+            Statement::Panic { arguments, pos } => {
+                let mut args = vec![CExpression::Identifier(String::from("stderr"))];
+                for arg in arguments {
+                    args.push(translate_expression(arg, ctx));
+                }
+                CStatement::Block {
+                    statements: vec![
+                        CStatement::Expression(CExpression::FunctionCall {
+                            function: Box::new(CExpression::Identifier(String::from("fprintf"))),
+                            arguments: vec![
+                                CExpression::Identifier(String::from("stderr")),
+                                CExpression::Literal(CLiteral {
+                                    type_name: String::from("string"),
+                                    value: String::from("*** panic at %s ***\\n"),
+                                }),
+                                CExpression::Literal(CLiteral {
+                                    type_name: String::from("string"),
+                                    value: pos.clone(),
+                                }),
+                            ],
+                        }),
+                        CStatement::Expression(CExpression::FunctionCall {
+                            function: Box::new(CExpression::Identifier(String::from("fprintf"))),
+                            arguments: args,
+                        }),
+                        CStatement::Expression(CExpression::FunctionCall {
+                            function: Box::new(CExpression::Identifier(String::from("fprintf"))),
+                            arguments: vec![
+                                CExpression::Identifier(String::from("stderr")),
+                                CExpression::Literal(CLiteral {
+                                    type_name: String::from("string"),
+                                    value: String::from("\\n"),
+                                }),
+                            ],
+                        }),
+                        CStatement::Expression(CExpression::FunctionCall {
+                            function: Box::new(CExpression::Identifier(String::from("exit"))),
+                            arguments: vec![CExpression::Literal(CLiteral {
+                                type_name: String::from("number"),
+                                value: String::from("1"),
+                            })],
+                        }),
+                    ],
+                }
+            }
             Statement::Switch {
                 value,
                 cases,

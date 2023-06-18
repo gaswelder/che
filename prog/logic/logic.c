@@ -1,5 +1,4 @@
 #import parsebuf
-#import panic
 #import map
 
 enum { FUNC, VAR, CONST };
@@ -130,7 +129,7 @@ term *parse_term1(parsebuf.parsebuf_t *b) {
             break;
         }
         if (!parsebuf.buf_skip(b, ')')) {
-            panic.panic("missing closing brace: '%c'", parsebuf.buf_peek(b));
+            panic("missing closing brace: '%c'", parsebuf.buf_peek(b));
         }
         return t;
     }

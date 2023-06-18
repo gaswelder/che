@@ -196,6 +196,11 @@ fn rename_statement(s: &mut Statement, prefix: &String, names: &Vec<String>) {
                 None => {}
             }
         }
+        Statement::Panic { arguments, pos: _ } => {
+            for e in arguments {
+                expr(e, prefix, names);
+            }
+        }
         Statement::Expression(e) => {
             expr(e, prefix, names);
         }

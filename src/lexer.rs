@@ -201,7 +201,7 @@ fn read_word(buf: &mut Buf) -> Token {
 
     let keywords = [
         "default", "typedef", "struct", "union", "const", "return", "switch", "sizeof", "while",
-        "case", "enum", "else", "for", "pub", "if",
+        "case", "enum", "else", "for", "pub", "if", "panic",
     ];
 
     if keywords.contains(&word.as_str()) {

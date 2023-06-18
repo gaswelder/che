@@ -136,6 +136,9 @@ pub enum CSizeofArgument {
 
 #[derive(Debug, Clone)]
 pub enum CStatement {
+    Block {
+        statements: Vec<CStatement>,
+    },
     VariableDeclaration {
         type_name: CTypename,
         forms: Vec<CForm>,

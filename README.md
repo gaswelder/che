@@ -94,6 +94,10 @@ for (int i = 0; i < nelem(a); i++) {
 }
 ```
 
+_The `panic` statement_.
+`panic` is basically `fprintf(stderr, <panic arguments>); exit(1)`, but it also
+generates a message with the panic's position in the source code.
+
 ## Modules
 
 A single C source file is called a "module". It's compiled independently and

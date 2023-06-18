@@ -152,7 +152,7 @@ fn parse_prefix_expr(l: &mut Lexer, ctx: &Ctx) -> Result<Expression, Error> {
 
 fn base(l: &mut Lexer, ctx: &Ctx) -> Result<Expression, Error> {
     // println!("      base(): {:?}", l.peek());
-    let mut r = expr_id(l, ctx)?;
+    let mut r = read_expression_atom(l, ctx)?;
     while l.more() {
         let next = l.peek().unwrap();
         // call
@@ -185,7 +185,7 @@ fn base(l: &mut Lexer, ctx: &Ctx) -> Result<Expression, Error> {
             r = Expression::BinaryOp {
                 op: l.get().unwrap().kind,
                 a: Box::new(r),
-                b: Box::new(expr_id(l, ctx)?),
+                b: Box::new(read_expression_atom(l, ctx)?),
             };
             continue;
         }
@@ -262,7 +262,7 @@ fn read_ns_id(l: &mut Lexer, ctx: &Ctx) -> Result<NsName, Error> {
     });
 }
 
-fn expr_id(l: &mut Lexer, ctx: &Ctx) -> Result<Expression, Error> {
+fn read_expression_atom(l: &mut Lexer, ctx: &Ctx) -> Result<Expression, Error> {
     if !l.more() {
         return Err(Error {
             message: String::from("id: unexpected end of input"),
@@ -274,32 +274,31 @@ fn expr_id(l: &mut Lexer, ctx: &Ctx) -> Result<Expression, Error> {
     }
 
     let next = l.get().unwrap();
-    if next.kind == "word" {
-        return Ok(Expression::Identifier(Identifier {
+    return match next.kind.as_str() {
+        "word" => Ok(Expression::Identifier(Identifier {
             name: next.content.unwrap(),
             pos: next.pos,
-        }));
-    }
-    if next.kind == "num" || next.kind == "string" || next.kind == "char" {
-        l.unget(next);
-        return Ok(Expression::Literal(parse_literal(l)?));
-    }
-    if next.kind == "(" {
-        let e = parse_expr(l, 0, ctx);
-        expect(l, ")", Some("parenthesized expression"))?;
-        return e;
-    }
-    // Composite literal?
-    if next.kind == "{" {
-        l.unget(next);
-        return Ok(Expression::CompositeLiteral(parse_composite_literal(
-            l, ctx,
-        )?));
-    }
-    return Err(Error {
-        message: format!("id: unexpected token {}", next),
-        pos: next.pos,
-    });
+        })),
+        "num" | "string" | "char" => {
+            l.unget(next);
+            Ok(Expression::Literal(parse_literal(l)?))
+        }
+        "(" => {
+            let e = parse_expr(l, 0, ctx);
+            expect(l, ")", Some("parenthesized expression"))?;
+            e
+        }
+        "{" => {
+            l.unget(next);
+            Ok(Expression::CompositeLiteral(parse_composite_literal(
+                l, ctx,
+            )?))
+        }
+        _ => Err(Error {
+            message: format!("id: unexpected token {}", next),
+            pos: next.pos,
+        }),
+    };
 }
 
 fn is_op(token_type: &str) -> bool {
@@ -612,17 +611,37 @@ fn parse_statement(l: &mut Lexer, ctx: &Ctx) -> Result<Statement, Error> {
         return parse_variable_declaration(l, ctx);
     }
     return match next.kind.as_str() {
-        "if" => parse_if(l, ctx),
         "for" => parse_for(l, ctx),
-        "while" => parse_while(l, ctx),
+        "if" => parse_if(l, ctx),
+        "panic" => parse_panic(l, ctx),
         "return" => parse_return(l, ctx),
         "switch" => parse_switch(l, ctx),
+        "while" => parse_while(l, ctx),
         _ => {
             let expr = parse_expr(l, 0, ctx)?;
             expect(l, ";", Some("parsing statement"))?;
             return Ok(Statement::Expression(expr));
         }
     };
+}
+
+fn parse_panic(l: &mut Lexer, ctx: &Ctx) -> Result<Statement, Error> {
+    let mut arguments: Vec<Expression> = Vec::new();
+    let p = expect(l, "panic", None)?;
+    expect(l, "(", Some("panic"))?;
+    if l.more() && l.peek().unwrap().kind != ")" {
+        arguments.push(parse_expr(l, 0, ctx)?);
+        while l.follows(",") {
+            l.get();
+            arguments.push(parse_expr(l, 0, ctx)?);
+        }
+    }
+    expect(l, ")", Some("panic"))?;
+    expect(l, ";", Some("panic"))?;
+    return Ok(Statement::Panic {
+        arguments,
+        pos: format!("{}:{}", ctx.path, p.pos),
+    });
 }
 
 fn parse_variable_declaration(l: &mut Lexer, ctx: &Ctx) -> Result<Statement, Error> {

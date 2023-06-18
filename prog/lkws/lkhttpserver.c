@@ -3,7 +3,6 @@
 #import mime
 #import os/misc
 #import os/net
-#import panic
 #import strings
 #import time
 
@@ -226,7 +225,7 @@ void read_request(LKHttpServer *server, lkcontext.LKContext *ctx, net.net_t *cli
             break;
         }
 
-        panic.panic("try_process_data: unhandled branch\n");
+        panic("try_process_data: unhandled branch\n");
         break;
     }
 }
@@ -253,7 +252,7 @@ bool try_process_data(lkcontext.LKContext *ctx) {
     }
 
     if (!ctx->reqparser->body_complete) {
-        panic.panic("parsing body\n");
+        panic("parsing body\n");
         lkhttprequestparser.lk_httprequestparser_parse_bytes(ctx->reqparser, ctx->req_buf, ctx->req);
         return true;
     }

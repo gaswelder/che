@@ -7,7 +7,7 @@ pub fn run(m: &Module, exports: &HashMap<String, &Exports>) -> Vec<Error> {
         // should be fixed
         "break", "continue", "false", "NULL", "true", //
         // custom
-        "nelem",
+        "nelem", "panic",
     ];
     for s in c::CCONST {
         scope.push(s);
@@ -123,6 +123,11 @@ fn check_body(
         match s {
             Statement::Expression(e) => {
                 check_expr(e, errors, &scope, exports);
+            }
+            Statement::Panic { arguments, pos: _ } => {
+                for e in arguments {
+                    check_expr(e, errors, &scope, exports);
+                }
             }
             Statement::For {
                 init,

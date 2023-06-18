@@ -1,5 +1,4 @@
 #import strings
-#import panic
 
 int main() {
   item_t *input = read();
@@ -51,11 +50,11 @@ item_t *cons(item_t *data, item_t *next) {
 
 item_t *car(item_t *x) {
   if (!x) {
-    panic.panic("car: NULL");
+    panic("car: NULL");
   }
   if (!x->list) {
     print(x);
-    panic.panic("car: item not a list");
+    panic("car: item not a list");
   }
   return x->data;
 }
@@ -72,11 +71,11 @@ char *desc(item_t *x) {
 
 item_t *cdr(item_t *x) {
   if (!x) {
-    panic.panic("cdr: NULL");
+    panic("cdr: NULL");
   }
   if (!x->list) {
     print(x);
-    panic.panic("cdr: item not a list: %s", desc(x));
+    panic("cdr: item not a list: %s", desc(x));
   }
   return x->next;
 }
@@ -199,7 +198,7 @@ item_t *runfunc(char *name, item_t *args) {
     }
     return NULL;
   }
-  panic.panic("unknown function %s", name);
+  panic("unknown function %s", name);
   return NULL;
 }
 

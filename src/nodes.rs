@@ -184,6 +184,10 @@ pub enum Statement {
         condition: Expression,
         body: Body,
     },
+    Panic {
+        arguments: Vec<Expression>,
+        pos: String,
+    },
     Return {
         expression: Option<Expression>,
     },

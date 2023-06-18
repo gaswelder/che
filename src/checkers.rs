@@ -154,6 +154,13 @@ fn has(name: &String, list: &Vec<String>) -> bool {
 fn used_in_body(body: &Body, list: &Vec<String>, depns: &String) -> bool {
     for s in &body.statements {
         match s {
+            Statement::Panic { arguments, pos: _ } => {
+                for arg in arguments {
+                    if used_in_expr(arg, list, depns) {
+                        return true;
+                    }
+                }
+            }
             Statement::VariableDeclaration {
                 type_name,
                 forms: _,
