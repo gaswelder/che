@@ -15,7 +15,7 @@ pub void parse_cgi_output(lkbuffer.LKBuffer *buf, request.LKHttpResponse *resp) 
     // Parse cgi_outputbuf line by line into http response.
     while (buf->bytes_cur < buf->bytes_len) {
         lkbuffer.lk_buffer_readline(buf, cgiline, sizeof(cgiline));
-        lknet.lk_chomp(cgiline);
+        lk_chomp(cgiline);
 
         // Empty CRLF line ends the headers section
         if (utils.is_empty_line(cgiline)) {
@@ -49,7 +49,7 @@ void parse_cgi_header_line(char *line, request.LKHttpResponse *resp) {
     char *delim = ":";
 
     char *linetmp = strings.newstr("%s", line);
-    lknet.lk_chomp(linetmp);
+    lk_chomp(linetmp);
     char *k = OS.strtok_r(linetmp, delim, &saveptr);
     if (k == NULL) {
         free(linetmp);
@@ -72,4 +72,16 @@ void parse_cgi_header_line(char *line, request.LKHttpResponse *resp) {
     }
 
     free(linetmp);
+}
+
+// Remove trailing CRLF or LF (\n) from string.
+void lk_chomp(char* s) {
+    int slen = strlen(s);
+    for (int i=slen-1; i >= 0; i--) {
+        if (s[i] != '\n' && s[i] != '\r') {
+            break;
+        }
+        // Replace \n and \r with null chars. 
+        s[i] = '\0';
+    }
 }

@@ -558,7 +558,7 @@ void process_response(LKHttpServer *server, lkcontext.LKContext *ctx) {
     http.request_t *req = &ctx->req->req;
     request.LKHttpResponse *resp = ctx->resp;
 
-    lknet.lk_httpresponse_finalize(resp);
+    lk_httpresponse_finalize(resp);
 
     // Clear response body on HEAD request.
     if (!strcmp(req->method, "HEAD")) {
@@ -584,6 +584,28 @@ void process_response(LKHttpServer *server, lkcontext.LKContext *ctx) {
     lkreflist.lk_reflist_append(ctx->buflist, resp->head);
     lkreflist.lk_reflist_append(ctx->buflist, resp->body);
     return;
+}
+
+// Finalize the http response by setting head buffer.
+// Writes the status line, headers and CRLF blank string to head buffer.
+void lk_httpresponse_finalize(request.LKHttpResponse *resp) {
+    lkbuffer.lk_buffer_clear(resp->head);
+
+    // Default to 200 OK if no status set.
+    if (resp->status == 0) {
+        resp->status = 200;
+        lkstring.lk_string_assign(resp->statustext, "OK");
+    }
+    // Default to HTTP version.
+    if (lkstring.lk_string_sz_equal(resp->version, "")) {
+        lkstring.lk_string_assign(resp->version, "HTTP/1.0");
+    }
+    lkbuffer.lk_buffer_append_sprintf(resp->head, "%s %d %s\n", resp->version->s, resp->status, resp->statustext->s);
+    lkbuffer.lk_buffer_append_sprintf(resp->head, "Content-Length: %ld\n", resp->body->bytes_len);
+    for (size_t i=0; i < resp->headers->items_len; i++) {
+        lkbuffer.lk_buffer_append_sprintf(resp->head, "%s: %s\n", resp->headers->items[i].k->s, resp->headers->items[i].v->s);
+    }
+    lkbuffer.lk_buffer_append(resp->head, "\r\n", 2);
 }
 
 void process_error_response(LKHttpServer *server, lkcontext.LKContext *ctx, int status, char *msg) {
@@ -645,7 +667,7 @@ void serve_proxy(LKHttpServer *server, lkcontext.LKContext *ctx, char *targethos
     // hack
     int proxyfd = proxyconn->fd;
 
-    lknet.lk_httprequest_finalize(ctx->req);
+    lk_httprequest_finalize(ctx->req);
     ctx->proxyfd = proxyfd;
     ctx->selectfd = proxyfd;
     ctx->type = lkcontext.CTX_PROXY_WRITE_REQ;
@@ -653,6 +675,25 @@ void serve_proxy(LKHttpServer *server, lkcontext.LKContext *ctx, char *targethos
     lkreflist.lk_reflist_clear(ctx->buflist);
     lkreflist.lk_reflist_append(ctx->buflist, ctx->req->head);
     lkreflist.lk_reflist_append(ctx->buflist, ctx->req->body);
+}
+
+void lk_httprequest_finalize(request.LKHttpRequest *wreq) {
+    http.request_t *req = &wreq->req;
+    lkbuffer.lk_buffer_clear(wreq->head);
+
+    // Default to HTTP version.
+    if (!strcmp(req->version, "")) {
+        strcpy(req->version, "HTTP/1.0");
+    }
+    lkbuffer.lk_buffer_append_sprintf(wreq->head, "%s %s %s\n", req->method, req->uri, req->version);
+    if (wreq->body->bytes_len > 0) {
+        lkbuffer.lk_buffer_append_sprintf(wreq->head, "Content-Length: %ld\n", wreq->body->bytes_len);
+    }
+    for (size_t i = 0; i < req->nheaders; i++) {
+        http.header_t *h = &req->headers[i];
+        lkbuffer.lk_buffer_append_sprintf(wreq->head, "%s: %s\n", h->name, h->value);
+    }
+    lkbuffer.lk_buffer_append(wreq->head, "\r\n", 2);
 }
 
 void write_proxy_request(LKHttpServer *server, lkcontext.LKContext *ctx) {

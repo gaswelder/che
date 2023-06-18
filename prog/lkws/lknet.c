@@ -2,10 +2,7 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 
-#import http
-
 #import lkbuffer.c
-#import lkstring.c
 #import request.c
 #import lkstringtable.c
 
@@ -20,17 +17,6 @@ pub enum {
     Z_BLOCK = -2 // fd blocked, no data
 };
 
-// Remove trailing CRLF or LF (\n) from string.
-pub void lk_chomp(char* s) {
-    int slen = strlen(s);
-    for (int i=slen-1; i >= 0; i--) {
-        if (s[i] != '\n' && s[i] != '\r') {
-            break;
-        }
-        // Replace \n and \r with null chars. 
-        s[i] = '\0';
-    }
-}
 
 // Read nonblocking fd count bytes to buf.
 // Returns one of the following:
@@ -81,12 +67,6 @@ pub int lk_read(int fd, int fd_type, lkbuffer.LKBuffer *buf, size_t count, size_
     }
     *nbytes = nread;
     return z;
-}
-pub int lk_read_sock(int fd, lkbuffer.LKBuffer *buf, size_t count, size_t *nbytes) {
-    return lk_read(fd, FD_SOCK, buf, count, nbytes);
-}
-pub int lk_read_file(int fd, lkbuffer.LKBuffer *buf, size_t count, size_t *nbytes) {
-    return lk_read(fd, FD_FILE, buf, count, nbytes);
 }
 
 // Read all available nonblocking fd bytes to buffer.
@@ -178,14 +158,6 @@ pub int lk_write(int fd, int fd_type, lkbuffer.LKBuffer *buf, size_t count, size
     return z;
 }
 
-pub int lk_write_sock(int fd, lkbuffer.LKBuffer *buf, size_t count, size_t *nbytes) {
-    return lk_write(fd, FD_SOCK, buf, count, nbytes);
-}
-
-pub int lk_write_file(int fd, lkbuffer.LKBuffer *buf, size_t count, size_t *nbytes) {
-    return lk_write(fd, FD_FILE, buf, count, nbytes);
-}
-
 // Write buf bytes to nonblocking fd.
 // Returns one of the Z_* statuses.
 //
@@ -237,114 +209,6 @@ pub int lk_write_all_file(int fd, lkbuffer.LKBuffer *buf) {
     return lk_write_all(fd, FD_FILE, buf);
 }
 
-
-/*** request.LKHttpRequest functions ***/
-
-
-pub void lk_httprequest_finalize(request.LKHttpRequest *wreq) {
-    http.request_t *req = &wreq->req;
-    lkbuffer.lk_buffer_clear(wreq->head);
-
-    // Default to HTTP version.
-    if (!strcmp(req->version, "")) {
-        strcpy(req->version, "HTTP/1.0");
-    }
-    lkbuffer.lk_buffer_append_sprintf(wreq->head, "%s %s %s\n", req->method, req->uri, req->version);
-    if (wreq->body->bytes_len > 0) {
-        lkbuffer.lk_buffer_append_sprintf(wreq->head, "Content-Length: %ld\n", wreq->body->bytes_len);
-    }
-    for (size_t i = 0; i < req->nheaders; i++) {
-        http.header_t *h = &req->headers[i];
-        lkbuffer.lk_buffer_append_sprintf(wreq->head, "%s: %s\n", h->name, h->value);
-    }
-    lkbuffer.lk_buffer_append(wreq->head, "\r\n", 2);
-}
-
-
-pub void lk_httprequest_debugprint(request.LKHttpRequest *wreq) {
-    assert(wreq->head != NULL);
-    assert(wreq->body != NULL);
-
-    http.request_t *req = &wreq->req;
-    printf("method: %s\n", req->method);
-    printf("uri: %s\n", req->uri);
-    printf("version: %s\n", req->version);
-
-    printf("headers_len: %ld\n", req->nheaders);
-
-    printf("Headers:\n");
-    for (size_t i = 0; i < req->nheaders; i++) {
-        http.header_t *h = &req->headers[i];
-        printf("%s: %s\n", h->name, h->value);
-    }
-
-    printf("Body:\n---\n");
-    for (size_t i=0; i < wreq->body->bytes_len; i++) {
-        putchar(wreq->body->bytes[i]);
-    }
-    printf("\n---\n");
-}
-
-
-/** httpresp functions **/
-
 pub void lk_httpresponse_add_header(request.LKHttpResponse *resp, const char *k, *v) {
     lkstringtable.lk_stringtable_set(resp->headers, k, v);
-}
-
-// Finalize the http response by setting head buffer.
-// Writes the status line, headers and CRLF blank string to head buffer.
-pub void lk_httpresponse_finalize(request.LKHttpResponse *resp) {
-    lkbuffer.lk_buffer_clear(resp->head);
-
-    // Default to 200 OK if no status set.
-    if (resp->status == 0) {
-        resp->status = 200;
-        lkstring.lk_string_assign(resp->statustext, "OK");
-    }
-    // Default to HTTP version.
-    if (lkstring.lk_string_sz_equal(resp->version, "")) {
-        lkstring.lk_string_assign(resp->version, "HTTP/1.0");
-    }
-    lkbuffer.lk_buffer_append_sprintf(resp->head, "%s %d %s\n", resp->version->s, resp->status, resp->statustext->s);
-    lkbuffer.lk_buffer_append_sprintf(resp->head, "Content-Length: %ld\n", resp->body->bytes_len);
-    for (size_t i=0; i < resp->headers->items_len; i++) {
-        lkbuffer.lk_buffer_append_sprintf(resp->head, "%s: %s\n", resp->headers->items[i].k->s, resp->headers->items[i].v->s);
-    }
-    lkbuffer.lk_buffer_append(resp->head, "\r\n", 2);
-}
-
-pub void lk_httpresponse_debugprint(request.LKHttpResponse *resp) {
-    assert(resp->statustext != NULL);
-    assert(resp->headers != NULL);
-    assert(resp->head);
-    assert(resp->body);
-
-    printf("status: %d\n", resp->status);
-    printf("statustext: %s\n", resp->statustext->s);
-    printf("version: %s\n", resp->version->s);
-    printf("headers_size: %ld\n", resp->headers->items_size);
-    printf("headers_len: %ld\n", resp->headers->items_len);
-
-    printf("Headers:\n");
-    for (size_t i=0; i < resp->headers->items_len; i++) {
-        lkstring.LKString *v = resp->headers->items[i].v;
-        printf("%s: %s\n", resp->headers->items[i].k->s, v->s);
-    }
-
-    printf("Body:\n---\n");
-    for (size_t i=0; i < resp->body->bytes_len; i++) {
-        putchar(resp->body->bytes[i]);
-    }
-    printf("\n---\n");
-}
-
-
-// Append src to dest, allocating new memory in dest if needed.
-// Return new pointer to dest.
-pub char *lk_astrncat(char *dest, char *src, size_t src_len) {
-    int dest_len = strlen(dest);
-    dest = realloc(dest, dest_len + src_len + 1);
-    strncat(dest, src, src_len);
-    return dest;
 }
