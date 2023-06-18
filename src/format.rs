@@ -379,10 +379,11 @@ fn format_compat_function_parameters(parameters: &CompatFunctionParameters) -> S
 }
 
 fn format_literal(node: &CLiteral) -> String {
-    match node.type_name.as_str() {
-        "string" => format!("\"{}\"", node.value),
-        "char" => format!("\'{}\'", node.value),
-        _ => node.value.clone(),
+    match node {
+        CLiteral::Char(val) => format!("\'{}\'", val),
+        CLiteral::String(val) => format!("\"{}\"", val),
+        CLiteral::Number(val) => format!("{}", val),
+        CLiteral::Null => String::from("NULL"),
     }
 }
 

@@ -209,9 +209,11 @@ pub enum CSwitchCaseValue {
 }
 
 #[derive(Debug, Clone)]
-pub struct CLiteral {
-    pub type_name: String,
-    pub value: String,
+pub enum CLiteral {
+    Char(String),
+    String(String),
+    Number(String),
+    Null,
 }
 
 #[derive(Debug, Clone)]

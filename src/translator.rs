@@ -282,10 +282,7 @@ fn translate_expression(e: &Expression, ctx: &Ctx) -> CExpression {
             }
             CExpression::CompositeLiteral(CCompositeLiteral { entries })
         }
-        Expression::Literal(x) => CExpression::Literal(CLiteral {
-            type_name: x.type_name.clone(),
-            value: x.value.clone(),
-        }),
+        Expression::Literal(x) => CExpression::Literal(translate_literal(x)),
         Expression::Identifier(x) => CExpression::Identifier(x.name.clone()),
         Expression::PrefixOperator { operator, operand } => CExpression::PrefixOperator {
             operator: operator.clone(),
@@ -522,14 +519,10 @@ fn translate_body(b: &Body, ctx: &Ctx) -> CBody {
                             function: Box::new(CExpression::Identifier(String::from("fprintf"))),
                             arguments: vec![
                                 CExpression::Identifier(String::from("stderr")),
-                                CExpression::Literal(CLiteral {
-                                    type_name: String::from("string"),
-                                    value: String::from("*** panic at %s ***\\n"),
-                                }),
-                                CExpression::Literal(CLiteral {
-                                    type_name: String::from("string"),
-                                    value: pos.clone(),
-                                }),
+                                CExpression::Literal(CLiteral::String(String::from(
+                                    "*** panic at %s ***\\n",
+                                ))),
+                                CExpression::Literal(CLiteral::String(pos.clone())),
                             ],
                         }),
                         CStatement::Expression(CExpression::FunctionCall {
@@ -540,18 +533,14 @@ fn translate_body(b: &Body, ctx: &Ctx) -> CBody {
                             function: Box::new(CExpression::Identifier(String::from("fprintf"))),
                             arguments: vec![
                                 CExpression::Identifier(String::from("stderr")),
-                                CExpression::Literal(CLiteral {
-                                    type_name: String::from("string"),
-                                    value: String::from("\\n"),
-                                }),
+                                CExpression::Literal(CLiteral::String(String::from("\\n"))),
                             ],
                         }),
                         CStatement::Expression(CExpression::FunctionCall {
                             function: Box::new(CExpression::Identifier(String::from("exit"))),
-                            arguments: vec![CExpression::Literal(CLiteral {
-                                type_name: String::from("number"),
-                                value: String::from("1"),
-                            })],
+                            arguments: vec![CExpression::Literal(CLiteral::Number(String::from(
+                                "1",
+                            )))],
                         }),
                     ],
                 }
@@ -568,10 +557,9 @@ fn translate_body(b: &Body, ctx: &Ctx) -> CBody {
                             SwitchCaseValue::Identifier(x) => {
                                 CSwitchCaseValue::Identifier(translate_ns_name(x, ctx))
                             }
-                            SwitchCaseValue::Literal(x) => CSwitchCaseValue::Literal(CLiteral {
-                                type_name: x.type_name.clone(),
-                                value: x.value.clone(),
-                            }),
+                            SwitchCaseValue::Literal(x) => {
+                                CSwitchCaseValue::Literal(translate_literal(x))
+                            }
                         },
                         body: translate_body(&c.body, ctx),
                     })
@@ -608,4 +596,13 @@ fn translate_body(b: &Body, ctx: &Ctx) -> CBody {
         });
     }
     return CBody { statements };
+}
+
+fn translate_literal(x: &Literal) -> CLiteral {
+    match x {
+        Literal::Char(val) => CLiteral::Char(val.clone()),
+        Literal::String(val) => CLiteral::String(val.clone()),
+        Literal::Number(val) => CLiteral::Number(val.clone()),
+        Literal::Null => CLiteral::Null,
+    }
 }

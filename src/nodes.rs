@@ -223,9 +223,11 @@ pub enum SwitchCaseValue {
 }
 
 #[derive(Debug, Clone)]
-pub struct Literal {
-    pub type_name: String,
-    pub value: String,
+pub enum Literal {
+    Char(String),
+    String(String),
+    Number(String),
+    Null,
 }
 
 #[derive(Debug, Clone)]

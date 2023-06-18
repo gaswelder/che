@@ -440,31 +440,19 @@ fn parse_literal(l: &mut Lexer) -> Result<Literal, Error> {
     let next = l.peek().unwrap();
     if next.kind == "string".to_string() {
         let value = l.get().unwrap().content.unwrap();
-        return Ok(Literal {
-            type_name: "string".to_string(),
-            value,
-        });
+        return Ok(Literal::String(value));
     }
     if next.kind == "num".to_string() {
         let value = l.get().unwrap().content.unwrap();
-        return Ok(Literal {
-            type_name: "num".to_string(),
-            value,
-        });
+        return Ok(Literal::Number(value));
     }
     if next.kind == "char".to_string() {
         let value = l.get().unwrap().content.unwrap();
-        return Ok(Literal {
-            type_name: "char".to_string(),
-            value,
-        });
+        return Ok(Literal::Char(value));
     }
     if next.kind == "word" && next.content.as_ref().unwrap() == "NULL" {
         l.get();
-        return Ok(Literal {
-            type_name: "null".to_string(),
-            value: "NULL".to_string(),
-        });
+        return Ok(Literal::Null);
     }
     return Err(Error {
         message: format!("literal expected, got {}", l.peek().unwrap()),
