@@ -21,6 +21,18 @@ pub char *newstr(const char *format, ... )
 	return buf;
 }
 
+pub char *newsubstr(const char *s, int p1, p2) {
+	char *buf = calloc(p2-p1 + 1, 1);
+    if (!buf) {
+        return NULL;
+    }
+    int p = 0;
+    for (int i = p1; i < p2; i++) {
+        buf[p++] = s[i];
+    }
+    return buf;
+}
+
 /**
  * Trims all characters from the set at the beginning and at the end of string s
  * by adding zeros at the end and adjusting the pointer at the beginning.
