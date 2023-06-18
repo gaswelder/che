@@ -1,3 +1,5 @@
+#import os/net
+
 #import lkbuffer.c
 #import lkhttprequestparser.c
 #import lkreflist.c
@@ -5,9 +7,16 @@
 #import request.c
 #import socketreader.c
 
+/**
+ * Possible context states.
+ * Since this server is a single-process one, these states are effectively
+ * opcodes for the main loop, telling what proceduce has to be called for
+ * a particular context on each iteration.
+ */
 pub enum {
-    CTX_READ_REQ, // reading request head
-    CTX_WRITE_RESP,
+    CTX_READ_REQ, // read a request
+    CTX_RESOLVE_REQ, // look at the request, decide what to do
+    CTX_WRITE_DATA, // write data from the output buffer
 
     CTX_READ_CGI_OUTPUT,
     CTX_WRITE_CGI_INPUT,
@@ -17,9 +26,16 @@ pub enum {
 }; // LKContextType;
 
 pub typedef {
+    // Client connection
+    net.net_t *conn;
+
     // Input data to be processed.
     char input_buffer[4096];
     size_t input_buffer_len;
+
+    // Output buffer
+    char output_buffer[4096];
+    size_t output_buffer_len;
 
     request.LKHttpRequest *req;               // http in process
 

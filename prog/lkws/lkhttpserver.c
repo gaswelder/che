@@ -17,6 +17,7 @@
 #import lkstring.c
 #import lkstringtable.c
 #import request.c
+#import srvfiles.c
 
 
 #define LK_BUFSIZE_SMALL 512
@@ -72,6 +73,7 @@ pub bool lk_httpserver_serve(lkconfig.LKConfig *cfg) {
             // hack
             int clientfd = client->fd;
             lkcontext.LKContext *ctx = lkcontext.create_initial_context(clientfd);
+            ctx->conn = client;
             lkcontext.add_new_client_context(&httpserver.ctxhead, ctx);
             net.pool_add(p, client);
             continue;
@@ -118,7 +120,7 @@ pub bool lk_httpserver_serve(lkconfig.LKConfig *cfg) {
 }
 
 void write_client(LKHttpServer *server, lkcontext.LKContext *ctx) {
-    if (ctx->type == lkcontext.CTX_WRITE_RESP) {
+    if (ctx->type == lkcontext.CTX_WRITE_DATA) {
         assert(ctx->resp != NULL);
         assert(ctx->resp->head != NULL);
         write_response(server, ctx);
@@ -225,26 +227,35 @@ void read_request(LKHttpServer *server, lkcontext.LKContext *ctx, net.net_t *cli
     memcpy(tmp, ctx->input_buffer, ctx->input_buffer_len);
     fprintf(stderr, "got %d bytes of data: %s\n", r, tmp);
 
-    while (true) {
+    bool ok = true;
+    while (ok) {
         // Try processing the new data.
         // If it doesn't return true, the new data wasn't enough to change
         // the state, so return until more data comes in.
         printf("ctx state = %d\n", ctx->type);
         switch (ctx->type) {
         case lkcontext.CTX_READ_REQ:
-            if (!try_read_header(ctx)) {
-                return;
-            }
+            ok = try_read_header(ctx);
             break;
-        case lkcontext.CTX_WRITE_RESP:
-            if (!process_request(server, ctx)) {
-                return;
-            }
+        case lkcontext.CTX_RESOLVE_REQ:
+            ok = process_request(server, ctx);
+            break;
+        case lkcontext.CTX_WRITE_DATA:
+            ok = write_output(ctx);
             break;
         default:
             panic("unhandled ctx state: %d", ctx->type);
         }
     }
+}
+
+bool write_output(lkcontext.LKContext *ctx) {
+    printf("writing output\n");
+    printf("output size = %zu\n", ctx->output_buffer_len);
+    int n = net.net_write(ctx->conn, ctx->output_buffer, ctx->output_buffer_len);
+    printf("written %d bytes\n", n);
+    net.net_close(ctx->conn);
+    return false;
 }
 
 bool try_read_header(lkcontext.LKContext *ctx) {
@@ -275,7 +286,7 @@ bool try_read_header(lkcontext.LKContext *ctx) {
     memmove(ctx->input_buffer, split, ctx->input_buffer_len);
 
     // Switch to service the request.
-    ctx->type = lkcontext.CTX_WRITE_RESP;
+    ctx->type = lkcontext.CTX_RESOLVE_REQ;
     return true;
 }
 
@@ -333,26 +344,32 @@ void read_cgi_output(LKHttpServer *server, lkcontext.LKContext *ctx) {
 }
 
 bool process_request(LKHttpServer *server, lkcontext.LKContext *ctx) {
+    printf("processing request\n");
     http.request_t *req = &ctx->req->req;
     char *hostname = NULL;
     http.header_t *host = http.get_header(req, "Host");
     if (host) {
         hostname = host->value;
     }
+    printf("hostname = %s\n", hostname);
 
     lkhostconfig.LKHostConfig *hc = lkconfig.lk_config_find_hostconfig(server->cfg, hostname);
     if (hc == NULL) {
+        printf("no host config\n");
         process_error_response(server, ctx, 404, "LittleKitten webserver: hostconfig not found.");
         return true;
     }
+    printf("got host config\n");
 
     // Forward request to proxyhost if proxyhost specified.
     if (hc->proxyhost->s_len > 0) {
+        panic("todo");
         serve_proxy(server, ctx, hc->proxyhost->s);
         return true;
     }
 
     if (hc->homedir->s_len == 0) {
+        panic("todo");
         process_error_response(server, ctx, 404, "LittleKitten webserver: hostconfig homedir not specified.");
         return true;
     }
@@ -360,6 +377,7 @@ bool process_request(LKHttpServer *server, lkcontext.LKContext *ctx) {
     // Replace path with any matching alias.
     char *match = lkstringtable.lk_stringtable_get(hc->aliases, req->path);
     if (match != NULL) {
+        panic("todo");
         if (strlen(match) + 1 > sizeof(req->path)) {
             abort();
         }
@@ -368,93 +386,108 @@ bool process_request(LKHttpServer *server, lkcontext.LKContext *ctx) {
 
     // Run cgi script if uri falls under cgidir
     if (hc->cgidir->s_len > 0 && strings.starts_with(req->path, hc->cgidir->s)) {
+        panic("todo");
         serve_cgi(server, ctx, hc);
         return true;
     }
 
-    serve_files(ctx, hc);
-    process_response(server, ctx);
-    return true;
+    return resolve_request(ctx, hc);
+    // process_response(server, ctx);
+    // return true;
 }
 
-// Generate an http response to an http request.
-bool POSTTEST = true;
-void serve_files(lkcontext.LKContext *ctx, lkhostconfig.LKHostConfig *hc) {
-    int z;
-    char *html_error_start = 
-       "<!DOCTYPE html>\n"
-       "<html>\n"
-       "<head><title>Error response</title></head>\n"
-       "<body><h1>Error response</h1>\n";
-    char *html_error_end =
-       "</body></html>\n";
+const char *NOT_FOUND_MESSAGE = "File not found on the server.";
 
+bool resolve_request(lkcontext.LKContext *ctx, lkhostconfig.LKHostConfig *hc) {
+    printf("resolve_request\n");
     http.request_t *req = &ctx->req->req;
-    request.LKHttpResponse *resp = ctx->resp;
-    const char *method = req->method;
-    const char *path = req->path;
+    ctx->output_buffer_len = 0;
 
-    if (!strcmp(method, "GET") || !strcmp(method, "HEAD")) {
-        // For root, default to index.html, ...
-        if (strlen(path) == 0) {
-            char *default_files[] = {"/index.html", "/index.htm", "/default.html", "/default.htm"};
-            for (size_t i=0; i < nelem(default_files); i++) {
-                z = read_path_file(hc->homedir_abspath->s, default_files[i], resp->body);
-                if (z >= 0) {
-                    lknet.lk_httpresponse_add_header(resp, "Content-Type", "text/html");
-                    break;
-                }
-                // Update path with default file for File not found error message.
-                if (strlen(path) + strlen(default_files[i]) + 1 > sizeof(req->path)) {
-                    abort();
-                }
-                strcat(req->path, default_files[i]);
-            }
-        } else {
-            z = read_path_file(hc->homedir_abspath->s, path, resp->body);
-            const char *content_type = mime.lookup(fileext(path));
-            if (content_type == NULL) {
-                content_type = "text/plain";
-            }
-            lknet.lk_httpresponse_add_header(resp, "Content-Type", content_type);
+    if (!strcmp(req->method, "GET")) {
+        printf("processing GET\n");
+        char *filepath = srvfiles.resolve(hc->homedir->s, req->path);
+        if (!filepath) {
+            char *p = ctx->output_buffer;
+            p += sprintf(p, "%s 404 Not Found\n", req->version);
+            p += sprintf(p, "Content-Length: %ld\n", strlen(NOT_FOUND_MESSAGE));
+            p += sprintf(p, "Content-Type: text/plain\n");
+            p += sprintf(p, "\n");
+            p += sprintf(p, "%s", NOT_FOUND_MESSAGE);
+            ctx->output_buffer_len = p - ctx->output_buffer;
+            printf("written %zu bytes to the output buffer\n", ctx->output_buffer_len);
+            ctx->type = lkcontext.CTX_WRITE_DATA;
+            return true;
         }
-        if (z == -1) {
-            // path not found
-            resp->status = 404;
-            lkstring.lk_string_assign_sprintf(resp->statustext, "File not found '%s'", path);
-            lknet.lk_httpresponse_add_header(resp, "Content-Type", "text/plain");
-            lkbuffer.lk_buffer_append_sprintf(resp->body, "File not found '%s'\n", path);
-        }
-        return;
-    }
-    if (POSTTEST) {
-        if (!strcmp(method, "POST")) {
-            char *html_start =
-            "<!DOCTYPE html>\n"
-            "<html>\n"
-            "<head><title>Little Kitten Sample Response</title></head>\n"
-            "<body>\n";
-            char *html_end =
-            "</body></html>\n";
 
-            lknet.lk_httpresponse_add_header(resp, "Content-Type", "text/html");
-            lkbuffer.lk_buffer_append(resp->body, html_start, strlen(html_start));
-            lkbuffer.lk_buffer_append_sz(resp->body, "<pre>\n");
-            lkbuffer.lk_buffer_append(resp->body, ctx->req->body->bytes, ctx->req->body->bytes_len);
-            lkbuffer.lk_buffer_append_sz(resp->body, "\n</pre>\n");
-            lkbuffer.lk_buffer_append(resp->body, html_end, strlen(html_end));
-            return;
+        // Read the file
+        size_t filesize = 0;
+        char *data = fileutil.readfile(filepath, &filesize);
+        if (!data) {
+            panic("failed to read file '%s'", filepath);
         }
+        const char *content_type = mime.lookup(fileext(filepath));
+        if (content_type == NULL) {
+            content_type = "text/plain";
+        }
+
+        // Format the response.
+        char *p = ctx->output_buffer;
+        p += sprintf(p, "%s 200 OK\n", req->version);
+        p += sprintf(p, "Content-Length: %ld\n", filesize);
+        p += sprintf(p, "Content-Type: %s\n", content_type);
+        p += sprintf(p, "\n");
+        memcpy(p, data, filesize);
+        ctx->output_buffer_len = filesize + (p - ctx->output_buffer);
+        ctx->type = lkcontext.CTX_WRITE_DATA;
+        free(filepath);
+        return true;
     }
 
-    resp->status = 501;
-    lkstring.lk_string_assign_sprintf(resp->statustext, "Unsupported method ('%s')", method);
+    panic("unsupported method: '%s'", req->method);
+    return false;
+    
 
-    lknet.lk_httpresponse_add_header(resp, "Content-Type", "text/html");
-    lkbuffer.lk_buffer_append(resp->body, html_error_start, strlen(html_error_start));
-    lkbuffer.lk_buffer_append_sprintf(resp->body, "<p>Error code %d.</p>\n", resp->status);
-    lkbuffer.lk_buffer_append_sprintf(resp->body, "<p>Message: Unsupported method ('%s').</p>\n", resp->statustext->s);
-    lkbuffer.lk_buffer_append(resp->body, html_error_end, strlen(html_error_end));
+    
+    // request.LKHttpResponse *resp = ctx->resp;
+    // const char *method = req->method;
+    // const char *path = req->path;
+
+    
+    // if (POSTTEST) {
+    //     if (!strcmp(method, "POST")) {
+    //         char *html_start =
+    //         "<!DOCTYPE html>\n"
+    //         "<html>\n"
+    //         "<head><title>Little Kitten Sample Response</title></head>\n"
+    //         "<body>\n";
+    //         char *html_end =
+    //         "</body></html>\n";
+
+    //         lknet.lk_httpresponse_add_header(resp, "Content-Type", "text/html");
+    //         lkbuffer.lk_buffer_append(resp->body, html_start, strlen(html_start));
+    //         lkbuffer.lk_buffer_append_sz(resp->body, "<pre>\n");
+    //         lkbuffer.lk_buffer_append(resp->body, ctx->req->body->bytes, ctx->req->body->bytes_len);
+    //         lkbuffer.lk_buffer_append_sz(resp->body, "\n</pre>\n");
+    //         lkbuffer.lk_buffer_append(resp->body, html_end, strlen(html_end));
+    //         return;
+    //     }
+    // }
+
+    // resp->status = 501;
+    // lkstring.lk_string_assign_sprintf(resp->statustext, "Unsupported method ('%s')", method);
+
+// char *html_error_start = 
+//        "<!DOCTYPE html>\n"
+//        "<html>\n"
+//        "<head><title>Error response</title></head>\n"
+//        "<body><h1>Error response</h1>\n";
+//     char *html_error_end =
+//        "</body></html>\n";
+    // lknet.lk_httpresponse_add_header(resp, "Content-Type", "text/html");
+    // lkbuffer.lk_buffer_append(resp->body, html_error_start, strlen(html_error_start));
+    // lkbuffer.lk_buffer_append_sprintf(resp->body, "<p>Error code %d.</p>\n", resp->status);
+    // lkbuffer.lk_buffer_append_sprintf(resp->body, "<p>Message: Unsupported method ('%s').</p>\n", resp->statustext->s);
+    // lkbuffer.lk_buffer_append(resp->body, html_error_end, strlen(html_error_end));
 }
 
 void serve_cgi(LKHttpServer *server, lkcontext.LKContext *ctx, lkhostconfig.LKHostConfig *hc) {
@@ -550,7 +583,7 @@ void process_response(LKHttpServer *server, lkcontext.LKContext *ctx) {
     }
 
     ctx->selectfd = ctx->clientfd;
-    ctx->type = lkcontext.CTX_WRITE_RESP;
+    ctx->type = lkcontext.CTX_WRITE_DATA;
     // FD_SET_WRITE(ctx->selectfd, server);
     lkreflist.lk_reflist_clear(ctx->buflist);
     lkreflist.lk_reflist_append(ctx->buflist, resp->head);
@@ -568,36 +601,7 @@ void process_error_response(LKHttpServer *server, lkcontext.LKContext *ctx, int 
     process_response(server, ctx);
 }
 
-// Read <home_dir>/<uri> file into buffer.
-// Return number of bytes read or -1 for error.
-int read_path_file(const char *home_dir, *path, lkbuffer.LKBuffer *buf) {
-    // full_path = home_dir + path
-    // Ex. "/path/to" + "/index.html"
-    lkstring.LKString *full_path = lkstring.lk_string_new(home_dir);
-    lkstring.lk_string_append(full_path, path);
 
-    // Expand "/../", etc. into real_path.
-    char real_path[PATH_MAX];
-    bool pathok = fs.realpath(full_path->s, real_path, sizeof(real_path));
-    // real_path should start with home_dir
-    if (!pathok || strncmp(real_path, home_dir, strlen(home_dir))) {
-        lkstring.lk_string_free(full_path);
-        return -1;
-    }
-
-    // Open and read entire file contents into buf.
-    // Return number of bytes read or -1 for error.
-    size_t size = 0;
-    char *data = fileutil.readfile(real_path, &size);
-    if (!data) {
-        lkstring.lk_string_free(full_path);
-        return -1;
-    }
-    lkbuffer.lk_buffer_append(buf, data, size);
-    free(data);
-    lkstring.lk_string_free(full_path);
-    return (int) size;
-}
 
 
 // Return ptr to start of file extension within filepath.
