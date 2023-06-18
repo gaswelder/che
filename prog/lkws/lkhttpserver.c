@@ -105,22 +105,10 @@ pub bool lk_httpserver_serve(lkconfig.LKConfig *cfg) {
             continue;
         }
         if (ev->read) {
-            printf("read_client\n");
-            if (ctx->type == lkcontext.CTX_READ_REQ) {
-                printf("read_request\n");
-                read_request(&httpserver, ctx, ev->conn);
-            } else if (ctx->type == lkcontext.CTX_READ_CGI_OUTPUT) {
-                read_cgi_output(&httpserver, ctx);
-            } else if (ctx->type == lkcontext.CTX_PROXY_PIPE_RESP) {
-                pipe_proxy_response(&httpserver, ctx);
-            } else {
-                printf("read_client: unknown ctx type %d\n", ctx->type);
-            }
-            // net.pool_remove(p, conn);
+            process_readable_client(&httpserver, ctx);
         }
         if (ev->write) {
-            write_client(&httpserver, ctx);
-            // net.pool_remove(p, conn);
+            process_writable_client(&httpserver, ctx);
         }
     }
 
@@ -135,7 +123,22 @@ pub bool lk_httpserver_serve(lkconfig.LKConfig *cfg) {
     return true;
 }
 
-void write_client(LKHttpServer *server, lkcontext.LKContext *ctx) {
+void process_readable_client(LKHttpServer *httpserver, lkcontext.LKContext *ctx) {
+    printf("process_readable_client\n");
+    if (ctx->type == lkcontext.CTX_READ_REQ) {
+        printf("read_request\n");
+        read_request(httpserver, ctx, ctx->conn);
+    } else if (ctx->type == lkcontext.CTX_READ_CGI_OUTPUT) {
+        read_cgi_output(httpserver, ctx);
+    } else if (ctx->type == lkcontext.CTX_PROXY_PIPE_RESP) {
+        pipe_proxy_response(httpserver, ctx);
+    } else {
+        printf("process_readable_client: unknown ctx type %d\n", ctx->type);
+    }
+    // net.pool_remove(p, conn);
+}
+
+void process_writable_client(LKHttpServer *server, lkcontext.LKContext *ctx) {
     if (ctx->type == lkcontext.CTX_WRITE_DATA) {
         assert(ctx->resp != NULL);
         assert(ctx->resp->head != NULL);
