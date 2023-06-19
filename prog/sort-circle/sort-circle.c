@@ -3,7 +3,6 @@
  */
 
 #import opt
-#import cli
 #import ppm
 #import rnd
 #import fileutil
@@ -56,7 +55,8 @@ FILE *wav = NULL;
 
 int main(int argc, char **argv) {
     if (!load_font("prog/sort-circle-font.bin")) {
-        cli.fatal("couldn't load font at 'prog/sort-circle-font.bin'");
+        fprintf(stderr, "couldn't load font at 'prog/sort-circle-font.bin'\n");
+        return 1;
     }
 
     ppm = ppm.init(S, S);

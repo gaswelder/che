@@ -8,7 +8,6 @@
 // chargen -l <listen addr>
 
 #import os/net
-#import cli
 #import log
 
 typedef {
@@ -32,14 +31,14 @@ int main()
 	char address[] = "0.0.0.0:1900";
 	net.net_t *l = net.net_listen("tcp", address);
 	if(!l) {
-		cli.fatal("listen failed: %s", net.net_error());
+		panic("listen failed: %s", net.net_error());
 	}
 	log.logmsg("listening at %s", address);
 
 	while(1) {
 		net.net_t *s = net.net_accept(l);
 		if(!s) {
-			cli.err("accept error");
+			fprintf(stderr, "accept failed: %s\n", strerror(errno));
 			continue;
 		}
 
@@ -65,7 +64,7 @@ void *process_client(client_t *c)
 		}
 
 		if(!send_line(c)) {
-			cli.err("send_line error");
+			fprintf(stderr, "send_line error: %s\n", strerror(errno));
 			break;
 		}
 	}

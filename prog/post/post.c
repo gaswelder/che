@@ -1,6 +1,5 @@
 #import os/net
 #import opt
-#import cli
 
 int main(int argc, char **argv) {
 	char *addr = "127.0.0.1:25";
@@ -12,7 +11,7 @@ int main(int argc, char **argv) {
 	argv = opt.opt_parse(argc, argv);
 
 	if (!*argv || !*(argv + 1)) {
-		cli.err("Missing argument");
+		fprintf(stderr, "Missing argument");
 		opt.opt_usage();
 		return 1;
 	}
@@ -20,7 +19,7 @@ int main(int argc, char **argv) {
 	const char *from = *argv++;
 	const char *to = *argv++;
 	if (*argv) {
-		cli.err("Unexpected argument: %s\n", *argv);
+		fprintf(stderr, "Unexpected argument: %s\n", *argv);
 		opt.opt_usage();
 		return 1;
 	}

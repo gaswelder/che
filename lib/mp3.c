@@ -7,7 +7,6 @@
  * http://mpgedit.org/mpgedit/mpeg_format/mpeghdr.htm
  */
 
-#import cli
 #import bitreader
 
 const int L3 = 1;
@@ -108,11 +107,11 @@ pub const char *mp3err(mp3file *f)
 bool nextframe(mp3file *f)
 {
 	if(f->err) {
-		cli.fatal("can't nextframe: %s", f->err);
+		panic("can't nextframe: %s", f->err);
 	}
 
 	if(fseek(f->file, f->nextpos, SEEK_SET) < 0) {
-		cli.fatal("fseek failed");
+		panic("fseek failed");
 	}
 
 	if(!read_header(f)) {
@@ -167,7 +166,7 @@ pub void write_frame(mp3file *f, FILE *out)
 	 * Go back 4 bytes to the header
 	 */
 	if(fseek(f->file, -4, SEEK_CUR) < 0) {
-		cli.fatal("fseek(-4) failed");
+		panic("fseek(-4) failed");
 	}
 
 	size_t len = f->nextpos - ftell(f->file);
@@ -230,7 +229,7 @@ bool _read_header(bitreader.bits_t *s, header_t *h)
 	// 1 bit: error protection
 	if(bitreader.bits_getn(s, 1) == 0) {
 		// 16-bit CRC will be somewhere
-		cli.fatal("+CRC");
+		panic("+CRC");
 	}
 
 	// 4 bits: bitrate
@@ -248,7 +247,7 @@ bool _read_header(bitreader.bits_t *s, header_t *h)
 	 * the regular 44100 Hz format.
 	 */
 	if(h->freq != 44100) {
-		cli.fatal("Unsupported sampling frequency: %d", h->freq);
+		panic("Unsupported sampling frequency: %d", h->freq);
 	}
 	/*
 	 * General support will have to assume variable frequency

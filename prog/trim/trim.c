@@ -1,6 +1,5 @@
 #import mem
 #import opt
-#import cli
 #import os/fs
 
 enum {
@@ -86,7 +85,9 @@ bool trim_file(const char *path)
 	if(!f) return false;
 
 	mem.mem_t *out = mem.memopen();
-	if (!out) cli.fatal("Out of memory");
+	if (!out) {
+		panic("Out of memory");
+	}
 
 	bool changed = ftrim(f, out, path);
 	fclose(f);
@@ -159,9 +160,9 @@ bool read_line(FILE *in, linebuf_t *buf, const char *fpath)
 		if(c == '\r') {
 			if(fpeek(in) != '\n') {
 				if(feof(in)) {
-					cli.err("WTF! %c", fgetc(in));
+					fprintf(stderr, "WTF! %c", fgetc(in));
 				}
-				cli.err("%s: unknown eol sequence at line %d: (%d,%d)",
+				fprintf(stderr, "%s: unknown eol sequence at line %d: (%d,%d)",
 					fpath, buf->num, c, fpeek(in));
 				return false;
 			}
@@ -180,7 +181,7 @@ bool read_line(FILE *in, linebuf_t *buf, const char *fpath)
 		}
 
 		if((size_t) len >= buf->maxsize && !growbuf(buf)) {
-			cli.fatal("Couldn't allocate > %zu bytes for line", buf->maxsize);
+			panic("Couldn't allocate > %zu bytes for line", buf->maxsize);
 		}
 		buf->line[len] = c;
 		len++;
@@ -218,7 +219,7 @@ void write_line(linebuf_t *buf, mem.mem_t *out)
 			assert(mem.memputc('\n', out) != EOF);
 			break;
 		default:
-			cli.fatal("write_line: unhandled eol type: %d", buf->lf);
+			panic("write_line: unhandled eol type: %d", buf->lf);
 	}
 }
 

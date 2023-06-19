@@ -3,7 +3,6 @@
  */
 
 #import os/net
-#import cli
 #import log
 #import os/threads
 
@@ -12,14 +11,14 @@ int main()
 	const char *addr = "0.0.0.0:7000";
 	net.net_t *l = net.net_listen("tcp", addr);
 	if(!l) {
-		cli.fatal("listen failed: %s", net.net_error());
+		panic("listen failed: %s", net.net_error());
 	}
 	log.logmsg("listening at %s", addr);
 
 	while(1) {
 		net.net_t *s = net.net_accept(l);
 		if(!s) {
-			cli.err("accept error: %s", net.net_error());
+			fprintf(stderr, "accept error: %s\n", net.net_error());
 			continue;
 		}
 		threads.thr_t *t = threads.thr_new(process_client, s);
@@ -48,7 +47,7 @@ void *process_client(void *arg)
 		}
 
 		if(net.net_write(c, buf, len) < len) {
-			cli.err("write error");
+			fprintf(stderr, "write error: %s\n", strerror(errno));
 			break;
 		}
 	}

@@ -1,4 +1,3 @@
-#import cli
 #import mp3
 
 /*
@@ -10,19 +9,19 @@
 
 int main(int argc, char *argv[])
 {
-	if(argc != 3) {
-		cli.fatal("Usage: mp3spl <mp3file> <m:s.sss...>,<m:s.sss...>,...");
+	if (argc != 3) {
+		panic("Usage: mp3spl <mp3file> <m:s.sss...>,<m:s.sss...>,...");
 	}
 
 	const char *path = argv[1];
 	mp3.mp3file *f = mp3.mp3open(path);
-	if(mp3.mp3err(f)) {
-		cli.fatal("%s", mp3.mp3err(f));
+	if (mp3.mp3err(f)) {
+		panic("%s", mp3.mp3err(f));
 	}
 
 	mp3.mp3time_t points[20] = {};
 	if (!parse_times(points, argv[2], 20)) {
-		cli.fatal("Couldn't parse time positions");
+		panic("Couldn't parse time positions");
 	}
 
 	size_t len = strlen(path);
@@ -60,13 +59,13 @@ int main(int argc, char *argv[])
 bool parse_times(mp3.mp3time_t *a, const char *spec, size_t maxsize)
 {
 	if (maxsize == 0) {
-		cli.fatal("zero maxsize");
+		panic("zero maxsize");
 	}
 
 	size_t i = 0;
 	while(*spec) {
 		if(i + 1 >= maxsize) {
-			cli.err("maxsize reached");
+			fprintf(stderr, "maxsize reached");
 			return false;
 		}
 
@@ -75,7 +74,7 @@ bool parse_times(mp3.mp3time_t *a, const char *spec, size_t maxsize)
 		int usec = 0;
 
 		if(!isdigit(*spec)) {
-			cli.err("Unexpected char: %c in %s\n", *spec, spec);
+			fprintf(stderr, "Unexpected char: %c in %s\n", *spec, spec);
 			return false;
 		}
 
@@ -88,14 +87,14 @@ bool parse_times(mp3.mp3time_t *a, const char *spec, size_t maxsize)
 
 		// :
 		if(*spec != ':') {
-			cli.err("':' expected");
+			fprintf(stderr, "':' expected");
 			return false;
 		}
 		spec++;
 
 		// sec
 		if(!isdigit(*spec)) {
-			cli.err("Unexpected char: %c in %s", *spec, spec);
+			fprintf(stderr, "Unexpected char: %c in %s", *spec, spec);
 			return false;
 		}
 		while(isdigit(*spec)) {
@@ -106,7 +105,7 @@ bool parse_times(mp3.mp3time_t *a, const char *spec, size_t maxsize)
 		if(*spec == '.') {
 			spec++;
 			if(!isdigit(*spec)) {
-				cli.err("Digits expected after point: %s", spec);
+				fprintf(stderr, "Digits expected after point: %s", spec);
 				return false;
 			}
 			int pow = 100000;
@@ -122,7 +121,7 @@ bool parse_times(mp3.mp3time_t *a, const char *spec, size_t maxsize)
 		}
 
 		if(min >= 60 || sec >= 60) {
-			cli.err("Incorrect time: %d:%d", min, sec);
+			fprintf(stderr, "Incorrect time: %d:%d", min, sec);
 			return false;
 		}
 
@@ -141,11 +140,11 @@ bool parse_times(mp3.mp3time_t *a, const char *spec, size_t maxsize)
 void out(mp3.mp3file *f, const char *path, mp3.mp3time_t t)
 {
 	if (mp3.mp3err(f)) {
-		cli.fatal("%s", mp3.mp3err(f));
+		panic("%s", mp3.mp3err(f));
 	}
 	FILE *out = fopen(path, "wb");
 	if (!out) {
-		cli.fatal("fopen(%s) failed", path);
+		panic("fopen(%s) failed", path);
 	}
 	mp3.mp3out(f, out, t);
 	fclose(out);

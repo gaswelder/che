@@ -1,12 +1,11 @@
 #import mp3
 #import cue
 #import fileutil
-#import cli
 
 int main(int argc, char *argv[])
 {
 	if (argc != 3) {
-		cli.fatal("Usage: mp3cuespl <cuefile> <mp3.mp3file>");
+		panic("Usage: mp3cuespl <cuefile> <mp3.mp3file>");
 	}
 
 	const char *cuepath = argv[1];
@@ -14,7 +13,7 @@ int main(int argc, char *argv[])
 
 	char *s = fileutil.readfile_str(cuepath);
 	if (!s) {
-		cli.fatal("Couldn't read %s", cuepath);
+		panic("Couldn't read %s", cuepath);
 	}
 
 	char *err = NULL;
@@ -26,7 +25,7 @@ int main(int argc, char *argv[])
 	}
 
 	mp3.mp3file *m = mp3.mp3open(mp3path);
-	if(!m) cli.fatal("Couldn't open '%s'", mp3path);
+	if(!m) panic("Couldn't open '%s'", mp3path);
 
 	cuespl(c, m);
 	cue.cue_free(c);
@@ -56,7 +55,7 @@ void cuespl(cue.cue_t *c, mp3.mp3file *m) {
 		printf("%s\n", fname);
 		FILE *out = fopen(fname, "wb");
 		if (!out) {
-			cli.fatal("Couldn't create %s", fname);
+			panic("Couldn't create %s", fname);
 		}
 		mp3.mp3out(m, out, pos);
 		fclose(out);

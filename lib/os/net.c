@@ -7,8 +7,6 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-#import cli
-
 const char *error = "no error";
 pub typedef struct sockaddr sockaddr_t;
 typedef struct sockaddr_in sockaddr_in_t;
@@ -94,7 +92,7 @@ pub int net_write(net_t *c, const char *buf, size_t n)
 	 * a full transmission.
 	 */
 	if((size_t) r < n) {
-		cli.fatal("incomplete net_write: %d of %zu (errno=%d, %s)\n",
+		panic("incomplete net_write: %d of %zu (errno=%d, %s)\n",
 			r, n, errno, strerror(errno));
 	}
 
