@@ -1,4 +1,4 @@
-int main(int argc, char *argv[])
+pub int main(int argc, char *argv[])
 {
 	if (argc != 2) {
 		fprintf(stderr, "Usage: %s <input-file>\n", argv[0]);
@@ -7,16 +7,16 @@ int main(int argc, char *argv[])
 
 	FILE *in = fopen( argv[1], "rb" );
 	if (!in) {
-		fprintf(stderr, "Couldn't open input file %s: '%s'\n", argv[1], strerror(errno));
+		fprintf(stderr, "Couldn't open input file %s: %s\n", argv[1], strerror(errno));
 		return 1;
 	}
 
-	int r = disas(in, stdout);
+	int r = disas(in, stdout, stderr);
 	fclose(in);
 	return r;
 }
 
-int disas(FILE *in, *out) {
+int disas(FILE *in, *out, *err) {
 	size_t pos = 0x200;
 	while (!feof(in)) {
 		fprintf(out, "0x%zu\t", pos);
@@ -115,7 +115,7 @@ int disas(FILE *in, *out) {
 				}
 				break;
 			default:
-				fprintf( out, "Unknown: %02x %02x\n", byte1, byte2 );
+				fprintf(err, "Unknown: %02x %02x\n", byte1, byte2 );
 		}
 	}
 	return 0;

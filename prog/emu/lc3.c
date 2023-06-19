@@ -76,7 +76,7 @@ enum
 term.term_t *term = NULL;
 bool running = true;
 
-int main(int argc, char *argv[]) {
+pub int main(int argc, char *argv[]) {
     if (argc < 2) {
         printf("lc3 [image-file1] ...\n");
         return 1;
@@ -137,6 +137,7 @@ int main(int argc, char *argv[]) {
     }
     
     term.term_restore(term);
+    return 1;
 }
 
 
