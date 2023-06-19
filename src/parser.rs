@@ -30,7 +30,7 @@ pub fn parse_module(l: &mut Lexer, ctx: &Ctx) -> Result<Module, Error> {
 
 fn parse_compat_macro(lexer: &mut Lexer) -> Result<ModuleObject, Error> {
     let tok = expect(lexer, "macro", None)?;
-    let content = tok.content.unwrap().clone();
+    let content = tok.content.clone();
     let pos = content.find(" ");
     if pos.is_none() {
         return Err(Error {
@@ -131,7 +131,7 @@ fn parse_prefix_expr(l: &mut Lexer, ctx: &Ctx) -> Result<Expression, Error> {
     // * (foo_t)x
     if next == "("
         && l.peek().unwrap().kind == "word"
-        && is_type(l.peek().unwrap().content.as_ref().unwrap(), &ctx.typenames)
+        && is_type(l.peek().unwrap().content.as_str(), &ctx.typenames)
     {
         let typeform = parse_anonymous_typeform(l, ctx)?;
         expect(l, ")", Some("typecast"))?;
@@ -213,20 +213,13 @@ fn type_follows(l: &Lexer, ctx: &Ctx) -> bool {
         let a = l.peek_n(0).unwrap();
         let c = l.peek_n(2).unwrap();
 
-        let pos = ctx
-            .deps
-            .iter()
-            .position(|x| x.ns == *a.content.as_ref().unwrap());
-        if pos.is_some()
-            && ctx.deps[pos.unwrap()]
-                .typenames
-                .contains(c.content.as_ref().unwrap())
-        {
+        let pos = ctx.deps.iter().position(|x| x.ns == *a.content);
+        if pos.is_some() && ctx.deps[pos.unwrap()].typenames.contains(&c.content) {
             return true;
         }
     }
     // any of locally defined types?
-    return is_type(l.peek().unwrap().content.as_ref().unwrap(), &ctx.typenames);
+    return is_type(&l.peek().unwrap().content, &ctx.typenames);
 }
 
 fn ns_follows(l: &mut Lexer, ctx: &Ctx) -> bool {
@@ -237,27 +230,26 @@ fn ns_follows(l: &mut Lexer, ctx: &Ctx) -> bool {
     if t.kind != "word" {
         return false;
     }
-    let name = l.peek().unwrap().content.as_ref().unwrap();
-    return ctx.has_ns(name);
+    return ctx.has_ns(&l.peek().unwrap().content);
 }
 
 // foo.bar where foo is a module
 // or just bar
 fn read_ns_id(l: &mut Lexer, ctx: &Ctx) -> Result<NsName, Error> {
     let a = expect(l, "word", None)?;
-    let name = a.content.as_ref().unwrap();
+    let name = &a.content;
     if ctx.has_ns(name) && l.peek_n(0).unwrap().kind == "." && l.peek_n(1).unwrap().kind == "word" {
         l.get();
         let b = l.get().unwrap();
         return Ok(NsName {
-            namespace: a.content.unwrap(),
-            name: b.content.unwrap(),
+            namespace: a.content,
+            name: b.content,
             pos: a.pos,
         });
     }
     return Ok(NsName {
         namespace: String::new(),
-        name: a.content.unwrap(),
+        name: a.content,
         pos: a.pos,
     });
 }
@@ -276,7 +268,7 @@ fn read_expression_atom(l: &mut Lexer, ctx: &Ctx) -> Result<Expression, Error> {
     let next = l.get().unwrap();
     return match next.kind.as_str() {
         "word" => Ok(Expression::Identifier(Identifier {
-            name: next.content.unwrap(),
+            name: next.content,
             pos: next.pos,
         })),
         "num" | "string" | "char" => {
@@ -395,7 +387,7 @@ fn expect(l: &mut Lexer, kind: &str, comment: Option<&str>) -> Result<Token, Err
 
 fn read_identifier(lexer: &mut Lexer) -> Result<Identifier, Error> {
     let tok = expect(lexer, "word", None)?;
-    let name = String::from(tok.content.unwrap());
+    let name = String::from(tok.content);
     return Ok(Identifier { name, pos: tok.pos });
 }
 
@@ -439,18 +431,18 @@ fn parse_anonymous_parameters(l: &mut Lexer, ctx: &Ctx) -> Result<AnonymousParam
 fn parse_literal(l: &mut Lexer) -> Result<Literal, Error> {
     let next = l.peek().unwrap();
     if next.kind == "string".to_string() {
-        let value = l.get().unwrap().content.unwrap();
+        let value = l.get().unwrap().content;
         return Ok(Literal::String(value));
     }
     if next.kind == "num".to_string() {
-        let value = l.get().unwrap().content.unwrap();
+        let value = l.get().unwrap().content;
         return Ok(Literal::Number(value));
     }
     if next.kind == "char".to_string() {
-        let value = l.get().unwrap().content.unwrap();
+        let value = l.get().unwrap().content;
         return Ok(Literal::Char(value));
     }
-    if next.kind == "word" && next.content.as_ref().unwrap() == "NULL" {
+    if next.kind == "word" && next.content == "NULL" {
         l.get();
         return Ok(Literal::Null);
     }
@@ -683,17 +675,13 @@ fn parse_form(lexer: &mut Lexer, ctx: &Ctx) -> Result<Form, Error> {
     }
 
     let tok = expect(lexer, "word", None)?;
-    match tok.content {
-        Some(x) => {
-            node.name = String::from(x);
-        }
-        None => {
-            return Err(Error {
-                message: String::from("missing word content"),
-                pos: tok.pos,
-            });
-        }
+    if tok.content == "" {
+        return Err(Error {
+            message: String::from("missing word content"),
+            pos: tok.pos,
+        });
     }
+    node.name = tok.content.clone();
 
     while lexer.follows("[") {
         lexer.get().unwrap();
@@ -735,9 +723,7 @@ fn parse_for(l: &mut Lexer, ctx: &Ctx) -> Result<Statement, Error> {
     expect(l, "(", None)?;
 
     let init: ForInit;
-    if l.peek().unwrap().kind == "word"
-        && is_type(&l.peek().unwrap().content.as_ref().unwrap(), &ctx.typenames)
-    {
+    if l.peek().unwrap().kind == "word" && is_type(&l.peek().unwrap().content, &ctx.typenames) {
         let type_name = parse_typename(l, ctx)?;
         let form = parse_form(l, ctx)?;
         expect(l, "=", None)?;
@@ -910,8 +896,8 @@ fn parse_typedef(is_pub: bool, l: &mut Lexer, ctx: &Ctx) -> Result<ModuleObject,
 
     // typedef struct foo foo_t;
     if l.eat("struct") {
-        let struct_name = expect(l, "word", None)?.content.unwrap();
-        let type_alias = expect(l, "word", None)?.content.unwrap();
+        let struct_name = expect(l, "word", None)?.content;
+        let type_alias = expect(l, "word", None)?.content;
         expect(l, ";", Some("typedef"))?;
         return Ok(ModuleObject::StructAliasTypedef {
             is_pub,
@@ -940,7 +926,7 @@ fn parse_typedef(is_pub: bool, l: &mut Lexer, ctx: &Ctx) -> Result<ModuleObject,
     if l.follows("[") {
         l.get();
         let num = expect(l, "num", None)?;
-        size = num.content.unwrap().parse().unwrap();
+        size = num.content.parse().unwrap();
         expect(l, "]", None)?;
     }
     expect(l, ";", Some("typedef"))?;
@@ -976,16 +962,16 @@ fn parse_type_and_forms(lexer: &mut Lexer, ctx: &Ctx) -> Result<TypeAndForms, Er
 }
 
 fn token_to_string(token: &Token) -> String {
-    if token.content.is_none() {
+    if token.content == "" {
         return format!("[{}]", token.kind);
     }
 
     let n = 40;
     let mut c: String;
-    if token.content.as_ref().unwrap().len() > n {
-        c = token.content.as_ref().unwrap()[0..(n - 3)].to_string() + "...";
+    if token.content.len() > n {
+        c = token.content[0..(n - 3)].to_string() + "...";
     } else {
-        c = token.content.as_ref().unwrap().to_string();
+        c = token.content.to_string();
     }
     c = c.replace("\r", "\\r");
     c = c.replace("\n", "\\n");

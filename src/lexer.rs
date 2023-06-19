@@ -7,16 +7,13 @@ use substring::Substring;
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Token {
     pub kind: String,
-    pub content: Option<String>,
+    pub content: String,
     pub pos: String,
 }
 
 impl fmt::Display for Token {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        if self.content.is_none() {
-            return write!(f, "[{}]", self.kind);
-        }
-        let c = self.content.as_ref().unwrap().substring(0, 40);
+        let c = self.content.substring(0, 40);
         return write!(f, "[{} {}]", self.kind, c);
     }
 }
@@ -35,7 +32,7 @@ pub fn read_token(buf: &mut Buf) -> Option<Token> {
         buf.read_set(SPACES.to_string());
         return Some(Token {
             kind: "import".to_string(),
-            content: Some(buf.skip_until('\n').trim().to_string()),
+            content: buf.skip_until('\n').trim().to_string(),
             pos,
         });
     }
@@ -43,7 +40,7 @@ pub fn read_token(buf: &mut Buf) -> Option<Token> {
     if buf.peek().unwrap() == '#' {
         return Some(Token {
             kind: "macro".to_string(),
-            content: Some(buf.skip_until('\n')),
+            content: buf.skip_until('\n'),
             pos,
         });
     }
@@ -55,7 +52,7 @@ pub fn read_token(buf: &mut Buf) -> Option<Token> {
     if buf.skip_literal("//") {
         return Some(Token {
             kind: "comment".to_string(),
-            content: Some(buf.skip_until('\n')),
+            content: buf.skip_until('\n'),
             pos,
         });
     }
@@ -87,7 +84,7 @@ pub fn read_token(buf: &mut Buf) -> Option<Token> {
         if buf.skip_literal(sym) {
             return Some(Token {
                 kind: sym.to_string(),
-                content: None,
+                content: String::new(),
                 pos,
             });
         }
@@ -95,7 +92,7 @@ pub fn read_token(buf: &mut Buf) -> Option<Token> {
 
     return Some(Token {
         kind: "error".to_string(),
-        content: Some(format!("Unexpected character: '{}'", next).to_string()),
+        content: format!("Unexpected character: '{}'", next),
         pos,
     });
 }
@@ -130,13 +127,13 @@ fn read_number(buf: &mut Buf) -> Token {
         let c = buf.peek().unwrap();
         return Token {
             kind: "error".to_string(),
-            content: Some(format!("Unexpected character: '{}'", c)),
+            content: format!("Unexpected character: '{}'", c),
             pos: buf.pos(),
         };
     }
     return Token {
         kind: "num".to_string(),
-        content: Some(num),
+        content: num,
         pos,
     };
 }
@@ -152,7 +149,7 @@ fn read_hex(buf: &mut Buf) -> Token {
 
     return Token {
         kind: "num".to_string(),
-        content: Some(String::from("0x") + &num),
+        content: format!("0x{}", &num),
         pos,
     };
 }
@@ -174,7 +171,7 @@ fn read_string_literal(buf: &mut Buf) -> Token {
         if !buf.more() || buf.get().unwrap() != '"' {
             return Token {
                 kind: "error".to_string(),
-                content: Some("Double quote expected".to_string()),
+                content: "Double quote expected".to_string(),
                 pos,
             };
         }
@@ -183,7 +180,7 @@ fn read_string_literal(buf: &mut Buf) -> Token {
     }
     return Token {
         kind: "string".to_string(),
-        content: Some(s),
+        content: s,
         pos,
     };
 }
@@ -207,13 +204,13 @@ fn read_word(buf: &mut Buf) -> Token {
     if keywords.contains(&word.as_str()) {
         return Token {
             kind: word,
-            content: None,
+            content: String::new(),
             pos,
         };
     }
     return Token {
         kind: "word".to_string(),
-        content: Some(word),
+        content: word,
         pos,
     };
 }
@@ -231,13 +228,13 @@ fn read_char_literal(buf: &mut Buf) -> Token {
     if buf.get().unwrap() != '\'' {
         return Token {
             kind: "error".to_string(),
-            content: Some("Single quote expected".to_string()),
+            content: "Single quote expected".to_string(),
             pos,
         };
     }
     return Token {
         kind: "char".to_string(),
-        content: Some(s),
+        content: s,
         pos,
     };
 }
@@ -249,13 +246,13 @@ fn read_multiline_comment(buf: &mut Buf) -> Token {
     if !buf.skip_literal("*/") {
         return Token {
             kind: "error".to_string(),
-            content: Some("*/ expected".to_string()),
+            content: "*/ expected".to_string(),
             pos,
         };
     }
     return Token {
         kind: "comment".to_string(),
-        content: Some(comment),
+        content: comment,
         pos,
     };
 }
@@ -384,7 +381,7 @@ mod tests {
 
         for case in &cases {
             let t = _read_token(case.input);
-            assert_eq!(t.content.unwrap(), case.content);
+            assert_eq!(t.content, case.content);
             assert_eq!(t.kind, case.kind);
             assert_eq!(t.pos, case.pos);
         }
@@ -396,7 +393,7 @@ mod tests {
         ];
         for sym in &symbols {
             let t = _read_token(format!("{}123", sym).as_str());
-            assert_eq!(t.content.is_none(), true);
+            assert_eq!(t.content, "");
             assert_eq!(t.kind, sym.to_string());
             assert_eq!(t.pos, "1:1");
         }
@@ -407,7 +404,7 @@ mod tests {
         ];
         for kw in &keywords {
             let t = _read_token(format!("{} 123", kw).as_str());
-            assert_eq!(t.content.is_none(), true);
+            assert_eq!(t.content, "");
             assert_eq!(t.kind, kw.to_string());
             assert_eq!(t.pos, "1:1");
         }

@@ -22,8 +22,7 @@ pub fn preparse(path: &String) -> Result<Preparse, String> {
             None => break,
             Some(t) => match t.kind.as_str() {
                 "import" => {
-                    let relpath = t.content.unwrap();
-                    let res = resolve::resolve_import(path, &relpath)?;
+                    let res = resolve::resolve_import(path, &t.content)?;
                     imports.push(Import {
                         ns: res.ns,
                         path: res.path,
@@ -37,8 +36,8 @@ pub fn preparse(path: &String) -> Result<Preparse, String> {
                     // The special #type hint tells for a fact that a type name exists
                     // without defining it. It's used in modules that interface with the
                     // OS headers.
-                    if t.kind == "macro" && t.content.as_ref().unwrap().starts_with("#type") {
-                        let name = t.content.unwrap()[6..].trim().to_string();
+                    if t.kind == "macro" && t.content.starts_with("#type") {
+                        let name = t.content[6..].trim().to_string();
                         typenames.push(name);
                     }
                 }
@@ -56,7 +55,7 @@ fn get_typename(lexer: &mut Lexer) -> Result<String, String> {
 
     if lexer.follows("{") {
         skip_brackets(lexer);
-        let name = expect(lexer, "word", None).unwrap().content.unwrap();
+        let name = expect(lexer, "word", None).unwrap().content;
         expect(lexer, ";", None)?;
         return Ok(name);
     }
@@ -94,7 +93,7 @@ fn get_typename(lexer: &mut Lexer) -> Result<String, String> {
     while !buf.is_empty() {
         let t = buf.remove(0);
         if t.kind == "word" {
-            name = Some(t.content.unwrap());
+            name = Some(t.content);
             break;
         }
     }
