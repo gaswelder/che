@@ -131,7 +131,7 @@ char *tok_json(tok_t *t) {
 	json.json_put(tok, "type", json.json_newstr(t->name));
 	json.json_put(tok, "content", json.json_newstr(t->content));
 	json.json_put(tok, "pos", json.json_newstr(t->pos));
-	return json.json_format(tok);
+	return json.format(tok);
 }
 
 tok_t *lexer_read(lexer_t *l) {
