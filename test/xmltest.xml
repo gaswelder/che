@@ -1,8 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<root>
-	<dir name="dir1">
-		<file name="file1" />
-		<file name="file2" />
-	</dir>
-	<dir name="dir3" />
-</root>
