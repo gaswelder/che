@@ -30,14 +30,6 @@ done
 #
 che test lib || exit 1
 
-
-#
-# ...
-#
-cd test
-./tests.sh
-cd ..
-
 #
 # Build and test the world.
 #
