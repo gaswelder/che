@@ -787,15 +787,15 @@ void GenSubtree(FILE *out, ObjDesc *od)
             ipsum.fprice(out); break;
 
         case TYPE:
-            xmlprintf(out, "%s", GenContents_auction_type[xmlgen_rand.ignuin(0,1)]);
-            if (GenContents_quantity>1 && xmlgen_rand.ignuin(0,1)) xmlprintf(out,", Dutch");
+            xmlprintf(out, "%s", GenContents_auction_type[rnd.range(0,1)]);
+            if (GenContents_quantity>1 && rnd.range(0,1)) xmlprintf(out,", Dutch");
             break;
         case LOCATION:
         case COUNTRY:
             if (rnd.uniform(0, 1) < 0.75) {
                 GenContents_country = COUNTRIES_USA;
             } else {
-                GenContents_country = xmlgen_rand.ignuin(0, words.dictlen("countries") - 1);
+                GenContents_country = rnd.range(0, words.dictlen("countries") - 1);
             }
             xmlprintf(out, "%s", words.dictentry("countries", GenContents_country));
             break;
@@ -807,7 +807,7 @@ void GenSubtree(FILE *out, ObjDesc *od)
             }
             break;
         case EDUCATION:            
-            xmlprintf(out, "%s", GenContents_education[xmlgen_rand.ignuin(0,3)]);
+            xmlprintf(out, "%s", GenContents_education[rnd.range(0,3)]);
             break;
         
         case HOMEPAGE:
@@ -819,7 +819,7 @@ void GenSubtree(FILE *out, ObjDesc *od)
         case PAYMENT:
             r=0;
             for (int i=0;i<4;i++)
-                if (xmlgen_rand.ignuin(0,1)) {
+                if (rnd.range(0,1)) {
                     char *x = "";
                     if (r++) {
                         x = ", ";
@@ -830,12 +830,12 @@ void GenSubtree(FILE *out, ObjDesc *od)
         
         case BUSINESS:
         case PRIVACY:
-            xmlprintf(out,GenContents_yesno[xmlgen_rand.ignuin(0,1)]);
+            xmlprintf(out,GenContents_yesno[rnd.range(0,1)]);
             break;
         
         case CATNAME:
         case ITEMNAME:
-            ipsum.fsentence(out, xmlgen_rand.ignuin(1,4));
+            ipsum.fsentence(out, rnd.range(1,4));
             break;
         case NAME:
             PrintName();
@@ -846,7 +846,7 @@ void GenSubtree(FILE *out, ObjDesc *od)
             xmlprintf(out," ");
             break;
         case EMAIL:
-            GenContents_email = xmlgen_rand.ignuin(0, words.dictlen("emails") - 1);
+            GenContents_email = rnd.range(0, words.dictlen("emails") - 1);
             xmlprintf(out, "mailto:%s@%s",
                 words.dictentry("lastnames", GenContents_lstname),
                 words.dictentry("emails", GenContents_email));
@@ -1132,7 +1132,7 @@ void PrintANY() {
             if (rnd.uniform(0, 1) < 0.1 && stptr<3-1)
             {
                 while (true) {
-                    PrintANY_st[stptr]=xmlgen_rand.ignuin(0,3-1);
+                    PrintANY_st[stptr]=rnd.range(0,3-1);
                     if (!tick[PrintANY_st[stptr]]) {
                         break;
                     }

@@ -15,8 +15,6 @@ pub typedef {
     double mean, dev, min, max;
 } ProbDesc;
 
-random_gen rgGlobal={.idum = -3};
-
 double __ranf(random_gen *rg) {
     if (rg->idum<0 || rg->iff==0) {
         rg->iff=1;
@@ -80,12 +78,6 @@ pub double GenRandomNum(ProbDesc *pd)
 }
 
 pub int __ignuin(random_gen *rg,int low, int high) {
-    int f=(int)(__ranf(rg)*(high-low+1));
-    return low+f;
-}
-
-pub int ignuin(int low, int high) {
-    random_gen *rg = &rgGlobal;
     int f=(int)(__ranf(rg)*(high-low+1));
     return low+f;
 }

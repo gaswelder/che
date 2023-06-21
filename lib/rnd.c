@@ -13,6 +13,11 @@ pub double uniform(double low, high) {
     return low + (high-low) * u();
 }
 
+pub uint32_t range(uint32_t min, max) {
+    double r = u() * (max - min + 1);
+    return min + (uint32_t) r;
+}
+
 pub double exponential(double mean) {
     return mean * -log(u());
 }
