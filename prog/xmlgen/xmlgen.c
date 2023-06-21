@@ -92,12 +92,25 @@ int main(int argc, char **argv)
 
     schema.InitializeSchema(global_scale_factor);
 
+    Preamble(xmlout, document_type);
     
-    Preamble(document_type);
 
     GenSubtree(xmlout, schema.GetSchemaNode(1));
     fclose(xmlout);
     return 0;
+}
+
+void Preamble(FILE *out, int document_type) {
+    switch (document_type) {
+    case 1:
+        xmlprintf(out, "<?xml version=\"1.0\" standalone=\"yes\"?>\n");
+        break;
+    case 2:
+        xmlprintf(out, "<?xml version=\"1.0\"?>\n");
+        xmlprintf(out, "<!DOCTYPE %s SYSTEM \"auction.dtd\">\n", schema.GetSchemaNode(1)->name);
+        break;
+    default: panic("unknown document type: %d", document_type);
+    }
 }
 
 FILE *OpenOutput_split(const char *global_outputname, int fileno) {
@@ -407,25 +420,6 @@ void GenSubtree(FILE *out, schema.ObjDesc *od)
     }
     od->flag--;
 }
-
-void Preamble(int type)
-{
-    switch(type)
-        {
-        case 1:
-            xmlprintf(xmlout,"<?xml version=\"1.0\" standalone=\"yes\"?>\n");
-            break;
-        case 2:
-            xmlprintf(xmlout, "<?xml version=\"1.0\"?>\n");
-            xmlprintf(xmlout, "<!DOCTYPE %s SYSTEM \"auction.dtd\">\n", schema.GetSchemaNode(1)->name);
-            break;
-        case 3:
-            xmlprintf(stderr,"Not yet implemented.\n");
-            exit(1);
-        }
-}
-
-
 
 char *markup[3]={"emph","keyword","bold"};
 char tick[3] = "";
