@@ -1096,7 +1096,6 @@ typedef {
     int max, brosmax;
     int dir, mydir;
     int current;
-    xmlgen_rand.random_gen rk;
 } idrepro;
 
 
@@ -1191,13 +1190,12 @@ int GenItemIdRef(idrepro *rep, int *idref)
     }
     else
         {
-            rep->dir=xmlgen_rand.__ignuin(&rep->rk,0,1);
-            while(rep->dir!=rep->mydir && rep->brosout<rep->brosmax)
-                {
-                    rep->brosout++;
-                    rep->cur++;
-                    rep->dir=xmlgen_rand.__ignuin(&rep->rk,0,1);
-                }
+            rep->dir = rnd.range(0, 1);
+            while(rep->dir!=rep->mydir && rep->brosout<rep->brosmax) {
+                rep->brosout++;
+                rep->cur++;
+                rep->dir = rnd.range(0, 1);
+            }
             *idref=rep->cur++;
             res=1;
         }
