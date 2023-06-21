@@ -1,13 +1,13 @@
 #import rnd
 
 char *dtd[] = {
-    "<!ELEMENT site            (regions, categories, catgraph, people, open_auctions, closed_auctions)>",
+    "<!ELEMENT site    (regions, categories, catgraph, people, open_auctions, closed_auctions)>",
     "<!ELEMENT categories      (category+)>",
     "<!ELEMENT category        (name, description)>",
     "<!ATTLIST category        id ID #REQUIRED>",
-    "<!ELEMENT name            (#PCDATA)>",
+    "<!ELEMENT name    (#PCDATA)>",
     "<!ELEMENT description     (text | parlist)>",
-    "<!ELEMENT text            (#PCDATA | bold | keyword | emph)*>",
+    "<!ELEMENT text    (#PCDATA | bold | keyword | emph)*>",
     "<!ELEMENT bold		  (#PCDATA | bold | keyword | emph)*>",
     "<!ELEMENT keyword	  (#PCDATA | bold | keyword | emph)*>",
     "<!ELEMENT emph		  (#PCDATA | bold | keyword | emph)*>",
@@ -18,82 +18,82 @@ char *dtd[] = {
     "<!ELEMENT edge            EMPTY>",
     "<!ATTLIST edge            from IDREF #REQUIRED to IDREF #REQUIRED>",
     "",
-    "<!ELEMENT regions         (africa, asia, australia, europe, namerica, samerica)>",
-    "<!ELEMENT africa          (item*)>",
-    "<!ELEMENT asia            (item*)>",
+    "<!ELEMENT regions (africa, asia, australia, europe, namerica, samerica)>",
+    "<!ELEMENT africa  (item*)>",
+    "<!ELEMENT asia    (item*)>",
     "<!ELEMENT australia       (item*)>",
     "<!ELEMENT namerica        (item*)>",
     "<!ELEMENT samerica        (item*)>",
-    "<!ELEMENT europe          (item*)>",
-    "<!ELEMENT item            (location, quantity, name, payment, description, shipping, incategory+, mailbox)>",
+    "<!ELEMENT europe  (item*)>",
+    "<!ELEMENT item    (location, quantity, name, payment, description, shipping, incategory+, mailbox)>",
     "<!ATTLIST item            id ID #REQUIRED",
     "                          featured CDATA #IMPLIED>",
     "<!ELEMENT location        (#PCDATA)>",
     "<!ELEMENT quantity        (#PCDATA)>",
-    "<!ELEMENT payment         (#PCDATA)>",
+    "<!ELEMENT payment (#PCDATA)>",
     "<!ELEMENT shipping        (#PCDATA)>",
-    "<!ELEMENT reserve         (#PCDATA)>",
+    "<!ELEMENT reserve (#PCDATA)>",
     "<!ELEMENT incategory      EMPTY>",
     "<!ATTLIST incategory      category IDREF #REQUIRED>",
-    "<!ELEMENT mailbox         (mail*)>",
-    "<!ELEMENT mail            (from, to, date, text)>",
-    "<!ELEMENT from            (#PCDATA)>",
-    "<!ELEMENT to              (#PCDATA)>",
-    "<!ELEMENT date            (#PCDATA)>",
+    "<!ELEMENT mailbox (mail*)>",
+    "<!ELEMENT mail    (from, to, date, text)>",
+    "<!ELEMENT from    (#PCDATA)>",
+    "<!ELEMENT to      (#PCDATA)>",
+    "<!ELEMENT date    (#PCDATA)>",
     "<!ELEMENT itemref         EMPTY>",
     "<!ATTLIST itemref         item IDREF #REQUIRED>",
     "<!ELEMENT personref       EMPTY>",
     "<!ATTLIST personref       person IDREF #REQUIRED>",
     "",
-    "<!ELEMENT people          (person*)>",
-    "<!ELEMENT person          (name, emailaddress, phone?, address?, homepage?, creditcard?, profile?, watches?)>",
+    "<!ELEMENT people  (person*)>",
+    "<!ELEMENT person  (name, emailaddress, phone?, address?, homepage?, creditcard?, profile?, watches?)>",
     "<!ATTLIST person          id ID #REQUIRED>",
     "<!ELEMENT emailaddress    (#PCDATA)>",
-    "<!ELEMENT phone           (#PCDATA)>",
-    "<!ELEMENT address         (street, city, country, province?, zipcode)>",
-    "<!ELEMENT street          (#PCDATA)>",
-    "<!ELEMENT city            (#PCDATA)>",
+    "<!ELEMENT phone   (#PCDATA)>",
+    "<!ELEMENT address (street, city, country, province?, zipcode)>",
+    "<!ELEMENT street  (#PCDATA)>",
+    "<!ELEMENT city    (#PCDATA)>",
     "<!ELEMENT province        (#PCDATA)>",
-    "<!ELEMENT zipcode         (#PCDATA)>",
-    "<!ELEMENT country         (#PCDATA)>",
+    "<!ELEMENT zipcode (#PCDATA)>",
+    "<!ELEMENT country (#PCDATA)>",
     "<!ELEMENT homepage        (#PCDATA)>",
     "<!ELEMENT creditcard      (#PCDATA)>",
-    "<!ELEMENT profile         (interest*, education?, gender?, business, age?)>",
+    "<!ELEMENT profile (interest*, education?, gender?, business, age?)>",
     "<!ATTLIST profile         income CDATA #IMPLIED>",
     "<!ELEMENT interest        EMPTY>",
     "<!ATTLIST interest        category IDREF #REQUIRED>",
     "<!ELEMENT education       (#PCDATA)>",
-    "<!ELEMENT income          (#PCDATA)>",
-    "<!ELEMENT gender          (#PCDATA)>",
+    "<!ELEMENT income  (#PCDATA)>",
+    "<!ELEMENT gender  (#PCDATA)>",
     "<!ELEMENT business        (#PCDATA)>",
-    "<!ELEMENT age             (#PCDATA)>",
-    "<!ELEMENT watches         (watch*)>",
+    "<!ELEMENT age     (#PCDATA)>",
+    "<!ELEMENT watches (watch*)>",
     "<!ELEMENT watch           EMPTY>",
     "<!ATTLIST watch           open_auction IDREF #REQUIRED>",
     "",
     "<!ELEMENT open_auctions   (open_auction*)>",
     "<!ELEMENT open_auction    (initial, reserve?, bidder*, current, privacy?, itemref, seller, annotation, quantity, type, interval)>",
     "<!ATTLIST open_auction    id ID #REQUIRED>",
-    "<!ELEMENT privacy         (#PCDATA)>",
-    "<!ELEMENT initial         (#PCDATA)>",
-    "<!ELEMENT bidder          (date, time, personref, increase)>",
+    "<!ELEMENT privacy (#PCDATA)>",
+    "<!ELEMENT initial (#PCDATA)>",
+    "<!ELEMENT bidder  (date, time, personref, increase)>",
     "<!ELEMENT seller          EMPTY>",
     "<!ATTLIST seller          person IDREF #REQUIRED>",
-    "<!ELEMENT current         (#PCDATA)>",
+    "<!ELEMENT current (#PCDATA)>",
     "<!ELEMENT increase        (#PCDATA)>",
-    "<!ELEMENT type            (#PCDATA)>",
+    "<!ELEMENT type    (#PCDATA)>",
     "<!ELEMENT interval        (start, end)>",
-    "<!ELEMENT start           (#PCDATA)>",
-    "<!ELEMENT end             (#PCDATA)>",
-    "<!ELEMENT time            (#PCDATA)>",
-    "<!ELEMENT status          (#PCDATA)>",
-    "<!ELEMENT amount          (#PCDATA)>",
+    "<!ELEMENT start   (#PCDATA)>",
+    "<!ELEMENT end     (#PCDATA)>",
+    "<!ELEMENT time    (#PCDATA)>",
+    "<!ELEMENT status  (#PCDATA)>",
+    "<!ELEMENT amount  (#PCDATA)>",
     "",
     "<!ELEMENT closed_auctions (closed_auction*)>",
     "<!ELEMENT closed_auction  (seller, buyer, itemref, price, date, quantity, type, annotation?)>",
     "<!ELEMENT buyer           EMPTY>",
     "<!ATTLIST buyer           person IDREF #REQUIRED>",
-    "<!ELEMENT price           (#PCDATA)>",
+    "<!ELEMENT price   (#PCDATA)>",
     "<!ELEMENT annotation      (author, description?, happiness)>",
     "",
     "<!ELEMENT author          EMPTY>",
@@ -169,6 +169,16 @@ pub typedef {
 
 Element objs[]={
     { .id = 0, .name = "*error*" },
+
+    //
+    // missing
+    //
+    // "<!ELEMENT bold		  (#PCDATA | bold | keyword | emph)*>",
+    // "<!ELEMENT keyword	  (#PCDATA | bold | keyword | emph)*>",
+    // "<!ELEMENT emph		  (#PCDATA | bold | keyword | emph)*>",
+    //
+
+    // "<!ELEMENT site (regions, categories, catgraph, people, open_auctions, closed_auctions)>",
     {
         .id = AUCTION_SITE,
         .name = "site",
@@ -181,6 +191,8 @@ Element objs[]={
             {CLOSED_TRANS_LIST,{1,0,0,1,1}, 0}
         }
     },
+
+    // "<!ELEMENT categories (category+)>",    
     {
         .id = CATEGORY_LIST,
         .name = "categories",
@@ -188,6 +200,8 @@ Element objs[]={
             {CATEGORY,{1,0,0,1000,1000}, 0}
         }
     },
+
+    // "<!ELEMENT regions (africa, asia, australia, europe, namerica, samerica)>",
     {
         .id = REGION,
         .name = "regions",
@@ -200,6 +214,8 @@ Element objs[]={
             {SAMERICA,{1,0,0,1,1}, 0}
         }
     },
+
+    // "<!ELEMENT europe  (item*)>",
     {
         .id = EUROPE,
         .name = "europe",
@@ -207,6 +223,8 @@ Element objs[]={
             {ITEM,{1,0,0,6000,6000}, 0}
         }
     },
+
+    // "<!ELEMENT australia       (item*)>",
     {
         .id = AUSTRALIA,
         .name = "australia",
@@ -214,6 +232,8 @@ Element objs[]={
             {ITEM,{1,0,0,2200,2200}, 0}
         }
     },
+
+    // "<!ELEMENT africa  (item*)>",
     {
         .id = AFRICA,
         .name = "africa",
@@ -221,6 +241,8 @@ Element objs[]={
             {ITEM,{1,0,0,550,550}, 0}
         }
     },
+
+    // "<!ELEMENT namerica        (item*)>",
     {
         .id = NAMERICA,
         .name = "namerica",
@@ -228,6 +250,8 @@ Element objs[]={
             {ITEM,{1,0,0,10000,10000}, 0}
         }
     },
+
+    // "<!ELEMENT samerica        (item*)>",
     {
         .id = SAMERICA,
         .name = "samerica",
@@ -235,6 +259,8 @@ Element objs[]={
             {ITEM,{1,0,0,1000,1000}, 0}
         }
     },
+
+    // "<!ELEMENT asia    (item*)>",
     {
         .id = ASIA,
         .name = "asia",
@@ -242,6 +268,8 @@ Element objs[]={
             {ITEM,{1,0,0,2000,2000}, 0}
         }
     },
+
+    // "<!ELEMENT catgraph        (edge*)>",
     {
         .id = CATGRAPH,
         .name = "catgraph",
@@ -258,6 +286,9 @@ Element objs[]={
         },
         0x20
     },
+
+    // "<!ELEMENT edge EMPTY>",
+    // "<!ATTLIST edge from IDREF #REQUIRED to IDREF #REQUIRED>",
     {
         .id = EDGE,
         .name = "edge",
@@ -276,6 +307,9 @@ Element objs[]={
                 .type = 2,CATEGORY,{1,0,0,0,0}}
         }
     },
+
+    // "<!ELEMENT category (name, description)>",
+    // "<!ATTLIST category        id ID #REQUIRED>",
     {
         .id = CATEGORY,
         .name = "category",
@@ -290,6 +324,9 @@ Element objs[]={
             }
         }
     },
+
+    // "<!ELEMENT item (location, quantity, name, payment, description, shipping, incategory+, mailbox)>",
+    // "<!ATTLIST item            id ID #REQUIRED",
     {
         .id = ITEM,
         .name = "item",
@@ -313,12 +350,21 @@ Element objs[]={
         },
         0x40
     },
+
+    // "<!ELEMENT location        (#PCDATA)>",
+    // "<!ELEMENT quantity        (#PCDATA)>",
+    // "<!ELEMENT payment (#PCDATA)>",
+    // "<!ELEMENT name    (#PCDATA)>",
     { .id = LOCATION, .name = "location" },
     { .id = QUANTITY, .name = "quantity" },
     { .id = PAYMENT, .name = "payment" },
     { .id = NAME, .name = "name" },
+
+
     { .id = ITEMNAME, .name = "name" },
     { .id = CATNAME, .name = "name" },
+
+    // "<!ELEMENT description     (text | parlist)>",
     {
         .id = DESCRIPTION,
         .name = "description",
@@ -335,6 +381,8 @@ Element objs[]={
         },
         0x02
     },
+
+    // "<!ELEMENT parlist	  (listitem)*>",
     {
         .id = PARLIST,
         .name = "parlist",
@@ -342,6 +390,8 @@ Element objs[]={
             {LISTITEM,{3,1,0,2,5}, 0}
         }
     },
+
+    // "<!ELEMENT text    (#PCDATA | bold | keyword | emph)*>",
     {
         .id = TEXT,
         .name = "text",
@@ -351,6 +401,8 @@ Element objs[]={
         .att = {{.name = "",0,0,{0,0,0,0,0}}},
         0x01
     },
+
+    // "<!ELEMENT listitem        (text | parlist)*>",
     {
         .id = LISTITEM,
         .name = "listitem",
@@ -366,8 +418,14 @@ Element objs[]={
         },
         0x02
     },
+
+    // "<!ELEMENT shipping        (#PCDATA)>",
+    // "<!ELEMENT reserve (#PCDATA)>",
     { .id = SHIPPING, .name = "shipping" },
     { .id = RESERVE, .name = "reserve" },
+
+    // "<!ELEMENT incategory      EMPTY>",
+    // "<!ATTLIST incategory      category IDREF #REQUIRED>",
     {
         .id = INCATEGORY,
         .name = "incategory",
@@ -380,6 +438,8 @@ Element objs[]={
             }
         }
     },
+
+    // "<!ELEMENT mailbox (mail*)>",
     {
         .id = MAILBOX,
         .name = "mailbox",
@@ -387,6 +447,8 @@ Element objs[]={
             {MAIL,{3,1,0,0,250}, 0}
         }
     },
+
+    // "<!ELEMENT mail (from, to, date, text)>",
     {
         .id = MAIL,
         .name = "mail",
@@ -397,9 +459,16 @@ Element objs[]={
             {TEXT,{1,0,0,1,1}, 0}
         }
     },
+
+    // "<!ELEMENT from    (#PCDATA)>",
+    // "<!ELEMENT to      (#PCDATA)>",
+    // "<!ELEMENT date    (#PCDATA)>",
     { .id = FROM, .name = "from" },
     { .id = TO, .name = "to" },
     { .id = XDATE, .name = "date" },
+
+
+    // "<!ELEMENT people  (person*)>",
     {
         .id = PERSON_LIST,
         .name = "people",
@@ -407,6 +476,9 @@ Element objs[]={
             {PERSON,{1,0,0,25500,25500}, 0}
         }
     },
+
+    // "<!ELEMENT person  (name, emailaddress, phone?, address?, homepage?, creditcard?, profile?, watches?)>",
+    // "<!ATTLIST person          id ID #REQUIRED>",
     {
         .id = PERSON,
         .name = "person",
@@ -427,10 +499,18 @@ Element objs[]={
         },
         0x40
     },
+
+    // "<!ELEMENT emailaddress    (#PCDATA)>",
     { .id = EMAIL, .name = "emailaddress" },
+
+    // "<!ELEMENT phone   (#PCDATA)>",
+    // "<!ELEMENT homepage        (#PCDATA)>",
+    // "<!ELEMENT creditcard      (#PCDATA)>",
     { .id = PHONE, .name = "phone" },
     { .id = HOMEPAGE, .name = "homepage" },
     { .id = CREDITCARD, .name = "creditcard" },
+
+    // "<!ELEMENT address (street, city, country, province?, zipcode)>",
     {
         .id = ADDRESS,
         .name = "address",
@@ -442,11 +522,24 @@ Element objs[]={
             {ZIPCODE,{1,0,0,1,1}, 0}
         }
     },
+
+    // "<!ELEMENT street  (#PCDATA)>",
     { .id = STREET, .name = "street" },
+
+    // "<!ELEMENT city    (#PCDATA)>",
     { .id = CITY, .name = "city" },
+
+    // "<!ELEMENT province        (#PCDATA)>",
     { .id = PROVINCE, .name = "province" },
+
+    // "<!ELEMENT zipcode (#PCDATA)>",
     { .id = ZIPCODE, .name = "zipcode" },
+
+    // "<!ELEMENT country (#PCDATA)>",
     { .id = COUNTRY, .name = "country" },
+
+    // "<!ELEMENT profile (interest*, education?, gender?, business, age?)>",
+    // "<!ATTLIST profile income CDATA #IMPLIED>",
     {
         .id = PROFILE,
         .name = "profile",
@@ -463,11 +556,21 @@ Element objs[]={
                 .type = 3,0,{0,0,0,0,0},1}
         }
     },
+
+    // "<!ELEMENT education       (#PCDATA)>",
+    // "<!ELEMENT income  (#PCDATA)>",
+    // "<!ELEMENT gender  (#PCDATA)>",
+    // "<!ELEMENT business        (#PCDATA)>",
+    // "<!ELEMENT age     (#PCDATA)>",
     { .id = EDUCATION, .name = "education" },
     { .id = INCOME, .name = "income" },
     { .id = GENDER, .name = "gender" },
     { .id = BUSINESS, .name = "business" },
     { .id = AGE, .name = "age" },
+
+
+    // "<!ELEMENT interest        EMPTY>",
+    // "<!ATTLIST interest        category IDREF #REQUIRED>",
     {
         .id = INTEREST,
         .name = "interest",
@@ -478,6 +581,8 @@ Element objs[]={
                 .type = 2,CATEGORY,{1,0,0,0,0}}
         }
     },
+
+    // "<!ELEMENT watches (watch*)>",
     {
         .id = WATCHES,
         .name = "watches",
@@ -485,6 +590,9 @@ Element objs[]={
             {WATCH,{3,4,0,0,100}, 0},
         }
     },
+
+    // "<!ELEMENT watch           EMPTY>",
+    // "<!ATTLIST watch           open_auction IDREF #REQUIRED>",
     {
         .id = WATCH,
         .name = "watch",
@@ -493,6 +601,8 @@ Element objs[]={
             {.name = "\1", .type = 2,OPEN_TRANS,{1,0,0,0,0}}
         }
     },
+
+    // "<!ELEMENT open_auctions   (open_auction*)>",
     {
         .id = OPEN_TRANS_LIST,
         .name = "open_auctions",
@@ -500,6 +610,9 @@ Element objs[]={
             {OPEN_TRANS,{1,0,0,12000,12000}, 0}
         }
     },
+
+    // "<!ELEMENT open_auction    (initial, reserve?, bidder*, current, privacy?, itemref, seller, annotation, quantity, type, interval)>",
+    // "<!ATTLIST open_auction    id ID #REQUIRED>",
     {
         .id = OPEN_TRANS,
         .name = "open_auction",
@@ -521,11 +634,21 @@ Element objs[]={
         },
         0x04|0x40
     },
+
+    // "<!ELEMENT privacy (#PCDATA)>",
+    // "<!ELEMENT amount  (#PCDATA)>",
+    // "<!ELEMENT current (#PCDATA)>",
+    // "<!ELEMENT increase        (#PCDATA)>",
+    // "<!ELEMENT type    (#PCDATA)>",
     { .id = PRIVACY, .name = "privacy" },
     { .id = AMOUNT, .name = "amount" },
     { .id = CURRENT, .name = "current" },
     { .id = INCREASE, .name = "increase" },
     { .id = TYPE, .name = "type" },
+
+
+    // "<!ELEMENT itemref         EMPTY>",
+    // "<!ATTLIST itemref         item IDREF #REQUIRED>",
     {
         .id = ITEMREF,
         .name = "itemref",
@@ -534,6 +657,8 @@ Element objs[]={
             {.name = "\1", .type = 2,ITEM,{1,0,0,0,0}}
         }
     },
+
+    // "<!ELEMENT bidder (date, time, personref, increase)>",
     {
         .id = BIDDER,
         .name = "bidder",
@@ -544,9 +669,16 @@ Element objs[]={
             {INCREASE,{1,0,0,1,1}, .rec = 0}
         }
     },
+
+    // "<!ELEMENT time    (#PCDATA)>",
+    // "<!ELEMENT status (#PCDATA)>",
+    // "<!ELEMENT initial (#PCDATA)>",
     { .id = TIME, .name = "time" },
     { .id = STATUS, .name = "status" },
     { .id = INIT_PRICE, .name = "initial" },
+
+    // "<!ELEMENT personref       EMPTY>",
+    // "<!ATTLIST personref       person IDREF #REQUIRED>",
     {
         .id = PERSONREF,
         .name = "personref",
@@ -559,6 +691,9 @@ Element objs[]={
             }
         }
     },
+
+    // "<!ELEMENT seller          EMPTY>",
+    // "<!ATTLIST seller          person IDREF #REQUIRED>",
     {
         .id = SELLER,
         .name = "seller",
@@ -568,6 +703,8 @@ Element objs[]={
             .type = 2,PERSON,{2,0.5,0.10,0,0}}
         }
     },
+
+    // "<!ELEMENT interval        (start, end)>",
     {
         .id = INTERVAL,
         .name = "interval",
@@ -576,8 +713,14 @@ Element objs[]={
             {END,{1,0,0,1,1}, .rec = 0}
         }
     },
+
+    // "<!ELEMENT start   (#PCDATA)>",
+    // "<!ELEMENT end     (#PCDATA)>",
     { .id = START, .name = "start" },
     { .id = END, .name = "end" },
+
+
+    // "<!ELEMENT closed_auctions (closed_auction*)>",
     {
         .id = CLOSED_TRANS_LIST,
         .name = "closed_auctions",
@@ -585,6 +728,8 @@ Element objs[]={
             {CLOSED_TRANS,{1,0,0,3000,3000}, .rec = 0}
         }
     },
+
+    // "<!ELEMENT closed_auction  (seller, buyer, itemref, price, date, quantity, type, annotation?)>",
     {
         .id = CLOSED_TRANS,
         .name = "closed_auction",
@@ -604,7 +749,12 @@ Element objs[]={
         },
         0x04|0x40
     },
+
+    // "<!ELEMENT price   (#PCDATA)>",
     { .id = PRICE, .name = "price" },
+
+    // "<!ELEMENT buyer           EMPTY>",
+    // "<!ATTLIST buyer           person IDREF #REQUIRED>",
     {
         .id = BUYER,
         .name = "buyer",
@@ -613,6 +763,8 @@ Element objs[]={
             {.name = "\1",.type = 2,PERSON,{2,0.5,0.10,0,0}}
         }
     },
+
+    // "<!ELEMENT annotation      (author, description?, happiness)>",
     {
         .id = ANNOTATION,
         .name = "annotation",
@@ -622,7 +774,12 @@ Element objs[]={
             {HAPPINESS,{1,0,0,1,1}, .rec = 0}
         }
     },
+
+    // "<!ELEMENT happiness       (#PCDATA)>",
     { .id = HAPPINESS, .name = "happiness" },
+
+    // "<!ELEMENT author EMPTY>",
+    // "<!ATTLIST author          person IDREF #REQUIRED>",
     {
         .id = AUTHOR,
         .name = "author",
