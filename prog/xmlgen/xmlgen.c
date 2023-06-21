@@ -344,14 +344,12 @@ enum {
     ATTR_TYPE_3 = 3
 };
 
-void OpeningTag(schema.Element *od)
-{
+void OpeningTag(schema.Element *element) {
     schema.AttDesc *att=0;
-    stack[stackdepth++]=od;
-    fprintf(xmlout,"<%s",od->name);
+    stack[stackdepth++]=element;
+    fprintf(xmlout,"<%s",element->name);
     for (int i=0;i<5;i++) {
-        
-        att=&od->att[i];
+        att=&element->att[i];
         if (att->name[0]=='\0') {
             break;
         }
@@ -365,11 +363,11 @@ void OpeningTag(schema.Element *od)
 
         switch(att->type) {
             case ATTR_TYPE_1:
-                fprintf(xmlout," %s=\"%s%d\"", attname,od->name,od->set.id++);
+                fprintf(xmlout," %s=\"%s%d\"", attname,element->name,element->set.id++);
                 break;
             case ATTR_TYPE_2:
                 int ref=0;
-                if (!ItemIdRef(od, &ref)) {
+                if (!ItemIdRef(element, &ref)) {
                     ref=GenRef(&att->pd,att->ref);
                 }
                 fprintf(xmlout," %s=\"%s%d\"", attname, schema.GetSchemaNode(att->ref)->name, ref);
@@ -393,26 +391,25 @@ void OpeningTag(schema.Element *od)
                 exit(1);
         }
     }
-    if (od->elm[0].id == 0 && (od->att[0].name[0])) {
+    if (element->elm[0].id == 0 && (element->att[0].name[0])) {
         fprintf(xmlout,"/>\n");
     } else {
         fprintf(xmlout,">");
-        if (od->elm[0].id != 0 || od->type & 0x01) {
+        if (element->elm[0].id != 0 || element->type & 0x01) {
             fprintf(xmlout,"\n");
         }
     }
 }
 
-void ClosingTag(schema.Element *od)
-{
+void ClosingTag(schema.Element *element) {
     stackdepth--;
-    if (od->type & 0x01) {
+    if (element->type & 0x01) {
         fprintf(xmlout,"\n");
     }
-    if ((od->att[0].name[0]) && !(od->elm[0].id!=0)) {
+    if ((element->att[0].name[0]) && !(element->elm[0].id!=0)) {
         return;
     }
-    fprintf(xmlout,"</%s>\n",od->name);
+    fprintf(xmlout,"</%s>\n",element->name);
 }
 
 bool GenSubtree_splitnow = false;
@@ -456,15 +453,15 @@ void PrintANY() {
         }
 }
 
-int ItemIdRef(schema.Element *odSon, int *iRef) {
-    if (odSon->id != schema.ITEMREF || stackdepth < 2) {
+int ItemIdRef(schema.Element *child, int *iRef) {
+    if (child->id != schema.ITEMREF || stackdepth < 2) {
         return 0;
     }
-    schema.Element *od = stack[stackdepth-2];
-    if (od->id == schema.OPEN_TRANS) {
+    schema.Element *element = stack[stackdepth-2];
+    if (element->id == schema.OPEN_TRANS) {
         return GenItemIdRef(schema.getidr(0), iRef);
     }
-    if (od->id == schema.CLOSED_TRANS) {
+    if (element->id == schema.CLOSED_TRANS) {
         return GenItemIdRef(schema.getidr(1), iRef);
     }
     return 0;

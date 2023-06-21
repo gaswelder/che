@@ -863,12 +863,12 @@ void InitRepro(idrepro *rep, int max, int brosmax) {
     rep->cur = 0;
 }
 
-void FixSetSize(Element *od, float global_scale_factor) {
-    if (od->flag++) {
+void FixSetSize(Element *element, float global_scale_factor) {
+    if (element->flag++) {
         return;
     }
-    for (int i = 0; i < od->kids; i++) {
-        ElmDesc *ed = &(od->elm[i]);
+    for (int i = 0; i < element->kids; i++) {
+        ElmDesc *ed = &(element->elm[i]);
         Element *son = GetSchemaNode(ed->id);
         if (!son) continue;
         if (ed->pd.min>1 && (hasID(son) || (son->type&0x04))) {
@@ -885,13 +885,13 @@ void FixSetSize(Element *od, float global_scale_factor) {
     }
 }
 
-void FixReferenceSets(Element *od)
-{
+void FixReferenceSets(Element *element) {
+    if (element->flag++) return;
+
     int i,j,maxref=0;
-    if (od->flag++) return;
-    for (i=0;i<od->kids;i++)
+    for (i=0;i<element->kids;i++)
         {
-            ElmDesc *ed=&(od->elm[i]);
+            ElmDesc *ed=&(element->elm[i]);
             Element *son = GetSchemaNode(ed->id);
             if (!son) continue;
             if (ed->pd.min>1 && !hasID(son))
@@ -933,9 +933,9 @@ void FixSetByEdge(char *father_name, char *son_name, int size)
         if (strcmp(father_name,objs[i].name)) {
             continue;
         }
-        Element *od=objs+i;
-        for (int j=0;j<od->kids;j++) {
-            ElmDesc *ed=&(od->elm[j]);
+        Element *element = GetSchemaNode(i);
+        for (int j=0;j<element->kids;j++) {
+            ElmDesc *ed=&(element->elm[j]);
             Element *son=objs+ed->id;
             if (!strcmp(son_name,son->name)) {
                 FixDist(&ed->pd,size);
@@ -957,27 +957,27 @@ void CheckRecursion() {
     }
 }
 
-int FindRec(Element *od, Element *search) {
-    if (od == search) {
-        od->flag=0;
+int FindRec(Element *element, *search) {
+    if (element == search) {
+        element->flag = 0;
         return 1;
     }
 
     int r = 0;
-    if (!od->flag) {
-        od->flag = 1;
-        for (int i=0; i < od->kids; i++) {
-            r += FindRec(objs + od->elm[i].id, search);
+    if (!element->flag) {
+        element->flag = 1;
+        for (int i=0; i < element->kids; i++) {
+            r += FindRec(objs + element->elm[i].id, search);
         }
     }
-    od->flag=0;
+    element->flag=0;
     return r;
 }
 
-bool hasID(Element *od) {
-    for (size_t i = 0; i < nelem(od->att); i++) {
-        if (od->att[i].type == 0) return false;
-        if (od->att[i].type == 1) return true;
+bool hasID(Element *element) {
+    for (size_t i = 0; i < nelem(element->att); i++) {
+        if (element->att[i].type == 0) return false;
+        if (element->att[i].type == 1) return true;
     }
     return false;
 }
