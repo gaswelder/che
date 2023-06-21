@@ -29,7 +29,7 @@ int global_split_fileno = 0;
 
 const int COUNTRIES_USA = 0;
 
-schema.ObjDesc *stack[64] = {};
+schema.Element *stack[64] = {};
 
 int main(int argc, char **argv)
 {
@@ -109,7 +109,7 @@ void Preamble(FILE *out, int document_type) {
     }
 }
 
-void Tree(FILE *out, schema.ObjDesc *element) {
+void Tree(FILE *out, schema.Element *element) {
     if (element->type&0x10) {
         return;
     }
@@ -273,7 +273,7 @@ void Tree(FILE *out, schema.ObjDesc *element) {
     }
 
     if (element->type & 0x02) {
-        schema.ObjDesc *root;
+        schema.Element *root;
         if (element->flag > 2-1) {
             int i = 0;
             while (i < element->kids-1 && element->elm[i].rec) {
@@ -323,7 +323,7 @@ schema.ProbDesc global_GenRef_pdnew = {};
 
 int GenRef(schema.ProbDesc *pd, int type)
 {
-    schema.ObjDesc* od = schema.GetSchemaNode(type);
+    schema.Element* od = schema.GetSchemaNode(type);
     if (pd->type!=0)
         {
             global_GenRef_pdnew.min=0;
@@ -344,7 +344,7 @@ enum {
     ATTR_TYPE_3 = 3
 };
 
-void OpeningTag(schema.ObjDesc *od)
+void OpeningTag(schema.Element *od)
 {
     schema.AttDesc *att=0;
     stack[stackdepth++]=od;
@@ -403,7 +403,7 @@ void OpeningTag(schema.ObjDesc *od)
     }
 }
 
-void ClosingTag(schema.ObjDesc *od)
+void ClosingTag(schema.Element *od)
 {
     stackdepth--;
     if (od->type & 0x01) {
@@ -456,11 +456,11 @@ void PrintANY() {
         }
 }
 
-int ItemIdRef(schema.ObjDesc *odSon, int *iRef) {
+int ItemIdRef(schema.Element *odSon, int *iRef) {
     if (odSon->id != schema.ITEMREF || stackdepth < 2) {
         return 0;
     }
-    schema.ObjDesc *od = stack[stackdepth-2];
+    schema.Element *od = stack[stackdepth-2];
     if (od->id == schema.OPEN_TRANS) {
         return GenItemIdRef(schema.getidr(0), iRef);
     }

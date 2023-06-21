@@ -151,21 +151,23 @@ pub typedef {
     int current;
 } idrepro;
 
+
+
 pub typedef {
     int id;
-    /*
-     * Element name, the string inside the angle brackets.
-     */
+
+    // element-name, the string inside the angle brackets.
     char *name;
+    
     ElmDesc elm[20];
     AttDesc att[5];
     int type;
     int kids;
     SetDesc set;
     int flag;
-} ObjDesc;
+} Element;
 
-ObjDesc objs[]={
+Element objs[]={
     { .id = 0, .name = "*error*" },
     {
         .id = AUCTION_SITE,
@@ -639,13 +641,13 @@ pub void InitializeSchema(float global_scale_factor) {
     
     // Reorder the schema so that a node with id "x"
     // is at the same index "x" in the array.
-    ObjDesc *newobjs = calloc(nobj, sizeof(ObjDesc));
+    Element *newobjs = calloc(nobj, sizeof(Element));
     for (int i = 0; i < nobj; i++) {
         void *src = &objs[i];
         void *dest = &newobjs[objs[i].id];
-        memcpy(dest, src, sizeof(ObjDesc));
+        memcpy(dest, src, sizeof(Element));
     }
-    memcpy(objs,newobjs,sizeof(ObjDesc)*nobj);
+    memcpy(objs,newobjs,sizeof(Element)*nobj);
     free(newobjs);
 
     // Initialize the "kids" field on each node:
@@ -658,7 +660,7 @@ pub void InitializeSchema(float global_scale_factor) {
         }
     }
 
-    ObjDesc *root = GetSchemaNode(1);
+    Element *root = GetSchemaNode(1);
     FixSetSize(root, global_scale_factor);
     for (int i = 0; i < nobj; i++) {
         objs[i].flag = 0;
@@ -701,13 +703,13 @@ void InitRepro(idrepro *rep, int max, int brosmax) {
     rep->cur = 0;
 }
 
-void FixSetSize(ObjDesc *od, float global_scale_factor) {
+void FixSetSize(Element *od, float global_scale_factor) {
     if (od->flag++) {
         return;
     }
     for (int i = 0; i < od->kids; i++) {
         ElmDesc *ed = &(od->elm[i]);
-        ObjDesc *son = GetSchemaNode(ed->id);
+        Element *son = GetSchemaNode(ed->id);
         if (!son) continue;
         if (ed->pd.min>1 && (hasID(son) || (son->type&0x04))) {
             int size=(int)(GenRandomNum(&ed->pd)+0.5);
@@ -723,14 +725,14 @@ void FixSetSize(ObjDesc *od, float global_scale_factor) {
     }
 }
 
-void FixReferenceSets(ObjDesc *od)
+void FixReferenceSets(Element *od)
 {
     int i,j,maxref=0;
     if (od->flag++) return;
     for (i=0;i<od->kids;i++)
         {
             ElmDesc *ed=&(od->elm[i]);
-            ObjDesc *son = GetSchemaNode(ed->id);
+            Element *son = GetSchemaNode(ed->id);
             if (!son) continue;
             if (ed->pd.min>1 && !hasID(son))
                 {
@@ -771,10 +773,10 @@ void FixSetByEdge(char *father_name, char *son_name, int size)
         if (strcmp(father_name,objs[i].name)) {
             continue;
         }
-        ObjDesc *od=objs+i;
+        Element *od=objs+i;
         for (int j=0;j<od->kids;j++) {
             ElmDesc *ed=&(od->elm[j]);
-            ObjDesc *son=objs+ed->id;
+            Element *son=objs+ed->id;
             if (!strcmp(son_name,son->name)) {
                 FixDist(&ed->pd,size);
             }
@@ -785,7 +787,7 @@ void FixSetByEdge(char *father_name, char *son_name, int size)
 void CheckRecursion() {
     int n = nelem(objs);
     for (int i = 1; i < n; i++) {
-        ObjDesc *root = &objs[i];
+        Element *root = &objs[i];
         if (root->type != 0x02) {
             continue;
         }
@@ -795,7 +797,7 @@ void CheckRecursion() {
     }
 }
 
-int FindRec(ObjDesc *od, ObjDesc *search) {
+int FindRec(Element *od, Element *search) {
     if (od == search) {
         od->flag=0;
         return 1;
@@ -812,7 +814,7 @@ int FindRec(ObjDesc *od, ObjDesc *search) {
     return r;
 }
 
-bool hasID(ObjDesc *od) {
+bool hasID(Element *od) {
     for (size_t i = 0; i < nelem(od->att); i++) {
         if (od->att[i].type == 0) return false;
         if (od->att[i].type == 1) return true;
@@ -820,7 +822,7 @@ bool hasID(ObjDesc *od) {
     return false;
 }
 
-pub ObjDesc *GetSchemaNode(int id) {
+pub Element *GetSchemaNode(int id) {
     return objs + id;
 }
 
