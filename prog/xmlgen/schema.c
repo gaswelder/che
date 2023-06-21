@@ -183,12 +183,12 @@ Element objs[]={
         .id = AUCTION_SITE,
         .name = "site",
         .elm = {
-            {REGION,{1,0,0,1,1}, 0},
-            {CATEGORY_LIST,{1,0,0,1,1}, 0},
-            {CATGRAPH,{1,0,0,1,1}, 0},
-            {PERSON_LIST,{1,0,0,1,1}, 0},
-            {OPEN_TRANS_LIST,{1,0,0,1,1}, 0},
-            {CLOSED_TRANS_LIST,{1,0,0,1,1}, 0}
+            {.id = REGION,              .pd = {1,0,0,1,1}, .rec = 0},
+            {.id = CATEGORY_LIST,       .pd = {1,0,0,1,1}, .rec = 0},
+            {.id = CATGRAPH,            .pd = {1,0,0,1,1}, .rec = 0},
+            {.id = PERSON_LIST,         .pd = {1,0,0,1,1}, .rec = 0},
+            {.id = OPEN_TRANS_LIST,     .pd = {1,0,0,1,1}, .rec = 0},
+            {.id = CLOSED_TRANS_LIST,   .pd = {1,0,0,1,1}, .rec = 0}
         }
     },
 
@@ -197,7 +197,7 @@ Element objs[]={
         .id = CATEGORY_LIST,
         .name = "categories",
         .elm = {
-            {CATEGORY,{1,0,0,1000,1000}, 0}
+            {.id = CATEGORY, .pd = {1,0,0,1000,1000}, .rec = 0}
         }
     },
 
@@ -206,12 +206,12 @@ Element objs[]={
         .id = REGION,
         .name = "regions",
         .elm = {
-            {AFRICA,{1,0,0,1,1}, 0},
-            {ASIA,{1,0,0,1,1}, 0},
-            {AUSTRALIA,{1,0,0,1,1}, 0},
-            {EUROPE,{1,0,0,1,1}, 0},
-            {NAMERICA,{1,0,0,1,1}, 0},
-            {SAMERICA,{1,0,0,1,1}, 0}
+            {.id = AFRICA,      .pd = {1,0,0,1,1}, .rec = 0},
+            {.id = ASIA,        .pd = {1,0,0,1,1}, .rec = 0},
+            {.id = AUSTRALIA,   .pd = {1,0,0,1,1}, .rec = 0},
+            {.id = EUROPE,      .pd = {1,0,0,1,1}, .rec = 0},
+            {.id = NAMERICA,    .pd = {1,0,0,1,1}, .rec = 0},
+            {.id = SAMERICA,    .pd = {1,0,0,1,1}, .rec = 0}
         }
     },
 
@@ -220,7 +220,7 @@ Element objs[]={
         .id = EUROPE,
         .name = "europe",
         .elm = {
-            {ITEM,{1,0,0,6000,6000}, 0}
+            {.id = ITEM,  .pd = {1,0,0,6000,6000}, .rec = 0}
         }
     },
 
@@ -229,7 +229,7 @@ Element objs[]={
         .id = AUSTRALIA,
         .name = "australia",
         .elm = {
-            {ITEM,{1,0,0,2200,2200}, 0}
+            {.id = ITEM,   .pd = {1,0,0,2200,2200}, .rec = 0}
         }
     },
 
@@ -238,7 +238,7 @@ Element objs[]={
         .id = AFRICA,
         .name = "africa",
         .elm = {
-            {ITEM,{1,0,0,550,550}, 0}
+            {.id = ITEM,   .pd = {1,0,0,550,550}, .rec = 0}
         }
     },
 
@@ -247,7 +247,7 @@ Element objs[]={
         .id = NAMERICA,
         .name = "namerica",
         .elm = {
-            {ITEM,{1,0,0,10000,10000}, 0}
+            {.id = ITEM,  .pd = {1,0,0,10000,10000}, .rec = 0}
         }
     },
 
@@ -256,7 +256,7 @@ Element objs[]={
         .id = SAMERICA,
         .name = "samerica",
         .elm = {
-            {ITEM,{1,0,0,1000,1000}, 0}
+            {.id = ITEM,  .pd = {1,0,0,1000,1000}, .rec = 0}
         }
     },
 
@@ -265,7 +265,7 @@ Element objs[]={
         .id = ASIA,
         .name = "asia",
         .elm = {
-            {ITEM,{1,0,0,2000,2000}, 0}
+            {.id = ITEM,  .pd = {1,0,0,2000,2000}, .rec = 0}
         }
     },
 
@@ -274,7 +274,7 @@ Element objs[]={
         .id = CATGRAPH,
         .name = "catgraph",
         .elm = {
-            {EDGE,{1,0,0,3800,3800}, 0}
+            {.id = EDGE,   .pd = {1,0,0,3800,3800}, .rec = 0}
         },
         .att = {
             {
@@ -293,7 +293,7 @@ Element objs[]={
         .id = EDGE,
         .name = "edge",
         .elm = {
-            {0,{0,0,0,0,0}, 0}
+            {.id = 0,  .pd = {0,0,0,0,0}, .rec = 0}
         },
         .att = {
             {
@@ -304,7 +304,10 @@ Element objs[]={
             },
             {
                 .name = "to",
-                .type = 2,CATEGORY,{1,0,0,0,0}}
+                .type = 2,
+                CATEGORY,
+                {1,0,0,0,0}
+            }
         }
     },
 
@@ -314,8 +317,8 @@ Element objs[]={
         .id = CATEGORY,
         .name = "category",
         .elm = {
-            {CATNAME,{1,0,0,1,1}, 0},
-            {DESCRIPTION,{1,0,0,1,1}, 0},
+            {.id = CATNAME, .pd = {1,0,0,1,1}, .rec = 0},
+            {.id = DESCRIPTION, .pd = {1,0,0,1,1}, .rec = 0},
         },
         .att = {
             {
@@ -331,14 +334,14 @@ Element objs[]={
         .id = ITEM,
         .name = "item",
         .elm = {
-            {LOCATION,{1,0,0,1,1}, 0},
-            {QUANTITY,{1,0,0,1,1}, 0},
-            {ITEMNAME,{1,0,0,1,1}, 0},
-            {PAYMENT,{1,0,0,1,1}, 0},
-            {DESCRIPTION,{1,0,0,1,1}, 0},
-            {SHIPPING,{1,0,0,1,1}, 0},
-            {INCATEGORY,{3,3,0,1,10}, 0},
-            {MAILBOX,{1,0,0,1,1}, 0}
+            {.id = LOCATION, .pd = {1,0,0,1,1}, .rec = 0},
+            {.id = QUANTITY, .pd = {1,0,0,1,1}, .rec = 0},
+            {.id = ITEMNAME, .pd = {1,0,0,1,1}, .rec = 0},
+            {.id = PAYMENT, .pd = {1,0,0,1,1}, .rec = 0},
+            {.id = DESCRIPTION, .pd = {1,0,0,1,1}, .rec = 0},
+            {.id = SHIPPING, .pd = {1,0,0,1,1}, .rec = 0},
+            {.id = INCATEGORY, .pd = {3,3,0,1,10}, .rec = 0},
+            {.id = MAILBOX, .pd = {1,0,0,1,1}, .rec = 0}
         },
         .att = {
             {
@@ -369,8 +372,8 @@ Element objs[]={
         .id = DESCRIPTION,
         .name = "description",
         .elm = {
-            {TEXT,{1,0.7,0,0,0}, 0},
-            {PARLIST,{1,0.3,0,0,0}, 0}
+            {.id = TEXT, .pd = {1,0.7,0,0,0}, .rec = 0},
+            {.id = PARLIST, .pd = {1,0.3,0,0,0}, .rec = 0}
         },
         .att = {
             {
@@ -387,7 +390,7 @@ Element objs[]={
         .id = PARLIST,
         .name = "parlist",
         .elm = {
-            {LISTITEM,{3,1,0,2,5}, 0}
+            {.id = LISTITEM,  .pd = {3,1,0,2,5}, .rec = 0}
         }
     },
 
@@ -396,7 +399,7 @@ Element objs[]={
         .id = TEXT,
         .name = "text",
         .elm = {
-            {0,{0,0,0,0,0}, 0}
+            {0}
         },
         .att = {{.name = "",0,0,{0,0,0,0,0}}},
         0x01
@@ -407,8 +410,8 @@ Element objs[]={
         .id = LISTITEM,
         .name = "listitem",
         .elm = {
-            {TEXT,{1,0.8,0,0,0}, 0},
-            {PARLIST,{1,0.2,0,0,0}, 0}
+            {.id = TEXT,    .pd = {1,0.8,0,0,0}, .rec = 0},
+            {.id = PARLIST, .pd = {1,0.2,0,0,0}, .rec = 0}
         },
         .att = {
             {
@@ -429,7 +432,7 @@ Element objs[]={
     {
         .id = INCATEGORY,
         .name = "incategory",
-        .elm = {{0,{0,0,0,0,0}, 0}},
+        .elm = {{0}},
         .att = {
             {
                 .name = "\1",
@@ -444,7 +447,7 @@ Element objs[]={
         .id = MAILBOX,
         .name = "mailbox",
         .elm = {
-            {MAIL,{3,1,0,0,250}, 0}
+            {.id = MAIL,  .pd = {3,1,0,0,250}, .rec = 0}
         }
     },
 
@@ -453,10 +456,10 @@ Element objs[]={
         .id = MAIL,
         .name = "mail",
         .elm = {
-            {FROM,{1,0,0,1,1}, 0},
-            {TO,{1,0,0,1,1}, 0},
-            {XDATE,{1,0,0,1,1}, 0},
-            {TEXT,{1,0,0,1,1}, 0}
+            {.id = FROM,    .pd = {1,0,0,1,1}, .rec = 0},
+            {.id = TO,      .pd = {1,0,0,1,1}, .rec = 0},
+            {.id = XDATE,   .pd = {1,0,0,1,1}, .rec = 0},
+            {.id = TEXT,    .pd = {1,0,0,1,1}, .rec = 0}
         }
     },
 
@@ -473,7 +476,7 @@ Element objs[]={
         .id = PERSON_LIST,
         .name = "people",
         .elm = {
-            {PERSON,{1,0,0,25500,25500}, 0}
+            {.id = PERSON, .pd = {1,0,0,25500,25500}, .rec = 0}
         }
     },
 
@@ -483,14 +486,14 @@ Element objs[]={
         .id = PERSON,
         .name = "person",
         .elm = {
-            {NAME,{1,0,0,1,1}, 0},
-            {EMAIL,{1,0,0,1,1}, 0},
-            {PHONE, {1,0,0,0,1}, 0},
-            {ADDRESS, {1,0,0,0,1}, 0},
-            {HOMEPAGE, {1,0,0,0,1}, 0},
-            {CREDITCARD, {1,0,0,0,1}, 0},
-            {PROFILE, {1,0,0,0,1}, 0},
-            {WATCHES, {1,0,0,0,1}, 0}
+            {.id = NAME,        .pd = {1,0,0,1,1}, .rec = 0},
+            {.id = EMAIL,       .pd = {1,0,0,1,1}, .rec = 0},
+            {.id = PHONE,       .pd = {1,0,0,0,1}, .rec = 0},
+            {.id = ADDRESS,     .pd = {1,0,0,0,1}, .rec = 0},
+            {.id = HOMEPAGE,    .pd = {1,0,0,0,1}, .rec = 0},
+            {.id = CREDITCARD,  .pd = {1,0,0,0,1}, .rec = 0},
+            {.id = PROFILE,     .pd = {1,0,0,0,1}, .rec = 0},
+            {.id = WATCHES,     .pd = {1,0,0,0,1}, .rec = 0}
         },
         .att = {
             {
@@ -515,11 +518,11 @@ Element objs[]={
         .id = ADDRESS,
         .name = "address",
         .elm = {
-            {STREET,{1,0,0,1,1}, 0},
-            {CITY,{1,0,0,1,1}, 0},
-            {COUNTRY,{1,0,0,1,1}, 0},
-            {PROVINCE, {1,0,0,0,1}, 0},
-            {ZIPCODE,{1,0,0,1,1}, 0}
+            {.id = STREET,  .pd = {1,0,0,1,1}, .rec = 0},
+            {.id = CITY,  .pd = {1,0,0,1,1}, .rec = 0},
+            {.id = COUNTRY,  .pd = {1,0,0,1,1}, .rec = 0},
+            {.id = PROVINCE,  .pd =  {1,0,0,0,1}, .rec = 0},
+            {.id = ZIPCODE,  .pd = {1,0,0,1,1}, .rec = 0}
         }
     },
 
@@ -544,11 +547,11 @@ Element objs[]={
         .id = PROFILE,
         .name = "profile",
         .elm = {
-            {INTEREST,{3,3,0,0,25}, 0},
-            {EDUCATION, {1,0,0,0,1}, 0},
-            {GENDER, {1,0,0,0,1}, 0},
-            {BUSINESS,{1,0,0,1,1}, 0},
-            {AGE, {1,0,0,0,1}, 0}
+            {.id = INTEREST,    .pd = {3,3,0,0,25}, .rec = 0},
+            {.id = EDUCATION,   .pd = {1,0,0,0,1},  .rec = 0},
+            {.id = GENDER,      .pd = {1,0,0,0,1},  .rec = 0},
+            {.id = BUSINESS,    .pd = {1,0,0,1,1},  .rec = 0},
+            {.id = AGE,         .pd = {1,0,0,0,1},  .rec = 0}
         },
         .att = {
             {
@@ -574,7 +577,7 @@ Element objs[]={
     {
         .id = INTEREST,
         .name = "interest",
-        .elm = {{0,{0,0,0,0,0}, 0}},
+        .elm = {{0}},
         .att = {
             {
                 .name = "\1",
@@ -587,7 +590,7 @@ Element objs[]={
         .id = WATCHES,
         .name = "watches",
         .elm = {
-            {WATCH,{3,4,0,0,100}, 0},
+            {.id = WATCH,  .pd = {3,4,0,0,100}, .rec = 0},
         }
     },
 
@@ -596,7 +599,7 @@ Element objs[]={
     {
         .id = WATCH,
         .name = "watch",
-        .elm = {{0,{0,0,0,0,0}, 0}},
+        .elm = {{0}},
         .att = {
             {.name = "\1", .type = 2,OPEN_TRANS,{1,0,0,0,0}}
         }
@@ -607,7 +610,7 @@ Element objs[]={
         .id = OPEN_TRANS_LIST,
         .name = "open_auctions",
         .elm = {
-            {OPEN_TRANS,{1,0,0,12000,12000}, 0}
+            {.id = OPEN_TRANS,  .pd = {1,0,0,12000,12000}, .rec = 0}
         }
     },
 
@@ -617,17 +620,17 @@ Element objs[]={
         .id = OPEN_TRANS,
         .name = "open_auction",
         .elm = {
-            {INIT_PRICE,{1,0,0,1,1}, .rec = 0},
-            {RESERVE, {1,0,0,0,1}, .rec = 0},
-            {BIDDER,{3,5,0,0,200}, .rec = 0},
-            {CURRENT,{1,0,0,1,1}, .rec = 0},
-            {PRIVACY, {1,0,0,0,1}, .rec = 0},
-            {ITEMREF,{1,0,0,1,1}, .rec = 0},
-            {SELLER,{1,0,0,1,1}, .rec = 0},
-            {ANNOTATION,{1,0,0,1,1}, .rec = 0},
-            {QUANTITY,{1,0,0,1,1}, .rec = 0},
-            {TYPE,{1,0,0,1,1}, .rec = 0},
-            {INTERVAL,{1,0,0,1,1}, .rec = 0}
+            {.id = INIT_PRICE,  .pd = {1,0,0,1,1}, .rec = 0},
+            {.id = RESERVE,     .pd = {1,0,0,0,1}, .rec = 0},
+            {.id = BIDDER,      .pd = {3,5,0,0,200}, .rec = 0},
+            {.id = CURRENT,     .pd = {1,0,0,1,1}, .rec = 0},
+            {.id = PRIVACY,     .pd = {1,0,0,0,1}, .rec = 0},
+            {.id = ITEMREF,     .pd = {1,0,0,1,1}, .rec = 0},
+            {.id = SELLER,      .pd = {1,0,0,1,1}, .rec = 0},
+            {.id = ANNOTATION,  .pd = {1,0,0,1,1}, .rec = 0},
+            {.id = QUANTITY,    .pd = {1,0,0,1,1}, .rec = 0},
+            {.id = TYPE,        .pd = {1,0,0,1,1}, .rec = 0},
+            {.id = INTERVAL,    .pd = {1,0,0,1,1}, .rec = 0}
         },
         .att = {
             {.name = "id", .type = 1,0,{0,0,0,0,0}}
@@ -663,10 +666,10 @@ Element objs[]={
         .id = BIDDER,
         .name = "bidder",
         .elm = {
-            {XDATE,{1,0,0,1,1}, .rec = 0},
-            {TIME,{1,0,0,1,1}, .rec = 0},
-            {PERSONREF,{1,0,0,1,1}, .rec = 0},
-            {INCREASE,{1,0,0,1,1}, .rec = 0}
+            {.id = XDATE,       .pd = {1,0,0,1,1}, .rec = 0},
+            {.id = TIME,        .pd = {1,0,0,1,1}, .rec = 0},
+            {.id = PERSONREF,   .pd = {1,0,0,1,1}, .rec = 0},
+            {.id = INCREASE,    .pd = {1,0,0,1,1}, .rec = 0}
         }
     },
 
@@ -709,8 +712,8 @@ Element objs[]={
         .id = INTERVAL,
         .name = "interval",
         .elm = {
-            {START,{1,0,0,1,1}, .rec = 0},
-            {END,{1,0,0,1,1}, .rec = 0}
+            {.id = START,  .pd = {1,0,0,1,1}, .rec = 0},
+            {.id = END,    .pd = {1,0,0,1,1}, .rec = 0}
         }
     },
 
@@ -725,7 +728,7 @@ Element objs[]={
         .id = CLOSED_TRANS_LIST,
         .name = "closed_auctions",
         .elm = {
-            {CLOSED_TRANS,{1,0,0,3000,3000}, .rec = 0}
+            {.id = CLOSED_TRANS, .pd = {1,0,0,3000,3000}, .rec = 0}
         }
     },
 
@@ -734,14 +737,14 @@ Element objs[]={
         .id = CLOSED_TRANS,
         .name = "closed_auction",
         .elm = {
-            {SELLER,{1,0,0,1,1}, .rec = 0},
-            {BUYER,{1,0,0,1,1}, .rec = 0},
-            {ITEMREF,{1,0,0,1,1}, .rec = 0},
-            {PRICE,{1,0,0,1,1}, .rec = 0},
-            {XDATE,{1,0,0,1,1}, .rec = 0},
-            {QUANTITY,{1,0,0,1,1}, .rec = 0},
-            {TYPE,{1,0,0,1,1}, .rec = 0},
-            {ANNOTATION,{1,0,0,1,1}, .rec = 0}
+            {.id = SELLER,      .pd = {1,0,0,1,1}, .rec = 0},
+            {.id = BUYER,       .pd = {1,0,0,1,1}, .rec = 0},
+            {.id = ITEMREF,     .pd = {1,0,0,1,1}, .rec = 0},
+            {.id = PRICE,       .pd = {1,0,0,1,1}, .rec = 0},
+            {.id = XDATE,       .pd = {1,0,0,1,1}, .rec = 0},
+            {.id = QUANTITY,    .pd = {1,0,0,1,1}, .rec = 0},
+            {.id = TYPE,        .pd = {1,0,0,1,1}, .rec = 0},
+            {.id = ANNOTATION,  .pd = {1,0,0,1,1}, .rec = 0}
         },
         .att = {
             {.name = "",
