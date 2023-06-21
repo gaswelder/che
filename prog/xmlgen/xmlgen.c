@@ -1266,35 +1266,34 @@ void PrintName() {
 
 
 double GenRandomNum(ProbDesc *pd) {
-    double res=0;
-    if (pd->max>0)
-        switch(pd->type)
-            {
-            case 0:
-                if (pd->min==pd->max && pd->min>0)
-                    {
-                        res=pd->min;
-                        break;
-                    }
-                fprintf(stderr,"undefined probdesc.\n");
-                exit(1);
-            case 1:
-                res = rnd.uniform(pd->min, pd->max);
-                break;
-            case 3:
-                res = pd->min + rnd.exponential(pd->mean);
-                if (res > pd->max) {
-                    res = pd->max;
-                }
-                break;
-            case 2:
-                res = pd->mean + pd->dev * rnd.gauss();
-                if (res > pd->max) res = pd->max;
-                if (res < pd->min) res = pd->min;
-                break;
-            default:
-                fprintf(stderr,"woops! undefined distribution.\n");
-                exit(1);
+    if (pd->max <= 0) {
+        return 0;
+    }
+
+    if (pd->type == 0) {
+        if (pd->min == pd->max && pd->min > 0) {
+            return pd->min;
+            panic("undefined probdesc");
         }
-    return res;
+    }
+
+    if (pd->type == 1) {
+        return rnd.uniform(pd->min, pd->max);
+    }
+
+    if (pd->type == 2) {
+        double res = pd->mean + pd->dev * rnd.gauss();
+        if (res > pd->max) res = pd->max;
+        if (res < pd->min) res = pd->min;
+        return res;
+    }
+
+    if (pd->type == 3) {
+        double res = pd->min + rnd.exponential(pd->mean);
+        if (res > pd->max) {
+            res = pd->max;
+        }
+        return res;
+    }
+    panic("woops! undefined distribution.\n");
 }
