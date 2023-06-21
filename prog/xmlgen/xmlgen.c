@@ -91,9 +91,7 @@ int main(int argc, char **argv)
     schema.InitializeSchema(global_scale_factor);
 
     Preamble(xmlout, document_type);
-    
-
-    GenSubtree(xmlout, schema.GetSchemaNode(1));
+    Tree(xmlout, schema.GetSchemaNode(1));
     fclose(xmlout);
     return 0;
 }
@@ -111,118 +109,11 @@ void Preamble(FILE *out, int document_type) {
     }
 }
 
-FILE *OpenOutput_split(const char *global_outputname, int fileno) {
-    if (fileno > 99999) {
-        fprintf(stderr,"Warning: More than %d files.\n", 99999);
-    }
-    char *newname = strings.newstr("%s%0*d", global_outputname, 5, fileno);
-    FILE *f = fopen(newname,"w");
-    free(newname);
-    return f;
-}
-
-schema.ProbDesc global_GenRef_pdnew = {};
-
-int GenRef(schema.ProbDesc *pd, int type)
-{
-    schema.ObjDesc* od = schema.GetSchemaNode(type);
-    if (pd->type!=0)
-        {
-            global_GenRef_pdnew.min=0;
-            global_GenRef_pdnew.max=od->set.size-1;
-            global_GenRef_pdnew.type=pd->type;
-            if (pd->type!=1)
-                {
-                    global_GenRef_pdnew.mean=pd->mean*global_GenRef_pdnew.max;
-                    global_GenRef_pdnew.dev=pd->dev*global_GenRef_pdnew.max;
-                }
-        }
-    return (int)GenRandomNum(&global_GenRef_pdnew);
-}
-
-enum {
-    ATTR_TYPE_1 = 1,
-    ATTR_TYPE_2 = 2,
-    ATTR_TYPE_3 = 3
-};
-
-void OpeningTag(schema.ObjDesc *od)
-{
-    schema.AttDesc *att=0;
-    stack[stackdepth++]=od;
-    fprintf(xmlout,"<%s",od->name);
-    for (int i=0;i<5;i++) {
-        
-        att=&od->att[i];
-        if (att->name[0]=='\0') {
-            break;
-        }
-
-        char *attname;
-        if (att->name[0]=='\1') {
-            attname = schema.GetSchemaNode(att->ref)->name;
-        } else {
-            attname=att->name;
-        }
-
-        switch(att->type) {
-            case ATTR_TYPE_1:
-                fprintf(xmlout," %s=\"%s%d\"", attname,od->name,od->set.id++);
-                break;
-            case ATTR_TYPE_2:
-                int ref=0;
-                if (!ItemIdRef(od, &ref)) {
-                    ref=GenRef(&att->pd,att->ref);
-                }
-                fprintf(xmlout," %s=\"%s%d\"", attname, schema.GetSchemaNode(att->ref)->name, ref);
-            break;
-            case ATTR_TYPE_3:
-                if (rnd.uniform(0, 1) < att->prcnt) {
-                    if (!strcmp(attname,"income")) {
-                        double d = 40000 + 30000 * rnd.gauss();
-                        if (d < 9876) {
-                            d = 9876;
-                        }
-                        fprintf(xmlout," %s=\"%.2f\"",attname, d);
-                    } else {
-                        fprintf(xmlout," %s=\"yes\"",attname);
-                    }
-                }
-                break;
-            default:
-                fflush(xmlout);
-                fprintf(stderr,"unknown ATT type %s\n",attname);
-                exit(1);
-        }
-    }
-    if (od->elm[0].id == 0 && (od->att[0].name[0])) {
-        fprintf(xmlout,"/>\n");
-    } else {
-        fprintf(xmlout,">");
-        if (od->elm[0].id != 0 || od->type & 0x01) {
-            fprintf(xmlout,"\n");
-        }
-    }
-}
-
-void ClosingTag(schema.ObjDesc *od)
-{
-    stackdepth--;
-    if (od->type & 0x01) {
-        fprintf(xmlout,"\n");
-    }
-    if ((od->att[0].name[0]) && !(od->elm[0].id!=0)) {
+void Tree(FILE *out, schema.ObjDesc *element) {
+    if (element->type&0x10) {
         return;
     }
-    fprintf(xmlout,"</%s>\n",od->name);
-}
-
-bool GenSubtree_splitnow = false;
-
-void GenSubtree(FILE *out, schema.ObjDesc *od)
-{
-    schema.ElmDesc *ed;
-    if (od->type&0x10) return;
+    
     if (GenSubtree_splitnow) {
         // split doc
         int oldstackdepth = stackdepth;
@@ -249,13 +140,13 @@ void GenSubtree(FILE *out, schema.ObjDesc *od)
         GenSubtree_splitnow = false;
     }
 
-    OpeningTag(od);
+    OpeningTag(element);
     
-    od->flag++;
+    element->flag++;
 
     int r;
     bool has_content = true;
-    switch(od->id) {
+    switch(element->id) {
         case schema.CITY:
             ipsum.fcity(out); break;
         case schema.STATUS:
@@ -377,47 +268,156 @@ void GenSubtree(FILE *out, schema.ObjDesc *od)
         default:
             has_content = false;
     }
-    if (has_content && od->elm[0].id != 0) {
+    if (has_content && element->elm[0].id != 0) {
         fprintf(out,"\n");
     }
 
-    if (od->type & 0x02) {
+    if (element->type & 0x02) {
         schema.ObjDesc *root;
-        if (od->flag > 2-1) {
+        if (element->flag > 2-1) {
             int i = 0;
-            while (i < od->kids-1 && od->elm[i].rec) {
+            while (i < element->kids-1 && element->elm[i].rec) {
                 i++;
             }
-            root = schema.GetSchemaNode(od->elm[i].id);
+            root = schema.GetSchemaNode(element->elm[i].id);
         } else {
             double sum = 0;
             double alt = rnd.uniform(0, 1);
             int i = 0;
-            while (i < od->kids-1 && (sum += od->elm[i].pd.mean) < alt) {
+            while (i < element->kids-1 && (sum += element->elm[i].pd.mean) < alt) {
                 i++;
             }
-            root = schema.GetSchemaNode(od->elm[i].id);
+            root = schema.GetSchemaNode(element->elm[i].id);
         }
-        GenSubtree(out, root);
+        Tree(out, root);
     }
     else {
-        for (int i = 0; i < od->kids; i++) {
-            int num;
-            ed = &od->elm[i];
-            num = (int)(GenRandomNum(&ed->pd)+0.5);
+        for (int i = 0; i < element->kids; i++) {
+            schema.ElmDesc *ed = &element->elm[i];
+            int num = (int)(GenRandomNum(&ed->pd)+0.5);
             while (num--) {
-                GenSubtree(out, schema.GetSchemaNode(ed->id));
+                Tree(out, schema.GetSchemaNode(ed->id));
             }
         }
     }
-    ClosingTag(od);
+    ClosingTag(element);
     if (global_split) {
-        if (od->type & 0x20 || (od->type & 0x40 && splitcnt++>global_split)) {
+        if (element->type & 0x20 || (element->type & 0x40 && splitcnt++>global_split)) {
             GenSubtree_splitnow = true;
         }
     }
-    od->flag--;
+    element->flag--;
 }
+
+FILE *OpenOutput_split(const char *global_outputname, int fileno) {
+    if (fileno > 99999) {
+        fprintf(stderr,"Warning: More than %d files.\n", 99999);
+    }
+    char *newname = strings.newstr("%s%0*d", global_outputname, 5, fileno);
+    FILE *f = fopen(newname,"w");
+    free(newname);
+    return f;
+}
+
+schema.ProbDesc global_GenRef_pdnew = {};
+
+int GenRef(schema.ProbDesc *pd, int type)
+{
+    schema.ObjDesc* od = schema.GetSchemaNode(type);
+    if (pd->type!=0)
+        {
+            global_GenRef_pdnew.min=0;
+            global_GenRef_pdnew.max=od->set.size-1;
+            global_GenRef_pdnew.type=pd->type;
+            if (pd->type!=1)
+                {
+                    global_GenRef_pdnew.mean=pd->mean*global_GenRef_pdnew.max;
+                    global_GenRef_pdnew.dev=pd->dev*global_GenRef_pdnew.max;
+                }
+        }
+    return (int)GenRandomNum(&global_GenRef_pdnew);
+}
+
+enum {
+    ATTR_TYPE_1 = 1,
+    ATTR_TYPE_2 = 2,
+    ATTR_TYPE_3 = 3
+};
+
+void OpeningTag(schema.ObjDesc *od)
+{
+    schema.AttDesc *att=0;
+    stack[stackdepth++]=od;
+    fprintf(xmlout,"<%s",od->name);
+    for (int i=0;i<5;i++) {
+        
+        att=&od->att[i];
+        if (att->name[0]=='\0') {
+            break;
+        }
+
+        char *attname;
+        if (att->name[0]=='\1') {
+            attname = schema.GetSchemaNode(att->ref)->name;
+        } else {
+            attname=att->name;
+        }
+
+        switch(att->type) {
+            case ATTR_TYPE_1:
+                fprintf(xmlout," %s=\"%s%d\"", attname,od->name,od->set.id++);
+                break;
+            case ATTR_TYPE_2:
+                int ref=0;
+                if (!ItemIdRef(od, &ref)) {
+                    ref=GenRef(&att->pd,att->ref);
+                }
+                fprintf(xmlout," %s=\"%s%d\"", attname, schema.GetSchemaNode(att->ref)->name, ref);
+            break;
+            case ATTR_TYPE_3:
+                if (rnd.uniform(0, 1) < att->prcnt) {
+                    if (!strcmp(attname,"income")) {
+                        double d = 40000 + 30000 * rnd.gauss();
+                        if (d < 9876) {
+                            d = 9876;
+                        }
+                        fprintf(xmlout," %s=\"%.2f\"",attname, d);
+                    } else {
+                        fprintf(xmlout," %s=\"yes\"",attname);
+                    }
+                }
+                break;
+            default:
+                fflush(xmlout);
+                fprintf(stderr,"unknown ATT type %s\n",attname);
+                exit(1);
+        }
+    }
+    if (od->elm[0].id == 0 && (od->att[0].name[0])) {
+        fprintf(xmlout,"/>\n");
+    } else {
+        fprintf(xmlout,">");
+        if (od->elm[0].id != 0 || od->type & 0x01) {
+            fprintf(xmlout,"\n");
+        }
+    }
+}
+
+void ClosingTag(schema.ObjDesc *od)
+{
+    stackdepth--;
+    if (od->type & 0x01) {
+        fprintf(xmlout,"\n");
+    }
+    if ((od->att[0].name[0]) && !(od->elm[0].id!=0)) {
+        return;
+    }
+    fprintf(xmlout,"</%s>\n",od->name);
+}
+
+bool GenSubtree_splitnow = false;
+
+
 
 char *markup[3]={"emph","keyword","bold"};
 char tick[3] = "";
