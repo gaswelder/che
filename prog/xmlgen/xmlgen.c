@@ -25,8 +25,6 @@ char *GenContents_yesno[]={"Yes","No"};
 
 typedef int printfunc_t(FILE *, const char *, ...);
 
-printfunc_t *xmlprintf = &fprintf;
-
 int global_split_fileno = 0;
 
 const int COUNTRIES_USA = 0;
@@ -103,11 +101,11 @@ int main(int argc, char **argv)
 void Preamble(FILE *out, int document_type) {
     switch (document_type) {
     case 1:
-        xmlprintf(out, "<?xml version=\"1.0\" standalone=\"yes\"?>\n");
+        fprintf(out, "<?xml version=\"1.0\" standalone=\"yes\"?>\n");
         break;
     case 2:
-        xmlprintf(out, "<?xml version=\"1.0\"?>\n");
-        xmlprintf(out, "<!DOCTYPE %s SYSTEM \"auction.dtd\">\n", schema.GetSchemaNode(1)->name);
+        fprintf(out, "<?xml version=\"1.0\"?>\n");
+        fprintf(out, "<!DOCTYPE %s SYSTEM \"auction.dtd\">\n", schema.GetSchemaNode(1)->name);
         break;
     default: panic("unknown document type: %d", document_type);
     }
@@ -152,7 +150,7 @@ void OpeningTag(schema.ObjDesc *od)
 {
     schema.AttDesc *att=0;
     stack[stackdepth++]=od;
-    xmlprintf(xmlout,"<%s",od->name);
+    fprintf(xmlout,"<%s",od->name);
     for (int i=0;i<5;i++) {
         
         att=&od->att[i];
@@ -169,14 +167,14 @@ void OpeningTag(schema.ObjDesc *od)
 
         switch(att->type) {
             case ATTR_TYPE_1:
-                xmlprintf(xmlout," %s=\"%s%d\"", attname,od->name,od->set.id++);
+                fprintf(xmlout," %s=\"%s%d\"", attname,od->name,od->set.id++);
                 break;
             case ATTR_TYPE_2:
                 int ref=0;
                 if (!ItemIdRef(od, &ref)) {
                     ref=GenRef(&att->pd,att->ref);
                 }
-                xmlprintf(xmlout," %s=\"%s%d\"", attname, schema.GetSchemaNode(att->ref)->name, ref);
+                fprintf(xmlout," %s=\"%s%d\"", attname, schema.GetSchemaNode(att->ref)->name, ref);
             break;
             case ATTR_TYPE_3:
                 if (rnd.uniform(0, 1) < att->prcnt) {
@@ -185,9 +183,9 @@ void OpeningTag(schema.ObjDesc *od)
                         if (d < 9876) {
                             d = 9876;
                         }
-                        xmlprintf(xmlout," %s=\"%.2f\"",attname, d);
+                        fprintf(xmlout," %s=\"%.2f\"",attname, d);
                     } else {
-                        xmlprintf(xmlout," %s=\"yes\"",attname);
+                        fprintf(xmlout," %s=\"yes\"",attname);
                     }
                 }
                 break;
@@ -198,11 +196,11 @@ void OpeningTag(schema.ObjDesc *od)
         }
     }
     if (od->elm[0].id == 0 && (od->att[0].name[0])) {
-        xmlprintf(xmlout,"/>\n");
+        fprintf(xmlout,"/>\n");
     } else {
-        xmlprintf(xmlout,">");
+        fprintf(xmlout,">");
         if (od->elm[0].id != 0 || od->type & 0x01) {
-            xmlprintf(xmlout,"\n");
+            fprintf(xmlout,"\n");
         }
     }
 }
@@ -211,12 +209,12 @@ void ClosingTag(schema.ObjDesc *od)
 {
     stackdepth--;
     if (od->type & 0x01) {
-        xmlprintf(xmlout,"\n");
+        fprintf(xmlout,"\n");
     }
     if ((od->att[0].name[0]) && !(od->elm[0].id!=0)) {
         return;
     }
-    xmlprintf(xmlout,"</%s>\n",od->name);
+    fprintf(xmlout,"</%s>\n",od->name);
 }
 
 bool GenSubtree_splitnow = false;
@@ -288,8 +286,8 @@ void GenSubtree(FILE *out, schema.ObjDesc *od)
             ipsum.fprice(out); break;
 
         case schema.TYPE:
-            xmlprintf(out, "%s", GenContents_auction_type[rnd.range(0,1)]);
-            if (GenContents_quantity>1 && rnd.range(0,1)) xmlprintf(out,", Dutch");
+            fprintf(out, "%s", GenContents_auction_type[rnd.range(0,1)]);
+            if (GenContents_quantity>1 && rnd.range(0,1)) fprintf(out,", Dutch");
             break;
         case schema.LOCATION:
         case schema.COUNTRY:
@@ -298,7 +296,7 @@ void GenSubtree(FILE *out, schema.ObjDesc *od)
             } else {
                 GenContents_country = rnd.range(0, words.dictlen("countries") - 1);
             }
-            xmlprintf(out, "%s", words.dictentry("countries", GenContents_country));
+            fprintf(out, "%s", words.dictentry("countries", GenContents_country));
             break;
         case schema.PROVINCE:
             if (GenContents_country == COUNTRIES_USA) {
@@ -308,11 +306,11 @@ void GenSubtree(FILE *out, schema.ObjDesc *od)
             }
             break;
         case schema.EDUCATION:            
-            xmlprintf(out, "%s", GenContents_education[rnd.range(0,3)]);
+            fprintf(out, "%s", GenContents_education[rnd.range(0,3)]);
             break;
         
         case schema.HOMEPAGE:
-            xmlprintf(out, "http://www.%s/~%s",
+            fprintf(out, "http://www.%s/~%s",
                 words.dictentry("emails", GenContents_email),
                 words.dictentry("lastnames", GenContents_lstname));
             break;
@@ -325,13 +323,13 @@ void GenSubtree(FILE *out, schema.ObjDesc *od)
                     if (r++) {
                         x = ", ";
                     }
-                    xmlprintf(out, "%s%s", x, GenContents_money[i % 4]);
+                    fprintf(out, "%s%s", x, GenContents_money[i % 4]);
                 }
             break;
         
         case schema.BUSINESS:
         case schema.PRIVACY:
-            xmlprintf(out,GenContents_yesno[rnd.range(0,1)]);
+            fprintf(out, "%s", GenContents_yesno[rnd.range(0,1)]);
             break;
         
         case schema.CATNAME:
@@ -344,34 +342,34 @@ void GenSubtree(FILE *out, schema.ObjDesc *od)
         case schema.FROM:
         case schema.TO:
             PrintName();
-            xmlprintf(out," ");
+            fprintf(out," ");
             break;
         case schema.EMAIL:
             GenContents_email = rnd.range(0, words.dictlen("emails") - 1);
-            xmlprintf(out, "mailto:%s@%s",
+            fprintf(out, "mailto:%s@%s",
                 words.dictentry("lastnames", GenContents_lstname),
                 words.dictentry("emails", GenContents_email));
             break;
         
         case schema.QUANTITY:
             GenContents_quantity=1+(int)rnd.exponential(0.4);
-            xmlprintf(out,"%d",GenContents_quantity);
+            fprintf(out,"%d",GenContents_quantity);
             break;
         case schema.INCREASE:
             double d=1.5 *(1+(int)rnd.exponential(10));
-            xmlprintf(out,"%.2f",d);
+            fprintf(out,"%.2f",d);
             GenContents_increases+=d;
         break;
         case schema.CURRENT:
-            xmlprintf(out,"%.2f",GenContents_initial+GenContents_increases);
+            fprintf(out,"%.2f",GenContents_initial+GenContents_increases);
             break;
         case schema.INIT_PRICE:
             GenContents_initial=rnd.exponential(100);
             GenContents_increases=0;
-            xmlprintf(out,"%.2f",GenContents_initial);
+            fprintf(out,"%.2f",GenContents_initial);
             break;
         case schema.RESERVE:
-            xmlprintf(out,"%.2f",GenContents_initial*(1.2+rnd.exponential(2.5)));
+            fprintf(out,"%.2f",GenContents_initial*(1.2+rnd.exponential(2.5)));
             break;
         case schema.TEXT:
             PrintANY();
@@ -380,7 +378,7 @@ void GenSubtree(FILE *out, schema.ObjDesc *od)
             has_content = false;
     }
     if (has_content && od->elm[0].id != 0) {
-        xmlprintf(out,"\n");
+        fprintf(out,"\n");
     }
 
     if (od->type & 0x02) {
@@ -440,12 +438,12 @@ void PrintANY() {
                     }
                 }
                 tick[PrintANY_st[stptr]]=1;
-                xmlprintf(xmlout,"<%s> ",markup[PrintANY_st[stptr]]);
+                fprintf(xmlout,"<%s> ",markup[PrintANY_st[stptr]]);
                 stptr++;
             }
             else if (rnd.uniform(0, 1) < 0.8 && stptr) {
                 --stptr;
-                xmlprintf(xmlout,"</%s> ",markup[PrintANY_st[stptr]]);
+                fprintf(xmlout,"</%s> ",markup[PrintANY_st[stptr]]);
                 tick[PrintANY_st[stptr]]=0;
             }
             ipsum.fsentence(xmlout, 1+(int)rnd.exponential(4));
@@ -453,7 +451,7 @@ void PrintANY() {
     while(stptr)
         {
             --stptr;
-            xmlprintf(xmlout,"</%s> ",markup[PrintANY_st[stptr]]);
+            fprintf(xmlout,"</%s> ",markup[PrintANY_st[stptr]]);
             tick[PrintANY_st[stptr]]=0;
         }
 }
