@@ -126,14 +126,15 @@ pub void cnd_free(cnd_t *c)
 /*
  * Unlocks the mutex, waits for the condition, locks the mutex again.
  */
-pub int cnd_wait(cnd_t *cond, mtx_t *mtx) {
+pub int unlock_wait_lock(mtx_t *mtx, cnd_t *cond) {
 	return pthread_cond_wait( &cond->c, &mtx->m ) == 0;
 }
 
 /*
- * Wakes one of the threads waiting for the given condition.
+ * Wakes one of the threads blocked on the given condition.
+ * If there are no threads waiting, does nothing.
  */
-pub bool cnd_signal(cnd_t *cond) {
+pub bool wake_one(cnd_t *cond) {
 	return pthread_cond_signal(&cond->c) == 0;
 }
 

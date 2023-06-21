@@ -1,0 +1,10 @@
+main: 0
+thread: 1
+main: 2
+thread: 3
+main: 4
+thread: 5
+main: 6
+thread: 7
+main: 8
+thread: 9
