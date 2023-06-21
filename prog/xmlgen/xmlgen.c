@@ -1,4 +1,3 @@
-#import xmlgen_rand.c
 #import strings
 #import opt
 #import words.c
@@ -6,13 +5,22 @@
 #import ipsum.c
 #import schema.c
 
-typedef { int id; xmlgen_rand.ProbDesc pd; char rec; } ElmDesc;
+typedef {
+    int type;
+    double mean, dev, min, max;
+} ProbDesc;
+
+typedef {
+    int id;
+    ProbDesc pd;
+    char rec;
+} ElmDesc;
 
 typedef {
     char name[20];
     int type;
     int ref;
-    xmlgen_rand.ProbDesc pd;
+    ProbDesc pd;
     float prcnt;
 } AttDesc;
 
@@ -545,9 +553,9 @@ bool hasID(ObjDesc *od) {
     return false;
 }
 
-xmlgen_rand.ProbDesc global_GenRef_pdnew = {};
+ProbDesc global_GenRef_pdnew = {};
 
-int GenRef(xmlgen_rand.ProbDesc *pd, int type)
+int GenRef(ProbDesc *pd, int type)
 {
     ObjDesc* od = GetSchemaNode(type);
     if (pd->type!=0)
@@ -561,9 +569,9 @@ int GenRef(xmlgen_rand.ProbDesc *pd, int type)
                     global_GenRef_pdnew.dev=pd->dev*global_GenRef_pdnew.max;
                 }
         }
-    return (int)xmlgen_rand.GenRandomNum(&global_GenRef_pdnew);
+    return (int)GenRandomNum(&global_GenRef_pdnew);
 }
-void FixDist(xmlgen_rand.ProbDesc *pd, double val)
+void FixDist(ProbDesc *pd, double val)
 {
     pd->min=pd->max=val;
     pd->type=0;
@@ -590,7 +598,7 @@ void FixReferenceSets(ObjDesc *od)
                         }
                     if (!maxref) break;
                     local_factor=maxref/ed->pd.max;
-                    size=(int)(xmlgen_rand.GenRandomNum(&ed->pd)+0.5);
+                    size=(int)(GenRandomNum(&ed->pd)+0.5);
                     if (size*local_factor > 1) {
                         size = (int)(size*local_factor);
                     } else {
@@ -611,7 +619,7 @@ void FixSetSize(ObjDesc *od) {
         ObjDesc *son = GetSchemaNode(ed->id);
         if (!son) continue;
         if (ed->pd.min>1 && (hasID(son) || (son->type&0x04))) {
-            int size=(int)(xmlgen_rand.GenRandomNum(&ed->pd)+0.5);
+            int size=(int)(GenRandomNum(&ed->pd)+0.5);
             if (size*global_scale_factor > 1) {
                 size = (int)(size*global_scale_factor);
             } else {
@@ -905,7 +913,7 @@ void GenSubtree(FILE *out, ObjDesc *od)
         for (int i = 0; i < od->kids; i++) {
             int num;
             ed = &od->elm[i];
-            num = (int)(xmlgen_rand.GenRandomNum(&ed->pd)+0.5);
+            num = (int)(GenRandomNum(&ed->pd)+0.5);
             while (num--) {
                 GenSubtree(out, GetSchemaNode(ed->id));
             }
@@ -1253,4 +1261,40 @@ void PrintName() {
     fprintf(xmlout,"%s %s", words.dictentry("firstnames", fst), words.dictentry("lastnames", lst));
 
     GenContents_lstname = lst;
+}
+
+
+
+double GenRandomNum(ProbDesc *pd) {
+    double res=0;
+    if (pd->max>0)
+        switch(pd->type)
+            {
+            case 0:
+                if (pd->min==pd->max && pd->min>0)
+                    {
+                        res=pd->min;
+                        break;
+                    }
+                fprintf(stderr,"undefined probdesc.\n");
+                exit(1);
+            case 1:
+                res = rnd.uniform(pd->min, pd->max);
+                break;
+            case 3:
+                res = pd->min + rnd.exponential(pd->mean);
+                if (res > pd->max) {
+                    res = pd->max;
+                }
+                break;
+            case 2:
+                res = pd->mean + pd->dev * rnd.gauss();
+                if (res > pd->max) res = pd->max;
+                if (res < pd->min) res = pd->min;
+                break;
+            default:
+                fprintf(stderr,"woops! undefined distribution.\n");
+                exit(1);
+        }
+    return res;
 }
