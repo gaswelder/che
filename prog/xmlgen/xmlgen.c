@@ -263,7 +263,7 @@ void Tree(FILE *out, schema.Element *element) {
             fprintf(out,"%.2f",GenContents_initial*(1.2+rnd.exponential(2.5)));
             break;
         case schema.TEXT:
-            PrintANY();
+            PrintANY(out);
             break;
         default:
             has_content = false;
@@ -436,36 +436,33 @@ char tick[3] = "";
 
 int PrintANY_st[3] = {};
 
-void PrintANY() {
+void PrintANY(FILE *out) {
     int sen=1+(int)rnd.exponential(20);
     int stptr=0;
-    for (int i=0;i<sen;i++)
-        {
-            if (rnd.uniform(0, 1) < 0.1 && stptr<3-1)
-            {
-                while (true) {
-                    PrintANY_st[stptr]=rnd.range(0,3-1);
-                    if (!tick[PrintANY_st[stptr]]) {
-                        break;
-                    }
+    for (int i=0; i < sen; i++) {
+        if (rnd.uniform(0, 1) < 0.1 && stptr < 2) {
+            while (true) {
+                PrintANY_st[stptr] = rnd.range(0, 2);
+                if (!tick[PrintANY_st[stptr]]) {
+                    break;
                 }
-                tick[PrintANY_st[stptr]]=1;
-                fprintf(xmlout,"<%s> ",markup[PrintANY_st[stptr]]);
-                stptr++;
             }
-            else if (rnd.uniform(0, 1) < 0.8 && stptr) {
-                --stptr;
-                fprintf(xmlout,"</%s> ",markup[PrintANY_st[stptr]]);
-                tick[PrintANY_st[stptr]]=0;
-            }
-            ipsum.fsentence(xmlout, 1+(int)rnd.exponential(4));
-       }
-    while(stptr)
-        {
-            --stptr;
-            fprintf(xmlout,"</%s> ",markup[PrintANY_st[stptr]]);
-            tick[PrintANY_st[stptr]]=0;
+            tick[PrintANY_st[stptr]] = 1;
+            fprintf(out,"<%s> ", markup[PrintANY_st[stptr]]);
+            stptr++;
         }
+        else if (rnd.uniform(0, 1) < 0.8 && stptr) {
+            --stptr;
+            fprintf(out,"</%s> ",markup[PrintANY_st[stptr]]);
+            tick[PrintANY_st[stptr]] = 0;
+        }
+        ipsum.fsentence(out, 1 + (int)rnd.exponential(4));
+    }
+    while (stptr) {
+        --stptr;
+        fprintf(out,"</%s> ",markup[PrintANY_st[stptr]]);
+        tick[PrintANY_st[stptr]]=0;
+    }
 }
 
 int ItemIdRef(schema.Element *child, int *iRef) {
