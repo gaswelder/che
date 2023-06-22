@@ -135,7 +135,6 @@ pub typedef {
     char name[20];
     int type;
     int ref;
-    ProbDesc pd;
     float prcnt;
 } AttDesc;
 
@@ -284,14 +283,12 @@ Element objs[]={
             {
                 .name = "from",
                 .type = ATTR_TYPE_2,
-                CATEGORY,
-                {1,0,0,0,0}
+                .ref = CATEGORY,
             },
             {
                 .name = "to",
                 .type = ATTR_TYPE_2,
-                CATEGORY,
-                {1,0,0,0,0}
+                .ref = CATEGORY,
             }
         }
     },
@@ -309,8 +306,6 @@ Element objs[]={
             {
                 .name = "id",
                 .type = ATTR_TYPE_1,
-                0,
-                {0,0,0,0,0}
             }
         }
     },
@@ -334,11 +329,11 @@ Element objs[]={
             {
                 .name = "id",
                 .type = ATTR_TYPE_1,
-                0,{0,0,0,0,0}},
+                },
             {
                 .name = "featured",
                 .type = ATTR_TYPE_3,
-                0,{0,0,0,0,0},0.1}
+                .prcnt = 0.1}
         },
         .type = 0x40
     },
@@ -408,8 +403,7 @@ Element objs[]={
             {
                 .name = "\1",
                 .type = ATTR_TYPE_2,
-                CATEGORY,
-                {1,0,0,0,0}
+                .ref = CATEGORY,
             }
         }
     },
@@ -471,9 +465,6 @@ Element objs[]={
             {
                 .name = "id",
                 .type = ATTR_TYPE_1,
-                0,
-                {0,0,0,0,0},
-                0
             }
         },
         .type = 0x40
@@ -528,7 +519,8 @@ Element objs[]={
             {
                 .name = "income",
                 .type = ATTR_TYPE_3,
-                0,{0,0,0,0,0},1}
+                .prcnt = 1
+            }
         }
     },
 
@@ -553,8 +545,7 @@ Element objs[]={
             {
                 .name = "\1",
                 .type = ATTR_TYPE_2,
-                CATEGORY,
-                {1,0,0,0,0}
+                .ref = CATEGORY,
             }
         }
     },
@@ -577,8 +568,7 @@ Element objs[]={
             {
                 .name = "\1",
                 .type = ATTR_TYPE_2,
-                OPEN_TRANS,
-                {1,0,0,0,0}
+                .ref = OPEN_TRANS,
             }
         }
     },
@@ -611,9 +601,10 @@ Element objs[]={
             INTERVAL
         },
         .att = {
-            {.name = "id", .type = ATTR_TYPE_1,
-            0,
-            {0,0,0,0,0}}
+            {
+                .name = "id",
+                .type = ATTR_TYPE_1,
+            }
         },
         .type = 0x04|0x40
     },
@@ -639,8 +630,7 @@ Element objs[]={
             {
                 .name = "\1",
                 .type = ATTR_TYPE_2,
-                ITEM,
-                {1,0,0,0,0}
+                .ref = ITEM,
             }
         }
     },
@@ -673,7 +663,7 @@ Element objs[]={
             {
                 .name = "\1",
                 .type = ATTR_TYPE_2,
-                PERSON,{1,0,0,0,0}
+                .ref = PERSON,
             }
         }
     },
@@ -684,10 +674,10 @@ Element objs[]={
         .id = SELLER,
         .name = "seller",
         .att = {
-            {.name = "\1",
-            .type = ATTR_TYPE_2,
-            PERSON,
-            {2,0.5,0.10,0,0}
+            {
+                .name = "\1",
+                .type = ATTR_TYPE_2,
+                .ref = PERSON,
             }
         }
     },
@@ -743,9 +733,11 @@ Element objs[]={
         .id = BUYER,
         .name = "buyer",
         .att = {
-            {.name = "\1",
-            .type = ATTR_TYPE_2,
-            PERSON,{2,0.5,0.10,0,0}}
+            {
+                .name = "\1",
+                .type = ATTR_TYPE_2,
+                .ref = PERSON,
+            }
         }
     },
 
@@ -769,9 +761,11 @@ Element objs[]={
         .id = AUTHOR,
         .name = "author",
         .att = {
-            {.name = "\1",
-            .type = ATTR_TYPE_2,
-            PERSON,{1,0,0,1,1}}
+            {
+                .name = "\1",
+                .type = ATTR_TYPE_2,
+                .ref = PERSON
+            }
         }
     }
 };
@@ -1025,4 +1019,39 @@ pub ProbDesc probDescForChild(Element *e, int child_id) {
     }
     ProbDesc r = {1, 0, 0, 1, 1};
     return r;
+}
+
+typedef {
+    int element_id;
+    char *attr_name;
+    ProbDesc p;
+} attr_pd_item_t;
+
+attr_pd_item_t attr_desc_map[] = {
+    { EDGE, "from",          {1,0,0,0,0} },
+    { EDGE, "to",            {1,0,0,0,0} },
+    { CATEGORY, "id",        {0,0,0,0,0} },
+    { ITEM, "id",            {0,0,0,0,0} },
+    { ITEM, "featured",      {0,0,0,0,0} },
+    { INCATEGORY, "\1",      {1,0,0,0,0} },
+    { PERSON, "id",          {0,0,0,0,0} },
+    { PROFILE, "income",     {0,0,0,0,0} },
+    { INTEREST, "\1",        {1,0,0,0,0} },
+    { WATCH, "\1",           {1,0,0,0,0} },
+    { OPEN_TRANS, "id",      {0,0,0,0,0} },
+    { ITEMREF, "\1",         {1,0,0,0,0} },
+    { PERSONREF, "\1",       {1,0,0,0,0} },
+    { SELLER, "\1",          {2, 0.5, 0.1, 0, 0} },
+    { BUYER, "\1",           {2, 0.5, 0.1, 0, 0} },
+    { AUTHOR, "\1",          {1,0,0,1,1} }
+};
+
+pub ProbDesc probDescForAttr(int element_id, char *attr_name) {
+    for (size_t i = 0; i < nelem(attr_desc_map); i++) {
+        attr_pd_item_t *item = &attr_desc_map[i];
+        if (item->element_id == element_id && !strcmp(item->attr_name, attr_name)) {
+            return item->p;
+        }
+    }
+    panic("failed to find prob desc for attr '%s'", attr_name);
 }

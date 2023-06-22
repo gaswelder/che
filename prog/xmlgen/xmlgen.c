@@ -365,7 +365,8 @@ void OpeningTag(FILE *out, schema.Element *element) {
             case schema.ATTR_TYPE_2:
                 int ref=0;
                 if (!ItemIdRef(element, &ref)) {
-                    ref=GenRef(&att->pd,att->ref);
+                    schema.ProbDesc pd = schema.probDescForAttr(element->id, att->name);
+                    ref = GenRef(&pd, att->ref);
                 }
                 fprintf(out," %s=\"%s%d\"", attname, schema.GetSchemaNode(att->ref)->name, ref);
                 break;
