@@ -284,8 +284,12 @@ void Tree(FILE *out, schema.Element *element) {
             double sum = 0;
             double alt = rnd.uniform(0, 1);
             int i = 0;
-            while (i < element->kids-1 && (sum += element->elm[i].pd.mean) < alt) {
-                i++;
+            for (i = 0; i < element->kids - 1; i++) {
+                schema.ProbDesc pd = schema.probDescForChild(element, &element->elm[i]);
+                sum += pd.mean;
+                if (sum >= alt) {
+                    break;
+                }
             }
             root = schema.GetSchemaNode(element->elm[i].id);
         }
@@ -294,7 +298,8 @@ void Tree(FILE *out, schema.Element *element) {
     else {
         for (int i = 0; i < element->kids; i++) {
             schema.ElmDesc *ed = &element->elm[i];
-            int num = (int)(GenRandomNum(&ed->pd)+0.5);
+            schema.ProbDesc pd = schema.probDescForChild(element, ed);
+            int num = (int)(GenRandomNum(&pd) + 0.5);
             while (num--) {
                 Tree(out, schema.GetSchemaNode(ed->id));
             }

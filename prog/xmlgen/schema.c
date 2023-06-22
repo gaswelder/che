@@ -127,7 +127,6 @@ pub typedef {
 
 pub typedef {
     int id;
-    ProbDesc pd;
     char rec;
 } ElmDesc;
 
@@ -183,12 +182,12 @@ Element objs[]={
         .id = AUCTION_SITE,
         .name = "site",
         .elm = {
-            {.id = REGION,              .pd = {1,0,0,1,1}, .rec = 0},
-            {.id = CATEGORY_LIST,       .pd = {1,0,0,1,1}, .rec = 0},
-            {.id = CATGRAPH,            .pd = {1,0,0,1,1}, .rec = 0},
-            {.id = PERSON_LIST,         .pd = {1,0,0,1,1}, .rec = 0},
-            {.id = OPEN_TRANS_LIST,     .pd = {1,0,0,1,1}, .rec = 0},
-            {.id = CLOSED_TRANS_LIST,   .pd = {1,0,0,1,1}, .rec = 0}
+            {.id = REGION,              .rec = 0},
+            {.id = CATEGORY_LIST,       .rec = 0},
+            {.id = CATGRAPH,            .rec = 0},
+            {.id = PERSON_LIST,         .rec = 0},
+            {.id = OPEN_TRANS_LIST,     .rec = 0},
+            {.id = CLOSED_TRANS_LIST,   .rec = 0}
         }
     },
 
@@ -197,7 +196,7 @@ Element objs[]={
         .id = CATEGORY_LIST,
         .name = "categories",
         .elm = {
-            {.id = CATEGORY, .pd = {1,0,0,1000,1000}, .rec = 0}
+            {.id = CATEGORY, .rec = 0}
         }
     },
 
@@ -206,12 +205,12 @@ Element objs[]={
         .id = REGION,
         .name = "regions",
         .elm = {
-            {.id = AFRICA,      .pd = {1,0,0,1,1}, .rec = 0},
-            {.id = ASIA,        .pd = {1,0,0,1,1}, .rec = 0},
-            {.id = AUSTRALIA,   .pd = {1,0,0,1,1}, .rec = 0},
-            {.id = EUROPE,      .pd = {1,0,0,1,1}, .rec = 0},
-            {.id = NAMERICA,    .pd = {1,0,0,1,1}, .rec = 0},
-            {.id = SAMERICA,    .pd = {1,0,0,1,1}, .rec = 0}
+            {.id = AFRICA,     .rec = 0},
+            {.id = ASIA,       .rec = 0},
+            {.id = AUSTRALIA,  .rec = 0},
+            {.id = EUROPE,     .rec = 0},
+            {.id = NAMERICA,   .rec = 0},
+            {.id = SAMERICA,   .rec = 0}
         }
     },
 
@@ -220,7 +219,7 @@ Element objs[]={
         .id = EUROPE,
         .name = "europe",
         .elm = {
-            {.id = ITEM,  .pd = {1,0,0,6000,6000}, .rec = 0}
+            {.id = ITEM,  .rec = 0}
         }
     },
 
@@ -229,7 +228,7 @@ Element objs[]={
         .id = AUSTRALIA,
         .name = "australia",
         .elm = {
-            {.id = ITEM,   .pd = {1,0,0,2200,2200}, .rec = 0}
+            {.id = ITEM, .rec = 0}
         }
     },
 
@@ -238,7 +237,7 @@ Element objs[]={
         .id = AFRICA,
         .name = "africa",
         .elm = {
-            {.id = ITEM,   .pd = {1,0,0,550,550}, .rec = 0}
+            {.id = ITEM, .rec = 0}
         }
     },
 
@@ -247,7 +246,7 @@ Element objs[]={
         .id = NAMERICA,
         .name = "namerica",
         .elm = {
-            {.id = ITEM,  .pd = {1,0,0,10000,10000}, .rec = 0}
+            {.id = ITEM, .rec = 0}
         }
     },
 
@@ -256,7 +255,7 @@ Element objs[]={
         .id = SAMERICA,
         .name = "samerica",
         .elm = {
-            {.id = ITEM,  .pd = {1,0,0,1000,1000}, .rec = 0}
+            {.id = ITEM, .rec = 0}
         }
     },
 
@@ -265,7 +264,7 @@ Element objs[]={
         .id = ASIA,
         .name = "asia",
         .elm = {
-            {.id = ITEM,  .pd = {1,0,0,2000,2000}, .rec = 0}
+            {.id = ITEM, .rec = 0}
         }
     },
 
@@ -274,7 +273,7 @@ Element objs[]={
         .id = CATGRAPH,
         .name = "catgraph",
         .elm = {
-            {.id = EDGE,   .pd = {1,0,0,3800,3800}, .rec = 0}
+            {.id = EDGE,  .rec = 0}
         },
         .att = {
             {
@@ -293,7 +292,7 @@ Element objs[]={
         .id = EDGE,
         .name = "edge",
         .elm = {
-            {.id = 0,  .pd = {0,0,0,0,0}, .rec = 0}
+            {.id = 0,  .rec = 0}
         },
         .att = {
             {
@@ -317,8 +316,8 @@ Element objs[]={
         .id = CATEGORY,
         .name = "category",
         .elm = {
-            {.id = CATNAME, .pd = {1,0,0,1,1}, .rec = 0},
-            {.id = DESCRIPTION, .pd = {1,0,0,1,1}, .rec = 0},
+            {.id = CATNAME,     .rec = 0},
+            {.id = DESCRIPTION, .rec = 0},
         },
         .att = {
             {
@@ -334,14 +333,14 @@ Element objs[]={
         .id = ITEM,
         .name = "item",
         .elm = {
-            {.id = LOCATION, .pd = {1,0,0,1,1}, .rec = 0},
-            {.id = QUANTITY, .pd = {1,0,0,1,1}, .rec = 0},
-            {.id = ITEMNAME, .pd = {1,0,0,1,1}, .rec = 0},
-            {.id = PAYMENT, .pd = {1,0,0,1,1}, .rec = 0},
-            {.id = DESCRIPTION, .pd = {1,0,0,1,1}, .rec = 0},
-            {.id = SHIPPING, .pd = {1,0,0,1,1}, .rec = 0},
-            {.id = INCATEGORY, .pd = {3,3,0,1,10}, .rec = 0},
-            {.id = MAILBOX, .pd = {1,0,0,1,1}, .rec = 0}
+            {.id = LOCATION, .rec = 0},
+            {.id = QUANTITY, .rec = 0},
+            {.id = ITEMNAME, .rec = 0},
+            {.id = PAYMENT, .rec = 0},
+            {.id = DESCRIPTION, .rec = 0},
+            {.id = SHIPPING, .rec = 0},
+            {.id = INCATEGORY, .rec = 0},
+            {.id = MAILBOX, .rec = 0}
         },
         .att = {
             {
@@ -372,8 +371,8 @@ Element objs[]={
         .id = DESCRIPTION,
         .name = "description",
         .elm = {
-            {.id = TEXT, .pd = {1,0.7,0,0,0}, .rec = 0},
-            {.id = PARLIST, .pd = {1,0.3,0,0,0}, .rec = 0}
+            {.id = TEXT,    .rec = 0},
+            {.id = PARLIST, .rec = 0}
         },
         .att = {
             {
@@ -390,7 +389,7 @@ Element objs[]={
         .id = PARLIST,
         .name = "parlist",
         .elm = {
-            {.id = LISTITEM,  .pd = {3,1,0,2,5}, .rec = 0}
+            {.id = LISTITEM,  .rec = 0}
         }
     },
 
@@ -410,8 +409,8 @@ Element objs[]={
         .id = LISTITEM,
         .name = "listitem",
         .elm = {
-            {.id = TEXT,    .pd = {1,0.8,0,0,0}, .rec = 0},
-            {.id = PARLIST, .pd = {1,0.2,0,0,0}, .rec = 0}
+            {.id = TEXT,    .rec = 0},
+            {.id = PARLIST, .rec = 0}
         },
         .att = {
             {
@@ -447,7 +446,7 @@ Element objs[]={
         .id = MAILBOX,
         .name = "mailbox",
         .elm = {
-            {.id = MAIL,  .pd = {3,1,0,0,250}, .rec = 0}
+            {.id = MAIL,  .rec = 0}
         }
     },
 
@@ -456,10 +455,10 @@ Element objs[]={
         .id = MAIL,
         .name = "mail",
         .elm = {
-            {.id = FROM,    .pd = {1,0,0,1,1}, .rec = 0},
-            {.id = TO,      .pd = {1,0,0,1,1}, .rec = 0},
-            {.id = XDATE,   .pd = {1,0,0,1,1}, .rec = 0},
-            {.id = TEXT,    .pd = {1,0,0,1,1}, .rec = 0}
+            {.id = FROM,  .rec = 0},
+            {.id = TO,    .rec = 0},
+            {.id = XDATE, .rec = 0},
+            {.id = TEXT,  .rec = 0}
         }
     },
 
@@ -476,7 +475,7 @@ Element objs[]={
         .id = PERSON_LIST,
         .name = "people",
         .elm = {
-            {.id = PERSON, .pd = {1,0,0,25500,25500}, .rec = 0}
+            {.id = PERSON, .rec = 0}
         }
     },
 
@@ -486,14 +485,14 @@ Element objs[]={
         .id = PERSON,
         .name = "person",
         .elm = {
-            {.id = NAME,        .pd = {1,0,0,1,1}, .rec = 0},
-            {.id = EMAIL,       .pd = {1,0,0,1,1}, .rec = 0},
-            {.id = PHONE,       .pd = {1,0,0,0,1}, .rec = 0},
-            {.id = ADDRESS,     .pd = {1,0,0,0,1}, .rec = 0},
-            {.id = HOMEPAGE,    .pd = {1,0,0,0,1}, .rec = 0},
-            {.id = CREDITCARD,  .pd = {1,0,0,0,1}, .rec = 0},
-            {.id = PROFILE,     .pd = {1,0,0,0,1}, .rec = 0},
-            {.id = WATCHES,     .pd = {1,0,0,0,1}, .rec = 0}
+            {.id = NAME,        .rec = 0},
+            {.id = EMAIL,       .rec = 0},
+            {.id = PHONE,       .rec = 0},
+            {.id = ADDRESS,     .rec = 0},
+            {.id = HOMEPAGE,    .rec = 0},
+            {.id = CREDITCARD,  .rec = 0},
+            {.id = PROFILE,     .rec = 0},
+            {.id = WATCHES,     .rec = 0}
         },
         .att = {
             {
@@ -518,11 +517,11 @@ Element objs[]={
         .id = ADDRESS,
         .name = "address",
         .elm = {
-            {.id = STREET,  .pd = {1,0,0,1,1}, .rec = 0},
-            {.id = CITY,  .pd = {1,0,0,1,1}, .rec = 0},
-            {.id = COUNTRY,  .pd = {1,0,0,1,1}, .rec = 0},
-            {.id = PROVINCE,  .pd =  {1,0,0,0,1}, .rec = 0},
-            {.id = ZIPCODE,  .pd = {1,0,0,1,1}, .rec = 0}
+            {.id = STREET,  .rec = 0},
+            {.id = CITY,  .rec = 0},
+            {.id = COUNTRY,  .rec = 0},
+            {.id = PROVINCE,  .rec = 0},
+            {.id = ZIPCODE,  .rec = 0}
         }
     },
 
@@ -547,11 +546,11 @@ Element objs[]={
         .id = PROFILE,
         .name = "profile",
         .elm = {
-            {.id = INTEREST,    .pd = {3,3,0,0,25}, .rec = 0},
-            {.id = EDUCATION,   .pd = {1,0,0,0,1},  .rec = 0},
-            {.id = GENDER,      .pd = {1,0,0,0,1},  .rec = 0},
-            {.id = BUSINESS,    .pd = {1,0,0,1,1},  .rec = 0},
-            {.id = AGE,         .pd = {1,0,0,0,1},  .rec = 0}
+            {.id = INTEREST,    .rec = 0},
+            {.id = EDUCATION,   .rec = 0},
+            {.id = GENDER,      .rec = 0},
+            {.id = BUSINESS,     .rec = 0},
+            {.id = AGE,         .rec = 0}
         },
         .att = {
             {
@@ -590,7 +589,7 @@ Element objs[]={
         .id = WATCHES,
         .name = "watches",
         .elm = {
-            {.id = WATCH,  .pd = {3,4,0,0,100}, .rec = 0},
+            {.id = WATCH, .rec = 0},
         }
     },
 
@@ -610,7 +609,7 @@ Element objs[]={
         .id = OPEN_TRANS_LIST,
         .name = "open_auctions",
         .elm = {
-            {.id = OPEN_TRANS,  .pd = {1,0,0,12000,12000}, .rec = 0}
+            {.id = OPEN_TRANS,  .rec = 0}
         }
     },
 
@@ -620,17 +619,17 @@ Element objs[]={
         .id = OPEN_TRANS,
         .name = "open_auction",
         .elm = {
-            {.id = INIT_PRICE,  .pd = {1,0,0,1,1}, .rec = 0},
-            {.id = RESERVE,     .pd = {1,0,0,0,1}, .rec = 0},
-            {.id = BIDDER,      .pd = {3,5,0,0,200}, .rec = 0},
-            {.id = CURRENT,     .pd = {1,0,0,1,1}, .rec = 0},
-            {.id = PRIVACY,     .pd = {1,0,0,0,1}, .rec = 0},
-            {.id = ITEMREF,     .pd = {1,0,0,1,1}, .rec = 0},
-            {.id = SELLER,      .pd = {1,0,0,1,1}, .rec = 0},
-            {.id = ANNOTATION,  .pd = {1,0,0,1,1}, .rec = 0},
-            {.id = QUANTITY,    .pd = {1,0,0,1,1}, .rec = 0},
-            {.id = TYPE,        .pd = {1,0,0,1,1}, .rec = 0},
-            {.id = INTERVAL,    .pd = {1,0,0,1,1}, .rec = 0}
+            {.id = INIT_PRICE,  .rec = 0},
+            {.id = RESERVE,     .rec = 0},
+            {.id = BIDDER,      .rec = 0},
+            {.id = CURRENT,     .rec = 0},
+            {.id = PRIVACY,     .rec = 0},
+            {.id = ITEMREF,     .rec = 0},
+            {.id = SELLER,      .rec = 0},
+            {.id = ANNOTATION,  .rec = 0},
+            {.id = QUANTITY,    .rec = 0},
+            {.id = TYPE,        .rec = 0},
+            {.id = INTERVAL,    .rec = 0}
         },
         .att = {
             {.name = "id", .type = 1,0,{0,0,0,0,0}}
@@ -655,7 +654,7 @@ Element objs[]={
     {
         .id = ITEMREF,
         .name = "itemref",
-        .elm = {{0,{0,0,0,0,0}, .rec = 0}},
+        .elm = {{0}},
         .att = {
             {.name = "\1", .type = 2,ITEM,{1,0,0,0,0}}
         }
@@ -666,10 +665,10 @@ Element objs[]={
         .id = BIDDER,
         .name = "bidder",
         .elm = {
-            {.id = XDATE,       .pd = {1,0,0,1,1}, .rec = 0},
-            {.id = TIME,        .pd = {1,0,0,1,1}, .rec = 0},
-            {.id = PERSONREF,   .pd = {1,0,0,1,1}, .rec = 0},
-            {.id = INCREASE,    .pd = {1,0,0,1,1}, .rec = 0}
+            {.id = XDATE,       .rec = 0},
+            {.id = TIME,        .rec = 0},
+            {.id = PERSONREF,   .rec = 0},
+            {.id = INCREASE,    .rec = 0}
         }
     },
 
@@ -685,7 +684,7 @@ Element objs[]={
     {
         .id = PERSONREF,
         .name = "personref",
-        .elm = {{0,{0,0,0,0,0}, .rec = 0}},
+        .elm = {{0}},
         .att = {
             {
                 .name = "\1",
@@ -700,7 +699,7 @@ Element objs[]={
     {
         .id = SELLER,
         .name = "seller",
-        .elm = {{0,{0,0,0,0,0}, .rec = 0}},
+        .elm = {{0}},
         .att = {
             {.name = "\1",
             .type = 2,PERSON,{2,0.5,0.10,0,0}}
@@ -712,8 +711,8 @@ Element objs[]={
         .id = INTERVAL,
         .name = "interval",
         .elm = {
-            {.id = START,  .pd = {1,0,0,1,1}, .rec = 0},
-            {.id = END,    .pd = {1,0,0,1,1}, .rec = 0}
+            {.id = START,  .rec = 0},
+            {.id = END,    .rec = 0}
         }
     },
 
@@ -728,7 +727,7 @@ Element objs[]={
         .id = CLOSED_TRANS_LIST,
         .name = "closed_auctions",
         .elm = {
-            {.id = CLOSED_TRANS, .pd = {1,0,0,3000,3000}, .rec = 0}
+            {.id = CLOSED_TRANS, .rec = 0}
         }
     },
 
@@ -737,14 +736,14 @@ Element objs[]={
         .id = CLOSED_TRANS,
         .name = "closed_auction",
         .elm = {
-            {.id = SELLER,      .pd = {1,0,0,1,1}, .rec = 0},
-            {.id = BUYER,       .pd = {1,0,0,1,1}, .rec = 0},
-            {.id = ITEMREF,     .pd = {1,0,0,1,1}, .rec = 0},
-            {.id = PRICE,       .pd = {1,0,0,1,1}, .rec = 0},
-            {.id = XDATE,       .pd = {1,0,0,1,1}, .rec = 0},
-            {.id = QUANTITY,    .pd = {1,0,0,1,1}, .rec = 0},
-            {.id = TYPE,        .pd = {1,0,0,1,1}, .rec = 0},
-            {.id = ANNOTATION,  .pd = {1,0,0,1,1}, .rec = 0}
+            {.id = SELLER,     .rec = 0},
+            {.id = BUYER,      .rec = 0},
+            {.id = ITEMREF,    .rec = 0},
+            {.id = PRICE,      .rec = 0},
+            {.id = XDATE,      .rec = 0},
+            {.id = QUANTITY,   .rec = 0},
+            {.id = TYPE,       .rec = 0},
+            {.id = ANNOTATION, .rec = 0}
         },
         .att = {
             {.name = "",
@@ -761,7 +760,7 @@ Element objs[]={
     {
         .id = BUYER,
         .name = "buyer",
-        .elm = {{0,{0,0,0,0,0}, .rec = 0}},
+        .elm = {{0}},
         .att = {
             {.name = "\1",.type = 2,PERSON,{2,0.5,0.10,0,0}}
         }
@@ -772,9 +771,9 @@ Element objs[]={
         .id = ANNOTATION,
         .name = "annotation",
         .elm = {
-            {AUTHOR,{1,0,0,1,1}, .rec = 0},
-            {DESCRIPTION,{1,0,0,1,1}, .rec = 0},
-            {HAPPINESS,{1,0,0,1,1}, .rec = 0}
+            {.id = AUTHOR,  .rec = 0},
+            {.id = DESCRIPTION,  .rec = 0},
+            {.id = HAPPINESS,  .rec = 0}
         }
     },
 
@@ -786,7 +785,7 @@ Element objs[]={
     {
         .id = AUTHOR,
         .name = "author",
-        .elm = {{0,{0,0,0,0,0}, .rec = 0}},
+        .elm = {{0}},
         .att = {
             {.name = "\1",
             .type = 2,PERSON,{1,0,0,1,1}}
@@ -871,15 +870,16 @@ void FixSetSize(Element *element, float global_scale_factor) {
         ElmDesc *ed = &(element->elm[i]);
         Element *son = GetSchemaNode(ed->id);
         if (!son) continue;
-        if (ed->pd.min>1 && (hasID(son) || (son->type&0x04))) {
-            int size=(int)(GenRandomNum(&ed->pd)+0.5);
+        ProbDesc pd = probDescForChild(element, ed);
+        if (pd.min > 1 && (hasID(son) || (son->type&0x04))) {
+            int size=(int)(GenRandomNum(&pd) + 0.5);
             if (size*global_scale_factor > 1) {
                 size = (int)(size*global_scale_factor);
             } else {
                 size = 1;
             }
-            son->set.size+=size;
-            FixDist(&ed->pd,size);
+            son->set.size += size;
+            FixDist(&pd, size);
         }
         FixSetSize(son, global_scale_factor);
     }
@@ -894,28 +894,30 @@ void FixReferenceSets(Element *element) {
             ElmDesc *ed=&(element->elm[i]);
             Element *son = GetSchemaNode(ed->id);
             if (!son) continue;
-            if (ed->pd.min>1 && !hasID(son))
-                {
-                    int size;
-                    double local_factor=1;
-                    for (j=0;j<5;j++)
-                        {
-                            if (son->att[j].name[0]=='\0') break;
-                            if (maxref < objs[son->att[j].ref].set.size) {
-                                maxref = objs[son->att[j].ref].set.size;
-                            }
+
+            ProbDesc pd = probDescForChild(element, ed);
+            if (pd.min > 1 && !hasID(son)) {
+                double local_factor = 1;
+                for (j=0;j<5;j++)
+                    {
+                        if (son->att[j].name[0]=='\0') break;
+                        if (maxref < objs[son->att[j].ref].set.size) {
+                            maxref = objs[son->att[j].ref].set.size;
                         }
-                    if (!maxref) break;
-                    local_factor=maxref/ed->pd.max;
-                    size=(int)(GenRandomNum(&ed->pd)+0.5);
-                    if (size*local_factor > 1) {
-                        size = (int)(size*local_factor);
-                    } else {
-                        size = 1;
                     }
-                    son->set.size+=size;
-                    FixDist(&ed->pd,size);
+                if (!maxref) {
+                    break;
                 }
+                local_factor = maxref / pd.max;
+                int size=(int)(GenRandomNum(&pd) + 0.5);
+                if (size*local_factor > 1) {
+                    size = (int)(size*local_factor);
+                } else {
+                    size = 1;
+                }
+                son->set.size+=size;
+                FixDist(&pd, size);
+            }
             FixReferenceSets(son);
         }
 }
@@ -936,10 +938,12 @@ void FixSetByEdge(char *father_name, char *son_name, int size)
         Element *element = GetSchemaNode(i);
         for (int j=0;j<element->kids;j++) {
             ElmDesc *ed=&(element->elm[j]);
-            Element *son=objs+ed->id;
-            if (!strcmp(son_name,son->name)) {
-                FixDist(&ed->pd,size);
+            Element *son = GetSchemaNode(ed->id);
+            if (strcmp(son_name, son->name)) {
+                continue;
             }
+            ProbDesc pd = probDescForChild(element, ed);
+            FixDist(&pd, size);
         }
     }
 }
@@ -1026,4 +1030,62 @@ double GenRandomNum(ProbDesc *pd) {
         return res;
     }
     panic("woops! undefined distribution.\n");
+}
+
+typedef {
+    int id;
+    int child_id;
+    ProbDesc p;
+} prob_desc_map_item_t;
+
+prob_desc_map_item_t prob_desc_map[] = {
+    { CATEGORY_LIST, CATEGORY, {1, 0, 0, 1000, 1000} },
+    { EUROPE, ITEM, {1, 0, 0, 6000, 6000} },
+    { AUSTRALIA, ITEM, {1, 0, 0, 2200, 2200} },
+    { AFRICA, ITEM, {1, 0, 0, 550, 550} },
+    { NAMERICA, ITEM, {1, 0, 0, 10000, 10000} },
+    { SAMERICA, ITEM, {1, 0, 0, 1000, 1000} },
+    { ASIA, ITEM, {1, 0, 0, 2000, 2000} },
+    { CATGRAPH, EDGE, {1, 0, 0, 3800, 3800} },
+    { ITEM, INCATEGORY, {3,3,0,1,10} },
+    { DESCRIPTION, TEXT, {1, 0.7, 0, 0, 0} },
+    { DESCRIPTION, PARLIST, {1, 0.3, 0, 0, 0} },
+    { PARLIST, LISTITEM, {3,1,0,2,5} },
+    { LISTITEM, TEXT, {1,0.8, 0,0,0} },
+    { LISTITEM, PARLIST, {1,0.2, 0,0,0} },
+    { ADDRESS, PROVINCE, {1,0,0,0,1} },
+    { PROFILE, INTEREST,   {3,3,0,0,25} },
+    { PROFILE, EDUCATION,  {1,0,0,0,1}  },
+    { PROFILE, GENDER,     {1,0,0,0,1}  },
+    { PROFILE, AGE,        {1,0,0,0,1}  },
+    { WATCHES, WATCH,      {3,4,0,0,100} },
+    { OPEN_TRANS_LIST, OPEN_TRANS, {1,0,0,12000, 12000} },
+    { OPEN_TRANS, RESERVE,  {1,0,0,0,1} },
+    { OPEN_TRANS, BIDDER,   {3,5,0,0,200} },
+    { OPEN_TRANS, PRIVACY,  {1,0,0,0,1} },
+    { CLOSED_TRANS_LIST, CLOSED_TRANS, {1,0,0,3000,3000}},
+    { MAILBOX, MAIL, {3,1,0,0,250}},
+    { PERSON_LIST, PERSON, {1,0,0,25500, 25500}},
+    {PERSON, PHONE, {1,0,0,0,1}},
+    {PERSON, ADDRESS, {1,0,0,0,1}},
+    {PERSON, HOMEPAGE, {1,0,0,0,1}},
+    {PERSON, CREDITCARD, {1,0,0,0,1}},
+    {PERSON, PROFILE, {1,0,0,0,1}},
+    {PERSON, WATCHES, {1,0,0,0,1}}
+};
+
+pub ProbDesc probDescForChild(Element *e, ElmDesc *child) {
+    for (size_t i = 0; i < nelem(prob_desc_map); i++) {
+        prob_desc_map_item_t *item = &prob_desc_map[i];
+        if (item->id == e->id && item->child_id == child->id) {
+            return item->p;
+        }
+    }
+    // shouldn't happen
+    if (e->id == EDGE || e->id == ITEMREF || e->id == PERSONREF || e->id == SELLER || e->id == BUYER || e->id == AUTHOR) {
+        ProbDesc r = {1, 0, 0, 0, 0};
+        return r;
+    }
+    ProbDesc r = {1, 0, 0, 1, 1};
+    return r;
 }
