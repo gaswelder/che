@@ -482,42 +482,6 @@ int GenItemIdRef(schema.idrepro *rep, int *idref)
     return res;
 }
 
-// enum {
-//     CATNAME,
-//     EMAIL,
-//     PHONE,
-//     STREET,
-//     CITY,
-//     COUNTRY,
-//     ZIPCODE,
-//     PROVINCE,
-//     HOMEPAGE,
-//     EDUCATION,
-//     GENDER,
-//     BUSINESS,
-//     NAME,
-//     AGE,
-//     CREDITCARD,
-//     LOCATION,
-//     QUANTITY,
-//     PAYMENT,
-//     SHIPPING,
-//     FROM, TO,
-//     XDATE,
-//     ITEMNAME,
-//     TEXT,
-//     AMOUNT,
-//     CURRENT,
-//     INCREASE,
-//     RESERVE,
-//     MAILBOX, BIDDER, PRIVACY, ITEMREF, SELLER, TYPE, TIME,
-//     STATUS, PERSONREF, INIT_PRICE, START, END, BUYER, PRICE, ANNOTATION,
-//     HAPPINESS, AUTHOR
-// };
-
-
-
-
 void PrintName() {
     int flen = words.dictlen("firstnames");
     int fst = (int)rnd.exponential(flen/3);
