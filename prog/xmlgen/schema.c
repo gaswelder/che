@@ -936,36 +936,36 @@ void FixSetByEdge(char *father_name, char *son_name, int size)
 }
 
 void CheckRecursion() {
-    int n = nelem(objs);
-    for (int i = 1; i < n; i++) {
-        Element *root = &objs[i];
-        if (root->type != 0x02) {
+    for (size_t i = 1; i < nelem(objs); i++) {
+        Element *element = &objs[i];
+        if (element->type != 0x02) {
             continue;
         }
-        for (ElmDesc *ed = root->elm; ed->id; ed++) {
-            ed->rec = FindRec(GetSchemaNode(ed->id), root);
+        for (ElmDesc *ed = element->elm; ed->id; ed++) {
+            // whether there's a recursion between the element and its child
+            ed->rec = FindRec(GetSchemaNode(ed->id), element);
         }
     }
 }
 
-int FindRec(Element *element, *search) {
-    if (element == search) {
-        element->flag = 0;
+int FindRec(Element *child, *parent) {
+    if (child == parent) {
+        child->flag = 0;
         return 1;
     }
-    if (element->flag) {
-        element->flag = 0;
+    if (child->flag) {
+        child->flag = 0;
         return 0;
     }
 
     int r = 0;
-    element->flag = 1;
-    ElmDesc *ed = element->elm;
+    child->flag = 1;
+    ElmDesc *ed = child->elm;
     while (ed->id) {
-        r += FindRec(GetSchemaNode(ed->id), search);
+        r += FindRec(GetSchemaNode(ed->id), parent);
         ed++;
     }
-    element->flag = 0;
+    child->flag = 0;
     return r;
 }
 
