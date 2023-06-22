@@ -67,6 +67,8 @@ pub typedef {
 pub LKContext *lk_context_new() {
     LKContext *ctx = calloc(1, sizeof(LKContext));
     ctx->type = CTX_READ_REQ;
+    ctx->inbuf = io.newbuf();
+    ctx->outbuf = io.newbuf();
 
     ctx->client_ipaddr = NULL;
     ctx->client_port = 0;
@@ -93,6 +95,8 @@ pub LKContext *create_initial_context(io.handle_t *h) {
     LKContext *ctx = calloc(1, sizeof(LKContext));
     ctx->type = CTX_READ_REQ;
     ctx->client_handle = h;
+    ctx->inbuf = io.newbuf();
+    ctx->outbuf = io.newbuf();
 
     ctx->req_line = lkstring.lk_string_new("");
     ctx->req_buf = lkbuffer.lk_buffer_new(0);
@@ -112,6 +116,8 @@ pub LKContext *create_initial_context(io.handle_t *h) {
 }
 
 pub void lk_context_free(LKContext *ctx) {
+    io.freebuf(ctx->inbuf);
+    io.freebuf(ctx->outbuf);
     if (ctx->client_ipaddr) {
         lkstring.lk_string_free(ctx->client_ipaddr);
     }

@@ -81,7 +81,12 @@ pub bool lk_httpserver_serve(lkconfig.LKConfig *cfg) {
     /*
      * Poll and process the handles.
      */
+    int c = 0;
     while (true) {
+        if (c++ > 10) {
+            panic("c");
+        }
+        printf("-------------------\n");
         io.event_t *ev = io.poll(server.handlepool, io.READABLE | io.WRITABLE);
         while (ev->handle) {
             printf("poll result: %d, r=%d, w=%d\n", ev->handle->fd, ev->readable, ev->writable);
@@ -182,6 +187,16 @@ bool process_ctx(server_t *httpserver, lkcontext.LKContext *ctx) {
         case lkcontext.CTX_RESOLVE_REQ:
             ok = resolve_request(httpserver, ctx);
             break;
+        case lkcontext.CTX_WRITE_DATA:
+            size_t n = io.bufsize(ctx->outbuf);
+            printf("output size: %zu\n", n);
+            if (n == 0) {
+                printf("all written out, getting next request\n");
+                ctx->type = lkcontext.CTX_READ_REQ;
+                ok = true;
+            }
+            ok = false;
+            break;
         default:
             panic("unhandled ctx state: %d", ctx->type);
         }
@@ -199,7 +214,7 @@ bool process_ctx(server_t *httpserver, lkcontext.LKContext *ctx) {
 }
 
 bool parse_request(lkcontext.LKContext *ctx) {
-    fprintf(stderr, "reading request\n");
+    fprintf(stderr, "parsing request\n");
 
     // See if the input buffer has a finished request header yet.
     char *split = strstr(ctx->inbuf->data, "\r\n\r\n");
@@ -212,6 +227,7 @@ bool parse_request(lkcontext.LKContext *ctx) {
     // Extract the headers and shift the buffer.
     char head[4096] = {0};
     size_t headlen = split - ctx->inbuf->data;
+    memcpy(head, ctx->inbuf->data, headlen);
     io.shift(ctx->inbuf, headlen);
     fprintf(stderr, "got head: -----[%s]----\n", head);
 
@@ -286,7 +302,7 @@ bool resolve_request(server_t *server, lkcontext.LKContext *ctx) {
             bool ok = io.pushf(ctx->outbuf,
                 "%s 404 Not Found\n"
                 "Content-Length: %ld\n"
-                "Content-Type: text/plain\n",
+                "Content-Type: text/plain\n"
                 "\n"
                 "%s",
                 req->version,
@@ -297,6 +313,7 @@ bool resolve_request(server_t *server, lkcontext.LKContext *ctx) {
                 panic("failed to write to the output buffer");
             }
             printf("written to the output buffer\n");
+            ctx->type = lkcontext.CTX_WRITE_DATA;
             return true;
         }
 

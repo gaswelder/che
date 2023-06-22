@@ -48,6 +48,18 @@ pub typedef {
     size_t size;
 } buf_t;
 
+pub buf_t *newbuf() {
+    buf_t *b = calloc(1, sizeof(buf_t));
+    if (!b) {
+        return NULL;
+    }
+    return b;
+}
+
+pub void freebuf(buf_t *b) {
+    free(b);
+}
+
 pub size_t bufsize(buf_t *b) {
     return b->size;
 }
@@ -69,7 +81,7 @@ pub bool pushf(buf_t *b, const char *fmt, ...) {
 	va_start(args, fmt);
 	len = vsnprintf(b->data + b->size, len, fmt, args);
 	va_end(args);
-    b->size += len;
+    b->size += len - 1;
     return true;
 }
 
