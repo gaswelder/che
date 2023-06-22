@@ -127,7 +127,6 @@ pub typedef {
 
 pub typedef {
     int id;
-    char rec;
 } ElmDesc;
 
 pub typedef {
@@ -181,12 +180,12 @@ Element objs[]={
         .id = AUCTION_SITE,
         .name = "site",
         .elm = {
-            {.id = REGION,              .rec = 0},
-            {.id = CATEGORY_LIST,       .rec = 0},
-            {.id = CATGRAPH,            .rec = 0},
-            {.id = PERSON_LIST,         .rec = 0},
-            {.id = OPEN_TRANS_LIST,     .rec = 0},
-            {.id = CLOSED_TRANS_LIST,   .rec = 0}
+            {.id = REGION,              },
+            {.id = CATEGORY_LIST,       },
+            {.id = CATGRAPH,            },
+            {.id = PERSON_LIST,         },
+            {.id = OPEN_TRANS_LIST,     },
+            {.id = CLOSED_TRANS_LIST,   }
         }
     },
 
@@ -195,7 +194,7 @@ Element objs[]={
         .id = CATEGORY_LIST,
         .name = "categories",
         .elm = {
-            {.id = CATEGORY, .rec = 0}
+            {.id = CATEGORY, }
         }
     },
 
@@ -204,12 +203,12 @@ Element objs[]={
         .id = REGION,
         .name = "regions",
         .elm = {
-            {.id = AFRICA,     .rec = 0},
-            {.id = ASIA,       .rec = 0},
-            {.id = AUSTRALIA,  .rec = 0},
-            {.id = EUROPE,     .rec = 0},
-            {.id = NAMERICA,   .rec = 0},
-            {.id = SAMERICA,   .rec = 0}
+            {.id = AFRICA,     },
+            {.id = ASIA,       },
+            {.id = AUSTRALIA,  },
+            {.id = EUROPE,     },
+            {.id = NAMERICA,   },
+            {.id = SAMERICA,   }
         }
     },
 
@@ -218,7 +217,7 @@ Element objs[]={
         .id = EUROPE,
         .name = "europe",
         .elm = {
-            {.id = ITEM,  .rec = 0}
+            {.id = ITEM,  }
         }
     },
 
@@ -227,7 +226,7 @@ Element objs[]={
         .id = AUSTRALIA,
         .name = "australia",
         .elm = {
-            {.id = ITEM, .rec = 0}
+            {.id = ITEM, }
         }
     },
 
@@ -236,7 +235,7 @@ Element objs[]={
         .id = AFRICA,
         .name = "africa",
         .elm = {
-            {.id = ITEM, .rec = 0}
+            {.id = ITEM, }
         }
     },
 
@@ -245,7 +244,7 @@ Element objs[]={
         .id = NAMERICA,
         .name = "namerica",
         .elm = {
-            {.id = ITEM, .rec = 0}
+            {.id = ITEM, }
         }
     },
 
@@ -254,7 +253,7 @@ Element objs[]={
         .id = SAMERICA,
         .name = "samerica",
         .elm = {
-            {.id = ITEM, .rec = 0}
+            {.id = ITEM, }
         }
     },
 
@@ -263,7 +262,7 @@ Element objs[]={
         .id = ASIA,
         .name = "asia",
         .elm = {
-            {.id = ITEM, .rec = 0}
+            {.id = ITEM, }
         }
     },
 
@@ -272,7 +271,7 @@ Element objs[]={
         .id = CATGRAPH,
         .name = "catgraph",
         .elm = {
-            {.id = EDGE,  .rec = 0}
+            {.id = EDGE,  }
         },
         .att = {
             {
@@ -291,7 +290,7 @@ Element objs[]={
         .id = EDGE,
         .name = "edge",
         .elm = {
-            {.id = 0,  .rec = 0}
+            {.id = 0,  }
         },
         .att = {
             {
@@ -315,8 +314,8 @@ Element objs[]={
         .id = CATEGORY,
         .name = "category",
         .elm = {
-            {.id = CATNAME,     .rec = 0},
-            {.id = DESCRIPTION, .rec = 0},
+            {.id = CATNAME,     },
+            {.id = DESCRIPTION, },
         },
         .att = {
             {
@@ -332,14 +331,14 @@ Element objs[]={
         .id = ITEM,
         .name = "item",
         .elm = {
-            {.id = LOCATION, .rec = 0},
-            {.id = QUANTITY, .rec = 0},
-            {.id = ITEMNAME, .rec = 0},
-            {.id = PAYMENT, .rec = 0},
-            {.id = DESCRIPTION, .rec = 0},
-            {.id = SHIPPING, .rec = 0},
-            {.id = INCATEGORY, .rec = 0},
-            {.id = MAILBOX, .rec = 0}
+            {.id = LOCATION, },
+            {.id = QUANTITY, },
+            {.id = ITEMNAME, },
+            {.id = PAYMENT, },
+            {.id = DESCRIPTION, },
+            {.id = SHIPPING, },
+            {.id = INCATEGORY, },
+            {.id = MAILBOX, }
         },
         .att = {
             {
@@ -370,8 +369,8 @@ Element objs[]={
         .id = DESCRIPTION,
         .name = "description",
         .elm = {
-            {.id = TEXT,    .rec = 0},
-            {.id = PARLIST, .rec = 0}
+            {.id = TEXT,    },
+            {.id = PARLIST, }
         },
         .att = {
             {
@@ -388,7 +387,7 @@ Element objs[]={
         .id = PARLIST,
         .name = "parlist",
         .elm = {
-            {.id = LISTITEM,  .rec = 0}
+            {.id = LISTITEM,  }
         }
     },
 
@@ -408,8 +407,8 @@ Element objs[]={
         .id = LISTITEM,
         .name = "listitem",
         .elm = {
-            {.id = TEXT,    .rec = 0},
-            {.id = PARLIST, .rec = 0}
+            {.id = TEXT,    },
+            {.id = PARLIST, }
         },
         .att = {
             {
@@ -445,7 +444,7 @@ Element objs[]={
         .id = MAILBOX,
         .name = "mailbox",
         .elm = {
-            {.id = MAIL,  .rec = 0}
+            {.id = MAIL,  }
         }
     },
 
@@ -454,10 +453,10 @@ Element objs[]={
         .id = MAIL,
         .name = "mail",
         .elm = {
-            {.id = FROM,  .rec = 0},
-            {.id = TO,    .rec = 0},
-            {.id = XDATE, .rec = 0},
-            {.id = TEXT,  .rec = 0}
+            {.id = FROM,  },
+            {.id = TO,    },
+            {.id = XDATE, },
+            {.id = TEXT,  }
         }
     },
 
@@ -474,7 +473,7 @@ Element objs[]={
         .id = PERSON_LIST,
         .name = "people",
         .elm = {
-            {.id = PERSON, .rec = 0}
+            {.id = PERSON, }
         }
     },
 
@@ -484,14 +483,14 @@ Element objs[]={
         .id = PERSON,
         .name = "person",
         .elm = {
-            {.id = NAME,        .rec = 0},
-            {.id = EMAIL,       .rec = 0},
-            {.id = PHONE,       .rec = 0},
-            {.id = ADDRESS,     .rec = 0},
-            {.id = HOMEPAGE,    .rec = 0},
-            {.id = CREDITCARD,  .rec = 0},
-            {.id = PROFILE,     .rec = 0},
-            {.id = WATCHES,     .rec = 0}
+            {.id = NAME,        },
+            {.id = EMAIL,       },
+            {.id = PHONE,       },
+            {.id = ADDRESS,     },
+            {.id = HOMEPAGE,    },
+            {.id = CREDITCARD,  },
+            {.id = PROFILE,     },
+            {.id = WATCHES,     }
         },
         .att = {
             {
@@ -516,11 +515,11 @@ Element objs[]={
         .id = ADDRESS,
         .name = "address",
         .elm = {
-            {.id = STREET,  .rec = 0},
-            {.id = CITY,  .rec = 0},
-            {.id = COUNTRY,  .rec = 0},
-            {.id = PROVINCE,  .rec = 0},
-            {.id = ZIPCODE,  .rec = 0}
+            {.id = STREET,  },
+            {.id = CITY,  },
+            {.id = COUNTRY,  },
+            {.id = PROVINCE,  },
+            {.id = ZIPCODE,  }
         }
     },
 
@@ -545,11 +544,11 @@ Element objs[]={
         .id = PROFILE,
         .name = "profile",
         .elm = {
-            {.id = INTEREST,    .rec = 0},
-            {.id = EDUCATION,   .rec = 0},
-            {.id = GENDER,      .rec = 0},
-            {.id = BUSINESS,     .rec = 0},
-            {.id = AGE,         .rec = 0}
+            {.id = INTEREST,    },
+            {.id = EDUCATION,   },
+            {.id = GENDER,      },
+            {.id = BUSINESS,     },
+            {.id = AGE,         }
         },
         .att = {
             {
@@ -588,7 +587,7 @@ Element objs[]={
         .id = WATCHES,
         .name = "watches",
         .elm = {
-            {.id = WATCH, .rec = 0},
+            {.id = WATCH, },
         }
     },
 
@@ -608,7 +607,7 @@ Element objs[]={
         .id = OPEN_TRANS_LIST,
         .name = "open_auctions",
         .elm = {
-            {.id = OPEN_TRANS,  .rec = 0}
+            {.id = OPEN_TRANS,  }
         }
     },
 
@@ -618,17 +617,17 @@ Element objs[]={
         .id = OPEN_TRANS,
         .name = "open_auction",
         .elm = {
-            {.id = INIT_PRICE,  .rec = 0},
-            {.id = RESERVE,     .rec = 0},
-            {.id = BIDDER,      .rec = 0},
-            {.id = CURRENT,     .rec = 0},
-            {.id = PRIVACY,     .rec = 0},
-            {.id = ITEMREF,     .rec = 0},
-            {.id = SELLER,      .rec = 0},
-            {.id = ANNOTATION,  .rec = 0},
-            {.id = QUANTITY,    .rec = 0},
-            {.id = TYPE,        .rec = 0},
-            {.id = INTERVAL,    .rec = 0}
+            {.id = INIT_PRICE,  },
+            {.id = RESERVE,     },
+            {.id = BIDDER,      },
+            {.id = CURRENT,     },
+            {.id = PRIVACY,     },
+            {.id = ITEMREF,     },
+            {.id = SELLER,      },
+            {.id = ANNOTATION,  },
+            {.id = QUANTITY,    },
+            {.id = TYPE,        },
+            {.id = INTERVAL,    }
         },
         .att = {
             {.name = "id", .type = 1,0,{0,0,0,0,0}}
@@ -664,10 +663,10 @@ Element objs[]={
         .id = BIDDER,
         .name = "bidder",
         .elm = {
-            {.id = XDATE,       .rec = 0},
-            {.id = TIME,        .rec = 0},
-            {.id = PERSONREF,   .rec = 0},
-            {.id = INCREASE,    .rec = 0}
+            {.id = XDATE,       },
+            {.id = TIME,        },
+            {.id = PERSONREF,   },
+            {.id = INCREASE,    }
         }
     },
 
@@ -710,8 +709,8 @@ Element objs[]={
         .id = INTERVAL,
         .name = "interval",
         .elm = {
-            {.id = START,  .rec = 0},
-            {.id = END,    .rec = 0}
+            {.id = START,  },
+            {.id = END,    }
         }
     },
 
@@ -726,7 +725,7 @@ Element objs[]={
         .id = CLOSED_TRANS_LIST,
         .name = "closed_auctions",
         .elm = {
-            {.id = CLOSED_TRANS, .rec = 0}
+            {.id = CLOSED_TRANS, }
         }
     },
 
@@ -735,14 +734,14 @@ Element objs[]={
         .id = CLOSED_TRANS,
         .name = "closed_auction",
         .elm = {
-            {.id = SELLER,     .rec = 0},
-            {.id = BUYER,      .rec = 0},
-            {.id = ITEMREF,    .rec = 0},
-            {.id = PRICE,      .rec = 0},
-            {.id = XDATE,      .rec = 0},
-            {.id = QUANTITY,   .rec = 0},
-            {.id = TYPE,       .rec = 0},
-            {.id = ANNOTATION, .rec = 0}
+            {.id = SELLER,     },
+            {.id = BUYER,      },
+            {.id = ITEMREF,    },
+            {.id = PRICE,      },
+            {.id = XDATE,      },
+            {.id = QUANTITY,   },
+            {.id = TYPE,       },
+            {.id = ANNOTATION, }
         },
         .att = {
             {.name = "",
@@ -770,9 +769,9 @@ Element objs[]={
         .id = ANNOTATION,
         .name = "annotation",
         .elm = {
-            {.id = AUTHOR,  .rec = 0},
-            {.id = DESCRIPTION,  .rec = 0},
-            {.id = HAPPINESS,  .rec = 0}
+            {.id = AUTHOR,  },
+            {.id = DESCRIPTION,  },
+            {.id = HAPPINESS,  }
         }
     },
 
@@ -814,10 +813,6 @@ pub void InitializeSchema(float global_scale_factor) {
         objs[i].flag = 0;
     }
     FixReferenceSets(root);
-    for (int i = 0; i < nobj; i++) {
-        objs[i].flag = 0;
-    }
-    CheckRecursion();
     for (int i = 0; i < nobj; i++) {
         objs[i].flag = 0;
     }
@@ -933,40 +928,6 @@ void FixSetByEdge(char *father_name, char *son_name, int size)
             ed++;
         }
     }
-}
-
-void CheckRecursion() {
-    for (size_t i = 1; i < nelem(objs); i++) {
-        Element *element = &objs[i];
-        if (element->type != 0x02) {
-            continue;
-        }
-        for (ElmDesc *ed = element->elm; ed->id; ed++) {
-            // whether there's a recursion between the element and its child
-            ed->rec = FindRec(GetSchemaNode(ed->id), element);
-        }
-    }
-}
-
-int FindRec(Element *child, *parent) {
-    if (child == parent) {
-        child->flag = 0;
-        return 1;
-    }
-    if (child->flag) {
-        child->flag = 0;
-        return 0;
-    }
-
-    int r = 0;
-    child->flag = 1;
-    ElmDesc *ed = child->elm;
-    while (ed->id) {
-        r += FindRec(GetSchemaNode(ed->id), parent);
-        ed++;
-    }
-    child->flag = 0;
-    return r;
 }
 
 bool hasID(Element *element) {

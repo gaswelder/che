@@ -274,30 +274,17 @@ void Tree(FILE *out, schema.Element *element) {
 
     if (element->type & 0x02) {
         schema.Element *root;
-        if (element->flag > 1) {
-
-            // Get the first child element that has rec = false.
-            schema.ElmDesc *ed = element->elm;
-            while (ed->id) {
-                if (!ed->rec) {
-                    root = schema.GetSchemaNode(ed->id);
-                    break;
-                }
-                ed++;
+        double alt = rnd.uniform(0, 1);
+        double sum = 0;
+        schema.ElmDesc *ed = element->elm;            
+        while (ed->id) {
+            schema.ProbDesc pd = schema.probDescForChild(element, ed);
+            sum += pd.mean;
+            if (sum >= alt) {
+                root = schema.GetSchemaNode(ed->id);
+                break;
             }
-        } else {
-            double alt = rnd.uniform(0, 1);
-            double sum = 0;
-            schema.ElmDesc *ed = element->elm;            
-            while (ed->id) {
-                schema.ProbDesc pd = schema.probDescForChild(element, ed);
-                sum += pd.mean;
-                if (sum >= alt) {
-                    root = schema.GetSchemaNode(ed->id);
-                    break;
-                }
-                ed++;
-            }
+            ed++;
         }
         if (!root) {
             panic("failed to determine root");
