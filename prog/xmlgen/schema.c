@@ -125,6 +125,12 @@ pub typedef {
     double mean, dev, min, max;
 } ProbDesc;
 
+pub enum {
+    ATTR_TYPE_1 = 1,
+    ATTR_TYPE_2 = 2,
+    ATTR_TYPE_3 = 3
+};
+
 pub typedef {
     char name[20];
     int type;
@@ -265,18 +271,8 @@ Element objs[]={
     {
         .id = CATGRAPH,
         .name = "catgraph",
-        .elm = {
-            EDGE
-        },
-        .att = {
-            {
-                .name = "",
-                .type = 0,
-                .ref = 0,
-                .pd = {0,0,0,0,0}
-            }
-        },
-        0x20
+        .elm = { EDGE },
+        .type = 0x20
     },
 
     // "<!ELEMENT edge EMPTY>",
@@ -287,13 +283,13 @@ Element objs[]={
         .att = {
             {
                 .name = "from",
-                .type = 2,
+                .type = ATTR_TYPE_2,
                 CATEGORY,
                 {1,0,0,0,0}
             },
             {
                 .name = "to",
-                .type = 2,
+                .type = ATTR_TYPE_2,
                 CATEGORY,
                 {1,0,0,0,0}
             }
@@ -312,7 +308,9 @@ Element objs[]={
         .att = {
             {
                 .name = "id",
-                .type = 1,0,{0,0,0,0,0}
+                .type = ATTR_TYPE_1,
+                0,
+                {0,0,0,0,0}
             }
         }
     },
@@ -335,12 +333,14 @@ Element objs[]={
         .att = {
             {
                 .name = "id",
-                .type = 1,0,{0,0,0,0,0}},
+                .type = ATTR_TYPE_1,
+                0,{0,0,0,0,0}},
             {
                 .name = "featured",
-                .type = 3,0,{0,0,0,0,0},0.1}
+                .type = ATTR_TYPE_3,
+                0,{0,0,0,0,0},0.1}
         },
-        0x40
+        .type = 0x40
     },
 
     // "<!ELEMENT location        (#PCDATA)>",
@@ -364,14 +364,7 @@ Element objs[]={
             TEXT,
             PARLIST
         },
-        .att = {
-            {
-                .name = "",
-                .type = 0,
-                0,{0,0,0,0,0}
-            }
-        },
-        0x02
+        .type = 0x02
     },
 
     // "<!ELEMENT parlist	  (listitem)*>",
@@ -387,9 +380,7 @@ Element objs[]={
     {
         .id = TEXT,
         .name = "text",
-        .elm = {},
-        .att = {{.name = "",0,0,{0,0,0,0,0}}},
-        0x01
+        .type = 0x01
     },
 
     // "<!ELEMENT listitem        (text | parlist)*>",
@@ -400,13 +391,7 @@ Element objs[]={
             TEXT,
             PARLIST
         },
-        .att = {
-            {
-                .name = "",
-                .type = 0,0,{0,0,0,0,0}
-            }
-        },
-        0x02
+        .type = 0x02
     },
 
     // "<!ELEMENT shipping        (#PCDATA)>",
@@ -422,8 +407,9 @@ Element objs[]={
         .att = {
             {
                 .name = "\1",
-                .type = 2,
-                CATEGORY,{1,0,0,0,0}
+                .type = ATTR_TYPE_2,
+                CATEGORY,
+                {1,0,0,0,0}
             }
         }
     },
@@ -484,9 +470,13 @@ Element objs[]={
         .att = {
             {
                 .name = "id",
-                .type = 1,0,{0,0,0,0,0}, 0}
+                .type = ATTR_TYPE_1,
+                0,
+                {0,0,0,0,0},
+                0
+            }
         },
-        0x40
+        .type = 0x40
     },
 
     // "<!ELEMENT emailaddress    (#PCDATA)>",
@@ -537,7 +527,8 @@ Element objs[]={
         .att = {
             {
                 .name = "income",
-                .type = 3,0,{0,0,0,0,0},1}
+                .type = ATTR_TYPE_3,
+                0,{0,0,0,0,0},1}
         }
     },
 
@@ -561,7 +552,10 @@ Element objs[]={
         .att = {
             {
                 .name = "\1",
-                .type = 2,CATEGORY,{1,0,0,0,0}}
+                .type = ATTR_TYPE_2,
+                CATEGORY,
+                {1,0,0,0,0}
+            }
         }
     },
 
@@ -580,7 +574,12 @@ Element objs[]={
         .id = WATCH,
         .name = "watch",
         .att = {
-            {.name = "\1", .type = 2,OPEN_TRANS,{1,0,0,0,0}}
+            {
+                .name = "\1",
+                .type = ATTR_TYPE_2,
+                OPEN_TRANS,
+                {1,0,0,0,0}
+            }
         }
     },
 
@@ -612,9 +611,11 @@ Element objs[]={
             INTERVAL
         },
         .att = {
-            {.name = "id", .type = 1,0,{0,0,0,0,0}}
+            {.name = "id", .type = ATTR_TYPE_1,
+            0,
+            {0,0,0,0,0}}
         },
-        0x04|0x40
+        .type = 0x04|0x40
     },
 
     // "<!ELEMENT privacy (#PCDATA)>",
@@ -635,7 +636,12 @@ Element objs[]={
         .id = ITEMREF,
         .name = "itemref",
         .att = {
-            {.name = "\1", .type = 2,ITEM,{1,0,0,0,0}}
+            {
+                .name = "\1",
+                .type = ATTR_TYPE_2,
+                ITEM,
+                {1,0,0,0,0}
+            }
         }
     },
 
@@ -666,7 +672,7 @@ Element objs[]={
         .att = {
             {
                 .name = "\1",
-                .type = 2,
+                .type = ATTR_TYPE_2,
                 PERSON,{1,0,0,0,0}
             }
         }
@@ -679,7 +685,10 @@ Element objs[]={
         .name = "seller",
         .att = {
             {.name = "\1",
-            .type = 2,PERSON,{2,0.5,0.10,0,0}}
+            .type = ATTR_TYPE_2,
+            PERSON,
+            {2,0.5,0.10,0,0}
+            }
         }
     },
 
@@ -722,11 +731,7 @@ Element objs[]={
             TYPE,
             ANNOTATION
         },
-        .att = {
-            {.name = "",
-            .type = 0,0,{0,0,0,0,0}}
-        },
-        0x04|0x40
+        .type = 0x04|0x40
     },
 
     // "<!ELEMENT price   (#PCDATA)>",
@@ -738,7 +743,9 @@ Element objs[]={
         .id = BUYER,
         .name = "buyer",
         .att = {
-            {.name = "\1",.type = 2,PERSON,{2,0.5,0.10,0,0}}
+            {.name = "\1",
+            .type = ATTR_TYPE_2,
+            PERSON,{2,0.5,0.10,0,0}}
         }
     },
 
@@ -763,7 +770,8 @@ Element objs[]={
         .name = "author",
         .att = {
             {.name = "\1",
-            .type = 2,PERSON,{1,0,0,1,1}}
+            .type = ATTR_TYPE_2,
+            PERSON,{1,0,0,1,1}}
         }
     }
 };

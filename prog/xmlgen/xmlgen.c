@@ -340,12 +340,6 @@ int GenRef(schema.ProbDesc *pd, int type)
     return (int)GenRandomNum(&global_GenRef_pdnew);
 }
 
-enum {
-    ATTR_TYPE_1 = 1,
-    ATTR_TYPE_2 = 2,
-    ATTR_TYPE_3 = 3
-};
-
 void OpeningTag(FILE *out, schema.Element *element) {
     fprintf(out, "<%s", element->name);
 
@@ -365,17 +359,17 @@ void OpeningTag(FILE *out, schema.Element *element) {
         }
 
         switch (att->type) {
-            case ATTR_TYPE_1:
+            case schema.ATTR_TYPE_1:
                 fprintf(out, " %s=\"%s%d\"", attname, element->name, element->set.id++);
                 break;
-            case ATTR_TYPE_2:
+            case schema.ATTR_TYPE_2:
                 int ref=0;
                 if (!ItemIdRef(element, &ref)) {
                     ref=GenRef(&att->pd,att->ref);
                 }
                 fprintf(out," %s=\"%s%d\"", attname, schema.GetSchemaNode(att->ref)->name, ref);
                 break;
-            case ATTR_TYPE_3:
+            case schema.ATTR_TYPE_3:
                 if (rnd.uniform(0, 1) < att->prcnt) {
                     if (!strcmp(attname,"income")) {
                         double d = 40000 + 30000 * rnd.gauss();
