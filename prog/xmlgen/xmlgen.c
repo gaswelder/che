@@ -132,15 +132,15 @@ void Tree(FILE *out, schema.Element *element) {
                 exit(1);
             }
         }
-        for (int i=0; i<oldstackdepth; i++) {
-            OpeningTag(stack[i]);
+        for (int i=0; i < oldstackdepth; i++) {
+            OpeningTag(out, stack[i]);
         }
         splitcnt=0;
 
         GenSubtree_splitnow = false;
     }
 
-    OpeningTag(element);
+    OpeningTag(out, element);
     
     element->flag++;
 
@@ -346,34 +346,35 @@ enum {
     ATTR_TYPE_3 = 3
 };
 
-void OpeningTag(schema.Element *element) {
-    schema.AttDesc *att=0;
-    stack[stackdepth++]=element;
-    fprintf(xmlout,"<%s",element->name);
-    for (int i=0;i<5;i++) {
-        att=&element->att[i];
-        if (att->name[0]=='\0') {
+void OpeningTag(FILE *out, schema.Element *element) {
+    fprintf(out, "<%s", element->name);
+
+    stack[stackdepth++] = element;
+
+    for (int i=0; i<5; i++) {
+        schema.AttDesc *att = &element->att[i];
+        if (att->name[0] == '\0') {
             break;
         }
 
         char *attname;
-        if (att->name[0]=='\1') {
+        if (att->name[0] == '\1') {
             attname = schema.GetSchemaNode(att->ref)->name;
         } else {
-            attname=att->name;
+            attname = att->name;
         }
 
-        switch(att->type) {
+        switch (att->type) {
             case ATTR_TYPE_1:
-                fprintf(xmlout," %s=\"%s%d\"", attname,element->name,element->set.id++);
+                fprintf(out, " %s=\"%s%d\"", attname, element->name, element->set.id++);
                 break;
             case ATTR_TYPE_2:
                 int ref=0;
                 if (!ItemIdRef(element, &ref)) {
                     ref=GenRef(&att->pd,att->ref);
                 }
-                fprintf(xmlout," %s=\"%s%d\"", attname, schema.GetSchemaNode(att->ref)->name, ref);
-            break;
+                fprintf(out," %s=\"%s%d\"", attname, schema.GetSchemaNode(att->ref)->name, ref);
+                break;
             case ATTR_TYPE_3:
                 if (rnd.uniform(0, 1) < att->prcnt) {
                     if (!strcmp(attname,"income")) {
@@ -381,24 +382,23 @@ void OpeningTag(schema.Element *element) {
                         if (d < 9876) {
                             d = 9876;
                         }
-                        fprintf(xmlout," %s=\"%.2f\"",attname, d);
+                        fprintf(out," %s=\"%.2f\"",attname, d);
                     } else {
-                        fprintf(xmlout," %s=\"yes\"",attname);
+                        fprintf(out," %s=\"yes\"",attname);
                     }
                 }
                 break;
             default:
-                fflush(xmlout);
-                fprintf(stderr,"unknown ATT type %s\n",attname);
-                exit(1);
+                fflush(out);
+                panic("unknown ATT type %s\n", attname);
         }
     }
     if (element->elm[0] == 0 && (element->att[0].name[0])) {
-        fprintf(xmlout,"/>\n");
+        fprintf(out,"/>\n");
     } else {
-        fprintf(xmlout,">");
+        fprintf(out,">");
         if (element->elm[0] != 0 || element->type & 0x01) {
-            fprintf(xmlout,"\n");
+            fprintf(out,"\n");
         }
     }
 }

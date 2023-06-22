@@ -284,7 +284,6 @@ Element objs[]={
     {
         .id = EDGE,
         .name = "edge",
-        .elm = {},
         .att = {
             {
                 .name = "from",
