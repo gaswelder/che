@@ -268,7 +268,7 @@ void Tree(FILE *out, schema.Element *element) {
         default:
             has_content = false;
     }
-    if (has_content && element->elm[0].id != 0) {
+    if (has_content && element->elm[0] != 0) {
         fprintf(out,"\n");
     }
 
@@ -276,15 +276,15 @@ void Tree(FILE *out, schema.Element *element) {
         schema.Element *root;
         double alt = rnd.uniform(0, 1);
         double sum = 0;
-        schema.ElmDesc *ed = element->elm;            
-        while (ed->id) {
-            schema.ProbDesc pd = schema.probDescForChild(element, ed);
+        int *child_id = element->elm;            
+        while (*child_id) {
+            schema.ProbDesc pd = schema.probDescForChild(element, *child_id);
             sum += pd.mean;
             if (sum >= alt) {
-                root = schema.GetSchemaNode(ed->id);
+                root = schema.GetSchemaNode(*child_id);
                 break;
             }
-            ed++;
+            child_id++;
         }
         if (!root) {
             panic("failed to determine root");
@@ -292,14 +292,14 @@ void Tree(FILE *out, schema.Element *element) {
         Tree(out, root);
     }
     else {
-        schema.ElmDesc *ed = element->elm;
-        while (ed->id) {
-            schema.ProbDesc pd = schema.probDescForChild(element, ed);
+        int *child_id = element->elm;
+        while (*child_id) {
+            schema.ProbDesc pd = schema.probDescForChild(element, *child_id);
             int num = (int)(GenRandomNum(&pd) + 0.5);
             for (int i = 0; i < num; i++) {
-                Tree(out, schema.GetSchemaNode(ed->id));
+                Tree(out, schema.GetSchemaNode(*child_id));
             }
-            ed++;
+            child_id++;
         }
     }
     ClosingTag(element);
@@ -393,11 +393,11 @@ void OpeningTag(schema.Element *element) {
                 exit(1);
         }
     }
-    if (element->elm[0].id == 0 && (element->att[0].name[0])) {
+    if (element->elm[0] == 0 && (element->att[0].name[0])) {
         fprintf(xmlout,"/>\n");
     } else {
         fprintf(xmlout,">");
-        if (element->elm[0].id != 0 || element->type & 0x01) {
+        if (element->elm[0] != 0 || element->type & 0x01) {
             fprintf(xmlout,"\n");
         }
     }
@@ -408,7 +408,7 @@ void ClosingTag(schema.Element *element) {
     if (element->type & 0x01) {
         fprintf(xmlout,"\n");
     }
-    if ((element->att[0].name[0]) && !(element->elm[0].id!=0)) {
+    if ((element->att[0].name[0]) && element->elm[0] == 0) {
         return;
     }
     fprintf(xmlout,"</%s>\n",element->name);
