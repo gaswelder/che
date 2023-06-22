@@ -31,6 +31,12 @@ const int COUNTRIES_USA = 0;
 
 schema.Element *stack[64] = {};
 
+typedef {
+    schema.ProbDesc genref_pdnew;
+} generator_state_t;
+
+generator_state_t GLOBAL_STATE = {};
+
 int main(int argc, char **argv)
 {
     bool dumpdtd = false;
@@ -321,25 +327,6 @@ FILE *OpenOutput_split(const char *global_outputname, int fileno) {
     return f;
 }
 
-schema.ProbDesc global_GenRef_pdnew = {};
-
-int GenRef(schema.ProbDesc *pd, int type)
-{
-    schema.Element* od = schema.GetSchemaNode(type);
-    if (pd->type!=0)
-        {
-            global_GenRef_pdnew.min=0;
-            global_GenRef_pdnew.max=od->set.size-1;
-            global_GenRef_pdnew.type=pd->type;
-            if (pd->type!=1)
-                {
-                    global_GenRef_pdnew.mean=pd->mean*global_GenRef_pdnew.max;
-                    global_GenRef_pdnew.dev=pd->dev*global_GenRef_pdnew.max;
-                }
-        }
-    return (int)GenRandomNum(&global_GenRef_pdnew);
-}
-
 void OpeningTag(FILE *out, schema.Element *element) {
     fprintf(out, "<%s", element->name);
 
@@ -366,7 +353,18 @@ void OpeningTag(FILE *out, schema.Element *element) {
                 int ref=0;
                 if (!ItemIdRef(element, &ref)) {
                     schema.ProbDesc pd = schema.probDescForAttr(element->id, att->name);
-                    ref = GenRef(&pd, att->ref);
+                    int element_id = att->ref;
+                    schema.Element* element = schema.GetSchemaNode(element_id);
+                    if (pd.type != 0) {
+                        GLOBAL_STATE.genref_pdnew.type = pd.type;
+                        GLOBAL_STATE.genref_pdnew.min = 0;
+                        GLOBAL_STATE.genref_pdnew.max = element->set.size - 1;
+                        if (pd.type != 1) {
+                            GLOBAL_STATE.genref_pdnew.mean = pd.mean * GLOBAL_STATE.genref_pdnew.max;
+                            GLOBAL_STATE.genref_pdnew.dev = pd.dev * GLOBAL_STATE.genref_pdnew.max;
+                        }
+                    }
+                    ref = (int) GenRandomNum(&GLOBAL_STATE.genref_pdnew);
                 }
                 fprintf(out," %s=\"%s%d\"", attname, schema.GetSchemaNode(att->ref)->name, ref);
                 break;
