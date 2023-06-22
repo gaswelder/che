@@ -6,6 +6,7 @@
 #import strings
 #import time
 #import http
+#import os/io
 
 #import lkbuffer.c
 #import lkconfig.c
@@ -26,20 +27,15 @@
 
 enum {FD_SOCK, FD_FILE};
 
-
-
 pub typedef {
     lkconfig.LKConfig *cfg;
     lkcontext.LKContext *ctxhead;
-    
-    // Sparse list of client connections.
-    net.net_t *clients[MAX_CLIENTS];
-} LKHttpServer;
+    io.pool_t *handlepool;
+} server_t;
 
 pub bool lk_httpserver_serve(lkconfig.LKConfig *cfg) {
-    LKHttpServer httpserver = {
-        .cfg = cfg,
-        .ctxhead = NULL
+    server_t server = {
+        .cfg = cfg
     };
 
     /*
@@ -58,88 +54,117 @@ pub bool lk_httpserver_serve(lkconfig.LKConfig *cfg) {
     misc.setenv("SERVER_PORT", cfg->port, 1);
 
     /*
-     * Start listening and create a pool for incoming connections.
+     * Start listening.
      */
     char *addr = strings.newstr("%s:%s", cfg->serverhost, cfg->port);
-    net.net_t *listen_conn = net.net_listen("tcp", addr);
-    if (!listen_conn) {
+    io.handle_t *listener = io.listen("tcp", addr);
+    if (!listener) {
+        fprintf(stderr, "listen failed: %s\n", strerror(errno));
         free(addr);
         return false;
     }
-    printf("Serving at http://%s\n", net.net_addr(listen_conn));
+    printf("listening at %d\n", listener->fd);
+    printf("Serving at http://%s\n", addr);
     free(addr);
-    net.pool_t *p = net.new_pool();
-    if (!p) {
-        fprintf(stderr, "failed to create a connections pool\n");
-        exit(1);
-    }
-    net.pool_add(p, listen_conn);
-    
 
+    /*
+     * Create an IO pool for polling.
+     */
+    server.handlepool = io.new_pool();
+    if (!server.handlepool) {
+        panic("failed to create an IO pool: %s\n", strerror(errno));
+    }
+    io.add(server.handlepool, listener);
+
+    /*
+     * Poll and process the handles.
+     */
     while (true) {
-        net.event_t *ev = net.get_event(p);
-        printf("got event, conn = %d, read = %d\n", ev->conn->fd, ev->read);
-        if (ev->conn == listen_conn && ev->read) {
-            printf("accepting on %d\n", ev->conn->fd);
-            net.net_t *client = net.net_accept(listen_conn);
-            if (!client) {
-                fprintf(stderr, "accept failed: %s, %s\n", net.net_error(), strerror(errno));
+        io.event_t *ev = io.poll(server.handlepool, io.READABLE | io.WRITABLE);
+        while (ev->handle) {
+            printf("poll result: %d, r=%d, w=%d\n", ev->handle->fd, ev->readable, ev->writable);
+            if (ev->handle == listener) {
+                if (!accept_client(&server, ev)) {
+                    panic("accept failed: %s\n", strerror(errno));    
+                }
+                ev++;
                 continue;
             }
-            // hack
-            int clientfd = client->fd;
-            lkcontext.LKContext *ctx = lkcontext.create_initial_context(clientfd);
-            ctx->conn = client;
-            lkcontext.add_new_client_context(&httpserver.ctxhead, ctx);
-            net.pool_add(p, client);
-            continue;
-        }
-
-        // hack
-        int selectfd = ev->conn->fd;
-        lkcontext.LKContext *ctx = lkcontext.match_select_ctx(httpserver.ctxhead, selectfd);
-        if (ctx == NULL) {
-            printf("selectfd %d not in ctx list\n", selectfd);
-            terminate_sock(selectfd, FD_READ, &httpserver);
-            net.pool_remove(p, ev->conn);
-            continue;
-        }
-        if (ev->read) {
-            process_readable_client(&httpserver, ctx);
-        }
-        if (ev->write) {
-            process_writable_client(&httpserver, ctx);
+            if (!process_event(&server, ev)) {
+                panic("event processing failed: %s\n", strerror(errno));
+            }
+            ev++;
         }
     }
 
-    lkconfig.lk_config_free(httpserver.cfg);
-    lkcontext.LKContext *ctx = httpserver.ctxhead;
-    while (ctx != NULL) {
-        lkcontext.LKContext *ptmp = ctx;
-        ctx = ctx->next;
-        lkcontext.lk_context_free(ptmp);
+    panic("unreachable");
+}
+
+bool accept_client(server_t *s, io.event_t *ev) {
+    printf("accepting at %d\n", ev->handle->fd);
+    io.handle_t *conn = io.accept(ev->handle);
+    printf("accepted\n");
+    if (!conn) {
+        fprintf(stderr, "accept failed: %s\n", strerror(errno));
+        return false;
     }
-    memset(&httpserver, 0, sizeof(LKHttpServer));
+
+    lkcontext.LKContext *ctx = lkcontext.create_initial_context(conn);
+    lkcontext.add_new_client_context(&s->ctxhead, ctx);
+    io.add(s->handlepool, conn);
     return true;
 }
 
-void process_readable_client(LKHttpServer *httpserver, lkcontext.LKContext *ctx) {
-    printf("process_readable_client\n");
-
-    // Put incoming data into the client's buffer.
-    int r = net.readconn(ctx->conn,
-        ctx->input_buffer + ctx->input_buffer_len,
-        sizeof(ctx->input_buffer) - ctx->input_buffer_len);
-    if (r < 0) {
-        fprintf(stderr, "readconn failed: %s\n", strerror(errno));
-        return;
+bool process_event(server_t *s, io.event_t *ev) {
+    printf("processing the event\n");
+    lkcontext.LKContext *ctx = s->ctxhead;
+    while (ctx) {
+        if (ev->handle == ctx->client_handle) {
+            // Have space and can read
+            if (ev->readable && io.bufspace(ctx->inbuf) > 0) {
+                if (!io.read(ev->handle, ctx->inbuf)) {
+                    fprintf(stderr, "read failed: %s\n", strerror(errno));
+                    return false;
+                }
+            }
+            // Have data to write and can write
+            if (ev->writable && io.bufsize(ctx->outbuf) > 0) {
+                if (!io.write(ev->handle, ctx->outbuf)) {
+                    fprintf(stderr, "write failed: %s\n", strerror(errno));
+                    return false;
+                }
+            }
+            return process_ctx(s, ctx);
+        }
+        if (ev->handle == ctx->data_handle) {
+            if (ev->readable && io.bufspace(ctx->outbuf)) {
+                if (!io.read(ev->handle, ctx->outbuf)) {
+                    fprintf(stderr, "read failed: %s\n", strerror(errno));
+                    return false;
+                }
+            }
+        }
+        return process_ctx(s, ctx);
+        ctx = ctx->next;
     }
-    ctx->input_buffer_len += r;
+    fprintf(stderr, "failed to find ctx for the event\n");
+    return false;
+}
 
-    // Debug output
+void print_buf(io.buf_t *b) {
     char tmp[4096] = {0};
-    memcpy(tmp, ctx->input_buffer, ctx->input_buffer_len);
-    fprintf(stderr, "got %d bytes of data: %s\n", r, tmp);
+    memcpy(tmp, b->data, b->size);
+    fprintf(stderr, "%zu bytes: %s\n", b->size, tmp);
+}
+
+bool process_ctx(server_t *httpserver, lkcontext.LKContext *ctx) {
+    printf("process_ctx\n");
+
+    printf("input buffer:\n");
+    print_buf(ctx->inbuf);
+
+    printf("output buffer:\n");
+    print_buf(ctx->outbuf);
 
     // Try processing the new data by calling the corresponding handler on
     // the context. If the handler returns false, the new data wasn't enough to
@@ -149,18 +174,10 @@ void process_readable_client(LKHttpServer *httpserver, lkcontext.LKContext *ctx)
         printf("ctx state = %d\n", ctx->type);
         switch (ctx->type) {
         case lkcontext.CTX_READ_REQ:
-            ok = read_request(ctx);
+            ok = parse_request(ctx);
             break;
         case lkcontext.CTX_RESOLVE_REQ:
             ok = resolve_request(httpserver, ctx);
-            break;
-        case lkcontext.CTX_WRITE_DATA:
-            printf("writing output\n");
-            printf("output size = %zu\n", ctx->output_buffer_len);
-            int n = net.net_write(ctx->conn, ctx->output_buffer, ctx->output_buffer_len);
-            printf("written %d bytes\n", n);
-            net.net_close(ctx->conn);
-            ok = false;
             break;
         default:
             panic("unhandled ctx state: %d", ctx->type);
@@ -174,14 +191,16 @@ void process_readable_client(LKHttpServer *httpserver, lkcontext.LKContext *ctx)
         panic("todo");
         pipe_proxy_response(httpserver, ctx);
     }
+
+    return true;
 }
 
-bool read_request(lkcontext.LKContext *ctx) {
-    fprintf(stderr, "reading head\n");
+bool parse_request(lkcontext.LKContext *ctx) {
+    fprintf(stderr, "reading request\n");
 
     // See if the input buffer has a finished request header yet.
-    char *split = strstr(ctx->input_buffer, "\r\n\r\n");
-    if (!split || (size_t)(split - ctx->input_buffer) > ctx->input_buffer_len) {
+    char *split = strstr(ctx->inbuf->data, "\r\n\r\n");
+    if (!split || (size_t)(split - ctx->inbuf->data) > ctx->inbuf->size) {
         fprintf(stderr, "no complete header yet\n");
         return false;
     }
@@ -189,11 +208,9 @@ bool read_request(lkcontext.LKContext *ctx) {
 
     // Extract the headers and shift the buffer.
     char head[4096] = {0};
-    size_t headlen = split - ctx->input_buffer;
-    memcpy(head, ctx->input_buffer, headlen);
+    size_t headlen = split - ctx->inbuf->data;
+    io.shift(ctx->inbuf, headlen);
     fprintf(stderr, "got head: -----[%s]----\n", head);
-    ctx->input_buffer_len -= headlen;
-    memmove(ctx->input_buffer, split, ctx->input_buffer_len);
 
     // Parse the request.
     if (!http.parse_request(&ctx->req->req, head)) {
@@ -205,7 +222,7 @@ bool read_request(lkcontext.LKContext *ctx) {
     return true;
 }
 
-bool resolve_request(LKHttpServer *server, lkcontext.LKContext *ctx) {
+bool resolve_request(server_t *server, lkcontext.LKContext *ctx) {
     printf("resolve_request\n");
 
     // Get the hostname from the request.
@@ -256,22 +273,27 @@ bool resolve_request(LKHttpServer *server, lkcontext.LKContext *ctx) {
         return true;
     }
 
-    
-    ctx->output_buffer_len = 0;
+
 
     if (!strcmp(req->method, "GET")) {
         printf("processing GET\n");
         char *filepath = srvfiles.resolve(hc->homedir->s, req->path);
         if (!filepath) {
-            char *p = ctx->output_buffer;
-            p += sprintf(p, "%s 404 Not Found\n", req->version);
-            p += sprintf(p, "Content-Length: %ld\n", strlen(NOT_FOUND_MESSAGE));
-            p += sprintf(p, "Content-Type: text/plain\n");
-            p += sprintf(p, "\n");
-            p += sprintf(p, "%s", NOT_FOUND_MESSAGE);
-            ctx->output_buffer_len = p - ctx->output_buffer;
-            printf("written %zu bytes to the output buffer\n", ctx->output_buffer_len);
-            ctx->type = lkcontext.CTX_WRITE_DATA;
+            printf("file not found, serving 404\n");
+            bool ok = io.pushf(ctx->outbuf,
+                "%s 404 Not Found\n"
+                "Content-Length: %ld\n"
+                "Content-Type: text/plain\n",
+                "\n"
+                "%s",
+                req->version,
+                strlen(NOT_FOUND_MESSAGE),
+                NOT_FOUND_MESSAGE
+            );
+            if (!ok) {
+                panic("failed to write to the output buffer");
+            }
+            printf("written to the output buffer\n");
             return true;
         }
 
@@ -287,13 +309,23 @@ bool resolve_request(LKHttpServer *server, lkcontext.LKContext *ctx) {
         }
 
         // Format the response.
-        char *p = ctx->output_buffer;
-        p += sprintf(p, "%s 200 OK\n", req->version);
-        p += sprintf(p, "Content-Length: %ld\n", filesize);
-        p += sprintf(p, "Content-Type: %s\n", content_type);
-        p += sprintf(p, "\n");
-        memcpy(p, data, filesize);
-        ctx->output_buffer_len = filesize + (p - ctx->output_buffer);
+        bool ok = io.pushf(ctx->outbuf,
+            "%s 200 OK\n"
+            "Content-Length: %ld\n"
+            "Content-Type: %s\n"
+            "\n",
+            req->version,
+            filesize,
+            content_type
+        );
+        if (!ok) {
+            panic("failed to write response headers");
+        }
+
+        if (!io.push(ctx->outbuf, data, filesize)) {
+            panic("failed to write data to the buffer");
+        }
+        
         ctx->type = lkcontext.CTX_WRITE_DATA;
         free(filepath);
         return true;
@@ -344,21 +376,21 @@ bool resolve_request(LKHttpServer *server, lkcontext.LKContext *ctx) {
     return false;
 }
 
-void process_writable_client(LKHttpServer *server, lkcontext.LKContext *ctx) {
-    if (ctx->type == lkcontext.CTX_WRITE_DATA) {
-        assert(ctx->resp != NULL);
-        assert(ctx->resp->head != NULL);
-        write_response(server, ctx);
-    } else if (ctx->type == lkcontext.CTX_WRITE_CGI_INPUT) {
-        write_cgi_input(server, ctx);
-    } else if (ctx->type == lkcontext.CTX_PROXY_WRITE_REQ) {
-        assert(ctx->req != NULL);
-        assert(ctx->req->head != NULL);
-        write_proxy_request(server, ctx);
-    } else {
-        printf("write_client: unknown ctx type %d\n", ctx->type);
-    }
-}
+// void process_writable_client(server_t *server, lkcontext.LKContext *ctx) {
+//     if (ctx->type == lkcontext.CTX_WRITE_DATA) {
+//         assert(ctx->resp != NULL);
+//         assert(ctx->resp->head != NULL);
+//         write_response(server, ctx);
+//     } else if (ctx->type == lkcontext.CTX_WRITE_CGI_INPUT) {
+//         write_cgi_input(server, ctx);
+//     } else if (ctx->type == lkcontext.CTX_PROXY_WRITE_REQ) {
+//         assert(ctx->req != NULL);
+//         assert(ctx->req->head != NULL);
+//         write_proxy_request(server, ctx);
+//     } else {
+//         printf("write_client: unknown ctx type %d\n", ctx->type);
+//     }
+// }
 
 
 // Sets the cgi environment variables that vary for each http request.
@@ -418,33 +450,35 @@ void set_cgi_env2(lkcontext.LKContext *ctx, lkhostconfig.LKHostConfig *hc) {
 }
 
 
-// Send cgi_inputbuf input bytes to cgi program stdin set in selectfd.
-void write_cgi_input(LKHttpServer *server, lkcontext.LKContext *ctx) {
-    assert(ctx->cgi_inputbuf != NULL);
-    int z = lknet.lk_write_all_file(ctx->selectfd, ctx->cgi_inputbuf);
-    if (z == lknet.Z_BLOCK) {
-        return;
-    }
-    if (z == lknet.Z_ERR) {
-        lk_print_err("write_cgi_input lknet.lk_write_all_file()");
-        z = terminate_fd(ctx->cgifd, FD_WRITE, server);
-        if (z == 0) {
-            ctx->cgifd = 0;
-        }
-        lkcontext.remove_selectfd_context(&server->ctxhead, ctx->selectfd);
-        return;
-    }
-    if (z == lknet.Z_EOF) {
-        // Completed writing input bytes.
-        // FD_CLR_WRITE(ctx->selectfd, server);
-        // shutdown(ctx->selectfd, SHUT_WR);
-        lkcontext.remove_selectfd_context(&server->ctxhead, ctx->selectfd);
-    }
-}
+// // Send cgi_inputbuf input bytes to cgi program stdin set in selectfd.
+// void write_cgi_input(server_t *server, lkcontext.LKContext *ctx) {
+//     assert(ctx->cgi_inputbuf != NULL);
+//     int fd = ctx->data_handle->fd;
+//     int z = lknet.lk_write_all_file(fd, ctx->cgi_inputbuf);
+//     if (z == lknet.Z_BLOCK) {
+//         return;
+//     }
+//     if (z == lknet.Z_ERR) {
+//         lk_print_err("write_cgi_input lknet.lk_write_all_file()");
+//         z = terminate_fd(ctx->cgifd, FD_WRITE, server);
+//         if (z == 0) {
+//             ctx->cgifd = 0;
+//         }
+//         // lkcontext.remove_selectfd_context(&server->ctxhead, fd);
+//         return;
+//     }
+//     if (z == lknet.Z_EOF) {
+//         // Completed writing input bytes.
+//         // FD_CLR_WRITE(fd, server);
+//         // shutdown(fd, SHUT_WR);
+//         // lkcontext.remove_selectfd_context(&server->ctxhead, fd);
+//     }
+// }
 
 // Read cgi output to cgi_outputbuf.
-void read_cgi_output(LKHttpServer *server, lkcontext.LKContext *ctx) {
-    int z = lknet.lk_read_all_file(ctx->selectfd, ctx->cgi_outputbuf);
+void read_cgi_output(server_t *server, lkcontext.LKContext *ctx) {
+    int fd = 0;
+    int z = lknet.lk_read_all_file(fd, NULL);
     if (z == lknet.Z_BLOCK) {
         return;
     }
@@ -475,7 +509,7 @@ void read_cgi_output(LKHttpServer *server, lkcontext.LKContext *ctx) {
 
 const char *NOT_FOUND_MESSAGE = "File not found on the server.";
 
-void serve_cgi(LKHttpServer *server, lkcontext.LKContext *ctx, lkhostconfig.LKHostConfig *hc) {
+void serve_cgi(server_t *server, lkcontext.LKContext *ctx, lkhostconfig.LKHostConfig *hc) {
     request.LKHttpRequest *req = ctx->req;
     request.LKHttpResponse *resp = ctx->resp;
     char *path = ctx->req->req.path;
@@ -521,7 +555,7 @@ void serve_cgi(LKHttpServer *server, lkcontext.LKContext *ctx, lkhostconfig.LKHo
     OS.close(fd_in);
 
     // Read cgi output in select()
-    ctx->selectfd = fd_out;
+    // ctx->selectfd = fd_out;
     ctx->cgifd = fd_out;
     ctx->type = lkcontext.CTX_READ_CGI_OUTPUT;
     ctx->cgi_outputbuf = lkbuffer.lk_buffer_new(0);
@@ -531,9 +565,9 @@ void serve_cgi(LKHttpServer *server, lkcontext.LKContext *ctx, lkhostconfig.LKHo
         lkcontext.LKContext *ctx_in = lkcontext.lk_context_new();
         lkcontext.add_context(&server->ctxhead, ctx_in);
 
-        ctx_in->selectfd = fd_in;
+        // ctx_in->selectfd = fd_in;
         ctx_in->cgifd = fd_in;
-        ctx_in->clientfd = ctx->clientfd;
+        // ctx_in->clientfd = ctx->clientfd;
         ctx_in->type = lkcontext.CTX_WRITE_CGI_INPUT;
 
         ctx_in->cgi_inputbuf = lkbuffer.lk_buffer_new(0);
@@ -543,7 +577,7 @@ void serve_cgi(LKHttpServer *server, lkcontext.LKContext *ctx, lkhostconfig.LKHo
     }
 }
 
-void process_response(LKHttpServer *server, lkcontext.LKContext *ctx) {
+void process_response(server_t *server, lkcontext.LKContext *ctx) {
     (void) server;
     http.request_t *req = &ctx->req->req;
     request.LKHttpResponse *resp = ctx->resp;
@@ -567,7 +601,7 @@ void process_response(LKHttpServer *server, lkcontext.LKContext *ctx) {
             resp->status, resp->statustext->s);
     }
 
-    ctx->selectfd = ctx->clientfd;
+    // ctx->selectfd = ctx->clientfd;
     ctx->type = lkcontext.CTX_WRITE_DATA;
     // FD_SET_WRITE(ctx->selectfd, server);
     lkreflist.lk_reflist_clear(ctx->buflist);
@@ -598,7 +632,7 @@ void lk_httpresponse_finalize(request.LKHttpResponse *resp) {
     lkbuffer.lk_buffer_append(resp->head, "\r\n", 2);
 }
 
-void process_error_response(LKHttpServer *server, lkcontext.LKContext *ctx, int status, char *msg) {
+void process_error_response(server_t *server, lkcontext.LKContext *ctx, int status, char *msg) {
     request.LKHttpResponse *resp = ctx->resp;
     resp->status = status;
     lkstring.lk_string_assign(resp->statustext, msg);
@@ -630,23 +664,24 @@ const char *fileext(const char *filepath) {
     return filepath;
 }
 
-void write_response(LKHttpServer *server, lkcontext.LKContext *ctx) {
-    int z = lk_buflist_write_all(ctx->selectfd, FD_SOCK, ctx->buflist);
-    if (z == lknet.Z_BLOCK) {
-        return;
-    }
-    if (z == lknet.Z_ERR) {
-        lk_print_err("write_response lk_buflist_write_all()");
-        terminate_client_session(server, ctx);
-        return;
-    }
-    if (z == lknet.Z_EOF) {
-        // Completed sending http response.
-        terminate_client_session(server, ctx);
-    }
-}
+// void write_response(server_t *server, lkcontext.LKContext *ctx) {
+//     int fd = 0;
+//     int z = lk_buflist_write_all(fd, FD_SOCK, ctx->buflist);
+//     if (z == lknet.Z_BLOCK) {
+//         return;
+//     }
+//     if (z == lknet.Z_ERR) {
+//         lk_print_err("write_response lk_buflist_write_all()");
+//         terminate_client_session(server, ctx);
+//         return;
+//     }
+//     if (z == lknet.Z_EOF) {
+//         // Completed sending http response.
+//         terminate_client_session(server, ctx);
+//     }
+// }
 
-void serve_proxy(LKHttpServer *server, lkcontext.LKContext *ctx, char *targethost) {
+void serve_proxy(server_t *server, lkcontext.LKContext *ctx, char *targethost) {
     net.net_t *proxyconn = net.net_open("tcp", targethost);
     if (!proxyconn) {
         lk_print_err("lk_open_connect_socket()");
@@ -659,7 +694,7 @@ void serve_proxy(LKHttpServer *server, lkcontext.LKContext *ctx, char *targethos
 
     lk_httprequest_finalize(ctx->req);
     ctx->proxyfd = proxyfd;
-    ctx->selectfd = proxyfd;
+    // ctx->selectfd = proxyfd;
     ctx->type = lkcontext.CTX_PROXY_WRITE_REQ;
     // FD_SET_WRITE(proxyfd, server);
     lkreflist.lk_reflist_clear(ctx->buflist);
@@ -686,49 +721,50 @@ void lk_httprequest_finalize(request.LKHttpRequest *wreq) {
     lkbuffer.lk_buffer_append(wreq->head, "\r\n", 2);
 }
 
-void write_proxy_request(LKHttpServer *server, lkcontext.LKContext *ctx) {
-    int z = lk_buflist_write_all(ctx->selectfd, FD_SOCK, ctx->buflist);
-    if (z == lknet.Z_BLOCK) {
-        return;
-    }
-    if (z == lknet.Z_ERR) {
-        lk_print_err("write_proxy_request lk_buflist_write_all");
-        z = terminate_sock(ctx->proxyfd, FD_WRITE, server);
-        if (z == 0) {
-            ctx->proxyfd = 0;
-        }
-        process_error_response(server, ctx, 500, "Error forwarding request to proxy.");
-        return;
-    }
-    if (z == lknet.Z_EOF) {
-        // Completed sending http request.
-        // FD_CLR_WRITE(ctx->selectfd, server);
-        // shutdown(ctx->selectfd, SHUT_WR);
+// void write_proxy_request(server_t *server, lkcontext.LKContext *ctx) {
+//     int fd = 0;
+//     int z = lk_buflist_write_all(fd, FD_SOCK, ctx->buflist);
+//     if (z == lknet.Z_BLOCK) {
+//         return;
+//     }
+//     if (z == lknet.Z_ERR) {
+//         lk_print_err("write_proxy_request lk_buflist_write_all");
+//         z = terminate_sock(ctx->proxyfd, FD_WRITE, server);
+//         if (z == 0) {
+//             ctx->proxyfd = 0;
+//         }
+//         process_error_response(server, ctx, 500, "Error forwarding request to proxy.");
+//         return;
+//     }
+//     if (z == lknet.Z_EOF) {
+//         // Completed sending http request.
+//         // FD_CLR_WRITE(ctx->selectfd, server);
+//         // shutdown(ctx->selectfd, SHUT_WR);
 
-        // Pipe proxy response from ctx->proxyfd to ctx->clientfd
-        ctx->type = lkcontext.CTX_PROXY_PIPE_RESP;
-        ctx->proxy_respbuf = lkbuffer.lk_buffer_new(0);
-        // FD_SET_READ(ctx->selectfd, server);
-    }
-}
+//         // Pipe proxy response from ctx->proxyfd to ctx->clientfd
+//         ctx->type = lkcontext.CTX_PROXY_PIPE_RESP;
+//         ctx->proxy_respbuf = lkbuffer.lk_buffer_new(0);
+//         // FD_SET_READ(ctx->selectfd, server);
+//     }
+// }
 
-// Similar to lknet.lk_write_all(), but sending buflist buf's sequentially.
-int lk_buflist_write_all(int fd, int fd_type, lkreflist.LKRefList *buflist) {
-    if (buflist->items_cur >= buflist->items_len) {
-        return lknet.Z_EOF;
-    }
+// // Similar to lknet.lk_write_all(), but sending buflist buf's sequentially.
+// int lk_buflist_write_all(int fd, int fd_type, lkreflist.LKRefList *buflist) {
+//     if (buflist->items_cur >= buflist->items_len) {
+//         return lknet.Z_EOF;
+//     }
 
-    lkbuffer.LKBuffer *buf = buflist->items[buflist->items_cur];
-    int z = lknet.lk_write_all(fd, fd_type, buf);
-    if (z == lknet.Z_EOF) {
-        buflist->items_cur++;
-        z = lknet.Z_OPEN;
-    }
-    return z;
-}
+//     lkbuffer.LKBuffer *buf = buflist->items[buflist->items_cur];
+//     int z = lknet.lk_write_all(fd, fd_type, buf);
+//     if (z == lknet.Z_EOF) {
+//         buflist->items_cur++;
+//         z = lknet.Z_OPEN;
+//     }
+//     return z;
+// }
 
-void pipe_proxy_response(LKHttpServer *server, lkcontext.LKContext *ctx) {
-    int z = lk_pipe_all(ctx->proxyfd, ctx->clientfd, FD_SOCK, ctx->proxy_respbuf);
+void pipe_proxy_response(server_t *server, lkcontext.LKContext *ctx) {
+    int z = lk_pipe_all(ctx->proxyfd, 0, FD_SOCK, ctx->proxy_respbuf);
     if (z == lknet.Z_OPEN || z == lknet.Z_BLOCK) {
         return;
     }
@@ -768,7 +804,7 @@ enum {
 }; // fd_action
 
 // Clear fd from select()'s, shutdown, and OS.close.
-int terminate_fd(int fd, int fd_action, LKHttpServer *server) {
+int terminate_fd(int fd, int fd_action, server_t *server) {
     (void) server;
     int z;
     if (fd_action == FD_READ || fd_action == FD_READWRITE) {
@@ -784,7 +820,7 @@ int terminate_fd(int fd, int fd_action, LKHttpServer *server) {
     return z;
 }
 
-int terminate_sock(int fd, int fd_action, LKHttpServer *server) {
+int terminate_sock(int fd, int fd_action, server_t *server) {
     (void) server;
     if (fd_action == FD_READ || fd_action == FD_READWRITE) {
         // FD_CLR_READ(fd, server);
@@ -800,18 +836,20 @@ int terminate_sock(int fd, int fd_action, LKHttpServer *server) {
 }
 
 // Disconnect from client.
-void terminate_client_session(LKHttpServer *server, lkcontext.LKContext *ctx) {
-    if (ctx->clientfd) {
-        terminate_sock(ctx->clientfd, FD_READWRITE, server);
-    }
-    if (ctx->cgifd) {
-        terminate_fd(ctx->cgifd, FD_READWRITE, server);
-    }
-    if (ctx->proxyfd) {
-        terminate_sock(ctx->proxyfd, FD_READWRITE, server);
-    }
+void terminate_client_session(server_t *server, lkcontext.LKContext *ctx) {
+    (void) server;
+    (void) ctx;
+    // if (ctx->clientfd) {
+    //     terminate_sock(ctx->clientfd, FD_READWRITE, server);
+    // }
+    // if (ctx->cgifd) {
+    //     terminate_fd(ctx->cgifd, FD_READWRITE, server);
+    // }
+    // if (ctx->proxyfd) {
+    //     terminate_sock(ctx->proxyfd, FD_READWRITE, server);
+    // }
     // Remove from linked list and free ctx.
-    lkcontext.remove_client_context(&server->ctxhead, ctx->clientfd);
+    lkcontext.remove_client_context(&server->ctxhead, 0);
 }
 
 

@@ -1,4 +1,4 @@
-#import os/net
+#import os/io
 
 #import lkbuffer.c
 #import lkhttprequestparser.c
@@ -26,25 +26,22 @@ pub enum {
 }; // LKContextType;
 
 pub typedef {
-    // Client connection
-    net.net_t *conn;
+    LKContext *next;         // link to next ctx
 
-    // Input data to be processed.
-    char input_buffer[4096];
-    size_t input_buffer_len;
 
-    // Output buffer
-    char output_buffer[4096];
-    size_t output_buffer_len;
+    io.handle_t *client_handle;
+    io.handle_t *data_handle;
+    
+    int type; // state, one of CTX_* constants
+
+    // Buffers for incoming and outgoing data.
+    io.buf_t *inbuf;
+    io.buf_t *outbuf;
 
     request.LKHttpRequest *req;               // http in process
 
-    int type; // state, one of CTX_* constants
-
-    int selectfd;
-    int clientfd;
+  
     
-    LKContext *next;         // link to next ctx
 
     // Used by CTX_READ_REQ:
     lkstring.LKString *client_ipaddr;          // client ip address string
@@ -72,9 +69,7 @@ pub typedef {
 /*** LKContext functions ***/
 pub LKContext *lk_context_new() {
     LKContext *ctx = calloc(1, sizeof(LKContext));
-    ctx->selectfd = 0;
-    ctx->clientfd = 0;
-    ctx->type = 0;
+    ctx->type = CTX_READ_REQ;
     ctx->next = NULL;
 
     ctx->client_ipaddr = NULL;
@@ -98,16 +93,13 @@ pub LKContext *lk_context_new() {
     return ctx;
 }
 
-pub LKContext *create_initial_context(int fd) {
+pub LKContext *create_initial_context(io.handle_t *h) {
     LKContext *ctx = calloc(1, sizeof(LKContext));
-    ctx->selectfd = fd;
-    ctx->clientfd = fd;
     ctx->type = CTX_READ_REQ;
-    ctx->next = NULL;
+    ctx->client_handle = h;
 
     ctx->req_line = lkstring.lk_string_new("");
     ctx->req_buf = lkbuffer.lk_buffer_new(0);
-    ctx->sr = socketreader.lk_socketreader_new(fd, 0);
     ctx->reqparser = lkhttprequestparser.lk_httprequestparser_new();
     ctx->req = request.lk_httprequest_new();
     ctx->resp = request.lk_httpresponse_new();
@@ -158,8 +150,6 @@ pub void lk_context_free(LKContext *ctx) {
         lkbuffer.lk_buffer_free(ctx->proxy_respbuf);
     }
 
-    ctx->selectfd = 0;
-    ctx->clientfd = 0;
     ctx->next = NULL;
     ctx->client_ipaddr = NULL;
     ctx->req_line = NULL;
@@ -189,10 +179,6 @@ pub void add_new_client_context(LKContext **pphead, LKContext *ctx) {
         // add client to end of clients list
         LKContext *p = *pphead;
         while (p->next != NULL) {
-            // ctx fd already exists
-            if (p->clientfd == ctx->clientfd) {
-                return;
-            }
             p = p->next;
         }
         p->next = ctx;
@@ -219,14 +205,14 @@ pub void add_context(LKContext **pphead, LKContext *ctx) {
 
 // Delete first ctx having clientfd from linked list.
 // Returns 1 if context was deleted, 0 if no deletion made.
-pub int remove_client_context(LKContext **pphead, int clientfd) {
+pub int remove_client_context(LKContext **pphead, io.handle_t *h) {
     assert(pphead != NULL);
 
     if (*pphead == NULL) {
         return 0;
     }
     // remove head ctx
-    if ((*pphead)->clientfd == clientfd) {
+    if (io.id((*pphead)->client_handle) == io.id(h)) {
         LKContext *tmp = *pphead;
         *pphead = (*pphead)->next;
         lk_context_free(tmp);
@@ -236,7 +222,7 @@ pub int remove_client_context(LKContext **pphead, int clientfd) {
     LKContext *p = *pphead;
     LKContext *prev = NULL;
     while (p != NULL) {
-        if (p->clientfd == clientfd) {
+        if (io.id(p->client_handle) == io.id(h)) {
             assert(prev != NULL);
             prev->next = p->next;
             lk_context_free(p);
@@ -251,10 +237,10 @@ pub int remove_client_context(LKContext **pphead, int clientfd) {
 }
 
 // Return ctx matching selectfd.
-pub LKContext *match_select_ctx(LKContext *phead, int selectfd) {
+pub LKContext *match_select_ctx(LKContext *phead, io.handle_t *h) {
     LKContext *ctx = phead;
     while (ctx != NULL) {
-        if (ctx->selectfd == selectfd) {
+        if (io.id(ctx->client_handle) == io.id(h)) {
             break;
         }
         ctx = ctx->next;
@@ -264,14 +250,14 @@ pub LKContext *match_select_ctx(LKContext *phead, int selectfd) {
 
 // Delete first ctx having selectfd from linked list.
 // Returns 1 if context was deleted, 0 if no deletion made.
-pub int remove_selectfd_context(LKContext **pphead, int selectfd) {
+pub int remove_selectfd_context(LKContext **pphead, io.handle_t *h) {
     assert(pphead != NULL);
 
     if (*pphead == NULL) {
         return 0;
     }
     // remove head ctx
-    if ((*pphead)->selectfd == selectfd) {
+    if (io.id((*pphead)->client_handle) == io.id(h)) {
         LKContext *tmp = *pphead;
         *pphead = (*pphead)->next;
         lk_context_free(tmp);
@@ -281,7 +267,7 @@ pub int remove_selectfd_context(LKContext **pphead, int selectfd) {
     LKContext *p = *pphead;
     LKContext *prev = NULL;
     while (p != NULL) {
-        if (p->selectfd == selectfd) {
+        if (io.id(p->client_handle) == io.id(h)) {
             assert(prev != NULL);
             prev->next = p->next;
             lk_context_free(p);
