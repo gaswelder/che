@@ -274,35 +274,45 @@ void Tree(FILE *out, schema.Element *element) {
 
     if (element->type & 0x02) {
         schema.Element *root;
-        if (element->flag > 2-1) {
-            int i = 0;
-            while (i < element->kids-1 && element->elm[i].rec) {
-                i++;
-            }
-            root = schema.GetSchemaNode(element->elm[i].id);
-        } else {
-            double sum = 0;
-            double alt = rnd.uniform(0, 1);
-            int i = 0;
-            for (i = 0; i < element->kids - 1; i++) {
-                schema.ProbDesc pd = schema.probDescForChild(element, &element->elm[i]);
-                sum += pd.mean;
-                if (sum >= alt) {
+        if (element->flag > 1) {
+
+            // Get the first child element that has rec = false.
+            schema.ElmDesc *ed = element->elm;
+            while (ed->id) {
+                if (!ed->rec) {
+                    root = schema.GetSchemaNode(ed->id);
                     break;
                 }
+                ed++;
             }
-            root = schema.GetSchemaNode(element->elm[i].id);
+        } else {
+            double alt = rnd.uniform(0, 1);
+            double sum = 0;
+            schema.ElmDesc *ed = element->elm;            
+            while (ed->id) {
+                schema.ProbDesc pd = schema.probDescForChild(element, ed);
+                sum += pd.mean;
+                if (sum >= alt) {
+                    root = schema.GetSchemaNode(ed->id);
+                    break;
+                }
+                ed++;
+            }
+        }
+        if (!root) {
+            panic("failed to determine root");
         }
         Tree(out, root);
     }
     else {
-        for (int i = 0; i < element->kids; i++) {
-            schema.ElmDesc *ed = &element->elm[i];
+        schema.ElmDesc *ed = element->elm;
+        while (ed->id) {
             schema.ProbDesc pd = schema.probDescForChild(element, ed);
             int num = (int)(GenRandomNum(&pd) + 0.5);
-            while (num--) {
+            for (int i = 0; i < num; i++) {
                 Tree(out, schema.GetSchemaNode(ed->id));
             }
+            ed++;
         }
     }
     ClosingTag(element);

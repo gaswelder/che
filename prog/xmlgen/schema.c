@@ -157,11 +157,10 @@ pub typedef {
 
     // element-name, the string inside the angle brackets.
     char *name;
-    
+
     ElmDesc elm[20];
     AttDesc att[5];
     int type;
-    int kids;
     SetDesc set;
     int flag;
 } Element;
@@ -191,7 +190,7 @@ Element objs[]={
         }
     },
 
-    // "<!ELEMENT categories (category+)>",    
+    // "<!ELEMENT categories (category+)>",
     {
         .id = CATEGORY_LIST,
         .name = "categories",
@@ -797,7 +796,7 @@ idrepro idr[2] = {};
 
 pub void InitializeSchema(float global_scale_factor) {
     int nobj = nelem(objs);
-    
+
     // Reorder the schema so that a node with id "x"
     // is at the same index "x" in the array.
     Element *newobjs = calloc(nobj, sizeof(Element));
@@ -808,16 +807,6 @@ pub void InitializeSchema(float global_scale_factor) {
     }
     memcpy(objs,newobjs,sizeof(Element)*nobj);
     free(newobjs);
-
-    // Initialize the "kids" field on each node:
-    // the count of items it has in its "elm" field.
-    for (int i = 0; i < nobj; i++) {
-        for (int j=0; j<20; j++) {
-            if (objs[i].elm[j].id != 0) {
-                objs[i].kids++;
-            }
-        }
-    }
 
     Element *root = GetSchemaNode(1);
     FixSetSize(root, global_scale_factor);
@@ -843,12 +832,12 @@ pub void InitializeSchema(float global_scale_factor) {
             open = objs[i].set.size;
         }
     }
-    
+
     int closed = items - open;
     InitRepro(&idr[0], open, closed);
     InitRepro(&idr[1], closed, open);
     FixSetByEdge("closed_auctions","closed_auction",closed);
-    
+
 }
 
 int InitRepro_direction=0;
@@ -866,10 +855,9 @@ void FixSetSize(Element *element, float global_scale_factor) {
     if (element->flag++) {
         return;
     }
-    for (int i = 0; i < element->kids; i++) {
-        ElmDesc *ed = &(element->elm[i]);
+    ElmDesc *ed = element->elm;
+    while (ed->id) {
         Element *son = GetSchemaNode(ed->id);
-        if (!son) continue;
         ProbDesc pd = probDescForChild(element, ed);
         if (pd.min > 1 && (hasID(son) || (son->type&0x04))) {
             int size=(int)(GenRandomNum(&pd) + 0.5);
@@ -882,44 +870,43 @@ void FixSetSize(Element *element, float global_scale_factor) {
             FixDist(&pd, size);
         }
         FixSetSize(son, global_scale_factor);
+        ed++;
     }
 }
 
 void FixReferenceSets(Element *element) {
-    if (element->flag++) return;
-
-    int i,j,maxref=0;
-    for (i=0;i<element->kids;i++)
-        {
-            ElmDesc *ed=&(element->elm[i]);
-            Element *son = GetSchemaNode(ed->id);
-            if (!son) continue;
-
-            ProbDesc pd = probDescForChild(element, ed);
-            if (pd.min > 1 && !hasID(son)) {
-                double local_factor = 1;
-                for (j=0;j<5;j++)
-                    {
-                        if (son->att[j].name[0]=='\0') break;
-                        if (maxref < objs[son->att[j].ref].set.size) {
-                            maxref = objs[son->att[j].ref].set.size;
-                        }
-                    }
-                if (!maxref) {
-                    break;
+    if (element->flag++) {
+        return;
+    }
+    int maxref = 0;
+    ElmDesc *ed = element->elm;
+    while (ed->id) {
+        Element *son = GetSchemaNode(ed->id);
+        ProbDesc pd = probDescForChild(element, ed);
+        if (pd.min > 1 && !hasID(son)) {
+            double local_factor = 1;
+            for (int j=0; j<5; j++) {
+                if (son->att[j].name[0]=='\0') break;
+                if (maxref < objs[son->att[j].ref].set.size) {
+                    maxref = objs[son->att[j].ref].set.size;
                 }
-                local_factor = maxref / pd.max;
-                int size=(int)(GenRandomNum(&pd) + 0.5);
-                if (size*local_factor > 1) {
-                    size = (int)(size*local_factor);
-                } else {
-                    size = 1;
-                }
-                son->set.size+=size;
-                FixDist(&pd, size);
             }
-            FixReferenceSets(son);
+            if (!maxref) {
+                break;
+            }
+            local_factor = maxref / pd.max;
+            int size=(int)(GenRandomNum(&pd) + 0.5);
+            if (size*local_factor > 1) {
+                size = (int)(size*local_factor);
+            } else {
+                size = 1;
+            }
+            son->set.size += size;
+            FixDist(&pd, size);
         }
+        FixReferenceSets(son);
+        ed++;
+    }
 }
 
 void FixDist(ProbDesc *pd, double val)
@@ -936,14 +923,14 @@ void FixSetByEdge(char *father_name, char *son_name, int size)
             continue;
         }
         Element *element = GetSchemaNode(i);
-        for (int j=0;j<element->kids;j++) {
-            ElmDesc *ed=&(element->elm[j]);
+        ElmDesc *ed = element->elm;
+        while (ed->id) {
             Element *son = GetSchemaNode(ed->id);
-            if (strcmp(son_name, son->name)) {
-                continue;
+            if (!strcmp(son_name, son->name)) {
+                ProbDesc pd = probDescForChild(element, ed);
+                FixDist(&pd, size);
             }
-            ProbDesc pd = probDescForChild(element, ed);
-            FixDist(&pd, size);
+            ed++;
         }
     }
 }
@@ -955,8 +942,8 @@ void CheckRecursion() {
         if (root->type != 0x02) {
             continue;
         }
-        for (int j=0; j < root->kids; j++) {
-            root->elm[j].rec = FindRec(&objs[root->elm[j].id], root);
+        for (ElmDesc *ed = root->elm; ed->id; ed++) {
+            ed->rec = FindRec(GetSchemaNode(ed->id), root);
         }
     }
 }
@@ -966,15 +953,19 @@ int FindRec(Element *element, *search) {
         element->flag = 0;
         return 1;
     }
+    if (element->flag) {
+        element->flag = 0;
+        return 0;
+    }
 
     int r = 0;
-    if (!element->flag) {
-        element->flag = 1;
-        for (int i=0; i < element->kids; i++) {
-            r += FindRec(objs + element->elm[i].id, search);
-        }
+    element->flag = 1;
+    ElmDesc *ed = element->elm;
+    while (ed->id) {
+        r += FindRec(GetSchemaNode(ed->id), search);
+        ed++;
     }
-    element->flag=0;
+    element->flag = 0;
     return r;
 }
 
