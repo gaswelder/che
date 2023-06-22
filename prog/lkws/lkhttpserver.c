@@ -19,7 +19,7 @@
 #import lkstringtable.c
 #import request.c
 #import srvfiles.c
-
+#import llist.c
 
 #define LK_BUFSIZE_SMALL 512
 #define TIME_STRING_SIZE 25
@@ -27,15 +27,17 @@
 
 enum {FD_SOCK, FD_FILE};
 
+
 pub typedef {
     lkconfig.LKConfig *cfg;
-    lkcontext.LKContext *ctxhead;
     io.pool_t *handlepool;
+    llist.t *contexts;
 } server_t;
 
 pub bool lk_httpserver_serve(lkconfig.LKConfig *cfg) {
     server_t server = {
-        .cfg = cfg
+        .cfg = cfg,
+        .contexts = llist.new()
     };
 
     /*
@@ -110,15 +112,16 @@ bool accept_client(server_t *s, io.event_t *ev) {
     }
 
     lkcontext.LKContext *ctx = lkcontext.create_initial_context(conn);
-    lkcontext.add_new_client_context(&s->ctxhead, ctx);
+    llist.append(s->contexts, ctx);
     io.add(s->handlepool, conn);
     return true;
 }
 
 bool process_event(server_t *s, io.event_t *ev) {
     printf("processing the event\n");
-    lkcontext.LKContext *ctx = s->ctxhead;
-    while (ctx) {
+    llist.t *it = llist.next(s->contexts);
+    while (it) {
+        lkcontext.LKContext *ctx = it->data;
         if (ev->handle == ctx->client_handle) {
             // Have space and can read
             if (ev->readable && io.bufspace(ctx->inbuf) > 0) {
@@ -145,7 +148,7 @@ bool process_event(server_t *s, io.event_t *ev) {
             }
         }
         return process_ctx(s, ctx);
-        ctx = ctx->next;
+        it = llist.next(it);
     }
     fprintf(stderr, "failed to find ctx for the event\n");
     return false;
@@ -563,7 +566,7 @@ void serve_cgi(server_t *server, lkcontext.LKContext *ctx, lkhostconfig.LKHostCo
     // If req is POST with body, pass it to cgi process stdin.
     if (req->body->bytes_len > 0) {
         lkcontext.LKContext *ctx_in = lkcontext.lk_context_new();
-        lkcontext.add_context(&server->ctxhead, ctx_in);
+        llist.append(server->contexts, ctx_in);
 
         // ctx_in->selectfd = fd_in;
         ctx_in->cgifd = fd_in;
@@ -849,7 +852,7 @@ void terminate_client_session(server_t *server, lkcontext.LKContext *ctx) {
     //     terminate_sock(ctx->proxyfd, FD_READWRITE, server);
     // }
     // Remove from linked list and free ctx.
-    lkcontext.remove_client_context(&server->ctxhead, 0);
+    // lkcontext.remove_client_context(&server->ctxhead, 0);
 }
 
 
