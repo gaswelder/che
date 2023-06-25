@@ -140,3 +140,22 @@ pub bool file_exists(const char *path) {
 	fclose(f);
 	return true;
 }
+
+// Return ptr to start of file extension within filepath.
+// Ex. "path/to/index.html" returns "html"
+pub const char *fileext(const char *filepath) {
+    int filepath_len = strlen(filepath);
+    // filepath of "" returns ext of "".
+    if (filepath_len == 0) {
+        return filepath;
+    }
+
+    const char *p = filepath + strlen(filepath) - 1;
+    while (p >= filepath) {
+        if (*p == '.') {
+            return p+1;
+        }
+        p--;
+    }
+    return filepath;
+}
