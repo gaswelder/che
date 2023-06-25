@@ -459,27 +459,25 @@ int ItemIdRef(schema.Element *child, int *iRef) {
     return 0;
 }
 
-int GenItemIdRef(schema.idrepro *rep, int *idref)
-{
-    int res=0;
-    if (rep->out>=rep->max) return 0;
-    rep->out++;
-    if (rep->brosout>=rep->brosmax) {
-        *idref=rep->cur++;
-        res=2;
+int GenItemIdRef(schema.idrepro *rep, int *idref) {
+    if (rep->out >= rep->max) {
+        return 0;
     }
-    else
-        {
-            rep->dir = rnd.range(0, 1);
-            while(rep->dir!=rep->mydir && rep->brosout<rep->brosmax) {
-                rep->brosout++;
-                rep->cur++;
-                rep->dir = rnd.range(0, 1);
-            }
-            *idref=rep->cur++;
-            res=1;
-        }
-    return res;
+
+    rep->out++;
+    if (rep->brosout >= rep->brosmax) {
+        *idref = rep->cur++;
+        return 2;
+    }
+
+    rep->dir = rnd.range(0, 1);
+    while (rep->dir != rep->mydir && rep->brosout < rep->brosmax) {
+        rep->brosout++;
+        rep->cur++;
+        rep->dir = rnd.range(0, 1);
+    }
+    *idref = rep->cur++;
+    return 1;
 }
 
 void PrintName() {

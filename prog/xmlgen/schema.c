@@ -829,21 +829,22 @@ void FixSetSize(Element *element, float global_scale_factor) {
     if (element->flag++) {
         return;
     }
+
     int *child_id = element->elm;
     while (*child_id) {
-        Element *son = GetSchemaNode(*child_id);
+        Element *child_element = GetSchemaNode(*child_id);
         ProbDesc pd = probDescForChild(element, *child_id);
-        if (pd.min > 1 && (hasID(son) || (son->type&0x04))) {
+        if (pd.min > 1 && (hasID(child_element) || (child_element->type&0x04))) {
             int size=(int)(GenRandomNum(&pd) + 0.5);
             if (size*global_scale_factor > 1) {
                 size = (int)(size*global_scale_factor);
             } else {
                 size = 1;
             }
-            son->set.size += size;
+            child_element->set.size += size;
             FixDist(&pd, size);
         }
-        FixSetSize(son, global_scale_factor);
+        FixSetSize(child_element, global_scale_factor);
         child_id++;
     }
 }
