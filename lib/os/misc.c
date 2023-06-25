@@ -55,3 +55,7 @@ pub bool clearenv() {
     fprintf(stderr, "TODO: clearenv\n");
     return false;
 }
+
+pub bool getcwd(char *buf, size_t n) {
+    return OS.getcwd(buf, n) != NULL;
+}

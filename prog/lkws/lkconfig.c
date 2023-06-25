@@ -1,5 +1,6 @@
 #import fs
 #import strings
+#import os/misc
 
 #import lkhostconfig.c
 #import lkstring.c
@@ -115,7 +116,11 @@ lkhostconfig.LKHostConfig *default_hostconfig() {
     if (!hc) {
         return NULL;
     }
-    lkstring.lk_string_assign(hc->homedir, get_current_dir_name());
+    char buf[1000] = {0};
+    if (!misc.getcwd(buf, sizeof(buf))) {
+        panic("failed to get current working directory: %s", strerror(errno));
+    }
+    lkstring.lk_string_assign(hc->homedir, buf);
     lkstring.lk_string_assign(hc->cgidir, "/cgi-bin/");
     return hc;
 }
@@ -191,10 +196,6 @@ pub void lk_hostconfig_free(lkhostconfig.LKHostConfig *hc) {
     hc->proxyhost = NULL;
 
     free(hc);
-}
-
-char *get_current_dir_name() {
-    return "todo";
 }
 
 void lk_print_err(char *s) {
