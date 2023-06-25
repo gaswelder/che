@@ -15,69 +15,20 @@ const char *default_files[] = {
     "default.htm"
 };
 
-const char *NOT_FOUND_MESSAGE = "File not found on the server.";
-
 pub bool resolve(http.request_t *req, lkcontext.LKContext *ctx, lkhostconfig.LKHostConfig *hc) {
     if (!strcmp(req->method, "GET")) {
-        printf("processing GET\n");
         char *filepath = resolve_path(hc->homedir->s, req->path);
         if (!filepath) {
-            printf("file not found, serving 404\n");
-            bool ok = io.pushf(ctx->outbuf,
-                "%s 404 Not Found\n"
-                "Content-Length: %ld\n"
-                "Content-Type: text/plain\n"
-                "\n"
-                "\n"
-                "%s",
-                req->version,
-                strlen(NOT_FOUND_MESSAGE),
-                NOT_FOUND_MESSAGE
-            );
-            if (!ok) {
-                panic("failed to write to the output buffer");
-            }
+            printf("file \"%s\" not found, serving 404\n", req->path);
+            write_404(req, ctx);
             ctx->type = lkcontext.CTX_WRITE_DATA;
             return true;
         }
-
-        // Read the file
-        size_t filesize = 0;
-        char *data = fileutil.readfile(filepath, &filesize);
-        if (!data) {
-            panic("failed to read file '%s'", filepath);
-        }
-        const char *content_type = mime.lookup(fileutil.fileext(filepath));
-        if (content_type == NULL) {
-            content_type = "text/plain";
-        }
-
-        // Format the response.
-        bool ok = io.pushf(ctx->outbuf,
-            "%s 200 OK\n"
-            "Content-Length: %ld\n"
-            "Content-Type: %s\n"
-            "\n",
-            req->version,
-            filesize,
-            content_type
-        );
-        if (!ok) {
-            panic("failed to write response headers");
-        }
-
-        if (!io.push(ctx->outbuf, data, filesize)) {
-            panic("failed to write data to the buffer");
-        }
-        
-        ctx->type = lkcontext.CTX_WRITE_DATA;
+        write_file(req, ctx, filepath);
         free(filepath);
+        ctx->type = lkcontext.CTX_WRITE_DATA;
         return true;
     }
-
-     // request.LKHttpResponse *resp = ctx->resp;
-    // const char *method = req->method;
-    // const char *path = req->path;
 
     
     // if (POSTTEST) {
@@ -134,20 +85,67 @@ char *resolve_path(const char *homedir, *reqpath) {
 
 char *resolve_inner(const char *homedir, *reqpath) {
     char naive_path[4096] = {0};
-    sprintf(naive_path, "%s/%s", homedir, reqpath);
-    printf("naive path = %s\n", naive_path);
+    if (strlen(homedir) + strlen(reqpath) + 1 >= sizeof(naive_path)) {
+        printf("ERROR: requested path is too long: %s\n", reqpath);
+        return NULL;
+    }
+    sprintf(naive_path, "%s/%s", homedir, reqpath);   
 
     char realpath[4096] = {0};
     if (!fs.realpath(naive_path, realpath, sizeof(realpath))) {
-        printf("couldn't resolve realpath\n");
         return NULL;
     }
-    printf("real path = %s\n", realpath);
-
     if (!strings.starts_with(realpath, homedir)) {
-        printf("resolved path doesn't start with homedir=%s\n", homedir);
+        printf("resolved path \"%s\" doesn't start with homedir=\"%s\"\n", realpath, homedir);
         return NULL;
     }
-
     return strings.newstr("%s", realpath);
+}
+
+const char *NOT_FOUND_MESSAGE = "File not found on the server.";
+
+void write_404(http.request_t *req, lkcontext.LKContext *ctx) {
+    bool ok = io.pushf(ctx->outbuf,
+        "%s 404 Not Found\n"
+        "Content-Length: %ld\n"
+        "Content-Type: text/plain\n"
+        "\n"
+        "\n"
+        "%s",
+        req->version,
+        strlen(NOT_FOUND_MESSAGE),
+        NOT_FOUND_MESSAGE
+    );
+    if (!ok) {
+        panic("failed to write to the output buffer");
+    }
+}
+
+void write_file(http.request_t *req, lkcontext.LKContext *ctx, const char *filepath) {
+    const char *ext = fileutil.fileext(filepath);
+    const char *content_type = mime.lookup(ext);
+    if (content_type == NULL) {
+        printf("didn't get MIME type for \"%s\", using text/plain\n", ext);
+        content_type = "text/plain";
+    }
+
+    size_t filesize = 0;
+    char *data = fileutil.readfile(filepath, &filesize);
+    if (!data) {
+        panic("failed to read file '%s'", filepath);
+    }
+
+    if (!io.pushf(ctx->outbuf,
+        "%s 200 OK\n"
+        "Content-Length: %ld\n"
+        "Content-Type: %s\n\n\n",
+        req->version,
+        filesize,
+        content_type
+    )) {
+        panic("failed to write response headers");
+    }
+    if (!io.push(ctx->outbuf, data, filesize)) {
+        panic("failed to write data to the buffer");
+    }
 }

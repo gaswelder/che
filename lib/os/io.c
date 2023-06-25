@@ -87,6 +87,7 @@ pub bool pushf(buf_t *b, const char *fmt, ...) {
 
 pub bool push(buf_t *b, char *data, size_t n) {
     if (n > bufspace(b)) {
+        printf("no space left in buffer\n");
         return false;
     }
     memcpy(b->data + b->size, data, n);
