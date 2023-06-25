@@ -3,7 +3,7 @@
 
 pub bool realpath(const char *path, char *buf, size_t n) {
     char tmp[PATH_MAX] = {};
-    if (!OS.realpath(path, buf)) {
+    if (!OS.realpath(path, tmp)) {
         return false;
     }
     if (strlen(tmp) > n-1) {
