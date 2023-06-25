@@ -256,13 +256,13 @@ bool resolve_request(server_t *server, lkcontext.LKContext *ctx) {
     }
 
     // Forward request to proxyhost if proxyhost specified.
-    if (hc->proxyhost->s_len > 0) {
+    if (strlen(hc->proxyhost) > 0) {
         panic("todo");
-        serve_proxy(server, ctx, hc->proxyhost->s);
+        serve_proxy(server, ctx, hc->proxyhost);
         return true;
     }
 
-    if (hc->homedir->s_len == 0) {
+    if (strlen(hc->homedir) == 0) {
         panic("todo");
         process_error_response(server, ctx, 404, "LittleKitten webserver: hostconfig homedir not specified.");
         return true;
@@ -279,7 +279,7 @@ bool resolve_request(server_t *server, lkcontext.LKContext *ctx) {
     }
 
     // Run cgi script if uri falls under cgidir
-    if (hc->cgidir->s_len > 0 && strings.starts_with(req->path, hc->cgidir->s)) {
+    if (strlen(hc->cgidir) > 0 && strings.starts_with(req->path, hc->cgidir)) {
         return srvcgi.resolve(ctx, hc);
     }
 

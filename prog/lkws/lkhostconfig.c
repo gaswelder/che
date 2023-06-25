@@ -1,14 +1,14 @@
-#import lkstring.c
 #import lkstringtable.c
 
 pub typedef {
-    lkstring.LKString *hostname;
-    lkstring.LKString *homedir;
-    lkstring.LKString *homedir_abspath;
-    lkstring.LKString *cgidir;
-    lkstring.LKString *cgidir_abspath;
+    char hostname[1000];
+    char homedir[1000];
+    char homedir_abspath[1000];
+    char cgidir[1000];
+    char cgidir_abspath[1000];
+    char proxyhost[1000];
+
     lkstringtable.LKStringTable *aliases;
-    lkstring.LKString *proxyhost;
 } LKHostConfig;
 
 // void print_sample_config() {

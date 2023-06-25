@@ -18,7 +18,7 @@ pub bool resolve(lkcontext.LKContext *ctx, lkhostconfig.LKHostConfig *hc) {
     request.LKHttpResponse *resp = ctx->resp;
     char *path = ctx->req->req.path;
 
-    lkstring.LKString *cgifile = lkstring.lk_string_new(hc->homedir_abspath->s);
+    lkstring.LKString *cgifile = lkstring.lk_string_new(hc->homedir_abspath);
     lkstring.lk_string_append(cgifile, path);
 
     // Expand "/../", etc. into real_path.
@@ -29,7 +29,7 @@ pub bool resolve(lkcontext.LKContext *ctx, lkhostconfig.LKHostConfig *hc) {
     // real_path should start with cgidir_abspath
     // real_path file should exist
     if (!pathok
-        || !strings.starts_with(real_path, hc->cgidir_abspath->s)
+        || !strings.starts_with(real_path, hc->cgidir_abspath)
         || !fileutil.file_exists(real_path)
     ) {
         resp->status = 404;
@@ -87,7 +87,7 @@ void set_cgi_env2(lkcontext.LKContext *ctx, lkhostconfig.LKHostConfig *hc) {
     request.LKHttpRequest *wreq = ctx->req;
     http.request_t *req = &wreq->req;
 
-    misc.setenv("DOCUMENT_ROOT", hc->homedir_abspath->s, 1);
+    misc.setenv("DOCUMENT_ROOT", hc->homedir_abspath, 1);
 
     http.header_t *h = NULL;
     
@@ -115,7 +115,7 @@ void set_cgi_env2(lkcontext.LKContext *ctx, lkhostconfig.LKHostConfig *hc) {
     
     
 
-    lkstring.LKString *lkscript_filename = lkstring.lk_string_new(hc->homedir_abspath->s);
+    lkstring.LKString *lkscript_filename = lkstring.lk_string_new(hc->homedir_abspath);
     lkstring.lk_string_append(lkscript_filename, req->path);
     misc.setenv("SCRIPT_FILENAME", lkscript_filename->s, 1);
     lkstring.lk_string_free(lkscript_filename);

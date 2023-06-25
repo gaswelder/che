@@ -17,7 +17,7 @@ const char *default_files[] = {
 
 pub bool resolve(http.request_t *req, lkcontext.LKContext *ctx, lkhostconfig.LKHostConfig *hc) {
     if (!strcmp(req->method, "GET")) {
-        char *filepath = resolve_path(hc->homedir->s, req->path);
+        char *filepath = resolve_path(hc->homedir, req->path);
         if (!filepath) {
             printf("file \"%s\" not found, serving 404\n", req->path);
             write_404(req, ctx);

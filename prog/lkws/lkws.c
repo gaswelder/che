@@ -5,7 +5,6 @@
 #import configparser.c
 #import lkhostconfig.c
 #import lkhttpserver.c
-#import lkstring.c
 
 // lkws -d /var/www/testsite/ -c=cgi-bin
 int main(int argc, char *argv[]) {
@@ -65,15 +64,15 @@ int main(int argc, char *argv[]) {
 
     if (cgidir) {
         lkhostconfig.LKHostConfig *default_hc = lkconfig.lk_config_create_get_hostconfig(cfg, "*");
-        lkstring.lk_string_assign(default_hc->cgidir, cgidir);
+        strcpy(default_hc->cgidir, cgidir);
     }
     
     if (homedir) {
         lkhostconfig.LKHostConfig *hc0 = lkconfig.lk_config_create_get_hostconfig(cfg, "*");
-        lkstring.lk_string_assign(hc0->homedir, homedir);
+        strcpy(hc0->homedir, homedir);
         // cgidir default to cgi-bin
-        if (hc0->cgidir->s_len == 0) {
-            lkstring.lk_string_assign(hc0->cgidir, "/cgi-bin/");
+        if (strlen(hc0->cgidir) == 0) {
+            strcpy(hc0->cgidir, "/cgi-bin/");
         }
     }
 

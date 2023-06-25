@@ -119,13 +119,13 @@ pub lkconfig.LKConfig *read_file(const char *configfile) {
             // proxyhost=localhost:8001
             lk_string_split_assign(l, "=", k, v);
             if (lkstring.lk_string_sz_equal(k, "homedir")) {
-                lkstring.lk_string_assign(hc->homedir, v->s);
+                strcpy(hc->homedir, v->s);
                 continue;
             } else if (lkstring.lk_string_sz_equal(k, "cgidir")) {
-                lkstring.lk_string_assign(hc->cgidir, v->s);
+                strcpy(hc->cgidir, v->s);
                 continue;
             } else if (lkstring.lk_string_sz_equal(k, "proxyhost")) {
-                lkstring.lk_string_assign(hc->proxyhost, v->s);
+                strcpy(hc->proxyhost, v->s);
                 continue;
             }
             // alias latest=latest.html

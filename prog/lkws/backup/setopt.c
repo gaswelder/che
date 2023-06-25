@@ -30,7 +30,7 @@ void lk_httpserver_setopt(LKHttpServer *server, LKHttpServerOpt opt, ...) {
         if (strlen(cgidir) == 0) {
             break;
         }
-        lk_string_assign(settings->cgidir, cgidir);
+        strcpy(settings->cgidir, cgidir);
 
         // Surround cgi dir with slashes: /cgi-bin/ for easy uri matching.
         if (!lkstring.lk_string_starts_with(settings->cgidir, "/")) {

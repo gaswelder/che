@@ -3,7 +3,6 @@
 #import os/misc
 
 #import lkhostconfig.c
-#import lkstring.c
 #import lkstringtable.c
 
 #define MAX_HOST_CONFIGS 256
@@ -28,15 +27,15 @@ pub void print(LKConfig *cfg) {
 
     for (size_t i = 0; i < cfg->hostconfigs_size; i++) {
         lkhostconfig.LKHostConfig *hc = cfg->hostconfigs[i];
-        printf("%2lu. hostname %s\n", i+1, hc->hostname->s);
-        if (hc->homedir->s_len > 0) {
-            printf("    homedir: %s\n", hc->homedir->s);
+        printf("%2lu. hostname %s\n", i+1, hc->hostname);
+        if (strlen(hc->homedir) > 0) {
+            printf("    homedir: %s\n", hc->homedir);
         }
-        if (hc->cgidir->s_len > 0) {
-            printf("    cgidir: %s\n", hc->cgidir->s);
+        if (strlen(hc->cgidir) > 0) {
+            printf("    cgidir: %s\n", hc->cgidir);
         }
-        if (hc->proxyhost->s_len > 0) {
-            printf("    proxyhost: %s\n", hc->proxyhost->s);
+        if (strlen(hc->proxyhost) > 0) {
+            printf("    proxyhost: %s\n", hc->proxyhost);
         }
         for (size_t j = 0; j < hc->aliases->items_len; j++) {
             printf("    alias %s=%s\n", hc->aliases->items[j].k->s, hc->aliases->items[j].v->s);
@@ -70,7 +69,7 @@ pub lkhostconfig.LKHostConfig *lk_config_find_hostconfig(LKConfig *cfg, char *ho
     if (hostname != NULL) {
         for (size_t i = 0; i < cfg->hostconfigs_size; i++) {
             lkhostconfig.LKHostConfig *hc = cfg->hostconfigs[i];
-            if (lkstring.lk_string_sz_equal(hc->hostname, hostname)) {
+            if (!strcmp(hc->hostname, hostname)) {
                 return hc;
             }
         }
@@ -78,7 +77,7 @@ pub lkhostconfig.LKHostConfig *lk_config_find_hostconfig(LKConfig *cfg, char *ho
     // If hostname not found, return hostname * (fallthrough hostname).
     for (size_t i = 0; i < cfg->hostconfigs_size; i++) {
         lkhostconfig.LKHostConfig *hc = cfg->hostconfigs[i];
-        if (lkstring.lk_string_sz_equal(hc->hostname, "*")) {
+        if (!strcmp(hc->hostname, "*")) {
             return hc;
         }
     }
@@ -89,7 +88,7 @@ pub lkhostconfig.LKHostConfig *lk_config_find_hostconfig(LKConfig *cfg, char *ho
 pub lkhostconfig.LKHostConfig *get_hostconfig(LKConfig *cfg, char *hostname) {
     for (size_t i = 0; i < cfg->hostconfigs_size; i++) {
         lkhostconfig.LKHostConfig *hc = cfg->hostconfigs[i];
-        if (lkstring.lk_string_sz_equal(hc->hostname, hostname)) {
+        if (!strcmp(hc->hostname, hostname)) {
             return hc;
         }
     }
@@ -116,12 +115,10 @@ lkhostconfig.LKHostConfig *default_hostconfig() {
     if (!hc) {
         return NULL;
     }
-    char buf[1000] = {0};
-    if (!misc.getcwd(buf, sizeof(buf))) {
+    if (!misc.getcwd(hc->homedir, sizeof(hc->homedir))) {
         panic("failed to get current working directory: %s", strerror(errno));
     }
-    lkstring.lk_string_assign(hc->homedir, buf);
-    lkstring.lk_string_assign(hc->cgidir, "/cgi-bin/");
+    strcpy(hc->cgidir, "/cgi-bin/");
     return hc;
 }
 
@@ -139,62 +136,35 @@ pub void lk_config_finalize(LKConfig *cfg) {
         lkhostconfig.LKHostConfig *hc = cfg->hostconfigs[i];
 
         // Skip hostconfigs that don't have have homedir.
-        if (hc->homedir->s_len == 0) {
+        if (strlen(hc->homedir) == 0) {
             continue;
         }
 
         // Set absolute path to homedir
-        if (!fs.realpath(hc->homedir->s, homedir_abspath, sizeof(homedir_abspath))) {
+        if (!fs.realpath(hc->homedir, homedir_abspath, sizeof(homedir_abspath))) {
             lk_print_err("realpath()");
             homedir_abspath[0] = '\0';
         }
-        lkstring.lk_string_assign(hc->homedir_abspath, homedir_abspath);
+        strcpy(hc->homedir_abspath, homedir_abspath);
 
         // Adjust cgidir paths.
-        if (hc->cgidir->s_len > 0) {
-            if (!lkstring.lk_string_starts_with(hc->cgidir, "/")) {
-                lkstring.lk_string_prepend(hc->cgidir, "/");
-            }
-            if (!lkstring.lk_string_ends_with(hc->cgidir, "/")) {
-                lkstring.lk_string_append(hc->cgidir, "/");
-            }
-
-            lkstring.lk_string_assign(hc->cgidir_abspath, hc->homedir_abspath->s);
-            lkstring.lk_string_append(hc->cgidir_abspath, hc->cgidir->s);
+        if (strlen(hc->cgidir) > 0) {
+            char *tmp = strings.newstr("%s/%s/", hc->homedir_abspath, hc->cgidir);
+            strcpy(hc->cgidir, tmp);
+            free(tmp);
         }
     }
 }
 
-
 pub lkhostconfig.LKHostConfig *lk_hostconfig_new(char *hostname) {
     lkhostconfig.LKHostConfig *hc = calloc(1, sizeof(lkhostconfig.LKHostConfig));
-    hc->hostname = lkstring.lk_string_new(hostname);
-    hc->homedir = lkstring.lk_string_new("");
-    hc->homedir_abspath = lkstring.lk_string_new("");
-    hc->cgidir = lkstring.lk_string_new("");
-    hc->cgidir_abspath = lkstring.lk_string_new("");
     hc->aliases = lkstringtable.lk_stringtable_new();
-    hc->proxyhost = lkstring.lk_string_new("");
+    strcpy(hc->hostname, hostname);
     return hc;
 }
 
 pub void lk_hostconfig_free(lkhostconfig.LKHostConfig *hc) {
-    lkstring.lk_string_free(hc->hostname);
-    lkstring.lk_string_free(hc->homedir);
-    lkstring.lk_string_free(hc->homedir_abspath);
-    lkstring.lk_string_free(hc->cgidir);
-    lkstring.lk_string_free(hc->cgidir_abspath);
     lkstringtable.lk_stringtable_free(hc->aliases);
-    lkstring.lk_string_free(hc->proxyhost);
-
-    hc->hostname = NULL;
-    hc->homedir = NULL;
-    hc->homedir_abspath = NULL;
-    hc->cgidir = NULL;
-    hc->cgidir_abspath = NULL;
-    hc->aliases = NULL;
-    hc->proxyhost = NULL;
-
     free(hc);
 }
 
