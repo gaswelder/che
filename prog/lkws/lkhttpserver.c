@@ -71,11 +71,7 @@ pub bool lk_httpserver_serve(lkconfig.LKConfig *cfg) {
      */
     int c = 0;
     while (true) {
-        
-        if (c++ > 10) {
-            // panic("c");
-        }
-        printf("-------------------\n");
+        printf("-------------- loop %d --------------\n", c++);
 
         io.pool_t *p = io.newpool();
         if (!p) {
@@ -87,19 +83,22 @@ pub bool lk_httpserver_serve(lkconfig.LKConfig *cfg) {
         llist.t *it = llist.next(server.contexts);
         while (it) {
             lkcontext.LKContext *ctx = it->data;
+            int id = io.id(ctx->client_handle);
+
             // Read from the client if there is space in the input buffer.
             if (io.bufspace(ctx->inbuf)) {
-                printf("Have %zu input space, so read from %d\n", io.bufspace(ctx->inbuf), io.id(ctx->client_handle));
+                printf("%d: can read %zu\n", id, io.bufspace(ctx->inbuf));
                 io.add(p, ctx->client_handle, io.READ);
             }
             // Write to the client if there is some outgoing data.
             if (io.bufsize(ctx->outbuf) > 0) {
-                printf("Have %zu outgoing data, so write to %d\n", io.bufsize(ctx->outbuf), io.id(ctx->client_handle));
+                printf("%d: can write %zu\n", id, io.bufsize(ctx->outbuf));
                 io.add(p, ctx->client_handle, io.WRITE);
             }
             // If there is a data handle and some buffer space, read from the
             // data handle.
             if (ctx->data_handle && io.bufspace(ctx->outbuf)) {
+                printf("%d: can buffer %zu of data source\n", id, io.bufspace(ctx->outbuf));
                 io.add(p, ctx->data_handle, io.READ);
             }
             it = llist.next(it);
@@ -110,7 +109,7 @@ pub bool lk_httpserver_serve(lkconfig.LKConfig *cfg) {
             printf("poll result: %d, r=%d, w=%d\n", ev->handle->fd, ev->readable, ev->writable);
             if (ev->handle == listener) {
                 if (!accept_client(&server, ev)) {
-                    panic("accept failed: %s\n", strerror(errno));    
+                    panic("accept failed: %s\n", strerror(errno));
                 }
                 ev++;
                 continue;
@@ -129,7 +128,6 @@ pub bool lk_httpserver_serve(lkconfig.LKConfig *cfg) {
 bool accept_client(server_t *s, io.event_t *ev) {
     printf("accepting at %d\n", ev->handle->fd);
     io.handle_t *conn = io.accept(ev->handle);
-    printf("accepted\n");
     if (!conn) {
         fprintf(stderr, "accept failed: %s\n", strerror(errno));
         return false;
@@ -141,7 +139,6 @@ bool accept_client(server_t *s, io.event_t *ev) {
 }
 
 bool process_event(server_t *s, io.event_t *ev) {
-    printf("processing the event\n");
     llist.t *it = llist.next(s->contexts);
     while (it) {
         lkcontext.LKContext *ctx = it->data;
@@ -155,7 +152,6 @@ bool process_event(server_t *s, io.event_t *ev) {
             }
             // Have data to write and can write
             if (ev->writable && io.bufsize(ctx->outbuf) > 0) {
-                printf("writing\n");
                 if (!io.write(ev->handle, ctx->outbuf)) {
                     fprintf(stderr, "write failed: %s\n", strerror(errno));
                     return false;
@@ -178,21 +174,7 @@ bool process_event(server_t *s, io.event_t *ev) {
     return false;
 }
 
-void print_buf(io.buf_t *b) {
-    char tmp[4096] = {0};
-    memcpy(tmp, b->data, b->size);
-    fprintf(stderr, "%zu bytes: %s\n", b->size, tmp);
-}
-
 bool process_ctx(server_t *httpserver, lkcontext.LKContext *ctx) {
-    printf("process_ctx\n");
-
-    printf("input buffer:\n");
-    print_buf(ctx->inbuf);
-
-    printf("output buffer:\n");
-    print_buf(ctx->outbuf);
-
     // Try processing the new data by calling the corresponding handler on
     // the context. If the handler returns false, the new data wasn't enough to
     // change and the loop will stop until the next readable event.
@@ -233,12 +215,9 @@ bool process_ctx(server_t *httpserver, lkcontext.LKContext *ctx) {
 }
 
 bool parse_request(lkcontext.LKContext *ctx) {
-    fprintf(stderr, "parsing request\n");
-
     // See if the input buffer has a finished request header yet.
     char *split = strstr(ctx->inbuf->data, "\r\n\r\n");
     if (!split || (size_t)(split - ctx->inbuf->data) > ctx->inbuf->size) {
-        fprintf(stderr, "no complete header yet\n");
         return false;
     }
     split += 4;
@@ -248,7 +227,7 @@ bool parse_request(lkcontext.LKContext *ctx) {
     size_t headlen = split - ctx->inbuf->data;
     memcpy(head, ctx->inbuf->data, headlen);
     io.shift(ctx->inbuf, headlen);
-    fprintf(stderr, "got head: -----[%s]----\n", head);
+    // fprintf(stderr, "got a request:\n=============\n%s\n=============\n", head);
 
     // Parse the request.
     if (!http.parse_request(&ctx->req->req, head)) {
@@ -261,8 +240,6 @@ bool parse_request(lkcontext.LKContext *ctx) {
 }
 
 bool resolve_request(server_t *server, lkcontext.LKContext *ctx) {
-    printf("resolve_request\n");
-
     // Get the hostname from the request.
     http.request_t *req = &ctx->req->req;
     char *hostname = NULL;
@@ -270,16 +247,13 @@ bool resolve_request(server_t *server, lkcontext.LKContext *ctx) {
     if (host) {
         hostname = host->value;
     }
-    printf("requested hostname = %s\n", hostname);
 
     lkhostconfig.LKHostConfig *hc = lkconfig.lk_config_find_hostconfig(server->cfg, hostname);
     if (hc == NULL) {
-        printf("no host config\n");
         process_error_response(server, ctx, 404, "LittleKitten webserver: hostconfig not found.");
         panic("todo");
         return true;
     }
-    printf("got host config\n");
 
     // Forward request to proxyhost if proxyhost specified.
     if (hc->proxyhost->s_len > 0) {
@@ -374,12 +348,12 @@ void process_response(server_t *server, lkcontext.LKContext *ctx) {
 
     char time_str[TIME_STRING_SIZE];
     utils.get_localtime_string(time_str, sizeof(time_str));
-    printf("%s [%s] \"%s %s %s\" %d\n", 
+    printf("%s [%s] \"%s %s %s\" %d\n",
         ctx->client_ipaddr->s, time_str,
         req->method, req->uri, resp->version->s,
         resp->status);
     if (resp->status >= 500 && resp->status < 600 && resp->statustext->s_len > 0) {
-        printf("%s [%s] %d - %s\n", 
+        printf("%s [%s] %d - %s\n",
             ctx->client_ipaddr->s, time_str,
             resp->status, resp->statustext->s);
     }

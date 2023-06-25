@@ -56,6 +56,12 @@ pub buf_t *newbuf() {
     return b;
 }
 
+pub void print_buf(buf_t *b) {
+    char tmp[4096] = {0};
+    memcpy(tmp, b->data, b->size);
+    fprintf(stderr, "%zu bytes: %s\n", b->size, tmp);
+}
+
 pub void freebuf(buf_t *b) {
     free(b);
 }
