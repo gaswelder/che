@@ -125,27 +125,10 @@ pub int lk_string_starts_with(LKString *lks, const char *s) {
     return strings.starts_with(lks->s, s);
 }
 
-// Return if string ends with s.
-pub int lk_string_ends_with(LKString *lks, const char *s) {
-    return strings.ends_with(lks->s, s);
-}
-
 // Remove leading and trailing white from string.
 pub void lk_string_trim(LKString *lks) {
     char *copy = strings.newstr("%s", lks->s);
     char *r = strings.trim(copy);
     lk_string_assign(lks, r);
-    free(copy);
-}
-
-pub void lk_string_chop_end(LKString *lks, const char *s) {
-    if (!strings.ends_with(lks->s, s)) {
-        return;
-    }
-    char *copy = strings.newstr("%s", lks->s);
-    size_t full_len = strlen(copy);
-    size_t s_len = strlen(s);
-    copy[full_len - s_len] = '\0';
-    lk_string_assign(lks, copy);
     free(copy);
 }
