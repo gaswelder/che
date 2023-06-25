@@ -12,19 +12,22 @@
 #import lkstring.c
 #import request.c
 #import utils.c
+#import srvstd.c
 
 pub bool resolve(lkcontext.LKContext *ctx, lkhostconfig.LKHostConfig *hc) {
+    printf("resolving CGI\n");
     request.LKHttpRequest *req = ctx->req;
     request.LKHttpResponse *resp = ctx->resp;
     char *path = ctx->req->req.path;
 
-    lkstring.LKString *cgifile = lkstring.lk_string_new(hc->homedir_abspath);
-    lkstring.lk_string_append(cgifile, path);
+    char *cgifile = strings.newstr("%s/%s", hc->homedir_abspath, path);
+    printf("cgifile = %s\n", cgifile);
 
     // Expand "/../", etc. into real_path.
     char real_path[PATH_MAX];
-    bool pathok = fs.realpath(cgifile->s, real_path, sizeof(real_path));
-    lkstring.lk_string_free(cgifile);
+    bool pathok = fs.realpath(cgifile, real_path, sizeof(real_path));
+    free(cgifile);
+    printf("realpath = %s\n", real_path);
 
     // real_path should start with cgidir_abspath
     // real_path file should exist
@@ -32,12 +35,9 @@ pub bool resolve(lkcontext.LKContext *ctx, lkhostconfig.LKHostConfig *hc) {
         || !strings.starts_with(real_path, hc->cgidir_abspath)
         || !fileutil.file_exists(real_path)
     ) {
-        resp->status = 404;
-        lkstring.lk_string_assign_sprintf(resp->statustext, "File not found '%s'", path);
-        lknet.lk_httpresponse_add_header(resp, "Content-Type", "text/plain");
-        lkbuffer.lk_buffer_append_sprintf(resp->body, "File not found '%s'\n", path);
-
-        process_response(ctx);
+        printf("invalid path\n");
+        srvstd.write_404(&req->req, ctx);
+        ctx->type = lkcontext.CTX_WRITE_DATA;
         return true;
     }
 

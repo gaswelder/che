@@ -279,6 +279,7 @@ bool resolve_request(server_t *server, lkcontext.LKContext *ctx) {
     }
 
     // Run cgi script if uri falls under cgidir
+    printf("cgidir = %s, path = %s\n", hc->cgidir, req->path);
     if (strlen(hc->cgidir) > 0 && strings.starts_with(req->path, hc->cgidir)) {
         return srvcgi.resolve(ctx, hc);
     }

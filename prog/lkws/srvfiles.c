@@ -7,6 +7,7 @@
 
 #import lkcontext.c
 #import lkhostconfig.c
+#import srvstd.c
 
 const char *default_files[] = {
     "index.html",
@@ -20,7 +21,7 @@ pub bool resolve(http.request_t *req, lkcontext.LKContext *ctx, lkhostconfig.LKH
         char *filepath = resolve_path(hc->homedir, req->path);
         if (!filepath) {
             printf("file \"%s\" not found, serving 404\n", req->path);
-            write_404(req, ctx);
+            srvstd.write_404(req, ctx);
             ctx->type = lkcontext.CTX_WRITE_DATA;
             return true;
         }
@@ -30,10 +31,10 @@ pub bool resolve(http.request_t *req, lkcontext.LKContext *ctx, lkhostconfig.LKH
         return true;
     }
     if (!strcmp(req->method, "POST")) {
-        write_405(req, ctx);
+        srvstd.write_405(req, ctx);
         return true;
     }
-    write_501(req, ctx);
+    srvstd.write_501(req, ctx);
     return true;
 }
 
@@ -67,60 +68,6 @@ char *resolve_inner(const char *homedir, *reqpath) {
         return NULL;
     }
     return strings.newstr("%s", realpath);
-}
-
-void write_404(http.request_t *req, lkcontext.LKContext *ctx) {
-    const char *msg = "File not found on the server.";
-    bool ok = io.pushf(ctx->outbuf,
-        "%s 404 Not Found\n"
-        "Content-Length: %ld\n"
-        "Content-Type: text/plain\n"
-        "\n"
-        "\n"
-        "%s",
-        req->version,
-        strlen(msg),
-        msg
-    );
-    if (!ok) {
-        panic("failed to write to the output buffer");
-    }
-}
-
-void write_405(http.request_t *req, lkcontext.LKContext *ctx) {
-    const char *msg = "This method is not allowed for this path.";
-    bool ok = io.pushf(ctx->outbuf,
-        "%s 405 Method Not Allowed\n"
-        "Content-Length: %ld\n"
-        "Content-Type: text/plain\n"
-        "\n"
-        "\n"
-        "%s",
-        req->version,
-        strlen(msg),
-        msg
-    );
-    if (!ok) {
-        panic("failed to write to the output buffer");
-    }
-}
-
-void write_501(http.request_t *req, lkcontext.LKContext *ctx) {
-    const char *msg = "method not implemented\n";
-    bool ok = io.pushf(ctx->outbuf,
-        "%s 501 Not Implemented\n"
-        "Content-Length: %ld\n"
-        "Content-Type: text/plain\n"
-        "\n"
-        "\n"
-        "%s",
-        req->version,
-        strlen(msg),
-        msg
-    );
-    if (!ok) {
-        panic("failed to write to the output buffer");
-    }
 }
 
 void write_file(http.request_t *req, lkcontext.LKContext *ctx, const char *filepath) {

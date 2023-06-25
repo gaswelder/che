@@ -150,7 +150,7 @@ pub void lk_config_finalize(LKConfig *cfg) {
         // Adjust cgidir paths.
         if (strlen(hc->cgidir) > 0) {
             char *tmp = strings.newstr("%s/%s/", hc->homedir_abspath, hc->cgidir);
-            strcpy(hc->cgidir, tmp);
+            strcpy(hc->cgidir_abspath, tmp);
             free(tmp);
         }
     }
