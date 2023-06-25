@@ -221,21 +221,23 @@ pub bool close(handle_t *h) {
 
 
 pub enum {
-    READABLE = 2,
-    WRITABLE = 4
+    READ = 1,
+    WRITE = 2
 };
 
 pub typedef {
     handle_t *handle;
-    bool readable, writable;
+    bool readable;
+    bool writable;
 } event_t;
 
 pub typedef {
     handle_t *handles[1000];
+    int filters[1000];
     event_t result[1000];
 } pool_t;
 
-pub pool_t *new_pool() {
+pub pool_t *newpool() {
     pool_t *p = calloc(1, sizeof(pool_t));
     if (!p) {
         return NULL;
@@ -243,17 +245,30 @@ pub pool_t *new_pool() {
     return p;
 }
 
-pub void add(pool_t *p, handle_t *h) {
+pub void freepool(pool_t *p) {
+    free(p);
+}
+
+pub void add(pool_t *p, handle_t *h, int filter) {
+    // See if this handle is already in the list.
+    for (size_t i = 0; i < nelem(p->handles); i++) {
+        if (p->handles[i] == h) {
+            p->filters[i] |= filter;
+            return;
+        }
+    }
+    // If not, add a new entry.
     for (size_t i = 0; i < nelem(p->handles); i++) {
         if (!p->handles[i]) {
             p->handles[i] = h;
+            p->filters[i] = filter;
             return;
         }
     }
     panic("failed to add a handle");
 }
 
-pub event_t *poll(pool_t *p, int filter) {
+pub event_t *poll(pool_t *p) {
     fd_set readset = {0};
     fd_set writeset = {0};
     int max = 0;
@@ -262,10 +277,10 @@ pub event_t *poll(pool_t *p, int filter) {
         if (!h) {
             continue;
         }
-        if (filter & READABLE) {
+        if (p->filters[i] & READ) {
             FD_SET(h->fd, &readset);
         }
-        if (filter & WRITABLE) {
+        if (p->filters[i] & WRITE) {
             FD_SET(h->fd, &writeset);
         }
         if (h->fd > max) {
@@ -282,8 +297,8 @@ pub event_t *poll(pool_t *p, int filter) {
         if (!h) {
             continue;
         }
-        bool r = (filter & READABLE) && FD_ISSET(h->fd, &readset);
-        bool w = (filter & WRITABLE) && FD_ISSET(h->fd, &writeset);
+        bool r = p->filters[i] & READ && FD_ISSET(h->fd, &readset);
+        bool w = p->filters[i] & WRITE && FD_ISSET(h->fd, &writeset);
         if (!r && !w) {
             continue;
         }

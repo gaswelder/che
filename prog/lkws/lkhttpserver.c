@@ -30,7 +30,6 @@ enum {FD_SOCK, FD_FILE};
 
 pub typedef {
     lkconfig.LKConfig *cfg;
-    io.pool_t *handlepool;
     llist.t *contexts;
 } server_t;
 
@@ -70,24 +69,45 @@ pub bool lk_httpserver_serve(lkconfig.LKConfig *cfg) {
     free(addr);
 
     /*
-     * Create an IO pool for polling.
-     */
-    server.handlepool = io.new_pool();
-    if (!server.handlepool) {
-        panic("failed to create an IO pool: %s\n", strerror(errno));
-    }
-    io.add(server.handlepool, listener);
-
-    /*
      * Poll and process the handles.
      */
     int c = 0;
     while (true) {
+        
         if (c++ > 10) {
-            panic("c");
+            // panic("c");
         }
         printf("-------------------\n");
-        io.event_t *ev = io.poll(server.handlepool, io.READABLE | io.WRITABLE);
+
+        io.pool_t *p = io.newpool();
+        if (!p) {
+            panic("failed to create a pool");
+        }
+        io.add(p, listener, io.READ);
+
+        // For each context
+        llist.t *it = llist.next(server.contexts);
+        while (it) {
+            lkcontext.LKContext *ctx = it->data;
+            // Read from the client if there is space in the input buffer.
+            if (io.bufspace(ctx->inbuf)) {
+                printf("Have %zu input space, so read from %d\n", io.bufspace(ctx->inbuf), io.id(ctx->client_handle));
+                io.add(p, ctx->client_handle, io.READ);
+            }
+            // Write to the client if there is some outgoing data.
+            if (io.bufsize(ctx->outbuf) > 0) {
+                printf("Have %zu outgoing data, so write to %d\n", io.bufsize(ctx->outbuf), io.id(ctx->client_handle));
+                io.add(p, ctx->client_handle, io.WRITE);
+            }
+            // If there is a data handle and some buffer space, read from the
+            // data handle.
+            if (ctx->data_handle && io.bufspace(ctx->outbuf)) {
+                io.add(p, ctx->data_handle, io.READ);
+            }
+            it = llist.next(it);
+        }
+
+        io.event_t *ev = io.poll(p);
         while (ev->handle) {
             printf("poll result: %d, r=%d, w=%d\n", ev->handle->fd, ev->readable, ev->writable);
             if (ev->handle == listener) {
@@ -102,6 +122,7 @@ pub bool lk_httpserver_serve(lkconfig.LKConfig *cfg) {
             }
             ev++;
         }
+        io.freepool(p);
     }
 
     panic("unreachable");
@@ -118,7 +139,6 @@ bool accept_client(server_t *s, io.event_t *ev) {
 
     lkcontext.LKContext *ctx = lkcontext.create_initial_context(conn);
     llist.append(s->contexts, ctx);
-    io.add(s->handlepool, conn);
     return true;
 }
 
@@ -137,6 +157,7 @@ bool process_event(server_t *s, io.event_t *ev) {
             }
             // Have data to write and can write
             if (ev->writable && io.bufsize(ctx->outbuf) > 0) {
+                printf("writing\n");
                 if (!io.write(ev->handle, ctx->outbuf)) {
                     fprintf(stderr, "write failed: %s\n", strerror(errno));
                     return false;
@@ -304,6 +325,7 @@ bool resolve_request(server_t *server, lkcontext.LKContext *ctx) {
                 "Content-Length: %ld\n"
                 "Content-Type: text/plain\n"
                 "\n"
+                "\n"
                 "%s",
                 req->version,
                 strlen(NOT_FOUND_MESSAGE),
@@ -313,6 +335,12 @@ bool resolve_request(server_t *server, lkcontext.LKContext *ctx) {
                 panic("failed to write to the output buffer");
             }
             printf("written to the output buffer\n");
+            printf("input buffer:\n");
+    print_buf(ctx->inbuf);
+
+    printf("output buffer:\n");
+    print_buf(ctx->outbuf);
+
             ctx->type = lkcontext.CTX_WRITE_DATA;
             return true;
         }
