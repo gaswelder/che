@@ -29,45 +29,12 @@ pub bool resolve(http.request_t *req, lkcontext.LKContext *ctx, lkhostconfig.LKH
         ctx->type = lkcontext.CTX_WRITE_DATA;
         return true;
     }
-
-    
-    // if (POSTTEST) {
-    //     if (!strcmp(method, "POST")) {
-    //         char *html_start =
-    //         "<!DOCTYPE html>\n"
-    //         "<html>\n"
-    //         "<head><title>Little Kitten Sample Response</title></head>\n"
-    //         "<body>\n";
-    //         char *html_end =
-    //         "</body></html>\n";
-
-    //         lknet.lk_httpresponse_add_header(resp, "Content-Type", "text/html");
-    //         lkbuffer.lk_buffer_append(resp->body, html_start, strlen(html_start));
-    //         lkbuffer.lk_buffer_append_sz(resp->body, "<pre>\n");
-    //         lkbuffer.lk_buffer_append(resp->body, ctx->req->body->bytes, ctx->req->body->bytes_len);
-    //         lkbuffer.lk_buffer_append_sz(resp->body, "\n</pre>\n");
-    //         lkbuffer.lk_buffer_append(resp->body, html_end, strlen(html_end));
-    //         return;
-    //     }
-    // }
-
-    // resp->status = 501;
-    // lkstring.lk_string_assign_sprintf(resp->statustext, "Unsupported method ('%s')", method);
-
-// char *html_error_start = 
-//        "<!DOCTYPE html>\n"
-//        "<html>\n"
-//        "<head><title>Error response</title></head>\n"
-//        "<body><h1>Error response</h1>\n";
-//     char *html_error_end =
-//        "</body></html>\n";
-    // lknet.lk_httpresponse_add_header(resp, "Content-Type", "text/html");
-    // lkbuffer.lk_buffer_append(resp->body, html_error_start, strlen(html_error_start));
-    // lkbuffer.lk_buffer_append_sprintf(resp->body, "<p>Error code %d.</p>\n", resp->status);
-    // lkbuffer.lk_buffer_append_sprintf(resp->body, "<p>Message: Unsupported method ('%s').</p>\n", resp->statustext->s);
-    // lkbuffer.lk_buffer_append(resp->body, html_error_end, strlen(html_error_end));
-
-    panic("unsupported method: '%s'", req->method);
+    if (!strcmp(req->method, "POST")) {
+        write_405(req, ctx);
+        return true;
+    }
+    write_501(req, ctx);
+    return true;
 }
 
 char *resolve_path(const char *homedir, *reqpath) {
@@ -89,7 +56,7 @@ char *resolve_inner(const char *homedir, *reqpath) {
         printf("ERROR: requested path is too long: %s\n", reqpath);
         return NULL;
     }
-    sprintf(naive_path, "%s/%s", homedir, reqpath);   
+    sprintf(naive_path, "%s/%s", homedir, reqpath);
 
     char realpath[4096] = {0};
     if (!fs.realpath(naive_path, realpath, sizeof(realpath))) {
@@ -102,9 +69,8 @@ char *resolve_inner(const char *homedir, *reqpath) {
     return strings.newstr("%s", realpath);
 }
 
-const char *NOT_FOUND_MESSAGE = "File not found on the server.";
-
 void write_404(http.request_t *req, lkcontext.LKContext *ctx) {
+    const char *msg = "File not found on the server.";
     bool ok = io.pushf(ctx->outbuf,
         "%s 404 Not Found\n"
         "Content-Length: %ld\n"
@@ -113,8 +79,44 @@ void write_404(http.request_t *req, lkcontext.LKContext *ctx) {
         "\n"
         "%s",
         req->version,
-        strlen(NOT_FOUND_MESSAGE),
-        NOT_FOUND_MESSAGE
+        strlen(msg),
+        msg
+    );
+    if (!ok) {
+        panic("failed to write to the output buffer");
+    }
+}
+
+void write_405(http.request_t *req, lkcontext.LKContext *ctx) {
+    const char *msg = "This method is not allowed for this path.";
+    bool ok = io.pushf(ctx->outbuf,
+        "%s 405 Method Not Allowed\n"
+        "Content-Length: %ld\n"
+        "Content-Type: text/plain\n"
+        "\n"
+        "\n"
+        "%s",
+        req->version,
+        strlen(msg),
+        msg
+    );
+    if (!ok) {
+        panic("failed to write to the output buffer");
+    }
+}
+
+void write_501(http.request_t *req, lkcontext.LKContext *ctx) {
+    const char *msg = "method not implemented\n";
+    bool ok = io.pushf(ctx->outbuf,
+        "%s 501 Not Implemented\n"
+        "Content-Length: %ld\n"
+        "Content-Type: text/plain\n"
+        "\n"
+        "\n"
+        "%s",
+        req->version,
+        strlen(msg),
+        msg
     );
     if (!ok) {
         panic("failed to write to the output buffer");
