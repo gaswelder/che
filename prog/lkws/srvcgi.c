@@ -28,6 +28,7 @@ pub bool resolve(lkcontext.LKContext *ctx, lkhostconfig.LKHostConfig *hc) {
     bool pathok = fs.realpath(cgifile, real_path, sizeof(real_path));
     free(cgifile);
     printf("realpath = %s\n", real_path);
+    printf("cgiabs = %s\n", hc->cgidir_abspath);
 
     // real_path should start with cgidir_abspath
     // real_path file should exist

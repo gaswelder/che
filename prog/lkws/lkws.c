@@ -1,5 +1,7 @@
 #import opt
 #import strings
+#import os/misc
+#import fs
 
 #import lkconfig.c
 #import configparser.c
@@ -76,7 +78,41 @@ int main(int argc, char *argv[]) {
         }
     }
 
-    lkconfig.lk_config_finalize(cfg);
+    // If no hostconfigs, add a fallthrough '*' hostconfig.
+    if (cfg->hostconfigs_size == 0) {
+        lkhostconfig.LKHostConfig *hc = lkconfig.lk_hostconfig_new("*");
+        if (!hc) {
+            panic("failed to create a host config");
+        }
+        if (!misc.getcwd(hc->homedir, sizeof(hc->homedir))) {
+            panic("failed to get current working directory: %s", strerror(errno));
+        }
+        strcpy(hc->cgidir, "/cgi-bin/");
+        lkconfig.add_hostconfig(cfg, hc);
+    }
+
+    // Set homedir absolute paths for hostconfigs.
+    // Adjust /cgi-bin/ paths.
+    for (size_t i = 0; i < cfg->hostconfigs_size; i++) {
+        lkhostconfig.LKHostConfig *hc = cfg->hostconfigs[i];
+
+        // Skip hostconfigs that don't have have homedir.
+        if (strlen(hc->homedir) == 0) {
+            continue;
+        }
+
+        if (!fs.realpath(hc->homedir, hc->homedir_abspath, sizeof(hc->homedir_abspath))) {
+            panic("realpath failed");
+        }
+
+        if (strlen(hc->cgidir) > 0) {
+            char *tmp = strings.newstr("%s/%s/", hc->homedir_abspath, hc->cgidir);
+            if (!fs.realpath(tmp, hc->cgidir_abspath, sizeof(hc->cgidir_abspath))) {
+                panic("realpath failed: %s", strerror(errno));
+            }
+            free(tmp);
+        }
+    }
     lkconfig.print(cfg);
     if (!lkhttpserver.lk_httpserver_serve(cfg)) {
         fprintf(stderr, "server failed: %s\n", strerror(errno));
