@@ -16,8 +16,9 @@
 
 pub bool resolve(lkcontext.LKContext *ctx, lkhostconfig.LKHostConfig *hc) {
     printf("resolving CGI\n");
-    request.LKHttpRequest *req = ctx->req;
+    request.LKHttpRequest *wreq = ctx->req;
     request.LKHttpResponse *resp = ctx->resp;
+    http.request_t *req = &wreq->req;
     char *path = ctx->req->req.path;
 
     char *cgifile = strings.newstr("%s/%s", hc->homedir_abspath, path);
@@ -28,7 +29,6 @@ pub bool resolve(lkcontext.LKContext *ctx, lkhostconfig.LKHostConfig *hc) {
     bool pathok = fs.realpath(cgifile, real_path, sizeof(real_path));
     free(cgifile);
     printf("realpath = %s\n", real_path);
-    printf("cgiabs = %s\n", hc->cgidir_abspath);
 
     // real_path should start with cgidir_abspath
     // real_path file should exist
@@ -37,57 +37,12 @@ pub bool resolve(lkcontext.LKContext *ctx, lkhostconfig.LKHostConfig *hc) {
         || !fileutil.file_exists(real_path)
     ) {
         printf("invalid path\n");
-        srvstd.write_404(&req->req, ctx);
+        srvstd.write_404(req, ctx);
         ctx->type = lkcontext.CTX_WRITE_DATA;
         return true;
     }
 
-    set_cgi_env2(ctx, hc);
-
-    // cgi stdout and stderr are streamed to fd_out.
-    //$$todo pass any request body to fd_in.
-    int fd_in, fd_out;
-    int z = lk_popen3(real_path, &fd_in, &fd_out, NULL);
-    if (z == -1) {
-        resp->status = 500;
-        lkstring.lk_string_assign_sprintf(resp->statustext, "Server error '%s'", strerror(errno));
-        lknet.lk_httpresponse_add_header(resp, "Content-Type", "text/plain");
-        lkbuffer.lk_buffer_append_sprintf(resp->body, "Server error '%s'\n", strerror(errno));
-        process_response(ctx);
-        return true;
-    }
-
-    OS.close(fd_in);
-
-    // Read cgi output in select()
-    // ctx->selectfd = fd_out;
-    ctx->cgifd = fd_out;
-    ctx->type = lkcontext.CTX_READ_CGI_OUTPUT;
-    ctx->cgi_outputbuf = lkbuffer.lk_buffer_new(0);
-
-    // If req is POST with body, pass it to cgi process stdin.
-    if (req->body->bytes_len > 0) {
-        lkcontext.LKContext *ctx_in = lkcontext.lk_context_new();
-        // llist.append(server->contexts, ctx_in);
-
-        // ctx_in->selectfd = fd_in;
-        ctx_in->cgifd = fd_in;
-        // ctx_in->clientfd = ctx->clientfd;
-        ctx_in->type = lkcontext.CTX_WRITE_CGI_INPUT;
-
-        ctx_in->cgi_inputbuf = lkbuffer.lk_buffer_new(0);
-        lkbuffer.lk_buffer_append(ctx_in->cgi_inputbuf, req->body->bytes, req->body->bytes_len);
-
-        // FD_SET_WRITE(ctx_in->selectfd, server);
-    }
-    return true;
-}
-
-// Sets the cgi environment variables that vary for each http request.
-void set_cgi_env2(lkcontext.LKContext *ctx, lkhostconfig.LKHostConfig *hc) {
-    request.LKHttpRequest *wreq = ctx->req;
-    http.request_t *req = &wreq->req;
-
+printf("setting env\n");
     misc.setenv("DOCUMENT_ROOT", hc->homedir_abspath, 1);
 
     http.header_t *h = NULL;
@@ -113,30 +68,59 @@ void set_cgi_env2(lkcontext.LKContext *ctx, lkhostconfig.LKHostConfig *hc) {
         misc.setenv("CONTENT_TYPE", "", 1);
     }
 
-    
-    
 
-    lkstring.LKString *lkscript_filename = lkstring.lk_string_new(hc->homedir_abspath);
-    lkstring.lk_string_append(lkscript_filename, req->path);
-    misc.setenv("SCRIPT_FILENAME", lkscript_filename->s, 1);
-    lkstring.lk_string_free(lkscript_filename);
-
+    char filename[3000] = {0};
+    if (strlen(hc->homedir_abspath) + strlen(req->path) + 1 >= sizeof(filename)) {
+        panic("filename buffer too short");
+    }
+    sprintf(filename, "%s/%s", hc->homedir_abspath, req->path);
+    misc.setenv("SCRIPT_FILENAME", filename, 1);
     misc.setenv("REQUEST_METHOD", req->method, 1);
     misc.setenv("SCRIPT_NAME", req->path, 1);
     misc.setenv("REQUEST_URI", req->uri, 1);
     misc.setenv("QUERY_STRING", req->query, 1);
+    misc.setenv("CONTENT_LENGTH", "todo", 1);
+    misc.setenv("REMOTE_ADDR", "todo", 1);
+    misc.setenv("REMOTE_PORT", "todo", 1);
 
-    
+printf("starting\n");
+    // cgi stdout and stderr are streamed to fd_out.
+    //$$todo pass any request body to fd_in.
+    int fd_in, fd_out;
+    int z = lk_popen3(real_path, &fd_in, &fd_out, NULL);
+    if (z == -1) {
+        resp->status = 500;
+        lkstring.lk_string_assign_sprintf(resp->statustext, "Server error '%s'", strerror(errno));
+        lknet.lk_httpresponse_add_header(resp, "Content-Type", "text/plain");
+        lkbuffer.lk_buffer_append_sprintf(resp->body, "Server error '%s'\n", strerror(errno));
+        process_response(ctx);
+        return true;
+    }
 
-    char content_length[10];
-    snprintf(content_length, sizeof(content_length), "%ld", wreq->body->bytes_len);
-    content_length[sizeof(content_length)-1] = '\0';
-    misc.setenv("CONTENT_LENGTH", content_length, 1);
+    OS.close(fd_in);
 
-    misc.setenv("REMOTE_ADDR", ctx->client_ipaddr->s, 1);
-    char portstr[10];
-    snprintf(portstr, sizeof(portstr), "%d", ctx->client_port);
-    misc.setenv("REMOTE_PORT", portstr, 1);
+    // Read cgi output in select()
+    // ctx->selectfd = fd_out;
+    ctx->cgifd = fd_out;
+    ctx->type = lkcontext.CTX_READ_CGI_OUTPUT;
+    ctx->cgi_outputbuf = lkbuffer.lk_buffer_new(0);
+
+    // If req is POST with body, pass it to cgi process stdin.
+    if (wreq->body->bytes_len > 0) {
+        lkcontext.LKContext *ctx_in = lkcontext.lk_context_new();
+        // llist.append(server->contexts, ctx_in);
+
+        // ctx_in->selectfd = fd_in;
+        ctx_in->cgifd = fd_in;
+        // ctx_in->clientfd = ctx->clientfd;
+        ctx_in->type = lkcontext.CTX_WRITE_CGI_INPUT;
+
+        ctx_in->cgi_inputbuf = lkbuffer.lk_buffer_new(0);
+        lkbuffer.lk_buffer_append(ctx_in->cgi_inputbuf, wreq->body->bytes, wreq->body->bytes_len);
+
+        // FD_SET_WRITE(ctx_in->selectfd, server);
+    }
+    return true;
 }
 
 // // Send cgi_inputbuf input bytes to cgi program stdin set in selectfd.
