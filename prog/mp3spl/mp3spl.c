@@ -1,4 +1,4 @@
-#import mp3
+#import formats/mp3
 
 /*
  * mp3spl <mp3> <time>,<time>,...
@@ -7,21 +7,23 @@
  * For N points produces N+1 files.
  */
 
-int main(int argc, char *argv[])
-{
+int main(int argc, char *argv[]) {
 	if (argc != 3) {
-		panic("Usage: mp3spl <mp3file> <m:s.sss...>,<m:s.sss...>,...");
+		fprintf(stderr, "Usage: mp3spl <mp3file> <m:s.sss...>,<m:s.sss...>,...\n");
+		return 1;
 	}
 
 	const char *path = argv[1];
 	mp3.mp3file *f = mp3.mp3open(path);
 	if (mp3.mp3err(f)) {
-		panic("%s", mp3.mp3err(f));
+		fprintf(stderr, "%s\n", mp3.mp3err(f));
+		return 1;
 	}
 
 	mp3.mp3time_t points[20] = {};
 	if (!parse_times(points, argv[2], 20)) {
-		panic("Couldn't parse time positions");
+		fprintf(stderr, "Couldn't parse time positions\n");
+		return 1;
 	}
 
 	size_t len = strlen(path);

@@ -1,4 +1,4 @@
-#import json
+#import formats/json
 #import parsebuf
 #import str
 #import strings

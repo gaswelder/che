@@ -1,7 +1,7 @@
-#import json
-#import tty
+#import formats/json
 #import opt
 #import strings
+#import tty
 
 char *reqfields[100] = {};
 int nreqfields = 0;

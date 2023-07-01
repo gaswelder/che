@@ -2,11 +2,11 @@
  * This is a port of the [https://github.com/skeeto/sort-circle]("sort-circle demo by skeeto).
  */
 
-#import opt
-#import ppm
-#import rnd
-#import fileutil
 #import endian
+#import fileutil
+#import formats/ppm
+#import opt
+#import rnd
 
 /*
  * The array that's being shuffled and sorted.

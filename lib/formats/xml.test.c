@@ -1,4 +1,4 @@
-#import xml
+#import xml.c
 #import fileutil
 #import test
 #import os/fs

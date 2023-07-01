@@ -1,27 +1,22 @@
-#import tiff
+#import formats/tiff
 
-int usage() {
-	puts("Usage: tiff <info|dump> <filename>");
-	return 1;
+void usage() {
+	fprintf(stderr, "Usage: tiff <info|dump> <filename>\n");
 }
 
-int err(char *msg) {
-	puts(msg);
-	return 1;
-}
-
-int main(int argc, char *argv[])
-{
+int main(int argc, char *argv[]) {
 	if (argc < 3) {
-		return usage();
+		usage();
+		return 1;
 	}
 
 	char *mode = argv[1];
 	char *filepath = argv[2];
 
 	tiff.TIFFFile *tiff = tiff.tiff_open( filepath );
-	if( !tiff ){
-		return err("Could not open the file");
+	if (!tiff) {
+		fprintf(stderr, "Could not open %s: %s\n", filepath, strerror(errno));
+		return 1;
 	}
 
 	if (strcmp(mode, "info") == 0) {
@@ -35,11 +30,8 @@ int main(int argc, char *argv[])
 		return status;
 	}
 	tiff.tiff_close( tiff );
-	return usage();
-}
-
-size_t tiff_dircount(tiff.TIFFFile *tiff) {
-	return tiff->directories_count;
+	usage();
+	return 1;
 }
 
 tiff.TIFFDirectory *tiff_dir(tiff.TIFFFile *tiff, size_t index) {
@@ -55,14 +47,12 @@ tiff.TIFFEntry *tiff_entry(tiff.TIFFDirectory *dir, size_t index) {
 }
 
 
-int info( tiff.TIFFFile *tiff )
-{
-	for (size_t dir_index = 0; dir_index < tiff_dircount(tiff); dir_index++) {
-		printf( "-- Directory #%lu --\n", dir_index );
+int info( tiff.TIFFFile *tiff ) {
+	for (int dir_index = 0; dir_index < tiff->directories_count; dir_index++) {
+		printf( "-- Directory #%d --\n", dir_index);
 		tiff.TIFFDirectory *dir = tiff_dir(tiff, dir_index);
 
-		for( size_t entry_index = 0; entry_index < tiff_entrycount(dir); entry_index++ )
-		{
+		for (size_t entry_index = 0; entry_index < tiff_entrycount(dir); entry_index++) {
 			tiff.TIFFEntry *entry = tiff_entry(dir, entry_index);
 			printf("%-10s\t(x%lu)\t%-24s\t%u\n",
 				tiff.tiff_typename(entry->type),
@@ -83,7 +73,6 @@ int info( tiff.TIFFFile *tiff )
 			}
 		}
 	}
-
 	return 0;
 }
 

@@ -1,4 +1,4 @@
-#import json
+#import json.c
 #import test
 
 const char *test = "{\n\"defaults\": {\n"

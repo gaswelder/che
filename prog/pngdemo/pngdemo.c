@@ -1,4 +1,4 @@
-#import png
+#import formats/png
 
 const int W = 250;
 const int H = 200;

@@ -1,7 +1,7 @@
 /*
  * Watch with  ./attractor | mpv --no-correct-pts --fps=30 -
  */
-#import ppm
+#import formats/ppm
 
 int main() {
     const int WIDTH = 800;
