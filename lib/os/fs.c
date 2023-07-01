@@ -22,7 +22,7 @@ pub bool unlink(const char *path) {
 pub bool filesize(const char *path, size_t *size)
 {
 	stat_t s = {};
-	if(stat(path, &s) < 0) {
+	if (stat(path, &s) < 0) {
 		return false;
 	}
 	*size = (size_t) s.st_size;
