@@ -2,89 +2,88 @@
 #include <unistd.h>
 #include <sys/wait.h>
 
-#known pipe
-#known fdopen
-#known fork
-#known waitpid
-#known dup
-#known fileno
-#known execve
+#import os/io
 
-pub typedef { int pid; char *error; } exec_t;
-pub typedef { FILE *read, *write; } pipe_t;
+pub typedef {
+    io.handle_t *stdin, *stdout, *stderr;
+    int pid;
+} proc_t;
 
 /*
- * Creates a pipe for inter-process communication. One side of the pipe can be
- * passed as a stream to the `exec` function. Don't forget to close the passed
- * side of the pipe on the caller side to avoid deadlocks.
+ * Executes the program with given args and environment.
+ * argv is a NULL-terminated list of strings, where argv[0] is the program path.
+ * env is a NULL-terminated list of k=v strings specifying environment variables.
  */
-pub pipe_t exec_makepipe() {
-    int fd[2] = {0};
-    pipe_t r = { .read = NULL, .write = NULL };
-    if (pipe(fd) == -1) {
-        return r;
-    }
-    r.read = fdopen(fd[0], "rb");
-    r.write = fdopen(fd[1], "wb");
-    return r;
-}
-
-/*
- * Executes the program with given args and environment. argv[0] is the program
- * file path.
- * `in`, `out` and `err` specify standard streams. Pass `stdin`, `stdout` and
- * `stderr` for usual terminal output.
- */
-pub exec_t *exec(char *argv[], *env[], FILE *in, *out, *err) {
-    exec_t *r = calloc(1, sizeof(exec_t));
-    if (!r) {
+pub proc_t *spawn(char *argv[], *env[]) {
+    // Make three pipes
+    int in[2] = {0};
+    int out[2] = {0};
+    int err[2] = {0};
+    bool ok1 = OS.pipe(in) == 0;
+    bool ok2 = OS.pipe(out) == 0;
+    bool ok3 = OS.pipe(err) == 0;
+    if (!ok1 || !ok2 || !ok3) {
+        if (ok1) {
+            OS.close(in[0]); OS.close(in[1]);
+        }
+        if (ok2) {
+            OS.close(out[0]); OS.close(out[1]);
+        }
+        if (ok3) {
+            OS.close(err[0]); OS.close(err[1]);
+        }
         return NULL;
     }
 
-    r->pid = fork();
-    if (r->pid == -1) {
-        r->error = strerror(errno);
-        return r;
-    }
-    if (r->pid) {
-        return r;
+    int pid = OS.fork();
+    if (pid < 0) {
+        OS.close(in[0]); OS.close(in[1]);
+        OS.close(out[0]); OS.close(out[1]);
+        OS.close(err[0]); OS.close(err[1]);
+        return NULL;
     }
 
-    free(r);
-    child(in, out, err, argv, env);
-    exit(123);
+    if (pid > 0) {
+        // Parent
+        proc_t *p = calloc(1, sizeof(proc_t));
+        if (!p) {
+            // oopsie
+            OS.close(in[0]); OS.close(in[1]);
+            OS.close(out[0]); OS.close(out[1]);
+            OS.close(err[0]); OS.close(err[1]);
+            OS.kill(pid, OS.SIGKILL);
+            return NULL;
+        }
+        p->pid = pid;
+        p->stdin = io.fdhandle(in[0]);
+        p->stdout = io.fdhandle(out[0]);
+        p->stderr = io.fdhandle(err[0]);
+        OS.close(in[1]);
+        OS.close(out[1]);
+        OS.close(err[1]);
+        return p;
+    } else {
+        // child proc
+        OS.close(in[0]);
+        OS.close(out[0]);
+        OS.close(err[0]);
+        if (OS.dup2(in[1], OS.STDIN_FILENO) < 0) {
+            panic("dup2 failed");
+        }
+        if (OS.dup2(out[1], OS.STDOUT_FILENO) < 0) {
+            panic("dup2 failed");
+        }
+        if (OS.dup2(err[1], OS.STDERR_FILENO) < 0) {
+            panic("dup2 failed");
+        }
+        OS.execve(argv[0], argv, env);
+        // Shouldn't reach here.
+        panic("execve '%s' failed: %s\n", argv[0], strerror(errno));
+    }
 }
 
-pub bool exec_wait(exec_t *r, int *status) {
-    bool ok = waitpid(r->pid, status, 0) == r->pid;
-    free(r);
+pub bool wait(proc_t *p, int *status) {
+    bool ok = OS.waitpid(p->pid, status, 0) == p->pid;
+    free(p);
     return ok;
 }
-
-void child(FILE *in, *out, *err, char **argv, **env) {
-    /*
-     * Replace standard streams with those given in the arguments.
-     */
-    if (in != stdin) {
-        fclose(stdin);
-        if (dup(fileno(in)) < 1) {
-            exit(errno);
-        }
-    }
-    if (out != stdout) {
-        fclose(stdout);
-        if (dup(fileno(out)) < 1) {
-            exit(errno);
-        }
-    }
-    if (err != stderr) {
-        fclose(stderr);
-        if (dup(fileno(err)) < 1) {
-            exit(errno);
-        }
-    }
-    int rr = execve(argv[0], argv, env);
-    fprintf(err, "execve '%s' failed: %s\n", argv[0], strerror(errno));
-    exit(rr);
-}
-

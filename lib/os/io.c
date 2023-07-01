@@ -8,37 +8,11 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-#known fileno
 #type fd_set
 #type socklen_t
-#known accept
-#known AF_INET
-#known AI_PASSIVE
-#known ai_protocol
-#known ai_socktype
-#known bind
-#known connect
-#known FD_ISSET
-#known getaddrinfo
-#known IPPROTO_TCP
-#known listen
-#known select
-#known send
-#known setsockopt
-#known SOCK_STREAM
-#known recv
-#known MSG_NOSIGNAL
-#known ntohs
-#known socket
-#known close
-#known SOL_SOCKET
-#known SO_REUSEADDR
-#known FD_ZERO
-#known FD_SET
-#known freeaddrinfo
-#known inet_ntoa
 
 enum {
+    TYPE_FD,
     TYPE_NET,
     TYPE_FILE
 };
@@ -101,6 +75,13 @@ pub bool push(buf_t *b, char *data, size_t n) {
     return true;
 }
 
+pub void shift(buf_t *b, size_t n) {
+    memmove(b->data, b->data + n, b->size - n);
+    b->size -= n;
+}
+
+
+
 pub typedef {
     int type;
     int fd;
@@ -110,6 +91,23 @@ pub typedef {
 
 pub int id(handle_t *h) {
     return h->fd;
+}
+
+pub handle_t *fdhandle(int fd) {
+    handle_t *h = calloc(1, sizeof(handle_t));
+    if (!h) {
+        return NULL;
+    }
+    h->type = TYPE_FD;
+    h->fd = fd;
+    return h;
+}
+
+pub FILE *asfile(handle_t *h, const char *mode) {
+    if (h->type == TYPE_FD) {
+        return OS.fdopen(h->fd, mode);
+    }
+    panic("unhandled handle type: %d", h->type);
 }
 
 pub bool read(handle_t *h, buf_t *b) {
@@ -135,11 +133,6 @@ pub bool write(handle_t *h, buf_t *b) {
     }
     shift(b, (size_t) r);
     return true;
-}
-
-pub void shift(buf_t *b, size_t n) {
-    memmove(b->data, b->data + n, b->size - n);
-    b->size -= n;
 }
 
 pub handle_t *connect(const char *proto, const char *addr) {
@@ -206,7 +199,7 @@ pub handle_t *open(const char *path, *flags) {
     }
     h->type = TYPE_FILE;
     h->file = f;
-    h->fd = fileno(f);
+    h->fd = OS.fileno(f);
     return h;
 }
 
@@ -221,6 +214,10 @@ pub bool close(handle_t *h) {
     if (h->type == TYPE_NET) {
         net.net_close(h->conn);
         free(h);
+        return true;
+    }
+    if (h->type == TYPE_FD) {
+        OS.close(h->fd);
         return true;
     }
     panic("unhandled type");
@@ -285,16 +282,16 @@ pub event_t *poll(pool_t *p) {
             continue;
         }
         if (p->filters[i] & READ) {
-            FD_SET(h->fd, &readset);
+            OS.FD_SET(h->fd, &readset);
         }
         if (p->filters[i] & WRITE) {
-            FD_SET(h->fd, &writeset);
+            OS.FD_SET(h->fd, &writeset);
         }
         if (h->fd > max) {
             max = h->fd;
         }
     }
-    int r = select(max + 1, &readset, &writeset, NULL, NULL);
+    int r = OS.select(max + 1, &readset, &writeset, NULL, NULL);
     if (r < 0) {
         return false;
     }
@@ -304,8 +301,8 @@ pub event_t *poll(pool_t *p) {
         if (!h) {
             continue;
         }
-        bool r = p->filters[i] & READ && FD_ISSET(h->fd, &readset);
-        bool w = p->filters[i] & WRITE && FD_ISSET(h->fd, &writeset);
+        bool r = p->filters[i] & READ && OS.FD_ISSET(h->fd, &readset);
+        bool w = p->filters[i] & WRITE && OS.FD_ISSET(h->fd, &writeset);
         if (!r && !w) {
             continue;
         }

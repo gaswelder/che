@@ -1,10 +1,11 @@
 #import os/exec
 #import parsebuf
 #import strings
+#import os/io
 
 typedef {
     FILE *out;
-    exec.exec_t *child;
+    exec.proc_t *child;
 } client_t;
 
 client_t tl_exec(char **args) {
@@ -22,11 +23,10 @@ client_t tl_exec(char **args) {
     argv[i++] = NULL;
 
     char **env = {NULL};
-    exec.pipe_t pipe = exec.exec_makepipe();
-    exec.exec_t *child = exec.exec(argv, env, stdin, pipe.write, stderr);
-    fclose(pipe.write);
+    exec.proc_t *child = exec.spawn(argv, env);
+    io.close(child->stdin);
     client_t r = {
-        .out = pipe.read,
+        .out = io.asfile(child->stdout, "rb"),
         .child = child
     };
     return r;
@@ -34,7 +34,7 @@ client_t tl_exec(char **args) {
 
 void tl_close(client_t c) {
     int status = 0;
-    if (!exec.exec_wait(c.child, &status)) {
+    if (!exec.wait(c.child, &status)) {
         fprintf(stderr, "wait failed: %s\n", strerror(errno));
     }
 }
