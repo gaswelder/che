@@ -1,15 +1,14 @@
-#import fileutil
-#import os/fs
+#import fs
 
-const char *PATH = "fileutil-test.tmp";
+const char *PATH = "fs-test.tmp";
 
 bool test() {
 	char *str = "test";
 	size_t n = strlen(str);
-	bool ok = fileutil.writefile(PATH, str, n);
+	bool ok = fs.writefile(PATH, str, n);
 	char *data = NULL;
 	if (ok) {
-		data = fileutil.readfile_str(PATH);
+		data = fs.readfile_str(PATH);
 		ok = data != NULL;
 	}
 	if (ok) {

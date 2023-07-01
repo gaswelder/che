@@ -1,8 +1,7 @@
-#import fileutil
+#import fs
+#import http
 #import os/misc
 #import strings
-#import http
-#import fs
 
 #import lkbuffer.c
 #import lkcontext.c
@@ -34,7 +33,7 @@ pub bool resolve(lkcontext.LKContext *ctx, lkhostconfig.LKHostConfig *hc) {
     // real_path file should exist
     if (!pathok
         || !strings.starts_with(real_path, hc->cgidir_abspath)
-        || !fileutil.file_exists(real_path)
+        || !fs.file_exists(real_path)
     ) {
         printf("invalid path\n");
         srvstd.write_404(req, ctx);

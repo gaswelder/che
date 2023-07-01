@@ -1,7 +1,6 @@
 #import xml.c
-#import fileutil
 #import test
-#import os/fs
+#import fs
 
 const char *data = "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n"
 "<root>\n"
@@ -15,7 +14,7 @@ const char *data = "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n"
 const char *TEMP_FILE_PATH = "xmltest-tmp.xml";
 
 int main() {
-	if (!fileutil.writefile(TEMP_FILE_PATH, data, strlen(data))) {
+	if (!fs.writefile(TEMP_FILE_PATH, data, strlen(data))) {
 		panic("failed to create the test file");
 	}
 

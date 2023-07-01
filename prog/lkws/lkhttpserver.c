@@ -1,10 +1,9 @@
-#import fileutil
+#import fs
 #import http
 #import mime
 #import os/io
 #import os/misc
 #import strings
-#import os/fs
 
 // #import lkbuffer.c
 #import lkconfig.c
@@ -234,7 +233,7 @@ int process(server_t *server, lkcontext.LKContext *ctx, int line) {
         }
 
         printf("resolved %s as %s\n", req->path, filepath);
-        const char *ext = fileutil.fileext(filepath);
+        const char *ext = fs.fileext(filepath);
         const char *content_type = mime.lookup(ext);
         if (content_type == NULL) {
             printf("didn't get MIME type for \"%s\", using text/plain\n", ext);

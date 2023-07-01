@@ -1,9 +1,8 @@
-#import strings
 #import fs
 #import http
 #import mime
 #import os/io
-#import fileutil
+#import strings
 
 #import lkcontext.c
 #import lkhostconfig.c
@@ -95,7 +94,7 @@ char *resolve_inner(const char *homedir, *reqpath) {
 }
 
 void write_file(http.request_t *req, lkcontext.LKContext *ctx, const char *filepath) {
-    const char *ext = fileutil.fileext(filepath);
+    const char *ext = fs.fileext(filepath);
     const char *content_type = mime.lookup(ext);
     if (content_type == NULL) {
         printf("didn't get MIME type for \"%s\", using text/plain\n", ext);
@@ -103,7 +102,7 @@ void write_file(http.request_t *req, lkcontext.LKContext *ctx, const char *filep
     }
 
     size_t filesize = 0;
-    char *data = fileutil.readfile(filepath, &filesize);
+    char *data = fs.readfile(filepath, &filesize);
     if (!data) {
         panic("failed to read file '%s'", filepath);
     }

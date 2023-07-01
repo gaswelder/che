@@ -1,6 +1,6 @@
-#import fileutil
 #import formats/cue
 #import formats/mp3
+#import fs
 
 int main(int argc, char *argv[]) {
 	if (argc != 3) {
@@ -11,7 +11,7 @@ int main(int argc, char *argv[]) {
 	const char *cuepath = argv[1];
 	const char *mp3path = argv[2];
 
-	char *s = fileutil.readfile_str(cuepath);
+	char *s = fs.readfile_str(cuepath);
 	if (!s) {
 		panic("Couldn't read %s", cuepath);
 	}

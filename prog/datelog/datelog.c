@@ -1,11 +1,9 @@
+#import fs
 #import opt
-#import fileutil
 #import strings
 #import time
-#import os/fs
 
 #define MAXPATH 255
-
 
 /*
  * datelog [-p <period>] [-d <dir>] [-c <current file name>] [-o]
@@ -245,10 +243,9 @@ int close_log( dlog_t *log )
 	 * Move the contents from the temporary path to the corresponding
 	 * file.
 	 */
-	if( fileutil.file_exists( log->current_path ) ) {
-		if( !fileutil.append_file( log->current_path, log->static_path ) ) {
-			fprintf( stderr, "Couldn't append %s to %s\n",
-				log->static_path, log->current_path );
+	if (fs.file_exists(log->current_path)) {
+		if (!fs.append_file(log->current_path, log->static_path)) {
+			fprintf(stderr, "Couldn't append %s to %s\n", log->static_path, log->current_path);
 			return 0;
 		}
 		remove( log->static_path );
@@ -267,13 +264,11 @@ int close_log( dlog_t *log )
 /*
  * Puts path for the current file into the given buffer.
  */
-bool format_path( dlog_t *log, char *buf, size_t len )
-{
+bool format_path( dlog_t *log, char *buf, size_t len ) {
 	char name[200] = {};
 	if( !time.time_format(name, sizeof(name), log->per->format) ) {
 		return false;
 	}
-
 	int r = snprintf(buf, len, "%s/%s.log", log->dir, name);
 	if( r < 0 || (size_t) r >= len ) {
 		return false;

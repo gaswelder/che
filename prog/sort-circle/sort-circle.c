@@ -3,8 +3,8 @@
  */
 
 #import endian
-#import fileutil
 #import formats/ppm
+#import fs
 #import opt
 #import rnd
 
@@ -53,9 +53,13 @@ int swaps[N] = {};
 const char *message = "";
 FILE *wav = NULL;
 
+uint8_t *font = NULL;
+const char *FONTPATH = "prog/sort-circle-font.bin";
+
 int main(int argc, char **argv) {
-    if (!load_font("prog/sort-circle-font.bin")) {
-        fprintf(stderr, "couldn't load font at 'prog/sort-circle-font.bin'\n");
+    font = (uint8_t *) fs.readfile(FONTPATH, NULL);
+    if (!font) {
+        fprintf(stderr, "couldn't load font at '%s'\n", FONTPATH);
         return 1;
     }
 
@@ -467,13 +471,6 @@ void draw_string(ppm.ppm_t *p, const char *message)
             }
         }
     }
-}
-
-uint8_t *font = NULL;
-
-bool load_font(const char *path) {
-    font = (uint8_t *) fileutil.readfile(path, NULL);
-    return font != NULL;
 }
 
 float font_value(int c, int x, int y) {

@@ -1,6 +1,6 @@
+#import fs
 #import mem
 #import opt
-#import os/fs
 
 enum {
 	L_SAME,
@@ -44,10 +44,8 @@ int main( int argc, char *argv[] )
 		return 1;
 	}
 
-	while( *path )
-	{
-		if( fs.is_dir( *path ) ) {
-			//fprintf( stderr, "trim: skipping directory %s\n", *path );
+	while (*path) {
+		if (fs.is_dir(*path)) {
 			path++;
 			continue;
 		}
