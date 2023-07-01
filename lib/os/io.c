@@ -249,6 +249,13 @@ pub pool_t *newpool() {
     return p;
 }
 
+pub void resetpool(pool_t *p) {
+    for (int i = 0; i < 1000; i++) {
+        p->handles[i] = NULL;
+        p->result[i].handle = NULL;
+    }
+}
+
 pub void freepool(pool_t *p) {
     free(p);
 }

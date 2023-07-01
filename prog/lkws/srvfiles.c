@@ -16,6 +16,41 @@ const char *default_files[] = {
     "default.htm"
 };
 
+pub io.handle_t *resolve1(http.request_t *req, lkhostconfig.LKHostConfig *hc) {
+    if (!strcmp(req->method, "GET")) {
+        char *filepath = resolve_path(hc->homedir, req->path);
+        if (!filepath) {
+            printf("file \"%s\" not found, serving 404\n", req->path);
+            // srvstd.write_404(req, ctx);
+            // ctx->type = lkcontext.CTX_WRITE_DATA;
+            // return true;
+        }
+        io.handle_t *h = io.open(filepath, "rb");
+        free(filepath);
+        return h;
+    }
+    panic("kek");
+    // if (!strcmp(req->method, "POST")) {
+    //     srvstd.write_405(req, ctx);
+    //     return true;
+    // }
+    // srvstd.write_501(req, ctx);
+    // return true;
+}
+
+pub char *resolve_path(const char *homedir, *reqpath) {
+    if (!strcmp(reqpath, "")) {
+        for (size_t i = 0; i < nelem(default_files); i++) {
+            char *p = resolve_inner(homedir, default_files[i]);
+            if (p) {
+                return p;
+            }
+        }
+        return NULL;
+    }
+    return resolve_inner(homedir, reqpath);
+}
+
 pub bool resolve(http.request_t *req, lkcontext.LKContext *ctx, lkhostconfig.LKHostConfig *hc) {
     if (!strcmp(req->method, "GET")) {
         char *filepath = resolve_path(hc->homedir, req->path);
@@ -38,18 +73,7 @@ pub bool resolve(http.request_t *req, lkcontext.LKContext *ctx, lkhostconfig.LKH
     return true;
 }
 
-char *resolve_path(const char *homedir, *reqpath) {
-    if (!strcmp(reqpath, "")) {
-        for (size_t i = 0; i < nelem(default_files); i++) {
-            char *p = resolve_inner(homedir, default_files[i]);
-            if (p) {
-                return p;
-            }
-        }
-        return NULL;
-    }
-    return resolve_inner(homedir, reqpath);
-}
+
 
 char *resolve_inner(const char *homedir, *reqpath) {
     char naive_path[4096] = {0};

@@ -26,14 +26,24 @@ pub enum {
 }; // LKContextType;
 
 pub typedef {
-    io.handle_t *client_handle;
+    // Routine
+    int current_line;
+    io.handle_t *waithandle, *readyhandle;
+    int waitfilter, readyfilter;
+
+    // Routine-local storage.
+
+    io.handle_t *client_handle; // Connected client.
+    io.buf_t *inbuf, *outbuf; // Buffers for incoming and outgoing data.
+    io.handle_t *filehandle; // for serving a local file.
+
+
+    // ...
+
     io.handle_t *data_handle;
     
     int type; // state, one of CTX_* constants
-
-    // Buffers for incoming and outgoing data.
-    io.buf_t *inbuf;
-    io.buf_t *outbuf;
+   
 
     request.LKHttpRequest *req;               // http in process
 
