@@ -586,8 +586,14 @@ fn parse_statements_block(lexer: &mut Lexer, ctx: &Ctx) -> Result<Body, Error> {
 }
 
 fn parse_statement(l: &mut Lexer, ctx: &Ctx) -> Result<Statement, Error> {
+    if !l.more() {
+        return Err(Error {
+            message: String::from("reached end of file while parsing statement"),
+            pos: String::from("EOF"),
+        });
+    }
     let next = l.peek().unwrap();
-    if type_follows(l, ctx) || next.kind == "const" {
+    if type_follows(l, ctx) {
         return parse_variable_declaration(l, ctx);
     }
     return match next.kind.as_str() {
