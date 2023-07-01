@@ -47,6 +47,7 @@ pub const CFUNCS: &[&str] = &[
     "islower",
     "isspace",
     "acos",
+    "floor",
     "round",
     "strrchr",
     "tolower",
