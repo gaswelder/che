@@ -11,13 +11,11 @@
 #import lkconfig.c
 #import lkcontext.c
 #import lkhostconfig.c
-#import llist.c
 #import srvcgi.c
 #import srvfiles.c
 
 typedef {
     lkconfig.LKConfig *cfg;
-    llist.t *contexts;
     io.handle_t *listener;
 } server_t;
 
@@ -131,7 +129,6 @@ int main(int argc, char *argv[]) {
     lkconfig.print(cfg);
 
     SERVER.cfg = cfg;
-    SERVER.contexts = llist.new();
 
     char *addr = strings.newstr("%s:%s", cfg->serverhost, cfg->port);
     SERVER.listener = io.listen("tcp", addr);
@@ -174,7 +171,6 @@ int listener_routine(void *ctx, int line) {
                 panic("!");
             }
             lkcontext.LKContext *ctx = lkcontext.create_initial_context(conn);
-            // llist.append(s->contexts, ctx);
             ioroutine.spawn(client_routine, ctx);
             return 0;
     }
