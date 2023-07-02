@@ -1,9 +1,9 @@
+#import clip/stringtable
 #import strings
 
 #import lkconfig.c
 #import lkhostconfig.c
 #import lkstring.c
-#import lkstringtable.c
 
 #define N_GROW_STRINGLIST 10
 
@@ -138,7 +138,7 @@ pub lkconfig.LKConfig *read_file(const char *configfile) {
                 if (!lkstring.lk_string_starts_with(aliasv, "/")) {
                     lkstring.lk_string_prepend(aliasv, "/");
                 }
-                lkstringtable.lk_stringtable_set(hc->aliases, aliask->s, aliasv->s);
+                stringtable.set(hc->aliases, aliask->s, aliasv->s);
                 continue;
             }
             continue;

@@ -1,7 +1,7 @@
 #import strings
+#import clip/stringtable
 
 #import lkhostconfig.c
-#import lkstringtable.c
 
 #define MAX_HOST_CONFIGS 256
 
@@ -36,7 +36,7 @@ pub void print(LKConfig *cfg) {
         if (strlen(hc->proxyhost) > 0) {
             printf("proxyhost = %s\n", hc->proxyhost);
         }
-        for (size_t j = 0; j < hc->aliases->items_len; j++) {
+        for (size_t j = 0; j < hc->aliases->len; j++) {
             printf("    alias %s=%s\n", hc->aliases->items[j].k, hc->aliases->items[j].v);
         }
         printf("------\n");
@@ -110,12 +110,12 @@ pub lkhostconfig.LKHostConfig *lk_config_create_get_hostconfig(LKConfig *cfg, ch
 
 pub lkhostconfig.LKHostConfig *lk_hostconfig_new(char *hostname) {
     lkhostconfig.LKHostConfig *hc = calloc(1, sizeof(lkhostconfig.LKHostConfig));
-    hc->aliases = lkstringtable.lk_stringtable_new();
+    hc->aliases = stringtable.new();
     strcpy(hc->hostname, hostname);
     return hc;
 }
 
 pub void lk_hostconfig_free(lkhostconfig.LKHostConfig *hc) {
-    lkstringtable.lk_stringtable_free(hc->aliases);
+    stringtable.free(hc->aliases);
     free(hc);
 }

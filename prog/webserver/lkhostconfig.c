@@ -1,4 +1,4 @@
-#import lkstringtable.c
+#import clip/stringtable
 
 pub typedef {
     char hostname[1000];
@@ -8,7 +8,7 @@ pub typedef {
     char cgidir_abspath[1000];
     char proxyhost[1000];
 
-    lkstringtable.LKStringTable *aliases;
+    stringtable.t *aliases;
 } LKHostConfig;
 
 // void print_sample_config() {

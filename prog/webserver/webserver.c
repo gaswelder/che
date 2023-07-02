@@ -265,7 +265,7 @@ bool parse_request(context.ctx_t *ctx) {
 // bool resolve_request(server_t *server, context.ctx_t *ctx) {
 
 //     // Replace path with any matching alias.
-//     char *match = lkstringtable.lk_stringtable_get(hc->aliases, req->path);
+//     char *match = stringtable.lk_stringtable_get(hc->aliases, req->path);
 //     if (match != NULL) {
 //         panic("todo");
 //         if (strlen(match) + 1 > sizeof(req->path)) {
