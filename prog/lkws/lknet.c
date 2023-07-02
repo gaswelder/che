@@ -3,8 +3,6 @@
 #include <sys/socket.h>
 
 #import lkbuffer.c
-#import request.c
-#import lkstringtable.c
 
 #define LK_BUFSIZE_LARGE 2048
 
@@ -207,8 +205,4 @@ pub int lk_write_all_sock(int fd, lkbuffer.LKBuffer *buf) {
 }
 pub int lk_write_all_file(int fd, lkbuffer.LKBuffer *buf) {
     return lk_write_all(fd, FD_FILE, buf);
-}
-
-pub void lk_httpresponse_add_header(request.LKHttpResponse *resp, const char *k, *v) {
-    lkstringtable.lk_stringtable_set(resp->headers, k, v);
 }

@@ -7,7 +7,6 @@
 #import lkhttprequestparser.c
 #import lkreflist.c
 #import lkstring.c
-#import request.c
 #import socketreader.c
 
 /**
@@ -67,8 +66,6 @@ pub typedef {
     lkhttprequestparser.LKHttpRequestParser *reqparser;   // parser for httprequest
     
 
-    // Used by CTX_WRITE_REQ:
-    request.LKHttpResponse *resp;             // http response to be sent
     lkreflist.LKRefList *buflist;               // Buffer list of things to send/recv
 
     // Used by CTX_READ_CGI:
@@ -95,7 +92,6 @@ pub LKContext *lk_context_new() {
     ctx->req_buf = NULL;
     ctx->sr = NULL;
     ctx->reqparser = NULL;
-    ctx->resp = NULL;
     ctx->buflist = NULL;
 
     ctx->cgifd = 0;
@@ -118,7 +114,6 @@ pub LKContext *create_initial_context(io.handle_t *h) {
     ctx->req_line = lkstring.lk_string_new("");
     ctx->req_buf = lkbuffer.lk_buffer_new(0);
     ctx->reqparser = lkhttprequestparser.lk_httprequestparser_new();
-    ctx->resp = request.lk_httpresponse_new();
     ctx->buflist = lkreflist.lk_reflist_new();
 
     ctx->cgifd = 0;
@@ -149,9 +144,6 @@ pub void lk_context_free(LKContext *ctx) {
     if (ctx->reqparser) {
         lkhttprequestparser.lk_httprequestparser_free(ctx->reqparser);
     }
-    if (ctx->resp) {
-        request.lk_httpresponse_free(ctx->resp);
-    }
     if (ctx->buflist) {
         lkreflist.lk_reflist_free(ctx->buflist);
     }
@@ -170,7 +162,6 @@ pub void lk_context_free(LKContext *ctx) {
     ctx->req_buf = NULL;
     ctx->sr = NULL;
     ctx->reqparser = NULL;
-    ctx->resp = NULL;
     ctx->buflist = NULL;
     ctx->cgifd = 0;
     ctx->cgi_outputbuf = NULL;
