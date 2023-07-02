@@ -1,6 +1,4 @@
-#import fs
 #import http
-#import mime
 #import os/io
 #import os/misc
 #import strings
@@ -10,10 +8,8 @@
 // #import lkbuffer.c
 #import lkconfig.c
 #import lkcontext.c
-#import lkhostconfig.c
 #import srvfiles.c
 #import llist.c
-#import srvstd.c
 
 #define LK_BUFSIZE_SMALL 512
 #define TIME_STRING_SIZE 25
@@ -109,6 +105,7 @@ int client_routine(void *_ctx, int line) {
             return 1;
         }
         if (!io.read(ctx->client_handle, ctx->inbuf)) {
+            panic("read failed");
             fprintf(stderr, "read failed: %s\n", strerror(errno));
             return -1;
         }
@@ -116,88 +113,27 @@ int client_routine(void *_ctx, int line) {
         if (!parse_request(ctx)) {
             return 1;
         }
-        printf("parsed request\n");
-        // Get the hostname from the request.
-        http.request_t *req = &ctx->req;
+        printf("getting a host config\n");
         char *hostname = NULL;
-        http.header_t *host = http.get_header(req, "Host");
+        http.header_t *host = http.get_header(&ctx->req, "Host");
         if (host) {
             hostname = host->value;
         }
-        
-        lkhostconfig.LKHostConfig *hc = lkconfig.lk_config_find_hostconfig(SERVER.cfg, hostname);
-        if (hc == NULL) {
+        ctx->hc = lkconfig.lk_config_find_hostconfig(SERVER.cfg, hostname);
+        if (!ctx->hc) {
             // process_error_response(server, ctx, 404, "LittleKitten webserver: hostconfig not found.");
             panic("todo");
             // return true;
         }
-        printf("resolving %s\n", req->path);
-        char *filepath = srvfiles.resolve_path(hc->homedir, req->path);
-        if (!filepath) {
-            printf("file \"%s\" not found, serving 404\n", req->path);
-            srvstd.write_404(req, ctx);
-            return 3;
-        }
-
-        printf("resolved %s as %s\n", req->path, filepath);
-        const char *ext = fs.fileext(filepath);
-        const char *content_type = mime.lookup(ext);
-        if (content_type == NULL) {
-            printf("didn't get MIME type for \"%s\", using text/plain\n", ext);
-            content_type = "text/plain";
-        }
-        size_t filesize = 0;
-        if (!fs.filesize(filepath, &filesize)) {
-            panic("failed to get file size");
-        }
-        printf("writing headers\n");
-        if (!io.pushf(ctx->outbuf,
-            "%s 200 OK\n"
-            "Content-Length: %ld\n"
-            "Content-Type: %s\n\n\n",
-            req->version,
-            filesize,
-            content_type
-        )) {
-            panic("failed to write response headers");
-        }
-    
-        ctx->filehandle = io.open(filepath, "rb");
-        if (!ctx->filehandle) {
-            panic("oops");
-        }
-        printf("resolved file request to fd %d\n", ctx->filehandle->fd);
+        printf("spawning a subroutine\n");
+        ctx->subroutine = ioroutine.spawn(srvfiles.client_routine, ctx);
         return 2;
     case 2:
-        if (!ioroutine.ioready(ctx->filehandle, io.READ)) {
+        if (!ioroutine.done(ctx->subroutine)) {
             return 2;
         }
-        if (!io.read(ctx->filehandle, ctx->outbuf)) {
-            fprintf(stderr, "read failed: %s\n", strerror(errno));
-            return -1;
-        }
-        size_t n = io.bufsize(ctx->outbuf);
-        printf("read %zu from the file\n", n);
-        if (n == 0) {
-            printf("closing file, requested finished\n");
-            printf("output has %zu\n", io.bufsize(ctx->outbuf));
-            io.close(ctx->filehandle);
-            ctx->filehandle = NULL;
-            return 0;
-        }
-        return 3;
-    case 3:
-        if (!ioroutine.ioready(ctx->client_handle, io.WRITE)) {
-            return 3;
-        }
-        if (!io.write(ctx->client_handle, ctx->outbuf)) {
-            fprintf(stderr, "write failed: %s\n", strerror(errno));
-            if (ctx->filehandle) {
-                io.close(ctx->filehandle);
-            }
-            return -1;
-        }
-        return 2;
+        printf("subroutine done\n");
+        return 0;
     }
     panic("unhandled state: %d", line);
 }

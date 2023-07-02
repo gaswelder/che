@@ -2,6 +2,7 @@
 #import http
 
 #import lkbuffer.c
+#import lkhostconfig.c
 #import lkhttprequestparser.c
 #import lkreflist.c
 #import lkstring.c
@@ -30,9 +31,17 @@ pub typedef {
     io.handle_t *client_handle; // Connected client.
     io.buf_t *inbuf, *outbuf; // Buffers for incoming and outgoing data.
 
-    http.request_t req; // Current parsed request.
+    /*
+     * Current parsed request and the corresponding host config.
+     */
+    http.request_t req;
+    lkhostconfig.LKHostConfig *hc;
 
+    int subroutine;
+
+    // files serving routine
     io.handle_t *filehandle; // for serving a local file.
+
 
 
     // ...

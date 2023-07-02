@@ -7,6 +7,7 @@
 #import lkcontext.c
 #import lkhostconfig.c
 #import srvstd.c
+#import ioroutine.c
 
 const char *default_files[] = {
     "index.html",
@@ -14,6 +15,81 @@ const char *default_files[] = {
     "default.html",
     "default.htm"
 };
+
+pub int client_routine(void *_ctx, int line) {
+    lkcontext.LKContext *ctx = _ctx;
+    switch (line) {
+    case 0:
+        http.request_t *req = &ctx->req;
+        printf("resolving %s\n", req->path);
+        char *filepath = resolve_path(ctx->hc->homedir, req->path);
+        if (!filepath) {
+            printf("file \"%s\" not found, serving 404\n", req->path);
+            srvstd.write_404(req, ctx);
+            return 3;
+        }
+        printf("resolved %s as %s\n", req->path, filepath);
+        const char *ext = fs.fileext(filepath);
+        const char *content_type = mime.lookup(ext);
+        if (content_type == NULL) {
+            printf("didn't get MIME type for \"%s\", using text/plain\n", ext);
+            content_type = "text/plain";
+        }
+        size_t filesize = 0;
+        if (!fs.filesize(filepath, &filesize)) {
+            panic("failed to get file size");
+        }
+        printf("writing headers\n");
+        if (!io.pushf(ctx->outbuf,
+            "%s 200 OK\n"
+            "Content-Length: %ld\n"
+            "Content-Type: %s\n\n\n",
+            req->version,
+            filesize,
+            content_type
+        )) {
+            panic("failed to write response headers");
+        }
+        ctx->filehandle = io.open(filepath, "rb");
+        if (!ctx->filehandle) {
+            panic("oops");
+        }
+        printf("resolved file request to fd %d\n", ctx->filehandle->fd);
+        return 2;
+    case 2:
+        printf("?\n");
+        if (!ioroutine.ioready(ctx->filehandle, io.READ)) {
+            return 2;
+        }
+        if (!io.read(ctx->filehandle, ctx->outbuf)) {
+            fprintf(stderr, "read failed: %s\n", strerror(errno));
+            return -1;
+        }
+        size_t n = io.bufsize(ctx->outbuf);
+        printf("read %zu from the file\n", n);
+        if (n == 0) {
+            printf("closing file, requested finished\n");
+            printf("output has %zu\n", io.bufsize(ctx->outbuf));
+            io.close(ctx->filehandle);
+            ctx->filehandle = NULL;
+            return -1;
+        }
+        return 3;
+    case 3:
+        if (!ioroutine.ioready(ctx->client_handle, io.WRITE)) {
+            return 3;
+        }
+        if (!io.write(ctx->client_handle, ctx->outbuf)) {
+            fprintf(stderr, "write failed: %s\n", strerror(errno));
+            if (ctx->filehandle) {
+                io.close(ctx->filehandle);
+            }
+            return -1;
+        }
+        return 2;
+    }
+    panic("unexpected line %d", line);
+}
 
 pub io.handle_t *resolve1(http.request_t *req, lkhostconfig.LKHostConfig *hc) {
     if (!strcmp(req->method, "GET")) {

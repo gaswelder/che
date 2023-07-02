@@ -8,6 +8,8 @@ pub typedef {
     int id;
     io.handle_t *waithandle, *readyhandle;
     int waitfilter, readyfilter;
+
+    int waitroutine; // id of a routine this routine is waiting for.
     func_t *f;
     void *ctx;
     int current_line;
@@ -24,22 +26,31 @@ pub void init() {
     }
 }
 
-pub void spawn(func_t f, void *ctx) {
+pub int spawn(func_t f, void *ctx) {
     routine_t *r = calloc(1, sizeof(routine_t));
     if (!r) {
         panic("calloc failed");
     }
     r->f = f;
     r->ctx = ctx;
+    r->waitroutine = -1;
     for (int i = 0; i < MAX_ROUTINES; i++) {
         if (!routines[i]) {
             routines[i] = r;
             r->id = i;
             printf("spawned %d\n", i);
-            return;
+            return i;
         }
     }
     panic("failed to find a free slot");
+}
+
+bool runnable(routine_t *r) {
+    if (r->current_line != -1 && !r->waithandle && r->waitroutine == -1) {
+        printf("routine %d is runnable\n", r->id);
+        return true;
+    }
+    return false;
 }
 
 pub void step() {
@@ -52,7 +63,7 @@ pub void step() {
             if (!r) {
                 continue;
             }
-            while (!r->waithandle) {
+            while (runnable(r)) {
                 ran++;
                 step_routine(r);
             }
@@ -106,7 +117,7 @@ pub void step() {
         r->readyhandle = ev->handle;
         r->readyfilter = filter;
         r->waithandle = NULL;
-        while (!r->waithandle) {
+        while (runnable(r)) {
             step_routine(r);
         }
         ev++;
@@ -137,13 +148,26 @@ void step_routine(routine_t *r) {
     CURRENT_ROUTINE = r->id;
     printf("# %d-%d\n", r->id, r->current_line);
     int nextline = r->f(r->ctx, r->current_line);
+    if (nextline != r->current_line) {
+        printf("routine moved from line %d to line %d\n", r->current_line, nextline);
+        r->current_line = nextline;
+    }
     if (nextline == -1) {
-        // printf("routine finished\n");
+        printf("routine finished\n");
+        for (int i = 0; i < MAX_ROUTINES; i++) {
+            routine_t *r = routines[i];
+            if (!r) {
+                continue;
+            }
+            if (r->waitroutine == CURRENT_ROUTINE) {
+                printf("unblocking routine %d\n", r->id);
+                r->waitroutine = -1;
+            }
+        }
         return;
     }
-    if (nextline != r->current_line) {
-        // printf("routine moved from line %d to line %d\n", r->current_line, nextline);
-        r->current_line = nextline;
+    if (r->waitroutine != -1) {
+        printf("routine %d is waiting for routine %d\n", r->id, r->waitroutine);
     }
     if (r->waithandle) {
         if (r->waitfilter == io.READ) {
@@ -177,4 +201,23 @@ pub bool ioready(io.handle_t *h, int filter) {
     r->waithandle = h;
     r->waitfilter = filter;
     return false;
+}
+
+pub bool done(int id) {
+    printf("checking if routine %d is done\n", id);
+    routine_t *r = routines[CURRENT_ROUTINE];
+    if (!r) {
+        panic("no such routine: %d", id);
+    }
+    int line = routines[id]->current_line;
+    if (line != -1) {
+        printf("- not done, it's at line %d\n", line);
+        r->waitroutine = id;
+        return false;
+    }
+    printf("- done\n");
+    free(routines[id]);
+    routines[id] = NULL;
+    r->waitroutine = -1;
+    return true;
 }
