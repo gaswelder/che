@@ -50,18 +50,22 @@ pub size_t bufspace(buf_t *b) {
 
 pub bool pushf(buf_t *b, const char *fmt, ...) {
     va_list args = {0};
+
+    // Calculate the length.
 	va_start(args, fmt);
 	int len = vsnprintf(NULL, 0, fmt, args);
 	va_end(args);
 
+    // If the string is too long, fail.
     if ((size_t) len > bufspace(b)) {
         return false;
     }
 
+    // Print the string and adjust the pointers.
 	va_start(args, fmt);
-	len = vsnprintf(b->data + b->size, len, fmt, args);
+	vsprintf(b->data + b->size, fmt, args);
 	va_end(args);
-    b->size += len - 1;
+    b->size += len;
     return true;
 }
 
