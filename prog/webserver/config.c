@@ -1,14 +1,26 @@
-#import strings
 #import clip/stringtable
+#import strings
 
-#import lkhostconfig.c
+pub typedef {
+    char hostname[1000];
+    char homedir[1000];
+    char homedir_abspath[1000];
+    char cgidir[1000];
+    char cgidir_abspath[1000];
+    char proxyhost[1000];
 
-#define MAX_HOST_CONFIGS 256
+    stringtable.t *aliases;
+} LKHostConfig;
+
+pub void lk_hostconfig_free(LKHostConfig *hc) {
+    stringtable.free(hc->aliases);
+    free(hc);
+}
 
 pub typedef {
     char *serverhost;
     char *port;
-    lkhostconfig.LKHostConfig *hostconfigs[256];
+    LKHostConfig *hostconfigs[256];
     size_t hostconfigs_size;
 } LKConfig;
 
@@ -24,7 +36,7 @@ pub void print(LKConfig *cfg) {
     printf("port: %s\n", cfg->port);
 
     for (size_t i = 0; i < cfg->hostconfigs_size; i++) {
-        lkhostconfig.LKHostConfig *hc = cfg->hostconfigs[i];
+        LKHostConfig *hc = cfg->hostconfigs[i];
         printf("--- vhost %zu ---\n", i);
         printf("hostname = %s\n", hc->hostname);
         if (strlen(hc->homedir) > 0) {
@@ -44,16 +56,13 @@ pub void print(LKConfig *cfg) {
     printf("\n");
 }
 
-pub void add_hostconfig(LKConfig *cfg, lkhostconfig.LKHostConfig *hc) {
-    if (cfg->hostconfigs_size >= MAX_HOST_CONFIGS) {
-        abort();
-    }
+pub void add_hostconfig(LKConfig *cfg, LKHostConfig *hc) {
     cfg->hostconfigs[cfg->hostconfigs_size++] = hc;
 }
 
 pub void lk_config_free(LKConfig *cfg) {
     for (size_t i = 0; i < cfg->hostconfigs_size; i++) {
-        lkhostconfig.LKHostConfig *hc = cfg->hostconfigs[i];
+        LKHostConfig *hc = cfg->hostconfigs[i];
         lk_hostconfig_free(hc);
     }
     free(cfg->serverhost);
@@ -64,11 +73,11 @@ pub void lk_config_free(LKConfig *cfg) {
 
 // Return hostconfig matching hostname,
 // or if hostname parameter is NULL, return hostconfig matching "*".
-// Return NULL if no matching hostconfig.
-pub lkhostconfig.LKHostConfig *lk_config_find_hostconfig(LKConfig *cfg, char *hostname) {
+// Return NULL if no matching host
+pub LKHostConfig *lk_config_find_hostconfig(LKConfig *cfg, char *hostname) {
     if (hostname != NULL) {
         for (size_t i = 0; i < cfg->hostconfigs_size; i++) {
-            lkhostconfig.LKHostConfig *hc = cfg->hostconfigs[i];
+            LKHostConfig *hc = cfg->hostconfigs[i];
             if (!strcmp(hc->hostname, hostname)) {
                 return hc;
             }
@@ -76,7 +85,7 @@ pub lkhostconfig.LKHostConfig *lk_config_find_hostconfig(LKConfig *cfg, char *ho
     }
     // If hostname not found, return hostname * (fallthrough hostname).
     for (size_t i = 0; i < cfg->hostconfigs_size; i++) {
-        lkhostconfig.LKHostConfig *hc = cfg->hostconfigs[i];
+        LKHostConfig *hc = cfg->hostconfigs[i];
         if (!strcmp(hc->hostname, "*")) {
             return hc;
         }
@@ -85,9 +94,9 @@ pub lkhostconfig.LKHostConfig *lk_config_find_hostconfig(LKConfig *cfg, char *ho
 }
 
 // Return hostconfig with hostname or NULL if not found.
-pub lkhostconfig.LKHostConfig *get_hostconfig(LKConfig *cfg, char *hostname) {
+pub LKHostConfig *get_hostconfig(LKConfig *cfg, char *hostname) {
     for (size_t i = 0; i < cfg->hostconfigs_size; i++) {
-        lkhostconfig.LKHostConfig *hc = cfg->hostconfigs[i];
+        LKHostConfig *hc = cfg->hostconfigs[i];
         if (!strcmp(hc->hostname, hostname)) {
             return hc;
         }
@@ -99,8 +108,8 @@ pub lkhostconfig.LKHostConfig *get_hostconfig(LKConfig *cfg, char *hostname) {
 
 // Return hostconfig with hostname if it exists.
 // Create new hostconfig with hostname if not found. Never returns null.
-pub lkhostconfig.LKHostConfig *lk_config_create_get_hostconfig(LKConfig *cfg, char *hostname) {
-    lkhostconfig.LKHostConfig *hc = get_hostconfig(cfg, hostname);
+pub LKHostConfig *lk_config_create_get_hostconfig(LKConfig *cfg, char *hostname) {
+    LKHostConfig *hc = get_hostconfig(cfg, hostname);
     if (hc == NULL) {
         hc = lk_hostconfig_new(hostname);
         add_hostconfig(cfg, hc);
@@ -108,14 +117,11 @@ pub lkhostconfig.LKHostConfig *lk_config_create_get_hostconfig(LKConfig *cfg, ch
     return hc;
 }
 
-pub lkhostconfig.LKHostConfig *lk_hostconfig_new(char *hostname) {
-    lkhostconfig.LKHostConfig *hc = calloc(1, sizeof(lkhostconfig.LKHostConfig));
+pub LKHostConfig *lk_hostconfig_new(char *hostname) {
+    LKHostConfig *hc = calloc(1, sizeof(LKHostConfig));
     hc->aliases = stringtable.new();
     strcpy(hc->hostname, hostname);
     return hc;
 }
 
-pub void lk_hostconfig_free(lkhostconfig.LKHostConfig *hc) {
-    stringtable.free(hc->aliases);
-    free(hc);
-}
+

@@ -8,14 +8,13 @@
 #import strings
 
 #import configparser.c
-#import lkconfig.c
+#import config.c
 #import context.c
-#import lkhostconfig.c
 #import srvcgi.c
 #import srvfiles.c
 
 typedef {
-    lkconfig.LKConfig *cfg;
+    config.LKConfig *cfg;
     io.handle_t *listener;
 } server_t;
 
@@ -51,7 +50,7 @@ int main(int argc, char *argv[]) {
     puts("Loading configs");
 
     // Create the config.
-    lkconfig.LKConfig *cfg = NULL;
+    config.LKConfig *cfg = NULL;
 
     if (configfile) {
         cfg = configparser.read_file(configfile);
@@ -60,7 +59,7 @@ int main(int argc, char *argv[]) {
             return 1;
         }
     } else {
-        cfg = lkconfig.lk_config_new();
+        cfg = config.lk_config_new();
     }
     // Override port and host, if set in the flags.
     if (port) {
@@ -78,12 +77,12 @@ int main(int argc, char *argv[]) {
     // signal(SIGCHLD, handle_sigchld);
 
     if (cgidir) {
-        lkhostconfig.LKHostConfig *default_hc = lkconfig.lk_config_create_get_hostconfig(cfg, "*");
+        config.LKHostConfig *default_hc = config.lk_config_create_get_hostconfig(cfg, "*");
         strcpy(default_hc->cgidir, cgidir);
     }
     
     if (homedir) {
-        lkhostconfig.LKHostConfig *hc0 = lkconfig.lk_config_create_get_hostconfig(cfg, "*");
+        config.LKHostConfig *hc0 = config.lk_config_create_get_hostconfig(cfg, "*");
         strcpy(hc0->homedir, homedir);
         // cgidir default to cgi-bin
         if (strlen(hc0->cgidir) == 0) {
@@ -93,7 +92,7 @@ int main(int argc, char *argv[]) {
 
     // If no hostconfigs, add a fallthrough '*' hostconfig.
     if (cfg->hostconfigs_size == 0) {
-        lkhostconfig.LKHostConfig *hc = lkconfig.lk_hostconfig_new("*");
+        config.LKHostConfig *hc = config.lk_hostconfig_new("*");
         if (!hc) {
             panic("failed to create a host config");
         }
@@ -101,13 +100,13 @@ int main(int argc, char *argv[]) {
             panic("failed to get current working directory: %s", strerror(errno));
         }
         strcpy(hc->cgidir, "/cgi-bin/");
-        lkconfig.add_hostconfig(cfg, hc);
+        config.add_hostconfig(cfg, hc);
     }
 
     // Set homedir absolute paths for hostconfigs.
     // Adjust /cgi-bin/ paths.
     for (size_t i = 0; i < cfg->hostconfigs_size; i++) {
-        lkhostconfig.LKHostConfig *hc = cfg->hostconfigs[i];
+        config.LKHostConfig *hc = cfg->hostconfigs[i];
 
         // Skip hostconfigs that don't have have homedir.
         if (strlen(hc->homedir) == 0) {
@@ -126,7 +125,7 @@ int main(int argc, char *argv[]) {
             free(tmp);
         }
     }
-    lkconfig.print(cfg);
+    config.print(cfg);
 
     SERVER.cfg = cfg;
 
@@ -209,7 +208,7 @@ int client_routine(void *_ctx, int line) {
         if (host) {
             hostname = host->value;
         }
-        ctx->hc = lkconfig.lk_config_find_hostconfig(SERVER.cfg, hostname);
+        ctx->hc = config.lk_config_find_hostconfig(SERVER.cfg, hostname);
         if (!ctx->hc) {
             // 404?
             panic("failed to find the host config");

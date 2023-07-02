@@ -1,8 +1,7 @@
 #import clip/stringtable
 #import strings
 
-#import lkconfig.c
-#import lkhostconfig.c
+#import config.c
 #import lkstring.c
 
 #define N_GROW_STRINGLIST 10
@@ -56,7 +55,7 @@ typedef {
 
 enum {CFG_ROOT, CFG_HOSTSECTION};
 
-pub lkconfig.LKConfig *read_file(const char *configfile) {
+pub config.LKConfig *read_file(const char *configfile) {
     FILE *f = fopen(configfile, "r");
     if (f == NULL) {
         return NULL;
@@ -64,13 +63,13 @@ pub lkconfig.LKConfig *read_file(const char *configfile) {
 
     char line[CONFIG_LINE_SIZE];
     int state = CFG_ROOT;
-    lkconfig.LKConfig *cfg = lkconfig.lk_config_new();
+    config.LKConfig *cfg = config.lk_config_new();
     lkstring.LKString *l = lkstring.lk_string_new("");
     lkstring.LKString *k = lkstring.lk_string_new("");
     lkstring.LKString *v = lkstring.lk_string_new("");
     lkstring.LKString *aliask = lkstring.lk_string_new("");
     lkstring.LKString *aliasv = lkstring.lk_string_new("");
-    lkhostconfig.LKHostConfig *hc = NULL;
+    config.LKHostConfig *hc = NULL;
 
     while (1) {
         char *pz = fgets(line, sizeof(line), f);
@@ -89,7 +88,7 @@ pub lkconfig.LKConfig *read_file(const char *configfile) {
         lk_string_split_assign(l, " ", k, v); // l:"k v", assign k and v
         if (lkstring.lk_string_sz_equal(k, "hostname")) {
             // hostname littlekitten.xyz
-            hc = lkconfig.lk_config_create_get_hostconfig(cfg, v->s);
+            hc = config.lk_config_create_get_hostconfig(cfg, v->s);
             state = CFG_HOSTSECTION;
             continue;
         }
