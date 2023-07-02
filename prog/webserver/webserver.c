@@ -148,7 +148,7 @@ int main(int argc, char *argv[]) {
     int c = 0;
     while (true) {
         printf("-------------- loop %d --------------\n", c++);
-        if (c > 10) {
+        if (c > 100) {
             panic("!");
         }
         ioroutine.step();
