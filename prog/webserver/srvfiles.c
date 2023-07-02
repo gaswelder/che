@@ -37,7 +37,7 @@ pub int client_routine(void *_ctx, int line) {
         if (!filepath) {
             printf("file \"%s\" not found\n", req->path);
             srvstd.write_404(req, ctx);
-            return 3;
+            return FLUSH;
         }
         const char *ext = fs.fileext(filepath);
         const char *content_type = mime.lookup(ext);
@@ -70,7 +70,7 @@ pub int client_routine(void *_ctx, int line) {
      */
     case READ_FILE:
         if (!ioroutine.ioready(ctx->filehandle, io.READ)) {
-            return 2;
+            return READ_FILE;
         }
         if (!io.read(ctx->filehandle, ctx->outbuf)) {
             panic("read failed: %s\n", strerror(errno));
