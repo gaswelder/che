@@ -1,5 +1,6 @@
 #import fs
 #import http
+#import ioroutine
 #import mime
 #import os/io
 #import strings
@@ -7,7 +8,7 @@
 #import lkcontext.c
 #import lkhostconfig.c
 #import srvstd.c
-#import ioroutine.c
+
 
 const char *default_files[] = {
     "index.html",

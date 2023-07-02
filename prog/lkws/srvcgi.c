@@ -1,14 +1,15 @@
 #import fs
 #import http
-#import os/misc
+#import ioroutine
 #import os/exec
 #import os/io
+#import os/misc
 #import strings
 
 #import lkcontext.c
 #import lkhostconfig.c
 #import srvstd.c
-#import ioroutine.c
+
 
 enum {
     BEGIN,

@@ -1,9 +1,8 @@
 #import http
+#import ioroutine
 #import os/io
 #import os/misc
 #import strings
-
-#import ioroutine.c
 
 #import lkconfig.c
 #import lkcontext.c
