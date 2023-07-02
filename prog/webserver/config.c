@@ -1,5 +1,4 @@
 #import clip/stringtable
-#import strings
 
 pub typedef {
     char hostname[1000];
@@ -18,23 +17,16 @@ pub void lk_hostconfig_free(LKHostConfig *hc) {
 }
 
 pub typedef {
-    char *serverhost;
-    char *port;
     LKHostConfig *hostconfigs[256];
     size_t hostconfigs_size;
 } LKConfig;
 
 pub LKConfig *lk_config_new() {
     LKConfig *cfg = calloc(1, sizeof(LKConfig));
-    cfg->serverhost = strings.newstr("%s", "localhost");
-    cfg->port = strings.newstr("8000");
     return cfg;
 }
 
 pub void print(LKConfig *cfg) {
-    printf("serverhost: %s\n", cfg->serverhost);
-    printf("port: %s\n", cfg->port);
-
     for (size_t i = 0; i < cfg->hostconfigs_size; i++) {
         LKHostConfig *hc = cfg->hostconfigs[i];
         printf("--- vhost %zu ---\n", i);
@@ -65,8 +57,6 @@ pub void lk_config_free(LKConfig *cfg) {
         LKHostConfig *hc = cfg->hostconfigs[i];
         lk_hostconfig_free(hc);
     }
-    free(cfg->serverhost);
-    free(cfg->port);
     free(cfg);
 }
 

@@ -20,25 +20,17 @@ typedef {
 
 server_t SERVER = {};
 
-// lkws -d /var/www/testsite/ -c=cgi-bin
-int main(int argc, char *argv[]) {
-    char *configfile = NULL;
+int main(int argc, char *argv[]) {    
     char *cgidir = NULL;
     char *homedir = NULL;
-    char *port = NULL;
-    char *host = NULL;
-    // homedir    = absolute or relative path to a home directory
-    //              defaults to current working directory if not specified
-    opt.opt_str("d", "homedir", &homedir);
-    // port       = port number to bind to server
-    //              defaults to 8000
+    char *port = "8000";
+    char *host = "localhost";
+    char *configfile = NULL;
+
     opt.opt_str("p", "port", &port);
-    // host       = IP address to bind to server
-    //              defaults to localhost
     opt.opt_str("h", "host", &host);
+    opt.opt_str("d", "homedir", &homedir);
     opt.opt_str("f", "configfile", &configfile);
-    // cgidir     = root directory for cgi files, relative path to homedir
-    //              defaults to cgi-bin
     opt.opt_str("d", "CGI directory", &cgidir);
 
     char **rest = opt.opt_parse(argc, argv);
@@ -46,8 +38,6 @@ int main(int argc, char *argv[]) {
         fprintf(stderr, "too many arguments\n");
         exit(1);
     }
-
-    puts("Loading configs");
 
     // Create the config.
     config.LKConfig *cfg = NULL;
@@ -60,15 +50,6 @@ int main(int argc, char *argv[]) {
         }
     } else {
         cfg = config.lk_config_new();
-    }
-    // Override port and host, if set in the flags.
-    if (port) {
-        free(cfg->port);
-        cfg->port = strings.newstr("%s", port);
-    }
-    if (host) {
-        free(cfg->serverhost);
-        cfg->serverhost = strings.newstr("%s", host);
     }
 
     // TODO
@@ -129,7 +110,7 @@ int main(int argc, char *argv[]) {
 
     SERVER.cfg = cfg;
 
-    char *addr = strings.newstr("%s:%s", cfg->serverhost, cfg->port);
+    char *addr = strings.newstr("%s:%s", host, port);
     SERVER.listener = io.listen("tcp", addr);
     if (!SERVER.listener) {
         fprintf(stderr, "listen failed: %s\n", strerror(errno));

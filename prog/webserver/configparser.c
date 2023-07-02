@@ -1,5 +1,4 @@
 #import clip/stringtable
-#import strings
 
 #import config.c
 #import lkstring.c
@@ -18,8 +17,6 @@ typedef {
 //
 // Config file format:
 // -------------------
-//    serverhost=127.0.0.1
-//    port=5000
 //
 //    # Matches all other hostnames
 //    hostname *
@@ -100,12 +97,10 @@ pub config.LKConfig *read_file(const char *configfile) {
             // port=8000
             lk_string_split_assign(l, "=", k, v); // l:"k=v", assign k and v
             if (lkstring.lk_string_sz_equal(k, "serverhost")) {
-                free(cfg->serverhost);
-                cfg->serverhost = strings.newstr("%s", v->s);
+                panic("unknown clause: serverhost");
                 continue;
             } else if (lkstring.lk_string_sz_equal(k, "port")) {
-                free(cfg->port);
-                cfg->port = strings.newstr("%s", v->s);
+                panic("unknown clause: port");
                 continue;
             }
             continue;
