@@ -1,7 +1,6 @@
 #import http
 #import ioroutine
 #import os/io
-#import os/misc
 #import strings
 
 #import lkconfig.c
@@ -22,24 +21,6 @@ pub bool lk_httpserver_serve(lkconfig.LKConfig *cfg) {
     SERVER.cfg = cfg;
     SERVER.contexts = llist.new();
 
-    /*
-     * Get the hostname and set common env for future CGI children.
-     */
-    char hostname[1024] = {0};
-    if (!misc.get_hostname(hostname, sizeof(hostname))) {
-        fprintf(stderr, "failed to get hostname: %s\n", strerror(errno));
-        exit(1);
-    }
-    printf("hostname = %s\n", hostname);
-    misc.clearenv();
-    misc.setenv("SERVER_NAME", hostname, 1);
-    misc.setenv("SERVER_SOFTWARE", "littlekitten/0.1", 1);
-    misc.setenv("SERVER_PROTOCOL", "HTTP/1.0", 1);
-    misc.setenv("SERVER_PORT", cfg->port, 1);
-
-    /*
-     * Start listening.
-     */
     char *addr = strings.newstr("%s:%s", cfg->serverhost, cfg->port);
     SERVER.listener = io.listen("tcp", addr);
     if (!SERVER.listener) {

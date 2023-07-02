@@ -44,6 +44,18 @@ pub int client_routine(void *_ctx, int line) {
             return FLUSH;
         }
         printf("setting env\n");
+        char hostname[1024] = {0};
+        if (!misc.get_hostname(hostname, sizeof(hostname))) {
+            fprintf(stderr, "failed to get hostname: %s\n", strerror(errno));
+            exit(1);
+        }
+        printf("hostname = %s\n", hostname);
+        misc.clearenv();
+        misc.setenv("SERVER_NAME", hostname, 1);
+        misc.setenv("SERVER_SOFTWARE", "littlekitten/0.1", 1);
+        misc.setenv("SERVER_PROTOCOL", "HTTP/1.0", 1);
+        misc.setenv("SERVER_PORT", "todo", 1);
+
         misc.setenv("DOCUMENT_ROOT", hc->homedir_abspath, 1);
 
         http.header_t *h = NULL;
