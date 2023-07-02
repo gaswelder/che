@@ -5,6 +5,8 @@
 #import os/misc
 #import strings
 
+#import ioroutine.c
+
 // #import lkbuffer.c
 #import lkconfig.c
 #import lkcontext.c
@@ -23,13 +25,14 @@ enum {FD_SOCK, FD_FILE};
 pub typedef {
     lkconfig.LKConfig *cfg;
     llist.t *contexts;
+    io.handle_t *listener;
 } server_t;
 
+server_t SERVER = {};
+
 pub bool lk_httpserver_serve(lkconfig.LKConfig *cfg) {
-    server_t server = {
-        .cfg = cfg,
-        .contexts = llist.new()
-    };
+    SERVER.cfg = cfg;
+    SERVER.contexts = llist.new();
 
     /*
      * Get the hostname and set common env for future CGI children.
@@ -50,155 +53,59 @@ pub bool lk_httpserver_serve(lkconfig.LKConfig *cfg) {
      * Start listening.
      */
     char *addr = strings.newstr("%s:%s", cfg->serverhost, cfg->port);
-    io.handle_t *listener = io.listen("tcp", addr);
-    if (!listener) {
+    SERVER.listener = io.listen("tcp", addr);
+    if (!SERVER.listener) {
         fprintf(stderr, "listen failed: %s\n", strerror(errno));
         free(addr);
         return false;
     }
-    printf("listening at %d\n", listener->fd);
+    printf("listening at %d\n", SERVER.listener->fd);
     printf("Serving at http://%s\n", addr);
     free(addr);
 
-    io.pool_t *p = io.newpool();
-    if (!p) {
-        panic("failed to create a pool");
-    }
-
     /*
-     * Poll and process the handles.
+     * Run the io routines.
      */
+    ioroutine.init();
+    ioroutine.spawn(listener_routine, &SERVER);
     int c = 0;
     while (true) {
         printf("-------------- loop %d --------------\n", c++);
-        io.resetpool(p);
-        io.add(p, listener, io.READ);
-        llist.t *it = llist.next(server.contexts);
-        while (it) {
-            lkcontext.LKContext *ctx = it->data;
-            if (ctx->waithandle) {
-                printf("routine waits for %d (%d)\n", ctx->waithandle->fd, ctx->waitfilter);
-                io.add(p, ctx->waithandle, ctx->waitfilter);
-            }
-            it = llist.next(it);
-        }
-
-        io.event_t *ev = io.poll(p);
-        while (ev->handle) {
-            printf("poll result: %d, r=%d, w=%d\n", ev->handle->fd, ev->readable, ev->writable);
-
-
-            if (ev->handle == listener) {
-                printf("accepting\n");
-                io.handle_t *conn = io.accept(ev->handle);
-                printf("accepted %d\n", conn->fd);
-                if (!conn) {
-                    fprintf(stderr, "accept failed: %s\n", strerror(errno));
-                    panic("!");
-                }
-                lkcontext.LKContext *ctx = lkcontext.create_initial_context(conn);
-                llist.append(server.contexts, ctx);
-                execute_context(&server, ctx);
-                ev++;
-                continue;
-            }
-
-            // Find the context that requested this IO event.
-            lkcontext.LKContext *ctx = find_context(&server, ev);
-            if (!ctx) {
-                panic("failed to find the context");
-            }
-            int filter = 0;
-            if (ev->readable) {
-                filter |= io.READ;
-            }
-            if (ev->writable) {
-                filter |= io.WRITE;
-            }
-            ctx->readyhandle = ev->handle;
-            ctx->readyfilter = filter;
-            ctx->waithandle = NULL;
-
-            execute_context(&server, ctx);
-            ev++;
-        }
+        ioroutine.step();
     }
     panic("unreachable");
 }
 
-lkcontext.LKContext *find_context(server_t *server, io.event_t *ev) {
-    int filter = 0;
-    if (ev->readable) {
-        filter |= io.READ;
+int listener_routine(void *ctx, int line) {
+    server_t *s = (server_t *) ctx;
+    switch (line) {
+        case 0:
+            if (!ioroutine.ioready(s->listener, io.READ)) {
+                return 0;
+            }
+            printf("accepting\n");
+            io.handle_t *conn = io.accept(s->listener);
+            printf("accepted %d\n", conn->fd);
+            if (!conn) {
+                fprintf(stderr, "accept failed: %s\n", strerror(errno));
+                panic("!");
+            }
+            lkcontext.LKContext *ctx = lkcontext.create_initial_context(conn);
+            // llist.append(s->contexts, ctx);
+            ioroutine.spawn(client_routine, ctx);
+            return 0;
     }
-    if (ev->writable) {
-        filter |= io.WRITE;
-    }
-    llist.t *it = llist.next(server->contexts);
-    while (it) {
-        lkcontext.LKContext *ctx = it->data;
-        if (ev->handle == ctx->waithandle && filter == ctx->waitfilter) {
-            return ctx;
-        }
-        it = llist.next(it);
-    }
-    return NULL;
+    panic("unexpected line: %d", line);
 }
 
-void execute_context(server_t *server, lkcontext.LKContext *ctx) {
-    printf("executing context for %d\n", ctx->client_handle->fd);
-    while (true) {
-        printf("running line %d\n", ctx->current_line);
-        int r = process(server, ctx, ctx->current_line);
-        if (r == -1) {
-            printf("routine finished\n");
-            break;
-        }
-        if (r != ctx->current_line) {
-            printf("routine moved from line %d to line %d\n", ctx->current_line, r);
-        }
-        ctx->current_line = r;
-        if (ctx->waithandle) {
-            if (ctx->waitfilter == io.READ) {
-                printf("routine is waiting to read from %d)\n", ctx->waithandle->fd);
-            }
-            else if (ctx->waitfilter == io.WRITE) {
-                printf("routine is waiting to write to %d\n", ctx->waithandle->fd);
-            }
-            else {
-                printf("routine is waiting for fd %d (%d)\n", ctx->waithandle->fd, ctx->waitfilter);
-            }
-            break;
-        }
-    }
-}
-
-bool ready(lkcontext.LKContext *ctx, io.handle_t *h, int filter) {
-    if (filter == io.READ) {
-        printf("checking if %d is ready for reading\n", h->fd);
-    }
-    else if (filter == io.WRITE) {
-        printf("checking if %d is ready for writing\n", h->fd);
-    } else {
-        printf("checking if %d is ready for %d\n", h->fd, filter);
-    }
-    if (ctx->readyhandle == h && ctx->readyfilter & filter) {
-        printf("- ready\n");
-        return true;
-    }
-    printf("- not ready, waiting\n");
-    ctx->waithandle = h;
-    ctx->waitfilter = filter;
-    return false;
-}
-
-int process(server_t *server, lkcontext.LKContext *ctx, int line) {
+int client_routine(void *_ctx, int line) {
+    lkcontext.LKContext *ctx = _ctx;
     switch (line) {
     case 0:
         printf("reading a request\n");
         return 1;
     case 1:
-        if (!ready(ctx, ctx->client_handle, io.READ)) {
+        if (!ioroutine.ioready(ctx->client_handle, io.READ)) {
             return 1;
         }
         if (!io.read(ctx->client_handle, ctx->inbuf)) {
@@ -218,7 +125,7 @@ int process(server_t *server, lkcontext.LKContext *ctx, int line) {
             hostname = host->value;
         }
         
-        lkhostconfig.LKHostConfig *hc = lkconfig.lk_config_find_hostconfig(server->cfg, hostname);
+        lkhostconfig.LKHostConfig *hc = lkconfig.lk_config_find_hostconfig(SERVER.cfg, hostname);
         if (hc == NULL) {
             // process_error_response(server, ctx, 404, "LittleKitten webserver: hostconfig not found.");
             panic("todo");
@@ -262,7 +169,7 @@ int process(server_t *server, lkcontext.LKContext *ctx, int line) {
         printf("resolved file request to fd %d\n", ctx->filehandle->fd);
         return 2;
     case 2:
-        if (!ready(ctx, ctx->filehandle, io.READ)) {
+        if (!ioroutine.ioready(ctx->filehandle, io.READ)) {
             return 2;
         }
         if (!io.read(ctx->filehandle, ctx->outbuf)) {
@@ -280,7 +187,7 @@ int process(server_t *server, lkcontext.LKContext *ctx, int line) {
         }
         return 3;
     case 3:
-        if (!ready(ctx, ctx->client_handle, io.WRITE)) {
+        if (!ioroutine.ioready(ctx->client_handle, io.WRITE)) {
             return 3;
         }
         if (!io.write(ctx->client_handle, ctx->outbuf)) {

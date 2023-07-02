@@ -26,15 +26,13 @@ pub enum {
 }; // LKContextType;
 
 pub typedef {
-    // Routine
-    int current_line;
-    io.handle_t *waithandle, *readyhandle;
-    int waitfilter, readyfilter;
-
-    // Routine-local storage.
-
     io.handle_t *client_handle; // Connected client.
     io.buf_t *inbuf, *outbuf; // Buffers for incoming and outgoing data.
+
+    
+
+
+
     io.handle_t *filehandle; // for serving a local file.
 
 
