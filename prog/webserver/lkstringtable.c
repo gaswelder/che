@@ -1,8 +1,8 @@
-#import lkstring.c
+#import strings
 
 pub typedef {
-    lkstring.LKString *k;
-    lkstring.LKString *v;
+    char *k;
+    char *v;
 } LKStringTableItem;
 
 pub typedef {
@@ -23,8 +23,8 @@ pub void lk_stringtable_free(LKStringTable *st) {
     assert(st->items != NULL);
 
     for (size_t i = 0; i < st->items_len; i++) {
-        lkstring.lk_string_free(st->items[i].k);
-        lkstring.lk_string_free(st->items[i].v);
+        free(st->items[i].k);
+        free(st->items[i].v);
     }
     memset(st->items, 0, st->items_size * sizeof(LKStringTableItem));
 
@@ -38,8 +38,9 @@ pub void lk_stringtable_set(LKStringTable *st, const char *ks, const char *v) {
 
     // If item already exists, overwrite it.
     for (size_t i = 0; i < st->items_len; i++) {
-        if (lkstring.lk_string_sz_equal(st->items[i].k, ks)) {
-            lkstring.lk_string_assign(st->items[i].v, v);
+        if (!strcmp(st->items[i].k, ks)) {
+            free(st->items[i].v);
+            st->items[i].v = strings.newstr("%s", v);
             return;
         }
     }
@@ -52,15 +53,15 @@ pub void lk_stringtable_set(LKStringTable *st, const char *ks, const char *v) {
                (st->items_size - st->items_len) * sizeof(LKStringTableItem));
     }
 
-    st->items[st->items_len].k = lkstring.lk_string_new(ks);
-    st->items[st->items_len].v = lkstring.lk_string_new(v);
+    st->items[st->items_len].k = strings.newstr("%s", ks);
+    st->items[st->items_len].v = strings.newstr("%s", v);
     st->items_len++;
 }
 
 pub char *lk_stringtable_get(LKStringTable *st, const char *ks) {
     for (size_t i = 0; i < st->items_len; i++) {
-        if (lkstring.lk_string_sz_equal(st->items[i].k, ks)) {
-            return st->items[i].v->s;
+        if (!strcmp(st->items[i].k, ks)) {
+            return st->items[i].v;
         }
     }
     return NULL;

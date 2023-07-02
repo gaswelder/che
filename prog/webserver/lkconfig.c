@@ -37,7 +37,7 @@ pub void print(LKConfig *cfg) {
             printf("proxyhost = %s\n", hc->proxyhost);
         }
         for (size_t j = 0; j < hc->aliases->items_len; j++) {
-            printf("    alias %s=%s\n", hc->aliases->items[j].k->s, hc->aliases->items[j].v->s);
+            printf("    alias %s=%s\n", hc->aliases->items[j].k, hc->aliases->items[j].v);
         }
         printf("------\n");
     }
