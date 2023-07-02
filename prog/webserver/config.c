@@ -11,11 +11,6 @@ pub typedef {
     stringtable.t *aliases;
 } LKHostConfig;
 
-pub void lk_hostconfig_free(LKHostConfig *hc) {
-    stringtable.free(hc->aliases);
-    free(hc);
-}
-
 pub typedef {
     LKHostConfig *hostconfigs[256];
     size_t hostconfigs_size;
@@ -52,15 +47,6 @@ pub void add_hostconfig(LKConfig *cfg, LKHostConfig *hc) {
     cfg->hostconfigs[cfg->hostconfigs_size++] = hc;
 }
 
-pub void lk_config_free(LKConfig *cfg) {
-    for (size_t i = 0; i < cfg->hostconfigs_size; i++) {
-        LKHostConfig *hc = cfg->hostconfigs[i];
-        lk_hostconfig_free(hc);
-    }
-    free(cfg);
-}
-
-
 // Return hostconfig matching hostname,
 // or if hostname parameter is NULL, return hostconfig matching "*".
 // Return NULL if no matching host
@@ -84,7 +70,7 @@ pub LKHostConfig *lk_config_find_hostconfig(LKConfig *cfg, char *hostname) {
 }
 
 // Return hostconfig with hostname or NULL if not found.
-pub LKHostConfig *get_hostconfig(LKConfig *cfg, char *hostname) {
+LKHostConfig *get_hostconfig(LKConfig *cfg, char *hostname) {
     for (size_t i = 0; i < cfg->hostconfigs_size; i++) {
         LKHostConfig *hc = cfg->hostconfigs[i];
         if (!strcmp(hc->hostname, hostname)) {
@@ -93,8 +79,6 @@ pub LKHostConfig *get_hostconfig(LKConfig *cfg, char *hostname) {
     }
     return NULL;
 }
-
-
 
 // Return hostconfig with hostname if it exists.
 // Create new hostconfig with hostname if not found. Never returns null.
