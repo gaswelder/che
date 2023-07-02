@@ -38,7 +38,7 @@ pub int spawn(func_t f, void *ctx) {
         if (!routines[i]) {
             routines[i] = r;
             r->id = i;
-            printf("spawned %d\n", i);
+            // printf("spawned %d\n", i);
             return i;
         }
     }
@@ -47,7 +47,6 @@ pub int spawn(func_t f, void *ctx) {
 
 bool runnable(routine_t *r) {
     if (r->current_line != -1 && !r->waithandle && r->waitroutine == -1) {
-        printf("routine %d is runnable\n", r->id);
         return true;
     }
     return false;
@@ -83,15 +82,15 @@ pub void step() {
             continue;
         }
         if (r->waithandle) {
-            if (r->waitfilter == io.READ) {
-                printf("routine %d waits to read from %d\n", r->id, r->waithandle->fd);
-            }
-            else if (r->waitfilter == io.WRITE) {
-                printf("routine %d waits to write to %d\n", r->id, r->waithandle->fd);
-            } else {
-                printf("routine %d waits for %d (%d)\n", r->id, r->waithandle->fd, r->waitfilter);
-            }
-            
+            // if (r->waitfilter == io.READ) {
+            //     printf("routine %d waits to read from %d\n", r->id, r->waithandle->fd);
+            // }
+            // else if (r->waitfilter == io.WRITE) {
+            //     printf("routine %d waits to write to %d\n", r->id, r->waithandle->fd);
+            // } else {
+            //     printf("routine %d waits for %d (%d)\n", r->id, r->waithandle->fd, r->waitfilter);
+            // }
+
             io.add(p, r->waithandle, r->waitfilter);
             handles++;
         }
@@ -146,10 +145,10 @@ routine_t *find_routine(io.event_t *ev) {
 
 void step_routine(routine_t *r) {
     CURRENT_ROUTINE = r->id;
-    printf("# %d-%d\n", r->id, r->current_line);
+    // printf("# %d-%d\n", r->id, r->current_line);
     int nextline = r->f(r->ctx, r->current_line);
     if (nextline != r->current_line) {
-        printf("routine moved from line %d to line %d\n", r->current_line, nextline);
+        // printf("routine moved from line %d to line %d\n", r->current_line, nextline);
         r->current_line = nextline;
     }
     if (nextline == -1) {
@@ -166,20 +165,20 @@ void step_routine(routine_t *r) {
         }
         return;
     }
-    if (r->waitroutine != -1) {
-        printf("routine %d is waiting for routine %d\n", r->id, r->waitroutine);
-    }
-    if (r->waithandle) {
-        if (r->waitfilter == io.READ) {
-            printf("routine %d is waiting to read from %d\n", r->id, r->waithandle->fd);
-        }
-        else if (r->waitfilter == io.WRITE) {
-            printf("routine %d is waiting to write to %d\n", r->id, r->waithandle->fd);
-        }
-        else {
-            printf("routine is waiting for fd %d (%d)\n", r->waithandle->fd, r->waitfilter);
-        }
-    }
+    // if (r->waitroutine != -1) {
+    //     printf("routine %d is waiting for routine %d\n", r->id, r->waitroutine);
+    // }
+    // if (r->waithandle) {
+    //     if (r->waitfilter == io.READ) {
+    //         printf("routine %d is waiting to read from %d\n", r->id, r->waithandle->fd);
+    //     }
+    //     else if (r->waitfilter == io.WRITE) {
+    //         printf("routine %d is waiting to write to %d\n", r->id, r->waithandle->fd);
+    //     }
+    //     else {
+    //         printf("routine is waiting for fd %d (%d)\n", r->waithandle->fd, r->waitfilter);
+    //     }
+    // }
 }
 
 pub bool ioready(io.handle_t *h, int filter) {
