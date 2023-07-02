@@ -80,12 +80,13 @@ pub int client_routine(void *_ctx, int line) {
         misc.setenv("REMOTE_PORT", "todo", 1);
 
         printf("starting\n");
-        char *args[] = {"/bin/sh", "sh", "-c", real_path, NULL};
+        char *args[] = {real_path, NULL};
         char *env[] = {NULL};
         ctx->cgiproc = exec.spawn(args, env);
         if (!ctx->cgiproc) {
             panic("spawn failed");
         }
+        printf("spawned %d\n", ctx->cgiproc->pid);
         return READ_PROC;
 
     /*
@@ -102,7 +103,18 @@ pub int client_routine(void *_ctx, int line) {
         size_t n = io.bufsize(ctx->outbuf);
         printf("read from proc, have %zu\n", n);
         if (n == 0) {
-            return READ_PROC;
+            // The process has exited, see if there's anything in stderr.
+            char buf[4096] = {0};
+            size_t rr = OS.read(ctx->cgiproc->stderr->fd, buf, 4096);
+            printf("rr = %zu\n", rr);
+            printf("%s\n", buf);
+
+            printf("waiting\n");
+            int status = 0;
+            exec.wait(ctx->cgiproc, &status);
+            printf("process exited with %d\n", status);
+            ctx->cgiproc = NULL;
+            return FLUSH;
         }
         return WRITE_OUT;
 
