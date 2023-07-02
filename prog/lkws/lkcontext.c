@@ -1,4 +1,5 @@
 #import os/io
+#import http
 
 #import lkbuffer.c
 #import lkhttprequestparser.c
@@ -29,9 +30,7 @@ pub typedef {
     io.handle_t *client_handle; // Connected client.
     io.buf_t *inbuf, *outbuf; // Buffers for incoming and outgoing data.
 
-    
-
-
+    http.request_t req; // Current parsed request.
 
     io.handle_t *filehandle; // for serving a local file.
 
@@ -42,8 +41,6 @@ pub typedef {
     
     int type; // state, one of CTX_* constants
    
-
-    request.LKHttpRequest *req;               // http in process
 
   
     
@@ -85,7 +82,6 @@ pub LKContext *lk_context_new() {
     ctx->req_buf = NULL;
     ctx->sr = NULL;
     ctx->reqparser = NULL;
-    ctx->req = NULL;
     ctx->resp = NULL;
     ctx->buflist = NULL;
 
@@ -109,7 +105,6 @@ pub LKContext *create_initial_context(io.handle_t *h) {
     ctx->req_line = lkstring.lk_string_new("");
     ctx->req_buf = lkbuffer.lk_buffer_new(0);
     ctx->reqparser = lkhttprequestparser.lk_httprequestparser_new();
-    ctx->req = request.lk_httprequest_new();
     ctx->resp = request.lk_httpresponse_new();
     ctx->buflist = lkreflist.lk_reflist_new();
 
@@ -141,9 +136,6 @@ pub void lk_context_free(LKContext *ctx) {
     if (ctx->reqparser) {
         lkhttprequestparser.lk_httprequestparser_free(ctx->reqparser);
     }
-    if (ctx->req) {
-        request.lk_httprequest_free(ctx->req);
-    }
     if (ctx->resp) {
         request.lk_httpresponse_free(ctx->resp);
     }
@@ -165,7 +157,6 @@ pub void lk_context_free(LKContext *ctx) {
     ctx->req_buf = NULL;
     ctx->sr = NULL;
     ctx->reqparser = NULL;
-    ctx->req = NULL;
     ctx->resp = NULL;
     ctx->buflist = NULL;
     ctx->cgifd = 0;

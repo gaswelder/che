@@ -118,7 +118,7 @@ int client_routine(void *_ctx, int line) {
         }
         printf("parsed request\n");
         // Get the hostname from the request.
-        http.request_t *req = &ctx->req->req;
+        http.request_t *req = &ctx->req;
         char *hostname = NULL;
         http.header_t *host = http.get_header(req, "Host");
         if (host) {
@@ -218,12 +218,9 @@ bool parse_request(lkcontext.LKContext *ctx) {
     // fprintf(stderr, "got a request:\n=============\n%s\n=============\n", head);
 
     // Parse the request.
-    if (!http.parse_request(&ctx->req->req, head)) {
+    if (!http.parse_request(&ctx->req, head)) {
         panic("failed to parse the request");
     }
-
-    // "goto" resolve.
-    ctx->type = lkcontext.CTX_RESOLVE_REQ;
     return true;
 }
 

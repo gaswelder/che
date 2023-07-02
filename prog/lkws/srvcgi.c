@@ -15,12 +15,10 @@
 
 pub bool resolve(lkcontext.LKContext *ctx, lkhostconfig.LKHostConfig *hc) {
     printf("resolving CGI\n");
-    request.LKHttpRequest *wreq = ctx->req;
     request.LKHttpResponse *resp = ctx->resp;
-    http.request_t *req = &wreq->req;
-    char *path = ctx->req->req.path;
+    http.request_t *req = &ctx->req;
 
-    char *cgifile = strings.newstr("%s/%s", hc->homedir_abspath, path);
+    char *cgifile = strings.newstr("%s/%s", hc->homedir_abspath, req->path);
     printf("cgifile = %s\n", cgifile);
 
     // Expand "/../", etc. into real_path.
@@ -148,7 +146,7 @@ printf("starting\n");
 // }
 
 void process_response(lkcontext.LKContext *ctx) {
-    http.request_t *req = &ctx->req->req;
+    http.request_t *req = &ctx->req;
     request.LKHttpResponse *resp = ctx->resp;
 
     lk_httpresponse_finalize(resp);
