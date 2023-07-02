@@ -138,21 +138,26 @@ int main(int argc, char *argv[]) {
 
 int listener_routine(void *_ctx, int line) {
     server_t *s = _ctx;
-    if (line != 0) {
-        panic("unexpected line: %d", line);
-    }
-    if (!ioroutine.ioready(s->listener, io.READ)) {
+    switch (line) {
+    /*
+     * The only state for this routine.
+     * Waits for a new connection, accepts and spawns a new routine for
+     * the new connection.
+     */
+    case 0:
+        if (!ioroutine.ioready(s->listener, io.READ)) {
+            return 0;
+        }
+        io.handle_t *conn = io.accept(s->listener);
+        if (!conn) {
+            panic("accept failed: %s\n", strerror(errno));
+        }
+        printf("accepted %d\n", conn->fd);
+        context.ctx_t *ctx = context.newctx(conn);
+        ioroutine.spawn(client_routine, ctx);
         return 0;
     }
-    io.handle_t *conn = io.accept(s->listener);
-    printf("accepted %d\n", conn->fd);
-    if (!conn) {
-        fprintf(stderr, "accept failed: %s\n", strerror(errno));
-        panic("!");
-    }
-    context.ctx_t *ctx = context.newctx(conn);
-    ioroutine.spawn(client_routine, ctx);
-    return 0;
+    panic("unexpected line: %d", line);
 }
 
 enum {
