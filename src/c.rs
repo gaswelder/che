@@ -129,6 +129,7 @@ pub const CFUNCS: &[&str] = &[
     "vfprintf",
     "vprintf",
     "vsnprintf",
+    "vsprintf",
     "sprintf",
     "strftime",
     "strerror",
