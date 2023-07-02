@@ -156,25 +156,23 @@ int main(int argc, char *argv[]) {
     panic("unreachable");
 }
 
-int listener_routine(void *ctx, int line) {
-    server_t *s = (server_t *) ctx;
-    switch (line) {
-        case 0:
-            if (!ioroutine.ioready(s->listener, io.READ)) {
-                return 0;
-            }
-            printf("accepting\n");
-            io.handle_t *conn = io.accept(s->listener);
-            printf("accepted %d\n", conn->fd);
-            if (!conn) {
-                fprintf(stderr, "accept failed: %s\n", strerror(errno));
-                panic("!");
-            }
-            lkcontext.LKContext *ctx = lkcontext.create_initial_context(conn);
-            ioroutine.spawn(client_routine, ctx);
-            return 0;
+int listener_routine(void *_ctx, int line) {
+    server_t *s = _ctx;
+    if (line != 0) {
+        panic("unexpected line: %d", line);
     }
-    panic("unexpected line: %d", line);
+    if (!ioroutine.ioready(s->listener, io.READ)) {
+        return 0;
+    }
+    io.handle_t *conn = io.accept(s->listener);
+    printf("accepted %d\n", conn->fd);
+    if (!conn) {
+        fprintf(stderr, "accept failed: %s\n", strerror(errno));
+        panic("!");
+    }
+    lkcontext.LKContext *ctx = lkcontext.create_initial_context(conn);
+    ioroutine.spawn(client_routine, ctx);
+    return 0;
 }
 
 enum {
