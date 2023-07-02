@@ -5,10 +5,10 @@
 
 #import ioroutine.c
 
-// #import lkbuffer.c
 #import lkconfig.c
 #import lkcontext.c
 #import srvfiles.c
+#import srvcgi.c
 #import llist.c
 
 #define LK_BUFSIZE_SMALL 512
@@ -125,8 +125,15 @@ int client_routine(void *_ctx, int line) {
             panic("todo");
             // return true;
         }
-        printf("spawning a subroutine\n");
-        ctx->subroutine = ioroutine.spawn(srvfiles.client_routine, ctx);
+        // Run cgi script if uri falls under cgidir
+        printf("cgidir = %s, path = %s\n", ctx->hc->cgidir, ctx->req.path);
+        if (strlen(ctx->hc->cgidir) > 0 && strings.starts_with(ctx->req.path, ctx->hc->cgidir)) {
+            printf("spawning a cgi subroutine\n");
+            ctx->subroutine = ioroutine.spawn(srvcgi.client_routine, ctx);
+        } else {
+            printf("spawning a files subroutine\n");
+            ctx->subroutine = ioroutine.spawn(srvfiles.client_routine, ctx);
+        }
         return 2;
     case 2:
         if (!ioroutine.done(ctx->subroutine)) {
@@ -199,11 +206,7 @@ bool parse_request(lkcontext.LKContext *ctx) {
 //         strcpy(req->path, match);
 //     }
 
-//     // Run cgi script if uri falls under cgidir
-//     printf("cgidir = %s, path = %s\n", hc->cgidir, req->path);
-//     if (strlen(hc->cgidir) > 0 && strings.starts_with(req->path, hc->cgidir)) {
-//         return srvcgi.resolve(ctx, hc);
-//     }
+
 
 //     // Fall back to static files.
 //     return srvfiles.resolve(req, ctx, hc);

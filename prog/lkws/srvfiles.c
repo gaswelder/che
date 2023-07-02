@@ -57,7 +57,6 @@ pub int client_routine(void *_ctx, int line) {
         printf("resolved file request to fd %d\n", ctx->filehandle->fd);
         return 2;
     case 2:
-        printf("?\n");
         if (!ioroutine.ioready(ctx->filehandle, io.READ)) {
             return 2;
         }

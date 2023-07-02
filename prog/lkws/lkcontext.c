@@ -1,4 +1,5 @@
 #import os/io
+#import os/exec
 #import http
 
 #import lkbuffer.c
@@ -41,6 +42,9 @@ pub typedef {
 
     // files serving routine
     io.handle_t *filehandle; // for serving a local file.
+
+    // cgi routine
+    exec.proc_t *cgiproc;
 
 
 
