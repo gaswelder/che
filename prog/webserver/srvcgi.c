@@ -50,51 +50,29 @@ pub int client_routine(void *_ctx, int line) {
             exit(1);
         }
         printf("hostname = %s\n", hostname);
-        misc.clearenv();
-        misc.setenv("SERVER_NAME", hostname, 1);
-        misc.setenv("SERVER_SOFTWARE", "littlekitten/0.1", 1);
-        misc.setenv("SERVER_PROTOCOL", "HTTP/1.0", 1);
-        misc.setenv("SERVER_PORT", "todo", 1);
 
-        misc.setenv("DOCUMENT_ROOT", hc->homedir_abspath, 1);
-
-        http.header_t *h = NULL;
-        h = http.get_header(req, "User-Agent");
-        if (h) {
-            misc.setenv("HTTP_USER_AGENT", h->value, 1);
-        } else {
-            misc.setenv("HTTP_USER_AGENT", "", 1);
-        }
-        h = http.get_header(req, "Host");
-        if (h) {
-            misc.setenv("HTTP_HOST", h->value, 1);
-        } else {
-            misc.setenv("HTTP_HOST", "", 1);
-        }
-
-        h = http.get_header(req, "Content-Type");
-        if (h) {
-            misc.setenv("CONTENT_TYPE", h->value, 1);
-        } else {
-            misc.setenv("CONTENT_TYPE", "", 1);
-        }
-        char filename[3000] = {0};
-        if (strlen(hc->homedir_abspath) + strlen(req->path) + 1 >= sizeof(filename)) {
-            panic("filename buffer too short");
-        }
-        sprintf(filename, "%s/%s", hc->homedir_abspath, req->path);
-        misc.setenv("SCRIPT_FILENAME", filename, 1);
-        misc.setenv("REQUEST_METHOD", req->method, 1);
-        misc.setenv("SCRIPT_NAME", req->path, 1);
-        misc.setenv("REQUEST_URI", req->uri, 1);
-        misc.setenv("QUERY_STRING", req->query, 1);
-        misc.setenv("CONTENT_LENGTH", "todo", 1);
-        misc.setenv("REMOTE_ADDR", "todo", 1);
-        misc.setenv("REMOTE_PORT", "todo", 1);
+        printf("setting env\n");
+        char *env[100] = {NULL};
+        char **p = env;
+        *p++ = strings.newstr("SERVER_NAME=%s", hostname);
+        *p++ = strings.newstr("SERVER_PORT", "todo", 1);
+        *p++ = strings.newstr("SERVER_SOFTWARE=webserver");
+        *p++ = strings.newstr("SERVER_PROTOCOL=HTTP/1.0");
+        *p++ = strings.newstr("DOCUMENT_ROOT=%s", hc->homedir_abspath);
+        *p++ = strings.newstr("HTTP_USER_AGENT=%s", header(req, "User-Agent", ""));
+        *p++ = strings.newstr("HTTP_HOST=%s", header(req, "Host", ""));
+        *p++ = strings.newstr("CONTENT_TYPE=%s", header(req, "Content-Type", ""));
+        *p++ = strings.newstr("SCRIPT_FILENAME=%s/%s", hc->homedir_abspath, req->path);
+        *p++ = strings.newstr("REQUEST_METHOD=%s", req->method);
+        *p++ = strings.newstr("SCRIPT_NAME=%s", req->path);
+        *p++ = strings.newstr("REQUEST_URI=%s", req->uri);
+        *p++ = strings.newstr("QUERY_STRING=%s", req->query);
+        *p++ = strings.newstr("CONTENT_LENGTH=%s", "todo");
+        *p++ = strings.newstr("REMOTE_ADDR=%s", "todo");
+        *p++ = strings.newstr("REMOTE_PORT=%s", "todo");
 
         printf("starting\n");
-        char *args[] = {real_path, NULL};
-        char *env[] = {NULL};
+        char *args[] = {path, NULL};
         ctx->cgiproc = exec.spawn(args, env);
         if (!ctx->cgiproc) {
             panic("spawn failed");
