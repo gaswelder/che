@@ -6,7 +6,7 @@
 #import os/misc
 #import strings
 
-#import lkcontext.c
+#import context.c
 #import lkhostconfig.c
 #import srvstd.c
 
@@ -19,7 +19,7 @@ enum {
 };
 
 pub int client_routine(void *_ctx, int line) {
-    lkcontext.LKContext *ctx = _ctx;
+    context.ctx_t *ctx = _ctx;
     http.request_t *req = &ctx->req;
     lkhostconfig.LKHostConfig *hc = ctx->hc;
 

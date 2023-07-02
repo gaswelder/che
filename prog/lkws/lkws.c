@@ -9,7 +9,7 @@
 
 #import configparser.c
 #import lkconfig.c
-#import lkcontext.c
+#import context.c
 #import lkhostconfig.c
 #import srvcgi.c
 #import srvfiles.c
@@ -170,7 +170,7 @@ int listener_routine(void *_ctx, int line) {
         fprintf(stderr, "accept failed: %s\n", strerror(errno));
         panic("!");
     }
-    lkcontext.LKContext *ctx = lkcontext.create_initial_context(conn);
+    context.ctx_t *ctx = context.newctx(conn);
     ioroutine.spawn(client_routine, ctx);
     return 0;
 }
@@ -182,7 +182,7 @@ enum {
 };
 
 int client_routine(void *_ctx, int line) {
-    lkcontext.LKContext *ctx = _ctx;
+    context.ctx_t *ctx = _ctx;
     switch (line) {
     /*
      * Read data from the socket until a full request head is parsed.
@@ -239,7 +239,7 @@ int client_routine(void *_ctx, int line) {
     panic("unhandled state: %d", line);
 }
 
-bool parse_request(lkcontext.LKContext *ctx) {
+bool parse_request(context.ctx_t *ctx) {
     printf("read from %d, have %zu\n", ctx->client_handle->fd, io.bufsize(ctx->inbuf));
     // See if the input buffer has a finished request header yet.
     char *split = strstr(ctx->inbuf->data, "\r\n\r\n");
@@ -262,7 +262,7 @@ bool parse_request(lkcontext.LKContext *ctx) {
     return true;
 }
 
-// bool resolve_request(server_t *server, lkcontext.LKContext *ctx) {
+// bool resolve_request(server_t *server, context.ctx_t *ctx) {
 
 //     // Replace path with any matching alias.
 //     char *match = lkstringtable.lk_stringtable_get(hc->aliases, req->path);

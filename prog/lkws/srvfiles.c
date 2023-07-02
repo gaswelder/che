@@ -5,7 +5,7 @@
 #import os/io
 #import strings
 
-#import lkcontext.c
+#import context.c
 #import lkhostconfig.c
 #import srvstd.c
 
@@ -18,7 +18,7 @@ const char *default_files[] = {
 };
 
 pub int client_routine(void *_ctx, int line) {
-    lkcontext.LKContext *ctx = _ctx;
+    context.ctx_t *ctx = _ctx;
     switch (line) {
     case 0:
         http.request_t *req = &ctx->req;
@@ -97,7 +97,6 @@ pub io.handle_t *resolve1(http.request_t *req, lkhostconfig.LKHostConfig *hc) {
         if (!filepath) {
             printf("file \"%s\" not found, serving 404\n", req->path);
             // srvstd.write_404(req, ctx);
-            // ctx->type = lkcontext.CTX_WRITE_DATA;
             // return true;
         }
         io.handle_t *h = io.open(filepath, "rb");
@@ -126,18 +125,16 @@ pub char *resolve_path(const char *homedir, *reqpath) {
     return resolve_inner(homedir, reqpath);
 }
 
-pub bool resolve(http.request_t *req, lkcontext.LKContext *ctx, lkhostconfig.LKHostConfig *hc) {
+pub bool resolve(http.request_t *req, context.ctx_t *ctx, lkhostconfig.LKHostConfig *hc) {
     if (!strcmp(req->method, "GET")) {
         char *filepath = resolve_path(hc->homedir, req->path);
         if (!filepath) {
             printf("file \"%s\" not found, serving 404\n", req->path);
             srvstd.write_404(req, ctx);
-            ctx->type = lkcontext.CTX_WRITE_DATA;
             return true;
         }
         write_file(req, ctx, filepath);
         free(filepath);
-        ctx->type = lkcontext.CTX_WRITE_DATA;
         return true;
     }
     if (!strcmp(req->method, "POST")) {
@@ -169,7 +166,7 @@ char *resolve_inner(const char *homedir, *reqpath) {
     return strings.newstr("%s", realpath);
 }
 
-void write_file(http.request_t *req, lkcontext.LKContext *ctx, const char *filepath) {
+void write_file(http.request_t *req, context.ctx_t *ctx, const char *filepath) {
     const char *ext = fs.fileext(filepath);
     const char *content_type = mime.lookup(ext);
     if (content_type == NULL) {
