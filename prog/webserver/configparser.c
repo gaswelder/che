@@ -73,16 +73,20 @@ pub config.LKConfig *read_file(const char *configfile) {
         if (pz == NULL) {
             break;
         }
+        printf("state = %d, line: %s", state, line);
         lk_string_assign(l, line);
         lk_string_trim(l);
 
         // Skip # comment line.
         if (lk_string_starts_with(l, "#")) {
+            printf("skipping comment\n");
             continue;
         }
 
         // hostname littlekitten.xyz
         lk_string_split_assign(l, " ", k, v); // l:"k v", assign k and v
+        printf("k='%s'\n", k->s);
+
         if (lk_string_sz_equal(k, "hostname")) {
             // hostname littlekitten.xyz
             hc = config.lk_config_create_get_hostconfig(cfg, v->s);
@@ -91,8 +95,6 @@ pub config.LKConfig *read_file(const char *configfile) {
         }
 
         if (state == CFG_ROOT) {
-            assert(hc == NULL);
-
             // serverhost=127.0.0.1
             // port=8000
             lk_string_split_assign(l, "=", k, v); // l:"k=v", assign k and v
@@ -149,73 +151,20 @@ pub config.LKConfig *read_file(const char *configfile) {
     return cfg;
 }
 
-LKStringList *lk_stringlist_new() {
-    LKStringList *sl = calloc(1, sizeof(LKStringList));
-    sl->items_size = N_GROW_STRINGLIST;
-    sl->items_len = 0;
-    sl->items = calloc(sl->items_size, sizeof(LKString));
-    return sl;
-}
-
 // Given a "k<delim>v" string, assign k and v.
 void lk_string_split_assign(LKString *lks, const char *delim, LKString *k, *v) {
-    LKStringList *sl = lk_stringlist_new();
-    size_t delim_len = strlen(delim);
-    LKString *segment = lk_string_new("");
-    for (size_t i = 0; i < lks->s_len; i++) {
-        if (!strncmp(lks->s, delim, delim_len)) {
-            lk_stringlist_append_lkstring(sl, segment);
-            segment = lk_string_new("");
-            i += delim_len-1; // need to -1 to account for for loop incrementor i++
-            continue;
-        }
+    char *result[2] = {NULL};
 
-        lk_string_append_char(segment, lks->s[i]);
+    size_t n = strings.split(delim, lks->s, result, nelem(result));
+    printf("split = %zu\n", n);
+    lk_string_assign(k, result[0]);
+    free(result[0]);
+    if (n == 2) {
+        lk_string_assign(v, result[1]);
+        free(result[1]);
+    } else {
+        lk_string_assign(v, "");
     }
-    lk_stringlist_append_lkstring(sl, segment);
-
-    LKStringList *ss = sl;
-    if (k != NULL) {
-        lk_string_assign(k, ss->items[0]->s);
-    }
-    if (v != NULL) {
-        if (ss->items_len >= 2) {
-            lk_string_assign(v, ss->items[1]->s);
-        } else {
-            lk_string_assign(v, "");
-        }
-    }
-    lk_stringlist_free(ss);
-}
-
-void lk_stringlist_free(LKStringList *sl) {
-    assert(sl->items != NULL);
-
-    for (size_t i = 0; i < sl->items_len; i++) {
-        lk_string_free(sl->items[i]);
-    }
-    memset(sl->items, 0, sl->items_size * sizeof(LKString));
-
-    free(sl->items);
-    sl->items = NULL;
-    free(sl);
-}
-
-void lk_stringlist_append_lkstring(LKStringList *sl, LKString *lks) {
-    assert(sl->items_len <= sl->items_size);
-
-    if (sl->items_len == sl->items_size) {
-        LKString **pitems = realloc(sl->items, (sl->items_size+N_GROW_STRINGLIST) * sizeof(LKString));
-        if (pitems == NULL) {
-            return;
-        }
-        sl->items = pitems;
-        sl->items_size += N_GROW_STRINGLIST;
-    }
-    sl->items[sl->items_len] = lks;
-    sl->items_len++;
-
-    assert(sl->items_len <= sl->items_size);
 }
 
 typedef {
@@ -268,19 +217,6 @@ void lk_string_assign(LKString *lks, const char *s) {
     zero_s(lks);
     strncpy(lks->s, s, s_len);
     lks->s_len = s_len;
-}
-
-void lk_string_append_char(LKString *lks, char c) {
-    if (lks->s_len + 1 > lks->s_size) {
-        // Grow string by ^2
-        lks->s_size = lks->s_len + ((lks->s_len+1) * 2);
-        lks->s = realloc(lks->s, lks->s_size+1);
-        zero_unused_s(lks);
-    }
-
-    lks->s[lks->s_len] = c;
-    lks->s[lks->s_len+1] = '\0';
-    lks->s_len++;
 }
 
 void lk_string_prepend(LKString *lks, const char *s) {
