@@ -14,24 +14,21 @@
 #import srvfiles.c
 
 typedef {
-    config.LKConfig *cfg;
     io.handle_t *listener;
+    config.LKHostConfig *hostconfigs[256];
+    size_t hostconfigs_size;
 } server_t;
 
 server_t SERVER = {};
 
 int main(int argc, char *argv[]) {    
-    char *cgidir = NULL;
-    char *homedir = NULL;
     char *port = "8000";
     char *host = "localhost";
     char *configfile = NULL;
 
     opt.opt_str("p", "port", &port);
     opt.opt_str("h", "host", &host);
-    opt.opt_str("d", "homedir", &homedir);
     opt.opt_str("f", "configfile", &configfile);
-    opt.opt_str("d", "CGI directory", &cgidir);
 
     char **rest = opt.opt_parse(argc, argv);
     if (*rest) {
@@ -39,40 +36,13 @@ int main(int argc, char *argv[]) {
         exit(1);
     }
 
-    // Create the config.
-    config.LKConfig *cfg = NULL;
-
     if (configfile) {
-        cfg = configparser.read_file(configfile);
-        if (!cfg) {
+        SERVER.hostconfigs_size = configparser.read_file(configfile, SERVER.hostconfigs);
+        if (!SERVER.hostconfigs_size) {
             fprintf(stderr, "failed to parse config file %s: %s", configfile, strerror(errno));
             return 1;
         }
     } else {
-        cfg = config.lk_config_new();
-    }
-
-    // TODO
-    // signal(SIGPIPE, SIG_IGN);           // Don't abort on SIGPIPE
-    // signal(SIGINT, handle_sigint);      // exit on CTRL-C
-    // signal(SIGCHLD, handle_sigchld);
-
-    if (cgidir) {
-        config.LKHostConfig *default_hc = config.lk_config_create_get_hostconfig(cfg, "*");
-        strcpy(default_hc->cgidir, cgidir);
-    }
-    
-    if (homedir) {
-        config.LKHostConfig *hc0 = config.lk_config_create_get_hostconfig(cfg, "*");
-        strcpy(hc0->homedir, homedir);
-        // cgidir default to cgi-bin
-        if (strlen(hc0->cgidir) == 0) {
-            strcpy(hc0->cgidir, "/cgi-bin/");
-        }
-    }
-
-    // If no hostconfigs, add a fallthrough '*' hostconfig.
-    if (cfg->hostconfigs_size == 0) {
         config.LKHostConfig *hc = config.lk_hostconfig_new("*");
         if (!hc) {
             panic("failed to create a host config");
@@ -81,13 +51,13 @@ int main(int argc, char *argv[]) {
             panic("failed to get current working directory: %s", strerror(errno));
         }
         strcpy(hc->cgidir, "/cgi-bin/");
-        config.add_hostconfig(cfg, hc);
+        SERVER.hostconfigs[SERVER.hostconfigs_size++] = hc;
     }
 
     // Set homedir absolute paths for hostconfigs.
     // Adjust /cgi-bin/ paths.
-    for (size_t i = 0; i < cfg->hostconfigs_size; i++) {
-        config.LKHostConfig *hc = cfg->hostconfigs[i];
+    for (size_t i = 0; i < SERVER.hostconfigs_size; i++) {
+        config.LKHostConfig *hc = SERVER.hostconfigs[i];
 
         // Skip hostconfigs that don't have have homedir.
         if (strlen(hc->homedir) == 0) {
@@ -106,9 +76,13 @@ int main(int argc, char *argv[]) {
             free(tmp);
         }
     }
-    config.print(cfg);
+    print_configs();
 
-    SERVER.cfg = cfg;
+    // TODO
+    // signal(SIGPIPE, SIG_IGN);           // Don't abort on SIGPIPE
+    // signal(SIGINT, handle_sigint);      // exit on CTRL-C
+    // signal(SIGCHLD, handle_sigchld);
+
 
     char *addr = strings.newstr("%s:%s", host, port);
     SERVER.listener = io.listen("tcp", addr);
@@ -194,7 +168,7 @@ int client_routine(void *_ctx, int line) {
         if (host) {
             hostname = host->value;
         }
-        ctx->hc = config.lk_config_find_hostconfig(SERVER.cfg, hostname);
+        ctx->hc = lk_config_find_hostconfig(&SERVER, hostname);
         if (!ctx->hc) {
             // 404?
             panic("failed to find the host config");
@@ -275,3 +249,32 @@ bool parse_request(context.ctx_t *ctx) {
 //     // while (waitpid(-1, NULL, WNOHANG) > 0) {}
 //     // errno = tmp_errno;
 // }
+
+void print_configs() {
+    for (size_t i = 0; i < SERVER.hostconfigs_size; i++) {
+        config.print(SERVER.hostconfigs[i]);
+    }
+    printf("\n");
+}
+
+// Return hostconfig matching hostname,
+// or if hostname parameter is NULL, return hostconfig matching "*".
+// Return NULL if no matching host
+config.LKHostConfig *lk_config_find_hostconfig(server_t *s, char *hostname) {
+    if (hostname != NULL) {
+        for (size_t i = 0; i < s->hostconfigs_size; i++) {
+            config.LKHostConfig *hc = s->hostconfigs[i];
+            if (!strcmp(hc->hostname, hostname)) {
+                return hc;
+            }
+        }
+    }
+    // If hostname not found, return hostname * (fallthrough hostname).
+    for (size_t i = 0; i < s->hostconfigs_size; i++) {
+        config.LKHostConfig *hc = s->hostconfigs[i];
+        if (!strcmp(hc->hostname, "*")) {
+            return hc;
+        }
+    }
+    return NULL;
+}

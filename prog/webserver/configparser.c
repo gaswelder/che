@@ -95,13 +95,12 @@ char *readeqval(parser_t *parser) {
     return parser->tmp;
 }
 
-pub config.LKConfig *read_file(const char *configfile) {
+pub size_t read_file(const char *configfile, config.LKHostConfig *configs[]) {
     FILE *f = fopen(configfile, "r");
     if (f == NULL) {
-        return NULL;
+        return 0;
     }
     parser_t parser = { .f = f };
-    config.LKHostConfig *configs[100] = {NULL};
     size_t nconfigs = 0;
 
     while (1) {
@@ -144,10 +143,6 @@ pub config.LKConfig *read_file(const char *configfile) {
                 panic("unknown op: %s", op);
         }
     }
-    config.LKConfig *cfg = config.lk_config_new();
-    for (size_t i = 0; i < nconfigs; i++) {
-        config.add_hostconfig(cfg, configs[i]);
-    }
     fclose(f);
-    return cfg;
+    return nconfigs;
 }
