@@ -32,13 +32,14 @@ pub int client_routine(void *_ctx, int line) {
      * Locate and open the requested file.
      */
     case RESOLVE:
-        printf("resolving %s\n", req->path);
+        printf("resolving %s %s\n", req->method, req->path);
         char *filepath = resolve_path(ctx->hc->homedir, req->path);
         if (!filepath) {
             printf("file \"%s\" not found\n", req->path);
             srvstd.write_404(req, ctx);
             return FLUSH;
         }
+        printf("resolved %s as %s\n", req->path, filepath);
         const char *ext = fs.fileext(filepath);
         const char *content_type = mime.lookup(ext);
         if (content_type == NULL) {
@@ -120,7 +121,7 @@ pub int client_routine(void *_ctx, int line) {
 }
 
 char *resolve_path(const char *homedir, *reqpath) {
-    if (!strcmp(reqpath, "")) {
+    if (!strcmp(reqpath, "/")) {
         for (size_t i = 0; i < nelem(default_files); i++) {
             char *p = resolve_inner(homedir, default_files[i]);
             if (p) {
