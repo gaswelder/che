@@ -50,22 +50,22 @@ int main(int argc, char *argv[]) {
     // Adjust /cgi-bin/ paths.
     for (size_t i = 0; i < SERVER.hostconfigs_size; i++) {
         server.hostconfig_t *hc = SERVER.hostconfigs[i];
-
-        // Skip hostconfigs that don't have have homedir.
-        if (strlen(hc->homedir) == 0) {
-            continue;
-        }
-
-        if (!fs.realpath(hc->homedir, hc->homedir_abspath, sizeof(hc->homedir_abspath))) {
-            panic("realpath failed");
-        }
-
-        if (strlen(hc->cgidir) > 0) {
-            char *tmp = strings.newstr("%s/%s/", hc->homedir_abspath, hc->cgidir);
-            if (!fs.realpath(tmp, hc->cgidir_abspath, sizeof(hc->cgidir_abspath))) {
-                panic("realpath failed: %s", strerror(errno));
+        char tmp[1000] = {0};
+        if (strlen(hc->homedir) > 0) {
+            if (fs.realpath(hc->homedir, tmp, sizeof(tmp))) {
+                strcpy(hc->homedir, tmp);
+            } else {
+                fprintf(stderr, "failed to resolve homedir '%s': %s\n", hc->homedir, strerror(errno));
+                hc->homedir[0] = '\0';
             }
-            free(tmp);
+        }
+        if (strlen(hc->cgidir) > 0) {
+            if (fs.realpath(hc->cgidir, tmp, sizeof(tmp))) {
+                strcpy(hc->cgidir, tmp);
+            } else {
+                fprintf(stderr, "failed to resolve cgidir '%s': %s\n", hc->cgidir, strerror(errno));
+                hc->cgidir[0] = '\0';
+            }
         }
     }
     for (size_t i = 0; i < SERVER.hostconfigs_size; i++) {
