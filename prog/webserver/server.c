@@ -70,22 +70,10 @@ pub void print_config(hostconfig_t *hc) {
     printf("------\n");
 }
 
-// Return hostconfig matching hostname,
-// or if hostname parameter is NULL, return hostconfig matching "*".
-// Return NULL if no matching host
 pub hostconfig_t *lk_config_find_hostconfig(server_t *s, char *hostname) {
-    if (hostname != NULL) {
-        for (size_t i = 0; i < s->hostconfigs_size; i++) {
-            hostconfig_t *hc = s->hostconfigs[i];
-            if (!strcmp(hc->hostname, hostname)) {
-                return hc;
-            }
-        }
-    }
-    // If hostname not found, return hostname * (fallthrough hostname).
     for (size_t i = 0; i < s->hostconfigs_size; i++) {
         hostconfig_t *hc = s->hostconfigs[i];
-        if (!strcmp(hc->hostname, "*")) {
+        if (!strcmp(hc->hostname, hostname)) {
             return hc;
         }
     }

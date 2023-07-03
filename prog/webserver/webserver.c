@@ -169,18 +169,18 @@ int client_routine(void *_ctx, int line) {
      * Look at the request and spawn a corresponding routine to process it.
      */
     case RESOLVE_REQUEST:
-        printf("getting a host server\n");
-        char *hostname = NULL;
         http.header_t *host = http.get_header(&ctx->req, "Host");
         if (host) {
-            hostname = host->value;
+            ctx->hc = server.lk_config_find_hostconfig(&SERVER, host->value);
         }
-        ctx->hc = server.lk_config_find_hostconfig(&SERVER, hostname);
+        // If host is not specified of there's no config for the host,
+        // fall back to the "*" config.
         if (!ctx->hc) {
-            // 404?
-            panic("failed to find the host server");
+            ctx->hc = server.lk_config_find_hostconfig(&SERVER, "*");
+            if (!ctx->hc) {
+                panic("failed to get the fallback host config");
+            }
         }
-        printf("cgidir = %s, path = %s\n", ctx->hc->cgidir, ctx->req.path);
         if (strlen(ctx->hc->cgidir) > 0 && strings.starts_with(ctx->req.path, ctx->hc->cgidir)) {
             printf("spawning a cgi subroutine\n");
             ctx->subroutine = ioroutine.spawn(srvcgi.client_routine, ctx);
