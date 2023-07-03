@@ -38,6 +38,7 @@ pub header_t *get_header(request_t *r, const char *name) {
 }
 
 pub bool parse_request(request_t *r, const char *head) {
+    memset(r, 0, sizeof(request_t));
     char *lines[100] = {0};
     size_t nlines = strings.split("\r\n", head, lines, sizeof(lines));
     if (nlines == sizeof(lines)) {
