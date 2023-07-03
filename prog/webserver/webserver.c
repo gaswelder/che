@@ -171,12 +171,12 @@ int client_routine(void *_ctx, int line) {
     case RESOLVE_REQUEST:
         http.header_t *host = http.get_header(&ctx->req, "Host");
         if (host) {
-            ctx->hc = server.lk_config_find_hostconfig(&SERVER, host->value);
+            ctx->hc = server.find_hostconfig(&SERVER, host->value);
         }
         // If host is not specified of there's no config for the host,
         // fall back to the "*" config.
         if (!ctx->hc) {
-            ctx->hc = server.lk_config_find_hostconfig(&SERVER, "*");
+            ctx->hc = server.find_hostconfig(&SERVER, "*");
             if (!ctx->hc) {
                 panic("failed to get the fallback host config");
             }

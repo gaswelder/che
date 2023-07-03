@@ -70,7 +70,7 @@ pub void print_config(hostconfig_t *hc) {
     printf("------\n");
 }
 
-pub hostconfig_t *lk_config_find_hostconfig(server_t *s, char *hostname) {
+pub hostconfig_t *find_hostconfig(server_t *s, char *hostname) {
     for (size_t i = 0; i < s->hostconfigs_size; i++) {
         hostconfig_t *hc = s->hostconfigs[i];
         if (!strcmp(hc->hostname, hostname)) {

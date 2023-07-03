@@ -1,6 +1,2 @@
-*.swp
-t
-lkws
-tclient
-lktest
-
+tmp/
+cgi-bin/
