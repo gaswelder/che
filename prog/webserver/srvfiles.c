@@ -73,10 +73,13 @@ pub int client_routine(void *_ctx, int line) {
         if (!ioroutine.ioready(ctx->filehandle, io.READ)) {
             return READ_FILE;
         }
+        size_t n0 = io.bufsize(ctx->outbuf);
+        printf("[io] reading up to %zu bytes from %d\n", io.bufspace(ctx->outbuf), io.id(ctx->filehandle));
         if (!io.read(ctx->filehandle, ctx->outbuf)) {
             panic("read failed: %s\n", strerror(errno));
         }
         size_t n = io.bufsize(ctx->outbuf);
+        printf("[io] read %zu bytes from %d\n", n-n0, io.id(ctx->filehandle));
         if (n == 0) {
             // Reached the end of file.
             io.close(ctx->filehandle);
@@ -96,6 +99,7 @@ pub int client_routine(void *_ctx, int line) {
         if (!ioroutine.ioready(ctx->client_handle, io.WRITE)) {
             return WRITE_OUT;
         }
+        printf("[io] sending %zu bytes\n", io.bufsize(ctx->outbuf));
         if (!io.write(ctx->client_handle, ctx->outbuf)) {
             panic("write failed: %s\n", strerror(errno));
         }

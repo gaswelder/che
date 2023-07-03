@@ -95,12 +95,12 @@ pub void step() {
             handles++;
         }
     }
-    printf("polling %d handles\n", handles);
+    printf("[ioro] polling %d handles\n", handles);
     io.event_t *ev = io.poll(p);
 
     // Unblock relevant routines.
     while (ev->handle) {
-        printf("poll result: %d, r=%d, w=%d\n", ev->handle->fd, ev->readable, ev->writable);
+        printf("[ioro] poll result: %d, r=%d, w=%d\n", ev->handle->fd, ev->readable, ev->writable);
         // Find the routine blocked in this IO event.
         routine_t *r = find_routine(ev);
         if (!r) {
@@ -152,14 +152,14 @@ void step_routine(routine_t *r) {
         r->current_line = nextline;
     }
     if (nextline == -1) {
-        printf("routine finished\n");
+        printf("[ioro] routine %d finished\n", CURRENT_ROUTINE);
         for (int i = 0; i < MAX_ROUTINES; i++) {
             routine_t *r = routines[i];
             if (!r) {
                 continue;
             }
             if (r->waitroutine == CURRENT_ROUTINE) {
-                printf("unblocking routine %d\n", r->id);
+                printf("[ioro] unblocking routine %d\n", r->id);
                 r->waitroutine = -1;
             }
         }
@@ -203,18 +203,18 @@ pub bool ioready(io.handle_t *h, int filter) {
 }
 
 pub bool done(int id) {
-    printf("checking if routine %d is done\n", id);
+    printf("[ioro] checking if routine %d is done\n", id);
     routine_t *r = routines[CURRENT_ROUTINE];
     if (!r) {
         panic("no such routine: %d", id);
     }
     int line = routines[id]->current_line;
     if (line != -1) {
-        printf("- not done, it's at line %d\n", line);
+        printf("[ioro] - not done, it's at line %d\n", line);
         r->waitroutine = id;
         return false;
     }
-    printf("- done\n");
+    printf("[ioro] - done\n");
     free(routines[id]);
     routines[id] = NULL;
     r->waitroutine = -1;
