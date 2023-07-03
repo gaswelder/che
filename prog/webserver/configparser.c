@@ -92,7 +92,7 @@ char *readeqval(parser_t *parser) {
     return parser->tmp;
 }
 
-pub size_t read_file(const char *configfile, server.LKHostConfig *configs[]) {
+pub size_t read_file(const char *configfile, server.hostconfig_t *configs[]) {
     FILE *f = fopen(configfile, "r");
     if (f == NULL) {
         return 0;

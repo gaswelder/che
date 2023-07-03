@@ -2,7 +2,7 @@
 #import server.c
 
 int main() {
-    server.LKHostConfig *configs[100] = {NULL};
+    server.hostconfig_t *configs[100] = {NULL};
     size_t n = configparser.read_file("prog/webserver/lktest.conf", configs);
     if (!n) {
         panic("nope");

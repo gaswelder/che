@@ -5,7 +5,7 @@
 
 pub typedef {
     io.handle_t *listener;
-    LKHostConfig *hostconfigs[256];
+    hostconfig_t *hostconfigs[256];
     size_t hostconfigs_size;
 } server_t;
 
@@ -18,10 +18,10 @@ pub typedef {
     char proxyhost[1000];
 
     stringtable.t *aliases;
-} LKHostConfig;
+} hostconfig_t;
 
-pub LKHostConfig *lk_hostconfig_new(char *hostname) {
-    LKHostConfig *hc = calloc(1, sizeof(LKHostConfig));
+pub hostconfig_t *lk_hostconfig_new(char *hostname) {
+    hostconfig_t *hc = calloc(1, sizeof(hostconfig_t));
     hc->aliases = stringtable.new();
     strcpy(hc->hostname, hostname);
     return hc;
@@ -31,7 +31,7 @@ pub typedef {
     io.handle_t *client_handle; // Connected client.
     io.buf_t *inbuf, *outbuf; // Buffers for incoming and outgoing data.
     http.request_t req; // parsed request.
-    LKHostConfig *hc; // resolved host config.
+    hostconfig_t *hc; // resolved host config.
     int subroutine; // current running subroutine.
     io.handle_t *filehandle; // for serving a local file.
 
@@ -55,7 +55,7 @@ pub void freectx(ctx_t *ctx) {
     free(ctx);
 }
 
-pub void print_config(LKHostConfig *hc) {
+pub void print_config(hostconfig_t *hc) {
     printf("--- vhost ---\n");
     printf("hostname = %s\n", hc->hostname);
     if (strlen(hc->homedir) > 0) {
@@ -76,10 +76,10 @@ pub void print_config(LKHostConfig *hc) {
 // Return hostconfig matching hostname,
 // or if hostname parameter is NULL, return hostconfig matching "*".
 // Return NULL if no matching host
-pub LKHostConfig *lk_config_find_hostconfig(server_t *s, char *hostname) {
+pub hostconfig_t *lk_config_find_hostconfig(server_t *s, char *hostname) {
     if (hostname != NULL) {
         for (size_t i = 0; i < s->hostconfigs_size; i++) {
-            LKHostConfig *hc = s->hostconfigs[i];
+            hostconfig_t *hc = s->hostconfigs[i];
             if (!strcmp(hc->hostname, hostname)) {
                 return hc;
             }
@@ -87,7 +87,7 @@ pub LKHostConfig *lk_config_find_hostconfig(server_t *s, char *hostname) {
     }
     // If hostname not found, return hostname * (fallthrough hostname).
     for (size_t i = 0; i < s->hostconfigs_size; i++) {
-        LKHostConfig *hc = s->hostconfigs[i];
+        hostconfig_t *hc = s->hostconfigs[i];
         if (!strcmp(hc->hostname, "*")) {
             return hc;
         }

@@ -35,7 +35,7 @@ int main(int argc, char *argv[]) {
             return 1;
         }
     } else {
-        server.LKHostConfig *hc = server.lk_hostconfig_new("*");
+        server.hostconfig_t *hc = server.lk_hostconfig_new("*");
         if (!hc) {
             panic("failed to create a host server");
         }
@@ -49,7 +49,7 @@ int main(int argc, char *argv[]) {
     // Set homedir absolute paths for hostconfigs.
     // Adjust /cgi-bin/ paths.
     for (size_t i = 0; i < SERVER.hostconfigs_size; i++) {
-        server.LKHostConfig *hc = SERVER.hostconfigs[i];
+        server.hostconfig_t *hc = SERVER.hostconfigs[i];
 
         // Skip hostconfigs that don't have have homedir.
         if (strlen(hc->homedir) == 0) {
