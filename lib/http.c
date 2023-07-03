@@ -44,7 +44,7 @@ pub bool parse_request(request_t *r, const char *head) {
         // Lines array too small.
         return false;
     }
-    if (!parse_request_line(lines[0], r)) {
+    if (!parse_start_line(lines[0], r)) {
         return false;
     }
     for (size_t i = 1; i < nlines; i++) {
@@ -67,7 +67,7 @@ pub bool parse_request(request_t *r, const char *head) {
  * Puts the values into the provided struct r.
  * Returns false on failure.
  */
-bool parse_request_line(char *line, request_t *r) {
+bool parse_start_line(char *line, request_t *r) {
     parsebuf.parsebuf_t *b = parsebuf.buf_new(line);
 
     // method
