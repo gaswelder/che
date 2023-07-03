@@ -43,11 +43,11 @@ pub int client_routine(void *_ctx, int line) {
         *p++ = strings.newstr("SERVER_PORT", "todo", 1);
         *p++ = strings.newstr("SERVER_SOFTWARE=webserver");
         *p++ = strings.newstr("SERVER_PROTOCOL=HTTP/1.0");
-        *p++ = strings.newstr("DOCUMENT_ROOT=%s", hc->homedir_abspath);
+        *p++ = strings.newstr("DOCUMENT_ROOT=%s", hc->homedir);
         *p++ = strings.newstr("HTTP_USER_AGENT=%s", header(req, "User-Agent", ""));
         *p++ = strings.newstr("HTTP_HOST=%s", header(req, "Host", ""));
         *p++ = strings.newstr("CONTENT_TYPE=%s", header(req, "Content-Type", ""));
-        *p++ = strings.newstr("SCRIPT_FILENAME=%s/%s", hc->homedir_abspath, req->path);
+        *p++ = strings.newstr("SCRIPT_FILENAME=%s/%s", hc->homedir, req->path);
         *p++ = strings.newstr("REQUEST_METHOD=%s", req->method);
         *p++ = strings.newstr("SCRIPT_NAME=%s", req->path);
         *p++ = strings.newstr("REQUEST_URI=%s", req->uri);
@@ -195,12 +195,12 @@ pub int client_routine(void *_ctx, int line) {
 }
 
 bool resolve_path(server.hostconfig_t *hc, http.request_t *req, char *path, size_t n) {
-    char *naivepath = strings.newstr("%s/%s", hc->homedir_abspath, req->path);
+    char *naivepath = strings.newstr("%s/%s", hc->homedir, req->path);
     printf("naivepath = %s\n", naivepath);
     bool pathok = fs.realpath(naivepath, path, n);
     free(naivepath);
     printf("realpath = %s\n", path);
-    return pathok && strings.starts_with(path, hc->cgidir_abspath);
+    return pathok && strings.starts_with(path, hc->cgidir);
 }
 
 const char *header(http.request_t *req, const char *name, *def) {

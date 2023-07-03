@@ -12,11 +12,8 @@ pub typedef {
 pub typedef {
     char hostname[1000];
     char homedir[1000];
-    char homedir_abspath[1000];
     char cgidir[1000];
-    char cgidir_abspath[1000];
     char proxyhost[1000];
-
     stringtable.t *aliases;
 } hostconfig_t;
 
@@ -62,7 +59,7 @@ pub void print_config(hostconfig_t *hc) {
         printf("homedir = %s\n", hc->homedir);
     }
     if (strlen(hc->cgidir) > 0) {
-        printf("cgidir = %s (%s)\n", hc->cgidir, hc->cgidir_abspath);
+        printf("cgidir = %s\n", hc->cgidir);
     }
     if (strlen(hc->proxyhost) > 0) {
         printf("proxyhost = %s\n", hc->proxyhost);
