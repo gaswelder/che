@@ -80,6 +80,12 @@ pub bool push(buf_t *b, char *data, size_t n) {
 }
 
 pub void shift(buf_t *b, size_t n) {
+    if (n == 0) {
+        return;
+    }
+    if (n > b->size) {
+        panic("can't shift by %zu, have only %zu\n", n, b->size);
+    }
     memmove(b->data, b->data + n, b->size - n);
     b->size -= n;
 }

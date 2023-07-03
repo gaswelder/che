@@ -49,16 +49,14 @@ pub int client_routine(void *_ctx, int line) {
         if (!fs.filesize(filepath, &filesize)) {
             panic("failed to get file size");
         }
-        if (!io.pushf(ctx->outbuf,
-            "%s 200 OK\n"
-            "Content-Length: %ld\n"
-            "Content-Type: %s\n\n\n",
-            req->version,
-            filesize,
-            content_type
-        )) {
+        bool ok = io.pushf(ctx->outbuf, "%s 200 OK\n", req->version)
+            && io.pushf(ctx->outbuf, "Content-Length: %ld\n", filesize)
+            && io.pushf(ctx->outbuf, "Content-Type: %s\n", content_type)
+            && io.pushf(ctx->outbuf, "\n");
+        if (!ok) {
             panic("failed to write response headers");
         }
+
         ctx->filehandle = io.open(filepath, "rb");
         if (!ctx->filehandle) {
             panic("oops");
