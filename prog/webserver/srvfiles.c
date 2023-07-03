@@ -5,7 +5,7 @@
 #import os/io
 #import strings
 
-#import context.c
+#import server.c
 #import srvstd.c
 
 
@@ -24,7 +24,7 @@ enum {
 };
 
 pub int client_routine(void *_ctx, int line) {
-    context.ctx_t *ctx = _ctx;
+    server.ctx_t *ctx = _ctx;
     http.request_t *req = &ctx->req;
 
     switch (line) {

@@ -5,21 +5,13 @@
 #import os/io
 #import os/misc
 #import strings
-#import strings
 
 #import configparser.c
-#import config.c
-#import context.c
+#import server.c
 #import srvcgi.c
 #import srvfiles.c
 
-typedef {
-    io.handle_t *listener;
-    config.LKHostConfig *hostconfigs[256];
-    size_t hostconfigs_size;
-} server_t;
-
-server_t SERVER = {};
+server.server_t SERVER = {};
 
 int main(int argc, char *argv[]) {    
     char *port = "8000";
@@ -39,13 +31,13 @@ int main(int argc, char *argv[]) {
     if (configfile) {
         SERVER.hostconfigs_size = configparser.read_file(configfile, SERVER.hostconfigs);
         if (!SERVER.hostconfigs_size) {
-            fprintf(stderr, "failed to parse config file %s: %s", configfile, strerror(errno));
+            fprintf(stderr, "failed to parse server file %s: %s", configfile, strerror(errno));
             return 1;
         }
     } else {
-        config.LKHostConfig *hc = config.lk_hostconfig_new("*");
+        server.LKHostConfig *hc = server.lk_hostconfig_new("*");
         if (!hc) {
-            panic("failed to create a host config");
+            panic("failed to create a host server");
         }
         if (!misc.getcwd(hc->homedir, sizeof(hc->homedir))) {
             panic("failed to get current working directory: %s", strerror(errno));
@@ -57,7 +49,7 @@ int main(int argc, char *argv[]) {
     // Set homedir absolute paths for hostconfigs.
     // Adjust /cgi-bin/ paths.
     for (size_t i = 0; i < SERVER.hostconfigs_size; i++) {
-        config.LKHostConfig *hc = SERVER.hostconfigs[i];
+        server.LKHostConfig *hc = SERVER.hostconfigs[i];
 
         // Skip hostconfigs that don't have have homedir.
         if (strlen(hc->homedir) == 0) {
@@ -76,7 +68,10 @@ int main(int argc, char *argv[]) {
             free(tmp);
         }
     }
-    print_configs();
+    for (size_t i = 0; i < SERVER.hostconfigs_size; i++) {
+        server.print_config(SERVER.hostconfigs[i]);
+    }
+    printf("\n");
 
     // TODO
     // signal(SIGPIPE, SIG_IGN);           // Don't abort on SIGPIPE
@@ -111,7 +106,7 @@ int main(int argc, char *argv[]) {
 }
 
 int listener_routine(void *_ctx, int line) {
-    server_t *s = _ctx;
+    server.server_t *s = _ctx;
     switch (line) {
     /*
      * The only state for this routine.
@@ -127,7 +122,7 @@ int listener_routine(void *_ctx, int line) {
             panic("accept failed: %s\n", strerror(errno));
         }
         printf("accepted %d\n", conn->fd);
-        context.ctx_t *ctx = context.newctx(conn);
+        server.ctx_t *ctx = server.newctx(conn);
         ioroutine.spawn(client_routine, ctx);
         return 0;
     }
@@ -141,7 +136,7 @@ enum {
 };
 
 int client_routine(void *_ctx, int line) {
-    context.ctx_t *ctx = _ctx;
+    server.ctx_t *ctx = _ctx;
     switch (line) {
     /*
      * Read data from the socket until a full request head is parsed.
@@ -162,16 +157,16 @@ int client_routine(void *_ctx, int line) {
      * Look at the request and spawn a corresponding routine to process it.
      */
     case RESOLVE_REQUEST:
-        printf("getting a host config\n");
+        printf("getting a host server\n");
         char *hostname = NULL;
         http.header_t *host = http.get_header(&ctx->req, "Host");
         if (host) {
             hostname = host->value;
         }
-        ctx->hc = lk_config_find_hostconfig(&SERVER, hostname);
+        ctx->hc = server.lk_config_find_hostconfig(&SERVER, hostname);
         if (!ctx->hc) {
             // 404?
-            panic("failed to find the host config");
+            panic("failed to find the host server");
         }
         printf("cgidir = %s, path = %s\n", ctx->hc->cgidir, ctx->req.path);
         if (strlen(ctx->hc->cgidir) > 0 && strings.starts_with(ctx->req.path, ctx->hc->cgidir)) {
@@ -198,7 +193,7 @@ int client_routine(void *_ctx, int line) {
     panic("unhandled state: %d", line);
 }
 
-bool parse_request(context.ctx_t *ctx) {
+bool parse_request(server.ctx_t *ctx) {
     printf("read from %d, have %zu\n", ctx->client_handle->fd, io.bufsize(ctx->inbuf));
     // See if the input buffer has a finished request header yet.
     char *split = strstr(ctx->inbuf->data, "\r\n\r\n");
@@ -221,7 +216,7 @@ bool parse_request(context.ctx_t *ctx) {
     return true;
 }
 
-// bool resolve_request(server_t *server, context.ctx_t *ctx) {
+// bool resolve_request(server_t *server, server.ctx_t *ctx) {
 
 //     // Replace path with any matching alias.
 //     char *match = stringtable.lk_stringtable_get(hc->aliases, req->path);
@@ -249,32 +244,3 @@ bool parse_request(context.ctx_t *ctx) {
 //     // while (waitpid(-1, NULL, WNOHANG) > 0) {}
 //     // errno = tmp_errno;
 // }
-
-void print_configs() {
-    for (size_t i = 0; i < SERVER.hostconfigs_size; i++) {
-        config.print(SERVER.hostconfigs[i]);
-    }
-    printf("\n");
-}
-
-// Return hostconfig matching hostname,
-// or if hostname parameter is NULL, return hostconfig matching "*".
-// Return NULL if no matching host
-config.LKHostConfig *lk_config_find_hostconfig(server_t *s, char *hostname) {
-    if (hostname != NULL) {
-        for (size_t i = 0; i < s->hostconfigs_size; i++) {
-            config.LKHostConfig *hc = s->hostconfigs[i];
-            if (!strcmp(hc->hostname, hostname)) {
-                return hc;
-            }
-        }
-    }
-    // If hostname not found, return hostname * (fallthrough hostname).
-    for (size_t i = 0; i < s->hostconfigs_size; i++) {
-        config.LKHostConfig *hc = s->hostconfigs[i];
-        if (!strcmp(hc->hostname, "*")) {
-            return hc;
-        }
-    }
-    return NULL;
-}

@@ -6,8 +6,7 @@
 #import os/misc
 #import strings
 
-#import context.c
-#import config.c
+#import server.c
 #import srvstd.c
 
 enum {
@@ -19,9 +18,9 @@ enum {
 };
 
 pub int client_routine(void *_ctx, int line) {
-    context.ctx_t *ctx = _ctx;
+    server.ctx_t *ctx = _ctx;
     http.request_t *req = &ctx->req;
-    config.LKHostConfig *hc = ctx->hc;
+    server.LKHostConfig *hc = ctx->hc;
 
     switch (line) {
     case BEGIN:
@@ -195,7 +194,7 @@ pub int client_routine(void *_ctx, int line) {
     panic("unhandled state: %d", line);
 }
 
-bool resolve_path(config.LKHostConfig *hc, http.request_t *req, char *path, size_t n) {
+bool resolve_path(server.LKHostConfig *hc, http.request_t *req, char *path, size_t n) {
     char *naivepath = strings.newstr("%s/%s", hc->homedir_abspath, req->path);
     printf("naivepath = %s\n", naivepath);
     bool pathok = fs.realpath(naivepath, path, n);

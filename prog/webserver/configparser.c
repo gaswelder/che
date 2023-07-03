@@ -1,9 +1,6 @@
 #import clip/stringtable
 #import strings
-
-#import config.c
-
-#define CONFIG_LINE_SIZE 255
+#import server.c
 
 enum {
     NONE,
@@ -95,7 +92,7 @@ char *readeqval(parser_t *parser) {
     return parser->tmp;
 }
 
-pub size_t read_file(const char *configfile, config.LKHostConfig *configs[]) {
+pub size_t read_file(const char *configfile, server.LKHostConfig *configs[]) {
     FILE *f = fopen(configfile, "r");
     if (f == NULL) {
         return 0;
@@ -111,7 +108,7 @@ pub size_t read_file(const char *configfile, config.LKHostConfig *configs[]) {
         switch (opcode(op)) {
             case HOSTNAME:
                 char *val = readspaceval(&parser);
-                configs[nconfigs] = config.lk_hostconfig_new(val);
+                configs[nconfigs] = server.lk_hostconfig_new(val);
                 nconfigs++;
                 continue;
 

@@ -1,9 +1,9 @@
 #import http
 #import os/io
 
-#import context.c
+#import server.c
 
-pub void write_404(http.request_t *req, context.ctx_t *ctx) {
+pub void write_404(http.request_t *req, server.ctx_t *ctx) {
     const char *msg = "File not found on the server.";
     bool ok = io.pushf(ctx->outbuf,
         "%s 404 Not Found\n"
@@ -21,7 +21,7 @@ pub void write_404(http.request_t *req, context.ctx_t *ctx) {
     }
 }
 
-pub void write_405(http.request_t *req, context.ctx_t *ctx) {
+pub void write_405(http.request_t *req, server.ctx_t *ctx) {
     const char *msg = "This method is not allowed for this path.";
     bool ok = io.pushf(ctx->outbuf,
         "%s 405 Method Not Allowed\n"
@@ -39,7 +39,7 @@ pub void write_405(http.request_t *req, context.ctx_t *ctx) {
     }
 }
 
-pub void write_501(http.request_t *req, context.ctx_t *ctx) {
+pub void write_501(http.request_t *req, server.ctx_t *ctx) {
     const char *msg = "method not implemented\n";
     bool ok = io.pushf(ctx->outbuf,
         "%s 501 Not Implemented\n"
