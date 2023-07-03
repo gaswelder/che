@@ -97,9 +97,9 @@ int main(int argc, char *argv[]) {
     int c = 0;
     while (true) {
         printf("-------------- loop %d --------------\n", c++);
-        if (c > 100) {
-            panic("!");
-        }
+        // if (c > 100) {
+        //     panic("!");
+        // }
         ioroutine.step();
     }
     panic("unreachable");
@@ -145,9 +145,21 @@ int client_routine(void *_ctx, int line) {
         if (!ioroutine.ioready(ctx->client_handle, io.READ)) {
             return READ_REQUEST;
         }
+        printf("[io] reading up to %zu bytes from client %d\n", io.bufspace(ctx->inbuf), io.id(ctx->client_handle));
         if (!io.read(ctx->client_handle, ctx->inbuf)) {
-            panic("read failed");
+            printf("[io] read from client failed: %s\n", strerror(errno));
+            io.close(ctx->client_handle);
+            server.freectx(ctx);
+            return -1;
         }
+        size_t n = io.bufsize(ctx->inbuf);
+        if (!n) {
+            printf("[io] read from client failed: %s\n", strerror(errno));
+            io.close(ctx->client_handle);
+            server.freectx(ctx);
+            return -1;
+        }
+        printf("[io] read from %d, have %zu\n", io.id(ctx->client_handle), n);
         if (!parse_request(ctx)) {
             return READ_REQUEST;
         }
@@ -194,7 +206,6 @@ int client_routine(void *_ctx, int line) {
 }
 
 bool parse_request(server.ctx_t *ctx) {
-    printf("read from %d, have %zu\n", ctx->client_handle->fd, io.bufsize(ctx->inbuf));
     // See if the input buffer has a finished request header yet.
     char *split = strstr(ctx->inbuf->data, "\r\n\r\n");
     if (!split || (size_t)(split - ctx->inbuf->data) > ctx->inbuf->size) {

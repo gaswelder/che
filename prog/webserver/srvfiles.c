@@ -101,7 +101,9 @@ pub int client_routine(void *_ctx, int line) {
         }
         printf("[io] sending %zu bytes\n", io.bufsize(ctx->outbuf));
         if (!io.write(ctx->client_handle, ctx->outbuf)) {
-            panic("write failed: %s\n", strerror(errno));
+            printf("[io] write failed: %s\n", strerror(errno));
+            io.close(ctx->client_handle);
+            return -1;
         }
         return READ_FILE;
     
