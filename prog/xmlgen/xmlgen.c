@@ -13,7 +13,6 @@ generator_state_t GLOBAL_STATE = {};
 
 FILE *xmlout=0;
 char *global_outputname=0;
-int indent_inc=0;
 int stackdepth=0;
 int global_split=0;
 int splitcnt=0;
@@ -41,13 +40,11 @@ int main(int argc, char **argv) {
     bool dumpdtd = false;
     bool doctype_is_2 = false;
     bool show_version = false;
-    bool iflag = false;
     float global_scale_factor = 1;
 
     opt.opt_bool("e", "dumpdtd", &dumpdtd);
     opt.opt_bool("d", "document_type=2", &doctype_is_2);    
     opt.opt_bool("v", "show version", &show_version);
-    opt.opt_bool("i", "indent_inc=2", &iflag);
     opt.opt_float("f", "global_scale_factor", &global_scale_factor);
     opt.opt_str("o", "global_outputname", &global_outputname);
     opt.opt_int("s", "global_split", &global_split);
@@ -75,9 +72,6 @@ int main(int argc, char **argv) {
     int document_type=1;
     if (doctype_is_2) {
         document_type=2;
-    }
-    if (iflag) {
-        indent_inc=2;
     }
     
     xmlout=stdout;
