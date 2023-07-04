@@ -7,113 +7,20 @@ struct StrPos {
 }
 
 pub fn run(m: &Module, exports: &HashMap<String, &Exports>) -> Vec<Error> {
+    let mut scope = get_module_scope(m);
     let mut errors: Vec<Error> = Vec::new();
-    let mut scope = vec![
-        // should be fixed
-        "break", "continue", "false", "NULL", "true", //
-        // custom
-        "nelem", "panic",
-    ];
-    for s in c::CCONST {
-        scope.push(s);
-    }
-    for s in c::CFUNCS {
-        scope.push(s);
-    }
-    for s in c::CTYPES {
-        scope.push(s);
-    }
     let mut declared_local_types = Vec::new();
     let mut used_local_types = HashSet::new();
+
     for e in &m.elements {
         match e {
-            ModuleObject::FunctionDeclaration(f) => {
-                scope.push(f.form.name.as_str());
-                let tn = &f.type_name.name;
-                if tn.namespace == "" {
-                    used_local_types.insert(tn.name.clone());
-                }
-            }
-            ModuleObject::Enum { is_pub: _, members } => {
-                for m in members {
-                    scope.push(m.id.name.as_str());
-                }
-            }
-            ModuleObject::Macro { name, value } => {
-                if name == "define" {
-                    let mut parts = value.trim().split(" ");
-                    scope.push(parts.next().unwrap());
-                }
-                if name == "type" {
-                    scope.push(value.trim());
-                }
-            }
-            ModuleObject::ModuleVariable {
-                type_name,
-                form,
-                value: _,
-            } => {
-                let n = &type_name.name;
-                if n.namespace == "" {
-                    used_local_types.insert(n.name.clone());
-                }
-                scope.push(form.name.as_str());
-            }
-            ModuleObject::StructTypedef(x) => {
-                scope.push(x.name.name.as_str());
-                if !x.is_pub {
-                    declared_local_types.push(StrPos {
-                        str: x.name.name.clone(),
-                        pos: String::from("?"),
-                    });
-                }
-                for f in &x.fields {
-                    match f {
-                        StructEntry::Plain(x) => {
-                            let n = &x.type_name.name;
-                            if n.namespace == "" {
-                                used_local_types.insert(n.name.clone());
-                            }
-                        }
-                        StructEntry::Union(x) => {
-                            for f in &x.fields {
-                                let n = &f.type_name.name;
-                                if n.namespace == "" {
-                                    used_local_types.insert(n.name.clone());
-                                }
-                            }
-                        }
-                    }
-                }
-            }
             ModuleObject::Typedef(x) => {
-                scope.push(x.alias.name.as_str());
                 if !x.is_pub {
                     declared_local_types.push(StrPos {
                         str: x.alias.name.clone(),
                         pos: String::from("?"),
                     });
                 }
-            }
-            ModuleObject::StructAliasTypedef {
-                is_pub,
-                struct_name: _,
-                type_alias,
-            } => {
-                scope.push(type_alias.as_str());
-                if !is_pub {
-                    declared_local_types.push(StrPos {
-                        str: type_alias.clone(),
-                        pos: String::from("?"),
-                    });
-                }
-            }
-        }
-    }
-
-    for e in &m.elements {
-        match e {
-            ModuleObject::Typedef(x) => {
                 check_ns_id(&x.type_name.name, &mut errors, &scope, exports);
             }
             ModuleObject::Enum { is_pub: _, members } => {
@@ -124,6 +31,10 @@ pub fn run(m: &Module, exports: &HashMap<String, &Exports>) -> Vec<Error> {
                 }
             }
             ModuleObject::FunctionDeclaration(f) => {
+                let tn = &f.type_name.name;
+                if tn.namespace == "" {
+                    used_local_types.insert(tn.name.clone());
+                }
                 check_ns_id(&f.type_name.name, &mut errors, &scope, exports);
                 let mut function_scope = scope.clone();
                 for pl in &f.parameters.list {
@@ -150,17 +61,49 @@ pub fn run(m: &Module, exports: &HashMap<String, &Exports>) -> Vec<Error> {
                 form: _,
                 value,
             } => {
+                let n = &type_name.name;
+                if n.namespace == "" {
+                    used_local_types.insert(n.name.clone());
+                }
                 check_ns_id(&type_name.name, &mut errors, &scope, exports);
                 check_expr(value, &mut errors, &scope, exports);
             }
-            ModuleObject::StructAliasTypedef { .. } => {}
+            ModuleObject::StructAliasTypedef {
+                is_pub,
+                type_alias,
+                struct_name: _,
+            } => {
+                if !is_pub {
+                    declared_local_types.push(StrPos {
+                        str: type_alias.clone(),
+                        pos: String::from("?"),
+                    });
+                }
+            }
             ModuleObject::StructTypedef(x) => {
+                if !x.is_pub {
+                    declared_local_types.push(StrPos {
+                        str: x.name.name.clone(),
+                        pos: String::from("?"),
+                    });
+                }
                 for f in &x.fields {
                     match f {
                         StructEntry::Plain(x) => {
+                            let n = &x.type_name.name;
+                            if n.namespace == "" {
+                                used_local_types.insert(n.name.clone());
+                            }
                             check_ns_id(&x.type_name.name, &mut errors, &scope, exports);
                         }
-                        StructEntry::Union(_) => {}
+                        StructEntry::Union(x) => {
+                            for f in &x.fields {
+                                let n = &f.type_name.name;
+                                if n.namespace == "" {
+                                    used_local_types.insert(n.name.clone());
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -174,8 +117,68 @@ pub fn run(m: &Module, exports: &HashMap<String, &Exports>) -> Vec<Error> {
             })
         }
     }
-
     return errors;
+}
+
+fn get_module_scope(m: &Module) -> Vec<&str> {
+    let mut scope = vec![
+        // should be fixed
+        "break", "continue", "false", "NULL", "true", //
+        // custom
+        "nelem", "panic",
+    ];
+    for s in c::CCONST {
+        scope.push(s);
+    }
+    for s in c::CFUNCS {
+        scope.push(s);
+    }
+    for s in c::CTYPES {
+        scope.push(s);
+    }
+
+    for e in &m.elements {
+        match e {
+            ModuleObject::FunctionDeclaration(f) => {
+                scope.push(f.form.name.as_str());
+            }
+            ModuleObject::Enum { is_pub: _, members } => {
+                for m in members {
+                    scope.push(m.id.name.as_str());
+                }
+            }
+            ModuleObject::Macro { name, value } => {
+                if name == "define" {
+                    let mut parts = value.trim().split(" ");
+                    scope.push(parts.next().unwrap());
+                }
+                if name == "type" {
+                    scope.push(value.trim());
+                }
+            }
+            ModuleObject::ModuleVariable {
+                type_name: _,
+                form,
+                value: _,
+            } => {
+                scope.push(form.name.as_str());
+            }
+            ModuleObject::StructTypedef(x) => {
+                scope.push(x.name.name.as_str());
+            }
+            ModuleObject::Typedef(x) => {
+                scope.push(x.alias.name.as_str());
+            }
+            ModuleObject::StructAliasTypedef {
+                is_pub: _,
+                struct_name: _,
+                type_alias,
+            } => {
+                scope.push(type_alias.as_str());
+            }
+        }
+    }
+    return scope;
 }
 
 fn check_body(
