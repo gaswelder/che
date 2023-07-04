@@ -5,13 +5,20 @@
 #import ipsum.c
 #import schema.c
 
+typedef int printfunc_t(FILE *, const char *, ...);
+
+typedef {
+    schema.ProbDesc genref_pdnew;
+} generator_state_t;
+
+generator_state_t GLOBAL_STATE = {};
+
 FILE *xmlout=0;
 char *global_outputname=0;
 int indent_inc=0;
 int stackdepth=0;
 int global_split=0;
 int splitcnt=0;
-
 int GenContents_lstname = 0;
 int GenContents_country = -1;
 int GenContents_email = 0;
@@ -22,23 +29,17 @@ char *GenContents_auction_type[]={"Regular","Featured"};
 char *GenContents_education[]={"High School","College", "Graduate School","Other"};
 char *GenContents_money[]={"Money order","Creditcard", "Personal Check","Cash"};
 char *GenContents_yesno[]={"Yes","No"};
-
-typedef int printfunc_t(FILE *, const char *, ...);
-
+bool GenSubtree_splitnow = false;
+char *markup[3]={"emph","keyword","bold"};
+char tick[3] = "";
+int PrintANY_st[3] = {};
 int global_split_fileno = 0;
-
 const int COUNTRIES_USA = 0;
-
 schema.Element *stack[64] = {};
 
-typedef {
-    schema.ProbDesc genref_pdnew;
-} generator_state_t;
 
-generator_state_t GLOBAL_STATE = {};
 
-int main(int argc, char **argv)
-{
+int main(int argc, char **argv) {
     bool dumpdtd = false;
     bool doctype_is_2 = false;
     bool show_version = false;
@@ -385,14 +386,7 @@ void ClosingTag(schema.Element *element) {
     fprintf(xmlout,"</%s>\n",element->name);
 }
 
-bool GenSubtree_splitnow = false;
 
-
-
-char *markup[3]={"emph","keyword","bold"};
-char tick[3] = "";
-
-int PrintANY_st[3] = {};
 
 void PrintANY(FILE *out) {
     int sen=1+(int)rnd.exponential(20);
