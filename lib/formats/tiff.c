@@ -143,18 +143,18 @@ pub TIFFFile *tiff_open( const char *filepath )
 	//
 	// First two bytes in the file are byte-order mark
 	//
-	switch( tiff_read_bytes( tiff, 2 ) )
-	{
-		case 0x4949:
+	switch (tiff_read_bytes(tiff, 2)) {
+		case 0x4949: {
 			tiff->endiannes = LITTLE;
-			break;
-		case 0x4D4D:
+		}
+		case 0x4D4D: {
 			tiff->endiannes = BIG;
-			break;
-		default:
+		}
+		default: {
 			fprintf( stderr, "Error: wrong endiannes marker in the header\n" );
 			tiff_close( tiff );
 			return NULL;
+		}
 	}
 
 	
@@ -289,64 +289,62 @@ pub uint32_t tiff_read_bytes(TIFFFile *tiff, size_t bytes_number)
 	uint32_t value = 0;
 	uint8_t byte = 0;
 
-	switch( tiff->endiannes )
-	{
-		case BIG:
-			for( size_t i = 0; i < bytes_number; i++ ){
+	switch (tiff->endiannes) {
+		case BIG: {
+			for (size_t i = 0; i < bytes_number; i++) {
 				fread( &byte, 1, 1, tiff->file );
 				value = (value << 8) + byte;
 			}
-			break;
-
-		case LITTLE:
-			for( size_t i = 0; i < bytes_number; i++ ){
+		}
+		case LITTLE: {
+			for (size_t i = 0; i < bytes_number; i++){
 				fread( &byte, 1, 1, tiff->file );
 				value += byte << 8*i;
 			}
-			break;
+		}
 	}
 	return value;
 }
 
 pub const char *tiff_tagname( int tag )
 {
-	switch( tag )
-	{
-		case 254: return "NewSubfileType";
-		case 255: return "SubfileType";
-		case 256: return "ImageWidth";
-		case 257: return "ImageLength";
-		case 258: return "BitsPerSample";
-		case 259: return "Compression";
+	switch (tag) {
+		case 254: { return "NewSubfileType"; }
+		case 255: { return "SubfileType"; }
+		case 256: { return "ImageWidth"; }
+		case 257: { return "ImageLength"; }
+		case 258: { return "BitsPerSample"; }
+		case 259: { return "Compression"; }
 
-		case 262: return "PhotometricInterpretation";
+		case 262: { return "PhotometricInterpretation"; }
 
-		case 266: return "FillOrder";
+		case 266: { return "FillOrder"; }
 
-		case 270: return "ImageDescription";
+		case 270: { return "ImageDescription"; }
 
-		case 273: return "StripOffsets";
-		case 274: return "Orientation";
+		case 273: { return "StripOffsets"; }
+		case 274: { return "Orientation"; }
 
-		case 277: return "SamplesPerPixel";
-		case 278: return "RowsPerStrip";
-		case 279: return "StripByteCounts";
+		case 277: { return "SamplesPerPixel"; }
+		case 278: { return "RowsPerStrip"; }
+		case 279: { return "StripByteCounts"; }
 
-		case 282: return "XResolution";
-		case 283: return "YResolution";
-		case 284: return "PlanarConfiguration";
+		case 282: { return "XResolution"; }
+		case 283: { return "YResolution"; }
+		case 284: { return "PlanarConfiguration"; }
 
-		case 296: return "ResolutionUnit";
+		case 296: { return "ResolutionUnit"; }
 
-		case 305: return "Software";
-		case 306: return "DateTime";
+		case 305: { return "Software"; }
+		case 306: { return "DateTime"; }
 
-		case 315: return "Artist";
+		case 315: { return "Artist"; }
 
-		case 320: return "ColorMap";
-		default:
+		case 320: { return "ColorMap"; }
+		default: {
 			//printf( "Unknown tag: %d\n", tag );
 			return "Unknown";
+		}
 	}
 }
 

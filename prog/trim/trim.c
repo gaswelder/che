@@ -205,19 +205,20 @@ bool growbuf(linebuf_t *buf)
 
 void write_line(linebuf_t *buf, mem.mem_t *out)
 {
-	for(int i = 0; i < buf->eol_pos; i++) {
+	for (int i = 0; i < buf->eol_pos; i++) {
 		mem.memputc(buf->line[i], out);
 	}
-	switch(buf->lf) {
-		case L_UNIX:
+	switch (buf->lf) {
+		case L_UNIX: {
 			mem.memputc('\n', out);
-			break;
-		case L_WIN:
+		}
+		case L_WIN: {
 			assert(mem.memputc('\r', out) != EOF);
 			assert(mem.memputc('\n', out) != EOF);
-			break;
-		default:
+		}
+		default: {
 			panic("write_line: unhandled eol type: %d", buf->lf);
+		}
 	}
 }
 

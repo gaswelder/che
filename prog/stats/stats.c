@@ -26,14 +26,15 @@ int main(int argc, char **argv)
 
 	for (char *p = argv[1]; *p; p++) {
 		switch (*p) {
-			case 'a': avg_needed = true; break;
-			case 's': sum_needed = true; break;
-			case 'm': min_needed = true; break;
-			case 'x': max_needed = true; break;
-			case 'n': break;
-			default:
+			case 'a': { avg_needed = true; }
+			case 's': { sum_needed = true; }
+			case 'm': { min_needed = true; }
+			case 'x': { max_needed = true; }
+			case 'n': {}
+			default: {
 				fprintf(stderr, "unknown stats character: %c\n", *p);
 				return 1;
+			}
 		}
 	}
 
@@ -74,12 +75,12 @@ int main(int argc, char **argv)
 			printf("\t");
 		}
 		switch (*p) {
-			case 's': printf("%f", sum); break;
-			case 'a': printf("%f", avg); break;
-			case 'n': printf("%lu", num); break;
-			case 'm': printf("%f", min); break;
-			case 'x': printf("%f", max); break;
-			default: abort();
+			case 's': { printf("%f", sum); }
+			case 'a': { printf("%f", avg); }
+			case 'n': { printf("%lu", num); }
+			case 'm': { printf("%f", min); }
+			case 'x': { printf("%f", max); }
+			default: { panic("!"); }
 		}
 	}
 	printf("\n");

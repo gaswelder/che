@@ -31,7 +31,7 @@ pub int client_routine(void *_ctx, int line) {
     /*
      * Locate and open the requested file.
      */
-    case RESOLVE:
+    case RESOLVE: {
         printf("resolving %s %s\n", req->method, req->path);
         char *filepath = resolve_path(ctx->hc->homedir, req->path);
         if (!filepath) {
@@ -63,11 +63,12 @@ pub int client_routine(void *_ctx, int line) {
         }
         printf("resolved file request to fd %d\n", ctx->filehandle->fd);
         return READ_FILE;
+    }
 
     /*
      * Read a chunk of file into the output buffer.
      */
-    case READ_FILE:
+    case READ_FILE: {
         if (!ioroutine.ioready(ctx->filehandle, io.READ)) {
             return READ_FILE;
         }
@@ -85,11 +86,12 @@ pub int client_routine(void *_ctx, int line) {
             return FLUSH;
         }
         return WRITE_OUT;
+    }
     
     /*
      * Write the chunk in the output buffer to the client.
      */
-    case WRITE_OUT:
+    case WRITE_OUT: {
         // If nothing to write, go read.
         if (io.bufsize(ctx->outbuf) == 0) {
             return READ_FILE;
@@ -104,11 +106,12 @@ pub int client_routine(void *_ctx, int line) {
             return -1;
         }
         return READ_FILE;
+    }
     
     /*
      * Write whatever's left in the output buffer and terminate the routine.
      */
-    case FLUSH:
+    case FLUSH: {
         if (io.bufsize(ctx->outbuf) == 0) {
             return -1;
         }
@@ -119,7 +122,7 @@ pub int client_routine(void *_ctx, int line) {
             panic("write failed: %s\n", strerror(errno));
         }
         return -1;
-    }
+    }}
 
     panic("unexpected line %d", line);
 }

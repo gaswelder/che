@@ -57,22 +57,14 @@ pub const char *json_typename(json_node *n)
 
 const char *typename(int type) {
 	switch(type) {
-		case JSON_UND:
-			return "und";
-		case JSON_ERR:
-			return "err";
-		case JSON_ARR:
-			return "arr";
-		case JSON_OBJ:
-			return "obj";
-		case JSON_STR:
-			return "str";
-		case JSON_NUM:
-			return "num";
-		case JSON_BOOL:
-			return "bool";
-		case JSON_NULL:
-			return "null";
+		case JSON_UND: { return "und"; }
+		case JSON_ERR: { return "err"; }
+		case JSON_ARR: { return "arr"; }
+		case JSON_OBJ: { return "obj"; }
+		case JSON_STR: { return "str"; }
+		case JSON_NUM: { return "num"; }
+		case JSON_BOOL: { return "bool"; }
+		case JSON_NULL: { return "null"; }
 	}
 	return "?";
 }
@@ -533,20 +525,24 @@ pub json_node *json_parse(const char *s) {
 json_node *read_node(parser_t *p)
 {
 	switch (jsontok.lexer_currtype(p->lexer)) {
-		case EOF:
+		case EOF: {
 			return error(p, "Unexpected end of file");
-		case '[':
+		}
+		case '[': {
 			return read_array(p);
-		case '{':
+		}
+		case '{': {
 			return read_dict(p);
-		case jsontok.T_STR:
+		}
+		case jsontok.T_STR: {
 			json_node *n = json_newstr(jsontok.lexer_currstr(p->lexer));
 			jsontok.lexer_read_next(p->lexer);
 			if (jsontok.lexer_currtype(p->lexer) == jsontok.T_ERR) {
 				error(p, "%s", jsontok.lexer_currstr(p->lexer));
 			}
 			return n;
-		case jsontok.T_NUM:
+		}
+		case jsontok.T_NUM: {
 			const char *val = jsontok.lexer_currstr(p->lexer);
 			double n;
 			if (sscanf(val, "%lf", &n) < 1) {
@@ -557,15 +553,19 @@ json_node *read_node(parser_t *p)
 				error(p, "%s", jsontok.lexer_currstr(p->lexer));
 			}
 			return json_newnum(n);
-		case jsontok.T_TRUE:
+		}
+		case jsontok.T_TRUE: {
 			jsontok.lexer_read_next(p->lexer);
 			return json_newbool(true);
-		case jsontok.T_FALSE:
+		}
+		case jsontok.T_FALSE: {
 			jsontok.lexer_read_next(p->lexer);
 			return json_newbool(false);
-		case jsontok.T_NULL:
+		}
+		case jsontok.T_NULL: {
 			jsontok.lexer_read_next(p->lexer);
 			return json_newnull();
+		}
 	}
 	return NULL;
 }
@@ -724,14 +724,14 @@ pub char *format(json_node *n) {
 
 bool writenode(json_node *n, str.str *s) {
 	switch(json_type(n)) {
-        case JSON_OBJ: return writeobj(n, s);
-        case JSON_ARR: return writearr(n, s);
-        case JSON_STR: return writestr(n, s);
-        case JSON_NUM: return writenum(n, s);
-        case JSON_BOOL: return writebool(n, s);
-        case JSON_NULL: return str.str_adds(s, "null");
-        default: panic("unhandled json node type: %d", json_type(n));
+        case JSON_OBJ: { return writeobj(n, s); }
+        case JSON_ARR: { return writearr(n, s); }
+        case JSON_STR: { return writestr(n, s); }
+        case JSON_NUM: { return writenum(n, s); }
+        case JSON_BOOL: { return writebool(n, s); }
+        case JSON_NULL: { return str.str_adds(s, "null"); }
     }
+	panic("unhandled json node type: %d", json_type(n));
 }
 
 bool writeobj(json_node *n, str.str *s) {

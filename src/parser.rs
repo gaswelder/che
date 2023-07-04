@@ -570,21 +570,6 @@ fn parse_while(l: &mut Lexer, ctx: &Ctx) -> Result<Statement, Error> {
     return Ok(Statement::While { condition, body });
 }
 
-fn parse_statements_block(lexer: &mut Lexer, ctx: &Ctx) -> Result<Body, Error> {
-    let mut statements: Vec<Statement> = Vec::new();
-    if lexer.follows("{") {
-        expect(lexer, "{", None)?;
-        while !lexer.follows("}") {
-            let s = parse_statement(lexer, ctx)?;
-            statements.push(s);
-        }
-        expect(lexer, "}", None)?;
-    } else {
-        statements.push(parse_statement(lexer, ctx)?);
-    }
-    return Ok(Body { statements });
-}
-
 fn parse_statement(l: &mut Lexer, ctx: &Ctx) -> Result<Statement, Error> {
     if !l.more() {
         return Err(Error {
@@ -772,11 +757,7 @@ fn parse_switch(l: &mut Lexer, ctx: &Ctx) -> Result<Statement, Error> {
     if l.follows("default") {
         expect(l, "default", None)?;
         expect(l, ":", None)?;
-        let mut def: Vec<Statement> = vec![];
-        while l.more() && l.peek().unwrap().kind != "}" {
-            def.push(parse_statement(l, ctx)?);
-        }
-        default = Some(Body { statements: def });
+        default = Some(read_body(l, ctx)?);
     }
     expect(l, "}", None)?;
     return Ok(Statement::Switch {
@@ -803,15 +784,8 @@ fn read_switch_case(l: &mut Lexer, ctx: &Ctx) -> Result<SwitchCase, Error> {
         }
     }
     expect(l, ":", None)?;
-    let until = ["case", "break", "default", "}"];
-    let mut statements: Vec<Statement> = vec![];
-    while l.more() && !until.contains(&l.peek().unwrap().kind.as_str()) {
-        statements.push(parse_statement(l, ctx)?);
-    }
-    return Ok(SwitchCase {
-        values,
-        body: Body { statements },
-    });
+    let body = read_body(l, ctx)?;
+    return Ok(SwitchCase { values, body });
 }
 
 fn parse_function_declaration(
@@ -868,6 +842,25 @@ fn parse_function_parameter(l: &mut Lexer, ctx: &Ctx) -> Result<TypeAndForms, Er
         forms.push(parse_form(l, ctx)?);
     }
     return Ok(TypeAndForms { type_name, forms });
+}
+
+fn parse_statements_block(l: &mut Lexer, ctx: &Ctx) -> Result<Body, Error> {
+    if l.follows("{") {
+        return read_body(l, ctx);
+    }
+    let statements: Vec<Statement> = vec![parse_statement(l, ctx)?];
+    return Ok(Body { statements });
+}
+
+fn read_body(l: &mut Lexer, ctx: &Ctx) -> Result<Body, Error> {
+    let mut statements: Vec<Statement> = Vec::new();
+    expect(l, "{", None)?;
+    while !l.follows("}") {
+        let s = parse_statement(l, ctx)?;
+        statements.push(s);
+    }
+    expect(l, "}", None)?;
+    return Ok(Body { statements });
 }
 
 fn parse_union(l: &mut Lexer, ctx: &Ctx) -> Result<Union, Error> {

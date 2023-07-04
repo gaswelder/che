@@ -91,21 +91,20 @@ int dump( tiff.TIFFFile *tiff )
 	for( int i = 0; i < dir->entries_count; i++ )
 	{
 		tiff.TIFFEntry *entry = dir->entries[i];
-		switch( entry->tag )
-		{
-			case tiff.TIFF_ImageWidth:
+		switch (entry->tag) {
+			case tiff.TIFF_ImageWidth: {
 				width = entry->value;
-				break;
-			case tiff.TIFF_ImageLength:
+			}
+			case tiff.TIFF_ImageLength: {
 				// height = entry->value;
-				break;
-			case tiff.TIFF_BitsPerSample:
+			}
+			case tiff.TIFF_BitsPerSample: {
 				bits_per_sample = entry->value;
-				break;
-			case tiff.TIFF_RowsPerStrip:
+			}
+			case tiff.TIFF_RowsPerStrip: {
 				rows_per_strip = entry->value;
-				break;
-			case tiff.TIFF_StripOffsets:
+			}
+			case tiff.TIFF_StripOffsets: {
 				if( strips_per_image == 0 ){
 					strips_per_image = entry->count;
 				} else {
@@ -119,8 +118,8 @@ int dump( tiff.TIFFFile *tiff )
 				for( size_t j = 0; j < entry->count; j++ ){
 					strip_offsets[j] = tiff.tiff_read_bytes( tiff, 4 );
 				}
-				break;
-			case tiff.TIFF_StripByteCounts:
+			}
+			case tiff.TIFF_StripByteCounts: {
 				if( strips_per_image == 0 ){
 					strips_per_image = entry->count;
 				} else {
@@ -134,7 +133,7 @@ int dump( tiff.TIFFFile *tiff )
 				for( size_t j = 0; j < entry->count; j++ ){
 					strip_byte_counts[j] = tiff.tiff_read_bytes( tiff, 4 );
 				}
-				break;
+			}
 		}
 	}
 

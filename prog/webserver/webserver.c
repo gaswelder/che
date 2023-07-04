@@ -108,25 +108,28 @@ int main(int argc, char *argv[]) {
 int listener_routine(void *_ctx, int line) {
     server.server_t *s = _ctx;
     switch (line) {
-    /*
-     * The only state for this routine.
-     * Waits for a new connection, accepts and spawns a new routine for
-     * the new connection.
-     */
-    case 0:
-        if (!ioroutine.ioready(s->listener, io.READ)) {
+        /*
+         * The only state for this routine.
+         * Waits for a new connection, accepts and spawns a new routine for
+         * the new connection.
+         */
+        case 0: {
+            if (!ioroutine.ioready(s->listener, io.READ)) {
+                return 0;
+            }
+            io.handle_t *conn = io.accept(s->listener);
+            if (!conn) {
+                panic("accept failed: %s\n", strerror(errno));
+            }
+            printf("accepted %d\n", conn->fd);
+            server.ctx_t *ctx = server.newctx(conn);
+            ioroutine.spawn(client_routine, ctx);
             return 0;
         }
-        io.handle_t *conn = io.accept(s->listener);
-        if (!conn) {
-            panic("accept failed: %s\n", strerror(errno));
+        default: {
+            panic("unexpected line: %d", line);
         }
-        printf("accepted %d\n", conn->fd);
-        server.ctx_t *ctx = server.newctx(conn);
-        ioroutine.spawn(client_routine, ctx);
-        return 0;
     }
-    panic("unexpected line: %d", line);
 }
 
 enum {
@@ -141,7 +144,7 @@ int client_routine(void *_ctx, int line) {
     /*
      * Read data from the socket until a full request head is parsed.
      */
-    case READ_REQUEST:
+    case READ_REQUEST: {
         if (!ioroutine.ioready(ctx->client_handle, io.READ)) {
             return READ_REQUEST;
         }
@@ -164,11 +167,12 @@ int client_routine(void *_ctx, int line) {
             return READ_REQUEST;
         }
         return RESOLVE_REQUEST;
+    }
 
     /*
      * Look at the request and spawn a corresponding routine to process it.
      */
-    case RESOLVE_REQUEST:
+    case RESOLVE_REQUEST: {
         http.header_t *host = http.get_header(&ctx->req, "Host");
         if (host) {
             ctx->hc = server.find_hostconfig(&SERVER, host->value);
@@ -190,19 +194,22 @@ int client_routine(void *_ctx, int line) {
         printf("spawning a files subroutine\n");
         ctx->subroutine = ioroutine.spawn(srvfiles.client_routine, ctx);
         return WAIT_SUBROUTINE;
+    }
 
     /*
      * Wait for the subroutine to finish.
      */
-    case WAIT_SUBROUTINE:
+    case WAIT_SUBROUTINE: {
         if (!ioroutine.done(ctx->subroutine)) {
             return WAIT_SUBROUTINE;
         }
         printf("subroutine done\n");
         return READ_REQUEST;
     }
-
-    panic("unhandled state: %d", line);
+    default: {
+        panic("unhandled state: %d", line);
+    }
+    }
 }
 
 bool parse_request(server.ctx_t *ctx) {

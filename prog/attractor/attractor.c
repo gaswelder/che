@@ -84,36 +84,36 @@ ppm.rgb_t create_hue( double h ) {
     double hf = h - (int) h;
     ppm.rgb_t r = {};
     switch( (int)h % 6 ) {
-        case 0:
+        case 0: {
             r.r = 1.0;
             r.g = hf;
             r.b = 0.0;
-            break;
-        case 1:
+        }
+        case 1: {
             r.r = 1.0 - hf;
             r.g = 1.0;
             r.b = 0.0;
-            break;
-        case 2:
+        }
+        case 2: {
             r.r = 0.0;
             r.g = 1.0;
             r.g = hf;
-            break;
-        case 3:
+        }
+        case 3: {
             r.r = 0.0;
             r.g = 1.0 - hf;
             r.g = 1.0;
-            break;
-        case 4:
+        }
+        case 4: {
             r.r = hf;
             r.g = 0.0;
             r.g = 1.0;
-            break;
-        case 5:
+        }
+        case 5: {
             r.r = 1.0;
             r.g = 0.0;
             r.g = 1.0 - hf;
-            break;
+        }
     }
     return r;
 }

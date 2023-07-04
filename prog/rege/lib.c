@@ -39,12 +39,14 @@ const char *parsetok(const char *p, token_t *t) {
     if (*p == '\\') {
         p++;
         switch (*p) {
-            case 's':
+            case 's': {
                 t->type = SPACE;
                 p++;
                 return p;
-            default:
+            }
+            default: {
                 panic("unknown escape sequence: \\%c", *p);
+            }
         }
     }
     t->type = LITERAL;
@@ -102,11 +104,14 @@ void accept(char c) {
 void shift(regex_t *r) {
     token_t t = r->pat[r->patpos];
     switch (t.type) {
-        case LITERAL, SPACE:
+        case LITERAL, SPACE: {
             r->patpos++;
             return;
+        }
+        default: {
+            panic("unhandled pattern type");
+        }
     }
-    panic("unhandled pattern type");
 }
 
 /**
@@ -116,10 +121,9 @@ void shift(regex_t *r) {
 bool skip(regex_t *r) {
     token_t t = r->pat[r->patpos];
     switch (t.type) {
-        case LITERAL:
-            return false;
+        case LITERAL: { return false; }
+        default: { panic("unhandled pattern type"); }
     }
-    panic("unhandled pattern type");
 }
 
 /**
@@ -127,11 +131,8 @@ bool skip(regex_t *r) {
 */
 bool match(token_t t, char c) {
     switch (t.type) {
-        case LITERAL:
-            return c == t.val;
-        case SPACE:
-            return isspace(c);
+        case LITERAL: { return c == t.val; }
+        case SPACE: { return isspace(c); }
+        default: { panic("unhandled pattern type"); }
     }
-    panic("unhandled pattern type");
-    return false;
 }

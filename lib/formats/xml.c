@@ -168,16 +168,13 @@ pub bool xml_enter(xml *x)
 	}
 
 	switch(next->type) {
-		/*
-		 * If open or self-closing tag follows, that is
-		 * the first child.
-		 */
-		case T_OPEN:
-		case T_MONO:
+		// If open or self-closing tag follows, that is the first child.
+		case T_OPEN, T_MONO: {
 			pushparent(x);
 			shift(x);
 			return true;
-		case T_CLOSE:
+		}
+		case T_CLOSE: {
 			if(strcmp(next->name, x->node.name) != 0) {
 				error(x, "Unexpected closing tag: %s", x->next_tag.name);
 				return false;
@@ -185,6 +182,7 @@ pub bool xml_enter(xml *x)
 			pushparent(x);
 			x->node.type = T_NULL;
 			return true;
+		}
 	}
 	panic("xml error 0152");
 	return false;
@@ -193,31 +191,24 @@ pub bool xml_enter(xml *x)
 /*
  * Go to the next sibling in the current tree
  */
-pub void xml_next(xml *x)
-{
-	if(x->error[0]) {
+pub void xml_next(xml *x) {
+	if (x->error[0]) {
 		return;
 	}
+	switch (x->node.type) {
+		case T_NULL: { return; }
 
-	switch(x->node.type) {
-		case T_NULL:
-			return;
-		/*
-		 * If current node is a tree, "jump" over it
-		 * by entering and leaving.
-		 */
-		case T_OPEN:
+		// If current node is a tree, "jump" over it by entering and leaving.
+		case T_OPEN: {
 			xml_enter(x);
 			xml_leave(x);
 			return;
+		}
 
-		/*
-		 * If current node is a self-closing one,
-		 * look at what follows next.
-		 */
-		case T_MONO:
+		// If current node is a self-closing one, look at what follows next.
+		case T_MONO: {
 			__tag *next = next_tag(x);
-			if(!next) {
+			if (!next) {
 				error(x, "Unexpected end of file");
 				return;
 			}
@@ -232,9 +223,11 @@ pub void xml_next(xml *x)
 				x->node.type = T_NULL;
 			}
 			return;
+		}
 
-		default:
+		default: {
 			panic("xml: error 0209");
+		}
 	}
 }
 

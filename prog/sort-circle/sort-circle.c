@@ -129,28 +129,20 @@ int main(int argc, char **argv) {
     }
 }
 
-uint32_t hue(int v)
-{
+uint32_t hue(int v) {
     uint32_t h = v / (N / 6);
     uint32_t f = v % (N / 6);
     uint32_t t = 0xff * f / (N / 6);
     uint32_t q = 0xff - t;
     switch (h) {
-        case 0:
-            return 0xff0000UL | (t << 8);
-        case 1:
-            return (q << 16) | 0x00ff00UL;
-        case 2:
-            return 0x00ff00UL | t;
-        case 3:
-            return (q << 8) | 0x0000ffUL;
-        case 4:
-            return (t << 16) | 0x0000ffUL;
-        case 5:
-            return 0xff0000UL | q;
+        case 0: { return 0xff0000UL | (t << 8); }
+        case 1: { return (q << 16) | 0x00ff00UL; }
+        case 2: { return 0x00ff00UL | t; }
+        case 3: { return (q << 8) | 0x0000ffUL; }
+        case 4: { return (t << 16) | 0x0000ffUL; }
+        case 5: { return 0xff0000UL | q; }
+        default: { panic("!"); }
     }
-    abort();
-    return -1;
 }
 
 void frame() {
@@ -365,33 +357,20 @@ void shuffle(int array[N], bool hide, slow) {
 }
 
 void run_sort(int type) {
-    if (type > 0 && type < SORTS_TOTAL)
+    if (type > 0 && type < SORTS_TOTAL) {
         message = sort_names[type];
-    else
+    } else {
         message = 0;
+    }
     switch (type) {
-        case SORT_NULL:
-            break;
-        case SORT_ODD_EVEN:
-            sort_odd_even(array);
-            break;
-        case SORT_BUBBLE:
-            sort_bubble(array);
-            break;
-        case SORT_INSERTION:
-            sort_insertion(array);
-            break;
-        case SORT_STOOGESORT:
-            sort_stoogesort(array, 0, N - 1);
-            break;
-        case SORT_QUICKSORT:
-            sort_quicksort(array, N);
-            break;
-        case SORT_RADIX_8_LSD:
-            sort_radix_lsd(array, 8);
-            break;
-        case SORTS_TOTAL:
-            break;
+        case SORT_NULL: {}
+        case SORT_ODD_EVEN: { sort_odd_even(array); }
+        case SORT_BUBBLE: { sort_bubble(array); }
+        case SORT_INSERTION: { sort_insertion(array); }
+        case SORT_STOOGESORT: { sort_stoogesort(array, 0, N - 1); }
+        case SORT_QUICKSORT: { sort_quicksort(array, N); }
+        case SORT_RADIX_8_LSD: { sort_radix_lsd(array, 8); }
+        case SORTS_TOTAL: {}
     }
     frame();
 }

@@ -23,7 +23,7 @@ pub int client_routine(void *_ctx, int line) {
     server.hostconfig_t *hc = ctx->hc;
 
     switch (line) {
-    case BEGIN:
+    case BEGIN: {
         printf("resolving CGI script path\n");
         char path[1000] = {0};
         if (!resolve_path(hc, req, path, sizeof(path))) {
@@ -68,11 +68,12 @@ pub int client_routine(void *_ctx, int line) {
             p++;
         }
         return READ_CGI_HEAD;
+    }
 
     /*
      * Reads the child process until a CGI head is parsed.
      */
-    case READ_CGI_HEAD:
+    case READ_CGI_HEAD: {
         if (!ioroutine.ioready(ctx->cgiproc->stdout, io.READ)) {
             return READ_CGI_HEAD;
         }
@@ -117,11 +118,12 @@ pub int client_routine(void *_ctx, int line) {
             panic("!");
         }
         return READ_CGI_BODY;
+    }
 
     /*
      * Writes a portion of output from the child process into the output buffer.
      */
-    case READ_CGI_BODY:
+    case READ_CGI_BODY: {
         if (!ioroutine.ioready(ctx->cgiproc->stdout, io.READ)) {
             return READ_CGI_BODY;
         }
@@ -160,11 +162,12 @@ pub int client_routine(void *_ctx, int line) {
             return FLUSH;
         }
         return WRITE_OUT;
+    }
 
     /*
      * Writes output buffer to the client.
      */
-    case WRITE_OUT:
+    case WRITE_OUT: {
         if (!ioroutine.ioready(ctx->client_handle, io.WRITE)) {
             return WRITE_OUT;
         }
@@ -173,11 +176,12 @@ pub int client_routine(void *_ctx, int line) {
             return -1;
         }
         return READ_CGI_BODY;
+    }
 
     /*
      * Write all there is in the output buffer and exit.
      */
-    case FLUSH:
+    case FLUSH: {
         if (io.bufsize(ctx->outbuf) == 0) {
             printf("nothing to flush, exit\n");
             return -1;
@@ -190,8 +194,9 @@ pub int client_routine(void *_ctx, int line) {
         }
         return FLUSH;
     }
-
-    panic("unhandled state: %d", line);
+    default: {
+        panic("unhandled state: %d", line);
+    }}
 }
 
 bool resolve_path(server.hostconfig_t *hc, http.request_t *req, char *path, size_t n) {

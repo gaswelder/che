@@ -126,12 +126,12 @@ pub char **opt_parse( int argc, char **argv )
 				exit(1);
 			}
 
-			switch( flag->type ) {
-				case OPT_STR:
+			switch (flag->type) {
+				case OPT_STR: {
 					*( (char **) flag->value_pointer ) = *arg;
-					break;
+				}
 
-				case OPT_INT, OPT_UINT, OPT_SIZE:
+				case OPT_INT, OPT_UINT, OPT_SIZE: {
 					if (!is_numeric( *arg )) {
 						fprintf(stderr, "Option %c expects a numeric argument\n", c );
 						exit(1);
@@ -170,18 +170,21 @@ pub char **opt_parse( int argc, char **argv )
 						int *p = flag->value_pointer;
 						*p = val;
 					}
-					break;
-				case OPT_FLOAT:
+				}
+
+				case OPT_FLOAT: {
 					float val = 0;
 					if (sscanf(*arg, "%f", &val) < 1) {
 						fprintf(stderr, "Couldn't parse value for flag '%c': %s", c, *arg);
 						exit(1);
 					}
 					*( (float *) flag->value_pointer ) = val;
-					break;
-				default:
+				}
+
+				default: {
 					fprintf(stderr, "Unhandled flag type: %c\n", flag->type);
 					exit(1);
+				}
 			}
 			arg++;
 			continue;
@@ -216,17 +219,10 @@ pub void opt_usage()
 	fprintf(stderr, "Options:\n");
 	for (int i = 0; i < flags_num; i++) {
 		fprintf( stderr, "\t-%s", specs[i].name );
-		switch( specs[i].type )
-		{
-			case OPT_STR:
-				fprintf( stderr, " str" );
-				break;
-			case OPT_INT:
-				fprintf( stderr, " int" );
-				break;
-			case OPT_UINT:
-				fprintf( stderr, " int > 0" );
-				break;
+		switch (specs[i].type) {
+			case OPT_STR: { fprintf( stderr, " str" ); }
+			case OPT_INT: { fprintf( stderr, " int" ); }
+			case OPT_UINT: { fprintf( stderr, " int > 0" ); }
 		}
 		fprintf( stderr, "\t%s\n", specs[i].desc );
 	}

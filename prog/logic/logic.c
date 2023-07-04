@@ -12,7 +12,7 @@ typedef {
 
 void print_term(term *t) {
     switch (t->type) {
-        case FUNC:
+        case FUNC: {
             printf("%s(", t->name);
             for (int i = 0; i < t->args_length; i++) {
                 if (i > 0) {
@@ -21,9 +21,9 @@ void print_term(term *t) {
                 print_term(t->args[i]);
             }
             printf(")");
-            break;
-        case VAR: printf("%s", t->name); break;
-        case CONST: printf("%s", t->name); break;
+        }
+        case VAR: { printf("%s", t->name); }
+        case CONST: { printf("%s", t->name); }
     }
 }
 

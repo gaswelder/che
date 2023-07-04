@@ -100,34 +100,30 @@ pub size_t read_file(const char *configfile, server.hostconfig_t *configs[]) {
     parser_t parser = { .f = f };
     size_t nconfigs = 0;
 
-    while (1) {
+    while (true) {
         char *op = readop(&parser);
         if (!op) {
             break;
         }
         switch (opcode(op)) {
-            case HOSTNAME:
+            case HOSTNAME: {
                 char *val = readspaceval(&parser);
                 configs[nconfigs] = server.lk_hostconfig_new(val);
                 nconfigs++;
-                continue;
-
-            case HOMEDIR:
+            }
+            case HOMEDIR: {
                 char *val = readeqval(&parser);
                 strcpy(configs[nconfigs-1]->homedir, val);
-                continue;
-
-            case CGIDIR:
+            }
+            case CGIDIR: {
                 char *val = readeqval(&parser);
                 strcpy(configs[nconfigs-1]->cgidir, val);
-                continue;
-
-            case PROXYHOST:
+            }
+            case PROXYHOST: {
                 char *val = readeqval(&parser);
                 strcpy(configs[nconfigs-1]->proxyhost, val);
-                continue;
-
-            case ALIAS:
+            }
+            case ALIAS: {
                 char *val = readspaceval(&parser);
                 char *parts[2] = {0};
                 strings.split("=", val, parts, 2);
@@ -135,9 +131,10 @@ pub size_t read_file(const char *configfile, server.hostconfig_t *configs[]) {
                 free(parts[0]);
                 free(parts[1]);
                 // todo prepend '/' if missing
-                continue;
-            default:
+            }
+            default: {
                 panic("unknown op: %s", op);
+            }
         }
     }
     fclose(f);

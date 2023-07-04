@@ -114,25 +114,24 @@ pub int main(int argc, char *argv[]) {
         uint16_t instr = mem_read(reg[R_PC]++);
         uint16_t op = instr >> 12;
         switch (op) {
-            case OP_ADD: op_add(instr); break;
-            case OP_AND: op_and(instr); break;
-            case OP_NOT: op_not(instr); break;
-            case OP_BR: op_br(instr); break;
-            case OP_JMP: op_jmp(instr); break;
-            case OP_JSR: op_jsr(instr); break;
-            case OP_LD: op_ld(instr); break;
-            case OP_LDI: op_ldi(instr); break;
-            case OP_LDR: op_ldr(instr); break;
-            case OP_LEA: op_lea(instr); break;
-            case OP_ST: op_st(instr); break;
-            case OP_STI: op_sti(instr); break;
-            case OP_STR: op_str(instr); break;
-            case OP_TRAP: op_trap(instr); break;
-            case OP_RES:
-            case OP_RTI:
-            default:
-                abort();
-                break;
+            case OP_ADD: { op_add(instr); }
+            case OP_AND: { op_and(instr); }
+            case OP_NOT: { op_not(instr); }
+            case OP_BR: { op_br(instr); }
+            case OP_JMP: { op_jmp(instr); }
+            case OP_JSR: { op_jsr(instr); }
+            case OP_LD: { op_ld(instr); }
+            case OP_LDI: { op_ldi(instr); }
+            case OP_LDR: { op_ldr(instr); }
+            case OP_LEA: { op_lea(instr); }
+            case OP_ST: { op_st(instr); }
+            case OP_STI: { op_sti(instr); }
+            case OP_STR: { op_str(instr); }
+            case OP_TRAP: { op_trap(instr); }
+            case OP_RES, OP_RTI: { panic("!"); }
+            default: {
+                panic("!");
+            }
         }
     }
     
@@ -303,16 +302,16 @@ void op_trap(uint16_t instr) {
     reg[R_R7] = reg[R_PC];
 
     switch (instr & 0xFF) {
-        case TRAP_GETC:
+        case TRAP_GETC: {
             /* read a single ASCII char */
             reg[R_R0] = (uint16_t)getchar();
             update_flags(R_R0);
-            break;
-        case TRAP_OUT:
+        }
+        case TRAP_OUT: {
             putc((char)reg[R_R0], stdout);
             fflush(stdout);
-            break;
-        case TRAP_PUTS:
+        }
+        case TRAP_PUTS: {
             /* one char per word */
             uint16_t *c = memory + reg[R_R0];
             while (*c) {
@@ -320,16 +319,16 @@ void op_trap(uint16_t instr) {
                 ++c;
             }
             fflush(stdout);
-            break;
-        case TRAP_IN:
+        }
+        case TRAP_IN: {
             printf("Enter a character: ");
             char c = getchar();
             putc(c, stdout);
             fflush(stdout);
             reg[R_R0] = (uint16_t)c;
             update_flags(R_R0);
-            break;
-        case TRAP_PUTSP:
+        }
+        case TRAP_PUTSP: {
             /* one char per byte (two bytes per word)
             here we need to swap back to
             big endian format */
@@ -343,13 +342,12 @@ void op_trap(uint16_t instr) {
                 ++c;
             }
             fflush(stdout);
-            break;
-
-        case TRAP_HALT:
+        }
+        case TRAP_HALT: {
             puts("HALT");
             fflush(stdout);
             running = 0;
-            break;
+        }
     }
 }
 

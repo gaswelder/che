@@ -104,14 +104,16 @@ int main(int argc, char **argv)
 
 void Preamble(FILE *out, int document_type) {
     switch (document_type) {
-    case 1:
-        fprintf(out, "<?xml version=\"1.0\" standalone=\"yes\"?>\n");
-        break;
-    case 2:
-        fprintf(out, "<?xml version=\"1.0\"?>\n");
-        fprintf(out, "<!DOCTYPE %s SYSTEM \"auction.dtd\">\n", schema.GetSchemaNode(1)->name);
-        break;
-    default: panic("unknown document type: %d", document_type);
+        case 1: {
+            fprintf(out, "<?xml version=\"1.0\" standalone=\"yes\"?>\n");
+        }
+        case 2: {
+            fprintf(out, "<?xml version=\"1.0\"?>\n");
+            fprintf(out, "<!DOCTYPE %s SYSTEM \"auction.dtd\">\n", schema.GetSchemaNode(1)->name);
+        }
+        default: { 
+            panic("unknown document type: %d", document_type);
+        }
     }
 }
 
@@ -153,68 +155,51 @@ void Tree(FILE *out, schema.Element *element) {
     int r;
     bool has_content = true;
     switch(element->id) {
-        case schema.CITY:
-            ipsum.fcity(out); break;
-        case schema.STATUS:
-        case schema.HAPPINESS:
-            ipsum.fint(out, 1, 10); break;
-        case schema.STREET:
-            ipsum.fstreet(out); break;
-        case schema.PHONE:
-            ipsum.fphone(out); break;
-        case schema.CREDITCARD:
-            ipsum.fcreditcard(out); break;
-        case schema.SHIPPING:
-            ipsum.fshipping(out); break;
-        case schema.TIME:
-            ipsum.ftime(out); break;
-        case schema.AGE:
-            ipsum.fage(out); break;
-        case schema.ZIPCODE:
-            ipsum.fzipcode(out); break;
-        case schema.XDATE:
-        case schema.START:
-        case schema.END:
-            ipsum.fdate(out); break;
-        case schema.GENDER:
-            ipsum.fgender(out); break;
-        case schema.AMOUNT:
-        case schema.PRICE:
-            ipsum.fprice(out); break;
+        case schema.CITY: { ipsum.fcity(out); }
+        case schema.STATUS,
+            schema.HAPPINESS: { ipsum.fint(out, 1, 10); }
+        case schema.STREET: { ipsum.fstreet(out); }
+        case schema.PHONE: { ipsum.fphone(out); }
+        case schema.CREDITCARD: { ipsum.fcreditcard(out); }
+        case schema.SHIPPING: { ipsum.fshipping(out); }
+        case schema.TIME: { ipsum.ftime(out); }
+        case schema.AGE: { ipsum.fage(out); }
+        case schema.ZIPCODE: { ipsum.fzipcode(out); }
+        case schema.XDATE, schema.START, schema.END: { ipsum.fdate(out); }
+        case schema.GENDER: { ipsum.fgender(out); }
+        case schema.AMOUNT,
+            schema.PRICE: { ipsum.fprice(out); }
 
-        case schema.TYPE:
+        case schema.TYPE: {
             fprintf(out, "%s", GenContents_auction_type[rnd.range(0,1)]);
             if (GenContents_quantity>1 && rnd.range(0,1)) fprintf(out,", Dutch");
-            break;
-        case schema.LOCATION:
-        case schema.COUNTRY:
+        }
+        case schema.LOCATION, schema.COUNTRY: {
             if (rnd.uniform(0, 1) < 0.75) {
                 GenContents_country = COUNTRIES_USA;
             } else {
                 GenContents_country = rnd.range(0, words.dictlen("countries") - 1);
             }
             fprintf(out, "%s", words.dictentry("countries", GenContents_country));
-            break;
-        case schema.PROVINCE:
+        }
+        case schema.PROVINCE: {
             if (GenContents_country == COUNTRIES_USA) {
                 ipsum.fprovince(out);
             } else {
                 ipsum.flastname(out);
             }
-            break;
-        case schema.EDUCATION:            
+        }
+        case schema.EDUCATION: {
             fprintf(out, "%s", GenContents_education[rnd.range(0,3)]);
-            break;
-        
-        case schema.HOMEPAGE:
+        }
+        case schema.HOMEPAGE: {
             fprintf(out, "http://www.%s/~%s",
                 words.dictentry("emails", GenContents_email),
                 words.dictentry("lastnames", GenContents_lstname));
-            break;
-        
-        case schema.PAYMENT:
+        }
+        case schema.PAYMENT: {
             r=0;
-            for (int i=0;i<4;i++)
+            for (int i=0; i<4; i++) {
                 if (rnd.range(0,1)) {
                     char *x = "";
                     if (r++) {
@@ -222,57 +207,49 @@ void Tree(FILE *out, schema.Element *element) {
                     }
                     fprintf(out, "%s%s", x, GenContents_money[i % 4]);
                 }
-            break;
-        
-        case schema.BUSINESS:
-        case schema.PRIVACY:
+            }
+        }
+        case schema.BUSINESS, schema.PRIVACY: {
             fprintf(out, "%s", GenContents_yesno[rnd.range(0,1)]);
-            break;
-        
-        case schema.CATNAME:
-        case schema.ITEMNAME:
+        }
+        case schema.CATNAME, schema.ITEMNAME: {
             ipsum.fsentence(out, rnd.range(1,4));
-            break;
-        case schema.NAME:
-            PrintName();
-            break;
-        case schema.FROM:
-        case schema.TO:
+        }
+        case schema.NAME: { PrintName(); }
+        case schema.FROM, schema.TO: {
             PrintName();
             fprintf(out," ");
-            break;
-        case schema.EMAIL:
+        }
+        case schema.EMAIL: {
             GenContents_email = rnd.range(0, words.dictlen("emails") - 1);
             fprintf(out, "mailto:%s@%s",
                 words.dictentry("lastnames", GenContents_lstname),
                 words.dictentry("emails", GenContents_email));
-            break;
-        
-        case schema.QUANTITY:
+        }
+        case schema.QUANTITY: {
             GenContents_quantity=1+(int)rnd.exponential(0.4);
             fprintf(out,"%d",GenContents_quantity);
-            break;
-        case schema.INCREASE:
+        }
+        case schema.INCREASE: {
             double d=1.5 *(1+(int)rnd.exponential(10));
             fprintf(out,"%.2f",d);
             GenContents_increases+=d;
-        break;
-        case schema.CURRENT:
+        }
+        case schema.CURRENT: {
             fprintf(out,"%.2f",GenContents_initial+GenContents_increases);
-            break;
-        case schema.INIT_PRICE:
+        }
+        case schema.INIT_PRICE: {
             GenContents_initial=rnd.exponential(100);
             GenContents_increases=0;
             fprintf(out,"%.2f",GenContents_initial);
-            break;
-        case schema.RESERVE:
+        }
+        case schema.RESERVE: {
             fprintf(out,"%.2f",GenContents_initial*(1.2+rnd.exponential(2.5)));
-            break;
-        case schema.TEXT:
-            PrintANY(out);
-            break;
-        default:
+        }
+        case schema.TEXT: { PrintANY(out); }
+        default: {
             has_content = false;
+        }
     }
     if (has_content && element->elm[0] != 0) {
         fprintf(out,"\n");
@@ -346,10 +323,10 @@ void OpeningTag(FILE *out, schema.Element *element) {
         }
 
         switch (att->type) {
-            case schema.ATTR_TYPE_1:
+            case schema.ATTR_TYPE_1: {
                 fprintf(out, " %s=\"%s%d\"", attname, element->name, element->set.id++);
-                break;
-            case schema.ATTR_TYPE_2:
+            }
+            case schema.ATTR_TYPE_2: {
                 int ref=0;
                 if (!ItemIdRef(element, &ref)) {
                     schema.ProbDesc pd = schema.probDescForAttr(element->id, att->name);
@@ -367,8 +344,8 @@ void OpeningTag(FILE *out, schema.Element *element) {
                     ref = (int) GenRandomNum(&GLOBAL_STATE.genref_pdnew);
                 }
                 fprintf(out," %s=\"%s%d\"", attname, schema.GetSchemaNode(att->ref)->name, ref);
-                break;
-            case schema.ATTR_TYPE_3:
+            }
+            case schema.ATTR_TYPE_3: {
                 if (rnd.uniform(0, 1) < att->prcnt) {
                     if (!strcmp(attname,"income")) {
                         double d = 40000 + 30000 * rnd.gauss();
@@ -380,10 +357,11 @@ void OpeningTag(FILE *out, schema.Element *element) {
                         fprintf(out," %s=\"yes\"",attname);
                     }
                 }
-                break;
-            default:
+            }
+            default: {
                 fflush(out);
                 panic("unknown ATT type %s\n", attname);
+            }
         }
     }
     if (element->elm[0] == 0 && (element->att[0].name[0])) {

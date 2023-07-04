@@ -108,34 +108,28 @@ void print_object(json.json_node *current_object) {
 
 void print_node(const char *key, json.json_node *e, *val) {
     switch (json.json_type(val)) {
-        case json.JSON_STR:
-            printf("%s", json.json_getstr(e, key));
-            break;
-        case json.JSON_NUM:
+        case json.JSON_STR:  { printf("%s", json.json_getstr(e, key)); }
+        case json.JSON_OBJ:  { printf("(object)"); }
+        case json.JSON_NULL: { printf("null"); }
+        case json.JSON_ARR:  { printf("(array)"); }
+
+        case json.JSON_NUM: {
             double val = json.json_getdbl(e, key);
             if (round(val) - val < 1e-10) {
                 printf("%d", (int) val);
             } else {
                 printf("%f", val);
             }
-            break;
-        case json.JSON_OBJ:
-            printf("(object)");
-            break;
-        case json.JSON_NULL:
-            printf("null");
-            break;
-        case json.JSON_ARR:
-            printf("(array)");
-            break;
-	    case json.JSON_BOOL:
+        }        
+	    case json.JSON_BOOL: {
             if (val->val.boolval) {
                 printf("true");
             } else {
                 printf("false");
             }
-            break;
-        default:
+        }
+        default: {
             printf("(unknown type %d)", json.json_type(val));
+        }
     }
 }

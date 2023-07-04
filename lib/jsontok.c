@@ -25,47 +25,6 @@ pub enum {
 	T_NUM
 };
 
-// json_tokenizer_t *tmp = new_json_tokenizer(s);
-	// while (true) {
-	// 	lexer_read_next(tmp);
-	// 	json_token_t *t = lexer_curr(tmp);
-	// 	switch (t->type) {
-	// 		case T_ERR: printf("err(%s)\n", t->str); break;
-	// 		case T_TRUE: printf("T_TRUE\n"); break;
-	// 		case T_FALSE: printf("T_FALSE\n"); break;
-	// 		case T_NULL: printf("T_NULL\n"); break;
-	// 		case T_STR: printf("T_STR(%s)\n", t->str); break;
-	// 		case T_NUM: printf("T_NUM(%f)\n", t->num); break;
-	// 		case '[': printf("[\n"); break;
-	// 		case ']': printf("]\n"); break;
-	// 		case '{': printf("{\n"); break;
-	// 		case '}': printf("}\n"); break;
-	// 		case ',': printf(",\n"); break;
-	// 		case ':': printf(":\n"); break;
-	// 		case '"': printf("\"\n"); break;
-    //     	default: printf("unknown type\n"); return NULL;
-	// 	}
-	// }
-
-// const char *toktypestring(int t) {
-//     switch (t) {
-//         case T_ERR: return "T_ERR";
-// 	    case T_TRUE: return "T_TRUE";
-// 	    case T_FALSE: return "T_FALSE";
-// 	    case T_NULL: return "T_NULL";
-// 	    case T_STR: return "T_STR";
-// 	    case T_NUM: return "T_NUM";
-//         case '[': return "[";
-//         case ']': return "]";
-//         case '{': return "{";
-//         case '}': return "}";
-//         case ',': return ",";
-//         case ':': return ":";
-//         case '"': return "\"";
-//         default: return "(unknown type)";
-//     }
-// }
-
 pub typedef {
     parsebuf.parsebuf_t *buf;
     json_token_t next;

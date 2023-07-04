@@ -36,60 +36,54 @@ int disas(FILE *in, *out, *err) {
 
 		fprintf( out, "%x%x%x%x\t", a, b, c, d );
 
-		switch( a )
-		{
-			case 0x0:
-				if( b == 0x0 && c == 0xE )
-				{
-					if( d == 0x0 ){
-						fprintf( out, "CLS\n" );
-					} else if( d == 0xE ){
-						fprintf( out, "RET\n" );
-					} else {
-						fprintf(out, "Unknown\n" );
-						return 2;
+		switch (a) {
+			case 0x0: {
+				if (b == 0x0 && c == 0xE) {
+					switch (d) {
+						case 0x0: { fprintf( out, "CLS\n" ); }
+						case 0xE: { fprintf( out, "RET\n" ); }
+						default: { fprintf(out, "Unknown\n" ); return 2; }
 					}
 				} else {
 					fprintf( out, "SYS\t0x%x\n", param3 );
 				}
-			break;
-			case 0x1: fprintf( out, "JP\t0x%x\n", param3 ); break;
-			case 0x2: fprintf( out, "CALL\t0x%x\n", param3 ); break;
-			case 0x3: fprintf( out, "SE\tV%x, 0x%x\n", b, param2 ); break;
-			case 0x4: fprintf( out, "SNE\tV%x, 0x%x\n", b, param2 ); break;
-			case 0x5:
-				if( d == 0 ){
-					fprintf( out, "SE\tV%x, V%x\n", b, c );
+			}
+			case 0x1: { fprintf( out, "JP\t0x%x\n", param3 ); }
+			case 0x2: { fprintf( out, "CALL\t0x%x\n", param3 ); }
+			case 0x3: { fprintf( out, "SE\tV%x, 0x%x\n", b, param2 ); }
+			case 0x4: { fprintf( out, "SNE\tV%x, 0x%x\n", b, param2 ); }
+			case 0x5: {
+				if (d == 0) {
+					fprintf(out, "SE\tV%x, V%x\n", b, c);
 				} else {
-					fprintf( out, "Unknown\n" );
+					fprintf(out, "Unknown\n");
 					return 2;
 				}
-			break;
-			case 0x6: fprintf( out, "LD\tV%x, 0x%x\n", b, param2 ); break;
-			case 0x7: fprintf( out, "ADD\tV%x, 0x%x\n", b, param2 ); break;
-			case 0x8:
-				switch( d )
-				{
-					case 0x0: fprintf( out, "LD\tV%x, V%x\n", b, c ); break;
-					case 0x1: fprintf( out, "OR\tV%x, V%x\n", b, c ); break;
-					case 0x2: fprintf( out, "AND\tV%x, V%x\n", b, c ); break;
-					case 0x3: fprintf( out, "XOR\tV%x, V%x\n", b, c ); break;
-					case 0x4: fprintf( out, "ADD\tV%x, V%x\n", b, c ); break;
-					case 0x5: fprintf( out, "SUB\tV%x, V%x\n", b, c ); break;
-					case 0x6: fprintf( out, "SHR\tV%x {, V%x}\n", b, c ); break;
-					case 0x7: fprintf( out, "SUBN\tV%x, V%x\n", b, c ); break;
-					case 0xE: fprintf( out, "SHL\tV%x {, V%x}\n", b, c ); break;
+			}
+			case 0x6: { fprintf( out, "LD\tV%x, 0x%x\n", b, param2 ); }
+			case 0x7: { fprintf( out, "ADD\tV%x, 0x%x\n", b, param2 ); }
+			case 0x8: {
+				switch (d) {
+					case 0x0: { fprintf( out, "LD\tV%x, V%x\n", b, c ); }
+					case 0x1: { fprintf( out, "OR\tV%x, V%x\n", b, c ); }
+					case 0x2: { fprintf( out, "AND\tV%x, V%x\n", b, c ); }
+					case 0x3: { fprintf( out, "XOR\tV%x, V%x\n", b, c ); }
+					case 0x4: { fprintf( out, "ADD\tV%x, V%x\n", b, c ); }
+					case 0x5: { fprintf( out, "SUB\tV%x, V%x\n", b, c ); }
+					case 0x6: { fprintf( out, "SHR\tV%x {, V%x}\n", b, c ); }
+					case 0x7: { fprintf( out, "SUBN\tV%x, V%x\n", b, c ); }
+					case 0xE: { fprintf( out, "SHL\tV%x {, V%x}\n", b, c ); }
 				}
-			break;
-			case 0x9:
+			}
+			case 0x9: {
 				assert( d == 0 );
 				fprintf( out, "SNE\tV%x, V%x\n", b, c );
-				break;
-			case 0xA: fprintf( out, "LD\tI, 0x%x\n", param3 ); break;
-			case 0xB: fprintf( out, "JP\tV0, 0x%x\n", param3 ); break;
-			case 0xC: fprintf( out, "RND\tV%x, 0x%x\n", b, param2 ); break;
-			case 0xD: fprintf( out, "DRW\tV%x, V%x, %d\n", b, c, d ); break;
-			case 0xE:
+			}
+			case 0xA: { fprintf( out, "LD\tI, 0x%x\n", param3 ); }
+			case 0xB: { fprintf( out, "JP\tV0, 0x%x\n", param3 ); }
+			case 0xC: { fprintf( out, "RND\tV%x, 0x%x\n", b, param2 ); }
+			case 0xD: { fprintf( out, "DRW\tV%x, V%x, %d\n", b, c, d ); }
+			case 0xE: {
 				if( c == 0x9 && d == 0xE ){
 					fprintf( out, "SKP\tV%x\n", b );
 					break;
@@ -100,22 +94,23 @@ int disas(FILE *in, *out, *err) {
 				}
 				fprintf( out, "Error\n" );
 				return 2;
-			case 0xF:
-				switch( (c<<4) + d )
-				{
-					case 0x07: fprintf( out, "LD\tV%x, DT\n", b ); break;
-					case 0x0A: fprintf( out, "LD\tV%x, K\n", b ); break;
-					case 0x15: fprintf( out, "LD\tDT, V%x\n", b ); break;
-					case 0x18: fprintf( out, "LD\tST, V%x\n", b ); break;
-					case 0x1E: fprintf( out, "ADD\tI, V%x\n", b ); break;
-					case 0x29: fprintf( out, "LD\tF, V%x\n", b ); break;
-					case 0x33: fprintf( out, "LD\tB, V%x\n", b ); break;
-					case 0x55: fprintf( out, "LD\t[I], V%x\n", b ); break;
-					case 0x65: fprintf( out, "LD\tV%x, [I]\n", b ); break;
+			}
+			case 0xF: {
+				switch ((c<<4) + d) {
+					case 0x07: { fprintf( out, "LD\tV%x, DT\n", b ); }
+					case 0x0A: { fprintf( out, "LD\tV%x, K\n", b ); }
+					case 0x15: { fprintf( out, "LD\tDT, V%x\n", b ); }
+					case 0x18: { fprintf( out, "LD\tST, V%x\n", b ); }
+					case 0x1E: { fprintf( out, "ADD\tI, V%x\n", b ); }
+					case 0x29: { fprintf( out, "LD\tF, V%x\n", b ); }
+					case 0x33: { fprintf( out, "LD\tB, V%x\n", b ); }
+					case 0x55: { fprintf( out, "LD\t[I], V%x\n", b ); }
+					case 0x65: { fprintf( out, "LD\tV%x, [I]\n", b ); }
 				}
-				break;
-			default:
+			}
+			default: {
 				fprintf(err, "Unknown: %02x %02x\n", byte1, byte2 );
+			}
 		}
 	}
 	return 0;

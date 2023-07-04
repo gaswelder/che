@@ -13,10 +13,8 @@ int main() {
 
     // Can use in a switch.
     switch (val.a) {
-        case lib.ONE:
-            break;
-        default:
-            puts("not one");
+        case lib.ONE: {}
+        default: { puts("not one"); }
     }
 
     f(10, val);

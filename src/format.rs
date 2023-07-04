@@ -472,7 +472,7 @@ fn format_switch(value: &CExpression, cases: &Vec<CSwitchCase>, default: &Option
             s += &format_statement(&statement);
             s += ";\n";
         }
-        s += "}\n";
+        s += "break; }\n";
     }
     match default {
         None => {}

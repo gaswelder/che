@@ -476,67 +476,66 @@ popator()
 	return *--atorp;
 }
 
-void
-evaluntil(int pri)
-{
+void evaluntil(int pri) {
 	Node *op1 = NULL, *op2 = NULL;
 	Reinst *inst1 = NULL, *inst2 = NULL;
-
-	while(pri==RBRA || atorp[-1]>=pri){
-		switch(popator()){
-		case LBRA:		/* must have been RBRA */
-			op1 = popand('(');
-			inst2 = newinst(RBRA);
-			inst2->u1.subid = *subidp;
-			op1->last->u2.next = inst2;
-			inst1 = newinst(LBRA);
-			inst1->u1.subid = *subidp;
-			inst1->u2.next = op1->first;
-			pushand(inst1, inst2);
-			return;
-		case OR:
-			op2 = popand('|');
-			op1 = popand('|');
-			inst2 = newinst(NOP);
-			op2->last->u2.next = inst2;
-			op1->last->u2.next = inst2;
-			inst1 = newinst(OR);
-			inst1->u1.right = op1->first;
-			inst1->u2.left = op2->first;
-			pushand(inst1, inst2);
-			break;
-		case CAT:
-			op2 = popand(0);
-			op1 = popand(0);
-			op1->last->u2.next = op2->first;
-			pushand(op1->first, op2->last);
-			break;
-		case STAR:
-			op2 = popand('*');
-			inst1 = newinst(OR);
-			op2->last->u2.next = inst1;
-			inst1->u1.right = op2->first;
-			pushand(inst1, inst1);
-			break;
-		case PLUS:
-			op2 = popand('+');
-			inst1 = newinst(OR);
-			op2->last->u2.next = inst1;
-			inst1->u1.right = op2->first;
-			pushand(op2->first, inst1);
-			break;
-		case QUEST:
-			op2 = popand('?');
-			inst1 = newinst(OR);
-			inst2 = newinst(NOP);
-			inst1->u2.left = inst2;
-			inst1->u1.right = op2->first;
-			op2->last->u2.next = inst2;
-			pushand(inst1, inst2);
-			break;
-		default:
-			rcerror("unknown operator in evaluntil");
-			break;
+	while (pri == RBRA || atorp[-1] >= pri) {
+		switch (popator()) {
+			case LBRA: {
+				/* must have been RBRA */
+				op1 = popand('(');
+				inst2 = newinst(RBRA);
+				inst2->u1.subid = *subidp;
+				op1->last->u2.next = inst2;
+				inst1 = newinst(LBRA);
+				inst1->u1.subid = *subidp;
+				inst1->u2.next = op1->first;
+				pushand(inst1, inst2);
+				return;
+			}
+			case OR: {
+				op2 = popand('|');
+				op1 = popand('|');
+				inst2 = newinst(NOP);
+				op2->last->u2.next = inst2;
+				op1->last->u2.next = inst2;
+				inst1 = newinst(OR);
+				inst1->u1.right = op1->first;
+				inst1->u2.left = op2->first;
+				pushand(inst1, inst2);
+			}
+			case CAT: {
+				op2 = popand(0);
+				op1 = popand(0);
+				op1->last->u2.next = op2->first;
+				pushand(op1->first, op2->last);
+			}
+			case STAR: {
+				op2 = popand('*');
+				inst1 = newinst(OR);
+				op2->last->u2.next = inst1;
+				inst1->u1.right = op2->first;
+				pushand(inst1, inst1);
+			}
+			case PLUS: {
+				op2 = popand('+');
+				inst1 = newinst(OR);
+				op2->last->u2.next = inst1;
+				inst1->u1.right = op2->first;
+				pushand(op2->first, inst1);
+			}
+			case QUEST: {
+				op2 = popand('?');
+				inst1 = newinst(OR);
+				inst2 = newinst(NOP);
+				inst1->u2.left = inst2;
+				inst1->u1.right = op2->first;
+				op2->last->u2.next = inst2;
+				pushand(inst1, inst2);
+			}
+			default: {
+				rcerror("unknown operator in evaluntil");
+			}
 		}
 	}
 }
@@ -569,20 +568,16 @@ Reprog* optimize(Reprog *pp) {
 		return pp;
 	diff = (char *)npp - (char *)pp;
 	freep = (Reinst *)((char *)freep + diff);
-	for(inst=npp->firstinst; inst<freep; inst++){
+	for (inst=npp->firstinst; inst<freep; inst++) {
 		switch(inst->type){
-		case OR:
-		case STAR:
-		case PLUS:
-		case QUEST:
-			inst->u1.right = (void*)((char*)inst->u1.right + diff);
-			break;
-		case CCLASS:
-		case NCCLASS:
-			inst->u1.right = (void*)((char*)inst->u1.right + diff);
-			cl = inst->u1.cp;
-			cl->end = (void*)((char*)cl->end + diff);
-			break;
+			case OR, STAR, PLUS, QUEST: {
+				inst->u1.right = (void*)((char*)inst->u1.right + diff);
+			}
+			case CCLASS, NCCLASS: {
+				inst->u1.right = (void*)((char*)inst->u1.right + diff);
+				cl = inst->u1.cp;
+				cl->end = (void*)((char*)cl->end + diff);
+			}
 		}
 		inst->u2.left = (void*)((char*)inst->u2.left + diff);
 	}
@@ -654,39 +649,27 @@ int nextc(utf.Rune *rp) {
 	return 0;
 }
 
-int
-lex(int literal, int dot_type)
-{
+int lex(int literal, int dot_type) {
 	int quoted = nextc(&yyrune);
-	if(literal || quoted){
-		if(yyrune == 0)
+	if (literal || quoted) {
+		if (yyrune == 0) {
 			return END;
+		}
 		return RUNE;
 	}
 
-	switch(yyrune){
-	case 0:
-		return END;
-	case '*':
-		return STAR;
-	case '?':
-		return QUEST;
-	case '+':
-		return PLUS;
-	case '|':
-		return OR;
-	case '.':
-		return dot_type;
-	case '(':
-		return LBRA;
-	case ')':
-		return RBRA;
-	case '^':
-		return BOL;
-	case '$':
-		return EOL;
-	case '[':
-		return bldcclass();
+	switch (yyrune) {
+		case 0:   { return END; }
+		case '*': { return STAR; }
+		case '?': { return QUEST; }
+		case '+': { return PLUS; }
+		case '|': { return OR; }
+		case '.': { return dot_type; }
+		case '(': { return LBRA; }
+		case ')': { return RBRA; }
+		case '^': { return BOL; }
+		case '$': { return EOL; }
+		case '[': { return bldcclass(); }
 	}
 	return RUNE;
 }
@@ -961,20 +944,20 @@ regexec1(Reprog *progp,
 		/* fast check for first char */
 		if(checkstart) {
 			switch(j->starttype) {
-			case RUNE:
-				p = utf.utfrune(s, j->startchar);
-				if(p == 0 || s == j->eol)
-					return match;
-				s = p;
-				break;
-			case BOL:
-				if(s == bol)
-					break;
-				p = utf.utfrune(s, '\n');
-				if(p == 0 || s == j->eol)
-					return match;
-				s = p+1;
-				break;
+				case RUNE: {
+					p = utf.utfrune(s, j->startchar);
+					if(p == 0 || s == j->eol)
+						return match;
+					s = p;
+				}
+				case BOL: {
+					if(s == bol)
+						break;
+					p = utf.utfrune(s, '\n');
+					if(p == 0 || s == j->eol)
+						return match;
+					s = p+1;
+				}
 			}
 		}
 		r = *(uint8_t*)s;
@@ -998,36 +981,39 @@ regexec1(Reprog *progp,
 		for(tlp=tl; tlp->inst; tlp++){	/* assignment = */
 			for(inst = tlp->inst; true; inst = inst->u2.next){
 				switch(inst->type){
-				case RUNE:	/* regular character */
+				case RUNE: {
+					/* regular character */
 					if(inst->u1.r == r){
 						if(_renewthread(nl, inst->u2.next, ms, &tlp->se)==nle)
 							return -1;
 					}
-					break;
-				case LBRA:
+				}
+				case LBRA: {
 					tlp->se.m[inst->u1.subid].s.sp = s;
 					continue;
-				case RBRA:
+				}
+				case RBRA: {
 					tlp->se.m[inst->u1.subid].e.ep = s;
 					continue;
-				case ANY:
+				}
+				case ANY: {
 					if(r != '\n')
 						if(_renewthread(nl, inst->u2.next, ms, &tlp->se)==nle)
 							return -1;
-					break;
-				case ANYNL:
+				}
+				case ANYNL: {
 					if(_renewthread(nl, inst->u2.next, ms, &tlp->se)==nle)
 							return -1;
-					break;
-				case BOL:
+				}
+				case BOL: {
 					if(s == bol || *(s-1) == '\n')
 						continue;
-					break;
-				case EOL:
+				}
+				case EOL: {
 					if(s == j->eol || r == 0 || r == '\n')
 						continue;
-					break;
-				case CCLASS:
+				}
+				case CCLASS: {
 					ep = inst->u1.cp->end;
 					for(rp = inst->u1.cp->spans; rp < ep; rp += 2)
 						if(r >= rp[0] && r <= rp[1]){
@@ -1035,8 +1021,8 @@ regexec1(Reprog *progp,
 								return -1;
 							break;
 						}
-					break;
-				case NCCLASS:
+				}
+				case NCCLASS: {
 					ep = inst->u1.cp->end;
 					for(rp = inst->u1.cp->spans; rp < ep; rp += 2)
 						if(r >= rp[0] && r <= rp[1])
@@ -1044,24 +1030,25 @@ regexec1(Reprog *progp,
 					if(rp == ep)
 						if(_renewthread(nl, inst->u2.next, ms, &tlp->se)==nle)
 							return -1;
-					break;
-				case OR:
+				}
+				case OR: {
 					/* evaluate right choice later */
 					if(_renewthread(tlp, inst->u1.right, ms, &tlp->se) == tle)
 						return -1;
 					/* efficiency: advance and re-evaluate */
 					continue;
-				case END:	/* Match! */
+				}
+				case END: {
+					/* Match! */
 					match = 1;
 					tlp->se.m[0].e.ep = s;
 					if(mp != 0)
 						_renewmatch(mp, ms, &tlp->se);
-					break;
-				}
+				}}
 				break;
 			}
 		}
-		if(s == j->eol)
+		if (s == j->eol)
 			break;
 		checkstart = j->starttype && nl->inst==0;
 		s += n;
@@ -1163,18 +1150,9 @@ pub void regsub(char *sp, *dp, int dlen, Resub *mp, int ms) {
 
 	ep = dp+dlen-1;
 	while(*sp != '\0'){
-		if(*sp == '\\'){
-			switch(*++sp){
-			case '0':
-			case '1':
-			case '2':
-			case '3':
-			case '4':
-			case '5':
-			case '6':
-			case '7':
-			case '8':
-			case '9':
+		if (*sp == '\\') {
+			switch(*++sp) {
+			case '0', '1', '2', '3', '4', '5', '6', '7', '8', '9': {
 				i = *sp-'0';
 				if(mp!=0 && mp[i].s.sp != 0 && ms>i)
 					for(ssp = mp[i].s.sp;
@@ -1182,26 +1160,25 @@ pub void regsub(char *sp, *dp, int dlen, Resub *mp, int ms) {
 					     ssp++)
 						if(dp < ep)
 							*dp++ = *ssp;
-				break;
-			case '\\':
+			}
+			case '\\': {
 				if(dp < ep)
 					*dp++ = '\\';
-				break;
-			case '\0':
+			}
+			case '\0': {
 				sp--;
-				break;
-			default:
+			}
+			default: {
 				if(dp < ep)
 					*dp++ = *sp;
-				break;
-			}
-		}else if(*sp == '&'){
+			}}
+		} else if(*sp == '&') {
 			if(mp!=0 && mp[0].s.sp != 0 && ms>0)
 				for(ssp = mp[0].s.sp;
 				     ssp < mp[0].e.ep; ssp++)
 					if(dp < ep)
 						*dp++ = *ssp;
-		}else{
+		} else{
 			if(dp < ep)
 				*dp++ = *sp;
 		}
@@ -1256,21 +1233,21 @@ rregexec1(Reprog *progp,
 	while (true) {
 		/* fast check for first char */
 		if(checkstart) {
-			switch(j->starttype) {
-			case RUNE:
+			switch (j->starttype) {
+			case RUNE: {
 				p = utf.runestrchr(s, j->startchar);
 				if(p == 0 || s == j->reol)
 					return match;
 				s = p;
-				break;
-			case BOL:
+			}
+			case BOL: {
 				if(s == bol)
 					break;
 				p = utf.runestrchr(s, '\n');
 				if(p == 0 || s == j->reol)
 					return match;
 				s = p+1;
-				break;
+			}
 			}
 		}
 
@@ -1290,35 +1267,38 @@ rregexec1(Reprog *progp,
 		for(tlp=tl; tlp->inst; tlp++){
 			for(inst=tlp->inst; true; inst = inst->u2.next){
 				switch(inst->type){
-				case RUNE:	/* regular character */
+				case RUNE: {
+					/* regular character */
 					if(inst->u1.r == r)
 						if(_renewthread(nl, inst->u2.next, ms, &tlp->se)==nle)
 							return -1;
-					break;
-				case LBRA:
+				}
+				case LBRA: {
 					tlp->se.m[inst->u1.subid].s.rsp = s;
 					continue;
-				case RBRA:
+				}
+				case RBRA: {
 					tlp->se.m[inst->u1.subid].e.rep = s;
 					continue;
-				case ANY:
+				}
+				case ANY: {
 					if(r != '\n')
 						if(_renewthread(nl, inst->u2.next, ms, &tlp->se)==nle)
 							return -1;
-					break;
-				case ANYNL:
+				}
+				case ANYNL: {
 					if(_renewthread(nl, inst->u2.next, ms, &tlp->se)==nle)
 							return -1;
-					break;
-				case BOL:
+				}
+				case BOL: {
 					if(s == bol || *(s-1) == '\n')
 						continue;
-					break;
-				case EOL:
+				}
+				case EOL: {
 					if(s == j->reol || r == 0 || r == '\n')
 						continue;
-					break;
-				case CCLASS:
+				}
+				case CCLASS: {
 					ep = inst->u1.cp->end;
 					for(rp = inst->u1.cp->spans; rp < ep; rp += 2)
 						if(r >= rp[0] && r <= rp[1]){
@@ -1326,8 +1306,8 @@ rregexec1(Reprog *progp,
 								return -1;
 							break;
 						}
-					break;
-				case NCCLASS:
+				}
+				case NCCLASS: {
 					ep = inst->u1.cp->end;
 					for(rp = inst->u1.cp->spans; rp < ep; rp += 2)
 						if(r >= rp[0] && r <= rp[1])
@@ -1335,24 +1315,25 @@ rregexec1(Reprog *progp,
 					if(rp == ep)
 						if(_renewthread(nl, inst->u2.next, ms, &tlp->se)==nle)
 							return -1;
-					break;
-				case OR:
+				}
+				case OR: {
 					/* evaluate right choice later */
 					if(_renewthread(tlp, inst->u1.right, ms, &tlp->se) == tle)
 						return -1;
 					/* efficiency: advance and re-evaluate */
 					continue;
-				case END:	/* Match! */
+				}
+				case END: {
+					/* Match! */
 					match = 1;
 					tlp->se.m[0].e.rep = s;
 					if(mp != 0)
 						_renewmatch(mp, ms, &tlp->se);
-					break;
-				}
+				}}
 				break;
 			}
 		}
-		if(s == j->reol)
+		if (s == j->reol)
 			break;
 		checkstart = j->startchar && nl->inst==0;
 		s++;
@@ -1443,16 +1424,7 @@ pub void rregsub(utf.Rune *sp, utf.Rune *dp, int dlen, Resub *mp, int ms) {
 	while(*sp != '\0'){
 		if(*sp == '\\'){
 			switch(*++sp){
-			case '0':
-			case '1':
-			case '2':
-			case '3':
-			case '4':
-			case '5':
-			case '6':
-			case '7':
-			case '8':
-			case '9':
+			case '0', '1', '2', '3', '4', '5', '6', '7', '8', '9': {
 				i = *sp-'0';
 				if(mp!=0 && mp[i].s.rsp != 0 && ms>i)
 					for(ssp = mp[i].s.rsp;
@@ -1460,28 +1432,30 @@ pub void rregsub(utf.Rune *sp, utf.Rune *dp, int dlen, Resub *mp, int ms) {
 					     ssp++)
 						if(dp < ep)
 							*dp++ = *ssp;
-				break;
-			case '\\':
+			}
+			case '\\': {
 				if(dp < ep)
 					*dp++ = '\\';
-				break;
-			case '\0':
+			}
+			case '\0': {
 				sp--;
-				break;
-			default:
+			}
+			default: {
 				if(dp < ep)
 					*dp++ = *sp;
-				break;
 			}
-		}else if(*sp == '&'){
-			if(mp!=0 && mp[0].s.rsp != 0 && ms>0)
+			}
+		} else if (*sp == '&') {
+			if (mp!=0 && mp[0].s.rsp != 0 && ms>0)
 				for(ssp = mp[0].s.rsp;
 				     ssp < mp[0].e.rep; ssp++)
-					if(dp < ep)
+					if (dp < ep) {
 						*dp++ = *ssp;
-		}else{
-			if(dp < ep)
+					}
+		} else {
+			if (dp < ep) {
 				*dp++ = *sp;
+			}
 		}
 		sp++;
 	}

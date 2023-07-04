@@ -77,24 +77,34 @@ int sum(int a, b, c) {
 }
 ```
 
-_Multiple switch cases_.
-It's possible to enumerate switch cases using comma:
+_Switch syntax_.
+Switch cases don't need the break keyword and require brackes instead.
+It's also possible to enumerate switch cases using comma.
+So the following:
 
 ```c
 switch (val) {
-	case OPT_INT, OPT_UINT, OPT_SIZE:
-		// ...
+	case OPT_INT, OPT_UINT, OPT_SIZE: {
+		handle_int();
+	}
+	case OPT_STR: {
+		handle_str();
+	}
+	default: {
+		handle_unknown();
+	}
 }
 ```
 
-which is equivalent to
+which is equivalent to c:
 
 ```c
 switch (val) {
 	case OPT_INT:
 	case OPT_UINT:
-	case OPT_SIZE:
-		// ...
+	case OPT_SIZE: { handle_int(); break; }
+	case OPT_STR: { handle_str(); break; }
+	default: { handle_unknown(); }
 }
 ```
 
