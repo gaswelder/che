@@ -1,5 +1,6 @@
-#import parsebuf
 #import map
+#import parsebuf
+#import strings
 
 enum { FUNC, VAR, CONST };
 
@@ -9,6 +10,19 @@ typedef {
     term *args[10];
     int args_length;
 } term;
+
+int main() {
+    run("a", "b");
+    run("a", "X");
+    run("f(a, b, bar(t))", "f(a, V, X)");
+    // {'V': b, 'X': bar(t)}
+    run("f(a, V, bar(D))", "f(D, k, bar(a))");
+    // {'D': a, 'V': k}
+    run("f(X, Y)", "f(Z, g(X))");
+    // {'X': Z, 'Y': g(X)}
+    run("f(X, Y, X)", "f(r, g(X), p)");
+    return 0;
+}
 
 void print_term(term *t) {
     switch (t->type) {
@@ -38,7 +52,7 @@ map.map_t *unify(term *x, *y, map.map_t *subst) {
         return unify_variable(y, x, subst);
     }
     if (x->type == FUNC && y->type == FUNC) {
-        if (!streq(x->name, y->name) || x->args_length != y->args_length) {
+        if (!strings.eq(x->name, y->name) || x->args_length != y->args_length) {
             return NULL;
         }
         map.map_t *r = subst;
@@ -92,7 +106,7 @@ bool eq(term *x, *y) {
     if (x->type != y->type) {
         return false;
     }
-    if (!streq(x->name, y->name)) {
+    if (!strings.eq(x->name, y->name)) {
         return false;
     }
     if (x->type == FUNC) {
@@ -113,7 +127,7 @@ term *parse_term1(parsebuf.parsebuf_t *b) {
         t->name[n++] = parsebuf.buf_get(b);
     }
 
-    if (allupper(t->name)) {
+    if (strings.allupper(t->name)) {
         t->type = VAR;
         return t;
     }
@@ -164,30 +178,4 @@ void run(char *t1, *t2) {
     } else {
         printf("NULL\n");
     }
-}
-
-int main() {
-    run("a", "b");
-    run("a", "X");
-    run("f(a, b, bar(t))", "f(a, V, X)");
-    // {'V': b, 'X': bar(t)}
-    run("f(a, V, bar(D))", "f(D, k, bar(a))");
-    // {'D': a, 'V': k}
-    run("f(X, Y)", "f(Z, g(X))");
-    // {'X': Z, 'Y': g(X)}
-    run("f(X, Y, X)", "f(r, g(X), p)");
-    return 0;
-}
-
-bool streq(char *a, char *b) {
-	return strcmp(a, b) == 0;
-}
-
-bool allupper(char *s) {
-    for (char *c = s; *c; c++) {
-        if (islower(*c)) {
-            return false;
-        }
-    }
-    return true;
 }

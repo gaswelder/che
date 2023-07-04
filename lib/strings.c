@@ -144,3 +144,16 @@ pub bool ends_with(const char *string, *suffix) {
 	}
 	return y == suffix;
 }
+
+pub bool eq(char *a, char *b) {
+	return strcmp(a, b) == 0;
+}
+
+pub bool allupper(char *s) {
+    for (char *c = s; *c; c++) {
+        if (islower(*c)) {
+            return false;
+        }
+    }
+    return true;
+}
