@@ -1,5 +1,10 @@
 use crate::{c, exports::Exports, nodes::*, parser::Error};
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
+
+struct StrPos {
+    str: String,
+    pos: String,
+}
 
 pub fn run(m: &Module, exports: &HashMap<String, &Exports>) -> Vec<Error> {
     let mut errors: Vec<Error> = Vec::new();
@@ -18,10 +23,16 @@ pub fn run(m: &Module, exports: &HashMap<String, &Exports>) -> Vec<Error> {
     for s in c::CTYPES {
         scope.push(s);
     }
+    let mut declared_local_types = Vec::new();
+    let mut used_local_types = HashSet::new();
     for e in &m.elements {
         match e {
             ModuleObject::FunctionDeclaration(f) => {
                 scope.push(f.form.name.as_str());
+                let tn = &f.type_name.name;
+                if tn.namespace == "" {
+                    used_local_types.insert(tn.name.clone());
+                }
             }
             ModuleObject::Enum { is_pub: _, members } => {
                 for m in members {
@@ -38,24 +49,64 @@ pub fn run(m: &Module, exports: &HashMap<String, &Exports>) -> Vec<Error> {
                 }
             }
             ModuleObject::ModuleVariable {
-                type_name: _,
+                type_name,
                 form,
                 value: _,
             } => {
+                let n = &type_name.name;
+                if n.namespace == "" {
+                    used_local_types.insert(n.name.clone());
+                }
                 scope.push(form.name.as_str());
             }
             ModuleObject::StructTypedef(x) => {
                 scope.push(x.name.name.as_str());
+                if !x.is_pub {
+                    declared_local_types.push(StrPos {
+                        str: x.name.name.clone(),
+                        pos: String::from("?"),
+                    });
+                }
+                for f in &x.fields {
+                    match f {
+                        StructEntry::Plain(x) => {
+                            let n = &x.type_name.name;
+                            if n.namespace == "" {
+                                used_local_types.insert(n.name.clone());
+                            }
+                        }
+                        StructEntry::Union(x) => {
+                            for f in &x.fields {
+                                let n = &f.type_name.name;
+                                if n.namespace == "" {
+                                    used_local_types.insert(n.name.clone());
+                                }
+                            }
+                        }
+                    }
+                }
             }
             ModuleObject::Typedef(x) => {
                 scope.push(x.alias.name.as_str());
+                if !x.is_pub {
+                    declared_local_types.push(StrPos {
+                        str: x.alias.name.clone(),
+                        pos: String::from("?"),
+                    });
+                }
             }
             ModuleObject::StructAliasTypedef {
-                is_pub: _,
+                is_pub,
                 struct_name: _,
                 type_alias,
             } => {
                 scope.push(type_alias.as_str());
+                if !is_pub {
+                    declared_local_types.push(StrPos {
+                        str: type_alias.clone(),
+                        pos: String::from("?"),
+                    });
+                }
             }
         }
     }
@@ -81,7 +132,13 @@ pub fn run(m: &Module, exports: &HashMap<String, &Exports>) -> Vec<Error> {
                         function_scope.push(&f.name);
                     }
                 }
-                check_body(&f.body, &mut errors, &function_scope, exports);
+                check_body(
+                    &f.body,
+                    &mut errors,
+                    &function_scope,
+                    exports,
+                    &mut used_local_types,
+                );
             }
             ModuleObject::Macro { name, value } => {
                 if name == "known" {
@@ -109,6 +166,15 @@ pub fn run(m: &Module, exports: &HashMap<String, &Exports>) -> Vec<Error> {
             }
         }
     }
+    for t in declared_local_types {
+        if !used_local_types.contains(&t.str) {
+            errors.push(Error {
+                message: format!("unused type: {}", t.str),
+                pos: t.pos.clone(),
+            })
+        }
+    }
+
     return errors;
 }
 
@@ -117,6 +183,7 @@ fn check_body(
     errors: &mut Vec<Error>,
     parent_scope: &Vec<&str>,
     exports: &HashMap<String, &Exports>,
+    used_types: &mut HashSet<String>,
 ) {
     let mut scope: Vec<&str> = parent_scope.clone();
     for s in &body.statements {
@@ -152,7 +219,7 @@ fn check_body(
                 }
                 check_expr(condition, errors, loop_scope, exports);
                 check_expr(action, errors, loop_scope, exports);
-                check_body(body, errors, loop_scope, exports);
+                check_body(body, errors, loop_scope, exports, used_types);
             }
             Statement::If {
                 condition,
@@ -160,9 +227,15 @@ fn check_body(
                 else_body,
             } => {
                 check_expr(condition, errors, &scope, exports);
-                check_body(body, errors, &scope, exports);
+                check_body(body, errors, &scope, exports, used_types);
                 if else_body.is_some() {
-                    check_body(else_body.as_ref().unwrap(), errors, &scope, exports);
+                    check_body(
+                        else_body.as_ref().unwrap(),
+                        errors,
+                        &scope,
+                        exports,
+                        used_types,
+                    );
                 }
             }
             Statement::Return { expression } => match expression {
@@ -186,10 +259,16 @@ fn check_body(
                             SwitchCaseValue::Literal(_) => {}
                         }
                     }
-                    check_body(&c.body, errors, &scope, exports);
+                    check_body(&c.body, errors, &scope, exports, used_types);
                 }
                 if default.is_some() {
-                    check_body(default.as_ref().unwrap(), errors, &scope, exports);
+                    check_body(
+                        default.as_ref().unwrap(),
+                        errors,
+                        &scope,
+                        exports,
+                        used_types,
+                    );
                 }
             }
             Statement::VariableDeclaration {
@@ -197,6 +276,9 @@ fn check_body(
                 forms,
                 values,
             } => {
+                if type_name.name.namespace == "" {
+                    used_types.insert(type_name.name.name.clone());
+                }
                 check_ns_id(&type_name.name, errors, &scope, exports);
                 for v in values {
                     if v.is_some() {
@@ -209,7 +291,7 @@ fn check_body(
             }
             Statement::While { condition, body } => {
                 check_expr(condition, errors, &scope, exports);
-                check_body(body, errors, &scope, exports);
+                check_body(body, errors, &scope, exports, used_types);
             }
         }
     }

@@ -5,8 +5,6 @@
 #import ipsum.c
 #import schema.c
 
-typedef int printfunc_t(FILE *, const char *, ...);
-
 typedef {
     schema.ProbDesc genref_pdnew;
 } generator_state_t;
