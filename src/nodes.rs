@@ -24,6 +24,7 @@ pub enum ModuleObject {
     },
     // typedef struct tm tm_t;
     StructAliasTypedef {
+        pos: String,
         is_pub: bool,
         struct_name: String,
         type_alias: String,
@@ -49,6 +50,7 @@ pub struct FunctionDeclaration {
 
 #[derive(Debug, Clone)]
 pub struct Typedef {
+    pub pos: String,
     pub is_pub: bool,
     pub alias: Identifier,
     pub type_name: Typename,
@@ -59,6 +61,7 @@ pub struct Typedef {
 
 #[derive(Debug, Clone)]
 pub struct StructTypedef {
+    pub pos: String,
     pub is_pub: bool,
     pub fields: Vec<StructEntry>,
     pub name: Identifier,

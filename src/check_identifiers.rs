@@ -18,7 +18,7 @@ pub fn run(m: &Module, exports: &HashMap<String, &Exports>) -> Vec<Error> {
                 if !x.is_pub {
                     declared_local_types.push(StrPos {
                         str: x.alias.name.clone(),
-                        pos: String::from("?"),
+                        pos: x.pos.clone(),
                     });
                 }
                 check_ns_id(&x.type_name.name, &mut errors, &scope, exports);
@@ -69,6 +69,7 @@ pub fn run(m: &Module, exports: &HashMap<String, &Exports>) -> Vec<Error> {
                 check_expr(value, &mut errors, &scope, exports);
             }
             ModuleObject::StructAliasTypedef {
+                pos,
                 is_pub,
                 type_alias,
                 struct_name: _,
@@ -76,7 +77,7 @@ pub fn run(m: &Module, exports: &HashMap<String, &Exports>) -> Vec<Error> {
                 if !is_pub {
                     declared_local_types.push(StrPos {
                         str: type_alias.clone(),
-                        pos: String::from("?"),
+                        pos: pos.clone(),
                     });
                 }
             }
@@ -84,7 +85,7 @@ pub fn run(m: &Module, exports: &HashMap<String, &Exports>) -> Vec<Error> {
                 if !x.is_pub {
                     declared_local_types.push(StrPos {
                         str: x.name.name.clone(),
-                        pos: String::from("?"),
+                        pos: x.pos.clone(),
                     });
                 }
                 for f in &x.fields {
@@ -170,6 +171,7 @@ fn get_module_scope(m: &Module) -> Vec<&str> {
                 scope.push(x.alias.name.as_str());
             }
             ModuleObject::StructAliasTypedef {
+                pos: _,
                 is_pub: _,
                 struct_name: _,
                 type_alias,

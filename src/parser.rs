@@ -880,6 +880,7 @@ fn parse_union(l: &mut Lexer, ctx: &Ctx) -> Result<Union, Error> {
 }
 
 fn parse_typedef(is_pub: bool, l: &mut Lexer, ctx: &Ctx) -> Result<ModuleObject, Error> {
+    let pos = l.peek().unwrap().pos.clone();
     expect(l, "typedef", None)?;
 
     // typedef {int hour, minute, second} time_t;
@@ -900,6 +901,7 @@ fn parse_typedef(is_pub: bool, l: &mut Lexer, ctx: &Ctx) -> Result<ModuleObject,
         let name = read_identifier(l)?;
         expect(l, ";", Some("typedef"))?;
         return Ok(ModuleObject::StructTypedef(StructTypedef {
+            pos,
             is_pub,
             fields,
             name,
@@ -912,6 +914,7 @@ fn parse_typedef(is_pub: bool, l: &mut Lexer, ctx: &Ctx) -> Result<ModuleObject,
         let type_alias = expect(l, "word", None)?.content;
         expect(l, ";", Some("typedef"))?;
         return Ok(ModuleObject::StructAliasTypedef {
+            pos,
             is_pub,
             struct_name,
             type_alias,
@@ -943,6 +946,7 @@ fn parse_typedef(is_pub: bool, l: &mut Lexer, ctx: &Ctx) -> Result<ModuleObject,
     }
     expect(l, ";", Some("typedef"))?;
     return Ok(ModuleObject::Typedef(Typedef {
+        pos,
         is_pub,
         type_name: typename,
         dereference_count: stars,

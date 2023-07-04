@@ -92,6 +92,7 @@ pub fn translate(m: &Module, ctx: &Ctx) -> CModule {
 fn translate_module_object(element: &ModuleObject, ctx: &Ctx) -> Vec<CModuleObject> {
     match element {
         ModuleObject::Typedef(Typedef {
+            pos: _,
             is_pub,
             type_name,
             alias,
@@ -118,6 +119,7 @@ fn translate_module_object(element: &ModuleObject, ctx: &Ctx) -> Vec<CModuleObje
             },
         }],
         ModuleObject::StructAliasTypedef {
+            pos: _,
             is_pub,
             struct_name,
             type_alias,
@@ -135,6 +137,7 @@ fn translate_module_object(element: &ModuleObject, ctx: &Ctx) -> Vec<CModuleObje
             },
         }],
         ModuleObject::StructTypedef(StructTypedef {
+            pos: _,
             is_pub,
             fields,
             name,

@@ -43,6 +43,7 @@ pub fn depused(m: &Module, dep: &Module, depns: &String) -> bool {
                 }
             }
             ModuleObject::StructTypedef(StructTypedef {
+                pos: _,
                 is_pub,
                 name,
                 fields,

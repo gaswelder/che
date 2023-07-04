@@ -53,6 +53,7 @@ fn prefix_mod_obj(obj: &mut ModuleObject, prefix: &String, names: &Vec<String>) 
             prefix_form(form, prefix, names);
         }
         ModuleObject::Typedef(Typedef {
+            pos: _,
             type_name,
             is_pub: _,
             alias,
@@ -72,6 +73,7 @@ fn prefix_mod_obj(obj: &mut ModuleObject, prefix: &String, names: &Vec<String>) 
             prefix_typename(type_name, prefix, names);
         }
         ModuleObject::StructTypedef(StructTypedef {
+            pos: _,
             fields,
             name,
             is_pub: _,
