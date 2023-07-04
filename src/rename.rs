@@ -2,7 +2,7 @@ use crate::exports::get_exports;
 use crate::nodes::*;
 
 // globalize a module: prefix each exported name with modid_
-pub fn globalize_module(m: &mut Module, prefix: &String) {
+pub fn prefix_module(m: &mut Module, prefix: &String) {
     let exports = get_exports(&m);
     let mut names: Vec<String> = Vec::new();
     for e in exports.consts {
@@ -15,20 +15,20 @@ pub fn globalize_module(m: &mut Module, prefix: &String) {
         names.push(t);
     }
     for obj in &mut m.elements {
-        mod_obj(obj, prefix, &names);
+        prefix_mod_obj(obj, prefix, &names);
     }
 }
 
-fn mod_obj(obj: &mut ModuleObject, prefix: &String, names: &Vec<String>) {
+fn prefix_mod_obj(obj: &mut ModuleObject, prefix: &String, names: &Vec<String>) {
     match obj {
         ModuleObject::ModuleVariable {
             form,
             type_name,
             value,
         } => {
-            rename_typename(type_name, prefix, names);
-            expr(value, prefix, names);
-            rename_form(form, prefix, names);
+            prefix_typename(type_name, prefix, names);
+            prefix_expr(value, prefix, names);
+            prefix_form(form, prefix, names);
         }
         ModuleObject::Enum { is_pub, members } => {
             if !*is_pub {
@@ -45,10 +45,12 @@ fn mod_obj(obj: &mut ModuleObject, prefix: &String, names: &Vec<String>) {
             parameters,
             body,
         }) => {
-            rename_typename(type_name, prefix, names);
-            params(parameters, prefix, names);
-            rename_body(body, prefix, names);
-            rename_form(form, prefix, names);
+            prefix_typename(type_name, prefix, names);
+            for p in &mut parameters.list {
+                prefix_typename(&mut p.type_name, prefix, names);
+            }
+            prefix_body(body, prefix, names);
+            prefix_form(form, prefix, names);
         }
         ModuleObject::Typedef(Typedef {
             type_name,
@@ -61,13 +63,13 @@ fn mod_obj(obj: &mut ModuleObject, prefix: &String, names: &Vec<String>) {
             match function_parameters {
                 Some(x) => {
                     for tf in &mut x.forms {
-                        rename_typename(&mut tf.type_name, prefix, names);
+                        prefix_typename(&mut tf.type_name, prefix, names);
                     }
                 }
                 None => {}
             }
             alias.name = newname(&alias.name, prefix, names);
-            rename_typename(type_name, prefix, names);
+            prefix_typename(type_name, prefix, names);
         }
         ModuleObject::StructTypedef(StructTypedef {
             fields,
@@ -78,11 +80,11 @@ fn mod_obj(obj: &mut ModuleObject, prefix: &String, names: &Vec<String>) {
             for e in fields {
                 match e {
                     StructEntry::Plain(x) => {
-                        rename_typename(&mut x.type_name, prefix, names);
+                        prefix_typename(&mut x.type_name, prefix, names);
                     }
                     StructEntry::Union(x) => {
                         for f in &mut x.fields {
-                            rename_typename(&mut f.type_name, prefix, names);
+                            prefix_typename(&mut f.type_name, prefix, names);
                         }
                     }
                 }
@@ -94,19 +96,13 @@ fn mod_obj(obj: &mut ModuleObject, prefix: &String, names: &Vec<String>) {
     }
 }
 
-fn params(p: &mut FunctionParameters, prefix: &String, names: &Vec<String>) {
-    for p in &mut p.list {
-        rename_typename(&mut p.type_name, prefix, names);
-    }
-}
-
-fn rename_body(b: &mut Body, prefix: &String, names: &Vec<String>) {
+fn prefix_body(b: &mut Body, prefix: &String, names: &Vec<String>) {
     for s in &mut b.statements {
-        rename_statement(s, prefix, names);
+        prefix_statement(s, prefix, names);
     }
 }
 
-fn rename_statement(s: &mut Statement, prefix: &String, names: &Vec<String>) {
+fn prefix_statement(s: &mut Statement, prefix: &String, names: &Vec<String>) {
     match s {
         Statement::VariableDeclaration {
             type_name,
@@ -114,25 +110,25 @@ fn rename_statement(s: &mut Statement, prefix: &String, names: &Vec<String>) {
             values,
         } => {
             for f in forms {
-                rename_form(f, prefix, names);
+                prefix_form(f, prefix, names);
             }
             for v in values {
                 match v {
-                    Some(e) => expr(e, prefix, names),
+                    Some(e) => prefix_expr(e, prefix, names),
                     None => {}
                 }
             }
-            rename_typename(type_name, prefix, names)
+            prefix_typename(type_name, prefix, names)
         }
         Statement::If {
             condition,
             body,
             else_body,
         } => {
-            expr(condition, prefix, names);
-            rename_body(body, prefix, names);
+            prefix_expr(condition, prefix, names);
+            prefix_body(body, prefix, names);
             match else_body {
-                Some(x) => rename_body(x, prefix, names),
+                Some(x) => prefix_body(x, prefix, names),
                 None => {}
             }
         }
@@ -144,29 +140,29 @@ fn rename_statement(s: &mut Statement, prefix: &String, names: &Vec<String>) {
         } => {
             match init {
                 ForInit::Expression(e) => {
-                    expr(e, prefix, names);
+                    prefix_expr(e, prefix, names);
                 }
                 ForInit::LoopCounterDeclaration {
                     type_name,
                     form,
                     value,
                 } => {
-                    rename_typename(type_name, prefix, names);
-                    rename_form(form, prefix, names);
-                    expr(value, prefix, names);
+                    prefix_typename(type_name, prefix, names);
+                    prefix_form(form, prefix, names);
+                    prefix_expr(value, prefix, names);
                 }
             }
-            expr(condition, prefix, names);
-            expr(action, prefix, names);
-            rename_body(body, prefix, names);
+            prefix_expr(condition, prefix, names);
+            prefix_expr(action, prefix, names);
+            prefix_body(body, prefix, names);
         }
         Statement::While { condition, body } => {
-            expr(condition, prefix, names);
-            rename_body(body, prefix, names);
+            prefix_expr(condition, prefix, names);
+            prefix_body(body, prefix, names);
         }
         Statement::Return { expression } => match expression {
             Some(e) => {
-                expr(e, prefix, names);
+                prefix_expr(e, prefix, names);
             }
             None => {}
         },
@@ -175,7 +171,7 @@ fn rename_statement(s: &mut Statement, prefix: &String, names: &Vec<String>) {
             cases,
             default,
         } => {
-            expr(value, prefix, names);
+            prefix_expr(value, prefix, names);
             for c in cases.iter_mut() {
                 match &mut c.value {
                     SwitchCaseValue::Identifier(x) => {
@@ -184,13 +180,13 @@ fn rename_statement(s: &mut Statement, prefix: &String, names: &Vec<String>) {
                     SwitchCaseValue::Literal(_) => {}
                 }
                 for s in &mut c.body.statements {
-                    rename_statement(s, prefix, names);
+                    prefix_statement(s, prefix, names);
                 }
             }
             match default {
                 Some(ss) => {
                     for s in &mut ss.statements {
-                        rename_statement(s, prefix, names);
+                        prefix_statement(s, prefix, names);
                     }
                 }
                 None => {}
@@ -198,34 +194,34 @@ fn rename_statement(s: &mut Statement, prefix: &String, names: &Vec<String>) {
         }
         Statement::Panic { arguments, pos: _ } => {
             for e in arguments {
-                expr(e, prefix, names);
+                prefix_expr(e, prefix, names);
             }
         }
         Statement::Expression(e) => {
-            expr(e, prefix, names);
+            prefix_expr(e, prefix, names);
         }
     }
 }
 
-fn rename_form(f: &mut Form, prefix: &String, names: &Vec<String>) {
+fn prefix_form(f: &mut Form, prefix: &String, names: &Vec<String>) {
     f.name = newname(&f.name, prefix, names);
     for i in &mut f.indexes {
         match i {
             Some(e) => {
-                expr(e, prefix, names);
+                prefix_expr(e, prefix, names);
             }
             None => {}
         }
     }
 }
 
-fn rename_typename(t: &mut Typename, prefix: &String, names: &Vec<String>) {
+fn prefix_typename(t: &mut Typename, prefix: &String, names: &Vec<String>) {
     if t.name.namespace == "" {
         t.name.name = newname(&t.name.name, prefix, names);
     }
 }
 
-fn expr(e: &mut Expression, prefix: &String, names: &Vec<String>) {
+fn prefix_expr(e: &mut Expression, prefix: &String, names: &Vec<String>) {
     match e {
         Expression::NsName(n) => {
             if n.namespace == "" {
@@ -237,54 +233,54 @@ fn expr(e: &mut Expression, prefix: &String, names: &Vec<String>) {
             for e in &mut x.entries {
                 if e.key.is_some() {
                     let x = e.key.as_mut().unwrap();
-                    expr(x, prefix, names);
+                    prefix_expr(x, prefix, names);
                 }
-                expr(&mut e.value, prefix, names);
+                prefix_expr(&mut e.value, prefix, names);
             }
         }
         Expression::Identifier(x) => {
             x.name = newname(&x.name, prefix, names);
         }
         Expression::BinaryOp { op: _, a, b } => {
-            expr(a, prefix, names);
-            expr(b, prefix, names);
+            prefix_expr(a, prefix, names);
+            prefix_expr(b, prefix, names);
         }
         Expression::PrefixOperator {
             operator: _,
             operand,
         } => {
-            expr(operand, prefix, names);
+            prefix_expr(operand, prefix, names);
         }
         Expression::PostfixOperator {
             operator: _,
             operand,
         } => {
-            expr(operand, prefix, names);
+            prefix_expr(operand, prefix, names);
         }
         Expression::Cast { type_name, operand } => {
-            rename_typename(&mut type_name.type_name, prefix, names);
-            expr(operand, prefix, names);
+            prefix_typename(&mut type_name.type_name, prefix, names);
+            prefix_expr(operand, prefix, names);
         }
         Expression::FunctionCall {
             function,
             arguments,
         } => {
-            expr(function, prefix, names);
+            prefix_expr(function, prefix, names);
             for arg in arguments {
-                expr(arg, prefix, names);
+                prefix_expr(arg, prefix, names);
             }
         }
         Expression::Sizeof { argument } => match &mut **argument {
             SizeofArgument::Expression(e) => {
-                expr(e, prefix, names);
+                prefix_expr(e, prefix, names);
             }
             SizeofArgument::Typename(e) => {
-                rename_typename(e, prefix, names);
+                prefix_typename(e, prefix, names);
             }
         },
         Expression::ArrayIndex { array, index } => {
-            expr(array, prefix, names);
-            expr(index, prefix, names);
+            prefix_expr(array, prefix, names);
+            prefix_expr(index, prefix, names);
         }
     }
 }

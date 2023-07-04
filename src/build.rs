@@ -262,7 +262,7 @@ pub fn translate(work: &mut Build) {
     // Globalize all modules
     for (i, m) in work.m.iter_mut().enumerate() {
         let path = &work.paths[i];
-        rename::globalize_module(m, &translator::module_gid(path));
+        rename::prefix_module(m, &translator::module_gid(path));
     }
 
     // Translate each node.
