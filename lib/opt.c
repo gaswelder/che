@@ -130,9 +130,8 @@ pub char **opt_parse( int argc, char **argv )
 				case OPT_STR:
 					*( (char **) flag->value_pointer ) = *arg;
 					break;
-				case OPT_INT:
-				case OPT_UINT:
-				case OPT_SIZE:
+
+				case OPT_INT, OPT_UINT, OPT_SIZE:
 					if (!is_numeric( *arg )) {
 						fprintf(stderr, "Option %c expects a numeric argument\n", c );
 						exit(1);

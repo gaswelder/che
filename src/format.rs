@@ -460,11 +460,14 @@ fn format_statement(node: &CStatement) -> String {
 fn format_switch(value: &CExpression, cases: &Vec<CSwitchCase>, default: &Option<CBody>) -> String {
     let mut s = String::new();
     for case in cases {
-        let val = match &case.value {
-            CSwitchCaseValue::Identifier(x) => x.clone(),
-            CSwitchCaseValue::Literal(x) => format_literal(&x),
-        };
-        s += &format!("case {}: {{\n", val);
+        for v in &case.values {
+            let valstring = match v {
+                CSwitchCaseValue::Identifier(x) => x.clone(),
+                CSwitchCaseValue::Literal(x) => format_literal(&x),
+            };
+            s += &format!("case {}:\n", valstring);
+        }
+        s += &format!("{{\n");
         for statement in &case.body.statements {
             s += &format_statement(&statement);
             s += ";\n";

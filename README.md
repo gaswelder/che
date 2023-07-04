@@ -77,6 +77,27 @@ int sum(int a, b, c) {
 }
 ```
 
+_Multiple switch cases_.
+It's possible to enumerate switch cases using comma:
+
+```c
+switch (val) {
+	case OPT_INT, OPT_UINT, OPT_SIZE:
+		// ...
+}
+```
+
+which is equivalent to
+
+```c
+switch (val) {
+	case OPT_INT:
+	case OPT_UINT:
+	case OPT_SIZE:
+		// ...
+}
+```
+
 _The `nelem` macro_.
 One common idiom to get a static array's length is:
 

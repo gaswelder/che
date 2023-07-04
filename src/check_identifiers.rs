@@ -174,15 +174,17 @@ fn check_body(
             Statement::Switch {
                 value,
                 cases,
-                default,
+                default_case: default,
             } => {
                 check_expr(value, errors, &scope, exports);
                 for c in cases {
-                    match &c.value {
-                        SwitchCaseValue::Identifier(x) => {
-                            check_ns_id(x, errors, &scope, exports);
+                    for v in &c.values {
+                        match v {
+                            SwitchCaseValue::Identifier(x) => {
+                                check_ns_id(x, errors, &scope, exports);
+                            }
+                            SwitchCaseValue::Literal(_) => {}
                         }
-                        SwitchCaseValue::Literal(_) => {}
                     }
                     check_body(&c.body, errors, &scope, exports);
                 }

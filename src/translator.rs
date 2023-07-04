@@ -548,19 +548,24 @@ fn translate_body(b: &Body, ctx: &Ctx) -> CBody {
             Statement::Switch {
                 value,
                 cases,
-                default,
+                default_case: default,
             } => {
                 let mut tcases: Vec<CSwitchCase> = Vec::new();
                 for c in cases {
-                    tcases.push(CSwitchCase {
-                        value: match &c.value {
+                    let mut values = Vec::new();
+                    for v in &c.values {
+                        let tv = match v {
                             SwitchCaseValue::Identifier(x) => {
                                 CSwitchCaseValue::Identifier(translate_ns_name(x, ctx))
                             }
                             SwitchCaseValue::Literal(x) => {
                                 CSwitchCaseValue::Literal(translate_literal(x))
                             }
-                        },
+                        };
+                        values.push(tv)
+                    }
+                    tcases.push(CSwitchCase {
+                        values,
                         body: translate_body(&c.body, ctx),
                     })
                 }

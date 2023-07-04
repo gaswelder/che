@@ -766,22 +766,7 @@ fn parse_switch(l: &mut Lexer, ctx: &Ctx) -> Result<Statement, Error> {
     expect(l, ")", None)?;
     expect(l, "{", None)?;
     while l.follows("case") {
-        expect(l, "case", None)?;
-        let case_value = if l.follows("word") {
-            SwitchCaseValue::Identifier(read_ns_id(l, ctx)?)
-        } else {
-            SwitchCaseValue::Literal(parse_literal(l)?)
-        };
-        expect(l, ":", None)?;
-        let until = ["case", "break", "default", "}"];
-        let mut statements: Vec<Statement> = vec![];
-        while l.more() && !until.contains(&l.peek().unwrap().kind.as_str()) {
-            statements.push(parse_statement(l, ctx)?);
-        }
-        cases.push(SwitchCase {
-            value: case_value,
-            body: Body { statements },
-        });
+        cases.push(read_switch_case(l, ctx)?);
     }
     let mut default: Option<Body> = None;
     if l.follows("default") {
@@ -797,7 +782,35 @@ fn parse_switch(l: &mut Lexer, ctx: &Ctx) -> Result<Statement, Error> {
     return Ok(Statement::Switch {
         value,
         cases,
-        default,
+        default_case: default,
+    });
+}
+
+fn read_switch_case(l: &mut Lexer, ctx: &Ctx) -> Result<SwitchCase, Error> {
+    expect(l, "case", None)?;
+    let mut values = Vec::new();
+    loop {
+        let case_value = if l.follows("word") {
+            SwitchCaseValue::Identifier(read_ns_id(l, ctx)?)
+        } else {
+            SwitchCaseValue::Literal(parse_literal(l)?)
+        };
+        values.push(case_value);
+        if l.follows(",") {
+            l.get().unwrap();
+        } else {
+            break;
+        }
+    }
+    expect(l, ":", None)?;
+    let until = ["case", "break", "default", "}"];
+    let mut statements: Vec<Statement> = vec![];
+    while l.more() && !until.contains(&l.peek().unwrap().kind.as_str()) {
+        statements.push(parse_statement(l, ctx)?);
+    }
+    return Ok(SwitchCase {
+        values,
+        body: Body { statements },
     });
 }
 

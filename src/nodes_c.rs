@@ -172,7 +172,7 @@ pub enum CStatement {
 
 #[derive(Debug, Clone)]
 pub struct CSwitchCase {
-    pub value: CSwitchCaseValue,
+    pub values: Vec<CSwitchCaseValue>,
     pub body: CBody,
 }
 

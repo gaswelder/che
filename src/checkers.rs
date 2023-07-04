@@ -245,7 +245,7 @@ fn used_in_body(body: &Body, list: &Vec<String>, depns: &String) -> bool {
             Statement::Switch {
                 value,
                 cases,
-                default,
+                default_case: default,
             } => {
                 if used_in_expr(&value, list, depns) {
                     return true;
@@ -259,13 +259,15 @@ fn used_in_body(body: &Body, list: &Vec<String>, depns: &String) -> bool {
                     None => {}
                 }
                 for c in cases {
-                    match &c.value {
-                        SwitchCaseValue::Identifier(x) => {
-                            if has(&x.name, list) {
-                                return true;
+                    for v in &c.values {
+                        match v {
+                            SwitchCaseValue::Identifier(x) => {
+                                if has(&x.name, list) {
+                                    return true;
+                                }
                             }
+                            SwitchCaseValue::Literal(_) => {}
                         }
-                        SwitchCaseValue::Literal(_) => {}
                     }
                     if used_in_body(&c.body, list, depns) {
                         return true;

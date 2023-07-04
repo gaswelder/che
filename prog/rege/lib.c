@@ -102,8 +102,7 @@ void accept(char c) {
 void shift(regex_t *r) {
     token_t t = r->pat[r->patpos];
     switch (t.type) {
-        case LITERAL:
-        case SPACE:
+        case LITERAL, SPACE:
             r->patpos++;
             return;
     }

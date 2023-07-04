@@ -169,15 +169,17 @@ fn prefix_statement(s: &mut Statement, prefix: &String, names: &Vec<String>) {
         Statement::Switch {
             value,
             cases,
-            default,
+            default_case: default,
         } => {
             prefix_expr(value, prefix, names);
             for c in cases.iter_mut() {
-                match &mut c.value {
-                    SwitchCaseValue::Identifier(x) => {
-                        x.name = newname(&x.name, prefix, names);
+                for v in c.values.iter_mut() {
+                    match v {
+                        SwitchCaseValue::Identifier(x) => {
+                            x.name = newname(&x.name, prefix, names);
+                        }
+                        SwitchCaseValue::Literal(_) => {}
                     }
-                    SwitchCaseValue::Literal(_) => {}
                 }
                 for s in &mut c.body.statements {
                     prefix_statement(s, prefix, names);
