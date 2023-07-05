@@ -86,6 +86,11 @@ pub enum CExpression {
         a: Box<CExpression>,
         b: Box<CExpression>,
     },
+    FieldAccess {
+        op: String,
+        target: Box<CExpression>,
+        field_name: String,
+    },
     PrefixOperator {
         operator: String,
         operand: Box<CExpression>,

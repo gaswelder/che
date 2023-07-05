@@ -366,11 +366,16 @@ fn check_expr(
             check_expr(array, errors, scope, imports, used_modules);
             check_expr(index, errors, scope, imports, used_modules);
         }
-        Expression::BinaryOp { op, a, b } => {
-            if op != "->" && op != "." {
-                check_expr(a, errors, scope, imports, used_modules);
-                check_expr(b, errors, scope, imports, used_modules);
-            }
+        Expression::BinaryOp { op: _, a, b } => {
+            check_expr(a, errors, scope, imports, used_modules);
+            check_expr(b, errors, scope, imports, used_modules);
+        }
+        Expression::FieldAccess {
+            op: _,
+            target,
+            field_name: _,
+        } => {
+            check_expr(target, errors, scope, imports, used_modules);
         }
         Expression::Cast { type_name, operand } => {
             check_ns_id(

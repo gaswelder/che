@@ -249,6 +249,13 @@ fn prefix_expr(e: &mut Expression, prefix: &String, names: &Vec<String>) {
             prefix_expr(a, prefix, names);
             prefix_expr(b, prefix, names);
         }
+        Expression::FieldAccess {
+            op: _,
+            target,
+            field_name: _,
+        } => {
+            prefix_expr(target, prefix, names);
+        }
         Expression::PrefixOperator {
             operator: _,
             operand,

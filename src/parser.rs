@@ -188,10 +188,10 @@ fn base(l: &mut Lexer, ctx: &Ctx) -> Result<Expression, Error> {
         }
 
         if next.kind == "->" || next.kind == "." {
-            r = Expression::BinaryOp {
+            r = Expression::FieldAccess {
                 op: l.get().unwrap().kind,
-                a: Box::new(r),
-                b: Box::new(read_expression_atom(l, ctx)?),
+                target: Box::new(r),
+                field_name: read_identifier(l)?,
             };
             continue;
         }

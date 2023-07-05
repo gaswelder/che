@@ -161,6 +161,21 @@ fn format_expression(expr: &CExpression) -> String {
             };
             return format!("sizeof({})", arg);
         }
+        CExpression::FieldAccess {
+            op,
+            target,
+            field_name,
+        } => {
+            match is_op(target) {
+                Some(targetop) => {
+                    if parser::operator_strength(&targetop) < parser::operator_strength(op) {
+                        return format!("({}){}{}", format_expression(target), op, field_name);
+                    }
+                }
+                None => {}
+            }
+            return format!("{}{}{}", format_expression(target), op, field_name);
+        }
         CExpression::BinaryOp { op, a, b } => format_binary_op(op, a, b),
         CExpression::PrefixOperator { operator, operand } => {
             let expr = &**operand;
@@ -239,7 +254,7 @@ fn is_op(e: &CExpression) -> Option<String> {
 
 fn format_binary_op(op: &String, a: &CExpression, b: &CExpression) -> String {
     // If a is an op weaker than op, wrap it
-    let af = match is_op(a) {
+    let a_formatted = match is_op(a) {
         Some(k) => {
             if parser::operator_strength(&k) < parser::operator_strength(op) {
                 format!("({})", format_expression(a))
@@ -250,7 +265,7 @@ fn format_binary_op(op: &String, a: &CExpression, b: &CExpression) -> String {
         None => format_expression(a),
     };
     // If b is an op weaker than op, wrap it
-    let bf = match is_op(b) {
+    let b_formatted = match is_op(b) {
         Some(k) => {
             if parser::operator_strength(&k) < parser::operator_strength(op) {
                 format!("({})", format_expression(b))
@@ -260,9 +275,7 @@ fn format_binary_op(op: &String, a: &CExpression, b: &CExpression) -> String {
         }
         None => format_expression(b),
     };
-    let parts = vec![af, op.clone(), bf];
-    let glue = if op == "." || op == "->" { "" } else { " " };
-    return parts.join(glue);
+    return format!("{} {} {}", a_formatted, op.clone(), b_formatted);
 }
 
 fn indent(text: &str) -> String {

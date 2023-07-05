@@ -277,6 +277,15 @@ fn translate_expression(e: &Expression, ctx: &Ctx) -> CExpression {
             a: Box::new(translate_expression(a, ctx)),
             b: Box::new(translate_expression(b, ctx)),
         },
+        Expression::FieldAccess {
+            op,
+            target,
+            field_name,
+        } => CExpression::FieldAccess {
+            op: op.clone(),
+            target: Box::new(translate_expression(target, ctx)),
+            field_name: field_name.name.clone(),
+        },
         Expression::CompositeLiteral(x) => {
             let mut entries: Vec<CCompositeLiteralEntry> = Vec::new();
             for e in &x.entries {

@@ -127,6 +127,11 @@ pub enum Expression {
         a: Box<Expression>,
         b: Box<Expression>,
     },
+    FieldAccess {
+        op: String,
+        target: Box<Expression>,
+        field_name: Identifier,
+    },
     Cast {
         type_name: AnonymousTypeform,
         operand: Box<Expression>,

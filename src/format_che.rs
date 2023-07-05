@@ -3,6 +3,13 @@ use crate::parser;
 
 pub fn format_expression(expr: &Expression) -> String {
     match expr {
+        Expression::FieldAccess {
+            op,
+            target,
+            field_name,
+        } => {
+            return format!("{}{}{}", format_expression(target), op, field_name.name);
+        }
         Expression::Cast { type_name, operand } => {
             return format!(
                 "({})({})",
