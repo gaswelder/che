@@ -1,6 +1,6 @@
 pub const CLIBS: &[&str] = &[
     "assert", "ctype", "errno", "limits", "math", "stdarg", "stdbool", "stddef", "stdint", "stdio",
-    "stdlib", "string", "time", "setjmp",
+    "stdlib", "string", "time", "setjmp", "signal",
 ];
 pub const CTYPES: &[&str] = &[
     "char",
@@ -38,9 +38,11 @@ pub const CTYPES: &[&str] = &[
     "time_t",
 ];
 pub const CCONST: &[&str] = &[
-    "RAND_MAX", "BUFSIZ", "_IOLBF", "EOF", "SEEK_SET", "SEEK_END", "SEEK_CUR", "SIGINT", "errno",
-    "SIZE_MAX",
+    "RAND_MAX", "BUFSIZ", "_IOLBF", "EOF", "SEEK_SET", "SEEK_END", "SEEK_CUR", "errno",
+    "SIZE_MAX", // signal.h
+    "SIGABRT", "SIGFPE", "SIGILL", "SIGINT", "SIGSEGV", "SIGTERM", "SIG_DFL", "SIG_IGN",
 ];
+
 pub const CFUNCS: &[&str] = &[
     "atoi",
     "strncat",
@@ -109,7 +111,9 @@ pub const CFUNCS: &[&str] = &[
     "srand",
     "rand",
     "getc",
+    // signal.h
     "signal",
+    // ...
     "getchar",
     "putc",
     "fflush",

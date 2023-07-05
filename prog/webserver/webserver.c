@@ -13,7 +13,7 @@
 
 server.server_t SERVER = {};
 
-int main(int argc, char *argv[]) {    
+int main(int argc, char *argv[]) {
     char *port = "8000";
     char *host = "localhost";
     char *configfile = NULL;
@@ -73,11 +73,7 @@ int main(int argc, char *argv[]) {
     }
     printf("\n");
 
-    // TODO
-    // signal(SIGPIPE, SIG_IGN);           // Don't abort on SIGPIPE
-    // signal(SIGINT, handle_sigint);      // exit on CTRL-C
-    // signal(SIGCHLD, handle_sigchld);
-
+    signal(SIGINT, handle_sigint);
 
     char *addr = strings.newstr("%s:%s", host, port);
     SERVER.listener = io.listen("tcp", addr);
@@ -247,18 +243,8 @@ bool parse_request(server.ctx_t *ctx) {
 //     }
 // }
 
-
-
-// void handle_sigint(int sig) {
-//     printf("SIGINT received: %d\n", sig);
-//     fflush(stdout);
-//     exit(0);
-// }
-
-// void handle_sigchld(int sig) {
-//     printf("sigchild %d\n", sig);
-//     abort();
-//     // int tmp_errno = errno;
-//     // while (waitpid(-1, NULL, WNOHANG) > 0) {}
-//     // errno = tmp_errno;
-// }
+void handle_sigint(int sig) {
+    printf("SIGINT received: %d\n", sig);
+    fflush(stdout);
+    exit(0);
+}
