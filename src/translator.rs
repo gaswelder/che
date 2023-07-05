@@ -91,6 +91,9 @@ pub fn translate(m: &Module, ctx: &Ctx) -> CModule {
 
 fn translate_module_object(element: &ModuleObject, ctx: &Ctx) -> Vec<CModuleObject> {
     match element {
+        // Ignore import nodes, the upper-lever build function will do all
+        // linking and synopses.
+        ModuleObject::Import(_) => Vec::new(),
         ModuleObject::Typedef(Typedef {
             pos: _,
             is_pub,

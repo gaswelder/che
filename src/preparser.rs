@@ -11,6 +11,7 @@ pub struct Preparse {
 pub struct Import {
     pub ns: String,
     pub path: String,
+    pub specified_path: String,
 }
 
 pub fn preparse(path: &String) -> Result<Preparse, String> {
@@ -26,6 +27,7 @@ pub fn preparse(path: &String) -> Result<Preparse, String> {
                     imports.push(Import {
                         ns: res.ns,
                         path: res.path,
+                        specified_path: t.content.clone(),
                     });
                 }
                 "typedef" => {

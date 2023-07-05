@@ -15,9 +15,7 @@ pub enum ModuleObject {
         name: String,
         value: String,
     },
-    // Import {
-    //     path: String,
-    // },
+    Import(ImportNode),
     Enum {
         is_pub: bool,
         members: Vec<EnumItem>,
@@ -37,6 +35,12 @@ pub enum ModuleObject {
         value: Expression,
     },
     FunctionDeclaration(FunctionDeclaration),
+}
+
+#[derive(Debug, Clone)]
+pub struct ImportNode {
+    pub specified_path: String,
+    pub pos: String,
 }
 
 #[derive(Debug, Clone)]

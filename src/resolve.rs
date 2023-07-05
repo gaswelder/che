@@ -21,9 +21,22 @@ pub fn resolve_import(base_path: &String, name: &String) -> Result<Resolve, Stri
     if std::fs::metadata(&path).is_err() {
         return Err(format!("can't find module '{}' (looked at {})", name, path));
     }
-    let basename = path.split("/").last().unwrap().to_string();
-    let ns = basename.substring(0, basename.len() - 2).to_string();
+    let bn = basename(&path);
+    let ns = bn.substring(0, bn.len() - 2).to_string();
     return Ok(Resolve { path, ns });
+}
+
+pub fn getns(name: &String) -> String {
+    let bn = basename(name);
+    return if bn.ends_with(".c") {
+        bn.substring(0, bn.len() - 2).to_string()
+    } else {
+        bn
+    };
+}
+
+fn basename(s: &String) -> String {
+    return s.split("/").last().unwrap().to_string();
 }
 
 pub fn homepath() -> String {

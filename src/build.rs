@@ -1,5 +1,4 @@
 use crate::c;
-use crate::check_identifiers;
 use crate::checkers;
 use crate::exports::get_exports;
 use crate::format;
@@ -227,24 +226,13 @@ pub fn parse(mainpath: &String) -> Result<Build, Vec<BuildError>> {
 
     let mut errors: Vec<BuildError> = Vec::new();
     for (i, m) in work.m.iter().enumerate() {
+        // Make a map namespace->exports for this module's imports.
+        // The checkers will do lookups based on namespace part on identifiers.
+        let mut dependencies = HashMap::new();
         for imp in &work.imports[i] {
-            let pos = work.paths.iter().position(|x| *x == imp.path).unwrap();
-            let depm = &work.m[pos];
-            if !checkers::depused(&m, &depm, &imp.ns) {
-                errors.push(BuildError {
-                    path: work.paths[i].clone(),
-                    message: format!("imported {} is not used", &imp.ns),
-                    pos: "?".to_string(),
-                });
-            }
+            dependencies.insert(imp.ns.clone(), exports_by_path.get(&imp.path).unwrap());
         }
-
-        // import alias -> exports map for this module
-        let mut exports = HashMap::new();
-        for imp in &work.imports[i] {
-            exports.insert(imp.ns.clone(), exports_by_path.get(&imp.path).unwrap());
-        }
-        for err in check_identifiers::run(m, &exports) {
+        for err in checkers::run(m, &dependencies) {
             errors.push(BuildError {
                 message: err.message,
                 path: work.paths[i].clone(),

@@ -12,8 +12,14 @@ pub fn parse_module(l: &mut Lexer, ctx: &Ctx) -> Result<Module, Error> {
     while l.more() {
         match l.peek().unwrap().kind.as_str() {
             "import" => {
-                l.get();
-                // All is in the context already.
+                // The context already contains all parsed and resolved imports,
+                // here this node is added only for completeness, to allow the
+                // source code checkers look at them.
+                let t = l.get().unwrap();
+                module_objects.push(ModuleObject::Import(ImportNode {
+                    specified_path: t.content.clone(),
+                    pos: t.pos.clone(),
+                }))
             }
             "macro" => {
                 module_objects.push(parse_compat_macro(l)?);
