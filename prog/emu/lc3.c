@@ -144,7 +144,8 @@ pub int main(int argc, char *argv[]) {
  * out in a big-endian way.
  */
 uint16_t read_16(FILE *file) {
-    uint8_t a = 0, b = 0;
+    uint8_t a = 0;
+    uint8_t b = 0;
     fread(&a, sizeof(uint8_t), 1, file);
     fread(&b, sizeof(uint8_t), 1, file);
     return a * 256 + b;

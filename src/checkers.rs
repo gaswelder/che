@@ -305,21 +305,18 @@ fn check_body(
             }
             Statement::VariableDeclaration {
                 type_name,
-                forms,
-                values,
+                form,
+                value,
+                pos: _,
             } => {
                 if type_name.name.namespace == "" {
                     used_types.insert(type_name.name.name.clone());
                 }
                 check_ns_id(&type_name.name, state, &scope, imports);
-                for v in values {
-                    if v.is_some() {
-                        check_expr(v.as_ref().unwrap(), state, &scope, imports);
-                    }
+                if value.is_some() {
+                    check_expr(value.as_ref().unwrap(), state, &scope, imports);
                 }
-                for f in forms {
-                    scope.push(f.name.as_str());
-                }
+                scope.push(form.name.as_str());
             }
             Statement::While { condition, body } => {
                 check_expr(condition, state, &scope, imports);

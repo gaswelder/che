@@ -98,7 +98,7 @@ pub enum {
 	Runemax = 0x10FFFF	/* maximum rune value */
 };
 
-pub Rune *runestrcat(Rune *s1, Rune *s2) {
+pub Rune *runestrcat(Rune *s1, *s2) {
 	runestrcpy(runestrchr(s1, 0), s2);
 	return s1;
 }
@@ -138,14 +138,17 @@ long runestrlen(Rune *s) {
 /*
  * Return pointer to first occurrence of s2 in s1, NULL if none.
  */
-pub Rune* runestrstr(Rune *s1, Rune *s2) {
-	Rune *p = NULL, *pa = NULL, *pb = NULL;
-	int c0 = 0;
+pub Rune* runestrstr(Rune *s1, *s2) {
+	if (!*s2) {
+		return s1;
+	}
+
+	Rune *p = NULL;
+	Rune *pa = NULL;
+	Rune *pb = NULL;
 	uint32_t c = 0;
 
-	c0 = *s2;
-	if(c0 == 0)
-		return s1;
+	int c0 = *s2;
 	s2++;
 	for(p=runestrchr(s1, c0); p; p=runestrchr(p+1, c0)) {
 		pa = p;
@@ -172,7 +175,7 @@ runestrdup(Rune *s)
 }
 
 pub Rune*
-runestrncat(Rune *s1, Rune *s2, long n)
+runestrncat(Rune *s1, *s2, long n)
 {
 	Rune *os1 = NULL;
 
@@ -187,12 +190,11 @@ runestrncat(Rune *s1, Rune *s2, long n)
 }
 
 
-pub int
-runestrncmp(Rune *s1, Rune *s2, long n)
-{
-	Rune c1 = 0, c2 = 0;
+pub int runestrncmp(Rune *s1, *s2, long n) {
+	Rune c1 = 0;
+	Rune c2 = 0;
 
-	while(n > 0) {
+	while (n > 0) {
 		c1 = *s1++;
 		c2 = *s2++;
 		n--;
@@ -207,10 +209,9 @@ runestrncmp(Rune *s1, Rune *s2, long n)
 	return 0;
 }
 
-pub int
-runestrcmp(Rune *s1, Rune *s2)
-{
-	Rune c1 = 0, c2 = 0;
+pub int runestrcmp(Rune *s1, *s2) {
+	Rune c1 = 0;
+	Rune c2 = 0;
 
 	while (true) {
 		c1 = *s1++;
@@ -225,34 +226,28 @@ runestrcmp(Rune *s1, Rune *s2)
 	}
 }
 
-pub Rune*
-runestrcpy(Rune *s1, Rune *s2)
-{
-	Rune *os1 = NULL;
-
-	os1 = s1;
-	while(*s1++ = *s2++) {}
+pub Rune *runestrcpy(Rune *s1, *s2) {
+	Rune *os1 = s1;
+	while (*s1++ = *s2++) {}
 	return os1;
 }
 
-pub Rune*
-runestrncpy(Rune *s1, Rune *s2, long n)
-{
+pub Rune* runestrncpy(Rune *s1, *s2, long n) {
 	Rune *os1 = s1;
 	for (int i = 0; i < n; i++)
 		if((*s1++ = *s2++) == 0) {
-			while(++i < n)
+			while (++i < n) {
 				*s1++ = 0;
+			}
 			return os1;
 		}
 	return os1;
 }
 
-pub Rune*
-runestrrchr(Rune *s, Rune c)
-{
-	if(c == 0)
+pub Rune* runestrrchr(Rune *s, Rune c) {
+	if (c == 0) {
 		return runestrchr(s, 0);
+	}
 
 	Rune *r = NULL;
 	while(s = runestrchr(s, c))
@@ -260,8 +255,7 @@ runestrrchr(Rune *s, Rune c)
 	return r;
 }
 
-enum
-{
+enum {
 	Bit1	= 7,
 	Bitx	= 6,
 	Bit2	= 5,
@@ -289,7 +283,8 @@ enum
 // If the input is not exactly in UTF format, will convert to 0x80 and return 1.
 pub int chartorune(Rune *rune, char *str)
 {
-	int c2 = 0, c3 = 0;
+	int c2 = 0;
+	int c3 = 0;
 	long l = 0;
 
 	/*
@@ -1734,10 +1729,11 @@ pub char *utfrrune(char *s, Rune c) {
  */
 pub char *utfutf(char *s1, char *s2) {
 	char *p = NULL;
-	long f = 0, n1 = 0, n2 = 0;
+	long f = 0;
+	long n2 = 0;
 	Rune r = 0;
 
-	n1 = chartorune(&r, s2);
+	long n1 = chartorune(&r, s2);
 	f = r;
 	if(f <= Runesync)		/* represents self */
 		return strstr(s1, s2);

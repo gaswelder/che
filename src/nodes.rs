@@ -178,8 +178,9 @@ pub struct Identifier {
 pub enum Statement {
     VariableDeclaration {
         type_name: Typename,
-        forms: Vec<Form>,
-        values: Vec<Option<Expression>>,
+        form: Form,
+        value: Option<Expression>,
+        pos: String,
     },
     If {
         condition: Expression,

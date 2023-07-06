@@ -201,12 +201,11 @@ void sha1_feed(uint32_t block[16], uint32_t sum[5])
 		W[t] = ROTL(1, W[t-3] ^ W[t-8] ^ W[t-14] ^ W[t-16]);
 	}
 
-	uint32_t
-		a = sum[0],
-		b = sum[1],
-		c = sum[2],
-		d = sum[3],
-		e = sum[4];
+	uint32_t a = sum[0];
+	uint32_t b = sum[1];
+	uint32_t c = sum[2];
+	uint32_t d = sum[3];
+	uint32_t e = sum[4];
 
 	uint32_t T = 0;
 	for(t = 0; t < 80; t++) {

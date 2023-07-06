@@ -477,8 +477,10 @@ popator()
 }
 
 void evaluntil(int pri) {
-	Node *op1 = NULL, *op2 = NULL;
-	Reinst *inst1 = NULL, *inst2 = NULL;
+	Node *op1 = NULL;
+	Node *op2 = NULL;
+	Reinst *inst1 = NULL;
+	Reinst *inst2 = NULL;
 	while (pri == RBRA || atorp[-1] >= pri) {
 		switch (popator()) {
 			case LBRA: {
@@ -541,7 +543,8 @@ void evaluntil(int pri) {
 }
 
 Reprog* optimize(Reprog *pp) {
-	Reinst *inst = NULL, *target = NULL;
+	Reinst *inst = NULL;
+	Reinst *target = NULL;
 	int size = 0;
 	Reprog *npp = NULL;
 	Reclass *cl = NULL;
@@ -676,7 +679,9 @@ int lex(int literal, int dot_type) {
 
 int bldcclass() {
 	utf.Rune r[nelem(classp->spans)] = {};
-	utf.Rune *p = NULL, *ep = NULL, *np = NULL;
+	utf.Rune *p = NULL;
+	utf.Rune *ep = NULL;
+	utf.Rune *np = NULL;
 	utf.Rune rune = 0;
 	int quoted = 0;
 
@@ -815,22 +820,27 @@ _renewmatch(Resub *mp, int ms, Resublist *sp)
 Relist* _renewthread(Relist *lp, Reinst *ip, int ms, Resublist *sep) {
 	Relist *p = NULL;
 
-	for(p=lp; p->inst; p++){
-		if(p->inst == ip){
-			if(sep->m[0].s.sp < p->se.m[0].s.sp){
-				if(ms > 1)
-					p->se = *sep;
-				else
-					p->se.m[0] = sep->m[0];
-			}
-			return 0;
+	for (p = lp; p->inst; p++) {
+		if (p->inst != ip) {
+			continue;
 		}
+		if (sep->m[0].s.sp < p->se.m[0].s.sp) {
+			if (ms > 1) {
+				p->se = *sep;
+			}
+			else {
+				p->se.m[0] = sep->m[0];
+			}
+		}
+		return 0;
 	}
 	p->inst = ip;
-	if(ms > 1)
+	if (ms > 1) {
 		p->se = *sep;
-	else
+	}
+	else {
 		p->se.m[0] = sep->m[0];
+	}
 	(++p)->inst = 0;
 	return p;
 }
@@ -918,8 +928,11 @@ regexec1(Reprog *progp,
 	Reinst *inst;
 	Relist *tlp;
 	char *s;
-	int i, checkstart;
-	utf.Rune r, *rp, *ep;
+	int i;
+	int checkstart;
+	utf.Rune r;
+	utf.Rune *rp;
+	utf.Rune *ep;
 	int n;
 	Relist* tl;		/* This list, next list */
 	Relist* nl;
@@ -1100,7 +1113,8 @@ regexec2(Reprog *progp,
 /* number of elements at mp */
 pub int regexec(Reprog *progp, char *bol, Resub *mp, int ms) {
 
-	Relist relist0[LISTSIZE], relist1[LISTSIZE];
+	Relist relist0[LISTSIZE];
+	Relist relist1[LISTSIZE];
 	int rv;
 
 	/*
@@ -1145,10 +1159,10 @@ pub int regexec(Reprog *progp, char *bol, Resub *mp, int ms) {
 /* mp is subexpression elements */
 /* ms is number of elements pointed to by mp */
 pub void regsub(char *sp, *dp, int dlen, Resub *mp, int ms) {
-	char *ssp, *ep;
+	char *ssp;
 	int i;
+	char *ep = dp+dlen-1;
 
-	ep = dp+dlen-1;
 	while(*sp != '\0'){
 		if (*sp == '\\') {
 			switch(*++sp) {
@@ -1198,8 +1212,7 @@ pub void regsub(char *sp, *dp, int dlen, Resub *mp, int ms) {
 /* string to run machine on */
 /* subexpression elements */
 /* number of elements at mp */
-int
-rregexec1(Reprog *progp,
+int rregexec1(Reprog *progp,
 	utf.Rune *bol,
 	Resub *mp,
 	int ms,
@@ -1209,8 +1222,11 @@ rregexec1(Reprog *progp,
 	Reinst *inst;
 	Relist *tlp;
 	utf.Rune *s;
-	int i, checkstart;
-	utf.Rune r, *rp, *ep;
+	int i;
+	int checkstart;
+	utf.Rune r;
+	utf.Rune *rp;
+	utf.Rune *ep;
 	Relist* tl;		/* This list, next list */
 	Relist* nl;
 	Relist* tle;		/* ends of this and next list */
@@ -1356,7 +1372,8 @@ rregexec2(Reprog *progp,
 	Reljunk *j
 )
 {
-	Relist relist0[5*LISTSIZE], relist1[5*LISTSIZE];
+	Relist relist0[5*LISTSIZE];
+	Relist relist1[5*LISTSIZE];
 
 	/* mark space */
 	j->relist[0] = relist0;
@@ -1373,7 +1390,8 @@ rregexec2(Reprog *progp,
 /* number of elements at mp */
 pub int rregexec(Reprog *progp, utf.Rune *bol, Resub *mp, int ms) {
 	Reljunk j;
-	Relist relist0[LISTSIZE], relist1[LISTSIZE];
+	Relist relist0[LISTSIZE];
+	Relist relist1[LISTSIZE];
 	int rv;
 
 	/*
@@ -1417,7 +1435,8 @@ pub int rregexec(Reprog *progp, utf.Rune *bol, Resub *mp, int ms) {
 /* mp is subexpression elements */
 /* ms is number of elements pointed to by mp */
 pub void rregsub(utf.Rune *sp, utf.Rune *dp, int dlen, Resub *mp, int ms) {
-	utf.Rune *ssp, *ep;
+	utf.Rune *ssp;
+	utf.Rune *ep;
 	int i;
 
 	ep = dp+(dlen/sizeof(utf.Rune))-1;

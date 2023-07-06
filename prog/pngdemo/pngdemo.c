@@ -25,7 +25,8 @@ int main() {
     };
     png.png_set_palette(png, palette, 4);
 
-    int x, y;
+    int x;
+    int y;
     for (y = 0; y < H; y++) {
         for (x = 0; x < W; x++) {
             png.png_set_pixel(png, x, y, (x % 16) / 4);

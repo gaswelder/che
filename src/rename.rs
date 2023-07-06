@@ -107,18 +107,15 @@ fn prefix_body(b: &mut Body, prefix: &String, names: &Vec<String>) {
 fn prefix_statement(s: &mut Statement, prefix: &String, names: &Vec<String>) {
     match s {
         Statement::VariableDeclaration {
+            pos: _,
             type_name,
-            forms,
-            values,
+            form,
+            value,
         } => {
-            for f in forms {
-                prefix_form(f, prefix, names);
-            }
-            for v in values {
-                match v {
-                    Some(e) => prefix_expr(e, prefix, names),
-                    None => {}
-                }
+            prefix_form(form, prefix, names);
+            match value {
+                Some(e) => prefix_expr(e, prefix, names),
+                None => {}
             }
             prefix_typename(type_name, prefix, names)
         }

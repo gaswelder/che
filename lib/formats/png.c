@@ -381,8 +381,6 @@ void png_pixel_header(png_t *png, size_t offset, size_t bpl) {
  *       must not be free'd be the caller
  */
 char *png_get_data(png_t *png, size_t *len) {
-    size_t index, bpl, raw_size, size, p, pos, corr;
-    uint8_t *pixel;
     if (!png) {
         return NULL;
     }
@@ -410,6 +408,9 @@ char *png_get_data(png_t *png, size_t *len) {
     png_out_uint8(png, 0); /* interlace method */
     png_end_chunk(png);
 
+    size_t index;
+    size_t p;
+
     /* palette */
     if (png->type == PNG_PALETTE) {
         char entry[3];
@@ -436,26 +437,25 @@ char *png_get_data(png_t *png, size_t *len) {
     }
 
     /* data */
-    bpl = 1 + png->bpp * png->width;
+    size_t bpl = 1 + png->bpp * png->width;
     if(bpl >= 65536) {
         fprintf(stderr, "[png] ERROR: maximum supported width for this type of PNG is %d pixel\n", (int)(65535 / png->bpp));
         return NULL;
     }
-    raw_size = png->height * bpl;
-    size = 2 + png->height * (5 + bpl) + 4;
+    size_t raw_size = png->height * bpl;
+    size_t size = 2 + png->height * (5 + bpl) + 4;
     png_new_chunk(png, "IDAT", size);
     png_out_write(png, "\170\332", 2);
 
-    pixel = (uint8_t *) png->data;
+    uint8_t *pixel = (uint8_t *) png->data;
     png->s1 = 1;
     png->s2 = 0;
     index = 0;
+    size_t corr = 0;
     if (png->type == PNG_RGB) {
         corr = 1;
-    } else {
-        corr = 0;
     }
-    for (pos = 0; pos < png->width * png->height; pos++) {
+    for (size_t pos = 0; pos < png->width * png->height; pos++) {
         if (index == 0) {
             /* line header */
             png_pixel_header(png, raw_size, bpl);

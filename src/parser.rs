@@ -622,25 +622,20 @@ fn parse_panic(l: &mut Lexer, ctx: &Ctx) -> Result<Statement, Error> {
 }
 
 fn parse_variable_declaration(l: &mut Lexer, ctx: &Ctx) -> Result<Statement, Error> {
+    let pos = l.peek().unwrap().pos.clone();
     let type_name = parse_typename(l, ctx)?;
-    let mut forms = vec![];
-    let mut values = vec![];
-    loop {
-        forms.push(parse_form(l, ctx)?);
-        if l.eat("=") {
-            values.push(Some(parse_expr(l, 0, ctx)?));
-        } else {
-            values.push(None)
-        };
-        if !l.eat(",") {
-            break;
-        }
-    }
+    let form = parse_form(l, ctx)?;
+    let value = if l.eat("=") {
+        Some(parse_expr(l, 0, ctx)?)
+    } else {
+        None
+    };
     expect(l, ";", None)?;
     return Ok(Statement::VariableDeclaration {
+        pos,
         type_name,
-        forms,
-        values,
+        form,
+        value,
     });
 }
 

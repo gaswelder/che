@@ -591,18 +591,15 @@ fn translate_body(b: &Body, ctx: &Ctx) -> CBody {
                 }
             }
             Statement::VariableDeclaration {
+                pos: _,
                 type_name,
-                forms,
-                values,
+                form,
+                value,
             } => {
                 let mut tforms: Vec<CForm> = Vec::new();
-                for f in forms {
-                    tforms.push(translate_form(f, ctx))
-                }
+                tforms.push(translate_form(form, ctx));
                 let mut tvalues: Vec<Option<CExpression>> = Vec::new();
-                for e in values {
-                    tvalues.push(e.as_ref().map(|x| translate_expression(&x, ctx)));
-                }
+                tvalues.push(value.as_ref().map(|x| translate_expression(&x, ctx)));
                 CStatement::VariableDeclaration {
                     type_name: translate_typename(type_name, ctx),
                     forms: tforms,
