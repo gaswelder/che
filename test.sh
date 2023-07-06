@@ -33,12 +33,21 @@ che test lib || exit 1
 #
 # Build and test the world.
 #
+errors=0
 cd prog
 	for i in */; do
 		cd $i
 		name=`basename $i`
-		$che build "$name.c" "$name.out" || exit 1
-		echo OK build "$name"
+		$che build "$name.c" "$name.out"
+		if [ $? = 0 ]; then
+			echo OK build $name
+		else
+			echo FAIL build $name
+			errors=`expr $errors + 1`
+			cd ..
+			continue
+		fi
+
 		if [ -f test.sh ]; then
 			./test.sh || exit 1
 			echo OK test $i
@@ -48,4 +57,10 @@ cd prog
 	done
 cd ..
 
-echo "all OK"
+if [ $errors = 0 ]; then
+	echo "all OK"
+else
+	echo $errors failed to build
+	exit $errors
+fi
+
