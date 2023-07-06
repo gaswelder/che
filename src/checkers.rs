@@ -6,14 +6,22 @@ struct StrPos {
     pos: String,
 }
 
+struct State {
+    errors: Vec<Error>,
+    used_namespaces: HashSet<String>,
+}
+
 pub fn run(m: &Module, imports: &HashMap<String, &Exports>) -> Vec<Error> {
     let mut scope = get_module_scope(m);
-    let mut errors: Vec<Error> = Vec::new();
     let mut declared_local_types = Vec::new();
     let mut used_local_types = HashSet::new();
 
     let mut import_nodes = Vec::new();
-    let mut used_namespaces = HashSet::new();
+
+    let mut state = State {
+        errors: Vec::new(),
+        used_namespaces: HashSet::new(),
+    };
 
     for e in &m.elements {
         match e {
@@ -25,21 +33,15 @@ pub fn run(m: &Module, imports: &HashMap<String, &Exports>) -> Vec<Error> {
                         pos: x.pos.clone(),
                     });
                 }
-                used_namespaces.insert(x.type_name.name.namespace.clone());
-                check_ns_id(
-                    &x.type_name.name,
-                    &mut errors,
-                    &scope,
-                    imports,
-                    &mut used_namespaces,
-                );
+                state
+                    .used_namespaces
+                    .insert(x.type_name.name.namespace.clone());
+                check_ns_id(&x.type_name.name, &mut state, &scope, imports);
             }
             ModuleObject::Enum { is_pub: _, members } => {
                 for m in members {
                     match &m.value {
-                        Some(v) => {
-                            check_expr(v, &mut errors, &scope, imports, &mut used_namespaces)
-                        }
+                        Some(v) => check_expr(v, &mut state, &scope, imports),
                         None => {}
                     }
                 }
@@ -49,33 +51,20 @@ pub fn run(m: &Module, imports: &HashMap<String, &Exports>) -> Vec<Error> {
                 if tn.namespace == "" {
                     used_local_types.insert(tn.name.clone());
                 }
-                check_ns_id(
-                    &f.type_name.name,
-                    &mut errors,
-                    &scope,
-                    imports,
-                    &mut used_namespaces,
-                );
+                check_ns_id(&f.type_name.name, &mut state, &scope, imports);
                 let mut function_scope = scope.clone();
                 for pl in &f.parameters.list {
-                    check_ns_id(
-                        &pl.type_name.name,
-                        &mut errors,
-                        &scope,
-                        imports,
-                        &mut used_namespaces,
-                    );
+                    check_ns_id(&pl.type_name.name, &mut state, &scope, imports);
                     for f in &pl.forms {
                         function_scope.push(&f.name);
                     }
                 }
                 check_body(
                     &f.body,
-                    &mut errors,
+                    &mut state,
                     &function_scope,
                     imports,
                     &mut used_local_types,
-                    &mut used_namespaces,
                 );
             }
             ModuleObject::Macro { name, value } => {
@@ -92,14 +81,8 @@ pub fn run(m: &Module, imports: &HashMap<String, &Exports>) -> Vec<Error> {
                 if n.namespace == "" {
                     used_local_types.insert(n.name.clone());
                 }
-                check_ns_id(
-                    &type_name.name,
-                    &mut errors,
-                    &scope,
-                    imports,
-                    &mut used_namespaces,
-                );
-                check_expr(value, &mut errors, &scope, imports, &mut used_namespaces);
+                check_ns_id(&type_name.name, &mut state, &scope, imports);
+                check_expr(value, &mut state, &scope, imports);
             }
             ModuleObject::StructAliasTypedef {
                 pos,
@@ -128,13 +111,7 @@ pub fn run(m: &Module, imports: &HashMap<String, &Exports>) -> Vec<Error> {
                             if n.namespace == "" {
                                 used_local_types.insert(n.name.clone());
                             }
-                            check_ns_id(
-                                &x.type_name.name,
-                                &mut errors,
-                                &scope,
-                                imports,
-                                &mut used_namespaces,
-                            );
+                            check_ns_id(&x.type_name.name, &mut state, &scope, imports);
                         }
                         StructEntry::Union(x) => {
                             for f in &x.fields {
@@ -151,7 +128,7 @@ pub fn run(m: &Module, imports: &HashMap<String, &Exports>) -> Vec<Error> {
     }
     for t in declared_local_types {
         if !used_local_types.contains(&t.str) {
-            errors.push(Error {
+            state.errors.push(Error {
                 message: format!("unused type: {}", t.str),
                 pos: t.pos.clone(),
             })
@@ -159,14 +136,15 @@ pub fn run(m: &Module, imports: &HashMap<String, &Exports>) -> Vec<Error> {
     }
     for node in import_nodes {
         let ns = getns(&node.specified_path);
-        if !used_namespaces.contains(&ns) {
-            errors.push(Error {
+        if !state.used_namespaces.contains(&ns) {
+            state.errors.push(Error {
                 message: format!("unused import: {}", node.specified_path),
                 pos: node.pos.clone(),
             })
         }
     }
-    return errors;
+
+    return state.errors;
 }
 
 fn get_module_scope(m: &Module) -> Vec<&str> {
@@ -234,21 +212,20 @@ fn get_module_scope(m: &Module) -> Vec<&str> {
 
 fn check_body(
     body: &Body,
-    errors: &mut Vec<Error>,
+    state: &mut State,
     parent_scope: &Vec<&str>,
     imports: &HashMap<String, &Exports>,
     used_types: &mut HashSet<String>,
-    used_modules: &mut HashSet<String>,
 ) {
     let mut scope: Vec<&str> = parent_scope.clone();
     for s in &body.statements {
         match s {
             Statement::Expression(e) => {
-                check_expr(e, errors, &scope, imports, used_modules);
+                check_expr(e, state, &scope, imports);
             }
             Statement::Panic { arguments, pos: _ } => {
                 for e in arguments {
-                    check_expr(e, errors, &scope, imports, used_modules);
+                    check_expr(e, state, &scope, imports);
                 }
             }
             Statement::For {
@@ -264,39 +241,38 @@ fn check_body(
                         form,
                         value,
                     } => {
-                        check_ns_id(&type_name.name, errors, loop_scope, imports, used_modules);
-                        check_expr(value, errors, loop_scope, imports, used_modules);
+                        check_ns_id(&type_name.name, state, loop_scope, imports);
+                        check_expr(value, state, loop_scope, imports);
                         loop_scope.push(form.name.as_str());
                     }
                     ForInit::Expression(x) => {
-                        check_expr(x, errors, loop_scope, imports, used_modules);
+                        check_expr(x, state, loop_scope, imports);
                     }
                 }
-                check_expr(condition, errors, loop_scope, imports, used_modules);
-                check_expr(action, errors, loop_scope, imports, used_modules);
-                check_body(body, errors, loop_scope, imports, used_types, used_modules);
+                check_expr(condition, state, loop_scope, imports);
+                check_expr(action, state, loop_scope, imports);
+                check_body(body, state, loop_scope, imports, used_types);
             }
             Statement::If {
                 condition,
                 body,
                 else_body,
             } => {
-                check_expr(condition, errors, &scope, imports, used_modules);
-                check_body(body, errors, &scope, imports, used_types, used_modules);
+                check_expr(condition, state, &scope, imports);
+                check_body(body, state, &scope, imports, used_types);
                 if else_body.is_some() {
                     check_body(
                         else_body.as_ref().unwrap(),
-                        errors,
+                        state,
                         &scope,
                         imports,
                         used_types,
-                        used_modules,
                     );
                 }
             }
             Statement::Return { expression } => match expression {
                 Some(x) => {
-                    check_expr(x, errors, &scope, imports, used_modules);
+                    check_expr(x, state, &scope, imports);
                 }
                 None => {}
             },
@@ -305,26 +281,25 @@ fn check_body(
                 cases,
                 default_case: default,
             } => {
-                check_expr(value, errors, &scope, imports, used_modules);
+                check_expr(value, state, &scope, imports);
                 for c in cases {
                     for v in &c.values {
                         match v {
                             SwitchCaseValue::Identifier(x) => {
-                                check_ns_id(x, errors, &scope, imports, used_modules);
+                                check_ns_id(x, state, &scope, imports);
                             }
                             SwitchCaseValue::Literal(_) => {}
                         }
                     }
-                    check_body(&c.body, errors, &scope, imports, used_types, used_modules);
+                    check_body(&c.body, state, &scope, imports, used_types);
                 }
                 if default.is_some() {
                     check_body(
                         default.as_ref().unwrap(),
-                        errors,
+                        state,
                         &scope,
                         imports,
                         used_types,
-                        used_modules,
                     );
                 }
             }
@@ -336,10 +311,10 @@ fn check_body(
                 if type_name.name.namespace == "" {
                     used_types.insert(type_name.name.name.clone());
                 }
-                check_ns_id(&type_name.name, errors, &scope, imports, used_modules);
+                check_ns_id(&type_name.name, state, &scope, imports);
                 for v in values {
                     if v.is_some() {
-                        check_expr(v.as_ref().unwrap(), errors, &scope, imports, used_modules);
+                        check_expr(v.as_ref().unwrap(), state, &scope, imports);
                     }
                 }
                 for f in forms {
@@ -347,8 +322,8 @@ fn check_body(
                 }
             }
             Statement::While { condition, body } => {
-                check_expr(condition, errors, &scope, imports, used_modules);
-                check_body(body, errors, &scope, imports, used_types, used_modules);
+                check_expr(condition, state, &scope, imports);
+                check_body(body, state, &scope, imports, used_types);
             }
         }
     }
@@ -356,69 +331,62 @@ fn check_body(
 
 fn check_expr(
     e: &Expression,
-    errors: &mut Vec<Error>,
+    state: &mut State,
     scope: &Vec<&str>,
     imports: &HashMap<String, &Exports>,
-    used_modules: &mut HashSet<String>,
 ) {
     match e {
         Expression::ArrayIndex { array, index } => {
-            check_expr(array, errors, scope, imports, used_modules);
-            check_expr(index, errors, scope, imports, used_modules);
+            check_expr(array, state, scope, imports);
+            check_expr(index, state, scope, imports);
         }
         Expression::BinaryOp { op: _, a, b } => {
-            check_expr(a, errors, scope, imports, used_modules);
-            check_expr(b, errors, scope, imports, used_modules);
+            check_expr(a, state, scope, imports);
+            check_expr(b, state, scope, imports);
         }
         Expression::FieldAccess {
             op: _,
             target,
             field_name: _,
         } => {
-            check_expr(target, errors, scope, imports, used_modules);
+            check_expr(target, state, scope, imports);
         }
         Expression::Cast { type_name, operand } => {
-            check_ns_id(
-                &type_name.type_name.name,
-                errors,
-                scope,
-                imports,
-                used_modules,
-            );
-            check_expr(operand, errors, scope, imports, used_modules);
+            check_ns_id(&type_name.type_name.name, state, scope, imports);
+            check_expr(operand, state, scope, imports);
         }
         Expression::CompositeLiteral(x) => {
             for e in &x.entries {
-                check_expr(&e.value, errors, scope, imports, used_modules);
+                check_expr(&e.value, state, scope, imports);
             }
         }
         Expression::FunctionCall {
             function,
             arguments,
         } => {
-            check_expr(function, errors, scope, imports, used_modules);
+            check_expr(function, state, scope, imports);
             for x in arguments {
-                check_expr(x, errors, scope, imports, used_modules);
+                check_expr(x, state, scope, imports);
             }
         }
         Expression::Identifier(x) => {
-            check_id(x, errors, scope);
+            check_id(x, state, scope);
         }
         Expression::Literal(_) => {}
         Expression::NsName(x) => {
-            check_ns_id(x, errors, scope, imports, used_modules);
+            check_ns_id(x, state, scope, imports);
         }
         Expression::PostfixOperator {
             operator: _,
             operand,
         } => {
-            check_expr(operand, errors, scope, imports, used_modules);
+            check_expr(operand, state, scope, imports);
         }
         Expression::PrefixOperator {
             operator: _,
             operand,
         } => {
-            check_expr(operand, errors, scope, imports, used_modules);
+            check_expr(operand, state, scope, imports);
         }
         Expression::Sizeof { argument } => {
             match argument.as_ref() {
@@ -426,7 +394,7 @@ fn check_expr(
                     //
                 }
                 SizeofArgument::Expression(x) => {
-                    check_expr(&x, errors, scope, imports, used_modules);
+                    check_expr(&x, state, scope, imports);
                 }
             }
         }
@@ -435,16 +403,15 @@ fn check_expr(
 
 fn check_ns_id(
     x: &NsName,
-    errors: &mut Vec<Error>,
+    state: &mut State,
     scope: &Vec<&str>,
     imports: &HashMap<String, &Exports>,
-    used_modules: &mut HashSet<String>,
 ) {
     if x.namespace == "OS" {
         return;
     }
     if x.namespace != "" {
-        used_modules.insert(x.namespace.clone());
+        state.used_namespaces.insert(x.namespace.clone());
         let e = imports.get(&x.namespace).unwrap();
         for f in &e.fns {
             if f.form.name == x.name {
@@ -459,13 +426,13 @@ fn check_ns_id(
                 return;
             }
         }
-        errors.push(Error {
+        state.errors.push(Error {
             message: format!("{} doesn't have exported {}", x.namespace, x.name),
             pos: x.pos.clone(),
         });
     } else {
         if !scope.contains(&x.name.as_str()) {
-            errors.push(Error {
+            state.errors.push(Error {
                 message: format!("unknown identifier: {}", x.name),
                 pos: x.pos.clone(),
             });
@@ -473,9 +440,9 @@ fn check_ns_id(
     }
 }
 
-fn check_id(x: &Identifier, errors: &mut Vec<Error>, scope: &Vec<&str>) {
+fn check_id(x: &Identifier, state: &mut State, scope: &Vec<&str>) {
     if !scope.contains(&x.name.as_str()) {
-        errors.push(Error {
+        state.errors.push(Error {
             message: format!("unknown identifier: {}", x.name),
             pos: x.pos.clone(),
         });
