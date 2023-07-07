@@ -1,6 +1,6 @@
 #import arr
 #import jsontok
-#import str
+#import strbuilder
 #import strings
 
 // JSON data is represented as a tree where each node is an object of type `json_node`.
@@ -711,96 +711,96 @@ void *error(parser_t *p, const char *fmt, ...) {
 
 
 pub char *format(json_node *n) {
-	str.str *s = str.str_new();
+	strbuilder.str *s = strbuilder.str_new();
 	if (!s) {
 		return NULL;
 	}
 	if (!writenode(n, s)) {
-		str.str_free(s);
+		strbuilder.str_free(s);
 		return NULL;
 	}
-	return str.str_unpack(s);
+	return strbuilder.str_unpack(s);
 }
 
-bool writenode(json_node *n, str.str *s) {
+bool writenode(json_node *n, strbuilder.str *s) {
 	switch(json_type(n)) {
         case JSON_OBJ: { return writeobj(n, s); }
         case JSON_ARR: { return writearr(n, s); }
         case JSON_STR: { return writestr(n, s); }
         case JSON_NUM: { return writenum(n, s); }
         case JSON_BOOL: { return writebool(n, s); }
-        case JSON_NULL: { return str.str_adds(s, "null"); }
+        case JSON_NULL: { return strbuilder.str_adds(s, "null"); }
     }
 	panic("unhandled json node type: %d", json_type(n));
 }
 
-bool writeobj(json_node *n, str.str *s) {
+bool writeobj(json_node *n, strbuilder.str *s) {
 	size_t len = json_size(n);
-	bool ok = str.str_adds(s, "{");
+	bool ok = strbuilder.str_adds(s, "{");
 	for (size_t i = 0; i < len; i++) {
 		ok = ok
-            && str.str_adds(s, "\"")
-            && str.str_adds(s, json_key(n, i))
-            && str.str_adds(s, "\":")
+            && strbuilder.str_adds(s, "\"")
+            && strbuilder.str_adds(s, json_key(n, i))
+            && strbuilder.str_adds(s, "\":")
             && writenode(json_val(n, i), s);
 		if (i + 1 < len) {
-			ok = ok && str.str_adds(s, ",");
+			ok = ok && strbuilder.str_adds(s, ",");
 		}
 	}
-	ok = ok && str.str_adds(s, "}");
+	ok = ok && strbuilder.str_adds(s, "}");
 	return ok;
 }
 
-bool writearr(json_node *n, str.str *s) {
+bool writearr(json_node *n, strbuilder.str *s) {
     size_t len = json_len(n);
-    bool ok = str.str_adds(s, "[");
+    bool ok = strbuilder.str_adds(s, "[");
     for (size_t i = 0; i < len; i++) {
         ok = ok && writenode(json_at(n, i), s);
         if (i + 1 < len) {
-			ok = ok && str.str_adds(s, ",");
+			ok = ok && strbuilder.str_adds(s, ",");
 		}
     }
-    ok = ok && str.str_adds(s, "]");
+    ok = ok && strbuilder.str_adds(s, "]");
 	return ok;
 }
 
-bool writestr(json_node *n, str.str *s) {
+bool writestr(json_node *n, strbuilder.str *s) {
 	const char *content = json_str(n);
 	size_t len = strlen(content);
-    bool ok = str.str_adds(s, "\"");
+    bool ok = strbuilder.str_adds(s, "\"");
 	for (size_t i = 0; i < len; i++) {
 		const char c = content[i];
 		if (c == '\n') {
 			ok = ok
-                && str.str_addc(s, '\\')
-                && str.str_addc(s, 'n');
+                && strbuilder.str_addc(s, '\\')
+                && strbuilder.str_addc(s, 'n');
 			continue;
 		}
 		if (c == '\t') {
 			ok = ok
-                && str.str_addc(s, '\\')
-                && str.str_addc(s, 't');
+                && strbuilder.str_addc(s, '\\')
+                && strbuilder.str_addc(s, 't');
 			continue;
 		}
 		if (c == '\\' || c == '\"' || c == '/') {
-			ok = ok && str.str_addc(s, '\\');
+			ok = ok && strbuilder.str_addc(s, '\\');
 		}
-		ok = ok && str.str_addc(s, c);
+		ok = ok && strbuilder.str_addc(s, c);
 	}
-	ok = ok && str.str_addc(s, '"');
+	ok = ok && strbuilder.str_addc(s, '"');
     return ok;
 }
 
-bool writenum(json_node *n, str.str *s) {
+bool writenum(json_node *n, strbuilder.str *s) {
     char buf[100] = {0};
     sprintf(buf, "%f", json_dbl(n));
-    return str.str_adds(s, buf);
+    return strbuilder.str_adds(s, buf);
 }
 
-bool writebool(json_node *n, str.str *s) {
+bool writebool(json_node *n, strbuilder.str *s) {
     if (json_bool(n)) {
-        return str.str_adds(s, "true");
+        return strbuilder.str_adds(s, "true");
     } else {
-        return str.str_adds(s, "false");
+        return strbuilder.str_adds(s, "false");
     }
 }

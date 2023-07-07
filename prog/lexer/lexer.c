@@ -1,6 +1,6 @@
 #import formats/json
 #import parsebuf
-#import str
+#import strbuilder
 #import strings
 
 /*
@@ -72,13 +72,13 @@ int main() {
 }
 
 char *read_stdin() {
-	str.str *s = str.str_new();
+	strbuilder.str *s = strbuilder.str_new();
 	while (!feof(stdin)) {
 		char c = fgetc(stdin);
 		if (c == EOF) break;
-		str.str_addc(s, c);
+		strbuilder.str_addc(s, c);
 	}
-	return str.str_unpack(s);
+	return strbuilder.str_unpack(s);
 }
 
 
@@ -248,16 +248,16 @@ tok_t *read_string(parsebuf.parsebuf_t *b) {
 
 	// Skip the opening quote
 	parsebuf.buf_get(b);
-	str.str *s = str.str_new();
+	strbuilder.str *s = strbuilder.str_new();
 
 	while (parsebuf.buf_more(b)) {
 		char c = parsebuf.buf_get(b);
 		if (c == '"') {
-			return tok_make("string", str.str_unpack(s), pos);
+			return tok_make("string", strbuilder.str_unpack(s), pos);
 		}
-		str.str_addc(s, c);
+		strbuilder.str_addc(s, c);
 		if (c == '\\') {
-			str.str_addc(s, parsebuf.buf_get(b));
+			strbuilder.str_addc(s, parsebuf.buf_get(b));
 		}
 	}
 	return tok_make("error", strings.newstr("double quote expected"), pos);
@@ -325,7 +325,7 @@ tok_t *read_line_comment(parsebuf.parsebuf_t *b) {
 }
 
 tok_t *read_identifier(parsebuf.parsebuf_t *b) {
-	str.str *s = str.str_new();
+	strbuilder.str *s = strbuilder.str_new();
 	char *pos = parsebuf.buf_pos(b);
 
 	while (parsebuf.buf_more(b)) {
@@ -333,7 +333,7 @@ tok_t *read_identifier(parsebuf.parsebuf_t *b) {
 		if (!isalpha(c) && !isdigit(c) && c != '_') {
 			break;
 		}
-		str.str_addc(s, parsebuf.buf_get(b));
+		strbuilder.str_addc(s, parsebuf.buf_get(b));
 	}
-	return tok_make("word", str.str_unpack(s), pos);
+	return tok_make("word", strbuilder.str_unpack(s), pos);
 }
