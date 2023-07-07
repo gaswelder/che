@@ -120,18 +120,18 @@ enum {
  * don't add enums or rearrange or otherwise change values without
  * visiting set_conn_state()
  */
-typedef enum {
+enum {
     STATE_UNCONNECTED = 0,
     STATE_CONNECTING,           /* TCP connect initiated, but we don't
                                  * know if it worked yet
                                  */
     STATE_CONNECTED,            /* we know TCP connect completed */
     STATE_READ
-} connect_state_e;
+};
 
 #define CBUFFSIZE (2048)
 
-struct connection {
+typedef {
     apr_pool_t *ctx;
     apr_socket_t *aprsock;
     apr_pollfd_t pollfd;
@@ -153,14 +153,14 @@ struct connection {
                done;            /* Connection closed */
 
     int socknum;
-};
+} connection_t;
 
-struct data {
+typedef {
     apr_time_t starttime;         /* start time of connection */
     apr_interval_time_t waittime; /* between request and reading response */
     apr_interval_time_t ctime;    /* time to connect */
     apr_interval_time_t time;     /* time for connection */
-};
+} data_t;
 
 #define ap_min(a,b) ((a)<(b))?(a):(b)
 #define ap_max(a,b) ((a)>(b))?(a):(b)
@@ -246,8 +246,8 @@ char buffer[8192];
 /* interesting percentiles */
 int percs[] = {50, 66, 75, 80, 90, 95, 98, 99, 100};
 
-struct connection *con;     /* connection array */
-struct data *stats;         /* data for each request */
+connection_t *con;     /* connection array */
+data_t *stats;         /* data for each request */
 apr_pool_t *cntxt;
 
 apr_pollset_t *readbits;
@@ -255,8 +255,8 @@ apr_pollset_t *readbits;
 apr_sockaddr_t *destsa;
 
 
-static void write_request(struct connection * c);
-static void close_connection(struct connection * c);
+static void write_request(connection_t * c);
+static void close_connection(connection_t * c);
 
 /* --------------------------------------------------------- */
 
@@ -284,7 +284,7 @@ static void apr_err(char *s, apr_status_t rv)
     exit(rv);
 }
 
-static void set_polled_events(struct connection *c, apr_int16_t new_reqevents)
+static void set_polled_events(connection_t *c, apr_int16_t new_reqevents)
 {
     apr_status_t rv;
 
@@ -306,7 +306,7 @@ static void set_polled_events(struct connection *c, apr_int16_t new_reqevents)
     }
 }
 
-static void set_conn_state(struct connection *c, connect_state_e new_state)
+static void set_conn_state(connection_t *c, int new_state)
 {
     apr_int16_t events_by_state[] = {
         0,           /* for STATE_UNCONNECTED */
@@ -329,7 +329,7 @@ static void set_conn_state(struct connection *c, connect_state_e new_state)
  *
  */
 
-static void write_request(struct connection * c)
+static void write_request(connection_t * c)
 {
     do {
         apr_time_t tnow;
@@ -376,7 +376,7 @@ static void write_request(struct connection * c)
 
 /* calculate and output results */
 
-static int compradre(struct data * a, struct data * b)
+static int compradre(data_t * a, data_t * b)
 {
     if ((a->ctime) < (b->ctime))
         return -1;
@@ -385,7 +385,7 @@ static int compradre(struct data * a, struct data * b)
     return 0;
 }
 
-static int comprando(struct data * a, struct data * b)
+static int comprando(data_t * a, data_t * b)
 {
     if ((a->time) < (b->time))
         return -1;
@@ -394,7 +394,7 @@ static int comprando(struct data * a, struct data * b)
     return 0;
 }
 
-static int compri(struct data * a, struct data * b)
+static int compri(data_t * a, data_t * b)
 {
     apr_interval_time_t p = a->time - a->ctime;
     apr_interval_time_t q = b->time - b->ctime;
@@ -405,7 +405,7 @@ static int compri(struct data * a, struct data * b)
     return 0;
 }
 
-static int compwait(struct data * a, struct data * b)
+static int compwait(data_t * a, data_t * b)
 {
     if ((a->waittime) < (b->waittime))
         return -1;
@@ -478,7 +478,7 @@ static void output_results(int sig)
         double sdtot = 0, sdcon = 0, sdd = 0, sdwait = 0;
 
         for (i = 0; i < done; i++) {
-            struct data *s = &stats[i];
+            data_t *s = &stats[i];
             mincon = ap_min(mincon, s->ctime);
             mintot = ap_min(mintot, s->time);
             mind = ap_min(mind, s->time - s->ctime);
@@ -501,7 +501,7 @@ static void output_results(int sig)
 
         /* calculating the sample variance: the sum of the squared deviations, divided by n-1 */
         for (i = 0; i < done; i++) {
-            struct data *s = &stats[i];
+            data_t *s = &stats[i];
             double a;
             a = ((double)s->time - meantot);
             sdtot += a * a;
@@ -523,14 +523,14 @@ static void output_results(int sig)
          * the four warnings during compile ? dirkx just does not know and
          * hates both/
          */
-        qsort(stats, done, sizeof(struct data),
+        qsort(stats, done, sizeof(data_t),
               (int (*) (const void *, const void *)) compradre);
         if ((done > 1) && (done % 2))
             mediancon = (stats[done / 2].ctime + stats[done / 2 + 1].ctime) / 2;
         else
             mediancon = stats[done / 2].ctime;
 
-        qsort(stats, done, sizeof(struct data),
+        qsort(stats, done, sizeof(data_t),
               (int (*) (const void *, const void *)) compri);
         if ((done > 1) && (done % 2)) {
             mediand = (
@@ -543,14 +543,14 @@ static void output_results(int sig)
             mediand = stats[done / 2].time - stats[done / 2].ctime;
         }
 
-        qsort(stats, done, sizeof(struct data),
+        qsort(stats, done, sizeof(data_t),
               (int (*) (const void *, const void *)) compwait);
         if ((done > 1) && (done % 2))
             medianwait = (stats[done / 2].waittime + stats[done / 2 + 1].waittime) / 2;
         else
             medianwait = stats[done / 2].waittime;
 
-        qsort(stats, done, sizeof(struct data),
+        qsort(stats, done, sizeof(data_t),
               (int (*) (const void *, const void *)) comprando);
         if ((done > 1) && (done % 2))
             mediantot = (stats[done / 2].time + stats[done / 2 + 1].time) / 2;
@@ -775,7 +775,7 @@ static void output_html_results(void)
         apr_interval_time_t maxcon = 0, maxtot = 0;
 
         for (i = 0; i < done; i++) {
-            struct data *s = &stats[i];
+            data_t *s = &stats[i];
             mincon = ap_min(mincon, s->ctime);
             mintot = ap_min(mintot, s->time);
             maxcon = ap_max(maxcon, s->ctime);
@@ -823,7 +823,7 @@ static void output_html_results(void)
 
 /* start asnchronous non-blocking connection */
 
-static void start_connect(struct connection * c)
+static void start_connect(connection_t * c)
 {
     apr_status_t rv;
 
@@ -903,7 +903,7 @@ static void start_connect(struct connection * c)
 
 /* close down connection and save stats */
 
-static void close_connection(struct connection * c)
+static void close_connection(connection_t * c)
 {
     if (c->read == 0 && c->keepalive) {
         /*
@@ -923,7 +923,7 @@ static void close_connection(struct connection * c)
         }
         /* save out time */
         if (done < requests) {
-            struct data *s = &stats[done++];
+            data_t *s = &stats[done++];
             c->done      = lasttime = apr_time_now();
             s->starttime = c->start;
             s->ctime     = ap_max(0, c->connect - c->start);
@@ -948,7 +948,7 @@ static void close_connection(struct connection * c)
 
 /* read data from connection */
 
-static void read_connection(struct connection * c)
+static void read_connection(connection_t * c)
 {
     apr_size_t r;
     apr_status_t status;
@@ -1112,7 +1112,7 @@ static void read_connection(struct connection * c)
             err_length++;
         }
         if (done < requests) {
-            struct data *s = &stats[done++];
+            data_t *s = &stats[done++];
             doneka++;
             c->done      = apr_time_now();
             s->starttime = c->start;
@@ -1165,9 +1165,9 @@ static void test(void)
     fflush(stdout);
     }
 
-    con = calloc(concurrency, sizeof(struct connection));
+    con = calloc(concurrency, sizeof(connection_t));
 
-    stats = calloc(requests, sizeof(struct data));
+    stats = calloc(requests, sizeof(data_t));
 
     if ((status = apr_pollset_create(&readbits, concurrency, cntxt,
                                      APR_POLLSET_NOCOPY)) != APR_SUCCESS) {
@@ -1287,7 +1287,7 @@ static void test(void)
 
         for (i = 0; i < n; i++) {
             const apr_pollfd_t *next_fd = &(pollresults[i]);
-            struct connection *c;
+            connection_t *c;
 
             c = next_fd->client_data;
 
