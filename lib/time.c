@@ -2,6 +2,10 @@
 
 typedef struct tm tm_t;
 pub typedef struct timeval timeval_t;
+pub typedef {
+    timeval_t timeval;
+} t;
+
 
 /**
  * Puts current local time, formatted according to `fmt`, in the buffer `buf`.
@@ -20,15 +24,20 @@ pub bool time_format(char *buf, size_t size, const char *fmt)
 /*
  * Returns current system time as an opaque object.
  */
-pub timeval_t get_time() {
-    timeval_t time;
-    OS.gettimeofday(&time,0);
+pub t now() {
+    t time = {};
+    // timeval, timezone. timezone is obsolete, pass NULL.
+    OS.gettimeofday(&time.timeval, NULL);
     return time;
 }
 
 /*
  * Returns unix timestamp in microseconds for the given time object.
  */
-pub int32_t time_usec(timeval_t *t) {
-    return t->tv_sec * 1000000L + t->tv_usec;
+pub int usec(t *val) {
+    return val->timeval.tv_sec * 1000000L + val->timeval.tv_usec;
+}
+
+pub int ms(t *val) {
+    return usec(val) / 1000;
 }

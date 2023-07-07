@@ -5,6 +5,7 @@
 #import os/io
 #import strbuilder
 #import strings
+#import time
 
 /* Note: this version string should start with \d+[\d\.]* and be a valid
  * string for an HTTP Agent: header when prefixed with 'ApacheBench/'.
@@ -31,15 +32,6 @@
 
 /* maximum number of requests on a time limited test */
 #define MAX_REQUESTS (INT_MAX > 50000 ? 50000 : INT_MAX)
-
-typedef {
-    int TODO;
-} apr_time_t;
-
-apr_time_t apr_time_now() {
-    apr_time_t r = {};
-    return r;
-}
 
 int apr_time_from_sec() {
     return -1;
@@ -77,7 +69,7 @@ typedef {
     int keepalive;              /* non-zero if a keep-alive request */
     int gotheader;              /* non-zero if we have the entire header in
                                  * cbuff */
-    apr_time_t start,           /* Start of connection */
+    time.t start,           /* Start of connection */
                connect,         /* Connected, start writing */
                endwrite,        /* Request written */
                beginread,       /* First byte of input */
@@ -87,15 +79,12 @@ typedef {
 } connection_t;
 
 typedef {
-    apr_time_t starttime;         /* start time of connection */
+    time.t starttime;         /* start time of connection */
     int waittime; /* between request and reading response */
     int ctime;    /* time to connect */
     int time;     /* time for connection */
 } data_t;
 
-int ap_round_ms(int a) {
-    return ((apr_time_t)((a) + 500)/1000);
-}
 double ap_double_ms(int a) {
     return ((double)(a)/1000.0);
 }
@@ -133,7 +122,6 @@ char url[1024] = {0};
 char *fullurl = NULL;
 char * colonhost = "";
 int isproxy = 0;
-int aprtimeout = apr_time_from_sec(30); /* timeout value */
 
 char *opt_host = NULL;
 char *opt_useragent = NULL;
@@ -168,9 +156,9 @@ int err_except = 0;        /* requests failed due to exception */
 int err_response = 0;      /* requests with invalid or non-200 response */
 
 
-apr_time_t start = 0;
-apr_time_t lasttime = 0;
-apr_time_t stoptime = 0;
+time.t start = {};
+time.t lasttime = {};
+time.t stoptime = {};
 
 /* global request (and its length) */
 char _request[2048] = {0};
@@ -557,7 +545,7 @@ void init_request() {
 }
 
 void test() {
-    apr_time_t stoptime;
+    time.t stoptime;
     int16_t rv;
     int i;
     int status;
@@ -590,7 +578,7 @@ void test() {
     ioroutine.init();
     
 
-    start = lasttime = apr_time_now();
+    start = lasttime = time.now();
     if (tlimit) {
         stoptime = (start + apr_time_from_sec(tlimit));
     } else {
@@ -662,12 +650,12 @@ void apr_err(char *s, int rv) {
 
 void write_request(connection_t * c)
 {
+    int aprtimeout = apr_time_from_sec(30); /* timeout value */
     while (true) {
-        apr_time_t tnow;
+        time.t tnow = time.now();
+        lasttime = tnow;
         size_t l = c->rwrite;
-        int e = 0; /* prevent gcc warning */
-
-        tnow = lasttime = apr_time_now();
+        int e = 0;
 
         /*
          * First time round ?
@@ -701,7 +689,7 @@ void write_request(connection_t * c)
         }
     }
 
-    c->endwrite = lasttime = apr_time_now();
+    c->endwrite = lasttime = time.now();
     c->state = STATE_READ;
 }
 
@@ -759,7 +747,7 @@ void output_results(int sig)
     double timetaken;
 
     if (sig) {
-        lasttime = apr_time_now();  /* record final time if interrupted */
+        lasttime = time.now();  /* record final time if interrupted */
     }
     timetaken = duration_seconds(lasttime - start);
 
@@ -809,14 +797,14 @@ void output_results(int sig)
     if (done > 0) {
         /* work out connection times */
         int i;
-        apr_time_t totalcon = 0;
-        apr_time_t total = 0;
-        apr_time_t totald = 0;
-        apr_time_t totalwait = 0;
-        apr_time_t meancon = 0;
-        apr_time_t meantot = 0;
-        apr_time_t meand = 0;
-        apr_time_t meanwait = 0;
+        time.t totalcon = {};
+        time.t total = {};
+        time.t totald = {};
+        time.t totalwait = {};
+        time.t meancon = {};
+        time.t meantot = {};
+        time.t meand = {};
+        time.t meanwait = {};
         int mincon = LONG_MAX;
         int mintot = LONG_MAX;
         int mind = LONG_MAX;
@@ -917,22 +905,22 @@ void output_results(int sig)
         /*
          * Reduce stats from apr time to milliseconds
          */
-        mincon     = ap_round_ms(mincon);
-        mind       = ap_round_ms(mind);
-        minwait    = ap_round_ms(minwait);
-        mintot     = ap_round_ms(mintot);
-        meancon    = ap_round_ms(meancon);
-        meand      = ap_round_ms(meand);
-        meanwait   = ap_round_ms(meanwait);
-        meantot    = ap_round_ms(meantot);
-        mediancon  = ap_round_ms(mediancon);
-        mediand    = ap_round_ms(mediand);
-        medianwait = ap_round_ms(medianwait);
-        mediantot  = ap_round_ms(mediantot);
-        maxcon     = ap_round_ms(maxcon);
-        maxd       = ap_round_ms(maxd);
-        maxwait    = ap_round_ms(maxwait);
-        maxtot     = ap_round_ms(maxtot);
+        mincon     = time.ms(mincon);
+        mind       = time.ms(mind);
+        minwait    = time.ms(minwait);
+        mintot     = time.ms(mintot);
+        meancon    = time.ms(meancon);
+        meand      = time.ms(meand);
+        meanwait   = time.ms(meanwait);
+        meantot    = time.ms(meantot);
+        mediancon  = time.ms(mediancon);
+        mediand    = time.ms(mediand);
+        medianwait = time.ms(medianwait);
+        mediantot  = time.ms(mediantot);
+        maxcon     = time.ms(maxcon);
+        maxd       = time.ms(maxd);
+        maxwait    = time.ms(maxwait);
+        maxtot     = time.ms(maxtot);
         sdcon      = ap_double_ms(sdcon);
         sdd        = ap_double_ms(sdd);
         sdwait     = ap_double_ms(sdwait);
@@ -972,10 +960,10 @@ void output_results(int sig)
                     printf(" 0%%  <0> (never)\n");
                 else if (percs[i] >= 100)
                     printf(" 100%%  %5zu (longest request)\n",
-                           ap_round_ms(stats[done - 1].time));
+                           time.ms(stats[done - 1].time));
                 else
                     printf("  %d%%  %5zu\n", percs[i],
-                           ap_round_ms(stats[(int) (done * percs[i] / 100)].time));
+                           time.ms(stats[(int) (done * percs[i] / 100)].time));
             }
         }
         if (csvperc) {
@@ -1009,10 +997,10 @@ void output_results(int sig)
                 (void) apr_ctime(tmstring, stats[i].starttime);
                 fprintf(out, "%s\t%zu\t%zu\t%zu\t%zu\t%zu\n", tmstring,
                         apr_time_sec(stats[i].starttime),
-                        ap_round_ms(stats[i].ctime),
-                        ap_round_ms(stats[i].time - stats[i].ctime),
-                        ap_round_ms(stats[i].time),
-                        ap_round_ms(stats[i].waittime));
+                        time.ms(stats[i].ctime),
+                        time.ms(stats[i].time - stats[i].ctime),
+                        time.ms(stats[i].time),
+                        time.ms(stats[i].waittime));
             }
             fclose(out);
         }
@@ -1136,12 +1124,12 @@ void output_html_results()
     /*
         * Reduce stats from apr time to milliseconds
         */
-    mincon   = ap_round_ms(mincon);
-    mintot   = ap_round_ms(mintot);
-    maxcon   = ap_round_ms(maxcon);
-    maxtot   = ap_round_ms(maxtot);
-    totalcon = ap_round_ms(totalcon);
-    total    = ap_round_ms(total);
+    mincon   = time.ms(mincon);
+    mintot   = time.ms(mintot);
+    maxcon   = time.ms(maxcon);
+    maxtot   = time.ms(maxtot);
+    totalcon = time.ms(totalcon);
+    total    = time.ms(total);
 
     if (done > 0) { /* avoid division by zero (if 0 done) */
         printf("<tr %s><th %s colspan=4>Connnection Times (ms)</th></tr>\n",
@@ -1200,7 +1188,7 @@ void start_connect(connection_t * c)
     //     apr_err("socket nonblock", rv);
     // }
 
-    c->start = lasttime = apr_time_now();
+    c->start = lasttime = time.now();
     c->aprsock = io.connect("tcp", colonhost);
     if (!c->aprsock) {
         c->state = STATE_UNCONNECTED;
@@ -1244,7 +1232,7 @@ void close_connection(connection_t * c)
         /* save out time */
         if (done < requests) {
             data_t *s = &stats[done++];
-            c->done      = lasttime = apr_time_now();
+            c->done      = lasttime = time.now();
             s->starttime = c->start;
             s->ctime     = max(0, c->connect - c->start);
             s->time      = max(0, c->done - c->start);
@@ -1295,7 +1283,7 @@ void read_connection(connection_t * c)
         if (done < requests) {
             data_t *s = &stats[done++];
             doneka++;
-            c->done      = apr_time_now();
+            c->done      = time.now();
             s->starttime = c->start;
             s->ctime     = max(0, c->connect - c->start);
             s->time      = max(0, c->done - c->start);
@@ -1311,7 +1299,7 @@ void read_connection(connection_t * c)
         c->cbx = 0;
         c->read = c->bread = 0;
         /* zero connect time with keep-alive */
-        c->start = c->connect = lasttime = apr_time_now();
+        c->start = c->connect = lasttime = time.now();
         write_request(c);
     }
 }
@@ -1343,7 +1331,7 @@ void read_connection_header(connection_t *c) {
 
     totalread += read;
     if (c->read == 0) {
-        c->beginread = apr_time_now();
+        c->beginread = time.now();
     }
     c->read += read;
     char *s;
@@ -1473,7 +1461,7 @@ void read_connection_body(connection_t *c) {
 
     totalread += read;
     if (c->read == 0) {
-        c->beginread = apr_time_now();
+        c->beginread = time.now();
     }
     c->read += read;
     /* outside header, everything we have read is entity body */
