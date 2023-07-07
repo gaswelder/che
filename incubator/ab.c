@@ -1,3 +1,5 @@
+#import opt
+
 /* Note: this version string should start with \d+[\d\.]* and be a valid
  * string for an HTTP Agent: header when prefixed with 'ApacheBench/'.
  * It should reflect the version of AB - and not that of the apache server
@@ -95,7 +97,7 @@ int concurrency = 1;    /* Number of multiple requests to make */
 int percentile = 1;     /* Show percentile served */
 int confidence = 1;     /* Show confidence estimator and warnings */
 int tlimit = 0;         /* time limit in secs */
-int keepalive = 0;      /* try and do keepalive connections */
+bool keepalive = false;      /* try and do keepalive connections */
 int windowsize = 0;     /* we use the OS default window size */
 char servername[1024] = {0};  /* name that server reports */
 char *hostname = NULL;         /* host name from URL */
@@ -1194,7 +1196,7 @@ void test()
      * Combine headers and (optional) post file into one contineous buffer
      */
     if (posting == 1) {
-        char *buff = malloc(postlen + reqlen + 1);
+        char *buff = calloc(postlen + reqlen + 1, 1);
         if (!buff) {
             fprintf(stderr, "error creating request buffer: out of memory\n");
             return;
@@ -1487,8 +1489,6 @@ int open_postfile(const char *pfile)
     return 0;
 }
 
-/* ------------------------------------------------------- */
-
 int main(int argc, char *argv[]) {
     int r;
     int l;
@@ -1511,167 +1511,198 @@ int main(int argc, char *argv[]) {
     atexit(apr_terminate);
     apr_pool_create(&cntxt, NULL);
 
+    bool quiet = false;
 
-    apr_getopt_init(&opt, cntxt, argc, argv);
-    while ((status = apr_getopt(opt, "n:c:t:b:T:p:v:rkVhwix:y:z:C:H:P:A:g:X:de:Sq"
-            ,&c, &optarg)) == APR_SUCCESS) {
-        switch (c) {
-            case 'n': {
-                requests = atoi(optarg);
-                if (requests <= 0) {
-                    err("Invalid number of requests\n");
-                }
-            }
-            case 'k': {
-                keepalive = 1;
-            }
-            case 'q': {
-                heartbeatres = 0;
-            }
-            case 'c': {
-                concurrency = atoi(optarg);
-            }
-            case 'b': {
-                windowsize = atoi(optarg);
-            }
-            case 'i': {
-                if (posting == 1)
-                err("Cannot mix POST and HEAD\n");
-                posting = -1;
-            }
-            case 'g': {
-                gnuplot = strdup(optarg);
-            }
-            case 'd': {
-                percentile = 0;
-            }
-            case 'e': {
-                csvperc = strdup(optarg);
-            }
-            case 'S': {
-                confidence = 0;
-            }
-            case 'p': {
-                if (posting != 0)
-                    err("Cannot mix POST and HEAD\n");
-                if (0 == (r = open_postfile(optarg))) {
-                    posting = 1;
-                }
-                else if (postdata) {
-                    exit(r);
-                }
-            }
-            case 'r': {
-                recverrok = 1;
-            }
-            case 'v': {
-                verbosity = atoi(optarg);
-            }
-            case 't': {
-                tlimit = atoi(optarg);
-                requests = MAX_REQUESTS;    /* need to size data array on
-                                             * something */
-            }
-            case 'T': {
-                strcpy(content_type, optarg);
-            }
-            case 'C': {
-                cookie = apr_pstrcat(cntxt, "Cookie: ", optarg, "\r\n", NULL);
-            }
-            case 'A': {
-                 // assume username passwd already to be in colon separated form.
-                 // Ready to be uu-encoded.
-                 //
-                while (apr_isspace(*optarg))
-                    optarg++;
-                if (apr_base64_encode_len(strlen(optarg)) > sizeof(tmp)) {
-                    err("Authentication credentials too long\n");
-                }
-                l = apr_base64_encode(tmp, optarg, strlen(optarg));
-                tmp[l] = '\0';
+    opt.opt_bool("k", "keep-alive", &keepalive);
+    opt.opt_bool("q", "quiet", &quiet);
+    opt.opt_int("c", "concurrency", &concurrency);
+    opt.opt_int("b", "windowsize", &windowsize);
+    opt.opt_size("n", "number of requests", &requests);
+    opt.opt_bool("w", "use_html", &use_html);
+    opt.opt_int("v", "verbosity", &verbosity);
+    opt.opt_str("g", "gnuplot output file", &gnuplot);
 
-                auth = apr_pstrcat(cntxt, auth, "Authorization: Basic ", tmp,
-                                       "\r\n", NULL);
-            }
-            case 'P': {
-                //
-                //  assume username passwd already to be in colon separated form.
-                //
-                while (apr_isspace(*optarg))
-                optarg++;
-                if (apr_base64_encode_len(strlen(optarg)) > sizeof(tmp)) {
-                    err("Proxy credentials too long\n");
-                }
-                l = apr_base64_encode(tmp, optarg, strlen(optarg));
-                tmp[l] = '\0';
+    bool hflag = false;
+    opt.opt_bool("h", "print usage", &hflag);
+    bool vflag = false;
+    opt.opt_bool("V", "print version", &vflag);
 
-                auth = apr_pstrcat(cntxt, auth, "Proxy-Authorization: Basic ",
-                                       tmp, "\r\n", NULL);
-            }
-            case 'H': {
-                hdrs = apr_pstrcat(cntxt, hdrs, optarg, "\r\n", NULL);
-                /*
-                 * allow override of some of the common headers that ab adds
-                 */
-                if (strncasecmp(optarg, "Host:", 5) == 0) {
-                    opt_host = 1;
-                } else if (strncasecmp(optarg, "Accept:", 7) == 0) {
-                    opt_accept = 1;
-                } else if (strncasecmp(optarg, "User-Agent:", 11) == 0) {
-                    opt_useragent = 1;
-                }
-            }
-            case 'w': {
-                use_html = 1;
-            }
-                /*
-                 * if any of the following three are used, turn on html output
-                 * automatically
-                 */
-            case 'x': {
-                use_html = 1;
-                tablestring = optarg;
-            }
-            case 'X': {
-                char *p;
-                /*
-                    * assume proxy-name[:port]
-                    */
-                if ((p = strchr(optarg, ':'))) {
-                    *p = '\0';
-                    p++;
-                    proxyport = atoi(p);
-                }
-                strcpy(proxyhost, optarg);
-                isproxy = 1;
-            }
-            case 'y': {
-                use_html = 1;
-                trstring = optarg;
-            }
-            case 'z': {
-                use_html = 1;
-                tdstring = optarg;
-            }
-            case 'h': {
-                usage(argv[0]);
-            }
-            case 'V': {
-                copyright();
-                return 0;
-            }
-        }
+    bool iflag = false;
+    opt.opt_bool("i", "use head", &iflag);
+
+
+    bool dflag = false;
+    opt.opt_bool("d", "percentile = 0", &dflag);
+    bool sflag = false;
+    opt.opt_bool("S", "confidence = 0", &sflag);
+
+    opt.opt_str("e", "csvperc", &csvperc);
+
+
+    char *postfile = NULL;
+    opt.opt_str("p", "postfile", &postfile);
+
+    opt.opt_bool("r", "recverrok = 1", &recverrok);
+    opt.opt_size("t", "tlimit", &tlimit);
+
+    
+    char *autharg = NULL;
+    opt.opt_str("A", "auth", &autharg);
+
+    opt.opt_str("T", "content_type", &content_type);
+    char *cookiearg = NULL;
+    opt.opt_str("C", "cookie", &cookiearg);
+
+    char *pflag = NULL;
+    opt.opt_str("P", "pflag", &pflag);
+    char *hflag = NULL;
+    opt.opt_str("H", "hflag", &hflag);
+    char *xarg = NULL;
+    char *Xarg = NULL;
+    char *yarg = NULL;
+    char *zarg = NULL;
+    opt.opt_str("x", "xarg", &xarg);
+    opt.opt_str("X", "Xarg", &Xarg);
+    opt.opt_str("y", "yarg", &yarg);
+    opt.opt_str("z", "zarg", &zarg);
+    
+
+    char **args = opt.opt_parse(argc, argv);
+    if (!*args) {
+        fprintf(stderr, "missing the url argument\n");
+        return 1;
     }
-
-    if (opt->ind != argc - 1) {
-        fprintf(stderr, "%s: wrong number of arguments\n", argv[0]);
-        usage(argv[0]);
-    }
-
-    if (parse_url(apr_pstrdup(cntxt, opt->argv[opt->ind++]))) {
+    if (parse_url(apr_pstrdup(cntxt, *args))) {
         fprintf(stderr, "%s: invalid URL\n", argv[0]);
         usage(argv[0]);
+        return 1;
     }
+    args++;
+    if (*args) {
+        fprintf(stderr, "unexpected argument: %s\n", *args);
+        return 1;
+    }
+    
+    if (cookiearg) {
+        cookie = apr_pstrcat(cntxt, "Cookie: ", cookiearg, "\r\n", NULL);
+    }
+
+    if (autharg) {
+        // assume username passwd already to be in colon separated form.
+        // Ready to be uu-encoded.
+        char *optarg = autharg;
+        while (isspace(*optarg)) {
+            optarg++;
+        }
+        if (apr_base64_encode_len(strlen(optarg)) > sizeof(tmp)) {
+            err("Authentication credentials too long\n");
+        }
+        l = apr_base64_encode(tmp, optarg, strlen(optarg));
+        tmp[l] = '\0';
+        auth = apr_pstrcat(cntxt, auth, "Authorization: Basic ", tmp, "\r\n", NULL);
+    }
+    
+
+    if (tlimit) {
+        // need to size data array on something.
+        requests = MAX_REQUESTS;
+    }
+    if (postfile) {
+        if (posting != 0) {
+            err("Cannot mix POST and HEAD\n");
+        }
+        int r = open_postfile(postfile);
+        if (r == 0) {
+            posting = 1;
+        } else if (postdata) {
+            exit(r);
+        }
+    }
+    if (iflag) {
+        if (posting == 1) {
+            err("Cannot mix POST and HEAD\n");
+        }
+        posting = -1;
+    }
+    if (hflag) {
+        usage(argv[0]);
+    }
+    if (vflag) {
+        copyright();
+        return 0;
+    }
+    if (dflag) {
+        percentile = 0;
+    }
+    if (sflag) {
+        confidence = 0;
+    }
+    if (quiet) {
+        heartbeatres = 0;
+    }
+
+    
+
+    if (pflag) {
+        char *optarg = pflag;
+        //  assume username passwd already to be in colon separated form.
+        while (isspace(*optarg)) optarg++;
+        if (apr_base64_encode_len(strlen(optarg)) > sizeof(tmp)) {
+            err("Proxy credentials too long\n");
+        }
+        l = apr_base64_encode(tmp, optarg, strlen(optarg));
+        tmp[l] = '\0';
+
+        auth = apr_pstrcat(cntxt, auth, "Proxy-Authorization: Basic ",
+                                tmp, "\r\n", NULL);
+    }
+    
+    if (hflag) {
+        char *optarg = hflag;
+        hdrs = apr_pstrcat(cntxt, hdrs, optarg, "\r\n", NULL);
+        /*
+            * allow override of some of the common headers that ab adds
+            */
+        if (strncasecmp(optarg, "Host:", 5) == 0) {
+            opt_host = 1;
+        } else if (strncasecmp(optarg, "Accept:", 7) == 0) {
+            opt_accept = 1;
+        } else if (strncasecmp(optarg, "User-Agent:", 11) == 0) {
+            opt_useragent = 1;
+        }
+    }
+    /*
+    * if any of the following three are used, turn on html output
+    * automatically
+    */
+    if (xarg) {
+        use_html = 1;
+        tablestring = xarg;
+    }
+    if (Xarg) {
+        char *optarg = Xarg;
+        char *p;
+        /*
+            * assume proxy-name[:port]
+            */
+        if ((p = strchr(optarg, ':'))) {
+            *p = '\0';
+            p++;
+            proxyport = atoi(p);
+        }
+        strcpy(proxyhost, optarg);
+        isproxy = 1;
+    }
+    
+    if (yarg) {
+        use_html = 1;
+        trstring = yarg;
+    }
+    if (zarg) {
+        use_html = 1;
+        tdstring = zarg;
+    }
+
 
     if ((concurrency < 0) || (concurrency > MAX_CONCURRENCY)) {
         fprintf(stderr, "%s: Invalid Concurrency [Range 0..%d]\n",
@@ -1694,8 +1725,6 @@ int main(int argc, char *argv[]) {
     else
         heartbeatres = 0;
 
-    apr_signal(SIGPIPE, SIG_IGN);       /* Ignore writes to connections that
-                                         * have been closed at the other end. */
     copyright();
     test();
     apr_pool_destroy(cntxt);
