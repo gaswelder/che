@@ -22,6 +22,9 @@ pub fn preparse(path: &String) -> Result<Preparse, String> {
         match l.get() {
             None => break,
             Some(t) => match t.kind.as_str() {
+                "error" => {
+                    return Err(format!("{} at {}:{}", t.content, path, t.pos));
+                }
                 "import" => {
                     let res = resolve::resolve_import(path, &t.content)?;
                     imports.push(Import {
