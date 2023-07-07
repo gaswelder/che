@@ -181,26 +181,27 @@ int confidence = 1;     /* Show confidence estimator and warnings */
 int tlimit = 0;         /* time limit in secs */
 int keepalive = 0;      /* try and do keepalive connections */
 int windowsize = 0;     /* we use the OS default window size */
-char servername[1024];  /* name that server reports */
-char *hostname;         /* host name from URL */
-char *host_field;       /* value of "Host:" header field */
-char *path;             /* path name */
-char postfile[1024];    /* name of file containing post data */
-char *postdata;         /* *buffer containing data from postfile */
+char servername[1024] = {0};  /* name that server reports */
+char *hostname = NULL;         /* host name from URL */
+char *host_field = NULL;       /* value of "Host:" header field */
+char *path = NULL;             /* path name */
+char postfile[1024] = {0};    /* name of file containing post data */
+char *postdata = NULL;         /* *buffer containing data from postfile */
 apr_size_t postlen = 0; /* length of data to be POSTed */
-char content_type[1024];/* content type to put in POST header */
-char *cookie,           /* optional cookie line */
-     *auth,             /* optional (basic/uuencoded) auhentication */
-     *hdrs;             /* optional arbitrary headers */
-apr_port_t port;        /* port number */
-char proxyhost[1024];   /* proxy host name */
+char content_type[1024] = {0};/* content type to put in POST header */
+char *cookie = NULL;           /* optional cookie line */
+char *auth = NULL;             /* optional (basic/uuencoded) auhentication */
+char *hdrs = NULL;             /* optional arbitrary headers */
+apr_port_t port = 0;        /* port number */
+char proxyhost[1024] = {0};   /* proxy host name */
 int proxyport = 0;      /* proxy port */
-char *connecthost;
-apr_port_t connectport;
-char *gnuplot;          /* GNUplot file */
-char *csvperc;          /* CSV Percentile file */
-char url[1024];
-char * fullurl, * colonhost;
+char *connecthost = NULL;
+apr_port_t connectport = 0;
+char *gnuplot = NULL;          /* GNUplot file */
+char *csvperc = NULL;          /* CSV Percentile file */
+char url[1024] = {0};
+char *fullurl = NULL;
+char * colonhost = NULL;
 int isproxy = 0;
 apr_interval_time_t aprtimeout = apr_time_from_sec(30); /* timeout value */
 
@@ -213,9 +214,9 @@ int opt_accept = 0;     /* was an optional "Accept:" header specified? */
   */
 
 int use_html = 0;       /* use html in the report */
-const char *tablestring;
-const char *trstring;
-const char *tdstring;
+const char *tablestring = NULL;
+const char *trstring = NULL;
+const char *tdstring = NULL;
 
 apr_size_t doclen = 0;     /* the length the document should be */
 apr_int64_t totalread = 0;    /* total number of bytes read */
@@ -224,7 +225,8 @@ apr_int64_t totalposted = 0;  /* total number of bytes posted, inc. headers */
 int started = 0;           /* number of requests started, so no excess */
 int done = 0;              /* number of requests we have done */
 int doneka = 0;            /* number of keep alive connections done */
-int good = 0, bad = 0;     /* number of good and bad requests */
+int good = 0;
+int bad = 0;     /* number of good and bad requests */
 int epipe = 0;             /* number of broken pipe writes */
 int err_length = 0;        /* requests failed due to response length */
 int err_conn = 0;          /* requests failed due to connection drop */
@@ -233,36 +235,33 @@ int err_except = 0;        /* requests failed due to exception */
 int err_response = 0;      /* requests with invalid or non-200 response */
 
 
-apr_time_t start, lasttime, stoptime;
+apr_time_t start = 0;
+apr_time_t lasttime = 0;
+apr_time_t stoptime = 0;
 
 /* global request (and its length) */
-char _request[2048];
+char _request[2048] = {0};
 char *request = _request;
-apr_size_t reqlen;
+apr_size_t reqlen = 0;
 
 /* one global throw-away buffer to read stuff into */
-char buffer[8192];
+char buffer[8192] = {0};
 
 /* interesting percentiles */
 int percs[] = {50, 66, 75, 80, 90, 95, 98, 99, 100};
 
-connection_t *con;     /* connection array */
-data_t *stats;         /* data for each request */
-apr_pool_t *cntxt;
+connection_t *con = NULL;     /* connection array */
+data_t *stats = NULL;         /* data for each request */
+apr_pool_t *cntxt = NULL;
 
-apr_pollset_t *readbits;
+apr_pollset_t *readbits = NULL;
 
-apr_sockaddr_t *destsa;
+apr_sockaddr_t *destsa = NULL;
 
-
-static void write_request(connection_t * c);
-static void close_connection(connection_t * c);
-
-/* --------------------------------------------------------- */
 
 /* simple little function to write an error string and exit */
 
-static void err(char *s)
+void err(char *s)
 {
     fprintf(stderr, "%s\n", s);
     if (done)
@@ -272,7 +271,7 @@ static void err(char *s)
 
 /* simple little function to write an APR error string and exit */
 
-static void apr_err(char *s, apr_status_t rv)
+void apr_err(char *s, apr_status_t rv)
 {
     char buf[120];
 
@@ -284,7 +283,7 @@ static void apr_err(char *s, apr_status_t rv)
     exit(rv);
 }
 
-static void set_polled_events(connection_t *c, apr_int16_t new_reqevents)
+void set_polled_events(connection_t *c, apr_int16_t new_reqevents)
 {
     apr_status_t rv;
 
@@ -306,7 +305,7 @@ static void set_polled_events(connection_t *c, apr_int16_t new_reqevents)
     }
 }
 
-static void set_conn_state(connection_t *c, int new_state)
+void set_conn_state(connection_t *c, int new_state)
 {
     apr_int16_t events_by_state[] = {
         0,           /* for STATE_UNCONNECTED */
@@ -329,7 +328,7 @@ static void set_conn_state(connection_t *c, int new_state)
  *
  */
 
-static void write_request(connection_t * c)
+void write_request(connection_t * c)
 {
     do {
         apr_time_t tnow;
@@ -414,7 +413,7 @@ static int compwait(data_t * a, data_t * b)
     return 0;
 }
 
-static void output_results(int sig)
+void output_results(int sig)
 {
     double timetaken;
 
@@ -694,7 +693,7 @@ void SANE(const char *what, double mean, median, sd) {
 
 /* calculate and output results in HTML  */
 
-static void output_html_results(void)
+void output_html_results(void)
 {
     double timetaken = (double) (lasttime - start) / APR_USEC_PER_SEC;
 
@@ -823,7 +822,7 @@ static void output_html_results(void)
 
 /* start asnchronous non-blocking connection */
 
-static void start_connect(connection_t * c)
+void start_connect(connection_t * c)
 {
     apr_status_t rv;
 
@@ -903,7 +902,7 @@ static void start_connect(connection_t * c)
 
 /* close down connection and save stats */
 
-static void close_connection(connection_t * c)
+void close_connection(connection_t * c)
 {
     if (c->read == 0 && c->keepalive) {
         /*
@@ -948,7 +947,7 @@ static void close_connection(connection_t * c)
 
 /* read data from connection */
 
-static void read_connection(connection_t * c)
+void read_connection(connection_t * c)
 {
     apr_size_t r;
     apr_status_t status;
@@ -1139,7 +1138,7 @@ static void read_connection(connection_t * c)
 
 /* run the tests */
 
-static void test(void)
+void test(void)
 {
     apr_time_t stoptime;
     apr_int16_t rv;
@@ -1368,7 +1367,7 @@ static void test(void)
 /* ------------------------------------------------------- */
 
 /* display copyright information */
-static void copyright(void)
+void copyright(void)
 {
     if (!use_html) {
         printf("This is ApacheBench, Version %s\n", AP_AB_BASEREVISION " <$Revision$>");
@@ -1386,7 +1385,7 @@ static void copyright(void)
 }
 
 /* display usage information */
-static void usage(const char *progname)
+void usage(const char *progname)
 {
     fprintf(stderr, "Usage: %s [options] [http"
         "://]hostname[:port]/path\n", progname);
