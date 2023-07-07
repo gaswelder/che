@@ -1,5 +1,6 @@
 #import opt
-#import strings
+// #import strings
+#import strbuilder
 
 /* Note: this version string should start with \d+[\d\.]* and be a valid
  * string for an HTTP Agent: header when prefixed with 'ApacheBench/'.
@@ -108,9 +109,6 @@ char postfile[1024] = {0};    /* name of file containing post data */
 char *postdata = NULL;         /* *buffer containing data from postfile */
 size_t postlen = 0; /* length of data to be POSTed */
 char content_type[1024] = {0};/* content type to put in POST header */
-char *cookie = NULL;           /* optional cookie line */
-char *auth = NULL;             /* optional (basic/uuencoded) auhentication */
-char *hdrs = NULL;             /* optional arbitrary headers */
 apr_port_t port = 0;        /* port number */
 char proxyhost[1024] = {0};   /* proxy host name */
 int proxyport = 0;      /* proxy port */
@@ -124,10 +122,11 @@ char * colonhost = NULL;
 int isproxy = 0;
 int aprtimeout = apr_time_from_sec(30); /* timeout value */
 
-/* overrides for ab-generated common headers */
-int opt_host = 0;       /* was an optional "Host:" header specified? */
-int opt_useragent = 0;  /* was an optional "User-Agent:" header specified? */
-int opt_accept = 0;     /* was an optional "Accept:" header specified? */
+char *opt_host = NULL;
+char *opt_useragent = NULL;
+char *opt_accept = "*/*";
+char *cookie = "";           /* optional cookie line */
+
  /*
   * XXX - this is now a per read/write transact type of value
   */
@@ -1072,8 +1071,7 @@ void read_connection(connection_t * c)
 
 /* run the tests */
 
-void test()
-{
+void test(const char *auth) {
     apr_time_t stoptime;
     int16_t rv;
     int i;
@@ -1091,14 +1089,14 @@ void test()
 
     if (!use_html) {
         printf("Benchmarking %s ", hostname);
-    if (isproxy)
-        printf("[through %s:%d] ", proxyhost, proxyport);
-    if (heartbeatres) {
-        printf("(be patient)\n");
-    } else {
-        printf("(be patient)...");
-    }
-    fflush(stdout);
+        if (isproxy)
+            printf("[through %s:%d] ", proxyhost, proxyport);
+        if (heartbeatres) {
+            printf("(be patient)\n");
+        } else {
+            printf("(be patient)...");
+        }
+        fflush(stdout);
     }
 
     con = calloc(concurrency, sizeof(connection_t));
@@ -1110,30 +1108,67 @@ void test()
         apr_err("apr_pollset_create failed", status);
     }
 
-    /* add default headers if necessary */
-    if (!opt_host) {
-        /* Host: header not overridden, add default value to hdrs */
-        hdrs = apr_pstrcat(cntxt, hdrs, "Host: ", host_field, colonhost, "\r\n", NULL);
-    }
-    else {
-        /* Header overridden, no need to add, as it is already in hdrs */
+    strbuilder.str *headers = strbuilder.str_new();
+
+    if (opt_host) {
+        bool ok = strbuilder.adds(headers, "Host: ")
+            && strbuilder.adds(headers, opt_host)
+            && strbuilder.adds(headers, "\r\n");
+        if (!ok) {
+            panic("!");
+        }
+    } else {
+        bool ok = strbuilder.adds(headers, "Host: ")
+            && strbuilder.adds(headers, host_field)
+            && strbuilder.adds(headers, colonhost)
+            && strbuilder.adds(headers, "\r\n");
+        if (!ok) {
+            panic("!");
+        }
     }
 
-    if (!opt_useragent) {
-        /* User-Agent: header not overridden, add default value to hdrs */
-        hdrs = apr_pstrcat(cntxt, hdrs, "User-Agent: ApacheBench/", AP_AB_BASEREVISION, "\r\n", NULL);
+    if (opt_useragent) {
+        bool ok = strbuilder.adds(headers, "User-Agent: ")
+            && strbuilder.adds(headers, opt_useragent)
+            && strbuilder.adds(headers, "\r\n");
+        if (!ok) {
+            panic("!");
+        }
     }
     else {
-        /* Header overridden, no need to add, as it is already in hdrs */
+        bool ok = strbuilder.adds(headers, "User-Agent: ApacheBench/")
+            && strbuilder.adds(headers, AP_AB_BASEREVISION)
+            && strbuilder.adds(headers, "\r\n");
+        if (!ok) {
+            panic("!");
+        }
     }
 
-    if (!opt_accept) {
-        /* Accept: header not overridden, add default value to hdrs */
-        hdrs = apr_pstrcat(cntxt, hdrs, "Accept: */*\r\n", NULL);
+    if (opt_accept) {
+        bool ok = strbuilder.adds(headers, "Accept: ")
+            && strbuilder.adds(headers, opt_accept)
+            && strbuilder.adds(headers, "\r\n");
+        if (!ok) {
+            panic("!");
+        }
+    } else {
+        bool ok = strbuilder.adds(headers, "Accept: ")
+            && strbuilder.adds(headers, "*/*")
+            && strbuilder.adds(headers, "\r\n");
+        if (!ok) {
+            panic("!");
+        }
     }
-    else {
-        /* Header overridden, no need to add, as it is already in hdrs */
+    if (cookie) {
+        bool ok = strbuilder.adds(headers, "Cookie: ")
+            && strbuilder.adds(headers, cookie)
+            && strbuilder.adds(headers, "\r\n");
+        if (!ok) {
+            panic("!");
+        }
     }
+
+    char *hdrs = strbuilder.str_unpack(headers);
 
     /* setup request */
     if (posting <= 0) {
@@ -1152,11 +1187,12 @@ void test()
         snprintf_res = apr_snprintf(request, sizeof(_request),
             "%s %s HTTP/1.0\r\n"
             "%s" "%s" "%s"
-            "%s" "\r\n",
+            "\r\n",
             method,
             ppath,
             kas,
-            cookie, auth, hdrs);
+            auth,
+            hdrs);
     }
     else {
         const char *ppath = path;
@@ -1173,14 +1209,14 @@ void test()
         }
         snprintf_res = apr_snprintf(request,  sizeof(_request),
             "POST %s HTTP/1.0\r\n"
-            "%s" "%s" "%s"
+            "%s" "%s"
             "Content-length: %zu\r\n"
             "Content-type: %s\r\n"
             "%s"
             "\r\n",
             ppath,
             kas,
-            cookie, auth,
+            auth,
             postlen,
             ctype, hdrs);
     }
@@ -1325,6 +1361,8 @@ void test()
             break;
         }
     }
+
+    free(hdrs);
     
     if (heartbeatres)
         fprintf(stderr, "Finished %d requests\n", done);
@@ -1502,15 +1540,16 @@ int main(int argc, char *argv[]) {
     tablestring = "";
     trstring = "";
     tdstring = "bgcolor=white";
-    cookie = "";
-    auth = "";
+
+    
     proxyhost[0] = '\0';
-    hdrs = "";
 
     apr_app_initialize(&argc, &argv, NULL);
     apr_pool_create(&cntxt, NULL);
 
     bool quiet = false;
+    bool hflag = false;
+    bool vflag = false;
 
     opt.opt_bool("k", "keep-alive", &keepalive);
     opt.opt_bool("q", "quiet", &quiet);
@@ -1520,10 +1559,7 @@ int main(int argc, char *argv[]) {
     opt.opt_bool("w", "use_html", &use_html);
     opt.opt_int("v", "verbosity", &verbosity);
     opt.opt_str("g", "gnuplot output file", &gnuplot);
-
-    bool hflag = false;
     opt.opt_bool("h", "print usage", &hflag);
-    bool vflag = false;
     opt.opt_bool("V", "print version", &vflag);
 
     bool iflag = false;
@@ -1546,14 +1582,14 @@ int main(int argc, char *argv[]) {
 
     
     char *autharg = NULL;
-    opt.opt_str("A", "auth", &autharg);
+    char *proxyauth = NULL;
+    opt.opt_str("A", "basic auth string (base64)", &autharg);
+    opt.opt_str("P", "basic proxy auth string (base64)", &proxyauth);
 
     opt.opt_str("T", "content_type", &content_type);
-    char *cookiearg = NULL;
-    opt.opt_str("C", "cookie", &cookiearg);
+    opt.opt_str("C", "cookie", &cookie);
 
-    char *pflag = NULL;
-    opt.opt_str("P", "pflag", &pflag);
+
     char *hflag = NULL;
     opt.opt_str("H", "hflag", &hflag);
     char *xarg = NULL;
@@ -1581,10 +1617,9 @@ int main(int argc, char *argv[]) {
         fprintf(stderr, "unexpected argument: %s\n", *args);
         return 1;
     }
-    
-    if (cookiearg) {
-        cookie = apr_pstrcat(cntxt, "Cookie: ", cookiearg, "\r\n", NULL);
-    }
+
+    /* optional (basic/uuencoded) auhentication */
+    strbuilder.str *auth = strbuilder.str_new();
 
     if (autharg) {
         // assume username passwd already to be in colon separated form.
@@ -1598,7 +1633,30 @@ int main(int argc, char *argv[]) {
         }
         l = apr_base64_encode(tmp, optarg, strlen(optarg));
         tmp[l] = '\0';
-        auth = apr_pstrcat(cntxt, auth, "Authorization: Basic ", tmp, "\r\n", NULL);
+
+        bool ok = strbuilder.adds(auth, "Authorization: Basic ")
+            && strbuilder.adds(auth, tmp)
+            && strbuilder.adds(auth, "\r\n");
+        if (!ok) {
+            panic("");
+        }
+    }
+
+    if (proxyauth) {
+        char *optarg = proxyauth;
+        //  assume username passwd already to be in colon separated form.
+        while (isspace(*optarg)) optarg++;
+        if (apr_base64_encode_len(strlen(optarg)) > sizeof(tmp)) {
+            err("Proxy credentials too long\n");
+        }
+        l = apr_base64_encode(tmp, optarg, strlen(optarg));
+        tmp[l] = '\0';
+        bool ok = strbuilder.adds(auth, "Proxy-Authorization: Basic ")
+            && strbuilder.adds(auth, tmp)
+            && strbuilder.adds(auth, "\r\n");
+        if (!ok) {
+            panic("");
+        }
     }
     
 
@@ -1638,37 +1696,6 @@ int main(int argc, char *argv[]) {
     }
     if (quiet) {
         heartbeatres = 0;
-    }
-
-    
-
-    if (pflag) {
-        char *optarg = pflag;
-        //  assume username passwd already to be in colon separated form.
-        while (isspace(*optarg)) optarg++;
-        if (apr_base64_encode_len(strlen(optarg)) > sizeof(tmp)) {
-            err("Proxy credentials too long\n");
-        }
-        l = apr_base64_encode(tmp, optarg, strlen(optarg));
-        tmp[l] = '\0';
-
-        auth = apr_pstrcat(cntxt, auth, "Proxy-Authorization: Basic ",
-                                tmp, "\r\n", NULL);
-    }
-    
-    if (hflag) {
-        char *optarg = hflag;
-        hdrs = apr_pstrcat(cntxt, hdrs, optarg, "\r\n", NULL);
-        /*
-            * allow override of some of the common headers that ab adds
-            */
-        if (strings.starts_with_i(optarg, "Host:")) {
-            opt_host = 1;
-        } else if (strings.starts_with_i(optarg, "Accept:")) {
-            opt_accept = 1;
-        } else if (strings.starts_with_i(optarg, "User-Agent:")) {
-            opt_useragent = 1;
-        }
     }
     /*
     * if any of the following three are used, turn on html output
@@ -1725,6 +1752,9 @@ int main(int argc, char *argv[]) {
         heartbeatres = 0;
 
     copyright();
-    test();
+
+    test(strbuilder.str_raw(auth));
+
+    strbuilder.str_free(auth);
     return 0;
 }

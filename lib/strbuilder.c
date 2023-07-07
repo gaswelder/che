@@ -27,13 +27,16 @@ pub bool str_addc(str *s, int ch) {
 	return true;
 }
 
-pub bool str_adds(str *s, const char *a) {
-	const char *c = a;
-	while (*c) {
-		if (!str_addc(s, *c)) {
+/*
+ * Appends string s to the builder's buffer.
+ */
+pub bool adds(str *b, const char *s) {
+	const char *p = s;
+	while (*p) {
+		if (!str_addc(b, *p)) {
 			return false;
 		}
-		c++;
+		p++;
 	}
 	return true;
 }
