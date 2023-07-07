@@ -22,7 +22,13 @@ sampletest () {
 	diff tmp/output samples/$name/out.snapshot || return 1
 }
 for n in `ls samples`; do
-	sampletest $n && echo OK sample $n || exit 1
+	sampletest $n
+	if [ $? = 0 ]; then
+		echo OK sample $n
+	else
+		echo FAIL sample $n
+		exit 1
+	fi
 done
 
 #
