@@ -175,6 +175,238 @@ apr_pollset_t *readbits = NULL;
 
 apr_sockaddr_t *destsa = NULL;
 
+int main(int argc, char *argv[]) {
+    int r;
+    int l;
+    char tmp[1024];
+    int status;
+    const char *optarg;
+    char c;
+
+    /* table defaults  */
+    tablestring = "";
+    trstring = "";
+    tdstring = "bgcolor=white";
+
+    
+    proxyhost[0] = '\0';
+
+    apr_app_initialize(&argc, &argv, NULL);
+    apr_pool_create(&cntxt, NULL);
+
+    bool quiet = false;
+    bool hflag = false;
+    bool vflag = false;
+
+    opt.opt_bool("k", "keep-alive", &keepalive);
+    opt.opt_bool("q", "quiet", &quiet);
+    opt.opt_int("c", "concurrency", &concurrency);
+    opt.opt_int("b", "windowsize", &windowsize);
+    opt.opt_size("n", "number of requests", &requests);
+    opt.opt_bool("w", "use_html", &use_html);
+    opt.opt_int("v", "verbosity", &verbosity);
+    opt.opt_str("g", "gnuplot output file", &gnuplot);
+    opt.opt_bool("h", "print usage", &hflag);
+    opt.opt_bool("V", "print version", &vflag);
+
+    bool iflag = false;
+    opt.opt_bool("i", "use head", &iflag);
+
+
+    bool dflag = false;
+    opt.opt_bool("d", "percentile = 0", &dflag);
+    bool sflag = false;
+    opt.opt_bool("S", "confidence = 0", &sflag);
+
+    opt.opt_str("e", "csvperc", &csvperc);
+
+
+    char *postfile = NULL;
+    opt.opt_str("p", "postfile", &postfile);
+
+    opt.opt_bool("r", "recverrok = 1", &recverrok);
+    opt.opt_size("t", "tlimit", &tlimit);
+
+    
+    char *autharg = NULL;
+    char *proxyauth = NULL;
+    opt.opt_str("A", "basic auth string (base64)", &autharg);
+    opt.opt_str("P", "basic proxy auth string (base64)", &proxyauth);
+
+    opt.opt_str("T", "content_type", &content_type);
+    opt.opt_str("C", "cookie", &cookie);
+
+
+    char *hflag = NULL;
+    opt.opt_str("H", "hflag", &hflag);
+    char *xarg = NULL;
+    char *Xarg = NULL;
+    char *yarg = NULL;
+    char *zarg = NULL;
+    opt.opt_str("x", "xarg", &xarg);
+    opt.opt_str("X", "Xarg", &Xarg);
+    opt.opt_str("y", "yarg", &yarg);
+    opt.opt_str("z", "zarg", &zarg);
+    
+
+    char **args = opt.opt_parse(argc, argv);
+    if (!*args) {
+        fprintf(stderr, "missing the url argument\n");
+        return 1;
+    }
+    if (parse_url(*args)) {
+        fprintf(stderr, "%s: invalid URL\n", argv[0]);
+        usage(argv[0]);
+        return 1;
+    }
+    args++;
+    if (*args) {
+        fprintf(stderr, "unexpected argument: %s\n", *args);
+        return 1;
+    }
+
+    /* optional (basic/uuencoded) auhentication */
+    strbuilder.str *auth = strbuilder.str_new();
+
+    if (autharg) {
+        // assume username passwd already to be in colon separated form.
+        // Ready to be uu-encoded.
+        char *optarg = autharg;
+        while (isspace(*optarg)) {
+            optarg++;
+        }
+        if (apr_base64_encode_len(strlen(optarg)) > sizeof(tmp)) {
+            err("Authentication credentials too long\n");
+        }
+        l = apr_base64_encode(tmp, optarg, strlen(optarg));
+        tmp[l] = '\0';
+
+        bool ok = strbuilder.adds(auth, "Authorization: Basic ")
+            && strbuilder.adds(auth, tmp)
+            && strbuilder.adds(auth, "\r\n");
+        if (!ok) {
+            panic("");
+        }
+    }
+
+    if (proxyauth) {
+        char *optarg = proxyauth;
+        //  assume username passwd already to be in colon separated form.
+        while (isspace(*optarg)) optarg++;
+        if (apr_base64_encode_len(strlen(optarg)) > sizeof(tmp)) {
+            err("Proxy credentials too long\n");
+        }
+        l = apr_base64_encode(tmp, optarg, strlen(optarg));
+        tmp[l] = '\0';
+        bool ok = strbuilder.adds(auth, "Proxy-Authorization: Basic ")
+            && strbuilder.adds(auth, tmp)
+            && strbuilder.adds(auth, "\r\n");
+        if (!ok) {
+            panic("");
+        }
+    }
+    
+
+    if (tlimit) {
+        // need to size data array on something.
+        requests = MAX_REQUESTS;
+    }
+    if (postfile) {
+        if (posting != 0) {
+            err("Cannot mix POST and HEAD\n");
+        }
+        postdata = fs.readfile(postfile, &postlen);
+        if (!postdata) {
+            fprintf(stderr, "failed to read file %s: %s\n", postfile, strerror(errno));
+            exit(1);
+        }
+        posting = 1;
+    }
+    if (iflag) {
+        if (posting == 1) {
+            err("Cannot mix POST and HEAD\n");
+        }
+        posting = -1;
+    }
+    if (hflag) {
+        usage(argv[0]);
+    }
+    if (vflag) {
+        copyright();
+        return 0;
+    }
+    if (dflag) {
+        percentile = 0;
+    }
+    if (sflag) {
+        confidence = 0;
+    }
+    if (quiet) {
+        heartbeatres = 0;
+    }
+    /*
+    * if any of the following three are used, turn on html output
+    * automatically
+    */
+    if (xarg) {
+        use_html = 1;
+        tablestring = xarg;
+    }
+    if (Xarg) {
+        char *optarg = Xarg;
+        char *p;
+        /*
+            * assume proxy-name[:port]
+            */
+        if ((p = strchr(optarg, ':'))) {
+            *p = '\0';
+            p++;
+            proxyport = atoi(p);
+        }
+        strcpy(proxyhost, optarg);
+        isproxy = 1;
+    }
+    
+    if (yarg) {
+        use_html = 1;
+        trstring = yarg;
+    }
+    if (zarg) {
+        use_html = 1;
+        tdstring = zarg;
+    }
+
+
+    if ((concurrency < 0) || (concurrency > MAX_CONCURRENCY)) {
+        fprintf(stderr, "%s: Invalid Concurrency [Range 0..%d]\n",
+                argv[0], MAX_CONCURRENCY);
+        usage(argv[0]);
+    }
+
+    if (concurrency > requests) {
+        fprintf(stderr, "%s: Cannot use concurrency level greater than "
+                "total number of requests\n", argv[0]);
+        usage(argv[0]);
+    }
+
+    if ((heartbeatres) && (requests > 150)) {
+        heartbeatres = requests / 10;   /* Print line every 10% of requests */
+        if (heartbeatres < 100)
+            heartbeatres = 100; /* but never more often than once every 100
+                                 * connections. */
+    }
+    else
+        heartbeatres = 0;
+
+    copyright();
+
+    test(strbuilder.str_raw(auth));
+
+    strbuilder.str_free(auth);
+    return 0;
+}
+
+
 
 /* simple little function to write an error string and exit */
 
@@ -1483,237 +1715,4 @@ int parse_url(char *url)
     return 0;
 }
 
-/* ------------------------------------------------------- */
 
-/* read data to POST from file, save contents and length */
-
-int main(int argc, char *argv[]) {
-    int r;
-    int l;
-    char tmp[1024];
-    int status;
-    const char *optarg;
-    char c;
-
-    /* table defaults  */
-    tablestring = "";
-    trstring = "";
-    tdstring = "bgcolor=white";
-
-    
-    proxyhost[0] = '\0';
-
-    apr_app_initialize(&argc, &argv, NULL);
-    apr_pool_create(&cntxt, NULL);
-
-    bool quiet = false;
-    bool hflag = false;
-    bool vflag = false;
-
-    opt.opt_bool("k", "keep-alive", &keepalive);
-    opt.opt_bool("q", "quiet", &quiet);
-    opt.opt_int("c", "concurrency", &concurrency);
-    opt.opt_int("b", "windowsize", &windowsize);
-    opt.opt_size("n", "number of requests", &requests);
-    opt.opt_bool("w", "use_html", &use_html);
-    opt.opt_int("v", "verbosity", &verbosity);
-    opt.opt_str("g", "gnuplot output file", &gnuplot);
-    opt.opt_bool("h", "print usage", &hflag);
-    opt.opt_bool("V", "print version", &vflag);
-
-    bool iflag = false;
-    opt.opt_bool("i", "use head", &iflag);
-
-
-    bool dflag = false;
-    opt.opt_bool("d", "percentile = 0", &dflag);
-    bool sflag = false;
-    opt.opt_bool("S", "confidence = 0", &sflag);
-
-    opt.opt_str("e", "csvperc", &csvperc);
-
-
-    char *postfile = NULL;
-    opt.opt_str("p", "postfile", &postfile);
-
-    opt.opt_bool("r", "recverrok = 1", &recverrok);
-    opt.opt_size("t", "tlimit", &tlimit);
-
-    
-    char *autharg = NULL;
-    char *proxyauth = NULL;
-    opt.opt_str("A", "basic auth string (base64)", &autharg);
-    opt.opt_str("P", "basic proxy auth string (base64)", &proxyauth);
-
-    opt.opt_str("T", "content_type", &content_type);
-    opt.opt_str("C", "cookie", &cookie);
-
-
-    char *hflag = NULL;
-    opt.opt_str("H", "hflag", &hflag);
-    char *xarg = NULL;
-    char *Xarg = NULL;
-    char *yarg = NULL;
-    char *zarg = NULL;
-    opt.opt_str("x", "xarg", &xarg);
-    opt.opt_str("X", "Xarg", &Xarg);
-    opt.opt_str("y", "yarg", &yarg);
-    opt.opt_str("z", "zarg", &zarg);
-    
-
-    char **args = opt.opt_parse(argc, argv);
-    if (!*args) {
-        fprintf(stderr, "missing the url argument\n");
-        return 1;
-    }
-    if (parse_url(*args)) {
-        fprintf(stderr, "%s: invalid URL\n", argv[0]);
-        usage(argv[0]);
-        return 1;
-    }
-    args++;
-    if (*args) {
-        fprintf(stderr, "unexpected argument: %s\n", *args);
-        return 1;
-    }
-
-    /* optional (basic/uuencoded) auhentication */
-    strbuilder.str *auth = strbuilder.str_new();
-
-    if (autharg) {
-        // assume username passwd already to be in colon separated form.
-        // Ready to be uu-encoded.
-        char *optarg = autharg;
-        while (isspace(*optarg)) {
-            optarg++;
-        }
-        if (apr_base64_encode_len(strlen(optarg)) > sizeof(tmp)) {
-            err("Authentication credentials too long\n");
-        }
-        l = apr_base64_encode(tmp, optarg, strlen(optarg));
-        tmp[l] = '\0';
-
-        bool ok = strbuilder.adds(auth, "Authorization: Basic ")
-            && strbuilder.adds(auth, tmp)
-            && strbuilder.adds(auth, "\r\n");
-        if (!ok) {
-            panic("");
-        }
-    }
-
-    if (proxyauth) {
-        char *optarg = proxyauth;
-        //  assume username passwd already to be in colon separated form.
-        while (isspace(*optarg)) optarg++;
-        if (apr_base64_encode_len(strlen(optarg)) > sizeof(tmp)) {
-            err("Proxy credentials too long\n");
-        }
-        l = apr_base64_encode(tmp, optarg, strlen(optarg));
-        tmp[l] = '\0';
-        bool ok = strbuilder.adds(auth, "Proxy-Authorization: Basic ")
-            && strbuilder.adds(auth, tmp)
-            && strbuilder.adds(auth, "\r\n");
-        if (!ok) {
-            panic("");
-        }
-    }
-    
-
-    if (tlimit) {
-        // need to size data array on something.
-        requests = MAX_REQUESTS;
-    }
-    if (postfile) {
-        if (posting != 0) {
-            err("Cannot mix POST and HEAD\n");
-        }
-        postdata = fs.readfile(postfile, &postlen);
-        if (!postdata) {
-            fprintf(stderr, "failed to read file %s: %s\n", postfile, strerror(errno));
-            exit(1);
-        }
-        posting = 1;
-    }
-    if (iflag) {
-        if (posting == 1) {
-            err("Cannot mix POST and HEAD\n");
-        }
-        posting = -1;
-    }
-    if (hflag) {
-        usage(argv[0]);
-    }
-    if (vflag) {
-        copyright();
-        return 0;
-    }
-    if (dflag) {
-        percentile = 0;
-    }
-    if (sflag) {
-        confidence = 0;
-    }
-    if (quiet) {
-        heartbeatres = 0;
-    }
-    /*
-    * if any of the following three are used, turn on html output
-    * automatically
-    */
-    if (xarg) {
-        use_html = 1;
-        tablestring = xarg;
-    }
-    if (Xarg) {
-        char *optarg = Xarg;
-        char *p;
-        /*
-            * assume proxy-name[:port]
-            */
-        if ((p = strchr(optarg, ':'))) {
-            *p = '\0';
-            p++;
-            proxyport = atoi(p);
-        }
-        strcpy(proxyhost, optarg);
-        isproxy = 1;
-    }
-    
-    if (yarg) {
-        use_html = 1;
-        trstring = yarg;
-    }
-    if (zarg) {
-        use_html = 1;
-        tdstring = zarg;
-    }
-
-
-    if ((concurrency < 0) || (concurrency > MAX_CONCURRENCY)) {
-        fprintf(stderr, "%s: Invalid Concurrency [Range 0..%d]\n",
-                argv[0], MAX_CONCURRENCY);
-        usage(argv[0]);
-    }
-
-    if (concurrency > requests) {
-        fprintf(stderr, "%s: Cannot use concurrency level greater than "
-                "total number of requests\n", argv[0]);
-        usage(argv[0]);
-    }
-
-    if ((heartbeatres) && (requests > 150)) {
-        heartbeatres = requests / 10;   /* Print line every 10% of requests */
-        if (heartbeatres < 100)
-            heartbeatres = 100; /* but never more often than once every 100
-                                 * connections. */
-    }
-    else
-        heartbeatres = 0;
-
-    copyright();
-
-    test(strbuilder.str_raw(auth));
-
-    strbuilder.str_free(auth);
-    return 0;
-}
