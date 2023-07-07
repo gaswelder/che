@@ -29,10 +29,6 @@
  *   only an issue for loopback usage
  */
 
-enum {
-    AB_MAX = LLONG_MAX
-};
-
 /* maximum number of requests on a time limited test */
 #define MAX_REQUESTS (INT_MAX > 50000 ? 50000 : INT_MAX)
 
@@ -43,6 +39,18 @@ typedef {
 apr_time_t apr_time_now() {
     apr_time_t r = {};
     return r;
+}
+
+int apr_time_from_sec() {
+    return -1;
+}
+
+void apr_ctime() {
+    //
+}
+
+void apr_time_sec() {
+    //
 }
 
 enum {
@@ -57,9 +65,7 @@ enum {
 #define CBUFFSIZE (2048)
 
 typedef {
-    apr_pool_t *ctx;
     io.handle_t *aprsock;
-    apr_pollfd_t pollfd;
     int state;
     size_t read;            /* amount of bytes read */
     size_t bread;           /* amount of body read */
@@ -116,11 +122,11 @@ char postfile[1024] = {0};    /* name of file containing post data */
 char *postdata = NULL;         /* *buffer containing data from postfile */
 size_t postlen = 0; /* length of data to be POSTed */
 char content_type[1024] = {0};/* content type to put in POST header */
-apr_port_t port = 0;        /* port number */
+int port = 0;        /* port number */
 char proxyhost[1024] = {0};   /* proxy host name */
 int proxyport = 0;      /* proxy port */
 char *connecthost = NULL;
-apr_port_t connectport = 0;
+int connectport = 0;
 char *gnuplot = NULL;          /* GNUplot file */
 char *csvperc = NULL;          /* CSV Percentile file */
 char url[1024] = {0};
@@ -133,6 +139,8 @@ char *opt_host = NULL;
 char *opt_useragent = NULL;
 char *opt_accept = "*/*";
 char *cookie = "";           /* optional cookie line */
+char *autharg = NULL;
+char *proxyauth = NULL;
 
  /*
   * XXX - this is now a per read/write transact type of value
@@ -180,8 +188,6 @@ data_t *stats = NULL;         /* data for each request */
 
 int main(int argc, char *argv[]) {
     int r;
-    int l;
-    char tmp[1024];
     int status;
     const char *optarg;
     char c;
@@ -226,13 +232,8 @@ int main(int argc, char *argv[]) {
 
     opt.opt_bool("r", "recverrok = 1", &recverrok);
     opt.opt_size("t", "tlimit", &tlimit);
-
-    
-    char *autharg = NULL;
-    char *proxyauth = NULL;
     opt.opt_str("A", "basic auth string (base64)", &autharg);
     opt.opt_str("P", "basic proxy auth string (base64)", &proxyauth);
-
     opt.opt_str("T", "content_type", &content_type);
     opt.opt_str("C", "cookie", &cookie);
 
@@ -266,12 +267,11 @@ int main(int argc, char *argv[]) {
         fprintf(stderr, "SSL not compiled in; no https support\n");
         exit(1);
     }
-    host_field = r.hostname;
-    if (port == 0) {        /* no port specified */
-        port = 80;
-    }
-    if (port != 80) {
-        colonhost = strings.newstr(":%d", port);
+
+    if (r.port[0] == '\0') {
+        colonhost = strings.newstr("%s:80", r.hostname);
+    } else {
+        colonhost = strings.newstr("%s:%s", r.hostname, r.port);
     }
 
     args++;
@@ -279,48 +279,6 @@ int main(int argc, char *argv[]) {
         fprintf(stderr, "unexpected argument: %s\n", *args);
         return 1;
     }
-
-    /* optional (basic/uuencoded) auhentication */
-    strbuilder.str *auth = strbuilder.str_new();
-
-    if (autharg) {
-        // assume username passwd already to be in colon separated form.
-        // Ready to be uu-encoded.
-        char *optarg = autharg;
-        while (isspace(*optarg)) {
-            optarg++;
-        }
-        if (apr_base64_encode_len(strlen(optarg)) > sizeof(tmp)) {
-            err("Authentication credentials too long\n");
-        }
-        l = apr_base64_encode(tmp, optarg, strlen(optarg));
-        tmp[l] = '\0';
-
-        bool ok = strbuilder.adds(auth, "Authorization: Basic ")
-            && strbuilder.adds(auth, tmp)
-            && strbuilder.adds(auth, "\r\n");
-        if (!ok) {
-            panic("");
-        }
-    }
-
-    if (proxyauth) {
-        char *optarg = proxyauth;
-        //  assume username passwd already to be in colon separated form.
-        while (isspace(*optarg)) optarg++;
-        if (apr_base64_encode_len(strlen(optarg)) > sizeof(tmp)) {
-            err("Proxy credentials too long\n");
-        }
-        l = apr_base64_encode(tmp, optarg, strlen(optarg));
-        tmp[l] = '\0';
-        bool ok = strbuilder.adds(auth, "Proxy-Authorization: Basic ")
-            && strbuilder.adds(auth, tmp)
-            && strbuilder.adds(auth, "\r\n");
-        if (!ok) {
-            panic("");
-        }
-    }
-    
 
     if (tlimit) {
         // need to size data array on something.
@@ -420,9 +378,7 @@ int main(int argc, char *argv[]) {
     /* Output the results if the user terminates the run early. */
     signal(SIGINT, output_results);
 
-    test(strbuilder.str_raw(auth));
-
-    strbuilder.str_free(auth);
+    test();
     return 0;
 }
 
@@ -485,6 +441,45 @@ void init_request() {
             panic("!");
         }
     }
+    if (autharg) {
+        int l;
+        char tmp[1024];
+        // assume username passwd already to be in colon separated form.
+        // Ready to be uu-encoded.
+        char *optarg = autharg;
+        while (isspace(*optarg)) {
+            optarg++;
+        }
+        if (apr_base64_encode_len(strlen(optarg)) > sizeof(tmp)) {
+            err("Authentication credentials too long\n");
+        }
+        l = apr_base64_encode(tmp, optarg, strlen(optarg));
+        tmp[l] = '\0';
+        bool ok = strbuilder.adds(headers, "Authorization: Basic ")
+            && strbuilder.adds(headers, tmp)
+            && strbuilder.adds(headers, "\r\n");
+        if (!ok) {
+            panic("");
+        }
+    }
+    if (proxyauth) {
+        int l;
+        char tmp[1024];
+        char *optarg = proxyauth;
+        //  assume username passwd already to be in colon separated form.
+        while (isspace(*optarg)) optarg++;
+        if (apr_base64_encode_len(strlen(optarg)) > sizeof(tmp)) {
+            err("Proxy credentials too long\n");
+        }
+        l = apr_base64_encode(tmp, optarg, strlen(optarg));
+        tmp[l] = '\0';
+        bool ok = strbuilder.adds(headers, "Proxy-Authorization: Basic ")
+            && strbuilder.adds(headers, tmp)
+            && strbuilder.adds(headers, "\r\n");
+        if (!ok) {
+            panic("");
+        }
+    }
 
     char *hdrs = strbuilder.str_unpack(headers);
     int snprintf_res = 0;
@@ -510,7 +505,6 @@ void init_request() {
             method,
             ppath,
             kas,
-            auth,
             hdrs);
     }
     else {
@@ -535,7 +529,6 @@ void init_request() {
             "\r\n",
             ppath,
             kas,
-            auth,
             postlen,
             ctype, hdrs);
     }
@@ -563,7 +556,7 @@ void init_request() {
     free(hdrs);
 }
 
-void test(const char *auth) {
+void test() {
     apr_time_t stoptime;
     int16_t rv;
     int i;
@@ -601,7 +594,7 @@ void test(const char *auth) {
     if (tlimit) {
         stoptime = (start + apr_time_from_sec(tlimit));
     } else {
-        stoptime = AB_MAX;
+        stoptime = LONG_MAX;
     }
     for (int i = 0; i < concurrency; i++) {
         con[i].socknum = i;
@@ -630,7 +623,7 @@ void test(const char *auth) {
 }
 
 void connection_connect(connection_t *c) {
-    c->aprsock = io.connect("tcp", destsa);
+    c->aprsock = io.connect("tcp", colonhost);
     if (!c->aprsock) {
         err_conn++;
         if (bad++ > 10) {
@@ -754,6 +747,13 @@ int compwait(data_t * a, data_t * b)
     return 0;
 }
 
+enum {
+    APR_USEC_PER_SEC = 1
+};
+int duration_seconds(int duration) {
+    return (double) duration / APR_USEC_PER_SEC;
+}
+
 void output_results(int sig)
 {
     double timetaken;
@@ -761,7 +761,7 @@ void output_results(int sig)
     if (sig) {
         lasttime = apr_time_now();  /* record final time if interrupted */
     }
-    timetaken = (double) (lasttime - start) / APR_USEC_PER_SEC;
+    timetaken = duration_seconds(lasttime - start);
 
     printf("\n\n");
     printf("Server Software:        %s\n", servername);
@@ -817,10 +817,10 @@ void output_results(int sig)
         apr_time_t meantot = 0;
         apr_time_t meand = 0;
         apr_time_t meanwait = 0;
-        int mincon = AB_MAX;
-        int mintot = AB_MAX;
-        int mind = AB_MAX;
-        int minwait = AB_MAX;
+        int mincon = LONG_MAX;
+        int mintot = LONG_MAX;
+        int mind = LONG_MAX;
+        int minwait = LONG_MAX;
         int maxcon = 0;
         int maxtot = 0;
         int maxd = 0;
@@ -1119,8 +1119,8 @@ void output_html_results()
     int i = 0;
     int totalcon = 0;
     int total = 0;
-    int mincon = AB_MAX;
-    int mintot = AB_MAX;
+    int mincon = LONG_MAX;
+    int mintot = LONG_MAX;
     int maxcon = 0;
     int maxtot = 0;
 
@@ -1185,14 +1185,10 @@ void start_connect(connection_t * c)
     c->cbx = 0;
     c->gotheader = 0;
     c->rwrite = 0;
-    if (c->ctx)
-        apr_pool_clear(c->ctx);
-    else
-        apr_pool_create(&c->ctx, cntxt);
 
-    c->aprsock = io.connect("tcp", httpaddr);
+    c->aprsock = io.connect("tcp", colonhost);
     if (!c->aprsock) {
-        fprintf(stderr, "failed to connect to %s: %s\n", httpaddr, strerror(errno));
+        fprintf(stderr, "failed to connect to %s: %s\n", colonhost, strerror(errno));
         exit(1);
     }
     c->pollfd.desc.s = c->aprsock;
@@ -1205,7 +1201,7 @@ void start_connect(connection_t * c)
     // }
 
     c->start = lasttime = apr_time_now();
-    c->aprsock = io.connect("tcp", destsa);
+    c->aprsock = io.connect("tcp", colonhost);
     if (!c->aprsock) {
         c->state = STATE_UNCONNECTED;
         err_conn++;
@@ -1552,4 +1548,12 @@ void err(char *s) {
 
 int apr_socket_opt_set(int fd, int opt, int val) {
     return 0;
+}
+
+int apr_base64_encode_len() {
+    panic("todo");
+}
+
+int apr_base64_encode() {
+    panic("todo");
 }
