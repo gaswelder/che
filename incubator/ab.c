@@ -1,4 +1,5 @@
 #import opt
+#import strings
 
 /* Note: this version string should start with \d+[\d\.]* and be a valid
  * string for an HTTP Agent: header when prefixed with 'ApacheBench/'.
@@ -1494,7 +1495,6 @@ int main(int argc, char *argv[]) {
     int l;
     char tmp[1024];
     int status;
-    apr_getopt_t *opt;
     const char *optarg;
     char c;
 
@@ -1508,7 +1508,6 @@ int main(int argc, char *argv[]) {
     hdrs = "";
 
     apr_app_initialize(&argc, &argv, NULL);
-    atexit(apr_terminate);
     apr_pool_create(&cntxt, NULL);
 
     bool quiet = false;
@@ -1663,11 +1662,11 @@ int main(int argc, char *argv[]) {
         /*
             * allow override of some of the common headers that ab adds
             */
-        if (strncasecmp(optarg, "Host:", 5) == 0) {
+        if (strings.starts_with_i(optarg, "Host:")) {
             opt_host = 1;
-        } else if (strncasecmp(optarg, "Accept:", 7) == 0) {
+        } else if (strings.starts_with_i(optarg, "Accept:")) {
             opt_accept = 1;
-        } else if (strncasecmp(optarg, "User-Agent:", 11) == 0) {
+        } else if (strings.starts_with_i(optarg, "User-Agent:")) {
             opt_useragent = 1;
         }
     }
@@ -1727,7 +1726,5 @@ int main(int argc, char *argv[]) {
 
     copyright();
     test();
-    apr_pool_destroy(cntxt);
-
     return 0;
 }

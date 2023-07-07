@@ -130,6 +130,19 @@ pub bool starts_with(const char *string, *prefix) {
 	return *y == '\0';
 }
 
+pub bool starts_with_i(const char *string, *prefix) {
+	const char *x = string;
+    const char *y = prefix;
+    while (*x && *y) {
+        if (tolower(*x) != tolower(*y)) {
+            return false;
+        }
+		x++;
+		y++;
+    }
+    return *y == '\0';
+}
+
 pub bool ends_with(const char *string, *suffix) {
 	const char *x = string;
 	const char *y = suffix;
