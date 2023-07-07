@@ -1,4 +1,5 @@
 #import opt
+#import fs
 // #import strings
 #import strbuilder
 
@@ -82,8 +83,6 @@ typedef {
     int time;     /* time for connection */
 } data_t;
 
-#define ap_min(a,b) ((a)<(b))?(a):(b)
-#define ap_max(a,b) ((a)>(b))?(a):(b)
 #define ap_round_ms(a) ((apr_time_t)((a) + 500)/1000)
 #define ap_double_ms(a) ((double)(a)/1000.0)
 #define MAX_CONCURRENCY 20000
@@ -414,15 +413,15 @@ void output_results(int sig)
 
         for (int i = 0; i < done; i++) {
             data_t *s = &stats[i];
-            mincon = ap_min(mincon, s->ctime);
-            mintot = ap_min(mintot, s->time);
-            mind = ap_min(mind, s->time - s->ctime);
-            minwait = ap_min(minwait, s->waittime);
+            mincon = min(mincon, s->ctime);
+            mintot = min(mintot, s->time);
+            mind = min(mind, s->time - s->ctime);
+            minwait = min(minwait, s->waittime);
 
-            maxcon = ap_max(maxcon, s->ctime);
-            maxtot = ap_max(maxtot, s->time);
-            maxd = ap_max(maxd, s->time - s->ctime);
-            maxwait = ap_max(maxwait, s->waittime);
+            maxcon = max(maxcon, s->ctime);
+            maxtot = max(maxtot, s->time);
+            maxd = max(maxd, s->time - s->ctime);
+            maxwait = max(maxwait, s->waittime);
 
             totalcon += s->ctime;
             total += s->time;
@@ -704,10 +703,10 @@ void output_html_results()
 
     for (int i = 0; i < done; i++) {
         data_t *s = &stats[i];
-        mincon = ap_min(mincon, s->ctime);
-        mintot = ap_min(mintot, s->time);
-        maxcon = ap_max(maxcon, s->ctime);
-        maxtot = ap_max(maxtot, s->time);
+        mincon = min(mincon, s->ctime);
+        mintot = min(mintot, s->time);
+        maxcon = max(maxcon, s->ctime);
+        maxtot = max(maxtot, s->time);
         totalcon += s->ctime;
         total    += s->time;
     }
@@ -851,9 +850,9 @@ void close_connection(connection_t * c)
             data_t *s = &stats[done++];
             c->done      = lasttime = apr_time_now();
             s->starttime = c->start;
-            s->ctime     = ap_max(0, c->connect - c->start);
-            s->time      = ap_max(0, c->done - c->start);
-            s->waittime  = ap_max(0, c->beginread - c->endwrite);
+            s->ctime     = max(0, c->connect - c->start);
+            s->time      = max(0, c->done - c->start);
+            s->waittime  = max(0, c->beginread - c->endwrite);
             if (heartbeatres && !(done % heartbeatres)) {
                 fprintf(stderr, "Completed %d requests\n", done);
                 fflush(stderr);
@@ -1048,9 +1047,9 @@ void read_connection(connection_t * c)
             doneka++;
             c->done      = apr_time_now();
             s->starttime = c->start;
-            s->ctime     = ap_max(0, c->connect - c->start);
-            s->time      = ap_max(0, c->done - c->start);
-            s->waittime  = ap_max(0, c->beginread - c->endwrite);
+            s->ctime     = max(0, c->connect - c->start);
+            s->time      = max(0, c->done - c->start);
+            s->waittime  = max(0, c->beginread - c->endwrite);
             if (heartbeatres && !(done % heartbeatres)) {
                 fprintf(stderr, "Completed %d requests\n", done);
                 fflush(stderr);

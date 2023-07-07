@@ -272,6 +272,14 @@ pub fn translate(work: &mut Build) {
             name: "define".to_string(),
             value: "nelem(x) (sizeof (x)/sizeof (x)[0])".to_string(),
         });
+        cnodes.push(CModuleObject::Macro {
+            name: "define".to_string(),
+            value: "min(a,b) ((a)<(b))?(a):(b)".to_string(),
+        });
+        cnodes.push(CModuleObject::Macro {
+            name: "define".to_string(),
+            value: "max(a,b) ((a)>(b))?(a):(b)".to_string(),
+        });
 
         let node_imports = &work.imports[i];
         let mut present = HashSet::new();
