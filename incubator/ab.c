@@ -271,34 +271,32 @@ void err(char *s)
 
 /* simple little function to write an APR error string and exit */
 
-void apr_err(char *s, apr_status_t rv)
-{
-    char buf[120];
+void apr_err(char *s, int rv) {
+    char buf[120] = {0};
 
     fprintf(stderr,
         "%s: %s (%d)\n",
-        s, apr_strerror(rv, buf, sizeof buf), rv);
-    if (done)
+        s, apr_strerror(rv, buf, sizeof(buf)), rv);
+    if (done) {
         printf("Total of %d requests completed\n" , done);
+    }
     exit(rv);
 }
 
-void set_polled_events(connection_t *c, apr_int16_t new_reqevents)
+void set_polled_events(connection_t *c, int16_t new_reqevents)
 {
-    apr_status_t rv;
+    int rv;
 
     if (c->pollfd.reqevents != new_reqevents) {
         if (c->pollfd.reqevents != 0) {
-            rv = apr_pollset_remove(readbits, &c->pollfd);
-            if (rv != APR_SUCCESS) {
+            if (apr_pollset_remove(readbits, &c->pollfd) != APR_SUCCESS) {
                 apr_err("apr_pollset_remove()", rv);
             }
         }
 
         if (new_reqevents != 0) {
             c->pollfd.reqevents = new_reqevents;
-            rv = apr_pollset_add(readbits, &c->pollfd);
-            if (rv != APR_SUCCESS) {
+            if (apr_pollset_add(readbits, &c->pollfd) != APR_SUCCESS) {
                 apr_err("apr_pollset_add()", rv);
             }
         }
@@ -307,7 +305,7 @@ void set_polled_events(connection_t *c, apr_int16_t new_reqevents)
 
 void set_conn_state(connection_t *c, int new_state)
 {
-    apr_int16_t events_by_state[] = {
+    int16_t events_by_state[] = {
         0,           /* for STATE_UNCONNECTED */
         APR_POLLOUT, /* for STATE_CONNECTING */
         APR_POLLIN,  /* for STATE_CONNECTED; we don't poll in this state,
@@ -330,10 +328,10 @@ void set_conn_state(connection_t *c, int new_state)
 
 void write_request(connection_t * c)
 {
-    do {
+    while (true) {
         apr_time_t tnow;
         apr_size_t l = c->rwrite;
-        apr_status_t e = APR_SUCCESS; /* prevent gcc warning */
+        int e = APR_SUCCESS; /* prevent gcc warning */
 
         tnow = lasttime = apr_time_now();
 
@@ -365,7 +363,10 @@ void write_request(connection_t * c)
         totalposted += l;
         c->rwrote += l;
         c->rwrite -= l;
-    } while (c->rwrite);
+        if (!c->rwrite) {
+            break;
+        }
+    }
 
     c->endwrite = lasttime = apr_time_now();
     set_conn_state(c, STATE_READ);
@@ -824,7 +825,7 @@ void output_html_results(void)
 
 void start_connect(connection_t * c)
 {
-    apr_status_t rv;
+    int rv;
 
     if (!(started < requests))
     return;
@@ -950,7 +951,7 @@ void close_connection(connection_t * c)
 void read_connection(connection_t * c)
 {
     apr_size_t r;
-    apr_status_t status;
+    int status;
     char *part;
     char respcode[4];       /* 3 digits and null */
 
@@ -1141,9 +1142,9 @@ void read_connection(connection_t * c)
 void test(void)
 {
     apr_time_t stoptime;
-    apr_int16_t rv;
+    int16_t rv;
     int i;
-    apr_status_t status;
+    int status;
     int snprintf_res = 0;
 
     if (isproxy) {
@@ -1434,7 +1435,7 @@ static int parse_url(char *url)
     char *cp;
     char *h;
     char *scope_id;
-    apr_status_t rv;
+    int rv;
 
     /* Save a copy for the proxy */
     fullurl = apr_pstrdup(cntxt, url);
@@ -1485,7 +1486,7 @@ static int open_postfile(const char *pfile)
 {
     apr_file_t *postfd;
     apr_finfo_t finfo;
-    apr_status_t rv;
+    int rv;
     char errmsg[120];
 
     rv = apr_file_open(&postfd, pfile, APR_READ, APR_OS_DEFAULT, cntxt);
@@ -1524,7 +1525,7 @@ int main(int argc, const char * const argv[])
 {
     int r, l;
     char tmp[1024];
-    apr_status_t status;
+    int status;
     apr_getopt_t *opt;
     const char *optarg;
     char c;
