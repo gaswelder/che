@@ -28,6 +28,10 @@ enum {
 /* maximum number of requests on a time limited test */
 #define MAX_REQUESTS (INT_MAX > 50000 ? 50000 : INT_MAX)
 
+typedef {
+    int TODO;
+} apr_time_t;
+
 /* connection state
  * don't add enums or rearrange or otherwise change values without
  * visiting set_conn_state()
@@ -48,11 +52,11 @@ typedef {
     apr_socket_t *aprsock;
     apr_pollfd_t pollfd;
     int state;
-    apr_size_t read;            /* amount of bytes read */
-    apr_size_t bread;           /* amount of body read */
-    apr_size_t rwrite, rwrote;  /* keep pointers in what we write - across
+    size_t read;            /* amount of bytes read */
+    size_t bread;           /* amount of body read */
+    size_t rwrite, rwrote;  /* keep pointers in what we write - across
                                  * EAGAINs */
-    apr_size_t length;          /* Content-Length value used for keep-alive */
+    size_t length;          /* Content-Length value used for keep-alive */
     char cbuff[CBUFFSIZE];      /* a buffer to store server response header */
     int cbx;                    /* offset in cbuffer */
     int keepalive;              /* non-zero if a keep-alive request */
@@ -69,9 +73,9 @@ typedef {
 
 typedef {
     apr_time_t starttime;         /* start time of connection */
-    apr_interval_time_t waittime; /* between request and reading response */
-    apr_interval_time_t ctime;    /* time to connect */
-    apr_interval_time_t time;     /* time for connection */
+    int waittime; /* between request and reading response */
+    int ctime;    /* time to connect */
+    int time;     /* time for connection */
 } data_t;
 
 #define ap_min(a,b) ((a)<(b))?(a):(b)
@@ -99,7 +103,7 @@ char *host_field = NULL;       /* value of "Host:" header field */
 char *path = NULL;             /* path name */
 char postfile[1024] = {0};    /* name of file containing post data */
 char *postdata = NULL;         /* *buffer containing data from postfile */
-apr_size_t postlen = 0; /* length of data to be POSTed */
+size_t postlen = 0; /* length of data to be POSTed */
 char content_type[1024] = {0};/* content type to put in POST header */
 char *cookie = NULL;           /* optional cookie line */
 char *auth = NULL;             /* optional (basic/uuencoded) auhentication */
@@ -115,7 +119,7 @@ char url[1024] = {0};
 char *fullurl = NULL;
 char * colonhost = NULL;
 int isproxy = 0;
-apr_interval_time_t aprtimeout = apr_time_from_sec(30); /* timeout value */
+int aprtimeout = apr_time_from_sec(30); /* timeout value */
 
 /* overrides for ab-generated common headers */
 int opt_host = 0;       /* was an optional "Host:" header specified? */
@@ -130,7 +134,7 @@ const char *tablestring = NULL;
 const char *trstring = NULL;
 const char *tdstring = NULL;
 
-apr_size_t doclen = 0;     /* the length the document should be */
+size_t doclen = 0;     /* the length the document should be */
 apr_int64_t totalread = 0;    /* total number of bytes read */
 apr_int64_t totalbread = 0;   /* totoal amount of entity body read */
 apr_int64_t totalposted = 0;  /* total number of bytes posted, inc. headers */
@@ -154,7 +158,7 @@ apr_time_t stoptime = 0;
 /* global request (and its length) */
 char _request[2048] = {0};
 char *request = _request;
-apr_size_t reqlen = 0;
+size_t reqlen = 0;
 
 /* one global throw-away buffer to read stuff into */
 char buffer[8192] = {0};
@@ -242,7 +246,7 @@ void write_request(connection_t * c)
 {
     while (true) {
         apr_time_t tnow;
-        apr_size_t l = c->rwrite;
+        size_t l = c->rwrite;
         int e = APR_SUCCESS; /* prevent gcc warning */
 
         tnow = lasttime = apr_time_now();
@@ -288,36 +292,36 @@ void write_request(connection_t * c)
 
 /* calculate and output results */
 
-static int compradre(data_t * a, data_t * b)
+int compradre(data_t * a, data_t * b)
 {
     if ((a->ctime) < (b->ctime))
         return -1;
     if ((a->ctime) > (b->ctime))
-        return +1;
+        return 1;
     return 0;
 }
 
-static int comprando(data_t * a, data_t * b)
+int comprando(data_t * a, data_t * b)
 {
     if ((a->time) < (b->time))
         return -1;
     if ((a->time) > (b->time))
-        return +1;
+        return 1;
     return 0;
 }
 
-static int compri(data_t * a, data_t * b)
+int compri(data_t * a, data_t * b)
 {
-    apr_interval_time_t p = a->time - a->ctime;
-    apr_interval_time_t q = b->time - b->ctime;
+    size_t p = a->time - a->ctime;
+    size_t q = b->time - b->ctime;
     if (p < q)
         return -1;
     if (p > q)
-        return +1;
+        return 1;
     return 0;
 }
 
-static int compwait(data_t * a, data_t * b)
+int compwait(data_t * a, data_t * b)
 {
     if ((a->waittime) < (b->waittime))
         return -1;
@@ -341,7 +345,7 @@ void output_results(int sig)
     printf("Server Port:            %hu\n", port);
     printf("\n");
     printf("Document Path:          %s\n", path);
-    printf("Document Length:        %" APR_SIZE_T_FMT " bytes\n", doclen);
+    printf("Document Length:        %zu bytes\n", doclen);
     printf("\n");
     printf("Concurrency Level:      %d\n", concurrency);
     printf("Time taken for tests:   %.3f seconds\n", timetaken);
@@ -355,10 +359,10 @@ void output_results(int sig)
         printf("Non-2xx responses:      %d\n", err_response);
     if (keepalive)
         printf("Keep-Alive requests:    %d\n", doneka);
-    printf("Total transferred:      %" APR_INT64_T_FMT " bytes\n", totalread);
+    printf("Total transferred:      %ld bytes\n", totalread);
     if (posting > 0)
-        printf("Total POSTed:           %" APR_INT64_T_FMT "\n", totalposted);
-    printf("HTML transferred:       %" APR_INT64_T_FMT " bytes\n", totalbread);
+        printf("Total POSTed:           %ld\n", totalposted);
+    printf("HTML transferred:       %ld bytes\n", totalbread);
 
     /* avoid divide by zero */
     if (timetaken && done) {
@@ -381,15 +385,32 @@ void output_results(int sig)
     if (done > 0) {
         /* work out connection times */
         int i;
-        apr_time_t totalcon = 0, total = 0, totald = 0, totalwait = 0;
-        apr_time_t meancon, meantot, meand, meanwait;
-        apr_interval_time_t mincon = AB_MAX, mintot = AB_MAX, mind = AB_MAX,
-                            minwait = AB_MAX;
-        apr_interval_time_t maxcon = 0, maxtot = 0, maxd = 0, maxwait = 0;
-        apr_interval_time_t mediancon = 0, mediantot = 0, mediand = 0, medianwait = 0;
-        double sdtot = 0, sdcon = 0, sdd = 0, sdwait = 0;
+        apr_time_t totalcon = 0;
+        apr_time_t total = 0;
+        apr_time_t totald = 0;
+        apr_time_t totalwait = 0;
+        apr_time_t meancon = 0;
+        apr_time_t meantot = 0;
+        apr_time_t meand = 0;
+        apr_time_t meanwait = 0;
+        int mincon = AB_MAX;
+        int mintot = AB_MAX;
+        int mind = AB_MAX;
+        int minwait = AB_MAX;
+        int maxcon = 0;
+        int maxtot = 0;
+        int maxd = 0;
+        int maxwait = 0;
+        int mediancon = 0;
+        int mediantot = 0;
+        int mediand = 0;
+        int medianwait = 0;
+        double sdtot = 0;
+        double sdcon = 0;
+        double sdd = 0;
+        double sdwait = 0;
 
-        for (i = 0; i < done; i++) {
+        for (int i = 0; i < done; i++) {
             data_t *s = &stats[i];
             mincon = ap_min(mincon, s->ctime);
             mintot = ap_min(mintot, s->time);
@@ -425,25 +446,26 @@ void output_results(int sig)
             sdwait += a * a;
         }
 
-        sdtot = (done > 1) ? sqrt(sdtot / (done - 1)) : 0;
-        sdcon = (done > 1) ? sqrt(sdcon / (done - 1)) : 0;
-        sdd = (done > 1) ? sqrt(sdd / (done - 1)) : 0;
-        sdwait = (done > 1) ? sqrt(sdwait / (done - 1)) : 0;
+        
+        if (done > 1) {
+            sdtot = sqrt(sdtot / (done - 1));
+            sdcon = sqrt(sdcon / (done - 1));
+            sdd = sqrt(sdd / (done - 1));
+            sdwait = sqrt(sdwait / (done - 1));
+        } else {
+            sdtot = 0;
+            sdcon = 0;
+            sdd = 0;
+            sdwait = 0;
+        }
 
-        /*
-         * XXX: what is better; this hideous cast of the compradre function; or
-         * the four warnings during compile ? dirkx just does not know and
-         * hates both/
-         */
-        qsort(stats, done, sizeof(data_t),
-              (int (*) (const void *, const void *)) compradre);
+        qsort(stats, done, sizeof(data_t), compradre);
         if ((done > 1) && (done % 2))
             mediancon = (stats[done / 2].ctime + stats[done / 2 + 1].ctime) / 2;
         else
             mediancon = stats[done / 2].ctime;
 
-        qsort(stats, done, sizeof(data_t),
-              (int (*) (const void *, const void *)) compri);
+        qsort(stats, done, sizeof(data_t), compri);
         if ((done > 1) && (done % 2)) {
             mediand = (
                 stats[done / 2].time
@@ -455,15 +477,13 @@ void output_results(int sig)
             mediand = stats[done / 2].time - stats[done / 2].ctime;
         }
 
-        qsort(stats, done, sizeof(data_t),
-              (int (*) (const void *, const void *)) compwait);
+        qsort(stats, done, sizeof(data_t), compwait);
         if ((done > 1) && (done % 2))
             medianwait = (stats[done / 2].waittime + stats[done / 2 + 1].waittime) / 2;
         else
             medianwait = stats[done / 2].waittime;
 
-        qsort(stats, done, sizeof(data_t),
-              (int (*) (const void *, const void *)) comprando);
+        qsort(stats, done, sizeof(data_t), comprando);
         if ((done > 1) && (done % 2))
             mediantot = (stats[done / 2].time + stats[done / 2 + 1].time) / 2;
         else
@@ -495,19 +515,15 @@ void output_results(int sig)
         sdtot      = ap_double_ms(sdtot);
 
         if (confidence) {
-#define CONF_FMT_STRING "%5" APR_TIME_T_FMT " %4" APR_TIME_T_FMT " %5.1f %6" APR_TIME_T_FMT " %7" APR_TIME_T_FMT "\n"
             printf("              min  mean[+/-sd] median   max\n");
-            printf("Connect:    " CONF_FMT_STRING,
+            printf("Connect:    %5zu %4zu %5.1f %6zu %7zu\n",
                    mincon, meancon, sdcon, mediancon, maxcon);
-            printf("Processing: " CONF_FMT_STRING,
+            printf("Processing: %5zu %4zu %5.1f %6zu %7zu\n",
                    mind, meand, sdd, mediand, maxd);
-            printf("Waiting:    " CONF_FMT_STRING,
+            printf("Waiting:    %5zu %4zu %5.1f %6zu %7zu\n",
                    minwait, meanwait, sdwait, medianwait, maxwait);
-            printf("Total:      " CONF_FMT_STRING,
+            printf("Total:      %5zu %4zu %5.1f %6zu %7zu\n",
                    mintot, meantot, sdtot, mediantot, maxtot);
-#undef CONF_FMT_STRING
-
-
 
             SANE("the initial connection time", meancon, mediancon, sdcon);
             SANE("the processing time", meand, mediand, sdd);
@@ -516,13 +532,11 @@ void output_results(int sig)
         }
         else {
             printf("              min   avg   max\n");
-#define CONF_FMT_STRING "%5" APR_TIME_T_FMT " %5" APR_TIME_T_FMT "%5" APR_TIME_T_FMT "\n"
-            printf("Connect:    " CONF_FMT_STRING, mincon, meancon, maxcon);
-            printf("Processing: " CONF_FMT_STRING, mintot - mincon,
+            printf("Connect:    %5zu %5zu %5zu\n", mincon, meancon, maxcon);
+            printf("Processing: %5zu %5zu %5zu\n", mintot - mincon,
                                                    meantot - meancon,
                                                    maxtot - maxcon);
-            printf("Total:      " CONF_FMT_STRING, mintot, meantot, maxtot);
-#undef CONF_FMT_STRING
+            printf("Total:      %5zu %5zu %5zu\n", mintot, meantot, maxtot);
         }
 
 
@@ -533,10 +547,10 @@ void output_results(int sig)
                 if (percs[i] <= 0)
                     printf(" 0%%  <0> (never)\n");
                 else if (percs[i] >= 100)
-                    printf(" 100%%  %5" APR_TIME_T_FMT " (longest request)\n",
+                    printf(" 100%%  %5zu (longest request)\n",
                            ap_round_ms(stats[done - 1].time));
                 else
-                    printf("  %d%%  %5" APR_TIME_T_FMT "\n", percs[i],
+                    printf("  %d%%  %5zu\n", percs[i],
                            ap_round_ms(stats[(int) (done * percs[i] / 100)].time));
             }
         }
@@ -569,9 +583,7 @@ void output_results(int sig)
             fprintf(out, "starttime\tseconds\tctime\tdtime\tttime\twait\n");
             for (i = 0; i < done; i++) {
                 (void) apr_ctime(tmstring, stats[i].starttime);
-                fprintf(out, "%s\t%" APR_TIME_T_FMT "\t%" APR_TIME_T_FMT
-                               "\t%" APR_TIME_T_FMT "\t%" APR_TIME_T_FMT
-                               "\t%" APR_TIME_T_FMT "\n", tmstring,
+                fprintf(out, "%s\t%zu\t%zu\t%zu\t%zu\t%zu\n", tmstring,
                         apr_time_sec(stats[i].starttime),
                         ap_round_ms(stats[i].ctime),
                         ap_round_ms(stats[i].time - stats[i].ctime),
@@ -606,7 +618,7 @@ void SANE(const char *what, double mean, median, sd) {
 
 /* calculate and output results in HTML  */
 
-void output_html_results(void)
+void output_html_results()
 {
     double timetaken = (double) (lasttime - start) / APR_USEC_PER_SEC;
 
@@ -624,7 +636,7 @@ void output_html_results(void)
        "<td colspan=2 %s>%s</td></tr>\n",
        trstring, tdstring, tdstring, path);
     printf("<tr %s><th colspan=2 %s>Document Length:</th>"
-       "<td colspan=2 %s>%" APR_SIZE_T_FMT " bytes</td></tr>\n",
+       "<td colspan=2 %s>%zu bytes</td></tr>\n",
        trstring, tdstring, tdstring, doclen);
     printf("<tr %s><th colspan=2 %s>Concurrency Level:</th>"
        "<td colspan=2 %s>%d</td></tr>\n",
@@ -650,14 +662,14 @@ void output_html_results(void)
            "<td colspan=2 %s>%d</td></tr>\n",
            trstring, tdstring, tdstring, doneka);
     printf("<tr %s><th colspan=2 %s>Total transferred:</th>"
-       "<td colspan=2 %s>%" APR_INT64_T_FMT " bytes</td></tr>\n",
+       "<td colspan=2 %s>%ld bytes</td></tr>\n",
        trstring, tdstring, tdstring, totalread);
     if (posting > 0)
         printf("<tr %s><th colspan=2 %s>Total POSTed:</th>"
-           "<td colspan=2 %s>%" APR_INT64_T_FMT "</td></tr>\n",
+           "<td colspan=2 %s>%ld</td></tr>\n",
            trstring, tdstring, tdstring, totalposted);
     printf("<tr %s><th colspan=2 %s>HTML transferred:</th>"
-       "<td colspan=2 %s>%" APR_INT64_T_FMT " bytes</td></tr>\n",
+       "<td colspan=2 %s>%ld bytes</td></tr>\n",
        trstring, tdstring, tdstring, totalbread);
 
     /* avoid divide by zero */
@@ -679,56 +691,57 @@ void output_html_results(void)
                (double) (totalread + totalposted) / timetaken);
         }
     }
-    {
-        /* work out connection times */
-        int i;
-        apr_interval_time_t totalcon = 0, total = 0;
-        apr_interval_time_t mincon = AB_MAX, mintot = AB_MAX;
-        apr_interval_time_t maxcon = 0, maxtot = 0;
+    /* work out connection times */
+    int i = 0;
+    int totalcon = 0;
+    int total = 0;
+    int mincon = AB_MAX;
+    int mintot = AB_MAX;
+    int maxcon = 0;
+    int maxtot = 0;
 
-        for (i = 0; i < done; i++) {
-            data_t *s = &stats[i];
-            mincon = ap_min(mincon, s->ctime);
-            mintot = ap_min(mintot, s->time);
-            maxcon = ap_max(maxcon, s->ctime);
-            maxtot = ap_max(maxtot, s->time);
-            totalcon += s->ctime;
-            total    += s->time;
-        }
-        /*
-         * Reduce stats from apr time to milliseconds
-         */
-        mincon   = ap_round_ms(mincon);
-        mintot   = ap_round_ms(mintot);
-        maxcon   = ap_round_ms(maxcon);
-        maxtot   = ap_round_ms(maxtot);
-        totalcon = ap_round_ms(totalcon);
-        total    = ap_round_ms(total);
-
-        if (done > 0) { /* avoid division by zero (if 0 done) */
-            printf("<tr %s><th %s colspan=4>Connnection Times (ms)</th></tr>\n",
-               trstring, tdstring);
-            printf("<tr %s><th %s>&nbsp;</th> <th %s>min</th>   <th %s>avg</th>   <th %s>max</th></tr>\n",
-               trstring, tdstring, tdstring, tdstring, tdstring);
-            printf("<tr %s><th %s>Connect:</th>"
-               "<td %s>%5" APR_TIME_T_FMT "</td>"
-               "<td %s>%5" APR_TIME_T_FMT "</td>"
-               "<td %s>%5" APR_TIME_T_FMT "</td></tr>\n",
-               trstring, tdstring, tdstring, mincon, tdstring, totalcon / done, tdstring, maxcon);
-            printf("<tr %s><th %s>Processing:</th>"
-               "<td %s>%5" APR_TIME_T_FMT "</td>"
-               "<td %s>%5" APR_TIME_T_FMT "</td>"
-               "<td %s>%5" APR_TIME_T_FMT "</td></tr>\n",
-               trstring, tdstring, tdstring, mintot - mincon, tdstring,
-               (total / done) - (totalcon / done), tdstring, maxtot - maxcon);
-            printf("<tr %s><th %s>Total:</th>"
-               "<td %s>%5" APR_TIME_T_FMT "</td>"
-               "<td %s>%5" APR_TIME_T_FMT "</td>"
-               "<td %s>%5" APR_TIME_T_FMT "</td></tr>\n",
-               trstring, tdstring, tdstring, mintot, tdstring, total / done, tdstring, maxtot);
-        }
-        printf("</table>\n");
+    for (int i = 0; i < done; i++) {
+        data_t *s = &stats[i];
+        mincon = ap_min(mincon, s->ctime);
+        mintot = ap_min(mintot, s->time);
+        maxcon = ap_max(maxcon, s->ctime);
+        maxtot = ap_max(maxtot, s->time);
+        totalcon += s->ctime;
+        total    += s->time;
     }
+    /*
+        * Reduce stats from apr time to milliseconds
+        */
+    mincon   = ap_round_ms(mincon);
+    mintot   = ap_round_ms(mintot);
+    maxcon   = ap_round_ms(maxcon);
+    maxtot   = ap_round_ms(maxtot);
+    totalcon = ap_round_ms(totalcon);
+    total    = ap_round_ms(total);
+
+    if (done > 0) { /* avoid division by zero (if 0 done) */
+        printf("<tr %s><th %s colspan=4>Connnection Times (ms)</th></tr>\n",
+            trstring, tdstring);
+        printf("<tr %s><th %s>&nbsp;</th> <th %s>min</th>   <th %s>avg</th>   <th %s>max</th></tr>\n",
+            trstring, tdstring, tdstring, tdstring, tdstring);
+        printf("<tr %s><th %s>Connect:</th>"
+            "<td %s>%5zu</td>"
+            "<td %s>%5zu</td>"
+            "<td %s>%5zu</td></tr>\n",
+            trstring, tdstring, tdstring, mincon, tdstring, totalcon / done, tdstring, maxcon);
+        printf("<tr %s><th %s>Processing:</th>"
+            "<td %s>%5zu</td>"
+            "<td %s>%5zu</td>"
+            "<td %s>%5zu</td></tr>\n",
+            trstring, tdstring, tdstring, mintot - mincon, tdstring,
+            (total / done) - (totalcon / done), tdstring, maxtot - maxcon);
+        printf("<tr %s><th %s>Total:</th>"
+            "<td %s>%5zu</td>"
+            "<td %s>%5zu</td>"
+            "<td %s>%5zu</td></tr>\n",
+            trstring, tdstring, tdstring, mintot, tdstring, total / done, tdstring, maxtot);
+    }
+    printf("</table>\n");
 }
 
 /* --------------------------------------------------------- */
@@ -806,9 +819,7 @@ void start_connect(connection_t * c)
     /* connected first time */
     set_conn_state(c, STATE_CONNECTED);
     started++;
-    {
-        write_request(c);
-    }
+    write_request(c);
 }
 
 /* --------------------------------------------------------- */
@@ -862,35 +873,34 @@ void close_connection(connection_t * c)
 
 void read_connection(connection_t * c)
 {
-    apr_size_t r;
+    size_t r;
     int status;
     char *part;
     char respcode[4];       /* 3 digits and null */
 
     r = sizeof(buffer);
-    {
-        status = apr_socket_recv(c->aprsock, buffer, &r);
-        if (APR_STATUS_IS_EAGAIN(status))
-            return;
-        else if (r == 0 && APR_STATUS_IS_EOF(status)) {
-            good++;
+    status = apr_socket_recv(c->aprsock, buffer, &r);
+    if (APR_STATUS_IS_EAGAIN(status))
+        return;
+
+    if (r == 0 && APR_STATUS_IS_EOF(status)) {
+        good++;
+        close_connection(c);
+        return;
+    }
+    /* catch legitimate fatal apr_socket_recv errors */
+    if (status != APR_SUCCESS) {
+        err_recv++;
+        if (recverrok) {
+            bad++;
             close_connection(c);
-            return;
-        }
-        /* catch legitimate fatal apr_socket_recv errors */
-        else if (status != APR_SUCCESS) {
-            err_recv++;
-            if (recverrok) {
-                bad++;
-                close_connection(c);
-                if (verbosity >= 1) {
-                    char buf[120];
-                    fprintf(stderr,"%s: %s (%d)\n", "apr_socket_recv", apr_strerror(status, buf, sizeof buf), status);
-                }
-                return;
-            } else {
-                apr_err("apr_socket_recv", status);
+            if (verbosity >= 1) {
+                char buf[120];
+                fprintf(stderr,"%s: %s (%d)\n", "apr_socket_recv", apr_strerror(status, buf, sizeof(buf)), status);
             }
+            return;
+        } else {
+            apr_err("apr_socket_recv", status);
         }
     }
 
@@ -904,8 +914,11 @@ void read_connection(connection_t * c)
     if (!c->gotheader) {
         char *s;
         int l = 4;
-        apr_size_t space = CBUFFSIZE - c->cbx - 1; /* -1 allows for \0 term */
-        int tocopy = (space < r) ? space : r;
+        size_t space = CBUFFSIZE - c->cbx - 1; /* -1 allows for \0 term */
+        int tocopy = r;
+        if (space < r) {
+            tocopy = space;
+        }
         memcpy(c->cbuff + c->cbx, buffer, space);
         c->cbx += tocopy;
         space -= tocopy;
@@ -945,7 +958,8 @@ void read_connection(connection_t * c)
                 /*
                  * this is first time, extract some interesting info
                  */
-                char *p, *q;
+                char *p = NULL;
+                char *q = NULL;
                 p = strstr(c->cbuff, "Server:");
                 q = servername;
                 if (p) {
@@ -993,7 +1007,11 @@ void read_connection(connection_t * c)
                 if (cl) {
                     c->keepalive = 1;
                     /* response to HEAD doesn't have entity body */
-                    c->length = posting >= 0 ? atoi(cl + 16) : 0;
+                    if (posting >= 0) {
+                        c->length = atoi(cl + 16);
+                    } else {
+                        c->length = 0;
+                    }
                 }
                 /* The response may not have a Content-Length header */
                 if (!cl) {
@@ -1051,7 +1069,7 @@ void read_connection(connection_t * c)
 
 /* run the tests */
 
-void test(void)
+void test()
 {
     apr_time_t stoptime;
     int16_t rv;
@@ -1072,8 +1090,11 @@ void test(void)
         printf("Benchmarking %s ", hostname);
     if (isproxy)
         printf("[through %s:%d] ", proxyhost, proxyport);
-    printf("(be patient)%s",
-           (heartbeatres ? "\n" : "..."));
+    if (heartbeatres) {
+        printf("(be patient)\n");
+    } else {
+        printf("(be patient)...");
+    }
     fflush(stdout);
     }
 
@@ -1113,28 +1134,52 @@ void test(void)
 
     /* setup request */
     if (posting <= 0) {
+        const char *method = "GET";
+        if (posting) {
+            method = "HEAD";
+        }
+        const char *ppath = path;
+        if (isproxy) {
+            ppath = fullurl;
+        }
+        const char *kas = "";
+        if (keepalive) {
+            kas = "Connection: Keep-Alive\r\n";
+        }
         snprintf_res = apr_snprintf(request, sizeof(_request),
             "%s %s HTTP/1.0\r\n"
             "%s" "%s" "%s"
             "%s" "\r\n",
-            (posting == 0) ? "GET" : "HEAD",
-            (isproxy) ? fullurl : path,
-            keepalive ? "Connection: Keep-Alive\r\n" : "",
+            method,
+            ppath,
+            kas,
             cookie, auth, hdrs);
     }
     else {
+        const char *ppath = path;
+        if (isproxy) {
+            ppath = fullurl;
+        }
+        const char *ctype = "text/plain";
+        if (content_type[0]) {
+            ctype = content_type;
+        }
+        const char *kas = "";
+        if (keepalive) {
+            kas = "Connection: Keep-Alive\r\n";
+        }
         snprintf_res = apr_snprintf(request,  sizeof(_request),
             "POST %s HTTP/1.0\r\n"
             "%s" "%s" "%s"
-            "Content-length: %" APR_SIZE_T_FMT "\r\n"
+            "Content-length: %zu\r\n"
             "Content-type: %s\r\n"
             "%s"
             "\r\n",
-            (isproxy) ? fullurl : path,
-            keepalive ? "Connection: Keep-Alive\r\n" : "",
+            ppath,
+            kas,
             cookie, auth,
             postlen,
-            (content_type[0]) ? content_type : "text/plain", hdrs);
+            ctype, hdrs);
     }
     if (snprintf_res >= sizeof(_request)) {
         err("Request too long\n");
@@ -1171,7 +1216,11 @@ void test(void)
 
     /* ok - lets start */
     start = lasttime = apr_time_now();
-    stoptime = tlimit ? (start + apr_time_from_sec(tlimit)) : AB_MAX;
+    if (tlimit) {
+        stoptime = (start + apr_time_from_sec(tlimit));
+    } else {
+        stoptime = AB_MAX;
+    }
 
     /* Output the results if the user terminates the run early. */
     apr_signal(SIGINT, output_results);
@@ -1182,14 +1231,17 @@ void test(void)
         start_connect(&con[i]);
     }
 
-    do {
-        apr_int32_t n;
+    while (true) {
+        int32_t n;
         const apr_pollfd_t *pollresults;
 
         n = concurrency;
-        do {
+        while (true) {
             status = apr_pollset_poll(readbits, aprtimeout, &n, &pollresults);
-        } while (APR_STATUS_IS_EINTR(status));
+            if (!APR_STATUS_IS_EINTR(status)) {
+                break;
+            }
+        }
         if (status != APR_SUCCESS)
             apr_err("apr_poll", status);
 
@@ -1264,7 +1316,12 @@ void test(void)
                 }
             }
         }
-    } while (lasttime < stoptime && done < requests);
+        if (lasttime < stoptime && done < requests) {
+            continue;
+        } else {
+            break;
+        }
+    }
     
     if (heartbeatres)
         fprintf(stderr, "Finished %d requests\n", done);
@@ -1277,13 +1334,9 @@ void test(void)
         output_results(0);
 }
 
-/* ------------------------------------------------------- */
-
-/* display copyright information */
-void copyright(void)
-{
+void copyright() {
     if (!use_html) {
-        printf("This is ApacheBench, Version %s\n", AP_AB_BASEREVISION " <$Revision$>");
+        printf("This is ApacheBench, Version %s\n", AP_AB_BASEREVISION);
         printf("Copyright 1996 Adam Twiss, Zeus Technology Ltd, http://www.zeustech.net/\n");
         printf("Licensed to The Apache Software Foundation, http://www.apache.org/\n");
         printf("\n");
@@ -1342,7 +1395,7 @@ void usage(const char *progname)
 
 /* split URL into parts */
 
-static int parse_url(char *url)
+int parse_url(char *url)
 {
     char *cp;
     char *h;
@@ -1394,7 +1447,11 @@ static int parse_url(char *url)
 
 /* read data to POST from file, save contents and length */
 
-static int open_postfile(const char *pfile)
+typedef {
+    int TODO;
+} apr_finfo_t;
+
+int open_postfile(const char *pfile)
 {
     apr_file_t *postfd;
     apr_finfo_t finfo;
@@ -1404,17 +1461,17 @@ static int open_postfile(const char *pfile)
     rv = apr_file_open(&postfd, pfile, APR_READ, APR_OS_DEFAULT, cntxt);
     if (rv != APR_SUCCESS) {
         fprintf(stderr, "ab: Could not open POST data file (%s): %s\n", pfile,
-                apr_strerror(rv, errmsg, sizeof errmsg));
+                apr_strerror(rv, errmsg, sizeof(errmsg)));
         return rv;
     }
 
     rv = apr_file_info_get(&finfo, APR_FINFO_NORM, postfd);
     if (rv != APR_SUCCESS) {
         fprintf(stderr, "ab: Could not stat POST data file (%s): %s\n", pfile,
-                apr_strerror(rv, errmsg, sizeof errmsg));
+                apr_strerror(rv, errmsg, sizeof(errmsg)));
         return rv;
     }
-    postlen = (apr_size_t)finfo.size;
+    postlen = (size_t)finfo.size;
     postdata = malloc(postlen);
     if (!postdata) {
         fprintf(stderr, "ab: Could not allocate POST data buffer\n");
@@ -1423,7 +1480,7 @@ static int open_postfile(const char *pfile)
     rv = apr_file_read_full(postfd, postdata, postlen, NULL);
     if (rv != APR_SUCCESS) {
         fprintf(stderr, "ab: Could not read POST data file: %s\n",
-                apr_strerror(rv, errmsg, sizeof errmsg));
+                apr_strerror(rv, errmsg, sizeof(errmsg)));
         return rv;
     }
     apr_file_close(postfd);
@@ -1432,10 +1489,9 @@ static int open_postfile(const char *pfile)
 
 /* ------------------------------------------------------- */
 
-/* sort out command-line args and call test */
-int main(int argc, const char * const argv[])
-{
-    int r, l;
+int main(int argc, char *argv[]) {
+    int r;
+    int l;
     char tmp[1024];
     int status;
     apr_getopt_t *opt;
@@ -1460,42 +1516,42 @@ int main(int argc, const char * const argv[])
     while ((status = apr_getopt(opt, "n:c:t:b:T:p:v:rkVhwix:y:z:C:H:P:A:g:X:de:Sq"
             ,&c, &optarg)) == APR_SUCCESS) {
         switch (c) {
-            case 'n':
+            case 'n': {
                 requests = atoi(optarg);
                 if (requests <= 0) {
                     err("Invalid number of requests\n");
                 }
-                break;
-            case 'k':
+            }
+            case 'k': {
                 keepalive = 1;
-                break;
-            case 'q':
+            }
+            case 'q': {
                 heartbeatres = 0;
-                break;
-            case 'c':
+            }
+            case 'c': {
                 concurrency = atoi(optarg);
-                break;
-            case 'b':
+            }
+            case 'b': {
                 windowsize = atoi(optarg);
-                break;
-            case 'i':
+            }
+            case 'i': {
                 if (posting == 1)
                 err("Cannot mix POST and HEAD\n");
                 posting = -1;
-                break;
-            case 'g':
+            }
+            case 'g': {
                 gnuplot = strdup(optarg);
-                break;
-            case 'd':
+            }
+            case 'd': {
                 percentile = 0;
-                break;
-            case 'e':
+            }
+            case 'e': {
                 csvperc = strdup(optarg);
-                break;
-            case 'S':
+            }
+            case 'S': {
                 confidence = 0;
-                break;
-            case 'p':
+            }
+            case 'p': {
                 if (posting != 0)
                     err("Cannot mix POST and HEAD\n");
                 if (0 == (r = open_postfile(optarg))) {
@@ -1504,26 +1560,25 @@ int main(int argc, const char * const argv[])
                 else if (postdata) {
                     exit(r);
                 }
-                break;
-            case 'r':
+            }
+            case 'r': {
                 recverrok = 1;
-                break;
-            case 'v':
+            }
+            case 'v': {
                 verbosity = atoi(optarg);
-                break;
-            case 't':
+            }
+            case 't': {
                 tlimit = atoi(optarg);
                 requests = MAX_REQUESTS;    /* need to size data array on
                                              * something */
-                break;
-            case 'T':
+            }
+            case 'T': {
                 strcpy(content_type, optarg);
-                break;
-            case 'C':
+            }
+            case 'C': {
                 cookie = apr_pstrcat(cntxt, "Cookie: ", optarg, "\r\n", NULL);
-                break;
-            case 'A':
-                
+            }
+            case 'A': {
                  // assume username passwd already to be in colon separated form.
                  // Ready to be uu-encoded.
                  //
@@ -1537,10 +1592,8 @@ int main(int argc, const char * const argv[])
 
                 auth = apr_pstrcat(cntxt, auth, "Authorization: Basic ", tmp,
                                        "\r\n", NULL);
-                break;
-
-
-            case 'P':
+            }
+            case 'P': {
                 //
                 //  assume username passwd already to be in colon separated form.
                 //
@@ -1554,9 +1607,8 @@ int main(int argc, const char * const argv[])
 
                 auth = apr_pstrcat(cntxt, auth, "Proxy-Authorization: Basic ",
                                        tmp, "\r\n", NULL);
-                break;
-
-            case 'H':
+            }
+            case 'H': {
                 hdrs = apr_pstrcat(cntxt, hdrs, optarg, "\r\n", NULL);
                 /*
                  * allow override of some of the common headers that ab adds
@@ -1568,47 +1620,46 @@ int main(int argc, const char * const argv[])
                 } else if (strncasecmp(optarg, "User-Agent:", 11) == 0) {
                     opt_useragent = 1;
                 }
-                break;
-            case 'w':
+            }
+            case 'w': {
                 use_html = 1;
-                break;
+            }
                 /*
                  * if any of the following three are used, turn on html output
                  * automatically
                  */
-            case 'x':
+            case 'x': {
                 use_html = 1;
                 tablestring = optarg;
-                break;
-            case 'X':
-                {
-                    char *p;
-                    /*
-                     * assume proxy-name[:port]
-                     */
-                    if ((p = strchr(optarg, ':'))) {
-                        *p = '\0';
-                        p++;
-                        proxyport = atoi(p);
-                    }
-                    strcpy(proxyhost, optarg);
-                    isproxy = 1;
+            }
+            case 'X': {
+                char *p;
+                /*
+                    * assume proxy-name[:port]
+                    */
+                if ((p = strchr(optarg, ':'))) {
+                    *p = '\0';
+                    p++;
+                    proxyport = atoi(p);
                 }
-                break;
-            case 'y':
+                strcpy(proxyhost, optarg);
+                isproxy = 1;
+            }
+            case 'y': {
                 use_html = 1;
                 trstring = optarg;
-                break;
-            case 'z':
+            }
+            case 'z': {
                 use_html = 1;
                 tdstring = optarg;
-                break;
-            case 'h':
+            }
+            case 'h': {
                 usage(argv[0]);
-                break;
-            case 'V':
+            }
+            case 'V': {
                 copyright();
                 return 0;
+            }
         }
     }
 
