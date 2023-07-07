@@ -201,7 +201,7 @@ fn base(l: &mut Lexer, ctx: &Ctx) -> Result<Expression, Error> {
     return Ok(r);
 }
 
-fn type_follows(l: &Lexer, ctx: &Ctx) -> bool {
+fn type_follows(l: &mut Lexer, ctx: &Ctx) -> bool {
     if !l.peek().is_some() {
         return false;
     }
@@ -212,17 +212,18 @@ fn type_follows(l: &Lexer, ctx: &Ctx) -> bool {
         return false;
     }
     // <mod>.<name> where <mod> is any imported module that has exported <name>?
-    if l.peek_n(2).is_some()
-        && l.peek_n(1).unwrap().kind == "."
-        && l.peek_n(2).unwrap().kind == "word"
-    {
-        let a = l.peek_n(0).unwrap();
-        let c = l.peek_n(2).unwrap();
-
-        let pos = ctx.deps.iter().position(|x| x.ns == *a.content);
-        if pos.is_some() && ctx.deps[pos.unwrap()].typenames.contains(&c.content) {
-            return true;
+    match l.peekn(3) {
+        Some(three) => {
+            if three[1].kind == "." && three[2].kind == "word" {
+                let a = three[0];
+                let c = three[2];
+                let pos = ctx.deps.iter().position(|x| x.ns == *a.content);
+                if pos.is_some() && ctx.deps[pos.unwrap()].typenames.contains(&c.content) {
+                    return true;
+                }
+            }
         }
+        None => {}
     }
     // any of locally defined types?
     return is_type(&l.peek().unwrap().content, &ctx.typenames);
@@ -244,14 +245,21 @@ fn ns_follows(l: &mut Lexer, ctx: &Ctx) -> bool {
 fn read_ns_id(l: &mut Lexer, ctx: &Ctx) -> Result<NsName, Error> {
     let a = expect(l, "word", None)?;
     let name = &a.content;
-    if ctx.has_ns(name) && l.peek_n(0).unwrap().kind == "." && l.peek_n(1).unwrap().kind == "word" {
-        l.get();
-        let b = l.get().unwrap();
-        return Ok(NsName {
-            namespace: a.content,
-            name: b.content,
-            pos: a.pos,
-        });
+    if ctx.has_ns(name) {
+        match l.peekn(2) {
+            Some(two) => {
+                if two[0].kind == "." && two[1].kind == "word" {
+                    l.get();
+                    let b = l.get().unwrap();
+                    return Ok(NsName {
+                        namespace: a.content,
+                        name: b.content,
+                        pos: a.pos,
+                    });
+                }
+            }
+            None => {}
+        }
     }
     return Ok(NsName {
         namespace: String::new(),
@@ -487,7 +495,7 @@ fn parse_composite_literal(l: &mut Lexer, ctx: &Ctx) -> Result<CompositeLiteral,
     };
     expect(l, "{", Some("composite literal"))?;
     loop {
-        if l.peek_skipping_comments().unwrap().kind == "}" {
+        if l.peek().unwrap().kind == "}" {
             break;
         }
         result.entries.push(parse_composite_literal_entry(l, ctx)?);
@@ -583,10 +591,11 @@ fn parse_statement(l: &mut Lexer, ctx: &Ctx) -> Result<Statement, Error> {
             pos: String::from("EOF"),
         });
     }
-    let next = l.peek().unwrap();
     if type_follows(l, ctx) {
         return parse_variable_declaration(l, ctx);
     }
+
+    let next = l.peek().unwrap();
     return match next.kind.as_str() {
         "for" => parse_for(l, ctx),
         "if" => parse_if(l, ctx),

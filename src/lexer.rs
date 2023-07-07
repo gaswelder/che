@@ -1,10 +1,10 @@
 use crate::buf::Buf;
-use serde::{Deserialize, Serialize};
+use std::collections::VecDeque;
 use std::fmt;
 use std::fs;
 use substring::Substring;
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Debug)]
 pub struct Token {
     pub kind: String,
     pub content: String,
@@ -20,7 +20,7 @@ impl fmt::Display for Token {
 
 const SPACES: &str = "\r\n\t ";
 
-pub fn read_token(buf: &mut Buf) -> Option<Token> {
+fn read_token(buf: &mut Buf) -> Option<Token> {
     buf.read_set(SPACES.to_string());
     if buf.ended() {
         return None;
@@ -411,36 +411,24 @@ mod tests {
     }
 }
 
-pub struct Lexer {
-    toks: Vec<Token>,
-}
-
 pub fn for_file(filename: &str) -> Result<Lexer, String> {
     return match fs::read_to_string(filename) {
-        Ok(contents) => Ok(for_string(contents)),
+        Ok(contents) => Ok(Lexer {
+            buf: crate::buf::new(contents),
+            next_tokens: VecDeque::new(),
+        }),
         Err(e) => Err(format!("could not read {}: {}", filename, e)),
     };
 }
 
-pub fn for_string(contents: String) -> Lexer {
-    let mut toks: Vec<Token> = Vec::new();
-    let mut b = crate::buf::new(contents);
-    loop {
-        let r = read_token(&mut b);
-        if r.is_none() {
-            break;
-        }
-        toks.push(r.unwrap());
-    }
-    toks.reverse();
-    return Lexer { toks };
+pub struct Lexer {
+    // Source code buffer.
+    buf: Buf,
+    // Unget buffer.
+    next_tokens: VecDeque<Token>,
 }
 
 impl Lexer {
-    pub fn ended(&mut self) -> bool {
-        return !self.more();
-    }
-
     pub fn more(&mut self) -> bool {
         let r = self.get();
         if r.is_none() {
@@ -451,50 +439,55 @@ impl Lexer {
     }
 
     pub fn get(&mut self) -> Option<Token> {
+        if self.next_tokens.len() > 0 {
+            return self.next_tokens.pop_front();
+        }
         loop {
-            if self.toks.len() == 0 {
-                return None;
-            }
-            let tok = self.toks.pop().unwrap();
-            if tok.kind != "comment" {
-                return Some(tok);
+            match read_token(&mut self.buf) {
+                Some(tok) => {
+                    if tok.kind != "comment" {
+                        return Some(tok);
+                    }
+                }
+                None => return None,
             }
         }
     }
 
     pub fn unget(&mut self, t: Token) {
-        self.toks.push(t);
-    }
-    pub fn peek(&self) -> Option<&Token> {
-        return self.peek_n(0);
+        self.next_tokens.push_front(t);
     }
 
-    pub fn peek_skipping_comments(&self) -> Option<&Token> {
-        let mut n: usize = 0;
-        loop {
-            let r = self.peek_n(n);
+    // Returns the next token or none.
+    pub fn peek(&mut self) -> Option<&Token> {
+        return self.peekn(1).map(|t| t[0]);
+    }
+
+    // Returns the next n tokens, or none if there is less than n tokens
+    // remaining.
+    pub fn peekn(&mut self, n: usize) -> Option<Vec<&Token>> {
+        // Ensure that the lookahead buffer contains at least n tokens.
+        while self.next_tokens.len() < n {
+            let r = read_token(&mut self.buf);
             if r.is_none() {
                 return None;
             }
-            if r.unwrap().kind == "comment" {
-                n += 1;
+            if r.as_ref().unwrap().kind == "comment" {
                 continue;
             }
-            return r;
+            self.next_tokens.push_back(r.unwrap());
         }
+        let mut r = Vec::new();
+        for i in 0..n {
+            r.push(&self.next_tokens[i])
+        }
+        return Some(r);
     }
 
-    pub fn peek_n(&self, n: usize) -> Option<&Token> {
-        let l = self.toks.len();
-        if l <= n {
-            return None;
-        }
-        let tok = &self.toks[l - 1 - n];
-        return Some(tok);
-    }
     pub fn follows(&mut self, token_type: &str) -> bool {
         return self.more() && self.peek().unwrap().kind == token_type;
     }
+
     pub fn eat(&mut self, token_type: &str) -> bool {
         if self.follows(token_type) {
             self.get();

@@ -64,7 +64,7 @@ fn get_typename(lexer: &mut Lexer) -> Result<String, String> {
 
     // Get all tokens until the semicolon.
     let mut buf: Vec<Token> = vec![];
-    while !lexer.ended() {
+    while lexer.more() {
         let t = lexer.get().unwrap();
         if t.kind == ";" {
             break;
