@@ -41,3 +41,21 @@ pub int usec(t *val) {
 pub int ms(t *val) {
     return usec(val) / 1000;
 }
+
+pub enum {
+    SECONDS = 1000000 // microseconds
+};
+
+pub typedef {
+    int usec;
+} duration_t;
+
+pub duration_t duration(int val, int unit) {
+    duration_t r = {};
+    r.usec = val * unit;
+    return r;
+}
+
+pub int durationval(duration_t val, int unit) {
+    return val.usec / unit;
+}

@@ -33,10 +33,6 @@
 /* maximum number of requests on a time limited test */
 #define MAX_REQUESTS (INT_MAX > 50000 ? 50000 : INT_MAX)
 
-int apr_time_from_sec() {
-    return -1;
-}
-
 void apr_ctime() {
     //
 }
@@ -93,14 +89,16 @@ double ap_double_ms(int a) {
 /* --------------------- GLOBALS ---------------------------- */
 
 int verbosity = 0;      /* no verbosity by default */
-int recverrok = 0;      /* ok to proceed after socket receive errors */
 int posting = 0;        /* GET by default */
-int requests = 1;       /* Number of requests to make */
+size_t requests = 1;       /* Number of requests to make */
 int heartbeatres = 100; /* How often do we say we're alive */
-int concurrency = 1;    /* Number of multiple requests to make */
+
+/* Number of multiple requests to make */
+size_t concurrency = 1;
+
 int percentile = 1;     /* Show percentile served */
 int confidence = 1;     /* Show confidence estimator and warnings */
-int tlimit = 0;         /* time limit in secs */
+size_t tlimit = 0;         /* time limit in secs */
 bool keepalive = false;      /* try and do keepalive connections */
 int windowsize = 0;     /* we use the OS default window size */
 char servername[1024] = {0};  /* name that server reports */
@@ -110,7 +108,7 @@ char *path = NULL;             /* path name */
 char postfile[1024] = {0};    /* name of file containing post data */
 char *postdata = NULL;         /* *buffer containing data from postfile */
 size_t postlen = 0; /* length of data to be POSTed */
-char content_type[1024] = {0};/* content type to put in POST header */
+char *content_type = "text/plain";/* content type to put in POST header */
 int port = 0;        /* port number */
 char proxyhost[1024] = {0};   /* proxy host name */
 int proxyport = 0;      /* proxy port */
@@ -130,11 +128,7 @@ char *cookie = "";           /* optional cookie line */
 char *autharg = NULL;
 char *proxyauth = NULL;
 
- /*
-  * XXX - this is now a per read/write transact type of value
-  */
-
-int use_html = 0;       /* use html in the report */
+bool use_html = false;       /* use html in the report */
 const char *tablestring = NULL;
 const char *trstring = NULL;
 const char *tdstring = NULL;
@@ -194,7 +188,7 @@ int main(int argc, char *argv[]) {
 
     opt.opt_bool("k", "keep-alive", &keepalive);
     opt.opt_bool("q", "quiet", &quiet);
-    opt.opt_int("c", "concurrency", &concurrency);
+    opt.opt_size("c", "concurrency", &concurrency);
     opt.opt_int("b", "windowsize", &windowsize);
     opt.opt_size("n", "number of requests", &requests);
     opt.opt_bool("w", "use_html", &use_html);
@@ -218,16 +212,13 @@ int main(int argc, char *argv[]) {
     char *postfile = NULL;
     opt.opt_str("p", "postfile", &postfile);
 
-    opt.opt_bool("r", "recverrok = 1", &recverrok);
     opt.opt_size("t", "tlimit", &tlimit);
     opt.opt_str("A", "basic auth string (base64)", &autharg);
     opt.opt_str("P", "basic proxy auth string (base64)", &proxyauth);
-    opt.opt_str("T", "content_type", &content_type);
+    opt.opt_str("T", "POST body content type", &content_type);
     opt.opt_str("C", "cookie", &cookie);
 
 
-    char *hflag = NULL;
-    opt.opt_str("H", "hflag", &hflag);
     char *xarg = NULL;
     char *Xarg = NULL;
     char *yarg = NULL;
@@ -246,20 +237,20 @@ int main(int argc, char *argv[]) {
     char *url = *args;
     fullurl = strings.newstr("%s", url);
 
-    http.url_t r = {};
-    if (!http.parse_url(&r, url)) {
+    http.url_t u = {};
+    if (!http.parse_url(&u, url)) {
         fprintf(stderr, "%s: invalid URL\n", url);
         return 1;
     }
-    if (!strcmp(r.schema, "https")) {
+    if (!strcmp(u.schema, "https")) {
         fprintf(stderr, "SSL not compiled in; no https support\n");
         exit(1);
     }
 
-    if (r.port[0] == '\0') {
-        colonhost = strings.newstr("%s:80", r.hostname);
+    if (u.port[0] == '\0') {
+        colonhost = strings.newstr("%s:80", u.hostname);
     } else {
-        colonhost = strings.newstr("%s:%s", r.hostname, r.port);
+        colonhost = strings.newstr("%s:%s", u.hostname, u.port);
     }
 
     args++;
@@ -338,16 +329,14 @@ int main(int argc, char *argv[]) {
     }
 
 
-    if ((concurrency < 0) || (concurrency > MAX_CONCURRENCY)) {
-        fprintf(stderr, "%s: Invalid Concurrency [Range 0..%d]\n",
-                argv[0], MAX_CONCURRENCY);
-        usage(argv[0]);
+    if (concurrency > MAX_CONCURRENCY) {
+        fprintf(stderr, "concurrency is too high (%zu > %d)\n", concurrency, MAX_CONCURRENCY);
+        return 1;
     }
 
     if (concurrency > requests) {
-        fprintf(stderr, "%s: Cannot use concurrency level greater than "
-                "total number of requests\n", argv[0]);
-        usage(argv[0]);
+        fprintf(stderr, "cannot use concurrency level greater than total number of requests\n");
+        return 1;
     }
 
     if ((heartbeatres) && (requests > 150)) {
@@ -500,10 +489,6 @@ void init_request() {
         if (isproxy) {
             ppath = fullurl;
         }
-        const char *ctype = "text/plain";
-        if (content_type[0]) {
-            ctype = content_type;
-        }
         const char *kas = "";
         if (keepalive) {
             kas = "Connection: Keep-Alive\r\n";
@@ -518,7 +503,8 @@ void init_request() {
             ppath,
             kas,
             postlen,
-            ctype, hdrs);
+            content_type,
+            hdrs);
     }
     if (snprintf_res >= sizeof(_request)) {
         err("Request too long\n");
@@ -580,7 +566,7 @@ void test() {
 
     start = lasttime = time.now();
     if (tlimit) {
-        stoptime = (start + apr_time_from_sec(tlimit));
+        stoptime = (start + time.duration(tlimit, time.SECONDS));
     } else {
         stoptime = LONG_MAX;
     }
@@ -650,7 +636,7 @@ void apr_err(char *s, int rv) {
 
 void write_request(connection_t * c)
 {
-    int aprtimeout = apr_time_from_sec(30); /* timeout value */
+    time.duration_t aprtimeout = time.duration(30, time.SECONDS); /* timeout value */
     while (true) {
         time.t tnow = time.now();
         lasttime = tnow;
@@ -738,18 +724,13 @@ int compwait(data_t * a, data_t * b)
 enum {
     APR_USEC_PER_SEC = 1
 };
-int duration_seconds(int duration) {
-    return (double) duration / APR_USEC_PER_SEC;
-}
 
 void output_results(int sig)
 {
-    double timetaken;
-
     if (sig) {
         lasttime = time.now();  /* record final time if interrupted */
     }
-    timetaken = duration_seconds(lasttime - start);
+    int timetaken = time.durationval(lasttime - start, time.SECONDS);
 
     printf("\n\n");
     printf("Server Software:        %s\n", servername);
@@ -1311,15 +1292,11 @@ void read_connection_header(connection_t *c) {
     char respcode[4];       /* 3 digits and null */
     if (!io.read(c->aprsock, buffer)) {
         err_recv++;
-        if (recverrok) {
-            bad++;
-            close_connection(c);
-            if (verbosity >= 1) {
-                fprintf(stderr, "socket read failed: %s\n", strerror(errno));
-            }
-            return;
+        bad++;
+        close_connection(c);
+        if (verbosity >= 1) {
+            fprintf(stderr, "socket read failed: %s\n", strerror(errno));
         }
-        apr_err("apr_socket_recv", status);
     }
 
     size_t read = io.bufsize(buffer);
@@ -1441,15 +1418,12 @@ void read_connection_header(connection_t *c) {
 void read_connection_body(connection_t *c) {
     if (!io.read(c->aprsock, buffer)) {
         err_recv++;
-        if (recverrok) {
-            bad++;
-            close_connection(c);
-            if (verbosity >= 1) {
-                fprintf(stderr, "socket read failed: %s\n", strerror(errno));
-            }
-            return;
+        bad++;
+        close_connection(c);
+        if (verbosity >= 1) {
+            fprintf(stderr, "socket read failed: %s\n", strerror(errno));
         }
-        panic("!");
+        return;
     }
 
     size_t read = io.bufsize(buffer);
