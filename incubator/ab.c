@@ -109,119 +109,9 @@
  *   only an issue for loopback usage
  */
 
-/*  -------------------------------------------------------------------- */
-
-#if 'A' != 0x41
-/* Hmmm... This source code isn't being compiled in ASCII.
- * In order for data that flows over the network to make
- * sense, we need to translate to/from ASCII.
- */
-#define NOT_ASCII
-#endif
-
-/* affects include files on Solaris */
-#define BSD_COMP
-
-/*
-#include "apr.h"
-#include "apr_signal.h"
-#include "apr_strings.h"
-#include "apr_network_io.h"
-#include "apr_file_io.h"
-#include "apr_time.h"
-#include "apr_getopt.h"
-#include "apr_general.h"
-#include "apr_lib.h"
-#include "apr_portable.h"
-#include "ap_release.h"
-#include "apr_poll.h"
-*/
-
-#include <apr.h>
-#include <apr_signal.h>
-#include <apr_strings.h>
-#include <apr_network_io.h>
-#include <apr_file_io.h>
-#include <apr_time.h>
-#include <apr_getopt.h>
-#include <apr_general.h>
-#include <apr_lib.h>
-#include <apr_portable.h>
-#include <apr_poll.h>
-#include "ap_release.h"
-
-
-
-#define APR_WANT_STRFUNC
-#include <apr_want.h>
-
-#include <apr_base64.h>
-#ifdef NOT_ASCII
-#include <apr_xlate.h>
-#endif
-#if APR_HAVE_STDIO_H
-#include <stdio.h>
-#endif
-#if APR_HAVE_STDLIB_H
-#include <stdlib.h>
-#endif
-#if APR_HAVE_UNISTD_H
-#include <unistd.h> /* for getpid() */
-#endif
-
-/*
-#if !defined(WIN32) && !defined(NETWARE)
-#include "ap_config_auto.h"
-#endif
-*/
-#if defined(HAVE_SSLC)
-
-/* Libraries for RSA SSL-C */
-#include <rsa.h>
-#include <x509.h>
-#include <pem.h>
-#include <err.h>
-#include <ssl.h>
-#include <r_rand.h>
-#include <sslc.h>
-#define USE_SSL
-#define RSAREF
-#define SK_NUM(x) sk_num(x)
-#define SK_VALUE(x,y) sk_value(x,y)
-typedef STACK X509_STACK_TYPE;
-
-#elif defined(HAVE_OPENSSL)
-
-/* Libraries on most systems.. */
-#include <openssl/rsa.h>
-#include <openssl/crypto.h>
-#include <openssl/x509.h>
-#include <openssl/pem.h>
-#include <openssl/err.h>
-#include <openssl/ssl.h>
-#include <openssl/rand.h>
-#define USE_SSL
-#define SK_NUM(x) sk_X509_num(x)
-#define SK_VALUE(x,y) sk_X509_value(x,y)
-typedef STACK_OF(X509) X509_STACK_TYPE;
-
-#endif
-
-#include <math.h>
-#if APR_HAVE_CTYPE_H
-#include <ctype.h>
-#endif
-#if APR_HAVE_LIMITS_H
-#include <limits.h>
-#endif
-
-/* ------------------- DEFINITIONS -------------------------- */
-
-#ifndef LLONG_MAX
-#define AB_MAX APR_INT64_C(0x7fffffffffffffff)
-#else
-#define AB_MAX LLONG_MAX
-#endif
+enum {
+    AB_MAX = LLONG_MAX
+};
 
 /* maximum number of requests on a time limited test */
 #define MAX_REQUESTS (INT_MAX > 50000 ? 50000 : INT_MAX)
@@ -263,9 +153,6 @@ struct connection {
                done;            /* Connection closed */
 
     int socknum;
-#ifdef USE_SSL
-    SSL *ssl;
-#endif
 };
 
 struct data {
@@ -345,13 +232,6 @@ int err_recv = 0;          /* requests failed due to broken read */
 int err_except = 0;        /* requests failed due to exception */
 int err_response = 0;      /* requests with invalid or non-200 response */
 
-#ifdef USE_SSL
-int is_ssl;
-SSL_CTX *ssl_ctx;
-char *ssl_cipher = NULL;
-char *ssl_info = NULL;
-BIO *bio_out,*bio_err;
-#endif
 
 apr_time_t start, lasttime, stoptime;
 
@@ -374,9 +254,6 @@ apr_pollset_t *readbits;
 
 apr_sockaddr_t *destsa;
 
-#ifdef NOT_ASCII
-apr_xlate_t *from_ascii, *to_ascii;
-#endif
 
 static void write_request(struct connection * c);
 static void close_connection(struct connection * c);
@@ -451,226 +328,6 @@ static void set_conn_state(struct connection *c, connect_state_e new_state)
  * (small) request out in one go into our new socket buffer
  *
  */
-#ifdef USE_SSL
-static long ssl_print_cb(BIO *bio,int cmd,const char *argp,int argi,long argl,long ret)
-{
-    BIO *out;
-
-    out=(BIO *)BIO_get_callback_arg(bio);
-    if (out == NULL) return(ret);
-
-    if (cmd == (BIO_CB_READ|BIO_CB_RETURN)) {
-        BIO_printf(out,"read from %p [%p] (%d bytes => %ld (0x%lX))\n",
-                   bio, argp, argi, ret, ret);
-        BIO_dump(out,(char *)argp,(int)ret);
-        return(ret);
-    }
-    else if (cmd == (BIO_CB_WRITE|BIO_CB_RETURN)) {
-        BIO_printf(out,"write to %p [%p] (%d bytes => %ld (0x%lX))\n",
-                   bio, argp, argi, ret, ret);
-        BIO_dump(out,(char *)argp,(int)ret);
-    }
-    return ret;
-}
-
-static void ssl_state_cb(const SSL *s, int w, int r)
-{
-    if (w & SSL_CB_ALERT) {
-        BIO_printf(bio_err, "SSL/TLS Alert [%s] %s:%s\n",
-                   (w & SSL_CB_READ ? "read" : "write"),
-                   SSL_alert_type_string_long(r),
-                   SSL_alert_desc_string_long(r));
-    } else if (w & SSL_CB_LOOP) {
-        BIO_printf(bio_err, "SSL/TLS State [%s] %s\n",
-                   (SSL_in_connect_init((SSL*)s) ? "connect" : "-"),
-                   SSL_state_string_long(s));
-    } else if (w & (SSL_CB_HANDSHAKE_START|SSL_CB_HANDSHAKE_DONE)) {
-        BIO_printf(bio_err, "SSL/TLS Handshake [%s] %s\n",
-                   (w & SSL_CB_HANDSHAKE_START ? "Start" : "Done"),
-                   SSL_state_string_long(s));
-    }
-}
-
-#ifndef RAND_MAX
-#define RAND_MAX INT_MAX
-#endif
-
-static int ssl_rand_choosenum(int l, int h)
-{
-    int i;
-    char buf[50];
-
-    srand((unsigned int)time(NULL));
-    apr_snprintf(buf, sizeof(buf), "%.0f",
-                 (((double)(rand()%RAND_MAX)/RAND_MAX)*(h-l)));
-    i = atoi(buf)+1;
-    if (i < l) i = l;
-    if (i > h) i = h;
-    return i;
-}
-
-static void ssl_rand_seed(void)
-{
-    int nDone = 0;
-    int n, l;
-    time_t t;
-    pid_t pid;
-    unsigned char stackdata[256];
-
-    /*
-     * seed in the current time (usually just 4 bytes)
-     */
-    t = time(NULL);
-    l = sizeof(time_t);
-    RAND_seed((unsigned char *)&t, l);
-    nDone += l;
-
-    /*
-     * seed in the current process id (usually just 4 bytes)
-     */
-    pid = getpid();
-    l = sizeof(pid_t);
-    RAND_seed((unsigned char *)&pid, l);
-    nDone += l;
-
-    /*
-     * seed in some current state of the run-time stack (128 bytes)
-     */
-    n = ssl_rand_choosenum(0, sizeof(stackdata)-128-1);
-    RAND_seed(stackdata+n, 128);
-    nDone += 128;
-}
-
-static int ssl_print_connection_info(BIO *bio, SSL *ssl)
-{
-    const SSL_CIPHER *c;
-    int alg_bits,bits;
-
-    c = SSL_get_current_cipher(ssl);
-    BIO_printf(bio,"Cipher Suite Protocol   :%s\n", SSL_CIPHER_get_version(c));
-    BIO_printf(bio,"Cipher Suite Name       :%s\n",SSL_CIPHER_get_name(c));
-
-    bits = SSL_CIPHER_get_bits(c,&alg_bits);
-    BIO_printf(bio,"Cipher Suite Cipher Bits:%d (%d)\n",bits,alg_bits);
-
-    return(1);
-}
-
-static void ssl_print_cert_info(BIO *bio, X509 *cert)
-{
-    X509_NAME *dn;
-    char buf[1024];
-
-    BIO_printf(bio, "Certificate version: %ld\n", X509_get_version(cert)+1);
-    BIO_printf(bio,"Valid from: ");
-    ASN1_UTCTIME_print(bio, X509_get_notBefore(cert));
-    BIO_printf(bio,"\n");
-
-    BIO_printf(bio,"Valid to  : ");
-    ASN1_UTCTIME_print(bio, X509_get_notAfter(cert));
-    BIO_printf(bio,"\n");
-
-    BIO_printf(bio,"Public key is %d bits\n",
-               EVP_PKEY_bits(X509_get_pubkey(cert)));
-
-    dn = X509_get_issuer_name(cert);
-    X509_NAME_oneline(dn, buf, sizeof(buf));
-    BIO_printf(bio,"The issuer name is %s\n", buf);
-
-    dn=X509_get_subject_name(cert);
-    X509_NAME_oneline(dn, buf, sizeof(buf));
-    BIO_printf(bio,"The subject name is %s\n", buf);
-
-    /* dump the extension list too */
-    BIO_printf(bio, "Extension Count: %d\n", X509_get_ext_count(cert));
-}
-
-static void ssl_print_info(struct connection *c)
-{
-    X509_STACK_TYPE *sk;
-    X509 *cert;
-    int count;
-
-    BIO_printf(bio_err, "\n");
-    sk = SSL_get_peer_cert_chain(c->ssl);
-    if ((count = SK_NUM(sk)) > 0) {
-        int i;
-        for (i=1; i<count; i++) {
-            cert = (X509 *)SK_VALUE(sk, i);
-            ssl_print_cert_info(bio_out, cert);
-            X509_free(cert);
-    }
-    }
-    cert = SSL_get_peer_certificate(c->ssl);
-    if (cert == NULL) {
-        BIO_printf(bio_out, "Anon DH\n");
-    } else {
-        BIO_printf(bio_out, "Peer certificate\n");
-        ssl_print_cert_info(bio_out, cert);
-        X509_free(cert);
-    }
-    ssl_print_connection_info(bio_err,c->ssl);
-    SSL_SESSION_print(bio_err, SSL_get_session(c->ssl));
-    }
-
-static void ssl_proceed_handshake(struct connection *c)
-{
-    int do_next = 1;
-
-    while (do_next) {
-        int ret, ecode;
-
-        ret = SSL_do_handshake(c->ssl);
-        ecode = SSL_get_error(c->ssl, ret);
-
-        switch (ecode) {
-        case SSL_ERROR_NONE:
-            if (verbosity >= 2)
-                ssl_print_info(c);
-            if (ssl_info == NULL) {
-                const SSL_CIPHER *ci;
-                X509 *cert;
-                int sk_bits, pk_bits, swork;
-
-                ci = SSL_get_current_cipher(c->ssl);
-                sk_bits = SSL_CIPHER_get_bits(ci, &swork);
-                cert = SSL_get_peer_certificate(c->ssl);
-                if (cert)
-                    pk_bits = EVP_PKEY_bits(X509_get_pubkey(cert));
-                else
-                    pk_bits = 0;  /* Anon DH */
-
-                ssl_info = malloc(128);
-                apr_snprintf(ssl_info, 128, "%s,%s,%d,%d",
-                             SSL_CIPHER_get_version(ci),
-                             SSL_CIPHER_get_name(ci),
-                             pk_bits, sk_bits);
-            }
-            write_request(c);
-            do_next = 0;
-            break;
-        case SSL_ERROR_WANT_READ:
-            set_polled_events(c, APR_POLLIN);
-            do_next = 0;
-            break;
-        case SSL_ERROR_WANT_WRITE:
-            /* Try again */
-            do_next = 1;
-            break;
-        case SSL_ERROR_WANT_CONNECT:
-        case SSL_ERROR_SSL:
-        case SSL_ERROR_SYSCALL:
-            /* Unexpected result */
-            BIO_printf(bio_err, "SSL handshake failed (%d).\n", ecode);
-            ERR_print_errors(bio_err);
-            close_connection(c);
-            do_next = 0;
-            break;
-        }
-    }
-}
-
-#endif /* USE_SSL */
 
 static void write_request(struct connection * c)
 {
@@ -698,21 +355,6 @@ static void write_request(struct connection * c)
             return;
         }
 
-#ifdef USE_SSL
-        if (c->ssl) {
-            apr_size_t e_ssl;
-            e_ssl = SSL_write(c->ssl,request + c->rwrote, l);
-            if (e_ssl != l) {
-                BIO_printf(bio_err, "SSL write failed - closing connection\n");
-                ERR_print_errors(bio_err);
-                close_connection (c);
-                return;
-            }
-            l = e_ssl;
-            e = APR_SUCCESS;
-        }
-        else
-#endif
             e = apr_socket_send(c->aprsock, request + c->rwrote, &l);
 
         if (e != APR_SUCCESS && !APR_STATUS_IS_EAGAIN(e)) {
@@ -785,11 +427,6 @@ static void output_results(int sig)
     printf("Server Software:        %s\n", servername);
     printf("Server Hostname:        %s\n", hostname);
     printf("Server Port:            %hu\n", port);
-#ifdef USE_SSL
-    if (is_ssl && ssl_info) {
-        printf("SSL/TLS Protocol:       %s\n", ssl_info);
-    }
-#endif
     printf("\n");
     printf("Document Path:          %s\n", path);
     printf("Document Length:        %" APR_SIZE_T_FMT " bytes\n", doclen);
@@ -1233,29 +870,6 @@ static void start_connect(struct connection * c)
     }
 
     c->start = lasttime = apr_time_now();
-#ifdef USE_SSL
-    if (is_ssl) {
-        BIO *bio;
-        apr_os_sock_t fd;
-
-        if ((c->ssl = SSL_new(ssl_ctx)) == NULL) {
-            BIO_printf(bio_err, "SSL_new failed.\n");
-            ERR_print_errors(bio_err);
-            exit(1);
-        }
-        ssl_rand_seed();
-        apr_os_sock_get(&fd, c->aprsock);
-        bio = BIO_new_socket(fd, BIO_NOCLOSE);
-        SSL_set_bio(c->ssl, bio, bio);
-        SSL_set_connect_state(c->ssl);
-        if (verbosity >= 4) {
-            BIO_set_callback(bio, ssl_print_cb);
-            BIO_set_callback_arg(bio, (void *)bio_err);
-        }
-    } else {
-        c->ssl = NULL;
-    }
-#endif
     if ((rv = apr_socket_connect(c->aprsock, destsa)) != APR_SUCCESS) {
         if (APR_STATUS_IS_EINPROGRESS(rv)) {
             set_conn_state(c, STATE_CONNECTING);
@@ -1280,11 +894,6 @@ static void start_connect(struct connection * c)
     /* connected first time */
     set_conn_state(c, STATE_CONNECTED);
     started++;
-#ifdef USE_SSL
-    if (c->ssl) {
-        ssl_proceed_handshake(c);
-    } else
-#endif
     {
         write_request(c);
     }
@@ -1328,13 +937,6 @@ static void close_connection(struct connection * c)
     }
 
     set_conn_state(c, STATE_UNCONNECTED);
-#ifdef USE_SSL
-    if (c->ssl) {
-        SSL_shutdown(c->ssl);
-        SSL_free(c->ssl);
-        c->ssl = NULL;
-    }
-#endif
     apr_socket_close(c->aprsock);
 
     /* connect again */
@@ -1354,31 +956,6 @@ static void read_connection(struct connection * c)
     char respcode[4];       /* 3 digits and null */
 
     r = sizeof(buffer);
-#ifdef USE_SSL
-    if (c->ssl) {
-        status = SSL_read(c->ssl, buffer, r);
-        if (status <= 0) {
-            int scode = SSL_get_error(c->ssl, status);
-
-            if (scode == SSL_ERROR_ZERO_RETURN) {
-                /* connection closed cleanly: */
-                good++;
-                close_connection(c);
-            }
-            else if (scode != SSL_ERROR_WANT_WRITE
-                     && scode != SSL_ERROR_WANT_READ) {
-                /* some fatal error: */
-                c->read = 0;
-                BIO_printf(bio_err, "SSL read failed - closing connection\n");
-                ERR_print_errors(bio_err);
-                close_connection(c);
-            }
-            return;
-        }
-        r = status;
-    }
-    else
-#endif
     {
         status = apr_socket_recv(c->aprsock, buffer, &r);
         if (APR_STATUS_IS_EAGAIN(status))
@@ -1417,19 +994,7 @@ static void read_connection(struct connection * c)
         int l = 4;
         apr_size_t space = CBUFFSIZE - c->cbx - 1; /* -1 allows for \0 term */
         int tocopy = (space < r) ? space : r;
-#ifdef NOT_ASCII
-        apr_size_t inbytes_left = space, outbytes_left = space;
-
-        status = apr_xlate_conv_buffer(from_ascii, buffer, &inbytes_left,
-                           c->cbuff + c->cbx, &outbytes_left);
-        if (status || inbytes_left || outbytes_left) {
-            fprintf(stderr, "only simple translation is supported (%d/%" APR_SIZE_T_FMT
-                            "/%" APR_SIZE_T_FMT ")\n", status, inbytes_left, outbytes_left);
-            exit(1);
-        }
-#else
         memcpy(c->cbuff + c->cbx, buffer, space);
-#endif              /* NOT_ASCII */
         c->cbx += tocopy;
         space -= tocopy;
         c->cbuff[c->cbx] = 0;   /* terminate for benefit of strstr */
@@ -1581,9 +1146,6 @@ static void test(void)
     int i;
     apr_status_t status;
     int snprintf_res = 0;
-#ifdef NOT_ASCII
-    apr_size_t inbytes_left, outbytes_left;
-#endif
 
     if (isproxy) {
         connecthost = apr_pstrdup(cntxt, proxyhost);
@@ -1685,17 +1247,6 @@ static void test(void)
         request = buff;
     }
 
-#ifdef NOT_ASCII
-    inbytes_left = outbytes_left = reqlen;
-    status = apr_xlate_conv_buffer(to_ascii, request, &inbytes_left,
-                   request, &outbytes_left);
-    if (status || inbytes_left || outbytes_left) {
-        fprintf(stderr, "only simple translation is supported (%d/%"
-                        APR_SIZE_T_FMT "/%" APR_SIZE_T_FMT ")\n",
-                        status, inbytes_left, outbytes_left);
-        exit(1);
-    }
-#endif              /* NOT_ASCII */
 
     /* This only needs to be done once */
     if ((rv = apr_sockaddr_info_get(&destsa, connecthost, APR_UNSPEC, connectport, 0, cntxt))
@@ -1710,10 +1261,8 @@ static void test(void)
     start = lasttime = apr_time_now();
     stoptime = tlimit ? (start + apr_time_from_sec(tlimit)) : AB_MAX;
 
-#ifdef SIGINT 
     /* Output the results if the user terminates the run early. */
     apr_signal(SIGINT, output_results);
-#endif
 
     /* initialise lots of requests */
     for (i = 0; i < concurrency; i++) {
@@ -1750,12 +1299,6 @@ static void test(void)
 
             rv = next_fd->rtnevents;
 
-#ifdef USE_SSL
-            if (c->state == STATE_CONNECTED && c->ssl && SSL_in_init(c->ssl)) {
-                ssl_proceed_handshake(c);
-                continue;
-            }
-#endif
 
             /*
              * Notes: APR_POLLHUP is set after FIN is received on some
@@ -1801,11 +1344,6 @@ static void test(void)
                     else {
                         set_conn_state(c, STATE_CONNECTED);
                         started++;
-#ifdef USE_SSL
-                        if (c->ssl)
-                            ssl_proceed_handshake(c);
-                        else
-#endif
                         write_request(c);
                     }
                 }
@@ -1851,9 +1389,6 @@ static void copyright(void)
 static void usage(const char *progname)
 {
     fprintf(stderr, "Usage: %s [options] [http"
-#ifdef USE_SSL
-        "[s]"
-#endif
         "://]hostname[:port]/path\n", progname);
 /* 80 column ruler:  ********************************************************************************
  */
@@ -1888,10 +1423,6 @@ static void usage(const char *progname)
     fprintf(stderr, "    -e filename     Output CSV file with percentages served\n");
     fprintf(stderr, "    -r              Don't exit on socket receive errors.\n");
     fprintf(stderr, "    -h              Display usage information (this message)\n");
-#ifdef USE_SSL
-    fprintf(stderr, "    -Z ciphersuite  Specify SSL/TLS cipher suite (See openssl ciphers)\n");
-    fprintf(stderr, "    -f protocol     Specify SSL/TLS protocol (SSL2, SSL3, TLS1, or ALL)\n");
-#endif
     exit(EINVAL);
 }
 
@@ -1911,22 +1442,12 @@ static int parse_url(char *url)
 
     if (strlen(url) > 7 && strncmp(url, "http://", 7) == 0) {
         url += 7;
-#ifdef USE_SSL
-        is_ssl = 0;
-#endif
     }
     else
-#ifdef USE_SSL
-    if (strlen(url) > 8 && strncmp(url, "https://", 8) == 0) {
-        url += 8;
-        is_ssl = 1;
-    }
-#else
     if (strlen(url) > 8 && strncmp(url, "https://", 8) == 0) {
         fprintf(stderr, "SSL not compiled in; no https support\n");
         exit(1);
     }
-#endif
 
     if ((cp = strchr(url, '/')) == NULL)
         return 1;
@@ -1945,18 +1466,10 @@ static int parse_url(char *url)
     }
 
     if (port == 0) {        /* no port specified */
-#ifdef USE_SSL
-        if (is_ssl)
-            port = 443;
-        else
-#endif
         port = 80;
     }
 
     if ((
-#ifdef USE_SSL
-         is_ssl && (port != 443)) || (!is_ssl &&
-#endif
          (port != 80)))
     {
         colonhost = apr_psprintf(cntxt,":%d",port);
@@ -2016,13 +1529,6 @@ int main(int argc, const char * const argv[])
     apr_getopt_t *opt;
     const char *optarg;
     char c;
-#ifdef USE_SSL
-#if OPENSSL_VERSION_NUMBER >= 0x00909000
-    const SSL_METHOD *meth = SSLv23_client_method();
-#else
-    SSL_METHOD *meth = SSLv23_client_method();
-#endif
-#endif
 
     /* table defaults  */
     tablestring = "";
@@ -2037,29 +1543,9 @@ int main(int argc, const char * const argv[])
     atexit(apr_terminate);
     apr_pool_create(&cntxt, NULL);
 
-#ifdef NOT_ASCII
-    status = apr_xlate_open(&to_ascii, "ISO-8859-1", APR_DEFAULT_CHARSET, cntxt);
-    if (status) {
-        fprintf(stderr, "apr_xlate_open(to ASCII)->%d\n", status);
-        exit(1);
-    }
-    status = apr_xlate_open(&from_ascii, APR_DEFAULT_CHARSET, "ISO-8859-1", cntxt);
-    if (status) {
-        fprintf(stderr, "apr_xlate_open(from ASCII)->%d\n", status);
-        exit(1);
-    }
-    status = apr_base64init_ebcdic(to_ascii, from_ascii);
-    if (status) {
-        fprintf(stderr, "apr_base64init_ebcdic()->%d\n", status);
-        exit(1);
-    }
-#endif
 
     apr_getopt_init(&opt, cntxt, argc, argv);
     while ((status = apr_getopt(opt, "n:c:t:b:T:p:v:rkVhwix:y:z:C:H:P:A:g:X:de:Sq"
-#ifdef USE_SSL
-            "Z:f:"
-#endif
             ,&c, &optarg)) == APR_SUCCESS) {
         switch (c) {
             case 'n':
@@ -2211,22 +1697,6 @@ int main(int argc, const char * const argv[])
             case 'V':
                 copyright();
                 return 0;
-#ifdef USE_SSL
-            case 'Z':
-                ssl_cipher = strdup(optarg);
-                break;
-            case 'f':
-                if (strncasecmp(optarg, "ALL", 3) == 0) {
-                    meth = SSLv23_client_method();
-                } else if (strncasecmp(optarg, "SSL2", 4) == 0) {
-                    meth = SSLv2_client_method();
-                } else if (strncasecmp(optarg, "SSL3", 4) == 0) {
-                    meth = SSLv3_client_method();
-                } else if (strncasecmp(optarg, "TLS1", 4) == 0) {
-                    meth = TLSv1_client_method();
-                }
-                break;
-#endif
         }
     }
 
@@ -2261,38 +1731,8 @@ int main(int argc, const char * const argv[])
     else
         heartbeatres = 0;
 
-#ifdef USE_SSL
-#ifdef RSAREF
-    R_malloc_init();
-#else
-    CRYPTO_malloc_init();
-#endif
-    SSL_load_error_strings();
-    SSL_library_init();
-    bio_out=BIO_new_fp(stdout,BIO_NOCLOSE);
-    bio_err=BIO_new_fp(stderr,BIO_NOCLOSE);
-
-    if (!(ssl_ctx = SSL_CTX_new(meth))) {
-        BIO_printf(bio_err, "Could not initialize SSL Context.\n");
-        ERR_print_errors(bio_err);
-        exit(1);
-    }
-    SSL_CTX_set_options(ssl_ctx, SSL_OP_ALL);
-    if (ssl_cipher != NULL) {
-        if (!SSL_CTX_set_cipher_list(ssl_ctx, ssl_cipher)) {
-            fprintf(stderr, "error setting cipher list [%s]\n", ssl_cipher);
-        ERR_print_errors_fp(stderr);
-        exit(1);
-    }
-    }
-    if (verbosity >= 3) {
-        SSL_CTX_set_info_callback(ssl_ctx, ssl_state_cb);
-    }
-#endif
-#ifdef SIGPIPE
     apr_signal(SIGPIPE, SIG_IGN);       /* Ignore writes to connections that
                                          * have been closed at the other end. */
-#endif
     copyright();
     test();
     apr_pool_destroy(cntxt);
