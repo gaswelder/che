@@ -7,6 +7,58 @@ pub typedef {
 } header_t;
 
 pub typedef {
+    char schema[10];
+    char hostname[100];
+    char port[10];
+    char path[100];
+} url_t;
+
+pub bool parse_url(url_t *r, const char *s) {
+    memset(r, 0, sizeof(url_t));
+
+    parsebuf.parsebuf_t *buf = parsebuf.buf_new(s);
+    
+    // http
+    char *q = r->schema;
+    while (parsebuf.buf_more(buf) && parsebuf.buf_peek(buf) != ':') {
+        *q++ = parsebuf.buf_get(buf);
+    }
+
+    // ://
+    if (parsebuf.buf_get(buf) != ':'
+        || parsebuf.buf_get(buf) != '/'
+        || parsebuf.buf_get(buf) != '/'
+        ) {
+        parsebuf.buf_free(buf);
+        return false;
+    }
+
+    // domain or ip address
+    q = r->hostname;
+    while (parsebuf.buf_more(buf) && parsebuf.buf_peek(buf) != ':' && parsebuf.buf_peek(buf) != '/') {
+        *q++ = parsebuf.buf_get(buf);
+    }
+
+    q = r->port;
+    if (parsebuf.buf_peek(buf) == ':') {
+        parsebuf.buf_get(buf);
+        while (parsebuf.buf_more(buf) && parsebuf.buf_peek(buf) != '/') {
+            *q++ = parsebuf.buf_get(buf);
+        }
+    }
+
+    q = r->path;
+    if (parsebuf.buf_peek(buf) == '/') {
+        while (parsebuf.buf_more(buf)) {
+            *q++ = parsebuf.buf_get(buf);
+        }
+    }
+
+    parsebuf.buf_free(buf);
+    return true;
+}
+
+pub typedef {
     header_t headers[100];
     size_t nheaders;
 } cgi_head_t;
