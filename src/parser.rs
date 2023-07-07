@@ -84,6 +84,7 @@ fn parse_module_object(l: &mut Lexer, ctx: &Ctx) -> Result<ModuleObject, Error> 
         type_name,
         form,
         value,
+        pos,
     });
 }
 

@@ -228,6 +228,7 @@ fn translate_module_object(element: &ModuleObject, ctx: &Ctx) -> Vec<CModuleObje
             form,
             type_name,
             value,
+            pos: _,
         } => vec![CModuleObject::ModuleVariable {
             type_name: translate_typename(type_name, ctx),
             form: translate_form(form, ctx),

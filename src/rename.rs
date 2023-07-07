@@ -25,6 +25,7 @@ fn prefix_mod_obj(obj: &mut ModuleObject, prefix: &String, names: &Vec<String>) 
             form,
             type_name,
             value,
+            pos: _,
         } => {
             prefix_typename(type_name, prefix, names);
             prefix_expr(value, prefix, names);

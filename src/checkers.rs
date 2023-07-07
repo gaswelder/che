@@ -76,10 +76,17 @@ pub fn run(m: &Module, imports: &HashMap<String, &Exports>) -> Vec<Error> {
                 type_name,
                 form: _,
                 value,
+                pos,
             } => {
                 let n = &type_name.name;
                 if n.namespace == "" {
                     used_local_types.insert(n.name.clone());
+                }
+                if has_function_call(value) {
+                    state.errors.push(Error {
+                        message: format!("function call in module variable initialization"),
+                        pos: format!("{}", pos),
+                    })
                 }
                 check_ns_id(&type_name.name, &mut state, &scope, imports);
                 check_expr(value, &mut state, &scope, imports);
@@ -147,6 +154,41 @@ pub fn run(m: &Module, imports: &HashMap<String, &Exports>) -> Vec<Error> {
     return state.errors;
 }
 
+fn has_function_call(e: &Expression) -> bool {
+    return match e {
+        Expression::ArrayIndex { array, index } => {
+            has_function_call(array) || has_function_call(index)
+        }
+        Expression::BinaryOp { op: _, a, b } => has_function_call(a) || has_function_call(b),
+        Expression::FieldAccess {
+            op: _,
+            target,
+            field_name: _,
+        } => has_function_call(target),
+        Expression::Cast {
+            type_name: _,
+            operand,
+        } => has_function_call(operand),
+        Expression::CompositeLiteral(_) => false,
+        Expression::FunctionCall {
+            function: _,
+            arguments: _,
+        } => true,
+        Expression::Identifier(_) => false,
+        Expression::Literal(_) => false,
+        Expression::NsName(_) => false,
+        Expression::PostfixOperator {
+            operator: _,
+            operand,
+        } => has_function_call(operand),
+        Expression::PrefixOperator {
+            operator: _,
+            operand,
+        } => has_function_call(operand),
+        Expression::Sizeof { argument: _ } => false,
+    };
+}
+
 fn get_module_scope(m: &Module) -> Vec<&str> {
     let mut scope = vec![
         // should be fixed
@@ -188,6 +230,7 @@ fn get_module_scope(m: &Module) -> Vec<&str> {
                 type_name: _,
                 form,
                 value: _,
+                pos: _,
             } => {
                 scope.push(form.name.as_str());
             }

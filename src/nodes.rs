@@ -33,6 +33,7 @@ pub enum ModuleObject {
         type_name: Typename,
         form: Form,
         value: Expression,
+        pos: String,
     },
     FunctionDeclaration(FunctionDeclaration),
 }
