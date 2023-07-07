@@ -400,10 +400,307 @@ int main(int argc, char *argv[]) {
 
     copyright();
 
+    init_request();
+
+    /* Output the results if the user terminates the run early. */
+    signal(SIGINT, output_results);
+
     test(strbuilder.str_raw(auth));
 
     strbuilder.str_free(auth);
     return 0;
+}
+
+void init_request() {
+    strbuilder.str *headers = strbuilder.str_new();
+
+    if (opt_host) {
+        bool ok = strbuilder.adds(headers, "Host: ")
+            && strbuilder.adds(headers, opt_host)
+            && strbuilder.adds(headers, "\r\n");
+        if (!ok) {
+            panic("!");
+        }
+    } else {
+        bool ok = strbuilder.adds(headers, "Host: ")
+            && strbuilder.adds(headers, host_field)
+            && strbuilder.adds(headers, colonhost)
+            && strbuilder.adds(headers, "\r\n");
+        if (!ok) {
+            panic("!");
+        }
+    }
+
+    if (opt_useragent) {
+        bool ok = strbuilder.adds(headers, "User-Agent: ")
+            && strbuilder.adds(headers, opt_useragent)
+            && strbuilder.adds(headers, "\r\n");
+        if (!ok) {
+            panic("!");
+        }
+    }
+    else {
+        bool ok = strbuilder.adds(headers, "User-Agent: ApacheBench/")
+            && strbuilder.adds(headers, AP_AB_BASEREVISION)
+            && strbuilder.adds(headers, "\r\n");
+        if (!ok) {
+            panic("!");
+        }
+    }
+    if (opt_accept) {
+        bool ok = strbuilder.adds(headers, "Accept: ")
+            && strbuilder.adds(headers, opt_accept)
+            && strbuilder.adds(headers, "\r\n");
+        if (!ok) {
+            panic("!");
+        }
+    } else {
+        bool ok = strbuilder.adds(headers, "Accept: ")
+            && strbuilder.adds(headers, "*/*")
+            && strbuilder.adds(headers, "\r\n");
+        if (!ok) {
+            panic("!");
+        }
+    }
+    if (cookie) {
+        bool ok = strbuilder.adds(headers, "Cookie: ")
+            && strbuilder.adds(headers, cookie)
+            && strbuilder.adds(headers, "\r\n");
+        if (!ok) {
+            panic("!");
+        }
+    }
+
+    char *hdrs = strbuilder.str_unpack(headers);
+
+    /* setup request */
+    if (posting <= 0) {
+        const char *method = "GET";
+        if (posting) {
+            method = "HEAD";
+        }
+        const char *ppath = path;
+        if (isproxy) {
+            ppath = fullurl;
+        }
+        const char *kas = "";
+        if (keepalive) {
+            kas = "Connection: Keep-Alive\r\n";
+        }
+        snprintf_res = apr_snprintf(request, sizeof(_request),
+            "%s %s HTTP/1.0\r\n"
+            "%s" "%s" "%s"
+            "\r\n",
+            method,
+            ppath,
+            kas,
+            auth,
+            hdrs);
+    }
+    else {
+        const char *ppath = path;
+        if (isproxy) {
+            ppath = fullurl;
+        }
+        const char *ctype = "text/plain";
+        if (content_type[0]) {
+            ctype = content_type;
+        }
+        const char *kas = "";
+        if (keepalive) {
+            kas = "Connection: Keep-Alive\r\n";
+        }
+        snprintf_res = apr_snprintf(request,  sizeof(_request),
+            "POST %s HTTP/1.0\r\n"
+            "%s" "%s"
+            "Content-length: %zu\r\n"
+            "Content-type: %s\r\n"
+            "%s"
+            "\r\n",
+            ppath,
+            kas,
+            auth,
+            postlen,
+            ctype, hdrs);
+    }
+    if (snprintf_res >= sizeof(_request)) {
+        err("Request too long\n");
+    }
+    if (verbosity >= 2)
+        printf("INFO: POST header == \n---\n%s\n---\n", request);
+
+    reqlen = strlen(request);
+
+    /*
+     * Combine headers and (optional) post file into one contineous buffer
+     */
+    if (posting == 1) {
+        char *buff = calloc(postlen + reqlen + 1, 1);
+        if (!buff) {
+            fprintf(stderr, "error creating request buffer: out of memory\n");
+            return;
+        }
+        strcpy(buff, request);
+        memcpy(buff + reqlen, postdata, postlen);
+        request = buff;
+    }
+    free(hdrs);
+}
+
+void test(const char *auth) {
+    apr_time_t stoptime;
+    int16_t rv;
+    int i;
+    int status;
+    int snprintf_res = 0;
+
+    if (isproxy) {
+        connecthost = apr_pstrdup(cntxt, proxyhost);
+        connectport = proxyport;
+    }
+    else {
+        connecthost = apr_pstrdup(cntxt, hostname);
+        connectport = port;
+    }
+
+    if (!use_html) {
+        printf("Benchmarking %s ", hostname);
+        if (isproxy)
+            printf("[through %s:%d] ", proxyhost, proxyport);
+        if (heartbeatres) {
+            printf("(be patient)\n");
+        } else {
+            printf("(be patient)...");
+        }
+        fflush(stdout);
+    }
+
+    con = calloc(concurrency, sizeof(connection_t));
+    stats = calloc(requests, sizeof(data_t));
+
+    //
+    // FD set
+    //
+    if ((status = apr_pollset_create(&readbits, concurrency, cntxt,
+                                     APR_POLLSET_NOCOPY)) != APR_SUCCESS) {
+        apr_err("apr_pollset_create failed", status);
+    }
+
+    /* This only needs to be done once */
+    if ((rv = apr_sockaddr_info_get(&destsa, connecthost, APR_UNSPEC, connectport, 0, cntxt))
+       != APR_SUCCESS) {
+        char buf[120];
+        apr_snprintf(buf, sizeof(buf),
+                 "apr_sockaddr_info_get() for %s", connecthost);
+        apr_err(buf, rv);
+    }
+
+    /* ok - lets start */
+    start = lasttime = apr_time_now();
+    if (tlimit) {
+        stoptime = (start + apr_time_from_sec(tlimit));
+    } else {
+        stoptime = AB_MAX;
+    }
+    for (int i = 0; i < concurrency; i++) {
+        con[i].socknum = i;
+        start_connect(&con[i]);
+    }
+
+    while (true) {
+        //
+        // poll
+        //
+        const apr_pollfd_t *pollresults;
+        int32_t n = concurrency;
+        if (apr_pollset_poll(readbits, aprtimeout, &n, &pollresults) != APR_SUCCESS) {
+            panic("poll failed");
+        }
+        if (!n) {
+            err("\nServer timed out\n\n");
+        }
+
+        for (int i = 0; i < n; i++) {
+            const apr_pollfd_t *next_fd = &(pollresults[i]);
+            connection_t *c = next_fd->client_data;
+
+            /*
+             * If the connection isn't connected how can we check it?
+             */
+            if (c->state == STATE_UNCONNECTED)
+                continue;
+
+            rv = next_fd->rtnevents;
+
+
+            /*
+             * Notes: APR_POLLHUP is set after FIN is received on some
+             * systems, so treat that like APR_POLLIN so that we try to read
+             * again.
+             *
+             * Some systems return APR_POLLERR with APR_POLLHUP.  We need to
+             * call read_connection() for APR_POLLHUP, so check for
+             * APR_POLLHUP first so that a closed connection isn't treated
+             * like an I/O error.  If it is, we never figure out that the
+             * connection is done and we loop here endlessly calling
+             * apr_poll().
+             */
+            if ((rv & APR_POLLIN) || (rv & APR_POLLPRI) || (rv & APR_POLLHUP))
+                read_connection(c);
+            if ((rv & APR_POLLERR) || (rv & APR_POLLNVAL)) {
+                bad++;
+                err_except++;
+                /* avoid apr_poll/EINPROGRESS loop on HP-UX, let recv discover ECONNREFUSED */
+                if (c->state == STATE_CONNECTING) { 
+                    read_connection(c);
+                }
+                else { 
+                    start_connect(c);
+                }
+                continue;
+            }
+            if (rv & APR_POLLOUT) {
+                if (c->state == STATE_CONNECTING) {
+                    rv = apr_socket_connect(c->aprsock, destsa);
+                    if (rv != APR_SUCCESS) {
+                        apr_socket_close(c->aprsock);
+                        err_conn++;
+                        if (bad++ > 10) {
+                            panic("Test aborted after 10 failures: %s", strerror(errno));
+                        }
+                        set_conn_state(c, STATE_UNCONNECTED);
+                        start_connect(c);
+                        continue;
+                    }
+                    else {
+                        set_conn_state(c, STATE_CONNECTED);
+                        started++;
+                        write_request(c);
+                    }
+                }
+                else {
+                    write_request(c);
+                }
+            }
+        }
+        if (lasttime < stoptime && done < requests) {
+            continue;
+        } else {
+            break;
+        }
+    }
+
+    
+    
+    if (heartbeatres)
+        fprintf(stderr, "Finished %d requests\n", done);
+    else
+        printf("..done\n");
+
+    if (use_html)
+        output_html_results();
+    else
+        output_results(0);
 }
 
 
@@ -1298,313 +1595,8 @@ void read_connection(connection_t * c)
     }
 }
 
-/* --------------------------------------------------------- */
-
-/* run the tests */
-
-void test(const char *auth) {
-    apr_time_t stoptime;
-    int16_t rv;
-    int i;
-    int status;
-    int snprintf_res = 0;
-
-    if (isproxy) {
-        connecthost = apr_pstrdup(cntxt, proxyhost);
-        connectport = proxyport;
-    }
-    else {
-        connecthost = apr_pstrdup(cntxt, hostname);
-        connectport = port;
-    }
-
-    if (!use_html) {
-        printf("Benchmarking %s ", hostname);
-        if (isproxy)
-            printf("[through %s:%d] ", proxyhost, proxyport);
-        if (heartbeatres) {
-            printf("(be patient)\n");
-        } else {
-            printf("(be patient)...");
-        }
-        fflush(stdout);
-    }
-
-    con = calloc(concurrency, sizeof(connection_t));
-
-    stats = calloc(requests, sizeof(data_t));
-
-    if ((status = apr_pollset_create(&readbits, concurrency, cntxt,
-                                     APR_POLLSET_NOCOPY)) != APR_SUCCESS) {
-        apr_err("apr_pollset_create failed", status);
-    }
-
-    strbuilder.str *headers = strbuilder.str_new();
-
-    if (opt_host) {
-        bool ok = strbuilder.adds(headers, "Host: ")
-            && strbuilder.adds(headers, opt_host)
-            && strbuilder.adds(headers, "\r\n");
-        if (!ok) {
-            panic("!");
-        }
-    } else {
-        bool ok = strbuilder.adds(headers, "Host: ")
-            && strbuilder.adds(headers, host_field)
-            && strbuilder.adds(headers, colonhost)
-            && strbuilder.adds(headers, "\r\n");
-        if (!ok) {
-            panic("!");
-        }
-    }
-
-    if (opt_useragent) {
-        bool ok = strbuilder.adds(headers, "User-Agent: ")
-            && strbuilder.adds(headers, opt_useragent)
-            && strbuilder.adds(headers, "\r\n");
-        if (!ok) {
-            panic("!");
-        }
-    }
-    else {
-        bool ok = strbuilder.adds(headers, "User-Agent: ApacheBench/")
-            && strbuilder.adds(headers, AP_AB_BASEREVISION)
-            && strbuilder.adds(headers, "\r\n");
-        if (!ok) {
-            panic("!");
-        }
-    }
-
-    if (opt_accept) {
-        bool ok = strbuilder.adds(headers, "Accept: ")
-            && strbuilder.adds(headers, opt_accept)
-            && strbuilder.adds(headers, "\r\n");
-        if (!ok) {
-            panic("!");
-        }
-    } else {
-        bool ok = strbuilder.adds(headers, "Accept: ")
-            && strbuilder.adds(headers, "*/*")
-            && strbuilder.adds(headers, "\r\n");
-        if (!ok) {
-            panic("!");
-        }
-    }
-    if (cookie) {
-        bool ok = strbuilder.adds(headers, "Cookie: ")
-            && strbuilder.adds(headers, cookie)
-            && strbuilder.adds(headers, "\r\n");
-        if (!ok) {
-            panic("!");
-        }
-    }
-
-    char *hdrs = strbuilder.str_unpack(headers);
-
-    /* setup request */
-    if (posting <= 0) {
-        const char *method = "GET";
-        if (posting) {
-            method = "HEAD";
-        }
-        const char *ppath = path;
-        if (isproxy) {
-            ppath = fullurl;
-        }
-        const char *kas = "";
-        if (keepalive) {
-            kas = "Connection: Keep-Alive\r\n";
-        }
-        snprintf_res = apr_snprintf(request, sizeof(_request),
-            "%s %s HTTP/1.0\r\n"
-            "%s" "%s" "%s"
-            "\r\n",
-            method,
-            ppath,
-            kas,
-            auth,
-            hdrs);
-    }
-    else {
-        const char *ppath = path;
-        if (isproxy) {
-            ppath = fullurl;
-        }
-        const char *ctype = "text/plain";
-        if (content_type[0]) {
-            ctype = content_type;
-        }
-        const char *kas = "";
-        if (keepalive) {
-            kas = "Connection: Keep-Alive\r\n";
-        }
-        snprintf_res = apr_snprintf(request,  sizeof(_request),
-            "POST %s HTTP/1.0\r\n"
-            "%s" "%s"
-            "Content-length: %zu\r\n"
-            "Content-type: %s\r\n"
-            "%s"
-            "\r\n",
-            ppath,
-            kas,
-            auth,
-            postlen,
-            ctype, hdrs);
-    }
-    if (snprintf_res >= sizeof(_request)) {
-        err("Request too long\n");
-    }
-
-    if (verbosity >= 2)
-        printf("INFO: POST header == \n---\n%s\n---\n", request);
-
-    reqlen = strlen(request);
-
-    /*
-     * Combine headers and (optional) post file into one contineous buffer
-     */
-    if (posting == 1) {
-        char *buff = calloc(postlen + reqlen + 1, 1);
-        if (!buff) {
-            fprintf(stderr, "error creating request buffer: out of memory\n");
-            return;
-        }
-        strcpy(buff, request);
-        memcpy(buff + reqlen, postdata, postlen);
-        request = buff;
-    }
 
 
-    /* This only needs to be done once */
-    if ((rv = apr_sockaddr_info_get(&destsa, connecthost, APR_UNSPEC, connectport, 0, cntxt))
-       != APR_SUCCESS) {
-        char buf[120];
-        apr_snprintf(buf, sizeof(buf),
-                 "apr_sockaddr_info_get() for %s", connecthost);
-        apr_err(buf, rv);
-    }
-
-    /* ok - lets start */
-    start = lasttime = apr_time_now();
-    if (tlimit) {
-        stoptime = (start + apr_time_from_sec(tlimit));
-    } else {
-        stoptime = AB_MAX;
-    }
-
-    /* Output the results if the user terminates the run early. */
-    signal(SIGINT, output_results);
-
-    /* initialise lots of requests */
-    for (i = 0; i < concurrency; i++) {
-        con[i].socknum = i;
-        start_connect(&con[i]);
-    }
-
-    while (true) {
-        int32_t n;
-        const apr_pollfd_t *pollresults;
-
-        n = concurrency;
-        while (true) {
-            status = apr_pollset_poll(readbits, aprtimeout, &n, &pollresults);
-            if (!APR_STATUS_IS_EINTR(status)) {
-                break;
-            }
-        }
-        if (status != APR_SUCCESS)
-            apr_err("apr_poll", status);
-
-        if (!n) {
-            err("\nServer timed out\n\n");
-        }
-
-        for (i = 0; i < n; i++) {
-            const apr_pollfd_t *next_fd = &(pollresults[i]);
-            connection_t *c;
-
-            c = next_fd->client_data;
-
-            /*
-             * If the connection isn't connected how can we check it?
-             */
-            if (c->state == STATE_UNCONNECTED)
-                continue;
-
-            rv = next_fd->rtnevents;
-
-
-            /*
-             * Notes: APR_POLLHUP is set after FIN is received on some
-             * systems, so treat that like APR_POLLIN so that we try to read
-             * again.
-             *
-             * Some systems return APR_POLLERR with APR_POLLHUP.  We need to
-             * call read_connection() for APR_POLLHUP, so check for
-             * APR_POLLHUP first so that a closed connection isn't treated
-             * like an I/O error.  If it is, we never figure out that the
-             * connection is done and we loop here endlessly calling
-             * apr_poll().
-             */
-            if ((rv & APR_POLLIN) || (rv & APR_POLLPRI) || (rv & APR_POLLHUP))
-                read_connection(c);
-            if ((rv & APR_POLLERR) || (rv & APR_POLLNVAL)) {
-                bad++;
-                err_except++;
-                /* avoid apr_poll/EINPROGRESS loop on HP-UX, let recv discover ECONNREFUSED */
-                if (c->state == STATE_CONNECTING) { 
-                    read_connection(c);
-                }
-                else { 
-                    start_connect(c);
-                }
-                continue;
-            }
-            if (rv & APR_POLLOUT) {
-                if (c->state == STATE_CONNECTING) {
-                    rv = apr_socket_connect(c->aprsock, destsa);
-                    if (rv != APR_SUCCESS) {
-                        apr_socket_close(c->aprsock);
-                        err_conn++;
-                        if (bad++ > 10) {
-                            fprintf(stderr,
-                                    "\nTest aborted after 10 failures\n\n");
-                            apr_err("apr_socket_connect()", rv);
-                        }
-                        set_conn_state(c, STATE_UNCONNECTED);
-                        start_connect(c);
-                        continue;
-                    }
-                    else {
-                        set_conn_state(c, STATE_CONNECTED);
-                        started++;
-                        write_request(c);
-                    }
-                }
-                else {
-                    write_request(c);
-                }
-            }
-        }
-        if (lasttime < stoptime && done < requests) {
-            continue;
-        } else {
-            break;
-        }
-    }
-
-    free(hdrs);
-    
-    if (heartbeatres)
-        fprintf(stderr, "Finished %d requests\n", done);
-    else
-        printf("..done\n");
-
-    if (use_html)
-        output_html_results();
-    else
-        output_results(0);
-}
 
 void copyright() {
     if (!use_html) {
