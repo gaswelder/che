@@ -136,9 +136,9 @@ const char *trstring = NULL;
 const char *tdstring = NULL;
 
 size_t doclen = 0;     /* the length the document should be */
-apr_int64_t totalread = 0;    /* total number of bytes read */
-apr_int64_t totalbread = 0;   /* totoal amount of entity body read */
-apr_int64_t totalposted = 0;  /* total number of bytes posted, inc. headers */
+int64_t totalread = 0;    /* total number of bytes read */
+int64_t totalbread = 0;   /* totoal amount of entity body read */
+int64_t totalposted = 0;  /* total number of bytes posted, inc. headers */
 int started = 0;           /* number of requests started, so no excess */
 int done = 0;              /* number of requests we have done */
 int doneka = 0;            /* number of keep alive connections done */
@@ -1261,7 +1261,7 @@ void test(const char *auth) {
     }
 
     /* Output the results if the user terminates the run early. */
-    apr_signal(SIGINT, output_results);
+    signal(SIGINT, output_results);
 
     /* initialise lots of requests */
     for (i = 0; i < concurrency; i++) {
@@ -1487,46 +1487,6 @@ int parse_url(char *url)
 
 /* read data to POST from file, save contents and length */
 
-typedef {
-    int TODO;
-} apr_finfo_t;
-
-int open_postfile(const char *pfile)
-{
-    apr_file_t *postfd;
-    apr_finfo_t finfo;
-    int rv;
-    char errmsg[120];
-
-    rv = apr_file_open(&postfd, pfile, APR_READ, APR_OS_DEFAULT, cntxt);
-    if (rv != APR_SUCCESS) {
-        fprintf(stderr, "ab: Could not open POST data file (%s): %s\n", pfile,
-                apr_strerror(rv, errmsg, sizeof(errmsg)));
-        return rv;
-    }
-
-    rv = apr_file_info_get(&finfo, APR_FINFO_NORM, postfd);
-    if (rv != APR_SUCCESS) {
-        fprintf(stderr, "ab: Could not stat POST data file (%s): %s\n", pfile,
-                apr_strerror(rv, errmsg, sizeof(errmsg)));
-        return rv;
-    }
-    postlen = (size_t)finfo.size;
-    postdata = malloc(postlen);
-    if (!postdata) {
-        fprintf(stderr, "ab: Could not allocate POST data buffer\n");
-        return APR_ENOMEM;
-    }
-    rv = apr_file_read_full(postfd, postdata, postlen, NULL);
-    if (rv != APR_SUCCESS) {
-        fprintf(stderr, "ab: Could not read POST data file: %s\n",
-                apr_strerror(rv, errmsg, sizeof(errmsg)));
-        return rv;
-    }
-    apr_file_close(postfd);
-    return 0;
-}
-
 int main(int argc, char *argv[]) {
     int r;
     int l;
@@ -1606,7 +1566,7 @@ int main(int argc, char *argv[]) {
         fprintf(stderr, "missing the url argument\n");
         return 1;
     }
-    if (parse_url(apr_pstrdup(cntxt, *args))) {
+    if (parse_url(*args)) {
         fprintf(stderr, "%s: invalid URL\n", argv[0]);
         usage(argv[0]);
         return 1;
@@ -1667,12 +1627,12 @@ int main(int argc, char *argv[]) {
         if (posting != 0) {
             err("Cannot mix POST and HEAD\n");
         }
-        int r = open_postfile(postfile);
-        if (r == 0) {
-            posting = 1;
-        } else if (postdata) {
-            exit(r);
+        postdata = fs.readfile(postfile, &postlen);
+        if (!postdata) {
+            fprintf(stderr, "failed to read file %s: %s\n", postfile, strerror(errno));
+            exit(1);
         }
+        posting = 1;
     }
     if (iflag) {
         if (posting == 1) {
