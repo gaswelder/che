@@ -152,7 +152,7 @@ fn get_module_scope(m: &Module) -> Vec<&str> {
         // should be fixed
         "break", "continue", "false", "NULL", "true", //
         // custom
-        "nelem", "panic",
+        "nelem", "panic", "min", "max",
     ];
     for s in c::CCONST {
         scope.push(s);

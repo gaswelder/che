@@ -1,7 +1,10 @@
-#import opt
 #import fs
-// #import strings
+#import http
+#import ioroutine
+#import opt
+#import os/io
 #import strbuilder
+#import strings
 
 /* Note: this version string should start with \d+[\d\.]* and be a valid
  * string for an HTTP Agent: header when prefixed with 'ApacheBench/'.
@@ -37,10 +40,11 @@ typedef {
     int TODO;
 } apr_time_t;
 
-/* connection state
- * don't add enums or rearrange or otherwise change values without
- * visiting set_conn_state()
- */
+apr_time_t apr_time_now() {
+    apr_time_t r = {};
+    return r;
+}
+
 enum {
     STATE_UNCONNECTED = 0,
     STATE_CONNECTING,           /* TCP connect initiated, but we don't
@@ -54,7 +58,7 @@ enum {
 
 typedef {
     apr_pool_t *ctx;
-    apr_socket_t *aprsock;
+    io.handle_t *aprsock;
     apr_pollfd_t pollfd;
     int state;
     size_t read;            /* amount of bytes read */
@@ -83,8 +87,12 @@ typedef {
     int time;     /* time for connection */
 } data_t;
 
-#define ap_round_ms(a) ((apr_time_t)((a) + 500)/1000)
-#define ap_double_ms(a) ((double)(a)/1000.0)
+int ap_round_ms(int a) {
+    return ((apr_time_t)((a) + 500)/1000);
+}
+double ap_double_ms(int a) {
+    return ((double)(a)/1000.0);
+}
 #define MAX_CONCURRENCY 20000
 
 /* --------------------- GLOBALS ---------------------------- */
@@ -117,7 +125,7 @@ char *gnuplot = NULL;          /* GNUplot file */
 char *csvperc = NULL;          /* CSV Percentile file */
 char url[1024] = {0};
 char *fullurl = NULL;
-char * colonhost = NULL;
+char * colonhost = "";
 int isproxy = 0;
 int aprtimeout = apr_time_from_sec(30); /* timeout value */
 
@@ -169,11 +177,6 @@ int percs[] = {50, 66, 75, 80, 90, 95, 98, 99, 100};
 
 connection_t *con = NULL;     /* connection array */
 data_t *stats = NULL;         /* data for each request */
-apr_pool_t *cntxt = NULL;
-
-apr_pollset_t *readbits = NULL;
-
-apr_sockaddr_t *destsa = NULL;
 
 int main(int argc, char *argv[]) {
     int r;
@@ -190,9 +193,6 @@ int main(int argc, char *argv[]) {
 
     
     proxyhost[0] = '\0';
-
-    apr_app_initialize(&argc, &argv, NULL);
-    apr_pool_create(&cntxt, NULL);
 
     bool quiet = false;
     bool hflag = false;
@@ -254,11 +254,26 @@ int main(int argc, char *argv[]) {
         fprintf(stderr, "missing the url argument\n");
         return 1;
     }
-    if (parse_url(*args)) {
-        fprintf(stderr, "%s: invalid URL\n", argv[0]);
-        usage(argv[0]);
+    char *url = *args;
+    fullurl = strings.newstr("%s", url);
+
+    http.url_t r = {};
+    if (!http.parse_url(&r, url)) {
+        fprintf(stderr, "%s: invalid URL\n", url);
         return 1;
     }
+    if (!strcmp(r.schema, "https")) {
+        fprintf(stderr, "SSL not compiled in; no https support\n");
+        exit(1);
+    }
+    host_field = r.hostname;
+    if (port == 0) {        /* no port specified */
+        port = 80;
+    }
+    if (port != 80) {
+        colonhost = strings.newstr(":%d", port);
+    }
+
     args++;
     if (*args) {
         fprintf(stderr, "unexpected argument: %s\n", *args);
@@ -472,6 +487,7 @@ void init_request() {
     }
 
     char *hdrs = strbuilder.str_unpack(headers);
+    int snprintf_res = 0;
 
     /* setup request */
     if (posting <= 0) {
@@ -487,7 +503,7 @@ void init_request() {
         if (keepalive) {
             kas = "Connection: Keep-Alive\r\n";
         }
-        snprintf_res = apr_snprintf(request, sizeof(_request),
+        snprintf_res = snprintf(request, sizeof(_request),
             "%s %s HTTP/1.0\r\n"
             "%s" "%s" "%s"
             "\r\n",
@@ -510,7 +526,7 @@ void init_request() {
         if (keepalive) {
             kas = "Connection: Keep-Alive\r\n";
         }
-        snprintf_res = apr_snprintf(request,  sizeof(_request),
+        snprintf_res = snprintf(request,  sizeof(_request),
             "POST %s HTTP/1.0\r\n"
             "%s" "%s"
             "Content-length: %zu\r\n"
@@ -555,11 +571,11 @@ void test(const char *auth) {
     int snprintf_res = 0;
 
     if (isproxy) {
-        connecthost = apr_pstrdup(cntxt, proxyhost);
+        connecthost = strings.newstr("%s", proxyhost);
         connectport = proxyport;
     }
     else {
-        connecthost = apr_pstrdup(cntxt, hostname);
+        connecthost = strings.newstr("%s", hostname);
         connectport = port;
     }
 
@@ -578,24 +594,9 @@ void test(const char *auth) {
     con = calloc(concurrency, sizeof(connection_t));
     stats = calloc(requests, sizeof(data_t));
 
-    //
-    // FD set
-    //
-    if ((status = apr_pollset_create(&readbits, concurrency, cntxt,
-                                     APR_POLLSET_NOCOPY)) != APR_SUCCESS) {
-        apr_err("apr_pollset_create failed", status);
-    }
+    ioroutine.init();
+    
 
-    /* This only needs to be done once */
-    if ((rv = apr_sockaddr_info_get(&destsa, connecthost, APR_UNSPEC, connectport, 0, cntxt))
-       != APR_SUCCESS) {
-        char buf[120];
-        apr_snprintf(buf, sizeof(buf),
-                 "apr_sockaddr_info_get() for %s", connecthost);
-        apr_err(buf, rv);
-    }
-
-    /* ok - lets start */
     start = lasttime = apr_time_now();
     if (tlimit) {
         stoptime = (start + apr_time_from_sec(tlimit));
@@ -608,88 +609,13 @@ void test(const char *auth) {
     }
 
     while (true) {
-        //
-        // poll
-        //
-        const apr_pollfd_t *pollresults;
-        int32_t n = concurrency;
-        if (apr_pollset_poll(readbits, aprtimeout, &n, &pollresults) != APR_SUCCESS) {
-            panic("poll failed");
-        }
-        if (!n) {
-            err("\nServer timed out\n\n");
-        }
-
-        for (int i = 0; i < n; i++) {
-            const apr_pollfd_t *next_fd = &(pollresults[i]);
-            connection_t *c = next_fd->client_data;
-
-            /*
-             * If the connection isn't connected how can we check it?
-             */
-            if (c->state == STATE_UNCONNECTED)
-                continue;
-
-            rv = next_fd->rtnevents;
-
-
-            /*
-             * Notes: APR_POLLHUP is set after FIN is received on some
-             * systems, so treat that like APR_POLLIN so that we try to read
-             * again.
-             *
-             * Some systems return APR_POLLERR with APR_POLLHUP.  We need to
-             * call read_connection() for APR_POLLHUP, so check for
-             * APR_POLLHUP first so that a closed connection isn't treated
-             * like an I/O error.  If it is, we never figure out that the
-             * connection is done and we loop here endlessly calling
-             * apr_poll().
-             */
-            if ((rv & APR_POLLIN) || (rv & APR_POLLPRI) || (rv & APR_POLLHUP))
-                read_connection(c);
-            if ((rv & APR_POLLERR) || (rv & APR_POLLNVAL)) {
-                bad++;
-                err_except++;
-                /* avoid apr_poll/EINPROGRESS loop on HP-UX, let recv discover ECONNREFUSED */
-                if (c->state == STATE_CONNECTING) { 
-                    read_connection(c);
-                }
-                else { 
-                    start_connect(c);
-                }
-                continue;
-            }
-            if (rv & APR_POLLOUT) {
-                if (c->state == STATE_CONNECTING) {
-                    rv = apr_socket_connect(c->aprsock, destsa);
-                    if (rv != APR_SUCCESS) {
-                        apr_socket_close(c->aprsock);
-                        err_conn++;
-                        if (bad++ > 10) {
-                            panic("Test aborted after 10 failures: %s", strerror(errno));
-                        }
-                        set_conn_state(c, STATE_UNCONNECTED);
-                        start_connect(c);
-                        continue;
-                    }
-                    else {
-                        set_conn_state(c, STATE_CONNECTED);
-                        started++;
-                        write_request(c);
-                    }
-                }
-                else {
-                    write_request(c);
-                }
-            }
-        }
+        ioroutine.step();
         if (lasttime < stoptime && done < requests) {
             continue;
         } else {
             break;
         }
     }
-
     
     
     if (heartbeatres)
@@ -703,68 +629,37 @@ void test(const char *auth) {
         output_results(0);
 }
 
-
-
-/* simple little function to write an error string and exit */
-
-void err(char *s)
-{
-    fprintf(stderr, "%s\n", s);
-    if (done)
-        printf("Total of %d requests completed\n" , done);
-    exit(1);
+void connection_connect(connection_t *c) {
+    c->aprsock = io.connect("tcp", destsa);
+    if (!c->aprsock) {
+        err_conn++;
+        if (bad++ > 10) {
+            panic("Test aborted after 10 failures: %s", strerror(errno));
+        }
+        c->state = STATE_UNCONNECTED;
+        start_connect(c);
+        continue;
+    }
+    else {
+        c->state = STATE_CONNECTED;
+        started++;
+        write_request(c);
+    }
 }
+
+
 
 /* simple little function to write an APR error string and exit */
 
 void apr_err(char *s, int rv) {
     char buf[120] = {0};
-
-    fprintf(stderr,
-        "%s: %s (%d)\n",
-        s, apr_strerror(rv, buf, sizeof(buf)), rv);
+    fprintf(stderr, "%s: %s (%d)\n", s, strerror(errno), errno);
     if (done) {
         printf("Total of %d requests completed\n" , done);
     }
     exit(rv);
 }
 
-void set_polled_events(connection_t *c, int16_t new_reqevents)
-{
-    int rv;
-
-    if (c->pollfd.reqevents != new_reqevents) {
-        if (c->pollfd.reqevents != 0) {
-            if (apr_pollset_remove(readbits, &c->pollfd) != APR_SUCCESS) {
-                apr_err("apr_pollset_remove()", rv);
-            }
-        }
-
-        if (new_reqevents != 0) {
-            c->pollfd.reqevents = new_reqevents;
-            if (apr_pollset_add(readbits, &c->pollfd) != APR_SUCCESS) {
-                apr_err("apr_pollset_add()", rv);
-            }
-        }
-    }
-}
-
-void set_conn_state(connection_t *c, int new_state)
-{
-    int16_t events_by_state[] = {
-        0,           /* for STATE_UNCONNECTED */
-        APR_POLLOUT, /* for STATE_CONNECTING */
-        APR_POLLIN,  /* for STATE_CONNECTED; we don't poll in this state,
-                      * so prepare for polling in the following state --
-                      * STATE_READ
-                      */
-        APR_POLLIN   /* for STATE_READ */
-    };
-
-    c->state = new_state;
-
-    set_polled_events(c, events_by_state[new_state]);
-}
 
 /* --------------------------------------------------------- */
 /* write out request to a connection - assumes we can write
@@ -777,7 +672,7 @@ void write_request(connection_t * c)
     while (true) {
         apr_time_t tnow;
         size_t l = c->rwrite;
-        int e = APR_SUCCESS; /* prevent gcc warning */
+        int e = 0; /* prevent gcc warning */
 
         tnow = lasttime = apr_time_now();
 
@@ -785,7 +680,7 @@ void write_request(connection_t * c)
          * First time round ?
          */
         if (c->rwrite == 0) {
-            apr_socket_timeout_set(c->aprsock, 0);
+            // apr_socket_timeout_set(c->aprsock, 0);
             c->connect = tnow;
             c->rwrote = 0;
             c->rwrite = reqlen;
@@ -798,14 +693,13 @@ void write_request(connection_t * c)
             return;
         }
 
-            e = apr_socket_send(c->aprsock, request + c->rwrote, &l);
-
-        if (e != APR_SUCCESS && !APR_STATUS_IS_EAGAIN(e)) {
+        if (!io.write(c->aprsock, request)) {
             epipe++;
             printf("Send request failed!\n");
             close_connection(c);
             return;
         }
+
         totalposted += l;
         c->rwrote += l;
         c->rwrite -= l;
@@ -815,7 +709,7 @@ void write_request(connection_t * c)
     }
 
     c->endwrite = lasttime = apr_time_now();
-    set_conn_state(c, STATE_READ);
+    c->state = STATE_READ;
 }
 
 /* --------------------------------------------------------- */
@@ -1087,7 +981,7 @@ void output_results(int sig)
         if (csvperc) {
             FILE *out = fopen(csvperc, "w");
             if (!out) {
-                perror("Cannot open CSV output file");
+                fprintf(stderr, "Cannot open CSV output file: %s\n", strerror(errno));
                 exit(1);
             }
             fprintf(out, "" "Percentage served" "," "Time in ms" "\n");
@@ -1107,7 +1001,7 @@ void output_results(int sig)
             FILE *out = fopen(gnuplot, "w");
             char tmstring[APR_CTIME_LEN];
             if (!out) {
-                perror("Cannot open gnuplot output file");
+                fprintf(stderr, "Cannot open gnuplot output file: %s", strerror(errno));
                 exit(1);
             }
             fprintf(out, "starttime\tseconds\tctime\tdtime\tttime\twait\n");
@@ -1296,58 +1190,35 @@ void start_connect(connection_t * c)
     else
         apr_pool_create(&c->ctx, cntxt);
 
-    if ((rv = apr_socket_create(&c->aprsock, destsa->family,
-                SOCK_STREAM, 0, c->ctx)) != APR_SUCCESS) {
-    apr_err("socket", rv);
+    c->aprsock = io.connect("tcp", httpaddr);
+    if (!c->aprsock) {
+        fprintf(stderr, "failed to connect to %s: %s\n", httpaddr, strerror(errno));
+        exit(1);
     }
-
-    c->pollfd.desc_type = APR_POLL_SOCKET;
     c->pollfd.desc.s = c->aprsock;
     c->pollfd.reqevents = 0;
     c->pollfd.client_data = c;
 
-    if ((rv = apr_socket_opt_set(c->aprsock, APR_SO_NONBLOCK, 1))
-         != APR_SUCCESS) {
-        apr_err("socket nonblock", rv);
-    }
-
-    if (windowsize != 0) {
-        rv = apr_socket_opt_set(c->aprsock, APR_SO_SNDBUF, 
-                                windowsize);
-        if (rv != APR_SUCCESS && rv != APR_ENOTIMPL) {
-            apr_err("socket send buffer", rv);
-        }
-        rv = apr_socket_opt_set(c->aprsock, APR_SO_RCVBUF, 
-                                windowsize);
-        if (rv != APR_SUCCESS && rv != APR_ENOTIMPL) {
-            apr_err("socket receive buffer", rv);
-        }
-    }
+    // if ((rv = apr_socket_opt_set(c->aprsock, APR_SO_NONBLOCK, 1))
+    //      != 0) {
+    //     apr_err("socket nonblock", rv);
+    // }
 
     c->start = lasttime = apr_time_now();
-    if ((rv = apr_socket_connect(c->aprsock, destsa)) != APR_SUCCESS) {
-        if (APR_STATUS_IS_EINPROGRESS(rv)) {
-            set_conn_state(c, STATE_CONNECTING);
-            c->rwrite = 0;
-            return;
+    c->aprsock = io.connect("tcp", destsa);
+    if (!c->aprsock) {
+        c->state = STATE_UNCONNECTED;
+        err_conn++;
+        if (bad++ > 10) {
+            fprintf(stderr, "\nTest aborted after 10 failures: %s\n\n", strerror(errno));
+            exit(1);
         }
-        else {
-            set_conn_state(c, STATE_UNCONNECTED);
-            apr_socket_close(c->aprsock);
-            err_conn++;
-            if (bad++ > 10) {
-                fprintf(stderr,
-                   "\nTest aborted after 10 failures\n\n");
-                apr_err("apr_socket_connect()", rv);
-            }
-            
-            start_connect(c);
-            return;
-        }
+        start_connect(c);
+        return;
     }
 
     /* connected first time */
-    set_conn_state(c, STATE_CONNECTED);
+    c->state = STATE_CONNECTED;
     started++;
     write_request(c);
 }
@@ -1389,8 +1260,8 @@ void close_connection(connection_t * c)
         }
     }
 
-    set_conn_state(c, STATE_UNCONNECTED);
-    apr_socket_close(c->aprsock);
+    c->state = STATE_UNCONNECTED;
+    io.close(c->aprsock);
 
     /* connect again */
     start_connect(c);
@@ -1406,157 +1277,11 @@ void read_connection(connection_t * c)
     size_t r;
     int status;
     char *part;
-    char respcode[4];       /* 3 digits and null */
-
-    r = sizeof(buffer);
-    status = apr_socket_recv(c->aprsock, buffer, &r);
-    if (APR_STATUS_IS_EAGAIN(status))
-        return;
-
-    if (r == 0 && APR_STATUS_IS_EOF(status)) {
-        good++;
-        close_connection(c);
-        return;
-    }
-    /* catch legitimate fatal apr_socket_recv errors */
-    if (status != APR_SUCCESS) {
-        err_recv++;
-        if (recverrok) {
-            bad++;
-            close_connection(c);
-            if (verbosity >= 1) {
-                char buf[120];
-                fprintf(stderr,"%s: %s (%d)\n", "apr_socket_recv", apr_strerror(status, buf, sizeof(buf)), status);
-            }
-            return;
-        } else {
-            apr_err("apr_socket_recv", status);
-        }
-    }
-
-    totalread += r;
-    if (c->read == 0) {
-        c->beginread = apr_time_now();
-    }
-    c->read += r;
-
 
     if (!c->gotheader) {
-        char *s;
-        int l = 4;
-        size_t space = CBUFFSIZE - c->cbx - 1; /* -1 allows for \0 term */
-        int tocopy = r;
-        if (space < r) {
-            tocopy = space;
-        }
-        memcpy(c->cbuff + c->cbx, buffer, space);
-        c->cbx += tocopy;
-        space -= tocopy;
-        c->cbuff[c->cbx] = 0;   /* terminate for benefit of strstr */
-        if (verbosity >= 2) {
-            printf("LOG: header received:\n%s\n", c->cbuff);
-        }
-        s = strstr(c->cbuff, "\r\n\r\n");
-        /*
-         * this next line is so that we talk to NCSA 1.5 which blatantly
-         * breaks the http specifaction
-         */
-        if (!s) {
-            s = strstr(c->cbuff, "\n\n");
-            l = 2;
-        }
-
-        if (!s) {
-            /* read rest next time */
-            if (space) {
-                return;
-            }
-            else {
-            /* header is in invalid or too big - close connection */
-                set_conn_state(c, STATE_UNCONNECTED);
-                apr_socket_close(c->aprsock);
-                err_response++;
-                if (bad++ > 10) {
-                    err("\nTest aborted after 10 failures\n\n");
-                }
-                start_connect(c);
-            }
-        }
-        else {
-            /* have full header */
-            if (!good) {
-                /*
-                 * this is first time, extract some interesting info
-                 */
-                char *p = NULL;
-                char *q = NULL;
-                p = strstr(c->cbuff, "Server:");
-                q = servername;
-                if (p) {
-                    p += 8;
-                    while (*p > 32)
-                    *q++ = *p++;
-                }
-                *q = 0;
-            }
-            /*
-             * XXX: this parsing isn't even remotely HTTP compliant... but in
-             * the interest of speed it doesn't totally have to be, it just
-             * needs to be extended to handle whatever servers folks want to
-             * test against. -djg
-             */
-
-            /* check response code */
-            part = strstr(c->cbuff, "HTTP");    /* really HTTP/1.x_ */
-            if (part && strlen(part) > strlen("HTTP/1.x_")) {
-                strncpy(respcode, (part + strlen("HTTP/1.x_")), 3);
-                respcode[3] = '\0';
-            }
-            else {
-                strcpy(respcode, "500");
-            }
-
-            if (respcode[0] != '2') {
-                err_response++;
-                if (verbosity >= 2)
-                    printf("WARNING: Response code not 2xx (%s)\n", respcode);
-            }
-            else if (verbosity >= 3) {
-                printf("LOG: Response code = %s\n", respcode);
-            }
-            c->gotheader = 1;
-            *s = 0;     /* terminate at end of header */
-            if (keepalive &&
-            (strstr(c->cbuff, "Keep-Alive")
-             || strstr(c->cbuff, "keep-alive"))) {  /* for benefit of MSIIS */
-                char *cl;
-                cl = strstr(c->cbuff, "Content-Length:");
-                /* handle NCSA, which sends Content-length: */
-                if (!cl)
-                    cl = strstr(c->cbuff, "Content-length:");
-                if (cl) {
-                    c->keepalive = 1;
-                    /* response to HEAD doesn't have entity body */
-                    if (posting >= 0) {
-                        c->length = atoi(cl + 16);
-                    } else {
-                        c->length = 0;
-                    }
-                }
-                /* The response may not have a Content-Length header */
-                if (!cl) {
-                    c->keepalive = 1;
-                    c->length = 0; 
-                }
-            }
-            c->bread += c->cbx - (s + l - c->cbuff) + r - tocopy;
-            totalbread += c->bread;
-        }
-    }
-    else {
-        /* outside header, everything we have read is entity body */
-        c->bread += r;
-        totalbread += r;
+        read_connection_header(c);
+    } else {
+        read_connection_body(c);
     }
 
     if (c->keepalive && (c->bread >= c->length)) {
@@ -1595,8 +1320,170 @@ void read_connection(connection_t * c)
     }
 }
 
+void read_connection_header(connection_t *c) {
+    size_t r;
+    int status;
+    char *part;
+    char respcode[4];       /* 3 digits and null */
+    if (!io.read(c->aprsock, buffer)) {
+        err_recv++;
+        if (recverrok) {
+            bad++;
+            close_connection(c);
+            if (verbosity >= 1) {
+                fprintf(stderr, "socket read failed: %s\n", strerror(errno));
+            }
+            return;
+        }
+        apr_err("apr_socket_recv", status);
+    }
 
+    size_t read = io.bufsize(buffer);
+    if (read == 0) {
+        good++;
+        close_connection(c);
+        return;
+    }
 
+    totalread += read;
+    if (c->read == 0) {
+        c->beginread = apr_time_now();
+    }
+    c->read += read;
+    char *s;
+    int l = 4;
+    size_t space = CBUFFSIZE - c->cbx - 1; /* -1 allows for \0 term */
+    int tocopy = read;
+    if (space < read) {
+        tocopy = space;
+    }
+    memcpy(c->cbuff + c->cbx, buffer, space);
+    c->cbx += tocopy;
+    space -= tocopy;
+    c->cbuff[c->cbx] = 0;   /* terminate for benefit of strstr */
+    if (verbosity >= 2) {
+        printf("LOG: header received:\n%s\n", c->cbuff);
+    }
+    s = strstr(c->cbuff, "\r\n\r\n");
+
+    if (!s) {
+        /* read rest next time */
+        if (space) {
+            return;
+        }
+        else {
+            /* header is in invalid or too big - close connection */
+            io.close(c->aprsock);
+            c->state = STATE_UNCONNECTED;
+            err_response++;
+            if (bad++ > 10) {
+                err("\nTest aborted after 10 failures\n\n");
+            }
+            start_connect(c);
+        }
+    }
+    else {
+        /* have full header */
+        if (!good) {
+            /*
+                * this is first time, extract some interesting info
+                */
+            char *p = NULL;
+            char *q = NULL;
+            p = strstr(c->cbuff, "Server:");
+            q = servername;
+            if (p) {
+                p += 8;
+                while (*p > 32)
+                *q++ = *p++;
+            }
+            *q = 0;
+        }
+        /*
+            * XXX: this parsing isn't even remotely HTTP compliant... but in
+            * the interest of speed it doesn't totally have to be, it just
+            * needs to be extended to handle whatever servers folks want to
+            * test against. -djg
+            */
+
+        /* check response code */
+        part = strstr(c->cbuff, "HTTP");    /* really HTTP/1.x_ */
+        if (part && strlen(part) > strlen("HTTP/1.x_")) {
+            strncpy(respcode, (part + strlen("HTTP/1.x_")), 3);
+            respcode[3] = '\0';
+        }
+        else {
+            strcpy(respcode, "500");
+        }
+
+        if (respcode[0] != '2') {
+            err_response++;
+            if (verbosity >= 2)
+                printf("WARNING: Response code not 2xx (%s)\n", respcode);
+        }
+        else if (verbosity >= 3) {
+            printf("LOG: Response code = %s\n", respcode);
+        }
+        c->gotheader = 1;
+        *s = 0;     /* terminate at end of header */
+        if (keepalive &&
+        (strstr(c->cbuff, "Keep-Alive")
+            || strstr(c->cbuff, "keep-alive"))) {  /* for benefit of MSIIS */
+            char *cl;
+            cl = strstr(c->cbuff, "Content-Length:");
+            /* handle NCSA, which sends Content-length: */
+            if (!cl)
+                cl = strstr(c->cbuff, "Content-length:");
+            if (cl) {
+                c->keepalive = 1;
+                /* response to HEAD doesn't have entity body */
+                if (posting >= 0) {
+                    c->length = atoi(cl + 16);
+                } else {
+                    c->length = 0;
+                }
+            }
+            /* The response may not have a Content-Length header */
+            if (!cl) {
+                c->keepalive = 1;
+                c->length = 0; 
+            }
+        }
+        c->bread += c->cbx - (s + l - c->cbuff) + r - tocopy;
+        totalbread += c->bread;
+    }
+}
+
+void read_connection_body(connection_t *c) {
+    if (!io.read(c->aprsock, buffer)) {
+        err_recv++;
+        if (recverrok) {
+            bad++;
+            close_connection(c);
+            if (verbosity >= 1) {
+                fprintf(stderr, "socket read failed: %s\n", strerror(errno));
+            }
+            return;
+        }
+        panic("!");
+    }
+
+    size_t read = io.bufsize(buffer);
+    if (read == 0) {
+        good++;
+        close_connection(c);
+        return;
+    }
+
+    totalread += read;
+    if (c->read == 0) {
+        c->beginread = apr_time_now();
+    }
+    c->read += read;
+    /* outside header, everything we have read is entity body */
+    c->bread += read;
+    totalbread += read;
+}
 
 void copyright() {
     if (!use_html) {
@@ -1652,59 +1539,17 @@ void usage(const char *progname)
     fprintf(stderr, "    -e filename     Output CSV file with percentages served\n");
     fprintf(stderr, "    -r              Don't exit on socket receive errors.\n");
     fprintf(stderr, "    -h              Display usage information (this message)\n");
-    exit(EINVAL);
+    exit(1);
 }
 
-/* ------------------------------------------------------- */
-
-/* split URL into parts */
-
-int parse_url(char *url)
-{
-    char *cp;
-    char *h;
-    char *scope_id;
-    int rv;
-
-    /* Save a copy for the proxy */
-    fullurl = apr_pstrdup(cntxt, url);
-
-    if (strlen(url) > 7 && strncmp(url, "http://", 7) == 0) {
-        url += 7;
+void err(char *s) {
+    fprintf(stderr, "%s\n", s);
+    if (done) {
+        printf("Total of %d requests completed\n" , done);
     }
-    else
-    if (strlen(url) > 8 && strncmp(url, "https://", 8) == 0) {
-        fprintf(stderr, "SSL not compiled in; no https support\n");
-        exit(1);
-    }
+    exit(1);
+}
 
-    if ((cp = strchr(url, '/')) == NULL)
-        return 1;
-    h = apr_pstrmemdup(cntxt, url, cp - url);
-    rv = apr_parse_addr_port(&hostname, &scope_id, &port, h, cntxt);
-    if (rv != APR_SUCCESS || !hostname || scope_id) {
-        return 1;
-    }
-    path = apr_pstrdup(cntxt, cp);
-    *cp = '\0';
-    if (*url == '[') {      /* IPv6 numeric address string */
-        host_field = apr_psprintf(cntxt, "[%s]", hostname);
-    }
-    else {
-        host_field = hostname;
-    }
-
-    if (port == 0) {        /* no port specified */
-        port = 80;
-    }
-
-    if ((
-         (port != 80)))
-    {
-        colonhost = apr_psprintf(cntxt,":%d",port);
-    } else
-        colonhost = "";
+int apr_socket_opt_set(int fd, int opt, int val) {
     return 0;
 }
-
-
