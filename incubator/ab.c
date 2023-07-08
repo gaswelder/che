@@ -103,8 +103,6 @@ char *postdata = NULL;         /* *buffer containing data from postfile */
 size_t postlen = 0; /* length of data to be POSTed */
 char *content_type = "text/plain";/* content type to put in POST header */
 int port = 0;        /* port number */
-char *connecthost = NULL;
-int connectport = 0;
 char *gnuplot = NULL;          /* GNUplot file */
 char *csvperc = NULL;          /* CSV Percentile file */
 char *fullurl = NULL;
@@ -372,16 +370,6 @@ void build_request(const char *url) {
 }
 
 void test() {
-    connecthost = strings.newstr("%s", hostname);
-    connectport = port;
-
-    if (heartbeatres) {
-        printf("(be patient)\n");
-    } else {
-        printf("(be patient)...");
-    }
-    fflush(stdout);
-
     stats = calloc(requests, sizeof(data_t));
 
     ioroutine.init();
