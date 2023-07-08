@@ -103,21 +103,17 @@ char *postdata = NULL;         /* *buffer containing data from postfile */
 size_t postlen = 0; /* length of data to be POSTed */
 char *content_type = "text/plain";/* content type to put in POST header */
 int port = 0;        /* port number */
-char proxyhost[1024] = {0};   /* proxy host name */
-int proxyport = 0;      /* proxy port */
 char *connecthost = NULL;
 int connectport = 0;
 char *gnuplot = NULL;          /* GNUplot file */
 char *csvperc = NULL;          /* CSV Percentile file */
 char *fullurl = NULL;
 char * colonhost = "";
-int isproxy = 0;
 
 char *user_agent = "ex-ApacheBench/0.0";
 char *opt_accept = NULL;
 char *cookie = NULL;
 char *autharg = NULL;
-char *proxyauth = NULL;
 
 size_t doclen = 0;     /* the length the document should be */
 int64_t totalread = 0;    /* total number of bytes read */
@@ -167,9 +163,6 @@ void usage(const char *progname) {
     fprintf(stderr, "                    Inserted after all normal header lines. (repeatable)\n");
     fprintf(stderr, "    -A attribute    Add Basic WWW Authentication, the attributes\n");
     fprintf(stderr, "                    are a colon separated username and password.\n");
-    fprintf(stderr, "    -P attribute    Add Basic Proxy Authentication, the attributes\n");
-    fprintf(stderr, "                    are a colon separated username and password.\n");
-    fprintf(stderr, "    -X proxy:port   Proxyserver and port number to use\n");
     fprintf(stderr, "    -V              Print version number and exit\n");
     
     fprintf(stderr, "    -d              Do not show percentiles served table.\n");
@@ -221,14 +214,7 @@ int main(int argc, char *argv[]) {
 
     
     opt.opt_str("A", "basic auth string (base64)", &autharg);
-    opt.opt_str("P", "basic proxy auth string (base64)", &proxyauth);
     opt.opt_str("T", "POST body content type", &content_type);
-    
-
-
-    char *Xarg = NULL;
-    opt.opt_str("X", "Xarg", &Xarg);
-   
 
     char **args = opt.opt_parse(argc, argv);
 
@@ -268,20 +254,6 @@ int main(int argc, char *argv[]) {
     }
     if (quiet) {
         heartbeatres = 0;
-    }
-    if (Xarg) {
-        char *optarg = Xarg;
-        char *p;
-        /*
-            * assume proxy-name[:port]
-            */
-        if ((p = strchr(optarg, ':'))) {
-            *p = '\0';
-            p++;
-            proxyport = atoi(p);
-        }
-        strcpy(proxyhost, optarg);
-        isproxy = 1;
     }
 
     if (concurrency > MAX_CONCURRENCY) {
@@ -386,19 +358,6 @@ void build_request(const char *url) {
         tmp[l] = '\0';
         http.set_header(&req, "Authorization", strings.newstr("Basic %s", tmp));
     }
-    if (proxyauth) {
-        int l;
-        char tmp[1024];
-        char *optarg = proxyauth;
-        //  assume username passwd already to be in colon separated form.
-        while (isspace(*optarg)) optarg++;
-        if (apr_base64_encode_len(strlen(optarg)) > sizeof(tmp)) {
-            err("Proxy credentials too long\n");
-        }
-        l = apr_base64_encode(tmp, optarg, strlen(optarg));
-        tmp[l] = '\0';
-        http.set_header(&req, "Proxy-Authorization", strings.newstr("Basic %s", tmp));
-    }
     char buf[1000] = {0};
     if (!http.write_request(&req, buf, sizeof(buf))) {
         fatal("failed to write request");
@@ -413,17 +372,9 @@ void build_request(const char *url) {
 }
 
 void test() {
-    if (isproxy) {
-        connecthost = strings.newstr("%s", proxyhost);
-        connectport = proxyport;
-    }
-    else {
-        connecthost = strings.newstr("%s", hostname);
-        connectport = port;
-    }
+    connecthost = strings.newstr("%s", hostname);
+    connectport = port;
 
-    if (isproxy)
-        printf("[through %s:%d] ", proxyhost, proxyport);
     if (heartbeatres) {
         printf("(be patient)\n");
     } else {
