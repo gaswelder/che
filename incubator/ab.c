@@ -29,16 +29,9 @@
  *   only an issue for loopback usage
  */
 
-/* maximum number of requests on a time limited test */
-#define MAX_REQUESTS (INT_MAX > 50000 ? 50000 : INT_MAX)
-
-void apr_ctime() {
-    //
-}
-
-void apr_time_sec() {
-    //
-}
+enum {
+    MAX_REQUESTS = 50000
+};
 
 enum {
     STATE_UNCONNECTED = 0,
@@ -75,9 +68,9 @@ typedef {
 
 typedef {
     time.t starttime;         /* start time of connection */
-    int waittime; /* between request and reading response */
-    int ctime;    /* time to connect */
-    int time;     /* time for connection */
+    int64_t waittime; /* between request and reading response */
+    int64_t ctime;    /* time to connect */
+    int64_t time;     /* time for connection */
 } data_t;
 
 double ap_double_ms(int a) {
@@ -106,7 +99,6 @@ char servername[1024] = {0};  /* name that server reports */
 char *hostname = NULL;         /* host name from URL */
 char *host_field = NULL;       /* value of "Host:" header field */
 char *path = NULL;             /* path name */
-char postfile[1024] = {0};    /* name of file containing post data */
 char *postdata = NULL;         /* *buffer containing data from postfile */
 size_t postlen = 0; /* length of data to be POSTed */
 char *content_type = "text/plain";/* content type to put in POST header */
@@ -117,7 +109,6 @@ char *connecthost = NULL;
 int connectport = 0;
 char *gnuplot = NULL;          /* GNUplot file */
 char *csvperc = NULL;          /* CSV Percentile file */
-char url[1024] = {0};
 char *fullurl = NULL;
 char * colonhost = "";
 int isproxy = 0;
@@ -138,7 +129,7 @@ size_t doclen = 0;     /* the length the document should be */
 int64_t totalread = 0;    /* total number of bytes read */
 int64_t totalbread = 0;   /* totoal amount of entity body read */
 int64_t totalposted = 0;  /* total number of bytes posted, inc. headers */
-int started = 0;           /* number of requests started, so no excess */
+size_t started = 0;           /* number of requests started, so no excess */
 size_t done = 0;              /* number of requests we have done */
 int doneka = 0;            /* number of keep alive connections done */
 int good = 0;
@@ -155,12 +146,10 @@ time.t start = {};
 time.t lasttime = {};
 
 /* global request (and its length) */
-char _request[2048] = {0};
-char *request = _request;
-size_t reqlen = 0;
+io.buf_t request = {};
 
 /* one global throw-away buffer to read stuff into */
-char buffer[8192] = {0};
+io.buf_t buffer = {};
 
 /* interesting percentiles */
 int percs[] = {50, 66, 75, 80, 90, 95, 98, 99, 100};
@@ -224,34 +213,6 @@ int main(int argc, char *argv[]) {
     
 
     char **args = opt.opt_parse(argc, argv);
-    if (!*args) {
-        fprintf(stderr, "missing the url argument\n");
-        return 1;
-    }
-    char *url = *args;
-    fullurl = strings.newstr("%s", url);
-
-    http.url_t u = {};
-    if (!http.parse_url(&u, url)) {
-        fprintf(stderr, "%s: invalid URL\n", url);
-        return 1;
-    }
-    if (!strcmp(u.schema, "https")) {
-        fprintf(stderr, "SSL not compiled in; no https support\n");
-        exit(1);
-    }
-
-    if (u.port[0] == '\0') {
-        colonhost = strings.newstr("%s:80", u.hostname);
-    } else {
-        colonhost = strings.newstr("%s:%s", u.hostname, u.port);
-    }
-
-    args++;
-    if (*args) {
-        fprintf(stderr, "unexpected argument: %s\n", *args);
-        return 1;
-    }
 
     if (tlimit) {
         // need to size data array on something.
@@ -342,6 +303,34 @@ int main(int argc, char *argv[]) {
     else
         heartbeatres = 0;
 
+    if (!*args) {
+        fprintf(stderr, "missing the url argument\n");
+        return 1;
+    }
+    char *url = *args;
+    fullurl = strings.newstr("%s", url);
+
+    http.url_t u = {};
+    if (!http.parse_url(&u, url)) {
+        fprintf(stderr, "%s: invalid URL\n", url);
+        return 1;
+    }
+    if (!strcmp(u.schema, "https")) {
+        fprintf(stderr, "SSL not compiled in; no https support\n");
+        exit(1);
+    }
+    if (u.port[0] == '\0') {
+        colonhost = strings.newstr("%s:80", u.hostname);
+    } else {
+        colonhost = strings.newstr("%s:%s", u.hostname, u.port);
+    }
+
+    args++;
+    if (*args) {
+        fprintf(stderr, "unexpected argument: %s\n", *args);
+        return 1;
+    }
+
     copyright();
 
     build_request();
@@ -427,15 +416,16 @@ void build_request() {
         tmp[l] = '\0';
         http.set_header(&req, "Proxy-Authorization", strings.newstr("Basic %s", tmp));
     }
-    if (!http.write_request(&req, request, sizeof(request))) {
-        panic("failed to write request");
+    char buf[1000] = {0};
+    if (!http.write_request(&req, buf, sizeof(buf))) {
+        fatal("failed to write request");
     }
-    reqlen = strlen(request);
+    io.push(&request, buf, strlen(buf));
     if (verbosity >= 2) {
-        printf("INFO: header == \n---\n%s\n---\n", request);
+        printf("INFO: header == \n---\n%s\n---\n", request.data);
     }
     if (posting == 1) {
-        strcat(request, postdata);
+        io.push(&request, postdata, strlen(postdata));
     }
 }
 
@@ -469,17 +459,17 @@ void test() {
 
     start = lasttime = time.now();
     if (!tlimit) {
-        tlimit = LONG_MAX;
+        tlimit = INT_MAX;
     }
     time.t stoptime = time.add(start, tlimit, time.SECONDS);
     for (size_t i = 0; i < concurrency; i++) {
         con[i].socknum = i;
-        start_connect(&con[i]);
+        ioroutine.spawn(routine, &con[i]);
     }
 
     while (true) {
         ioroutine.step();
-        if (done > requests || time.isinc(stoptime, time.now())) {
+        if (done > requests || time.sub(time.now(), stoptime) > 0) {
             break;
         }
     }
@@ -493,6 +483,15 @@ void test() {
         output_html_results();
     else
         output_results(0);
+}
+
+int routine(void *ctx, int line) {
+    printf("line = %d\n", line);
+    connection_t *c = ctx;
+    start_connect(c);
+    read_connection(c);
+    connection_connect(c);
+    return -1;
 }
 
 void connection_connect(connection_t *c) {
@@ -517,12 +516,12 @@ void connection_connect(connection_t *c) {
 
 /* simple little function to write an APR error string and exit */
 
-void apr_err(char *s, int rv) {
+void fatal(char *s) {
     fprintf(stderr, "%s: %s (%d)\n", s, strerror(errno), errno);
     if (done) {
         printf("Total of %zu requests completed\n" , done);
     }
-    exit(rv);
+    exit(1);
 }
 
 
@@ -534,7 +533,7 @@ void apr_err(char *s, int rv) {
 
 void write_request(connection_t * c)
 {
-    time.duration_t aprtimeout = time.duration(30, time.SECONDS); /* timeout value */
+    int64_t aprtimeout = 30 * time.SECONDS;
     while (true) {
         time.t tnow = time.now();
         lasttime = tnow;
@@ -543,21 +542,21 @@ void write_request(connection_t * c)
         /*
          * First time round ?
          */
-        if (c->rwrite == 0) {
+        if (c->state == 0) {
             // apr_socket_timeout_set(c->aprsock, 0);
             c->connect = tnow;
             c->rwrote = 0;
-            c->rwrite = reqlen;
-            if (posting)
+            if (posting) {
                 c->rwrite += postlen;
+            }
         }
-        else if (tnow > c->connect + aprtimeout) {
+        else if (time.sub(tnow, c->connect) > aprtimeout) {
             printf("Send request timed out!\n");
             close_connection(c);
             return;
         }
 
-        if (!io.write(c->aprsock, request)) {
+        if (!io.write(c->aprsock, &request)) {
             epipe++;
             printf("Send request failed!\n");
             close_connection(c);
@@ -576,58 +575,46 @@ void write_request(connection_t * c)
     c->state = STATE_READ;
 }
 
-/* --------------------------------------------------------- */
 
-/* calculate and output results */
-
-int compradre(data_t * a, data_t * b)
-{
-    if ((a->ctime) < (b->ctime))
-        return -1;
-    if ((a->ctime) > (b->ctime))
-        return 1;
+int compradre(const void *x, *y) {
+    const data_t *a = x;
+    const data_t *b = y;
+    if ((a->ctime) < (b->ctime)) return -1;
+    if ((a->ctime) > (b->ctime)) return 1;
     return 0;
 }
 
-int comprando(data_t * a, data_t * b)
-{
-    if ((a->time) < (b->time))
-        return -1;
-    if ((a->time) > (b->time))
-        return 1;
+int comprando(const void *x, *y) {
+    const data_t *a = x;
+    const data_t *b = y;
+    if ((a->time) < (b->time)) return -1;
+    if ((a->time) > (b->time)) return 1;
     return 0;
 }
 
-int compri(data_t * a, data_t * b)
-{
+int compri(const void *x, *y) {
+    const data_t *a = x;
+    const data_t *b = y;
     size_t p = a->time - a->ctime;
     size_t q = b->time - b->ctime;
-    if (p < q)
-        return -1;
-    if (p > q)
-        return 1;
+    if (p < q) return -1;
+    if (p > q) return 1;
     return 0;
 }
 
-int compwait(data_t * a, data_t * b)
-{
-    if ((a->waittime) < (b->waittime))
-        return -1;
-    if ((a->waittime) > (b->waittime))
-        return 1;
+int compwait(const void *x, *y) {
+    const data_t *a = x;
+    const data_t *b = y;
+    if ((a->waittime) < (b->waittime)) return -1;
+    if ((a->waittime) > (b->waittime)) return 1;
     return 0;
 }
 
-enum {
-    APR_USEC_PER_SEC = 1
-};
-
-void output_results(int sig)
-{
+void output_results(int sig) {
     if (sig) {
         lasttime = time.now();  /* record final time if interrupted */
     }
-    int timetaken = time.durationval(lasttime - start, time.SECONDS);
+    int64_t timetaken = time.sub(lasttime, start) / time.SECONDS;
 
     printf("\n\n");
     printf("Server Software:        %s\n", servername);
@@ -637,9 +624,9 @@ void output_results(int sig)
     printf("Document Path:          %s\n", path);
     printf("Document Length:        %zu bytes\n", doclen);
     printf("\n");
-    printf("Concurrency Level:      %d\n", concurrency);
-    printf("Time taken for tests:   %.3f seconds\n", timetaken);
-    printf("Complete requests:      %d\n", done);
+    printf("Concurrency Level:      %zu\n", concurrency);
+    printf("Time taken for tests:   %.3ld seconds\n", timetaken);
+    printf("Complete requests:      %ld\n", done);
     printf("Failed requests:        %d\n", bad);
     if (bad)
         printf("   (Connect: %d, Receive: %d, Length: %d, Exceptions: %d)\n",
@@ -674,19 +661,18 @@ void output_results(int sig)
 
     if (done > 0) {
         /* work out connection times */
-        int i;
-        time.t totalcon = {};
-        time.t total = {};
-        time.t totald = {};
-        time.t totalwait = {};
-        time.t meancon = {};
-        time.t meantot = {};
-        time.t meand = {};
-        time.t meanwait = {};
-        int mincon = LONG_MAX;
-        int mintot = LONG_MAX;
-        int mind = LONG_MAX;
-        int minwait = LONG_MAX;
+        int64_t totalcon = 0;
+        int64_t total = 0;
+        int64_t totald = 0;
+        int64_t totalwait = 0;
+        int64_t meancon = 0;
+        int64_t meantot = 0;
+        int64_t meand = 0;
+        int64_t meanwait = 0;
+        int mincon = INT_MAX;
+        int mintot = INT_MAX;
+        int mind = INT_MAX;
+        int minwait = INT_MAX;
         int maxcon = 0;
         int maxtot = 0;
         int maxd = 0;
@@ -700,7 +686,7 @@ void output_results(int sig)
         double sdd = 0;
         double sdwait = 0;
 
-        for (int i = 0; i < done; i++) {
+        for (size_t i = 0; i < done; i++) {
             data_t *s = &stats[i];
             mincon = min(mincon, s->ctime);
             mintot = min(mintot, s->time);
@@ -723,7 +709,7 @@ void output_results(int sig)
         meanwait = totalwait / done;
 
         /* calculating the sample variance: the sum of the squared deviations, divided by n-1 */
-        for (i = 0; i < done; i++) {
+        for (size_t i = 0; i < done; i++) {
             data_t *s = &stats[i];
             double a;
             a = ((double)s->time - meantot);
@@ -750,10 +736,11 @@ void output_results(int sig)
         }
 
         qsort(stats, done, sizeof(data_t), compradre);
-        if ((done > 1) && (done % 2))
+        if ((done > 1) && (done % 2)) {
             mediancon = (stats[done / 2].ctime + stats[done / 2 + 1].ctime) / 2;
-        else
+        } else {
             mediancon = stats[done / 2].ctime;
+        }
 
         qsort(stats, done, sizeof(data_t), compri);
         if ((done > 1) && (done % 2)) {
@@ -783,22 +770,22 @@ void output_results(int sig)
         /*
          * Reduce stats from apr time to milliseconds
          */
-        mincon     = time.ms(mincon);
-        mind       = time.ms(mind);
-        minwait    = time.ms(minwait);
-        mintot     = time.ms(mintot);
-        meancon    = time.ms(meancon);
-        meand      = time.ms(meand);
-        meanwait   = time.ms(meanwait);
-        meantot    = time.ms(meantot);
-        mediancon  = time.ms(mediancon);
-        mediand    = time.ms(mediand);
-        medianwait = time.ms(medianwait);
-        mediantot  = time.ms(mediantot);
-        maxcon     = time.ms(maxcon);
-        maxd       = time.ms(maxd);
-        maxwait    = time.ms(maxwait);
-        maxtot     = time.ms(maxtot);
+        mincon     = mincon / time.MS;
+        mind       = mind / time.MS;
+        minwait    = minwait / time.MS;
+        mintot     = mintot / time.MS;
+        meancon    = meancon / time.MS;
+        meand      = meand / time.MS;
+        meanwait   = meanwait / time.MS;
+        meantot    = meantot / time.MS;
+        mediancon  = mediancon / time.MS;
+        mediand    = mediand / time.MS;
+        medianwait = medianwait / time.MS;
+        mediantot  = mediantot / time.MS;
+        maxcon     = maxcon / time.MS;
+        maxd       = maxd / time.MS;
+        maxwait    = maxwait / time.MS;
+        maxtot     = maxtot / time.MS;
         sdcon      = ap_double_ms(sdcon);
         sdd        = ap_double_ms(sdd);
         sdwait     = ap_double_ms(sdwait);
@@ -806,13 +793,13 @@ void output_results(int sig)
 
         if (confidence) {
             printf("              min  mean[+/-sd] median   max\n");
-            printf("Connect:    %5zu %4zu %5.1f %6zu %7zu\n",
+            printf("Connect:    %5u %4zu %5.1f %6u %7u\n",
                    mincon, meancon, sdcon, mediancon, maxcon);
-            printf("Processing: %5zu %4zu %5.1f %6zu %7zu\n",
+            printf("Processing: %5u %4zu %5.1f %6u %7u\n",
                    mind, meand, sdd, mediand, maxd);
-            printf("Waiting:    %5zu %4zu %5.1f %6zu %7zu\n",
+            printf("Waiting:    %5u %4zu %5.1f %6u %7u\n",
                    minwait, meanwait, sdwait, medianwait, maxwait);
-            printf("Total:      %5zu %4zu %5.1f %6zu %7zu\n",
+            printf("Total:      %5u %4zu %5.1f %6u %7u\n",
                    mintot, meantot, sdtot, mediantot, maxtot);
 
             SANE("the initial connection time", meancon, mediancon, sdcon);
@@ -822,26 +809,25 @@ void output_results(int sig)
         }
         else {
             printf("              min   avg   max\n");
-            printf("Connect:    %5zu %5zu %5zu\n", mincon, meancon, maxcon);
-            printf("Processing: %5zu %5zu %5zu\n", mintot - mincon,
+            printf("Connect:    %5u %5zu %5u\n", mincon, meancon, maxcon);
+            printf("Processing: %5u %5zu %5u\n", mintot - mincon,
                                                    meantot - meancon,
                                                    maxtot - maxcon);
-            printf("Total:      %5zu %5zu %5zu\n", mintot, meantot, maxtot);
+            printf("Total:      %5u %5zu %5u\n", mintot, meantot, maxtot);
         }
 
 
         /* Sorted on total connect times */
         if (percentile && (done > 1)) {
             printf("\nPercentage of the requests served within a certain time (ms)\n");
-            for (i = 0; i < sizeof(percs) / sizeof(int); i++) {
-                if (percs[i] <= 0)
+            for (size_t i = 0; i < sizeof(percs) / sizeof(int); i++) {
+                if (percs[i] <= 0) {
                     printf(" 0%%  <0> (never)\n");
-                else if (percs[i] >= 100)
-                    printf(" 100%%  %5zu (longest request)\n",
-                           time.ms(stats[done - 1].time));
-                else
-                    printf("  %d%%  %5zu\n", percs[i],
-                           time.ms(stats[(int) (done * percs[i] / 100)].time));
+                } else if (percs[i] >= 100) {
+                    printf(" 100%%  %5zu (longest request)\n", stats[done - 1].time);
+                } else {
+                    printf("  %d%%  %5zu\n", percs[i], stats[(int) (done * percs[i] / 100)].time);
+                }
             }
         }
         if (csvperc) {
@@ -851,7 +837,7 @@ void output_results(int sig)
                 exit(1);
             }
             fprintf(out, "" "Percentage served" "," "Time in ms" "\n");
-            for (i = 0; i < 100; i++) {
+            for (int i = 0; i < 100; i++) {
                 double t;
                 if (i == 0)
                     t = ap_double_ms(stats[0].time);
@@ -865,20 +851,20 @@ void output_results(int sig)
         }
         if (gnuplot) {
             FILE *out = fopen(gnuplot, "w");
-            char tmstring[APR_CTIME_LEN];
             if (!out) {
                 fprintf(stderr, "Cannot open gnuplot output file: %s", strerror(errno));
                 exit(1);
             }
             fprintf(out, "starttime\tseconds\tctime\tdtime\tttime\twait\n");
-            for (i = 0; i < done; i++) {
-                (void) apr_ctime(tmstring, stats[i].starttime);
-                fprintf(out, "%s\t%zu\t%zu\t%zu\t%zu\t%zu\n", tmstring,
-                        apr_time_sec(stats[i].starttime),
-                        time.ms(stats[i].ctime),
-                        time.ms(stats[i].time - stats[i].ctime),
-                        time.ms(stats[i].time),
-                        time.ms(stats[i].waittime));
+            for (size_t i = 0; i < done; i++) {
+                char tmstring[100] = {0};
+                time.format(stats[i].starttime, "%+", tmstring, sizeof(tmstring));
+                fprintf(out, "%s\t%d\t%zu\t%zu\t%zu\t%zu\n", tmstring,
+                        time.ms(stats[i].starttime) / 1000,
+                        stats[i].ctime,
+                        stats[i].time - stats[i].ctime,
+                        stats[i].time,
+                        stats[i].waittime);
             }
             fclose(out);
         }
@@ -904,13 +890,9 @@ void SANE(const char *what, double mean, median, sd) {
     }
 }
 
-/* --------------------------------------------------------- */
 
-/* calculate and output results in HTML  */
-
-void output_html_results()
-{
-    double timetaken = (double) (lasttime - start) / APR_USEC_PER_SEC;
+void output_html_results() {
+    double timetaken = (double) (time.sub(lasttime, start)) / time.SECONDS;
 
     printf("\n\n<table %s>\n", tablestring);
     printf("<tr %s><th colspan=2 %s>Server Software:</th>"
@@ -929,13 +911,13 @@ void output_html_results()
        "<td colspan=2 %s>%zu bytes</td></tr>\n",
        trstring, tdstring, tdstring, doclen);
     printf("<tr %s><th colspan=2 %s>Concurrency Level:</th>"
-       "<td colspan=2 %s>%d</td></tr>\n",
+       "<td colspan=2 %s>%zu</td></tr>\n",
        trstring, tdstring, tdstring, concurrency);
     printf("<tr %s><th colspan=2 %s>Time taken for tests:</th>"
        "<td colspan=2 %s>%.3f seconds</td></tr>\n",
        trstring, tdstring, tdstring, timetaken);
     printf("<tr %s><th colspan=2 %s>Complete requests:</th>"
-       "<td colspan=2 %s>%d</td></tr>\n",
+       "<td colspan=2 %s>%zu</td></tr>\n",
        trstring, tdstring, tdstring, done);
     printf("<tr %s><th colspan=2 %s>Failed requests:</th>"
        "<td colspan=2 %s>%d</td></tr>\n",
@@ -984,12 +966,12 @@ void output_html_results()
     /* work out connection times */
     int totalcon = 0;
     int total = 0;
-    int mincon = LONG_MAX;
-    int mintot = LONG_MAX;
+    int mincon = INT_MAX;
+    int mintot = INT_MAX;
     int maxcon = 0;
     int maxtot = 0;
 
-    for (int i = 0; i < done; i++) {
+    for (size_t i = 0; i < done; i++) {
         data_t *s = &stats[i];
         mincon = min(mincon, s->ctime);
         mintot = min(mintot, s->time);
@@ -1001,12 +983,12 @@ void output_html_results()
     /*
         * Reduce stats from apr time to milliseconds
         */
-    mincon   = time.ms(mincon);
-    mintot   = time.ms(mintot);
-    maxcon   = time.ms(maxcon);
-    maxtot   = time.ms(maxtot);
-    totalcon = time.ms(totalcon);
-    total    = time.ms(total);
+    mincon   = mincon / time.MS;
+    mintot   = mintot / time.MS;
+    maxcon   = maxcon / time.MS;
+    maxtot   = maxtot / time.MS;
+    totalcon = totalcon / time.MS;
+    total    = total / time.MS;
 
     if (done > 0) { /* avoid division by zero (if 0 done) */
         printf("<tr %s><th %s colspan=4>Connnection Times (ms)</th></tr>\n",
@@ -1014,28 +996,26 @@ void output_html_results()
         printf("<tr %s><th %s>&nbsp;</th> <th %s>min</th>   <th %s>avg</th>   <th %s>max</th></tr>\n",
             trstring, tdstring, tdstring, tdstring, tdstring);
         printf("<tr %s><th %s>Connect:</th>"
-            "<td %s>%5zu</td>"
-            "<td %s>%5zu</td>"
-            "<td %s>%5zu</td></tr>\n",
+            "<td %s>%5u</td>"
+            "<td %s>%5lu</td>"
+            "<td %s>%5u</td></tr>\n",
             trstring, tdstring, tdstring, mincon, tdstring, totalcon / done, tdstring, maxcon);
         printf("<tr %s><th %s>Processing:</th>"
+            "<td %s>%5u</td>"
             "<td %s>%5zu</td>"
-            "<td %s>%5zu</td>"
-            "<td %s>%5zu</td></tr>\n",
+            "<td %s>%5u</td></tr>\n",
             trstring, tdstring, tdstring, mintot - mincon, tdstring,
             (total / done) - (totalcon / done), tdstring, maxtot - maxcon);
         printf("<tr %s><th %s>Total:</th>"
+            "<td %s>%5u</td>"
             "<td %s>%5zu</td>"
-            "<td %s>%5zu</td>"
-            "<td %s>%5zu</td></tr>\n",
+            "<td %s>%5u</td></tr>\n",
             trstring, tdstring, tdstring, mintot, tdstring, total / done, tdstring, maxtot);
     }
     printf("</table>\n");
 }
 
 /* --------------------------------------------------------- */
-
-/* start asnchronous non-blocking connection */
 
 void start_connect(connection_t * c)
 {
@@ -1055,9 +1035,6 @@ void start_connect(connection_t * c)
         fprintf(stderr, "failed to connect to %s: %s\n", colonhost, strerror(errno));
         exit(1);
     }
-    c->pollfd.desc.s = c->aprsock;
-    c->pollfd.reqevents = 0;
-    c->pollfd.client_data = c;
 
     c->start = lasttime = time.now();
     c->aprsock = io.connect("tcp", colonhost);
@@ -1105,11 +1082,11 @@ void close_connection(connection_t * c)
             data_t *s = &stats[done++];
             c->done      = lasttime = time.now();
             s->starttime = c->start;
-            s->ctime     = max(0, c->connect - c->start);
-            s->time      = max(0, c->done - c->start);
-            s->waittime  = max(0, c->beginread - c->endwrite);
+            s->ctime     = max(0, time.sub(c->connect, c->start));
+            s->time      = max(0, time.sub(c->done, c->start));
+            s->waittime  = max(0, time.sub(c->beginread, c->endwrite));
             if (heartbeatres && !(done % heartbeatres)) {
-                fprintf(stderr, "Completed %d requests\n", done);
+                fprintf(stderr, "Completed %ld requests\n", done);
                 fflush(stderr);
             }
         }
@@ -1123,12 +1100,7 @@ void close_connection(connection_t * c)
     return;
 }
 
-/* --------------------------------------------------------- */
-
-/* read data from connection */
-
-void read_connection(connection_t * c)
-{
+void read_connection(connection_t * c) {
     if (!c->gotheader) {
         read_connection_header(c);
     } else {
@@ -1152,11 +1124,11 @@ void read_connection(connection_t * c)
             doneka++;
             c->done      = time.now();
             s->starttime = c->start;
-            s->ctime     = max(0, c->connect - c->start);
-            s->time      = max(0, c->done - c->start);
-            s->waittime  = max(0, c->beginread - c->endwrite);
+            s->ctime     = max(0, time.sub(c->connect, c->start));
+            s->time      = max(0, time.sub(c->done, c->start));
+            s->waittime  = max(0, time.sub(c->beginread, c->endwrite));
             if (heartbeatres && !(done % heartbeatres)) {
-                fprintf(stderr, "Completed %d requests\n", done);
+                fprintf(stderr, "Completed %ld requests\n", done);
                 fflush(stderr);
             }
         }
@@ -1172,10 +1144,9 @@ void read_connection(connection_t * c)
 }
 
 void read_connection_header(connection_t *c) {
-    size_t r;
     char *part;
     char respcode[4];       /* 3 digits and null */
-    if (!io.read(c->aprsock, buffer)) {
+    if (!io.read(c->aprsock, &buffer)) {
         err_recv++;
         bad++;
         close_connection(c);
@@ -1184,7 +1155,7 @@ void read_connection_header(connection_t *c) {
         }
     }
 
-    size_t read = io.bufsize(buffer);
+    size_t read = io.bufsize(&buffer);
     if (read == 0) {
         good++;
         close_connection(c);
@@ -1197,13 +1168,13 @@ void read_connection_header(connection_t *c) {
     }
     c->read += read;
     char *s;
-    int l = 4;
+    
     size_t space = CBUFFSIZE - c->cbx - 1; /* -1 allows for \0 term */
     int tocopy = read;
     if (space < read) {
         tocopy = space;
     }
-    memcpy(c->cbuff + c->cbx, buffer, space);
+    memcpy(c->cbuff + c->cbx, buffer.data, space);
     c->cbx += tocopy;
     space -= tocopy;
     c->cbuff[c->cbx] = 0;   /* terminate for benefit of strstr */
@@ -1295,13 +1266,16 @@ void read_connection_header(connection_t *c) {
                 c->length = 0; 
             }
         }
-        c->bread += c->cbx - (s + l - c->cbuff) + r - tocopy;
+
+        // int l = 4;
+        // size_t r;
+        // c->bread += c->cbx - (s + l - c->cbuff) + r - tocopy;
         totalbread += c->bread;
     }
 }
 
 void read_connection_body(connection_t *c) {
-    if (!io.read(c->aprsock, buffer)) {
+    if (!io.read(c->aprsock, &buffer)) {
         err_recv++;
         bad++;
         close_connection(c);
@@ -1311,7 +1285,7 @@ void read_connection_body(connection_t *c) {
         return;
     }
 
-    size_t read = io.bufsize(buffer);
+    size_t read = io.bufsize(&buffer);
     if (read == 0) {
         good++;
         close_connection(c);
@@ -1344,9 +1318,8 @@ void copyright() {
     }
 }
 
-/* display usage information */
-void usage(const char *progname)
-{
+void usage(const char *progname) {
+    opt.opt_usage(progname);
     fprintf(stderr, "Usage: %s [options] [http"
         "://]hostname[:port]/path\n", progname);
 /* 80 column ruler:  ********************************************************************************
@@ -1388,7 +1361,7 @@ void usage(const char *progname)
 void err(char *s) {
     fprintf(stderr, "%s\n", s);
     if (done) {
-        printf("Total of %d requests completed\n" , done);
+        printf("Total of %ld requests completed\n" , done);
     }
     exit(1);
 }

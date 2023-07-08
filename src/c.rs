@@ -40,7 +40,7 @@ pub const CTYPES: &[&str] = &[
 pub const CCONST: &[&str] = &[
     "RAND_MAX", "BUFSIZ", "_IOLBF", "EOF", "SEEK_SET", "SEEK_END", "SEEK_CUR", "errno",
     // limits.h
-    "LONG_MAX", "SIZE_MAX", // signal.h
+    "INT_MAX", "LONG_MAX", "SIZE_MAX", // signal.h
     "SIGABRT", "SIGFPE", "SIGILL", "SIGINT", "SIGSEGV", "SIGTERM", "SIG_DFL", "SIG_IGN",
 ];
 
