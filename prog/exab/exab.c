@@ -379,9 +379,8 @@ void test() {
         connections[i].inbuf = io.newbuf();
         ioroutine.spawn(routine, &connections[i]);
     }
-    while (true) {
-        ioroutine.step();
-        if (requests_done > requests_to_do || time.sub(time.now(), stoptime) > 0) {
+    while (ioroutine.step()) {
+        if (time.sub(time.now(), stoptime) > 0) {
             break;
         }
     }

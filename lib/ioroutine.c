@@ -52,7 +52,11 @@ bool runnable(routine_t *r) {
     return false;
 }
 
-pub void step() {
+/**
+ * Runs a single loop of routines.
+ * Returns false is there are no routines to run.
+ */
+pub int step() {
     // Run non-blocked routines.
     while (true) {
         int ran = 0;
@@ -91,6 +95,10 @@ pub void step() {
             handles++;
         }
     }
+    if (handles == 0) {
+        deb("no handles to poll, returning false");
+        return false;
+    }
     deb("polling %d handles", handles);
     io.event_t *ev = io.poll(p);
 
@@ -117,6 +125,7 @@ pub void step() {
         }
         ev++;
     }
+    return true;
 }
 
 routine_t *find_routine(io.event_t *ev) {
