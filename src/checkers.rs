@@ -193,7 +193,7 @@ fn check_function_declaration(
                 f.name.clone(),
                 ScopeItem {
                     read: false,
-                    pos: String::from("list"),
+                    pos: pl.pos.clone(),
                 },
             );
         }

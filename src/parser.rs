@@ -841,6 +841,7 @@ fn parse_function_declaration(
 fn parse_function_parameter(l: &mut Lexer, ctx: &Ctx) -> Result<TypeAndForms, Error> {
     // int a,b
     // const char *s
+    let pos = l.peek().unwrap().pos.clone();
     let type_name = parse_typename(l, ctx)?;
     let mut forms: Vec<Form> = Vec::new();
     forms.push(parse_form(l, ctx)?);
@@ -852,7 +853,11 @@ fn parse_function_parameter(l: &mut Lexer, ctx: &Ctx) -> Result<TypeAndForms, Er
         }
         forms.push(parse_form(l, ctx)?);
     }
-    return Ok(TypeAndForms { type_name, forms });
+    return Ok(TypeAndForms {
+        type_name,
+        forms,
+        pos,
+    });
 }
 
 fn parse_statements_block(l: &mut Lexer, ctx: &Ctx) -> Result<Body, Error> {
@@ -967,25 +972,30 @@ fn parse_typedef(is_pub: bool, l: &mut Lexer, ctx: &Ctx) -> Result<ModuleObject,
     }));
 }
 
-fn parse_type_and_forms(lexer: &mut Lexer, ctx: &Ctx) -> Result<TypeAndForms, Error> {
-    if lexer.follows("struct") {
+fn parse_type_and_forms(l: &mut Lexer, ctx: &Ctx) -> Result<TypeAndForms, Error> {
+    if l.follows("struct") {
         return Err(Error {
             message: "Unexpected struct".to_string(),
-            pos: lexer.peek().unwrap().pos.clone(),
+            pos: l.peek().unwrap().pos.clone(),
         });
     }
 
-    let type_name = parse_typename(lexer, ctx)?;
+    let pos = l.peek().unwrap().pos.clone();
+    let type_name = parse_typename(l, ctx)?;
 
     let mut forms: Vec<Form> = vec![];
-    forms.push(parse_form(lexer, ctx)?);
-    while lexer.follows(",") {
-        lexer.get();
-        forms.push(parse_form(lexer, ctx)?);
+    forms.push(parse_form(l, ctx)?);
+    while l.follows(",") {
+        l.get();
+        forms.push(parse_form(l, ctx)?);
     }
 
-    expect(lexer, ";", None)?;
-    return Ok(TypeAndForms { type_name, forms });
+    expect(l, ";", None)?;
+    return Ok(TypeAndForms {
+        type_name,
+        forms,
+        pos,
+    });
 }
 
 fn token_to_string(token: &Token) -> String {

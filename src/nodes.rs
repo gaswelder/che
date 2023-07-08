@@ -260,6 +260,7 @@ pub struct FunctionParameters {
 pub struct TypeAndForms {
     pub type_name: Typename,
     pub forms: Vec<Form>,
+    pub pos: String,
 }
 
 #[derive(Debug, Clone)]
