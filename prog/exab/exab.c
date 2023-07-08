@@ -5,6 +5,7 @@
 #import os/io
 #import strings
 #import time
+#import table.c
 
 enum {
     MAX_REQUESTS = 50000
@@ -667,6 +668,8 @@ int compwait(const void *x, *y) {
     return 0;
 }
 
+
+
 void output_results(int sig) {
     if (sig) {
         lasttime = time.now();  /* record final time if interrupted */
@@ -674,30 +677,29 @@ void output_results(int sig) {
     int64_t timetaken = time.sub(lasttime, start) / time.SECONDS;
 
     printf("\n\n");
-    printf("Server Software:        %s\n", servername);
-    printf("Server Hostname:        %s\n", hostname);
-    printf("Server Port:            %hu\n", port);
-    printf("\n");
-    printf("Document Path:          %s\n", path);
-    printf("Document Length:        %zu bytes\n", doclen);
-    printf("\n");
-    printf("Concurrency Level:      %zu\n", concurrency);
-    printf("Time taken for tests:   %.3ld seconds\n", timetaken);
-    printf("Complete requests:      %ld\n", done);
-    printf("Failed requests:        %d\n", bad);
-    if (bad)
-        printf("   (Connect: %d, Receive: %d, Length: %d, Exceptions: %d)\n",
-            err_conn, err_recv, err_length, err_except);
-    printf("Write errors:           %d\n", epipe);
-    if (err_response)
-        printf("Non-2xx responses:      %d\n", err_response);
-    if (keepalive)
-        printf("Keep-Alive requests:    %d\n", doneka);
-    printf("Total transferred:      %ld bytes\n", totalread);
+    table.add("Server Software", "%s", servername);
+    table.add("Server Hostname", "%s", hostname);
+    table.add("Server Port", "%hu", port);
+    table.split();
+    table.add("Document Path", "%s", path);
+    table.add("Document Length", "%zu B", doclen);
+    table.split();
+    table.add("Concurrency Level", "%zu", concurrency);
+    table.add("Time taken for tests", "%.3ld s", timetaken);
+    table.add("Complete requests", "%ld", done);
+    table.add("Failed requests", "%d", bad);
+    table.add("Connect errors", "%d", err_conn);
+    table.add("Receive errors", "%d", err_recv);
+    table.add("Length errors", "%d", err_length);
+    table.add("Exceptions", "%d", err_except);
+    table.add("Write errors", "%d", epipe);
+    table.add("Non-2xx responses", "%d", err_response);
+    table.add("Keep-Alive requests", "%d", doneka);
+    table.add("Total read", "%ld B", totalread);
     if (method == POST) {
-        printf("Total POSTed:           %ld\n", totalposted);
+        table.add("Total POSTed", "%ld", totalposted);
     }
-    printf("HTML transferred:       %ld bytes\n", totalbread);
+    table.add("HTML transferred", "%ld B", totalbread);
 
     /* avoid divide by zero */
     if (timetaken && done) {
