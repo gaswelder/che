@@ -55,7 +55,15 @@ double ap_double_ms(int a) {
 /* --------------------- GLOBALS ---------------------------- */
 
 int verbosity = 0;      /* no verbosity by default */
-int posting = 0;        /* GET by default */
+
+enum {
+    GET,
+    POST,
+    HEAD
+};
+
+int method = GET;
+
 size_t requests = 1;       /* Number of requests to make */
 int heartbeatres = 100; /* How often do we say we're alive */
 
@@ -149,25 +157,26 @@ int main(int argc, char *argv[]) {
     opt.opt_bool("k", "use HTTP keep-alive", &keepalive);
     opt.opt_str("C", "cooke value, eg. session_id=123456", &cookie);
 
-    // Hmm
-    bool iflag = false;
-    opt.opt_bool("i", "use HEAD requests", &iflag);
+    // Request config
+    char *methodstring = NULL;
+    opt.opt_str("m", "request method (GET, POST, HEAD)", &methodstring);
 
+    char *postfile = NULL;
+    opt.opt_str("p", "postfile", &postfile);
+    opt.opt_str("T", "POST body content type", &content_type);
+
+    // Hmm
     bool quiet = false;
     opt.opt_bool("q", "quiet", &quiet);
 
-    bool hflag = false;
-    bool vflag = false;
-
-
     opt.opt_int("v", "verbosity", &verbosity);
     opt.opt_str("g", "gnuplot output file", &gnuplot);
+
+    bool hflag = false;
     opt.opt_bool("h", "print usage", &hflag);
+
+    bool vflag = false;
     opt.opt_bool("V", "print version", &vflag);
-
-
-
-
 
     bool dflag = false;
     opt.opt_bool("d", "percentile = 0", &dflag);
@@ -175,37 +184,38 @@ int main(int argc, char *argv[]) {
     opt.opt_bool("S", "confidence = 0", &sflag);
 
     opt.opt_str("e", "csvperc", &csvperc);
-
-
-    char *postfile = NULL;
-    opt.opt_str("p", "postfile", &postfile);
-
-
     opt.opt_str("A", "basic auth string (base64)", &autharg);
-    opt.opt_str("T", "POST body content type", &content_type);
+    
 
     char **args = opt.opt_parse(argc, argv);
+
+    if (methodstring) {
+        if (strings.casecmp(methodstring, "GET")) {
+            method = GET;
+        } else if (strings.casecmp(methodstring, "POST")) {
+            method = POST;
+        } else if (strings.casecmp(methodstring, "HEAD")) {
+            method = HEAD;
+        } else {
+            fprintf(stderr, "unknown request method: %s\n", methodstring);
+            return 1;
+        }
+    }
 
     if (tlimit) {
         // need to size data array on something.
         requests = MAX_REQUESTS;
     }
     if (postfile) {
-        if (posting != 0) {
-            err("Cannot mix POST and HEAD\n");
+        if (method != POST) {
+            fprintf(stderr, "postfile option works only with POST method\n");
+            exit(1);
         }
         postdata = fs.readfile(postfile, &postlen);
         if (!postdata) {
             fprintf(stderr, "failed to read file %s: %s\n", postfile, strerror(errno));
             exit(1);
         }
-        posting = 1;
-    }
-    if (iflag) {
-        if (posting == 1) {
-            err("Cannot mix POST and HEAD\n");
-        }
-        posting = -1;
     }
     if (hflag) {
         usage(argv[0]);
@@ -265,8 +275,7 @@ int main(int argc, char *argv[]) {
 }
 
 void build_request(const char *url) {
-    fullurl = strings.newstr("%s", url);
-
+    // Parse the URL.
     http.url_t u = {};
     if (!http.parse_url(&u, url)) {
         fprintf(stderr, "%s: invalid URL\n", url);
@@ -281,23 +290,25 @@ void build_request(const char *url) {
     } else {
         colonhost = strings.newstr("%s:%s", u.hostname, u.port);
     }
+    fullurl = strings.newstr("%s", url);
 
-    const char *method = NULL;
-    if (posting == -1) {
-        method = "HEAD";
-    } else if (posting == 0) {
-        method = "GET";
-    } else {
-        method = "POST";
-    }
-
+    // Create a request.
     http.request_t req = {};
-    http.init_request(&req, method, u.path);
+    const char *methodstring = NULL;
+    switch (method) {
+        case GET: { methodstring = "GET"; }
+        case POST: { methodstring = "POST"; }
+        case HEAD: { methodstring = "HEAD"; }
+        default: { panic("!"); }
+    }
+    http.init_request(&req, methodstring, u.path);
     http.set_header(&req, "Host", u.hostname);
+
+    // Set various headers.
     if (keepalive) {
         http.set_header(&req, "Connection", "Keep-Alive");
     }
-    if (posting > 1) {
+    if (method == POST) {
         char buf[10] = {0};
         sprintf(buf, "%zu", postlen);
         http.set_header(&req, "Content-Length", buf);
@@ -331,7 +342,7 @@ void build_request(const char *url) {
         fatal("failed to write request");
     }
     io.push(&REQUEST, buf, strlen(buf));
-    if (posting == 1) {
+    if (method == POST) {
         io.push(&REQUEST, postdata, strlen(postdata));
     }
     if (verbosity >= 2) {
@@ -495,7 +506,7 @@ int routine(void *ctx, int line) {
                     printf("WARNING: Response code not 2xx (%d)\n", r.status);
                 }
             }
-            if (keepalive && posting >= 0) {
+            if (keepalive && method == POST) {
                 c->length = r.content_length;
             }
 
@@ -683,8 +694,9 @@ void output_results(int sig) {
     if (keepalive)
         printf("Keep-Alive requests:    %d\n", doneka);
     printf("Total transferred:      %ld bytes\n", totalread);
-    if (posting > 0)
+    if (method == POST) {
         printf("Total POSTed:           %ld\n", totalposted);
+    }
     printf("HTML transferred:       %ld bytes\n", totalbread);
 
     /* avoid divide by zero */
@@ -697,7 +709,7 @@ void output_results(int sig) {
                (double) timetaken * 1000 / done);
         printf("Transfer rate:          %.2f [Kbytes/sec] received\n",
                (double) totalread / 1024 / timetaken);
-        if (posting > 0) {
+        if (method == POST) {
             printf("                        %.2f kb/s sent\n",
                (double) totalposted / timetaken / 1024);
             printf("                        %.2f kb/s total\n",
