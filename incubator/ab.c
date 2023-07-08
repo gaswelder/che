@@ -95,7 +95,6 @@ size_t tlimit = 0;
 int percentile = 1;     /* Show percentile served */
 int confidence = 1;     /* Show confidence estimator and warnings */
 bool keepalive = false;      /* try and do keepalive connections */
-int windowsize = 0;     /* we use the OS default window size */
 char servername[1024] = {0};  /* name that server reports */
 char *hostname = NULL;         /* host name from URL */
 char *host_field = NULL;       /* value of "Host:" header field */
@@ -158,31 +157,76 @@ int percs[] = {50, 66, 75, 80, 90, 95, 98, 99, 100};
 connection_t *con = NULL;     /* connection array */
 data_t *stats = NULL;         /* data for each request */
 
-int main(int argc, char *argv[]) {
-    tablestring = "";
-    trstring = "";
-    tdstring = "bgcolor=white";
+void usage(const char *progname) {
+    opt.opt_usage(progname);
+    fprintf(stderr, "Usage: %s [options] [http"
+        "://]hostname[:port]/path\n", progname);
 
+// request config
+    fprintf(stderr, "    -T content-type Content-type header for POSTing, eg.\n");
+    fprintf(stderr, "                    'application/x-www-form-urlencoded'\n");
+    fprintf(stderr, "                    Default is 'text/plain'\n");
+    fprintf(stderr, "    -p postfile     File containing data to POST. Remember also to set -T\n");
+
+// html
+    fprintf(stderr, "    -w              Print out results in HTML tables\n");
+    fprintf(stderr, "    -x attributes   String to insert as table attributes\n");
+    fprintf(stderr, "    -y attributes   String to insert as tr attributes\n");
+    fprintf(stderr, "    -z attributes   String to insert as td or th attributes\n");
+
+//
+    fprintf(stderr, "    -v verbosity    How much troubleshooting info to print\n");    
+    fprintf(stderr, "    -H attribute    Add Arbitrary header line, eg. 'Accept-Encoding: gzip'\n");
+    fprintf(stderr, "                    Inserted after all normal header lines. (repeatable)\n");
+    fprintf(stderr, "    -A attribute    Add Basic WWW Authentication, the attributes\n");
+    fprintf(stderr, "                    are a colon separated username and password.\n");
+    fprintf(stderr, "    -P attribute    Add Basic Proxy Authentication, the attributes\n");
+    fprintf(stderr, "                    are a colon separated username and password.\n");
+    fprintf(stderr, "    -X proxy:port   Proxyserver and port number to use\n");
+    fprintf(stderr, "    -V              Print version number and exit\n");
     
-    proxyhost[0] = '\0';
+    fprintf(stderr, "    -d              Do not show percentiles served table.\n");
+    fprintf(stderr, "    -S              Do not show confidence estimators and warnings.\n");
+    fprintf(stderr, "    -g filename     Output collected data to gnuplot format file.\n");
+    fprintf(stderr, "    -e filename     Output CSV file with percentages served\n");
+    fprintf(stderr, "    -h              Display usage information (this message)\n");
+    exit(1);
+}
+
+int main(int argc, char *argv[]) {
+    // Orthogonal options
+    opt.opt_size("n", "number of requests to perform", &requests);
+    opt.opt_size("c", "number of concurrent requests", &concurrency);
+    opt.opt_size("t", "time limit, number of seconds to wait for responses", &tlimit);
+    opt.opt_bool("k", "use HTTP keep-alive", &keepalive);
+    opt.opt_str("C", "cooke value, eg. session_id=123456", &cookie);
+
+    // Hmm
+    bool iflag = false;
+    opt.opt_bool("i", "use HEAD requests", &iflag);
 
     bool quiet = false;
+    opt.opt_bool("q", "quiet", &quiet);
+
     bool hflag = false;
     bool vflag = false;
-
-    opt.opt_bool("k", "keep-alive", &keepalive);
-    opt.opt_bool("q", "quiet", &quiet);
-    opt.opt_size("c", "concurrency", &concurrency);
-    opt.opt_int("b", "windowsize", &windowsize);
-    opt.opt_size("n", "number of requests", &requests);
+    
+    
     opt.opt_bool("w", "use_html", &use_html);
     opt.opt_int("v", "verbosity", &verbosity);
     opt.opt_str("g", "gnuplot output file", &gnuplot);
     opt.opt_bool("h", "print usage", &hflag);
     opt.opt_bool("V", "print version", &vflag);
 
-    bool iflag = false;
-    opt.opt_bool("i", "use head", &iflag);
+    tablestring = "";
+    trstring = "";
+    tdstring = "bgcolor=white";
+    proxyhost[0] = '\0';
+
+    
+
+    
+    
 
 
     bool dflag = false;
@@ -196,11 +240,11 @@ int main(int argc, char *argv[]) {
     char *postfile = NULL;
     opt.opt_str("p", "postfile", &postfile);
 
-    opt.opt_size("t", "time limit in seconds", &tlimit);
+    
     opt.opt_str("A", "basic auth string (base64)", &autharg);
     opt.opt_str("P", "basic proxy auth string (base64)", &proxyauth);
     opt.opt_str("T", "POST body content type", &content_type);
-    opt.opt_str("C", "cookie", &cookie);
+    
 
 
     char *xarg = NULL;
@@ -1305,45 +1349,7 @@ void read_connection_body(connection_t *c) {
     totalbread += read;
 }
 
-void usage(const char *progname) {
-    opt.opt_usage(progname);
-    fprintf(stderr, "Usage: %s [options] [http"
-        "://]hostname[:port]/path\n", progname);
-/* 80 column ruler:  ********************************************************************************
- */
-    fprintf(stderr, "Options are:\n");
-    fprintf(stderr, "    -n requests     Number of requests to perform\n");
-    fprintf(stderr, "    -c concurrency  Number of multiple requests to make\n");
-    fprintf(stderr, "    -t timelimit    Seconds to max. wait for responses\n");
-    fprintf(stderr, "    -b windowsize   Size of TCP send/receive buffer, in bytes\n");
-    fprintf(stderr, "    -p postfile     File containing data to POST. Remember also to set -T\n");
-    fprintf(stderr, "    -T content-type Content-type header for POSTing, eg.\n");
-    fprintf(stderr, "                    'application/x-www-form-urlencoded'\n");
-    fprintf(stderr, "                    Default is 'text/plain'\n");
-    fprintf(stderr, "    -v verbosity    How much troubleshooting info to print\n");
-    fprintf(stderr, "    -w              Print out results in HTML tables\n");
-    fprintf(stderr, "    -i              Use HEAD instead of GET\n");
-    fprintf(stderr, "    -x attributes   String to insert as table attributes\n");
-    fprintf(stderr, "    -y attributes   String to insert as tr attributes\n");
-    fprintf(stderr, "    -z attributes   String to insert as td or th attributes\n");
-    fprintf(stderr, "    -C attribute    Add cookie, eg. 'Apache=1234. (repeatable)\n");
-    fprintf(stderr, "    -H attribute    Add Arbitrary header line, eg. 'Accept-Encoding: gzip'\n");
-    fprintf(stderr, "                    Inserted after all normal header lines. (repeatable)\n");
-    fprintf(stderr, "    -A attribute    Add Basic WWW Authentication, the attributes\n");
-    fprintf(stderr, "                    are a colon separated username and password.\n");
-    fprintf(stderr, "    -P attribute    Add Basic Proxy Authentication, the attributes\n");
-    fprintf(stderr, "                    are a colon separated username and password.\n");
-    fprintf(stderr, "    -X proxy:port   Proxyserver and port number to use\n");
-    fprintf(stderr, "    -V              Print version number and exit\n");
-    fprintf(stderr, "    -k              Use HTTP KeepAlive feature\n");
-    fprintf(stderr, "    -d              Do not show percentiles served table.\n");
-    fprintf(stderr, "    -S              Do not show confidence estimators and warnings.\n");
-    fprintf(stderr, "    -g filename     Output collected data to gnuplot format file.\n");
-    fprintf(stderr, "    -e filename     Output CSV file with percentages served\n");
-    fprintf(stderr, "    -r              Don't exit on socket receive errors.\n");
-    fprintf(stderr, "    -h              Display usage information (this message)\n");
-    exit(1);
-}
+
 
 void err(char *s) {
     fprintf(stderr, "%s\n", s);
