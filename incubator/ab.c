@@ -5,6 +5,7 @@
 #import os/io
 #import strings
 #import time
+#import html.c
 
 /* Note: this version string should start with \d+[\d\.]* and be a valid
  * string for an HTTP Agent: header when prefixed with 'ApacheBench/'.
@@ -239,7 +240,7 @@ int main(int argc, char *argv[]) {
         usage(argv[0]);
     }
     if (vflag) {
-        copyright();
+        printf("This is ex-ApacheBench, rewritten\n");
         return 0;
     }
     if (dflag) {
@@ -331,7 +332,9 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
-    copyright();
+    if (use_html) {
+        html.begin();
+    }
 
     build_request();
 
@@ -1300,22 +1303,6 @@ void read_connection_body(connection_t *c) {
     /* outside header, everything we have read is entity body */
     c->bread += read;
     totalbread += read;
-}
-
-void copyright() {
-    if (!use_html) {
-        printf("This is ApacheBench, Version %s\n", AP_AB_BASEREVISION);
-        printf("Copyright 1996 Adam Twiss, Zeus Technology Ltd, http://www.zeustech.net/\n");
-        printf("Licensed to The Apache Software Foundation, http://www.apache.org/\n");
-        printf("\n");
-    }
-    else {
-        printf("<p>\n");
-        printf(" This is ApacheBench, Version %s <i>&lt;%s&gt;</i><br>\n", AP_AB_BASEREVISION, "$Revision$");
-        printf(" Copyright 1996 Adam Twiss, Zeus Technology Ltd, http://www.zeustech.net/<br>\n");
-        printf(" Licensed to The Apache Software Foundation, http://www.apache.org/<br>\n");
-        printf("</p>\n<p>\n");
-    }
 }
 
 void usage(const char *progname) {
