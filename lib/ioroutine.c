@@ -38,7 +38,7 @@ pub int spawn(func_t f, void *ctx) {
         if (!routines[i]) {
             routines[i] = r;
             r->id = i;
-            // printf("spawned %d\n", i);
+            deb("spawned routine %d", i);
             return i;
         }
     }
@@ -54,7 +54,6 @@ bool runnable(routine_t *r) {
 
 pub void step() {
     // Run non-blocked routines.
-    // printf("running non-blocked\n");
     while (true) {
         int ran = 0;
         for (int i = 0; i < MAX_ROUTINES; i++) {
@@ -67,7 +66,6 @@ pub void step() {
                 step_routine(r);
             }
         }
-        // printf("ran: %d\n", ran);
         if (ran == 0) {
             break;
         }
@@ -82,25 +80,23 @@ pub void step() {
             continue;
         }
         if (r->waithandle) {
-            // if (r->waitfilter == io.READ) {
-            //     printf("routine %d waits to read from %d\n", r->id, r->waithandle->fd);
-            // }
-            // else if (r->waitfilter == io.WRITE) {
-            //     printf("routine %d waits to write to %d\n", r->id, r->waithandle->fd);
-            // } else {
-            //     printf("routine %d waits for %d (%d)\n", r->id, r->waithandle->fd, r->waitfilter);
-            // }
-
+            if (r->waitfilter == io.READ) {
+                deb("%d blocked reading from %d", r->id, r->waithandle->fd);
+            } else if (r->waitfilter == io.WRITE) {
+                deb("%d blocked writing to %d", r->id, r->waithandle->fd);
+            } else {
+                deb("%d waits for %d (%d)", r->id, r->waithandle->fd, r->waitfilter);
+            }
             io.add(p, r->waithandle, r->waitfilter);
             handles++;
         }
     }
-    printf("[ioro] polling %d handles\n", handles);
+    deb("polling %d handles", handles);
     io.event_t *ev = io.poll(p);
 
     // Unblock relevant routines.
     while (ev->handle) {
-        printf("[ioro] poll result: %d, r=%d, w=%d\n", ev->handle->fd, ev->readable, ev->writable);
+        deb("poll result: %d, r=%d, w=%d", ev->handle->fd, ev->readable, ev->writable);
         // Find the routine blocked in this IO event.
         routine_t *r = find_routine(ev);
         if (!r) {
@@ -145,21 +141,19 @@ routine_t *find_routine(io.event_t *ev) {
 
 void step_routine(routine_t *r) {
     CURRENT_ROUTINE = r->id;
-    // printf("# %d-%d\n", r->id, r->current_line);
     int nextline = r->f(r->ctx, r->current_line);
     if (nextline != r->current_line) {
-        // printf("routine moved from line %d to line %d\n", r->current_line, nextline);
         r->current_line = nextline;
     }
     if (nextline == -1) {
-        printf("[ioro] routine %d finished\n", CURRENT_ROUTINE);
+        deb("routine %d finished", CURRENT_ROUTINE);
         for (int i = 0; i < MAX_ROUTINES; i++) {
             routine_t *r = routines[i];
             if (!r) {
                 continue;
             }
             if (r->waitroutine == CURRENT_ROUTINE) {
-                printf("[ioro] unblocking routine %d\n", r->id);
+                deb("unblocking routine %d", r->id);
                 r->waitroutine = -1;
             }
         }
@@ -182,41 +176,38 @@ void step_routine(routine_t *r) {
 }
 
 pub bool ioready(io.handle_t *h, int filter) {
-    // if (filter == io.READ) {
-    //     printf("checking if %d is ready for reading\n", h->fd);
-    // }
-    // else if (filter == io.WRITE) {
-    //     printf("checking if %d is ready for writing\n", h->fd);
-    // } else {
-    //     printf("checking if %d is ready for %d\n", h->fd, filter);
-    // }
     routine_t *r = routines[CURRENT_ROUTINE];
     if (r->readyhandle == h && r->readyfilter & filter) {
-        // printf("- ready\n");
         r->readyhandle = NULL;
         return true;
     }
-    // printf("- not ready, waiting\n");
     r->waithandle = h;
     r->waitfilter = filter;
     return false;
 }
 
 pub bool done(int id) {
-    printf("[ioro] checking if routine %d is done\n", id);
     routine_t *r = routines[CURRENT_ROUTINE];
     if (!r) {
         panic("no such routine: %d", id);
     }
     int line = routines[id]->current_line;
     if (line != -1) {
-        printf("[ioro] - not done, it's at line %d\n", line);
         r->waitroutine = id;
         return false;
     }
-    printf("[ioro] - done\n");
     free(routines[id]);
     routines[id] = NULL;
     r->waitroutine = -1;
     return true;
+}
+
+void deb(const char *format, ...) {
+    (void) format;
+    // printf("[ioro] ");
+    // va_list l = {0};
+	// va_start(l, format);
+	// vprintf(format, l);
+	// va_end(l);
+    // printf("\n");
 }
