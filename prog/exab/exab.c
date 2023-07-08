@@ -8,10 +8,6 @@
 #import table.c
 
 enum {
-    MAX_REQUESTS = 50000
-};
-
-enum {
     STATE_UNCONNECTED = 0,
 };
 
@@ -21,6 +17,13 @@ typedef {
     io.buf_t *inbuf; // Response to read
 
     int body_bytes_to_read; // How many bytes to read to get the full response.
+
+    // timestamps
+    time.t time_connected;
+    time.t start,           /* Start of connection */
+               endwrite,        /* Request written */
+               beginread,       /* First byte of input */
+               requests_done;            /* Connection closed */
 
 
     int state;
@@ -34,11 +37,7 @@ typedef {
     int keepalive;              /* non-zero if a keep-alive request */
     int gotheader;              /* non-zero if we have the entire header in
                                  * cbuff */
-    time.t start,           /* Start of connection */
-               connect,         /* Connected, start writing */
-               endwrite,        /* Request written */
-               beginread,       /* First byte of input */
-               done;            /* Connection closed */
+    
 } connection_t;
 
 typedef {
@@ -53,19 +52,43 @@ double ap_double_ms(int a) {
 }
 #define MAX_CONCURRENCY 20000
 
+
+
 /* --------------------- GLOBALS ---------------------------- */
 
-int verbosity = 0;      /* no verbosity by default */
-
+// Request method.
 enum {
     GET,
     POST,
     HEAD
 };
-
 int method = GET;
 
-size_t requests = 1;       /* Number of requests to make */
+/*
+ * Customizable headers
+ */
+char *user_agent = "ex-ApacheBench/0.0";
+char *opt_accept = NULL;
+char *cookie = NULL;
+
+/*
+ * How many requests to do.
+ */
+size_t requests_to_do = 1;
+size_t requests_done = 0;
+
+/*
+ * Error counters.
+ */
+int failed_connects = 0;
+int read_errors = 0;
+int write_errors = 0;
+int error_responses = 0; // non-200
+
+
+// ----
+
+int verbosity = 0;      /* no verbosity by default */
 int heartbeatres = 100; /* How often do we say we're alive */
 
 /* Number of multiple requests to make */
@@ -89,9 +112,7 @@ char *csvperc = NULL;          /* CSV Percentile file */
 char *fullurl = NULL;
 char * colonhost = "";
 
-char *user_agent = "ex-ApacheBench/0.0";
-char *opt_accept = NULL;
-char *cookie = NULL;
+
 char *autharg = NULL;
 
 size_t doclen = 0;     /* the length the document should be */
@@ -99,29 +120,23 @@ int64_t totalread = 0;    /* total number of bytes read */
 int64_t totalbread = 0;   /* totoal amount of entity body read */
 int64_t totalposted = 0;  /* total number of bytes posted, inc. headers */
 size_t started = 0;           /* number of requests started, so no excess */
-size_t done = 0;              /* number of requests we have done */
-int doneka = 0;            /* number of keep alive connections done */
+int doneka = 0;            /* number of keep alive connections requests_done */
 int good = 0;
 int bad = 0;     /* number of good and bad requests */
-int epipe = 0;             /* number of broken pipe writes */
-int err_length = 0;        /* requests failed due to response length */
-int failed_connects = 0;          /* requests failed due to connection drop */
-int err_recv = 0;          /* requests failed due to broken read */
-int err_except = 0;        /* requests failed due to exception */
-int err_response = 0;      /* requests with invalid or non-200 response */
 
+int err_length = 0;        /* requests failed due to response length */
+int err_except = 0;        /* requests failed due to exception */
 
 time.t start = {};
 time.t lasttime = {};
 
-/* global request (and its length) */
 io.buf_t REQUEST = {};
 
 
 /* interesting percentiles */
 int percs[] = {50, 66, 75, 80, 90, 95, 98, 99, 100};
 
-data_t *stats = NULL;         /* data for each request */
+data_t *request_stats = NULL;         /* data for each request */
 
 void usage(const char *progname) {
     opt.opt_usage(progname);
@@ -152,7 +167,7 @@ void usage(const char *progname) {
 
 int main(int argc, char *argv[]) {
     // Orthogonal options
-    opt.opt_size("n", "number of requests to perform", &requests);
+    opt.opt_size("n", "number of requests to perform", &requests_to_do);
     opt.opt_size("c", "number of concurrent requests", &concurrency);
     opt.opt_size("t", "time limit, number of seconds to wait for responses", &tlimit);
     opt.opt_bool("k", "use HTTP keep-alive", &keepalive);
@@ -203,10 +218,6 @@ int main(int argc, char *argv[]) {
         }
     }
 
-    if (tlimit) {
-        // need to size data array on something.
-        requests = MAX_REQUESTS;
-    }
     if (postfile) {
         if (method != POST) {
             fprintf(stderr, "postfile option works only with POST method\n");
@@ -240,19 +251,18 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
-    if (concurrency > requests) {
+    if (concurrency > requests_to_do) {
         fprintf(stderr, "cannot use concurrency level greater than total number of requests\n");
         return 1;
     }
 
-    if ((heartbeatres) && (requests > 150)) {
-        heartbeatres = requests / 10;   /* Print line every 10% of requests */
-        if (heartbeatres < 100)
-            heartbeatres = 100; /* but never more often than once every 100
-                                 * connections. */
-    }
-    else
+    if (heartbeatres && requests_to_do > 150) {
+        heartbeatres = requests_to_do / 10;   /* Print line every 10% of requests */
+        // but never more often than once every 100
+        if (heartbeatres < 100) heartbeatres = 100;
+    } else {
         heartbeatres = 0;
+    }
 
     if (!*args) {
         fprintf(stderr, "missing the url argument\n");
@@ -346,13 +356,10 @@ void build_request(const char *url) {
     if (method == POST) {
         io.push(&REQUEST, postdata, strlen(postdata));
     }
-    if (verbosity >= 2) {
-        io.print_buf(&REQUEST);
-    }
 }
 
 void test() {
-    stats = calloc(requests, sizeof(data_t));
+    request_stats = calloc(requests_to_do, sizeof(data_t));
 
     ioroutine.init();
 
@@ -372,20 +379,16 @@ void test() {
         connections[i].inbuf = io.newbuf();
         ioroutine.spawn(routine, &connections[i]);
     }
-    int c = 0;
     while (true) {
-        if (c++ > 10) {
-            break;
-        }
         ioroutine.step();
-        if (done > requests || time.sub(time.now(), stoptime) > 0) {
+        if (requests_done > requests_to_do || time.sub(time.now(), stoptime) > 0) {
             break;
         }
     }
     if (heartbeatres) {
-        fprintf(stderr, "Finished %zu requests\n", done);
+        fprintf(stderr, "Finished %zu requests\n", requests_done);
     } else {
-        printf("..done\n");
+        printf("..requests_done\n");
     }
 }
 
@@ -406,6 +409,7 @@ int routine(void *ctx, int line) {
          */
         case CONNECT: {
             // TODO: connect timeout
+            dbg("Connecting to %s", colonhost);
             c->aprsock = io.connect("tcp", colonhost);
             if (!c->aprsock) {
                 fprintf(stderr, "failed to connect to %s: %s\n", colonhost, strerror(errno));
@@ -415,14 +419,21 @@ int routine(void *ctx, int line) {
                 }
                 return CONNECT;
             }
+            dbg("connected");
             started++;
-            c->connect = time.now();
+            c->time_connected = time.now();
             return INIT_REQUEST;
         }
         /*
          * Prepare a new request for writing.
          */
         case INIT_REQUEST: {
+            if (requests_done >= requests_to_do) {
+                printf("all done\n");
+                io.close(c->aprsock);
+                return -1;
+            }
+            requests_done++;
             c->read = 0;
             c->bread = 0;
             c->keepalive = 0;
@@ -432,6 +443,7 @@ int routine(void *ctx, int line) {
             c->start = time.now();
             io.resetbuf(c->inbuf);
             io.resetbuf(c->outbuf);
+            dbg("prepating the request (%zu, %zu)", io.bufsize(c->inbuf), io.bufsize(c->outbuf));
             io.push(c->outbuf, REQUEST.data, io.bufsize(&REQUEST));
             return WRITE_REQUEST;
         }
@@ -439,28 +451,24 @@ int routine(void *ctx, int line) {
          * Write the request.
          */
         case WRITE_REQUEST: {
-            // If nothing to write skip to reading.
-            if (io.bufsize(c->outbuf) == 0) {
+            size_t n = io.bufsize(c->outbuf);
+            if (n == 0) {
+                dbg("nothing more to write, proceeding to read");
+                c->endwrite = time.now();
                 c->beginread = time.now();
                 return READ_RESPONSE;
             }
             if (!ioroutine.ioready(c->aprsock, io.WRITE)) {
                 return WRITE_REQUEST;
             }
-            printf("writing %zu\n", io.bufsize(c->outbuf));
+            dbg("writing %zu bytes\n", n);
             if (!io.write(c->aprsock, c->outbuf)) {
-                epipe++;
+                write_errors++;
                 printf("Send request failed!\n");
                 io.close(c->aprsock);
                 return CONNECT;
             }
-            printf("have %zu remaining\n", io.bufsize(c->outbuf));
-            if (io.bufsize(c->outbuf) == 0) {
-                printf("add request written\n");
-                c->endwrite = time.now();
-            }
-            c->beginread = time.now();
-            return READ_RESPONSE;
+            return WRITE_REQUEST;
         }
         /*
          * Read and parse a response
@@ -469,54 +477,50 @@ int routine(void *ctx, int line) {
             if (!ioroutine.ioready(c->aprsock, io.READ)) {
                 return READ_RESPONSE;
             }
+            dbg("reading response");
             if (!io.read(c->aprsock, c->inbuf)) {
-                err_recv++;
+                read_errors++;
                 bad++;
-                if (verbosity >= 1) {
-                    fprintf(stderr, "socket read failed: %s\n", strerror(errno));
-                }
+                fprintf(stderr, "socket read failed: %s\n", strerror(errno));
+                io.close(c->aprsock);
+                return CONNECT;
+            }
+            size_t n = io.bufsize(c->inbuf);
+            dbg("read %zu bytes", n);
+            if (n == 0) {
                 io.close(c->aprsock);
                 return CONNECT;
             }
 
             http.response_t r = {};
             if (!http.parse_response(c->inbuf->data, &r)) {
-                printf("failed to parse response\n");
-                io.print_buf(c->inbuf);
+                panic("failed to parse the response\n");
                 return READ_RESPONSE;
             }
 
-            printf("version = %s\n", r.version);
-            printf("status = %d\n", r.status);
-            printf("status_text = %s\n", r.status_text);
-            printf("servername = %s\n", r.servername);
-            printf("head_length = %d\n", r.head_length);
-            printf("content_length = %d\n", r.content_length);
+            // printf("version = %s\n", r.version);
+            // printf("status = %d\n", r.status);
+            // printf("status_text = %s\n", r.status_text);
+            // printf("servername = %s\n", r.servername);
+            // printf("head_length = %d\n", r.head_length);
+            // printf("content_length = %d\n", r.content_length);
 
             io.shift(c->inbuf, r.head_length);
             c->body_bytes_to_read = r.content_length;
             c->body_bytes_to_read -= io.bufsize(c->inbuf);
             io.shift(c->inbuf, io.bufsize(c->inbuf));
 
-            // if (verbosity >= 2) {
-            //     io.print_buf(c->inbuf);
-            // }
             if (r.status < 200 || r.status >= 300) {
-                err_response++;
-                if (verbosity >= 2) {
-                    printf("WARNING: Response code not 2xx (%d)\n", r.status);
-                }
+                error_responses++;
+                fprintf(stderr, "WARNING: Response code not 2xx (%d)\n", r.status);
             }
             if (keepalive && method == POST) {
                 c->length = r.content_length;
             }
-
             return READ_RESPONSE_BODY;
         }
         case READ_RESPONSE_BODY: {
-            printf("remaining body: %d\n", c->body_bytes_to_read);
             if (c->body_bytes_to_read == 0) {
-                printf("starting a new request\n");
                 return INIT_REQUEST;
             }
             if (!ioroutine.ioready(c->aprsock, io.READ)) {
@@ -561,15 +565,15 @@ void close_connection(connection_t * c)
             err_length++;
         }
         /* save out time */
-        if (done < requests) {
-            data_t *s = &stats[done++];
-            c->done      = lasttime = time.now();
+        if (requests_done < requests_to_do) {
+            data_t *s = &request_stats[requests_done++];
+            c->requests_done      = lasttime = time.now();
             s->starttime = c->start;
-            s->ctime     = max(0, time.sub(c->connect, c->start));
-            s->time      = max(0, time.sub(c->done, c->start));
+            s->ctime     = max(0, time.sub(c->time_connected, c->start));
+            s->time      = max(0, time.sub(c->requests_done, c->start));
             s->waittime  = max(0, time.sub(c->beginread, c->endwrite));
-            if (heartbeatres && !(done % heartbeatres)) {
-                fprintf(stderr, "Completed %ld requests\n", done);
+            if (heartbeatres && !(requests_done % heartbeatres)) {
+                fprintf(stderr, "Completed %ld requests\n", requests_done);
                 fflush(stderr);
             }
         }
@@ -598,16 +602,16 @@ void kek(connection_t *c) {
             bad++;
             err_length++;
         }
-        if (done < requests) {
-            data_t *s = &stats[done++];
+        if (requests_done < requests_to_do) {
+            data_t *s = &request_stats[requests_done++];
             doneka++;
-            c->done      = time.now();
+            c->requests_done      = time.now();
             s->starttime = c->start;
-            s->ctime     = max(0, time.sub(c->connect, c->start));
-            s->time      = max(0, time.sub(c->done, c->start));
+            s->ctime     = max(0, time.sub(c->time_connected, c->start));
+            s->time      = max(0, time.sub(c->requests_done, c->start));
             s->waittime  = max(0, time.sub(c->beginread, c->endwrite));
-            if (heartbeatres && !(done % heartbeatres)) {
-                fprintf(stderr, "Completed %ld requests\n", done);
+            if (heartbeatres && !(requests_done % heartbeatres)) {
+                fprintf(stderr, "Completed %ld requests\n", requests_done);
                 fflush(stderr);
             }
         }
@@ -617,7 +621,7 @@ void kek(connection_t *c) {
         c->cbx = 0;
         c->read = c->bread = 0;
         /* zero connect time with keep-alive */
-        c->start = c->connect = lasttime = time.now();
+        c->start = c->time_connected = lasttime = time.now();
     }
 }
 
@@ -626,8 +630,8 @@ void kek(connection_t *c) {
 
 void fatal(char *s) {
     fprintf(stderr, "%s: %s (%d)\n", s, strerror(errno), errno);
-    if (done) {
-        printf("Total of %zu requests completed\n" , done);
+    if (requests_done) {
+        printf("Total of %zu requests completed\n" , requests_done);
     }
     exit(1);
 }
@@ -686,14 +690,14 @@ void output_results(int sig) {
     table.split();
     table.add("Concurrency Level", "%zu", concurrency);
     table.add("Time taken for tests", "%.3ld s", timetaken);
-    table.add("Complete requests", "%ld", done);
+    table.add("Complete requests", "%ld", requests_done);
     table.add("Failed requests", "%d", bad);
     table.add("Connect errors", "%d", failed_connects);
-    table.add("Receive errors", "%d", err_recv);
+    table.add("Receive errors", "%d", read_errors);
     table.add("Length errors", "%d", err_length);
     table.add("Exceptions", "%d", err_except);
-    table.add("Write errors", "%d", epipe);
-    table.add("Non-2xx responses", "%d", err_response);
+    table.add("Write errors", "%d", write_errors);
+    table.add("Non-2xx responses", "%d", error_responses);
     table.add("Keep-Alive requests", "%d", doneka);
     table.add("Total read", "%ld B", totalread);
     if (method == POST) {
@@ -702,13 +706,13 @@ void output_results(int sig) {
     table.add("HTML transferred", "%ld B", totalbread);
 
     /* avoid divide by zero */
-    if (timetaken && done) {
+    if (timetaken && requests_done) {
         printf("Requests per second:    %.2f [#/sec] (mean)\n",
-               (double) done / timetaken);
+               (double) requests_done / timetaken);
         printf("Time per request:       %.3f [ms] (mean)\n",
-               (double) concurrency * timetaken * 1000 / done);
+               (double) concurrency * timetaken * 1000 / requests_done);
         printf("Time per request:       %.3f [ms] (mean, across all concurrent requests)\n",
-               (double) timetaken * 1000 / done);
+               (double) timetaken * 1000 / requests_done);
         printf("Transfer rate:          %.2f [Kbytes/sec] received\n",
                (double) totalread / 1024 / timetaken);
         if (method == POST) {
@@ -719,7 +723,7 @@ void output_results(int sig) {
         }
     }
 
-    if (done > 0) {
+    if (requests_done > 0) {
         /* work out connection times */
         int64_t totalcon = 0;
         int64_t total = 0;
@@ -746,8 +750,8 @@ void output_results(int sig) {
         double sdd = 0;
         double sdwait = 0;
 
-        for (size_t i = 0; i < done; i++) {
-            data_t *s = &stats[i];
+        for (size_t i = 0; i < requests_done; i++) {
+            data_t *s = &request_stats[i];
             mincon = min(mincon, s->ctime);
             mintot = min(mintot, s->time);
             mind = min(mind, s->time - s->ctime);
@@ -763,14 +767,14 @@ void output_results(int sig) {
             totald += s->time - s->ctime;
             totalwait += s->waittime;
         }
-        meancon = totalcon / done;
-        meantot = total / done;
-        meand = totald / done;
-        meanwait = totalwait / done;
+        meancon = totalcon / requests_done;
+        meantot = total / requests_done;
+        meand = totald / requests_done;
+        meanwait = totalwait / requests_done;
 
         /* calculating the sample variance: the sum of the squared deviations, divided by n-1 */
-        for (size_t i = 0; i < done; i++) {
-            data_t *s = &stats[i];
+        for (size_t i = 0; i < requests_done; i++) {
+            data_t *s = &request_stats[i];
             double a;
             a = ((double)s->time - meantot);
             sdtot += a * a;
@@ -783,11 +787,11 @@ void output_results(int sig) {
         }
 
 
-        if (done > 1) {
-            sdtot = sqrt(sdtot / (done - 1));
-            sdcon = sqrt(sdcon / (done - 1));
-            sdd = sqrt(sdd / (done - 1));
-            sdwait = sqrt(sdwait / (done - 1));
+        if (requests_done > 1) {
+            sdtot = sqrt(sdtot / (requests_done - 1));
+            sdcon = sqrt(sdcon / (requests_done - 1));
+            sdd = sqrt(sdd / (requests_done - 1));
+            sdwait = sqrt(sdwait / (requests_done - 1));
         } else {
             sdtot = 0;
             sdcon = 0;
@@ -795,40 +799,40 @@ void output_results(int sig) {
             sdwait = 0;
         }
 
-        qsort(stats, done, sizeof(data_t), compradre);
-        if ((done > 1) && (done % 2)) {
-            mediancon = (stats[done / 2].ctime + stats[done / 2 + 1].ctime) / 2;
+        qsort(request_stats, requests_done, sizeof(data_t), compradre);
+        if ((requests_done > 1) && (requests_done % 2)) {
+            mediancon = (request_stats[requests_done / 2].ctime + request_stats[requests_done / 2 + 1].ctime) / 2;
         } else {
-            mediancon = stats[done / 2].ctime;
+            mediancon = request_stats[requests_done / 2].ctime;
         }
 
-        qsort(stats, done, sizeof(data_t), compri);
-        if ((done > 1) && (done % 2)) {
+        qsort(request_stats, requests_done, sizeof(data_t), compri);
+        if ((requests_done > 1) && (requests_done % 2)) {
             mediand = (
-                stats[done / 2].time
-                + stats[done / 2 + 1].time
-                - stats[done / 2].ctime
-                - stats[done / 2 + 1].ctime) / 2;
+                request_stats[requests_done / 2].time
+                + request_stats[requests_done / 2 + 1].time
+                - request_stats[requests_done / 2].ctime
+                - request_stats[requests_done / 2 + 1].ctime) / 2;
         }
         else {
-            mediand = stats[done / 2].time - stats[done / 2].ctime;
+            mediand = request_stats[requests_done / 2].time - request_stats[requests_done / 2].ctime;
         }
 
-        qsort(stats, done, sizeof(data_t), compwait);
-        if ((done > 1) && (done % 2))
-            medianwait = (stats[done / 2].waittime + stats[done / 2 + 1].waittime) / 2;
+        qsort(request_stats, requests_done, sizeof(data_t), compwait);
+        if ((requests_done > 1) && (requests_done % 2))
+            medianwait = (request_stats[requests_done / 2].waittime + request_stats[requests_done / 2 + 1].waittime) / 2;
         else
-            medianwait = stats[done / 2].waittime;
+            medianwait = request_stats[requests_done / 2].waittime;
 
-        qsort(stats, done, sizeof(data_t), comprando);
-        if ((done > 1) && (done % 2))
-            mediantot = (stats[done / 2].time + stats[done / 2 + 1].time) / 2;
+        qsort(request_stats, requests_done, sizeof(data_t), comprando);
+        if ((requests_done > 1) && (requests_done % 2))
+            mediantot = (request_stats[requests_done / 2].time + request_stats[requests_done / 2 + 1].time) / 2;
         else
-            mediantot = stats[done / 2].time;
+            mediantot = request_stats[requests_done / 2].time;
 
         printf("\nConnection Times (ms)\n");
         /*
-         * Reduce stats from apr time to milliseconds
+         * Reduce request_stats from apr time to milliseconds
          */
         mincon     = mincon / time.MS;
         mind       = mind / time.MS;
@@ -878,15 +882,15 @@ void output_results(int sig) {
 
 
         /* Sorted on total connect times */
-        if (percentile && (done > 1)) {
+        if (percentile && (requests_done > 1)) {
             printf("\nPercentage of the requests served within a certain time (ms)\n");
             for (size_t i = 0; i < sizeof(percs) / sizeof(int); i++) {
                 if (percs[i] <= 0) {
                     printf(" 0%%  <0> (never)\n");
                 } else if (percs[i] >= 100) {
-                    printf(" 100%%  %5zu (longest request)\n", stats[done - 1].time);
+                    printf(" 100%%  %5zu (longest request)\n", request_stats[requests_done - 1].time);
                 } else {
-                    printf("  %d%%  %5zu\n", percs[i], stats[(int) (done * percs[i] / 100)].time);
+                    printf("  %d%%  %5zu\n", percs[i], request_stats[(int) (requests_done * percs[i] / 100)].time);
                 }
             }
         }
@@ -900,11 +904,11 @@ void output_results(int sig) {
             for (int i = 0; i < 100; i++) {
                 double t;
                 if (i == 0)
-                    t = ap_double_ms(stats[0].time);
+                    t = ap_double_ms(request_stats[0].time);
                 else if (i == 100)
-                    t = ap_double_ms(stats[done - 1].time);
+                    t = ap_double_ms(request_stats[requests_done - 1].time);
                 else
-                    t = ap_double_ms(stats[(int) (0.5 + done * i / 100.0)].time);
+                    t = ap_double_ms(request_stats[(int) (0.5 + requests_done * i / 100.0)].time);
                 fprintf(out, "%d,%.3f\n", i, t);
             }
             fclose(out);
@@ -916,15 +920,15 @@ void output_results(int sig) {
                 exit(1);
             }
             fprintf(out, "starttime\tseconds\tctime\tdtime\tttime\twait\n");
-            for (size_t i = 0; i < done; i++) {
+            for (size_t i = 0; i < requests_done; i++) {
                 char tmstring[100] = {0};
-                time.format(stats[i].starttime, "%+", tmstring, sizeof(tmstring));
+                time.format(request_stats[i].starttime, "%+", tmstring, sizeof(tmstring));
                 fprintf(out, "%s\t%d\t%zu\t%zu\t%zu\t%zu\n", tmstring,
-                        time.ms(stats[i].starttime) / 1000,
-                        stats[i].ctime,
-                        stats[i].time - stats[i].ctime,
-                        stats[i].time,
-                        stats[i].waittime);
+                        time.ms(request_stats[i].starttime) / 1000,
+                        request_stats[i].ctime,
+                        request_stats[i].time - request_stats[i].ctime,
+                        request_stats[i].time,
+                        request_stats[i].waittime);
             }
             fclose(out);
         }
@@ -954,8 +958,8 @@ void SANE(const char *what, double mean, median, sd) {
 
 void err(char *s) {
     fprintf(stderr, "%s\n", s);
-    if (done) {
-        printf("Total of %ld requests completed\n" , done);
+    if (requests_done) {
+        printf("Total of %ld requests completed\n" , requests_done);
     }
     exit(1);
 }
@@ -966,4 +970,14 @@ size_t apr_base64_encode_len() {
 
 int apr_base64_encode() {
     panic("todo");
+}
+
+void dbg(const char *format, ...) {
+    (void) format;
+    // printf("[dbg] ");
+    // va_list l = {0};
+	// va_start(l, format);
+	// vprintf(format, l);
+	// va_end(l);
+    // printf("\n");
 }

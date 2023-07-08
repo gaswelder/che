@@ -36,9 +36,14 @@ pub void resetbuf(buf_t *b) {
 }
 
 pub void print_buf(buf_t *b) {
+    if (b->size == 0) {
+        fprintf(stderr, "(empty buffer)\n");
+        return;
+    }
+
     char tmp[4096] = {0};
     memcpy(tmp, b->data, b->size);
-    fprintf(stderr, "%zu bytes: %s\n", b->size, tmp);
+    fprintf(stderr, "%zu bytes:\n----------\n%s\n--------------\n", b->size, tmp);
 }
 
 pub void freebuf(buf_t *b) {
