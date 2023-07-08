@@ -302,6 +302,7 @@ pub typedef {
     char status_text[20];
 
     char servername[1000];
+    int head_length;
     int content_length;
 } response_t;
 
@@ -310,6 +311,7 @@ pub bool parse_response(char *data, response_t *r) {
     if (!s) {
         return false;
     }
+    r->head_length = s - data + 4;
 
     // HTTP/1.1
     char *p = strstr(data, "HTTP/");
