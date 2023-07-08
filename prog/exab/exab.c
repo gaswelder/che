@@ -17,18 +17,6 @@
  */
 #define AP_AB_BASEREVISION "2.3"
 
-/*
- * BUGS:
- *
- * - uses strcpy/etc.
- * - has various other poor buffer attacks related to the lazy parsing of
- *   response headers from the server
- * - doesn't implement much of HTTP/1.x, only accepts certain forms of
- *   responses
- * - (performance problem) heavy use of strstr shows up top in profile
- *   only an issue for loopback usage
- */
-
 enum {
     MAX_REQUESTS = 50000
 };
