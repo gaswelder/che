@@ -467,26 +467,27 @@ fn parse_literal(l: &mut Lexer) -> Result<Literal, Error> {
     });
 }
 
-fn parse_enum(lexer: &mut Lexer, is_pub: bool, ctx: &Ctx) -> Result<ModuleObject, Error> {
+fn parse_enum(l: &mut Lexer, is_pub: bool, ctx: &Ctx) -> Result<ModuleObject, Error> {
     let mut members: Vec<EnumItem> = Vec::new();
-    expect(lexer, "enum", Some("enum definition"))?;
-    expect(lexer, "{", Some("enum definition"))?;
+    expect(l, "enum", Some("enum definition"))?;
+    expect(l, "{", Some("enum definition"))?;
     loop {
-        let id = read_identifier(lexer)?;
-        let value: Option<Expression> = if lexer.eat("=") {
-            Some(parse_expr(lexer, 0, ctx)?)
+        let id = read_identifier(l)?;
+        let value: Option<Expression> = if l.eat("=") {
+            Some(parse_expr(l, 0, ctx)?)
         } else {
             None
         };
         members.push(EnumItem { id, value });
-        if lexer.eat(",") {
-            continue;
-        } else {
+        if !l.eat(",") {
+            break;
+        }
+        if l.follows("}") {
             break;
         }
     }
-    expect(lexer, "}", Some("enum definition"))?;
-    expect(lexer, ";", Some("enum definition"))?;
+    expect(l, "}", Some("enum definition"))?;
+    expect(l, ";", Some("enum definition"))?;
     return Ok(ModuleObject::Enum { is_pub, members });
 }
 

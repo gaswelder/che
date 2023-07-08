@@ -95,9 +95,11 @@ int heartbeatres = 100; /* How often do we say we're alive */
 /* Number of multiple requests to make */
 size_t concurrency = 1;
 
+/* time limit in secs */
+size_t tlimit = 0;
+
 int percentile = 1;     /* Show percentile served */
 int confidence = 1;     /* Show confidence estimator and warnings */
-size_t tlimit = 0;         /* time limit in secs */
 bool keepalive = false;      /* try and do keepalive connections */
 int windowsize = 0;     /* we use the OS default window size */
 char servername[1024] = {0};  /* name that server reports */
@@ -137,7 +139,7 @@ int64_t totalread = 0;    /* total number of bytes read */
 int64_t totalbread = 0;   /* totoal amount of entity body read */
 int64_t totalposted = 0;  /* total number of bytes posted, inc. headers */
 int started = 0;           /* number of requests started, so no excess */
-int done = 0;              /* number of requests we have done */
+size_t done = 0;              /* number of requests we have done */
 int doneka = 0;            /* number of keep alive connections done */
 int good = 0;
 int bad = 0;     /* number of good and bad requests */
@@ -151,7 +153,6 @@ int err_response = 0;      /* requests with invalid or non-200 response */
 
 time.t start = {};
 time.t lasttime = {};
-time.t stoptime = {};
 
 /* global request (and its length) */
 char _request[2048] = {0};
@@ -205,7 +206,7 @@ int main(int argc, char *argv[]) {
     char *postfile = NULL;
     opt.opt_str("p", "postfile", &postfile);
 
-    opt.opt_size("t", "tlimit", &tlimit);
+    opt.opt_size("t", "time limit in seconds", &tlimit);
     opt.opt_str("A", "basic auth string (base64)", &autharg);
     opt.opt_str("P", "basic proxy auth string (base64)", &proxyauth);
     opt.opt_str("T", "POST body content type", &content_type);
@@ -379,7 +380,9 @@ void build_request() {
         http.set_header(&req, "Connection", "Keep-Alive");
     }
     if (posting > 1) {
-        http.set_header(&req, "Content-Length", postlen);
+        char buf[10] = {0};
+        sprintf(buf, "%zu", postlen);
+        http.set_header(&req, "Content-Length", buf);
         http.set_header(&req, "Content-Type", content_type);
     }
     if (opt_useragent) {
@@ -424,7 +427,7 @@ void build_request() {
         tmp[l] = '\0';
         http.set_header(&req, "Proxy-Authorization", strings.newstr("Basic %s", tmp));
     }
-    if (!http.write_request(request, sizeof(request))) {
+    if (!http.write_request(&req, request, sizeof(request))) {
         panic("failed to write request");
     }
     reqlen = strlen(request);
@@ -437,8 +440,6 @@ void build_request() {
 }
 
 void test() {
-    time.t stoptime;
-
     if (isproxy) {
         connecthost = strings.newstr("%s", proxyhost);
         connectport = proxyport;
@@ -467,28 +468,24 @@ void test() {
     
 
     start = lasttime = time.now();
-    if (tlimit) {
-        stoptime = (start + time.duration(tlimit, time.SECONDS));
-    } else {
-        stoptime = LONG_MAX;
+    if (!tlimit) {
+        tlimit = LONG_MAX;
     }
-    for (int i = 0; i < concurrency; i++) {
+    time.t stoptime = time.add(start, tlimit, time.SECONDS);
+    for (size_t i = 0; i < concurrency; i++) {
         con[i].socknum = i;
         start_connect(&con[i]);
     }
 
     while (true) {
         ioroutine.step();
-        if (lasttime < stoptime && done < requests) {
-            continue;
-        } else {
+        if (done > requests || time.isinc(stoptime, time.now())) {
             break;
         }
     }
     
-    
     if (heartbeatres)
-        fprintf(stderr, "Finished %d requests\n", done);
+        fprintf(stderr, "Finished %zu requests\n", done);
     else
         printf("..done\n");
 
@@ -507,7 +504,7 @@ void connection_connect(connection_t *c) {
         }
         c->state = STATE_UNCONNECTED;
         start_connect(c);
-        continue;
+        return;
     }
     else {
         c->state = STATE_CONNECTED;
@@ -523,7 +520,7 @@ void connection_connect(connection_t *c) {
 void apr_err(char *s, int rv) {
     fprintf(stderr, "%s: %s (%d)\n", s, strerror(errno), errno);
     if (done) {
-        printf("Total of %d requests completed\n" , done);
+        printf("Total of %zu requests completed\n" , done);
     }
     exit(rv);
 }

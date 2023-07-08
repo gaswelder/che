@@ -42,6 +42,28 @@ pub int ms(t *val) {
     return usec(val) / 1000;
 }
 
+pub t add(t time, int addition, int unit) {
+    if (unit == SECONDS) {
+        time.timeval.tv_sec += addition;
+    } else {
+        time.timeval.tv_usec += addition * unit;
+    }
+    return time;
+}
+
+/*
+ * Returns true if time b is greater than time a.
+ */
+pub bool isinc(t a, b) {
+    if (b.timeval.tv_sec > a.timeval.tv_sec) {
+        return true;
+    }
+    if (b.timeval.tv_sec < a.timeval.tv_sec) {
+        return false;
+    }
+    return b.timeval.tv_usec > a.timeval.tv_usec;
+}
+
 pub enum {
     SECONDS = 1000000 // microseconds
 };
