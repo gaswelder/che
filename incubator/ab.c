@@ -156,13 +156,13 @@ void usage(const char *progname) {
     fprintf(stderr, "    -p postfile     File containing data to POST. Remember also to set -T\n");
 
 //
-    fprintf(stderr, "    -v verbosity    How much troubleshooting info to print\n");    
+    fprintf(stderr, "    -v verbosity    How much troubleshooting info to print\n");
     fprintf(stderr, "    -H attribute    Add Arbitrary header line, eg. 'Accept-Encoding: gzip'\n");
     fprintf(stderr, "                    Inserted after all normal header lines. (repeatable)\n");
     fprintf(stderr, "    -A attribute    Add Basic WWW Authentication, the attributes\n");
     fprintf(stderr, "                    are a colon separated username and password.\n");
     fprintf(stderr, "    -V              Print version number and exit\n");
-    
+
     fprintf(stderr, "    -d              Do not show percentiles served table.\n");
     fprintf(stderr, "    -S              Do not show confidence estimators and warnings.\n");
     fprintf(stderr, "    -g filename     Output collected data to gnuplot format file.\n");
@@ -188,15 +188,15 @@ int main(int argc, char *argv[]) {
 
     bool hflag = false;
     bool vflag = false;
-    
-    
+
+
     opt.opt_int("v", "verbosity", &verbosity);
     opt.opt_str("g", "gnuplot output file", &gnuplot);
     opt.opt_bool("h", "print usage", &hflag);
     opt.opt_bool("V", "print version", &vflag);
 
-    
-    
+
+
 
 
     bool dflag = false;
@@ -210,7 +210,7 @@ int main(int argc, char *argv[]) {
     char *postfile = NULL;
     opt.opt_str("p", "postfile", &postfile);
 
-    
+
     opt.opt_str("A", "basic auth string (base64)", &autharg);
     opt.opt_str("T", "POST body content type", &content_type);
 
@@ -283,7 +283,7 @@ int main(int argc, char *argv[]) {
         fprintf(stderr, "unexpected argument: %s\n", *args);
         return 1;
     }
-    
+
     build_request(url);
 
     /* Output the results if the user terminates the run early. */
@@ -366,14 +366,14 @@ void build_request(const char *url) {
     }
     if (verbosity >= 2) {
         io.print_buf(&REQUEST);
-    }    
+    }
 }
 
 void test() {
     stats = calloc(requests, sizeof(data_t));
 
     ioroutine.init();
-    
+
 
     start = lasttime = time.now();
     if (!tlimit) {
@@ -406,13 +406,29 @@ void test() {
 enum {
     CONNECT,
     WRITE_REQUEST,
+    READ_RESPONSE,
 };
 
 int routine(void *ctx, int line) {
     connection_t *c = ctx;
 
     switch (line) {
+        /*
+         * Connect to the remote host.
+         */
         case CONNECT: {
+            c->read = 0;
+            c->bread = 0;
+            c->keepalive = 0;
+            c->cbx = 0;
+            c->gotheader = 0;
+            c->rwrite = 0;
+            c->start = time.now();
+            io.resetbuf(c->inbuf);
+            io.resetbuf(c->outbuf);
+            io.push(c->outbuf, REQUEST.data, io.bufsize(&REQUEST));
+
+            // TODO: connect timeout
             c->aprsock = io.connect("tcp", colonhost);
             if (!c->aprsock) {
                 fprintf(stderr, "failed to connect to %s: %s\n", colonhost, strerror(errno));
@@ -423,66 +439,127 @@ int routine(void *ctx, int line) {
                 return CONNECT;
             }
             started++;
-
-            // Copy the request to the local buffer.
-            io.push(c->outbuf, REQUEST.data, io.bufsize(&REQUEST));
-
+            c->connect = time.now();
             return WRITE_REQUEST;
         }
-        case WRITE_REQUEST: {
-
-int64_t aprtimeout = 30 * time.SECONDS;
-    while (true) {
-        time.t tnow = time.now();
-        lasttime = tnow;
-        size_t l = c->rwrite;
-
         /*
-         * First time round ?
+         * Write a chunk of request, if there is one
          */
-        if (c->state == 0) {
-            // apr_socket_timeout_set(c->aprsock, 0);
-            c->connect = tnow;
-            c->rwrote = 0;
-            if (posting) {
-                c->rwrite += postlen;
+        case WRITE_REQUEST: {
+            // If nothing to write skip to reading.
+            if (io.bufsize(c->outbuf) == 0) {
+                c->beginread = time.now();
+                return READ_RESPONSE;
             }
+            if (!ioroutine.ioready(c->aprsock, io.WRITE)) {
+                return WRITE_REQUEST;
+            }
+            printf("writing %zu\n", io.bufsize(c->outbuf));
+            if (!io.write(c->aprsock, c->outbuf)) {
+                epipe++;
+                printf("Send request failed!\n");
+                io.close(c->aprsock);
+                return CONNECT;
+            }
+            printf("have %zu remaining\n", io.bufsize(c->outbuf));
+            if (io.bufsize(c->outbuf) == 0) {
+                printf("add request written\n");
+                c->endwrite = time.now();
+            }
+            c->beginread = time.now();
+            return READ_RESPONSE;
         }
-        else if (time.sub(tnow, c->connect) > aprtimeout) {
-            printf("Send request timed out!\n");
-            close_connection(c);
+        /*
+         * Read and parse a response
+         */
+        case READ_RESPONSE: {
+            if (!ioroutine.ioready(c->aprsock, io.READ)) {
+                return READ_RESPONSE;
+            }
+            if (!io.read(c->aprsock, c->inbuf)) {
+                err_recv++;
+                bad++;
+                if (verbosity >= 1) {
+                    fprintf(stderr, "socket read failed: %s\n", strerror(errno));
+                }
+                io.close(c->aprsock);
+                return CONNECT;
+            }
+
+            http.response_t r = {};
+            if (!http.parse_response(c->inbuf->data, &r)) {
+                printf("failed to parse response\n");
+                return READ_RESPONSE;
+            }
+
+            printf("version = %s\n", r.version);
+            printf("status = %d\n", r.status);
+            printf("status_text = %s\n", r.status_text);
+            printf("servername = %s\n", r.servername);
+            printf("content_length = %d\n", r.content_length);
+
+            // if (verbosity >= 2) {
+            //     io.print_buf(c->inbuf);
+            // }
+            if (r.status < 200 || r.status >= 300) {
+                err_response++;
+                if (verbosity >= 2) {
+                    printf("WARNING: Response code not 2xx (%d)\n", r.status);
+                }
+            }
+            if (keepalive && posting >= 0) {
+                c->length = r.content_length;
+            }
+            
+            kek(c);
+            read_connection_body(c);
             return 42;
-        }
-
-        if (!io.write(c->aprsock, c->outbuf)) {
-            epipe++;
-            printf("Send request failed!\n");
-            close_connection(c);
-            return 42;
-        }
-
-        totalposted += l;
-        c->rwrote += l;
-        c->rwrite -= l;
-        if (!c->rwrite) {
-            return 42;
-        }
-    }
-
-    c->endwrite = lasttime = time.now();
-    c->state = STATE_READ;
-return 42;
 
 
         }
+
         default: {
             panic("unexpected line: %d", line);
         }
     }
-    
-    start_connect(c);
-    read_connection(c);
+
     return -1;
+}
+
+void kek(connection_t *c) {
+    if (c->keepalive && (c->bread >= c->length)) {
+        /* finished a keep-alive connection */
+        good++;
+        /* save out time */
+        if (good == 1) {
+            /* first time here */
+            doclen = c->bread;
+        }
+        else if (c->bread != doclen) {
+            bad++;
+            err_length++;
+        }
+        if (done < requests) {
+            data_t *s = &stats[done++];
+            doneka++;
+            c->done      = time.now();
+            s->starttime = c->start;
+            s->ctime     = max(0, time.sub(c->connect, c->start));
+            s->time      = max(0, time.sub(c->done, c->start));
+            s->waittime  = max(0, time.sub(c->beginread, c->endwrite));
+            if (heartbeatres && !(done % heartbeatres)) {
+                fprintf(stderr, "Completed %ld requests\n", done);
+                fflush(stderr);
+            }
+        }
+        c->keepalive = 0;
+        c->length = 0;
+        c->gotheader = 0;
+        c->cbx = 0;
+        c->read = c->bread = 0;
+        /* zero connect time with keep-alive */
+        c->start = c->connect = lasttime = time.now();
+    }
 }
 
 
@@ -644,7 +721,7 @@ void output_results(int sig) {
             sdwait += a * a;
         }
 
-        
+
         if (done > 1) {
             sdtot = sqrt(sdtot / (done - 1));
             sdcon = sqrt(sdcon / (done - 1));
@@ -814,39 +891,6 @@ void SANE(const char *what, double mean, median, sd) {
 
 
 
-
-void start_connect(connection_t * c)
-{
-    c->read = 0;
-    c->bread = 0;
-    c->keepalive = 0;
-    c->cbx = 0;
-    c->gotheader = 0;
-    c->rwrite = 0;
-
-    c->aprsock = io.connect("tcp", colonhost);
-    if (!c->aprsock) {
-        exit(1);
-    }
-
-    c->start = lasttime = time.now();
-    c->aprsock = io.connect("tcp", colonhost);
-    if (!c->aprsock) {
-        c->state = STATE_UNCONNECTED;
-        err_conn++;
-        if (bad++ > 10) {
-            fprintf(stderr, "\nTest aborted after 10 failures: %s\n\n", strerror(errno));
-            exit(1);
-        }
-        start_connect(c);
-        return;
-    }
-
-    /* connected first time */
-    c->state = STATE_CONNECTED;
-    started++;
-}
-
 /* --------------------------------------------------------- */
 
 /* close down connection and save stats */
@@ -887,183 +931,9 @@ void close_connection(connection_t * c)
     c->state = STATE_UNCONNECTED;
     io.close(c->aprsock);
 
-    /* connect again */
-    start_connect(c);
     return;
 }
 
-void read_connection(connection_t * c) {
-    if (!c->gotheader) {
-        read_connection_header(c);
-    } else {
-        read_connection_body(c);
-    }
-
-    if (c->keepalive && (c->bread >= c->length)) {
-        /* finished a keep-alive connection */
-        good++;
-        /* save out time */
-        if (good == 1) {
-            /* first time here */
-            doclen = c->bread;
-        }
-        else if (c->bread != doclen) {
-            bad++;
-            err_length++;
-        }
-        if (done < requests) {
-            data_t *s = &stats[done++];
-            doneka++;
-            c->done      = time.now();
-            s->starttime = c->start;
-            s->ctime     = max(0, time.sub(c->connect, c->start));
-            s->time      = max(0, time.sub(c->done, c->start));
-            s->waittime  = max(0, time.sub(c->beginread, c->endwrite));
-            if (heartbeatres && !(done % heartbeatres)) {
-                fprintf(stderr, "Completed %ld requests\n", done);
-                fflush(stderr);
-            }
-        }
-        c->keepalive = 0;
-        c->length = 0;
-        c->gotheader = 0;
-        c->cbx = 0;
-        c->read = c->bread = 0;
-        /* zero connect time with keep-alive */
-        c->start = c->connect = lasttime = time.now();
-    }
-}
-
-void read_connection_header(connection_t *c) {
-    char *part;
-    char respcode[4];       /* 3 digits and null */
-    if (!io.read(c->aprsock, &buffer)) {
-        err_recv++;
-        bad++;
-        close_connection(c);
-        if (verbosity >= 1) {
-            fprintf(stderr, "socket read failed: %s\n", strerror(errno));
-        }
-    }
-
-    size_t read = io.bufsize(&buffer);
-    if (read == 0) {
-        good++;
-        close_connection(c);
-        return;
-    }
-
-    totalread += read;
-    if (c->read == 0) {
-        c->beginread = time.now();
-    }
-    c->read += read;
-    char *s;
-    
-    size_t space = CBUFFSIZE - c->cbx - 1; /* -1 allows for \0 term */
-    int tocopy = read;
-    if (space < read) {
-        tocopy = space;
-    }
-    memcpy(c->cbuff + c->cbx, buffer.data, space);
-    c->cbx += tocopy;
-    space -= tocopy;
-    c->cbuff[c->cbx] = 0;   /* terminate for benefit of strstr */
-    if (verbosity >= 2) {
-        printf("LOG: header received:\n%s\n", c->cbuff);
-    }
-    s = strstr(c->cbuff, "\r\n\r\n");
-
-    if (!s) {
-        /* read rest next time */
-        if (space) {
-            return;
-        }
-        else {
-            /* header is in invalid or too big - close connection */
-            io.close(c->aprsock);
-            c->state = STATE_UNCONNECTED;
-            err_response++;
-            if (bad++ > 10) {
-                err("\nTest aborted after 10 failures\n\n");
-            }
-            start_connect(c);
-        }
-    }
-    else {
-        /* have full header */
-        if (!good) {
-            /*
-                * this is first time, extract some interesting info
-                */
-            char *p = NULL;
-            char *q = NULL;
-            p = strstr(c->cbuff, "Server:");
-            q = servername;
-            if (p) {
-                p += 8;
-                while (*p > 32)
-                *q++ = *p++;
-            }
-            *q = 0;
-        }
-        /*
-            * XXX: this parsing isn't even remotely HTTP compliant... but in
-            * the interest of speed it doesn't totally have to be, it just
-            * needs to be extended to handle whatever servers folks want to
-            * test against. -djg
-            */
-
-        /* check response code */
-        part = strstr(c->cbuff, "HTTP");    /* really HTTP/1.x_ */
-        if (part && strlen(part) > strlen("HTTP/1.x_")) {
-            strncpy(respcode, (part + strlen("HTTP/1.x_")), 3);
-            respcode[3] = '\0';
-        }
-        else {
-            strcpy(respcode, "500");
-        }
-
-        if (respcode[0] != '2') {
-            err_response++;
-            if (verbosity >= 2)
-                printf("WARNING: Response code not 2xx (%s)\n", respcode);
-        }
-        else if (verbosity >= 3) {
-            printf("LOG: Response code = %s\n", respcode);
-        }
-        c->gotheader = 1;
-        *s = 0;     /* terminate at end of header */
-        if (keepalive &&
-        (strstr(c->cbuff, "Keep-Alive")
-            || strstr(c->cbuff, "keep-alive"))) {  /* for benefit of MSIIS */
-            char *cl;
-            cl = strstr(c->cbuff, "Content-Length:");
-            /* handle NCSA, which sends Content-length: */
-            if (!cl)
-                cl = strstr(c->cbuff, "Content-length:");
-            if (cl) {
-                c->keepalive = 1;
-                /* response to HEAD doesn't have entity body */
-                if (posting >= 0) {
-                    c->length = atoi(cl + 16);
-                } else {
-                    c->length = 0;
-                }
-            }
-            /* The response may not have a Content-Length header */
-            if (!cl) {
-                c->keepalive = 1;
-                c->length = 0; 
-            }
-        }
-
-        // int l = 4;
-        // size_t r;
-        // c->bread += c->cbx - (s + l - c->cbuff) + r - tocopy;
-        totalbread += c->bread;
-    }
-}
 
 void read_connection_body(connection_t *c) {
     if (!io.read(c->aprsock, &buffer)) {

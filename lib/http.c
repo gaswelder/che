@@ -294,3 +294,56 @@ pub size_t parse_cgi_head(cgi_head_t *r, char *data, size_t n) {
         }
     }
 }
+
+
+pub typedef {
+    char version[100];
+    int status;
+    char status_text[20];
+
+    char servername[1000];
+    int content_length;
+} response_t;
+
+pub bool parse_response(char *data, response_t *r) {
+    char *s = strstr(data, "\r\n\r\n");
+    if (!s) {
+        return false;
+    }
+
+    // HTTP/1.1
+    char *p = strstr(data, "HTTP/");
+    if (!p) {
+        return false;
+    }
+    strncpy(r->version, p, strlen("HTTP/1.x"));
+    p += strlen("HTTP/1.x");
+
+    // space
+    p++;
+
+    // 200
+    char respcode[4] = {0};
+    strncpy(respcode, p, 3);
+    p += 3;
+    sscanf(respcode, "%d", &r->status);
+
+
+    // ...
+    p = strstr(data, "Server:");
+    if (p) {
+        p += 8;
+        char *q = r->servername;
+        while (*p > 32) {
+            *q++ = *p++;
+        }
+        *q = 0;
+    }
+
+    p = strstr(data, "Content-Length:");
+    if (p) {
+        r->content_length = atoi(p + 16);
+    }
+
+    return true;
+}

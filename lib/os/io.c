@@ -30,6 +30,11 @@ pub buf_t *newbuf() {
     return b;
 }
 
+pub void resetbuf(buf_t *b) {
+    memset(b->data, 0, sizeof(b->data));
+    b->size = 0;
+}
+
 pub void print_buf(buf_t *b) {
     char tmp[4096] = {0};
     memcpy(tmp, b->data, b->size);
