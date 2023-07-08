@@ -3,7 +3,6 @@
 #import ioroutine
 #import opt
 #import os/io
-#import strbuilder
 #import strings
 #import time
 
@@ -344,7 +343,7 @@ int main(int argc, char *argv[]) {
 
     copyright();
 
-    init_request();
+    build_request();
 
     /* Output the results if the user terminates the run early. */
     signal(SIGINT, output_results);
@@ -353,64 +352,48 @@ int main(int argc, char *argv[]) {
     return 0;
 }
 
-void init_request() {
-    strbuilder.str *headers = strbuilder.str_new();
+void build_request() {
+    const char *method = NULL;
+    if (posting == -1) {
+        method = "HEAD";
+    } else if (posting == 0) {
+        method = "GET";
+    } else {
+        method = "POST";
+    }
+
+    const char *ppath = path;
+    if (isproxy) {
+        ppath = fullurl;
+    }
+
+    http.request_t req = {};
+    http.init_request(&req, method, ppath);
 
     if (opt_host) {
-        bool ok = strbuilder.adds(headers, "Host: ")
-            && strbuilder.adds(headers, opt_host)
-            && strbuilder.adds(headers, "\r\n");
-        if (!ok) {
-            panic("!");
-        }
+        http.set_header(&req, "Host", opt_host);
     } else {
-        bool ok = strbuilder.adds(headers, "Host: ")
-            && strbuilder.adds(headers, host_field)
-            && strbuilder.adds(headers, colonhost)
-            && strbuilder.adds(headers, "\r\n");
-        if (!ok) {
-            panic("!");
-        }
+        http.set_header(&req, "Host", strings.newstr("%s %s", host_field, colonhost));
     }
-
+    if (keepalive) {
+        http.set_header(&req, "Connection", "Keep-Alive");
+    }
+    if (posting > 1) {
+        http.set_header(&req, "Content-Length", postlen);
+        http.set_header(&req, "Content-Type", content_type);
+    }
     if (opt_useragent) {
-        bool ok = strbuilder.adds(headers, "User-Agent: ")
-            && strbuilder.adds(headers, opt_useragent)
-            && strbuilder.adds(headers, "\r\n");
-        if (!ok) {
-            panic("!");
-        }
-    }
-    else {
-        bool ok = strbuilder.adds(headers, "User-Agent: ApacheBench/")
-            && strbuilder.adds(headers, AP_AB_BASEREVISION)
-            && strbuilder.adds(headers, "\r\n");
-        if (!ok) {
-            panic("!");
-        }
+        http.set_header(&req, "User-Agent", opt_useragent);
+    } else {
+        http.set_header(&req, "User-Agent", AP_AB_BASEREVISION);
     }
     if (opt_accept) {
-        bool ok = strbuilder.adds(headers, "Accept: ")
-            && strbuilder.adds(headers, opt_accept)
-            && strbuilder.adds(headers, "\r\n");
-        if (!ok) {
-            panic("!");
-        }
+        http.set_header(&req, "Accept", opt_accept);
     } else {
-        bool ok = strbuilder.adds(headers, "Accept: ")
-            && strbuilder.adds(headers, "*/*")
-            && strbuilder.adds(headers, "\r\n");
-        if (!ok) {
-            panic("!");
-        }
+        http.set_header(&req, "Accept", "*/*");
     }
     if (cookie) {
-        bool ok = strbuilder.adds(headers, "Cookie: ")
-            && strbuilder.adds(headers, cookie)
-            && strbuilder.adds(headers, "\r\n");
-        if (!ok) {
-            panic("!");
-        }
+        http.set_header(&req, "Cookie", cookie);
     }
     if (autharg) {
         int l;
@@ -426,12 +409,7 @@ void init_request() {
         }
         l = apr_base64_encode(tmp, optarg, strlen(optarg));
         tmp[l] = '\0';
-        bool ok = strbuilder.adds(headers, "Authorization: Basic ")
-            && strbuilder.adds(headers, tmp)
-            && strbuilder.adds(headers, "\r\n");
-        if (!ok) {
-            panic("");
-        }
+        http.set_header(&req, "Authorization", strings.newstr("Basic %s", tmp));
     }
     if (proxyauth) {
         int l;
@@ -444,84 +422,18 @@ void init_request() {
         }
         l = apr_base64_encode(tmp, optarg, strlen(optarg));
         tmp[l] = '\0';
-        bool ok = strbuilder.adds(headers, "Proxy-Authorization: Basic ")
-            && strbuilder.adds(headers, tmp)
-            && strbuilder.adds(headers, "\r\n");
-        if (!ok) {
-            panic("");
-        }
+        http.set_header(&req, "Proxy-Authorization", strings.newstr("Basic %s", tmp));
     }
-
-    char *hdrs = strbuilder.str_unpack(headers);
-    int snprintf_res = 0;
-
-    /* setup request */
-    if (posting <= 0) {
-        const char *method = "GET";
-        if (posting) {
-            method = "HEAD";
-        }
-        const char *ppath = path;
-        if (isproxy) {
-            ppath = fullurl;
-        }
-        const char *kas = "";
-        if (keepalive) {
-            kas = "Connection: Keep-Alive\r\n";
-        }
-        snprintf_res = snprintf(request, sizeof(_request),
-            "%s %s HTTP/1.0\r\n"
-            "%s" "%s" "%s"
-            "\r\n",
-            method,
-            ppath,
-            kas,
-            hdrs);
+    if (!http.write_request(request, sizeof(request))) {
+        panic("failed to write request");
     }
-    else {
-        const char *ppath = path;
-        if (isproxy) {
-            ppath = fullurl;
-        }
-        const char *kas = "";
-        if (keepalive) {
-            kas = "Connection: Keep-Alive\r\n";
-        }
-        snprintf_res = snprintf(request,  sizeof(_request),
-            "POST %s HTTP/1.0\r\n"
-            "%s" "%s"
-            "Content-length: %zu\r\n"
-            "Content-type: %s\r\n"
-            "%s"
-            "\r\n",
-            ppath,
-            kas,
-            postlen,
-            content_type,
-            hdrs);
-    }
-    if (snprintf_res >= sizeof(_request)) {
-        err("Request too long\n");
-    }
-    if (verbosity >= 2)
-        printf("INFO: POST header == \n---\n%s\n---\n", request);
-
     reqlen = strlen(request);
-
-    /*
-     * Combine headers and (optional) post file into one contineous buffer
-     */
-    if (posting == 1) {
-        char *buff = calloc(postlen + reqlen + 1, 1);
-        if (!buff) {
-            fprintf(stderr, "error creating request buffer: out of memory\n");
-            return;
-        }
-        strcpy(buff, request);
-        memcpy(buff + reqlen, postdata, postlen);
-        request = buff;
+    if (verbosity >= 2) {
+        printf("INFO: header == \n---\n%s\n---\n", request);
     }
-    free(hdrs);
+    if (posting == 1) {
+        strcat(request, postdata);
+    }
 }
 
 void test() {
@@ -1150,11 +1062,6 @@ void start_connect(connection_t * c)
     c->pollfd.reqevents = 0;
     c->pollfd.client_data = c;
 
-    // if ((rv = apr_socket_opt_set(c->aprsock, APR_SO_NONBLOCK, 1))
-    //      != 0) {
-    //     apr_err("socket nonblock", rv);
-    // }
-
     c->start = lasttime = time.now();
     c->aprsock = io.connect("tcp", colonhost);
     if (!c->aprsock) {
@@ -1489,11 +1396,7 @@ void err(char *s) {
     exit(1);
 }
 
-int apr_socket_opt_set(int fd, int opt, int val) {
-    return 0;
-}
-
-int apr_base64_encode_len() {
+size_t apr_base64_encode_len() {
     panic("todo");
 }
 

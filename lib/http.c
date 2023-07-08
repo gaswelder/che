@@ -1,5 +1,6 @@
 #import parsebuf
 #import strings
+#import strbuilder
 
 pub typedef {
     char name[1024];
@@ -77,6 +78,47 @@ pub typedef {
     header_t headers[100];
     size_t nheaders;
 } request_t;
+
+pub bool init_request(request_t *r, const char *method, const char *path) {
+    memset(r, 0, sizeof(request_t));
+    strcpy(r->method, method);
+    strcpy(r->uri, path);
+    strcpy(r->version, "HTTP/1.0");
+    return true;
+}
+
+pub bool set_header(request_t *r, const char *name, *value) {
+    header_t *h = &r->headers[r->nheaders++];
+    strcpy(h->name, name);
+    strcpy(h->value, value);
+    return true;
+}
+
+pub bool write_request(request_t *r, char *buf, size_t n) {
+    strbuilder.str *sb = strbuilder.new();
+    bool ok = sb != NULL;
+    
+    ok = ok && strbuilder.adds(sb, r->method)
+        && strbuilder.adds(sb, " ")
+        && strbuilder.adds(sb, r->path)
+        && strbuilder.adds(sb, " ")
+        && strbuilder.adds(sb, r->version)
+        && strbuilder.adds(sb, "\r\n");
+    for (size_t i = 0; i < r->nheaders; i++) {
+        header_t *h = &r->headers[i];
+        ok = ok
+            && strbuilder.adds(sb, "%s: %s\r\n", h->name, h->value);
+    }
+    ok = ok && strbuilder.adds(sb, "\r\n");
+    if (!ok || strbuilder.len(sb) > n) {
+        strbuilder.free(sb);
+        return false;
+    }
+    memcpy(buf, strbuilder.raw(sb), n);
+    strbuilder.free(sb);
+    return true;
+}
+
 
 pub header_t *get_header(request_t *r, const char *name) {
     header_t *h = NULL;
