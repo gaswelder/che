@@ -5,7 +5,6 @@
 #import os/io
 #import strings
 #import time
-#import html.c
 
 /* Note: this version string should start with \d+[\d\.]* and be a valid
  * string for an HTTP Agent: header when prefixed with 'ApacheBench/'.
@@ -120,11 +119,6 @@ char *cookie = "";           /* optional cookie line */
 char *autharg = NULL;
 char *proxyauth = NULL;
 
-bool use_html = false;       /* use html in the report */
-const char *tablestring = NULL;
-const char *trstring = NULL;
-const char *tdstring = NULL;
-
 size_t doclen = 0;     /* the length the document should be */
 int64_t totalread = 0;    /* total number of bytes read */
 int64_t totalbread = 0;   /* totoal amount of entity body read */
@@ -168,12 +162,6 @@ void usage(const char *progname) {
     fprintf(stderr, "                    Default is 'text/plain'\n");
     fprintf(stderr, "    -p postfile     File containing data to POST. Remember also to set -T\n");
 
-// html
-    fprintf(stderr, "    -w              Print out results in HTML tables\n");
-    fprintf(stderr, "    -x attributes   String to insert as table attributes\n");
-    fprintf(stderr, "    -y attributes   String to insert as tr attributes\n");
-    fprintf(stderr, "    -z attributes   String to insert as td or th attributes\n");
-
 //
     fprintf(stderr, "    -v verbosity    How much troubleshooting info to print\n");    
     fprintf(stderr, "    -H attribute    Add Arbitrary header line, eg. 'Accept-Encoding: gzip'\n");
@@ -212,18 +200,10 @@ int main(int argc, char *argv[]) {
     bool vflag = false;
     
     
-    opt.opt_bool("w", "use_html", &use_html);
     opt.opt_int("v", "verbosity", &verbosity);
     opt.opt_str("g", "gnuplot output file", &gnuplot);
     opt.opt_bool("h", "print usage", &hflag);
     opt.opt_bool("V", "print version", &vflag);
-
-    tablestring = "";
-    trstring = "";
-    tdstring = "bgcolor=white";
-    proxyhost[0] = '\0';
-
-    
 
     
     
@@ -247,15 +227,9 @@ int main(int argc, char *argv[]) {
     
 
 
-    char *xarg = NULL;
     char *Xarg = NULL;
-    char *yarg = NULL;
-    char *zarg = NULL;
-    opt.opt_str("x", "xarg", &xarg);
     opt.opt_str("X", "Xarg", &Xarg);
-    opt.opt_str("y", "yarg", &yarg);
-    opt.opt_str("z", "zarg", &zarg);
-    
+   
 
     char **args = opt.opt_parse(argc, argv);
 
@@ -296,14 +270,6 @@ int main(int argc, char *argv[]) {
     if (quiet) {
         heartbeatres = 0;
     }
-    /*
-    * if any of the following three are used, turn on html output
-    * automatically
-    */
-    if (xarg) {
-        use_html = 1;
-        tablestring = xarg;
-    }
     if (Xarg) {
         char *optarg = Xarg;
         char *p;
@@ -318,16 +284,6 @@ int main(int argc, char *argv[]) {
         strcpy(proxyhost, optarg);
         isproxy = 1;
     }
-    
-    if (yarg) {
-        use_html = 1;
-        trstring = yarg;
-    }
-    if (zarg) {
-        use_html = 1;
-        tdstring = zarg;
-    }
-
 
     if (concurrency > MAX_CONCURRENCY) {
         fprintf(stderr, "concurrency is too high (%zu > %d)\n", concurrency, MAX_CONCURRENCY);
@@ -375,11 +331,7 @@ int main(int argc, char *argv[]) {
         fprintf(stderr, "unexpected argument: %s\n", *args);
         return 1;
     }
-
-    if (use_html) {
-        html.begin();
-    }
-
+    
     build_request();
 
     /* Output the results if the user terminates the run early. */
@@ -486,17 +438,15 @@ void test() {
         connectport = port;
     }
 
-    if (!use_html) {
-        printf("Benchmarking %s ", hostname);
-        if (isproxy)
-            printf("[through %s:%d] ", proxyhost, proxyport);
-        if (heartbeatres) {
-            printf("(be patient)\n");
-        } else {
-            printf("(be patient)...");
-        }
-        fflush(stdout);
+    printf("Benchmarking %s ", hostname);
+    if (isproxy)
+        printf("[through %s:%d] ", proxyhost, proxyport);
+    if (heartbeatres) {
+        printf("(be patient)\n");
+    } else {
+        printf("(be patient)...");
     }
+    fflush(stdout);
 
     con = calloc(concurrency, sizeof(connection_t));
     stats = calloc(requests, sizeof(data_t));
@@ -526,10 +476,7 @@ void test() {
     else
         printf("..done\n");
 
-    if (use_html)
-        output_html_results();
-    else
-        output_results(0);
+    output_results(0);
 }
 
 int routine(void *ctx, int line) {
@@ -938,131 +885,7 @@ void SANE(const char *what, double mean, median, sd) {
 }
 
 
-void output_html_results() {
-    double timetaken = (double) (time.sub(lasttime, start)) / time.SECONDS;
 
-    printf("\n\n<table %s>\n", tablestring);
-    printf("<tr %s><th colspan=2 %s>Server Software:</th>"
-       "<td colspan=2 %s>%s</td></tr>\n",
-       trstring, tdstring, tdstring, servername);
-    printf("<tr %s><th colspan=2 %s>Server Hostname:</th>"
-       "<td colspan=2 %s>%s</td></tr>\n",
-       trstring, tdstring, tdstring, hostname);
-    printf("<tr %s><th colspan=2 %s>Server Port:</th>"
-       "<td colspan=2 %s>%hu</td></tr>\n",
-       trstring, tdstring, tdstring, port);
-    printf("<tr %s><th colspan=2 %s>Document Path:</th>"
-       "<td colspan=2 %s>%s</td></tr>\n",
-       trstring, tdstring, tdstring, path);
-    printf("<tr %s><th colspan=2 %s>Document Length:</th>"
-       "<td colspan=2 %s>%zu bytes</td></tr>\n",
-       trstring, tdstring, tdstring, doclen);
-    printf("<tr %s><th colspan=2 %s>Concurrency Level:</th>"
-       "<td colspan=2 %s>%zu</td></tr>\n",
-       trstring, tdstring, tdstring, concurrency);
-    printf("<tr %s><th colspan=2 %s>Time taken for tests:</th>"
-       "<td colspan=2 %s>%.3f seconds</td></tr>\n",
-       trstring, tdstring, tdstring, timetaken);
-    printf("<tr %s><th colspan=2 %s>Complete requests:</th>"
-       "<td colspan=2 %s>%zu</td></tr>\n",
-       trstring, tdstring, tdstring, done);
-    printf("<tr %s><th colspan=2 %s>Failed requests:</th>"
-       "<td colspan=2 %s>%d</td></tr>\n",
-       trstring, tdstring, tdstring, bad);
-    if (bad)
-        printf("<tr %s><td colspan=4 %s >   (Connect: %d, Length: %d, Exceptions: %d)</td></tr>\n",
-           trstring, tdstring, err_conn, err_length, err_except);
-    if (err_response)
-        printf("<tr %s><th colspan=2 %s>Non-2xx responses:</th>"
-           "<td colspan=2 %s>%d</td></tr>\n",
-           trstring, tdstring, tdstring, err_response);
-    if (keepalive)
-        printf("<tr %s><th colspan=2 %s>Keep-Alive requests:</th>"
-           "<td colspan=2 %s>%d</td></tr>\n",
-           trstring, tdstring, tdstring, doneka);
-    printf("<tr %s><th colspan=2 %s>Total transferred:</th>"
-       "<td colspan=2 %s>%ld bytes</td></tr>\n",
-       trstring, tdstring, tdstring, totalread);
-    if (posting > 0)
-        printf("<tr %s><th colspan=2 %s>Total POSTed:</th>"
-           "<td colspan=2 %s>%ld</td></tr>\n",
-           trstring, tdstring, tdstring, totalposted);
-    printf("<tr %s><th colspan=2 %s>HTML transferred:</th>"
-       "<td colspan=2 %s>%ld bytes</td></tr>\n",
-       trstring, tdstring, tdstring, totalbread);
-
-    /* avoid divide by zero */
-    if (timetaken) {
-        printf("<tr %s><th colspan=2 %s>Requests per second:</th>"
-           "<td colspan=2 %s>%.2f</td></tr>\n",
-           trstring, tdstring, tdstring, (double) done * 1000 / timetaken);
-        printf("<tr %s><th colspan=2 %s>Transfer rate:</th>"
-           "<td colspan=2 %s>%.2f kb/s received</td></tr>\n",
-           trstring, tdstring, tdstring, (double) totalread / timetaken);
-        if (posting > 0) {
-            printf("<tr %s><td colspan=2 %s>&nbsp;</td>"
-               "<td colspan=2 %s>%.2f kb/s sent</td></tr>\n",
-               trstring, tdstring, tdstring,
-               (double) totalposted / timetaken);
-            printf("<tr %s><td colspan=2 %s>&nbsp;</td>"
-               "<td colspan=2 %s>%.2f kb/s total</td></tr>\n",
-               trstring, tdstring, tdstring,
-               (double) (totalread + totalposted) / timetaken);
-        }
-    }
-    /* work out connection times */
-    int totalcon = 0;
-    int total = 0;
-    int mincon = INT_MAX;
-    int mintot = INT_MAX;
-    int maxcon = 0;
-    int maxtot = 0;
-
-    for (size_t i = 0; i < done; i++) {
-        data_t *s = &stats[i];
-        mincon = min(mincon, s->ctime);
-        mintot = min(mintot, s->time);
-        maxcon = max(maxcon, s->ctime);
-        maxtot = max(maxtot, s->time);
-        totalcon += s->ctime;
-        total    += s->time;
-    }
-    /*
-        * Reduce stats from apr time to milliseconds
-        */
-    mincon   = mincon / time.MS;
-    mintot   = mintot / time.MS;
-    maxcon   = maxcon / time.MS;
-    maxtot   = maxtot / time.MS;
-    totalcon = totalcon / time.MS;
-    total    = total / time.MS;
-
-    if (done > 0) { /* avoid division by zero (if 0 done) */
-        printf("<tr %s><th %s colspan=4>Connnection Times (ms)</th></tr>\n",
-            trstring, tdstring);
-        printf("<tr %s><th %s>&nbsp;</th> <th %s>min</th>   <th %s>avg</th>   <th %s>max</th></tr>\n",
-            trstring, tdstring, tdstring, tdstring, tdstring);
-        printf("<tr %s><th %s>Connect:</th>"
-            "<td %s>%5u</td>"
-            "<td %s>%5lu</td>"
-            "<td %s>%5u</td></tr>\n",
-            trstring, tdstring, tdstring, mincon, tdstring, totalcon / done, tdstring, maxcon);
-        printf("<tr %s><th %s>Processing:</th>"
-            "<td %s>%5u</td>"
-            "<td %s>%5zu</td>"
-            "<td %s>%5u</td></tr>\n",
-            trstring, tdstring, tdstring, mintot - mincon, tdstring,
-            (total / done) - (totalcon / done), tdstring, maxtot - maxcon);
-        printf("<tr %s><th %s>Total:</th>"
-            "<td %s>%5u</td>"
-            "<td %s>%5zu</td>"
-            "<td %s>%5u</td></tr>\n",
-            trstring, tdstring, tdstring, mintot, tdstring, total / done, tdstring, maxtot);
-    }
-    printf("</table>\n");
-}
-
-/* --------------------------------------------------------- */
 
 void start_connect(connection_t * c)
 {
