@@ -45,7 +45,11 @@ enum {
 #define CBUFFSIZE (2048)
 
 typedef {
-    io.handle_t *aprsock;
+    io.handle_t *aprsock; // Connection with the server
+    io.buf_t *outbuf; // Request copy to send
+    io.buf_t *inbuf; // Response to read
+
+
     int state;
     size_t read;            /* amount of bytes read */
     size_t bread;           /* amount of body read */
@@ -62,8 +66,6 @@ typedef {
                endwrite,        /* Request written */
                beginread,       /* First byte of input */
                done;            /* Connection closed */
-
-    int socknum;
 } connection_t;
 
 typedef {
@@ -96,7 +98,6 @@ int confidence = 1;     /* Show confidence estimator and warnings */
 bool keepalive = false;      /* try and do keepalive connections */
 char servername[1024] = {0};  /* name that server reports */
 char *hostname = NULL;         /* host name from URL */
-char *host_field = NULL;       /* value of "Host:" header field */
 char *path = NULL;             /* path name */
 char *postdata = NULL;         /* *buffer containing data from postfile */
 size_t postlen = 0; /* length of data to be POSTed */
@@ -112,10 +113,9 @@ char *fullurl = NULL;
 char * colonhost = "";
 int isproxy = 0;
 
-char *opt_host = NULL;
-char *opt_useragent = NULL;
-char *opt_accept = "*/*";
-char *cookie = "";           /* optional cookie line */
+char *user_agent = "ex-ApacheBench/0.0";
+char *opt_accept = NULL;
+char *cookie = NULL;
 char *autharg = NULL;
 char *proxyauth = NULL;
 
@@ -140,7 +140,7 @@ time.t start = {};
 time.t lasttime = {};
 
 /* global request (and its length) */
-io.buf_t request = {};
+io.buf_t REQUEST = {};
 
 /* one global throw-away buffer to read stuff into */
 io.buf_t buffer = {};
@@ -148,7 +148,6 @@ io.buf_t buffer = {};
 /* interesting percentiles */
 int percs[] = {50, 66, 75, 80, 90, 95, 98, 99, 100};
 
-connection_t *con = NULL;     /* connection array */
 data_t *stats = NULL;         /* data for each request */
 
 void usage(const char *progname) {
@@ -309,12 +308,29 @@ int main(int argc, char *argv[]) {
         return 1;
     }
     char *url = *args;
+    args++;
+    if (*args) {
+        fprintf(stderr, "unexpected argument: %s\n", *args);
+        return 1;
+    }
+    
+    build_request(url);
+
+    /* Output the results if the user terminates the run early. */
+    signal(SIGINT, output_results);
+
+    test();
+    output_results(0);
+    return 0;
+}
+
+void build_request(const char *url) {
     fullurl = strings.newstr("%s", url);
 
     http.url_t u = {};
     if (!http.parse_url(&u, url)) {
         fprintf(stderr, "%s: invalid URL\n", url);
-        return 1;
+        exit(1);
     }
     if (!strcmp(u.schema, "https")) {
         fprintf(stderr, "SSL not compiled in; no https support\n");
@@ -326,22 +342,6 @@ int main(int argc, char *argv[]) {
         colonhost = strings.newstr("%s:%s", u.hostname, u.port);
     }
 
-    args++;
-    if (*args) {
-        fprintf(stderr, "unexpected argument: %s\n", *args);
-        return 1;
-    }
-    
-    build_request();
-
-    /* Output the results if the user terminates the run early. */
-    signal(SIGINT, output_results);
-
-    test();
-    return 0;
-}
-
-void build_request() {
     const char *method = NULL;
     if (posting == -1) {
         method = "HEAD";
@@ -351,19 +351,9 @@ void build_request() {
         method = "POST";
     }
 
-    const char *ppath = path;
-    if (isproxy) {
-        ppath = fullurl;
-    }
-
     http.request_t req = {};
-    http.init_request(&req, method, ppath);
-
-    if (opt_host) {
-        http.set_header(&req, "Host", opt_host);
-    } else {
-        http.set_header(&req, "Host", strings.newstr("%s %s", host_field, colonhost));
-    }
+    http.init_request(&req, method, u.path);
+    http.set_header(&req, "Host", u.hostname);
     if (keepalive) {
         http.set_header(&req, "Connection", "Keep-Alive");
     }
@@ -373,15 +363,9 @@ void build_request() {
         http.set_header(&req, "Content-Length", buf);
         http.set_header(&req, "Content-Type", content_type);
     }
-    if (opt_useragent) {
-        http.set_header(&req, "User-Agent", opt_useragent);
-    } else {
-        http.set_header(&req, "User-Agent", AP_AB_BASEREVISION);
-    }
+    http.set_header(&req, "User-Agent", user_agent);
     if (opt_accept) {
         http.set_header(&req, "Accept", opt_accept);
-    } else {
-        http.set_header(&req, "Accept", "*/*");
     }
     if (cookie) {
         http.set_header(&req, "Cookie", cookie);
@@ -419,13 +403,13 @@ void build_request() {
     if (!http.write_request(&req, buf, sizeof(buf))) {
         fatal("failed to write request");
     }
-    io.push(&request, buf, strlen(buf));
-    if (verbosity >= 2) {
-        printf("INFO: header == \n---\n%s\n---\n", request.data);
-    }
+    io.push(&REQUEST, buf, strlen(buf));
     if (posting == 1) {
-        io.push(&request, postdata, strlen(postdata));
+        io.push(&REQUEST, postdata, strlen(postdata));
     }
+    if (verbosity >= 2) {
+        io.print_buf(&REQUEST);
+    }    
 }
 
 void test() {
@@ -438,7 +422,6 @@ void test() {
         connectport = port;
     }
 
-    printf("Benchmarking %s ", hostname);
     if (isproxy)
         printf("[through %s:%d] ", proxyhost, proxyport);
     if (heartbeatres) {
@@ -448,7 +431,6 @@ void test() {
     }
     fflush(stdout);
 
-    con = calloc(concurrency, sizeof(connection_t));
     stats = calloc(requests, sizeof(data_t));
 
     ioroutine.init();
@@ -459,75 +441,58 @@ void test() {
         tlimit = INT_MAX;
     }
     time.t stoptime = time.add(start, tlimit, time.SECONDS);
-    for (size_t i = 0; i < concurrency; i++) {
-        con[i].socknum = i;
-        ioroutine.spawn(routine, &con[i]);
-    }
 
+    connection_t *connections = calloc(concurrency, sizeof(connection_t));
+    if (!connections) {
+        panic("failed to allocate memory");
+    }
+    for (size_t i = 0; i < concurrency; i++) {
+        connections[i].outbuf = io.newbuf();
+        connections[i].inbuf = io.newbuf();
+        ioroutine.spawn(routine, &connections[i]);
+    }
     while (true) {
         ioroutine.step();
         if (done > requests || time.sub(time.now(), stoptime) > 0) {
             break;
         }
     }
-    
-    if (heartbeatres)
+    if (heartbeatres) {
         fprintf(stderr, "Finished %zu requests\n", done);
-    else
+    } else {
         printf("..done\n");
-
-    output_results(0);
+    }
 }
+
+enum {
+    CONNECT,
+    WRITE_REQUEST,
+};
 
 int routine(void *ctx, int line) {
-    printf("line = %d\n", line);
     connection_t *c = ctx;
-    start_connect(c);
-    read_connection(c);
-    connection_connect(c);
-    return -1;
-}
 
-void connection_connect(connection_t *c) {
-    c->aprsock = io.connect("tcp", colonhost);
-    if (!c->aprsock) {
-        err_conn++;
-        if (bad++ > 10) {
-            panic("Test aborted after 10 failures: %s", strerror(errno));
+    switch (line) {
+        case CONNECT: {
+            c->aprsock = io.connect("tcp", colonhost);
+            if (!c->aprsock) {
+                fprintf(stderr, "failed to connect to %s: %s\n", colonhost, strerror(errno));
+                err_conn++;
+                if (bad++ > 10) {
+                    fatal("Test aborted after 10 failures");
+                }
+                return CONNECT;
+            }
+            started++;
+
+            // Copy the request to the local buffer.
+            io.push(c->outbuf, REQUEST.data, io.bufsize(&REQUEST));
+
+            return WRITE_REQUEST;
         }
-        c->state = STATE_UNCONNECTED;
-        start_connect(c);
-        return;
-    }
-    else {
-        c->state = STATE_CONNECTED;
-        started++;
-        write_request(c);
-    }
-}
+        case WRITE_REQUEST: {
 
-
-
-/* simple little function to write an APR error string and exit */
-
-void fatal(char *s) {
-    fprintf(stderr, "%s: %s (%d)\n", s, strerror(errno), errno);
-    if (done) {
-        printf("Total of %zu requests completed\n" , done);
-    }
-    exit(1);
-}
-
-
-/* --------------------------------------------------------- */
-/* write out request to a connection - assumes we can write
- * (small) request out in one go into our new socket buffer
- *
- */
-
-void write_request(connection_t * c)
-{
-    int64_t aprtimeout = 30 * time.SECONDS;
+int64_t aprtimeout = 30 * time.SECONDS;
     while (true) {
         time.t tnow = time.now();
         lasttime = tnow;
@@ -547,27 +512,51 @@ void write_request(connection_t * c)
         else if (time.sub(tnow, c->connect) > aprtimeout) {
             printf("Send request timed out!\n");
             close_connection(c);
-            return;
+            return 42;
         }
 
-        if (!io.write(c->aprsock, &request)) {
+        if (!io.write(c->aprsock, c->outbuf)) {
             epipe++;
             printf("Send request failed!\n");
             close_connection(c);
-            return;
+            return 42;
         }
 
         totalposted += l;
         c->rwrote += l;
         c->rwrite -= l;
         if (!c->rwrite) {
-            break;
+            return 42;
         }
     }
 
     c->endwrite = lasttime = time.now();
     c->state = STATE_READ;
+return 42;
+
+
+        }
+        default: {
+            panic("unexpected line: %d", line);
+        }
+    }
+    
+    start_connect(c);
+    read_connection(c);
+    return -1;
 }
+
+
+/* simple little function to write an APR error string and exit */
+
+void fatal(char *s) {
+    fprintf(stderr, "%s: %s (%d)\n", s, strerror(errno), errno);
+    if (done) {
+        printf("Total of %zu requests completed\n" , done);
+    }
+    exit(1);
+}
+
 
 
 int compradre(const void *x, *y) {
@@ -889,10 +878,6 @@ void SANE(const char *what, double mean, median, sd) {
 
 void start_connect(connection_t * c)
 {
-    if (started >= requests) {
-        return;
-    }
-
     c->read = 0;
     c->bread = 0;
     c->keepalive = 0;
@@ -902,7 +887,6 @@ void start_connect(connection_t * c)
 
     c->aprsock = io.connect("tcp", colonhost);
     if (!c->aprsock) {
-        fprintf(stderr, "failed to connect to %s: %s\n", colonhost, strerror(errno));
         exit(1);
     }
 
@@ -922,7 +906,6 @@ void start_connect(connection_t * c)
     /* connected first time */
     c->state = STATE_CONNECTED;
     started++;
-    write_request(c);
 }
 
 /* --------------------------------------------------------- */
@@ -1009,7 +992,6 @@ void read_connection(connection_t * c) {
         c->read = c->bread = 0;
         /* zero connect time with keep-alive */
         c->start = c->connect = lasttime = time.now();
-        write_request(c);
     }
 }
 

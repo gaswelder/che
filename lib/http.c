@@ -100,7 +100,7 @@ pub bool write_request(request_t *r, char *buf, size_t n) {
     
     ok = ok && strbuilder.adds(sb, r->method)
         && strbuilder.adds(sb, " ")
-        && strbuilder.adds(sb, r->path)
+        && strbuilder.adds(sb, r->uri)
         && strbuilder.adds(sb, " ")
         && strbuilder.adds(sb, r->version)
         && strbuilder.adds(sb, "\r\n");
@@ -109,7 +109,8 @@ pub bool write_request(request_t *r, char *buf, size_t n) {
         ok = ok
             && strbuilder.adds(sb, h->name)
             && strbuilder.adds(sb, ": ")
-            && strbuilder.adds(sb, h->value);
+            && strbuilder.adds(sb, h->value)
+            && strbuilder.adds(sb, "\r\n");
     }
     ok = ok && strbuilder.adds(sb, "\r\n");
     if (!ok || strbuilder.str_len(sb) > n) {

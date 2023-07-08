@@ -445,12 +445,29 @@ fn translate_function_declaration(
     body: &Body,
     ctx: &Ctx,
 ) -> Vec<CModuleObject> {
+    let tbody = translate_body(body, ctx);
+    let mut rbody = CBody {
+        statements: Vec::new(),
+    };
+    // rbody
+    //     .statements
+    //     .push(CStatement::Expression(CExpression::FunctionCall {
+    //         function: Box::new(CExpression::Identifier(String::from("puts"))),
+    //         arguments: vec![CExpression::Literal(CLiteral::String(format!(
+    //             "{}:{}",
+    //             ctx.path,
+    //             format_che::format_form(&form)
+    //         )))],
+    //     }));
+    for s in tbody.statements {
+        rbody.statements.push(s);
+    }
     let mut r = vec![CModuleObject::FunctionDefinition {
         is_static: !is_pub,
         type_name: translate_typename(typename, ctx),
         form: translate_form(form, ctx),
         parameters: translate_function_parameters(&parameters, ctx),
-        body: translate_body(body, ctx),
+        body: rbody,
     }];
     if format_che::format_form(&form) != "main" {
         r.push(CModuleObject::FunctionForwardDeclaration {
