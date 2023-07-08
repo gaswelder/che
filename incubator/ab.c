@@ -169,12 +169,6 @@ connection_t *con = NULL;     /* connection array */
 data_t *stats = NULL;         /* data for each request */
 
 int main(int argc, char *argv[]) {
-    int r;
-    int status;
-    const char *optarg;
-    char c;
-
-    /* table defaults  */
     tablestring = "";
     trstring = "";
     tdstring = "bgcolor=white";
@@ -532,10 +526,6 @@ void init_request() {
 
 void test() {
     time.t stoptime;
-    int16_t rv;
-    int i;
-    int status;
-    int snprintf_res = 0;
 
     if (isproxy) {
         connecthost = strings.newstr("%s", proxyhost);
@@ -619,7 +609,6 @@ void connection_connect(connection_t *c) {
 /* simple little function to write an APR error string and exit */
 
 void apr_err(char *s, int rv) {
-    char buf[120] = {0};
     fprintf(stderr, "%s: %s (%d)\n", s, strerror(errno), errno);
     if (done) {
         printf("Total of %d requests completed\n" , done);
@@ -641,7 +630,6 @@ void write_request(connection_t * c)
         time.t tnow = time.now();
         lasttime = tnow;
         size_t l = c->rwrite;
-        int e = 0;
 
         /*
          * First time round ?
@@ -1085,7 +1073,6 @@ void output_html_results()
         }
     }
     /* work out connection times */
-    int i = 0;
     int totalcon = 0;
     int total = 0;
     int mincon = LONG_MAX;
@@ -1143,10 +1130,9 @@ void output_html_results()
 
 void start_connect(connection_t * c)
 {
-    int rv;
-
-    if (!(started < requests))
-    return;
+    if (started >= requests) {
+        return;
+    }
 
     c->read = 0;
     c->bread = 0;
@@ -1239,10 +1225,6 @@ void close_connection(connection_t * c)
 
 void read_connection(connection_t * c)
 {
-    size_t r;
-    int status;
-    char *part;
-
     if (!c->gotheader) {
         read_connection_header(c);
     } else {
@@ -1287,7 +1269,6 @@ void read_connection(connection_t * c)
 
 void read_connection_header(connection_t *c) {
     size_t r;
-    int status;
     char *part;
     char respcode[4];       /* 3 digits and null */
     if (!io.read(c->aprsock, buffer)) {

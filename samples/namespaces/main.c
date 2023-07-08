@@ -18,6 +18,11 @@ int main() {
     }
 
     f(10, val);
+
+    // Can use ns as a variable name
+    lib.foo_t lib = {};
+    (&lib)->a++;
+    printf("size = %zu\n", sizeof(lib));
     return 0;
 }
 
