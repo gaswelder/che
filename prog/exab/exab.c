@@ -6,31 +6,13 @@
 #import strings
 #import time
 
-/* Note: this version string should start with \d+[\d\.]* and be a valid
- * string for an HTTP Agent: header when prefixed with 'ApacheBench/'.
- * It should reflect the version of AB - and not that of the apache server
- * it happens to accompany. And it should be updated or changed whenever
- * the results are no longer fundamentally comparable to the results of
- * a previous version of ab. Either due to a change in the logic of
- * ab - or to due to a change in the distribution it is compiled with
- * (such as an APR change in for example blocking).
- */
-#define AP_AB_BASEREVISION "2.3"
-
 enum {
     MAX_REQUESTS = 50000
 };
 
 enum {
     STATE_UNCONNECTED = 0,
-    STATE_CONNECTING,           /* TCP connect initiated, but we don't
-                                 * know if it worked yet
-                                 */
-    STATE_CONNECTED,            /* we know TCP connect completed */
-    STATE_READ
 };
-
-#define CBUFFSIZE (2048)
 
 typedef {
     io.handle_t *aprsock; // Connection with the server
@@ -46,7 +28,7 @@ typedef {
     size_t rwrite, rwrote;  /* keep pointers in what we write - across
                                  * EAGAINs */
     size_t length;          /* Content-Length value used for keep-alive */
-    char cbuff[CBUFFSIZE];      /* a buffer to store server response header */
+    char cbuff[2048];      /* a buffer to store server response header */
     int cbx;                    /* offset in cbuffer */
     int keepalive;              /* non-zero if a keep-alive request */
     int gotheader;              /* non-zero if we have the entire header in

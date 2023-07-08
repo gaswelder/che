@@ -1,6 +1,6 @@
 #import os/net
 
-#define _XOPEN_SOURCE 700
+// #define _XOPEN_SOURCE 700
 #include <arpa/inet.h>
 #include <netdb.h>
 #include <sys/select.h>

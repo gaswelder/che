@@ -15,6 +15,7 @@ struct State {
 struct ScopeItem {
     read: bool,
     pos: String,
+    ispub: bool,
 }
 
 #[derive(Clone, Debug)]
@@ -64,7 +65,11 @@ pub fn run(m: &Module, imports: &HashMap<String, &Exports>) -> Vec<Error> {
                     .insert(x.type_name.name.namespace.clone());
                 check_ns_id(&x.type_name.name, &mut state, &mut scopestack, imports);
             }
-            ModuleObject::Enum { is_pub: _, members } => {
+            ModuleObject::Enum {
+                is_pub: _,
+                members,
+                pos: _,
+            } => {
                 for m in members {
                     match &m.value {
                         Some(v) => check_expr(v, &mut state, &mut scopestack, imports),
@@ -81,7 +86,11 @@ pub fn run(m: &Module, imports: &HashMap<String, &Exports>) -> Vec<Error> {
                     &mut used_local_types,
                 );
             }
-            ModuleObject::Macro { name, value } => {
+            ModuleObject::Macro {
+                name,
+                value,
+                pos: _,
+            } => {
                 if name == "known" {
                     let n = scopestack.len();
                     scopestack[n - 1].pre.push(String::from(value.trim()))
@@ -166,6 +175,16 @@ pub fn run(m: &Module, imports: &HashMap<String, &Exports>) -> Vec<Error> {
         }
     }
 
+    let s = scopestack.pop().unwrap();
+    for (k, v) in s.consts {
+        if !v.ispub && !v.read {
+            state.errors.push(Error {
+                message: format!("unused constant: {}", k),
+                pos: v.pos,
+            });
+        }
+    }
+
     return state.errors;
 }
 
@@ -194,6 +213,7 @@ fn check_function_declaration(
                 ScopeItem {
                     read: false,
                     pos: pl.pos.clone(),
+                    ispub: false,
                 },
             );
         }
@@ -290,30 +310,35 @@ fn get_module_scope(m: &Module) -> Scope {
                     ScopeItem {
                         read: false,
                         pos: String::from("?"),
+                        ispub: f.is_pub,
                     },
                 );
             }
-            ModuleObject::Enum { is_pub: _, members } => {
+            ModuleObject::Enum {
+                is_pub,
+                members,
+                pos: _,
+            } => {
                 for m in members {
                     s.consts.insert(
                         m.id.name.clone(),
                         ScopeItem {
                             read: false,
-
-                            pos: String::from("?"),
+                            pos: m.pos.clone(),
+                            ispub: *is_pub,
                         },
                     );
                 }
             }
-            ModuleObject::Macro { name, value } => {
+            ModuleObject::Macro { name, value, pos } => {
                 if name == "define" {
                     let mut parts = value.trim().split(" ");
                     s.consts.insert(
                         String::from(parts.next().unwrap()),
                         ScopeItem {
                             read: false,
-
-                            pos: String::from("?macro"),
+                            pos: String::from(pos),
+                            ispub: false,
                         },
                     );
                 }
@@ -331,8 +356,8 @@ fn get_module_scope(m: &Module) -> Scope {
                     form.name.clone(),
                     ScopeItem {
                         read: false,
-
                         pos: pos.clone(),
+                        ispub: false,
                     },
                 );
             }
@@ -341,8 +366,8 @@ fn get_module_scope(m: &Module) -> Scope {
                     x.name.name.clone(),
                     ScopeItem {
                         read: false,
-
                         pos: x.pos.clone(),
+                        ispub: x.is_pub,
                     },
                 );
             }
@@ -351,14 +376,14 @@ fn get_module_scope(m: &Module) -> Scope {
                     x.alias.name.clone(),
                     ScopeItem {
                         read: false,
-
                         pos: x.pos.clone(),
+                        ispub: x.is_pub,
                     },
                 );
             }
             ModuleObject::StructAliasTypedef {
                 pos,
-                is_pub: _,
+                is_pub,
                 struct_name: _,
                 type_alias,
             } => {
@@ -366,8 +391,8 @@ fn get_module_scope(m: &Module) -> Scope {
                     type_alias.clone(),
                     ScopeItem {
                         read: false,
-
                         pos: pos.clone(),
+                        ispub: *is_pub,
                     },
                 );
             }
@@ -414,8 +439,8 @@ fn check_body(
                             form.name.clone(),
                             ScopeItem {
                                 read: true,
-
                                 pos: String::from("for"),
+                                ispub: false,
                             },
                         );
                     }
@@ -495,6 +520,7 @@ fn check_body(
                         ScopeItem {
                             read: false,
                             pos: pos.clone(),
+                            ispub: false,
                         },
                     );
                     check_expr(value.as_ref().unwrap(), state, scopes, imports);
@@ -504,6 +530,7 @@ fn check_body(
                         ScopeItem {
                             read: false,
                             pos: pos.clone(),
+                            ispub: false,
                         },
                     );
                 }
@@ -620,8 +647,12 @@ fn check_ns_id(
                 if scope.pre.contains(&x.name) {
                     return;
                 }
-                if scope.consts.contains_key(k) {
-                    return;
+                match scope.consts.get_mut(k) {
+                    Some(x) => {
+                        x.read = true;
+                        return;
+                    }
+                    None => {}
                 }
                 if scope.funcs.contains_key(k) {
                     return;
@@ -674,8 +705,12 @@ fn check_id(x: &Identifier, state: &mut State, scopes: &mut Vec<Scope>) {
         if scope.pre.contains(&x.name) {
             return;
         }
-        if scope.consts.contains_key(k) {
-            return;
+        match scope.consts.get_mut(k) {
+            Some(x) => {
+                x.read = true;
+                return;
+            }
+            None => {}
         }
         if scope.funcs.contains_key(k) {
             return;

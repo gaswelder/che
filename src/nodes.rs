@@ -14,11 +14,13 @@ pub enum ModuleObject {
     Macro {
         name: String,
         value: String,
+        pos: String,
     },
     Import(ImportNode),
     Enum {
         is_pub: bool,
         members: Vec<EnumItem>,
+        pos: String,
     },
     // typedef struct tm tm_t;
     StructAliasTypedef {
@@ -84,6 +86,7 @@ pub struct FuncTypedef {
 pub struct EnumItem {
     pub id: Identifier,
     pub value: Option<Expression>,
+    pub pos: String,
 }
 
 #[derive(Debug, Clone)]

@@ -34,8 +34,8 @@ pub fn parse_module(l: &mut Lexer, ctx: &Ctx) -> Result<Module, Error> {
     });
 }
 
-fn parse_compat_macro(lexer: &mut Lexer) -> Result<ModuleObject, Error> {
-    let tok = expect(lexer, "macro", None)?;
+fn parse_compat_macro(l: &mut Lexer) -> Result<ModuleObject, Error> {
+    let tok = expect(l, "macro", None)?;
     let content = tok.content.clone();
     let pos = content.find(" ");
     if pos.is_none() {
@@ -49,6 +49,7 @@ fn parse_compat_macro(lexer: &mut Lexer) -> Result<ModuleObject, Error> {
     return Ok(ModuleObject::Macro {
         name: name[1..].to_string(),
         value: value.to_string(),
+        pos: tok.pos.clone(),
     });
 }
 
@@ -468,17 +469,19 @@ fn parse_literal(l: &mut Lexer) -> Result<Literal, Error> {
 }
 
 fn parse_enum(l: &mut Lexer, is_pub: bool, ctx: &Ctx) -> Result<ModuleObject, Error> {
+    let pos = l.peek().unwrap().pos.clone();
     let mut members: Vec<EnumItem> = Vec::new();
     expect(l, "enum", Some("enum definition"))?;
     expect(l, "{", Some("enum definition"))?;
     loop {
         let id = read_identifier(l)?;
+        let pos = id.pos.clone();
         let value: Option<Expression> = if l.eat("=") {
             Some(parse_expr(l, 0, ctx)?)
         } else {
             None
         };
-        members.push(EnumItem { id, value });
+        members.push(EnumItem { id, value, pos });
         if !l.eat(",") {
             break;
         }
@@ -488,7 +491,11 @@ fn parse_enum(l: &mut Lexer, is_pub: bool, ctx: &Ctx) -> Result<ModuleObject, Er
     }
     expect(l, "}", Some("enum definition"))?;
     expect(l, ";", Some("enum definition"))?;
-    return Ok(ModuleObject::Enum { is_pub, members });
+    return Ok(ModuleObject::Enum {
+        is_pub,
+        members,
+        pos,
+    });
 }
 
 fn parse_composite_literal(l: &mut Lexer, ctx: &Ctx) -> Result<CompositeLiteral, Error> {

@@ -1,4 +1,4 @@
-#define _XOPEN_SOURCE 700
+// #define _XOPEN_SOURCE 700
 
 #include <arpa/inet.h>
 #include <netdb.h>

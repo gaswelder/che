@@ -31,7 +31,11 @@ fn prefix_mod_obj(obj: &mut ModuleObject, prefix: &String, names: &Vec<String>) 
             prefix_expr(value, prefix, names);
             prefix_form(form, prefix, names);
         }
-        ModuleObject::Enum { is_pub, members } => {
+        ModuleObject::Enum {
+            is_pub,
+            members,
+            pos: _,
+        } => {
             if !*is_pub {
                 return;
             }

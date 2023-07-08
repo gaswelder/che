@@ -18,7 +18,11 @@ pub fn translate(m: &Module, ctx: &Ctx) -> CModule {
     let mut link: Vec<String> = Vec::new();
     for node in &m.elements {
         match node {
-            ModuleObject::Macro { name, value } => {
+            ModuleObject::Macro {
+                name,
+                value,
+                pos: _,
+            } => {
                 if name == "link" {
                     link.push(value.clone())
                 }
@@ -201,7 +205,11 @@ fn translate_module_object(element: &ModuleObject, ctx: &Ctx) -> Vec<CModuleObje
             parameters,
             body,
         }) => translate_function_declaration(*is_pub, type_name, form, parameters, body, ctx),
-        ModuleObject::Enum { is_pub, members } => {
+        ModuleObject::Enum {
+            is_pub,
+            members,
+            pos: _,
+        } => {
             let mut tm: Vec<CEnumItem> = Vec::new();
             for member in members {
                 tm.push(CEnumItem {
@@ -214,7 +222,11 @@ fn translate_module_object(element: &ModuleObject, ctx: &Ctx) -> Vec<CModuleObje
                 is_hidden: !is_pub,
             }];
         }
-        ModuleObject::Macro { name, value } => {
+        ModuleObject::Macro {
+            name,
+            value,
+            pos: _,
+        } => {
             if name == "type" || name == "link" || name == "known" {
                 return vec![];
             } else {

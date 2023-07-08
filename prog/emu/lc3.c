@@ -12,15 +12,22 @@ enum {
     /*
      * General purpose registers
      */
-    R_R0 = 0, R_R1, R_R2, R_R3, R_R4, R_R5, R_R6, R_R7,
+    R_R0 = 0,
+    // R_R1,
+    // R_R2,
+    // R_R3,
+    // R_R4,
+    // R_R5,
+    // R_R6,
+    R_R7 = 7,
     /*
      * Program counter
      */
-    R_PC,
+    R_PC = 8,
     /*
      * Condition flags
      */
-    R_COND
+    R_COND = 9
 };
 
 /**

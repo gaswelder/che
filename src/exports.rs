@@ -17,7 +17,11 @@ pub fn get_exports(m: &Module) -> Exports {
     };
     for e in &m.elements {
         match e {
-            ModuleObject::Enum { is_pub, members } => {
+            ModuleObject::Enum {
+                is_pub,
+                members,
+                pos: _,
+            } => {
                 if *is_pub {
                     for member in members {
                         exports.consts.push(member.clone());

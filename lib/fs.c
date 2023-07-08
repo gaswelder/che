@@ -1,4 +1,4 @@
-#define _X_OPEN_SOURCE 700
+// #define _X_OPEN_SOURCE 700
 #include <unistd.h>
 #include <sys/stat.h>
 
