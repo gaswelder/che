@@ -105,7 +105,7 @@ int good = 0;
 int bad = 0;     /* number of good and bad requests */
 int epipe = 0;             /* number of broken pipe writes */
 int err_length = 0;        /* requests failed due to response length */
-int err_conn = 0;          /* requests failed due to connection drop */
+int failed_connects = 0;          /* requests failed due to connection drop */
 int err_recv = 0;          /* requests failed due to broken read */
 int err_except = 0;        /* requests failed due to exception */
 int err_response = 0;      /* requests with invalid or non-200 response */
@@ -409,7 +409,7 @@ int routine(void *ctx, int line) {
             c->aprsock = io.connect("tcp", colonhost);
             if (!c->aprsock) {
                 fprintf(stderr, "failed to connect to %s: %s\n", colonhost, strerror(errno));
-                err_conn++;
+                failed_connects++;
                 if (bad++ > 10) {
                     fatal("Test aborted after 10 failures");
                 }
@@ -688,7 +688,7 @@ void output_results(int sig) {
     table.add("Time taken for tests", "%.3ld s", timetaken);
     table.add("Complete requests", "%ld", done);
     table.add("Failed requests", "%d", bad);
-    table.add("Connect errors", "%d", err_conn);
+    table.add("Connect errors", "%d", failed_connects);
     table.add("Receive errors", "%d", err_recv);
     table.add("Length errors", "%d", err_length);
     table.add("Exceptions", "%d", err_except);
