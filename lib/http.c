@@ -59,10 +59,7 @@ pub bool parse_url(url_t *r, const char *s) {
     return true;
 }
 
-pub typedef {
-    header_t headers[100];
-    size_t nheaders;
-} cgi_head_t;
+
 
 pub typedef {
     char method[10];
@@ -249,50 +246,6 @@ bool parse_header_line(const char *line, header_t *h) {
         *v++ = *p++;
     }
     return true;
-}
-
-pub size_t parse_cgi_head(cgi_head_t *r, char *data, size_t n) {
-    size_t pos = 0;
-    while (true) {
-        char name[1000] = {0};
-        char *d = name;
-
-        // name
-        while (pos < n && data[pos] != ':') {
-            *d++ = data[pos];
-            pos++;
-        }
-        if (pos >= n) return false;
-
-        // skip ':'
-        pos++;
-
-        // skip spaces
-        while (pos < n && isspace(data[pos])) {
-            pos++;
-        }
-        if (pos >= n) return false;
-
-        char value[1000] = {0};
-        d = value;
-
-        // everything until a newline
-        while (pos < n && data[pos] != '\n' && data[pos] != '\r') {
-            *d++ = data[pos];
-            pos++;
-        }
-        if (pos >= n) return false;
-        if (pos < n && data[pos] == '\r') pos++;
-        if (pos < n && data[pos] == '\n') pos++;
-        strcpy(r->headers[r->nheaders].name, name);
-        strcpy(r->headers[r->nheaders].value, value);
-        r->nheaders++;
-        if (pos < n && (data[pos] == '\r' || data[pos] == '\n')) {
-            if (pos < n && data[pos] == '\r') pos++;
-            if (pos < n && data[pos] == '\n') pos++;
-            return pos;
-        }
-    }
 }
 
 

@@ -1,5 +1,6 @@
 #import fs
 #import http
+#import protocols/cgi
 #import ioroutine
 #import os/exec
 #import os/io
@@ -83,8 +84,8 @@ pub int client_routine(void *_ctx, int line) {
         }
         // Try to parse the CGI headers in the buffer.
         // If not, wait for more data.
-        http.cgi_head_t head = {};
-        size_t headsize = http.parse_cgi_head(&head, ctx->tmpbuf->data, ctx->tmpbuf->size);
+        cgi.head_t head = {};
+        size_t headsize = cgi.parse_head(&head, ctx->tmpbuf->data, ctx->tmpbuf->size);
         if (!headsize) {
             return READ_CGI_HEAD;
         }
