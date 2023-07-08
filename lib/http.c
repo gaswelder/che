@@ -95,7 +95,7 @@ pub bool set_header(request_t *r, const char *name, *value) {
 }
 
 pub bool write_request(request_t *r, char *buf, size_t n) {
-    strbuilder.str *sb = strbuilder.new();
+    strbuilder.str *sb = strbuilder.str_new();
     bool ok = sb != NULL;
     
     ok = ok && strbuilder.adds(sb, r->method)
@@ -107,15 +107,17 @@ pub bool write_request(request_t *r, char *buf, size_t n) {
     for (size_t i = 0; i < r->nheaders; i++) {
         header_t *h = &r->headers[i];
         ok = ok
-            && strbuilder.adds(sb, "%s: %s\r\n", h->name, h->value);
+            && strbuilder.adds(sb, h->name)
+            && strbuilder.adds(sb, ": ")
+            && strbuilder.adds(sb, h->value);
     }
     ok = ok && strbuilder.adds(sb, "\r\n");
-    if (!ok || strbuilder.len(sb) > n) {
-        strbuilder.free(sb);
+    if (!ok || strbuilder.str_len(sb) > n) {
+        strbuilder.str_free(sb);
         return false;
     }
-    memcpy(buf, strbuilder.raw(sb), n);
-    strbuilder.free(sb);
+    memcpy(buf, strbuilder.str_raw(sb), n);
+    strbuilder.str_free(sb);
     return true;
 }
 
