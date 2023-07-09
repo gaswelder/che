@@ -88,7 +88,6 @@ bool keepalive = false;      /* try and do keepalive connections */
 char *postdata = NULL;         /* *buffer containing data from postfile */
 size_t postlen = 0; /* length of data to be POSTed */
 char *content_type = "text/plain";/* content type to put in POST header */
-char *gnuplot = NULL;          /* GNUplot file */
 char * colonhost = "";
 
 
@@ -128,7 +127,6 @@ void usage(const char *progname) {
     fprintf(stderr, "    -V              Print version number and exit\n");
 
     fprintf(stderr, "    -S              Do not show confidence estimators and warnings.\n");
-    fprintf(stderr, "    -g filename     Output collected data to gnuplot format file.\n");
     fprintf(stderr, "    -h              Display usage information (this message)\n");
     exit(1);
 }
@@ -154,7 +152,6 @@ int main(int argc, char *argv[]) {
     opt.opt_bool("q", "quiet", &quiet);
 
     opt.opt_int("v", "verbosity", &verbosity);
-    opt.opt_str("g", "gnuplot output file", &gnuplot);
 
     bool hflag = false;
     opt.opt_bool("h", "print usage", &hflag);
@@ -610,27 +607,6 @@ void print_stats() {
                 printf("  %d%%  %.1f\n", p, stats.percentile(sum_times, p));
             }
         }
-    }
-
-    if (gnuplot) {
-        FILE *out = fopen(gnuplot, "w");
-        if (!out) {
-            fprintf(stderr, "Cannot open gnuplot output file: %s", strerror(errno));
-            exit(1);
-        }
-        fprintf(out, "starttime\tseconds\tctime\tdtime\tttime\twait\n");
-        for (size_t i = 0; i < requests_done; i++) {
-            data_t *st = &request_stats[i];
-            char tmstring[100] = {0};
-            time.format(st->time_begin, "%+", tmstring, sizeof(tmstring));
-            fprintf(out, "%s\t%d\t%u\t%u\t%u\t%u\n", tmstring,
-                    time.ms(st->time_begin) / 1000,
-                    st->ctime,
-                    st->time - st->ctime,
-                    st->time,
-                    st->waittime);
-        }
-        fclose(out);
     }
 }
 
