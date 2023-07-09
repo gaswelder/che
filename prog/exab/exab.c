@@ -27,14 +27,8 @@ typedef {
 
 data_t *request_stats = NULL;
 
-double ap_double_ms(int a) {
-    return ((double)(a)/1000.0);
-}
 #define MAX_CONCURRENCY 20000
 
-
-
-/* --------------------- GLOBALS ---------------------------- */
 
 // Request method.
 enum {
@@ -95,7 +89,6 @@ char *postdata = NULL;         /* *buffer containing data from postfile */
 size_t postlen = 0; /* length of data to be POSTed */
 char *content_type = "text/plain";/* content type to put in POST header */
 char *gnuplot = NULL;          /* GNUplot file */
-char *csvperc = NULL;          /* CSV Percentile file */
 char * colonhost = "";
 
 
@@ -114,12 +107,6 @@ int err_except = 0;        /* requests failed due to exception */
 
 time.t START_TIME = {};
 io.buf_t REQUEST = {};
-
-
-/* interesting percentiles */
-int percs[] = {50, 66, 75, 80, 90, 95, 98, 99, 100};
-
-
 
 void usage(const char *progname) {
     opt.opt_usage(progname);
@@ -142,7 +129,6 @@ void usage(const char *progname) {
 
     fprintf(stderr, "    -S              Do not show confidence estimators and warnings.\n");
     fprintf(stderr, "    -g filename     Output collected data to gnuplot format file.\n");
-    fprintf(stderr, "    -e filename     Output CSV file with percentages served\n");
     fprintf(stderr, "    -h              Display usage information (this message)\n");
     exit(1);
 }
@@ -179,7 +165,6 @@ int main(int argc, char *argv[]) {
     bool sflag = false;
     opt.opt_bool("S", "confidence = 0", &sflag);
 
-    opt.opt_str("e", "csvperc", &csvperc);
     opt.opt_str("A", "basic auth string (base64)", &autharg);
 
 
@@ -614,38 +599,19 @@ void print_stats() {
         stats.max(sum_times)
     );
 
-    /* Sorted on total connect times */
     if (requests_done > 1) {
-        printf("\nPercentage of the requests served within a certain time (ms)\n");
-        for (size_t i = 0; i < sizeof(percs) / sizeof(int); i++) {
-            if (percs[i] <= 0) {
-                printf(" 0%%  <0> (never)\n");
-            } else if (percs[i] >= 100) {
-                printf(" 100%%  %5u (longest request)\n", request_stats[requests_done - 1].time);
+        int percs[] = {50, 66, 75, 80, 90, 95, 98, 99, 100};
+        printf("\nRequest time percentiles\n");
+        for (size_t i = 0; i < nelem(percs); i++) {
+            int p = percs[i];
+            if (p == 100) {
+                printf(" 100%%  %.1f (longest request)\n", stats.max(sum_times));
             } else {
-                printf("  %d%%  %5u\n", percs[i], request_stats[(int) (requests_done * percs[i] / 100)].time);
+                printf("  %d%%  %.1f\n", p, stats.percentile(sum_times, p));
             }
         }
     }
-    if (csvperc) {
-        FILE *out = fopen(csvperc, "w");
-        if (!out) {
-            fprintf(stderr, "Cannot open CSV output file: %s\n", strerror(errno));
-            exit(1);
-        }
-        fprintf(out, "" "Percentage served" "," "Time in ms" "\n");
-        for (int i = 0; i < 100; i++) {
-            double t;
-            if (i == 0)
-                t = ap_double_ms(request_stats[0].time);
-            else if (i == 100)
-                t = ap_double_ms(request_stats[requests_done - 1].time);
-            else
-                t = ap_double_ms(request_stats[(int) (0.5 + requests_done * i / 100.0)].time);
-            fprintf(out, "%d,%.3f\n", i, t);
-        }
-        fclose(out);
-    }
+
     if (gnuplot) {
         FILE *out = fopen(gnuplot, "w");
         if (!out) {

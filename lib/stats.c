@@ -3,6 +3,8 @@ pub typedef {
     size_t len;
     size_t cap;
 
+    // Cache
+    double *sorted_values;
     double min;
     double max;
 } series_t;
@@ -11,11 +13,25 @@ pub series_t *newseries() {
     return calloc(1, sizeof(series_t));
 }
 
+pub void freeseries(series_t *s) {
+    if (s->sorted_values) {
+        free(s->sorted_values);
+    }
+    free(s->values);
+    free(s);
+}
+
 pub void add(series_t *s, double val) {
     if (s->len == s->cap) {
         if (!grow(s)) {
             panic("failed to allocate memory");
         }
+    }
+
+    // Update the cache.
+    if (s->sorted_values) {
+        free(s->sorted_values);
+        s->sorted_values = NULL;
     }
     if (s->len == 0 || val < s->min) {
         s->min = val;
@@ -23,6 +39,8 @@ pub void add(series_t *s, double val) {
     if (s->len == 0 || val > s->max) {
         s->max = val;
     }
+
+    // Insert the value.
     s->values[s->len++] = val;
 }
 
@@ -48,15 +66,25 @@ pub double sd(series_t *s) {
     }
     return sqrt(varsum / (s->len-1));
 }
-pub double median(series_t *s) {
-    double *tmp = calloc(s->len, sizeof(double));
-    for (size_t i = 0; i < s->len; i++) {
-        tmp[i] = s->values[i];
+
+pub double percentile(series_t *s, int p) {
+    if (p < 0 || p > 100) {
+        return 0;
     }
-    qsort(tmp, s->len, sizeof(double), doublecmp);
-    double m = (tmp[s->len / 2] + tmp[s->len/2 + 1]) / 2;
-    free(tmp);
-    return m;
+    if (!s->sorted_values) {
+        double *tmp = calloc(s->len, sizeof(double));
+        for (size_t i = 0; i < s->len; i++) {
+            tmp[i] = s->values[i];
+        }
+        qsort(tmp, s->len, sizeof(double), doublecmp);
+        s->sorted_values = tmp;
+    }
+    double val = s->sorted_values[(int) (s->len * p / 100)];
+    return val;
+}
+
+pub double median(series_t *s) {
+    return percentile(s, 50);
 }
 
 int doublecmp(const void *x, *y) {
@@ -65,11 +93,6 @@ int doublecmp(const void *x, *y) {
     if (*a > *b) return 1;
     if (*a < *b) return -1;
     return 0;
-}
-
-pub void freeseries(series_t *s) {
-    free(s->values);
-    free(s);
 }
 
 bool grow(series_t *a) {
