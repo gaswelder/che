@@ -42,12 +42,20 @@ int method = GET;
 char *user_agent = "ex-ApacheBench/0.0";
 char *opt_accept = NULL;
 char *cookie = NULL;
+char *content_type = "text/plain";
+char *autharg = NULL;
 
 /*
  * How many requests to do.
  */
 size_t requests_to_do = 1;
 size_t requests_done = 0;
+
+/*
+ * Byte counters.
+ */
+size_t total_received = 0;
+size_t total_sent = 0;
 
 /*
  * Error counters.
@@ -83,17 +91,7 @@ bool keepalive = false;      /* try and do keepalive connections */
 
 char *postdata = NULL;         /* *buffer containing data from postfile */
 size_t postlen = 0; /* length of data to be POSTed */
-char *content_type = "text/plain";/* content type to put in POST header */
 char * colonhost = "";
-
-
-char *autharg = NULL;
-
-
-int64_t totalread = 0;    /* total number of bytes read */
-int64_t totalbread = 0;   /* totoal amount of entity body read */
-int64_t totalposted = 0;  /* total number of bytes posted, inc. headers */
-size_t started = 0;           /* number of requests started, so no excess */
 int doneka = 0;            /* number of keep alive connections requests_done */
 int bad = 0;
 int err_length = 0;        /* requests failed due to response length */
@@ -360,7 +358,6 @@ int routine(void *ctx, int line) {
                 return CONNECT;
             }
             dbg("connected");
-            started++;
             return INIT_REQUEST;
         }
         /*
@@ -401,6 +398,7 @@ int routine(void *ctx, int line) {
                 io.close(c->connection);
                 return CONNECT;
             }
+            total_sent += n - io.bufsize(c->outbuf);
             return WRITE_REQUEST;
         }
         /*
@@ -411,6 +409,7 @@ int routine(void *ctx, int line) {
                 return READ_RESPONSE;
             }
             dbg("reading response");
+            size_t n0 = io.bufsize(c->inbuf);
             if (!io.read(c->connection, c->inbuf)) {
                 read_errors++;
                 bad++;
@@ -419,7 +418,8 @@ int routine(void *ctx, int line) {
                 return CONNECT;
             }
             size_t n = io.bufsize(c->inbuf);
-            dbg("read %zu bytes", n);
+            dbg("read %zu bytes", n - n0);
+            total_received += n - n0;
             if (n == 0) {
                 io.close(c->connection);
                 c->stats->time_finish_reading = time.now();
@@ -512,23 +512,16 @@ void output_results(int sig) {
     table.add(&REPORT, "Keep-Alive requests", "%d", doneka);
 
     table.split(&REPORT);
-    table.add(&REPORT, "Total read", "%ld B", totalread);
-    if (method == POST) {
-        table.add(&REPORT, "Total POSTed", "%ld", totalposted);
-    }
-    table.add(&REPORT, "HTML transferred", "%ld B", totalbread);
+    table.add(&REPORT, "Total received", "%ld B", total_received);
+    table.add(&REPORT, "Total sent", "%ld B", total_sent);
 
     table.split(&REPORT);
     table.add(&REPORT, "Time taken for tests", "%.2f s", timetaken);
     table.add(&REPORT, "Requests per second", "%.2f", requests_done / timetaken);
     table.add(&REPORT, "Time per request", "%.3f ms", (double) concurrency * timetaken * 1000 / requests_done);
     table.add(&REPORT, "Time per request", "%.3f (across all concurrent requests)", (double) timetaken * 1000 / requests_done);
-    table.add(&REPORT, "Transfer rate", "%.2f [Kbytes/sec] received", (double) totalread / 1024 / timetaken);
-    if (method == POST) {
-        table.add(&REPORT, "sent", "%.2f kb/s", (double) totalposted / timetaken / 1024);
-        table.add(&REPORT, "total", "%.2f kb/s", (double) (totalread + totalposted) / timetaken / 1024);
-    }
-
+    table.add(&REPORT, "Receive rate", "%.2f KB/s", (double) total_received / 1024 / timetaken);
+    table.add(&REPORT, "Send rate", "%.2f KB/s", (double) total_sent / 1024 / timetaken);
     table.print(&REPORT);
 
     if (requests_done > 0) {
