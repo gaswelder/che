@@ -85,6 +85,17 @@ int read_errors = 0;
 int write_errors = 0;
 int error_responses = 0; // non-200
 
+/*
+ * Response info.
+ */
+char servername[1024] = {0};  /* name that server reports */
+size_t response_length = 0;
+char response_version[20] = {0};
+
+/*
+ * Report table.
+ */
+table.t REPORT = {};
 
 // ----
 
@@ -100,22 +111,18 @@ size_t tlimit = 0;
 int percentile = 1;     /* Show percentile served */
 int confidence = 1;     /* Show confidence estimator and warnings */
 bool keepalive = false;      /* try and do keepalive connections */
-char servername[1024] = {0};  /* name that server reports */
-char *hostname = NULL;         /* host name from URL */
-char *path = NULL;             /* path name */
+
 char *postdata = NULL;         /* *buffer containing data from postfile */
 size_t postlen = 0; /* length of data to be POSTed */
 char *content_type = "text/plain";/* content type to put in POST header */
-int port = 0;        /* port number */
 char *gnuplot = NULL;          /* GNUplot file */
 char *csvperc = NULL;          /* CSV Percentile file */
-char *fullurl = NULL;
 char * colonhost = "";
 
 
 char *autharg = NULL;
 
-size_t doclen = 0;     /* the length the document should be */
+
 int64_t totalread = 0;    /* total number of bytes read */
 int64_t totalbread = 0;   /* totoal amount of entity body read */
 int64_t totalposted = 0;  /* total number of bytes posted, inc. headers */
@@ -297,11 +304,13 @@ void build_request(const char *url) {
         exit(1);
     }
     if (u.port[0] == '\0') {
-        colonhost = strings.newstr("%s:80", u.hostname);
-    } else {
-        colonhost = strings.newstr("%s:%s", u.hostname, u.port);
+        strcpy(u.port, "80");
     }
-    fullurl = strings.newstr("%s", url);
+    colonhost = strings.newstr("%s:%s", u.hostname, u.port);
+
+    table.add(&REPORT, "Server Hostname", "%s", u.hostname);
+    table.add(&REPORT, "Server Port", "%s", u.port);
+    table.add(&REPORT, "Document Path", "%s", u.path);
 
     // Create a request.
     http.request_t req = {};
@@ -442,7 +451,7 @@ int routine(void *ctx, int line) {
             c->start = time.now();
             io.resetbuf(c->inbuf);
             io.resetbuf(c->outbuf);
-            dbg("prepating the request (%zu, %zu)", io.bufsize(c->inbuf), io.bufsize(c->outbuf));
+            dbg("preparing the request (%zu, %zu)", io.bufsize(c->inbuf), io.bufsize(c->outbuf));
             io.push(c->outbuf, REQUEST.data, io.bufsize(&REQUEST));
             return WRITE_REQUEST;
         }
@@ -496,6 +505,10 @@ int routine(void *ctx, int line) {
                 panic("failed to parse the response\n");
                 return READ_RESPONSE;
             }
+
+            strcpy(servername, r.servername);
+            response_length = r.head_length + r.content_length;
+            strcpy(response_version, r.version);
 
             // printf("version = %s\n", r.version);
             // printf("status = %d\n", r.status);
@@ -557,9 +570,9 @@ void close_connection(connection_t * c)
     else {
         if (good == 1) {
             /* first time here */
-            doclen = c->bread;
+            response_length = c->bread;
         }
-        else if (c->bread != doclen) {
+        else if (c->bread != response_length) {
             bad++;
             err_length++;
         }
@@ -595,9 +608,9 @@ void kek(connection_t *c) {
         /* save out time */
         if (good == 1) {
             /* first time here */
-            doclen = c->bread;
+            response_length = c->bread;
         }
-        else if (c->bread != doclen) {
+        else if (c->bread != response_length) {
             bad++;
             err_length++;
         }
@@ -680,29 +693,28 @@ void output_results(int sig) {
     int64_t timetaken = time.sub(lasttime, start) / time.SECONDS;
 
     printf("\n\n");
-    table.add("Server Software", "%s", servername);
-    table.add("Server Hostname", "%s", hostname);
-    table.add("Server Port", "%hu", port);
-    table.split();
-    table.add("Document Path", "%s", path);
-    table.add("Document Length", "%zu B", doclen);
-    table.split();
-    table.add("Concurrency Level", "%zu", concurrency);
-    table.add("Time taken for tests", "%.3ld s", timetaken);
-    table.add("Complete requests", "%ld", requests_done);
-    table.add("Failed requests", "%d", bad);
-    table.add("Connect errors", "%d", failed_connects);
-    table.add("Receive errors", "%d", read_errors);
-    table.add("Length errors", "%d", err_length);
-    table.add("Exceptions", "%d", err_except);
-    table.add("Write errors", "%d", write_errors);
-    table.add("Non-2xx responses", "%d", error_responses);
-    table.add("Keep-Alive requests", "%d", doneka);
-    table.add("Total read", "%ld B", totalread);
+    
+    table.add(&REPORT, "Server Software", "%s", servername);
+    table.add(&REPORT, "Response size", "%zu B", response_length);
+    table.add(&REPORT, "HTTP version", "%s", response_version);
+    table.split(&REPORT);
+    table.add(&REPORT, "Concurrency Level", "%zu", concurrency);
+    table.add(&REPORT, "Time taken for tests", "%.3ld s", timetaken);
+    table.add(&REPORT, "Complete requests", "%ld", requests_done);
+    table.add(&REPORT, "Failed requests", "%d", bad);
+    table.add(&REPORT, "Connect errors", "%d", failed_connects);
+    table.add(&REPORT, "Receive errors", "%d", read_errors);
+    table.add(&REPORT, "Length errors", "%d", err_length);
+    table.add(&REPORT, "Exceptions", "%d", err_except);
+    table.add(&REPORT, "Write errors", "%d", write_errors);
+    table.add(&REPORT, "Non-2xx responses", "%d", error_responses);
+    table.add(&REPORT, "Keep-Alive requests", "%d", doneka);
+    table.add(&REPORT, "Total read", "%ld B", totalread);
     if (method == POST) {
-        table.add("Total POSTed", "%ld", totalposted);
+        table.add(&REPORT, "Total POSTed", "%ld", totalposted);
     }
-    table.add("HTML transferred", "%ld B", totalbread);
+    table.add(&REPORT, "HTML transferred", "%ld B", totalbread);
+    table.print(&REPORT);
 
     /* avoid divide by zero */
     if (timetaken && requests_done) {
