@@ -25,9 +25,6 @@ typedef {
 
 request_stats_t *request_stats = NULL;
 
-#define MAX_CONCURRENCY 20000
-
-
 // Request method.
 enum {
     GET,
@@ -52,6 +49,12 @@ size_t requests_to_do = 1;
 size_t requests_done = 0;
 
 /*
+ * How many requests to do in parallel.
+ */
+#define MAX_CONCURRENCY 20000
+size_t concurrency = 1;
+
+/*
  * Byte counters.
  */
 size_t total_received = 0;
@@ -73,80 +76,46 @@ size_t response_length = 0;
 char response_version[20] = {0};
 
 /*
- * Report table.
+ * Other state.
  */
 table.t REPORT = {};
+time.t START_TIME = {};
+io.buf_t REQUEST = {};
 
 // ----
 
 int heartbeatres = 100; /* How often do we say we're alive */
-
-/* Number of multiple requests to make */
-size_t concurrency = 1;
-
-/* time limit in secs */
-size_t tlimit = 0;
-
+size_t tlimit = 0; /* time limit in secs */
 bool keepalive = false;      /* try and do keepalive connections */
-
 char *postdata = NULL;         /* *buffer containing data from postfile */
 size_t postlen = 0; /* length of data to be POSTed */
-char * colonhost = "";
+char *colonhost = "";
 int doneka = 0;            /* number of keep alive connections requests_done */
 int bad = 0;
-int err_length = 0;        /* requests failed due to response length */
-int err_except = 0;        /* requests failed due to exception */
-
-
-time.t START_TIME = {};
-io.buf_t REQUEST = {};
-
-void usage(const char *progname) {
-    opt.opt_usage(progname);
-    fprintf(stderr, "Usage: %s [options] [http"
-        "://]hostname[:port]/path\n", progname);
-
-// request config
-    fprintf(stderr, "    -T content-type Content-type header for POSTing, eg.\n");
-    fprintf(stderr, "                    'application/x-www-form-urlencoded'\n");
-    fprintf(stderr, "                    Default is 'text/plain'\n");
-    fprintf(stderr, "    -p postfile     File containing data to POST. Remember also to set -T\n");
-
-//
-    fprintf(stderr, "    -H attribute    Add Arbitrary header line, eg. 'Accept-Encoding: gzip'\n");
-    fprintf(stderr, "                    Inserted after all normal header lines. (repeatable)\n");
-    fprintf(stderr, "    -A attribute    Add Basic WWW Authentication, the attributes\n");
-    fprintf(stderr, "                    are a colon separated username and password.\n");
-    fprintf(stderr, "    -V              Print version number and exit\n");
-    fprintf(stderr, "    -h              Display usage information (this message)\n");
-    exit(1);
-}
 
 int main(int argc, char *argv[]) {
+    opt.opt_summary("exab [options] <url> - makes multiple HTTP requests to <url> and prints statistics");
     // Orthogonal options
-    opt.opt_size("n", "number of requests to perform", &requests_to_do);
-    opt.opt_size("c", "number of concurrent requests", &concurrency);
+    opt.opt_size("n", "number of requests to perform (1)", &requests_to_do);
+    opt.opt_size("c", "number of requests running concurrently (1)", &concurrency);
     opt.opt_size("t", "time limit, number of seconds to wait for responses", &tlimit);
     opt.opt_bool("k", "use HTTP keep-alive", &keepalive);
     opt.opt_str("C", "cooke value, eg. session_id=123456", &cookie);
+    opt.opt_str("a", "HTTP basic auth value (username:password)", &autharg);
 
     // Request config
     char *methodstring = NULL;
     opt.opt_str("m", "request method (GET, POST, HEAD)", &methodstring);
 
     char *postfile = NULL;
-    opt.opt_str("p", "postfile", &postfile);
-    opt.opt_str("T", "POST body content type", &content_type);
+    opt.opt_str("p", "path to the file with the POST body", &postfile);
+    opt.opt_str("T", "POST body content type (default is text/plain)", &content_type);
 
-    // Hmm
+    // Commands pretending to be options
     bool hflag = false;
-    opt.opt_bool("h", "print usage", &hflag);
-
     bool vflag = false;
-    opt.opt_bool("V", "print version", &vflag);
-
-    opt.opt_str("A", "basic auth string (base64)", &autharg);
-
+    opt.opt_bool("h", "print usage", &hflag);
+    opt.opt_bool("V", "print version and exit", &vflag);
 
     char **args = opt.opt_parse(argc, argv);
 
@@ -175,7 +144,8 @@ int main(int argc, char *argv[]) {
         }
     }
     if (hflag) {
-        usage(argv[0]);
+        opt.opt_usage();
+        return 1;
     }
     if (vflag) {
         printf("This is ex-ApacheBench, rewritten\n");
@@ -505,8 +475,6 @@ void output_results(int sig) {
     table.add(&REPORT, "Failed requests", "%d", bad);
     table.add(&REPORT, "Connect errors", "%d", failed_connects);
     table.add(&REPORT, "Receive errors", "%d", read_errors);
-    table.add(&REPORT, "Length errors", "%d", err_length);
-    table.add(&REPORT, "Exceptions", "%d", err_except);
     table.add(&REPORT, "Write errors", "%d", write_errors);
     table.add(&REPORT, "Non-2xx responses", "%d", error_responses);
     table.add(&REPORT, "Keep-Alive requests", "%d", doneka);
