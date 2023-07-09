@@ -6,6 +6,7 @@
 #import strings
 #import time
 #import table.c
+#import stats
 
 typedef {
     io.handle_t *connection; // Connection with the server
@@ -17,10 +18,9 @@ typedef {
 
 typedef {
     time.t time_begin;
-    time.t time_connected;
-    time.t time_written;
-    time.t time_read;
-    time.t time_finished;
+    time.t time_begin_writing;
+    time.t time_begin_reading;
+    time.t time_finish_reading;
 
     int ctime, time, waittime;
 } data_t;
@@ -420,11 +420,11 @@ int routine(void *ctx, int line) {
             }
             c->stats = &request_stats[requests_done];
             requests_done++;
-            c->stats->time_connected = time.now();
             io.resetbuf(c->inbuf);
             io.resetbuf(c->outbuf);
             dbg("preparing the request (%zu, %zu)", io.bufsize(c->inbuf), io.bufsize(c->outbuf));
             io.push(c->outbuf, REQUEST.data, io.bufsize(&REQUEST));
+            c->stats->time_begin_writing = time.now();
             return WRITE_REQUEST;
         }
         /*
@@ -434,7 +434,7 @@ int routine(void *ctx, int line) {
             size_t n = io.bufsize(c->outbuf);
             if (n == 0) {
                 dbg("nothing more to write, proceeding to read");
-                c->stats->time_written = time.now();
+                c->stats->time_begin_reading = time.now();
                 return READ_RESPONSE;
             }
             if (!ioroutine.ioready(c->connection, io.WRITE)) {
@@ -468,7 +468,7 @@ int routine(void *ctx, int line) {
             dbg("read %zu bytes", n);
             if (n == 0) {
                 io.close(c->connection);
-                c->stats->time_read = time.now();
+                c->stats->time_finish_reading = time.now();
                 if (heartbeatres && !(requests_done % heartbeatres)) {
                     fprintf(stderr, "Completed %ld requests\n", requests_done);
                     fflush(stderr);
@@ -506,7 +506,6 @@ int routine(void *ctx, int line) {
         }
         case READ_RESPONSE_BODY: {
             if (c->body_bytes_to_read == 0) {
-                c->stats->time_read = time.now();
                 return INIT_REQUEST;
             }
             if (!ioroutine.ioready(c->connection, io.READ)) {
@@ -537,43 +536,6 @@ void fatal(char *s) {
     }
     exit(1);
 }
-
-
-int compradre(const void *x, *y) {
-    const data_t *a = x;
-    const data_t *b = y;
-    if ((a->ctime) < (b->ctime)) return -1;
-    if ((a->ctime) > (b->ctime)) return 1;
-    return 0;
-}
-
-int comprando(const void *x, *y) {
-    const data_t *a = x;
-    const data_t *b = y;
-    if ((a->time) < (b->time)) return -1;
-    if ((a->time) > (b->time)) return 1;
-    return 0;
-}
-
-int compri(const void *x, *y) {
-    const data_t *a = x;
-    const data_t *b = y;
-    size_t p = a->time - a->ctime;
-    size_t q = b->time - b->ctime;
-    if (p < q) return -1;
-    if (p > q) return 1;
-    return 0;
-}
-
-int compwait(const void *x, *y) {
-    const data_t *a = x;
-    const data_t *b = y;
-    if ((a->waittime) < (b->waittime)) return -1;
-    if ((a->waittime) > (b->waittime)) return 1;
-    return 0;
-}
-
-
 
 void output_results(int sig) {
     if (sig) {
@@ -631,162 +593,41 @@ void output_results(int sig) {
 }
 
 void print_stats() {
-    /* work out connection times */
-    int64_t totalcon = 0;
-    int64_t total = 0;
-    int64_t totald = 0;
-    int64_t totalwait = 0;
-    int64_t meancon = 0;
-    int64_t meantot = 0;
-    int64_t meand = 0;
-    int64_t meanwait = 0;
-    int mincon = INT_MAX;
-    int mintot = INT_MAX;
-    int mind = INT_MAX;
-    int minwait = INT_MAX;
-    int maxcon = 0;
-    int maxtot = 0;
-    int maxd = 0;
-    int maxwait = 0;
-    int mediancon = 0;
-    int mediantot = 0;
-    int mediand = 0;
-    int medianwait = 0;
-    double sdtot = 0;
-    double sdcon = 0;
-    double sdd = 0;
-    double sdwait = 0;
+    stats.series_t *write_times = stats.newseries();
+    stats.series_t *read_times = stats.newseries();
+    stats.series_t *sum_times = stats.newseries();
 
     for (size_t i = 0; i < requests_done; i++) {
         data_t *s = &request_stats[i];
-        mincon = min(mincon, s->ctime);
-        mintot = min(mintot, s->time);
-        mind = min(mind, s->time - s->ctime);
-        minwait = min(minwait, s->waittime);
-
-        maxcon = max(maxcon, s->ctime);
-        maxtot = max(maxtot, s->time);
-        maxd = max(maxd, s->time - s->ctime);
-        maxwait = max(maxwait, s->waittime);
-
-        totalcon += s->ctime;
-        total += s->time;
-        totald += s->time - s->ctime;
-        totalwait += s->waittime;
-    }
-    meancon = totalcon / requests_done;
-    meantot = total / requests_done;
-    meand = totald / requests_done;
-    meanwait = totalwait / requests_done;
-
-    /* calculating the sample variance: the sum of the squared deviations, divided by n-1 */
-    for (size_t i = 0; i < requests_done; i++) {
-        data_t *s = &request_stats[i];
-        double a;
-        a = ((double)s->time - meantot);
-        sdtot += a * a;
-        a = ((double)s->ctime - meancon);
-        sdcon += a * a;
-        a = ((double)s->time - (double)s->ctime - meand);
-        sdd += a * a;
-        a = ((double)s->waittime - meanwait);
-        sdwait += a * a;
+        stats.add(write_times, (double) (time.sub(s->time_begin_reading, s->time_begin_writing)) );
+        stats.add(read_times, (double) (time.sub(s->time_finish_reading, s->time_begin_reading)) );
+        stats.add(sum_times, (double) (time.sub(s->time_finish_reading, s->time_begin_writing)) );
     }
 
-
-    if (requests_done > 1) {
-        sdtot = sqrt(sdtot / (requests_done - 1));
-        sdcon = sqrt(sdcon / (requests_done - 1));
-        sdd = sqrt(sdd / (requests_done - 1));
-        sdwait = sqrt(sdwait / (requests_done - 1));
-    } else {
-        sdtot = 0;
-        sdcon = 0;
-        sdd = 0;
-        sdwait = 0;
-    }
-
-    qsort(request_stats, requests_done, sizeof(data_t), compradre);
-    if ((requests_done > 1) && (requests_done % 2)) {
-        mediancon = (request_stats[requests_done / 2].ctime + request_stats[requests_done / 2 + 1].ctime) / 2;
-    } else {
-        mediancon = request_stats[requests_done / 2].ctime;
-    }
-
-    qsort(request_stats, requests_done, sizeof(data_t), compri);
-    if ((requests_done > 1) && (requests_done % 2)) {
-        mediand = (
-            request_stats[requests_done / 2].time
-            + request_stats[requests_done / 2 + 1].time
-            - request_stats[requests_done / 2].ctime
-            - request_stats[requests_done / 2 + 1].ctime) / 2;
-    }
-    else {
-        mediand = request_stats[requests_done / 2].time - request_stats[requests_done / 2].ctime;
-    }
-
-    qsort(request_stats, requests_done, sizeof(data_t), compwait);
-    if ((requests_done > 1) && (requests_done % 2))
-        medianwait = (request_stats[requests_done / 2].waittime + request_stats[requests_done / 2 + 1].waittime) / 2;
-    else
-        medianwait = request_stats[requests_done / 2].waittime;
-
-    qsort(request_stats, requests_done, sizeof(data_t), comprando);
-    if ((requests_done > 1) && (requests_done % 2))
-        mediantot = (request_stats[requests_done / 2].time + request_stats[requests_done / 2 + 1].time) / 2;
-    else
-        mediantot = request_stats[requests_done / 2].time;
-
+    
     printf("\nConnection Times (ms)\n");
-    /*
-        * Reduce request_stats from apr time to milliseconds
-        */
-    mincon     = mincon / time.MS;
-    mind       = mind / time.MS;
-    minwait    = minwait / time.MS;
-    mintot     = mintot / time.MS;
-    meancon    = meancon / time.MS;
-    meand      = meand / time.MS;
-    meanwait   = meanwait / time.MS;
-    meantot    = meantot / time.MS;
-    mediancon  = mediancon / time.MS;
-    mediand    = mediand / time.MS;
-    medianwait = medianwait / time.MS;
-    mediantot  = mediantot / time.MS;
-    maxcon     = maxcon / time.MS;
-    maxd       = maxd / time.MS;
-    maxwait    = maxwait / time.MS;
-    maxtot     = maxtot / time.MS;
-    sdcon      = ap_double_ms(sdcon);
-    sdd        = ap_double_ms(sdd);
-    sdwait     = ap_double_ms(sdwait);
-    sdtot      = ap_double_ms(sdtot);
-
-    if (confidence) {
-        printf("              min  mean[+/-sd] median   max\n");
-        printf("Connect:    %5u %4zu %5.1f %6u %7u\n",
-                mincon, meancon, sdcon, mediancon, maxcon);
-        printf("Processing: %5u %4zu %5.1f %6u %7u\n",
-                mind, meand, sdd, mediand, maxd);
-        printf("Waiting:    %5u %4zu %5.1f %6u %7u\n",
-                minwait, meanwait, sdwait, medianwait, maxwait);
-        printf("Total:      %5u %4zu %5.1f %6u %7u\n",
-                mintot, meantot, sdtot, mediantot, maxtot);
-
-        SANE("the initial connection time", meancon, mediancon, sdcon);
-        SANE("the processing time", meand, mediand, sdd);
-        SANE("the waiting time", meanwait, medianwait, sdwait);
-        SANE("the total time", meantot, mediantot, sdtot);
-    }
-    else {
-        printf("              min   avg   max\n");
-        printf("Connect:    %5u %5zu %5u\n", mincon, meancon, maxcon);
-        printf("Processing: %5u %5zu %5u\n", mintot - mincon,
-                                                meantot - meancon,
-                                                maxtot - maxcon);
-        printf("Total:      %5u %5zu %5u\n", mintot, meantot, maxtot);
-    }
-
+    printf("              min  mean[+/-sd] median   max\n");
+    printf("Writing: %f %f %f %f %f\n",
+        stats.min(write_times),
+        stats.mean(write_times),
+        stats.sd(write_times),
+        stats.median(write_times),
+        stats.max(write_times)
+    );
+    printf("Reading: %f %f %f %f %f\n",
+        stats.min(read_times),
+        stats.mean(read_times),
+        stats.sd(read_times),
+        stats.median(read_times),
+        stats.max(read_times)
+    );
+    printf("Sum: %f %f %f %f %f\n",
+        stats.min(sum_times),
+        stats.mean(sum_times),
+        stats.sd(sum_times),
+        stats.median(sum_times),
+        stats.max(sum_times)
+    );
 
     /* Sorted on total connect times */
     if (percentile && (requests_done > 1)) {
@@ -841,23 +682,6 @@ void print_stats() {
         fclose(out);
     }
 }
-
-void SANE(const char *what, double mean, median, sd) {
-    double d = mean - median;
-    if (d < 0) {
-        d = -d;
-    }
-    if (d > 2 * sd ) {
-        printf("ERROR: The median and mean for %s are more than twice the standard\n"
-            "       deviation apart. These results are not reliable.\n", what);
-    }
-    else if (d > sd) {
-        printf("WARNING: The median and mean for %s are not within a normal deviation\n"
-                "        These results are probably not that reliable.\n", what);
-    }
-}
-
-
 
 void err(char *s) {
     fprintf(stderr, "%s\n", s);
