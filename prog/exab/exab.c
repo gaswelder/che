@@ -13,7 +13,7 @@ typedef {
     io.buf_t *outbuf; // Request copy to send
     io.buf_t *inbuf; // Response to read
     int body_bytes_to_read; // How many bytes to read to get the full response.
-    data_t *stats; // Current request's stats
+    request_stats_t *stats; // Current request's stats
 } connection_t;
 
 typedef {
@@ -21,11 +21,9 @@ typedef {
     time.t time_begin_writing;
     time.t time_begin_reading;
     time.t time_finish_reading;
+} request_stats_t;
 
-    int ctime, time, waittime;
-} data_t;
-
-data_t *request_stats = NULL;
+request_stats_t *request_stats = NULL;
 
 #define MAX_CONCURRENCY 20000
 
@@ -73,7 +71,6 @@ table.t REPORT = {};
 
 // ----
 
-int verbosity = 0;      /* no verbosity by default */
 int heartbeatres = 100; /* How often do we say we're alive */
 
 /* Number of multiple requests to make */
@@ -82,7 +79,6 @@ size_t concurrency = 1;
 /* time limit in secs */
 size_t tlimit = 0;
 
-int confidence = 1;     /* Show confidence estimator and warnings */
 bool keepalive = false;      /* try and do keepalive connections */
 
 char *postdata = NULL;         /* *buffer containing data from postfile */
@@ -119,14 +115,11 @@ void usage(const char *progname) {
     fprintf(stderr, "    -p postfile     File containing data to POST. Remember also to set -T\n");
 
 //
-    fprintf(stderr, "    -v verbosity    How much troubleshooting info to print\n");
     fprintf(stderr, "    -H attribute    Add Arbitrary header line, eg. 'Accept-Encoding: gzip'\n");
     fprintf(stderr, "                    Inserted after all normal header lines. (repeatable)\n");
     fprintf(stderr, "    -A attribute    Add Basic WWW Authentication, the attributes\n");
     fprintf(stderr, "                    are a colon separated username and password.\n");
     fprintf(stderr, "    -V              Print version number and exit\n");
-
-    fprintf(stderr, "    -S              Do not show confidence estimators and warnings.\n");
     fprintf(stderr, "    -h              Display usage information (this message)\n");
     exit(1);
 }
@@ -148,19 +141,11 @@ int main(int argc, char *argv[]) {
     opt.opt_str("T", "POST body content type", &content_type);
 
     // Hmm
-    bool quiet = false;
-    opt.opt_bool("q", "quiet", &quiet);
-
-    opt.opt_int("v", "verbosity", &verbosity);
-
     bool hflag = false;
     opt.opt_bool("h", "print usage", &hflag);
 
     bool vflag = false;
     opt.opt_bool("V", "print version", &vflag);
-
-    bool sflag = false;
-    opt.opt_bool("S", "confidence = 0", &sflag);
 
     opt.opt_str("A", "basic auth string (base64)", &autharg);
 
@@ -197,12 +182,6 @@ int main(int argc, char *argv[]) {
     if (vflag) {
         printf("This is ex-ApacheBench, rewritten\n");
         return 0;
-    }
-    if (sflag) {
-        confidence = 0;
-    }
-    if (quiet) {
-        heartbeatres = 0;
     }
 
     if (concurrency > MAX_CONCURRENCY) {
@@ -320,7 +299,7 @@ void build_request(const char *url) {
 }
 
 void test() {
-    request_stats = calloc(requests_to_do, sizeof(data_t));
+    request_stats = calloc(requests_to_do, sizeof(request_stats_t));
     connection_t *connections = calloc(concurrency, sizeof(connection_t));
     if (!connections || !request_stats) {
         panic("failed to allocate memory");
@@ -566,7 +545,7 @@ void print_stats() {
     stats.series_t *sum_times = stats.newseries();
 
     for (size_t i = 0; i < requests_done; i++) {
-        data_t *s = &request_stats[i];
+        request_stats_t *s = &request_stats[i];
         stats.add(write_times, (double) (time.sub(s->time_begin_reading, s->time_begin_writing)) );
         stats.add(read_times, (double) (time.sub(s->time_finish_reading, s->time_begin_reading)) );
         stats.add(sum_times, (double) (time.sub(s->time_finish_reading, s->time_begin_writing)) );
