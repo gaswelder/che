@@ -88,7 +88,6 @@ size_t concurrency = 1;
 /* time limit in secs */
 size_t tlimit = 0;
 
-int percentile = 1;     /* Show percentile served */
 int confidence = 1;     /* Show confidence estimator and warnings */
 bool keepalive = false;      /* try and do keepalive connections */
 
@@ -112,9 +111,8 @@ int bad = 0;
 int err_length = 0;        /* requests failed due to response length */
 int err_except = 0;        /* requests failed due to exception */
 
-time.t start = {};
-time.t lasttime = {};
 
+time.t START_TIME = {};
 io.buf_t REQUEST = {};
 
 
@@ -142,7 +140,6 @@ void usage(const char *progname) {
     fprintf(stderr, "                    are a colon separated username and password.\n");
     fprintf(stderr, "    -V              Print version number and exit\n");
 
-    fprintf(stderr, "    -d              Do not show percentiles served table.\n");
     fprintf(stderr, "    -S              Do not show confidence estimators and warnings.\n");
     fprintf(stderr, "    -g filename     Output collected data to gnuplot format file.\n");
     fprintf(stderr, "    -e filename     Output CSV file with percentages served\n");
@@ -179,14 +176,12 @@ int main(int argc, char *argv[]) {
     bool vflag = false;
     opt.opt_bool("V", "print version", &vflag);
 
-    bool dflag = false;
-    opt.opt_bool("d", "percentile = 0", &dflag);
     bool sflag = false;
     opt.opt_bool("S", "confidence = 0", &sflag);
 
     opt.opt_str("e", "csvperc", &csvperc);
     opt.opt_str("A", "basic auth string (base64)", &autharg);
-    
+
 
     char **args = opt.opt_parse(argc, argv);
 
@@ -220,9 +215,6 @@ int main(int argc, char *argv[]) {
     if (vflag) {
         printf("This is ex-ApacheBench, rewritten\n");
         return 0;
-    }
-    if (dflag) {
-        percentile = 0;
     }
     if (sflag) {
         confidence = 0;
@@ -347,25 +339,26 @@ void build_request(const char *url) {
 
 void test() {
     request_stats = calloc(requests_to_do, sizeof(data_t));
+    connection_t *connections = calloc(concurrency, sizeof(connection_t));
+    if (!connections || !request_stats) {
+        panic("failed to allocate memory");
+    }
 
     ioroutine.init();
 
-
-    start = lasttime = time.now();
     if (!tlimit) {
         tlimit = INT_MAX;
     }
-    time.t stoptime = time.add(start, tlimit, time.SECONDS);
 
-    connection_t *connections = calloc(concurrency, sizeof(connection_t));
-    if (!connections) {
-        panic("failed to allocate memory");
-    }
+
     for (size_t i = 0; i < concurrency; i++) {
         connections[i].outbuf = io.newbuf();
         connections[i].inbuf = io.newbuf();
         ioroutine.spawn(routine, &connections[i]);
     }
+
+    START_TIME = time.now();
+    time.t stoptime = time.add(START_TIME, tlimit, time.SECONDS);
     while (ioroutine.step()) {
         if (time.sub(time.now(), stoptime) > 0) {
             break;
@@ -538,19 +531,15 @@ void fatal(char *s) {
 }
 
 void output_results(int sig) {
-    if (sig) {
-        lasttime = time.now();  /* record final time if interrupted */
-    }
-    int64_t timetaken = time.sub(lasttime, start) / time.SECONDS;
+    time.t now = time.now();
+    double timetaken = (double)time.sub(now, START_TIME) / time.SECONDS;
 
     printf("\n\n");
-    
     table.add(&REPORT, "Server Software", "%s", servername);
     table.add(&REPORT, "Response size", "%zu B", response_length);
     table.add(&REPORT, "HTTP version", "%s", response_version);
     table.split(&REPORT);
     table.add(&REPORT, "Concurrency Level", "%zu", concurrency);
-    table.add(&REPORT, "Time taken for tests", "%.3ld s", timetaken);
     table.add(&REPORT, "Complete requests", "%ld", requests_done);
     table.add(&REPORT, "Failed requests", "%d", bad);
     table.add(&REPORT, "Connect errors", "%d", failed_connects);
@@ -560,30 +549,27 @@ void output_results(int sig) {
     table.add(&REPORT, "Write errors", "%d", write_errors);
     table.add(&REPORT, "Non-2xx responses", "%d", error_responses);
     table.add(&REPORT, "Keep-Alive requests", "%d", doneka);
+
+    table.split(&REPORT);
     table.add(&REPORT, "Total read", "%ld B", totalread);
     if (method == POST) {
         table.add(&REPORT, "Total POSTed", "%ld", totalposted);
     }
     table.add(&REPORT, "HTML transferred", "%ld B", totalbread);
+
+    table.split(&REPORT);
+    table.add(&REPORT, "Time taken for tests", "%.2f s", timetaken);
+    table.add(&REPORT, "Requests per second", "%.2f", requests_done / timetaken);
+    table.add(&REPORT, "Time per request", "%.3f ms", (double) concurrency * timetaken * 1000 / requests_done);
+    table.add(&REPORT, "Time per request", "%.3f (across all concurrent requests)", (double) timetaken * 1000 / requests_done);
+    table.add(&REPORT, "Transfer rate", "%.2f [Kbytes/sec] received", (double) totalread / 1024 / timetaken);
+    if (method == POST) {
+        table.add(&REPORT, "sent", "%.2f kb/s", (double) totalposted / timetaken / 1024);
+        table.add(&REPORT, "total", "%.2f kb/s", (double) (totalread + totalposted) / timetaken / 1024);
+    }
+
     table.print(&REPORT);
 
-    /* avoid divide by zero */
-    if (timetaken && requests_done) {
-        printf("Requests per second:    %.2f [#/sec] (mean)\n",
-               (double) requests_done / timetaken);
-        printf("Time per request:       %.3f [ms] (mean)\n",
-               (double) concurrency * timetaken * 1000 / requests_done);
-        printf("Time per request:       %.3f [ms] (mean, across all concurrent requests)\n",
-               (double) timetaken * 1000 / requests_done);
-        printf("Transfer rate:          %.2f [Kbytes/sec] received\n",
-               (double) totalread / 1024 / timetaken);
-        if (method == POST) {
-            printf("                        %.2f kb/s sent\n",
-               (double) totalposted / timetaken / 1024);
-            printf("                        %.2f kb/s total\n",
-               (double) (totalread + totalposted) / timetaken / 1024);
-        }
-    }
     if (requests_done > 0) {
         print_stats();
     }
@@ -604,24 +590,23 @@ void print_stats() {
         stats.add(sum_times, (double) (time.sub(s->time_finish_reading, s->time_begin_writing)) );
     }
 
-    
     printf("\nConnection Times (ms)\n");
     printf("              min  mean[+/-sd] median   max\n");
-    printf("Writing: %f %f %f %f %f\n",
+    printf("Writing: %5.1f %5.1f %5.1f %5.1f %5.1f\n",
         stats.min(write_times),
         stats.mean(write_times),
         stats.sd(write_times),
         stats.median(write_times),
         stats.max(write_times)
     );
-    printf("Reading: %f %f %f %f %f\n",
+    printf("Reading: %5.1f %5.1f %5.1f %5.1f %5.1f\n",
         stats.min(read_times),
         stats.mean(read_times),
         stats.sd(read_times),
         stats.median(read_times),
         stats.max(read_times)
     );
-    printf("Sum: %f %f %f %f %f\n",
+    printf("Sum: %5.1f %5.1f %5.1f %5.1f %5.1f\n",
         stats.min(sum_times),
         stats.mean(sum_times),
         stats.sd(sum_times),
@@ -630,7 +615,7 @@ void print_stats() {
     );
 
     /* Sorted on total connect times */
-    if (percentile && (requests_done > 1)) {
+    if (requests_done > 1) {
         printf("\nPercentage of the requests served within a certain time (ms)\n");
         for (size_t i = 0; i < sizeof(percs) / sizeof(int); i++) {
             if (percs[i] <= 0) {
