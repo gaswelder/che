@@ -7,12 +7,8 @@
 #import time
 #import table.c
 
-enum {
-    STATE_UNCONNECTED = 0,
-};
-
 typedef {
-    io.handle_t *aprsock; // Connection with the server
+    io.handle_t *connection; // Connection with the server
     io.buf_t *outbuf; // Request copy to send
     io.buf_t *inbuf; // Response to read
 
@@ -24,20 +20,7 @@ typedef {
                endwrite,        /* Request written */
                beginread,       /* First byte of input */
                requests_done;            /* Connection closed */
-
-
-    int state;
-    size_t read;            /* amount of bytes read */
-    size_t bread;           /* amount of body read */
-    size_t rwrite, rwrote;  /* keep pointers in what we write - across
-                                 * EAGAINs */
-    size_t length;          /* Content-Length value used for keep-alive */
-    char cbuff[2048];      /* a buffer to store server response header */
-    int cbx;                    /* offset in cbuffer */
-    int keepalive;              /* non-zero if a keep-alive request */
-    int gotheader;              /* non-zero if we have the entire header in
-                                 * cbuff */
-    
+   
 } connection_t;
 
 typedef {
@@ -128,9 +111,7 @@ int64_t totalbread = 0;   /* totoal amount of entity body read */
 int64_t totalposted = 0;  /* total number of bytes posted, inc. headers */
 size_t started = 0;           /* number of requests started, so no excess */
 int doneka = 0;            /* number of keep alive connections requests_done */
-int good = 0;
-int bad = 0;     /* number of good and bad requests */
-
+int bad = 0;
 int err_length = 0;        /* requests failed due to response length */
 int err_except = 0;        /* requests failed due to exception */
 
@@ -418,8 +399,8 @@ int routine(void *ctx, int line) {
         case CONNECT: {
             // TODO: connect timeout
             dbg("Connecting to %s", colonhost);
-            c->aprsock = io.connect("tcp", colonhost);
-            if (!c->aprsock) {
+            c->connection = io.connect("tcp", colonhost);
+            if (!c->connection) {
                 fprintf(stderr, "failed to connect to %s: %s\n", colonhost, strerror(errno));
                 failed_connects++;
                 if (bad++ > 10) {
@@ -438,16 +419,10 @@ int routine(void *ctx, int line) {
         case INIT_REQUEST: {
             if (requests_done >= requests_to_do) {
                 printf("all done\n");
-                io.close(c->aprsock);
+                io.close(c->connection);
                 return -1;
             }
             requests_done++;
-            c->read = 0;
-            c->bread = 0;
-            c->keepalive = 0;
-            c->cbx = 0;
-            c->gotheader = 0;
-            c->rwrite = 0;
             c->start = time.now();
             io.resetbuf(c->inbuf);
             io.resetbuf(c->outbuf);
@@ -466,14 +441,14 @@ int routine(void *ctx, int line) {
                 c->beginread = time.now();
                 return READ_RESPONSE;
             }
-            if (!ioroutine.ioready(c->aprsock, io.WRITE)) {
+            if (!ioroutine.ioready(c->connection, io.WRITE)) {
                 return WRITE_REQUEST;
             }
             dbg("writing %zu bytes\n", n);
-            if (!io.write(c->aprsock, c->outbuf)) {
+            if (!io.write(c->connection, c->outbuf)) {
                 write_errors++;
                 printf("Send request failed!\n");
-                io.close(c->aprsock);
+                io.close(c->connection);
                 return CONNECT;
             }
             return WRITE_REQUEST;
@@ -482,21 +457,21 @@ int routine(void *ctx, int line) {
          * Read and parse a response
          */
         case READ_RESPONSE: {
-            if (!ioroutine.ioready(c->aprsock, io.READ)) {
+            if (!ioroutine.ioready(c->connection, io.READ)) {
                 return READ_RESPONSE;
             }
             dbg("reading response");
-            if (!io.read(c->aprsock, c->inbuf)) {
+            if (!io.read(c->connection, c->inbuf)) {
                 read_errors++;
                 bad++;
                 fprintf(stderr, "socket read failed: %s\n", strerror(errno));
-                io.close(c->aprsock);
+                io.close(c->connection);
                 return CONNECT;
             }
             size_t n = io.bufsize(c->inbuf);
             dbg("read %zu bytes", n);
             if (n == 0) {
-                io.close(c->aprsock);
+                io.close(c->connection);
                 return CONNECT;
             }
 
@@ -526,19 +501,16 @@ int routine(void *ctx, int line) {
                 error_responses++;
                 fprintf(stderr, "WARNING: Response code not 2xx (%d)\n", r.status);
             }
-            if (keepalive && method == POST) {
-                c->length = r.content_length;
-            }
             return READ_RESPONSE_BODY;
         }
         case READ_RESPONSE_BODY: {
             if (c->body_bytes_to_read == 0) {
                 return INIT_REQUEST;
             }
-            if (!ioroutine.ioready(c->aprsock, io.READ)) {
+            if (!ioroutine.ioready(c->connection, io.READ)) {
                 return READ_RESPONSE_BODY;
             }
-            if (!io.read(c->aprsock, c->inbuf)) {
+            if (!io.read(c->connection, c->inbuf)) {
                 panic("read failed");
             }
             size_t n = io.bufsize(c->inbuf);
@@ -552,93 +524,23 @@ int routine(void *ctx, int line) {
             panic("unexpected line: %d", line);
         }
     }
-    kek(c);
     close_connection(c);
     return -1;
 }
 
-
-void close_connection(connection_t * c)
-{
-    if (c->read == 0 && c->keepalive) {
-        /*
-         * server has legitimately shut down an idle keep alive request
-         */
-        if (good)
-            good--;     /* connection never happened */
+void close_connection(connection_t * c) {
+    data_t *s = &request_stats[requests_done++];
+    c->requests_done      = lasttime = time.now();
+    s->starttime = c->start;
+    s->ctime     = max(0, time.sub(c->time_connected, c->start));
+    s->time      = max(0, time.sub(c->requests_done, c->start));
+    s->waittime  = max(0, time.sub(c->beginread, c->endwrite));
+    if (heartbeatres && !(requests_done % heartbeatres)) {
+        fprintf(stderr, "Completed %ld requests\n", requests_done);
+        fflush(stderr);
     }
-    else {
-        if (good == 1) {
-            /* first time here */
-            response_length = c->bread;
-        }
-        else if (c->bread != response_length) {
-            bad++;
-            err_length++;
-        }
-        /* save out time */
-        if (requests_done < requests_to_do) {
-            data_t *s = &request_stats[requests_done++];
-            c->requests_done      = lasttime = time.now();
-            s->starttime = c->start;
-            s->ctime     = max(0, time.sub(c->time_connected, c->start));
-            s->time      = max(0, time.sub(c->requests_done, c->start));
-            s->waittime  = max(0, time.sub(c->beginread, c->endwrite));
-            if (heartbeatres && !(requests_done % heartbeatres)) {
-                fprintf(stderr, "Completed %ld requests\n", requests_done);
-                fflush(stderr);
-            }
-        }
-    }
-
-    c->state = STATE_UNCONNECTED;
-    io.close(c->aprsock);
-
-    return;
+    io.close(c->connection);
 }
-
-
-
-
-
-void kek(connection_t *c) {
-    if (c->keepalive && (c->bread >= c->length)) {
-        /* finished a keep-alive connection */
-        good++;
-        /* save out time */
-        if (good == 1) {
-            /* first time here */
-            response_length = c->bread;
-        }
-        else if (c->bread != response_length) {
-            bad++;
-            err_length++;
-        }
-        if (requests_done < requests_to_do) {
-            data_t *s = &request_stats[requests_done++];
-            doneka++;
-            c->requests_done      = time.now();
-            s->starttime = c->start;
-            s->ctime     = max(0, time.sub(c->time_connected, c->start));
-            s->time      = max(0, time.sub(c->requests_done, c->start));
-            s->waittime  = max(0, time.sub(c->beginread, c->endwrite));
-            if (heartbeatres && !(requests_done % heartbeatres)) {
-                fprintf(stderr, "Completed %ld requests\n", requests_done);
-                fflush(stderr);
-            }
-        }
-        c->keepalive = 0;
-        c->length = 0;
-        c->gotheader = 0;
-        c->cbx = 0;
-        c->read = c->bread = 0;
-        /* zero connect time with keep-alive */
-        c->start = c->time_connected = lasttime = time.now();
-    }
-}
-
-
-/* simple little function to write an APR error string and exit */
 
 void fatal(char *s) {
     fprintf(stderr, "%s: %s (%d)\n", s, strerror(errno), errno);
