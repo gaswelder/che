@@ -17,10 +17,9 @@ typedef {
 } connection_t;
 
 typedef {
-    time.t time_begin;
-    time.t time_begin_writing;
-    time.t time_begin_reading;
-    time.t time_finish_reading;
+    time.t time_started;
+    time.t time_finished_writing;
+    time.t time_finished_reading;
 } request_stats_t;
 
 request_stats_t *request_stats = NULL;
@@ -329,13 +328,12 @@ int routine(void *ctx, int line) {
                 io.close(c->connection);
                 return -1;
             }
-            c->stats = &request_stats[requests_done];
-            requests_done++;
+            c->stats = &request_stats[requests_done++];
             io.resetbuf(c->inbuf);
             io.resetbuf(c->outbuf);
             dbg("preparing the request (%zu, %zu)", io.bufsize(c->inbuf), io.bufsize(c->outbuf));
             io.push(c->outbuf, REQUEST.data, io.bufsize(&REQUEST));
-            c->stats->time_begin_writing = time.now();
+            c->stats->time_started = time.now();
             return WRITE_REQUEST;
         }
         /*
@@ -345,7 +343,7 @@ int routine(void *ctx, int line) {
             size_t n = io.bufsize(c->outbuf);
             if (n == 0) {
                 dbg("nothing more to write, proceeding to read");
-                c->stats->time_begin_reading = time.now();
+                c->stats->time_finished_writing = time.now();
                 return READ_RESPONSE;
             }
             if (!ioroutine.ioready(c->connection, io.WRITE)) {
@@ -354,8 +352,9 @@ int routine(void *ctx, int line) {
             dbg("writing %zu bytes\n", n);
             if (!io.write(c->connection, c->outbuf)) {
                 write_errors++;
-                printf("Send request failed!\n");
+                fprintf(stderr, "failed to write: %s\n", strerror(errno));
                 io.close(c->connection);
+                c->stats->time_finished_writing = time.now();
                 return CONNECT;
             }
             total_sent += n - io.bufsize(c->outbuf);
@@ -368,6 +367,7 @@ int routine(void *ctx, int line) {
             if (!ioroutine.ioready(c->connection, io.READ)) {
                 return READ_RESPONSE;
             }
+
             dbg("reading response");
             size_t n0 = io.bufsize(c->inbuf);
             if (!io.read(c->connection, c->inbuf)) {
@@ -375,6 +375,7 @@ int routine(void *ctx, int line) {
                 bad++;
                 fprintf(stderr, "socket read failed: %s\n", strerror(errno));
                 io.close(c->connection);
+                c->stats->time_finished_reading = time.now();
                 return CONNECT;
             }
             size_t n = io.bufsize(c->inbuf);
@@ -382,44 +383,39 @@ int routine(void *ctx, int line) {
             total_received += n - n0;
             if (n == 0) {
                 io.close(c->connection);
-                c->stats->time_finish_reading = time.now();
                 if (heartbeatres && !(requests_done % heartbeatres)) {
                     fprintf(stderr, "Completed %ld requests\n", requests_done);
                     fflush(stderr);
                 }
+                c->stats->time_finished_reading = time.now();
                 return CONNECT;
             }
 
             http.response_t r = {};
             if (!http.parse_response(c->inbuf->data, &r)) {
-                panic("failed to parse the response\n");
+                // Assume not enough data was received.
+                dbg("waiting for more headers");
                 return READ_RESPONSE;
             }
-
             strcpy(servername, r.servername);
             response_length = r.head_length + r.content_length;
             strcpy(response_version, r.version);
-
-            // printf("version = %s\n", r.version);
-            // printf("status = %d\n", r.status);
-            // printf("status_text = %s\n", r.status_text);
-            // printf("servername = %s\n", r.servername);
-            // printf("head_length = %d\n", r.head_length);
-            // printf("content_length = %d\n", r.content_length);
-
-            io.shift(c->inbuf, r.head_length);
-            c->body_bytes_to_read = r.content_length;
-            c->body_bytes_to_read -= io.bufsize(c->inbuf);
-            io.shift(c->inbuf, io.bufsize(c->inbuf));
-
             if (r.status < 200 || r.status >= 300) {
                 error_responses++;
                 fprintf(stderr, "WARNING: Response code not 2xx (%d)\n", r.status);
             }
+            io.shift(c->inbuf, r.head_length);
+            c->body_bytes_to_read = r.content_length;
+            c->body_bytes_to_read -= io.bufsize(c->inbuf);
+            io.shift(c->inbuf, io.bufsize(c->inbuf));
             return READ_RESPONSE_BODY;
         }
+        /*
+         * Read the rest of the body.
+         */
         case READ_RESPONSE_BODY: {
             if (c->body_bytes_to_read == 0) {
+                c->stats->time_finished_reading = time.now();
                 return INIT_REQUEST;
             }
             if (!ioroutine.ioready(c->connection, io.READ)) {
@@ -497,28 +493,34 @@ void print_stats() {
 
     for (size_t i = 0; i < requests_done; i++) {
         request_stats_t *s = &request_stats[i];
-        stats.add(write_times, (double) (time.sub(s->time_begin_reading, s->time_begin_writing)) );
-        stats.add(read_times, (double) (time.sub(s->time_finish_reading, s->time_begin_reading)) );
-        stats.add(sum_times, (double) (time.sub(s->time_finish_reading, s->time_begin_writing)) );
+        int64_t write = time.sub(s->time_finished_writing, s->time_started);
+        int64_t read = time.sub(s->time_finished_reading, s->time_finished_writing);
+        int64_t total = time.sub(s->time_finished_reading, s->time_started);
+        stats.add(write_times, (double) write / time.MS);
+        stats.add(read_times, (double) read / time.MS);
+        stats.add(sum_times, (double) total / time.MS);
     }
 
     printf("\nConnection Times (ms)\n");
     printf("              min  mean[+/-sd] median   max\n");
-    printf("Writing: %5.1f %5.1f %5.1f %5.1f %5.1f\n",
+    printf("%-10s %5.1f %5.1f %5.1f %5.1f %5.1f\n",
+        "Writing",
         stats.min(write_times),
         stats.mean(write_times),
         stats.sd(write_times),
         stats.median(write_times),
         stats.max(write_times)
     );
-    printf("Reading: %5.1f %5.1f %5.1f %5.1f %5.1f\n",
+    printf("%-10s %5.1f %5.1f %5.1f %5.1f %5.1f\n",
+        "Reading",
         stats.min(read_times),
         stats.mean(read_times),
         stats.sd(read_times),
         stats.median(read_times),
         stats.max(read_times)
     );
-    printf("Sum: %5.1f %5.1f %5.1f %5.1f %5.1f\n",
+    printf("%-10s %5.1f %5.1f %5.1f %5.1f %5.1f\n",
+        "Sum",
         stats.min(sum_times),
         stats.mean(sum_times),
         stats.sd(sum_times),

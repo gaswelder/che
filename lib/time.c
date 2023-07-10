@@ -7,7 +7,7 @@ pub typedef {
 } t;
 
 pub enum {
-    USEC = 1, // base unit
+    US = 1, // base unit
     MS = 1000,
     SECONDS = 1000000,
 };
@@ -24,7 +24,18 @@ pub t now() {
 
 pub int64_t sub(t a, b) {
     return SECONDS * (a.timeval.tv_sec - b.timeval.tv_sec)
-        + USEC * (a.timeval.tv_usec - b.timeval.tv_usec);
+        + US * (a.timeval.tv_usec - b.timeval.tv_usec);
+}
+
+pub enum {
+    FMT_FOO
+};
+
+pub const char *knownformat(int fmtid) {
+    switch (fmtid) {
+        case FMT_FOO: { return "%Y-%m-%d-%H-%M-%S"; }
+        default: { return "(unknown time format)"; }
+    }
 }
 
 pub bool format(t val, const char *fmt, char *buf, size_t n) {
