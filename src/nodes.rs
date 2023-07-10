@@ -53,6 +53,7 @@ pub struct FunctionDeclaration {
     pub form: Form,
     pub parameters: FunctionParameters,
     pub body: Body,
+    pub pos: String,
 }
 
 #[derive(Debug, Clone)]

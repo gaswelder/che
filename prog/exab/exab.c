@@ -540,22 +540,6 @@ void print_stats() {
     }
 }
 
-void err(char *s) {
-    fprintf(stderr, "%s\n", s);
-    if (requests_done) {
-        printf("Total of %ld requests completed\n" , requests_done);
-    }
-    exit(1);
-}
-
-size_t apr_base64_encode_len() {
-    panic("todo");
-}
-
-int apr_base64_encode() {
-    panic("todo");
-}
-
 void dbg(const char *format, ...) {
     (void) format;
     // printf("[dbg] ");

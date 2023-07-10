@@ -204,6 +204,7 @@ fn translate_module_object(element: &ModuleObject, ctx: &Ctx) -> Vec<CModuleObje
             form,
             parameters,
             body,
+            pos: _,
         }) => translate_function_declaration(*is_pub, type_name, form, parameters, body, ctx),
         ModuleObject::Enum {
             is_pub,

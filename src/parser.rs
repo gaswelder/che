@@ -69,7 +69,7 @@ fn parse_module_object(l: &mut Lexer, ctx: &Ctx) -> Result<ModuleObject, Error> 
     let type_name = parse_typename(l, ctx)?;
     let form = parse_form(l, ctx)?;
     if l.peek().unwrap().kind == "(" {
-        return parse_function_declaration(l, is_pub, type_name, form, ctx);
+        return parse_function_declaration(l, is_pub, type_name, form, ctx, pos);
     }
 
     expect(l, "=", Some("module variable"))?;
@@ -813,6 +813,7 @@ fn parse_function_declaration(
     type_name: Typename,
     form: Form,
     ctx: &Ctx,
+    pos: String,
 ) -> Result<ModuleObject, Error> {
     // void cuespl {WE ARE HERE} (cue_t *c, mp3file *m) {...}
 
@@ -843,6 +844,7 @@ fn parse_function_declaration(
             variadic,
         },
         body,
+        pos,
     }));
 }
 

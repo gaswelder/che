@@ -86,6 +86,14 @@ pub fn run(m: &Module, imports: &HashMap<String, &Exports>) -> Vec<Error> {
             });
         }
     }
+    for (k, v) in s.funcs {
+        if !v.val.is_pub && !v.read && k != "main" {
+            state.errors.push(Error {
+                message: format!("unused function: {}", k),
+                pos: format!("{}", v.val.pos),
+            });
+        }
+    }
 
     return state.errors;
 }
@@ -605,8 +613,9 @@ fn check_expr(
             arguments,
         } => {
             match function.as_ref() {
-                Expression::Identifier(x) => match scopes[0].funcs.get(&x.name) {
+                Expression::Identifier(x) => match scopes[0].funcs.get_mut(&x.name) {
                     Some(e) => {
+                        e.read = true;
                         let f = &e.val;
                         let mut n = 0;
                         for p in &f.parameters.list {
@@ -770,8 +779,12 @@ fn check_id(x: &Identifier, state: &mut State, scopes: &mut Vec<Scope>) {
             }
             None => {}
         }
-        if scope.funcs.contains_key(k) {
-            return;
+        match scope.funcs.get_mut(k) {
+            Some(x) => {
+                x.read = true;
+                return;
+            }
+            None => {}
         }
     }
     state.errors.push(Error {

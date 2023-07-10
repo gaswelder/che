@@ -49,6 +49,7 @@ fn prefix_mod_obj(obj: &mut ModuleObject, prefix: &String, names: &Vec<String>) 
             form,
             parameters,
             body,
+            pos: _,
         }) => {
             prefix_typename(type_name, prefix, names);
             for p in &mut parameters.list {
