@@ -241,20 +241,10 @@ void build_request(const char *url) {
         http.set_header(&req, "Cookie", cookie);
     }
     if (autharg) {
-        int l;
-        char tmp[1024];
         // assume username passwd already to be in colon separated form.
         // Ready to be uu-encoded.
-        char *optarg = autharg;
-        while (isspace(*optarg)) {
-            optarg++;
-        }
-        if (apr_base64_encode_len(strlen(optarg)) > sizeof(tmp)) {
-            err("Authentication credentials too long\n");
-        }
-        l = apr_base64_encode(tmp, optarg, strlen(optarg));
-        tmp[l] = '\0';
-        http.set_header(&req, "Authorization", strings.newstr("Basic %s", tmp));
+        panic("base64 encoding not implemented");
+        // http.set_header(&req, "Authorization", strings.newstr("Basic %s", tmp));
     }
     char buf[1000] = {0};
     if (!http.write_request(&req, buf, sizeof(buf))) {

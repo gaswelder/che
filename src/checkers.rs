@@ -19,12 +19,18 @@ struct ScopeItem {
 }
 
 #[derive(Clone, Debug)]
+struct ScopeItem1<T> {
+    // read: bool,
+    val: T,
+}
+
+#[derive(Clone, Debug)]
 struct Scope {
     pre: Vec<String>,
     types: HashMap<String, ScopeItem>,
     consts: HashMap<String, ScopeItem>,
     vars: HashMap<String, ScopeItem>,
-    funcs: HashMap<String, ScopeItem>,
+    funcs: HashMap<String, ScopeItem1<FunctionDeclaration>>,
 }
 
 fn newscope() -> Scope {
@@ -307,10 +313,9 @@ fn get_module_scope(m: &Module) -> Scope {
             ModuleObject::FunctionDeclaration(f) => {
                 s.funcs.insert(
                     f.form.name.clone(),
-                    ScopeItem {
-                        read: false,
-                        pos: String::from("?"),
-                        ispub: f.is_pub,
+                    ScopeItem1 {
+                        // read: false,
+                        val: f.clone(),
                     },
                 );
             }
@@ -587,6 +592,41 @@ fn check_expr(
             function,
             arguments,
         } => {
+            match function.as_ref() {
+                Expression::Identifier(x) => match scopes[0].funcs.get(&x.name) {
+                    Some(e) => {
+                        let f = &e.val;
+                        let mut n = 0;
+                        for p in &f.parameters.list {
+                            n += p.forms.len();
+                        }
+                        let nactual = arguments.len();
+                        if f.parameters.variadic {
+                            if nactual < n {
+                                state.errors.push(Error {
+                                    message: format!(
+                                        "{} expects at least {} arguments, got {}",
+                                        f.form.name, n, nactual
+                                    ),
+                                    pos: x.pos.clone(),
+                                })
+                            }
+                        } else {
+                            if nactual != n {
+                                state.errors.push(Error {
+                                    message: format!(
+                                        "{} expects {} arguments, got {}",
+                                        f.form.name, n, nactual
+                                    ),
+                                    pos: x.pos.clone(),
+                                })
+                            }
+                        }
+                    }
+                    None => {}
+                },
+                _ => {}
+            }
             check_expr(function, state, scopes, imports);
             for x in arguments {
                 check_expr(x, state, scopes, imports);
