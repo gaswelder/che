@@ -57,111 +57,15 @@ pub fn run(m: &Module, imports: &HashMap<String, &Exports>) -> Vec<Error> {
     let mut scopestack = vec![get_module_scope(m)];
 
     for e in &m.elements {
-        match e {
-            ModuleObject::Import(x) => import_nodes.push(x),
-            ModuleObject::Typedef(x) => {
-                if !x.is_pub {
-                    declared_local_types.push(StrPos {
-                        str: x.alias.name.clone(),
-                        pos: x.pos.clone(),
-                    });
-                }
-                state
-                    .used_namespaces
-                    .insert(x.type_name.name.namespace.clone());
-                check_ns_id(&x.type_name.name, &mut state, &mut scopestack, imports);
-            }
-            ModuleObject::Enum {
-                is_pub: _,
-                members,
-                pos: _,
-            } => {
-                for m in members {
-                    match &m.value {
-                        Some(v) => check_expr(v, &mut state, &mut scopestack, imports),
-                        None => {}
-                    }
-                }
-            }
-            ModuleObject::FunctionDeclaration(f) => {
-                check_function_declaration(
-                    f,
-                    &mut state,
-                    &mut scopestack,
-                    imports,
-                    &mut used_local_types,
-                );
-            }
-            ModuleObject::Macro {
-                name,
-                value,
-                pos: _,
-            } => {
-                if name == "known" {
-                    let n = scopestack.len();
-                    scopestack[n - 1].pre.push(String::from(value.trim()))
-                }
-            }
-            ModuleObject::ModuleVariable {
-                type_name,
-                form: _,
-                value,
-                pos,
-            } => {
-                let n = &type_name.name;
-                if n.namespace == "" {
-                    used_local_types.insert(n.name.clone());
-                }
-                if has_function_call(value) {
-                    state.errors.push(Error {
-                        message: format!("function call in module variable initialization"),
-                        pos: format!("{}", pos),
-                    })
-                }
-                check_ns_id(&type_name.name, &mut state, &mut scopestack, imports);
-                check_expr(value, &mut state, &mut scopestack, imports);
-            }
-            ModuleObject::StructAliasTypedef {
-                pos,
-                is_pub,
-                type_alias,
-                struct_name: _,
-            } => {
-                if !is_pub {
-                    declared_local_types.push(StrPos {
-                        str: type_alias.clone(),
-                        pos: pos.clone(),
-                    });
-                }
-            }
-            ModuleObject::StructTypedef(x) => {
-                if !x.is_pub {
-                    declared_local_types.push(StrPos {
-                        str: x.name.name.clone(),
-                        pos: x.pos.clone(),
-                    });
-                }
-                for f in &x.fields {
-                    match f {
-                        StructEntry::Plain(x) => {
-                            let n = &x.type_name.name;
-                            if n.namespace == "" {
-                                used_local_types.insert(n.name.clone());
-                            }
-                            check_ns_id(&x.type_name.name, &mut state, &mut scopestack, imports);
-                        }
-                        StructEntry::Union(x) => {
-                            for f in &x.fields {
-                                let n = &f.type_name.name;
-                                if n.namespace == "" {
-                                    used_local_types.insert(n.name.clone());
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
+        check_module_object(
+            e,
+            &mut state,
+            &mut scopestack,
+            &mut import_nodes,
+            &mut declared_local_types,
+            &mut used_local_types,
+            imports,
+        );
     }
     for t in declared_local_types {
         if !used_local_types.contains(&t.str) {
@@ -192,6 +96,116 @@ pub fn run(m: &Module, imports: &HashMap<String, &Exports>) -> Vec<Error> {
     }
 
     return state.errors;
+}
+
+fn check_module_object(
+    e: &ModuleObject,
+    state: &mut State,
+    scopestack: &mut Vec<Scope>,
+    import_nodes: &mut Vec<ImportNode>,
+    declared_local_types: &mut Vec<StrPos>,
+    used_local_types: &mut HashSet<String>,
+    imports: &HashMap<String, &Exports>,
+) {
+    match e {
+        ModuleObject::Import(x) => import_nodes.push(x.clone()),
+        ModuleObject::Typedef(x) => {
+            if !x.is_pub {
+                declared_local_types.push(StrPos {
+                    str: x.alias.name.clone(),
+                    pos: x.pos.clone(),
+                });
+            }
+            state
+                .used_namespaces
+                .insert(x.type_name.name.namespace.clone());
+            check_ns_id(&x.type_name.name, state, scopestack, imports);
+        }
+        ModuleObject::Enum {
+            is_pub: _,
+            members,
+            pos: _,
+        } => {
+            for m in members {
+                match &m.value {
+                    Some(v) => check_expr(v, state, scopestack, imports),
+                    None => {}
+                }
+            }
+        }
+        ModuleObject::FunctionDeclaration(f) => {
+            check_function_declaration(f, state, scopestack, imports, used_local_types);
+        }
+        ModuleObject::Macro {
+            name,
+            value,
+            pos: _,
+        } => {
+            if name == "known" {
+                let n = scopestack.len();
+                scopestack[n - 1].pre.push(String::from(value.trim()))
+            }
+        }
+        ModuleObject::ModuleVariable {
+            type_name,
+            form: _,
+            value,
+            pos,
+        } => {
+            let n = &type_name.name;
+            if n.namespace == "" {
+                used_local_types.insert(n.name.clone());
+            }
+            if has_function_call(value) {
+                state.errors.push(Error {
+                    message: format!("function call in module variable initialization"),
+                    pos: format!("{}", pos),
+                })
+            }
+            check_ns_id(&type_name.name, state, scopestack, imports);
+            check_expr(value, state, scopestack, imports);
+        }
+        ModuleObject::StructAliasTypedef {
+            pos,
+            is_pub,
+            type_alias,
+            struct_name: _,
+        } => {
+            if !is_pub {
+                declared_local_types.push(StrPos {
+                    str: type_alias.clone(),
+                    pos: pos.clone(),
+                });
+            }
+        }
+        ModuleObject::StructTypedef(x) => {
+            if !x.is_pub {
+                declared_local_types.push(StrPos {
+                    str: x.name.name.clone(),
+                    pos: x.pos.clone(),
+                });
+            }
+            for f in &x.fields {
+                match f {
+                    StructEntry::Plain(x) => {
+                        let n = &x.type_name.name;
+                        if n.namespace == "" {
+                            used_local_types.insert(n.name.clone());
+                        }
+                        check_ns_id(&x.type_name.name, state, scopestack, imports);
+                    }
+                    StructEntry::Union(x) => {
+                        for f in &x.fields {
+                            let n = &f.type_name.name;
+                            if n.namespace == "" {
+                                used_local_types.insert(n.name.clone());
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
 }
 
 fn check_function_declaration(
