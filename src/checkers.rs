@@ -8,7 +8,6 @@ struct StrPos {
 
 struct State {
     errors: Vec<Error>,
-    used_namespaces: HashSet<String>,
 }
 
 #[derive(Clone, Debug)]
@@ -20,13 +19,14 @@ struct ScopeItem {
 
 #[derive(Clone, Debug)]
 struct ScopeItem1<T> {
-    // read: bool,
+    read: bool,
     val: T,
 }
 
 #[derive(Clone, Debug)]
 struct Scope {
     pre: Vec<String>,
+    imports: HashMap<String, ScopeItem1<ImportNode>>,
     types: HashMap<String, ScopeItem>,
     consts: HashMap<String, ScopeItem>,
     vars: HashMap<String, ScopeItem>,
@@ -36,6 +36,7 @@ struct Scope {
 fn newscope() -> Scope {
     return Scope {
         pre: vec![],
+        imports: HashMap::new(),
         consts: HashMap::new(),
         vars: HashMap::new(),
         funcs: HashMap::new(),
@@ -46,14 +47,7 @@ fn newscope() -> Scope {
 pub fn run(m: &Module, imports: &HashMap<String, &Exports>) -> Vec<Error> {
     let mut declared_local_types = Vec::new();
     let mut used_local_types = HashSet::new();
-
-    let mut import_nodes = Vec::new();
-
-    let mut state = State {
-        errors: Vec::new(),
-        used_namespaces: HashSet::new(),
-    };
-
+    let mut state = State { errors: Vec::new() };
     let mut scopestack = vec![get_module_scope(m)];
 
     for e in &m.elements {
@@ -61,7 +55,6 @@ pub fn run(m: &Module, imports: &HashMap<String, &Exports>) -> Vec<Error> {
             e,
             &mut state,
             &mut scopestack,
-            &mut import_nodes,
             &mut declared_local_types,
             &mut used_local_types,
             imports,
@@ -75,17 +68,16 @@ pub fn run(m: &Module, imports: &HashMap<String, &Exports>) -> Vec<Error> {
             })
         }
     }
-    for node in import_nodes {
-        let ns = getns(&node.specified_path);
-        if !state.used_namespaces.contains(&ns) {
+
+    let s = scopestack.pop().unwrap();
+    for (k, v) in s.imports {
+        if !v.read {
             state.errors.push(Error {
-                message: format!("unused import: {}", node.specified_path),
-                pos: node.pos.clone(),
+                message: format!("unused import: {}", k),
+                pos: v.val.pos.clone(),
             })
         }
     }
-
-    let s = scopestack.pop().unwrap();
     for (k, v) in s.consts {
         if !v.ispub && !v.read {
             state.errors.push(Error {
@@ -102,13 +94,12 @@ fn check_module_object(
     e: &ModuleObject,
     state: &mut State,
     scopestack: &mut Vec<Scope>,
-    import_nodes: &mut Vec<ImportNode>,
     declared_local_types: &mut Vec<StrPos>,
     used_local_types: &mut HashSet<String>,
     imports: &HashMap<String, &Exports>,
 ) {
     match e {
-        ModuleObject::Import(x) => import_nodes.push(x.clone()),
+        ModuleObject::Import(_) => {}
         ModuleObject::Typedef(x) => {
             if !x.is_pub {
                 declared_local_types.push(StrPos {
@@ -116,9 +107,6 @@ fn check_module_object(
                     pos: x.pos.clone(),
                 });
             }
-            state
-                .used_namespaces
-                .insert(x.type_name.name.namespace.clone());
             check_ns_id(&x.type_name.name, state, scopestack, imports);
         }
         ModuleObject::Enum {
@@ -300,6 +288,7 @@ fn get_module_scope(m: &Module) -> Scope {
             String::from("min"),
             String::from("max"),
         ],
+        imports: HashMap::new(),
         consts: HashMap::new(),
         vars: HashMap::new(),
         funcs: HashMap::new(),
@@ -323,12 +312,21 @@ fn get_module_scope(m: &Module) -> Scope {
 
     for e in &m.elements {
         match e {
-            ModuleObject::Import(_) => {}
+            ModuleObject::Import(x) => {
+                let ns = getns(&x.specified_path);
+                s.imports.insert(
+                    ns,
+                    ScopeItem1 {
+                        read: false,
+                        val: x.clone(),
+                    },
+                );
+            }
             ModuleObject::FunctionDeclaration(f) => {
                 s.funcs.insert(
                     f.form.name.clone(),
                     ScopeItem1 {
-                        // read: false,
+                        read: false,
                         val: f.clone(),
                     },
                 );
@@ -721,7 +719,13 @@ fn check_ns_id(
             });
         }
         _ => {
-            state.used_namespaces.insert(x.namespace.clone());
+            let s = &mut scopes[0];
+            match s.imports.get_mut(&x.namespace) {
+                Some(imp) => {
+                    imp.read = true;
+                }
+                None => {}
+            }
             let e = imports.get(&x.namespace).unwrap();
             for f in &e.fns {
                 if f.form.name == x.name {
