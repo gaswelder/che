@@ -206,10 +206,6 @@ void build_request(const char *url) {
     }
     colonhost = strings.newstr("%s:%s", u.hostname, u.port);
 
-    table.add(&REPORT, "Server Hostname", "%s", u.hostname);
-    table.add(&REPORT, "Server Port", "%s", u.port);
-    table.add(&REPORT, "Document Path", "%s", u.path);
-
     // Create a request.
     http.request_t req = {};
     const char *methodstring = NULL;
@@ -221,6 +217,9 @@ void build_request(const char *url) {
     }
     http.init_request(&req, methodstring, u.path);
     http.set_header(&req, "Host", u.hostname);
+
+    table.add(&REPORT, "Request", "%s %s", methodstring, url);
+    table.add(&REPORT, "Server Port", "%s", u.port);
 
     // Set various headers.
     if (keepalive) {
@@ -502,29 +501,24 @@ void print_stats() {
     }
 
     printf("\nConnection Times (ms)\n");
-    printf("              min  mean[+/-sd] median   max\n");
-    printf("%-10s %5.1f %5.1f %5.1f %5.1f %5.1f\n",
+    printf("%-10s %7.2f ± %.2f [%.2f..%.2f]\n",
         "Writing",
-        stats.min(write_times),
         stats.mean(write_times),
         stats.sd(write_times),
-        stats.median(write_times),
-        stats.max(write_times)
-    );
-    printf("%-10s %5.1f %5.1f %5.1f %5.1f %5.1f\n",
+        stats.min(write_times),
+        stats.max(write_times));
+    printf("%-10s %7.2f ± %.2f [%.2f..%.2f]\n",
         "Reading",
-        stats.min(read_times),
         stats.mean(read_times),
         stats.sd(read_times),
-        stats.median(read_times),
+        stats.min(read_times),
         stats.max(read_times)
     );
-    printf("%-10s %5.1f %5.1f %5.1f %5.1f %5.1f\n",
+    printf("%-10s %7.2f ± %.2f [%.2f..%.2f]\n",
         "Sum",
-        stats.min(sum_times),
         stats.mean(sum_times),
         stats.sd(sum_times),
-        stats.median(sum_times),
+        stats.min(sum_times),
         stats.max(sum_times)
     );
 
