@@ -228,7 +228,7 @@ fn translate_module_object(element: &ModuleObject, ctx: &Ctx) -> Vec<CModuleObje
             value,
             pos: _,
         } => {
-            if name == "type" || name == "link" || name == "known" {
+            if name == "type" || name == "link" {
                 return vec![];
             } else {
                 return vec![CModuleObject::Macro {

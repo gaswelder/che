@@ -6,13 +6,6 @@
 #include <sys/termios.h>
 #include <sys/mman.h>
 
-#known STDIN_FILENO
-#known ICANON
-#known ECHO
-#known TCSANOW
-#known tcgetattr
-#known tcsetattr
-
 pub typedef struct termios _termios_t;
 
 pub typedef {
@@ -23,18 +16,18 @@ pub typedef {
 
 pub term_t *term_get_stdin() {
     term_t *t = calloc(1, sizeof(term_t));
-    t->fileno = STDIN_FILENO;
-    tcgetattr(STDIN_FILENO, &t->original_state);
+    t->fileno = OS.STDIN_FILENO;
+    OS.tcgetattr(OS.STDIN_FILENO, &t->original_state);
     t->current_state = t->original_state;
     return t;
 }
 
 pub void term_disable_input_buffering(term_t *t) {
-    t->current_state.c_lflag &= ~ICANON & ~ECHO;
-    tcsetattr(t->fileno, TCSANOW, &t->current_state);
+    t->current_state.c_lflag &= ~OS.ICANON & ~OS.ECHO;
+    OS.tcsetattr(t->fileno, OS.TCSANOW, &t->current_state);
 }
 
 pub void term_restore(term_t *t) {
-    tcsetattr(t->fileno, TCSANOW, &t->original_state);
+    OS.tcsetattr(t->fileno, OS.TCSANOW, &t->original_state);
     free(t);
 }

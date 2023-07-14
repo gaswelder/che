@@ -132,16 +132,7 @@ fn check_module_object(
         ModuleObject::FunctionDeclaration(f) => {
             check_function_declaration(f, state, scopestack, imports, used_local_types);
         }
-        ModuleObject::Macro {
-            name,
-            value,
-            pos: _,
-        } => {
-            if name == "known" {
-                let n = scopestack.len();
-                scopestack[n - 1].pre.push(String::from(value.trim()))
-            }
-        }
+        ModuleObject::Macro { .. } => {}
         ModuleObject::ModuleVariable {
             type_name,
             form: _,
