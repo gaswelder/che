@@ -36,6 +36,13 @@ done
 #
 che test lib || exit 1
 
+fail () {
+	echo FAIL $1
+	if [ $BAIL != "" ]; then
+		exit 1
+	fi
+}
+
 #
 # Build and test the world.
 #
@@ -48,7 +55,7 @@ cd prog
 		if [ $? = 0 ]; then
 			echo OK build $name
 		else
-			echo FAIL build $name
+			fail "build $name"
 			errors=`expr $errors + 1`
 			cd ..
 			continue
