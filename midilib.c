@@ -1,3 +1,5 @@
+#import bytereader
+
 // https://www.recordingblogs.com/wiki/midi-controller-message
 // https://www.recordingblogs.com/wiki/midi-registered-parameter-number-rpn
 // https://www.recordingblogs.com/wiki/midi-meta-messages
@@ -32,38 +34,43 @@ typedef {
     uint32_t length; // chunk's length in bytes
 } chunk_head_t;
 
-chunk_head_t read_chunk_head(FILE *f) {
-    chunk_head_t h = {};
+bool read_chunk_head(midi_t *m, chunk_head_t *h) {
     for (int i = 0; i < 4; i++) {
-        h.name[i] = fgetc(f);
+        int c = bytereader.readc(m->r);
+        if (c == EOF) {
+            return false;
+        }
+        h->name[i] = c;
     }
-    h.length = read32(f);
+    h->length = bytereader.read32(m->r);
     return h;
 }
 
 pub typedef {
-    FILE *f;
+    bytereader.reader_t *r;
 } midi_t;
 
 pub midi_t *open(const char *path) {
-    FILE *f = fopen(path, "rb");
-    if (!f) {
+    bytereader.reader_t *r = bytereader.newreader(path);
+    if (!r) {
         return NULL;
     }
     midi_t *m = calloc(1, sizeof(midi_t));
     if (!m) {
-        fclose(f);
+        bytereader.freereader(r);
         return NULL;
     }
-    m->f = f;
+    m->r = r;
     load_head_chunk(m);
     return m;
 }
 
 void load_head_chunk(midi_t *m) {
-    FILE *f = m->f;
-
-    chunk_head_t h = read_chunk_head(f);
+    chunk_head_t h = {};
+    if (!read_chunk_head(m, &h)) {
+        printf("failed to read head: %s\n", strerror(errno));
+        return;
+    }
     if (strcmp("MThd", h.name)) {
         panic("expected MThd, got %s", h.name);
     }
@@ -75,16 +82,16 @@ void load_head_chunk(midi_t *m) {
     // 0 = single track file format
     // 1 = multiple track file format
     // 2 = multiple song file format 
-    uint16_t format = read16(f);
+    uint16_t format = bytereader.read16(m->r);
 
     // the number of tracks that follow, 2 bytes.
-    uint16_t n = read16(f);
-    
+    uint16_t n = bytereader.read16(m->r);
+
 
     // a timing value specifying delta time units.
     // <division> 2 bytes
     // unit of time for delta timing.
-    uint16_t division = (int) read16(f);
+    uint16_t division = (int) bytereader.read16(m->r);
 
     printf("header chunk: len=%u, format=%s, ntracks=%u, %d ticks per beat\n",
         h.length,
@@ -103,23 +110,23 @@ void load_head_chunk(midi_t *m) {
 }
 
 pub bool track_chunk(midi_t *m) {
-    FILE *f = m->f;
-    if (feof(f)) {
-        return false;
-    }
     // Each track chunk defines a logical track.
     // track_chunk = "MTrk" + <length> + <track_event> [+ <track_event> ...]
 
-    chunk_head_t h = read_chunk_head(f);
+    chunk_head_t h = {};
+    if (!read_chunk_head(m, &h)) {
+        printf("failed to read head: %s\n", strerror(errno));
+        return false;
+    }
     if (strcmp("MTrk", h.name)) {
         panic("expected MTrk, got %s", h.name);
     }
 
     // and actual event data making up the track.
-    while (!feof(f)) {
+    while (!bytereader.ended(m->r)) {
         // Elapsed time (delta time) from the previous event to this event.
-        int v_time = variable_length_value(f);
-        int event_type = fgetc(f);
+        int v_time = variable_length_value(m->r);
+        int event_type = bytereader.readc(m->r);
 
         printf("event 0x%X (+%d) ", event_type, v_time);
 
@@ -132,42 +139,42 @@ pub bool track_chunk(midi_t *m) {
             switch (type) {
                 case 0x8: {
                     // 0x80-0x8F 	Note off 	2 (note, velocity)
-                    int arg1 = fgetc(f);
-                    int arg2 = fgetc(f);
+                    int arg1 = bytereader.readc(m->r);
+                    int arg2 = bytereader.readc(m->r);
                     printf("\tnote off, channel=%d note,velocity=%d,%d\n", channel, arg1, arg2);
                 }
                 case 0x9: {
                     // 0x90-0x9F 	Note on 	2 (note, velocity)
-                    int arg1 = fgetc(f);
-                    int arg2 = fgetc(f);
+                    int arg1 = bytereader.readc(m->r);
+                    int arg2 = bytereader.readc(m->r);
                     printf("\tnote on, channel=%d note,velocity=%d,%d\n", channel, arg1, arg2);
                 }
                 case 0xA: {
                     // 0xA0-0xAF 	Key Pressure 	2 (note, key pressure)
-                    int arg1 = fgetc(f);
-                    int arg2 = fgetc(f);
+                    int arg1 = bytereader.readc(m->r);
+                    int arg2 = bytereader.readc(m->r);
                     printf("\tkey pressure, channel=%d note,pressure=%d,%d\n", channel, arg1, arg2);
                 }
                 case 0xB: {
                     // 0xB0-0xBF 	Control Change 	2 (controller no., value)
-                    int controller = fgetc(f);
-                    int value = fgetc(f);
+                    int controller = bytereader.readc(m->r);
+                    int value = bytereader.readc(m->r);
                     printf("\tcontrol change, channel=%d controller=%d value=%d\n", channel, controller, value);
                 }
                 case 0xC: {
                     // 0xC0-0xCF 	Program Change 	1 (program no.)
-                    int arg1 = fgetc(f);
+                    int arg1 = bytereader.readc(m->r);
                     printf("\tprogram change, channel=%d arg=%d\n", channel, arg1);
                 }
                 case 0xD: {
                     // 0xD0-0xDF 	Channel Pressure 	1 (pressure)
-                    int arg1 = fgetc(f);
+                    int arg1 = bytereader.readc(m->r);
                     printf("\tchannel pressure, channel=%d pressure=%d\n", channel, arg1);
                 }
                 case 0xE: {
                     // 0xE0-0xEF 	Pitch Bend 	2 (least significant byte, most significant byte)
-                    int arg1 = fgetc(f);
-                    int arg2 = fgetc(f);
+                    int arg1 = bytereader.readc(m->r);
+                    int arg2 = bytereader.readc(m->r);
                     printf("\tpitch bend, channel=%d args=%d,%d\n", channel, arg1, arg2);
                 }
                 default: {
@@ -192,11 +199,11 @@ pub bool track_chunk(midi_t *m) {
         // MIDI meta messages are messages that contains information about the MIDI sequence and that are not to be sent over MIDI ports.
         if (event_type == 0xFF) {
             // meta_event = 0xFF + <meta_type> + <v_length> + <event_data_bytes>
-            int meta_type = fgetc(f); // 1 byte
-            int v_length = variable_length_value(f); // var
+            int meta_type = bytereader.readc(m->r); // 1 byte
+            int v_length = variable_length_value(m->r); // var
             char data[1000] = {0};
             for (int i = 0; i < v_length; i++) {
-                data[i] = fgetc(f);
+                data[i] = bytereader.readc(m->r);
                 if (i >= 999) {
                     panic("data too big");
                 }
@@ -254,7 +261,7 @@ char *meta_name(int meta) {
     }
 }
 
-int variable_length_value(FILE *f) {
+int variable_length_value(bytereader.reader_t *r) {
     // Variable Length Values
     // A variable length value uses the low order 7 bits of a byte to represent the value or part of the value
     // The high order bit is an "escape" or "continuation" bit.
@@ -269,8 +276,11 @@ int variable_length_value(FILE *f) {
     //    0x82 0x80 0x00               32768 (0x8000)
 
     int result = 0;
-    while (!feof(f)) {
-        int c = fgetc(f);
+    while (true) {
+        int c = bytereader.readc(r);
+        if (c == EOF) {
+            break;
+        }
         // 7 bits of every byte are the value.
         result *= 128;
         result += c & 127;
@@ -280,22 +290,4 @@ int variable_length_value(FILE *f) {
         }
     }
     return result;
-}
-
-// Numbers larger than one byte are placed most significant byte first.
-
-uint16_t read16(FILE *f) {
-    uint16_t r = 0;
-    for (int i = 0; i < 2; i++) {
-        r = r * 256 + fgetc(f);
-    }
-    return r;
-}
-
-uint32_t read32(FILE *f) {
-    uint32_t r = 0;
-    for (int i = 0; i < 4; i++) {
-        r = r * 256 + fgetc(f);
-    }
-    return r;
 }
