@@ -1,8 +1,53 @@
 // #define _X_OPEN_SOURCE 700
 #include <unistd.h>
 #include <sys/stat.h>
+#include <dirent.h>
+#type DIR
 
+typedef struct dirent dirent_t;
 typedef struct stat stat_t;
+
+pub typedef {
+	DIR *d;
+} dir_t;
+
+/*
+ * Opens directory at given path and returns its handle.
+ * Returns NULL on failure.
+ */
+pub dir_t *dir_open(const char *path) {
+	dir_t *d = calloc(1, sizeof(dir_t));
+	if (!d) {
+		return NULL;
+	}
+	d->d = OS.opendir(path);
+	if (!d->d) {
+		free(d);
+		return NULL;
+	}
+	return d;
+}
+
+/*
+ * Moves to next file in the directory and returns
+ * its name.
+ */
+pub const char *dir_next(dir_t *d) {
+	dirent_t *e = OS.readdir(d->d);
+	if (!e) {
+		return NULL;
+	}
+	return e->d_name;
+}
+
+/*
+ * Closes the directory handle/
+ */
+pub void dir_close(dir_t *d) {
+	OS.closedir(d->d);
+	free(d);
+}
+
 
 pub bool realpath(const char *path, char *buf, size_t n) {
     char tmp[PATH_MAX] = {};
