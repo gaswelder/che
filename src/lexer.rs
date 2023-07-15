@@ -20,6 +20,11 @@ impl fmt::Display for Token {
 
 const SPACES: &str = "\r\n\t ";
 
+const KEYWORDS: &[&str] = &[
+    "case", "const", "default", "else", "enum", "for", "if", "panic", "pub", "return", "sizeof",
+    "struct", "switch", "typedef", "union", "while",
+];
+
 fn read_token(buf: &mut Buf) -> Option<Token> {
     buf.read_set(SPACES.to_string());
     if buf.ended() {
@@ -196,12 +201,7 @@ fn read_word(buf: &mut Buf) -> Token {
         word.push(buf.get().unwrap());
     }
 
-    let keywords = [
-        "default", "typedef", "struct", "union", "const", "return", "switch", "sizeof", "while",
-        "case", "enum", "else", "for", "pub", "if", "panic",
-    ];
-
-    if keywords.contains(&word.as_str()) {
+    if KEYWORDS.contains(&word.as_str()) {
         return Token {
             kind: word,
             content: String::new(),
@@ -398,11 +398,7 @@ mod tests {
             assert_eq!(t.pos, "1:1");
         }
 
-        let keywords = [
-            "default", "typedef", "struct", "union", "const", "return", "switch", "sizeof",
-            "while", "case", "enum", "else", "for", "pub", "if",
-        ];
-        for kw in &keywords {
+        for kw in KEYWORDS {
             let t = _read_token(format!("{} 123", kw).as_str());
             assert_eq!(t.content, "");
             assert_eq!(t.kind, kw.to_string());
