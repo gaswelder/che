@@ -144,6 +144,8 @@ pub enum CStatement {
     Block {
         statements: Vec<CStatement>,
     },
+    Break,
+    Continue,
     VariableDeclaration {
         type_name: CTypename,
         forms: Vec<CForm>,

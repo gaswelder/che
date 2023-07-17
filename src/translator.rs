@@ -519,6 +519,8 @@ fn translate_body(b: &Body, ctx: &Ctx) -> CBody {
     let mut statements: Vec<CStatement> = Vec::new();
     for s in &b.statements {
         statements.push(match s {
+            Statement::Break => CStatement::Break,
+            Statement::Continue => CStatement::Continue,
             Statement::Expression(x) => CStatement::Expression(translate_expression(&x, ctx)),
             Statement::For {
                 init,

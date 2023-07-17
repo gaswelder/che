@@ -112,6 +112,8 @@ fn prefix_body(b: &mut Body, prefix: &String, names: &Vec<String>) {
 
 fn prefix_statement(s: &mut Statement, prefix: &String, names: &Vec<String>) {
     match s {
+        Statement::Break => {}
+        Statement::Continue => {}
         Statement::VariableDeclaration {
             pos: _,
             type_name,

@@ -181,6 +181,8 @@ pub struct Identifier {
 
 #[derive(Debug, Clone)]
 pub enum Statement {
+    Break,
+    Continue,
     VariableDeclaration {
         type_name: Typename,
         form: Form,

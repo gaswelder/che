@@ -405,6 +405,8 @@ fn format_statement(node: &CStatement) -> String {
         CStatement::Block { statements } => format_body(&CBody {
             statements: statements.clone(),
         }),
+        CStatement::Break => format!("break;"),
+        CStatement::Continue => format!("continue;"),
         CStatement::VariableDeclaration {
             type_name,
             forms,

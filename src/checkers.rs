@@ -275,12 +275,9 @@ fn has_function_call(e: &Expression) -> bool {
 fn get_module_scope(m: &Module) -> Scope {
     let mut s = Scope {
         pre: vec![
-            // should be fixed
-            String::from("break"),
-            String::from("continue"),
             String::from("false"),
             String::from("NULL"),
-            String::from("true"), //
+            String::from("true"),
             // custom
             String::from("nelem"),
             String::from("panic"),
@@ -427,6 +424,8 @@ fn check_body(
     scopes.push(newscope());
     for s in &body.statements {
         match s {
+            Statement::Break => {}
+            Statement::Continue => {}
             Statement::Expression(e) => {
                 check_expr(e, state, scopes, imports);
             }

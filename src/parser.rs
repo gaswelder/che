@@ -606,6 +606,16 @@ fn parse_statement(l: &mut Lexer, ctx: &Ctx) -> Result<Statement, Error> {
 
     let next = l.peek().unwrap();
     return match next.kind.as_str() {
+        "break" => {
+            l.get().unwrap();
+            expect(l, ";", Some("break statement"))?;
+            Ok(Statement::Break)
+        }
+        "continue" => {
+            l.get().unwrap();
+            expect(l, ";", Some("continue statement"))?;
+            Ok(Statement::Continue)
+        }
         "for" => parse_for(l, ctx),
         "if" => parse_if(l, ctx),
         "panic" => parse_panic(l, ctx),
