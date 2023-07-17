@@ -328,16 +328,7 @@ fn translate_expression(e: &Expression, ctx: &Ctx) -> CExpression {
         Expression::FunctionCall {
             function,
             arguments,
-        } => {
-            let mut targs: Vec<CExpression> = Vec::new();
-            for arg in arguments {
-                targs.push(translate_expression(arg, ctx))
-            }
-            CExpression::FunctionCall {
-                function: Box::new(translate_expression(function, ctx)),
-                arguments: targs,
-            }
-        }
+        } => translate_function_call(function, arguments, ctx),
         Expression::Sizeof { argument } => {
             let c = *argument.clone();
             let arg = match c {
@@ -353,6 +344,55 @@ fn translate_expression(e: &Expression, ctx: &Ctx) -> CExpression {
             }
         }
     };
+}
+
+fn translate_function_call(
+    function: &Box<Expression>,
+    arguments: &Vec<Expression>,
+    ctx: &Ctx,
+) -> CExpression {
+    let mut targs: Vec<CExpression> = Vec::new();
+    for arg in arguments {
+        targs.push(translate_expression(arg, ctx))
+    }
+    CExpression::FunctionCall {
+        function: Box::new(translate_expression(function, ctx)),
+        arguments: targs,
+    }
+}
+
+fn generate_panic(ctx: &Ctx, pos: &String, arguments: &Vec<Expression>) -> CStatement {
+    let mut args = vec![CExpression::Identifier(String::from("stderr"))];
+    for arg in arguments {
+        args.push(translate_expression(arg, ctx));
+    }
+    CStatement::Block {
+        statements: vec![
+            CStatement::Expression(CExpression::FunctionCall {
+                function: Box::new(CExpression::Identifier(String::from("fprintf"))),
+                arguments: vec![
+                    CExpression::Identifier(String::from("stderr")),
+                    CExpression::Literal(CLiteral::String(String::from("*** panic at %s ***\\n"))),
+                    CExpression::Literal(CLiteral::String(pos.clone())),
+                ],
+            }),
+            CStatement::Expression(CExpression::FunctionCall {
+                function: Box::new(CExpression::Identifier(String::from("fprintf"))),
+                arguments: args,
+            }),
+            CStatement::Expression(CExpression::FunctionCall {
+                function: Box::new(CExpression::Identifier(String::from("fprintf"))),
+                arguments: vec![
+                    CExpression::Identifier(String::from("stderr")),
+                    CExpression::Literal(CLiteral::String(String::from("\\n"))),
+                ],
+            }),
+            CStatement::Expression(CExpression::FunctionCall {
+                function: Box::new(CExpression::Identifier(String::from("exit"))),
+                arguments: vec![CExpression::Literal(CLiteral::Number(String::from("1")))],
+            }),
+        ],
+    }
 }
 
 fn translate_anonymous_typeform(x: &AnonymousTypeform, ctx: &Ctx) -> CAnonymousTypeform {
@@ -556,43 +596,7 @@ fn translate_body(b: &Body, ctx: &Ctx) -> CBody {
             Statement::Return { expression } => CStatement::Return {
                 expression: expression.as_ref().map(|e| translate_expression(&e, ctx)),
             },
-            Statement::Panic { arguments, pos } => {
-                let mut args = vec![CExpression::Identifier(String::from("stderr"))];
-                for arg in arguments {
-                    args.push(translate_expression(arg, ctx));
-                }
-                CStatement::Block {
-                    statements: vec![
-                        CStatement::Expression(CExpression::FunctionCall {
-                            function: Box::new(CExpression::Identifier(String::from("fprintf"))),
-                            arguments: vec![
-                                CExpression::Identifier(String::from("stderr")),
-                                CExpression::Literal(CLiteral::String(String::from(
-                                    "*** panic at %s ***\\n",
-                                ))),
-                                CExpression::Literal(CLiteral::String(pos.clone())),
-                            ],
-                        }),
-                        CStatement::Expression(CExpression::FunctionCall {
-                            function: Box::new(CExpression::Identifier(String::from("fprintf"))),
-                            arguments: args,
-                        }),
-                        CStatement::Expression(CExpression::FunctionCall {
-                            function: Box::new(CExpression::Identifier(String::from("fprintf"))),
-                            arguments: vec![
-                                CExpression::Identifier(String::from("stderr")),
-                                CExpression::Literal(CLiteral::String(String::from("\\n"))),
-                            ],
-                        }),
-                        CStatement::Expression(CExpression::FunctionCall {
-                            function: Box::new(CExpression::Identifier(String::from("exit"))),
-                            arguments: vec![CExpression::Literal(CLiteral::Number(String::from(
-                                "1",
-                            )))],
-                        }),
-                    ],
-                }
-            }
+            Statement::Panic { arguments, pos } => generate_panic(ctx, pos, arguments),
             Statement::Switch {
                 value,
                 cases,
