@@ -3,6 +3,7 @@
  */
 #import os/term
 #import os/misc
+#import bytereader
 
 /**
  * 10 registers with their keys.
@@ -89,27 +90,29 @@ pub int main(int argc, char *argv[]) {
     }
 
     // Read the image.
-    FILE* file = fopen(argv[1], "rb");
-    if (!file) { 
-        fprintf(stderr, "failed to load image\n");
+    bytereader.reader_t *r = bytereader.newreader(argv[1]);
+    if (!r) {
+        fprintf(stderr, "failed to load image: %s\n", strerror(errno));
         return 1;
     }
+
     /* the origin tells us where in memory to place the image */
-    uint16_t origin = read_16(file);
+    uint16_t origin = bytereader.read16(r);
+
+    // Read full memory.
     for (uint32_t i = origin; i < MEMORY_MAX; i++) {
-        memory[i] = read_16(file);
-        if (feof(file) || ferror(file)) {
+        memory[i] = bytereader.read16(r);
+        if (bytereader.ended(r)) {
             break;
         }
     }
-    if (!feof(file) && !ferror(file)) {
+    if (!bytereader.ended(r)) {
         fprintf(stderr, "input file too long\n");
         return 1;
     }
-    fclose(file);
+    bytereader.freereader(r);
 
     signal(SIGINT, handle_interrupt);
-
     term = term.term_get_stdin();
     term.term_disable_input_buffering(term);
 
@@ -140,22 +143,9 @@ pub int main(int argc, char *argv[]) {
             }
         }
     }
-    
+
     term.term_restore(term);
     return 1;
-}
-
-
-/**
- * Reads a memory block from the given image file. The file has blocks laid
- * out in a big-endian way.
- */
-uint16_t read_16(FILE *file) {
-    uint8_t a = 0;
-    uint8_t b = 0;
-    fread(&a, sizeof(uint8_t), 1, file);
-    fread(&b, sizeof(uint8_t), 1, file);
-    return a * 256 + b;
 }
 
 enum
