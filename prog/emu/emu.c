@@ -25,6 +25,9 @@ int run(char *rompath) {
     if (strings.ends_with(rompath, ".lc3")) {
         return lc3.run(rompath);
     }
+    if (strings.ends_with(rompath, ".chip8")) {
+        return chip8.run(rompath);
+    }
     fprintf(stderr, "unrecognized ROM for run\n");
     return 1;
 }

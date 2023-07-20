@@ -1,10 +1,15 @@
 #include <sys/time.h>
+#include <time.h>
 
 typedef struct tm tm_t;
+typedef struct timespec timespec_t;
+
 pub typedef struct timeval timeval_t;
 pub typedef {
     timeval_t timeval;
 } t;
+
+
 
 pub enum {
     US = 1, // base unit
@@ -60,7 +65,13 @@ pub bool time_format(char *buf, size_t size, const char *fmt)
 	return strftime(buf, size, fmt, ts);
 }
 
-
+pub bool sleep(int64_t dt) {
+    timespec_t t = {
+        .tv_sec = dt / SECONDS,
+        .tv_nsec = 0
+    };
+    return OS.nanosleep(&t, NULL) == 0;
+}
 
 /*
  * Returns unix timestamp in microseconds for the given time object.
