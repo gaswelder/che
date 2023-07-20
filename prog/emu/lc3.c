@@ -83,14 +83,9 @@ enum
 term.term_t *term = NULL;
 bool running = true;
 
-pub int main(int argc, char *argv[]) {
-    if (argc < 2) {
-        printf("lc3 [image-file1] ...\n");
-        return 1;
-    }
-
+pub int run(char *rompath) {
     // Read the image.
-    bytereader.reader_t *r = bytereader.newreader(argv[1]);
+    bytereader.reader_t *r = bytereader.newreader(rompath);
     if (!r) {
         fprintf(stderr, "failed to load image: %s\n", strerror(errno));
         return 1;

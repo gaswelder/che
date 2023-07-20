@@ -1,6 +1,6 @@
 #!/bin/sh
 
-a=`./emu.out chip8 tetris.chip8`
+a=`./emu.out disas tetris.chip8`
 test "$a" = '0x512	a2b4	LD	I, 0x2b4
 0x514	23e6	CALL	0x3e6
 0x516	22b6	CALL	0x2b6
