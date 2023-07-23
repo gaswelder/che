@@ -1680,56 +1680,6 @@ ZEXTERN void ZEXPORT gzclearerr OF((gzFile file));
    library.
 */
 
-ZEXTERN uLong ZEXPORT adler32 OF((uLong adler, const Bytef *buf, uInt len));
-
-
-ZEXTERN uLong ZEXPORT crc32 OF((uLong crc, const Bytef *buf, uInt len));
-/*
-     Update a running CRC-32 with the bytes buf[0..len-1] and return the
-   updated CRC-32. A CRC-32 value is in the range of a 32-bit unsigned integer.
-   If buf is Z_NULL, this function returns the required initial value for the
-   crc. Pre- and post-conditioning (one's complement) is performed within this
-   function so it shouldn't be done by the application.
-
-   Usage example:
-
-     uLong crc = crc32(0L, Z_NULL, 0);
-
-     while (read_buffer(buffer, length) != EOF) {
-       crc = crc32(crc, buffer, length);
-     }
-     if (crc != original_crc) error();
-*/
-
-ZEXTERN uLong ZEXPORT crc32_z OF((uLong crc, const Bytef *buf,
-                                  z_size_t len));
-/*
-     Same as crc32(), but with a size_t length.
-*/
-
-/*
-ZEXTERN uLong ZEXPORT crc32_combine OF((uLong crc1, uLong crc2, z_off_t len2));
-
-     Combine two CRC-32 check values into one.  For two sequences of bytes,
-   seq1 and seq2 with lengths len1 and len2, CRC-32 check values were
-   calculated for each, crc1 and crc2.  crc32_combine() returns the CRC-32
-   check value of seq1 and seq2 concatenated, requiring only crc1, crc2, and
-   len2.
-*/
-
-/*
-ZEXTERN uLong ZEXPORT crc32_combine_gen OF((z_off_t len2));
-
-     Return the operator corresponding to length len2, to be used with
-   crc32_combine_op().
-*/
-
-ZEXTERN uLong ZEXPORT crc32_combine_op OF((uLong crc1, uLong crc2, uLong op));
-/*
-     Give the same result as crc32_combine(), using op in place of len2. op is
-   is generated from len2 by crc32_combine_gen(). This will be faster than
-   crc32_combine() if the generated op is used more than once.
-*/
 
 
                         /* various hacks, don't look :) */

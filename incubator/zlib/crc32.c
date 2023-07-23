@@ -17,8 +17,6 @@
   one thread to use crc32().
  */
 
-#include "zutil.h"      /* for Z_U4, Z_U8, uint32_t, and FAR definitions */
-
  /*
   A CRC of a message is computed on N braids of words in the message, where
   each word consists of W bytes (4 or 8). If N is 3, for example, then three
@@ -30,7 +28,10 @@
   W must be 4 or 8. The upper limit on N can be increased if desired by adding
   more #if blocks, extending the patterns apparent in the code. In addition,
   crc32.h would need to be regenerated, if the maximum N value is increased.
+*/
 
+
+/*
   N and W are chosen empirically by benchmarking the execution time on a given
   processor. The choices for N and W below were based on testing on Intel Kaby
   Lake i7, AMD Ryzen 7, ARM Cortex-A57, Sparc64-VII, PowerPC POWER9, and MIPS64
@@ -40,20 +41,16 @@
   level. Your mileage may vary.
  */
 #define N 5
-
-/*
-  uint32_t must be at least 32 bits. z_word_t must be at least as long as
-  uint32_t. It is assumed here that z_word_t is either 32 bits or 64 bits, and
-  that bytes are eight bits.
- */
-
-/*
-  Define W and the associated z_word_t type. If W is not defined, then a
-  braided calculation is not used, and the associated tables and code are not
-  compiled.
- */
 #define W 8
 
+/* CRC polynomial. */
+#define POLY 0xedb88320         /* p(x) reflected, with x^32 implied */
+
+/*
+  z_word_t must be at least as long as uint32_t.
+  It is assumed here that z_word_t is either 32 bits or 64 bits, and
+  that bytes are eight bits.
+ */
 typedef Z_U8 z_word_t;
 
 /* crc32.h -- tables for rapid CRC calculation
@@ -1334,9 +1331,7 @@ const uint32_t x2n_table[] = {
   instruction, if one is available. This assumes that word_t is either 32 bits
   or 64 bits.
  */
-z_word_t byte_swap(word)
-    z_word_t word;
-{
+z_word_t byte_swap(z_word_t word) {
     return
         (word & 0xff00000000000000) >> 56 |
         (word & 0xff000000000000) >> 40 |
@@ -1348,12 +1343,6 @@ z_word_t byte_swap(word)
         (word & 0xff) << 56;
 }
 
-/* CRC polynomial. */
-#define POLY 0xedb88320         /* p(x) reflected, with x^32 implied */
-
-
-/* State for once(). */
-once_t made = ONCE_INIT;
 
 /*
   Generate tables for a byte-wise 32-bit CRC calculation on the polynomial:
@@ -1414,15 +1403,14 @@ void make_crc_table() {
   Generate the little and big-endian braid tables for the given n and z_word_t
   size w. Each array must have room for w blocks of 256 elements.
  */
-void braid(ltl, big, n, w)
-    uint32_t ltl[][256];
-    z_word_t big[][256];
-    int n;
-    int w;
-{
-    int k;
+void braid(
+    uint32_t ltl[][256],
+    z_word_t big[][256],
+    int n,
+    int w
+) {
     uint32_t i, p, q;
-    for (k = 0; k < w; k++) {
+    for (int k = 0; k < w; k++) {
         p = x2nmodp((n * w + 3 - k) << 3, 0);
         ltl[k][0] = 0;
         big[w - 1 - k][0] = 0;
@@ -1443,14 +1431,9 @@ void braid(ltl, big, n, w)
   Return a(x) multiplied by b(x) modulo p(x), where p(x) is the CRC polynomial,
   reflected. For speed, this requires that a not be zero.
  */
-uint32_t multmodp(a, b)
-    uint32_t a;
-    uint32_t b;
-{
-    uint32_t m, p;
-
-    m = (uint32_t)1 << 31;
-    p = 0;
+uint32_t multmodp(uint32_t a, b) {
+    uint32_t m = (uint32_t)1 << 31;
+    uint32_t p = 0;
     for (;;) {
         if (a & m) {
             p ^= b;
@@ -1467,13 +1450,8 @@ uint32_t multmodp(a, b)
   Return x^(n * 2^k) modulo p(x). Requires that x2n_table[] has been
   initialized.
  */
-uint32_t x2nmodp(n, k)
-    z_off64_t n;
-    unsigned k;
-{
-    uint32_t p;
-
-    p = (uint32_t)1 << 31;           /* x^0 == 1 */
+uint32_t x2nmodp(z_off64_t n, unsigned k) {
+    uint32_t p = (uint32_t)1 << 31;           /* x^0 == 1 */
     while (n) {
         if (n & 1)
             p = multmodp(x2n_table[k & 31], p);
@@ -1487,10 +1465,9 @@ uint32_t x2nmodp(n, k)
  * This function can be used by asm versions of crc32(), and to force the
  * generation of the CRC tables in a threaded application.
  */
-pub const uint32_t *get_crc_table()
-{
+pub const uint32_t *get_crc_table() {
     make_crc_table();
-    return (const uint32_t FAR *)crc_table;
+    return crc_table;
 }
 
 /* =========================================================================
@@ -1509,18 +1486,14 @@ pub const uint32_t *get_crc_table()
   least-significant byte of the word as the first byte of data, without any pre
   or post conditioning. This is used to combine the CRCs of each braid.
  */
-uint32_t crc_word(data)
-    z_word_t data;
-{
-    int k;
-    for (k = 0; k < W; k++)
+uint32_t crc_word(z_word_t data) {
+    for (int k = 0; k < W; k++) {
         data = (data >> 8) ^ crc_table[data & 0xff];
-    return (uint32_t)data;
+    }
+    return (uint32_t) data;
 }
 
-z_word_t crc_word_big(data)
-    z_word_t data;
-{
+z_word_t crc_word_big(z_word_t data) {
     int k;
     for (k = 0; k < W; k++)
         data = (data << 8) ^
@@ -1529,12 +1502,14 @@ z_word_t crc_word_big(data)
 }
 
 
-/* ========================================================================= */
-pub unsigned long crc32_z(crc, buf, len)
-    unsigned long crc;
-    const unsigned char FAR *buf;
-    z_size_t len;
-{
+/*
+     Same as crc32(), but with a size_t length.
+*/
+pub unsigned long crc32_z(
+    unsigned long crc,
+    const unsigned char FAR *buf,
+    z_size_t len
+) {
     /* Return initial CRC, if requested. */
     if (buf == Z_NULL) return 0;
 
@@ -1715,54 +1690,78 @@ pub unsigned long crc32_z(crc, buf, len)
 }
 
 
-/* ========================================================================= */
-pub unsigned long crc32(crc, buf, len)
-    unsigned long crc;
-    const unsigned char FAR *buf;
-    uInt len;
-{
+/*
+     Update a running CRC-32 with the bytes buf[0..len-1] and return the
+   updated CRC-32. A CRC-32 value is in the range of a 32-bit unsigned integer.
+   If buf is Z_NULL, this function returns the required initial value for the
+   crc. Pre- and post-conditioning (one's complement) is performed within this
+   function so it shouldn't be done by the application.
+
+   Usage example:
+
+     uLong crc = crc32(0L, Z_NULL, 0);
+
+     while (read_buffer(buffer, length) != EOF) {
+       crc = crc32(crc, buffer, length);
+     }
+     if (crc != original_crc) error();
+*/
+pub unsigned long crc32(
+    unsigned long crc,
+    const unsigned char FAR *buf,
+    uInt len
+) {
     return crc32_z(crc, buf, len);
 }
 
 /* ========================================================================= */
-pub uLong crc32_combine64(crc1, crc2, len2)
-    uLong crc1;
-    uLong crc2;
-    z_off64_t len2;
-{
+pub uLong crc32_combine64(
+    uLong crc1,
+    uLong crc2,
+    z_off64_t len2
+) {
     make_crc_table();
     return multmodp(x2nmodp(len2, 3), crc1) ^ (crc2 & 0xffffffff);
 }
 
-/* ========================================================================= */
-pub uLong crc32_combine(crc1, crc2, len2)
-    uLong crc1;
-    uLong crc2;
-    z_off_t len2;
-{
+/*
+ZEXTERN uLong ZEXPORT crc32_combine OF((uLong crc1, uLong crc2, z_off_t len2));
+
+     Combine two CRC-32 check values into one.  For two sequences of bytes,
+   seq1 and seq2 with lengths len1 and len2, CRC-32 check values were
+   calculated for each, crc1 and crc2.  crc32_combine() returns the CRC-32
+   check value of seq1 and seq2 concatenated, requiring only crc1, crc2, and
+   len2.
+*/
+pub uLong crc32_combine(uLong crc1, uLong crc2, z_off_t len2) {
     return crc32_combine64(crc1, crc2, (z_off64_t)len2);
 }
 
 /* ========================================================================= */
-pub uLong crc32_combine_gen64(len2)
-    z_off64_t len2;
-{
+pub uLong crc32_combine_gen64(z_off64_t len2) {
     make_crc_table();
     return x2nmodp(len2, 3);
 }
 
-/* ========================================================================= */
-pub uLong crc32_combine_gen(len2)
-    z_off_t len2;
-{
+/*
+ZEXTERN uLong ZEXPORT crc32_combine_gen OF((z_off_t len2));
+
+     Return the operator corresponding to length len2, to be used with
+   crc32_combine_op().
+*/
+pub uLong crc32_combine_gen(z_off_t len2) {
     return crc32_combine_gen64((z_off64_t)len2);
 }
 
-/* ========================================================================= */
-pub uLong crc32_combine_op(crc1, crc2, op)
-    uLong crc1;
-    uLong crc2;
-    uLong op;
-{
+/*
+     Give the same result as crc32_combine(), using op in place of len2. op is
+   is generated from len2 by crc32_combine_gen(). This will be faster than
+   crc32_combine() if the generated op is used more than once.
+*/
+pub uLong crc32_combine_op(
+    uLong crc1,
+    uLong crc2,
+    uLong op
+) {
     return multmodp(op, crc1) ^ (crc2 & 0xffffffff);
 }
