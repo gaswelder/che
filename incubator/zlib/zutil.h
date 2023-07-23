@@ -23,7 +23,7 @@ typedef unsigned short ush;
 typedef ush FAR ushf;
 typedef unsigned long  ulg;
 
-#if !defined(Z_U8) && !defined(Z_SOLO) && defined(STDC)
+#if !defined(Z_U8)
 #  include <limits.h>
 #  if (ULONG_MAX == 0xffffffffffffffff)
 #    define Z_U8 unsigned long
@@ -70,19 +70,6 @@ extern z_const char * const z_errmsg[10]; /* indexed by 2-zlib_error */
 
         /* target dependencies */
 
-
-
-
-#ifdef __370__
-#  if __TARGET_LIB__ < 0x20000000
-#    define OS_CODE 4
-#  elif __TARGET_LIB__ < 0x40000000
-#    define OS_CODE 11
-#  else
-#    define OS_CODE 8
-#  endif
-#endif
-
 /* provide prototypes for these when building zlib without LFS */
 #if (!defined(_LARGEFILE64_SOURCE)) || ((_LFS64_LARGEFILE) - (1))
     ZEXTERN uLong ZEXPORT adler32_combine64 OF((uLong, uLong, z_off_t));
@@ -102,9 +89,6 @@ extern z_const char * const z_errmsg[10]; /* indexed by 2-zlib_error */
 
          /* functions */
 
-#if defined(pyr) || defined(Z_SOLO)
-#  define NO_MEMCPY
-#endif
 #if defined(SMALL_MEDIUM) && !defined(_MSC_VER) && !defined(__SC__)
  /* Use our own functions for small and medium model with MSC <= 5.0.
   * You may have to use the same strategy for Borland C (untested).
@@ -112,10 +96,6 @@ extern z_const char * const z_errmsg[10]; /* indexed by 2-zlib_error */
   */
 #  define NO_MEMCPY
 #endif
-#if (!defined(HAVE_MEMCPY)) && (!defined(NO_MEMCPY))
-#  define HAVE_MEMCPY
-#endif
-#ifdef HAVE_MEMCPY
 #  ifdef SMALL_MEDIUM /* MSDOS small or medium model */
 #    define zmemcpy _fmemcpy
 #    define zmemcmp _fmemcmp
@@ -125,11 +105,6 @@ extern z_const char * const z_errmsg[10]; /* indexed by 2-zlib_error */
 #    define zmemcmp memcmp
 #    define zmemzero(dest, len) memset(dest, 0, len)
 #  endif
-#else
-   void ZLIB_INTERNAL zmemcpy OF((Bytef* dest, const Bytef* source, uInt len));
-   int ZLIB_INTERNAL zmemcmp OF((const Bytef* s1, const Bytef* s2, uInt len));
-   void ZLIB_INTERNAL zmemzero OF((Bytef* dest, uInt len));
-#endif
 
 /* Diagnostic functions */
 #ifdef ZLIB_DEBUG
@@ -151,11 +126,9 @@ extern z_const char * const z_errmsg[10]; /* indexed by 2-zlib_error */
 #  define Tracecv(c,x)
 #endif
 
-#ifndef Z_SOLO
    voidpf ZLIB_INTERNAL zcalloc OF((voidpf opaque, unsigned items,
                                     unsigned size));
    void ZLIB_INTERNAL zcfree  OF((voidpf opaque, voidpf ptr));
-#endif
 
 #define ZALLOC(strm, items, size) \
            (*((strm)->zalloc))((strm)->opaque, (items), (size))

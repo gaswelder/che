@@ -30,11 +30,9 @@
 #  define adler32_combine       z_adler32_combine
 #  define adler32_combine64     z_adler32_combine64
 #  define adler32_z             z_adler32_z
-#  ifndef Z_SOLO
 #    define compress              z_compress
 #    define compress2             z_compress2
 #    define compressBound         z_compressBound
-#  endif
 #  define crc32                 z_crc32
 #  define crc32_combine         z_crc32_combine
 #  define crc32_combine64       z_crc32_combine64
@@ -61,7 +59,6 @@
 #  define deflateTune           z_deflateTune
 #  define deflate_copyright     z_deflate_copyright
 #  define get_crc_table         z_get_crc_table
-#  ifndef Z_SOLO
 #    define gz_error              z_gz_error
 #    define gz_intmax             z_gz_intmax
 #    define gz_strwinerror        z_gz_strwinerror
@@ -97,7 +94,6 @@
 #    define gzungetc              z_gzungetc
 #    define gzvprintf             z_gzvprintf
 #    define gzwrite               z_gzwrite
-#  endif
 #  define inflate               z_inflate
 #  define inflateBack           z_inflateBack
 #  define inflateBackEnd        z_inflateBackEnd
@@ -125,15 +121,11 @@
 #  define inflate_copyright     z_inflate_copyright
 #  define inflate_fast          z_inflate_fast
 #  define inflate_table         z_inflate_table
-#  ifndef Z_SOLO
 #    define uncompress            z_uncompress
 #    define uncompress2           z_uncompress2
-#  endif
 #  define zError                z_zError
-#  ifndef Z_SOLO
 #    define zcalloc               z_zcalloc
 #    define zcfree                z_zcfree
-#  endif
 #  define zlibCompileFlags      z_zlibCompileFlags
 #  define zlibVersion           z_zlibVersion
 
@@ -143,9 +135,7 @@
 #  define alloc_func            z_alloc_func
 #  define charf                 z_charf
 #  define free_func             z_free_func
-#  ifndef Z_SOLO
 #    define gzFile                z_gzFile
-#  endif
 #  define gz_header             z_gz_header
 #  define gz_headerp            z_gz_headerp
 #  define in_func               z_in_func
@@ -204,9 +194,6 @@
 #  define z_const
 #endif
 
-#ifdef Z_SOLO
-   typedef unsigned long z_size_t;
-#else
 #  define z_longlong long long
 #if defined(NO_SIZE_T)
      typedef unsigned NO_SIZE_T z_size_t;
@@ -215,7 +202,6 @@
      typedef size_t z_size_t;
 #endif
 #  undef z_longlong
-#endif
 
 /* Maximum value for memLevel in deflateInit2 */
 #ifndef MAX_MEM_LEVEL
@@ -338,13 +324,9 @@ typedef uLong FAR uLongf;
 #  define Z_HAVE_STDARG_H
 #endif
 
-#  ifndef Z_SOLO
 #    include <sys/types.h>      /* for off_t */
-#  endif
 
-#  ifndef Z_SOLO
 #    include <stdarg.h>         /* for va_list */
-#  endif
 
 
 #ifndef Z_HAVE_UNISTD_H
@@ -357,14 +339,12 @@ typedef uLong FAR uLongf;
 #    define Z_HAVE_UNISTD_H
 #endif
 #endif
-#ifndef Z_SOLO
 #  if defined(Z_HAVE_UNISTD_H)
 #    include <unistd.h>         /* for SEEK_*, off_t, and _LFS64_LARGEFILE */
 #    ifndef z_off_t
 #      define z_off_t off_t
 #    endif
 #  endif
-#endif
 
 #if defined(_LFS64_LARGEFILE) && _LFS64_LARGEFILE-0
 #  define Z_LFS64
@@ -378,7 +358,7 @@ typedef uLong FAR uLongf;
 #  define Z_WANT64
 #endif
 
-#if !defined(SEEK_SET) && !defined(Z_SOLO)
+#if !defined(SEEK_SET)
 #  define SEEK_SET        0       /* Seek from beginning of file.  */
 #  define SEEK_CUR        1       /* Seek from current position.  */
 #  define SEEK_END        2       /* Set file pointer to EOF plus "offset" */

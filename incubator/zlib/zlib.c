@@ -1210,7 +1210,6 @@ ZEXTERN uLong ZEXPORT zlibCompileFlags OF((void));
      27-31: 0 (reserved)
  */
 
-#ifndef Z_SOLO
 
                         /* utility functions */
 
@@ -1672,7 +1671,6 @@ ZEXTERN void ZEXPORT gzclearerr OF((gzFile file));
    file that is being written concurrently.
 */
 
-#endif /* !Z_SOLO */
 
                         /* checksum functions */
 
@@ -1773,7 +1771,6 @@ int inflateBackInit(strm, windowBits, window) {
                            ZLIB_VERSION, (int)sizeof(z_stream));
 }
 
-#ifndef Z_SOLO
 
 /* gzgetc() macro and its supporting function and exposed data structure.  Note
  * that the real internal state is much larger than the exposed structure.
@@ -1850,13 +1847,6 @@ ZEXTERN int ZEXPORT gzgetc_ OF((gzFile file));  /* backward compatibility */
    ZEXTERN uLong ZEXPORT crc32_combine_gen OF((z_off_t));
 #endif
 
-#else /* Z_SOLO */
-
-   ZEXTERN uLong ZEXPORT adler32_combine OF((uLong, uLong, z_off_t));
-   ZEXTERN uLong ZEXPORT crc32_combine OF((uLong, uLong, z_off_t));
-   ZEXTERN uLong ZEXPORT crc32_combine_gen OF((z_off_t));
-
-#endif /* !Z_SOLO */
 
 /* undocumented functions */
 ZEXTERN const char   * ZEXPORT zError           OF((int));
@@ -1867,11 +1857,9 @@ ZEXTERN int            ZEXPORT inflateValidate OF((z_streamp, int));
 ZEXTERN unsigned long  ZEXPORT inflateCodesUsed OF((z_streamp));
 ZEXTERN int            ZEXPORT inflateResetKeep OF((z_streamp));
 ZEXTERN int            ZEXPORT deflateResetKeep OF((z_streamp));
-#  ifndef Z_SOLO
 ZEXTERN int            ZEXPORTVA gzvprintf Z_ARG((gzFile file,
                                                   const char *format,
                                                   va_list va));
-#  endif
 
 #ifdef __cplusplus
 }

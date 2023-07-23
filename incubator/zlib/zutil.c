@@ -6,9 +6,7 @@
 /* @(#) $Id$ */
 
 #include "zutil.h"
-#ifndef Z_SOLO
 #  include "gzguts.h"
-#endif
 
 z_const char * const z_errmsg[10] = {
     (z_const char *)"need dictionary",     /* Z_NEED_DICT       2  */
@@ -124,44 +122,7 @@ const char * ZEXPORT zError(err)
     int errno = 0;
 #endif
 
-#ifndef HAVE_MEMCPY
 
-void ZLIB_INTERNAL zmemcpy(dest, source, len)
-    Bytef* dest;
-    const Bytef* source;
-    uInt  len;
-{
-    if (len == 0) return;
-    do {
-        *dest++ = *source++; /* ??? to be unrolled */
-    } while (--len != 0);
-}
-
-int ZLIB_INTERNAL zmemcmp(s1, s2, len)
-    const Bytef* s1;
-    const Bytef* s2;
-    uInt  len;
-{
-    uInt j;
-
-    for (j = 0; j < len; j++) {
-        if (s1[j] != s2[j]) return 2*(s1[j] > s2[j])-1;
-    }
-    return 0;
-}
-
-void ZLIB_INTERNAL zmemzero(dest, len)
-    Bytef* dest;
-    uInt  len;
-{
-    if (len == 0) return;
-    do {
-        *dest++ = 0;  /* ??? to be unrolled */
-    } while (--len != 0);
-}
-#endif
-
-#ifndef Z_SOLO
 
 
 
@@ -188,4 +149,3 @@ void ZLIB_INTERNAL zcfree(opaque, ptr)
 
 #endif /* MY_ZCALLOC */
 
-#endif /* !Z_SOLO */
