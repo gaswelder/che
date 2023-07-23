@@ -1380,8 +1380,13 @@ once_t made = ONCE_INIT;
   combinations of CRC register values and incoming bytes.
  */
 
-void make_crc_table()
-{
+bool table_made = false;
+
+void make_crc_table() {
+    if (table_made) {
+        return;
+    }
+    table_made = true;
     unsigned i, j, n;
     uint32_t p;
 
@@ -1484,7 +1489,7 @@ uint32_t x2nmodp(n, k)
  */
 pub const uint32_t *get_crc_table()
 {
-    once(&made, make_crc_table);
+    make_crc_table();
     return (const uint32_t FAR *)crc_table;
 }
 
@@ -1533,7 +1538,7 @@ pub unsigned long crc32_z(crc, buf, len)
     /* Return initial CRC, if requested. */
     if (buf == Z_NULL) return 0;
 
-    once(&made, make_crc_table);
+    make_crc_table();
 
     /* Pre-condition the CRC */
     crc = (~crc) & 0xffffffff;
@@ -1725,7 +1730,7 @@ pub uLong crc32_combine64(crc1, crc2, len2)
     uLong crc2;
     z_off64_t len2;
 {
-    once(&made, make_crc_table);
+    make_crc_table();
     return multmodp(x2nmodp(len2, 3), crc1) ^ (crc2 & 0xffffffff);
 }
 
@@ -1742,7 +1747,7 @@ pub uLong crc32_combine(crc1, crc2, len2)
 pub uLong crc32_combine_gen64(len2)
     z_off64_t len2;
 {
-    once(&made, make_crc_table);
+    make_crc_table();
     return x2nmodp(len2, 3);
 }
 
