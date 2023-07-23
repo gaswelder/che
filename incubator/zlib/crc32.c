@@ -211,7 +211,7 @@ const z_word_t crc_big_table[] = {
 
 
 
-local const z_crc_t FAR crc_braid_table[][256] = {
+const z_crc_t FAR crc_braid_table[][256] = {
    {0x00000000, 0xaf449247, 0x85f822cf, 0x2abcb088, 0xd08143df,
     0x7fc5d198, 0x55796110, 0xfa3df357, 0x7a7381ff, 0xd53713b8,
     0xff8ba330, 0x50cf3177, 0xaaf2c220, 0x05b65067, 0x2f0ae0ef,
@@ -1328,23 +1328,13 @@ const z_crc_t x2n_table[] = {
     0x2e4e5eef, 0x4eaba214, 0xa8a472c0, 0x429a969e, 0x148d302a,
     0xc40ba6d0, 0xc4e22c3c};
 
-
-/* Local functions. */
-local z_crc_t multmodp OF((z_crc_t a, z_crc_t b));
-local z_crc_t x2nmodp OF((z_off64_t n, unsigned k));
-
-    local z_word_t byte_swap OF((z_word_t word));
-
-    local z_crc_t crc_word OF((z_word_t data));
-    local z_word_t crc_word_big OF((z_word_t data));
-
 /*
   Swap the bytes in a z_word_t to convert between little and big endian. Any
   self-respecting compiler will optimize this to a single machine byte-swap
   instruction, if one is available. This assumes that word_t is either 32 bits
   or 64 bits.
  */
-local z_word_t byte_swap(word)
+z_word_t byte_swap(word)
     z_word_t word;
 {
     return
@@ -1361,15 +1351,6 @@ local z_word_t byte_swap(word)
 /* CRC polynomial. */
 #define POLY 0xedb88320         /* p(x) reflected, with x^32 implied */
 
-
-local z_crc_t FAR crc_table[256];
-local z_crc_t FAR x2n_table[32];
-local void make_crc_table OF((void));
-   local z_word_t FAR crc_big_table[256];
-   local z_crc_t FAR crc_braid_table[W][256];
-   local z_word_t FAR crc_braid_big_table[W][256];
-   local void braid OF((z_crc_t [][256], z_word_t [][256], int, int));
-
 /*
   Define a once() function depending on the availability of atomics. If this is
   compiled with DYNAMIC_CRC_TABLE defined, and if CRCs will be computed in
@@ -1380,7 +1361,6 @@ local void make_crc_table OF((void));
 
 /* Definition of once functionality. */
 typedef struct once_s once_t;
-local void once OF((once_t *, void (*)(void)));
 
 /* Check for the availability of atomics. */
 #if defined(__STDC__) && __STDC_VERSION__ >= 201112L && \
@@ -1400,7 +1380,7 @@ struct once_s {
   invoke once() at the same time. The state must be a once_t initialized with
   ONCE_INIT.
  */
-local void once(state, init)
+void once(state, init)
     once_t *state;
     void (*init)(void);
 {
@@ -1426,8 +1406,7 @@ struct once_s {
 
 /* Test and set. Alas, not atomic, but tries to minimize the period of
    vulnerability. */
-local int test_and_set OF((int volatile *));
-local int test_and_set(flag)
+int test_and_set(flag)
     int volatile *flag;
 {
     int was;
@@ -1438,7 +1417,7 @@ local int test_and_set(flag)
 }
 
 /* Run the provided init() function once. This is not thread-safe. */
-local void once(state, init)
+void once(state, init)
     once_t *state;
     void (*init)(void);
 {
@@ -1456,7 +1435,7 @@ local void once(state, init)
 #endif
 
 /* State for once(). */
-local once_t made = ONCE_INIT;
+once_t made = ONCE_INIT;
 
 /*
   Generate tables for a byte-wise 32-bit CRC calculation on the polynomial:
@@ -1483,7 +1462,7 @@ local once_t made = ONCE_INIT;
   combinations of CRC register values and incoming bytes.
  */
 
-local void make_crc_table()
+void make_crc_table()
 {
     unsigned i, j, n;
     z_crc_t p;
@@ -1512,7 +1491,7 @@ local void make_crc_table()
   Generate the little and big-endian braid tables for the given n and z_word_t
   size w. Each array must have room for w blocks of 256 elements.
  */
-local void braid(ltl, big, n, w)
+void braid(ltl, big, n, w)
     z_crc_t ltl[][256];
     z_word_t big[][256];
     int n;
@@ -1541,7 +1520,7 @@ local void braid(ltl, big, n, w)
   Return a(x) multiplied by b(x) modulo p(x), where p(x) is the CRC polynomial,
   reflected. For speed, this requires that a not be zero.
  */
-local z_crc_t multmodp(a, b)
+z_crc_t multmodp(a, b)
     z_crc_t a;
     z_crc_t b;
 {
@@ -1565,7 +1544,7 @@ local z_crc_t multmodp(a, b)
   Return x^(n * 2^k) modulo p(x). Requires that x2n_table[] has been
   initialized.
  */
-local z_crc_t x2nmodp(n, k)
+z_crc_t x2nmodp(n, k)
     z_off64_t n;
     unsigned k;
 {
@@ -1585,7 +1564,7 @@ local z_crc_t x2nmodp(n, k)
  * This function can be used by asm versions of crc32(), and to force the
  * generation of the CRC tables in a threaded application.
  */
-const z_crc_t FAR * ZEXPORT get_crc_table()
+pub const z_crc_t *get_crc_table()
 {
     once(&made, make_crc_table);
     return (const z_crc_t FAR *)crc_table;
@@ -1607,7 +1586,7 @@ const z_crc_t FAR * ZEXPORT get_crc_table()
   least-significant byte of the word as the first byte of data, without any pre
   or post conditioning. This is used to combine the CRCs of each braid.
  */
-local z_crc_t crc_word(data)
+z_crc_t crc_word(data)
     z_word_t data;
 {
     int k;
@@ -1616,7 +1595,7 @@ local z_crc_t crc_word(data)
     return (z_crc_t)data;
 }
 
-local z_word_t crc_word_big(data)
+z_word_t crc_word_big(data)
     z_word_t data;
 {
     int k;
@@ -1628,7 +1607,7 @@ local z_word_t crc_word_big(data)
 
 
 /* ========================================================================= */
-unsigned long ZEXPORT crc32_z(crc, buf, len)
+pub unsigned long crc32_z(crc, buf, len)
     unsigned long crc;
     const unsigned char FAR *buf;
     z_size_t len;
@@ -1823,7 +1802,7 @@ pub unsigned long crc32(crc, buf, len)
 }
 
 /* ========================================================================= */
-uLong ZEXPORT crc32_combine64(crc1, crc2, len2)
+pub uLong crc32_combine64(crc1, crc2, len2)
     uLong crc1;
     uLong crc2;
     z_off64_t len2;
@@ -1833,7 +1812,7 @@ uLong ZEXPORT crc32_combine64(crc1, crc2, len2)
 }
 
 /* ========================================================================= */
-uLong ZEXPORT crc32_combine(crc1, crc2, len2)
+pub uLong crc32_combine(crc1, crc2, len2)
     uLong crc1;
     uLong crc2;
     z_off_t len2;
@@ -1842,7 +1821,7 @@ uLong ZEXPORT crc32_combine(crc1, crc2, len2)
 }
 
 /* ========================================================================= */
-uLong ZEXPORT crc32_combine_gen64(len2)
+pub uLong crc32_combine_gen64(len2)
     z_off64_t len2;
 {
     once(&made, make_crc_table);
@@ -1850,14 +1829,14 @@ uLong ZEXPORT crc32_combine_gen64(len2)
 }
 
 /* ========================================================================= */
-uLong ZEXPORT crc32_combine_gen(len2)
+pub uLong crc32_combine_gen(len2)
     z_off_t len2;
 {
     return crc32_combine_gen64((z_off64_t)len2);
 }
 
 /* ========================================================================= */
-uLong ZEXPORT crc32_combine_op(crc1, crc2, op)
+pub uLong crc32_combine_op(crc1, crc2, op)
     uLong crc1;
     uLong crc2;
     uLong op;
