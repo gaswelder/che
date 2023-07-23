@@ -32,17 +32,7 @@
 
 /* @(#) $Id$ */
 
-/* #define GEN_TREES_H */
-
 #include "deflate.h"
-
-#ifdef ZLIB_DEBUG
-#  include <ctype.h>
-#endif
-
-/* ===========================================================================
- * Constants
- */
 
 #define MAX_BL_BITS 7
 /* Bit length codes must not exceed MAX_BL_BITS bits */
@@ -59,60 +49,165 @@
 #define REPZ_11_138  18
 /* repeat a zero length 11-138 times  (7 bits of repeat count) */
 
-local const int extra_lbits[LENGTH_CODES] /* extra bits for each length code */
-   = {0,0,0,0,0,0,0,0,1,1,1,1,2,2,2,2,3,3,3,3,4,4,4,4,5,5,5,5,0};
+/* extra bits for each length code */
+const int extra_lbits[LENGTH_CODES] = {0,0,0,0,0,0,0,0,1,1,1,1,2,2,2,2,3,3,3,3,4,4,4,4,5,5,5,5,0};
 
-local const int extra_dbits[D_CODES] /* extra bits for each distance code */
-   = {0,0,0,0,1,1,2,2,3,3,4,4,5,5,6,6,7,7,8,8,9,9,10,10,11,11,12,12,13,13};
+/* extra bits for each distance code */
+const int extra_dbits[D_CODES] = {0,0,0,0,1,1,2,2,3,3,4,4,5,5,6,6,7,7,8,8,9,9,10,10,11,11,12,12,13,13};
 
-local const int extra_blbits[BL_CODES]/* extra bits for each bit length code */
-   = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,2,3,7};
+/* extra bits for each bit length code */
+const int extra_blbits[BL_CODES] = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,2,3,7};
 
-local const uch bl_order[BL_CODES]
-   = {16,17,18,0,8,7,9,6,10,5,11,4,12,3,13,2,14,1,15};
 /* The lengths of the bit length codes are sent in order of decreasing
  * probability, to avoid transmitting the lengths for unused bit length codes.
  */
-
-/* ===========================================================================
- * Local data. These are initialized only once.
- */
+const uch bl_order[BL_CODES] = {16,17,18,0,8,7,9,6,10,5,11,4,12,3,13,2,14,1,15};
 
 #define DIST_CODE_LEN  512 /* see definition of array dist_code below */
 
-#if defined(GEN_TREES_H)
-/* non ANSI compilers may not accept trees.h */
+bool GEN_TREES_H = false;
 
-local ct_data static_ltree[L_CODES+2];
 /* The static literal tree. Since the bit lengths are imposed, there is no
  * need for the L_CODES extra codes used during heap construction. However
  * The codes 286 and 287 are needed to build a canonical tree (see _tr_init
  * below).
  */
+ct_data static_ltree[L_CODES+2] = {
+{{ 12},{  8}}, {{140},{  8}}, {{ 76},{  8}}, {{204},{  8}}, {{ 44},{  8}},
+{{172},{  8}}, {{108},{  8}}, {{236},{  8}}, {{ 28},{  8}}, {{156},{  8}},
+{{ 92},{  8}}, {{220},{  8}}, {{ 60},{  8}}, {{188},{  8}}, {{124},{  8}},
+{{252},{  8}}, {{  2},{  8}}, {{130},{  8}}, {{ 66},{  8}}, {{194},{  8}},
+{{ 34},{  8}}, {{162},{  8}}, {{ 98},{  8}}, {{226},{  8}}, {{ 18},{  8}},
+{{146},{  8}}, {{ 82},{  8}}, {{210},{  8}}, {{ 50},{  8}}, {{178},{  8}},
+{{114},{  8}}, {{242},{  8}}, {{ 10},{  8}}, {{138},{  8}}, {{ 74},{  8}},
+{{202},{  8}}, {{ 42},{  8}}, {{170},{  8}}, {{106},{  8}}, {{234},{  8}},
+{{ 26},{  8}}, {{154},{  8}}, {{ 90},{  8}}, {{218},{  8}}, {{ 58},{  8}},
+{{186},{  8}}, {{122},{  8}}, {{250},{  8}}, {{  6},{  8}}, {{134},{  8}},
+{{ 70},{  8}}, {{198},{  8}}, {{ 38},{  8}}, {{166},{  8}}, {{102},{  8}},
+{{230},{  8}}, {{ 22},{  8}}, {{150},{  8}}, {{ 86},{  8}}, {{214},{  8}},
+{{ 54},{  8}}, {{182},{  8}}, {{118},{  8}}, {{246},{  8}}, {{ 14},{  8}},
+{{142},{  8}}, {{ 78},{  8}}, {{206},{  8}}, {{ 46},{  8}}, {{174},{  8}},
+{{110},{  8}}, {{238},{  8}}, {{ 30},{  8}}, {{158},{  8}}, {{ 94},{  8}},
+{{222},{  8}}, {{ 62},{  8}}, {{190},{  8}}, {{126},{  8}}, {{254},{  8}},
+{{  1},{  8}}, {{129},{  8}}, {{ 65},{  8}}, {{193},{  8}}, {{ 33},{  8}},
+{{161},{  8}}, {{ 97},{  8}}, {{225},{  8}}, {{ 17},{  8}}, {{145},{  8}},
+{{ 81},{  8}}, {{209},{  8}}, {{ 49},{  8}}, {{177},{  8}}, {{113},{  8}},
+{{241},{  8}}, {{  9},{  8}}, {{137},{  8}}, {{ 73},{  8}}, {{201},{  8}},
+{{ 41},{  8}}, {{169},{  8}}, {{105},{  8}}, {{233},{  8}}, {{ 25},{  8}},
+{{153},{  8}}, {{ 89},{  8}}, {{217},{  8}}, {{ 57},{  8}}, {{185},{  8}},
+{{121},{  8}}, {{249},{  8}}, {{  5},{  8}}, {{133},{  8}}, {{ 69},{  8}},
+{{197},{  8}}, {{ 37},{  8}}, {{165},{  8}}, {{101},{  8}}, {{229},{  8}},
+{{ 21},{  8}}, {{149},{  8}}, {{ 85},{  8}}, {{213},{  8}}, {{ 53},{  8}},
+{{181},{  8}}, {{117},{  8}}, {{245},{  8}}, {{ 13},{  8}}, {{141},{  8}},
+{{ 77},{  8}}, {{205},{  8}}, {{ 45},{  8}}, {{173},{  8}}, {{109},{  8}},
+{{237},{  8}}, {{ 29},{  8}}, {{157},{  8}}, {{ 93},{  8}}, {{221},{  8}},
+{{ 61},{  8}}, {{189},{  8}}, {{125},{  8}}, {{253},{  8}}, {{ 19},{  9}},
+{{275},{  9}}, {{147},{  9}}, {{403},{  9}}, {{ 83},{  9}}, {{339},{  9}},
+{{211},{  9}}, {{467},{  9}}, {{ 51},{  9}}, {{307},{  9}}, {{179},{  9}},
+{{435},{  9}}, {{115},{  9}}, {{371},{  9}}, {{243},{  9}}, {{499},{  9}},
+{{ 11},{  9}}, {{267},{  9}}, {{139},{  9}}, {{395},{  9}}, {{ 75},{  9}},
+{{331},{  9}}, {{203},{  9}}, {{459},{  9}}, {{ 43},{  9}}, {{299},{  9}},
+{{171},{  9}}, {{427},{  9}}, {{107},{  9}}, {{363},{  9}}, {{235},{  9}},
+{{491},{  9}}, {{ 27},{  9}}, {{283},{  9}}, {{155},{  9}}, {{411},{  9}},
+{{ 91},{  9}}, {{347},{  9}}, {{219},{  9}}, {{475},{  9}}, {{ 59},{  9}},
+{{315},{  9}}, {{187},{  9}}, {{443},{  9}}, {{123},{  9}}, {{379},{  9}},
+{{251},{  9}}, {{507},{  9}}, {{  7},{  9}}, {{263},{  9}}, {{135},{  9}},
+{{391},{  9}}, {{ 71},{  9}}, {{327},{  9}}, {{199},{  9}}, {{455},{  9}},
+{{ 39},{  9}}, {{295},{  9}}, {{167},{  9}}, {{423},{  9}}, {{103},{  9}},
+{{359},{  9}}, {{231},{  9}}, {{487},{  9}}, {{ 23},{  9}}, {{279},{  9}},
+{{151},{  9}}, {{407},{  9}}, {{ 87},{  9}}, {{343},{  9}}, {{215},{  9}},
+{{471},{  9}}, {{ 55},{  9}}, {{311},{  9}}, {{183},{  9}}, {{439},{  9}},
+{{119},{  9}}, {{375},{  9}}, {{247},{  9}}, {{503},{  9}}, {{ 15},{  9}},
+{{271},{  9}}, {{143},{  9}}, {{399},{  9}}, {{ 79},{  9}}, {{335},{  9}},
+{{207},{  9}}, {{463},{  9}}, {{ 47},{  9}}, {{303},{  9}}, {{175},{  9}},
+{{431},{  9}}, {{111},{  9}}, {{367},{  9}}, {{239},{  9}}, {{495},{  9}},
+{{ 31},{  9}}, {{287},{  9}}, {{159},{  9}}, {{415},{  9}}, {{ 95},{  9}},
+{{351},{  9}}, {{223},{  9}}, {{479},{  9}}, {{ 63},{  9}}, {{319},{  9}},
+{{191},{  9}}, {{447},{  9}}, {{127},{  9}}, {{383},{  9}}, {{255},{  9}},
+{{511},{  9}}, {{  0},{  7}}, {{ 64},{  7}}, {{ 32},{  7}}, {{ 96},{  7}},
+{{ 16},{  7}}, {{ 80},{  7}}, {{ 48},{  7}}, {{112},{  7}}, {{  8},{  7}},
+{{ 72},{  7}}, {{ 40},{  7}}, {{104},{  7}}, {{ 24},{  7}}, {{ 88},{  7}},
+{{ 56},{  7}}, {{120},{  7}}, {{  4},{  7}}, {{ 68},{  7}}, {{ 36},{  7}},
+{{100},{  7}}, {{ 20},{  7}}, {{ 84},{  7}}, {{ 52},{  7}}, {{116},{  7}},
+{{  3},{  8}}, {{131},{  8}}, {{ 67},{  8}}, {{195},{  8}}, {{ 35},{  8}},
+{{163},{  8}}, {{ 99},{  8}}, {{227},{  8}}
+};
 
-local ct_data static_dtree[D_CODES];
 /* The static distance tree. (Actually a trivial tree since all codes use
  * 5 bits.)
  */
+const ct_data static_dtree[D_CODES] = {
+{{ 0},{ 5}}, {{16},{ 5}}, {{ 8},{ 5}}, {{24},{ 5}}, {{ 4},{ 5}},
+{{20},{ 5}}, {{12},{ 5}}, {{28},{ 5}}, {{ 2},{ 5}}, {{18},{ 5}},
+{{10},{ 5}}, {{26},{ 5}}, {{ 6},{ 5}}, {{22},{ 5}}, {{14},{ 5}},
+{{30},{ 5}}, {{ 1},{ 5}}, {{17},{ 5}}, {{ 9},{ 5}}, {{25},{ 5}},
+{{ 5},{ 5}}, {{21},{ 5}}, {{13},{ 5}}, {{29},{ 5}}, {{ 3},{ 5}},
+{{19},{ 5}}, {{11},{ 5}}, {{27},{ 5}}, {{ 7},{ 5}}, {{23},{ 5}}
+};
 
-uch _dist_code[DIST_CODE_LEN];
 /* Distance codes. The first 256 values correspond to the distances
  * 3 .. 258, the last 256 values correspond to the top 8 bits of
  * the 15 bit distances.
  */
+uch ZLIB_INTERNAL _dist_code[DIST_CODE_LEN] = {
+ 0,  1,  2,  3,  4,  4,  5,  5,  6,  6,  6,  6,  7,  7,  7,  7,  8,  8,  8,  8,
+ 8,  8,  8,  8,  9,  9,  9,  9,  9,  9,  9,  9, 10, 10, 10, 10, 10, 10, 10, 10,
+10, 10, 10, 10, 10, 10, 10, 10, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11,
+11, 11, 11, 11, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12,
+12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 13, 13, 13, 13,
+13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13,
+13, 13, 13, 13, 13, 13, 13, 13, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14,
+14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14,
+14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14,
+14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 15, 15, 15, 15, 15, 15, 15, 15,
+15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15,
+15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15,
+15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15,  0,  0, 16, 17,
+18, 18, 19, 19, 20, 20, 20, 20, 21, 21, 21, 21, 22, 22, 22, 22, 22, 22, 22, 22,
+23, 23, 23, 23, 23, 23, 23, 23, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24,
+24, 24, 24, 24, 25, 25, 25, 25, 25, 25, 25, 25, 25, 25, 25, 25, 25, 25, 25, 25,
+26, 26, 26, 26, 26, 26, 26, 26, 26, 26, 26, 26, 26, 26, 26, 26, 26, 26, 26, 26,
+26, 26, 26, 26, 26, 26, 26, 26, 26, 26, 26, 26, 27, 27, 27, 27, 27, 27, 27, 27,
+27, 27, 27, 27, 27, 27, 27, 27, 27, 27, 27, 27, 27, 27, 27, 27, 27, 27, 27, 27,
+27, 27, 27, 27, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28,
+28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28,
+28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28,
+28, 28, 28, 28, 28, 28, 28, 28, 29, 29, 29, 29, 29, 29, 29, 29, 29, 29, 29, 29,
+29, 29, 29, 29, 29, 29, 29, 29, 29, 29, 29, 29, 29, 29, 29, 29, 29, 29, 29, 29,
+29, 29, 29, 29, 29, 29, 29, 29, 29, 29, 29, 29, 29, 29, 29, 29, 29, 29, 29, 29,
+29, 29, 29, 29, 29, 29, 29, 29, 29, 29, 29, 29
+};
 
-uch _length_code[MAX_MATCH-MIN_MATCH+1];
 /* length code for each normalized match length (0 == MIN_MATCH) */
+uch ZLIB_INTERNAL _length_code[MAX_MATCH-MIN_MATCH+1]= {
+ 0,  1,  2,  3,  4,  5,  6,  7,  8,  8,  9,  9, 10, 10, 11, 11, 12, 12, 12, 12,
+13, 13, 13, 13, 14, 14, 14, 14, 15, 15, 15, 15, 16, 16, 16, 16, 16, 16, 16, 16,
+17, 17, 17, 17, 17, 17, 17, 17, 18, 18, 18, 18, 18, 18, 18, 18, 19, 19, 19, 19,
+19, 19, 19, 19, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20,
+21, 21, 21, 21, 21, 21, 21, 21, 21, 21, 21, 21, 21, 21, 21, 21, 22, 22, 22, 22,
+22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 23, 23, 23, 23, 23, 23, 23, 23,
+23, 23, 23, 23, 23, 23, 23, 23, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24,
+24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24,
+25, 25, 25, 25, 25, 25, 25, 25, 25, 25, 25, 25, 25, 25, 25, 25, 25, 25, 25, 25,
+25, 25, 25, 25, 25, 25, 25, 25, 25, 25, 25, 25, 26, 26, 26, 26, 26, 26, 26, 26,
+26, 26, 26, 26, 26, 26, 26, 26, 26, 26, 26, 26, 26, 26, 26, 26, 26, 26, 26, 26,
+26, 26, 26, 26, 27, 27, 27, 27, 27, 27, 27, 27, 27, 27, 27, 27, 27, 27, 27, 27,
+27, 27, 27, 27, 27, 27, 27, 27, 27, 27, 27, 27, 27, 27, 27, 28
+};
 
-local int base_length[LENGTH_CODES];
 /* First normalized length for each code (0 = MIN_MATCH) */
+int base_length[LENGTH_CODES] = {
+0, 1, 2, 3, 4, 5, 6, 7, 8, 10, 12, 14, 16, 20, 24, 28, 32, 40, 48, 56,
+64, 80, 96, 112, 128, 160, 192, 224, 0
+};
 
-local int base_dist[D_CODES];
 /* First normalized distance for each code (0 = distance of 1) */
+int base_dist[D_CODES] = {
+    0,     1,     2,     3,     4,     6,     8,    12,    16,    24,
+   32,    48,    64,    96,   128,   192,   256,   384,   512,   768,
+ 1024,  1536,  2048,  3072,  4096,  6144,  8192, 12288, 16384, 24576
+};
 
-#else
-#  include "trees.h"
-#endif
 
 typedef {
     const ct_data *static_tree;  /* static tree or NULL */
@@ -122,22 +217,15 @@ typedef {
     int     max_length;          /* max bit length for the codes */
 } static_tree_desc;
 
-local const static_tree_desc  static_l_desc =
+const static_tree_desc  static_l_desc =
 {static_ltree, extra_lbits, LITERALS+1, L_CODES, MAX_BITS};
 
-local const static_tree_desc  static_d_desc =
+const static_tree_desc  static_d_desc =
 {static_dtree, extra_dbits, 0,          D_CODES, MAX_BITS};
 
-local const static_tree_desc  static_bl_desc =
+const static_tree_desc  static_bl_desc =
 {(const ct_data *)0, extra_blbits, 0,   BL_CODES, MAX_BL_BITS};
 
-/* ===========================================================================
- * Local (static) routines in this file.
- */
-
-#ifdef GEN_TREES_H
-local void gen_trees_header OF((void));
-#endif
 
 #ifndef ZLIB_DEBUG
 #  define send_code(s, c, tree) send_bits(s, tree[c].Code, tree[c].Len)
@@ -163,9 +251,8 @@ local void gen_trees_header OF((void));
  * IN assertion: length <= 16 and value fits in length bits.
  */
 #ifdef ZLIB_DEBUG
-local void send_bits      OF((deflate_state *s, int value, int length));
 
-local void send_bits(s, value, length)
+void send_bits(s, value, length)
     deflate_state *s;
     int value;  /* value to send */
     int length; /* number of bits */
@@ -206,15 +293,13 @@ local void send_bits(s, value, length)
 #endif /* ZLIB_DEBUG */
 
 
-/* the arguments must not have side effects */
-
 /* ===========================================================================
  * Initialize the various 'constant' tables.
  */
-local void tr_static_init()
-{
-#if defined(GEN_TREES_H)
-    static int static_init_done = 0;
+bool static_init_done = false;
+void tr_static_init() {
+    if (static_init_done) return;
+
     int n;        /* iterates over tree elements */
     int bits;     /* bit counter */
     int length;   /* length value */
@@ -222,17 +307,6 @@ local void tr_static_init()
     int dist;     /* distance index */
     ush bl_count[MAX_BITS+1];
     /* number of codes at each bit length for an optimal tree */
-
-    if (static_init_done) return;
-
-    /* For some embedded targets, global variables are not initialized: */
-#ifdef NO_INIT_GLOBAL_POINTERS
-    static_l_desc.static_tree = static_ltree;
-    static_l_desc.extra_bits = extra_lbits;
-    static_d_desc.static_tree = static_dtree;
-    static_d_desc.extra_bits = extra_dbits;
-    static_bl_desc.extra_bits = extra_blbits;
-#endif
 
     /* Initialize the mapping length (0..255) -> length code (0..28) */
     length = 0;
@@ -287,19 +361,10 @@ local void tr_static_init()
     }
     static_init_done = 1;
 
-#  ifdef GEN_TREES_H
-    gen_trees_header();
-#  endif
-#endif
+    if (GEN_TREES_H) {
+        gen_trees_header();
+    }
 }
-
-/* ===========================================================================
- * Generate the file trees.h describing the static trees.
- */
-#ifdef GEN_TREES_H
-#  ifndef ZLIB_DEBUG
-#    include <stdio.h>
-#  endif
 
 #  define SEPARATOR(i, last, width) \
       ((i) == (last)? "\n};\n\n" :    \
@@ -314,13 +379,13 @@ void gen_trees_header()
     fprintf(header,
             "/* header created automatically with -DGEN_TREES_H */\n\n");
 
-    fprintf(header, "local const ct_data static_ltree[L_CODES+2] = {\n");
+    fprintf(header, "const ct_data static_ltree[L_CODES+2] = {\n");
     for (i = 0; i < L_CODES+2; i++) {
         fprintf(header, "{{%3u},{%3u}}%s", static_ltree[i].Code,
                 static_ltree[i].Len, SEPARATOR(i, L_CODES+1, 5));
     }
 
-    fprintf(header, "local const ct_data static_dtree[D_CODES] = {\n");
+    fprintf(header, "const ct_data static_dtree[D_CODES] = {\n");
     for (i = 0; i < D_CODES; i++) {
         fprintf(header, "{{%2u},{%2u}}%s", static_dtree[i].Code,
                 static_dtree[i].Len, SEPARATOR(i, D_CODES-1, 5));
@@ -339,13 +404,13 @@ void gen_trees_header()
                 SEPARATOR(i, MAX_MATCH-MIN_MATCH, 20));
     }
 
-    fprintf(header, "local const int base_length[LENGTH_CODES] = {\n");
+    fprintf(header, "const int base_length[LENGTH_CODES] = {\n");
     for (i = 0; i < LENGTH_CODES; i++) {
         fprintf(header, "%1u%s", base_length[i],
                 SEPARATOR(i, LENGTH_CODES-1, 20));
     }
 
-    fprintf(header, "local const int base_dist[D_CODES] = {\n");
+    fprintf(header, "const int base_dist[D_CODES] = {\n");
     for (i = 0; i < D_CODES; i++) {
         fprintf(header, "%5u%s", base_dist[i],
                 SEPARATOR(i, D_CODES-1, 10));
@@ -353,7 +418,6 @@ void gen_trees_header()
 
     fclose(header);
 }
-#endif /* GEN_TREES_H */
 
 /* ===========================================================================
  * Initialize the tree data structures for a new zlib stream.
@@ -386,7 +450,7 @@ void ZLIB_INTERNAL _tr_init(s)
 /* ===========================================================================
  * Initialize a new block.
  */
-local void init_block(s)
+void init_block(s)
     deflate_state *s;
 {
     int n; /* iterates over tree elements */
@@ -430,7 +494,7 @@ local void init_block(s)
  * when the heap property is re-established (each father smaller than its
  * two sons).
  */
-local void pqdownheap(s, tree, k)
+void pqdownheap(s, tree, k)
     deflate_state *s;
     ct_data *tree;  /* the tree to restore */
     int k;               /* node to move down */
@@ -465,7 +529,7 @@ local void pqdownheap(s, tree, k)
  *     The length opt_len is updated; static_len is also updated if stree is
  *     not null.
  */
-local void gen_bitlen(s, desc)
+void gen_bitlen(s, desc)
     deflate_state *s;
     tree_desc *desc;    /* the tree descriptor */
 {
@@ -551,7 +615,7 @@ local void gen_bitlen(s, desc)
  * OUT assertion: the field code is set for all tree elements of non
  *     zero code length.
  */
-local void gen_codes(tree, max_code, bl_count)
+void gen_codes(tree, max_code, bl_count)
     ct_data *tree;             /* the tree to decorate */
     int max_code;              /* largest code with non zero frequency */
     ushf *bl_count;            /* number of codes at each bit length */
@@ -594,7 +658,7 @@ local void gen_codes(tree, max_code, bl_count)
  *     and corresponding code. The length opt_len is updated; static_len is
  *     also updated if stree is not null. The field max_code is set.
  */
-local void build_tree(s, desc)
+void build_tree(s, desc)
     deflate_state *s;
     tree_desc *desc; /* the tree descriptor */
 {
@@ -682,7 +746,7 @@ local void build_tree(s, desc)
  * Scan a literal or distance tree to determine the frequencies of the codes
  * in the bit length tree.
  */
-local void scan_tree(s, tree, max_code)
+void scan_tree(s, tree, max_code)
     deflate_state *s;
     ct_data *tree;   /* the tree to be scanned */
     int max_code;    /* and its largest code of non zero frequency */
@@ -727,7 +791,7 @@ local void scan_tree(s, tree, max_code)
  * Send a literal or distance tree in compressed form, using the codes in
  * bl_tree.
  */
-local void send_tree(s, tree, max_code)
+void send_tree(s, tree, max_code)
     deflate_state *s;
     ct_data *tree; /* the tree to be scanned */
     int max_code;       /* and its largest code of non zero frequency */
@@ -778,7 +842,7 @@ local void send_tree(s, tree, max_code)
  * Construct the Huffman tree for the bit lengths and return the index in
  * bl_order of the last bit length code to send.
  */
-local int build_bl_tree(s)
+int build_bl_tree(s)
     deflate_state *s;
 {
     int max_blindex;  /* index of last bit length code of non zero freq */
@@ -813,7 +877,7 @@ local int build_bl_tree(s)
  * lengths of the bit length codes, the literal tree and the distance tree.
  * IN assertion: lcodes >= 257, dcodes >= 1, blcodes >= 4.
  */
-local void send_all_trees(s, lcodes, dcodes, blcodes)
+void send_all_trees(s, lcodes, dcodes, blcodes)
     deflate_state *s;
     int lcodes, dcodes, blcodes; /* number of codes for each tree */
 {
@@ -1021,7 +1085,7 @@ int ZLIB_INTERNAL _tr_tally(s, dist, lc)
 /* ===========================================================================
  * Send the block data compressed using the given Huffman trees
  */
-local void compress_block(s, ltree, dtree)
+void compress_block(s, ltree, dtree)
     deflate_state *s;
     const ct_data *ltree; /* literal tree */
     const ct_data *dtree; /* distance tree */
@@ -1081,7 +1145,7 @@ local void compress_block(s, ltree, dtree)
  *   (7 {BEL}, 8 {BS}, 11 {VT}, 12 {FF}, 26 {SUB}, 27 {ESC}).
  * IN assertion: the fields Freq of dyn_ltree are set.
  */
-local int detect_data_type(s)
+int detect_data_type(s)
     deflate_state *s;
 {
     /* block_mask is the bit mask of block-listed bytes
@@ -1115,7 +1179,7 @@ local int detect_data_type(s)
  * method would use a table)
  * IN assertion: 1 <= len <= 15
  */
-local unsigned bi_reverse(code, len)
+unsigned bi_reverse(code, len)
     unsigned code; /* the value to invert */
     int len;       /* its bit length */
 {
@@ -1130,7 +1194,7 @@ local unsigned bi_reverse(code, len)
 /* ===========================================================================
  * Flush the bit buffer, keeping at most 7 bits in it.
  */
-local void bi_flush(s)
+void bi_flush(s)
     deflate_state *s;
 {
     if (s->bi_valid == 16) {
@@ -1147,7 +1211,7 @@ local void bi_flush(s)
 /* ===========================================================================
  * Flush the bit buffer and align the output on a byte boundary
  */
-local void bi_windup(s)
+void bi_windup(s)
     deflate_state *s;
 {
     if (s->bi_valid > 8) {

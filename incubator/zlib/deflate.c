@@ -1,76 +1,58 @@
 /* deflate.c -- compress data using the deflation algorithm
  * Copyright (C) 1995-2022 Jean-loup Gailly and Mark Adler
  * For conditions of distribution and use, see copyright notice in zlib.h
+
+ACKNOWLEDGEMENTS
+
+    The idea of lazy evaluation of matches is due to Jan-Mark Wams, and
+    I found it in 'freeze' written by Leonid Broukhis.
+    Thanks to many people for bug reports and testing.
+
+REFERENCES
+
+    Deutsch, L.P.,"DEFLATE Compressed Data Format Specification".
+    Available in http://tools.ietf.org/html/rfc1951
+
+    A description of the Rabin and Karp algorithm is given in the book
+       "Algorithms" by R. Sedgewick, Addison-Wesley, p252.
+
+    Fiala,E.R., and Greene,D.H.
+       Data Compression with Finite Windows, Comm.ACM, 32,4 (1989) 490-595
  */
+
 
 /*
- *  ALGORITHM
- *
- *      The "deflation" process depends on being able to identify portions
- *      of the input text which are identical to earlier input (within a
- *      sliding window trailing behind the input currently being processed).
- *
- *      The most straightforward technique turns out to be the fastest for
- *      most input files: try all possible matches and select the longest.
- *      The key feature of this algorithm is that insertions into the string
- *      dictionary are very simple and thus fast, and deletions are avoided
- *      completely. Insertions are performed at each input character, whereas
- *      string matches are performed only when the previous match ends. So it
- *      is preferable to spend more time in matches to allow very fast string
- *      insertions and avoid deletions. The matching algorithm for small
- *      strings is inspired from that of Rabin & Karp. A brute force approach
- *      is used to find longer strings when a small match has been found.
- *      A similar algorithm is used in comic (by Jan-Mark Wams) and freeze
- *      (by Leonid Broukhis).
- *         A previous version of this file used a more sophisticated algorithm
- *      (by Fiala and Greene) which is guaranteed to run in linear amortized
- *      time, but has a larger average cost, uses more memory and is patented.
- *      However the F&G algorithm may be faster for some highly redundant
- *      files if the parameter max_chain_length (described below) is too large.
- *
- *  ACKNOWLEDGEMENTS
- *
- *      The idea of lazy evaluation of matches is due to Jan-Mark Wams, and
- *      I found it in 'freeze' written by Leonid Broukhis.
- *      Thanks to many people for bug reports and testing.
- *
- *  REFERENCES
- *
- *      Deutsch, L.P.,"DEFLATE Compressed Data Format Specification".
- *      Available in http://tools.ietf.org/html/rfc1951
- *
- *      A description of the Rabin and Karp algorithm is given in the book
- *         "Algorithms" by R. Sedgewick, Addison-Wesley, p252.
- *
- *      Fiala,E.R., and Greene,D.H.
- *         Data Compression with Finite Windows, Comm.ACM, 32,4 (1989) 490-595
- *
+The "deflation" depends on identifying portions of the input text which are
+identical to earlier input (within a sliding window).
+
+The most straightforward technique turns out to be the fastest for most input
+files: try all possible matches and select the longest.
+
+A previous version used a more sophisticated algorithm by Fiala and Greene
+which is guaranteed to run in linear amortized time, but has a larger average
+cost, uses more memory and is patented. F&G algorithm may be faster for some
+highly redundant files if the parameter max_chain_length (described below) is too large.
+
+
+
+The key feature of this algorithm is that insertions into the string dictionary
+are very simple and fast, and deletions are avoided completely.
+Insertions are performed at each input character, whereas string matches are
+performed only when the previous match ends.
+So it is preferable to spend more time in matches to allow very fast string
+ insertions and avoid deletions. The matching algorithm for small
+ strings is inspired from that of Rabin & Karp. A brute force approach
+ is used to find longer strings when a small match has been found.
+ A similar algorithm is used in comic (by Jan-Mark Wams) and freeze
+ (by Leonid Broukhis).
+ 
  */
 
-/* @(#) $Id$ */
-
-/* deflate.h -- internal compression state
- * Copyright (C) 1995-2018 Jean-loup Gailly
- * For conditions of distribution and use, see copyright notice in zlib.h
- */
-
-/* WARNING: this file should *not* be used by applications. It is
-   part of the implementation of the compression library and is
-   subject to change. Applications should only use zlib.h.
- */
-
-/* @(#) $Id$ */
 
 #ifndef DEFLATE_H
 #define DEFLATE_H
 
-#include "zutil.h"
-
 #  define GZIP
-
-/* ===========================================================================
- * Internal compression state.
- */
 
 #define LENGTH_CODES 29
 /* number of length codes, not counting the special END_BLOCK code */
@@ -139,9 +121,12 @@ typedef unsigned IPos;
 
 pub typedef {
     z_streamp strm;      /* pointer back to this zlib stream */
-    int   status;        /* as the name implies */
-    Bytef *pending_buf;  /* output still pending */
-    ulg   pending_buf_size; /* size of pending_buf */
+    int   status;
+
+    /* output still pending */
+    Bytef *pending_buf;  
+    ulg   pending_buf_size;
+
     Bytef *pending_out;  /* next pending byte to output to the stream */
     ulg   pending;       /* nb of bytes in the pending buffer */
     int   wrap;          /* bit 0 true for zlib, bit 1 true for gzip */
@@ -149,8 +134,6 @@ pub typedef {
     ulg   gzindex;       /* where in extra, name, or comment */
     Byte  method;        /* can only be DEFLATED */
     int   last_flush;    /* value of flush param for previous deflate call */
-
-                /* used by deflate.c: */
 
     uInt  w_size;        /* LZ77 window size (32K by default) */
     uInt  w_bits;        /* log2(w_size)  (8..16) */
@@ -345,14 +328,6 @@ int d_code(int dist) {
 #ifndef ZLIB_DEBUG
 /* Inline versions of _tr_tally for speed: */
 
-#if defined(GEN_TREES_H)
-  extern uch ZLIB_INTERNAL _length_code[];
-  extern uch ZLIB_INTERNAL _dist_code[];
-#else
-  extern const uch ZLIB_INTERNAL _length_code[];
-  extern const uch ZLIB_INTERNAL _dist_code[];
-#endif
-
 void _tr_tally_lit(s, c, flush) {
     uch cc = (c);
     s->sym_buf[s->sym_next++] = 0;
@@ -394,9 +369,6 @@ const char deflate_copyright[] =
   copyright string in the executable of your product.
  */
 
-/* ===========================================================================
- *  Function prototypes.
- */
 typedef enum {
     need_more,      /* block not completed, need more input or more output */
     block_done,     /* block flush performed */
@@ -406,15 +378,6 @@ typedef enum {
 
 typedef block_state (*compress_func) OF((deflate_state *s, int flush));
 /* Compression function. Returns the block state after the call. */
-
-#ifdef ZLIB_DEBUG
-local  void check_match OF((deflate_state *s, IPos start, IPos match,
-                            int length));
-#endif
-
-/* ===========================================================================
- * Local data
- */
 
 enum {
     NIL = 0, /* Tail of hash chains */
@@ -437,7 +400,7 @@ typedef struct config_s {
    compress_func func;
 } config;
 
-local const config configuration_table[10] = {
+const config configuration_table[10] = {
 /*      good lazy nice chain */
 /* 0 */ {0,    0,  0,    0, deflate_stored},  /* store only */
 /* 1 */ {4,    4,  8,    4, deflate_fast}, /* max speed, no lazy matches */
@@ -498,7 +461,7 @@ void CLEAR_HASH(s) {
  * bit values at the expense of memory usage). We slide even when level == 0 to
  * keep the hash table consistent if we switch back to level > 0 later.
  */
-local void slide_hash(s)
+void slide_hash(s)
     deflate_state *s;
 {
     unsigned n, m;
@@ -523,7 +486,7 @@ local void slide_hash(s)
 }
 
 /* ========================================================================= */
-int ZEXPORT deflateInit_(strm, level, version, stream_size)
+pub int deflateInit_(strm, level, version, stream_size)
     z_streamp strm;
     int level;
     const char *version;
@@ -535,7 +498,7 @@ int ZEXPORT deflateInit_(strm, level, version, stream_size)
 }
 
 /* ========================================================================= */
-int ZEXPORT deflateInit2_(strm, level, method, windowBits, memLevel, strategy,
+pub int deflateInit2_(strm, level, method, windowBits, memLevel, strategy,
                   version, stream_size)
     z_streamp strm;
     int  level;
@@ -673,7 +636,7 @@ int ZEXPORT deflateInit2_(strm, level, method, windowBits, memLevel, strategy,
 /* =========================================================================
  * Check for a valid deflate stream state. Return 0 if ok, 1 if not.
  */
-local int deflateStateCheck(strm)
+int deflateStateCheck(strm)
     z_streamp strm;
 {
     deflate_state *s;
@@ -694,7 +657,7 @@ local int deflateStateCheck(strm)
 }
 
 /* ========================================================================= */
-int ZEXPORT deflateSetDictionary(strm, dictionary, dictLength)
+pub int deflateSetDictionary(strm, dictionary, dictLength)
     z_streamp strm;
     const Bytef *dictionary;
     uInt  dictLength;
@@ -761,7 +724,7 @@ int ZEXPORT deflateSetDictionary(strm, dictionary, dictLength)
 }
 
 /* ========================================================================= */
-int ZEXPORT deflateGetDictionary(strm, dictionary, dictLength)
+pub int deflateGetDictionary(strm, dictionary, dictLength)
     z_streamp strm;
     Bytef *dictionary;
     uInt  *dictLength;
@@ -783,7 +746,7 @@ int ZEXPORT deflateGetDictionary(strm, dictionary, dictLength)
 }
 
 /* ========================================================================= */
-int ZEXPORT deflateResetKeep(strm)
+pub int deflateResetKeep(strm)
     z_streamp strm;
 {
     deflate_state *s;
@@ -817,7 +780,7 @@ int ZEXPORT deflateResetKeep(strm)
 }
 
 /* ========================================================================= */
-int ZEXPORT deflateReset(strm)
+pub int deflateReset(strm)
     z_streamp strm;
 {
     int ret;
@@ -829,7 +792,7 @@ int ZEXPORT deflateReset(strm)
 }
 
 /* ========================================================================= */
-int ZEXPORT deflateSetHeader(strm, head)
+pub int deflateSetHeader(strm, head)
     z_streamp strm;
     gz_headerp head;
 {
@@ -840,7 +803,7 @@ int ZEXPORT deflateSetHeader(strm, head)
 }
 
 /* ========================================================================= */
-int ZEXPORT deflatePending(strm, pending, bits)
+pub int deflatePending(strm, pending, bits)
     unsigned *pending;
     int *bits;
     z_streamp strm;
@@ -854,7 +817,7 @@ int ZEXPORT deflatePending(strm, pending, bits)
 }
 
 /* ========================================================================= */
-int ZEXPORT deflatePrime(strm, bits, value)
+pub int deflatePrime(strm, bits, value)
     z_streamp strm;
     int bits;
     int value;
@@ -881,7 +844,7 @@ int ZEXPORT deflatePrime(strm, bits, value)
 }
 
 /* ========================================================================= */
-int ZEXPORT deflateParams(strm, level, strategy)
+pub int deflateParams(strm, level, strategy)
     z_streamp strm;
     int level;
     int strategy;
@@ -926,7 +889,7 @@ int ZEXPORT deflateParams(strm, level, strategy)
 }
 
 /* ========================================================================= */
-int ZEXPORT deflateTune(strm, good_length, max_lazy, nice_length, max_chain)
+pub int deflateTune(strm, good_length, max_lazy, nice_length, max_chain)
     z_streamp strm;
     int good_length;
     int max_lazy;
@@ -968,7 +931,7 @@ int ZEXPORT deflateTune(strm, good_length, max_lazy, nice_length, max_chain)
  *
  * Shifts are used to approximate divisions, for speed.
  */
-uLong ZEXPORT deflateBound(strm, sourceLen)
+pub uLong deflateBound(strm, sourceLen)
     z_streamp strm;
     uLong sourceLen;
 {
@@ -1038,7 +1001,7 @@ uLong ZEXPORT deflateBound(strm, sourceLen)
  * IN assertion: the stream state is correct and there is enough room in
  * pending_buf.
  */
-local void putShortMSB(s, b)
+void putShortMSB(s, b)
     deflate_state *s;
     uInt b;
 {
@@ -1052,7 +1015,7 @@ local void putShortMSB(s, b)
  * applications may wish to modify it to avoid allocating a large
  * strm->next_out buffer and copying into it. (See also read_buf()).
  */
-local void flush_pending(strm)
+void flush_pending(strm)
     z_streamp strm;
 {
     unsigned len;
@@ -1083,27 +1046,132 @@ void HCRC_UPDATE(beg) {
     }
 }
 
-/* ========================================================================= */
-int ZEXPORT deflate(strm, flush)
-    z_streamp strm;
-    int flush;
-{
-    int old_flush; /* value of flush param for previous deflate call */
-    deflate_state *s;
+/*
+    deflate compresses as much data as possible, and stops when the input
+  buffer becomes empty or the output buffer becomes full.  It may introduce
+  some output latency (reading input without producing any output) except when
+  forced to flush.
 
+deflate performs one or both of the following actions:
+
+  - Compress more input starting at next_in and update next_in and avail_in
+    accordingly.  If not all input can be processed (because there is not
+    enough room in the output buffer), next_in and avail_in are updated and
+    processing will resume at this point for the next call of deflate().
+
+  - Generate more output starting at next_out and update next_out and avail_out
+    accordingly.  This action is forced if the parameter flush is non zero.
+    Forcing flush frequently degrades the compression ratio, so this parameter
+    should be set only when necessary.  Some output may be provided even if
+    flush is zero.
+
+    Before the call of deflate(), the application should ensure that at least
+  one of the actions is possible, by providing more input and/or consuming more
+  output, and updating avail_in or avail_out accordingly; avail_out should
+  never be zero before the call.  The application can consume the compressed
+  output when it wants, for example when the output buffer is full (avail_out
+  == 0), or after each call of deflate().  If deflate returns Z_OK and with
+  zero avail_out, it must be called again after making room in the output
+  buffer because there might be more output pending. See deflatePending(),
+  which can be used if desired to determine whether or not there is more output
+  in that case.
+
+    Normally the parameter flush is set to Z_NO_FLUSH, which allows deflate to
+  decide how much data to accumulate before producing output, in order to
+  maximize compression.
+
+    If the parameter flush is set to Z_SYNC_FLUSH, all pending output is
+  flushed to the output buffer and the output is aligned on a byte boundary, so
+  that the decompressor can get all input data available so far.  (In
+  particular avail_in is zero after the call if enough output space has been
+  provided before the call.) Flushing may degrade compression for some
+  compression algorithms and so it should be used only when necessary.  This
+  completes the current deflate block and follows it with an empty stored block
+  that is three bits plus filler bits to the next byte, followed by four bytes
+  (00 00 ff ff).
+
+    If flush is set to Z_PARTIAL_FLUSH, all pending output is flushed to the
+  output buffer, but the output is not aligned to a byte boundary.  All of the
+  input data so far will be available to the decompressor, as for Z_SYNC_FLUSH.
+  This completes the current deflate block and follows it with an empty fixed
+  codes block that is 10 bits long.  This assures that enough bytes are output
+  in order for the decompressor to finish the block before the empty fixed
+  codes block.
+
+    If flush is set to Z_BLOCK, a deflate block is completed and emitted, as
+  for Z_SYNC_FLUSH, but the output is not aligned on a byte boundary, and up to
+  seven bits of the current block are held to be written as the next byte after
+  the next deflate block is completed.  In this case, the decompressor may not
+  be provided enough bits at this point in order to complete decompression of
+  the data provided so far to the compressor.  It may need to wait for the next
+  block to be emitted.  This is for advanced applications that need to control
+  the emission of deflate blocks.
+
+    If flush is set to Z_FULL_FLUSH, all output is flushed as with
+  Z_SYNC_FLUSH, and the compression state is reset so that decompression can
+  restart from this point if previous compressed data has been damaged or if
+  random access is desired.  Using Z_FULL_FLUSH too often can seriously degrade
+  compression.
+
+    If deflate returns with avail_out == 0, this function must be called again
+  with the same value of the flush parameter and more output space (updated
+  avail_out), until the flush is complete (deflate returns with non-zero
+  avail_out).  In the case of a Z_FULL_FLUSH or Z_SYNC_FLUSH, make sure that
+  avail_out is greater than six to avoid repeated flush markers due to
+  avail_out == 0 on return.
+
+    If the parameter flush is set to Z_FINISH, pending input is processed,
+  pending output is flushed and deflate returns with Z_STREAM_END if there was
+  enough output space.  If deflate returns with Z_OK or Z_BUF_ERROR, this
+  function must be called again with Z_FINISH and more output space (updated
+  avail_out) but no more input data, until it returns with Z_STREAM_END or an
+  error.  After deflate has returned Z_STREAM_END, the only possible operations
+  on the stream are deflateReset or deflateEnd.
+
+    Z_FINISH can be used in the first deflate call after deflateInit if all the
+  compression is to be done in a single step.  In order to complete in one
+  call, avail_out must be at least the value returned by deflateBound (see
+  below).  Then deflate is guaranteed to return Z_STREAM_END.  If not enough
+  output space is provided, deflate will not return Z_STREAM_END, and it must
+  be called again as described above.
+
+    deflate() sets strm->adler to the Adler-32 checksum of all input read
+  so far (that is, total_in bytes).  If a gzip stream is being generated, then
+  strm->adler will be the CRC-32 checksum of the input read so far.  (See
+  deflateInit2 below.)
+
+    deflate() may update strm->data_type if it can make a good guess about
+  the input data type (Z_BINARY or Z_TEXT).  If in doubt, the data is
+  considered binary.  This field is only for information purposes and does not
+  affect the compression algorithm in any manner.
+
+    deflate() returns Z_OK if some progress has been made (more input
+  processed or more output produced), Z_STREAM_END if all input has been
+  consumed and all output has been produced (only when flush is set to
+  Z_FINISH), Z_STREAM_ERROR if the stream state was inconsistent (for example
+  if next_in or next_out was Z_NULL or the state was inadvertently written over
+  by the application), or Z_BUF_ERROR if no progress is possible (for example
+  avail_in or avail_out was zero).  Note that Z_BUF_ERROR is not fatal, and
+  deflate() can be called again with more input and more output space to
+  continue compressing.
+*/
+pub int deflate(z_streamp strm, int flush) {
     if (deflateStateCheck(strm) || flush > Z_BLOCK || flush < 0) {
         return Z_STREAM_ERROR;
     }
-    s = strm->state;
+
+    deflate_state *s = strm->state;
 
     if (strm->next_out == Z_NULL ||
         (strm->avail_in != 0 && strm->next_in == Z_NULL) ||
         (s->status == FINISH_STATE && flush != Z_FINISH)) {
         ERR_RETURN(strm, Z_STREAM_ERROR);
     }
-    if (strm->avail_out == 0) ERR_RETURN(strm, Z_BUF_ERROR);
+    if (strm->avail_out == 0) {
+        ERR_RETURN(strm, Z_BUF_ERROR);
+    }
 
-    old_flush = s->last_flush;
+    int old_flush = s->last_flush;
     s->last_flush = flush;
 
     /* Flush as much pending output as possible */
@@ -1124,8 +1192,7 @@ int ZEXPORT deflate(strm, flush)
      * flushes. For repeated and useless calls with Z_FINISH, we keep
      * returning Z_STREAM_END instead of Z_BUF_ERROR.
      */
-    } else if (strm->avail_in == 0 && RANK(flush) <= RANK(old_flush) &&
-               flush != Z_FINISH) {
+    } else if (strm->avail_in == 0 && RANK(flush) <= RANK(old_flush) && flush != Z_FINISH) {
         ERR_RETURN(strm, Z_BUF_ERROR);
     }
 
@@ -1135,8 +1202,9 @@ int ZEXPORT deflate(strm, flush)
     }
 
     /* Write the header */
-    if (s->status == INIT_STATE && s->wrap == 0)
+    if (s->status == INIT_STATE && s->wrap == 0) {
         s->status = BUSY_STATE;
+    }
     if (s->status == INIT_STATE) {
         /* zlib header */
         uInt header = (Z_DEFLATED + ((s->w_bits - 8) << 4)) << 8;
@@ -1394,15 +1462,20 @@ int ZEXPORT deflate(strm, flush)
     return s->pending != 0 ? Z_OK : Z_STREAM_END;
 }
 
-/* ========================================================================= */
-int ZEXPORT deflateEnd(strm)
-    z_streamp strm;
-{
-    int status;
+/*
+     All dynamically allocated data structures for this stream are freed.
+   This function discards any unprocessed input and does not flush any pending
+   output.
 
+     deflateEnd returns Z_OK if success, Z_STREAM_ERROR if the
+   stream state was inconsistent, Z_DATA_ERROR if the stream was freed
+   prematurely (some input or output was discarded).  In the error case, msg
+   may be set but then points to a static string (which must not be
+   deallocated).
+*/
+pub int deflateEnd(z_streamp strm) {
     if (deflateStateCheck(strm)) return Z_STREAM_ERROR;
-
-    status = strm->state->status;
+    int status = strm->state->status;
 
     /* Deallocate in reverse order of allocations: */
     TRY_FREE(strm, strm->state->pending_buf);
@@ -1421,10 +1494,7 @@ int ZEXPORT deflateEnd(strm)
  * To simplify the source, this is not supported for 16-bit MSDOS (which
  * doesn't have enough memory anyway to duplicate compression states).
  */
-int ZEXPORT deflateCopy(dest, source)
-    z_streamp dest;
-    z_streamp source;
-{
+pub int deflateCopy(z_streamp dest, source) {
 #ifdef MAXSEG_64K
     return Z_STREAM_ERROR;
 #else
@@ -1480,7 +1550,7 @@ int ZEXPORT deflateCopy(dest, source)
  * allocating a large strm->next_in buffer and copying from it.
  * (See also flush_pending()).
  */
-local unsigned read_buf(strm, buf, size)
+unsigned read_buf(strm, buf, size)
     z_streamp strm;
     Bytef *buf;
     unsigned size;
@@ -1508,7 +1578,7 @@ local unsigned read_buf(strm, buf, size)
 /* ===========================================================================
  * Initialize the "longest match" routines for a new zlib stream
  */
-local void lm_init(s)
+void lm_init(s)
     deflate_state *s;
 {
     s->window_size = (ulg)2L*s->w_size;
@@ -1540,7 +1610,7 @@ local void lm_init(s)
  *   string (strstart) and its distance is <= MAX_DIST, and prev_length >= 1
  * OUT assertion: the match length is not greater than s->lookahead.
  */
-local uInt longest_match(s, cur_match)
+uInt longest_match(s, cur_match)
     deflate_state *s;
     IPos cur_match;                             /* current match */
 {
@@ -1695,7 +1765,7 @@ local uInt longest_match(s, cur_match)
 /* ===========================================================================
  * Check that the match at match_start is indeed a match.
  */
-local void check_match(s, start, match, length)
+void check_match(s, start, match, length)
     deflate_state *s;
     IPos start, match;
     int length;
@@ -1729,7 +1799,7 @@ local void check_match(s, start, match, length)
  *    performed for at least two bytes (required for the zip translate_eol
  *    option -- not supported here).
  */
-local void fill_window(s)
+void fill_window(s)
     deflate_state *s;
 {
     unsigned n;
@@ -1890,7 +1960,7 @@ void FLUSH_BLOCK(s, last) {
  * copied. It is most efficient with large input and output buffers, which
  * maximizes the opportunities to have a single copy from next_in to next_out.
  */
-local block_state deflate_stored(s, flush)
+block_state deflate_stored(s, flush)
     deflate_state *s;
     int flush;
 {
@@ -2077,7 +2147,7 @@ local block_state deflate_stored(s, flush)
  * new strings in the dictionary only for unmatched strings or for short
  * matches. It is used only for the fast compression options.
  */
-local block_state deflate_fast(s, flush)
+block_state deflate_fast(s, flush)
     deflate_state *s;
     int flush;
 {
@@ -2176,7 +2246,7 @@ local block_state deflate_fast(s, flush)
  * evaluation for matches: a match is finally adopted only if there is
  * no better match at the next window position.
  */
-local block_state deflate_slow(s, flush)
+block_state deflate_slow(s, flush)
     deflate_state *s;
     int flush;
 {
@@ -2304,7 +2374,7 @@ local block_state deflate_slow(s, flush)
  * one.  Do not maintain a hash table.  (It will be regenerated if this run of
  * deflate switches away from Z_RLE.)
  */
-local block_state deflate_rle(s, flush)
+block_state deflate_rle(s, flush)
     deflate_state *s;
     int flush;
 {
@@ -2378,7 +2448,7 @@ local block_state deflate_rle(s, flush)
  * For Z_HUFFMAN_ONLY, do not look for matches.  Do not maintain a hash table.
  * (It will be regenerated if this run of deflate switches away from Huffman.)
  */
-local block_state deflate_huff(s, flush)
+block_state deflate_huff(s, flush)
     deflate_state *s;
     int flush;
 {
