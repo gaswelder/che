@@ -46,18 +46,11 @@
 /* CRC polynomial. */
 #define POLY 0xedb88320         /* p(x) reflected, with x^32 implied */
 
-/*
-  z_word_t must be at least as long as uint32_t.
-  It is assumed here that z_word_t is either 32 bits or 64 bits, and
-  that bytes are eight bits.
- */
-typedef Z_U8 z_word_t;
-
 /* crc32.h -- tables for rapid CRC calculation
  * Generated automatically by crc32.c
  */
 
-const uint32_t crc_table[] = {
+uint32_t crc_table[] = {
     0x00000000, 0x77073096, 0xee0e612c, 0x990951ba, 0x076dc419,
     0x706af48f, 0xe963a535, 0x9e6495a3, 0x0edb8832, 0x79dcb8a4,
     0xe0d5e91e, 0x97d2d988, 0x09b64c2b, 0x7eb17cbd, 0xe7b82d07,
@@ -113,7 +106,7 @@ const uint32_t crc_table[] = {
 
 
 
-const z_word_t crc_big_table[] = {
+uint64_t crc_big_table[] = {
     0x0000000000000000, 0x9630077700000000, 0x2c610eee00000000,
     0xba51099900000000, 0x19c46d0700000000, 0x8ff46a7000000000,
     0x35a563e900000000, 0xa395649e00000000, 0x3288db0e00000000,
@@ -208,7 +201,7 @@ const z_word_t crc_big_table[] = {
 
 
 
-const uint32_t FAR crc_braid_table[][256] = {
+uint32_t crc_braid_table[][256] = {
    {0x00000000, 0xaf449247, 0x85f822cf, 0x2abcb088, 0xd08143df,
     0x7fc5d198, 0x55796110, 0xfa3df357, 0x7a7381ff, 0xd53713b8,
     0xff8ba330, 0x50cf3177, 0xaaf2c220, 0x05b65067, 0x2f0ae0ef,
@@ -626,7 +619,7 @@ const uint32_t FAR crc_braid_table[][256] = {
     0x190fa237, 0x2ffd32c4, 0xaf20c01d, 0x99d250ee, 0xc2c5e1fb,
     0xf4377108}};
 
-const z_word_t crc_braid_big_table[][256] = {
+uint64_t crc_braid_big_table[][256] = {
    {0x0000000000000000, 0xf390f23600000000, 0xe621e56d00000000,
     0x15b1175b00000000, 0xcc43cadb00000000, 0x3fd338ed00000000,
     0x2a622fb600000000, 0xd9f2dd8000000000, 0xd981e56c00000000,
@@ -1316,7 +1309,7 @@ const z_word_t crc_braid_big_table[][256] = {
     0xedc528c300000000, 0xaa576c6c00000000, 0x22e7d04600000000,
     0x657594e900000000}};
 
-const uint32_t x2n_table[] = {
+uint32_t x2n_table[] = {
     0x40000000, 0x20000000, 0x08000000, 0x00800000, 0x00008000,
     0xedb88320, 0xb1e6b092, 0xa06a2517, 0xed627dae, 0x88d14467,
     0xd7bbfe6a, 0xec447f11, 0x8e7ea170, 0x6427800e, 0x4d47bae0,
@@ -1326,12 +1319,12 @@ const uint32_t x2n_table[] = {
     0xc40ba6d0, 0xc4e22c3c};
 
 /*
-  Swap the bytes in a z_word_t to convert between little and big endian. Any
+  Swap the bytes in a uint64_t to convert between little and big endian. Any
   self-respecting compiler will optimize this to a single machine byte-swap
   instruction, if one is available. This assumes that word_t is either 32 bits
   or 64 bits.
  */
-z_word_t byte_swap(z_word_t word) {
+uint64_t byte_swap(uint64_t word) {
     return
         (word & 0xff00000000000000) >> 56 |
         (word & 0xff000000000000) >> 40 |
@@ -1376,14 +1369,21 @@ void make_crc_table() {
         return;
     }
     table_made = true;
-    unsigned i, j, n;
+    unsigned i;
+    unsigned j;
+    unsigned n;
     uint32_t p;
 
     /* initialize the CRC of bytes tables */
     for (i = 0; i < 256; i++) {
         p = i;
-        for (j = 0; j < 8; j++)
-            p = p & 1 ? (p >> 1) ^ POLY : p >> 1;
+        for (j = 0; j < 8; j++) {
+            if (p & 1) {
+                p = (p >> 1) ^ POLY;
+            } else {
+                p = p >> 1;
+            }
+        }
         crc_table[i] = p;
         crc_big_table[i] = byte_swap(p);
     }
@@ -1400,16 +1400,18 @@ void make_crc_table() {
 }
 
 /*
-  Generate the little and big-endian braid tables for the given n and z_word_t
+  Generate the little and big-endian braid tables for the given n and uint64_t
   size w. Each array must have room for w blocks of 256 elements.
  */
 void braid(
     uint32_t ltl[][256],
-    z_word_t big[][256],
+    uint64_t big[][256],
     int n,
     int w
 ) {
-    uint32_t i, p, q;
+    uint32_t i;
+    uint32_t p;
+    uint32_t q;
     for (int k = 0; k < w; k++) {
         p = x2nmodp((n * w + 3 - k) << 3, 0);
         ltl[k][0] = 0;
@@ -1434,14 +1436,18 @@ void braid(
 uint32_t multmodp(uint32_t a, b) {
     uint32_t m = (uint32_t)1 << 31;
     uint32_t p = 0;
-    for (;;) {
+    while (true) {
         if (a & m) {
             p ^= b;
             if ((a & (m - 1)) == 0)
                 break;
         }
         m >>= 1;
-        b = b & 1 ? (b >> 1) ^ POLY : b >> 1;
+        if (b & 1) {
+            b = (b >> 1) ^ POLY;
+        } else {
+            b = b >> 1;
+        }
     }
     return p;
 }
@@ -1450,7 +1456,7 @@ uint32_t multmodp(uint32_t a, b) {
   Return x^(n * 2^k) modulo p(x). Requires that x2n_table[] has been
   initialized.
  */
-uint32_t x2nmodp(z_off64_t n, unsigned k) {
+uint32_t x2nmodp(int64_t n, unsigned k) {
     uint32_t p = (uint32_t)1 << 31;           /* x^0 == 1 */
     while (n) {
         if (n & 1)
@@ -1486,14 +1492,14 @@ pub const uint32_t *get_crc_table() {
   least-significant byte of the word as the first byte of data, without any pre
   or post conditioning. This is used to combine the CRCs of each braid.
  */
-uint32_t crc_word(z_word_t data) {
+uint32_t crc_word(uint64_t data) {
     for (int k = 0; k < W; k++) {
         data = (data >> 8) ^ crc_table[data & 0xff];
     }
     return (uint32_t) data;
 }
 
-z_word_t crc_word_big(z_word_t data) {
+uint64_t crc_word_big(uint64_t data) {
     int k;
     for (k = 0; k < W; k++)
         data = (data << 8) ^
@@ -1501,60 +1507,71 @@ z_word_t crc_word_big(z_word_t data) {
     return data;
 }
 
+pub uint32_t new() {
+    return 0;
+}
 
 /*
-     Same as crc32(), but with a size_t length.
+     Update a running CRC-32 with the bytes buf[0..len-1] and return the
+   updated CRC-32. A CRC-32 value is in the range of a 32-bit unsigned integer.
+   If buf is Z_NULL, this function returns the required initial value for the
+   crc. Pre- and post-conditioning (one's complement) is performed within this
+   function so it shouldn't be done by the application.
+
+   Usage example:
+
+     uint32_t crc = crc32(0L, Z_NULL, 0);
+
+     while (read_buffer(buffer, length) != EOF) {
+       crc = crc32(crc, buffer, length);
+     }
+     if (crc != original_crc) error();
 */
-pub unsigned long crc32_z(
-    unsigned long crc,
-    const unsigned char FAR *buf,
-    z_size_t len
-) {
+pub uint32_t crc32(uint32_t crc, const uint8_t *buf, size_t len) {
     /* Return initial CRC, if requested. */
-    if (buf == Z_NULL) return 0;
+    if (buf == NULL) return 0;
 
     make_crc_table();
 
     /* Pre-condition the CRC */
     crc = (~crc) & 0xffffffff;
 
-
     /* If provided enough bytes, do a braided CRC calculation. */
     if (len >= N * W + W - 1) {
-        z_size_t blks;
-        z_word_t const *words;
+        size_t blks;
+        uint64_t *words;
         unsigned endian;
         int k;
 
-        /* Compute the CRC up to a z_word_t boundary. */
-        while (len && ((z_size_t)buf & (W - 1)) != 0) {
+        /* Compute the CRC up to a uint64_t boundary. */
+        while (len && ((size_t)buf & (W - 1)) != 0) {
             len--;
             crc = (crc >> 8) ^ crc_table[(crc ^ *buf++) & 0xff];
         }
 
-        /* Compute the CRC on as many N z_word_t blocks as are available. */
+        /* Compute the CRC on as many N uint64_t blocks as are available. */
         blks = len / (N * W);
         len -= blks * N * W;
-        words = (z_word_t const *)buf;
+        words = (uint64_t *) buf;
 
         /* Do endian check at execution time instead of compile time, since ARM
            processors can change the endianess at execution time. If the
            compiler knows what the endianess will be, it can optimize out the
            check and the unused branch. */
         endian = 1;
-        if (*(unsigned char *)&endian) {
+        if (*(uint8_t *)&endian) {
             /* Little endian. */
 
             uint32_t crc0;
-            z_word_t word0;
+            uint64_t word0;
             uint32_t crc1;
-            z_word_t word1;
+            uint64_t word1;
             uint32_t crc2;
-            z_word_t word2;
+            uint64_t word2;
             uint32_t crc3;
-            z_word_t word3;
+            uint64_t word3;
             uint32_t crc4;
-            z_word_t word4;
+            uint64_t word4;
 
             /* Initialize the CRC for each braid. */
             crc0 = crc;
@@ -1606,11 +1623,17 @@ pub unsigned long crc32_z(
         else {
             /* Big endian. */
 
-            z_word_t crc0, word0, comb;
-            z_word_t crc1, word1;
-            z_word_t crc2, word2;
-            z_word_t crc3, word3;
-            z_word_t crc4, word4;
+            uint64_t crc0;
+            uint64_t word0;
+            uint64_t comb;
+            uint64_t crc1;
+            uint64_t word1;
+            uint64_t crc2;
+            uint64_t word2;
+            uint64_t crc3;
+            uint64_t word3;
+            uint64_t crc4;
+            uint64_t word4;
 
             /* Initialize the CRC for each braid. */
             crc0 = byte_swap(crc);
@@ -1664,7 +1687,7 @@ pub unsigned long crc32_z(
         /*
           Update the pointer to the remaining bytes to process.
          */
-        buf = (unsigned char const *)words;
+        buf = (uint8_t *) words;
     }
 
 
@@ -1690,42 +1713,16 @@ pub unsigned long crc32_z(
 }
 
 
-/*
-     Update a running CRC-32 with the bytes buf[0..len-1] and return the
-   updated CRC-32. A CRC-32 value is in the range of a 32-bit unsigned integer.
-   If buf is Z_NULL, this function returns the required initial value for the
-   crc. Pre- and post-conditioning (one's complement) is performed within this
-   function so it shouldn't be done by the application.
 
-   Usage example:
-
-     uLong crc = crc32(0L, Z_NULL, 0);
-
-     while (read_buffer(buffer, length) != EOF) {
-       crc = crc32(crc, buffer, length);
-     }
-     if (crc != original_crc) error();
-*/
-pub unsigned long crc32(
-    unsigned long crc,
-    const unsigned char FAR *buf,
-    uInt len
-) {
-    return crc32_z(crc, buf, len);
-}
 
 /* ========================================================================= */
-pub uLong crc32_combine64(
-    uLong crc1,
-    uLong crc2,
-    z_off64_t len2
-) {
+pub uint32_t crc32_combine64(uint32_t crc1, uint32_t crc2, int64_t len2) {
     make_crc_table();
     return multmodp(x2nmodp(len2, 3), crc1) ^ (crc2 & 0xffffffff);
 }
 
 /*
-ZEXTERN uLong ZEXPORT crc32_combine OF((uLong crc1, uLong crc2, z_off_t len2));
+ZEXTERN uint32_t ZEXPORT crc32_combine OF((uint32_t crc1, uint32_t crc2, int64_t len2));
 
      Combine two CRC-32 check values into one.  For two sequences of bytes,
    seq1 and seq2 with lengths len1 and len2, CRC-32 check values were
@@ -1733,24 +1730,24 @@ ZEXTERN uLong ZEXPORT crc32_combine OF((uLong crc1, uLong crc2, z_off_t len2));
    check value of seq1 and seq2 concatenated, requiring only crc1, crc2, and
    len2.
 */
-pub uLong crc32_combine(uLong crc1, uLong crc2, z_off_t len2) {
-    return crc32_combine64(crc1, crc2, (z_off64_t)len2);
+pub uint32_t crc32_combine(uint32_t crc1, uint32_t crc2, int64_t len2) {
+    return crc32_combine64(crc1, crc2, (int64_t)len2);
 }
 
 /* ========================================================================= */
-pub uLong crc32_combine_gen64(z_off64_t len2) {
+pub uint32_t crc32_combine_gen64(int64_t len2) {
     make_crc_table();
     return x2nmodp(len2, 3);
 }
 
 /*
-ZEXTERN uLong ZEXPORT crc32_combine_gen OF((z_off_t len2));
+ZEXTERN uint32_t ZEXPORT crc32_combine_gen OF((int64_t len2));
 
      Return the operator corresponding to length len2, to be used with
    crc32_combine_op().
 */
-pub uLong crc32_combine_gen(z_off_t len2) {
-    return crc32_combine_gen64((z_off64_t)len2);
+pub uint32_t crc32_combine_gen(int64_t len2) {
+    return crc32_combine_gen64((int64_t)len2);
 }
 
 /*
@@ -1758,10 +1755,10 @@ pub uLong crc32_combine_gen(z_off_t len2) {
    is generated from len2 by crc32_combine_gen(). This will be faster than
    crc32_combine() if the generated op is used more than once.
 */
-pub uLong crc32_combine_op(
-    uLong crc1,
-    uLong crc2,
-    uLong op
+pub uint32_t crc32_combine_op(
+    uint32_t crc1,
+    uint32_t crc2,
+    uint32_t op
 ) {
     return multmodp(op, crc1) ^ (crc2 & 0xffffffff);
 }
