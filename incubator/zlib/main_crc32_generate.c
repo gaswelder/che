@@ -10,7 +10,7 @@
          */
         FILE *out;
         int k, n;
-        z_crc_t ltl[8][256];
+        uint32_t ltl[8][256];
         z_word_t big[8][256];
 
         out = fopen("crc32.h", "w");
@@ -21,7 +21,7 @@
             "/* crc32.h -- tables for rapid CRC calculation\n"
             " * Generated automatically by crc32.c\n */\n"
             "\n"
-            "local const z_crc_t FAR crc_table[] = {\n"
+            "local const uint32_t FAR crc_table[] = {\n"
             "    ");
         write_table(out, crc_table, 256);
         fprintf(out,
@@ -67,7 +67,7 @@
             "\n"
             "#if W == 8\n"
             "\n"
-            "local const z_crc_t FAR crc_braid_table[][256] = {\n");
+            "local const uint32_t FAR crc_braid_table[][256] = {\n");
             for (k = 0; k < 8; k++) {
                 fprintf(out, "   {");
                 write_table(out, ltl[k], 256);
@@ -93,7 +93,7 @@
             "\n"
             "#else /* W == 4 */\n"
             "\n"
-            "local const z_crc_t FAR crc_braid_table[][256] = {\n");
+            "local const uint32_t FAR crc_braid_table[][256] = {\n");
             for (k = 0; k < 4; k++) {
                 fprintf(out, "   {");
                 write_table(out, ltl[k], 256);
@@ -122,7 +122,7 @@
         /* write out zeros operator table to crc32.h */
         fprintf(out,
             "\n"
-            "local const z_crc_t FAR x2n_table[] = {\n"
+            "local const uint32_t FAR x2n_table[] = {\n"
             "    ");
         write_table(out, x2n_table, 32);
         fprintf(out,
@@ -136,7 +136,7 @@
  */
 local void write_table(out, table, k)
     FILE *out;
-    const z_crc_t FAR *table;
+    const uint32_t FAR *table;
     int k;
 {
     int n;

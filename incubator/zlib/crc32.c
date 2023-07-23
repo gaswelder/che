@@ -17,7 +17,7 @@
   one thread to use crc32().
  */
 
-#include "zutil.h"      /* for Z_U4, Z_U8, z_crc_t, and FAR definitions */
+#include "zutil.h"      /* for Z_U4, Z_U8, uint32_t, and FAR definitions */
 
  /*
   A CRC of a message is computed on N braids of words in the message, where
@@ -42,8 +42,8 @@
 #define N 5
 
 /*
-  z_crc_t must be at least 32 bits. z_word_t must be at least as long as
-  z_crc_t. It is assumed here that z_word_t is either 32 bits or 64 bits, and
+  uint32_t must be at least 32 bits. z_word_t must be at least as long as
+  uint32_t. It is assumed here that z_word_t is either 32 bits or 64 bits, and
   that bytes are eight bits.
  */
 
@@ -60,7 +60,7 @@ typedef Z_U8 z_word_t;
  * Generated automatically by crc32.c
  */
 
-const z_crc_t crc_table[] = {
+const uint32_t crc_table[] = {
     0x00000000, 0x77073096, 0xee0e612c, 0x990951ba, 0x076dc419,
     0x706af48f, 0xe963a535, 0x9e6495a3, 0x0edb8832, 0x79dcb8a4,
     0xe0d5e91e, 0x97d2d988, 0x09b64c2b, 0x7eb17cbd, 0xe7b82d07,
@@ -211,7 +211,7 @@ const z_word_t crc_big_table[] = {
 
 
 
-const z_crc_t FAR crc_braid_table[][256] = {
+const uint32_t FAR crc_braid_table[][256] = {
    {0x00000000, 0xaf449247, 0x85f822cf, 0x2abcb088, 0xd08143df,
     0x7fc5d198, 0x55796110, 0xfa3df357, 0x7a7381ff, 0xd53713b8,
     0xff8ba330, 0x50cf3177, 0xaaf2c220, 0x05b65067, 0x2f0ae0ef,
@@ -1319,7 +1319,7 @@ const z_word_t crc_braid_big_table[][256] = {
     0xedc528c300000000, 0xaa576c6c00000000, 0x22e7d04600000000,
     0x657594e900000000}};
 
-const z_crc_t x2n_table[] = {
+const uint32_t x2n_table[] = {
     0x40000000, 0x20000000, 0x08000000, 0x00800000, 0x00008000,
     0xedb88320, 0xb1e6b092, 0xa06a2517, 0xed627dae, 0x88d14467,
     0xd7bbfe6a, 0xec447f11, 0x8e7ea170, 0x6427800e, 0x4d47bae0,
@@ -1465,7 +1465,7 @@ once_t made = ONCE_INIT;
 void make_crc_table()
 {
     unsigned i, j, n;
-    z_crc_t p;
+    uint32_t p;
 
     /* initialize the CRC of bytes tables */
     for (i = 0; i < 256; i++) {
@@ -1477,7 +1477,7 @@ void make_crc_table()
     }
 
     /* initialize the x^2^n mod p(x) table */
-    p = (z_crc_t)1 << 30;         /* x^1 */
+    p = (uint32_t)1 << 30;         /* x^1 */
     x2n_table[0] = p;
     for (n = 1; n < 32; n++)
         x2n_table[n] = p = multmodp(p, p);
@@ -1492,13 +1492,13 @@ void make_crc_table()
   size w. Each array must have room for w blocks of 256 elements.
  */
 void braid(ltl, big, n, w)
-    z_crc_t ltl[][256];
+    uint32_t ltl[][256];
     z_word_t big[][256];
     int n;
     int w;
 {
     int k;
-    z_crc_t i, p, q;
+    uint32_t i, p, q;
     for (k = 0; k < w; k++) {
         p = x2nmodp((n * w + 3 - k) << 3, 0);
         ltl[k][0] = 0;
@@ -1520,13 +1520,13 @@ void braid(ltl, big, n, w)
   Return a(x) multiplied by b(x) modulo p(x), where p(x) is the CRC polynomial,
   reflected. For speed, this requires that a not be zero.
  */
-z_crc_t multmodp(a, b)
-    z_crc_t a;
-    z_crc_t b;
+uint32_t multmodp(a, b)
+    uint32_t a;
+    uint32_t b;
 {
-    z_crc_t m, p;
+    uint32_t m, p;
 
-    m = (z_crc_t)1 << 31;
+    m = (uint32_t)1 << 31;
     p = 0;
     for (;;) {
         if (a & m) {
@@ -1544,13 +1544,13 @@ z_crc_t multmodp(a, b)
   Return x^(n * 2^k) modulo p(x). Requires that x2n_table[] has been
   initialized.
  */
-z_crc_t x2nmodp(n, k)
+uint32_t x2nmodp(n, k)
     z_off64_t n;
     unsigned k;
 {
-    z_crc_t p;
+    uint32_t p;
 
-    p = (z_crc_t)1 << 31;           /* x^0 == 1 */
+    p = (uint32_t)1 << 31;           /* x^0 == 1 */
     while (n) {
         if (n & 1)
             p = multmodp(x2n_table[k & 31], p);
@@ -1564,10 +1564,10 @@ z_crc_t x2nmodp(n, k)
  * This function can be used by asm versions of crc32(), and to force the
  * generation of the CRC tables in a threaded application.
  */
-pub const z_crc_t *get_crc_table()
+pub const uint32_t *get_crc_table()
 {
     once(&made, make_crc_table);
-    return (const z_crc_t FAR *)crc_table;
+    return (const uint32_t FAR *)crc_table;
 }
 
 /* =========================================================================
@@ -1586,13 +1586,13 @@ pub const z_crc_t *get_crc_table()
   least-significant byte of the word as the first byte of data, without any pre
   or post conditioning. This is used to combine the CRCs of each braid.
  */
-z_crc_t crc_word(data)
+uint32_t crc_word(data)
     z_word_t data;
 {
     int k;
     for (k = 0; k < W; k++)
         data = (data >> 8) ^ crc_table[data & 0xff];
-    return (z_crc_t)data;
+    return (uint32_t)data;
 }
 
 z_word_t crc_word_big(data)
@@ -1647,15 +1647,15 @@ pub unsigned long crc32_z(crc, buf, len)
         if (*(unsigned char *)&endian) {
             /* Little endian. */
 
-            z_crc_t crc0;
+            uint32_t crc0;
             z_word_t word0;
-            z_crc_t crc1;
+            uint32_t crc1;
             z_word_t word1;
-            z_crc_t crc2;
+            uint32_t crc2;
             z_word_t word2;
-            z_crc_t crc3;
+            uint32_t crc3;
             z_word_t word3;
-            z_crc_t crc4;
+            uint32_t crc4;
             z_word_t word4;
 
             /* Initialize the CRC for each braid. */
