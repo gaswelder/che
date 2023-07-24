@@ -78,7 +78,7 @@ typedef enum {
 /* State maintained between inflate() calls -- approximately 7K bytes, not
    including the allocated sliding window, which is up to 32K bytes. */
 struct inflate_state {
-    z_streamp strm;             /* pointer back to this zlib stream */
+    z_stream *strm;             /* pointer back to this zlib stream */
     inflate_mode mode;          /* current inflate mode */
     int last;                   /* true if processing last block */
     int wrap;                   /* bit 0 true for zlib, bit 1 true for gzip,
@@ -89,7 +89,7 @@ struct inflate_state {
     unsigned dmax;              /* zlib header max distance (INFLATE_STRICT) */
     unsigned long check;        /* protected copy of check value */
     unsigned long total;        /* protected copy of output count */
-    gz_headerp head;            /* where to save gzip header information */
+    gz_header *head;            /* where to save gzip header information */
         /* sliding window */
     unsigned wbits;             /* log base 2 of requested window size */
     unsigned wsize;             /* window size or zero if not using window */

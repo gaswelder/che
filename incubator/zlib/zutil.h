@@ -18,7 +18,6 @@
 #include "zlib.h"
 
 typedef unsigned char  uch;
-typedef uch FAR uchf;
 typedef unsigned short ush;
 typedef ush FAR ushf;
 typedef unsigned long  ulg;
@@ -107,7 +106,6 @@ extern z_const char * const z_errmsg[10]; /* indexed by 2-zlib_error */
 #  endif
 
 /* Diagnostic functions */
-#ifdef ZLIB_DEBUG
 #  include <stdio.h>
    extern int ZLIB_INTERNAL z_verbose;
    extern void ZLIB_INTERNAL z_error OF((char *m));
@@ -117,14 +115,6 @@ extern z_const char * const z_errmsg[10]; /* indexed by 2-zlib_error */
 #  define Tracevv(x) {if (z_verbose>1) fprintf x ;}
 #  define Tracec(c,x) {if (z_verbose>0 && (c)) fprintf x ;}
 #  define Tracecv(c,x) {if (z_verbose>1 && (c)) fprintf x ;}
-#else
-#  define Assert(cond,msg)
-#  define Trace(x)
-#  define Tracev(x)
-#  define Tracevv(x)
-#  define Tracec(c,x)
-#  define Tracecv(c,x)
-#endif
 
    voidpf ZLIB_INTERNAL zcalloc OF((voidpf opaque, unsigned items,
                                     unsigned size));

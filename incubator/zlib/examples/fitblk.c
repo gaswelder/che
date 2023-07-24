@@ -70,7 +70,7 @@ local void quit(char *why)
 /* compress from file to def until provided buffer is full or end of
    input reached; return last deflate() return value, or Z_ERRNO if
    there was read error on the file */
-local int partcompress(FILE *in, z_streamp def)
+local int partcompress(FILE *in, z_stream *def)
 {
     int ret, flush;
     unsigned char raw[RAWLEN];
@@ -93,7 +93,7 @@ local int partcompress(FILE *in, z_streamp def)
    the output for def are set in those structures before calling;
    return last deflate() return value, or Z_MEM_ERROR if inflate()
    was not able to allocate enough memory when it needed to */
-local int recompress(z_streamp inf, z_streamp def)
+local int recompress(z_stream *inf, z_stream *def)
 {
     int ret, flush;
     unsigned char raw[RAWLEN];

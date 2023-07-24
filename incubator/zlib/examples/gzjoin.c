@@ -251,7 +251,7 @@ local void put4(unsigned long val, FILE *out)
 }
 
 /* Load up zlib stream from buffered input, bail if end of file */
-local void zpull(z_streamp strm, bin *in)
+local void zpull(z_stream *strm, bin *in)
 {
     if (in->left == 0)
         bload(in);

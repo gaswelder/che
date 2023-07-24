@@ -135,12 +135,7 @@ static void pwinerror (s)
 #define BUFLEN      16384
 #define MAX_NAME_LEN 1024
 
-#ifdef MAXSEG_64K
-#  define local static
-   /* Needed for systems with limitation on stack size. */
-#else
-#  define local
-#endif
+#define local
 
 #ifdef Z_SOLO
 /* for Z_SOLO, create simplified gz* functions using deflate and inflate */

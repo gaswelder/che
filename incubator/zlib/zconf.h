@@ -137,7 +137,6 @@
 #  define free_func             z_free_func
 #    define gzFile                z_gzFile
 #  define gz_header             z_gz_header
-#  define gz_headerp            z_gz_headerp
 #  define in_func               z_in_func
 #  define intf                  z_intf
 #  define out_func              z_out_func
@@ -173,11 +172,6 @@
 #  endif
 #endif
 
-/*
- * Compile with -DMAXSEG_64K if the alloc function cannot allocate more
- * than 64k bytes at a time (needed on systems with 16-bit int).
- */
-
 #ifdef __STDC_VERSION__
 #  if __STDC_VERSION__ >= 199901L
 #    ifndef STDC99
@@ -205,11 +199,7 @@
 
 /* Maximum value for memLevel in deflateInit2 */
 #ifndef MAX_MEM_LEVEL
-#  ifdef MAXSEG_64K
-#    define MAX_MEM_LEVEL 8
-#  else
 #    define MAX_MEM_LEVEL 9
-#  endif
 #endif
 
 /* Maximum value for windowBits in deflateInit2 and inflateInit2.

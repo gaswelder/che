@@ -1361,7 +1361,7 @@ Changes in 1.0.4 (24 Jul 96)
 - use z_error only for DEBUG (avoid problem with DLLs)
 
 Changes in 1.0.3 (2 Jul 96)
-- use z_streamp instead of z_stream *, which is now a far pointer in MSDOS
+- use z_stream *instead of z_stream *, which is now a far pointer in MSDOS
   small and medium models; this makes the library incompatible with previous
   versions for these models. (No effect in large model or on other systems.)
 - return OK instead of BUF_ERROR if previous deflate call returned with

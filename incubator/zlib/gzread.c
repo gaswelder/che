@@ -57,7 +57,7 @@ local int gz_avail(state)
     gz_statep state;
 {
     unsigned got;
-    z_streamp strm = &(state->strm);
+    z_stream *strm = &(state->strm);
 
     if (state->err != Z_OK && state->err != Z_BUF_ERROR)
         return -1;
@@ -91,7 +91,7 @@ local int gz_avail(state)
 local int gz_look(state)
     gz_statep state;
 {
-    z_streamp strm = &(state->strm);
+    z_stream *strm = &(state->strm);
 
     /* allocate read buffers and inflate memory */
     if (state->size == 0) {
@@ -175,7 +175,7 @@ local int gz_decomp(state)
 {
     int ret = Z_OK;
     unsigned had;
-    z_streamp strm = &(state->strm);
+    z_stream *strm = &(state->strm);
 
     /* fill output buffer up to end of deflate stream */
     had = strm->avail_out;
@@ -227,7 +227,7 @@ local int gz_decomp(state)
 local int gz_fetch(state)
     gz_statep state;
 {
-    z_streamp strm = &(state->strm);
+    z_stream *strm = &(state->strm);
 
     do {
         switch(state->how) {

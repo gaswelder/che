@@ -22,6 +22,11 @@ z_const char * const z_errmsg[10] = {
 };
 
 
+/* The application can compare zlibVersion and ZLIB_VERSION for consistency.
+   If the first character differs, the library code actually used is not
+   compatible with the zlib.h header file used by the application.  This check
+   is automatically made by deflateInit and inflateInit.
+ */
 const char * ZEXPORT zlibVersion()
 {
     return ZLIB_VERSION;
@@ -56,9 +61,7 @@ uLong ZEXPORT zlibCompileFlags()
     case 8:     flags += 2 << 6;        break;
     default:    flags += 3 << 6;
     }
-#ifdef ZLIB_DEBUG
     flags += 1 << 8;
-#endif
     /*
 #if defined(ASMV) || defined(ASMINF)
     flags += 1 << 9;
@@ -90,7 +93,6 @@ uLong ZEXPORT zlibCompileFlags()
     return flags;
 }
 
-#ifdef ZLIB_DEBUG
 #include <stdlib.h>
 #  ifndef verbose
 #    define verbose 0
@@ -103,7 +105,6 @@ void ZLIB_INTERNAL z_error(m)
     fprintf(stderr, "%s\n", m);
     exit(1);
 }
-#endif
 
 /* exported to allow conversion of error code to string for compress() and
  * uncompress()
