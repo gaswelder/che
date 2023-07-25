@@ -1721,15 +1721,11 @@ pub uint32_t crc32_combine64(uint32_t crc1, uint32_t crc2, int64_t len2) {
     return multmodp(x2nmodp(len2, 3), crc1) ^ (crc2 & 0xffffffff);
 }
 
-/*
-pub ZEXTERN uint32_t crc32_combine OF((uint32_t crc1, uint32_t crc2, int64_t len2));
-
-     Combine two CRC-32 check values into one.  For two sequences of bytes,
-   seq1 and seq2 with lengths len1 and len2, CRC-32 check values were
-   calculated for each, crc1 and crc2.  crc32_combine() returns the CRC-32
-   check value of seq1 and seq2 concatenated, requiring only crc1, crc2, and
-   len2.
-*/
+/* Combine two CRC-32 check values into one.  For two sequences of bytes,
+seq1 and seq2 with lengths len1 and len2, CRC-32 check values were
+calculated for each, crc1 and crc2.  crc32_combine() returns the CRC-32
+check value of seq1 and seq2 concatenated, requiring only crc1, crc2, and
+len2. */
 pub uint32_t crc32_combine(uint32_t crc1, uint32_t crc2, int64_t len2) {
     return crc32_combine64(crc1, crc2, (int64_t)len2);
 }
@@ -1740,12 +1736,8 @@ pub uint32_t crc32_combine_gen64(int64_t len2) {
     return x2nmodp(len2, 3);
 }
 
-/*
-pub ZEXTERN uint32_t crc32_combine_gen OF((int64_t len2));
-
-     Return the operator corresponding to length len2, to be used with
-   crc32_combine_op().
-*/
+/* Return the operator corresponding to length len2, to be used with
+crc32_combine_op(). */
 pub uint32_t crc32_combine_gen(int64_t len2) {
     return crc32_combine_gen64((int64_t)len2);
 }

@@ -264,7 +264,41 @@ local gzFile gz_open(path, fd, mode)
     return (gzFile)state;
 }
 
-/* -- see zlib.h -- */
+/*
+     Open the gzip (.gz) file at path for reading and decompressing, or
+   compressing and writing.  The mode parameter is as in fopen ("rb" or "wb")
+   but can also include a compression level ("wb9") or a strategy: 'f' for
+   filtered data as in "wb6f", 'h' for Huffman-only compression as in "wb1h",
+   'R' for run-length encoding as in "wb1R", or 'F' for fixed code compression
+   as in "wb9F".  (See the description of deflateInit2 for more information
+   about the strategy parameter.)  'T' will request transparent writing or
+   appending with no compression and not using the gzip format.
+
+     "a" can be used instead of "w" to request that the gzip stream that will
+   be written be appended to the file.  "+" will result in an error, since
+   reading and writing to the same gzip file is not supported.  The addition of
+   "x" when writing will create the file exclusively, which fails if the file
+   already exists.  On systems that support it, the addition of "e" when
+   reading or writing will set the flag to close the file on an execve() call.
+
+     These functions, as well as gzip, will read and decode a sequence of gzip
+   streams in a file.  The append function of gzopen() can be used to create
+   such a file.  (Also see gzflush() for another way to do this.)  When
+   appending, gzopen does not test whether the file begins with a gzip stream,
+   nor does it look for the end of the gzip streams to begin appending.  gzopen
+   will simply append a gzip stream to the existing file.
+
+     gzopen can be used to read a file which is not in gzip format; in this
+   case gzread will directly read from the file without decompression.  When
+   reading, this will be detected automatically by looking for the magic two-
+   byte gzip header.
+
+     gzopen returns NULL if the file could not be opened, if there was
+   insufficient memory to allocate the gzFile state, or if an invalid mode was
+   specified (an 'r', 'w', or 'a' was not provided, or '+' was provided).
+   errno can be checked to determine if the reason gzopen failed was that the
+   file could not be opened.
+*/
 pub gzFile gzopen(path, mode)
     const char *path;
     const char *mode;
@@ -280,7 +314,27 @@ pub gzFile gzopen64(path, mode)
     return gz_open(path, -1, mode);
 }
 
-/* -- see zlib.h -- */
+/*
+     Associate a gzFile with the file descriptor fd.  File descriptors are
+   obtained from calls like open, dup, creat, pipe or fileno (if the file has
+   been previously opened with fopen).  The mode parameter is as in gzopen.
+
+     The next call of gzclose on the returned gzFile will also close the file
+   descriptor fd, just like fclose(fdopen(fd, mode)) closes the file descriptor
+   fd.  If you want to keep fd open, use fd = dup(fd_keep); gz = gzdopen(fd,
+   mode);.  The duplicated descriptor should be saved to avoid a leak, since
+   gzdopen does not close fd if it fails.  If you are using fileno() to get the
+   file descriptor from a FILE *, then you will have to use dup() to avoid
+   double-close()ing the file descriptor.  Both gzclose() and fclose() will
+   close the associated file descriptor, so they need to have different file
+   descriptors.
+
+     gzdopen returns NULL if there was insufficient memory to allocate the
+   gzFile state, if an invalid mode was specified (an 'r', 'w', or 'a' was not
+   provided, or '+' was provided), or if fd is -1.  The file descriptor is not
+   used until the next gz* read, write, seek, or close operation, so gzdopen
+   will not detect if fd is invalid (unless fd is -1).
+*/
 pub gzFile gzdopen(fd, mode)
     int fd;
     const char *mode;
@@ -310,7 +364,20 @@ pub gzFile gzopen_w(path, mode)
 }
 #endif
 
-/* -- see zlib.h -- */
+/*
+     Set the internal buffer size used by this library's functions for file to
+   size.  The default buffer size is 8192 bytes.  This function must be called
+   after gzopen() or gzdopen(), and before any other calls that read or write
+   the file.  The buffer memory allocation is always deferred to the first read
+   or write.  Three times that size in buffer space is allocated.  A larger
+   buffer size of, for example, 64K or 128K bytes will noticeably increase the
+   speed of decompression (reading).
+
+     The new buffer size also affects the maximum length for gzprintf().
+
+     gzbuffer() returns 0 on success, or -1 on failure, such as being called
+   too late.
+*/
 pub int gzbuffer(file, size)
     gzFile file;
     unsigned size;
@@ -337,7 +404,11 @@ pub int gzbuffer(file, size)
     return 0;
 }
 
-/* -- see zlib.h -- */
+/*
+     Rewind file. This function is supported only for reading.
+
+     gzrewind(file) is equivalent to (int)gzseek(file, 0L, SEEK_SET).
+*/
 pub int gzrewind(file)
     gzFile file;
 {
@@ -437,7 +508,22 @@ pub z_off64_t gzseek64(file, offset, whence)
     return state->x.pos + offset;
 }
 
-/* -- see zlib.h -- */
+/*
+     Set the starting position to offset relative to whence for the next gzread
+   or gzwrite on file.  The offset represents a number of bytes in the
+   uncompressed data stream.  The whence parameter is defined as in lseek(2);
+   the value SEEK_END is not supported.
+
+     If the file is opened for reading, this function is emulated but can be
+   extremely slow.  If the file is opened for writing, only forward seeks are
+   supported; gzseek then compresses a sequence of zeroes up to the new
+   starting position.
+
+     gzseek returns the resulting offset location as measured in bytes from
+   the beginning of the uncompressed stream, or -1 in case of error, in
+   particular if the file is opened for writing and the new starting position
+   would be before the current position.
+*/
 pub z_off_t gzseek(file, offset, whence)
     gzFile file;
     z_off_t offset;
@@ -466,7 +552,14 @@ pub z_off64_t gztell64(file)
     return state->x.pos + (state->seek ? state->skip : 0);
 }
 
-/* -- see zlib.h -- */
+/*
+     Return the starting position for the next gzread or gzwrite on file.
+   This position represents a number of bytes in the uncompressed data stream,
+   and is zero when starting, even if appending or reading a gzip stream from
+   the middle of a file using gzdopen().
+
+     gztell(file) is equivalent to gzseek(file, 0L, SEEK_CUR)
+*/
 pub z_off_t gztell(file)
     gzFile file;
 {
@@ -499,7 +592,13 @@ pub z_off64_t gzoffset64(file)
     return offset;
 }
 
-/* -- see zlib.h -- */
+/*
+     Return the current compressed (actual) read or write offset of file.  This
+   offset includes the count of bytes that precede the gzip stream, for example
+   when appending or when using gzdopen() for reading.  When reading, the
+   offset does not include as yet unused buffered input.  This information can
+   be used for a progress indicator.  On error, gzoffset() returns -1.
+*/
 pub z_off_t gzoffset(file)
     gzFile file;
 {
@@ -509,7 +608,19 @@ pub z_off_t gzoffset(file)
     return ret == (z_off_t)ret ? (z_off_t)ret : -1;
 }
 
-/* -- see zlib.h -- */
+/*
+     Return true (1) if the end-of-file indicator for file has been set while
+   reading, false (0) otherwise.  Note that the end-of-file indicator is set
+   only if the read tried to go past the end of the input, but came up short.
+   Therefore, just like feof(), gzeof() may return false even if there is no
+   more data to read, in the event that the last read request was for the exact
+   number of bytes remaining in the input file.  This will happen if the input
+   file size is an exact multiple of the buffer size.
+
+     If gzeof() returns true, then the read functions will return no more data,
+   unless the end-of-file indicator is reset by gzclearerr() and the input file
+   has grown since the previous end of file was detected.
+*/
 pub int gzeof(file)
     gzFile file;
 {
@@ -526,7 +637,20 @@ pub int gzeof(file)
     return state->mode == GZ_READ ? state->past : 0;
 }
 
-/* -- see zlib.h -- */
+/*
+     Return the error message for the last error which occurred on file.
+   errnum is set to zlib error number.  If an error occurred in the file system
+   and not in the compression library, errnum is set to Z_ERRNO and the
+   application may consult errno to get the exact error code.
+
+     The application must not modify the returned string.  Future calls to
+   this function may invalidate the previously returned string.  If file is
+   closed, then the string previously returned by gzerror will no longer be
+   available.
+
+     gzerror() should be used to distinguish errors from end-of-file for those
+   functions above that do not distinguish those cases in their return values.
+*/
 pub const char * gzerror(file, errnum)
     gzFile file;
     int *errnum;
@@ -547,7 +671,11 @@ pub const char * gzerror(file, errnum)
                                        (state->msg == NULL ? "" : state->msg);
 }
 
-/* -- see zlib.h -- */
+/*
+     Clear the error and end-of-file flags for file.  This is analogous to the
+   clearerr() function in stdio.  This is useful for continuing to read a gzip
+   file that is being written concurrently.
+*/
 pub void gzclearerr(file)
     gzFile file;
 {

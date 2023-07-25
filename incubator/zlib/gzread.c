@@ -369,7 +369,34 @@ local z_size_t gz_read(state, buf, len)
     return got;
 }
 
-/* -- see zlib.h -- */
+/*
+     Read and decompress up to len uncompressed bytes from file into buf.  If
+   the input file is not in gzip format, gzread copies the given number of
+   bytes into the buffer directly from the file.
+
+     After reaching the end of a gzip stream in the input, gzread will continue
+   to read, looking for another gzip stream.  Any number of gzip streams may be
+   concatenated in the input file, and will all be decompressed by gzread().
+   If something other than a gzip stream is encountered after a gzip stream,
+   that remaining trailing garbage is ignored (and no error is returned).
+
+     gzread can be used to read a gzip file that is being concurrently written.
+   Upon reaching the end of the input, gzread will return with the available
+   data.  If the error code returned by gzerror is Z_OK or Z_BUF_ERROR, then
+   gzclearerr can be used to clear the end of file indicator in order to permit
+   gzread to be tried again.  Z_OK indicates that a gzip stream was completed
+   on the last gzread.  Z_BUF_ERROR indicates that the input file ended in the
+   middle of a gzip stream.  Note that gzread does not return -1 in the event
+   of an incomplete gzip stream.  This error is deferred until gzclose(), which
+   will return Z_BUF_ERROR if the last gzread ended in the middle of a gzip
+   stream.  Alternatively, gzerror can be used before gzclose to detect this
+   case.
+
+     gzread returns the number of uncompressed bytes actually read, less than
+   len for end of file, or -1 for error.  If len is too large to fit in an int,
+   then nothing is read, -1 is returned, and the error state is set to
+   Z_STREAM_ERROR.
+*/
 pub int gzread(file, buf, len)
     gzFile file;
     voidp buf;
@@ -405,7 +432,29 @@ pub int gzread(file, buf, len)
     return (int)len;
 }
 
-/* -- see zlib.h -- */
+/*
+     Read and decompress up to nitems items of size size from file into buf,
+   otherwise operating as gzread() does.  This duplicates the interface of
+   stdio's fread(), with size_t request and return types.  If the library
+   defines size_t, then z_size_t is identical to size_t.  If not, then z_size_t
+   is an unsigned integer type that can contain a pointer.
+
+     gzfread() returns the number of full items read of size size, or zero if
+   the end of the file was reached and a full item could not be read, or if
+   there was an error.  gzerror() must be consulted if zero is returned in
+   order to determine if there was an error.  If the multiplication of size and
+   nitems overflows, i.e. the product does not fit in a z_size_t, then nothing
+   is read, zero is returned, and the error state is set to Z_STREAM_ERROR.
+
+     In the event that the end of file is reached and only a partial item is
+   available at the end, i.e. the remaining uncompressed data length is not a
+   multiple of size, then the final partial item is nevertheless read into buf
+   and the end-of-file flag is set.  The length of the partial item read is not
+   provided, but could be inferred from the result of gztell().  This behavior
+   is the same as the behavior of fread() implementations in common libraries,
+   but it prevents the direct use of gzfread() to read a concurrently written
+   file, resetting and retrying on end-of-file, when size is not 1.
+*/
 pub z_size_t gzfread(buf, size, nitems, file)
     voidp buf;
     z_size_t size;
@@ -442,6 +491,14 @@ pub z_size_t gzfread(buf, size, nitems, file)
 #else
 #  undef gzgetc
 #endif
+
+/*
+     Read and decompress one byte from file.  gzgetc returns this byte or -1
+   in case of end of file or error.  This is implemented as a macro for speed.
+   As such, it does not do all of the checking the other functions do.  I.e.
+   it does not check to see if file is NULL, nor whether the structure file
+   points to has been clobbered or not.
+*/
 pub int gzgetc(file)
     gzFile file;
 {
@@ -475,7 +532,16 @@ gzFile file;
     return gzgetc(file);
 }
 
-/* -- see zlib.h -- */
+/*
+     Push c back onto the stream for file to be read as the first character on
+   the next read.  At least one character of push-back is always allowed.
+   gzungetc() returns the character pushed, or -1 on failure.  gzungetc() will
+   fail if c is -1, and may fail if a character has been pushed but not read
+   yet.  If gzungetc is used immediately after gzopen or gzdopen, at least the
+   output buffer size of pushed characters is allowed.  (See gzbuffer above.)
+   The pushed character will be discarded if the stream is repositioned with
+   gzseek() or gzrewind().
+*/
 pub int gzungetc(c, file)
     int c;
     gzFile file;
@@ -535,7 +601,18 @@ pub int gzungetc(c, file)
     return c;
 }
 
-/* -- see zlib.h -- */
+/*
+     Read and decompress bytes from file into buf, until len-1 characters are
+   read, or until a newline character is read and transferred to buf, or an
+   end-of-file condition is encountered.  If any characters are read or if len
+   is one, the string is terminated with a null character.  If no characters
+   are read due to an end-of-file or len is less than one, then the buffer is
+   left untouched.
+
+     gzgets returns buf which is a null-terminated string, or it returns NULL
+   for end-of-file or in case of error.  If there was an error, the contents at
+   buf are indeterminate.
+*/
 pub char * gzgets(file, buf, len)
     gzFile file;
     char *buf;
@@ -599,7 +676,25 @@ pub char * gzgets(file, buf, len)
     return str;
 }
 
-/* -- see zlib.h -- */
+/*
+     Return true (1) if file is being copied directly while reading, or false
+   (0) if file is a gzip stream being decompressed.
+
+     If the input file is empty, gzdirect() will return true, since the input
+   does not contain a gzip stream.
+
+     If gzdirect() is used immediately after gzopen() or gzdopen() it will
+   cause buffers to be allocated to allow reading the file to determine if it
+   is a gzip file.  Therefore if gzbuffer() is used, it should be called before
+   gzdirect().
+
+     When writing, gzdirect() returns true (1) if transparent writing was
+   requested ("wT" for the gzopen() mode), or false (0) otherwise.  (Note:
+   gzdirect() is not needed when writing.  Transparent writing must be
+   explicitly requested, so the application already knows the answer.  When
+   linking statically, using gzdirect() will include all of the zlib code for
+   gzip file reading and decompression, which may not be desired.)
+*/
 pub int gzdirect(file)
     gzFile file;
 {

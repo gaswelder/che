@@ -254,9 +254,6 @@ pub #      define   __declspec(dllimport)
 #  endif
 #endif
 
-#ifndef ZEXTERN
-#  define ZEXTERN extern
-#endif
 #ifndef ZEXPORT
 #  define ZEXPORT
 #endif

@@ -67,15 +67,6 @@ extern z_const char * const z_errmsg[10]; /* indexed by 2-zlib_error */
 
 #define PRESET_DICT 0x20 /* preset dictionary flag in zlib header */
 
-        /* target dependencies */
-
-/* provide prototypes for these when building zlib without LFS */
-#if (!defined(_LARGEFILE64_SOURCE)) || ((_LFS64_LARGEFILE) - (1))
-pub     ZEXTERN uLong adler32_combine64 OF((uLong, uLong, z_off_t));
-pub     ZEXTERN uLong crc32_combine64 OF((uLong, uLong, z_off_t));
-pub     ZEXTERN uLong crc32_combine_gen64 OF((z_off_t));
-#endif
-
         /* common defaults */
 
 #ifndef OS_CODE
