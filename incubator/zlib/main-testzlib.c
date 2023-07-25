@@ -1,5 +1,5 @@
 #import zlib.c
-#import deflate.c
+#import inflate.c
 #import stream.c
 
 // Represents a 64-bit signed integer value.
@@ -198,7 +198,7 @@ int main(int argc, char *argv[])
         int32_t all_read_before = zcpr.total_in;
         zcpr.avail_in = min(lOrigToDo,BlockSizeUncompress);
         zcpr.avail_out = BlockSizeUncompress;
-        ret=inflate(&zcpr,Z_SYNC_FLUSH);
+        ret = inflate.inflate(&zcpr,Z_SYNC_FLUSH);
         lOrigDone += (zcpr.total_in-all_read_before);
         lOrigToDo -= (zcpr.total_in-all_read_before);
         step++;

@@ -110,9 +110,7 @@ pub uLong zlibCompileFlags()
 #ifdef ZLIB_WINAPI
     flags += 1 << 10;
 #endif
-#ifdef BUILDFIXED
     flags += 1 << 12;
-#endif
     flags += 1 << 13;
 #ifdef NO_GZCOMPRESS
     flags += 1L << 16;
