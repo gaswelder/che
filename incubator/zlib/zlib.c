@@ -28,6 +28,7 @@
   (zlib format), rfc1951 (deflate format) and rfc1952 (gzip format).
 */
 
+#import stream.c
 #import deflate.c
 
 #ifndef ZLIB_H
@@ -308,16 +309,16 @@ typedef gzFile_s *gzFile;    /* semi-opaque gzip file descriptor */
 /* deflateInit and inflateInit are macros to allow checking the zlib version
  * and the compiler's view of z_stream:
  */
-int deflateInit(deflate.z_stream *strm, int level) {
+int deflateInit(stream.z_stream *strm, int level) {
   return deflateInit_(strm, level, ZLIB_VERSION, (int)sizeof(z_stream));
 }
 
 
-int deflateInit2(deflate.z_stream *strm, int level, int method, int windowBits, int memLevel, int strategy) {
+int deflateInit2(stream.z_stream *strm, int level, int method, int windowBits, int memLevel, int strategy) {
     return deflateInit2_(strm, level, method, windowBits, memLevel,
                         strategy, ZLIB_VERSION, (int)sizeof(z_stream));
 }
-int inflateInit2(deflate.z_stream *strm, int windowBits) {
+int inflateInit2(stream.z_stream *strm, int windowBits) {
     return inflateInit2_(strm, windowBits, ZLIB_VERSION, (int)sizeof(z_stream));
 }
 
@@ -339,7 +340,7 @@ int inflateInit2(deflate.z_stream *strm, int windowBits) {
    allocated, or Z_VERSION_ERROR if the version of the library does not match
    the version of the header file.
 */
-int inflateBackInit(deflate.z_stream *strm,int windowBits, int window) {
+int inflateBackInit(stream.z_stream *strm,int windowBits, int window) {
     return inflateBackInit_(strm, (windowBits), (window),
                            ZLIB_VERSION, (int)sizeof(z_stream));
 }

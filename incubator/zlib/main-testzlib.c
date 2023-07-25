@@ -1,5 +1,6 @@
 #import zlib.c
 #import deflate.c
+#import stream.c
 
 // Represents a 64-bit signed integer value.
 typedef {
@@ -137,7 +138,7 @@ int main(int argc, char *argv[])
     BeginCountPerfCounter(&li_qp, true);
     dwGetTick=GetTickCount();
     BeginCountRdtsc(&li_rdtsc);
-    deflate.z_stream zcpr;
+    stream.z_stream zcpr;
     int ret=Z_OK;
     int32_t lOrigToDo = lFileSize;
     int32_t lOrigDone = 0;
@@ -182,12 +183,12 @@ int main(int argc, char *argv[])
     dwGetTick=GetTickCount();
     BeginCountRdtsc(&li_rdtsc);
     
-    deflate.z_stream zcpr;
+    stream.z_stream zcpr;
     int ret=Z_OK;
     int32_t lOrigToDo = lSizeCpr;
     int32_t lOrigDone = 0;
     int step=0;
-    memset(&zcpr,0,sizeof(deflate.z_stream));
+    memset(&zcpr,0,sizeof(stream.z_stream));
     inflateInit(&zcpr);
 
     zcpr.next_in = CprPtr;
