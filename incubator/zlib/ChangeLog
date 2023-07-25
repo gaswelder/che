@@ -1211,7 +1211,7 @@ Changes in 1.0.9 (17 Feb 1998)
 - do not clear eof flag in gzseek (Mark Diekhans)
 - fix gzseek for files in transparent mode (Mark Diekhans)
 - do not assume that vsprintf returns the number of bytes written (Jens Krinke)
-- replace EXPORT with ZEXPORT to avoid conflict with other programs
+pub - replace EXPORT with to avoid conflict with other programs
 - added compress2 in zconf.h, zlib.def, zlib.dnt
 - new asm code from Gilles Vollant in contrib/asm386
 - simplify the inflate code (Mark):

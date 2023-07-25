@@ -252,7 +252,7 @@ local z_size_t gz_write(state, buf, len)
 }
 
 /* -- see zlib.h -- */
-int ZEXPORT gzwrite(file, buf, len)
+pub int gzwrite(file, buf, len)
     gzFile file;
     voidpc buf;
     unsigned len;
@@ -280,7 +280,7 @@ int ZEXPORT gzwrite(file, buf, len)
 }
 
 /* -- see zlib.h -- */
-z_size_t ZEXPORT gzfwrite(buf, size, nitems, file)
+pub z_size_t gzfwrite(buf, size, nitems, file)
     voidpc buf;
     z_size_t size;
     z_size_t nitems;
@@ -310,7 +310,7 @@ z_size_t ZEXPORT gzfwrite(buf, size, nitems, file)
 }
 
 /* -- see zlib.h -- */
-int ZEXPORT gzputc(file, c)
+pub int gzputc(file, c)
     gzFile file;
     int c;
 {
@@ -358,7 +358,7 @@ int ZEXPORT gzputc(file, c)
 }
 
 /* -- see zlib.h -- */
-int ZEXPORT gzputs(file, s)
+pub int gzputs(file, s)
     gzFile file;
     const char *s;
 {
@@ -472,7 +472,7 @@ int ZEXPORTVA gzprintf(gzFile file, const char *format, ...)
 
 
 /* -- see zlib.h -- */
-int ZEXPORT gzflush(file, flush)
+pub int gzflush(file, flush)
     gzFile file;
     int flush;
 {
@@ -504,7 +504,7 @@ int ZEXPORT gzflush(file, flush)
 }
 
 /* -- see zlib.h -- */
-int ZEXPORT gzsetparams(file, level, strategy)
+pub int gzsetparams(file, level, strategy)
     gzFile file;
     int level;
     int strategy;
@@ -546,7 +546,7 @@ int ZEXPORT gzsetparams(file, level, strategy)
 }
 
 /* -- see zlib.h -- */
-int ZEXPORT gzclose_w(file)
+pub int gzclose_w(file)
     gzFile file;
 {
     int ret = Z_OK;

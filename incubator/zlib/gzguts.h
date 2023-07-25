@@ -98,10 +98,10 @@
 
 /* provide prototypes for these when building zlib without LFS */
 #if !defined(_LARGEFILE64_SOURCE) || _LFS64_LARGEFILE-0 == 0
-    ZEXTERN gzFile ZEXPORT gzopen64 OF((const char *, const char *));
-    ZEXTERN z_off64_t ZEXPORT gzseek64 OF((gzFile, z_off64_t, int));
-    ZEXTERN z_off64_t ZEXPORT gztell64 OF((gzFile));
-    ZEXTERN z_off64_t ZEXPORT gzoffset64 OF((gzFile));
+pub     ZEXTERN gzFile gzopen64 OF((const char *, const char *));
+pub     ZEXTERN z_off64_t gzseek64 OF((gzFile, z_off64_t, int));
+pub     ZEXTERN z_off64_t gztell64 OF((gzFile));
+pub     ZEXTERN z_off64_t gzoffset64 OF((gzFile));
 #endif
 
 /* default memLevel */

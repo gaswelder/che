@@ -1722,7 +1722,7 @@ pub uint32_t crc32_combine64(uint32_t crc1, uint32_t crc2, int64_t len2) {
 }
 
 /*
-ZEXTERN uint32_t ZEXPORT crc32_combine OF((uint32_t crc1, uint32_t crc2, int64_t len2));
+pub ZEXTERN uint32_t crc32_combine OF((uint32_t crc1, uint32_t crc2, int64_t len2));
 
      Combine two CRC-32 check values into one.  For two sequences of bytes,
    seq1 and seq2 with lengths len1 and len2, CRC-32 check values were
@@ -1741,7 +1741,7 @@ pub uint32_t crc32_combine_gen64(int64_t len2) {
 }
 
 /*
-ZEXTERN uint32_t ZEXPORT crc32_combine_gen OF((int64_t len2));
+pub ZEXTERN uint32_t crc32_combine_gen OF((int64_t len2));
 
      Return the operator corresponding to length len2, to be used with
    crc32_combine_op().

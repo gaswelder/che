@@ -71,9 +71,9 @@ extern z_const char * const z_errmsg[10]; /* indexed by 2-zlib_error */
 
 /* provide prototypes for these when building zlib without LFS */
 #if (!defined(_LARGEFILE64_SOURCE)) || ((_LFS64_LARGEFILE) - (1))
-    ZEXTERN uLong ZEXPORT adler32_combine64 OF((uLong, uLong, z_off_t));
-    ZEXTERN uLong ZEXPORT crc32_combine64 OF((uLong, uLong, z_off_t));
-    ZEXTERN uLong ZEXPORT crc32_combine_gen64 OF((z_off_t));
+pub     ZEXTERN uLong adler32_combine64 OF((uLong, uLong, z_off_t));
+pub     ZEXTERN uLong crc32_combine64 OF((uLong, uLong, z_off_t));
+pub     ZEXTERN uLong crc32_combine_gen64 OF((z_off_t));
 #endif
 
         /* common defaults */

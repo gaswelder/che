@@ -27,12 +27,12 @@ z_const char * const z_errmsg[10] = {
    compatible with the zlib.h header file used by the application.  This check
    is automatically made by deflateInit and inflateInit.
  */
-const char * ZEXPORT zlibVersion()
+pub const char * zlibVersion()
 {
     return ZLIB_VERSION;
 }
 
-uLong ZEXPORT zlibCompileFlags()
+pub uLong zlibCompileFlags()
 {
     uLong flags;
 
@@ -109,7 +109,7 @@ void ZLIB_INTERNAL z_error(m)
 /* exported to allow conversion of error code to string for compress() and
  * uncompress()
  */
-const char * ZEXPORT zError(err)
+pub const char * zError(err)
     int err;
 {
     return ERR_MSG(err);
