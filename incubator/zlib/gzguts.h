@@ -121,7 +121,7 @@
 /* internal gzip file state data structure */
 typedef struct {
         /* exposed contents for gzgetc() macro */
-    struct gzFile_s x;      /* "x" for exposed */
+    gzFile_s x;      /* "x" for exposed */
                             /* x.have: number of bytes available at x.next */
                             /* x.next: next output data to deliver or write */
                             /* x.pos: current position in uncompressed data */

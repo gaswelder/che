@@ -304,35 +304,31 @@ int stream_size;
     return ret;
 }
 
-/*
-pub int inflateInit OF((z_stream *strm));
+/* Initializes state for decompression.
+The fields next_in, avail_in, zalloc, zfree and opaque must be initialized before by
+   the caller. 
+The provided input is not read or consumed.
+Does not perform any decompression, actual decompression will be done by inflate().
 
-     Initializes the internal stream state for decompression.  The fields
-   next_in, avail_in, zalloc, zfree and opaque must be initialized before by
-   the caller.  In the current version of inflate, the provided input is not
-   read or consumed.  The allocation of a sliding window will be deferred to
+The allocation of a sliding window will be deferred to
    the first call of inflate (if the decompression does not complete on the
    first call).  If zalloc and zfree are set to Z_NULL, inflateInit updates
    them to use default allocation functions.
 
-     inflateInit returns Z_OK if success, Z_MEM_ERROR if there was not enough
+inflateInit returns Z_OK if success, Z_MEM_ERROR if there was not enough
    memory, Z_VERSION_ERROR if the zlib library version is incompatible with the
    version assumed by the caller, or Z_STREAM_ERROR if the parameters are
    invalid, such as a null pointer to the structure.  msg is set to null if
-   there is no error message.  inflateInit does not perform any decompression.
-   Actual decompression will be done by inflate().  So next_in, and avail_in,
-   next_out, and avail_out are unused and unchanged.  The current
+   there is no error message.
+So next_in, and avail_in, next_out, and avail_out are unused and unchanged.  The current
    implementation of inflateInit() does not process any header information --
    that is deferred until inflate() is called.
 */
-pub int inflateInit_(strm, version, stream_size)
-z_stream *strm;
-const char *version;
-int stream_size;
-{
+put int inflateInit(deflate.z_stream *strm) {
+    const char *version = ZLIB_VERSION;
+    int stream_size = (int)sizeof(z_stream);
     return inflateInit2_(strm, DEF_WBITS, version, stream_size);
 }
-
 
 /*
      This function inserts bits in the inflate input stream.  The intent is
@@ -731,7 +727,7 @@ z_stream *strm;
 int flush;
 {
     struct inflate_state FAR *state;
-    z_const unsigned char FAR *next;    /* next input */
+    const unsigned char FAR *next;    /* next input */
     unsigned char FAR *put;     /* next output */
     unsigned have, left;        /* available input and output */
     unsigned long hold;         /* bit buffer */

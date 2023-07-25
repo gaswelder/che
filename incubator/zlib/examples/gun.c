@@ -18,7 +18,7 @@
    1.4   8 Dec 2006  LZW decompression speed improvements
    1.5   9 Feb 2008  Avoid warning in latest version of gcc
    1.6  17 Jan 2010  Avoid signed/unsigned comparison warnings
-   1.7  12 Aug 2012  Update for z_const usage in zlib 1.2.8
+   1.7  12 Aug 2012  Update for const usage in zlib 1.2.8
  */
 
 /*
@@ -86,7 +86,7 @@ struct ind {
 /* Load input buffer, assumed to be empty, and return bytes loaded and a
    pointer to them.  read() is called until the buffer is full, or until it
    returns end-of-file or error.  Return 0 on error. */
-local unsigned in(void *in_desc, z_const unsigned char **buf)
+local unsigned in(void *in_desc, const unsigned char **buf)
 {
     int ret;
     unsigned len;
@@ -197,7 +197,7 @@ unsigned char match[65280 + 2];         /* buffer for reversed match or gzip
    file, read error, or write error (a write error indicated by strm->next_in
    not equal to Z_NULL), or Z_DATA_ERROR for invalid input.
  */
-local int lunpipe(unsigned have, z_const unsigned char *next, struct ind *indp,
+local int lunpipe(unsigned have, const unsigned char *next, struct ind *indp,
                   int outfile, z_stream *strm)
 {
     int last;                   /* last byte read by NEXT(), or -1 if EOF */
@@ -384,7 +384,7 @@ local int gunpipe(z_stream *strm, int infile, int outfile)
 {
     int ret, first, last;
     unsigned have, flags, len;
-    z_const unsigned char *next = NULL;
+    const unsigned char *next = NULL;
     struct ind ind, *indp;
     struct outd outd;
 

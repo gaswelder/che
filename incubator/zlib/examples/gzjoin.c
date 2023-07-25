@@ -27,7 +27,7 @@
  *
  * 1.0  11 Dec 2004     - First version
  * 1.1  12 Jun 2005     - Changed ssize_t to long for portability
- * 1.2  14 Aug 2012     - Clean up for z_const usage
+ * 1.2  14 Aug 2012     - Clean up for const usage
  */
 
 /*

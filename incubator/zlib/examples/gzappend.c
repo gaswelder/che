@@ -39,7 +39,7 @@
  *                      - Keep gzip file clean on appended file read errors
  *                      - Use in-place rotate instead of auxiliary buffer
  *                        (Why you ask?  Because it was fun to write!)
- * 1.2  11 Oct 2012     - Fix for proper z_const usage
+ * 1.2  11 Oct 2012     - Fix for proper const usage
  *                      - Check for input buffer malloc failure
  */
 
@@ -172,7 +172,7 @@ typedef struct {
     int size;                   /* 1 << size is bytes in buf */
     unsigned left;              /* bytes available at next */
     unsigned char *buf;         /* buffer */
-    z_const unsigned char *next;    /* next byte in buffer */
+    const unsigned char *next;    /* next byte in buffer */
     char *name;                 /* file name for error messages */
 } file;
 

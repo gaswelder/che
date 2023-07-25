@@ -33,7 +33,7 @@ typedef unsigned long  ulg;
 #  endif
 #endif
 
-extern z_const char * const z_errmsg[10]; /* indexed by 2-zlib_error */
+extern const char * const z_errmsg[10]; /* indexed by 2-zlib_error */
 /* (size given to avoid silly warnings with Visual C++) */
 
 #define ERR_MSG(err) z_errmsg[Z_NEED_DICT-(err)]

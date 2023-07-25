@@ -292,10 +292,8 @@ typedef void  free_func(void *, void *);
 
 
 
-typedef unsigned (*in_func) OF((void FAR *,
-                                z_const unsigned char FAR * FAR *));
-typedef int (*out_func) OF((void FAR *, unsigned char FAR *, unsigned));
-
+typedef unsigned in_func(void *, const uint8_t **);
+typedef int out_func(void *, uint8_t  *, unsigned);
 
 /*
      This library supports reading and writing files in gzip (.gz) format with
@@ -304,29 +302,23 @@ typedef int (*out_func) OF((void FAR *, unsigned char FAR *, unsigned));
    wrapper, documented in RFC 1952, wrapped around a deflate stream.
 */
 
-typedef struct gzFile_s *gzFile;    /* semi-opaque gzip file descriptor */
+typedef gzFile_s *gzFile;    /* semi-opaque gzip file descriptor */
 
 
 /* deflateInit and inflateInit are macros to allow checking the zlib version
  * and the compiler's view of z_stream:
  */
-int deflateInit(strm, level) {
-  return deflateInit_((strm), (level), ZLIB_VERSION, (int)sizeof(z_stream));
+int deflateInit(deflate.z_stream *strm, int level) {
+  return deflateInit_(strm, level, ZLIB_VERSION, (int)sizeof(z_stream));
 }
 
-/* deflateInit and inflateInit are macros to allow checking the zlib version
- * and the compiler's view of z_stream:
- */
-int inflateInit(strm) {
-    return      inflateInit_((strm), ZLIB_VERSION, (int)sizeof(z_stream));
+
+int deflateInit2(deflate.z_stream *strm, int level, int method, int windowBits, int memLevel, int strategy) {
+    return deflateInit2_(strm, level, method, windowBits, memLevel,
+                        strategy, ZLIB_VERSION, (int)sizeof(z_stream));
 }
-int deflateInit2(strm, level, method, windowBits, memLevel, strategy) {
-    return      deflateInit2_((strm),(level),(method),(windowBits),(memLevel),
-                        (strategy), ZLIB_VERSION, (int)sizeof(z_stream));
-}
-int inflateInit2(strm, windowBits) {
-    return      inflateInit2_((strm), (windowBits), ZLIB_VERSION, 
-                        (int)sizeof(z_stream));
+int inflateInit2(deflate.z_stream *strm, int windowBits) {
+    return inflateInit2_(strm, windowBits, ZLIB_VERSION, (int)sizeof(z_stream));
 }
 
 /*
@@ -347,8 +339,8 @@ int inflateInit2(strm, windowBits) {
    allocated, or Z_VERSION_ERROR if the version of the library does not match
    the version of the header file.
 */
-int inflateBackInit(strm, windowBits, window) {
-    return      inflateBackInit_((strm), (windowBits), (window),
+int inflateBackInit(deflate.z_stream *strm,int windowBits, int window) {
+    return inflateBackInit_(strm, (windowBits), (window),
                            ZLIB_VERSION, (int)sizeof(z_stream));
 }
 
@@ -360,40 +352,19 @@ int inflateBackInit(strm, windowBits, window) {
  * behavior could change in the future, perhaps even capriciously.  They can
  * only be used by the gzgetc() macro.  You have been warned.
  */
-struct gzFile_s {
+typedef {
     unsigned have;
-    unsigned char *next;
+    uint8_t *next;
     z_off64_t pos;
-};
+} gzFile_s;
 
-#ifdef Z_PREFIX_SET
-#  undef z_gzgetc
-#  define z_gzgetc(g) \
-          ((g)->have ? ((g)->have--, (g)->pos++, *((g)->next)++) : (gzgetc)(g))
-#else
-#  define gzgetc(g) \
-          ((g)->have ? ((g)->have--, (g)->pos++, *((g)->next)++) : (gzgetc)(g))
-#endif
-
-#if !defined(ZLIB_INTERNAL) && defined(Z_WANT64)
-#  ifdef Z_PREFIX_SET
-#    define z_gzopen z_gzopen64
-#    define z_gzseek z_gzseek64
-#    define z_gztell z_gztell64
-#    define z_gzoffset z_gzoffset64
-#    define z_adler32_combine z_adler32_combine64
-#    define z_crc32_combine z_crc32_combine64
-#    define z_crc32_combine_gen z_crc32_combine_gen64
-#  else
-#    define gzopen gzopen64
-#    define gzseek gzseek64
-#    define gztell gztell64
-#    define gzoffset gzoffset64
-#    define adler32_combine adler32_combine64
-#    define crc32_combine crc32_combine64
-#    define crc32_combine_gen crc32_combine_gen64
-#  endif
-#endif
-
+int gzgetc(gzFile_s *g) {
+  if (g->have) {
+    g->have--;
+    g->pos++;
+    return *((g)->next)++;
+  }
+  return gzgetc(g);
+}
 
 #endif /* ZLIB_H */

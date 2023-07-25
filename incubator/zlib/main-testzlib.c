@@ -1,4 +1,5 @@
 #import zlib.c
+#import deflate.c
 
 // Represents a 64-bit signed integer value.
 typedef {
@@ -92,15 +93,37 @@ int ReadFileMemory(const char *filename, int32_t *plFileSize, uint8_t **pFilePtr
 
 int main(int argc, char *argv[])
 {
+    if (argc <= 1) {
+        printf("run TestZlib <File> [BlockSizeCompress] [BlockSizeUncompress] [compres. level]\n");
+        return 0;
+    }
+
     int BlockSizeCompress=0x8000;
     int BlockSizeUncompress=0x8000;
-    int cprLevel=Z_DEFAULT_COMPRESSION ;
-    int32_t lFileSize;
-    uint8_t* FilePtr;
-    int32_t lBufferSizeCpr;
-    int32_t lBufferSizeUncpr;
-    int32_t lCompressedSize=0;
-    uint8_t* CprPtr;
+    int cprLevel=Z_DEFAULT_COMPRESSION;
+    if (argc>=3) {
+        BlockSizeCompress=atol(argv[2]);
+    }
+    if (argc>=4) {
+        BlockSizeUncompress=atol(argv[3]);
+    }
+    if (argc>=5) {
+        cprLevel=(int)atol(argv[4]);
+    }
+
+    int32_t lFileSize = 0;
+    uint8_t* FilePtr = NULL;
+    if (ReadFileMemory(argv[1], &lFileSize, &FilePtr) == 0) {
+        printf("error reading %s\n", argv[1]);
+        return 1;
+    }
+    printf("file %s read, %u bytes\n",argv[1], lFileSize);
+
+    int32_t lBufferSizeCpr = lFileSize + (lFileSize/0x10) + 0x200;
+    uint8_t *CprPtr = calloc(1, lBufferSizeCpr + BlockSizeCompress);
+
+    int32_t lBufferSizeUncpr = lBufferSizeCpr;
+    int32_t lCompressedSize=0;    
     uint8_t* UncprPtr;
     int32_t lSizeCpr;
     int32_t lSizeUncpr;
@@ -109,38 +132,12 @@ int main(int argc, char *argv[])
     LARGE_INTEGER li_qp;
     LARGE_INTEGER li_rdtsc;
     LARGE_INTEGER dwResRdtsc;
+    
 
-    if (argc<=1)
-    {
-        printf("run TestZlib <File> [BlockSizeCompress] [BlockSizeUncompress] [compres. level]\n");
-        return 0;
-    }
-
-    if (ReadFileMemory(argv[1],&lFileSize,&FilePtr)==0)
-    {
-        printf("error reading %s\n",argv[1]);
-        return 1;
-    }
-    else printf("file %s read, %u bytes\n",argv[1],lFileSize);
-
-    if (argc>=3)
-        BlockSizeCompress=atol(argv[2]);
-
-    if (argc>=4)
-        BlockSizeUncompress=atol(argv[3]);
-
-    if (argc>=5)
-        cprLevel=(int)atol(argv[4]);
-
-    lBufferSizeCpr = lFileSize + (lFileSize/0x10) + 0x200;
-    lBufferSizeUncpr = lBufferSizeCpr;
-
-    CprPtr=(uint8_t*)malloc(lBufferSizeCpr + BlockSizeCompress);
-
-    BeginCountPerfCounter(&li_qp,TRUE);
+    BeginCountPerfCounter(&li_qp, true);
     dwGetTick=GetTickCount();
     BeginCountRdtsc(&li_rdtsc);
-    zlib.z_stream zcpr;
+    deflate.z_stream zcpr;
     int ret=Z_OK;
     int32_t lOrigToDo = lFileSize;
     int32_t lOrigDone = 0;
@@ -152,67 +149,73 @@ int main(int argc, char *argv[])
     zcpr.next_out = CprPtr;
 
 
-    do
-    {
+    while (true) {
         int32_t all_read_before = zcpr.total_in;
         zcpr.avail_in = min(lOrigToDo,BlockSizeCompress);
         zcpr.avail_out = BlockSizeCompress;
-        ret=deflate(&zcpr,(zcpr.avail_in==lOrigToDo) ? Z_FINISH : Z_SYNC_FLUSH);
+        if (zcpr.avail_in==lOrigToDo) {
+            ret = deflate(&zcpr, Z_FINISH);
+        } else {
+            ret = deflate(&zcpr, Z_SYNC_FLUSH);
+        }
         lOrigDone += (zcpr.total_in-all_read_before);
         lOrigToDo -= (zcpr.total_in-all_read_before);
         step++;
-    } while (ret==Z_OK);
+        bool cont = (ret==Z_OK);
+        if (!cont) break;
+    }
 
     lSizeCpr=zcpr.total_out;
     deflateEnd(&zcpr);
     dwGetTick=GetTickCount()-dwGetTick;
-    dwMsecQP=GetMsecSincePerfCounter(li_qp,TRUE);
-    dwResRdtsc=GetResRdtsc(li_rdtsc,TRUE);
+    dwMsecQP=GetMsecSincePerfCounter(li_qp, true);
+    dwResRdtsc=GetResRdtsc(li_rdtsc, true);
     printf("total compress size = %u, in %u step\n",lSizeCpr,step);
     printf("time = %u msec = %f sec\n",dwGetTick,dwGetTick/(double)1000.);
     printf("defcpr time QP = %u msec = %f sec\n",dwMsecQP,dwMsecQP/(double)1000.);
     printf("defcpr result rdtsc = %I64x\n\n",dwResRdtsc.QuadPart);
 
     CprPtr=(uint8_t*)realloc(CprPtr,lSizeCpr);
-    UncprPtr=(uint8_t*)malloc(lBufferSizeUncpr + BlockSizeUncompress);
+    UncprPtr=(uint8_t*) calloc(1, lBufferSizeUncpr + BlockSizeUncompress);
 
-    BeginCountPerfCounter(&li_qp,TRUE);
+    BeginCountPerfCounter(&li_qp, true);
     dwGetTick=GetTickCount();
     BeginCountRdtsc(&li_rdtsc);
-    {
-        z_stream zcpr;
-        int ret=Z_OK;
-        int32_t lOrigToDo = lSizeCpr;
-        int32_t lOrigDone = 0;
-        int step=0;
-        memset(&zcpr,0,sizeof(z_stream));
-        inflateInit(&zcpr);
+    
+    deflate.z_stream zcpr;
+    int ret=Z_OK;
+    int32_t lOrigToDo = lSizeCpr;
+    int32_t lOrigDone = 0;
+    int step=0;
+    memset(&zcpr,0,sizeof(deflate.z_stream));
+    inflateInit(&zcpr);
 
-        zcpr.next_in = CprPtr;
-        zcpr.next_out = UncprPtr;
+    zcpr.next_in = CprPtr;
+    zcpr.next_out = UncprPtr;
 
-
-        do
-        {
-            int32_t all_read_before = zcpr.total_in;
-            zcpr.avail_in = min(lOrigToDo,BlockSizeUncompress);
-            zcpr.avail_out = BlockSizeUncompress;
-            ret=inflate(&zcpr,Z_SYNC_FLUSH);
-            lOrigDone += (zcpr.total_in-all_read_before);
-            lOrigToDo -= (zcpr.total_in-all_read_before);
-            step++;
-        } while (ret==Z_OK);
-
-        lSizeUncpr=zcpr.total_out;
-        inflateEnd(&zcpr);
-        dwGetTick=GetTickCount()-dwGetTick;
-        dwMsecQP=GetMsecSincePerfCounter(li_qp,TRUE);
-        dwResRdtsc=GetResRdtsc(li_rdtsc,TRUE);
-        printf("total uncompress size = %u, in %u step\n",lSizeUncpr,step);
-        printf("time = %u msec = %f sec\n",dwGetTick,dwGetTick/(double)1000.);
-        printf("uncpr  time QP = %u msec = %f sec\n",dwMsecQP,dwMsecQP/(double)1000.);
-        printf("uncpr  result rdtsc = %I64x\n\n",dwResRdtsc.QuadPart);
+    while (true) {
+        int32_t all_read_before = zcpr.total_in;
+        zcpr.avail_in = min(lOrigToDo,BlockSizeUncompress);
+        zcpr.avail_out = BlockSizeUncompress;
+        ret=inflate(&zcpr,Z_SYNC_FLUSH);
+        lOrigDone += (zcpr.total_in-all_read_before);
+        lOrigToDo -= (zcpr.total_in-all_read_before);
+        step++;
+        if (ret != Z_OK) {
+            break;
+        }
     }
+
+    lSizeUncpr=zcpr.total_out;
+    inflateEnd(&zcpr);
+    dwGetTick=GetTickCount()-dwGetTick;
+    dwMsecQP=GetMsecSincePerfCounter(li_qp, true);
+    dwResRdtsc=GetResRdtsc(li_rdtsc, true);
+    printf("total uncompress size = %u, in %u step\n",lSizeUncpr,step);
+    printf("time = %u msec = %f sec\n",dwGetTick,dwGetTick/(double)1000.);
+    printf("uncpr  time QP = %u msec = %f sec\n",dwMsecQP,dwMsecQP/(double)1000.);
+    printf("uncpr  result rdtsc = %I64x\n\n",dwResRdtsc.QuadPart);
+    
 
     if (lSizeUncpr==lFileSize)
     {
@@ -222,4 +225,8 @@ int main(int argc, char *argv[])
     }
 
     return 0;
+}
+
+int GetTickCount() {
+    panic("todo");
 }

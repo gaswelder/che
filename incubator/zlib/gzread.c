@@ -486,11 +486,7 @@ pub z_size_t gzfread(buf, size, nitems, file)
 }
 
 /* -- see zlib.h -- */
-#ifdef Z_PREFIX_SET
-#  undef z_gzgetc
-#else
 #  undef gzgetc
-#endif
 
 /*
      Read and decompress one byte from file.  gzgetc returns this byte or -1

@@ -162,13 +162,15 @@ void myfree(q, p)
     free(p);
 }
 
-typedef struct gzFile_s {
+typedef {
     FILE *file;
     int write;
     int err;
     char *msg;
     z_stream strm;
-} *gzFile;
+} gzFile_s;
+
+typedef gzFile_s *gzFile;
 
 gzFile gzopen OF((const char *, const char *));
 gzFile gzdopen OF((int, const char *));
@@ -196,7 +198,7 @@ gzFile gz_open(path, fd, mode)
     gzFile gz;
     int ret;
 
-    gz = malloc(sizeof(struct gzFile_s));
+    gz = malloc(sizeof(gzFile_s));
     if (gz == NULL)
         return NULL;
     gz->write = strchr(mode, 'w') != NULL;

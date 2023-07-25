@@ -182,10 +182,10 @@
 
 
 
-#if defined(ZLIB_CONST) && !defined(z_const)
-#  define z_const const
+#if defined(ZLIB_CONST) && !defined(const)
+#  define const const
 #else
-#  define z_const
+#  define const
 #endif
 
 #  define z_longlong long long

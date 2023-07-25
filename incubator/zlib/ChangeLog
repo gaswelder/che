@@ -121,7 +121,7 @@ Changes in 1.2.9 (31 Dec 2016)
 
 Changes in 1.2.8 (28 Apr 2013)
 - Update contrib/minizip/iowin32.c for Windows RT [Vollant]
-- Do not force Z_CONST for C++
+- Do not force const for C++
 - Clean up contrib/vstudio [Roß]
 - Correct spelling error in zlib.h
 - Fix mixed line endings in contrib/vstudio
@@ -149,7 +149,7 @@ Changes in 1.2.7.1 (24 Mar 2013)
 - Fix CMake compilation of static lib for MSVC2010 x64
 - Remove unused variable in infback9.c
 - Fix argument checks in gzlog_compress() and gzlog_write()
-- Clean up the usage of z_const and respect const usage within zlib
+- Clean up the usage of const and respect const usage within zlib
 - Clean up examples/gzlog.[ch] comparisons of different types
 - Avoid shift equal to bits in type (caused endless loop)
 - Fix uninitialized value bug in gzputc() introduced by const patches

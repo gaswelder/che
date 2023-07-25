@@ -55,7 +55,7 @@ pub int compress2(dest, destLen, source, sourceLen, level)
 
     stream.next_out = dest;
     stream.avail_out = 0;
-    stream.next_in = (z_const Bytef *)source;
+    stream.next_in = (const Bytef *)source;
     stream.avail_in = 0;
 
     do {
