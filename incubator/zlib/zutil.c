@@ -115,9 +115,9 @@ pub uLong zlibCompileFlags()
 #ifdef NO_GZCOMPRESS
     flags += 1L << 16;
 #endif
-#ifdef PKZIP_BUG_WORKAROUND
+if (PKZIP_BUG_WORKAROUND) {
     flags += 1L << 20;
-#endif
+}
 #  ifdef NO_vsnprintf
     flags += 1L << 25;
 #    ifdef HAS_vsprintf_void

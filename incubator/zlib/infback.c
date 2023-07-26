@@ -420,13 +420,13 @@ void FAR *out_desc;
             DROPBITS(5);
             state->ncode = BITS(4) + 4;
             DROPBITS(4);
-#ifndef PKZIP_BUG_WORKAROUND
-            if (state->nlen > 286 || state->ndist > 30) {
-                strm->msg = (char *)"too many length or distance symbols";
-                state->mode = BAD;
-                break;
+            if (!PKZIP_BUG_WORKAROUND) {
+                if (state->nlen > 286 || state->ndist > 30) {
+                    strm->msg = (char *)"too many length or distance symbols";
+                    state->mode = BAD;
+                    break;
+                }
             }
-#endif
             Tracev((stderr, "inflate:       table sizes ok\n"));
 
             /* get code length code lengths (not a typo) */

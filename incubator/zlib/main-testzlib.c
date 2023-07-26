@@ -139,11 +139,11 @@ int main(int argc, char *argv[])
     dwGetTick=GetTickCount();
     BeginCountRdtsc(&li_rdtsc);
     stream.z_stream zcpr;
-    int ret=Z_OK;
+    int ret=stream.Z_OK;
     int32_t lOrigToDo = lFileSize;
     int32_t lOrigDone = 0;
     int step=0;
-    memset(&zcpr,0,sizeof(z_stream));
+    memset(&zcpr,0,sizeof(stream.z_stream));
     deflateInit(&zcpr,cprLevel);
 
     zcpr.next_in = FilePtr;
@@ -157,12 +157,12 @@ int main(int argc, char *argv[])
         if (zcpr.avail_in==lOrigToDo) {
             ret = deflate(&zcpr, Z_FINISH);
         } else {
-            ret = deflate(&zcpr, Z_SYNC_FLUSH);
+            ret = deflate(&zcpr, stream.Z_SYNC_FLUSH);
         }
         lOrigDone += (zcpr.total_in-all_read_before);
         lOrigToDo -= (zcpr.total_in-all_read_before);
         step++;
-        bool cont = (ret==Z_OK);
+        bool cont = (ret==stream.Z_OK);
         if (!cont) break;
     }
 
@@ -184,7 +184,7 @@ int main(int argc, char *argv[])
     BeginCountRdtsc(&li_rdtsc);
     
     stream.z_stream zcpr;
-    int ret=Z_OK;
+    int ret=stream.Z_OK;
     int32_t lOrigToDo = lSizeCpr;
     int32_t lOrigDone = 0;
     int step=0;
@@ -198,11 +198,11 @@ int main(int argc, char *argv[])
         int32_t all_read_before = zcpr.total_in;
         zcpr.avail_in = min(lOrigToDo,BlockSizeUncompress);
         zcpr.avail_out = BlockSizeUncompress;
-        ret = inflate.inflate(&zcpr,Z_SYNC_FLUSH);
+        ret = inflate.inflate(&zcpr,stream.Z_SYNC_FLUSH);
         lOrigDone += (zcpr.total_in-all_read_before);
         lOrigToDo -= (zcpr.total_in-all_read_before);
         step++;
-        if (ret != Z_OK) {
+        if (ret != stream.Z_OK) {
             break;
         }
     }
