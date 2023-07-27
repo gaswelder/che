@@ -22,6 +22,18 @@ REFERENCES
 
 
 /*
+Before calling deflate or inflate, make sure that avail_in and avail_out are not zero.
+    When setting the parameter flush equal to Z_FINISH, also make sure that
+    avail_out is big enough to allow processing all pending input.  Note that a
+    Z_BUF_ERROR is not fatal--another call to deflate() or inflate() can be
+    made with more input or output space.  A Z_BUF_ERROR may in fact be
+    unavoidable depending on how the functions are used, since it is not
+    possible to tell whether or not there is more output pending when
+    strm.avail_out returns with zero.  See http://zlib.net/zlib_how.html for a
+    heavily annotated example.
+
+
+    
 The "deflation" depends on identifying portions of the input text which are
 identical to earlier input (within a sliding window).
 

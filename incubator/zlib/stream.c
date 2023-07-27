@@ -1,4 +1,10 @@
 /* Allowed flush values for deflate() and inflate() */
+/* If when compressing you periodically use Z_FULL_FLUSH, carefully write all the pending data at those points, and
+keep an index of those locations, then you can start decompression at those
+points. You have to be careful to not use Z_FULL_FLUSH too often, since it
+can significantly degrade compression. Alternatively, you can scan a
+deflate stream once to generate an index, and then use that index for
+random access. See examples/zran.c .*/
 pub enum {
     Z_NO_FLUSH = 0,
     Z_PARTIAL_FLUSH = 1,
@@ -227,6 +233,11 @@ pub typedef {
 } deflate_state;
 
 pub typedef {
+
+/* strm.total_in and strm_total_out counters may be limited to 4 GB.  These
+    counters are provided as a convenience and are not used internally by
+    inflate() or deflate() */
+
     const uint8_t *next_in;     /* next input byte */
     uInt     avail_in;  /* number of bytes available at next_in */
     uint32_t    total_in;  /* total number of input bytes read so far */

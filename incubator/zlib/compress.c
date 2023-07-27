@@ -86,6 +86,9 @@ pub int compress2(dest, destLen, source, sourceLen, level)
      compress returns Z_OK if success, Z_MEM_ERROR if there was not
    enough memory, Z_BUF_ERROR if there was not enough room in the output
    buffer.
+       Make sure that before the call of compress(), the length of the compressed
+    buffer is equal to the available size of the compressed buffer and not
+    zero.
 */
 pub int compress(dest, destLen, source, sourceLen)
     Bytef *dest;
