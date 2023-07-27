@@ -113,11 +113,14 @@ typedef void  free_func(void *, void *);
    if the decompressor wants to decompress everything in a single step).
 */
 
-#define Z_NO_COMPRESSION         0
-#define Z_BEST_SPEED             1
-#define Z_BEST_COMPRESSION       9
-#define Z_DEFAULT_COMPRESSION  (-1)
 /* compression levels */
+pub enum {
+  Z_NO_COMPRESSION        = 0,
+  Z_BEST_SPEED            = 1,
+  Z_BEST_COMPRESSION      = 9,
+  Z_DEFAULT_COMPRESSION   = -1,
+};
+
 
 #define Z_FILTERED            1
 #define Z_HUFFMAN_ONLY        2
@@ -153,19 +156,6 @@ typedef int out_func(void *, uint8_t  *, unsigned);
 
 typedef gzFile_s *gzFile;    /* semi-opaque gzip file descriptor */
 
-
-/* deflateInit and inflateInit are macros to allow checking the zlib version
- * and the compiler's view of z_stream:
- */
-int deflateInit(stream.z_stream *strm, int level) {
-  return deflateInit_(strm, level, ZLIB_VERSION, (int)sizeof(z_stream));
-}
-
-
-int deflateInit2(stream.z_stream *strm, int level, int method, int windowBits, int memLevel, int strategy) {
-    return deflateInit2_(strm, level, method, windowBits, memLevel,
-                        strategy, ZLIB_VERSION, (int)sizeof(z_stream));
-}
 int inflateInit2(stream.z_stream *strm, int windowBits) {
     return inflateInit2_(strm, windowBits, ZLIB_VERSION, (int)sizeof(z_stream));
 }

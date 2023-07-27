@@ -309,14 +309,14 @@ void slide_hash(stream.deflate_state *s) {
 }
 
 /*
-pub int deflateInit OF((stream.z_stream *strm, int level));
+ * Initializes the internal stream state for compression.
+ 
+ The fields
+   zalloc, zfree and opaque must be initialized before by the caller.
+   
+If zalloc and zfree are set to Z_NULL, deflateInit updates them to use default allocation functions.
 
-     Initializes the internal stream state for compression.  The fields
-   zalloc, zfree and opaque must be initialized before by the caller.  If
-   zalloc and zfree are set to Z_NULL, deflateInit updates them to use default
-   allocation functions.
-
-     The compression level must be Z_DEFAULT_COMPRESSION, or between 0 and 9:
+The compression level must be Z_DEFAULT_COMPRESSION, or between 0 and 9:
    1 gives best speed, 9 gives best compression, 0 gives no compression at all
    (the input data is simply copied a block at a time).  Z_DEFAULT_COMPRESSION
    requests a default compromise between speed and compression (currently
@@ -329,10 +329,20 @@ pub int deflateInit OF((stream.z_stream *strm, int level));
    if there is no error message.  deflateInit does not perform any compression:
    this will be done by deflate().
 */
-pub int deflateInit_(stream.z_stream *strm, int level, const char *version, int stream_size) {
+pub int deflateInit(stream.z_stream *strm, int level) {
+  return deflateInit_(strm, level, ZLIB_VERSION, (int)sizeof(z_stream));
+}
+
+
+int deflateInit_(stream.z_stream *strm, int level, const char *version, int stream_size) {
     return deflateInit2_(strm, level, Z_DEFLATED, MAX_WBITS, DEF_MEM_LEVEL,
                          Z_DEFAULT_STRATEGY, version, stream_size);
     /* To do: ignore strm->next_in if we use it as window */
+}
+
+int deflateInit2(stream.z_stream *strm, int level, int method, int windowBits, int memLevel, int strategy) {
+    return deflateInit2_(strm, level, method, windowBits, memLevel,
+                        strategy, ZLIB_VERSION, (int)sizeof(z_stream));
 }
 
 const char my_version[] = ZLIB_VERSION;
@@ -1552,18 +1562,17 @@ int get_dunno_what(stream.deflate_state *s) {
 }
 
 /*
-     All dynamically allocated data structures for this stream are freed.
-   This function discards any unprocessed input and does not flush any pending
-   output.
-
-     deflateEnd returns Z_OK if success, Z_STREAM_ERROR if the
-   stream state was inconsistent, Z_DATA_ERROR if the stream was freed
-   prematurely (some input or output was discarded).  In the error case, msg
-   may be set but then points to a static string (which must not be
-   deallocated).
-*/
+ * Frees all dynamically allocated data structures for this stream.
+ * Discards any unprocessed input and does not flush any pending output.
+ * Returns Z_OK if success,
+ * Z_STREAM_ERROR if the stream state was inconsistent,
+ * Z_DATA_ERROR if the stream was freed prematurely (some input or output was discarded).
+ * In the error case, msg may be set to a static string (which must not be deallocated).
+ */
 pub int deflateEnd(stream.z_stream *strm) {
-    if (deflateStateCheck(strm)) return Z_STREAM_ERROR;
+    if (deflateStateCheck(strm)) {
+        return Z_STREAM_ERROR;
+    }
     int status = strm->state->status;
 
     /* Deallocate in reverse order of allocations: */

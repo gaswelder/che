@@ -1,6 +1,7 @@
 #import zlib.c
 #import inflate.c
 #import stream.c
+#import deflate.c
 
 // Represents a 64-bit signed integer value.
 typedef {
@@ -68,24 +69,25 @@ uint32_t GetMsecSincePerfCounter(LARGE_INTEGER beginTime64,bool fComputeTimeQuer
 }
 
 int ReadFileMemory(const char *filename, int32_t *plFileSize, uint8_t **pFilePtr) {
-    FILE* stream;
-    uint8_t* ptr;
-    int retVal=1;
-    stream=fopen(filename, "rb");
-    if (stream==NULL)
+    FILE *stream = fopen(filename, "rb");
+    if (!stream) {
         return 0;
+    }
 
     fseek(stream,0,SEEK_END);
 
     *plFileSize=ftell(stream);
     fseek(stream,0,SEEK_SET);
-    ptr=malloc((*plFileSize)+1);
-    if (ptr==NULL)
+    uint8_t *ptr = calloc((*plFileSize)+1, 1);
+    if (!ptr) {
+        fclose(stream);
+        *pFilePtr = NULL;
+        return 0;
+    }
+
+    int retVal=1;
+    if (fread(ptr, 1, *plFileSize,stream) != (*plFileSize)) {
         retVal=0;
-    else
-    {
-        if (fread(ptr, 1, *plFileSize,stream) != (*plFileSize))
-            retVal=0;
     }
     fclose(stream);
     *pFilePtr=ptr;
@@ -101,7 +103,7 @@ int main(int argc, char *argv[])
 
     int BlockSizeCompress=0x8000;
     int BlockSizeUncompress=0x8000;
-    int cprLevel=Z_DEFAULT_COMPRESSION;
+    int cprLevel = zlib.Z_DEFAULT_COMPRESSION;
     if (argc>=3) {
         BlockSizeCompress=atol(argv[2]);
     }
@@ -124,7 +126,7 @@ int main(int argc, char *argv[])
     uint8_t *CprPtr = calloc(1, lBufferSizeCpr + BlockSizeCompress);
 
     int32_t lBufferSizeUncpr = lBufferSizeCpr;
-    int32_t lCompressedSize=0;    
+    // int32_t lCompressedSize=0;    
     uint8_t* UncprPtr;
     int32_t lSizeCpr;
     int32_t lSizeUncpr;
@@ -144,7 +146,7 @@ int main(int argc, char *argv[])
     int32_t lOrigDone = 0;
     int step=0;
     memset(&zcpr,0,sizeof(stream.z_stream));
-    deflateInit(&zcpr,cprLevel);
+    deflate.deflateInit(&zcpr,cprLevel);
 
     zcpr.next_in = FilePtr;
     zcpr.next_out = CprPtr;
@@ -155,9 +157,9 @@ int main(int argc, char *argv[])
         zcpr.avail_in = min(lOrigToDo,BlockSizeCompress);
         zcpr.avail_out = BlockSizeCompress;
         if (zcpr.avail_in==lOrigToDo) {
-            ret = deflate(&zcpr, Z_FINISH);
+            ret = deflate.deflate(&zcpr, stream.Z_FINISH);
         } else {
-            ret = deflate(&zcpr, stream.Z_SYNC_FLUSH);
+            ret = deflate.deflate(&zcpr, stream.Z_SYNC_FLUSH);
         }
         lOrigDone += (zcpr.total_in-all_read_before);
         lOrigToDo -= (zcpr.total_in-all_read_before);
@@ -167,7 +169,7 @@ int main(int argc, char *argv[])
     }
 
     lSizeCpr=zcpr.total_out;
-    deflateEnd(&zcpr);
+    deflate.deflateEnd(&zcpr);
     dwGetTick=GetTickCount()-dwGetTick;
     dwMsecQP=GetMsecSincePerfCounter(li_qp, true);
     dwResRdtsc=GetResRdtsc(li_rdtsc, true);
@@ -189,7 +191,7 @@ int main(int argc, char *argv[])
     int32_t lOrigDone = 0;
     int step=0;
     memset(&zcpr,0,sizeof(stream.z_stream));
-    inflateInit(&zcpr);
+    inflate.inflateInit(&zcpr);
 
     zcpr.next_in = CprPtr;
     zcpr.next_out = UncprPtr;
@@ -208,7 +210,7 @@ int main(int argc, char *argv[])
     }
 
     lSizeUncpr=zcpr.total_out;
-    inflateEnd(&zcpr);
+    inflate.inflateEnd(&zcpr);
     dwGetTick=GetTickCount()-dwGetTick;
     dwMsecQP=GetMsecSincePerfCounter(li_qp, true);
     dwResRdtsc=GetResRdtsc(li_rdtsc, true);
@@ -229,5 +231,17 @@ int main(int argc, char *argv[])
 }
 
 int GetTickCount() {
+    panic("todo");
+}
+
+// Retrieves the current value of the performance counter, which is a high resolution (<1us)
+// time stamp that can be used for time-interval measurements.
+bool QueryPerformanceCounter(int64_t *ticks) {
+    (void) ticks;
+    panic("todo");
+}
+
+bool QueryPerformanceFrequency(int64_t *freq) {
+    (void) freq;
     panic("todo");
 }
