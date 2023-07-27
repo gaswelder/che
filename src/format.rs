@@ -387,6 +387,9 @@ fn format_compat_function_parameters(parameters: &CompatFunctionParameters) -> S
     if parameters.variadic {
         s += ", ...";
     }
+    if parameters.list.len() == 0 {
+        s += "void";
+    }
     s += ")";
     return s;
 }
