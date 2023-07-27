@@ -280,7 +280,7 @@ Changes in 1.2.5.3 (15 Jan 2012)
 - Update win32/Makefile.gcc to build test/*.c [Truta]
 - Permit stronger flushes after Z_BLOCK flushes
 - Avoid extraneous empty blocks when doing empty flushes
-- Permit Z_NULL arguments to deflatePending
+- Permit NULL arguments to deflatePending
 - Allow deflatePrime() to insert bits in the middle of a stream
 - Remove second empty static block for Z_PARTIAL_FLUSH
 - Write out all of the available bits when using Z_BLOCK
@@ -576,7 +576,7 @@ Changes in 1.2.3.4 (21 Dec 2009)
 - Update comments in configure and Makefile.in for default --shared
 - Fix test -z's in configure [Marquess]
 - Build examplesh and minigzipsh when not testing
-- Change NULL's to Z_NULL's in deflate.c and in comments in zlib.h
+- Change NULL's to NULL's in deflate.c and in comments in zlib.h
 - Import LDFLAGS from the environment in configure
 - Fix configure to populate SFLAGS with discovered CFLAGS options
 - Adapt make_vms.com to the new Makefile.in [Zinser]
@@ -938,7 +938,7 @@ Changes in 1.2.0.5 (8 September 2003)
   INSERT_STRING [Truta]
 - Compare TOO_FAR with 32767 instead of 32768, to avoid 16-bit warnings
   [Truta]
-- Compare function pointers with 0, not with NULL or Z_NULL [Truta]
+- Compare function pointers with 0, not with NULL or NULL [Truta]
 - Fix prototype of syncsearch in inflate.c [Truta]
 - Introduce ASMINF macro to be enabled when using an ASM implementation
   of inflate_fast [Truta]
@@ -1299,7 +1299,7 @@ Changes in 1.0.6 (19 Jan 1998)
 - added -soname for Linux in configure (Chun-Chung Chen,
 - assign numbers to the exported functions in zlib.def (for Windows DLL)
 - add advice in zlib.h for best usage of deflateSetDictionary
-- work around compiler bug on Atari (cast Z_NULL in call of s->checkfn)
+- work around compiler bug on Atari (cast NULL in call of s->checkfn)
 - allow compilation with ANSI keywords only enabled for TurboC in large model
 - avoid "versionString"[0] (Borland bug)
 - add NEED_DUMMY_RETURN for Borland

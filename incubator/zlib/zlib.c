@@ -31,11 +31,6 @@
 #import stream.c
 #import deflate.c
 
-#ifndef ZLIB_H
-#define ZLIB_H
-
-#include "zconf.h"
-
 #define ZLIB_VERSION "foo.bar"
 #define ZLIB_VERNUM 0x0
 #define ZLIB_VER_MAJOR 0
@@ -92,10 +87,10 @@ typedef void  free_func(void *, void *);
    memory management.  The compression library attaches no meaning to the
    opaque value.
 
-     zalloc must return Z_NULL if there is not enough memory for the object.
+     zalloc must return NULL if there is not enough memory for the object.
    If zlib is used in a multi-threaded application, zalloc and zfree must be
    thread safe.  In that case, zlib is thread-safe.  When zalloc and zfree are
-   Z_NULL on entry to the initialization function, they are set to internal
+   NULL on entry to the initialization function, they are set to internal
    routines that use the standard library functions malloc() and free().
 
      On 16-bit systems, the functions zalloc and zfree must be able to allocate
@@ -138,8 +133,6 @@ pub enum {
 #define Z_DEFLATED   8
 /* The deflate compression method (the only one supported in this version) */
 
-#define Z_NULL  0  /* for initializing zalloc, zfree, opaque */
-
 #define zlib_version zlibVersion()
 /* for compatibility with versions < 1.0.2 */
 
@@ -163,7 +156,7 @@ int inflateInit2(stream.z_stream *strm, int windowBits) {
 /*
      Initialize the internal stream state for decompression using inflateBack()
    calls.  The fields zalloc, zfree and opaque in strm must be initialized
-   before the call.  If zalloc and zfree are Z_NULL, then the default library-
+   before the call.  If zalloc and zfree are NULL, then the default library-
    derived memory allocation routines are used.  windowBits is the base two
    logarithm of the window size, in the range 8..15.  window is a caller
    supplied buffer of that size.  Except for special applications where it is
@@ -205,5 +198,3 @@ int gzgetc(gzFile_s *g) {
   }
   return gzgetc(g);
 }
-
-#endif /* ZLIB_H */

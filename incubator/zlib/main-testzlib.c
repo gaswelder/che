@@ -3,40 +3,23 @@
 #import stream.c
 #import deflate.c
 
-// Represents a 64-bit signed integer value.
-typedef {
-    uint32_t LowPart;
-    int32_t  HighPart;
-} LARGE_INTEGER;
-
-void MyDoMinus64(LARGE_INTEGER *R, A, B) {
-    R->HighPart = A.HighPart - B.HighPart;
-    if (A.LowPart >= B.LowPart)
-        R->LowPart = A.LowPart - B.LowPart;
-    else
-    {
-        R->LowPart = A.LowPart - B.LowPart;
-        R->HighPart --;
-    }
-}
-
 // see http://msdn2.microsoft.com/library/twchhe95(en-us,vs.80).aspx for __rdtsc
-void BeginCountRdtsc(LARGE_INTEGER * pbeginTime64)
+void BeginCountRdtsc(int64_t * pbeginTime64)
 {
  //   printf("rdtsc = %I64x\n",__rdtsc());
    pbeginTime64->QuadPart=__rdtsc();
 }
 
-LARGE_INTEGER GetResRdtsc(LARGE_INTEGER beginTime64, bool fComputeTimeQueryPerf)
+int64_t GetResRdtsc(int64_t beginTime64)
 {
-    LARGE_INTEGER LIres;
+    int64_t LIres;
     uint64_t res=__rdtsc()-((uint64_t)(beginTime64.QuadPart));
     LIres.QuadPart=res;
    // printf("rdtsc = %I64x\n",__rdtsc());
     return LIres;
 }
 
-void BeginCountPerfCounter(LARGE_INTEGER * pbeginTime64,bool fComputeTimeQueryPerf)
+void BeginCountPerfCounter(int64_t * pbeginTime64,bool fComputeTimeQueryPerf)
 {
     if ((!fComputeTimeQueryPerf) || (!QueryPerformanceCounter(pbeginTime64)))
     {
@@ -45,27 +28,20 @@ void BeginCountPerfCounter(LARGE_INTEGER * pbeginTime64,bool fComputeTimeQueryPe
     }
 }
 
-uint32_t GetMsecSincePerfCounter(LARGE_INTEGER beginTime64,bool fComputeTimeQueryPerf)
-{
-    LARGE_INTEGER endTime64;
-    LARGE_INTEGER ticksPerSecond;
-    LARGE_INTEGER ticks;
-    uint64_t ticksShifted;
-    uint64_t tickSecShifted;
-    uint32_t dwLog=16+0;
-    uint32_t dwRet;
-    if ((!fComputeTimeQueryPerf) || (!QueryPerformanceCounter(&endTime64)))
-        dwRet = (GetTickCount() - beginTime64.LowPart)*1;
-    else
-    {
-        MyDoMinus64(&ticks,endTime64,beginTime64);
-        QueryPerformanceFrequency(&ticksPerSecond);
-        ticksShifted = Int64ShrlMod32(*(uint64_t*)&ticks,dwLog);
-        tickSecShifted = Int64ShrlMod32(*(uint64_t*)&ticksPerSecond,dwLog);
-        dwRet = (uint32_t)((((uint32_t)ticksShifted)*1000)/(uint32_t)(tickSecShifted));
-        dwRet *=1;
+uint32_t GetMsecSincePerfCounter(int64_t beginTime64, bool fComputeTimeQueryPerf) {
+    int64_t endTime64 = 0;
+    if (!fComputeTimeQueryPerf || !QueryPerformanceCounter(&endTime64)) {
+        return (GetTickCount() - beginTime64.LowPart);
     }
-    return dwRet;
+
+    int64_t ticks = endTime64 - beginTime64;
+    int64_t ticksPerSecond = QueryPerformanceFrequency();
+
+    uint32_t dwLog=16+0;
+    uint64_t ticksShifted = Int64ShrlMod32(*(uint64_t*)&ticks,dwLog);
+    uint64_t tickSecShifted = Int64ShrlMod32(*(uint64_t*)&ticksPerSecond,dwLog);
+
+    return (uint32_t)((((uint32_t)ticksShifted)*1000)/(uint32_t)(tickSecShifted));
 }
 
 int ReadFileMemory(const char *filename, int32_t *plFileSize, uint8_t **pFilePtr) {
@@ -132,9 +108,9 @@ int main(int argc, char *argv[])
     int32_t lSizeUncpr;
     uint32_t dwGetTick;
     uint32_t dwMsecQP;
-    LARGE_INTEGER li_qp;
-    LARGE_INTEGER li_rdtsc;
-    LARGE_INTEGER dwResRdtsc;
+    int64_t li_qp;
+    int64_t li_rdtsc;
+    int64_t dwResRdtsc;
     
 
     BeginCountPerfCounter(&li_qp, true);
@@ -172,7 +148,7 @@ int main(int argc, char *argv[])
     deflate.deflateEnd(&zcpr);
     dwGetTick=GetTickCount()-dwGetTick;
     dwMsecQP=GetMsecSincePerfCounter(li_qp, true);
-    dwResRdtsc=GetResRdtsc(li_rdtsc, true);
+    dwResRdtsc=GetResRdtsc(li_rdtsc);
     printf("total compress size = %u, in %u step\n",lSizeCpr,step);
     printf("time = %u msec = %f sec\n",dwGetTick,dwGetTick/(double)1000.);
     printf("defcpr time QP = %u msec = %f sec\n",dwMsecQP,dwMsecQP/(double)1000.);
@@ -213,7 +189,7 @@ int main(int argc, char *argv[])
     inflate.inflateEnd(&zcpr);
     dwGetTick=GetTickCount()-dwGetTick;
     dwMsecQP=GetMsecSincePerfCounter(li_qp, true);
-    dwResRdtsc=GetResRdtsc(li_rdtsc, true);
+    dwResRdtsc=GetResRdtsc(li_rdtsc);
     printf("total uncompress size = %u, in %u step\n",lSizeUncpr,step);
     printf("time = %u msec = %f sec\n",dwGetTick,dwGetTick/(double)1000.);
     printf("uncpr  time QP = %u msec = %f sec\n",dwMsecQP,dwMsecQP/(double)1000.);
@@ -241,7 +217,6 @@ bool QueryPerformanceCounter(int64_t *ticks) {
     panic("todo");
 }
 
-bool QueryPerformanceFrequency(int64_t *freq) {
-    (void) freq;
+int64_t QueryPerformanceFrequency() {
     panic("todo");
 }

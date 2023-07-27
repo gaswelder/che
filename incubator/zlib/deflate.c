@@ -314,7 +314,7 @@ void slide_hash(stream.deflate_state *s) {
  The fields
    zalloc, zfree and opaque must be initialized before by the caller.
    
-If zalloc and zfree are set to Z_NULL, deflateInit updates them to use default allocation functions.
+If zalloc and zfree are set to NULL, deflateInit updates them to use default allocation functions.
 
 The compression level must be Z_DEFAULT_COMPRESSION, or between 0 and 9:
    1 gives best speed, 9 gives best compression, 0 gives no compression at all
@@ -432,13 +432,13 @@ pub int deflateInit2_(
     stream.deflate_state *s;
     int wrap = 1;
 
-    if (version == Z_NULL || version[0] != my_version[0] ||
+    if (version == NULL || version[0] != my_version[0] ||
         stream_size != sizeof(stream.z_stream)) {
         return Z_VERSION_ERROR;
     }
-    if (strm == Z_NULL) return Z_STREAM_ERROR;
+    if (strm == NULL) return Z_STREAM_ERROR;
 
-    strm->msg = Z_NULL;
+    strm->msg = NULL;
     if (strm->zalloc == NULL) {
         strm->zalloc = zcalloc;
         strm->opaque = NULL;
@@ -465,13 +465,13 @@ pub int deflateInit2_(
     }
     if (windowBits == 8) windowBits = 9;  /* until 256-byte window bug fixed */
     s = ZALLOC(strm, 1, sizeof(stream.deflate_state));
-    if (s == Z_NULL) return Z_MEM_ERROR;
+    if (s == NULL) return Z_MEM_ERROR;
     strm->state = s;
     s->strm = strm;
     s->status = INIT_STATE;     /* to pass state test in deflateReset() */
 
     s->wrap = wrap;
-    s->gzhead = Z_NULL;
+    s->gzhead = NULL;
     s->w_bits = (uint32_t)windowBits;
     s->w_size = 1 << s->w_bits;
     s->w_mask = s->w_size - 1;
@@ -531,8 +531,8 @@ pub int deflateInit2_(
     s->pending_buf = ZALLOC(strm, s->lit_bufsize, 4);
     s->pending_buf_size = (uint32_t)s->lit_bufsize * 4;
 
-    if (s->window == Z_NULL || s->prev == Z_NULL || s->head == Z_NULL ||
-        s->pending_buf == Z_NULL) {
+    if (s->window == NULL || s->prev == NULL || s->head == NULL ||
+        s->pending_buf == NULL) {
         s->status = FINISH_STATE;
         strm->msg = ERR_MSG(Z_MEM_ERROR);
         deflateEnd (strm);
@@ -556,11 +556,11 @@ pub int deflateInit2_(
  * Check for a valid deflate stream state. Return 0 if ok, 1 if not.
  */
 int deflateStateCheck(stream.z_stream *strm) {
-    if (strm == Z_NULL || strm->zalloc == NULL || strm->zfree == NULL) {
+    if (strm == NULL || strm->zalloc == NULL || strm->zfree == NULL) {
         return 1;
     }
     stream.deflate_state *s = strm->state;
-    if (s == Z_NULL || s->strm != strm || (s->status != INIT_STATE &&
+    if (s == NULL || s->strm != strm || (s->status != INIT_STATE &&
                                            s->status != GZIP_STATE &&
                                            s->status != EXTRA_STATE &&
                                            s->status != NAME_STATE &&
@@ -607,7 +607,7 @@ int deflateStateCheck(stream.z_stream *strm) {
    Adler-32 value is not computed and strm->adler is not set.
 
      deflateSetDictionary returns Z_OK if success, or Z_STREAM_ERROR if a
-   parameter is invalid (e.g.  dictionary being Z_NULL) or the stream state is
+   parameter is invalid (e.g.  dictionary being NULL) or the stream state is
    inconsistent (for example if deflate has already been called for this stream
    or if not at a block boundary for raw deflate).  deflateSetDictionary does
    not perform any compression: this will be done by deflate().
@@ -624,7 +624,7 @@ pub int deflateSetDictionary(
     unsigned avail;
     const uint8_t *next;
 
-    if (deflateStateCheck(strm) || dictionary == Z_NULL)
+    if (deflateStateCheck(strm) || dictionary == NULL)
         return Z_STREAM_ERROR;
     s = strm->state;
     wrap = s->wrap;
@@ -687,8 +687,8 @@ pub int deflateSetDictionary(
    set to the number of bytes in the dictionary, and that many bytes are copied
    to dictionary.  dictionary must have enough space, where 32768 bytes is
    always enough.  If deflateGetDictionary() is called with dictionary equal to
-   Z_NULL, then only the dictionary length is returned, and nothing is copied.
-   Similarly, if dictLength is Z_NULL, then it is not set.
+   NULL, then only the dictionary length is returned, and nothing is copied.
+   Similarly, if dictLength is NULL, then it is not set.
 
      deflateGetDictionary() may return a length less than the window size, even
    when more than the window size in input has been provided. It may return up
@@ -714,9 +714,9 @@ pub int deflateGetDictionary(
     len = s->strstart + s->lookahead;
     if (len > s->w_size)
         len = s->w_size;
-    if (dictionary != Z_NULL && len)
+    if (dictionary != NULL && len)
         zmemcpy(dictionary, s->window + s->strstart + s->lookahead - len, len);
-    if (dictLength != Z_NULL)
+    if (dictLength != NULL)
         *dictLength = len;
     return Z_OK;
 }
@@ -730,7 +730,7 @@ pub int deflateResetKeep(stream.z_stream *strm) {
     }
 
     strm->total_in = strm->total_out = 0;
-    strm->msg = Z_NULL; /* use zfree if we ever allocate msg dynamically */
+    strm->msg = NULL; /* use zfree if we ever allocate msg dynamically */
     strm->data_type = Z_UNKNOWN;
 
     s = strm->state;
@@ -742,10 +742,10 @@ pub int deflateResetKeep(stream.z_stream *strm) {
     }
     if (s->wrap == 2) {
         s->status = GZIP_STATE;
-        strm->adler = crc32(0L, Z_NULL, 0);
+        strm->adler = crc32(0L, NULL, 0);
     } else {
         s->status = INIT_STATE;
-        strm->adler = adler32(0L, Z_NULL, 0);
+        strm->adler = adler32(0L, NULL, 0);
     }
     s->last_flush = -2;
 
@@ -761,7 +761,7 @@ pub int deflateResetKeep(stream.z_stream *strm) {
    set unchanged.
 
      deflateReset returns Z_OK if success, or Z_STREAM_ERROR if the source
-   stream state was inconsistent (such as zalloc or state being Z_NULL).
+   stream state was inconsistent (such as zalloc or state being NULL).
 */
 pub int deflateReset(stream.z_stream *strm) {
     int ret = deflateResetKeep(strm);
@@ -778,8 +778,8 @@ pub int deflateReset(stream.z_stream *strm) {
    deflate().  The text, time, os, extra field, name, and comment information
    in the provided stream.gz_header structure are written to the gzip header (xflag is
    ignored -- the extra flags are set according to the compression level).  The
-   caller must assure that, if not Z_NULL, name and comment are terminated with
-   a zero byte, and that if extra is not Z_NULL, that extra_len bytes are
+   caller must assure that, if not NULL, name and comment are terminated with
+   a zero byte, and that if extra is not NULL, that extra_len bytes are
    available there.  If hcrc is true, a gzip header crc is included.  Note that
    the current versions of the command-line version of gzip (up through version
    1.3.x) do not support header crc's, and will report that it is a "multi-part
@@ -806,17 +806,17 @@ pub int deflateSetHeader(stream.z_stream *strm, stream.gz_header *head) {
    provided would be due to the available output space having being consumed.
    The number of bits of output not provided are between 0 and 7, where they
    await more bits to join them in order to fill out a full byte.  If pending
-   or bits are Z_NULL, then those values are not set.
+   or bits are NULL, then those values are not set.
 
      deflatePending returns Z_OK if success, or Z_STREAM_ERROR if the source
    stream state was inconsistent.
  */
 pub int deflatePending(stream.z_stream *strm, unsigned *pending, int *bits) {
     if (deflateStateCheck(strm)) return Z_STREAM_ERROR;
-    if (pending != Z_NULL) {
+    if (pending != NULL) {
         *pending = strm->state->pending;
     }
-    if (bits != Z_NULL) {
+    if (bits != NULL) {
         *bits = strm->state->bi_valid;
     }
     return Z_OK;
@@ -1045,18 +1045,18 @@ pub uint32_t deflateBound(stream.z_stream *strm, uint32_t sourceLen) {
     /* gzip wrapper */
     case 2: {
         wraplen = 18;
-        if (s->gzhead != Z_NULL) {          /* user-supplied gzip header */
+        if (s->gzhead != NULL) {          /* user-supplied gzip header */
             uint8_t *str;
-            if (s->gzhead->extra != Z_NULL)
+            if (s->gzhead->extra != NULL)
                 wraplen += 2 + s->gzhead->extra_len;
             str = s->gzhead->name;
-            if (str != Z_NULL)
+            if (str != NULL)
                 while (true) {
                     wraplen++;
                     if (!*str++) break;
                 }
             str = s->gzhead->comment;
-            if (str != Z_NULL)
+            if (str != NULL)
                 while (true) {
                     wraplen++;
                     if (!*str++) break;
@@ -1232,7 +1232,7 @@ deflate performs one or both of the following actions:
   processed or more output produced), Z_STREAM_END if all input has been
   consumed and all output has been produced (only when flush is set to
   Z_FINISH), Z_STREAM_ERROR if the stream state was inconsistent (for example
-  if next_in or next_out was Z_NULL or the state was inadvertently written over
+  if next_in or next_out was NULL or the state was inadvertently written over
   by the application), or Z_BUF_ERROR if no progress is possible (for example
   avail_in or avail_out was zero).  Note that Z_BUF_ERROR is not fatal, and
   deflate() can be called again with more input and more output space to
@@ -1245,8 +1245,8 @@ pub int deflate(stream.z_stream *strm, int flush) {
 
     stream.deflate_state *s = strm->state;
 
-    if (strm->next_out == Z_NULL ||
-        (strm->avail_in != 0 && strm->next_in == Z_NULL) ||
+    if (strm->next_out == NULL ||
+        (strm->avail_in != 0 && strm->next_in == NULL) ||
         (s->status == FINISH_STATE && flush != Z_FINISH)) {
         ERR_RETURN(strm, Z_STREAM_ERROR);
     }
@@ -1312,7 +1312,7 @@ pub int deflate(stream.z_stream *strm, int flush) {
             putShortMSB(s, (uint32_t)(strm->adler >> 16));
             putShortMSB(s, (uint32_t)(strm->adler & 0xffff));
         }
-        strm->adler = adler32(0L, Z_NULL, 0);
+        strm->adler = adler32(0L, NULL, 0);
         s->status = BUSY_STATE;
 
         /* Compression must start with an empty pending buffer */
@@ -1324,11 +1324,11 @@ pub int deflate(stream.z_stream *strm, int flush) {
     }
     if (s->status == GZIP_STATE) {
         /* gzip header */
-        strm->adler = crc32(0L, Z_NULL, 0);
+        strm->adler = crc32(0L, NULL, 0);
         put_byte(s, 31);
         put_byte(s, 139);
         put_byte(s, 8);
-        if (s->gzhead == Z_NULL) {
+        if (s->gzhead == NULL) {
             put_byte(s, 0);
             put_byte(s, 0);
             put_byte(s, 0);
@@ -1349,9 +1349,9 @@ pub int deflate(stream.z_stream *strm, int flush) {
             int x1286 = 0;
             if (s->gzhead->text) x1286++;
             if (s->gzhead->hcrc) x1286 += 2;
-            if (s->gzhead->extra != Z_NULL) x1286 += 4;
-            if (s->gzhead->name != Z_NULL) x1286 += 8;
-            if (s->gzhead->comment != Z_NULL) x1286 += 16;
+            if (s->gzhead->extra != NULL) x1286 += 4;
+            if (s->gzhead->name != NULL) x1286 += 8;
+            if (s->gzhead->comment != NULL) x1286 += 16;
 
             put_byte(s, x1286);
             put_byte(s, (uint8_t)(s->gzhead->time & 0xff));
@@ -1360,7 +1360,7 @@ pub int deflate(stream.z_stream *strm, int flush) {
             put_byte(s, (uint8_t)((s->gzhead->time >> 24) & 0xff));
             put_byte(s, get_dunno_what1(s));
             put_byte(s, s->gzhead->os & 0xff);
-            if (s->gzhead->extra != Z_NULL) {
+            if (s->gzhead->extra != NULL) {
                 put_byte(s, s->gzhead->extra_len & 0xff);
                 put_byte(s, (s->gzhead->extra_len >> 8) & 0xff);
             }
@@ -1372,7 +1372,7 @@ pub int deflate(stream.z_stream *strm, int flush) {
         }
     }
     if (s->status == EXTRA_STATE) {
-        if (s->gzhead->extra != Z_NULL) {
+        if (s->gzhead->extra != NULL) {
             uint32_t beg = s->pending;   /* start of bytes to update crc */
             uint32_t left = (s->gzhead->extra_len & 0xffff) - s->gzindex;
             while (s->pending + left > s->pending_buf_size) {
@@ -1399,7 +1399,7 @@ pub int deflate(stream.z_stream *strm, int flush) {
         s->status = NAME_STATE;
     }
     if (s->status == NAME_STATE) {
-        if (s->gzhead->name != Z_NULL) {
+        if (s->gzhead->name != NULL) {
             uint32_t beg = s->pending;   /* start of bytes to update crc */
             int val;
             while (true) {
@@ -1422,7 +1422,7 @@ pub int deflate(stream.z_stream *strm, int flush) {
         s->status = COMMENT_STATE;
     }
     if (s->status == COMMENT_STATE) {
-        if (s->gzhead->comment != Z_NULL) {
+        if (s->gzhead->comment != NULL) {
             uint32_t beg = s->pending;   /* start of bytes to update crc */
             int val;
             while (true) {
@@ -1454,7 +1454,7 @@ pub int deflate(stream.z_stream *strm, int flush) {
             }
             put_byte(s, (uint8_t)(strm->adler & 0xff));
             put_byte(s, (uint8_t)((strm->adler >> 8) & 0xff));
-            strm->adler = crc32(0L, Z_NULL, 0);
+            strm->adler = crc32(0L, NULL, 0);
         }
         s->status = BUSY_STATE;
 
@@ -1582,7 +1582,7 @@ pub int deflateEnd(stream.z_stream *strm) {
     TRY_FREE(strm, strm->state->window);
 
     ZFREE(strm, strm->state);
-    strm->state = Z_NULL;
+    strm->state = NULL;
 
     if (status == BUSY_STATE) {
         return Z_DATA_ERROR;
@@ -1602,7 +1602,7 @@ pub int deflateEnd(stream.z_stream *strm) {
 
      deflateCopy returns Z_OK if success, Z_MEM_ERROR if there was not
    enough memory, Z_STREAM_ERROR if the source stream state was inconsistent
-   (such as zalloc being Z_NULL).  msg is left unchanged in both source and
+   (such as zalloc being NULL).  msg is left unchanged in both source and
    destination.
 */
 /* =========================================================================
@@ -1615,7 +1615,7 @@ pub int deflateCopy(stream.z_stream * dest, source) {
     stream.deflate_state *ss;
 
 
-    if (deflateStateCheck(source) || dest == Z_NULL) {
+    if (deflateStateCheck(source) || dest == NULL) {
         return Z_STREAM_ERROR;
     }
 
@@ -1624,7 +1624,7 @@ pub int deflateCopy(stream.z_stream * dest, source) {
     zmemcpy((void *)dest, (void *)source, sizeof(stream.z_stream));
 
     ds = ZALLOC(dest, 1, sizeof(stream.deflate_state));
-    if (ds == Z_NULL) return Z_MEM_ERROR;
+    if (ds == NULL) return Z_MEM_ERROR;
     dest->state = ds;
     zmemcpy((void *)ds, (void *)ss, sizeof(stream.deflate_state));
     ds->strm = dest;
@@ -1634,8 +1634,8 @@ pub int deflateCopy(stream.z_stream * dest, source) {
     ds->head   = (Pos *)  ZALLOC(dest, ds->hash_size, sizeof(Pos));
     ds->pending_buf = (uint8_t *) ZALLOC(dest, ds->lit_bufsize, 4);
 
-    if (ds->window == Z_NULL || ds->prev == Z_NULL || ds->head == Z_NULL ||
-        ds->pending_buf == Z_NULL) {
+    if (ds->window == NULL || ds->prev == NULL || ds->head == NULL ||
+        ds->pending_buf == NULL) {
         deflateEnd (dest);
         return Z_MEM_ERROR;
     }
@@ -1990,7 +1990,7 @@ void fill_window(stream.deflate_state *s) {
  * IN assertion: strstart is set to the end of the current match.
  */
 void FLUSH_BLOCK_ONLY(stream.deflate_state *s, int last) {
-    char *foo = Z_NULL;
+    char *foo = NULL;
     if (s->block_start >= 0L) {
         foo = ((char *)&s->window[(unsigned)s->block_start]);
     }

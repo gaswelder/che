@@ -145,9 +145,9 @@ int main(int argc, char **argv)
 
     /* allocate memory for buffers and compression engine */
     blk = malloc(size + EXCESS);
-    def.zalloc = Z_NULL;
-    def.zfree = Z_NULL;
-    def.opaque = Z_NULL;
+    def.zalloc = NULL;
+    def.zfree = NULL;
+    def.opaque = NULL;
     ret = deflateInit(&def, Z_DEFAULT_COMPRESSION);
     if (ret != Z_OK || blk == NULL)
         quit("out of memory");
@@ -177,11 +177,11 @@ int main(int argc, char **argv)
     }
 
     /* it didn't all fit -- set up for recompression */
-    inf.zalloc = Z_NULL;
-    inf.zfree = Z_NULL;
-    inf.opaque = Z_NULL;
+    inf.zalloc = NULL;
+    inf.zfree = NULL;
+    inf.opaque = NULL;
     inf.avail_in = 0;
-    inf.next_in = Z_NULL;
+    inf.next_in = NULL;
     ret = inflateInit(&inf);
     tmp = malloc(size + EXCESS);
     if (ret != Z_OK || tmp == NULL)

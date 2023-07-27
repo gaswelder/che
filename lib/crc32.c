@@ -1514,13 +1514,13 @@ pub uint32_t new() {
 /*
      Update a running CRC-32 with the bytes buf[0..len-1] and return the
    updated CRC-32. A CRC-32 value is in the range of a 32-bit unsigned integer.
-   If buf is Z_NULL, this function returns the required initial value for the
+   If buf is NULL, this function returns the required initial value for the
    crc. Pre- and post-conditioning (one's complement) is performed within this
    function so it shouldn't be done by the application.
 
    Usage example:
 
-     uint32_t crc = crc32(0L, Z_NULL, 0);
+     uint32_t crc = crc32(0L, NULL, 0);
 
      while (read_buffer(buffer, length) != EOF) {
        crc = crc32(crc, buffer, length);

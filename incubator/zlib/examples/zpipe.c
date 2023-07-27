@@ -42,9 +42,9 @@ int def(FILE *source, FILE *dest, int level)
     unsigned char out[CHUNK];
 
     /* allocate deflate state */
-    strm.zalloc = Z_NULL;
-    strm.zfree = Z_NULL;
-    strm.opaque = Z_NULL;
+    strm.zalloc = NULL;
+    strm.zfree = NULL;
+    strm.opaque = NULL;
     ret = deflateInit(&strm, level);
     if (ret != Z_OK)
         return ret;
@@ -98,11 +98,11 @@ int inf(FILE *source, FILE *dest)
     unsigned char out[CHUNK];
 
     /* allocate inflate state */
-    strm.zalloc = Z_NULL;
-    strm.zfree = Z_NULL;
-    strm.opaque = Z_NULL;
+    strm.zalloc = NULL;
+    strm.zfree = NULL;
+    strm.opaque = NULL;
     strm.avail_in = 0;
-    strm.next_in = Z_NULL;
+    strm.next_in = NULL;
     ret = inflateInit(&strm);
     if (ret != Z_OK)
         return ret;

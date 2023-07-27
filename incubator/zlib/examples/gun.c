@@ -195,7 +195,7 @@ unsigned char match[65280 + 2];         /* buffer for reversed match or gzip
 
    lunpipe() will return Z_OK on success, Z_BUF_ERROR for an unexpected end of
    file, read error, or write error (a write error indicated by strm->next_in
-   not equal to Z_NULL), or Z_DATA_ERROR for invalid input.
+   not equal to NULL), or Z_DATA_ERROR for invalid input.
  */
 local int lunpipe(unsigned have, const unsigned char *next, struct ind *indp,
                   int outfile, z_stream *strm)
@@ -396,7 +396,7 @@ local int gunpipe(z_stream *strm, int infile, int outfile)
     /* decompress concatenated gzip streams */
     have = 0;                               /* no input data read in yet */
     first = 1;                              /* looking for first gzip header */
-    strm->next_in = Z_NULL;                 /* so Z_BUF_ERROR means EOF */
+    strm->next_in = NULL;                 /* so Z_BUF_ERROR means EOF */
     for (;;) {
         /* look for the two magic header bytes for a gzip stream */
         if (NEXT() == -1) {
@@ -466,7 +466,7 @@ local int gunpipe(z_stream *strm, int infile, int outfile)
         /* set up output */
         outd.outfile = outfile;
         outd.check = 1;
-        outd.crc = crc32(0L, Z_NULL, 0);
+        outd.crc = crc32(0L, NULL, 0);
         outd.total = 0;
 
         /* decompress data to output */
@@ -476,7 +476,7 @@ local int gunpipe(z_stream *strm, int infile, int outfile)
         if (ret != Z_STREAM_END) break;
         next = strm->next_in;
         have = strm->avail_in;
-        strm->next_in = Z_NULL;             /* so Z_BUF_ERROR means EOF */
+        strm->next_in = NULL;             /* so Z_BUF_ERROR means EOF */
 
         /* check trailer */
         ret = Z_BUF_ERROR;
@@ -605,7 +605,7 @@ local int gunzip(z_stream *strm, char *inname, char *outname, int test)
         return 1;
     case Z_BUF_ERROR:
         if (outfile > 2) unlink(outname);
-        if (strm->next_in != Z_NULL) {
+        if (strm->next_in != NULL) {
             fprintf(stderr, "gun write error on %s: %s\n",
                     outname, strerror(errno));
         }
@@ -637,9 +637,9 @@ int main(int argc, char **argv)
 
     /* initialize inflateBack state for repeated use */
     window = match;                         /* reuse LZW match buffer */
-    strm.zalloc = Z_NULL;
-    strm.zfree = Z_NULL;
-    strm.opaque = Z_NULL;
+    strm.zalloc = NULL;
+    strm.zfree = NULL;
+    strm.opaque = NULL;
     ret = inflateBackInit(&strm, 15, window);
     if (ret != Z_OK) {
         fprintf(stderr, "gun out of memory error--aborting\n");

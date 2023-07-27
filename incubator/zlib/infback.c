@@ -20,7 +20,7 @@ local void fixedtables OF((struct inflate_state FAR *state));
 
 /*
    strm provides memory allocation functions in zalloc and zfree, or
-   Z_NULL to use the library memory allocation functions.
+   NULL to use the library memory allocation functions.
 
    windowBits is in the range 8..15, and window is a user-supplied
    window and output buffer that is 2**windowBits bytes.
@@ -34,13 +34,13 @@ int stream_size;
 {
     struct inflate_state FAR *state;
 
-    if (version == Z_NULL || version[0] != ZLIB_VERSION[0] ||
+    if (version == NULL || version[0] != ZLIB_VERSION[0] ||
         stream_size != (int)(sizeof(z_stream)))
         return Z_VERSION_ERROR;
-    if (strm == Z_NULL || window == Z_NULL ||
+    if (strm == NULL || window == NULL ||
         windowBits < 8 || windowBits > 15)
         return Z_STREAM_ERROR;
-    strm->msg = Z_NULL;                 /* in case we return an error */
+    strm->msg = NULL;                 /* in case we return an error */
     if (strm->zalloc == (alloc_func)0) {
         strm->zalloc = zcalloc;
         strm->opaque = (voidpf)0;
@@ -49,7 +49,7 @@ int stream_size;
     strm->zfree = zcfree;
     state = (struct inflate_state FAR *)ZALLOC(strm, 1,
                                                sizeof(struct inflate_state));
-    if (state == Z_NULL) return Z_MEM_ERROR;
+    if (state == NULL) return Z_MEM_ERROR;
     Tracev((stderr, "inflate: allocated\n"));
     strm->state = state;
     state->dmax = 32768U;
@@ -149,7 +149,7 @@ struct inflate_state FAR *state;
         if (have == 0) { \
             have = in(in_desc, &next); \
             if (have == 0) { \
-                next = Z_NULL; \
+                next = NULL; \
                 ret = Z_BUF_ERROR; \
                 goto inf_leave; \
             } \
@@ -253,8 +253,8 @@ struct inflate_state FAR *state;
      For convenience, inflateBack() can be provided input on the first call by
    setting strm->next_in and strm->avail_in.  If that input is exhausted, then
    in() will be called.  Therefore strm->next_in must be initialized before
-   calling inflateBack().  If strm->next_in is Z_NULL, then in() will be called
-   immediately for input.  If strm->next_in is not Z_NULL, then strm->avail_in
+   calling inflateBack().  If strm->next_in is NULL, then in() will be called
+   immediately for input.  If strm->next_in is not NULL, then strm->avail_in
    must also be initialized, and then if strm->avail_in is not zero, input will
    initially be taken from strm->next_in[0 ..  strm->avail_in - 1].
 
@@ -270,8 +270,8 @@ struct inflate_state FAR *state;
    in the deflate stream (in which case strm->msg is set to indicate the nature
    of the error), or Z_STREAM_ERROR if the stream was not properly initialized.
    In the case of Z_BUF_ERROR, an input or output error can be distinguished
-   using strm->next_in which will be Z_NULL only if in() returned an error.  If
-   strm->next_in is not Z_NULL, then the Z_BUF_ERROR was due to out() returning
+   using strm->next_in which will be NULL only if in() returned an error.  If
+   strm->next_in is not NULL, then the Z_BUF_ERROR was due to out() returning
    non-zero.  (in() will always be called before out(), so strm->next_in is
    assured to be defined if out() returns non-zero.)  Note that inflateBack()
    cannot return Z_OK.
@@ -296,12 +296,12 @@ struct inflate_state FAR *state;
 
    in() should return zero on failure.  out() should return non-zero on
    failure.  If either in() or out() fails, than inflateBack() returns a
-   Z_BUF_ERROR.  strm->next_in can be checked for Z_NULL to see whether it
+   Z_BUF_ERROR.  strm->next_in can be checked for NULL to see whether it
    was in() or out() that caused in the error.  Otherwise,  inflateBack()
    returns Z_STREAM_END on success, Z_DATA_ERROR for an deflate format
    error, or Z_MEM_ERROR if it could not allocate memory for the state.
    inflateBack() can also return Z_STREAM_ERROR if the input parameters
-   are not correct, i.e. strm is Z_NULL or the state was not initialized.
+   are not correct, i.e. strm is NULL or the state was not initialized.
  */
 pub int inflateBack(strm, in, in_desc, out, out_desc)
 z_stream *strm;
@@ -326,17 +326,17 @@ void FAR *out_desc;
         {16, 17, 18, 0, 8, 7, 9, 6, 10, 5, 11, 4, 12, 3, 13, 2, 14, 1, 15};
 
     /* Check that the strm exists and that the state was initialized */
-    if (strm == Z_NULL || strm->state == Z_NULL)
+    if (strm == NULL || strm->state == NULL)
         return Z_STREAM_ERROR;
     state = (struct inflate_state FAR *)strm->state;
 
     /* Reset the state */
-    strm->msg = Z_NULL;
+    strm->msg = NULL;
     state->mode = TYPE;
     state->last = 0;
     state->whave = 0;
     next = strm->next_in;
-    have = next != Z_NULL ? strm->avail_in : 0;
+    have = next != NULL ? strm->avail_in : 0;
     hold = 0;
     bits = 0;
     put = state->window;
@@ -696,10 +696,10 @@ void FAR *out_desc;
 pub int inflateBackEnd(strm)
 z_stream *strm;
 {
-    if (strm == Z_NULL || strm->state == Z_NULL || strm->zfree == (free_func)0)
+    if (strm == NULL || strm->state == NULL || strm->zfree == (free_func)0)
         return Z_STREAM_ERROR;
     ZFREE(strm, strm->state);
-    strm->state = Z_NULL;
+    strm->state = NULL;
     Tracev((stderr, "inflate: end\n"));
     return Z_OK;
 }

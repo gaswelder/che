@@ -105,7 +105,7 @@ The first thing we do is to initialize the <em>zlib</em> state for compression u
 <tt>deflateInit()</tt>.  This must be done before the first use of <tt>deflate()</tt>.
 The <tt>zalloc</tt>, <tt>zfree</tt>, and <tt>opaque</tt> fields in the <tt>strm</tt>
 structure must be initialized before calling <tt>deflateInit()</tt>.  Here they are
-set to the <em>zlib</em> constant <tt>Z_NULL</tt> to request that <em>zlib</em> use
+set to the <em>zlib</em> constant <tt>NULL</tt> to request that <em>zlib</em> use
 the default memory allocation routines.  An application may also choose to provide
 custom memory allocation routines here.  <tt>deflateInit()</tt> will allocate on the
 order of 256K bytes for the internal state.
@@ -137,9 +137,9 @@ operate in parallel.  The state information maintained in the structure allows t
 routines to be reentrant.
 <pre><b>
     /* allocate deflate state */
-    strm.zalloc = Z_NULL;
-    strm.zfree = Z_NULL;
-    strm.opaque = Z_NULL;
+    strm.zalloc = NULL;
+    strm.zfree = NULL;
+    strm.opaque = NULL;
     ret = deflateInit(&amp;strm, level);
     if (ret != Z_OK)
         return ret;
@@ -346,15 +346,15 @@ of <em>zlib</em> that provide more compression methods may take advantage of thi
 In any case, no decompression is performed by <tt>inflateInit()</tt>, so the
 <tt>avail_out</tt> and <tt>next_out</tt> fields do not need to be initialized before calling.
 <p>
-Here <tt>avail_in</tt> is set to zero and <tt>next_in</tt> is set to <tt>Z_NULL</tt> to
+Here <tt>avail_in</tt> is set to zero and <tt>next_in</tt> is set to <tt>NULL</tt> to
 indicate that no input data is being provided.
 <pre><b>
     /* allocate inflate state */
-    strm.zalloc = Z_NULL;
-    strm.zfree = Z_NULL;
-    strm.opaque = Z_NULL;
+    strm.zalloc = NULL;
+    strm.zfree = NULL;
+    strm.opaque = NULL;
     strm.avail_in = 0;
-    strm.next_in = Z_NULL;
+    strm.next_in = NULL;
     ret = inflateInit(&amp;strm);
     if (ret != Z_OK)
         return ret;

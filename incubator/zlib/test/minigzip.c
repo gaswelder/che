@@ -204,12 +204,12 @@ gzFile gz_open(path, fd, mode)
     gz->write = strchr(mode, 'w') != NULL;
     gz->strm.zalloc = myalloc;
     gz->strm.zfree = myfree;
-    gz->strm.opaque = Z_NULL;
+    gz->strm.opaque = NULL;
     if (gz->write)
         ret = deflateInit2(&(gz->strm), -1, 8, 15 + 16, 8, 0);
     else {
         gz->strm.next_in = 0;
-        gz->strm.avail_in = Z_NULL;
+        gz->strm.avail_in = NULL;
         ret = inflateInit2(&(gz->strm), 15 + 16);
     }
     if (ret != Z_OK) {
@@ -301,7 +301,7 @@ int gzclose(gz)
         return Z_STREAM_ERROR;
     strm = &(gz->strm);
     if (gz->write) {
-        strm->next_in = Z_NULL;
+        strm->next_in = NULL;
         strm->avail_in = 0;
         do {
             strm->next_out = out;

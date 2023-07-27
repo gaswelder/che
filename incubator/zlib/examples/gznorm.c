@@ -17,7 +17,7 @@
 #include <errno.h>      // errno
 #include <stdarg.h>     // va_list, va_start, va_end
 #include "zlib.h"       // inflateInit2, inflate, inflateReset, inflateEnd,
-                        // z_stream, z_off_t, crc32_combine, Z_NULL, Z_BLOCK,
+                        // z_stream, z_off_t, crc32_combine, NULL, Z_BLOCK,
                         // Z_OK, Z_STREAM_END, Z_BUF_ERROR, Z_DATA_ERROR,
                         // Z_MEM_ERROR
 
@@ -53,7 +53,7 @@ local char *aprintf(char *fmt, ...) {
 }
 
 // Return with an error, putting an allocated error message in *err. Doing an
-// inflateEnd() on an already ended state, or one with state set to Z_NULL, is
+// inflateEnd() on an already ended state, or one with state set to NULL, is
 // permitted.
 #define BYE(...) \
     do { \
@@ -86,11 +86,11 @@ local char *aprintf(char *fmt, ...) {
 local int gzip_normalize(FILE *in, FILE *out, char **err) {
     // initialize the inflate engine to process a gzip member
     z_stream strm;
-    strm.zalloc = Z_NULL;
-    strm.zfree = Z_NULL;
-    strm.opaque = Z_NULL;
+    strm.zalloc = NULL;
+    strm.zfree = NULL;
+    strm.opaque = NULL;
     strm.avail_in = 0;
-    strm.next_in = Z_NULL;
+    strm.next_in = NULL;
     if (inflateInit2(&strm, 15 + 16) != Z_OK)
         BYE("out of memory");
 

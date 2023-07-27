@@ -280,9 +280,9 @@ local int gzscan(char *name, z_stream *strm, int level)
     /* prepare to decompress */
     window = malloc(DSIZE);
     if (window == NULL) bye("out of memory", "");
-    strm->zalloc = Z_NULL;
-    strm->zfree = Z_NULL;
-    strm->opaque = Z_NULL;
+    strm->zalloc = NULL;
+    strm->zfree = NULL;
+    strm->opaque = NULL;
     ret = inflateInit2(strm, -15);
     if (ret != Z_OK) bye("out of memory", " or library mismatch");
 
@@ -292,7 +292,7 @@ local int gzscan(char *name, z_stream *strm, int level)
     left = 0;
     strm->avail_in = gz.left;
     strm->next_in = gz.next;
-    crc = crc32(0L, Z_NULL, 0);
+    crc = crc32(0L, NULL, 0);
     have = full = 0;
     do {
         /* if needed, get more input */

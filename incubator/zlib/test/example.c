@@ -567,7 +567,7 @@ int main(argc, argv)
     /* compr and uncompr are cleared to avoid reading uninitialized
      * data and to ensure that uncompr compresses well.
      */
-    if (compr == Z_NULL || uncompr == Z_NULL) {
+    if (compr == NULL || uncompr == NULL) {
         printf("out of memory\n");
         exit(1);
     }

@@ -30,7 +30,7 @@
 /*
      Update a running Adler-32 checksum with the bytes buf[0..len-1] and
    return the updated checksum. An Adler-32 value is in the range of a 32-bit
-   uint32_t integer. If buf is Z_NULL, this function returns the required
+   uint32_t integer. If buf is NULL, this function returns the required
    initial value for the checksum.
 
      An Adler-32 checksum is almost as reliable as a CRC-32 but can be computed
@@ -38,7 +38,7 @@
 
    Usage example:
 
-     uint32_t adler = adler32(0L, Z_NULL, 0);
+     uint32_t adler = adler32(0L, NULL, 0);
 
      while (read_buffer(buffer, length) != EOF) {
        adler = adler32(adler, buffer, length);

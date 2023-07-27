@@ -265,7 +265,7 @@ local void zpull(z_stream *strm, bin *in)
 local void gzinit(unsigned long *crc, unsigned long *tot, FILE *out)
 {
     fwrite("\x1f\x8b\x08\0\0\0\0\0\0\xff", 1, 10, out);
-    *crc = crc32(0L, Z_NULL, 0);
+    *crc = crc32(0L, NULL, 0);
     *tot = 0;
 }
 
@@ -297,11 +297,11 @@ local void gzcopy(char *name, int clr, unsigned long *crc, unsigned long *tot,
     /* allocate buffer for uncompressed data and initialize raw inflate
        stream */
     junk = malloc(CHUNK);
-    strm.zalloc = Z_NULL;
-    strm.zfree = Z_NULL;
-    strm.opaque = Z_NULL;
+    strm.zalloc = NULL;
+    strm.zfree = NULL;
+    strm.opaque = NULL;
     strm.avail_in = 0;
-    strm.next_in = Z_NULL;
+    strm.next_in = NULL;
     ret = inflateInit2(&strm, -15);
     if (junk == NULL || ret != Z_OK)
         bail("out of memory", "");
