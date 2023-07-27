@@ -715,7 +715,7 @@ pub int deflateGetDictionary(
     if (len > s->w_size)
         len = s->w_size;
     if (dictionary != NULL && len)
-        zmemcpy(dictionary, s->window + s->strstart + s->lookahead - len, len);
+        memcpy(dictionary, s->window + s->strstart + s->lookahead - len, len);
     if (dictLength != NULL)
         *dictLength = len;
     return Z_OK;
@@ -1109,7 +1109,7 @@ void flush_pending(stream.z_stream *strm) {
     if (len > strm->avail_out) len = strm->avail_out;
     if (len == 0) return;
 
-    zmemcpy(strm->next_out, s->pending_out, len);
+    memcpy(strm->next_out, s->pending_out, len);
     strm->next_out  += len;
     s->pending_out  += len;
     strm->total_out += len;
@@ -1377,7 +1377,7 @@ pub int deflate(stream.z_stream *strm, int flush) {
             uint32_t left = (s->gzhead->extra_len & 0xffff) - s->gzindex;
             while (s->pending + left > s->pending_buf_size) {
                 uint32_t copy = s->pending_buf_size - s->pending;
-                zmemcpy(s->pending_buf + s->pending,
+                memcpy(s->pending_buf + s->pending,
                         s->gzhead->extra + s->gzindex, copy);
                 s->pending = s->pending_buf_size;
                 HCRC_UPDATE(beg);
@@ -1390,7 +1390,7 @@ pub int deflate(stream.z_stream *strm, int flush) {
                 beg = 0;
                 left -= copy;
             }
-            zmemcpy(s->pending_buf + s->pending,
+            memcpy(s->pending_buf + s->pending,
                     s->gzhead->extra + s->gzindex, left);
             s->pending += left;
             HCRC_UPDATE(beg);
@@ -1621,12 +1621,12 @@ pub int deflateCopy(stream.z_stream * dest, source) {
 
     ss = source->state;
 
-    zmemcpy((void *)dest, (void *)source, sizeof(stream.z_stream));
+    memcpy((void *)dest, (void *)source, sizeof(stream.z_stream));
 
     ds = ZALLOC(dest, 1, sizeof(stream.deflate_state));
     if (ds == NULL) return Z_MEM_ERROR;
     dest->state = ds;
-    zmemcpy((void *)ds, (void *)ss, sizeof(stream.deflate_state));
+    memcpy((void *)ds, (void *)ss, sizeof(stream.deflate_state));
     ds->strm = dest;
 
     ds->window = (uint8_t *) ZALLOC(dest, ds->w_size, 2*sizeof(uint8_t));
@@ -1639,11 +1639,11 @@ pub int deflateCopy(stream.z_stream * dest, source) {
         deflateEnd (dest);
         return Z_MEM_ERROR;
     }
-    /* following zmemcpy do not work for 16-bit MSDOS */
-    zmemcpy(ds->window, ss->window, ds->w_size * 2 * sizeof(uint8_t));
-    zmemcpy((void *)ds->prev, (void *)ss->prev, ds->w_size * sizeof(Pos));
-    zmemcpy((void *)ds->head, (void *)ss->head, ds->hash_size * sizeof(Pos));
-    zmemcpy(ds->pending_buf, ss->pending_buf, (uint32_t)ds->pending_buf_size);
+    /* following memcpy do not work for 16-bit MSDOS */
+    memcpy(ds->window, ss->window, ds->w_size * 2 * sizeof(uint8_t));
+    memcpy((void *)ds->prev, (void *)ss->prev, ds->w_size * sizeof(Pos));
+    memcpy((void *)ds->head, (void *)ss->head, ds->hash_size * sizeof(Pos));
+    memcpy(ds->pending_buf, ss->pending_buf, (uint32_t)ds->pending_buf_size);
 
     ds->pending_out = ds->pending_buf + (ss->pending_out - ss->pending_buf);
     ds->sym_buf = ds->pending_buf + ds->lit_bufsize;
@@ -1674,7 +1674,7 @@ unsigned read_buf(
 
     strm->avail_in  -= len;
 
-    zmemcpy(buf, strm->next_in, len);
+    memcpy(buf, strm->next_in, len);
     if (strm->state->wrap == 1) {
         strm->adler = adler32(strm->adler, buf, len);
     }
@@ -1839,8 +1839,7 @@ uint32_t longest_match(
  */
 void check_match(stream.deflate_state *s, IPos start, match, int length) {
     /* check that the match is indeed a match */
-    if (zmemcmp(s->window + match,
-                s->window + start, length) != EQUAL) {
+    if (memcmp(s->window + match, s->window + start, length) != 0) {
         fprintf(stderr, " start %u, match %u, length %d\n",
                 start, match, length);
         while (true) {
@@ -1898,7 +1897,7 @@ void fill_window(stream.deflate_state *s) {
          */
         if (s->strstart >= wsize + MAX_DIST(s)) {
 
-            zmemcpy(s->window, s->window + wsize, (unsigned)wsize - more);
+            memcpy(s->window, s->window + wsize, (unsigned)wsize - more);
             s->match_start -= wsize;
             s->strstart    -= wsize; /* we now have strstart >= MAX_DIST */
             s->block_start -= (long) wsize;
@@ -2106,7 +2105,7 @@ int deflate_stored(stream.deflate_state *s, int flush) {
         if (left) {
             if (left > len)
                 left = len;
-            zmemcpy(s->strm->next_out, s->window + s->block_start, left);
+            memcpy(s->strm->next_out, s->window + s->block_start, left);
             s->strm->next_out += left;
             s->strm->avail_out -= left;
             s->strm->total_out += left;
@@ -2141,7 +2140,7 @@ int deflate_stored(stream.deflate_state *s, int flush) {
          */
         if (used >= s->w_size) {    /* supplant the previous history */
             s->matches = 2;         /* clear hash */
-            zmemcpy(s->window, s->strm->next_in - s->w_size, s->w_size);
+            memcpy(s->window, s->strm->next_in - s->w_size, s->w_size);
             s->strstart = s->w_size;
             s->insert = s->strstart;
         }
@@ -2149,13 +2148,13 @@ int deflate_stored(stream.deflate_state *s, int flush) {
             if (s->window_size - s->strstart <= used) {
                 /* Slide the window down. */
                 s->strstart -= s->w_size;
-                zmemcpy(s->window, s->window + s->w_size, s->strstart);
+                memcpy(s->window, s->window + s->w_size, s->strstart);
                 if (s->matches < 2)
                     s->matches++;   /* add a pending slide_hash() */
                 if (s->insert > s->strstart)
                     s->insert = s->strstart;
             }
-            zmemcpy(s->window + s->strstart, s->strm->next_in - used, used);
+            memcpy(s->window + s->strstart, s->strm->next_in - used, used);
             s->strstart += used;
             s->insert += MIN(used, s->w_size - s->insert);
         }
@@ -2179,7 +2178,7 @@ int deflate_stored(stream.deflate_state *s, int flush) {
         /* Slide the window down. */
         s->block_start -= s->w_size;
         s->strstart -= s->w_size;
-        zmemcpy(s->window, s->window + s->w_size, s->strstart);
+        memcpy(s->window, s->window + s->w_size, s->strstart);
         if (s->matches < 2)
             s->matches++;           /* add a pending slide_hash() */
         have += s->w_size;          /* more space now */

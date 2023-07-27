@@ -1,3 +1,4 @@
+#import time
 #import zlib.c
 #import inflate.c
 #import stream.c
@@ -19,6 +20,10 @@ int64_t GetResRdtsc(int64_t beginTime64)
     return LIres;
 }
 
+uint64_t __rdtsc() {
+    panic("todo");
+}
+
 void BeginCountPerfCounter(int64_t * pbeginTime64,bool fComputeTimeQueryPerf)
 {
     if ((!fComputeTimeQueryPerf) || (!QueryPerformanceCounter(pbeginTime64)))
@@ -26,22 +31,6 @@ void BeginCountPerfCounter(int64_t * pbeginTime64,bool fComputeTimeQueryPerf)
         pbeginTime64->LowPart = GetTickCount();
         pbeginTime64->HighPart = 0;
     }
-}
-
-uint32_t GetMsecSincePerfCounter(int64_t beginTime64, bool fComputeTimeQueryPerf) {
-    int64_t endTime64 = 0;
-    if (!fComputeTimeQueryPerf || !QueryPerformanceCounter(&endTime64)) {
-        return (GetTickCount() - beginTime64.LowPart);
-    }
-
-    int64_t ticks = endTime64 - beginTime64;
-    int64_t ticksPerSecond = QueryPerformanceFrequency();
-
-    uint32_t dwLog=16+0;
-    uint64_t ticksShifted = Int64ShrlMod32(*(uint64_t*)&ticks,dwLog);
-    uint64_t tickSecShifted = Int64ShrlMod32(*(uint64_t*)&ticksPerSecond,dwLog);
-
-    return (uint32_t)((((uint32_t)ticksShifted)*1000)/(uint32_t)(tickSecShifted));
 }
 
 int ReadFileMemory(const char *filename, int32_t *plFileSize, uint8_t **pFilePtr) {
@@ -106,15 +95,12 @@ int main(int argc, char *argv[])
     uint8_t* UncprPtr;
     int32_t lSizeCpr;
     int32_t lSizeUncpr;
-    uint32_t dwGetTick;
-    uint32_t dwMsecQP;
-    int64_t li_qp;
+    
+    time.t li_qp = time.now();
+    uint32_t dwGetTick = GetTickCount();
+    
     int64_t li_rdtsc;
     int64_t dwResRdtsc;
-    
-
-    BeginCountPerfCounter(&li_qp, true);
-    dwGetTick=GetTickCount();
     BeginCountRdtsc(&li_rdtsc);
     stream.z_stream zcpr;
     int ret=stream.Z_OK;
@@ -147,7 +133,8 @@ int main(int argc, char *argv[])
     lSizeCpr=zcpr.total_out;
     deflate.deflateEnd(&zcpr);
     dwGetTick=GetTickCount()-dwGetTick;
-    dwMsecQP=GetMsecSincePerfCounter(li_qp, true);
+    uint64_t dwMsecQP = time.sub(time.now(), li_qp);
+
     dwResRdtsc=GetResRdtsc(li_rdtsc);
     printf("total compress size = %u, in %u step\n",lSizeCpr,step);
     printf("time = %u msec = %f sec\n",dwGetTick,dwGetTick/(double)1000.);
@@ -188,7 +175,8 @@ int main(int argc, char *argv[])
     lSizeUncpr=zcpr.total_out;
     inflate.inflateEnd(&zcpr);
     dwGetTick=GetTickCount()-dwGetTick;
-    dwMsecQP=GetMsecSincePerfCounter(li_qp, true);
+    int64_t dwMsecQP = time.sub(time.now(), li_qp);
+
     dwResRdtsc=GetResRdtsc(li_rdtsc);
     printf("total uncompress size = %u, in %u step\n",lSizeUncpr,step);
     printf("time = %u msec = %f sec\n",dwGetTick,dwGetTick/(double)1000.);
@@ -214,9 +202,5 @@ int GetTickCount() {
 // time stamp that can be used for time-interval measurements.
 bool QueryPerformanceCounter(int64_t *ticks) {
     (void) ticks;
-    panic("todo");
-}
-
-int64_t QueryPerformanceFrequency() {
     panic("todo");
 }

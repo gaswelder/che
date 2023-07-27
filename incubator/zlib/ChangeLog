@@ -766,7 +766,7 @@ Changes in 1.2.2.3 (27 May 2005)
 - Update contrib/asm586, asm686, masmx86, testzlib, vstudio [Vollant]
 
 Changes in 1.2.2.2 (30 December 2004)
-- Replace structure assignments in deflate.c and inflate.c with zmemcpy to
+- Replace structure assignments in deflate.c and inflate.c with memcpy to
   avoid implicit memcpy calls (portability for no-library compilation)
 - Increase sprintf() buffer size in gzdopen() to allow for large numbers
 - Add INFLATE_STRICT to check distances against zlib header
@@ -1205,7 +1205,7 @@ pub - replace EXPORT with to avoid conflict with other programs
   the declaration of FAR (Gilles Vollant)
 - install libz.so* with mode 755 (executable) instead of 644 (Marc Lehmann)
 - read_buf buf parameter of type Bytef* instead of charf*
-- zmemcpy parameters are of type Bytef*, not charf* (Joseph Strout)
+- memcpy parameters are of type Bytef*, not charf* (Joseph Strout)
 - do not redeclare unlink in minigzip.c for WIN32 (John Bowler)
 - fix check for presence of directories in "make install" (Ian Willis)
 

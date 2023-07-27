@@ -4,6 +4,25 @@
  */
 
 #import stream.c
+#import trace.c
+#import adler32
+
+/* Maximum size of the dynamic table.  The maximum number of code structures is
+   1444, which is the sum of 852 for literal/length codes and 592 for distance
+   codes.  These values were found by exhaustive searches using the program
+   examples/enough.c found in the zlib distribution.  The arguments to that
+   program are the number of symbols, the initial root table size, and the
+   maximum bit length of a code.  "enough 286 9 15" for literal/length codes
+   returns returns 852, and "enough 30 6 15" for distance codes returns 592.
+   The initial root table size (9 or 6) is found in the fifth argument of the
+   inflate_table() calls in inflate.c and infback.c.  If the root table size is
+   changed, then these maximum sizes would be need to be recalculated and
+   updated. */
+#define ENOUGH_LENS 852
+#define ENOUGH_DISTS 592
+enum {
+    ENOUGH = ENOUGH_LENS + ENOUGH_DISTS
+};
 
 /* Structure for decoding tables.  Each entry provides either the
    information needed to do the operation requested by the code that
@@ -176,7 +195,7 @@ pub int inflateResetKeep(stream.z_stream *strm) {
     state->lencode = state->distcode = state->next = state->codes;
     state->sane = 1;
     state->back = -1;
-    Tracev(stderr, "inflate: reset\n");
+    trace.Tracev(stderr, "inflate: reset\n");
     return stream.Z_OK;
 }
 
@@ -236,7 +255,7 @@ pub int inflateReset2(stream.z_stream *strm, int windowBits) {
     if (windowBits && (windowBits < 8 || windowBits > 15))
         return stream.Z_STREAM_ERROR;
     if (state->window != NULL && state->wbits != (unsigned)windowBits) {
-        ZFREE(strm, state->window);
+        stream.ZFREE(strm, state->window);
         state->window = NULL;
     }
 
@@ -259,7 +278,7 @@ pub int inflateReset2(stream.z_stream *strm, int windowBits) {
    provided to deflateInit2() while compressing, or it must be equal to 15 if
    deflateInit2() was not used.  If a compressed stream with a larger window
    size is given as input, inflate() will return with the error code
-   Z_DATA_ERROR instead of trying to allocate a larger window.
+   stream.Z_DATA_ERROR instead of trying to allocate a larger window.
 
      windowBits can also be zero to request that inflate use the window size in
    the zlib header of the compressed stream.
@@ -279,7 +298,7 @@ pub int inflateReset2(stream.z_stream *strm, int windowBits) {
      windowBits can also be greater than 15 for optional gzip decoding.  Add
    32 to windowBits to enable zlib and gzip decoding with automatic header
    detection, or add 16 to decode only the gzip format (the zlib format will
-   return a Z_DATA_ERROR).  If a gzip stream is being decoded, strm->adler is a
+   return a stream.Z_DATA_ERROR).  If a gzip stream is being decoded, strm->adler is a
    CRC-32 instead of an Adler-32.  Unlike the gunzip utility and gzread() (see
    below), inflate() will *not* automatically decode concatenated gzip members.
    inflate() will return Z_STREAM_END at the end of the gzip member.  The state
@@ -319,16 +338,16 @@ pub int inflateInit2_(
     if (strm->zfree == NULL) {
         strm->zfree = zcfree;
     }
-    state = ZALLOC(strm, 1, sizeof(inflate_state));
+    state = stream.ZALLOC(strm, 1, sizeof(inflate_state));
     if (state == NULL) return stream.Z_MEM_ERROR;
-    Tracev(stderr, "inflate: allocated\n");
+    trace.Tracev(stderr, "inflate: allocated\n");
     strm->state = state;
     state->strm = strm;
     state->window = NULL;
     state->mode = HEAD;     /* to pass state test in inflateReset2() */
     ret = inflateReset2(strm, windowBits);
     if (ret != stream.Z_OK) {
-        ZFREE(strm, state);
+        stream.ZFREE(strm, state);
         strm->state = NULL;
     }
     return ret;
@@ -462,7 +481,7 @@ void fixedtables(inflate_state *state) {
     }
     a.out > inffixed.h
  */
-void makefixed()
+pub void makefixed()
 {
     unsigned low;
     unsigned size;
@@ -537,7 +556,7 @@ int updatewindow(
 
     /* if it hasn't been done already, allocate space for the window */
     if (state->window == NULL) {
-        state->window = ZALLOC(strm, 1U << state->wbits, sizeof(uint8_t));
+        state->window = stream.ZALLOC(strm, 1U << state->wbits, sizeof(uint8_t));
         if (state->window == NULL) {
             return 1;
         }
@@ -552,17 +571,17 @@ int updatewindow(
 
     /* copy state->wsize or less output bytes into the circular window */
     if (copy >= state->wsize) {
-        zmemcpy(state->window, end - state->wsize, state->wsize);
+        memcpy(state->window, end - state->wsize, state->wsize);
         state->wnext = 0;
         state->whave = state->wsize;
     }
     else {
         dist = state->wsize - state->wnext;
         if (dist > copy) dist = copy;
-        zmemcpy(state->window + state->wnext, end - copy, dist);
+        memcpy(state->window + state->wnext, end - copy, dist);
         copy -= dist;
         if (copy) {
-            zmemcpy(state->window, end - copy, copy);
+            memcpy(state->window, end - copy, copy);
             state->wnext = copy;
             state->whave = state->wsize;
         }
@@ -577,12 +596,12 @@ int updatewindow(
 
 /* Macros for inflate(): */
 
-/* check function to use adler32() for zlib or crc32() for gzip */
+/* check function to use adler32.adler32() for zlib or crc32() for gzip */
 int UPDATE_CHECK(uint32_t check, char *buf, size_t len) {
     if (state->flags) {
         return crc32(check, buf, len);
     }
-    return adler32(check, buf, len);
+    return adler32.adler32(check, buf, len);
 }
 
 /* check macros for header crc */
@@ -755,23 +774,23 @@ const uint16_t order[19] =
   deflate data.  The header type is detected automatically, if requested when
   initializing with inflateInit2().  Any information contained in the gzip
   header is not retained unless inflateGetHeader() is used.  When processing
-  gzip-wrapped deflate data, strm->adler32 is set to the CRC-32 of the output
+  gzip-wrapped deflate data, strm->adler32.adler32 is set to the CRC-32 of the output
   produced so far.  The CRC-32 is checked against the gzip trailer, as is the
   uncompressed length, modulo 2^32.
 
     inflate() returns stream.Z_OK if some progress has been made (more input processed
   or more output produced), Z_STREAM_END if the end of the compressed data has
   been reached and all uncompressed output has been produced, Z_NEED_DICT if a
-  preset dictionary is needed at this point, Z_DATA_ERROR if the input data was
+  preset dictionary is needed at this point, stream.Z_DATA_ERROR if the input data was
   corrupted (input stream not conforming to the zlib format or incorrect check
   value, in which case strm->msg points to a string with a more specific
   error), stream.Z_STREAM_ERROR if the stream structure was inconsistent (for example
   next_in or next_out was NULL, or the state was inadvertently written over
-  by the application), stream.Z_MEM_ERROR if there was not enough memory, Z_BUF_ERROR
+  by the application), stream.Z_MEM_ERROR if there was not enough memory, stream.Z_BUF_ERROR
   if no progress was possible or if there was not enough room in the output
-  buffer when Z_FINISH is used.  Note that Z_BUF_ERROR is not fatal, and
+  buffer when Z_FINISH is used.  Note that stream.Z_BUF_ERROR is not fatal, and
   inflate() can be called again with more input and more output space to
-  continue decompressing.  If Z_DATA_ERROR is returned, the application may
+  continue decompressing.  If stream.Z_DATA_ERROR is returned, the application may
   then call inflateSync() to look for a good compression block if a partial
   recovery of the data is to be attempted.
 */
@@ -847,7 +866,7 @@ proceed or should return.
    provides the effect documented in zlib.h for Z_FINISH when the entire input
    stream available.  So the only thing the flush parameter actually does is:
    when flush is set to Z_FINISH, inflate() cannot return stream.Z_OK.  Instead it
-   will return Z_BUF_ERROR if it has not reached the end of the stream.
+   will return stream.Z_BUF_ERROR if it has not reached the end of the stream.
  */
 pub int inflate(stream.z_stream *strm, int flush) {
     const uint8_t *next;    /* next input */
@@ -920,7 +939,7 @@ pub int inflate(stream.z_stream *strm, int flush) {
                 r = inf_leave();
             }
             case BAD: {
-                ret = Z_DATA_ERROR;
+                ret = stream.Z_DATA_ERROR;
                 r = inf_leave();
             }
             case MEM: { r = stream.Z_MEM_ERROR; }
@@ -978,8 +997,8 @@ int st_head() {
     }
     state->dmax = 1U << len;
     state->flags = 0;               /* indicate zlib header */
-    Tracev(stderr, "inflate:   zlib header ok\n");
-    strm->adler = state->check = adler32(0L, NULL, 0);
+    trace.Tracev(stderr, "inflate:   zlib header ok\n");
+    strm->adler = state->check = adler32.adler32(0L, NULL, 0);
     if (hold & 0x200) {
         state->mode = DICTID;
     } else {
@@ -1065,7 +1084,7 @@ int st_extra() {
                 } else {
                     x = copy;
                 }
-                zmemcpy(state->head->extra + len, next, x);
+                memcpy(state->head->extra + len, next, x);
             }
             if ((state->flags & 0x0200) && (state->wrap & 4))
                 state->check = crc32(state->check, next, copy);
@@ -1174,7 +1193,7 @@ int st_dict() {
         RESTORE();
         return Z_NEED_DICT;
     }
-    strm->adler = state->check = adler32(0L, NULL, 0);
+    strm->adler = state->check = adler32.adler32(0L, NULL, 0);
     state->mode = TYPE;
     int r = st_type();
     if (r == BREAK) break;
@@ -1204,18 +1223,18 @@ int st_typedo() {
     switch (BITS(2)) {
         case 0: {                             /* stored block */
             if (state->last) {
-                Tracev(stderr, "inflate:     stored block (last)\n");
+                trace.Tracev(stderr, "inflate:     stored block (last)\n");
             } else {
-                Tracev(stderr, "inflate:     stored block\n");
+                trace.Tracev(stderr, "inflate:     stored block\n");
             }
             state->mode = STORED;
         }
         case 1: {                             /* fixed block */
             fixedtables(state);
             if (state->last) {
-                Tracev(stderr, "inflate:     fixed codes block (last)\n");
+                trace.Tracev(stderr, "inflate:     fixed codes block (last)\n");
             } else {
-                Tracev(stderr, "inflate:     fixed codes block\n");
+                trace.Tracev(stderr, "inflate:     fixed codes block\n");
             }
             state->mode = LEN_;             /* decode codes */
             if (flush == Z_TREES) {
@@ -1225,9 +1244,9 @@ int st_typedo() {
         }
         case 2: {                             /* dynamic block */
             if (state->last) {
-                Tracev(stderr, "inflate:     dynamic codes block (last)\n");
+                trace.Tracev(stderr, "inflate:     dynamic codes block (last)\n");
             } else {
-                Tracev(stderr, "inflate:     dynamic codes block\n");
+                trace.Tracev(stderr, "inflate:     dynamic codes block\n");
             }
             state->mode = TABLE;
         }
@@ -1251,7 +1270,7 @@ int st_stored() {
         break;
     }
     state->length = (unsigned)hold & 0xffff;
-    Tracev(stderr, "inflate:       stored length %u\n", state->length);
+    trace.Tracev(stderr, "inflate:       stored length %u\n", state->length);
     INITBITS();
     state->mode = COPY_;
     if (flush == Z_TREES) {
@@ -1267,7 +1286,7 @@ int st_copy() {
         if (copy > have) copy = have;
         if (copy > left) copy = left;
         if (copy == 0) return inf_leave();
-        zmemcpy(put, next, copy);
+        memcpy(put, next, copy);
         have -= copy;
         next += copy;
         left -= copy;
@@ -1275,7 +1294,7 @@ int st_copy() {
         state->length -= copy;
         break;
     }
-    Tracev(stderr, "inflate:       stored end\n");
+    trace.Tracev(stderr, "inflate:       stored end\n");
     state->mode = TYPE;
 }
 
@@ -1294,7 +1313,7 @@ int st_table() {
             break;
         }
     }
-    Tracev(stderr, "inflate:       table sizes ok\n");
+    trace.Tracev(stderr, "inflate:       table sizes ok\n");
     state->have = 0;
     state->mode = LENLENS;
     return st_lenlens();
@@ -1318,7 +1337,7 @@ int st_lenlens() {
         state->mode = BAD;
         break;
     }
-    Tracev(stderr, "inflate:       code lengths ok\n");
+    trace.Tracev(stderr, "inflate:       code lengths ok\n");
     state->have = 0;
     state->mode = CODELENS;
     return st_codelens();
@@ -1404,7 +1423,7 @@ int st_codelens() {
         state->mode = BAD;
         break;
     }
-    Tracev(stderr, "inflate:       codes ok\n");
+    trace.Tracev(stderr, "inflate:       codes ok\n");
     state->mode = LEN_;
     if (flush == Z_TREES) {
         return inf_leave();
@@ -1610,7 +1629,7 @@ int st_check() {
             return BREAK;
         }
         INITBITS();
-        Tracev(stderr, "inflate:   check matches trailer\n");
+        trace.Tracev(stderr, "inflate:   check matches trailer\n");
     }
     state->mode = LENGTH;
     return st_length();
@@ -1625,7 +1644,7 @@ int st_length() {
             return BREAK;
         }
         INITBITS();
-        Tracev(stderr, "inflate:   length matches trailer\n");
+        trace.Tracev(stderr, "inflate:   length matches trailer\n");
     }
     state->mode = DONE;
     ret = Z_STREAM_END;
@@ -1676,7 +1695,7 @@ int inf_leave() {
     }
     strm->data_type = (int)state->bits + x1 + x2 + x3;
     if (((in == 0 && out == 0) || flush == Z_FINISH) && ret == stream.Z_OK) {
-        ret = Z_BUF_ERROR;
+        ret = stream.Z_BUF_ERROR;
     }
     return ret;
 }
@@ -1693,11 +1712,11 @@ pub int inflateEnd(stream.z_stream *strm) {
     }
     inflate_state *state = strm->state;
     if (state->window != NULL) {
-        ZFREE(strm, state->window);
+        stream.ZFREE(strm, state->window);
     }
-    ZFREE(strm, strm->state);
+    stream.ZFREE(strm, strm->state);
     strm->state = NULL;
-    Tracev(stderr, "inflate: end\n");
+    trace.Tracev(stderr, "inflate: end\n");
     return stream.Z_OK;
 }
 
@@ -1724,8 +1743,8 @@ pub int inflateGetDictionary(
 
     /* copy dictionary */
     if (state->whave && dictionary != NULL) {
-        zmemcpy(dictionary, state->window + state->wnext, state->whave - state->wnext);
-        zmemcpy(dictionary + state->whave - state->wnext, state->window, state->wnext);
+        memcpy(dictionary, state->window + state->wnext, state->whave - state->wnext);
+        memcpy(dictionary + state->whave - state->wnext, state->window, state->wnext);
     }
     if (dictLength != NULL) {
         *dictLength = state->whave;
@@ -1747,7 +1766,7 @@ pub int inflateGetDictionary(
 
      inflateSetDictionary returns stream.Z_OK if success, stream.Z_STREAM_ERROR if a
    parameter is invalid (e.g.  dictionary being NULL) or the stream state is
-   inconsistent, Z_DATA_ERROR if the given dictionary doesn't match the
+   inconsistent, stream.Z_DATA_ERROR if the given dictionary doesn't match the
    expected one (incorrect Adler-32 value).  inflateSetDictionary does not
    perform any decompression: this will be done by subsequent calls of
    inflate().
@@ -1769,10 +1788,10 @@ pub int inflateSetDictionary(
 
     /* check for correct dictionary identifier */
     if (state->mode == DICT) {
-        dictid = adler32(0L, NULL, 0);
-        dictid = adler32(dictid, dictionary, dictLength);
+        dictid = adler32.adler32(0L, NULL, 0);
+        dictid = adler32.adler32(dictid, dictionary, dictLength);
         if (dictid != state->check)
-            return Z_DATA_ERROR;
+            return stream.Z_DATA_ERROR;
     }
 
     /* copy dictionary to window using updatewindow(), which will amend the
@@ -1783,7 +1802,7 @@ pub int inflateSetDictionary(
         return stream.Z_MEM_ERROR;
     }
     state->havedict = 1;
-    Tracev(stderr, "inflate:   dictionary set\n");
+    trace.Tracev(stderr, "inflate:   dictionary set\n");
     return stream.Z_OK;
 }
 
@@ -1885,7 +1904,7 @@ unsigned syncsearch(unsigned *have, const uint8_t *buf, unsigned len) {
    pattern are full flush points.
 
      inflateSync returns stream.Z_OK if a possible full flush point has been found,
-   Z_BUF_ERROR if no more input was provided, Z_DATA_ERROR if no flush point
+   stream.Z_BUF_ERROR if no more input was provided, stream.Z_DATA_ERROR if no flush point
    has been found, or stream.Z_STREAM_ERROR if the stream structure was inconsistent.
    In the success case, the application may save the current current value of
    total_in which indicates where valid compressed data was found.  In the
@@ -1893,17 +1912,19 @@ unsigned syncsearch(unsigned *have, const uint8_t *buf, unsigned len) {
    input each time, until success or end of the input data.
 */
 pub int inflateSync(stream.z_stream *strm) {
+    if (inflateStateCheck(strm)) {
+        return stream.Z_STREAM_ERROR;
+    }
+    inflate_state *state = strm->state;
+    if (strm->avail_in == 0 && state->bits < 8) {
+        return stream.Z_BUF_ERROR;
+    }
+
     unsigned len;               /* number of bytes to look at or looked at */
     int flags;                  /* temporary to save header status */
     uint32_t in;
     uint32_t out;      /* temporary to save total_in and total_out */
     uint8_t buf[4];       /* to restore bit buffer to byte string */
-    inflate_state *state;
-
-    /* check parameters */
-    if (inflateStateCheck(strm)) return stream.Z_STREAM_ERROR;
-    state = (inflate_state *)strm->state;
-    if (strm->avail_in == 0 && state->bits < 8) return Z_BUF_ERROR;
 
     /* if first time, start search in bit buffer */
     if (state->mode != SYNC) {
@@ -1927,11 +1948,15 @@ pub int inflateSync(stream.z_stream *strm) {
     strm->total_in += len;
 
     /* return no joy or set up to restart inflate() on a new block */
-    if (state->have != 4) return Z_DATA_ERROR;
-    if (state->flags == -1)
+    if (state->have != 4) {
+        return stream.Z_DATA_ERROR;
+    }
+    if (state->flags == -1) {
         state->wrap = 0;    /* if no header yet, treat as raw */
-    else
+    }
+    else {
         state->wrap &= ~4;  /* no point in computing a check value now */
+    }
     flags = state->flags;
     in = strm->total_in;  out = strm->total_out;
     inflateReset(strm);
@@ -1981,22 +2006,22 @@ pub int inflateCopy(stream.z_stream *dest, *source) {
     state = (inflate_state *)source->state;
 
     /* allocate space */
-    copy = ZALLOC(source, 1, sizeof(inflate_state));
+    copy = stream.ZALLOC(source, 1, sizeof(inflate_state));
     if (copy == NULL) {
         return stream.Z_MEM_ERROR;
     }
     window = NULL;
     if (state->window != NULL) {
-        window = ZALLOC(source, 1U << state->wbits, sizeof(uint8_t));
+        window = stream.ZALLOC(source, 1U << state->wbits, sizeof(uint8_t));
         if (window == NULL) {
-            ZFREE(source, copy);
+            stream.ZFREE(source, copy);
             return stream.Z_MEM_ERROR;
         }
     }
 
     /* copy state */
-    zmemcpy(dest, source, sizeof(stream.z_stream));
-    zmemcpy(copy, state, sizeof(inflate_state));
+    memcpy(dest, source, sizeof(stream.z_stream));
+    memcpy(copy, state, sizeof(inflate_state));
     copy->strm = dest;
     if (state->lencode >= state->codes &&
         state->lencode <= state->codes + ENOUGH - 1) {
@@ -2006,7 +2031,7 @@ pub int inflateCopy(stream.z_stream *dest, *source) {
     copy->next = copy->codes + (state->next - state->codes);
     if (window != NULL) {
         wsize = 1U << state->wbits;
-        zmemcpy(window, state->window, wsize);
+        memcpy(window, state->window, wsize);
     }
     copy->window = window;
     dest->state = copy;

@@ -131,15 +131,7 @@ if (PKZIP_BUG_WORKAROUND) {
     return flags;
 }
 
-#include <stdlib.h>
-#  ifndef verbose
-#    define verbose 0
-#  endif
-int ZLIB_INTERNAL z_verbose = verbose;
-
-void ZLIB_INTERNAL z_error(m)
-    char *m;
-{
+void ZLIB_INTERNAL z_error(char *m) {
     fprintf(stderr, "%s\n", m);
     exit(1);
 }

@@ -892,7 +892,7 @@ void ZLIB_INTERNAL _tr_stored_block(s, buf, stored_len, last)
     put_short(s, (ush)stored_len);
     put_short(s, (ush)~stored_len);
     if (stored_len)
-        zmemcpy(s->pending_buf + s->pending, (Bytef *)buf, stored_len);
+        memcpy(s->pending_buf + s->pending, (Bytef *)buf, stored_len);
     s->pending += stored_len;
     s->compressed_len = (s->compressed_len + 3 + 7) & (ulg)~7L;
     s->compressed_len += (stored_len + 4) << 3;

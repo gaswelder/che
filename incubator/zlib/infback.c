@@ -15,8 +15,9 @@
 #include "inflate.h"
 #include "inffast.h"
 
-/* function prototypes */
-local void fixedtables OF((struct inflate_state FAR *state));
+int inflateInit2(stream.z_stream *strm, int windowBits) {
+    return inflateInit2_(strm, windowBits, ZLIB_VERSION, (int)sizeof(z_stream));
+}
 
 /*
    strm provides memory allocation functions in zalloc and zfree, or
@@ -25,7 +26,30 @@ local void fixedtables OF((struct inflate_state FAR *state));
    windowBits is in the range 8..15, and window is a user-supplied
    window and output buffer that is 2**windowBits bytes.
  */
-pub int inflateBackInit_(strm, windowBits, window, version, stream_size)
+/*
+     Initialize the internal stream state for decompression using inflateBack()
+   calls.  The fields zalloc, zfree and opaque in strm must be initialized
+   before the call.  If zalloc and zfree are NULL, then the default library-
+   derived memory allocation routines are used.  windowBits is the base two
+   logarithm of the window size, in the range 8..15.  window is a caller
+   supplied buffer of that size.  Except for special applications where it is
+   assured that deflate was used with small window sizes, windowBits must be 15
+   and a 32K byte window must be supplied to be able to decompress general
+   deflate streams.
+
+     See inflateBack() for the usage of these routines.
+
+     inflateBackInit will return Z_OK on success, Z_STREAM_ERROR if any of
+   the parameters are invalid, Z_MEM_ERROR if the internal state could not be
+   allocated, or Z_VERSION_ERROR if the version of the library does not match
+   the version of the header file.
+*/
+pub int inflateBackInit(stream.z_stream *strm,int windowBits, int window) {
+    return inflateBackInit_(strm, (windowBits), (window),
+                           ZLIB_VERSION, (int)sizeof(z_stream));
+}
+
+int inflateBackInit_(strm, windowBits, window, version, stream_size)
 z_stream *strm;
 int windowBits;
 unsigned char FAR *window;
@@ -400,7 +424,7 @@ void FAR *out_desc;
                 ROOM();
                 if (copy > have) copy = have;
                 if (copy > left) copy = left;
-                zmemcpy(put, next, copy);
+                memcpy(put, next, copy);
                 have -= copy;
                 next += copy;
                 left -= copy;
@@ -518,7 +542,7 @@ void FAR *out_desc;
             ret = inflate_table(LENS, state->lens, state->nlen, &(state->next),
                                 &(state->lenbits), state->work);
             if (ret) {
-                strm->msg = (char *)"invalid literal/lengths set";
+                strm->msg = "invalid literal/lengths set";
                 state->mode = BAD;
                 break;
             }
@@ -527,7 +551,7 @@ void FAR *out_desc;
             ret = inflate_table(DISTS, state->lens + state->nlen, state->ndist,
                             &(state->next), &(state->distbits), state->work);
             if (ret) {
-                strm->msg = (char *)"invalid distances set";
+                strm->msg = "invalid distances set";
                 state->mode = BAD;
                 break;
             }
@@ -688,18 +712,15 @@ void FAR *out_desc;
 }
 
 /*
-     All memory allocated by inflateBackInit() is freed.
-
-     inflateBackEnd() returns Z_OK on success, or Z_STREAM_ERROR if the stream
-   state was inconsistent.
-*/
-pub int inflateBackEnd(strm)
-z_stream *strm;
-{
-    if (strm == NULL || strm->state == NULL || strm->zfree == (free_func)0)
+ * All memory allocated by inflateBackInit() is freed.
+ * Returns Z_OK on success, or Z_STREAM_ERROR if the stream state was inconsistent.
+ */
+pub int inflateBackEnd(z_stream *strm) {
+    if (!strm || !strm->state || !strm->zfree) {
         return Z_STREAM_ERROR;
+    }
     ZFREE(strm, strm->state);
     strm->state = NULL;
-    Tracev((stderr, "inflate: end\n"));
+    Tracev(stderr, "inflate: end\n");
     return Z_OK;
 }

@@ -28,15 +28,15 @@
   (zlib format), rfc1951 (deflate format) and rfc1952 (gzip format).
 */
 
-#import stream.c
-#import deflate.c
+// #import stream.c
+// #import deflate.c
 
-#define ZLIB_VERSION "foo.bar"
-#define ZLIB_VERNUM 0x0
-#define ZLIB_VER_MAJOR 0
-#define ZLIB_VER_MINOR 1
-#define ZLIB_VER_REVISION 0
-#define ZLIB_VER_SUBREVISION 0
+// #define ZLIB_VERSION "foo.bar"
+// #define ZLIB_VERNUM 0x0
+// #define ZLIB_VER_MAJOR 0
+// #define ZLIB_VER_MINOR 1
+// #define ZLIB_VER_REVISION 0
+// #define ZLIB_VER_SUBREVISION 0
 
 /*
     The 'zlib' compression library provides in-memory compression and
@@ -72,8 +72,8 @@
   even in the case of corrupted input.
 */
 
-typedef void *alloc_func(void *, uInt, uInt);
-typedef void  free_func(void *, void *);
+// typedef void *alloc_func(void *, uInt, uInt);
+// typedef void  free_func(void *, void *);
 
 /*
      The application must update next_in and avail_in when avail_in has dropped
@@ -117,28 +117,23 @@ pub enum {
 };
 
 
-#define Z_FILTERED            1
-#define Z_HUFFMAN_ONLY        2
-#define Z_RLE                 3
-#define Z_FIXED               4
-#define Z_DEFAULT_STRATEGY    0
 /* compression strategy; see deflateInit2() below for details */
+// #define Z_FILTERED            1
+// #define Z_HUFFMAN_ONLY        2
+// #define Z_RLE                 3
+// #define Z_FIXED               4
+// #define Z_DEFAULT_STRATEGY    0
 
-#define Z_BINARY   0
-#define Z_TEXT     1
-#define Z_ASCII    Z_TEXT   /* for compatibility with 1.2.2 and earlier */
-#define Z_UNKNOWN  2
-/* Possible values of the data_type field for deflate() */
 
-#define Z_DEFLATED   8
+// #define Z_DEFLATED   8
 /* The deflate compression method (the only one supported in this version) */
 
-#define zlib_version zlibVersion()
+// #define zlib_version zlibVersion()
 /* for compatibility with versions < 1.0.2 */
 
 
-typedef unsigned in_func(void *, const uint8_t **);
-typedef int out_func(void *, uint8_t  *, unsigned);
+// typedef unsigned in_func(void *, const uint8_t **);
+// typedef int out_func(void *, uint8_t  *, unsigned);
 
 /*
      This library supports reading and writing files in gzip (.gz) format with
@@ -147,35 +142,7 @@ typedef int out_func(void *, uint8_t  *, unsigned);
    wrapper, documented in RFC 1952, wrapped around a deflate stream.
 */
 
-typedef gzFile_s *gzFile;    /* semi-opaque gzip file descriptor */
-
-int inflateInit2(stream.z_stream *strm, int windowBits) {
-    return inflateInit2_(strm, windowBits, ZLIB_VERSION, (int)sizeof(z_stream));
-}
-
-/*
-     Initialize the internal stream state for decompression using inflateBack()
-   calls.  The fields zalloc, zfree and opaque in strm must be initialized
-   before the call.  If zalloc and zfree are NULL, then the default library-
-   derived memory allocation routines are used.  windowBits is the base two
-   logarithm of the window size, in the range 8..15.  window is a caller
-   supplied buffer of that size.  Except for special applications where it is
-   assured that deflate was used with small window sizes, windowBits must be 15
-   and a 32K byte window must be supplied to be able to decompress general
-   deflate streams.
-
-     See inflateBack() for the usage of these routines.
-
-     inflateBackInit will return Z_OK on success, Z_STREAM_ERROR if any of
-   the parameters are invalid, Z_MEM_ERROR if the internal state could not be
-   allocated, or Z_VERSION_ERROR if the version of the library does not match
-   the version of the header file.
-*/
-int inflateBackInit(stream.z_stream *strm,int windowBits, int window) {
-    return inflateBackInit_(strm, (windowBits), (window),
-                           ZLIB_VERSION, (int)sizeof(z_stream));
-}
-
+// typedef gzFile_s *gzFile;    /* semi-opaque gzip file descriptor */
 
 /* gzgetc() macro and its supporting function and exposed data structure.  Note
  * that the real internal state is much larger than the exposed structure.
@@ -184,17 +151,17 @@ int inflateBackInit(stream.z_stream *strm,int windowBits, int window) {
  * behavior could change in the future, perhaps even capriciously.  They can
  * only be used by the gzgetc() macro.  You have been warned.
  */
-typedef {
-    unsigned have;
-    uint8_t *next;
-    z_off64_t pos;
-} gzFile_s;
+// typedef {
+//     unsigned have;
+//     uint8_t *next;
+//     z_off64_t pos;
+// } gzFile_s;
 
-int gzgetc(gzFile_s *g) {
-  if (g->have) {
-    g->have--;
-    g->pos++;
-    return *((g)->next)++;
-  }
-  return gzgetc(g);
-}
+// int gzgetc(gzFile_s *g) {
+//   if (g->have) {
+//     g->have--;
+//     g->pos++;
+//     return *((g)->next)++;
+//   }
+//   return gzgetc(g);
+// }

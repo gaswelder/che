@@ -23,12 +23,20 @@ pub enum {
     Z_VERSION_ERROR = -6,
 };
 
+/* Possible values of the data_type field for deflate() */
+pub enum {
+  Z_BINARY   = 0,
+  Z_TEXT     = 1,
+  Z_ASCII    = 1,   /* for compatibility with 1.2.2 and earlier */
+  Z_UNKNOWN  = 2,
+};
+
 
 /*
      gzip header information passed to and from zlib routines.  See RFC 1952
   for more details on the meanings of these fields.
 */
-typedef {
+pub typedef {
     int     text;       /* true if compressed data believed to be text */
     uint32_t   time;       /* modification time */
     int     xflags;     /* extra flags (not used when writing a gzip file) */
@@ -239,3 +247,11 @@ pub typedef {
     uint32_t   adler;      /* Adler-32 or CRC-32 value of the uncompressed data */
     uint32_t   reserved;   /* reserved for future use */
 } z_stream;
+
+pub void *ZALLOC(z_stream *strm, size_t items, size_t size) {
+    return (strm->zalloc)(strm->opaque, items, size);
+}
+
+pub void ZFREE(z_stream *strm, void *addr) {
+    (strm->zfree)(strm->opaque, addr);
+}
