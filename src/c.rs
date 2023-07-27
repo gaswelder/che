@@ -45,7 +45,20 @@ pub const CCONST: &[&str] = &[
 ];
 
 pub const CFUNCS: &[&str] = &[
-    "atoi",
+    // stdlib
+    "atoi", 
+    "atol",
+    "atoll",
+    "atol_l",
+    "atoll_l",
+    // string.h
+    "memcmp",
+    // stdio.h
+    "printf",
+    "puts",
+    // signal.h
+    "signal",
+    // ...
     "strncat",
     "islower",
     "isspace",
@@ -100,8 +113,6 @@ pub const CFUNCS: &[&str] = &[
     // "malloc",
     "memcpy",
     "memset",
-    "printf",
-    "puts",
     "realloc",
     "roundf",
     "ungetc",
@@ -112,9 +123,6 @@ pub const CFUNCS: &[&str] = &[
     "srand",
     "rand",
     "getc",
-    // signal.h
-    "signal",
-    // ...
     "getchar",
     "putc",
     "fflush",
