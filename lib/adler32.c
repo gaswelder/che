@@ -1,4 +1,8 @@
 /* adler32.c -- compute the Adler-32 checksum of a data stream
+
+An Adler-32 checksum is a 32-bit unsigned integer.
+Adler-32 is almost as reliable as CRC-32 but can be computed much faster.
+
  * Copyright (C) 1995-2011, 2016 Mark Adler
 
   Copyright (C) 1995-2022 Jean-loup Gailly and Mark Adler
@@ -28,23 +32,16 @@
 /* NMAX is the largest n such that 255n(n+1)/2 + (n+1)(BASE-1) <= 2^32-1 */
 
 /*
-     Update a running Adler-32 checksum with the bytes buf[0..len-1] and
-   return the updated checksum. An Adler-32 value is in the range of a 32-bit
-   uint32_t integer. If buf is NULL, this function returns the required
-   initial value for the checksum.
+ * Returns the initial checksum for subsequent updates.
+ */
+pub uint32_t init() {
+    return adler32(0, NULL, 0);
+}
 
-     An Adler-32 checksum is almost as reliable as a CRC-32 but can be computed
-   much faster.
-
-   Usage example:
-
-     uint32_t adler = adler32(0L, NULL, 0);
-
-     while (read_buffer(buffer, length) != EOF) {
-       adler = adler32(adler, buffer, length);
-     }
-     if (adler != original_adler) error();
-*/
+/*
+ * Update a running Adler-32 checksum with the bytes buf[0..len-1] and
+ * returns the updated checksum.
+ */
 pub uint32_t adler32(uint32_t adler, const uint8_t *buf, size_t len) {
     /* split Adler-32 into component sums */
     uint32_t sum2 = (adler >> 16) & 0xffff;
