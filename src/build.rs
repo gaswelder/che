@@ -203,12 +203,16 @@ pub fn parse(mainpath: &String) -> Result<Build, Vec<BuildError>> {
     for (i, path) in work.paths.iter().enumerate() {
         let mut l = lexer::for_file(&path).unwrap();
         let ctx = &work.ctx[i];
-        let m = parser::parse_module(&mut l, ctx).map_err(|err| {
-            vec![BuildError {
-                message: err.message,
-                pos: err.pos,
-                path: path.clone(),
-            }]
+        let m = parser::parse_module(&mut l, ctx).map_err(|errors| {
+            let mut ee = Vec::new();
+            for err in errors {
+                ee.push(BuildError {
+                    message: err.message,
+                    pos: err.pos,
+                    path: path.clone(),
+                })
+            }
+            ee
         })?;
         work.m.push(m);
     }
