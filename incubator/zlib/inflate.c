@@ -301,7 +301,7 @@ pub int inflateReset2(stream.z_stream *strm, int windowBits) {
    return a stream.Z_DATA_ERROR).  If a gzip stream is being decoded, strm->adler is a
    CRC-32 instead of an Adler-32.  Unlike the gunzip utility and gzread() (see
    below), inflate() will *not* automatically decode concatenated gzip members.
-   inflate() will return Z_STREAM_END at the end of the gzip member.  The state
+   inflate() will return stream.Z_STREAM_END at the end of the gzip member.  The state
    would need to be reset to continue decoding a subsequent gzip member.  This
    *must* be done if there is more data after a gzip member, in order for the
    decompression to be compliant with the gzip standard (RFC 1952).
@@ -620,56 +620,60 @@ void CRC4(uint32_t check, uint32_t word) {
 }
 
 /* Load registers with state in inflate() for speed */
-void LOAD() {
+void LOAD(ctx_t *ctx) {
     put = strm->next_out;
     left = strm->avail_out;
     next = strm->next_in;
     have = strm->avail_in;
-    hold = state->hold;
+    ctx->hold = state->hold;
     bits = state->bits;
 }
 /* Restore state from registers in inflate() */
-void RESTORE() {
+void RESTORE(ctx_t *ctx) {
     strm->next_out = put;
     strm->avail_out = left;
     strm->next_in = next;
     strm->avail_in = have;
-    state->hold = hold;
+    state->hold = ctx->hold;
     state->bits = bits;
 }
 
 /* Clear the input bit accumulator */
 void INITBITS() {
-    hold = 0;
+    ctx->hold = 0;
     bits = 0;
 }
 
 /* Get a byte of input into the bit accumulator, or return from inflate()
    if there is no input available. */
-void PULLBYTE() {
-    if (have == 0) return inf_leave();
-    have--;
-    hold += (uint32_t)(*next++) << bits;
-    bits += 8;
+void PULLBYTE(ctx_t *ctx) {
+    if (ctx->have == 0) {
+        return inf_leave();
+    }
+    ctx->have--;
+    uint32_t x = (uint32_t)(*next);
+    ctx->next++;
+    ctx->hold += x << bits;
+    ctx->bits += 8;
 }
 
 /* Assure that there are at least n bits in the bit accumulator.  If there is
    not enough available input to do that, then return from inflate(). */
-void NEEDBITS(int n) {
-    while (bits < (unsigned)(n)) {
+void NEEDBITS(ctx_t *ctx, size_t n) {
+    while (ctx->bits < n) {
             PULLBYTE();
     }
 }
 
 /* Return the low n bits of the bit accumulator (n < 16) */
 int BITS(int n) {
-    return ((unsigned)hold & ((1U << (n)) - 1));
+    return ((unsigned) ctx->hold & ((1U << (n)) - 1));
 }
 
 /* Remove n bits from the bit accumulator */
-void DROPBITS(int n, int *hold, int *bits) {
-    *hold >>= (n);
-    *bits -= (unsigned)(n);
+void DROPBITS(int n, ctx_t *ctx, int *bits) {
+    ctx->hold >>= n;
+    *bits -= (unsigned) n;
 }
 
 
@@ -708,16 +712,16 @@ const uint16_t order[19] =
   called again after making room in the output buffer because there might be
   more output pending.
 
-    The flush parameter of inflate() can be Z_NO_FLUSH, Z_SYNC_FLUSH, Z_FINISH,
-  Z_BLOCK, or Z_TREES.  Z_SYNC_FLUSH requests that inflate() flush as much
-  output as possible to the output buffer.  Z_BLOCK requests that inflate()
+    The flush parameter of inflate() can be Z_NO_FLUSH, Z_SYNC_FLUSH, stream.Z_FINISH,
+  stream.Z_BLOCK, or stream.Z_TREES.  Z_SYNC_FLUSH requests that inflate() flush as much
+  output as possible to the output buffer.  stream.Z_BLOCK requests that inflate()
   stop if and when it gets to the next deflate block boundary.  When decoding
   the zlib or gzip format, this will cause inflate() to return immediately
   after the header and before the first block.  When doing a raw inflate,
   inflate() will go ahead and process the first block, and will return when it
   gets to the end of that block, or when it runs out of data.
 
-    The Z_BLOCK option assists in appending to or combining deflate streams.
+    The stream.Z_BLOCK option assists in appending to or combining deflate streams.
   To assist in this, on return inflate() always sets strm->data_type to the
   number of unused bits in the last byte taken from strm->next_in, plus 64 if
   inflate() is currently decoding the last block in the deflate stream, plus
@@ -731,23 +735,23 @@ const uint16_t order[19] =
   flush options, and so can be used to determine the amount of currently
   consumed input in bits.
 
-    The Z_TREES option behaves as Z_BLOCK does, but it also returns when the
+    The stream.Z_TREES option behaves as stream.Z_BLOCK does, but it also returns when the
   end of each deflate block header is reached, before any actual data in that
   block is decoded.  This allows the caller to determine the length of the
   deflate block header for later use in random access within a deflate block.
   256 is added to the value of strm->data_type when inflate() returns
   immediately after reaching the end of the deflate block header.
 
-    inflate() should normally be called until it returns Z_STREAM_END or an
+    inflate() should normally be called until it returns stream.Z_STREAM_END or an
   error.  However if all decompression is to be performed in a single step (a
-  single call of inflate), the parameter flush should be set to Z_FINISH.  In
+  single call of inflate), the parameter flush should be set to stream.Z_FINISH.  In
   this case all pending input is processed and all pending output is flushed;
   avail_out must be large enough to hold all of the uncompressed data for the
   operation to complete.  (The size of the uncompressed data may have been
-  saved by the compressor for this purpose.)  The use of Z_FINISH is not
+  saved by the compressor for this purpose.)  The use of stream.Z_FINISH is not
   required to perform an inflation in one step.  However it may be used to
   inform inflate that a faster approach can be used for the single inflate()
-  call.  Z_FINISH also informs inflate to not maintain a sliding window if the
+  call.  stream.Z_FINISH also informs inflate to not maintain a sliding window if the
   stream completes, which reduces inflate's memory footprint.  If the stream
   does not complete, either because not all of the stream is provided or not
   enough output space is provided, then a sliding window will be allocated and
@@ -758,16 +762,16 @@ const uint16_t order[19] =
   possible to the output buffer, and always uses the faster approach on the
   first call.  So the effects of the flush parameter in this implementation are
   on the return value of inflate() as noted below, when inflate() returns early
-  when Z_BLOCK or Z_TREES is used, and when inflate() avoids the allocation of
-  memory for a sliding window when Z_FINISH is used.
+  when stream.Z_BLOCK or stream.Z_TREES is used, and when inflate() avoids the allocation of
+  memory for a sliding window when stream.Z_FINISH is used.
 
      If a preset dictionary is needed after this call (see inflateSetDictionary
   below), inflate sets strm->adler to the Adler-32 checksum of the dictionary
   chosen by the compressor and returns Z_NEED_DICT; otherwise it sets
   strm->adler to the Adler-32 checksum of all output produced so far (that is,
-  total_out bytes) and returns stream.Z_OK, Z_STREAM_END or an error code as described
+  total_out bytes) and returns stream.Z_OK, stream.Z_STREAM_END or an error code as described
   below.  At the end of the stream, inflate() checks that its computed Adler-32
-  checksum is equal to that saved by the compressor and returns Z_STREAM_END
+  checksum is equal to that saved by the compressor and returns stream.Z_STREAM_END
   only if the checksum is correct.
 
     inflate() can decompress and check either zlib-wrapped or gzip-wrapped
@@ -779,7 +783,7 @@ const uint16_t order[19] =
   uncompressed length, modulo 2^32.
 
     inflate() returns stream.Z_OK if some progress has been made (more input processed
-  or more output produced), Z_STREAM_END if the end of the compressed data has
+  or more output produced), stream.Z_STREAM_END if the end of the compressed data has
   been reached and all uncompressed output has been produced, Z_NEED_DICT if a
   preset dictionary is needed at this point, stream.Z_DATA_ERROR if the input data was
   corrupted (input stream not conforming to the zlib format or incorrect check
@@ -788,7 +792,7 @@ const uint16_t order[19] =
   next_in or next_out was NULL, or the state was inadvertently written over
   by the application), stream.Z_MEM_ERROR if there was not enough memory, stream.Z_BUF_ERROR
   if no progress was possible or if there was not enough room in the output
-  buffer when Z_FINISH is used.  Note that stream.Z_BUF_ERROR is not fatal, and
+  buffer when stream.Z_FINISH is used.  Note that stream.Z_BUF_ERROR is not fatal, and
   inflate() can be called again with more input and more output space to
   continue decompressing.  If stream.Z_DATA_ERROR is returned, the application may
   then call inflateSync() to look for a good compression block if a partial
@@ -829,9 +833,9 @@ proceed or should return.
    enough bits to put the accumulator on a byte boundary.  After BYTEBITS()
    and a NEEDBITS(8), then BITS(8) would return the next byte in the stream.
 
-   NEEDBITS(n) uses PULLBYTE() to get an available byte of input, or to return
+   NEEDBITS(n) uses PULLBYTE to get an available byte of input, or to return
    if there is no input available.  The decoding of variable length codes uses
-   PULLBYTE() directly in order to pull just enough bytes to decode the next
+   PULLBYTE directly in order to pull just enough bytes to decode the next
    code, and no more.
 
    Some states loop until they get enough input, making sure that enough
@@ -863,25 +867,34 @@ proceed or should return.
    strm->next_out, given the space available and the provided input--the effect
    documented in zlib.h of Z_SYNC_FLUSH.  Furthermore, inflate() always defers
    the allocation of and copying into a sliding window until necessary, which
-   provides the effect documented in zlib.h for Z_FINISH when the entire input
+   provides the effect documented in zlib.h for stream.Z_FINISH when the entire input
    stream available.  So the only thing the flush parameter actually does is:
-   when flush is set to Z_FINISH, inflate() cannot return stream.Z_OK.  Instead it
+   when flush is set to stream.Z_FINISH, inflate() cannot return stream.Z_OK.  Instead it
    will return stream.Z_BUF_ERROR if it has not reached the end of the stream.
  */
+typedef {
+    uint32_t hold; /* bit buffer */
+    unsigned in, out; /* save starting available input and output */
+    unsigned have, left; /* available input and output */
+    unsigned copy;              /* number of stored or match bytes to copy */
+    unsigned len;               /* length to copy for repeats, bits to drop */
+    uint8_t *put;     /* next output */
+    inflate_state *state;
+    stream.z_stream *strm;
+} ctx_t;
 pub int inflate(stream.z_stream *strm, int flush) {
     const uint8_t *next;    /* next input */
-    uint8_t *put;     /* next output */
-    unsigned have;
-    unsigned left;        /* available input and output */
-    uint32_t hold;         /* bit buffer */
+    
+    ctx_t ctx = {
+        .hold = 0,
+        .strm = strm
+    };
     unsigned bits;              /* bits in bit buffer */
-    unsigned in;
-    unsigned out;           /* save starting available input and output */
-    unsigned copy;              /* number of stored or match bytes to copy */
+    
     uint8_t *from;    /* where to copy match bytes from */
     code here;                  /* current decoding table entry */
     code last;                  /* parent table entry */
-    unsigned len;               /* length to copy for repeats, bits to drop */
+    
     int ret;                    /* return code */
     uint8_t hbuf[4];      /* buffer for gzip header crc calculation */
 
@@ -891,11 +904,11 @@ pub int inflate(stream.z_stream *strm, int flush) {
         return stream.Z_STREAM_ERROR;
     }
 
-    inflate_state *state = (inflate_state *)strm->state;
+    ctx.state = strm->state;
     if (state->mode == TYPE) state->mode = TYPEDO;      /* skip check */
     LOAD();
-    in = have;
-    out = left;
+    ctx.in = have;
+    ctx.out = left;
     ret = stream.Z_OK;
     while (true) {
         int r = 0;
@@ -935,7 +948,7 @@ pub int inflate(stream.z_stream *strm, int flush) {
             case CHECK:     { r = st_check(); }
             case LENGTH:    { r = st_length(); }
             case DONE: {
-                ret = Z_STREAM_END;
+                ret = stream.Z_STREAM_END;
                 r = inf_leave();
             }
             case BAD: {
@@ -957,12 +970,12 @@ enum {
     BREAK = 123456789
 };
 
-int st_head() {
+int st_head(ctx_t *ctx) {
     if (state->wrap == 0) {
         state->mode = TYPEDO;
         break;
     }
-    NEEDBITS(16);
+    NEEDBITS(ctx, 16);
     if ((state->wrap & 2) && hold == 0x8b1f) {  /* gzip header */
         if (state->wbits == 0)
             state->wbits = 15;
@@ -986,7 +999,7 @@ int st_head() {
         state->mode = BAD;
         break;
     }
-    DROPBITS(4, &hold, &bits);
+    DROPBITS(4, ctx, &bits);
     len = BITS(4) + 8;
     if (state->wbits == 0)
         state->wbits = len;
@@ -1007,8 +1020,8 @@ int st_head() {
     INITBITS();
 }
 
-int st_flags() {
-    NEEDBITS(16);
+int st_flags(ctx_t *ctx) {
+    NEEDBITS(ctx, 16);
     state->flags = (int)(hold);
     if ((state->flags & 0xff) != Z_DEFLATED) {
         strm->msg = (char *)"unknown compression method";
@@ -1029,8 +1042,8 @@ int st_flags() {
     st_time();
 }
 
-int st_time() {
-    NEEDBITS(32);
+int st_time(ctx_t *ctx) {
+    NEEDBITS(ctx, 32);
     if (state->head != NULL)
         state->head->time = hold;
     if ((state->flags & 0x0200) && (state->wrap & 4))
@@ -1041,7 +1054,7 @@ int st_time() {
 }
 
 int st_os() {
-    NEEDBITS(16);
+    NEEDBITS(ctx, 16);
     if (state->head != NULL) {
         state->head->xflags = (int)(hold & 0xff);
         state->head->os = (int)(hold >> 8);
@@ -1055,7 +1068,7 @@ int st_os() {
 
 int st_exlen() {
     if (state->flags & 0x0400) {
-        NEEDBITS(16);
+        NEEDBITS(ctx, 16);
         state->length = (unsigned)(hold);
         if (state->head != NULL)
             state->head->extra_len = (unsigned)hold;
@@ -1133,12 +1146,14 @@ int st_name() {
     return st_comment();
 }
 
-int st_comment() {
+int st_comment(ctx_t *ctx) {
     if (state->flags & 0x1000) {
-        if (have == 0) return inf_leave();
-        copy = 0;
+        if (ctx->have == 0) {
+            return inf_leave();
+        }
+        ctx->copy = 0;
         while (true) {
-            len = (unsigned)(next[copy++]);
+            ctx->len = (unsigned)(next[copy++]);
             if (state->head != NULL &&
                     state->head->comment != NULL &&
                     state->length < state->head->comm_max)
@@ -1146,23 +1161,25 @@ int st_comment() {
             bool cont = (len && copy < have);
             if (!cont) break;
         }
-        if ((state->flags & 0x0200) && (state->wrap & 4))
+        if ((state->flags & 0x0200) && (state->wrap & 4)) {
             state->check = crc32(state->check, next, copy);
-        have -= copy;
-        next += copy;
-        if (len) return inf_leave();
+        }
+        ctx->have -= ctx->copy;
+        ctx->next += ctx->copy;
+        if (len) {
+            return inf_leave();
+        }
     }
-    else if (state->head != NULL)
+    else if (state->head != NULL) {
         state->head->comment = NULL;
+    }
     state->mode = HCRC;
-    int r = st_hcrc();
-    if (R == BREAK) break;
-    return r;
+    return st_hcrc();
 }
 
 int st_hcrc() {
     if (state->flags & 0x0200) {
-        NEEDBITS(16);
+        NEEDBITS(ctx, 16);
         if ((state->wrap & 4) && hold != (state->check & 0xffff)) {
             strm->msg = (char *)"header crc mismatch";
             state->mode = BAD;
@@ -1179,7 +1196,7 @@ int st_hcrc() {
 }
 
 int st_dictid() {
-    NEEDBITS(32);
+    NEEDBITS(ctx, 32);
     strm->adler = state->check = ZSWAP32(hold);
     INITBITS();
     state->mode = DICT;
@@ -1190,7 +1207,7 @@ int st_dictid() {
 
 int st_dict() {
     if (state->havedict == 0) {
-        RESTORE();
+        RESTORE(ctx);
         return Z_NEED_DICT;
     }
     strm->adler = state->check = adler32.adler32(0L, NULL, 0);
@@ -1200,13 +1217,11 @@ int st_dict() {
     return r;
 }
 
-int st_type() {
-    if (flush == Z_BLOCK || flush == Z_TREES) {
+int st_type(int flush) {
+    if (flush == stream.Z_BLOCK || flush == stream.Z_TREES) {
         return inf_leave();
     }
-    int r = st_typedo();
-    if (r == BREAK) break;
-    return r;
+    return st_typedo();
 }
 
 int st_typedo() {
@@ -1217,9 +1232,9 @@ int st_typedo() {
         state->mode = CHECK;
         break;
     }
-    NEEDBITS(3);
+    NEEDBITS(ctx, 3);
     state->last = BITS(1);
-    DROPBITS(1, &hold, &bits);
+    DROPBITS(1, ctx, &bits);
     switch (BITS(2)) {
         case 0: {                             /* stored block */
             if (state->last) {
@@ -1237,8 +1252,8 @@ int st_typedo() {
                 trace.Tracev(stderr, "inflate:     fixed codes block\n");
             }
             state->mode = LEN_;             /* decode codes */
-            if (flush == Z_TREES) {
-                DROPBITS(2, &hold, &bits);
+            if (flush == stream.Z_TREES) {
+                DROPBITS(2, ctx, &bits);
                 return inf_leave();
             }
         }
@@ -1255,25 +1270,25 @@ int st_typedo() {
             state->mode = BAD;
         }
     }
-    DROPBITS(2, &hold, &bits);
+    DROPBITS(2, ctx, &bits);
 }
 
-int st_stored() {
+int st_stored(ctx_t *ctx) {
     /* go to byte boundary */
     /* Remove zero to seven bits as needed to go to a byte boundary */
-    hold >>= bits & 7;
+    ctx->hold >>= bits & 7;
     bits -= bits & 7;
-    NEEDBITS(32);
-    if ((hold & 0xffff) != ((hold >> 16) ^ 0xffff)) {
-        strm->msg = (char *)"invalid stored block lengths";
+    NEEDBITS(ctx, 32);
+    if ((ctx->hold & 0xffff) != ((ctx->hold >> 16) ^ 0xffff)) {
+        strm->msg = "invalid stored block lengths";
         state->mode = BAD;
         break;
     }
-    state->length = (unsigned)hold & 0xffff;
+    state->length = (unsigned) ctx->hold & 0xffff;
     trace.Tracev(stderr, "inflate:       stored length %u\n", state->length);
     INITBITS();
     state->mode = COPY_;
-    if (flush == Z_TREES) {
+    if (flush == stream.Z_TREES) {
         return inf_leave();
     }
     state->mode = COPY;
@@ -1299,13 +1314,13 @@ int st_copy() {
 }
 
 int st_table() {
-    NEEDBITS(14);
+    NEEDBITS(ctx, 14);
     state->nlen = BITS(5) + 257;
-    DROPBITS(5, &hold, &bits);
+    DROPBITS(5, ctx, &bits);
     state->ndist = BITS(5) + 1;
-    DROPBITS(5, &hold, &bits);
+    DROPBITS(5, ctx, &bits);
     state->ncode = BITS(4) + 4;
-    DROPBITS(4, &hold, &bits);
+    DROPBITS(4, ctx, &bits);
     if (!PKZIP_BUG_WORKAROUND) {
         if (state->nlen > 286 || state->ndist > 30) {
             strm->msg = (char *)"too many length or distance symbols";
@@ -1321,9 +1336,9 @@ int st_table() {
 
 int st_lenlens() {
     while (state->have < state->ncode) {
-        NEEDBITS(3);
+        NEEDBITS(ctx, 3);
         state->lens[order[state->have++]] = (uint16_t)BITS(3);
-        DROPBITS(3, &hold, &bits);
+        DROPBITS(3, &ctx->hold, &bits);
     }
     while (state->have < 19)
         state->lens[order[state->have++]] = 0;
@@ -1351,43 +1366,44 @@ int st_codelens() {
             PULLBYTE();
         }
         if (here.val < 16) {
-            DROPBITS(here.bits, &hold, &bits);
+            DROPBITS(here.bits, &ctx->hold, &bits);
             state->lens[state->have++] = here.val;
         }
         else {
             if (here.val == 16) {
-                NEEDBITS(here.bits + 2);
-                DROPBITS(here.bits, &hold, &bits);
+                NEEDBITS(ctx, here.bits + 2);
+                DROPBITS(here.bits, &ctx->hold, &bits);
                 if (state->have == 0) {
-                    strm->msg = (char *)"invalid bit length repeat";
+                    strm->msg = "invalid bit length repeat";
                     state->mode = BAD;
                     break;
                 }
                 len = state->lens[state->have - 1];
                 copy = 3 + BITS(2);
-                DROPBITS(2, &hold, &bits);
+                DROPBITS(2, &ctx->hold, &bits);
             }
             else if (here.val == 17) {
-                NEEDBITS(here.bits + 3);
-                DROPBITS(here.bits, &hold, &bits);
+                NEEDBITS(ctx, here.bits + 3);
+                DROPBITS(here.bits, ctx, &bits);
                 len = 0;
                 copy = 3 + BITS(3);
-                DROPBITS(3, &hold, &bits);
+                DROPBITS(3, ctx, &bits);
             }
             else {
-                NEEDBITS(here.bits + 7);
-                DROPBITS(here.bits, &hold, &bits);
+                NEEDBITS(ctx, here.bits + 7);
+                DROPBITS(here.bits, ctx, &bits);
                 len = 0;
                 copy = 11 + BITS(7);
-                DROPBITS(7, &hold, &bits);
+                DROPBITS(7, ctx, &bits);
             }
             if (state->have + copy > state->nlen + state->ndist) {
-                strm->msg = (char *)"invalid bit length repeat";
+                strm->msg = "invalid bit length repeat";
                 state->mode = BAD;
                 break;
             }
-            while (copy--)
+            while (copy--) {
                 state->lens[state->have++] = (uint16_t)len;
+            }
         }
     }
 
@@ -1425,7 +1441,7 @@ int st_codelens() {
     }
     trace.Tracev(stderr, "inflate:       codes ok\n");
     state->mode = LEN_;
-    if (flush == Z_TREES) {
+    if (flush == stream.Z_TREES) {
         return inf_leave();
     }
     state->mode = LEN;
@@ -1434,7 +1450,7 @@ int st_codelens() {
 
 int st_len() {
     if (have >= 6 && left >= 258) {
-        RESTORE();
+        RESTORE(ctx);
         inflate_fast(strm, out);
         LOAD();
         if (state->mode == TYPE)
@@ -1455,10 +1471,10 @@ int st_len() {
             if ((unsigned)(last.bits + here.bits) <= bits) break;
             PULLBYTE();
         }
-        DROPBITS(last.bits, &hold, &bits);
+        DROPBITS(last.bits, ctx, &bits);
         state->back += last.bits;
     }
-    DROPBITS(here.bits, &hold, &bits);
+    DROPBITS(here.bits, ctx, &bits);
     state->back += here.bits;
     state->length = (unsigned)here.val;
     if ((int)(here.op) == 0) {
@@ -1488,9 +1504,9 @@ int st_len() {
 
 int st_lenext() {
     if (state->extra) {
-        NEEDBITS(state->extra);
+        NEEDBITS(ctx, state->extra);
         state->length += BITS(state->extra);
-        DROPBITS(state->extra, &hold, &bits);
+        DROPBITS(state->extra, ctx, &bits);
         state->back += state->extra;
     }
     Tracevv(stderr, "inflate:         length %u\n", state->length);
@@ -1512,10 +1528,10 @@ int st_dist() {
             if ((unsigned)(last.bits + here.bits) <= bits) break;
             PULLBYTE();
         }
-        DROPBITS(last.bits, &hold, &bits);
+        DROPBITS(last.bits, ctx, &bits);
         state->back += last.bits;
     }
-    DROPBITS(here.bits, &hold, &bits);
+    DROPBITS(here.bits, ctx, &bits);
     state->back += here.bits;
     if (here.op & 64) {
         strm->msg = "invalid distance code";
@@ -1530,9 +1546,9 @@ int st_dist() {
 
 int st_distext() {
     if (state->extra) {
-        NEEDBITS(state->extra);
+        NEEDBITS(ctx, state->extra);
         state->offset += BITS(state->extra);
-        DROPBITS(state->extra, &hold, &bits);
+        DROPBITS(state->extra, ctx, &bits);
         state->back += state->extra;
     }
     Tracevv(stderr, "inflate:         distance %u\n", state->offset);
@@ -1540,62 +1556,68 @@ int st_distext() {
     return st_match();
 }
 
-int st_match() {
-    if (left == 0) {
+int st_match(ctx_t *ctx) {
+    if (ctx->left == 0) {
         return inf_leave();
     }
-    copy = out - left;
-    if (state->offset > copy) {         /* copy from window */
-        copy = state->offset - copy;
-        if (copy > state->whave) {
+    ctx->copy = ctx->out - ctx->left;
+    if (state->offset > ctx->copy) {         /* copy from window */
+        ctx->copy = state->offset - ctx->copy;
+        if (ctx->copy > state->whave) {
             if (state->sane) {
                 strm->msg = "invalid distance too far back";
                 state->mode = BAD;
                 return BREAK;
             }
             Trace(stderr, "inflate.c too far\n");
-            copy -= state->whave;
-            if (copy > state->length) {
-                copy = state->length;
+            ctx->copy -= state->whave;
+            if (ctx->copy > state->length) {
+                ctx->copy = state->length;
             }
-            if (copy > left) {
-                copy = left;
+            if (ctx->copy > ctx->left) {
+                ctx->copy = ctx->left;
             }
-            left -= copy;
-            state->length -= copy;
+            ctx->left -= ctx->copy;
+            ctx->state->length -= ctx->copy;
             while (true) {
                 *put++ = 0;
-                if (!--copy) {
+                if (!--ctx->copy) {
                     break;
                 }
             }
-            if (state->length == 0) state->mode = LEN;
+            if (ctx->state->length == 0) {
+                ctx->state->mode = LEN;
+            }
             return BREAK;
         }
-        if (copy > state->wnext) {
-            copy -= state->wnext;
-            from = state->window + (state->wsize - copy);
+        if (ctx->copy > ctx->state->wnext) {
+            ctx->copy -= ctx->state->wnext;
+            ctx->from = ctx->state->window + (ctx->state->wsize - ctx->copy);
         }
         else {
-            from = state->window + (state->wnext - copy);
+            ctx->from = ctx->state->window + (ctx->state->wnext - ctx->copy);
         }
-        if (copy > state->length) {
-            copy = state->length;
+        if (ctx->copy > ctx->state->length) {
+            ctx->copy = ctx->state->length;
         }
     }
-    else {                              /* copy from output */
-        from = put - state->offset;
-        copy = state->length;
+    else {                              /* ctx->copy from output */
+        ctx->from = ctx->put - ctx->state->offset;
+        ctx->copy = ctx->state->length;
     }
-    if (copy > left) copy = left;
-    left -= copy;
-    state->length -= copy;
+    if (ctx->copy > ctx->left) {
+        ctx->copy = ctx->left;
+    }
+    ctx->left -= ctx->copy;
+    ctx->state->length -= ctx->copy;
     while (true) {
-        *put++ = *from++;
+        *ctx->put++ = *ctx->from++;
         bool cont = (--copy);
         if (!cont) break;
     }
-    if (state->length == 0) state->mode = LEN;
+    if (ctx->state->length == 0) {
+        ctx->state->mode = LEN;
+    }
 }
 
 int st_lit() {
@@ -1607,47 +1629,47 @@ int st_lit() {
     state->mode = LEN;
 }
 
-int st_check() {
-    if (state->wrap) {
-        NEEDBITS(32);
-        out -= left;
-        strm->total_out += out;
-        state->total += out;
-        if ((state->wrap & 4) && out) {
-            strm->adler = state->check = UPDATE_CHECK(state->check, put - out, out);
+int st_check(ctx_t *ctx) {
+    if (ctx->state->wrap) {
+        NEEDBITS(ctx, 32);
+        ctx->out -= ctx->left;
+        ctx->strm->total_out += ctx->out;
+        ctx->state->total += ctx->out;
+        if ((ctx->state->wrap & 4) && ctx->out) {
+            ctx->strm->adler = ctx->state->check = UPDATE_CHECK(ctx->state->check, ctx->put - ctx->out, ctx->out);
         }
-        out = left;
+        ctx->out = ctx->left;
         int x;
-        if (state->flags) {
-            x = hold;
+        if (ctx->state->flags) {
+            x = ctx->hold;
         } else {
-            x = ZSWAP32(hold);
+            x = ZSWAP32(ctx->hold);
         }
-        if ((state->wrap & 4) && x != state->check) {
-            strm->msg = "incorrect data check";
-            state->mode = BAD;
+        if ((ctx->state->wrap & 4) && x != ctx->state->check) {
+            ctx->strm->msg = "incorrect data check";
+            ctx->state->mode = BAD;
             return BREAK;
         }
         INITBITS();
         trace.Tracev(stderr, "inflate:   check matches trailer\n");
     }
-    state->mode = LENGTH;
-    return st_length();
+    ctx->state->mode = LENGTH;
+    return st_length(ctx);
 }
 
-int st_length() {
-    if (state->wrap && state->flags) {
-        NEEDBITS(32);
-        if ((state->wrap & 4) && hold != (state->total & 0xffffffff)) {
-            strm->msg = "incorrect length check";
-            state->mode = BAD;
+int st_length(ctx_t *ctx) {
+    if (ctx->state->wrap && ctx->state->flags) {
+        NEEDBITS(ctx, 32);
+        if ((ctx->state->wrap & 4) && ctx->hold != (ctx->state->total & 0xffffffff)) {
+            ctx->strm->msg = "incorrect length check";
+            ctx->state->mode = BAD;
             return BREAK;
         }
         INITBITS();
         trace.Tracev(stderr, "inflate:   length matches trailer\n");
     }
-    state->mode = DONE;
-    ret = Z_STREAM_END;
+    ctx->state->mode = DONE;
+    ctx->ret = stream.Z_STREAM_END;
     return inf_leave();
 }
 
@@ -1665,39 +1687,43 @@ int st_length() {
 //    output written.  If a return inf_leave() occurs in the middle of decompression
 //    and there is no window currently, return inf_leave() will create one and copy
 //    output to the window for the next call of inflate().
-int inf_leave() {
-    RESTORE();
-    if (state->wsize || (out != strm->avail_out && state->mode < BAD &&
-            (state->mode < CHECK || flush != Z_FINISH)))
-        if (updatewindow(strm, strm->next_out, out - strm->avail_out)) {
-            state->mode = MEM;
+int inf_leave(ctx_t *ctx, int flush) {
+    RESTORE(ctx);
+    if (ctx->state->wsize
+        || (ctx->out != ctx->strm->avail_out
+            && ctx->state->mode < BAD
+            && (ctx->state->mode < CHECK || flush != stream.Z_FINISH))
+    ) {
+        if (updatewindow(ctx->strm, ctx->strm->next_out, ctx->out - ctx->strm->avail_out)) {
+            ctx->state->mode = MEM;
             return stream.Z_MEM_ERROR;
         }
-    in -= strm->avail_in;
-    out -= strm->avail_out;
-    strm->total_in += in;
-    strm->total_out += out;
-    state->total += out;
-    if ((state->wrap & 4) && out) {
-        strm->adler = state->check = UPDATE_CHECK(state->check, strm->next_out - out, out);
+    }
+    ctx->in -= ctx->strm->avail_in;
+    ctx->out -= ctx->strm->avail_out;
+    ctx->strm->total_in += ctx->in;
+    ctx->strm->total_out += ctx->out;
+    ctx->state->total += ctx->out;
+    if ((ctx->state->wrap & 4) && ctx->out) {
+        ctx->strm->adler = ctx->state->check = UPDATE_CHECK(ctx->state->check, ctx->strm->next_out - ctx->out, ctx->out);
     }
     int x1 = 0;
-    if (state->last) {
+    if (ctx->state->last) {
         x1 = 64;
     }
     int x2 = 0;
-    if (state->mode == TYPE) {
+    if (ctx->state->mode == TYPE) {
         x2 = 128;
     }
     int x3 = 0;
-    if (state->mode == LEN_ || state->mode == COPY_) {
+    if (ctx->state->mode == LEN_ || ctx->state->mode == COPY_) {
         x3 = 256;
     }
-    strm->data_type = (int)state->bits + x1 + x2 + x3;
-    if (((in == 0 && out == 0) || flush == Z_FINISH) && ret == stream.Z_OK) {
-        ret = stream.Z_BUF_ERROR;
+    ctx->strm->data_type = (int)ctx->state->bits + x1 + x2 + x3;
+    if (((ctx->in == 0 && ctx->out == 0) || flush == stream.Z_FINISH) && ctx->ret == stream.Z_OK) {
+        ctx->ret = stream.Z_BUF_ERROR;
     }
-    return ret;
+    return ctx->ret;
 }
 
 /*
@@ -1814,7 +1840,7 @@ pub int inflateSetDictionary(
    As inflate() processes the gzip stream, head->done is zero until the header
    is completed, at which time head->done is set to one.  If a zlib stream is
    being decoded, then head->done is set to -1 to indicate that there will be
-   no gzip header information forthcoming.  Note that Z_BLOCK or Z_TREES can be
+   no gzip header information forthcoming.  Note that stream.Z_BLOCK or stream.Z_TREES can be
    used to force inflate() to return immediately after header processing is
    complete and before any actual data is decompressed.
 
@@ -2080,7 +2106,7 @@ pub int inflateValidate(stream.z_stream *strm, int check) {
    access, which may be at bit positions, and to note those cases where the
    output of a code may span boundaries of random access blocks.  The current
    location in the input stream can be determined from avail_in and data_type
-   as noted in the description for the Z_BLOCK flush parameter for inflate.
+   as noted in the description for the stream.Z_BLOCK flush parameter for inflate.
 
      inflateMark returns the value noted above, or -65536 if the provided
    source stream state was inconsistent.
