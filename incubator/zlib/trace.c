@@ -1,6 +1,16 @@
 int z_verbose = 0;
 
-#  define Trace(x) {if (z_verbose>=0) fprintf x ;}
+pub void Trace(FILE *f, const char *format, ...) {
+    if (z_verboze < 0) {
+        return;
+    }
+    fprintf(f, "[trace] ");
+    va_list l = {0};
+	va_start(l, format);
+	vfprintf(f, format, l);
+	va_end(l);
+    fprintf(f, "\n");
+}
 
 pub void Tracev(FILE *f, const char *format, ...) {
     if (z_verbose == 0) {
@@ -14,6 +24,17 @@ pub void Tracev(FILE *f, const char *format, ...) {
     fprintf(f, "\n");
 }
 
-#  define Tracevv(x) {if (z_verbose>1) fprintf x ;}
+pub void Tracevv(FILE *f, const char *format, ...) {
+    if (z_verbose <= 1) {
+        return;
+    }
+    fprintf(f, "[trace] ");
+    va_list l = {0};
+	va_start(l, format);
+	vfprintf(f, format, l);
+	va_end(l);
+    fprintf(f, "\n");
+}
+
 #  define Tracec(c,x) {if (z_verbose>0 && (c)) fprintf x ;}
 #  define Tracecv(c,x) {if (z_verbose>1 && (c)) fprintf x ;}

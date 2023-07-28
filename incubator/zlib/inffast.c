@@ -3,11 +3,6 @@
  * For conditions of distribution and use, see copyright notice in zlib.h
  */
 
-#include "zutil.h"
-#include "inftrees.h"
-#include "inflate.h"
-#include "inffast.h"
-
 #ifdef ASMINF
 #  pragma message("Assembler code may have bugs -- use at your own risk")
 #else
@@ -47,10 +42,8 @@
       requires strm->avail_out >= 258 for each loop to avoid checking for
       output space.
  */
-void ZLIB_INTERNAL inflate_fast(strm, start)
-z_stream *strm;
-unsigned start;         /* inflate()'s starting value for strm->avail_out */
-{
+void ZLIB_INTERNAL inflate_fast(z_stream *strm, unsigned start) {
+    /* start is inflate()'s starting value for strm->avail_out */
     struct inflate_state FAR *state;
     const unsigned char FAR *in;      /* local strm->next_in */
     const unsigned char FAR *last;    /* have enough input while in < last */

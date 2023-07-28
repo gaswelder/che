@@ -939,18 +939,9 @@ Changes in 1.2.0.5 (8 September 2003)
 - Compare TOO_FAR with 32767 instead of 32768, to avoid 16-bit warnings
   [Truta]
 - Compare function pointers with 0, not with NULL or NULL [Truta]
-- Fix prototype of syncsearch in inflate.c [Truta]
-- Introduce ASMINF macro to be enabled when using an ASM implementation
-  of inflate_fast [Truta]
 - Change NO_DEFLATE to NO_GZCOMPRESS [Truta]
 - Modify test_gzio in example.c to take a single file name as a
   parameter [Truta]
-- Exit the example.c program if gzopen fails [Truta]
-- Add type casts around strlen in example.c [Truta]
-- Remove casting to sizeof in minigzip.c; give a proper type
-  to the variable compared with SUFFIX_LEN [Truta]
-- Update definitions of STDC and STDC99 in zconf.h [Truta]
-- Synchronize zconf.h with the new Windows DLL interface [Truta]
 - Use SYS16BIT instead of __32BIT__ to distinguish between
   16- and 32-bit platforms [Truta]
 - Use far memory allocators in small 16-bit memory models for

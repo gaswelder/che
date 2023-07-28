@@ -90,8 +90,4 @@ extern const char * const z_errmsg[10]; /* indexed by 2-zlib_error */
 
 #define TRY_FREE(s, p) {if (p) ZFREE(s, p);}
 
-/* Reverse the bytes in a 32-bit value */
-#define ZSWAP32(q) ((((q) >> 24) & 0xff) + (((q) >> 8) & 0xff00) + \
-                    (((q) & 0xff00) << 8) + (((q) & 0xff) << 24))
-
 #endif /* ZUTIL_H */

@@ -33,7 +33,7 @@ Before calling deflate or inflate, make sure that avail_in and avail_out are not
     heavily annotated example.
 
 
-    
+
 The "deflation" depends on identifying portions of the input text which are
 identical to earlier input (within a sliding window).
 
@@ -335,7 +335,7 @@ The compression level must be Z_DEFAULT_COMPRESSION, or between 0 and 9:
    equivalent to level 6).
 
      deflateInit returns Z_OK if success, Z_MEM_ERROR if there was not enough
-   memory, Z_STREAM_ERROR if level is not a valid compression level, or
+   memory, stream.Z_STREAM_ERROR if level is not a valid compression level, or
    Z_VERSION_ERROR if the zlib library version (zlib_version) is incompatible
    with the version assumed by the caller (ZLIB_VERSION).  msg is set to null
    if there is no error message.  deflateInit does not perform any compression:
@@ -425,7 +425,7 @@ pub int deflateInit2 OF((stream.z_stream *strm,
    decoder for special applications.
 
      deflateInit2 returns Z_OK if success, Z_MEM_ERROR if there was not enough
-   memory, Z_STREAM_ERROR if any parameter is invalid (such as an invalid
+   memory, stream.Z_STREAM_ERROR if any parameter is invalid (such as an invalid
    method), or Z_VERSION_ERROR if the zlib library version (zlib_version) is
    incompatible with the version assumed by the caller (ZLIB_VERSION).  msg is
    set to null if there is no error message.  deflateInit2 does not perform any
@@ -448,7 +448,7 @@ pub int deflateInit2_(
         stream_size != sizeof(stream.z_stream)) {
         return Z_VERSION_ERROR;
     }
-    if (strm == NULL) return Z_STREAM_ERROR;
+    if (strm == NULL) return stream.Z_STREAM_ERROR;
 
     strm->msg = NULL;
     if (strm->zalloc == NULL) {
@@ -463,7 +463,7 @@ pub int deflateInit2_(
     if (windowBits < 0) { /* suppress zlib wrapper */
         wrap = 0;
         if (windowBits < -15)
-            return Z_STREAM_ERROR;
+            return stream.Z_STREAM_ERROR;
         windowBits = -windowBits;
     }
     else if (windowBits > 15) {
@@ -473,7 +473,7 @@ pub int deflateInit2_(
     if (memLevel < 1 || memLevel > MAX_MEM_LEVEL || method != Z_DEFLATED ||
         windowBits < 8 || windowBits > 15 || level < 0 || level > 9 ||
         strategy < 0 || strategy > Z_FIXED || (windowBits == 8 && wrap != 1)) {
-        return Z_STREAM_ERROR;
+        return stream.Z_STREAM_ERROR;
     }
     if (windowBits == 8) windowBits = 9;  /* until 256-byte window bug fixed */
     s = ZALLOC(strm, 1, sizeof(stream.deflate_state));
@@ -618,7 +618,7 @@ int deflateStateCheck(stream.z_stream *strm) {
    actually used by the compressor.) If a raw deflate was requested, then the
    Adler-32 value is not computed and strm->adler is not set.
 
-     deflateSetDictionary returns Z_OK if success, or Z_STREAM_ERROR if a
+     deflateSetDictionary returns Z_OK if success, or stream.Z_STREAM_ERROR if a
    parameter is invalid (e.g.  dictionary being NULL) or the stream state is
    inconsistent (for example if deflate has already been called for this stream
    or if not at a block boundary for raw deflate).  deflateSetDictionary does
@@ -637,11 +637,11 @@ pub int deflateSetDictionary(
     const uint8_t *next;
 
     if (deflateStateCheck(strm) || dictionary == NULL)
-        return Z_STREAM_ERROR;
+        return stream.Z_STREAM_ERROR;
     s = strm->state;
     wrap = s->wrap;
     if (wrap == 2 || (wrap == 1 && s->status != INIT_STATE) || s->lookahead)
-        return Z_STREAM_ERROR;
+        return stream.Z_STREAM_ERROR;
 
     /* when using zlib wrappers, compute Adler-32 for provided dictionary */
     if (wrap == 1)
@@ -709,7 +709,7 @@ pub int deflateSetDictionary(
    up to 258 bytes long. If the application needs the last window-size bytes of
    input, then that would need to be saved by the application outside of zlib.
 
-     deflateGetDictionary returns Z_OK on success, or Z_STREAM_ERROR if the
+     deflateGetDictionary returns Z_OK on success, or stream.Z_STREAM_ERROR if the
    stream state is inconsistent.
 */
 pub int deflateGetDictionary(
@@ -721,7 +721,7 @@ pub int deflateGetDictionary(
     uint32_t len;
 
     if (deflateStateCheck(strm))
-        return Z_STREAM_ERROR;
+        return stream.Z_STREAM_ERROR;
     s = strm->state;
     len = s->strstart + s->lookahead;
     if (len > s->w_size)
@@ -738,7 +738,7 @@ pub int deflateResetKeep(stream.z_stream *strm) {
     stream.deflate_state *s;
 
     if (deflateStateCheck(strm)) {
-        return Z_STREAM_ERROR;
+        return stream.Z_STREAM_ERROR;
     }
 
     strm->total_in = strm->total_out = 0;
@@ -772,7 +772,7 @@ pub int deflateResetKeep(stream.z_stream *strm) {
    will leave the compression level and any other attributes that may have been
    set unchanged.
 
-     deflateReset returns Z_OK if success, or Z_STREAM_ERROR if the source
+     deflateReset returns Z_OK if success, or stream.Z_STREAM_ERROR if the source
    stream state was inconsistent (such as zalloc or state being NULL).
 */
 pub int deflateReset(stream.z_stream *strm) {
@@ -801,12 +801,12 @@ pub int deflateReset(stream.z_stream *strm) {
    the time set to zero, and os set to 255, with no extra, name, or comment
    fields.  The gzip header is returned to the default state by deflateReset().
 
-     deflateSetHeader returns Z_OK if success, or Z_STREAM_ERROR if the source
+     deflateSetHeader returns Z_OK if success, or stream.Z_STREAM_ERROR if the source
    stream state was inconsistent.
 */
 pub int deflateSetHeader(stream.z_stream *strm, stream.gz_header *head) {
     if (deflateStateCheck(strm) || strm->state->wrap != 2) {
-        return Z_STREAM_ERROR;
+        return stream.Z_STREAM_ERROR;
     }
     strm->state->gzhead = head;
     return Z_OK;
@@ -820,11 +820,11 @@ pub int deflateSetHeader(stream.z_stream *strm, stream.gz_header *head) {
    await more bits to join them in order to fill out a full byte.  If pending
    or bits are NULL, then those values are not set.
 
-     deflatePending returns Z_OK if success, or Z_STREAM_ERROR if the source
+     deflatePending returns Z_OK if success, or stream.Z_STREAM_ERROR if the source
    stream state was inconsistent.
  */
 pub int deflatePending(stream.z_stream *strm, unsigned *pending, int *bits) {
-    if (deflateStateCheck(strm)) return Z_STREAM_ERROR;
+    if (deflateStateCheck(strm)) return stream.Z_STREAM_ERROR;
     if (pending != NULL) {
         *pending = strm->state->pending;
     }
@@ -844,11 +844,11 @@ pub int deflatePending(stream.z_stream *strm, unsigned *pending, int *bits) {
    will be inserted in the output.
 
      deflatePrime returns Z_OK if success, Z_BUF_ERROR if there was not enough
-   room in the internal buffer to insert the bits, or Z_STREAM_ERROR if the
+   room in the internal buffer to insert the bits, or stream.Z_STREAM_ERROR if the
    source stream state was inconsistent.
 */
 pub int deflatePrime(stream.z_stream *strm, int bits, int value) {
-    if (deflateStateCheck(strm)) return Z_STREAM_ERROR;
+    if (deflateStateCheck(strm)) return stream.Z_STREAM_ERROR;
     stream.deflate_state *s = strm->state;
     int put;
     if (bits < 0 || bits > 16
@@ -897,7 +897,7 @@ pub int deflatePrime(stream.z_stream *strm, int bits, int value) {
    compressed before deflateParams(), and the new level and strategy will be
    applied to the the data compressed after deflateParams().
 
-     deflateParams returns Z_OK on success, Z_STREAM_ERROR if the source stream
+     deflateParams returns Z_OK on success, stream.Z_STREAM_ERROR if the source stream
    state was inconsistent or if a parameter was invalid, or Z_BUF_ERROR if
    there was not enough output space to complete the compression of the
    available input data before a change in the strategy or approach.  Note that
@@ -913,12 +913,12 @@ pub int deflateParams(
     stream.deflate_state *s;
     compress_func func;
 
-    if (deflateStateCheck(strm)) return Z_STREAM_ERROR;
+    if (deflateStateCheck(strm)) return stream.Z_STREAM_ERROR;
     s = strm->state;
 
     if (level == Z_DEFAULT_COMPRESSION) level = 6;
     if (level < 0 || level > 9 || strategy < 0 || strategy > Z_FIXED) {
-        return Z_STREAM_ERROR;
+        return stream.Z_STREAM_ERROR;
     }
     func = configuration_table[s->level].func;
 
@@ -926,7 +926,7 @@ pub int deflateParams(
         s->last_flush != -2) {
         /* Flush the last buffer: */
         int err = deflate(strm, Z_BLOCK);
-        if (err == Z_STREAM_ERROR)
+        if (err == stream.Z_STREAM_ERROR)
             return err;
         if (strm->avail_in || (s->strstart - s->block_start) + s->lookahead)
             return Z_BUF_ERROR;
@@ -958,7 +958,7 @@ pub int deflateParams(
    max_lazy, good_length, nice_length, and max_chain parameters.
 
      deflateTune() can be called after deflateInit() or deflateInit2(), and
-   returns Z_OK on success, or Z_STREAM_ERROR for an invalid deflate stream.
+   returns Z_OK on success, or stream.Z_STREAM_ERROR for an invalid deflate stream.
  */
 pub int deflateTune(
     stream.z_stream *strm,
@@ -968,7 +968,7 @@ pub int deflateTune(
     int max_chain
 ) {
     stream.deflate_state *s;
-    if (deflateStateCheck(strm)) return Z_STREAM_ERROR;
+    if (deflateStateCheck(strm)) return stream.Z_STREAM_ERROR;
     s = strm->state;
     s->good_match = (uint32_t)good_length;
     s->max_lazy_match = (uint32_t)max_lazy;
@@ -1243,7 +1243,7 @@ deflate performs one or both of the following actions:
     deflate() returns Z_OK if some progress has been made (more input
   processed or more output produced), Z_STREAM_END if all input has been
   consumed and all output has been produced (only when flush is set to
-  Z_FINISH), Z_STREAM_ERROR if the stream state was inconsistent (for example
+  Z_FINISH), stream.Z_STREAM_ERROR if the stream state was inconsistent (for example
   if next_in or next_out was NULL or the state was inadvertently written over
   by the application), or Z_BUF_ERROR if no progress is possible (for example
   avail_in or avail_out was zero).  Note that Z_BUF_ERROR is not fatal, and
@@ -1252,7 +1252,7 @@ deflate performs one or both of the following actions:
 */
 pub int deflate(stream.z_stream *strm, int flush) {
     if (deflateStateCheck(strm) || flush > Z_BLOCK || flush < 0) {
-        return Z_STREAM_ERROR;
+        return stream.Z_STREAM_ERROR;
     }
 
     stream.deflate_state *s = strm->state;
@@ -1260,7 +1260,7 @@ pub int deflate(stream.z_stream *strm, int flush) {
     if (strm->next_out == NULL ||
         (strm->avail_in != 0 && strm->next_in == NULL) ||
         (s->status == FINISH_STATE && flush != Z_FINISH)) {
-        ERR_RETURN(strm, Z_STREAM_ERROR);
+        ERR_RETURN(strm, stream.Z_STREAM_ERROR);
     }
     if (strm->avail_out == 0) {
         ERR_RETURN(strm, Z_BUF_ERROR);
@@ -1577,13 +1577,13 @@ int get_dunno_what(stream.deflate_state *s) {
  * Frees all dynamically allocated data structures for this stream.
  * Discards any unprocessed input and does not flush any pending output.
  * Returns Z_OK if success,
- * Z_STREAM_ERROR if the stream state was inconsistent,
+ * stream.Z_STREAM_ERROR if the stream state was inconsistent,
  * Z_DATA_ERROR if the stream was freed prematurely (some input or output was discarded).
  * In the error case, msg may be set to a static string (which must not be deallocated).
  */
 pub int deflateEnd(stream.z_stream *strm) {
     if (deflateStateCheck(strm)) {
-        return Z_STREAM_ERROR;
+        return stream.Z_STREAM_ERROR;
     }
     int status = strm->state->status;
 
@@ -1613,7 +1613,7 @@ pub int deflateEnd(stream.z_stream *strm) {
    consume lots of memory.
 
      deflateCopy returns Z_OK if success, Z_MEM_ERROR if there was not
-   enough memory, Z_STREAM_ERROR if the source stream state was inconsistent
+   enough memory, stream.Z_STREAM_ERROR if the source stream state was inconsistent
    (such as zalloc being NULL).  msg is left unchanged in both source and
    destination.
 */
@@ -1628,7 +1628,7 @@ pub int deflateCopy(stream.z_stream * dest, source) {
 
 
     if (deflateStateCheck(source) || dest == NULL) {
-        return Z_STREAM_ERROR;
+        return stream.Z_STREAM_ERROR;
     }
 
     ss = source->state;
