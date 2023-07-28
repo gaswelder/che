@@ -3,34 +3,18 @@
  * For conditions of distribution and use, see copyright notice in zlib.h
  */
 
-/* @(#) $Id$ */
-
-#include "zutil.h"
-#  include "gzguts.h"
-
-const char * const z_errmsg[10] = {
-    (const char *)"need dictionary",     /* Z_NEED_DICT       2  */
-    (const char *)"stream end",          /* Z_STREAM_END      1  */
-    (const char *)"",                    /* Z_OK              0  */
-    (const char *)"file error",          /* Z_ERRNO         (-1) */
-    (const char *)"stream error",        /* Z_STREAM_ERROR  (-2) */
-    (const char *)"data error",          /* Z_DATA_ERROR    (-3) */
-    (const char *)"insufficient memory", /* Z_MEM_ERROR     (-4) */
-    (const char *)"buffer error",        /* Z_BUF_ERROR     (-5) */
-    (const char *)"incompatible version",/* Z_VERSION_ERROR (-6) */
-    (const char *)""
+char *z_errmsg[10] = {
+    "need dictionary",     /* Z_NEED_DICT       2  */
+    "stream end",          /* Z_STREAM_END      1  */
+    "",                    /* Z_OK              0  */
+    "file error",          /* Z_ERRNO         (-1) */
+    "stream error",        /* Z_STREAM_ERROR  (-2) */
+    "data error",          /* Z_DATA_ERROR    (-3) */
+    "insufficient memory", /* Z_MEM_ERROR     (-4) */
+    "buffer error",        /* Z_BUF_ERROR     (-5) */
+    "incompatible version",/* Z_VERSION_ERROR (-6) */
+    ""
 };
-
-
-/* The application can compare zlibVersion and ZLIB_VERSION for consistency.
-   If the first character differs, the library code actually used is not
-   compatible with the zlib.h header file used by the application.  This check
-   is automatically made by deflateInit and inflateInit.
- */
-pub const char * zlibVersion()
-{
-    return ZLIB_VERSION;
-}
 
 
 /* Return flags indicating compile-time options.
@@ -131,11 +115,6 @@ if (PKZIP_BUG_WORKAROUND) {
     return flags;
 }
 
-void ZLIB_INTERNAL z_error(char *m) {
-    fprintf(stderr, "%s\n", m);
-    exit(1);
-}
-
 /* exported to allow conversion of error code to string for compress() and
  * uncompress()
  */
@@ -160,23 +139,7 @@ pub const char * zError(err)
 #ifndef MY_ZCALLOC /* Any system without a special alloc function */
 
 
-voidpf ZLIB_INTERNAL zcalloc(opaque, items, size)
-    voidpf opaque;
-    unsigned items;
-    unsigned size;
-{
-    (void)opaque;
-    return sizeof(uInt) > 2 ? (voidpf)malloc(items * size) :
-                              (voidpf)calloc(items, size);
-}
 
-void ZLIB_INTERNAL zcfree(opaque, ptr)
-    voidpf opaque;
-    voidpf ptr;
-{
-    (void)opaque;
-    free(ptr);
-}
 
 #endif /* MY_ZCALLOC */
 

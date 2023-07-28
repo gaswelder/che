@@ -25,7 +25,7 @@ pub enum {
     Z_STREAM_ERROR  = -2,
     Z_DATA_ERROR    = -3,
     Z_MEM_ERROR     = -4,
-    Z_BUF_ERROR     = -5,
+    Z_BUF_ERROR     = -5, // Note that Z_BUF_ERROR is not fatal
     Z_VERSION_ERROR = -6,
 };
 
@@ -37,6 +37,8 @@ pub enum {
   Z_UNKNOWN  = 2,
 };
 
+#define MAX_BITS 15
+/* All codes must not exceed MAX_BITS bits */
 
 /*
      gzip header information passed to and from zlib routines.  See RFC 1952
@@ -58,6 +60,17 @@ pub typedef {
     int     done;       /* true when done reading gzip header (not used
                            when writing a gzip file) */
 } gz_header;
+
+pub typedef {
+    ct_data *dyn_tree;           /* the dynamic tree */
+    int     max_code;            /* largest code with non zero frequency */
+    const static_tree_desc *stat_desc;  /* the corresponding static tree */
+} tree_desc;
+
+/* number of distance codes */
+#define D_CODES   30
+#define HEAP_SIZE (2*L_CODES+1)
+/* maximum heap size */
 
 pub typedef {
     z_stream *strm;      /* pointer back to this zlib stream */

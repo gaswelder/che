@@ -3,21 +3,9 @@
  * For conditions of distribution and use, see copyright notice in zlib.h
  */
 
-/* to use, do: ./configure --cover && make cover */
-
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <assert.h>
-#include "zlib.h"
-
 /* get definition of internal structure so we can mess with it (see pull()),
    and so we can call inflate_trees() (see cover5()) */
 #define ZLIB_INTERNAL
-#include "inftrees.h"
-#include "inflate.h"
-
-#define local static
 
 /* -- memory tracking routines -- */
 
@@ -68,7 +56,7 @@ struct mem_zone {
 };
 
 /* memory allocation routine to pass to zlib */
-local void *mem_alloc(void *mem, unsigned count, unsigned size)
+void *mem_alloc(void *mem, unsigned count, unsigned size)
 {
     void *ptr;
     struct mem_item *item;
@@ -109,7 +97,7 @@ local void *mem_alloc(void *mem, unsigned count, unsigned size)
 }
 
 /* memory free routine to pass to zlib */
-local void mem_free(void *mem, void *ptr)
+void mem_free(void *mem, void *ptr)
 {
     struct mem_item *item, *next;
     struct mem_zone *zone = mem;
@@ -155,7 +143,7 @@ local void mem_free(void *mem, void *ptr)
 
 /* set up a controlled memory allocation space for monitoring, set the stream
    parameters to the controlled routines, with opaque pointing to the space */
-local void mem_setup(z_stream *strm)
+void mem_setup(z_stream *strm)
 {
     struct mem_zone *zone;
 
@@ -173,7 +161,7 @@ local void mem_setup(z_stream *strm)
 }
 
 /* set a limit on the total memory allocation, or 0 to remove the limit */
-local void mem_limit(z_stream *strm, size_t limit)
+void mem_limit(z_stream *strm, size_t limit)
 {
     struct mem_zone *zone = strm->opaque;
 
@@ -181,7 +169,7 @@ local void mem_limit(z_stream *strm, size_t limit)
 }
 
 /* show the current total requested allocations in bytes */
-local void mem_used(z_stream *strm, char *prefix)
+void mem_used(z_stream *strm, char *prefix)
 {
     struct mem_zone *zone = strm->opaque;
 
@@ -189,7 +177,7 @@ local void mem_used(z_stream *strm, char *prefix)
 }
 
 /* show the high water allocation in bytes */
-local void mem_high(z_stream *strm, char *prefix)
+void mem_high(z_stream *strm, char *prefix)
 {
     struct mem_zone *zone = strm->opaque;
 
@@ -197,7 +185,7 @@ local void mem_high(z_stream *strm, char *prefix)
 }
 
 /* release the memory allocation zone -- if there are any surprises, notify */
-local void mem_done(z_stream *strm, char *prefix)
+void mem_done(z_stream *strm, char *prefix)
 {
     int count = 0;
     struct mem_item *item, *next;
@@ -242,7 +230,7 @@ local void mem_done(z_stream *strm, char *prefix)
    by a delimiter, where that single digit writes a byte.  The returned data is
    allocated and must eventually be freed.  NULL is returned if out of memory.
    If the length is not needed, then len can be NULL. */
-local unsigned char *h2b(const char *hex, unsigned *len)
+unsigned char *h2b(const char *hex, unsigned *len)
 {
     unsigned char *in, *re;
     unsigned next, val;
@@ -281,7 +269,7 @@ local unsigned char *h2b(const char *hex, unsigned *len)
    header information is collected with inflateGetHeader().  If a zlib stream
    is looking for a dictionary, then an empty dictionary is provided.
    inflate() is run until all of the input data is consumed. */
-local void inf(char *hex, char *what, unsigned step, int win, unsigned len,
+void inf(char *hex, char *what, unsigned step, int win, unsigned len,
                int err)
 {
     int ret;
@@ -347,7 +335,7 @@ local void inf(char *hex, char *what, unsigned step, int win, unsigned len,
 }
 
 /* cover all of the lines in inflate.c up to inflate() */
-local void cover_support(void)
+void cover_support(void)
 {
     int ret;
     z_stream strm;
@@ -385,7 +373,7 @@ local void cover_support(void)
 }
 
 /* cover all inflate() header and trailer cases and code after inflate() */
-local void cover_wrap(void)
+void cover_wrap(void)
 {
     int ret;
     z_stream strm, copy;
@@ -444,7 +432,7 @@ local void cover_wrap(void)
 }
 
 /* input and output functions for inflateBack() */
-local unsigned pull(void *desc, unsigned char **buf)
+unsigned pull(void *desc, unsigned char **buf)
 {
     static unsigned int next = 0;
     static unsigned char dat[] = {0x63, 0, 2, 0};
@@ -460,14 +448,14 @@ local unsigned pull(void *desc, unsigned char **buf)
     return next < sizeof(dat) ? (*buf = dat + next++, 1) : 0;
 }
 
-local int push(void *desc, unsigned char *buf, unsigned len)
+int push(void *desc, unsigned char *buf, unsigned len)
 {
     buf += len;
     return desc != NULL;      /* force error if desc not null */
 }
 
 /* cover inflateBack() up to common deflate data cases and after those */
-local void cover_back(void)
+void cover_back(void)
 {
     int ret;
     z_stream strm;
@@ -504,7 +492,7 @@ local void cover_back(void)
 }
 
 /* do a raw inflate of data in hexadecimal with both inflate and inflateBack */
-local int try(char *hex, char *id, int err)
+int try(char *hex, char *id, int err)
 {
     int ret;
     unsigned len, size;
@@ -578,7 +566,7 @@ local int try(char *hex, char *id, int err)
 }
 
 /* cover deflate data cases in both inflate() and inflateBack() */
-local void cover_inflate(void)
+void cover_inflate(void)
 {
     try("0 0 0 0 0", "invalid stored block lengths", 1);
     try("3 0", "fixed", 0);
@@ -614,7 +602,7 @@ local void cover_inflate(void)
 }
 
 /* cover remaining lines in inftrees.c */
-local void cover_trees(void)
+void cover_trees(void)
 {
     int ret;
     unsigned bits;
@@ -638,7 +626,7 @@ local void cover_trees(void)
 }
 
 /* cover remaining inffast.c decoding and window copying */
-local void cover_fast(void)
+void cover_fast(void)
 {
     inf("e5 e0 81 ad 6d cb b2 2c c9 01 1e 59 63 ae 7d ee fb 4d fd b5 35 41 68"
         " ff 7f 0f 0 0 0", "fast length extra bits", 0, -8, 258, Z_DATA_ERROR);

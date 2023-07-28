@@ -41,6 +41,15 @@ The deflate format was defined by Phil Katz.
 To understand the deflate format read RFC 1951.
 Also check contrib/puff directory.
 
+Deutsch, L.P.,"DEFLATE Compressed Data Format Specification".
+Available in http://tools.ietf.org/html/rfc1951
+
+A description of the Rabin and Karp algorithm is given in the book
+"Algorithms" by R. Sedgewick, Addison-Wesley, p252.
+
+Fiala,E.R., and Greene,D.H.
+Data Compression with Finite Windows, Comm.ACM, 32,4 (1989) 490-595
+
 inflate() and deflate() will process any amount of data correctly.
 Each call of inflate() or deflate() is limited to input and output chunks
 of the maximum value that can be stored in the compiler's "unsigned int"

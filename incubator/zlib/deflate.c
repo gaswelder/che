@@ -1,32 +1,18 @@
 /* deflate.c -- compress data using the deflation algorithm
  * Copyright (C) 1995-2022 Jean-loup Gailly and Mark Adler
  * For conditions of distribution and use, see copyright notice in zlib.h
+ *
+ * The idea of lazy evaluation of matches is due to Jan-Mark Wams, and I found it in 'freeze' written by Leonid Broukhis.
 
-ACKNOWLEDGEMENTS
-
-    The idea of lazy evaluation of matches is due to Jan-Mark Wams, and
-    I found it in 'freeze' written by Leonid Broukhis.
-    Thanks to many people for bug reports and testing.
-
-REFERENCES
-
-    Deutsch, L.P.,"DEFLATE Compressed Data Format Specification".
-    Available in http://tools.ietf.org/html/rfc1951
-
-    A description of the Rabin and Karp algorithm is given in the book
-       "Algorithms" by R. Sedgewick, Addison-Wesley, p252.
-
-    Fiala,E.R., and Greene,D.H.
-       Data Compression with Finite Windows, Comm.ACM, 32,4 (1989) 490-595
  */
 
 
 /*
 Before calling deflate or inflate, make sure that avail_in and avail_out are not zero.
-    When setting the parameter flush equal to Z_FINISH, also make sure that
+    When setting the parameter flush equal to stream.Z_FINISH, also make sure that
     avail_out is big enough to allow processing all pending input.  Note that a
-    Z_BUF_ERROR is not fatal--another call to deflate() or inflate() can be
-    made with more input or output space.  A Z_BUF_ERROR may in fact be
+    stream.Z_BUF_ERROR is not fatal--another call to deflate() or inflate() can be
+    made with more input or output space.  A stream.Z_BUF_ERROR may in fact be
     unavoidable depending on how the functions are used, since it is not
     possible to tell whether or not there is more output pending when
     strm.avail_out returns with zero.  See http://zlib.net/zlib_how.html for a
@@ -60,37 +46,39 @@ So it is preferable to spend more time in matches to allow very fast string
   */
 
 #import stream.c
+#import trace.c
+#import crc32
+#import adler32
+#import assert.c
+#import zmalloc.c
 
+/* compression strategy; see deflateInit2() below for details */
+pub enum {
+  Z_FILTERED            = 1,
+  Z_HUFFMAN_ONLY        = 2,
+  Z_RLE                 = 3,
+  Z_FIXED               = 4,
+  Z_DEFAULT_STRATEGY    = 0,
+};
+
+#define ZLIB_VERSION "foo.bar"
+
+#define PRESET_DICT 0x20 /* preset dictionary flag in zlib header */
 
 void *ZALLOC(stream.z_stream *strm, size_t items, size) {
     return (*((strm)->zalloc))((strm)->opaque, items, size);
 }
 
-#ifndef DEFLATE_H
-#define DEFLATE_H
 
 #  define GZIP
 
-#define LENGTH_CODES 29
-/* number of length codes, not counting the special END_BLOCK code */
+/* The minimum and maximum match lengths */
+#define MIN_MATCH  3
+#define MAX_MATCH  258
 
-#define LITERALS  256
-/* number of literal bytes 0..255 */
-
-#define L_CODES (LITERALS+1+LENGTH_CODES)
-/* number of Literal or Length codes, including the END_BLOCK code */
-
-#define D_CODES   30
-/* number of distance codes */
 
 #define BL_CODES  19
 /* number of codes used to transfer the bit lengths */
-
-#define HEAP_SIZE (2*L_CODES+1)
-/* maximum heap size */
-
-#define MAX_BITS 15
-/* All codes must not exceed MAX_BITS bits */
 
 #define Buf_size 16
 /* size of bit buffer in bi_buf */
@@ -118,17 +106,6 @@ typedef {
     } dl;
 } ct_data;
 
-#define Freq fc.freq
-#define Code fc.code
-#define Dad  dl.dad
-#define Len  dl.len
-
-typedef {
-    ct_data *dyn_tree;           /* the dynamic tree */
-    int     max_code;            /* largest code with non zero frequency */
-    const static_tree_desc *stat_desc;  /* the corresponding static tree */
-} tree_desc;
-
 typedef uint16_t Pos;
 typedef unsigned IPos;
 /* A Pos is an index in the character window. We use short instead of int to
@@ -139,7 +116,9 @@ typedef unsigned IPos;
 /* Output a byte on the stream.
  * IN assertion: there is enough room in pending_buf.
  */
-#define put_byte(s, c) {s->pending_buf[s->pending++] = (uint8_t)(c);}
+void put_byte(stream.deflate_state *s, uint8_t c) {
+    s->pending_buf[s->pending++] = c;
+}
 
 
 #define MIN_LOOKAHEAD (MAX_MATCH+MIN_MATCH+1)
@@ -147,27 +126,19 @@ typedef unsigned IPos;
  * See deflate.c for comments about the MIN_MATCH+1.
  */
 
-#define MAX_DIST(s)  ((s)->w_size-MIN_LOOKAHEAD)
+
 /* In order to simplify the code, particularly on 16 bit machines, match
  * distances are limited to MAX_DIST instead of WSIZE.
  */
+int MAX_DIST(stream.deflate_state *s)  {
+    return s->w_size - MIN_LOOKAHEAD;
+}
 
 #define WIN_INIT MAX_MATCH
 /* Number of bytes after end of data in window to initialize in order to avoid
    memory checker errors from longest match routines */
 
 
-int d_code(int dist) {
-    if (dist < 256) {
-        return _dist_code[dist];
-    } else {
-        return _dist_code[256+((dist)>>7)];
-    }
-}
-/* Mapping from a distance to a distance code. dist is the distance - 1 and
- * must not have side effects. _dist_code[256] and _dist_code[257] are never
- * used.
- */
 
 void _tr_tally_lit(stream.deflate_state *s, uint8_t c, bool *flush) {
     *flush = _tr_tally(s, 0, c);
@@ -175,8 +146,6 @@ void _tr_tally_lit(stream.deflate_state *s, uint8_t c, bool *flush) {
 void _tr_tally_dist(stream.deflate_state *s, uint16_t distance, uint8_t length, bool *flush) {
     *flush = _tr_tally(s, distance, length);
 }
-
-#endif /* DEFLATE_H */
 
 
 const char deflate_copyright[] =
@@ -235,7 +204,7 @@ const config configuration_table[10] = {
  * meaning.
  */
 
-/* rank Z_BLOCK between Z_NO_FLUSH and Z_PARTIAL_FLUSH */
+/* rank stream.Z_BLOCK between stream.Z_NO_FLUSH and Z_PARTIAL_FLUSH */
 int RANK(int f) {
     if (f > 4) {
         return f * 2 - 9;
@@ -250,7 +219,9 @@ int RANK(int f) {
  *    characters, so that a running hash key can be computed from the previous
  *    key instead of complete recalculation each time.
  */
-#define UPDATE_HASH(s,h,c) (h = (((h) << s->hash_shift) ^ (c)) & s->hash_mask)
+void UPDATE_HASH(stream.deflate_state *s, uint32_t c) {
+    s->ins_h = ((s->ins_h << s->hash_shift) ^ (c)) & s->hash_mask;
+}
 
 
 /* ===========================================================================
@@ -264,10 +235,16 @@ int RANK(int f) {
  *    the last MIN_MATCH-1 bytes of the input file).
  */
 void INSERT_STRING(stream.deflate_state *s, int str, int *match_head) {
-    UPDATE_HASH(s, s->ins_h, s->window[(str) + (MIN_MATCH-1)]);
+    UPDATE_HASH(s, s->window[(str) + (MIN_MATCH-1)]);
     *match_head = s->prev[(str) & s->w_mask] = s->head[s->ins_h];
     s->head[s->ins_h] = (Pos)(str);
 }
+
+
+void zmemzero(void *dest, size_t len) {
+    memset(dest, 0, len);
+}
+
 
 /* ===========================================================================
  * Initialize the hash table (avoiding 64K overflow for 16 bit systems).
@@ -334,7 +311,7 @@ The compression level must be Z_DEFAULT_COMPRESSION, or between 0 and 9:
    requests a default compromise between speed and compression (currently
    equivalent to level 6).
 
-     deflateInit returns Z_OK if success, Z_MEM_ERROR if there was not enough
+     deflateInit returns stream.Z_OK if success, stream.Z_MEM_ERROR if there was not enough
    memory, stream.Z_STREAM_ERROR if level is not a valid compression level, or
    Z_VERSION_ERROR if the zlib library version (zlib_version) is incompatible
    with the version assumed by the caller (ZLIB_VERSION).  msg is set to null
@@ -352,7 +329,7 @@ int deflateInit_(stream.z_stream *strm, int level, const char *version, int stre
     /* To do: ignore strm->next_in if we use it as window */
 }
 
-int deflateInit2(stream.z_stream *strm, int level, int method, int windowBits, int memLevel, int strategy) {
+pub int deflateInit2(stream.z_stream *strm, int level, int method, int windowBits, int memLevel, int strategy) {
     return deflateInit2_(strm, level, method, windowBits, memLevel,
                         strategy, ZLIB_VERSION, (int)sizeof(z_stream));
 }
@@ -409,22 +386,24 @@ pub int deflateInit2 OF((stream.z_stream *strm,
    optimal speed.  The default value is 8.  See zconf.h for total memory usage
    as a function of windowBits and memLevel.
 
-     The strategy parameter is used to tune the compression algorithm.  Use the
-   value Z_DEFAULT_STRATEGY for normal data, Z_FILTERED for data produced by a
-   filter (or predictor), Z_HUFFMAN_ONLY to force Huffman encoding only (no
-   string match), or Z_RLE to limit match distances to one (run-length
-   encoding).  Filtered data consists mostly of small values with a somewhat
-   random distribution.  In this case, the compression algorithm is tuned to
-   compress them better.  The effect of Z_FILTERED is to force more Huffman
-   coding and less string matching; it is somewhat intermediate between
-   Z_DEFAULT_STRATEGY and Z_HUFFMAN_ONLY.  Z_RLE is designed to be almost as
-   fast as Z_HUFFMAN_ONLY, but give better compression for PNG image data.  The
-   strategy parameter only affects the compression ratio but not the
-   correctness of the compressed output even if it is not set appropriately.
-   Z_FIXED prevents the use of dynamic Huffman codes, allowing for a simpler
-   decoder for special applications.
+The strategy (filter) parameter:
+Z_DEFAULT_STRATEGY for normal data
+Z_FILTERED for data produced by a filter (or predictor)
+Z_HUFFMAN_ONLY to force Huffman encoding only (no string match)
+Z_RLE to limit match distances to one (run-length encoding).
 
-     deflateInit2 returns Z_OK if success, Z_MEM_ERROR if there was not enough
+Filtered data consists mostly of small values with a somewhat random distribution.
+In this case, the compression algorithm is tuned to compress them better.
+The effect of Z_FILTERED is to force more Huffman coding and less string matching.
+It is somewhat intermediate between Z_DEFAULT_STRATEGY and Z_HUFFMAN_ONLY.
+
+Z_RLE is designed to be almost as fast as Z_HUFFMAN_ONLY, but give better compression for PNG image data.
+
+The strategy parameter only affects the compression ratio but not the correctness of the compressed output even if it is not set appropriately.
+
+Z_FIXED prevents the use of dynamic Huffman codes, allowing for a simpler decoder for special applications.
+
+     deflateInit2 returns stream.Z_OK if success, stream.Z_MEM_ERROR if there was not enough
    memory, stream.Z_STREAM_ERROR if any parameter is invalid (such as an invalid
    method), or Z_VERSION_ERROR if the zlib library version (zlib_version) is
    incompatible with the version assumed by the caller (ZLIB_VERSION).  msg is
@@ -444,19 +423,19 @@ pub int deflateInit2_(
     stream.deflate_state *s;
     int wrap = 1;
 
-    if (version == NULL || version[0] != my_version[0] ||
-        stream_size != sizeof(stream.z_stream)) {
-        return Z_VERSION_ERROR;
-    }
+    // if (version == NULL || version[0] != my_version[0] ||
+    //     stream_size != sizeof(stream.z_stream)) {
+    //     return Z_VERSION_ERROR;
+    // }
     if (strm == NULL) return stream.Z_STREAM_ERROR;
 
     strm->msg = NULL;
     if (strm->zalloc == NULL) {
-        strm->zalloc = zcalloc;
+        strm->zalloc = zmalloc.zcalloc;
         strm->opaque = NULL;
     }
     if (strm->zfree == NULL)
-        strm->zfree = zcfree;
+        strm->zfree = zmalloc.zcfree;
 
     if (level == Z_DEFAULT_COMPRESSION) level = 6;
 
@@ -477,7 +456,7 @@ pub int deflateInit2_(
     }
     if (windowBits == 8) windowBits = 9;  /* until 256-byte window bug fixed */
     s = ZALLOC(strm, 1, sizeof(stream.deflate_state));
-    if (s == NULL) return Z_MEM_ERROR;
+    if (s == NULL) return stream.Z_MEM_ERROR;
     strm->state = s;
     s->strm = strm;
     s->status = INIT_STATE;     /* to pass state test in deflateReset() */
@@ -546,9 +525,9 @@ pub int deflateInit2_(
     if (s->window == NULL || s->prev == NULL || s->head == NULL ||
         s->pending_buf == NULL) {
         s->status = FINISH_STATE;
-        strm->msg = ERR_MSG(Z_MEM_ERROR);
+        strm->msg = ERR_MSG(stream.Z_MEM_ERROR);
         deflateEnd (strm);
-        return Z_MEM_ERROR;
+        return stream.Z_MEM_ERROR;
     }
     s->sym_buf = s->pending_buf + s->lit_bufsize;
     s->sym_end = (s->lit_bufsize - 1) * 3;
@@ -592,7 +571,7 @@ int deflateStateCheck(stream.z_stream *strm) {
    function must be called either before any call of deflate, or immediately
    after the completion of a deflate block, i.e. after all input has been
    consumed and all output has been delivered when using any of the flush
-   options Z_BLOCK, Z_PARTIAL_FLUSH, Z_SYNC_FLUSH, or Z_FULL_FLUSH.  The
+   options stream.Z_BLOCK, Z_PARTIAL_FLUSH, Z_SYNC_FLUSH, or Z_FULL_FLUSH.  The
    compressor and decompressor must use exactly the same dictionary (see
    inflateSetDictionary).
 
@@ -618,7 +597,7 @@ int deflateStateCheck(stream.z_stream *strm) {
    actually used by the compressor.) If a raw deflate was requested, then the
    Adler-32 value is not computed and strm->adler is not set.
 
-     deflateSetDictionary returns Z_OK if success, or stream.Z_STREAM_ERROR if a
+     deflateSetDictionary returns stream.Z_OK if success, or stream.Z_STREAM_ERROR if a
    parameter is invalid (e.g.  dictionary being NULL) or the stream state is
    inconsistent (for example if deflate has already been called for this stream
    or if not at a block boundary for raw deflate).  deflateSetDictionary does
@@ -645,7 +624,7 @@ pub int deflateSetDictionary(
 
     /* when using zlib wrappers, compute Adler-32 for provided dictionary */
     if (wrap == 1)
-        strm->adler = adler32(strm->adler, dictionary, dictLength);
+        strm->adler = adler32.adler32(strm->adler, dictionary, dictLength);
     s->wrap = 0;                    /* avoid computing Adler-32 in read_buf */
 
     /* if dictionary would fill window, just replace the history */
@@ -670,7 +649,7 @@ pub int deflateSetDictionary(
         str = s->strstart;
         n = s->lookahead - (MIN_MATCH-1);
         while (true) {
-            UPDATE_HASH(s, s->ins_h, s->window[str + MIN_MATCH-1]);
+            UPDATE_HASH(s, s->window[str + MIN_MATCH-1]);
             s->prev[str & s->w_mask] = s->head[s->ins_h];
             s->head[s->ins_h] = (Pos)str;
             str++;
@@ -691,7 +670,7 @@ pub int deflateSetDictionary(
     strm->next_in = next;
     strm->avail_in = avail;
     s->wrap = wrap;
-    return Z_OK;
+    return stream.Z_OK;
 }
 
 /*
@@ -709,7 +688,7 @@ pub int deflateSetDictionary(
    up to 258 bytes long. If the application needs the last window-size bytes of
    input, then that would need to be saved by the application outside of zlib.
 
-     deflateGetDictionary returns Z_OK on success, or stream.Z_STREAM_ERROR if the
+     deflateGetDictionary returns stream.Z_OK on success, or stream.Z_STREAM_ERROR if the
    stream state is inconsistent.
 */
 pub int deflateGetDictionary(
@@ -730,7 +709,7 @@ pub int deflateGetDictionary(
         memcpy(dictionary, s->window + s->strstart + s->lookahead - len, len);
     if (dictLength != NULL)
         *dictLength = len;
-    return Z_OK;
+    return stream.Z_OK;
 }
 
 /* ========================================================================= */
@@ -750,20 +729,20 @@ pub int deflateResetKeep(stream.z_stream *strm) {
     s->pending_out = s->pending_buf;
 
     if (s->wrap < 0) {
-        s->wrap = -s->wrap; /* was made negative by deflate(..., Z_FINISH); */
+        s->wrap = -s->wrap; /* was made negative by deflate(..., stream.Z_FINISH); */
     }
     if (s->wrap == 2) {
         s->status = GZIP_STATE;
-        strm->adler = crc32(0L, NULL, 0);
+        strm->adler = crc32.init();
     } else {
         s->status = INIT_STATE;
-        strm->adler = adler32(0L, NULL, 0);
+        strm->adler = adler32.init();
     }
     s->last_flush = -2;
 
     _tr_init(s);
 
-    return Z_OK;
+    return stream.Z_OK;
 }
 
 /*
@@ -772,12 +751,12 @@ pub int deflateResetKeep(stream.z_stream *strm) {
    will leave the compression level and any other attributes that may have been
    set unchanged.
 
-     deflateReset returns Z_OK if success, or stream.Z_STREAM_ERROR if the source
+     deflateReset returns stream.Z_OK if success, or stream.Z_STREAM_ERROR if the source
    stream state was inconsistent (such as zalloc or state being NULL).
 */
 pub int deflateReset(stream.z_stream *strm) {
     int ret = deflateResetKeep(strm);
-    if (ret == Z_OK) {
+    if (ret == stream.Z_OK) {
         lm_init(strm->state);
     }
     return ret;
@@ -801,7 +780,7 @@ pub int deflateReset(stream.z_stream *strm) {
    the time set to zero, and os set to 255, with no extra, name, or comment
    fields.  The gzip header is returned to the default state by deflateReset().
 
-     deflateSetHeader returns Z_OK if success, or stream.Z_STREAM_ERROR if the source
+     deflateSetHeader returns stream.Z_OK if success, or stream.Z_STREAM_ERROR if the source
    stream state was inconsistent.
 */
 pub int deflateSetHeader(stream.z_stream *strm, stream.gz_header *head) {
@@ -809,7 +788,7 @@ pub int deflateSetHeader(stream.z_stream *strm, stream.gz_header *head) {
         return stream.Z_STREAM_ERROR;
     }
     strm->state->gzhead = head;
-    return Z_OK;
+    return stream.Z_OK;
 }
 
 /*
@@ -820,7 +799,7 @@ pub int deflateSetHeader(stream.z_stream *strm, stream.gz_header *head) {
    await more bits to join them in order to fill out a full byte.  If pending
    or bits are NULL, then those values are not set.
 
-     deflatePending returns Z_OK if success, or stream.Z_STREAM_ERROR if the source
+     deflatePending returns stream.Z_OK if success, or stream.Z_STREAM_ERROR if the source
    stream state was inconsistent.
  */
 pub int deflatePending(stream.z_stream *strm, unsigned *pending, int *bits) {
@@ -831,7 +810,7 @@ pub int deflatePending(stream.z_stream *strm, unsigned *pending, int *bits) {
     if (bits != NULL) {
         *bits = strm->state->bi_valid;
     }
-    return Z_OK;
+    return stream.Z_OK;
 }
 
 /*
@@ -843,7 +822,7 @@ pub int deflatePending(stream.z_stream *strm, unsigned *pending, int *bits) {
    than or equal to 16, and that many of the least significant bits of value
    will be inserted in the output.
 
-     deflatePrime returns Z_OK if success, Z_BUF_ERROR if there was not enough
+     deflatePrime returns stream.Z_OK if success, stream.Z_BUF_ERROR if there was not enough
    room in the internal buffer to insert the bits, or stream.Z_STREAM_ERROR if the
    source stream state was inconsistent.
 */
@@ -853,7 +832,7 @@ pub int deflatePrime(stream.z_stream *strm, int bits, int value) {
     int put;
     if (bits < 0 || bits > 16
         || s->sym_buf < s->pending_out + ((Buf_size + 7) >> 3)) {
-        return Z_BUF_ERROR;
+        return stream.Z_BUF_ERROR;
     }
     while(true) {
         put = Buf_size - s->bi_valid;
@@ -868,7 +847,7 @@ pub int deflatePrime(stream.z_stream *strm, int bits, int value) {
             break;
         }
     }
-    return Z_OK;
+    return stream.Z_OK;
 }
 
 /*
@@ -879,30 +858,30 @@ pub int deflatePrime(stream.z_stream *strm, int bits, int value) {
    If the compression approach (which is a function of the level) or the
    strategy is changed, and if there have been any deflate() calls since the
    state was initialized or reset, then the input available so far is
-   compressed with the old level and strategy using deflate(strm, Z_BLOCK).
+   compressed with the old level and strategy using deflate(strm, stream.Z_BLOCK).
    There are three approaches for the compression levels 0, 1..3, and 4..9
    respectively.  The new level and strategy will take effect at the next call
    of deflate().
 
-     If a deflate(strm, Z_BLOCK) is performed by deflateParams(), and it does
+     If a deflate(strm, stream.Z_BLOCK) is performed by deflateParams(), and it does
    not have enough output space to complete, then the parameter change will not
    take effect.  In this case, deflateParams() can be called again with the
    same parameters and more output space to try again.
 
      In order to assure a change in the parameters on the first try, the
-   deflate stream should be flushed using deflate() with Z_BLOCK or other flush
+   deflate stream should be flushed using deflate() with stream.Z_BLOCK or other flush
    request until strm.avail_out is not zero, before calling deflateParams().
    Then no more input data should be provided before the deflateParams() call.
    If this is done, the old level and strategy will be applied to the data
    compressed before deflateParams(), and the new level and strategy will be
    applied to the the data compressed after deflateParams().
 
-     deflateParams returns Z_OK on success, stream.Z_STREAM_ERROR if the source stream
-   state was inconsistent or if a parameter was invalid, or Z_BUF_ERROR if
+     deflateParams returns stream.Z_OK on success, stream.Z_STREAM_ERROR if the source stream
+   state was inconsistent or if a parameter was invalid, or stream.Z_BUF_ERROR if
    there was not enough output space to complete the compression of the
    available input data before a change in the strategy or approach.  Note that
-   in the case of a Z_BUF_ERROR, the parameters are not changed.  A return
-   value of Z_BUF_ERROR is not fatal, in which case deflateParams() can be
+   in the case of a stream.Z_BUF_ERROR, the parameters are not changed.  A return
+   value of stream.Z_BUF_ERROR is not fatal, in which case deflateParams() can be
    retried with more output space.
 */
 pub int deflateParams(
@@ -925,11 +904,11 @@ pub int deflateParams(
     if ((strategy != s->strategy || func != configuration_table[level].func) &&
         s->last_flush != -2) {
         /* Flush the last buffer: */
-        int err = deflate(strm, Z_BLOCK);
+        int err = deflate(strm, stream.Z_BLOCK);
         if (err == stream.Z_STREAM_ERROR)
             return err;
         if (strm->avail_in || (s->strstart - s->block_start) + s->lookahead)
-            return Z_BUF_ERROR;
+            return stream.Z_BUF_ERROR;
     }
     if (s->level != level) {
         if (s->level == 0 && s->matches != 0) {
@@ -946,7 +925,7 @@ pub int deflateParams(
         s->max_chain_length = configuration_table[level].max_chain;
     }
     s->strategy = strategy;
-    return Z_OK;
+    return stream.Z_OK;
 }
 
 /*
@@ -958,7 +937,7 @@ pub int deflateParams(
    max_lazy, good_length, nice_length, and max_chain parameters.
 
      deflateTune() can be called after deflateInit() or deflateInit2(), and
-   returns Z_OK on success, or stream.Z_STREAM_ERROR for an invalid deflate stream.
+   returns stream.Z_OK on success, or stream.Z_STREAM_ERROR for an invalid deflate stream.
  */
 pub int deflateTune(
     stream.z_stream *strm,
@@ -974,7 +953,7 @@ pub int deflateTune(
     s->max_lazy_match = (uint32_t)max_lazy;
     s->nice_match = nice_length;
     s->max_chain_length = (uint32_t)max_chain;
-    return Z_OK;
+    return stream.Z_OK;
 }
 
 /*
@@ -984,10 +963,10 @@ pub int deflateTune(
    to allocate an output buffer for deflation in a single pass, and so would be
    called before deflate().  If that first deflate() call is provided the
    sourceLen input bytes, an output buffer allocated to the size returned by
-   deflateBound(), and the flush value Z_FINISH, then deflate() is guaranteed
-   to return Z_STREAM_END.  Note that it is possible for the compressed size to
+   deflateBound(), and the flush value stream.Z_FINISH, then deflate() is guaranteed
+   to return stream.Z_STREAM_END.  Note that it is possible for the compressed size to
    be larger than the value returned by deflateBound() if flush options other
-   than Z_FINISH or Z_NO_FLUSH are used.
+   than stream.Z_FINISH or stream.Z_NO_FLUSH are used.
 */
 /* =========================================================================
  * For the default windowBits of 15 and memLevel of 8, this function returns a
@@ -1137,7 +1116,7 @@ void flush_pending(stream.z_stream *strm) {
  */
 void HCRC_UPDATE(uint32_t beg) {
     if (s->gzhead->hcrc && s->pending > beg) {
-        strm->adler = crc32(strm->adler, s->pending_buf + beg, s->pending - beg);
+        strm->adler = crc32.crc32(strm->adler, s->pending_buf + beg, s->pending - beg);
     }
 }
 
@@ -1165,13 +1144,13 @@ deflate performs one or both of the following actions:
   output, and updating avail_in or avail_out accordingly; avail_out should
   never be zero before the call.  The application can consume the compressed
   output when it wants, for example when the output buffer is full (avail_out
-  == 0), or after each call of deflate().  If deflate returns Z_OK and with
+  == 0), or after each call of deflate().  If deflate returns stream.Z_OK and with
   zero avail_out, it must be called again after making room in the output
   buffer because there might be more output pending. See deflatePending(),
   which can be used if desired to determine whether or not there is more output
   in that case.
 
-    Normally the parameter flush is set to Z_NO_FLUSH, which allows deflate to
+    Normally the parameter flush is set to stream.Z_NO_FLUSH, which allows deflate to
   decide how much data to accumulate before producing output, in order to
   maximize compression.
 
@@ -1193,7 +1172,7 @@ deflate performs one or both of the following actions:
   in order for the decompressor to finish the block before the empty fixed
   codes block.
 
-    If flush is set to Z_BLOCK, a deflate block is completed and emitted, as
+    If flush is set to stream.Z_BLOCK, a deflate block is completed and emitted, as
   for Z_SYNC_FLUSH, but the output is not aligned on a byte boundary, and up to
   seven bits of the current block are held to be written as the next byte after
   the next deflate block is completed.  In this case, the decompressor may not
@@ -1215,19 +1194,19 @@ deflate performs one or both of the following actions:
   avail_out is greater than six to avoid repeated flush markers due to
   avail_out == 0 on return.
 
-    If the parameter flush is set to Z_FINISH, pending input is processed,
-  pending output is flushed and deflate returns with Z_STREAM_END if there was
-  enough output space.  If deflate returns with Z_OK or Z_BUF_ERROR, this
-  function must be called again with Z_FINISH and more output space (updated
-  avail_out) but no more input data, until it returns with Z_STREAM_END or an
-  error.  After deflate has returned Z_STREAM_END, the only possible operations
+    If the parameter flush is set to stream.Z_FINISH, pending input is processed,
+  pending output is flushed and deflate returns with stream.Z_STREAM_END if there was
+  enough output space.  If deflate returns with stream.Z_OK or stream.Z_BUF_ERROR, this
+  function must be called again with stream.Z_FINISH and more output space (updated
+  avail_out) but no more input data, until it returns with stream.Z_STREAM_END or an
+  error.  After deflate has returned stream.Z_STREAM_END, the only possible operations
   on the stream are deflateReset or deflateEnd.
 
-    Z_FINISH can be used in the first deflate call after deflateInit if all the
+    stream.Z_FINISH can be used in the first deflate call after deflateInit if all the
   compression is to be done in a single step.  In order to complete in one
   call, avail_out must be at least the value returned by deflateBound (see
-  below).  Then deflate is guaranteed to return Z_STREAM_END.  If not enough
-  output space is provided, deflate will not return Z_STREAM_END, and it must
+  below).  Then deflate is guaranteed to return stream.Z_STREAM_END.  If not enough
+  output space is provided, deflate will not return stream.Z_STREAM_END, and it must
   be called again as described above.
 
     deflate() sets strm->adler to the Adler-32 checksum of all input read
@@ -1240,18 +1219,18 @@ deflate performs one or both of the following actions:
   considered binary.  This field is only for information purposes and does not
   affect the compression algorithm in any manner.
 
-    deflate() returns Z_OK if some progress has been made (more input
-  processed or more output produced), Z_STREAM_END if all input has been
+    deflate() returns stream.Z_OK if some progress has been made (more input
+  processed or more output produced), stream.Z_STREAM_END if all input has been
   consumed and all output has been produced (only when flush is set to
-  Z_FINISH), stream.Z_STREAM_ERROR if the stream state was inconsistent (for example
+  stream.Z_FINISH), stream.Z_STREAM_ERROR if the stream state was inconsistent (for example
   if next_in or next_out was NULL or the state was inadvertently written over
-  by the application), or Z_BUF_ERROR if no progress is possible (for example
-  avail_in or avail_out was zero).  Note that Z_BUF_ERROR is not fatal, and
+  by the application), or stream.Z_BUF_ERROR if no progress is possible (for example
+  avail_in or avail_out was zero).  Note that stream.Z_BUF_ERROR is not fatal, and
   deflate() can be called again with more input and more output space to
   continue compressing.
 */
 pub int deflate(stream.z_stream *strm, int flush) {
-    if (deflateStateCheck(strm) || flush > Z_BLOCK || flush < 0) {
+    if (deflateStateCheck(strm) || flush > stream.Z_BLOCK || flush < 0) {
         return stream.Z_STREAM_ERROR;
     }
 
@@ -1259,11 +1238,11 @@ pub int deflate(stream.z_stream *strm, int flush) {
 
     if (strm->next_out == NULL ||
         (strm->avail_in != 0 && strm->next_in == NULL) ||
-        (s->status == FINISH_STATE && flush != Z_FINISH)) {
-        ERR_RETURN(strm, stream.Z_STREAM_ERROR);
+        (s->status == FINISH_STATE && flush != stream.Z_FINISH)) {
+        return ERR_RETURN(strm, stream.Z_STREAM_ERROR);
     }
     if (strm->avail_out == 0) {
-        ERR_RETURN(strm, Z_BUF_ERROR);
+        return ERR_RETURN(strm, stream.Z_BUF_ERROR);
     }
 
     int old_flush = s->last_flush;
@@ -1281,19 +1260,19 @@ pub int deflate(stream.z_stream *strm, int flush) {
             return OK instead of BUF_ERROR at next call of deflate:
             */
             s->last_flush = -1;
-            return Z_OK;
+            return stream.Z_OK;
         }
     }
-    else if (strm->avail_in == 0 && RANK(flush) <= RANK(old_flush) && flush != Z_FINISH) {
+    else if (strm->avail_in == 0 && RANK(flush) <= RANK(old_flush) && flush != stream.Z_FINISH) {
         /* Make sure there is something to do and avoid duplicate consecutive
-        flushes. For repeated and useless calls with Z_FINISH, we keep
-        returning Z_STREAM_END instead of Z_BUF_ERROR. */
-        ERR_RETURN(strm, Z_BUF_ERROR);
+        flushes. For repeated and useless calls with stream.Z_FINISH, we keep
+        returning stream.Z_STREAM_END instead of stream.Z_BUF_ERROR. */
+        return ERR_RETURN(strm, stream.Z_BUF_ERROR);
     }
 
     /* User must not provide more input after the first FINISH: */
     if (s->status == FINISH_STATE && strm->avail_in != 0) {
-        ERR_RETURN(strm, Z_BUF_ERROR);
+        return ERR_RETURN(strm, stream.Z_BUF_ERROR);
     }
 
     /* Write the header */
@@ -1324,19 +1303,19 @@ pub int deflate(stream.z_stream *strm, int flush) {
             putShortMSB(s, (uint32_t)(strm->adler >> 16));
             putShortMSB(s, (uint32_t)(strm->adler & 0xffff));
         }
-        strm->adler = adler32(0L, NULL, 0);
+        strm->adler = adler32.init();
         s->status = BUSY_STATE;
 
         /* Compression must start with an empty pending buffer */
         flush_pending(strm);
         if (s->pending != 0) {
             s->last_flush = -1;
-            return Z_OK;
+            return stream.Z_OK;
         }
     }
     if (s->status == GZIP_STATE) {
         /* gzip header */
-        strm->adler = crc32(0L, NULL, 0);
+        strm->adler = crc32.init();
         put_byte(s, 31);
         put_byte(s, 139);
         put_byte(s, 8);
@@ -1354,7 +1333,7 @@ pub int deflate(stream.z_stream *strm, int flush) {
             flush_pending(strm);
             if (s->pending != 0) {
                 s->last_flush = -1;
-                return Z_OK;
+                return stream.Z_OK;
             }
         }
         else {
@@ -1377,7 +1356,7 @@ pub int deflate(stream.z_stream *strm, int flush) {
                 put_byte(s, (s->gzhead->extra_len >> 8) & 0xff);
             }
             if (s->gzhead->hcrc) {
-                strm->adler = crc32(strm->adler, s->pending_buf, s->pending);
+                strm->adler = crc32.crc32(strm->adler, s->pending_buf, s->pending);
             }
             s->gzindex = 0;
             s->status = EXTRA_STATE;
@@ -1397,7 +1376,7 @@ pub int deflate(stream.z_stream *strm, int flush) {
                 flush_pending(strm);
                 if (s->pending != 0) {
                     s->last_flush = -1;
-                    return Z_OK;
+                    return stream.Z_OK;
                 }
                 beg = 0;
                 left -= copy;
@@ -1420,7 +1399,7 @@ pub int deflate(stream.z_stream *strm, int flush) {
                     flush_pending(strm);
                     if (s->pending != 0) {
                         s->last_flush = -1;
-                        return Z_OK;
+                        return stream.Z_OK;
                     }
                     beg = 0;
                 }
@@ -1443,7 +1422,7 @@ pub int deflate(stream.z_stream *strm, int flush) {
                     flush_pending(strm);
                     if (s->pending != 0) {
                         s->last_flush = -1;
-                        return Z_OK;
+                        return stream.Z_OK;
                     }
                     beg = 0;
                 }
@@ -1461,12 +1440,12 @@ pub int deflate(stream.z_stream *strm, int flush) {
                 flush_pending(strm);
                 if (s->pending != 0) {
                     s->last_flush = -1;
-                    return Z_OK;
+                    return stream.Z_OK;
                 }
             }
             put_byte(s, (uint8_t)(strm->adler & 0xff));
             put_byte(s, (uint8_t)((strm->adler >> 8) & 0xff));
-            strm->adler = crc32(0L, NULL, 0);
+            strm->adler = crc32.init();
         }
         s->status = BUSY_STATE;
 
@@ -1474,14 +1453,14 @@ pub int deflate(stream.z_stream *strm, int flush) {
         flush_pending(strm);
         if (s->pending != 0) {
             s->last_flush = -1;
-            return Z_OK;
+            return stream.Z_OK;
         }
     }
 
     /* Start a new block or continue the current one.
      */
     if (strm->avail_in != 0 || s->lookahead != 0 ||
-        (flush != Z_NO_FLUSH && s->status != FINISH_STATE)) {
+        (flush != stream.Z_NO_FLUSH && s->status != FINISH_STATE)) {
         int bstate;
 
         if (s->level == 0) {
@@ -1501,8 +1480,8 @@ pub int deflate(stream.z_stream *strm, int flush) {
             if (strm->avail_out == 0) {
                 s->last_flush = -1; /* avoid BUF_ERROR next call, see above */
             }
-            return Z_OK;
-            /* If flush != Z_NO_FLUSH && avail_out == 0, the next call
+            return stream.Z_OK;
+            /* If flush != stream.Z_NO_FLUSH && avail_out == 0, the next call
              * of deflate should use the same flush parameter to make sure
              * that the flush is complete. So we don't have to output an
              * empty block here, this will be done at next call. This also
@@ -1513,7 +1492,7 @@ pub int deflate(stream.z_stream *strm, int flush) {
         if (bstate == block_done) {
             if (flush == Z_PARTIAL_FLUSH) {
                 _tr_align(s);
-            } else if (flush != Z_BLOCK) { /* FULL_FLUSH or SYNC_FLUSH */
+            } else if (flush != stream.Z_BLOCK) { /* FULL_FLUSH or SYNC_FLUSH */
                 _tr_stored_block(s, (char*)0, 0L, 0);
                 /* For a full flush, this empty block will be recognized
                  * as a special marker by inflate_sync().
@@ -1530,13 +1509,13 @@ pub int deflate(stream.z_stream *strm, int flush) {
             flush_pending(strm);
             if (strm->avail_out == 0) {
               s->last_flush = -1; /* avoid BUF_ERROR at next call, see above */
-              return Z_OK;
+              return stream.Z_OK;
             }
         }
     }
 
-    if (flush != Z_FINISH) return Z_OK;
-    if (s->wrap <= 0) return Z_STREAM_END;
+    if (flush != stream.Z_FINISH) return stream.Z_OK;
+    if (s->wrap <= 0) return stream.Z_STREAM_END;
 
     /* Write the trailer */
     if (s->wrap == 2) {
@@ -1560,12 +1539,12 @@ pub int deflate(stream.z_stream *strm, int flush) {
      */
     if (s->wrap > 0) s->wrap = -s->wrap; /* write the trailer only once! */
     if (s->pending != 0) {
-        return Z_OK;
+        return stream.Z_OK;
     }
-    return Z_STREAM_END;
+    return stream.Z_STREAM_END;
 }
 
-int get_dunno_what(stream.deflate_state *s) {
+int get_dunno_what1(stream.deflate_state *s) {
     if (s->level == 9) { return 2; }
     if (s->strategy >= Z_HUFFMAN_ONLY || s->level < 2) {
         return 4;
@@ -1576,9 +1555,9 @@ int get_dunno_what(stream.deflate_state *s) {
 /*
  * Frees all dynamically allocated data structures for this stream.
  * Discards any unprocessed input and does not flush any pending output.
- * Returns Z_OK if success,
+ * Returns stream.Z_OK if success,
  * stream.Z_STREAM_ERROR if the stream state was inconsistent,
- * Z_DATA_ERROR if the stream was freed prematurely (some input or output was discarded).
+ * stream.Z_DATA_ERROR if the stream was freed prematurely (some input or output was discarded).
  * In the error case, msg may be set to a static string (which must not be deallocated).
  */
 pub int deflateEnd(stream.z_stream *strm) {
@@ -1588,18 +1567,26 @@ pub int deflateEnd(stream.z_stream *strm) {
     int status = strm->state->status;
 
     /* Deallocate in reverse order of allocations: */
-    TRY_FREE(strm, strm->state->pending_buf);
-    TRY_FREE(strm, strm->state->head);
-    TRY_FREE(strm, strm->state->prev);
-    TRY_FREE(strm, strm->state->window);
+    if (strm->state->pending_buf) {
+        stream.ZFREE(strm, strm->state->pending_buf);
+    }
+    if (strm->state->head) {
+        stream.ZFREE(strm, strm->state->head);
+    }
+    if (strm->state->prev) {
+        stream.ZFREE(strm, strm->state->prev);
+    }
+    if (strm->state->window) {
+        stream.ZFREE(strm, strm->state->window);
+    }
 
-    ZFREE(strm, strm->state);
+    stream.ZFREE(strm, strm->state);
     strm->state = NULL;
 
     if (status == BUSY_STATE) {
-        return Z_DATA_ERROR;
+        return stream.Z_DATA_ERROR;
     }
-    return Z_OK;
+    return stream.Z_OK;
 }
 
 /*
@@ -1612,7 +1599,7 @@ pub int deflateEnd(stream.z_stream *strm) {
    compression state which can be quite large, so this strategy is slow and can
    consume lots of memory.
 
-     deflateCopy returns Z_OK if success, Z_MEM_ERROR if there was not
+     deflateCopy returns stream.Z_OK if success, stream.Z_MEM_ERROR if there was not
    enough memory, stream.Z_STREAM_ERROR if the source stream state was inconsistent
    (such as zalloc being NULL).  msg is left unchanged in both source and
    destination.
@@ -1636,7 +1623,7 @@ pub int deflateCopy(stream.z_stream * dest, source) {
     memcpy((void *)dest, (void *)source, sizeof(stream.z_stream));
 
     ds = ZALLOC(dest, 1, sizeof(stream.deflate_state));
-    if (ds == NULL) return Z_MEM_ERROR;
+    if (ds == NULL) return stream.Z_MEM_ERROR;
     dest->state = ds;
     memcpy((void *)ds, (void *)ss, sizeof(stream.deflate_state));
     ds->strm = dest;
@@ -1649,7 +1636,7 @@ pub int deflateCopy(stream.z_stream * dest, source) {
     if (ds->window == NULL || ds->prev == NULL || ds->head == NULL ||
         ds->pending_buf == NULL) {
         deflateEnd (dest);
-        return Z_MEM_ERROR;
+        return stream.Z_MEM_ERROR;
     }
     /* following memcpy do not work for 16-bit MSDOS */
     memcpy(ds->window, ss->window, ds->w_size * 2 * sizeof(uint8_t));
@@ -1664,7 +1651,7 @@ pub int deflateCopy(stream.z_stream * dest, source) {
     ds->d_desc.dyn_tree = ds->dyn_dtree;
     ds->bl_desc.dyn_tree = ds->bl_tree;
 
-    return Z_OK;
+    return stream.Z_OK;
 }
 
 /* ===========================================================================
@@ -1688,10 +1675,10 @@ unsigned read_buf(
 
     memcpy(buf, strm->next_in, len);
     if (strm->state->wrap == 1) {
-        strm->adler = adler32(strm->adler, buf, len);
+        strm->adler = adler32.adler32(strm->adler, buf, len);
     }
     else if (strm->state->wrap == 2) {
-        strm->adler = crc32(strm->adler, buf, len);
+        strm->adler = crc32.crc32(strm->adler, buf, len);
     }
     strm->next_in  += len;
     strm->total_in += len;
@@ -1760,7 +1747,7 @@ uint32_t longest_match(
     /* The code is optimized for HASH_BITS >= 8 and MAX_MATCH-2 multiple of 16.
      * It is easy to get rid of this optimization if necessary.
      */
-    Assert(s->hash_bits >= 8 && MAX_MATCH == 258, "Code too clever");
+    assert.Assert(s->hash_bits >= 8 && MAX_MATCH == 258, "Code too clever");
 
     /* Do not waste too much time if we already have a good match: */
     if (s->prev_length >= s->good_match) {
@@ -1771,11 +1758,11 @@ uint32_t longest_match(
      */
     if ((uint32_t)nice_match > s->lookahead) nice_match = (int)s->lookahead;
 
-    Assert((uint32_t)s->strstart <= s->window_size - MIN_LOOKAHEAD,
+    assert.Assert((uint32_t)s->strstart <= s->window_size - MIN_LOOKAHEAD,
            "need lookahead");
 
     while (true) {
-        Assert(cur_match < s->strstart, "no future");
+        assert.Assert(cur_match < s->strstart, "no future");
         match = s->window + cur_match;
 
         /* Skip to next match if the match length cannot increase
@@ -1800,7 +1787,7 @@ uint32_t longest_match(
          */
         scan += 2;
         match++;
-        Assert(*scan == *match, "match[2]");
+        assert.Assert(*scan == *match, "match[2]");
 
         /* We check for insufficient lookahead only every 8th comparison;
          * the 256th check will be made at strstart + 258.
@@ -1816,7 +1803,7 @@ uint32_t longest_match(
             }
         }
 
-        Assert(scan <= s->window + (unsigned)(s->window_size - 1),
+        assert.Assert(scan <= s->window + (unsigned)(s->window_size - 1),
                "wild scan");
 
         len = MAX_MATCH - (int)(strend - scan);
@@ -1841,14 +1828,7 @@ uint32_t longest_match(
     return s->lookahead;
 }
 
-
-
-#define EQUAL 0
-/* result of memcmp for equal strings */
-
-/* ===========================================================================
- * Check that the match at match_start is indeed a match.
- */
+/* Check that the match at match_start is indeed a match.*/
 void check_match(stream.deflate_state *s, IPos start, match, int length) {
     /* check that the match is indeed a match */
     if (memcmp(s->window + match, s->window + start, length) != 0) {
@@ -1859,9 +1839,9 @@ void check_match(stream.deflate_state *s, IPos start, match, int length) {
             bool cont = (--length != 0);
             if (!cont) break;
         }
-        z_error("invalid match");
+        panic("invalid match");
     }
-    if (z_verbose > 1) {
+    if (trace.level() > 1) {
         fprintf(stderr,"\\[%d,%d]", start - match, length);
         while (true) {
             putc(s->window[start++], stderr);
@@ -1886,7 +1866,7 @@ void fill_window(stream.deflate_state *s) {
     unsigned more;    /* Amount of free space at the end of the window. */
     uint32_t wsize = s->w_size;
 
-    Assert(s->lookahead < MIN_LOOKAHEAD, "already enough lookahead");
+    assert.Assert(s->lookahead < MIN_LOOKAHEAD, "already enough lookahead");
 
     while (true) {
         more = (unsigned)(s->window_size -(uint32_t)s->lookahead -(uint32_t)s->strstart);
@@ -1931,7 +1911,7 @@ void fill_window(stream.deflate_state *s) {
          * Otherwise, window_size == 2*WSIZE so more >= 2.
          * If there was sliding, more >= WSIZE. So in all cases, more >= 2.
          */
-        Assert(more >= 2, "more < 2");
+        assert.Assert(more >= 2, "more < 2");
 
         n = read_buf(s->strm, s->window + s->strstart + s->lookahead, more);
         s->lookahead += n;
@@ -1940,9 +1920,9 @@ void fill_window(stream.deflate_state *s) {
         if (s->lookahead + s->insert >= MIN_MATCH) {
             uint32_t str = s->strstart - s->insert;
             s->ins_h = s->window[str];
-            UPDATE_HASH(s, s->ins_h, s->window[str + 1]);
+            UPDATE_HASH(s, s->window[str + 1]);
             while (s->insert) {
-                UPDATE_HASH(s, s->ins_h, s->window[str + MIN_MATCH-1]);
+                UPDATE_HASH(s, s->window[str + MIN_MATCH-1]);
                 s->prev[str & s->w_mask] = s->head[s->ins_h];
                 s->head[s->ins_h] = (Pos)str;
                 str++;
@@ -1992,7 +1972,7 @@ void fill_window(stream.deflate_state *s) {
         }
     }
 
-    Assert((uint32_t)s->strstart <= s->window_size - MIN_LOOKAHEAD,
+    assert.Assert((uint32_t)s->strstart <= s->window_size - MIN_LOOKAHEAD,
            "not enough room for search");
 }
 
@@ -2008,7 +1988,7 @@ void FLUSH_BLOCK_ONLY(stream.deflate_state *s, int last) {
     _tr_flush_block(s, foo, (uint32_t)((long)s->strstart - s->block_start), (last));
     s->block_start = s->strstart;
     flush_pending(s->strm);
-    Tracev(stderr,"[FLUSH]");
+    trace.Tracev(stderr,"[FLUSH]");
 }
 
 enum {
@@ -2051,7 +2031,7 @@ int deflate_stored(stream.deflate_state *s, int flush) {
      * this is 32K. This can be as small as 507 bytes for memLevel == 1. For
      * large input and output buffers, the stored block size will be larger.
      */
-    unsigned min_block = MIN(s->pending_buf_size - 5, s->w_size);
+    unsigned min_block = min(s->pending_buf_size - 5, s->w_size);
 
     /* Copy as many min_block or larger stored blocks directly to next_out as
      * possible. If flushing, copy the remaining available input to next_out as
@@ -2084,8 +2064,8 @@ int deflate_stored(stream.deflate_state *s, int flush) {
          * copying to the window and the pending buffer instead. Also don't
          * write an empty block when flushing -- deflate() does that.
          */
-        if (len < min_block && ((len == 0 && flush != Z_FINISH) ||
-                                flush == Z_NO_FLUSH ||
+        if (len < min_block && ((len == 0 && flush != stream.Z_FINISH) ||
+                                flush == stream.Z_NO_FLUSH ||
                                 len != left + s->strm->avail_in))
             break;
 
@@ -2093,9 +2073,9 @@ int deflate_stored(stream.deflate_state *s, int flush) {
          * including any pending bits. This also updates the debugging counts.
          */
         if (s->strm->avail_in) {
-            last = flush == Z_FINISH && len == left + 1;
+            last = flush == stream.Z_FINISH && len == left + 1;
         } else {
-            last = flush == Z_FINISH && len == left;
+            last = flush == stream.Z_FINISH && len == left;
         }
 
         _tr_stored_block(s, (char *)0, 0L, last);
@@ -2168,7 +2148,7 @@ int deflate_stored(stream.deflate_state *s, int flush) {
             }
             memcpy(s->window + s->strstart, s->strm->next_in - used, used);
             s->strstart += used;
-            s->insert += MIN(used, s->w_size - s->insert);
+            s->insert += min(used, s->w_size - s->insert);
         }
         s->block_start = s->strstart;
     }
@@ -2180,7 +2160,7 @@ int deflate_stored(stream.deflate_state *s, int flush) {
         return finish_done;
 
     /* If flushing and all input has been consumed, then done. */
-    if (flush != Z_NO_FLUSH && flush != Z_FINISH &&
+    if (flush != stream.Z_NO_FLUSH && flush != stream.Z_FINISH &&
         s->strm->avail_in == 0 && (long)s->strstart == s->block_start)
         return block_done;
 
@@ -2202,7 +2182,7 @@ int deflate_stored(stream.deflate_state *s, int flush) {
     if (have) {
         read_buf(s->strm, s->window + s->strstart, have);
         s->strstart += have;
-        s->insert += MIN(have, s->w_size - s->insert);
+        s->insert += min(have, s->w_size - s->insert);
     }
     if (s->high_water < s->strstart)
         s->high_water = s->strstart;
@@ -2214,15 +2194,15 @@ int deflate_stored(stream.deflate_state *s, int flush) {
      */
     have = (s->bi_valid + 42) >> 3;         /* number of header bytes */
         /* maximum stored block length that will fit in pending: */
-    have = MIN(s->pending_buf_size - have, MAX_STORED);
-    min_block = MIN(have, s->w_size);
+    have = min(s->pending_buf_size - have, MAX_STORED);
+    min_block = min(have, s->w_size);
     left = s->strstart - s->block_start;
     if (left >= min_block ||
-        ((left || flush == Z_FINISH) && flush != Z_NO_FLUSH &&
+        ((left || flush == stream.Z_FINISH) && flush != stream.Z_NO_FLUSH &&
          s->strm->avail_in == 0 && left <= have)) {
-        len = MIN(left, have);
+        len = min(left, have);
         last = 0;
-        if (flush == Z_FINISH && s->strm->avail_in == 0 && len == left) {
+        if (flush == stream.Z_FINISH && s->strm->avail_in == 0 && len == left) {
             last = 1;
         }
         _tr_stored_block(s, (char *)s->window + s->block_start, len, last);
@@ -2255,7 +2235,7 @@ int deflate_fast(stream.deflate_state *s, bool flush) {
          */
         if (s->lookahead < MIN_LOOKAHEAD) {
             fill_window(s);
-            if (s->lookahead < MIN_LOOKAHEAD && flush == Z_NO_FLUSH) {
+            if (s->lookahead < MIN_LOOKAHEAD && flush == stream.Z_NO_FLUSH) {
                 return need_more;
             }
             if (s->lookahead == 0) break; /* flush the current block */
@@ -2309,14 +2289,14 @@ int deflate_fast(stream.deflate_state *s, bool flush) {
                 s->strstart += s->match_length;
                 s->match_length = 0;
                 s->ins_h = s->window[s->strstart];
-                UPDATE_HASH(s, s->ins_h, s->window[s->strstart + 1]);
+                UPDATE_HASH(s, s->window[s->strstart + 1]);
                 /* If lookahead < MIN_MATCH, ins_h is garbage, but it does not
                  * matter since it will be recomputed at next deflate call.
                  */
             }
         } else {
             /* No match, output a literal byte */
-            Tracevv(stderr,"%c", s->window[s->strstart]);
+            trace.Tracevv(stderr,"%c", s->window[s->strstart]);
             _tr_tally_lit(s, s->window[s->strstart], bflush);
             s->lookahead--;
             s->strstart++;
@@ -2334,7 +2314,7 @@ int deflate_fast(stream.deflate_state *s, bool flush) {
         s->insert = MIN_MATCH-1;
     }
 
-    if (flush == Z_FINISH) {
+    if (flush == stream.Z_FINISH) {
         int r = FLUSH_BLOCK(s, 1);
         if (r != NO_RETURN) {
             return r;
@@ -2368,7 +2348,7 @@ int deflate_slow(stream.deflate_state *s, int flush) {
          */
         if (s->lookahead < MIN_LOOKAHEAD) {
             fill_window(s);
-            if (s->lookahead < MIN_LOOKAHEAD && flush == Z_NO_FLUSH) {
+            if (s->lookahead < MIN_LOOKAHEAD && flush == stream.Z_NO_FLUSH) {
                 return need_more;
             }
             if (s->lookahead == 0) break; /* flush the current block */
@@ -2450,7 +2430,7 @@ int deflate_slow(stream.deflate_state *s, int flush) {
              * single literal. If there was a match but the current match
              * is longer, truncate the previous match to a single literal.
              */
-            Tracevv(stderr,"%c", s->window[s->strstart - 1]);
+            trace.Tracevv(stderr,"%c", s->window[s->strstart - 1]);
             _tr_tally_lit(s, s->window[s->strstart - 1], bflush);
             if (bflush) {
                 FLUSH_BLOCK_ONLY(s, 0);
@@ -2467,9 +2447,9 @@ int deflate_slow(stream.deflate_state *s, int flush) {
             s->lookahead--;
         }
     }
-    Assert (flush != Z_NO_FLUSH, "no flush");
+    assert.Assert (flush != stream.Z_NO_FLUSH, "no flush");
     if (s->match_available) {
-        Tracevv(stderr,"%c", s->window[s->strstart - 1]);
+        trace.Tracevv(stderr,"%c", s->window[s->strstart - 1]);
         _tr_tally_lit(s, s->window[s->strstart - 1], bflush);
         s->match_available = 0;
     }
@@ -2478,7 +2458,7 @@ int deflate_slow(stream.deflate_state *s, int flush) {
     } else {
         s->insert = MIN_MATCH-1;
     }
-    if (flush == Z_FINISH) {
+    if (flush == stream.Z_FINISH) {
         int r = FLUSH_BLOCK(s, 1);
         if (r != NO_RETURN) {
                 return r;
@@ -2512,7 +2492,7 @@ int deflate_rle(stream.deflate_state *s, int flush) {
          */
         if (s->lookahead <= MAX_MATCH) {
             fill_window(s);
-            if (s->lookahead <= MAX_MATCH && flush == Z_NO_FLUSH) {
+            if (s->lookahead <= MAX_MATCH && flush == stream.Z_NO_FLUSH) {
                 return need_more;
             }
             if (s->lookahead == 0) break; /* flush the current block */
@@ -2537,7 +2517,7 @@ int deflate_rle(stream.deflate_state *s, int flush) {
                 if (s->match_length > s->lookahead)
                     s->match_length = s->lookahead;
             }
-            Assert(scan <= s->window + (uint32_t)(s->window_size - 1),
+            assert.Assert(scan <= s->window + (uint32_t)(s->window_size - 1),
                    "wild scan");
         }
 
@@ -2552,7 +2532,7 @@ int deflate_rle(stream.deflate_state *s, int flush) {
             s->match_length = 0;
         } else {
             /* No match, output a literal byte */
-            Tracevv(stderr,"%c", s->window[s->strstart]);
+            trace.Tracevv(stderr,"%c", s->window[s->strstart]);
             _tr_tally_lit(s, s->window[s->strstart], bflush);
             s->lookahead--;
             s->strstart++;
@@ -2565,7 +2545,7 @@ int deflate_rle(stream.deflate_state *s, int flush) {
         }
     }
     s->insert = 0;
-    if (flush == Z_FINISH) {
+    if (flush == stream.Z_FINISH) {
         int r = FLUSH_BLOCK(s, 1);
         if (r != NO_RETURN) {
                 return r;
@@ -2594,7 +2574,7 @@ int deflate_huff(stream.deflate_state *s, int flush) {
         if (s->lookahead == 0) {
             fill_window(s);
             if (s->lookahead == 0) {
-                if (flush == Z_NO_FLUSH)
+                if (flush == stream.Z_NO_FLUSH)
                     return need_more;
                 break;      /* flush the current block */
             }
@@ -2602,7 +2582,7 @@ int deflate_huff(stream.deflate_state *s, int flush) {
 
         /* Output a literal byte */
         s->match_length = 0;
-        Tracevv(stderr,"%c", s->window[s->strstart]);
+        trace.Tracevv(stderr,"%c", s->window[s->strstart]);
         _tr_tally_lit(s, s->window[s->strstart], bflush);
         s->lookahead--;
         s->strstart++;
@@ -2614,7 +2594,7 @@ int deflate_huff(stream.deflate_state *s, int flush) {
         }
     }
     s->insert = 0;
-    if (flush == Z_FINISH) {
+    if (flush == stream.Z_FINISH) {
         int r = FLUSH_BLOCK(s, 1);
         if (r != NO_RETURN) {
                 return r;
@@ -2628,4 +2608,10 @@ int deflate_huff(stream.deflate_state *s, int flush) {
             }
     }
     return block_done;
+}
+
+/* To be used only when the state is known to be valid */
+int ERR_RETURN(stream.z_stream *strm, int err) {
+    strm->msg = ERR_MSG(err);
+    return err;
 }

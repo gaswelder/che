@@ -28,24 +28,6 @@ Changes in 1.2.12 (27 Mar 2022)
 - Add address checking in clang to -w option of configure
 - Don't compute check value for raw inflate if asked to validate
 - Handle case where inflateSync used when header never processed
-- Avoid the use of ptrdiff_t
-- Avoid an undefined behavior of memcpy() in gzappend()
-- Avoid undefined behaviors of memcpy() in gz*printf()
-- Avoid an undefined behavior of memcpy() in _tr_stored_block()
-- Make the names in functions declarations identical to definitions
-- Remove old assembler code in which bugs have manifested
-- Fix deflateEnd() to not report an error at start of raw deflate
-- Add legal disclaimer to README
-- Emphasize the need to continue decompressing gzip members
-- Correct the initialization requirements for deflateInit2()
-- Fix a bug that can crash deflate on some input when using Z_FIXED
-- Assure that the number of bits for deflatePrime() is valid
-- Use a structure to make globals in enough.c evident
-- Use a macro for the printf format of big_t in enough.c
-- Clean up code style in enough.c, update version
-- Use inline function instead of macro for index in enough.c
-- Clarify that prefix codes are counted in enough.c
-- Show all the codes for the maximum tables size in enough.c
 - Add gznorm.c example, which normalizes gzip files
 - Fix the zran.c example to work on a multiple-member gzip file
 - Add tables for crc32_combine(), to speed it up by a factor of 200
@@ -170,17 +152,7 @@ Changes in 1.2.7.1 (24 Mar 2013)
 - Fix casting error in contrib/testzlib/testzlib.c
 - Fix types in contrib/minizip to match result of get_crc_table()
 - Simplify contrib/vstudio/vc10 with 'd' suffix
-- Add TOP support to win32/Makefile.msc
-- Support i686 and amd64 assembler builds in CMakeLists.txt
-- Fix typos in the use of _LARGEFILE64_SOURCE in zconf.h
-- Add vc11 and vc12 build files to contrib/vstudio
-- Add gzvprintf() as an undocumented function in zlib
-- Fix configure for Sun shell
-- Remove runtime check in configure for four-byte integer type
-- Add casts and consts to ease user conversion to C++
-- Add man pages for minizip and miniunzip
-- In Makefile uninstall, don't rm if preceding cd fails
-- Do not return Z_BUF_ERROR if deflateParam() has nothing to write
+
 
 Changes in 1.2.7 (2 May 2012)
 - Replace use of memmove() with a simple copy for portability
@@ -278,13 +250,8 @@ Changes in 1.2.5.3 (15 Jan 2012)
 - Remove old/visualc6 given CMakefile and other alternatives
 - Update AS400 build files and documentation [Monnerat]
 - Update win32/Makefile.gcc to build test/*.c [Truta]
-- Permit stronger flushes after Z_BLOCK flushes
-- Avoid extraneous empty blocks when doing empty flushes
-- Permit NULL arguments to deflatePending
 - Allow deflatePrime() to insert bits in the middle of a stream
 - Remove second empty static block for Z_PARTIAL_FLUSH
-- Write out all of the available bits when using Z_BLOCK
-- Insert the first two strings in the hash table after a flush
 
 Changes in 1.2.5.2 (17 Dec 2011)
 - fix ld error: unable to find version dependency 'ZLIB_1.2.5'
@@ -324,19 +291,11 @@ Changes in 1.2.5.2 (17 Dec 2011)
 - Facilitate compilation with Borland C++ for pragmas and vsnprintf
 - Include io.h for Turbo C / Borland C++
 - Move example.c and minigzip.c to test/
-- Simplify incomplete code table filling in inflate_table()
-- Remove code from inflate.c and infback.c that is impossible to execute
-- Test the inflate code with full coverage
-- Allow deflateSetDictionary, inflateSetDictionary at any time (in raw)
 - Add deflateResetKeep and fix inflateResetKeep to retain dictionary
-- Fix gzwrite.c to accommodate reduced memory zlib compilation
 - Have inflate() with Z_FINISH avoid the allocation of a window
 - Do not set strm->adler when doing raw inflate
 - Fix gzeof() to behave just like feof() when read is not past end of file
-- Fix bug in gzread.c when end-of-file is reached
-- Avoid use of Z_BUF_ERROR in gz* functions except for premature EOF
 - Document gzread() capability to read concurrently written files
-- Remove hard-coding of resource compiler in CMakeLists.txt [Blammo]
 
 Changes in 1.2.5.1 (10 Sep 2011)
 - Update FAQ entry on shared builds (#13)
@@ -482,7 +441,6 @@ Changes in 1.2.4 (14 Mar 2010)
 - Update assembler code and vstudio projects in contrib [Vollant]
 - Remove outdated assembler code contrib/masm686 and contrib/asm586
 - Remove old vc7 and vc8 from contrib/vstudio
-- Update win32/Makefile.msc, add ZLIB_VER_SUBREVISION [Rowe]
 - Fix memory leaks in gzclose_r() and gzclose_w(), file leak in gz_open()
 - Add contrib/gcc_gvmat64 for longest_match and inflate_fast [Vollant]
 - Remove *64 functions from win32/zlib.def (they're not 64-bit yet)
@@ -554,8 +512,6 @@ Changes in 1.2.3.5 (8 Jan 2010)
 - Fix relatively harmless bug in deflate_fast() [Exarevsky]
 - Fix same problem in deflate_slow()
 - Add $(SHAREDLIBV) to LIBS in Makefile.in [Brown]
-- Add deflate_rle() for faster Z_RLE strategy run-length encoding
-- Add deflate_huff() for faster Z_HUFFMAN_ONLY encoding
 - Change name of "write" variable in inffast.c to avoid library collisions
 - Fix premature EOF from gzread() in gzio.c [Brown]
 - Use zlib header window size if windowBits is 0 in inflateInit2()
@@ -687,8 +643,6 @@ Changes in 1.2.3.1 (16 August 2006)
 - Enable browse info in the "Debug" and "ASM Debug" configurations in
   the Visual C++ 6 project, and set (non-ASM) "Debug" as default [Truta]
 - Add pkgconfig support [Weigelt]
-- Add ZLIB_VER_MAJOR, ZLIB_VER_MINOR and ZLIB_VER_REVISION in zlib.h,
-  for use in win32/zlib1.rc [Polushin, Rowe, Truta]
 - Add a document that explains the new text detection scheme to
   doc/txtvsbin.txt [Truta]
 - Add rfc1950.txt, rfc1951.txt and rfc1952.txt to doc/ [Truta]
@@ -965,7 +919,6 @@ Changes in 1.2.0.3 (19 July 2003)
 - Minor FAQ updates
 
 Changes in 1.2.0.2 (13 July 2003)
-- Add ZLIB_VERNUM in zlib.h for numerical preprocessor comparisons
 - Attempt to avoid warnings in crc32.c for pointer-int conversion
 - Add AIX to configure, remove aix directory [Bakker]
 - Add some casts to minigzip.c
@@ -1036,7 +989,6 @@ Changes in 1.2.0 (9 March 2003)
 - New and improved crc32()
     - About 50% faster, thanks to suggestions from Rodney Brown
 - Add deflateBound() and compressBound() functions
-- Fix memory leak in deflateInit2()
 - Permit setting dictionary for raw deflate (for parallel deflate)
 - Fix const declaration for gzwrite()
 - Check for some malloc() failures in gzio.c
@@ -1062,14 +1014,6 @@ Changes in 1.2.0 (9 March 2003)
   return value, warn during make if using an insecure function
 - Fix configure problem with compile-time knowledge of HAVE_UNISTD_H that
   is lost when library is used--resolution is to build new zconf.h
-- Documentation improvements (in zlib.h):
-    - Document raw deflate and inflate
-    - Update RFCs URL
-    - Point out that zlib and gzip formats are different
-    - Note that Z_BUF_ERROR is not fatal
-    - Document string limit for gzprintf() and possible buffer overflow
-    - Note requirement on avail_out when flushing
-    - Note permitted values of flush parameter of inflate()
 - Add some FAQs (and even answers) to the FAQ
 - Add contrib/inflate86/ for x86 faster inflate
 - Add contrib/blast/ for PKWare Data Compression Library decompression
@@ -1243,7 +1187,6 @@ Changes in 1.0.6 (19 Jan 1998)
 - Fix a deflate bug occurring only with compression level 0 (thanks to
   Andy Buckler for finding this one)
 - In minigzip, pass transparently also the first byte for .Z files
-- return Z_BUF_ERROR instead of Z_OK if output buffer full in uncompress()
 - check Z_FINISH in inflate (thanks to Marc Schluper)
 - Implement deflateCopy (thanks to Adam Costello)
 - make static libraries by default in configure, add --shared option
@@ -1367,18 +1310,6 @@ Changes in 1.0.1 (20 May 96) [1.0 skipped to avoid confusion]
 - removed redefinition of Byte for MKWERKS
 - work around an MWKERKS bug (incorrect merge of all .h files)
 
-Changes in 0.99 (27 Jan 96)
-- allow preset dictionary shared between compressor and decompressor
-- allow compression level 0 (no compression)
-- add deflateParams in zlib.h: allow dynamic change of compression level
-  and compression strategy
-- test large buffers and deflateParams in example.c
-- add optional "configure" to build zlib as a shared library
-- suppress Makefile.qnx, use configure instead
-- fixed deflate for 64-bit systems (detected on Cray)
-- fixed inflate_blocks for 64-bit systems (detected on Alpha)
-- declare Z_DEFLATED in zlib.h (possible parameter for deflateInit2)
-- always return Z_BUF_ERROR when deflate() has nothing to do
 - deflateInit and inflateInit are now macros to allow version checking
 - prefix all global functions and types with z_ with -DZ_PREFIX
 - make falloc completely reentrant (inftrees.c)
@@ -1525,8 +1456,6 @@ Changes in 0.5:
 - added opaque object for zalloc and zfree
 - added deflateReset and inflateReset
 - added a variable zlib_version for consistency checking
-- renamed the 'filter' parameter of deflateInit2 as 'strategy'
-  Added Z_FILTERED and Z_HUFFMAN_ONLY constants
 
 Changes in 0.4:
 - avoid "zip" everywhere, use zlib instead of ziplib
@@ -1540,8 +1469,3 @@ Changes in 0.4:
   user-provided history buffer. This is supported only in deflateInit2
   and inflateInit2
 
-Changes in 0.3:
-- prefix all macro names with Z_
-- use Z_FINISH instead of deflateEnd to finish compression
-- added Z_HUFFMAN_ONLY
-- added gzerror()

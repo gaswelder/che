@@ -28,16 +28,6 @@
   (zlib format), rfc1951 (deflate format) and rfc1952 (gzip format).
 */
 
-// #import stream.c
-// #import deflate.c
-
-// #define ZLIB_VERSION "foo.bar"
-// #define ZLIB_VERNUM 0x0
-// #define ZLIB_VER_MAJOR 0
-// #define ZLIB_VER_MINOR 1
-// #define ZLIB_VER_REVISION 0
-// #define ZLIB_VER_SUBREVISION 0
-
 /*
     The 'zlib' compression library provides in-memory compression and
   decompression functions, including integrity checks of the uncompressed data.
@@ -117,16 +107,9 @@ pub enum {
 };
 
 
-/* compression strategy; see deflateInit2() below for details */
-// #define Z_FILTERED            1
-// #define Z_HUFFMAN_ONLY        2
-// #define Z_RLE                 3
-// #define Z_FIXED               4
-// #define Z_DEFAULT_STRATEGY    0
 
 
-// #define Z_DEFLATED   8
-/* The deflate compression method (the only one supported in this version) */
+
 
 // #define zlib_version zlibVersion()
 /* for compatibility with versions < 1.0.2 */

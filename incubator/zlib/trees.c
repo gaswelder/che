@@ -6,15 +6,12 @@
 
 /*
  *  ALGORITHM
- *
- *      The "deflation" process uses several Huffman trees. The more
- *      common source values are represented by shorter bit sequences.
- *
- *      Each code tree is stored in a compressed form which is itself
- * a Huffman encoding of the lengths of all the code strings (in
- * ascending order by source values).  The actual code strings are
- * reconstructed from the lengths in the inflate process, as described
- * in the deflate specification.
+The more common source values are represented by shorter bit sequences.
+
+The "deflation" process uses several Huffman trees ("code trees").
+Each tree is stored in a compressed form which is itself a Huffman encoding of the lengths of all the code strings (in
+ * ascending order by source values).
+The actual code strings are reconstructed from the lengths in the inflate process, as described in the deflate specification.
  *
  *  REFERENCES
  *
@@ -32,7 +29,11 @@
 
 /* @(#) $Id$ */
 
-#include "deflate.h"
+#define LITERALS  256 /* number of literal bytes 0..255 */
+#define LENGTH_CODES 29 /* number of length codes, not counting the special END_BLOCK code */
+
+#define L_CODES (LITERALS+1+LENGTH_CODES)
+/* number of Literal or Length codes, including the END_BLOCK code */
 
 #define MAX_BL_BITS 7
 /* Bit length codes must not exceed MAX_BL_BITS bits */
@@ -48,6 +49,11 @@
 
 #define REPZ_11_138  18
 /* repeat a zero length 11-138 times  (7 bits of repeat count) */
+
+#define Freq fc.freq
+#define Code fc.code
+#define Dad  dl.dad
+#define Len  dl.len
 
 /* extra bits for each length code */
 const int extra_lbits[LENGTH_CODES] = {0,0,0,0,0,0,0,0,1,1,1,1,2,2,2,2,3,3,3,3,4,4,4,4,5,5,5,5,0};
@@ -208,6 +214,17 @@ int base_dist[D_CODES] = {
  1024,  1536,  2048,  3072,  4096,  6144,  8192, 12288, 16384, 24576
 };
 
+/* Mapping from a distance to a distance code. dist is the distance - 1 and
+ * must not have side effects. _dist_code[256] and _dist_code[257] are never
+ * used.
+ */
+int d_code(int dist) {
+    if (dist < 256) {
+        return _dist_code[dist];
+    } else {
+        return _dist_code[256+((dist)>>7)];
+    }
+}
 
 typedef {
     const ct_data *static_tree;  /* static tree or NULL */

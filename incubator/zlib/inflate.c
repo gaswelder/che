@@ -7,6 +7,37 @@
 #import trace.c
 #import adler32
 #import crc32
+#import zmalloc.c
+
+#define MAXBITS 15
+
+
+/* default windowBits for decompression. MAX_WBITS is for compression only */
+#define DEF_WBITS MAX_WBITS
+
+/* The deflate compression method (the only one supported in this version) */
+#define Z_DEFLATED   8
+
+bool PKZIP_BUG_WORKAROUND = false;
+
+const char inflate_copyright[] =
+   " inflate 1.2.13 Copyright 1995-2022 Mark Adler ";
+/*
+  If you use the zlib library in a product, an acknowledgment is welcome
+  in the documentation of your product. If for some reason you cannot
+  include such an acknowledgment, I would appreciate that you keep this
+  copyright string in the executable of your product.
+ */
+
+
+
+
+/* Type of code to build for inflate_table() */
+enum {
+    CODES,
+    LENS,
+    DISTS
+}; // codetype;
 
 /* Maximum size of the dynamic table.  The maximum number of code structures is
    1444, which is the sum of 852 for literal/length codes and 592 for distance
@@ -127,7 +158,7 @@ enum {
 /* State maintained between inflate() calls -- approximately 7K bytes, not
    including the allocated sliding window, which is up to 32K bytes. */
 typedef {
-    z_stream *strm;             /* pointer back to this zlib stream */
+    stream.z_stream *strm;             /* pointer back to this zlib stream */
     int mode;          /* current inflate mode */
     int last;                   /* true if processing last block */
     int wrap;                   /* bit 0 true for zlib, bit 1 true for gzip,
@@ -276,16 +307,12 @@ pub int inflateReset2(stream.z_stream *strm, int windowBits) {
 
 
 /*
-     This is another version of inflateInit with an extra parameter.  The
-   fields next_in, avail_in, zalloc, zfree and opaque must be initialized
-   before by the caller.
+The fields next_in, avail_in, zalloc, zfree and opaque must be initialized before by the caller.
 
-     The windowBits parameter is the base two logarithm of the maximum window
-   size (the size of the history buffer).  It should be in the range 8..15 for
-   this version of the library.  The default value is 15 if inflateInit is used
-   instead.  windowBits must be greater than or equal to the windowBits value
-   provided to deflateInit2() while compressing, or it must be equal to 15 if
-   deflateInit2() was not used.  If a compressed stream with a larger window
+The windowBits parameter is the base two logarithm of the maximum window size (the size of the history buffer).
+It should be in the range 8..15 for this version of the library.
+The default value is 15 if inflateInit is used instead. 
+windowBits must be greater than or equal to the windowBits value provided to deflateInit2() while compressing, or it must be equal to 15 if deflateInit2() was not used.  If a compressed stream with a larger window
    size is given as input, inflate() will return with the error code
    stream.Z_DATA_ERROR instead of trying to allocate a larger window.
 
@@ -326,26 +353,24 @@ pub int inflateReset2(stream.z_stream *strm, int windowBits) {
    of inflateInit2() does not process any header information -- that is
    deferred until inflate() is called.
 */
-pub int inflateInit2_(
-    stream.z_stream *strm,
-    int windowBits,
-    const char *version,
-    int stream_size
-) {
+pub int inflateInit2_(stream.z_stream *strm, int windowBits) {
     int ret;
     inflate_state *state;
 
-    if (version == NULL || version[0] != ZLIB_VERSION[0] ||
-        stream_size != (int)(sizeof(stream.z_stream)))
-        return Z_VERSION_ERROR;
-    if (strm == NULL) return stream.Z_STREAM_ERROR;
+    // if (version == NULL || version[0] != ZLIB_VERSION[0] ||
+    //     stream_size != (int)(sizeof(stream.z_stream)))
+    //     return Z_VERSION_ERROR;
+
+    if (strm == NULL) {
+        return stream.Z_STREAM_ERROR;
+    }
     strm->msg = NULL;                 /* in case we return an error */
     if (strm->zalloc == NULL) {
-        strm->zalloc = zcalloc;
+        strm->zalloc = zmalloc.zcalloc;
         strm->opaque = NULL;
     }
     if (strm->zfree == NULL) {
-        strm->zfree = zcfree;
+        strm->zfree = zmalloc.zcfree;
     }
     state = stream.ZALLOC(strm, 1, sizeof(inflate_state));
     if (state == NULL) return stream.Z_MEM_ERROR;
@@ -385,7 +410,7 @@ pub int inflateInit(stream.z_stream *strm) {
     implementation of inflateInit() does not process any header information --
     that is deferred until inflate() is called.
     */
-    return inflateInit2_(strm, DEF_WBITS, ZLIB_VERSION, sizeof(stream.z_stream));
+    return inflateInit2_(strm, DEF_WBITS);
 }
 
 /*
@@ -603,21 +628,20 @@ int updatewindow(
     return 0;
 }
 
-/* Macros for inflate(): */
-
 /* check function to use adler32.adler32() for zlib or crc32() for gzip */
-int UPDATE_CHECK(uint32_t check, char *buf, size_t len) {
-    if (state->flags) {
-        return crc32.crc32(check, buf, len);
+int UPDATE_CHECK(ctx_t *ctx, char *buf, size_t len) {
+    if (ctx->state->flags) {
+        return crc32.crc32(ctx->state->check, buf, len);
     }
-    return adler32.adler32(check, buf, len);
+    return adler32.adler32(ctx->state->check, buf, len);
 }
 
 /* check macros for header crc */
-void CRC2(ctx_t *ctx, uint32_t check, uint16_t word) {
+void CRC2(ctx_t *ctx) {
+    uint16_t word = ctx->hold;
     ctx->hbuf[0] = (uint8_t)(word);
     ctx->hbuf[1] = (uint8_t)((word) >> 8);
-    check = crc32.crc32(check, ctx->hbuf, 2);
+    ctx->state->check = crc32.crc32(ctx->state->check, ctx->hbuf, 2);
 }
 
 /* Load registers with state in inflate() for speed */
@@ -769,7 +793,7 @@ const uint16_t order[19] =
 
      If a preset dictionary is needed after this call (see inflateSetDictionary
   below), inflate sets strm->adler to the Adler-32 checksum of the dictionary
-  chosen by the compressor and returns Z_NEED_DICT; otherwise it sets
+  chosen by the compressor and returns stream.Z_NEED_DICT; otherwise it sets
   strm->adler to the Adler-32 checksum of all output produced so far (that is,
   total_out bytes) and returns stream.Z_OK, stream.Z_STREAM_END or an error code as described
   below.  At the end of the stream, inflate() checks that its computed Adler-32
@@ -786,7 +810,7 @@ const uint16_t order[19] =
 
     inflate() returns stream.Z_OK if some progress has been made (more input processed
   or more output produced), stream.Z_STREAM_END if the end of the compressed data has
-  been reached and all uncompressed output has been produced, Z_NEED_DICT if a
+  been reached and all uncompressed output has been produced, stream.Z_NEED_DICT if a
   preset dictionary is needed at this point, stream.Z_DATA_ERROR if the input data was
   corrupted (input stream not conforming to the zlib format or incorrect check
   value, in which case strm->msg points to a string with a more specific
@@ -911,7 +935,7 @@ pub int inflate(stream.z_stream *strm, int flush) {
     ctx.ret = stream.Z_OK;
     while (true) {
         int r = 0;
-        switch (state->mode) {
+        switch (ctx.state->mode) {
             case HEAD:      { r = st_head(ctx); }
             case FLAGS:     { r = st_flags(ctx); }
             case TIME:      { r = st_time(ctx); }
@@ -966,7 +990,8 @@ pub int inflate(stream.z_stream *strm, int flush) {
 }
 
 enum {
-    BREAK = 123456789
+    BREAK = 123456789,
+    CONTINUE = 987654321,
 };
 
 int st_head(ctx_t *ctx) {
@@ -981,7 +1006,7 @@ int st_head(ctx_t *ctx) {
             ctx->state->wbits = 15;
         }
         ctx->state->check = crc32.init();
-        CRC2(ctx->state->check, ctx->hold);
+        CRC2(ctx);
         INITBITS(ctx);
         ctx->state->mode = FLAGS;
         break;
@@ -1039,7 +1064,7 @@ int st_flags(ctx_t *ctx) {
         ctx->state->head->text = (int)((ctx->hold >> 8) & 1);
     }
     if ((ctx->state->flags & 0x0200) && (ctx->state->wrap & 4)) {
-        CRC2(ctx->state->check, ctx->hold);
+        CRC2(ctx);
     }
     INITBITS(ctx);
     ctx->state->mode = TIME;
@@ -1048,15 +1073,16 @@ int st_flags(ctx_t *ctx) {
 
 int st_time(ctx_t *ctx) {
     NEEDBITS(ctx, 32);
-    if (ctx->state->head != NULL)
+    if (ctx->state->head != NULL) {
         ctx->state->head->time = ctx->hold;
+    }
     if ((ctx->state->flags & 0x0200) && (ctx->state->wrap & 4)) {
         uint32_t word = ctx->hold;
         ctx->hbuf[0] = (uint8_t)(word);
         ctx->hbuf[1] = (uint8_t)((word) >> 8);
         ctx->hbuf[2] = (uint8_t)((word) >> 16);
         ctx->hbuf[3] = (uint8_t)((word) >> 24);
-        ctx->state->check = crc32.crc32(ctx->state->check, hbuf, 4);
+        ctx->state->check = crc32.crc32(ctx->state->check, ctx->hbuf, 4);
     }
     INITBITS(ctx);
     ctx->state->mode = OS;
@@ -1070,7 +1096,7 @@ int st_os(ctx_t *ctx) {
         ctx->state->head->os = (int)(ctx->hold >> 8);
     }
     if ((ctx->state->flags & 0x0200) && (ctx->state->wrap & 4)) {
-        CRC2(ctx->state->check, ctx->hold);
+        CRC2(ctx);
     }
     INITBITS(ctx);
     ctx->state->mode = EXLEN;
@@ -1085,7 +1111,7 @@ int st_exlen(ctx_t *ctx) {
             ctx->state->head->extra_len = (unsigned)ctx->hold;
         }
         if ((ctx->state->flags & 0x0200) && (ctx->state->wrap & 4)) {
-            CRC2(ctx->state->check, ctx->hold);
+            CRC2(ctx);
         }
         INITBITS(ctx);
     }
@@ -1221,7 +1247,7 @@ int st_dictid(ctx_t *ctx) {
 int st_dict(ctx_t *ctx) {
     if (ctx->state->havedict == 0) {
         RESTORE(ctx);
-        return Z_NEED_DICT;
+        return stream.Z_NEED_DICT;
     }
     ctx->strm->adler = ctx->state->check = adler32.init();
     ctx->state->mode = TYPE;
@@ -1662,7 +1688,7 @@ int st_check(ctx_t *ctx) {
         ctx->strm->total_out += ctx->out;
         ctx->state->total += ctx->out;
         if ((ctx->state->wrap & 4) && ctx->out) {
-            ctx->strm->adler = ctx->state->check = UPDATE_CHECK(ctx->state->check, ctx->put - ctx->out, ctx->out);
+            ctx->strm->adler = ctx->state->check = UPDATE_CHECK(ctx, ctx->put - ctx->out, ctx->out);
         }
         ctx->out = ctx->left;
         int x;
@@ -1731,7 +1757,7 @@ int inf_leave(ctx_t *ctx) {
     ctx->strm->total_out += ctx->out;
     ctx->state->total += ctx->out;
     if ((ctx->state->wrap & 4) && ctx->out) {
-        ctx->strm->adler = ctx->state->check = UPDATE_CHECK(ctx->state->check, ctx->strm->next_out - ctx->out, ctx->out);
+        ctx->strm->adler = ctx->state->check = UPDATE_CHECK(ctx, ctx->strm->next_out - ctx->out, ctx->out);
     }
     int x1 = 0;
     if (ctx->state->last) {
@@ -1807,7 +1833,7 @@ pub int inflateGetDictionary(
 /*
      Initializes the decompression dictionary from the given uncompressed byte
    sequence.  This function must be called immediately after a call of inflate,
-   if that call returned Z_NEED_DICT.  The dictionary chosen by the compressor
+   if that call returned stream.Z_NEED_DICT.  The dictionary chosen by the compressor
    can be determined from the Adler-32 value returned by that call of inflate.
    The compressor and decompressor must use exactly the same dictionary (see
    deflateSetDictionary).  For raw inflate, this function can be called at any
@@ -2243,218 +2269,592 @@ void inflate_fast(stream.z_stream *strm, unsigned start) {
     /* copy state to local variables */
     ctx.state = strm->state;
     ctx.in = strm->next_in;
-    ctx.last = in + (strm->avail_in - 5);
+    ctx.last = ctx.in + (strm->avail_in - 5);
     ctx.out = strm->next_out;
-    ctx.beg = out - (start - strm->avail_out);
-    ctx.end = out + (strm->avail_out - 257);
-    ctx.wsize = state->wsize;
-    ctx.whave = state->whave;
-    ctx.wnext = state->wnext;
-    ctx.window = state->window;
-    ctx.hold = state->hold;
-    ctx.bits = state->bits;
-    ctx.lcode = state->lencode;
-    ctx.dcode = state->distcode;
-    ctx.lmask = (1U << state->lenbits) - 1;
-    ctx.dmask = (1U << state->distbits) - 1;
+    ctx.beg = ctx.out - (start - strm->avail_out);
+    ctx.end = ctx.out + (strm->avail_out - 257);
+    ctx.wsize = ctx.state->wsize;
+    ctx.whave = ctx.state->whave;
+    ctx.wnext = ctx.state->wnext;
+    ctx.window = ctx.state->window;
+    ctx.hold = ctx.state->hold;
+    ctx.bits = ctx.state->bits;
+    ctx.lcode = ctx.state->lencode;
+    ctx.dcode = ctx.state->distcode;
+    ctx.lmask = (1U << ctx.state->lenbits) - 1;
+    ctx.dmask = (1U << ctx.state->distbits) - 1;
 
     /* decode literals and length/distances until end-of-block or not enough
        input data or output space */
     while (true) {
-        if (bits < 15) {
-            hold += (uint32_t)(*in++) << bits;
-            bits += 8;
-            hold += (uint32_t)(*in++) << bits;
-            bits += 8;
+        if (ctx->bits < 15) {
+            ctx.hold += (uint32_t)(*(ctx->in)++) << ctx.bits;
+            ctx.bits += 8;
+            ctx.hold += (uint32_t)(*(ctx->in)++) << ctx.bits;
+            ctx.bits += 8;
         }
-        here = lcode + (hold & lmask);
-      dolen:
-        op = (unsigned)(here->bits);
-        hold >>= op;
-        bits -= op;
-        op = (unsigned)(here->op);
-        if (op == 0) {                          /* literal */
-            Tracevv((stderr, here->val >= 0x20 && here->val < 0x7f ?
-                    "inflate:         literal '%c'\n" :
-                    "inflate:         literal 0x%02x\n", here->val));
-            *out++ = (uint8_t)(here->val);
-        }
-        else if (op & 16) {                     /* length base */
-            len = (unsigned)(here->val);
-            op &= 15;                           /* number of extra bits */
-            if (op) {
-                if (bits < op) {
-                    hold += (uint32_t)(*in++) << bits;
-                    bits += 8;
-                }
-                len += (unsigned)hold & ((1U << op) - 1);
-                hold >>= op;
-                bits -= op;
-            }
-            Tracevv((stderr, "inflate:         length %u\n", len));
-            if (bits < 15) {
-                hold += (uint32_t)(*in++) << bits;
-                bits += 8;
-                hold += (uint32_t)(*in++) << bits;
-                bits += 8;
-            }
-            here = dcode + (hold & dmask);
-          dodist:
-            op = (unsigned)(here->bits);
-            hold >>= op;
-            bits -= op;
-            op = (unsigned)(here->op);
-            if (op & 16) {                      /* distance base */
-                dist = (unsigned)(here->val);
-                op &= 15;                       /* number of extra bits */
-                if (bits < op) {
-                    hold += (uint32_t)(*in++) << bits;
-                    bits += 8;
-                    if (bits < op) {
-                        hold += (uint32_t)(*in++) << bits;
-                        bits += 8;
-                    }
-                }
-                dist += (unsigned)hold & ((1U << op) - 1);
-                hold >>= op;
-                bits -= op;
-                Tracevv(stderr, "inflate:         distance %u\n", dist);
-                op = (unsigned)(out - beg);     /* max distance in output */
-                if (dist > op) {                /* see if copy from window */
-                    op = dist - op;             /* distance back in window */
-                    if (op > whave) {
-                        if (state->sane) {
-                            strm->msg =
-                                (char *)"invalid distance too far back";
-                            state->mode = BAD;
-                            break;
-                        }
-                        if (len <= op - whave) {
-                            do {
-                                *out++ = 0;
-                            } while (--len);
-                            continue;
-                        }
-                        len -= op - whave;
-                        do {
-                            *out++ = 0;
-                        } while (--op > whave);
-                        if (op == 0) {
-                            from = out - dist;
-                            do {
-                                *out++ = *from++;
-                            } while (--len);
-                            continue;
-                        }
-                    }
-                    from = window;
-                    if (wnext == 0) {           /* very common case */
-                        from += wsize - op;
-                        if (op < len) {         /* some from window */
-                            len -= op;
-                            do {
-                                *out++ = *from++;
-                            } while (--op);
-                            from = out - dist;  /* rest from output */
-                        }
-                    }
-                    else if (wnext < op) {      /* wrap around window */
-                        from += wsize + wnext - op;
-                        op -= wnext;
-                        if (op < len) {         /* some from end of window */
-                            len -= op;
-                            do {
-                                *out++ = *from++;
-                            } while (--op);
-                            from = window;
-                            if (wnext < len) {  /* some from start of window */
-                                op = wnext;
-                                len -= op;
-                                do {
-                                    *out++ = *from++;
-                                } while (--op);
-                                from = out - dist;      /* rest from output */
-                            }
-                        }
-                    }
-                    else {                      /* contiguous in window */
-                        from += wnext - op;
-                        if (op < len) {         /* some from window */
-                            len -= op;
-                            do {
-                                *out++ = *from++;
-                            } while (--op);
-                            from = out - dist;  /* rest from output */
-                        }
-                    }
-                    while (len > 2) {
-                        *out++ = *from++;
-                        *out++ = *from++;
-                        *out++ = *from++;
-                        len -= 3;
-                    }
-                    if (len) {
-                        *out++ = *from++;
-                        if (len > 1)
-                            *out++ = *from++;
-                    }
-                }
-                else {
-                    from = out - dist;          /* copy direct from output */
-                    do {                        /* minimum length is three */
-                        *out++ = *from++;
-                        *out++ = *from++;
-                        *out++ = *from++;
-                        len -= 3;
-                    } while (len > 2);
-                    if (len) {
-                        *out++ = *from++;
-                        if (len > 1)
-                            *out++ = *from++;
-                    }
-                }
-            }
-            else if ((op & 64) == 0) {          /* 2nd level distance code */
-                here = dcode + here->val + (hold & ((1U << op) - 1));
-                goto dodist;
-            }
-            else {
-                strm->msg = (char *)"invalid distance code";
-                state->mode = BAD;
-                break;
-            }
-        }
-        else if ((op & 64) == 0) {              /* 2nd level length code */
-            here = lcode + here->val + (hold & ((1U << op) - 1));
-            goto dolen;
-        }
-        else if (op & 32) {                     /* end-of-block */
-            Tracevv((stderr, "inflate:         end of block\n"));
-            state->mode = TYPE;
+        ctx->here = ctx->lcode + (ctx->hold & ctx->lmask);
+        int r = dolen(ctx);
+        if (r == BREAK) break;
+        if (r == CONTINUE) continue;
+        if (ctx->in >= ctx->last || ctx->out >= ctx->end) {
             break;
         }
-        else {
-            strm->msg = "invalid literal/length code";
-            state->mode = BAD;
-            break;
-        }
-        bool cont = (in < last && out < end);
-        if (!cont) break;
     }
 
     /* return unused bytes (on entry, bits < 8, so in won't go too far back) */
-    len = bits >> 3;
-    in -= len;
-    bits -= len << 3;
-    hold &= (1U << bits) - 1;
+    ctx.len = ctx.bits >> 3;
+    ctx.in -= ctx.len;
+    ctx.bits -= ctx.len << 3;
+    ctx.hold &= (1U << ctx.bits) - 1;
 
     /* update state and return */
-    strm->next_in = in;
-    strm->next_out = out;
-    strm->avail_in = (unsigned)(in < last ? 5 + (last - in) : 5 - (in - last));
-    strm->avail_out = (unsigned)(out < end ?
-                                 257 + (end - out) : 257 - (out - end));
-    state->hold = hold;
-    state->bits = bits;
+    ctx.strm->next_in = ctx.in;
+    ctx.strm->next_out = ctx.out;
+    if (ctx.in < ctx.last) {
+        ctx.strm->avail_in = (unsigned)(5 + (ctx.last - ctx.in));
+    } else {
+        ctx.strm->avail_in = (unsigned)(5 - (ctx.in - ctx.last));
+    }
+    if (ctx.out < ctx.end) {
+        ctx.strm->avail_out = (unsigned)(257 + (ctx.end - ctx.out));
+    } else {
+        ctx.strm->avail_out = (unsigned)(257 - (ctx.out - ctx.end));
+    }    
+    ctx.state->hold = ctx.hold;
+    ctx.state->bits = ctx.bits;
     return;
+}
+
+int dolen(fastctx_t *ctx) {
+    ctx->op = (unsigned)(ctx->here->bits);
+    ctx->hold >>= ctx->op;
+    ctx->bits -= ctx->op;
+    ctx->op = (unsigned)(ctx->here->op);
+    if (ctx->op == 0) {                          
+        /* literal */
+        if (ctx->here->val >= 0x20 && ctx->here->val < 0x7f) {
+            trace.Tracevv(stderr,  "inflate:         literal '%c'\n", ctx->here->val);
+        } else {
+            trace.Tracevv(stderr, "inflate:         literal 0x%02x\n", ctx->here->val);
+        }
+        *(ctx->out)++ = (uint8_t)(ctx->here->val);
+    }
+    else if (ctx->op & 16) {                     
+        /* length base */
+        ctx->len = (unsigned)(ctx->here->val);
+        ctx->op &= 15;                           /* number of extra bits */
+        if (ctx->op) {
+            if (ctx->bits < ctx->op) {
+                ctx->hold += (uint32_t)(*(ctx->in)++) << ctx->bits;
+                ctx->bits += 8;
+            }
+            ctx->len += (unsigned)ctx->hold & ((1U << ctx->op) - 1);
+            ctx->hold >>= ctx->op;
+            ctx->bits -= ctx->op;
+        }
+        trace.Tracevv(stderr, "inflate:         length %u\n", ctx->len);
+        if (ctx->bits < 15) {
+            ctx->hold += (uint32_t)(*(ctx->in)++) << ctx->bits;
+            ctx->bits += 8;
+            ctx->hold += (uint32_t)(*(ctx->in)++) << ctx->bits;
+            ctx->bits += 8;
+        }
+        ctx->here = ctx->dcode + (ctx->hold & ctx->dmask);
+
+        int r = dodist(ctx);
+        if (r == BREAK || r == CONTINUE) {
+            return r;
+        }
+    }
+    else if ((ctx->op & 64) == 0) {              
+        /* 2nd level length code */
+        ctx->here = ctx->lcode + ctx->here->val + (ctx->hold & ((1U << ctx->op) - 1));
+        return dolen(ctx);
+    }
+    else if (ctx->op & 32) {                     
+        /* end-of-block */
+        trace.Tracevv(stderr, "inflate:         end of block\n");
+        ctx->state->mode = TYPE;
+        return BREAK;
+    }
+    else {
+        ctx->strm->msg = "invalid literal/length code";
+        ctx->state->mode = BAD;
+        return BREAK;
+    }
+}
+
+int dodist(fastctx_t *ctx) {
+    ctx->op = (unsigned)(ctx->here->bits);
+    ctx->hold >>= ctx->op;
+    ctx->bits -= ctx->op;
+    ctx->op = (unsigned)(ctx->here->op);
+    if (ctx->op & 16) {                      
+        /* distance base */
+        int r = wtfgoto4(ctx);
+        if (r == BREAK || r == CONTINUE) {
+            return r;
+        }
+    }
+    else if ((ctx->op & 64) == 0) {          
+        /* 2nd level distance code */
+        ctx->here = ctx->dcode + ctx->here->val + (ctx->hold & ((1U << ctx->op) - 1));
+        return dodist(ctx);
+    }
+    else {
+        ctx->strm->msg = "invalid distance code";
+        ctx->state->mode = BAD;
+        return BREAK;
+    }
+}
+
+int wtfgoto4(fastctx_t *ctx) {
+    ctx->dist = (unsigned)(ctx->here->val);
+    ctx->op &= 15;                       /* number of extra bits */
+    if (ctx->bits < ctx->op) {
+        ctx->hold += (uint32_t)(*(ctx->in)++) << ctx->bits;
+        ctx->bits += 8;
+        if (ctx->bits < ctx->op) {
+            ctx->hold += (uint32_t)(*(ctx->in)++) << ctx->bits;
+            ctx->bits += 8;
+        }
+    }
+    ctx->dist += (unsigned)ctx->hold & ((1U << ctx->op) - 1);
+    ctx->hold >>= ctx->op;
+    ctx->bits -= ctx->op;
+    trace.Tracevv(stderr, "inflate:         distance %u\n", ctx->dist);
+    ctx->op = (unsigned)(ctx->out - ctx->beg);     /* max distance in output */
+    if (ctx->dist > ctx->op) {                /* see if copy from window */
+        int r = wtfgoto3(ctx);
+        if (r == BREAK || r == CONTINUE) {
+            return r;
+        }
+        wtfgoto2(ctx);
+    }
+    else {
+        wtfgoto1(ctx);
+    }
+}
+
+int wtfgoto3(fastctx_t *ctx) {
+    /* distance back in window */
+    ctx->op = ctx->dist - ctx->op;             
+    if (ctx->op > ctx->whave) {
+        if (ctx->state->sane) {
+            ctx->strm->msg = "invalid distance too far back";
+            ctx->state->mode = BAD;
+            break;
+        }
+        if (ctx->len <= ctx->op - ctx->whave) {
+            while (true) {
+                *(ctx->out)++ = 0;
+                if (!--ctx->len) {
+                    break;
+                }
+            }
+            continue;
+        }
+        ctx->len -= ctx->op - ctx->whave;
+        while (true) {
+            *(ctx->out)++ = 0;
+            ctx->op--;
+            bool cont = (ctx->op > ctx->whave);
+            if (!cont) {
+                break;
+            }
+        }
+        if (ctx->op == 0) {
+            ctx->from = ctx->out - ctx->dist;
+            while (true) {
+                *(ctx->out)++ = *(ctx->from)++;
+                if (!--ctx->len) {
+                    break;
+                }
+            }
+            continue;
+        }
+    }
+}
+
+void wtfgoto2(fastctx_t *ctx) {
+    ctx->from = ctx->window;
+    if (ctx->wnext == 0) {           
+        /* very common case */
+        ctx->from += ctx->wsize - ctx->op;
+        if (ctx->op < ctx->len) {         
+            /* some from window */
+            ctx->len -= ctx->op;
+            while (true) {
+                *(ctx->out)++ = *(ctx->from)++;
+                if (!--ctx->op) {
+                    break;
+                }
+            }
+            ctx->from = ctx->out - ctx->dist;  /* rest from output */
+        }
+    }
+    else if (ctx->wnext < ctx->op) {      /* wrap around window */
+        ctx->from += ctx->wsize + ctx->wnext - ctx->op;
+        ctx->op -= ctx->wnext;
+        if (ctx->op < ctx->len) {         /* some from end of window */
+            ctx->len -= ctx->op;
+            while (true) {
+                *(ctx->out)++ = *(ctx->from)++;
+                if (!--ctx->op) break;
+            }
+            ctx->from = ctx->window;
+            if (ctx->wnext < ctx->len) {  /* some from start of window */
+                ctx->op = ctx->wnext;
+                ctx->len -= ctx->op;
+                while (true) {
+                    *(ctx->out)++ = *(ctx->from)++;
+                    if (!--ctx->op) {
+                        break;
+                    }
+                }
+                ctx->from = ctx->out - ctx->dist;      /* rest from output */
+            }
+        }
+    }
+    else {                      /* contiguous in window */
+        ctx->from += ctx->wnext - ctx->op;
+        if (ctx->op < ctx->len) {         /* some from window */
+            ctx->len -= ctx->op;
+            while (true) {
+                *(ctx->out)++ = *(ctx->from)++;
+                if (!--ctx->op) {
+                    break;
+                }
+            }
+            ctx->from = ctx->out - ctx->dist;  /* rest from output */
+        }
+    }
+    while (ctx->len > 2) {
+        *(ctx->out)++ = *(ctx->from)++;
+        *(ctx->out)++ = *(ctx->from)++;
+        *(ctx->out)++ = *(ctx->from)++;
+        ctx->len -= 3;
+    }
+    if (ctx->len) {
+        *(ctx->out)++ = *(ctx->from)++;
+        if (ctx->len > 1) {
+            *(ctx->out)++ = *(ctx->from)++;
+        }
+    }
+}
+
+void wtfgoto1(fastctx_t *ctx) {
+    ctx->from = ctx->out - ctx->dist;          /* copy direct from output */
+    while (true) {                        /* minimum length is three */
+        *(ctx->out)++ = *(ctx->from)++;
+        *(ctx->out)++ = *(ctx->from)++;
+        *(ctx->out)++ = *(ctx->from)++;
+        ctx->len -= 3;
+        if (ctx->len <= 2) {
+            break;
+        }
+    }
+    if (ctx->len) {
+        *(ctx->out)++ = *(ctx->from)++;
+        if (ctx->len > 1) {
+            *(ctx->out)++ = *(ctx->from)++;
+        }
+    }
+}
+
+
+
+uint16_t inftable_lbase[31] = { /* Length codes 257..285 base */
+    3, 4, 5, 6, 7, 8, 9, 10, 11, 13, 15, 17, 19, 23, 27, 31,
+    35, 43, 51, 59, 67, 83, 99, 115, 131, 163, 195, 227, 258, 0, 0};
+uint16_t inftable_lext[31] = { /* Length codes 257..285 extra */
+    16, 16, 16, 16, 16, 16, 16, 16, 17, 17, 17, 17, 18, 18, 18, 18,
+    19, 19, 19, 19, 20, 20, 20, 20, 21, 21, 21, 21, 16, 194, 65};
+uint16_t inftable_dbase[32] = { /* Distance codes 0..29 base */
+    1, 2, 3, 4, 5, 7, 9, 13, 17, 25, 33, 49, 65, 97, 129, 193,
+    257, 385, 513, 769, 1025, 1537, 2049, 3073, 4097, 6145,
+    8193, 12289, 16385, 24577, 0, 0};
+uint16_t inftable_dext[32] = { /* Distance codes 0..29 extra */
+    16, 16, 16, 16, 17, 17, 18, 18, 19, 19, 20, 20, 21, 21, 22, 22,
+    23, 23, 24, 24, 25, 25, 26, 26, 27, 27,
+    28, 28, 29, 29, 64, 64};
+    
+/*
+   Build a set of tables to decode the provided canonical Huffman code.
+   The code lengths are lens[0..codes-1].  The result starts at *table,
+   whose indices are 0..2^bits-1.  work is a writable array of at least
+   lens shorts, which is used as a work area.  type is the type of code
+   to be generated, CODES, LENS, or DISTS.  On return, zero is success,
+   -1 is an invalid code, and +1 means that ENOUGH isn't enough.  table
+   on return points to the next available entry's address.  bits is the
+   requested root table index bits, and on return it is the actual root
+   table index bits.  It will differ if the request is greater than the
+   longest code or if it is less than the shortest code.
+ */
+int inflate_table(
+    int type,
+    uint16_t *lens,
+    unsigned codes,
+    code **table,
+    unsigned *bits,
+    uint16_t *work
+) {
+    unsigned len;               /* a code's length in bits */
+    unsigned sym;               /* index of code symbols */
+    unsigned min;
+    unsigned max;          /* minimum and maximum code lengths */
+    unsigned root;              /* number of index bits for root table */
+    unsigned curr;              /* number of index bits for current table */
+    unsigned drop;              /* code bits to drop for sub-table */
+    int left;                   /* number of prefix codes available */
+    unsigned used;              /* code entries in table used */
+    unsigned huff;              /* Huffman code */
+    unsigned incr;              /* for incrementing code, index */
+    unsigned fill;              /* index for replicating entries */
+    unsigned low;               /* low bits for current root entry */
+    unsigned mask;              /* mask for low root bits */
+    code here;                  /* table entry for duplication */
+    code *next;             /* next available space in table */
+    const uint16_t *base;     /* base value table to use */
+    const uint16_t *extra;    /* extra bits table to use */
+    unsigned match;             /* use base and extra for symbol >= match */
+    uint16_t count[MAXBITS+1];    /* number of codes of each length */
+    uint16_t offs[MAXBITS+1];     /* offsets in table for each length */
+   
+
+    /*
+       Process a set of code lengths to create a canonical Huffman code.  The
+       code lengths are lens[0..codes-1].  Each length corresponds to the
+       symbols 0..codes-1.  The Huffman code is generated by first sorting the
+       symbols by length from short to long, and retaining the symbol order
+       for codes with equal lengths.  Then the code starts with all zero bits
+       for the first code of the shortest length, and the codes are integer
+       increments for the same length, and zeros are appended as the length
+       increases.  For the deflate format, these bits are stored backwards
+       from their more natural integer increment ordering, and so when the
+       decoding tables are built in the large loop below, the integer codes
+       are incremented backwards.
+
+       This routine assumes, but does not check, that all of the entries in
+       lens[] are in the range 0..MAXBITS.  The caller must assure this.
+       1..MAXBITS is interpreted as that code length.  zero means that that
+       symbol does not occur in this code.
+
+       The codes are sorted by computing a count of codes for each length,
+       creating from that a table of starting indices for each length in the
+       sorted table, and then entering the symbols in order in the sorted
+       table.  The sorted table is work[], with that space being provided by
+       the caller.
+
+       The length counts are used for other purposes as well, i.e. finding
+       the minimum and maximum length codes, determining if there are any
+       codes at all, checking for a valid set of lengths, and looking ahead
+       at length counts to determine sub-table sizes when building the
+       decoding tables.
+     */
+
+    /* accumulate lengths for codes (assumes lens[] all in 0..MAXBITS) */
+    for (len = 0; len <= MAXBITS; len++)
+        count[len] = 0;
+    for (sym = 0; sym < codes; sym++)
+        count[lens[sym]]++;
+
+    /* bound code lengths, force root to be within code lengths */
+    root = *bits;
+    for (max = MAXBITS; max >= 1; max--)
+        if (count[max] != 0) break;
+    if (root > max) root = max;
+    if (max == 0) {                     /* no symbols to code at all */
+        here.op = (uint8_t)64;    /* invalid code marker */
+        here.bits = (uint8_t)1;
+        here.val = (uint16_t)0;
+        *(*table)++ = here;             /* make a table to force an error */
+        *(*table)++ = here;
+        *bits = 1;
+        return 0;     /* no symbols, but wait for decoding to report error */
+    }
+    for (min = 1; min < max; min++)
+        if (count[min] != 0) break;
+    if (root < min) root = min;
+
+    /* check for an over-subscribed or incomplete set of lengths */
+    left = 1;
+    for (len = 1; len <= MAXBITS; len++) {
+        left <<= 1;
+        left -= count[len];
+        if (left < 0) return -1;        /* over-subscribed */
+    }
+    if (left > 0 && (type == CODES || max != 1))
+        return -1;                      /* incomplete set */
+
+    /* generate offsets into symbol table for each length for sorting */
+    offs[1] = 0;
+    for (len = 1; len < MAXBITS; len++)
+        offs[len + 1] = offs[len] + count[len];
+
+    /* sort symbols by length, by symbol order within each length */
+    for (sym = 0; sym < codes; sym++)
+        if (lens[sym] != 0) work[offs[lens[sym]]++] = (uint16_t)sym;
+
+    /*
+       Create and fill in decoding tables.  In this loop, the table being
+       filled is at next and has curr index bits.  The code being used is huff
+       with length len.  That code is converted to an index by dropping drop
+       bits off of the bottom.  For codes where len is less than drop + curr,
+       those top drop + curr - len bits are incremented through all values to
+       fill the table with replicated entries.
+
+       root is the number of index bits for the root table.  When len exceeds
+       root, sub-tables are created pointed to by the root entry with an index
+       of the low root bits of huff.  This is saved in low to check for when a
+       new sub-table should be started.  drop is zero when the root table is
+       being filled, and drop is root when sub-tables are being filled.
+
+       When a new sub-table is needed, it is necessary to look ahead in the
+       code lengths to determine what size sub-table is needed.  The length
+       counts are used for this, and so count[] is decremented as codes are
+       entered in the tables.
+
+       used keeps track of how many table entries have been allocated from the
+       provided *table space.  It is checked for LENS and DIST tables against
+       the constants ENOUGH_LENS and ENOUGH_DISTS to guard against changes in
+       the initial root table size constants.  See the comments in inftrees.h
+       for more information.
+
+       sym increments through all symbols, and the loop terminates when
+       all codes of length max, i.e. all codes, have been processed.  This
+       routine permits incomplete codes, so another loop after this one fills
+       in the rest of the decoding tables with invalid code markers.
+     */
+
+    /* set up for code type */
+    switch (type) {
+        case CODES: {
+            base = extra = work;    /* dummy value--not used */
+            match = 20;
+        }
+        case LENS: {
+            base = inftable_lbase;
+            extra = inftable_lext;
+            match = 257;
+        }
+        default:    {
+            /* DISTS */
+            base = inftable_dbase;
+            extra = inftable_dext;
+            match = 0;
+        }
+    }
+
+    /* initialize state for loop */
+    huff = 0;                   /* starting code */
+    sym = 0;                    /* starting code symbol */
+    len = min;                  /* starting code length */
+    next = *table;              /* current table to fill in */
+    curr = root;                /* current table index bits */
+    drop = 0;                   /* current bits to drop from code for index */
+    low = (unsigned)(-1);       /* trigger new sub-table when len > root */
+    used = 1U << root;          /* use root table entries */
+    mask = used - 1;            /* mask for comparing low */
+
+    /* check available table space */
+    if ((type == LENS && used > ENOUGH_LENS) ||
+        (type == DISTS && used > ENOUGH_DISTS))
+        return 1;
+
+    /* process all codes and make table entries */
+    while (true) {
+        /* create table entry */
+        here.bits = (uint8_t)(len - drop);
+        if (work[sym] + 1U < match) {
+            here.op = (uint8_t)0;
+            here.val = work[sym];
+        }
+        else if (work[sym] >= match) {
+            here.op = (uint8_t)(extra[work[sym] - match]);
+            here.val = base[work[sym] - match];
+        }
+        else {
+            here.op = (uint8_t)(32 + 64);         /* end of block */
+            here.val = 0;
+        }
+
+        /* replicate for those indices with low len bits equal to huff */
+        incr = 1U << (len - drop);
+        fill = 1U << curr;
+        min = fill;                 /* save offset to next table */
+        while (true) {
+            fill -= incr;
+            next[(huff >> drop) + fill] = here;
+            if (fill == 0) break;
+        }
+
+        /* backwards increment the len-bit code huff */
+        incr = 1U << (len - 1);
+        while (huff & incr) {
+            incr >>= 1;
+        }
+        if (incr != 0) {
+            huff &= incr - 1;
+            huff += incr;
+        }
+        else {
+            huff = 0;
+        }
+
+        /* go to next symbol, update count, len */
+        sym++;
+        if (--(count[len]) == 0) {
+            if (len == max) break;
+            len = lens[work[sym]];
+        }
+
+        /* create new sub-table if needed */
+        if (len > root && (huff & mask) != low) {
+            /* if first time, transition to sub-tables */
+            if (drop == 0)
+                drop = root;
+
+            /* increment past last table */
+            next += min;            /* here min is 1 << curr */
+
+            /* determine length of next table */
+            curr = len - drop;
+            left = (int)(1 << curr);
+            while (curr + drop < max) {
+                left -= count[curr + drop];
+                if (left <= 0) break;
+                curr++;
+                left <<= 1;
+            }
+
+            /* check for enough space */
+            used += 1U << curr;
+            if ((type == LENS && used > ENOUGH_LENS) ||
+                (type == DISTS && used > ENOUGH_DISTS))
+                return 1;
+
+            /* point entry in root table to sub-table */
+            low = huff & mask;
+            (*table)[low].op = (uint8_t)curr;
+            (*table)[low].bits = (uint8_t)root;
+            (*table)[low].val = (uint16_t)(next - *table);
+        }
+    }
+
+    /* fill in remaining table entry if code is incomplete (guaranteed to have
+       at most one remaining entry, since if the code is incomplete, the
+       maximum code length that was allowed to get this far is one bit) */
+    if (huff != 0) {
+        here.op = (uint8_t)64;            /* invalid code marker */
+        here.bits = (uint8_t)(len - drop);
+        here.val = (uint16_t)0;
+        next[huff] = here;
+    }
+
+    /* set return parameters */
+    *table += used;
+    *bits = root;
+    return 0;
 }

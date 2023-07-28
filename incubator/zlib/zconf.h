@@ -24,7 +24,6 @@
 #  define _tr_flush_bits        z__tr_flush_bits
 #  define _tr_flush_block       z__tr_flush_block
 #  define _tr_init              z__tr_init
-#  define _tr_stored_block      z__tr_stored_block
 #  define _tr_tally             z__tr_tally
 #  define adler32               z_adler32
 #  define adler32_combine       z_adler32_combine
@@ -125,7 +124,6 @@
 #    define uncompress2           z_uncompress2
 #  define zError                z_zError
 #    define zcalloc               z_zcalloc
-#    define zcfree                z_zcfree
 #  define zlibCompileFlags      z_zlibCompileFlags
 #  define zlibVersion           z_zlibVersion
 

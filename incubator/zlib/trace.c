@@ -1,5 +1,9 @@
 int z_verbose = 0;
 
+pub int level() {
+    return z_verbose;
+}
+
 pub void Trace(FILE *f, const char *format, ...) {
     if (z_verboze < 0) {
         return;

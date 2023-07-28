@@ -559,8 +559,7 @@ int main(argc, argv)
                 zlibVersion());
     }
 
-    printf("zlib version %s = 0x%04x, compile flags = 0x%lx\n",
-            ZLIB_VERSION, ZLIB_VERNUM, zlibCompileFlags());
+    printf("zlib version %s, compile flags = 0x%lx\n", ZLIB_VERSION, zlibCompileFlags());
 
     compr    = (Byte*)calloc((uInt)comprLen, 1);
     uncompr  = (Byte*)calloc((uInt)uncomprLen, 1);
