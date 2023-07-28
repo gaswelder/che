@@ -43,7 +43,7 @@ pub const char * zlibVersion()
 
     Compiler, assembler, and debug options:
      8: ZLIB_DEBUG
-     9: ASMV or ASMINF -- use ASM code
+     9: ASMV -- use ASM code
      10: ZLIB_WINAPI -- exported functions use the WINAPI calling convention
      11: 0 (reserved)
 
@@ -103,7 +103,7 @@ pub uLong zlibCompileFlags()
     }
     flags += 1 << 8;
     /*
-#if defined(ASMV) || defined(ASMINF)
+#if defined(ASMV)
     flags += 1 << 9;
 #endif
      */

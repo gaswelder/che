@@ -944,11 +944,6 @@ Changes in 1.2.0.5 (8 September 2003)
   parameter [Truta]
 - Use SYS16BIT instead of __32BIT__ to distinguish between
   16- and 32-bit platforms [Truta]
-- Use far memory allocators in small 16-bit memory models for
-  Turbo C [Truta]
-- Add info about the use of ASMV, ASMINF and ZLIB_WINAPI in
-  zlibCompileFlags [Truta]
-- Cygwin has vsnprintf [Wilson]
 - In Windows16, OS_CODE is 0, as in MSDOS [Truta]
 - In Cygwin, OS_CODE is 3 (Unix), not 11 (Windows32) [Wilson]
 
