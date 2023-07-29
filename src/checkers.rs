@@ -215,6 +215,10 @@ fn check_module_object(
     }
 }
 
+fn isvoid(t: &Typename) -> bool {
+    return t.name.namespace == "" && t.name.name == "void";
+}
+
 fn check_function_declaration(
     f: &FunctionDeclaration,
     state: &mut State,
@@ -232,8 +236,7 @@ fn check_function_declaration(
     scopestack.push(newscope());
 
     for tf in &f.parameters.list {
-        let isvoid = tf.type_name.name.namespace == "" && tf.type_name.name.name == "void";
-        if isvoid {
+        if isvoid(&tf.type_name) {
             for f in &tf.forms {
                 if f.stars == "" {
                     state.errors.push(Error {
@@ -266,6 +269,50 @@ fn check_function_declaration(
             })
         }
     }
+
+    if (!isvoid(&f.type_name) || f.form.stars != "") && !body_returns(&f.body) {
+        state.errors.push(Error {
+            message: format!("{}: missing return", f.form.name),
+            pos: f.pos.clone(),
+        })
+    }
+}
+
+fn body_returns(b: &Body) -> bool {
+    let last = &b.statements[b.statements.len() - 1];
+    return match last {
+        Statement::Return { .. } => true,
+        Statement::Panic { .. } => true,
+        Statement::If {
+            condition: _,
+            body,
+            else_body: _,
+        } => body_returns(&body),
+        Statement::Switch {
+            value: _,
+            cases,
+            default_case,
+        } => {
+            if default_case.is_none() || !body_returns(default_case.as_ref().unwrap()) {
+                return false;
+            }
+            for c in cases {
+                if !body_returns(&c.body) {
+                    return false;
+                }
+            }
+            return true;
+        }
+        Statement::While { condition, body } => istrue(condition) || body_returns(&body),
+        _ => false,
+    };
+}
+
+fn istrue(e: &Expression) -> bool {
+    return match e {
+        Expression::Identifier(x) => x.name == "true",
+        _ => false,
+    };
 }
 
 fn has_function_call(e: &Expression) -> bool {

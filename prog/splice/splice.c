@@ -24,4 +24,5 @@ int main(int argc, char *argv[]) {
     if (cols > 0 && cols < size) {
         putchar('\n');
     }
+    return 0;
 }

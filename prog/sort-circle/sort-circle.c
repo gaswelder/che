@@ -127,6 +127,7 @@ int main(int argc, char **argv) {
             frame();
         }
     }
+    return 0;
 }
 
 uint32_t hue(int v) {

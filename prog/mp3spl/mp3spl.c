@@ -56,6 +56,7 @@ int main(int argc, char *argv[]) {
 	free(namebase);
 	free(newname);
 	mp3.mp3close(f);
+	return 0;
 }
 
 bool parse_times(mp3.mp3time_t *a, const char *spec, size_t maxsize)
