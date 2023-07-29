@@ -8,6 +8,7 @@
 #import adler32
 #import crc32
 #import zmalloc.c
+#import deflate.c
 
 #define MAXBITS 15
 
@@ -15,8 +16,7 @@
 /* default windowBits for decompression. MAX_WBITS is for compression only */
 #define DEF_WBITS MAX_WBITS
 
-/* The deflate compression method (the only one supported in this version) */
-#define Z_DEFLATED   8
+
 
 bool PKZIP_BUG_WORKAROUND = false;
 
@@ -169,7 +169,7 @@ typedef {
     unsigned dmax;              /* zlib header max distance (INFLATE_STRICT) */
     uint32_t check;        /* protected copy of check value */
     uint32_t total;        /* protected copy of output count */
-    gz_header *head;            /* where to save gzip header information */
+    stream.gz_header *head;            /* where to save gzip header information */
         /* sliding window */
     unsigned wbits;             /* log base 2 of requested window size */
     unsigned wsize;             /* window size or zero if not using window */
@@ -1020,7 +1020,7 @@ int st_head(ctx_t *ctx) {
         ctx->state->mode = BAD;
         break;
     }
-    if (BITS(ctx, 4) != Z_DEFLATED) {
+    if (BITS(ctx, 4) != deflate.Z_DEFLATED) {
         ctx->strm->msg = "unknown compression method";
         ctx->state->mode = BAD;
         break;
@@ -1050,7 +1050,7 @@ int st_head(ctx_t *ctx) {
 int st_flags(ctx_t *ctx) {
     NEEDBITS(ctx, 16);
     ctx->state->flags = (int)(ctx->hold);
-    if ((ctx->state->flags & 0xff) != Z_DEFLATED) {
+    if ((ctx->state->flags & 0xff) != deflate.Z_DEFLATED) {
         ctx->strm->msg = "unknown compression method";
         ctx->state->mode = BAD;
         break;

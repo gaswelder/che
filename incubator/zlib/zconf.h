@@ -22,7 +22,6 @@
 #  define _length_code          z__length_code
 #  define _tr_align             z__tr_align
 #  define _tr_flush_bits        z__tr_flush_bits
-#  define _tr_flush_block       z__tr_flush_block
 #  define _tr_init              z__tr_init
 #  define _tr_tally             z__tr_tally
 #  define adler32               z_adler32
@@ -130,7 +129,6 @@
 /* all zlib typedefs in zlib.h and zconf.h */
 #  define Byte                  z_Byte
 #  define Bytef                 z_Bytef
-#  define alloc_func            z_alloc_func
 #  define charf                 z_charf
 #  define free_func             z_free_func
 #    define gzFile                z_gzFile
@@ -195,38 +193,12 @@
 #endif
 #  undef z_longlong
 
-/* Maximum value for memLevel in deflateInit2 */
-#ifndef MAX_MEM_LEVEL
-#    define MAX_MEM_LEVEL 9
-#endif
 
-/* Maximum value for windowBits in deflateInit2 and inflateInit2.
- * WARNING: reducing MAX_WBITS makes minigzip unable to extract .gz files
- * created by gzip. (Files created by minigzip can still be extracted by
- * gzip.)
- */
-#ifndef MAX_WBITS
-#  define MAX_WBITS   15 /* 32K LZ77 window */
-#endif
 
-/* The memory requirements for deflate are (in bytes):
-            (1 << (windowBits+2)) +  (1 << (memLevel+9))
- that is: 128K for windowBits=15  +  128K for memLevel = 8  (default values)
- plus a few kilobytes for small objects. For example, if you want to reduce
- the default memory requirements from 256K to 128K, compile with
-     make CFLAGS="-O -DMAX_WBITS=14 -DMAX_MEM_LEVEL=7"
- Of course this will generally degrade compression (there's no free lunch).
 
-   The memory requirements for inflate are (in bytes) 1 << windowBits
+/* The memory requirements for inflate are (in bytes) 1 << windowBits
  that is, 32K for windowBits=15 (default value) plus about 7 kilobytes
- for small objects.
-*/
-
-                        /* Type declarations */
-
-#ifndef OF /* function prototypes */
-#    define OF(args)  args
-#endif
+ for small objects. */
 
 #ifndef Z_ARG /* function prototypes for stdarg */
 #    define Z_ARG(args)  args

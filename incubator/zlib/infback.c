@@ -65,16 +65,18 @@ int stream_size;
         windowBits < 8 || windowBits > 15)
         return Z_STREAM_ERROR;
     strm->msg = NULL;                 /* in case we return an error */
-    if (strm->zalloc == (alloc_func)0) {
+    if (strm->zalloc == NULL) {
         strm->zalloc = zcalloc;
-        strm->opaque = (voidpf)0;
+        strm->opaque = NULL;
     }
-    if (strm->zfree == (free_func)0)
-    strm->zfree = zcfree;
-    state = (struct inflate_state FAR *)ZALLOC(strm, 1,
-                                               sizeof(struct inflate_state));
-    if (state == NULL) return Z_MEM_ERROR;
-    Tracev((stderr, "inflate: allocated\n"));
+    if (strm->zfree == NULL) {
+        strm->zfree = zcfree;
+    }
+    state = ZALLOC(strm, 1, sizeof(inflate_state));
+    if (state == NULL) {
+        return Z_MEM_ERROR;
+    }
+    Tracev(stderr, "inflate: allocated\n");
     strm->state = state;
     state->dmax = 32768U;
     state->wbits = (uInt)windowBits;

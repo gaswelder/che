@@ -1,5 +1,4 @@
 #import time
-#import zlib.c
 #import inflate.c
 #import stream.c
 #import deflate.c
@@ -68,7 +67,7 @@ int main(int argc, char *argv[])
 
     int BlockSizeCompress=0x8000;
     int BlockSizeUncompress=0x8000;
-    int cprLevel = zlib.Z_DEFAULT_COMPRESSION;
+    int cprLevel = deflate.Z_DEFAULT_COMPRESSION;
     if (argc>=3) {
         BlockSizeCompress=atol(argv[2]);
     }

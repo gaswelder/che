@@ -202,20 +202,6 @@ Changes in 1.2.7 (2 May 2012)
 - Force the native libtool in Mac OS X to avoid GNU libtool [Beebe]
 - Add instructions to win32/Makefile.gcc for shared install [Torri]
 
-Changes in 1.2.6.1 (12 Feb 2012)
-- Avoid the use of the Objective-C reserved name "id"
-- Include io.h in gzguts.h for Microsoft compilers
-- Fix problem with ./configure --prefix and gzgetc macro
-- Include gz_header definition when compiling zlib solo
-- Put gzflags() functionality back in zutil.c
-- Avoid library header include in crc32.c for Z_SOLO
-- Use name in GCC_CLASSIC as C compiler for coverage testing, if set
-- Minor cleanup in contrib/minizip/zip.c [Vollant]
-- Update make_vms.com [Zinser]
-- Remove unnecessary gzgetc_ function
-- Use optimized byte swap operations for Microsoft and GNU [Snyder]
-- Fix minor typo in zlib.h comments [Rzesniowiecki]
-
 Changes in 1.2.6 (29 Jan 2012)
 - Update the Pascal interface in contrib/pascal
 - Fix function numbers for gzgetc_ in zlibvc.def files
@@ -396,29 +382,6 @@ Changes in 1.2.4.2 (9 Apr 2010)
 - Avoid initialization of structures with variables in puff.c
 - Updated win32/README-WIN32.txt [Rowe]
 
-Changes in 1.2.4.1 (28 Mar 2010)
-- Remove the use of [a-z] constructs for sed in configure [gentoo 310225]
-- Remove $(SHAREDLIB) from LIBS in Makefile.in [Creech]
-- Restore "for debugging" comment on sprintf() in gzlib.c
-- Remove fdopen for MVS from gzguts.h
-- Put new README-WIN32.txt in win32 [Rowe]
-- Add check for shell to configure and invoke another shell if needed
-- Fix big fat stinking bug in gzseek() on uncompressed files
-- Remove vestigial F_OPEN64 define in zutil.h
-- Set and check the value of _LARGEFILE_SOURCE and _LARGEFILE64_SOURCE
-- Avoid errors on non-LFS systems when applications define LFS macros
-- Set EXE to ".exe" in configure for MINGW [Kahle]
-- Match crc32() in crc32.c exactly to the prototype in zlib.h [Sherrill]
-- Add prefix for cross-compilation in win32/makefile.gcc [Bar-Lev]
-- Add DLL install in win32/makefile.gcc [Bar-Lev]
-- Allow Linux* or linux* from uname in configure [Bar-Lev]
-- Allow ldconfig to be redefined in configure and Makefile.in [Bar-Lev]
-- Add cross-compilation prefixes to configure [Bar-Lev]
-- Match type exactly in gz_load() invocation in gzread.c
-- Match type exactly of zcalloc() in zutil.c to zlib.h alloc_func
-- Provide prototypes for *64 functions when building zlib without LFS
-- Don't use -lc when linking shared library on MinGW
-- Remove errno.h check in configure and vestigial errno code in zutil.h
 
 Changes in 1.2.4 (14 Mar 2010)
 - Fix VER3 extraction in configure for no fourth subversion
@@ -719,40 +682,11 @@ Changes in 1.2.2.3 (27 May 2005)
 - Add contrib/masmx64 [Vollant]
 - Update contrib/asm586, asm686, masmx86, testzlib, vstudio [Vollant]
 
-Changes in 1.2.2.2 (30 December 2004)
-- Replace structure assignments in deflate.c and inflate.c with memcpy to
-  avoid implicit memcpy calls (portability for no-library compilation)
-- Increase sprintf() buffer size in gzdopen() to allow for large numbers
-- Add INFLATE_STRICT to check distances against zlib header
-- Improve WinCE errno handling and comments [Chang]
-- Remove comment about no gzip header processing in FAQ
-- Add Z_FIXED strategy option to deflateInit2() to force fixed trees
-- Add updated make_vms.com [Coghlan], update README
-- Create a new "examples" directory, move gzappend.c there, add zpipe.c,
-  fitblk.c, gzlog.[ch], gzjoin.c, and zlib_how.html
-- Add FAQ entry and comments in deflate.c on uninitialized memory access
-- Add Solaris 9 make options in configure [Gilbert]
-- Allow strerror() usage in gzio.c for STDC
-- Fix DecompressBuf in contrib/delphi/ZLib.pas [ManChesTer]
-- Update contrib/masmx86/inffas32.asm and gvmat32.asm [Vollant]
-- Use z_off_t for adler32_combine() and crc32_combine() lengths
-- Make adler32() much faster for small len
-- Use OS_CODE in deflate() default gzip header
-
 Changes in 1.2.2.1 (31 October 2004)
 - Allow inflateSetDictionary() call for raw inflate
 - Fix inflate header crc check bug for file names and comments
 - Add deflateSetHeader() and gz_header structure for custom gzip headers
 - Add inflateGetheader() to retrieve gzip headers
-- Add crc32_combine() and adler32_combine() functions
-- Add alloc_func, free_func, in_func, out_func to Z_PREFIX list
-- Use zstreamp consistently in zlib.h (inflate_back functions)
-- Remove GUNZIP condition from definition of inflate_mode in inflate.h
-  and in contrib/inflate86/inffast.S [Truta, Anderson]
-- Add support for AMD64 in contrib/inflate86/inffas86.c [Anderson]
-- Update projects/README.projects and projects/visualc6 [Truta]
-- Update win32/DLL_FAQ.txt [Truta]
-- Avoid warning under NO_GZCOMPRESS in gzio.c; fix typo [Truta]
 - Deprecate Z_ASCII; use Z_TEXT instead [Truta]
 - Use a new algorithm for setting strm->data_type in trees.c [Truta]
 - Do not define an exit() prototype in zutil.c unless DEBUG defined
@@ -898,8 +832,6 @@ Changes in 1.2.0.5 (8 September 2003)
   parameter [Truta]
 - Use SYS16BIT instead of __32BIT__ to distinguish between
   16- and 32-bit platforms [Truta]
-- In Windows16, OS_CODE is 0, as in MSDOS [Truta]
-- In Cygwin, OS_CODE is 3 (Unix), not 11 (Windows32) [Wilson]
 
 Changes in 1.2.0.4 (10 August 2003)
 - Minor FAQ updates
@@ -1351,33 +1283,6 @@ Changes in 1.0.1 (20 May 96) [1.0 skipped to avoid confusion]
      (what's wrong with far data in far model?)
 - define enum out of inflate_blocks_state to allow compilation with C++
 
-Changes in 0.95 (16 Aug 95)
-- fix MSDOS small and medium model (now easier to adapt to any compiler)
-- inlined send_bits
-- fix the final (:-) bug for deflate with flush (output was correct but
-  not completely flushed in rare occasions)
-- default window size is same for compression and decompression
-  (it's now sufficient to set MAX_WBITS in zconf.h)
-- voidp -> voidpf and voidnp -> voidp (for consistency with other
-  typedefs and because voidnp was not near in large model)
-
-Changes in 0.94 (13 Aug 95)
-- support MSDOS medium model
-- fix deflate with flush (could sometimes generate bad output)
-- fix deflateReset (zlib header was incorrectly suppressed)
-- added support for VMS
-- allow a compression level in gzopen()
-- gzflush now calls fflush
-- For deflate with flush, flush even if no more input is provided
-- rename libgz.a as libz.a
-- avoid complex expression in infcodes.c triggering Turbo C bug
-- work around a problem with gcc on Alpha (in INSERT_STRING)
-- don't use inline functions (problem with some gcc versions)
-- allow renaming of Byte, uInt, etc... with #define
-- avoid warning about (unused) pointer before start of array in deflate.c
-- avoid various warnings in gzio.c, example.c, infblock.c, adler32.c, zutil.c
-- avoid reserved word 'new' in trees.c
-
 Changes in 0.93 (25 June 95)
 - temporarily disable inline functions
 - make deflate deterministic
@@ -1403,18 +1308,6 @@ Changes in 0.91 (2 May 95)
 - deflate(Z_FULL_FLUSH) now works even if output buffer too short
 - after inflateSync, don't scare people with just "lo world"
 - added support for DJGPP
-
-Changes in 0.9 (1 May 95)
-- don't assume that zalloc clears the allocated memory (the TurboC bug
-  was Mark's bug after all :)
-- let again gzread copy uncompressed data unchanged (was working in 0.71)
-- deflate(Z_FULL_FLUSH), inflateReset and inflateSync are now fully implemented
-- added a test of inflateSync in example.c
-- moved MAX_WBITS to zconf.h because users might want to change that
-- document explicitly that zalloc(64K) on MSDOS must return a normalized
-  pointer (zero offset)
-- added Makefiles for Microsoft C, Turbo C, Borland C++
-- faster crc32()
 
 Changes in 0.8 (29 April 95)
 - added fast inflate (inffast.c)

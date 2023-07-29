@@ -61,6 +61,18 @@ pub typedef {
                            when writing a gzip file) */
 } gz_header;
 
+/* Data structure describing a single value and its code string. */
+pub typedef {
+    union {
+        uint16_t  freq;       /* frequency count */
+        uint16_t  code;       /* bit string */
+    } fc;
+    union {
+        uint16_t  dad;        /* father node in Huffman tree */
+        uint16_t  len;        /* length of bit string */
+    } dl;
+} ct_data;
+
 pub typedef {
     ct_data *dyn_tree;           /* the dynamic tree */
     int     max_code;            /* largest code with non zero frequency */
@@ -71,6 +83,9 @@ pub typedef {
 #define D_CODES   30
 #define HEAP_SIZE (2*L_CODES+1)
 /* maximum heap size */
+
+#define BL_CODES  19
+/* number of codes used to transfer the bit lengths */
 
 pub typedef {
     z_stream *strm;      /* pointer back to this zlib stream */
@@ -244,6 +259,9 @@ pub typedef {
      */
 
 } deflate_state;
+
+typedef void *alloc_func(void *, uInt, uInt);
+typedef void  free_func(void *, void *);
 
 pub typedef {
 
