@@ -567,23 +567,39 @@ fn translate_body(b: &Body, ctx: &Ctx) -> CBody {
                 condition,
                 action,
                 body,
-            } => CStatement::For {
-                init: match init {
-                    ForInit::Expression(x) => CForInit::Expression(translate_expression(x, ctx)),
-                    ForInit::LoopCounterDeclaration {
-                        type_name,
-                        form,
-                        value,
-                    } => CForInit::LoopCounterDeclaration {
-                        type_name: translate_typename(type_name, ctx),
-                        form: translate_form(form, ctx),
-                        value: translate_expression(value, ctx),
-                    },
-                },
-                condition: translate_expression(condition, ctx),
-                action: translate_expression(action, ctx),
-                body: translate_body(body, ctx),
-            },
+            } => {
+                let init = match init {
+                    Some(init) => Some(match &init {
+                        ForInit::Expression(x) => {
+                            CForInit::Expression(translate_expression(x, ctx))
+                        }
+                        ForInit::LoopCounterDeclaration {
+                            type_name,
+                            form,
+                            value,
+                        } => CForInit::LoopCounterDeclaration {
+                            type_name: translate_typename(type_name, ctx),
+                            form: translate_form(form, ctx),
+                            value: translate_expression(value, ctx),
+                        },
+                    }),
+                    None => None,
+                };
+                let condition = match condition {
+                    Some(x) => Some(translate_expression(&x, ctx)),
+                    None => None,
+                };
+                let action = match action {
+                    Some(x) => Some(translate_expression(&x, ctx)),
+                    None => None,
+                };
+                CStatement::For {
+                    init,
+                    condition,
+                    action,
+                    body: translate_body(body, ctx),
+                }
+            }
             Statement::If {
                 condition,
                 body,

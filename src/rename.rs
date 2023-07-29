@@ -146,21 +146,34 @@ fn prefix_statement(s: &mut Statement, prefix: &String, names: &Vec<String>) {
             body,
         } => {
             match init {
-                ForInit::Expression(e) => {
-                    prefix_expr(e, prefix, names);
-                }
-                ForInit::LoopCounterDeclaration {
-                    type_name,
-                    form,
-                    value,
-                } => {
-                    prefix_typename(type_name, prefix, names);
-                    prefix_form(form, prefix, names);
-                    prefix_expr(value, prefix, names);
-                }
+                Some(init) => match init {
+                    ForInit::Expression(e) => {
+                        prefix_expr(e, prefix, names);
+                    }
+                    ForInit::LoopCounterDeclaration {
+                        type_name,
+                        form,
+                        value,
+                    } => {
+                        prefix_typename(type_name, prefix, names);
+                        prefix_form(form, prefix, names);
+                        prefix_expr(value, prefix, names);
+                    }
+                },
+                None => {}
             }
-            prefix_expr(condition, prefix, names);
-            prefix_expr(action, prefix, names);
+            match condition {
+                Some(condition) => {
+                    prefix_expr(condition, prefix, names);
+                }
+                None => {}
+            }
+            match action {
+                Some(action) => {
+                    prefix_expr(action, prefix, names);
+                }
+                None => {}
+            }
             prefix_body(body, prefix, names);
         }
         Statement::While { condition, body } => {

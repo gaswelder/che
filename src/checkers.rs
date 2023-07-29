@@ -443,28 +443,41 @@ fn check_body(
                 scopes.push(newscope());
                 let n = scopes.len();
                 match init {
-                    ForInit::LoopCounterDeclaration {
-                        type_name,
-                        form,
-                        value,
-                    } => {
-                        check_ns_id(&type_name.name, state, scopes, imports);
-                        check_expr(value, state, scopes, imports);
-                        scopes[n - 1].vars.insert(
-                            form.name.clone(),
-                            ScopeItem {
-                                read: true,
-                                pos: String::from("for"),
-                                ispub: false,
-                            },
-                        );
-                    }
-                    ForInit::Expression(x) => {
-                        check_expr(x, state, scopes, imports);
-                    }
+                    Some(init) => match init {
+                        ForInit::LoopCounterDeclaration {
+                            type_name,
+                            form,
+                            value,
+                        } => {
+                            check_ns_id(&type_name.name, state, scopes, imports);
+                            check_expr(value, state, scopes, imports);
+                            scopes[n - 1].vars.insert(
+                                form.name.clone(),
+                                ScopeItem {
+                                    read: true,
+                                    pos: String::from("for"),
+                                    ispub: false,
+                                },
+                            );
+                        }
+                        ForInit::Expression(x) => {
+                            check_expr(x, state, scopes, imports);
+                        }
+                    },
+                    None => {}
                 }
-                check_expr(condition, state, scopes, imports);
-                check_expr(action, state, scopes, imports);
+                match condition {
+                    Some(condition) => {
+                        check_expr(condition, state, scopes, imports);
+                    }
+                    None => {}
+                }
+                match action {
+                    Some(action) => {
+                        check_expr(action, state, scopes, imports);
+                    }
+                    None => {}
+                }
                 check_body(body, state, scopes, imports, used_types);
                 scopes.pop();
             }

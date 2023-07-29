@@ -157,9 +157,9 @@ pub enum CStatement {
         else_body: Option<CBody>,
     },
     For {
-        init: CForInit,
-        condition: CExpression,
-        action: CExpression,
+        init: Option<CForInit>,
+        condition: Option<CExpression>,
+        action: Option<CExpression>,
         body: CBody,
     },
     While {

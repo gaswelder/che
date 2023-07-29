@@ -347,29 +347,40 @@ fn format_enum_member(node: &CEnumItem) -> String {
 }
 
 fn format_for(
-    init: &CForInit,
-    condition: &CExpression,
-    action: &CExpression,
+    init: &Option<CForInit>,
+    condition: &Option<CExpression>,
+    action: &Option<CExpression>,
     body: &CBody,
 ) -> String {
     let init = match init {
-        CForInit::Expression(x) => format_expression(&x),
-        CForInit::LoopCounterDeclaration {
-            type_name,
-            form,
-            value,
-        } => format!(
-            "{} {} = {}",
-            format_type(type_name),
-            format_form(form),
-            format_expression(value)
-        ),
+        Some(init) => match init {
+            CForInit::Expression(x) => format_expression(&x),
+            CForInit::LoopCounterDeclaration {
+                type_name,
+                form,
+                value,
+            } => format!(
+                "{} {} = {}",
+                format_type(type_name),
+                format_form(form),
+                format_expression(value)
+            ),
+        },
+        None => String::from(""),
+    };
+    let condition = match condition {
+        Some(c) => format_expression(c),
+        None => String::from(""),
+    };
+    let action = match action {
+        Some(a) => format_expression(a),
+        None => String::from(""),
     };
     return format!(
         "for ({}; {}; {}) {}",
         init,
-        format_expression(condition),
-        format_expression(action),
+        condition,
+        action,
         format_body(body)
     );
 }

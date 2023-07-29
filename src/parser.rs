@@ -812,26 +812,40 @@ fn parse_for(l: &mut Lexer, ctx: &Ctx) -> Result<TWithErrors<Statement>, Error> 
     expect(l, "for", None)?;
     expect(l, "(", None)?;
 
-    let init: ForInit;
-    if l.peek().unwrap().kind == "word" && is_type(&l.peek().unwrap().content, &ctx.typenames) {
+    let init: Option<ForInit>;
+    if l.follows(";") {
+        init = None;
+    } else if l.peek().unwrap().kind == "word"
+        && is_type(&l.peek().unwrap().content, &ctx.typenames)
+    {
         let type_name = parse_typename(l, ctx)?;
         let form = parse_form(l, ctx)?;
         expect(l, "=", None)?;
         let value = parse_expr(l, 0, ctx)?;
-        init = ForInit::LoopCounterDeclaration {
+        init = Some(ForInit::LoopCounterDeclaration {
             type_name,
             form,
             value,
-        };
+        });
     } else {
-        init = ForInit::Expression(parse_expr(l, 0, ctx)?);
+        init = Some(ForInit::Expression(parse_expr(l, 0, ctx)?));
     }
+    expect(l, ";", Some("for loop initializer"))?;
 
-    expect(l, ";", None)?;
-    let condition = parse_expr(l, 0, ctx)?;
-    expect(l, ";", None)?;
-    let action = parse_expr(l, 0, ctx)?;
-    expect(l, ")", None)?;
+    let condition = if l.follows(";") {
+        None
+    } else {
+        Some(parse_expr(l, 0, ctx)?)
+    };
+    expect(l, ";", Some("for loop condition"))?;
+
+    let action = if l.follows(")") {
+        None
+    } else {
+        Some(parse_expr(l, 0, ctx)?)
+    };
+    expect(l, ")", Some("for loop postaction"))?;
+
     let body = parse_statements_block(l, ctx)?;
 
     return Ok(TWithErrors {

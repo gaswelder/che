@@ -195,9 +195,9 @@ pub enum Statement {
         else_body: Option<Body>,
     },
     For {
-        init: ForInit,
-        condition: Expression,
-        action: Expression,
+        init: Option<ForInit>,
+        condition: Option<Expression>,
+        action: Option<Expression>,
         body: Body,
     },
     While {
