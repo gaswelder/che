@@ -17,6 +17,8 @@
   one thread to use crc32().
  */
 
+// A CRC-32 value is in the range of a 32-bit unsigned integer.
+
  /*
   A CRC of a message is computed on N braids of words in the message, where
   each word consists of W bytes (4 or 8). If N is 3, for example, then three
@@ -1507,27 +1509,21 @@ uint64_t crc_word_big(uint64_t data) {
     return data;
 }
 
-pub uint32_t new() {
-    return 0;
+/*
+ * Returns the initial checksum for subsequent updates.
+ */
+pub uint32_t init() {
+    return crc32(0, NULL, 0);
 }
 
 /*
-     Update a running CRC-32 with the bytes buf[0..len-1] and return the
-   updated CRC-32. A CRC-32 value is in the range of a 32-bit unsigned integer.
-   If buf is NULL, this function returns the required initial value for the
-   crc. Pre- and post-conditioning (one's complement) is performed within this
-   function so it shouldn't be done by the application.
-
-   Usage example:
-
-     uint32_t crc = crc32(0L, NULL, 0);
-
-     while (read_buffer(buffer, length) != EOF) {
-       crc = crc32(crc, buffer, length);
-     }
-     if (crc != original_crc) error();
+ * Update a running CRC-32 with the bytes buf[0..len-1]
+ * and return the updated CRC-32.
 */
 pub uint32_t crc32(uint32_t crc, const uint8_t *buf, size_t len) {
+    // Pre- and post-conditioning (one's complement) is performed within this
+    // function so it shouldn't be done by the application.
+
     /* Return initial CRC, if requested. */
     if (buf == NULL) return 0;
 
