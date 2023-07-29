@@ -211,15 +211,26 @@ fn check_function_declaration(
 
     scopestack.push(newscope());
 
-    for pl in &f.parameters.list {
-        check_ns_id(&pl.type_name.name, state, scopestack, imports);
-        for f in &pl.forms {
+    for tf in &f.parameters.list {
+        let isvoid = tf.type_name.name.namespace == "" && tf.type_name.name.name == "void";
+        if isvoid {
+            for f in &tf.forms {
+                if f.stars == "" {
+                    state.errors.push(Error {
+                        message: format!("can't use void as an argument type"),
+                        pos: tf.pos.clone(),
+                    })
+                }
+            }
+        }
+        check_ns_id(&tf.type_name.name, state, scopestack, imports);
+        for f in &tf.forms {
             let n = scopestack.len();
             scopestack[n - 1].vars.insert(
                 f.name.clone(),
                 ScopeItem {
                     read: false,
-                    pos: pl.pos.clone(),
+                    pos: tf.pos.clone(),
                     ispub: false,
                 },
             );

@@ -1,4 +1,4 @@
-pub void zcfree(void *opaque, ptr) {
+pub void zcfree(void *opaque, *ptr) {
     (void)opaque;
     free(ptr);
 }
