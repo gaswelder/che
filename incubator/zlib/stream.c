@@ -37,7 +37,7 @@ pub enum {
   Z_UNKNOWN  = 2,
 };
 
-#define MAX_BITS 15
+// #define MAX_BITS 15
 /* All codes must not exceed MAX_BITS bits */
 
 /*
@@ -49,13 +49,13 @@ pub typedef {
     uint32_t   time;       /* modification time */
     int     xflags;     /* extra flags (not used when writing a gzip file) */
     int     os;         /* operating system */
-    Bytef   *extra;     /* pointer to extra field or NULL if none */
-    uInt    extra_len;  /* extra field length (valid if extra != NULL) */
-    uInt    extra_max;  /* space at extra (only when reading header) */
-    Bytef   *name;      /* pointer to zero-terminated file name or NULL */
-    uInt    name_max;   /* space at name (only when reading header) */
-    Bytef   *comment;   /* pointer to zero-terminated comment or NULL */
-    uInt    comm_max;   /* space at comment (only when reading header) */
+    uint8_t   *extra;     /* pointer to extra field or NULL if none */
+    uint32_t    extra_len;  /* extra field length (valid if extra != NULL) */
+    uint32_t    extra_max;  /* space at extra (only when reading header) */
+    uint8_t   *name;      /* pointer to zero-terminated file name or NULL */
+    uint32_t    name_max;   /* space at name (only when reading header) */
+    uint8_t   *comment;   /* pointer to zero-terminated comment or NULL */
+    uint32_t    comm_max;   /* space at comment (only when reading header) */
     int     hcrc;       /* true if there was or will be a header crc */
     int     done;       /* true when done reading gzip header (not used
                            when writing a gzip file) */
@@ -74,17 +74,23 @@ pub typedef {
 } ct_data;
 
 pub typedef {
+    const ct_data *static_tree;  /* static tree or NULL */
+    int *extra_bits;      /* extra bits for each code or NULL */
+    int     extra_base;          /* base index for extra_bits */
+    int     elems;               /* max number of elements in the tree */
+    int     max_length;          /* max bit length for the codes */
+} static_tree_desc;
+
+pub typedef {
     ct_data *dyn_tree;           /* the dynamic tree */
     int     max_code;            /* largest code with non zero frequency */
     const static_tree_desc *stat_desc;  /* the corresponding static tree */
 } tree_desc;
 
 /* number of distance codes */
-#define D_CODES   30
-#define HEAP_SIZE (2*L_CODES+1)
-/* maximum heap size */
+// #define D_CODES   30
 
-#define BL_CODES  19
+// #define BL_CODES  19
 /* number of codes used to transfer the bit lengths */
 
 pub typedef {
@@ -122,13 +128,13 @@ pub typedef {
      * is directly used as sliding window.
      */
 
-    Pos *prev;
+    uint16_t *prev;
     /* Link to older string with same hash index. To limit the size of this
      * array to 64K, this link is maintained only for the last 32K strings.
      * An index in this array is thus a window index modulo 32K.
      */
 
-    Pos *head; /* Heads of the hash chains or NIL. */
+    uint16_t *head; /* Heads of the hash chains or NIL. */
 
     uint32_t  ins_h;          /* hash index of string to be inserted */
     uint32_t  hash_size;      /* number of elements in hash table */
@@ -148,7 +154,7 @@ pub typedef {
      */
 
     uint32_t match_length;           /* length of best match */
-    IPos prev_match;             /* previous match */
+    uint32_t prev_match;             /* previous match */
     int match_available;         /* set if previous match exists */
     uint32_t strstart;               /* start of string to insert */
     uint32_t match_start;            /* start of matching string */
@@ -260,7 +266,7 @@ pub typedef {
 
 } deflate_state;
 
-typedef void *alloc_func(void *, uInt, uInt);
+typedef void *alloc_func(void *, uint32_t, uint32_t);
 typedef void  free_func(void *, void *);
 
 pub typedef {
@@ -270,11 +276,11 @@ pub typedef {
     inflate() or deflate() */
 
     const uint8_t *next_in;     /* next input byte */
-    uInt     avail_in;  /* number of bytes available at next_in */
+    uint32_t     avail_in;  /* number of bytes available at next_in */
     uint32_t    total_in;  /* total number of input bytes read so far */
 
     uint8_t    *next_out; /* next output byte will go here */
-    uInt     avail_out; /* remaining free space at next_out */
+    uint32_t     avail_out; /* remaining free space at next_out */
     uint32_t    total_out; /* total number of bytes output so far */
 
     const char *msg;  /* last error message, NULL if no error */

@@ -5,7 +5,7 @@ pub int level() {
 }
 
 pub void Trace(FILE *f, const char *format, ...) {
-    if (z_verboze < 0) {
+    if (z_verbose < 0) {
         return;
     }
     fprintf(f, "[trace] ");

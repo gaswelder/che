@@ -127,16 +127,11 @@
 #  define zlibVersion           z_zlibVersion
 
 /* all zlib typedefs in zlib.h and zconf.h */
-#  define Byte                  z_Byte
-#  define Bytef                 z_Bytef
-#  define charf                 z_charf
 #  define free_func             z_free_func
 #    define gzFile                z_gzFile
 #  define gz_header             z_gz_header
 #  define in_func               z_in_func
-#  define intf                  z_intf
 #  define out_func              z_out_func
-#  define uInt                  z_uInt
 #  define uIntf                 z_uIntf
 #  define uLong                 z_uLong
 #  define uLongf                z_uLongf
@@ -235,15 +230,9 @@ pub #      define   __declspec(dllimport)
 #  define FAR
 #endif
 
-#if !defined(__MACTYPES__)
-typedef unsigned char  Byte;  /* 8 bits */
-#endif
 typedef unsigned int   uInt;  /* 16 bits or more */
 typedef unsigned long  uLong; /* 32 bits or more */
 
-   typedef Byte  FAR Bytef;
-typedef char  FAR charf;
-typedef int   FAR intf;
 typedef uInt  FAR uIntf;
 typedef uLong FAR uLongf;
 

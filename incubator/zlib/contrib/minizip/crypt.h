@@ -78,7 +78,7 @@ static void init_keys(const char* passwd,unsigned long* pkeys,const uint32_t* pc
     (update_keys(pkeys,pcrc_32_tab,c ^= decrypt_byte(pkeys,pcrc_32_tab)))
 
 #define zencode(pkeys,pcrc_32_tab,c,t) \
-    (t=decrypt_byte(pkeys,pcrc_32_tab), update_keys(pkeys,pcrc_32_tab,c), (Byte)t^(c))
+    (t=decrypt_byte(pkeys,pcrc_32_tab), update_keys(pkeys,pcrc_32_tab,c), (uint8_t)t^(c))
 
 #ifdef INCLUDECRYPTINGCODE_IFCRYPTALLOWED
 

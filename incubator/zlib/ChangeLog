@@ -933,14 +933,7 @@ Changes in 1.2.0 (9 March 2003)
 - Fix static const's in deflate.c, gzio.c, and zutil.[ch]
 - Declare malloc() and free() in gzio.c if STDC not defined
 - Use malloc() instead of calloc() in zutil.c if int big enough
-- Define STDC for AIX
-- Add aix/ with approach for compiling shared library on AIX
-- Add HP-UX support for shared libraries in configure
 - Add OpenUNIX support for shared libraries in configure
-- Use $cc instead of gcc to build shared library
-- Make prefix directory if needed when installing
-- Correct Macintosh avoidance of typedef Byte in zconf.h
-- Correct Turbo C memory allocation when under Linux
 - Use libz.a instead of -lz in Makefile (assure use of compiled library)
 - Update configure to check for snprintf or vsnprintf functions and their
   return value, warn during make if using an insecure function
@@ -977,37 +970,12 @@ Changes in 1.1.3 (9 July 1998)
 - use macro EXTERN instead of extern to support DLL for BeOS (Sander Stoks)
 - added a FAQ file
 
-- Support gzdopen on Mac with Metrowerks (Jason Linhart)
-- Do not redefine Byte on Mac (Brad Pettit & Jason Linhart)
-- define SEEK_END too if SEEK_SET is not defined (Albert Chin-A-Young)
-- avoid some warnings with Borland C (Tom Tanner)
-- fix a problem in contrib/minizip/zip.c for 16-bit MSDOS (Gilles Vollant)
-- emulate utime() for WIN32 in contrib/untgz  (Gilles Vollant)
-- allow several arguments to configure (Tim Mooney, Frodo Looijaard)
-- use libdir and includedir in Makefile.in (Tim Mooney)
-- support shared libraries on OSF1 V4 (Tim Mooney)
-- remove so_locations in "make clean"  (Tim Mooney)
-- fix maketree.c compilation error (Glenn, Mark)
-- Python interface to zlib now in Python 1.5 (Jeremy Hylton)
-- new Makefile.riscos (Rich Walker)
-- initialize static descriptors in trees.c for embedded targets (Nick Smith)
 - use "foo-gz" in example.c for RISCOS and VMS (Nick Smith)
 - add the OS/2 files in Makefile.in too (Andrew Zabolotny)
 - fix fdopen and halloc macros for Microsoft C 6.0 (Tom Lane)
 - fix maketree.c to allow clean compilation of inffixed.h (Mark)
 - fix parameter check in deflateCopy (Gunther Nikl)
 - cleanup trees.c, use compressed_len only in debug mode (Christian Spieler)
-- Many portability patches by Christian Spieler:
-  . zutil.c, zutil.h: added "const" for zmem*
-  . Make_vms.com: fixed some typos
-  . Make_vms.com: msdos/Makefile.*: removed zutil.h from some dependency lists
-  . msdos/Makefile.msc: remove "default rtl link library" info from obj files
-  . msdos/Makefile.*: use model-dependent name for the built zlib library
-  . msdos/Makefile.emx, nt/Makefile.emx, nt/Makefile.gcc:
-     new makefiles, for emx (DOS/OS2), emx&rsxnt and mingw32 (Windows 9x / NT)
-- use define instead of typedef for Bytef also for MSC small/medium (Tom Lane)
-- replace __far with _far for better portability (Christian Spieler, Tom Lane)
-- fix test for errno.h in configure (Tim Newsham)
 
 Changes in 1.1.2 (19 March 98)
 - added contrib/minzip, mini zip and unzip based on zlib (Gilles Vollant)
@@ -1060,16 +1028,6 @@ pub - replace EXPORT with to avoid conflict with other programs
  . ZALLOC the length list in inflate_trees_fixed() instead of using stack
  . ZALLOC the value area for huft_build() instead of using stack
  . Simplify Z_FINISH check in inflate()
-
-- Avoid gcc 2.8.0 comparison bug a little differently than zlib 1.0.8
-- in inftrees.c, avoid cc -O bug on HP (Farshid Elahi)
-- in zconf.h move the ZLIB_DLL stuff earlier to avoid problems with
-  the declaration of FAR (Gilles Vollant)
-- install libz.so* with mode 755 (executable) instead of 644 (Marc Lehmann)
-- read_buf buf parameter of type Bytef* instead of charf*
-- memcpy parameters are of type Bytef*, not charf* (Joseph Strout)
-- do not redeclare unlink in minigzip.c for WIN32 (John Bowler)
-- fix check for presence of directories in "make install" (Ian Willis)
 
 Changes in 1.0.8 (27 Jan 1998)
 - fixed offsets in contrib/asm386/gvmat32.asm (Gilles Vollant)
@@ -1211,36 +1169,12 @@ Changes in 1.0.3 (2 Jul 96)
 - define __32BIT__ if __386__ or i386 is defined (pb. with Watcom and SCO)
 - better check for 16-bit mode MSC (avoids problem with Symantec)
 
-Changes in 1.0.2 (23 May 96)
-- added Windows DLL support
-- added a function zlibVersion (for the DLL support)
-- fixed declarations using Bytef in infutil.c (pb with MSDOS medium model)
-- Bytef is define's instead of typedef'd only for Borland C
-- avoid reading uninitialized memory in example.c
-- mention in README that the zlib format is now RFC1950
-- updated Makefile.dj2
-- added algorithm.doc
-
 Changes in 1.0.1 (20 May 96) [1.0 skipped to avoid confusion]
 - fix array overlay in deflate.c which sometimes caused bad compressed data
 - fix inflate bug with empty stored block
 - fix MSDOS medium model which was broken in 0.99
 - fix deflateParams() which could generate bad compressed data
-- Bytef is define'd instead of typedef'ed (work around Borland bug)
-- added an INDEX file
-- new makefiles for DJGPP (Makefile.dj2), 32-bit Borland (Makefile.b32),
-  Watcom (Makefile.wat), Amiga SAS/C (Makefile.sas)
-- speed up adler32 for modern machines without auto-increment
-- added -ansi for IRIX in configure
 - static_init_done in trees.c is an int
-- define unlink as delete for VMS
-- fix configure for QNX
-- add configure branch for SCO and HPUX
-- avoid many warnings (unused variables, dead assignments, etc...)
-- no fdopen for BeOS
-- fix the Watcom fix for 32 bit mode (define FAR as empty)
-- removed redefinition of Byte for MKWERKS
-- work around an MWKERKS bug (incorrect merge of all .h files)
 
 - deflateInit and inflateInit are now macros to allow version checking
 - prefix all global functions and types with z_ with -DZ_PREFIX

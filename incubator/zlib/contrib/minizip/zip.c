@@ -147,7 +147,7 @@ typedef struct
 
     int  method;                /* compression method of file currenty wr.*/
     int  raw;                   /* 1 for directly writing raw data */
-    Byte buffered_data[Z_BUFSIZE];/* buffer contain compressed data to be writ*/
+    uint8_t buffered_data[Z_BUFSIZE];/* buffer contain compressed data to be writ*/
     uLong dosDate;
     uLong crc32;
     int  encrypt;
@@ -1450,7 +1450,7 @@ pub extern int zipWriteInFileInZip (zipFile file,const void* buf,unsigned int le
     else
 #endif
     {
-      zi->ci.stream.next_in = (Bytef*)buf;
+      zi->ci.stream.next_in = (Byte*)buf;
       zi->ci.stream.avail_in = len;
 
       while ((err==ZIP_OK) && (zi->ci.stream.avail_in>0))

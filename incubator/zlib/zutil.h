@@ -7,7 +7,6 @@
 
 typedef unsigned char  uch;
 typedef unsigned short ush;
-typedef ush FAR ushf;
 
 #if !defined(Z_U8)
 #  if (ULONG_MAX == 0xffffffffffffffff)
@@ -19,10 +18,7 @@ typedef ush FAR ushf;
 #  endif
 #endif
 
-#define STORED_BLOCK 0
-#define STATIC_TREES 1
-#define DYN_TREES    2
-/* The three kinds of block type */
+
 
 
 #ifndef F_OPEN

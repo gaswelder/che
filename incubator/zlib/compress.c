@@ -32,9 +32,9 @@
    Z_STREAM_ERROR if the level parameter is invalid.
 */
 pub int compress2(dest, destLen, source, sourceLen, level)
-    Bytef *dest;
+    uint8_t *dest;
     uLongf *destLen;
-    const Bytef *source;
+    const uint8_t *source;
     uLong sourceLen;
     int level;
 {
@@ -57,7 +57,7 @@ pub int compress2(dest, destLen, source, sourceLen, level)
 
     stream.next_out = dest;
     stream.avail_out = 0;
-    stream.next_in = (const Bytef *)source;
+    stream.next_in = (const uint8_t *)source;
     stream.avail_in = 0;
 
     do {
@@ -93,9 +93,9 @@ pub int compress2(dest, destLen, source, sourceLen, level)
     zero.
 */
 pub int compress(dest, destLen, source, sourceLen)
-    Bytef *dest;
+    uint8_t *dest;
     uLongf *destLen;
-    const Bytef *source;
+    const uint8_t *source;
     uLong sourceLen;
 {
     return compress2(dest, destLen, source, sourceLen, Z_DEFAULT_COMPRESSION);

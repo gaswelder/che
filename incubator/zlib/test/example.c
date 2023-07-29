@@ -34,26 +34,7 @@ static const char hello[] = "hello, hello!";
 static const char dictionary[] = "hello";
 static uLong dictId;    /* Adler32 value of the dictionary */
 
-void test_deflate       OF((Byte *compr, uLong comprLen));
-void test_inflate       OF((Byte *compr, uLong comprLen,
-                            Byte *uncompr, uLong uncomprLen));
-void test_large_deflate OF((Byte *compr, uLong comprLen,
-                            Byte *uncompr, uLong uncomprLen));
-void test_large_inflate OF((Byte *compr, uLong comprLen,
-                            Byte *uncompr, uLong uncomprLen));
-void test_flush         OF((Byte *compr, uLong *comprLen));
-void test_sync          OF((Byte *compr, uLong comprLen,
-                            Byte *uncompr, uLong uncomprLen));
-void test_dict_deflate  OF((Byte *compr, uLong comprLen));
-void test_dict_inflate  OF((Byte *compr, uLong comprLen,
-                            Byte *uncompr, uLong uncomprLen));
-int  main               OF((int argc, char *argv[]));
-
-
 #ifdef Z_SOLO
-
-void *myalloc OF((void *, unsigned, unsigned));
-void myfree OF((void *, void *));
 
 void *myalloc(q, n, m)
     void *q;
@@ -77,22 +58,18 @@ static free_func zfree = myfree;
 static alloc_func zalloc = (alloc_func)0;
 static free_func zfree = (free_func)0;
 
-void test_compress      OF((Byte *compr, uLong comprLen,
-                            Byte *uncompr, uLong uncomprLen));
-void test_gzio          OF((const char *fname,
-                            Byte *uncompr, uLong uncomprLen));
 
 /* ===========================================================================
  * Test compress() and uncompress()
  */
 void test_compress(compr, comprLen, uncompr, uncomprLen)
-    Byte *compr, *uncompr;
+    uint8_t *compr, *uncompr;
     uLong comprLen, uncomprLen;
 {
     int err;
     uLong len = (uLong)strlen(hello)+1;
 
-    err = compress(compr, &comprLen, (const Bytef*)hello, len);
+    err = compress(compr, &comprLen, (const uint8_t*)hello, len);
     CHECK_ERR(err, "compress");
 
     strcpy((char*)uncompr, "garbage");
@@ -113,7 +90,7 @@ void test_compress(compr, comprLen, uncompr, uncomprLen)
  */
 void test_gzio(fname, uncompr, uncomprLen)
     const char *fname; /* compressed file name */
-    Byte *uncompr;
+    uint8_t *uncompr;
     uLong uncomprLen;
 {
 #ifdef NO_GZCOMPRESS
@@ -198,7 +175,7 @@ void test_gzio(fname, uncompr, uncomprLen)
  * Test deflate() with small buffers
  */
 void test_deflate(compr, comprLen)
-    Byte *compr;
+    uint8_t *compr;
     uLong comprLen;
 {
     z_stream c_stream; /* compression stream */
@@ -236,7 +213,7 @@ void test_deflate(compr, comprLen)
  * Test inflate() with small buffers
  */
 void test_inflate(compr, comprLen, uncompr, uncomprLen)
-    Byte *compr, *uncompr;
+    uint8_t *compr, *uncompr;
     uLong comprLen, uncomprLen;
 {
     int err;
@@ -277,7 +254,7 @@ void test_inflate(compr, comprLen, uncompr, uncomprLen)
  * Test deflate() with large buffers and dynamic change of compression level
  */
 void test_large_deflate(compr, comprLen, uncompr, uncomprLen)
-    Byte *compr, *uncompr;
+    uint8_t *compr, *uncompr;
     uLong comprLen, uncomprLen;
 {
     z_stream c_stream; /* compression stream */
@@ -332,7 +309,7 @@ void test_large_deflate(compr, comprLen, uncompr, uncomprLen)
  * Test inflate() with large buffers
  */
 void test_large_inflate(compr, comprLen, uncompr, uncomprLen)
-    Byte *compr, *uncompr;
+    uint8_t *compr, *uncompr;
     uLong comprLen, uncomprLen;
 {
     int err;
@@ -373,7 +350,7 @@ void test_large_inflate(compr, comprLen, uncompr, uncomprLen)
  * Test deflate() with full flush
  */
 void test_flush(compr, comprLen)
-    Byte *compr;
+    uint8_t *compr;
     uLong *comprLen;
 {
     z_stream c_stream; /* compression stream */
@@ -411,7 +388,7 @@ void test_flush(compr, comprLen)
  * Test inflateSync()
  */
 void test_sync(compr, comprLen, uncompr, uncomprLen)
-    Byte *compr, *uncompr;
+    uint8_t *compr, *uncompr;
     uLong comprLen, uncomprLen;
 {
     int err;
@@ -454,7 +431,7 @@ void test_sync(compr, comprLen, uncompr, uncomprLen)
  * Test deflate() with preset dictionary
  */
 void test_dict_deflate(compr, comprLen)
-    Byte *compr;
+    uint8_t *compr;
     uLong comprLen;
 {
     z_stream c_stream; /* compression stream */
@@ -468,7 +445,7 @@ void test_dict_deflate(compr, comprLen)
     CHECK_ERR(err, "deflateInit");
 
     err = deflateSetDictionary(&c_stream,
-                (const Bytef*)dictionary, (int)sizeof(dictionary));
+                (const uint8_t*)dictionary, (int)sizeof(dictionary));
     CHECK_ERR(err, "deflateSetDictionary");
 
     dictId = c_stream.adler;
@@ -491,7 +468,7 @@ void test_dict_deflate(compr, comprLen)
  * Test inflate() with a preset dictionary
  */
 void test_dict_inflate(compr, comprLen, uncompr, uncomprLen)
-    Byte *compr, *uncompr;
+    uint8_t *compr, *uncompr;
     uLong comprLen, uncomprLen;
 {
     int err;
@@ -520,7 +497,7 @@ void test_dict_inflate(compr, comprLen, uncompr, uncomprLen)
                 fprintf(stderr, "unexpected dictionary");
                 exit(1);
             }
-            err = inflateSetDictionary(&d_stream, (const Bytef*)dictionary,
+            err = inflateSetDictionary(&d_stream, (const uint8_t*)dictionary,
                                        (int)sizeof(dictionary));
         }
         CHECK_ERR(err, "inflate with dict");
@@ -545,7 +522,7 @@ int main(argc, argv)
     int argc;
     char *argv[];
 {
-    Byte *compr, *uncompr;
+    uint8_t *compr, *uncompr;
     uLong comprLen = 10000*sizeof(int); /* don't overflow on MSDOS */
     uLong uncomprLen = comprLen;
     static const char* myVersion = ZLIB_VERSION;
@@ -561,8 +538,8 @@ int main(argc, argv)
 
     printf("zlib version %s, compile flags = 0x%lx\n", ZLIB_VERSION, zlibCompileFlags());
 
-    compr    = (Byte*)calloc((uInt)comprLen, 1);
-    uncompr  = (Byte*)calloc((uInt)uncomprLen, 1);
+    compr    = (uint8_t*)calloc((uInt)comprLen, 1);
+    uncompr  = (uint8_t*)calloc((uInt)uncomprLen, 1);
     /* compr and uncompr are cleared to avoid reading uninitialized
      * data and to ensure that uncompr compresses well.
      */

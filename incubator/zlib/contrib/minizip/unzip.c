@@ -1703,7 +1703,7 @@ pub extern int unzReadCurrentFile  (unzFile file, voidp buf, unsigned len)
     if (len==0)
         return 0;
 
-    pfile_in_zip_read_info->stream.next_out = (Bytef*)buf;
+    pfile_in_zip_read_info->stream.next_out = (Byte*)buf;
 
     pfile_in_zip_read_info->stream.avail_out = (uInt)len;
 
@@ -1759,7 +1759,7 @@ pub extern int unzReadCurrentFile  (unzFile file, voidp buf, unsigned len)
             pfile_in_zip_read_info->rest_read_compressed-=uReadThis;
 
             pfile_in_zip_read_info->stream.next_in =
-                (Bytef*)pfile_in_zip_read_info->read_buffer;
+                (uint8_t*)pfile_in_zip_read_info->read_buffer;
             pfile_in_zip_read_info->stream.avail_in = (uInt)uReadThis;
         }
 
@@ -1798,7 +1798,7 @@ pub extern int unzReadCurrentFile  (unzFile file, voidp buf, unsigned len)
         {
 #ifdef HAVE_BZIP2
             uLong uTotalOutBefore,uTotalOutAfter;
-            const Bytef *bufBefore;
+            const uint8_t *bufBefore;
             uLong uOutThis;
 
             pfile_in_zip_read_info->bstream.next_in        = (char*)pfile_in_zip_read_info->stream.next_in;
@@ -1811,7 +1811,7 @@ pub extern int unzReadCurrentFile  (unzFile file, voidp buf, unsigned len)
             pfile_in_zip_read_info->bstream.total_out_hi32 = 0;
 
             uTotalOutBefore = pfile_in_zip_read_info->bstream.total_out_lo32;
-            bufBefore = (const Bytef *)pfile_in_zip_read_info->bstream.next_out;
+            bufBefore = (const uint8_t *)pfile_in_zip_read_info->bstream.next_out;
 
             err=BZ2_bzDecompress(&pfile_in_zip_read_info->bstream);
 
@@ -1824,10 +1824,10 @@ pub extern int unzReadCurrentFile  (unzFile file, voidp buf, unsigned len)
             pfile_in_zip_read_info->rest_read_uncompressed -= uOutThis;
             iRead += (uInt)(uTotalOutAfter - uTotalOutBefore);
 
-            pfile_in_zip_read_info->stream.next_in   = (Bytef*)pfile_in_zip_read_info->bstream.next_in;
+            pfile_in_zip_read_info->stream.next_in   = (uint8_t*)pfile_in_zip_read_info->bstream.next_in;
             pfile_in_zip_read_info->stream.avail_in  = pfile_in_zip_read_info->bstream.avail_in;
             pfile_in_zip_read_info->stream.total_in  = pfile_in_zip_read_info->bstream.total_in_lo32;
-            pfile_in_zip_read_info->stream.next_out  = (Bytef*)pfile_in_zip_read_info->bstream.next_out;
+            pfile_in_zip_read_info->stream.next_out  = (Byte*)pfile_in_zip_read_info->bstream.next_out;
             pfile_in_zip_read_info->stream.avail_out = pfile_in_zip_read_info->bstream.avail_out;
             pfile_in_zip_read_info->stream.total_out = pfile_in_zip_read_info->bstream.total_out_lo32;
 
@@ -1840,7 +1840,7 @@ pub extern int unzReadCurrentFile  (unzFile file, voidp buf, unsigned len)
         else
         {
             ZPOS64_T uTotalOutBefore,uTotalOutAfter;
-            const Bytef *bufBefore;
+            const Byte *bufBefore;
             ZPOS64_T uOutThis;
             int flush=Z_SYNC_FLUSH;
 

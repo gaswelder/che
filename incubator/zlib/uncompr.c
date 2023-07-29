@@ -31,16 +31,16 @@
    an incomplete zlib stream.
 */
 pub int uncompress2(dest, destLen, source, sourceLen)
-    Bytef *dest;
+    uint8_t *dest;
     uLongf *destLen;
-    const Bytef *source;
+    const uint8_t *source;
     uLong *sourceLen;
 {
     z_stream stream;
     int err;
     const uInt max = (uInt)-1;
     uLong len, left;
-    Byte buf[1];    /* for detection of incomplete stream when *destLen == 0 */
+    uint8_t buf[1];    /* for detection of incomplete stream when *destLen == 0 */
 
     len = *sourceLen;
     if (*destLen) {
@@ -52,7 +52,7 @@ pub int uncompress2(dest, destLen, source, sourceLen)
         dest = buf;
     }
 
-    stream.next_in = (const Bytef *)source;
+    stream.next_in = (const uint8_t *)source;
     stream.avail_in = 0;
     stream.zalloc = NULL;
     stream.zfree = NULL;
@@ -107,9 +107,9 @@ pub int uncompress2(dest, destLen, source, sourceLen)
    buffer with the uncompressed data up to that point.
 */
 pub int uncompress(dest, destLen, source, sourceLen)
-    Bytef *dest;
+    uint8_t *dest;
     uLongf *destLen;
-    const Bytef *source;
+    const uint8_t *source;
     uLong sourceLen;
 {
     return uncompress2(dest, destLen, source, &sourceLen);
