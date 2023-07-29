@@ -45,8 +45,15 @@ pub const CCONST: &[&str] = &[
 ];
 
 pub const CFUNCS: &[&str] = &[
+    // ctype
+    "isgraph",
+    "islower",
+    "isspace",
+    "isalpha",
+    "tolower",
+    "toupper",
     // stdlib
-    "atoi", 
+    "atoi",
     "atol",
     "atoll",
     "atol_l",
@@ -60,14 +67,10 @@ pub const CFUNCS: &[&str] = &[
     "signal",
     // ...
     "strncat",
-    "islower",
-    "isspace",
     "acos",
     "floor",
     "round",
     "strrchr",
-    "tolower",
-    "toupper",
     "strncmp",
     "setjmp",
     "longjmp",
@@ -91,7 +94,6 @@ pub const CFUNCS: &[&str] = &[
     "fputs",
     "rename",
     "setvbuf",
-    "isalpha",
     "strstr",
     "remove",
     "calloc",
