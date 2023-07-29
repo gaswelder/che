@@ -50,7 +50,7 @@ pub void dir_close(dir_t *d) {
 
 
 pub bool realpath(const char *path, char *buf, size_t n) {
-    char tmp[PATH_MAX] = {};
+    char tmp[OS.PATH_MAX] = {};
     if (!OS.realpath(path, tmp)) {
         return false;
     }

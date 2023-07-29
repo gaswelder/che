@@ -135,14 +135,24 @@ fn check_module_object(
         ModuleObject::Macro { .. } => {}
         ModuleObject::ModuleVariable {
             type_name,
-            form: _,
+            form,
             value,
             pos,
         } => {
+            // Local type? Register the usage.
             let n = &type_name.name;
             if n.namespace == "" {
                 used_local_types.insert(n.name.clone());
             }
+
+            // Array declaration? Look into the index expressions.
+            for i in &form.indexes {
+                match i {
+                    Some(e) => check_expr(e, state, scopestack, imports),
+                    None => {}
+                }
+            }
+
             if has_function_call(value) {
                 state.errors.push(Error {
                     message: format!("function call in module variable initialization"),
@@ -180,6 +190,16 @@ fn check_module_object(
                             used_local_types.insert(n.name.clone());
                         }
                         check_ns_id(&x.type_name.name, state, scopestack, imports);
+                        for f in &x.forms {
+                            for i in &f.indexes {
+                                match i {
+                                    Some(e) => {
+                                        check_expr(e, state, scopestack, imports);
+                                    }
+                                    None => {}
+                                }
+                            }
+                        }
                     }
                     StructEntry::Union(x) => {
                         for f in &x.fields {
@@ -548,9 +568,22 @@ fn check_body(
                 value,
                 pos,
             } => {
+                // Local type? Count as usage.
                 if type_name.name.namespace == "" {
                     used_types.insert(type_name.name.name.clone());
                 }
+
+                // If it's a variable declaration,
+                // look into the index expressions.
+                for i in &form.indexes {
+                    match i {
+                        Some(e) => {
+                            check_expr(e, state, scopes, imports);
+                        }
+                        None => {}
+                    }
+                }
+
                 check_ns_id(&type_name.name, state, scopes, imports);
                 let n = scopes.len();
                 if value.is_some() {
