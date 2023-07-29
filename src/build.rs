@@ -90,7 +90,7 @@ pub fn build_prog(source_path: &String, output_name: &String) -> Result<(), Vec<
         "-Werror",
         "-pedantic",
         "-pedantic-errors",
-        "-fmax-errors=1",
+        // "-fmax-errors=1",
         "-Wno-parentheses",
         "-g",
     ]);
