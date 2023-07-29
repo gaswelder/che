@@ -2696,7 +2696,6 @@ The actual code strings are reconstructed from the lengths in the inflate proces
 
 #define LITERALS  256 /* number of literal bytes 0..255 */
 #define LENGTH_CODES 29 /* number of length codes, not counting the special END_BLOCK code */
-
 #define L_CODES (LITERALS+1+LENGTH_CODES)
 /* number of Literal or Length codes, including the END_BLOCK code */
 

@@ -12,6 +12,8 @@
 
 #define MAXBITS 15
 
+const int GZIP_MAGIC = 0x8b1f;
+
 
 /* default windowBits for decompression. MAX_WBITS is for compression only */
 #define DEF_WBITS MAX_WBITS
@@ -202,6 +204,10 @@ typedef {
     int back;                   /* bits back of last unprocessed length/lit */
     unsigned was;               /* initial length of match */
 } inflate_state;
+
+bool should_validate_check_value(inflate_state *s) {
+    return s->wrap & 4;
+}
 
 
 int inflateStateCheck(stream.z_stream *strm) {
@@ -639,9 +645,11 @@ int UPDATE_CHECK(ctx_t *ctx, char *buf, size_t len) {
 /* check macros for header crc */
 void CRC2(ctx_t *ctx) {
     uint16_t word = ctx->hold;
-    ctx->hbuf[0] = (uint8_t)(word);
-    ctx->hbuf[1] = (uint8_t)((word) >> 8);
-    ctx->state->check = crc32.crc32(ctx->state->check, ctx->hbuf, 2);
+    uint8_t hbuf[] = {
+        word & 0xFF,
+        (word >> 8) & 0xFF
+    };
+    ctx->state->check = crc32.crc32(ctx->state->check, hbuf, 2);
 }
 
 /* Load registers with state in inflate() for speed */
@@ -665,35 +673,47 @@ void RESTORE(ctx_t *ctx) {
 }
 
 /* Clear the input bit accumulator */
-void INITBITS(ctx_t *ctx) {
+void CLEARBITS(ctx_t *ctx) {
     ctx->hold = 0;
     ctx->bits = 0;
 }
 
 /* Get a byte of input into the bit accumulator, or return from inflate()
    if there is no input available. */
-void PULLBYTE(ctx_t *ctx) {
+bool PULLBYTE(ctx_t *ctx) {
     if (ctx->have == 0) {
-        return inf_leave(ctx);
+        return false;
     }
-    ctx->have--;
+    // Get next byte, extend it to 32 bits because we'll shift it.
     uint32_t x = (uint32_t)(*ctx->next);
+    // Shift to accomodate for the bits already in the accumulator.
+    x <<= ctx->bits;
+    // Merge to the accumulator.
+    ctx->hold += x;
+
+    ctx->have--;
     ctx->next++;
-    ctx->hold += x << ctx->bits;
     ctx->bits += 8;
+    return true;
 }
 
-/* Assure that there are at least n bits in the bit accumulator.  If there is
-   not enough available input to do that, then return from inflate(). */
-void NEEDBITS(ctx_t *ctx, size_t n) {
+/* Pulls at least n bits in the bit accumulator.
+Returns false if there is not enough available input. */
+bool PULLBITS(ctx_t *ctx, size_t n) {
     while (ctx->bits < n) {
-        PULLBYTE(ctx);
+        if (!PULLBYTE(ctx)) {
+            return false;
+        }
     }
+    return true;
 }
 
 /* Return the low n bits of the bit accumulator (n < 16) */
 int BITS(ctx_t *ctx, size_t n) {
-    return ((unsigned) ctx->hold & ((1U << (n)) - 1));
+    if (n >= 16) {
+        panic("n >= 16");
+    }
+    return ctx->hold & ((1U << n) - 1);
 }
 
 /* Remove n bits from the bit accumulator */
@@ -708,46 +728,35 @@ const uint16_t order[19] =
         {16, 17, 18, 0, 8, 7, 9, 6, 10, 5, 11, 4, 12, 3, 13, 2, 14, 1, 15};
 
 /*
-    inflate decompresses as much data as possible, and stops when the input
-  buffer becomes empty or the output buffer becomes full.  It may introduce
-  some output latency (reading input without producing any output) except when
-  forced to flush.
 
-  The detailed semantics are as follows.  inflate performs one or both of the
-  following actions:
+inflate decompresses as much data as possible and stops when the input buffer
+becomes empty or the output buffer becomes full.
 
-  - Decompress more input starting at next_in and update next_in and avail_in
-    accordingly.  If not all input can be processed (because there is not
-    enough room in the output buffer), then next_in and avail_in are updated
-    accordingly, and processing will resume at this point for the next call of
-    inflate().
+It may introduce some output latency (reading input without producing any output) except when forced to flush.
 
-  - Generate more output starting at next_out and update next_out and avail_out
-    accordingly.  inflate() provides as much output as possible, until there is
-    no more input data or no more space in the output buffer (see below about
-    the flush parameter).
+inflate performs one or both of the following actions:
 
-    Before the call of inflate(), the application should ensure that at least
-  one of the actions is possible, by providing more input and/or consuming more
-  output, and updating the next_* and avail_* values accordingly.  If the
-  caller of inflate() does not provide both available input and available
-  output space, it is possible that there will be no progress made.  The
-  application can consume the uncompressed output when it wants, for example
-  when the output buffer is full (avail_out == 0), or after each call of
-  inflate().  If inflate returns stream.Z_OK and with zero avail_out, it must be
-  called again after making room in the output buffer because there might be
-  more output pending.
+Takes partial input available in next_in, decodes and puts into next_out.
+Positions avail_in and avail_out are updated accordingly.
 
-    The flush parameter of inflate() can be Z_NO_FLUSH, Z_SYNC_FLUSH, stream.Z_FINISH,
-  stream.Z_BLOCK, or stream.Z_TREES.  Z_SYNC_FLUSH requests that inflate() flush as much
-  output as possible to the output buffer.  stream.Z_BLOCK requests that inflate()
-  stop if and when it gets to the next deflate block boundary.  When decoding
+The caller should ensure that input has some data to decode and output has
+free space by managing next_in, next_out, avail_in, avail_out.
+
+The application can consume the uncompressed output when it wants, for example
+when the output buffer is full (avail_out == 0), or after each call of inflate().
+
+If inflate returns Z_OK and with zero avail_out, it must be called again after making room in the output buffer because there might be more output pending.
+
+The flush parameter:
+
+- Z_SYNC_FLUSH: flush as much output as possible to the output buffer
+- Z_BLOCK: stop if and when it gets to the next deflate block boundary.  When decoding
   the zlib or gzip format, this will cause inflate() to return immediately
   after the header and before the first block.  When doing a raw inflate,
   inflate() will go ahead and process the first block, and will return when it
   gets to the end of that block, or when it runs out of data.
 
-    The stream.Z_BLOCK option assists in appending to or combining deflate streams.
+Z_BLOCK option assists in appending to or combining deflate streams.
   To assist in this, on return inflate() always sets strm->data_type to the
   number of unused bits in the last byte taken from strm->next_in, plus 64 if
   inflate() is currently decoding the last block in the deflate stream, plus
@@ -768,7 +777,7 @@ const uint16_t order[19] =
   256 is added to the value of strm->data_type when inflate() returns
   immediately after reaching the end of the deflate block header.
 
-    inflate() should normally be called until it returns stream.Z_STREAM_END or an
+inflate() should normally be called until it returns stream.Z_STREAM_END or an
   error.  However if all decompression is to be performed in a single step (a
   single call of inflate), the parameter flush should be set to stream.Z_FINISH.  In
   this case all pending input is processed and all pending output is flushed;
@@ -844,35 +853,30 @@ const uint16_t order[19] =
 
    so when inflate() is called again, the same case is attempted again
 
-The NEEDBITS() macro is usually the way the state evaluates whether it can
+The PULLBITS() macro is usually the way the state evaluates whether it can
 proceed or should return.
 
-        NEEDBITS(n);
+        PULLBITS(n);
         ... do something with BITS(n) ...
         DROPBITS(n);
 
-   where NEEDBITS(n) either returns from inflate() if there isn't enough
+   where PULLBITS(n) either returns from inflate() if there isn't enough
    input left to load n bits into the accumulator, or it continues.  BITS(n)
    gives the low n bits in the accumulator.  When done, DROPBITS(n) drops
-   the low n bits off the accumulator.  INITBITS(ctx) clears the accumulator
+   the low n bits off the accumulator.  CLEARBITS(ctx) clears the accumulator
    and sets the number of available bits to zero.  BYTEBITS() discards just
    enough bits to put the accumulator on a byte boundary.  After BYTEBITS()
-   and a NEEDBITS(ctx, 8), then BITS(ctx, 8) would return the next byte in the stream.
-
-   NEEDBITS(n) uses PULLBYTE to get an available byte of input, or to return
-   if there is no input available.  The decoding of variable length codes uses
-   PULLBYTE directly in order to pull just enough bytes to decode the next
-   code, and no more.
+   and a PULLBITS(ctx, 8), then BITS(ctx, 8) would return the next byte in the stream.
 
    Some states loop until they get enough input, making sure that enough
    state information is maintained to continue the loop where it left off
-   if NEEDBITS() returns in the loop.  For example, want, need, and keep
-   would all have to actually be part of the saved state in case NEEDBITS()
+   if PULLBITS() returns in the loop.  For example, want, need, and keep
+   would all have to actually be part of the saved state in case PULLBITS()
    returns:
 
     case STATEw:
         while (want < need) {
-            NEEDBITS(n);
+            PULLBITS(n);
             keep[want++] = BITS(n);
             DROPBITS(n);
         }
@@ -913,7 +917,6 @@ typedef {
     uint8_t *next;    /* next input */
     unsigned bits;              /* bits in bit buffer */
     uint8_t *from;    /* where to copy match bytes from */
-    uint8_t hbuf[4];      /* buffer for gzip header crc calculation */
     int flush;
 } ctx_t;
 pub int inflate(stream.z_stream *strm, int flush) {
@@ -982,9 +985,9 @@ pub int inflate(stream.z_stream *strm, int flush) {
             case SYNC: { r = stream.Z_STREAM_ERROR; }
             default: { r = stream.Z_STREAM_ERROR; }
         }
-        if (r != BREAK) {
-            return r;
-        }
+        if (r == BREAK) break;
+        if (r == CONTINUE) continue;
+        return r;
     }
     return inf_leave(&ctx);
 }
@@ -997,19 +1000,21 @@ enum {
 int st_head(ctx_t *ctx) {
     if (ctx->state->wrap == 0) {
         ctx->state->mode = TYPEDO;
-        break;
+        return BREAK;
     }
-    NEEDBITS(ctx, 16);
-    if ((ctx->state->wrap & 2) && ctx->hold == 0x8b1f) { 
+    if (!PULLBITS(ctx, 16)) {
+        return inf_leave(ctx);
+    }
+    if ((ctx->state->wrap & 2) && ctx->hold == GZIP_MAGIC) {
         /* gzip header */
         if (ctx->state->wbits == 0) {
             ctx->state->wbits = 15;
         }
         ctx->state->check = crc32.init();
         CRC2(ctx);
-        INITBITS(ctx);
+        CLEARBITS(ctx);
         ctx->state->mode = FLAGS;
-        break;
+        return BREAK;
     }
     if (ctx->state->head != NULL) {
         ctx->state->head->done = -1;
@@ -1018,12 +1023,12 @@ int st_head(ctx_t *ctx) {
         ((BITS(ctx, 8) << 8) + (ctx->hold >> 8)) % 31) {
         ctx->strm->msg = "incorrect header check";
         ctx->state->mode = BAD;
-        break;
+        return BREAK;
     }
     if (BITS(ctx, 4) != deflate.Z_DEFLATED) {
         ctx->strm->msg = "unknown compression method";
         ctx->state->mode = BAD;
-        break;
+        return BREAK;
     }
     DROPBITS(ctx, 4);
     ctx->len = BITS(ctx, 4) + 8;
@@ -1033,123 +1038,147 @@ int st_head(ctx_t *ctx) {
     if (ctx->len > 15 || ctx->len > ctx->state->wbits) {
         ctx->strm->msg = "invalid window size";
         ctx->state->mode = BAD;
-        break;
+        return BREAK;
     }
     ctx->state->dmax = 1U << ctx->len;
     ctx->state->flags = 0;               /* indicate zlib header */
     trace.Tracev(stderr, "inflate:   zlib header ok\n");
-    ctx->strm->adler = ctx->state->check = adler32.init();
+    ctx->state->check = adler32.init();
+    ctx->strm->adler = adler32.init();
     if (ctx->hold & 0x200) {
         ctx->state->mode = DICTID;
     } else {
         ctx->state->mode = TYPE;
     }
-    INITBITS(ctx);
+    CLEARBITS(ctx);
+    return CONTINUE;
 }
 
 int st_flags(ctx_t *ctx) {
-    NEEDBITS(ctx, 16);
+    if (!PULLBITS(ctx, 16)) {
+        return inf_leave(ctx);
+    }
     ctx->state->flags = (int)(ctx->hold);
     if ((ctx->state->flags & 0xff) != deflate.Z_DEFLATED) {
         ctx->strm->msg = "unknown compression method";
         ctx->state->mode = BAD;
-        break;
+        return BREAK;
     }
     if (ctx->state->flags & 0xe000) {
         ctx->strm->msg = "unknown header flags set";
         ctx->state->mode = BAD;
-        break;
+        return BREAK;
     }
     if (ctx->state->head != NULL) {
         ctx->state->head->text = (int)((ctx->hold >> 8) & 1);
     }
-    if ((ctx->state->flags & 0x0200) && (ctx->state->wrap & 4)) {
+    if ((ctx->state->flags & 0x0200) && should_validate_check_value(ctx->state)) {
         CRC2(ctx);
     }
-    INITBITS(ctx);
+    CLEARBITS(ctx);
     ctx->state->mode = TIME;
     return st_time(ctx);
 }
 
 int st_time(ctx_t *ctx) {
-    NEEDBITS(ctx, 32);
+    if (!PULLBITS(ctx, 32)) {
+        return inf_leave(ctx);
+    }
+    // Save the timestamp.
     if (ctx->state->head != NULL) {
         ctx->state->head->time = ctx->hold;
     }
-    if ((ctx->state->flags & 0x0200) && (ctx->state->wrap & 4)) {
+
+    if ((ctx->state->flags & 0x0200) && should_validate_check_value(ctx->state)) {
         uint32_t word = ctx->hold;
-        ctx->hbuf[0] = (uint8_t)(word);
-        ctx->hbuf[1] = (uint8_t)((word) >> 8);
-        ctx->hbuf[2] = (uint8_t)((word) >> 16);
-        ctx->hbuf[3] = (uint8_t)((word) >> 24);
-        ctx->state->check = crc32.crc32(ctx->state->check, ctx->hbuf, 4);
+        uint8_t hbuf[] = {
+            word & 0xFF,
+            (word >> 8) & 0xFF,
+            (word >> 16) & 0xFF,
+            (word >> 24) & 0xFF
+        };
+        ctx->state->check = crc32.crc32(ctx->state->check, hbuf, 4);
     }
-    INITBITS(ctx);
+    CLEARBITS(ctx);
     ctx->state->mode = OS;
     return st_os(ctx);
 }
 
 int st_os(ctx_t *ctx) {
-    NEEDBITS(ctx, 16);
+    if (!PULLBITS(ctx, 16)) {
+        return inf_leave(ctx);
+    }
+    if ((ctx->state->flags & 0x0200) && should_validate_check_value(ctx->state)) {
+        CRC2(ctx);
+    }
+
     if (ctx->state->head != NULL) {
         ctx->state->head->xflags = (int)(ctx->hold & 0xff);
         ctx->state->head->os = (int)(ctx->hold >> 8);
     }
-    if ((ctx->state->flags & 0x0200) && (ctx->state->wrap & 4)) {
-        CRC2(ctx);
-    }
-    INITBITS(ctx);
+    CLEARBITS(ctx);
     ctx->state->mode = EXLEN;
     return st_exlen(ctx);
 }
 
 int st_exlen(ctx_t *ctx) {
     if (ctx->state->flags & 0x0400) {
-        NEEDBITS(ctx, 16);
+        if (!PULLBITS(ctx, 16)) {
+            return inf_leave(ctx);
+        }
+        if ((ctx->state->flags & 0x0200) && should_validate_check_value(ctx->state)) {
+            CRC2(ctx);
+        }
         ctx->state->length = (unsigned)(ctx->hold);
         if (ctx->state->head != NULL) {
             ctx->state->head->extra_len = (unsigned)ctx->hold;
         }
-        if ((ctx->state->flags & 0x0200) && (ctx->state->wrap & 4)) {
-            CRC2(ctx);
-        }
-        INITBITS(ctx);
+        CLEARBITS(ctx);
     }
     else if (ctx->state->head != NULL) {
         ctx->state->head->extra = NULL;
     }
     ctx->state->mode = EXTRA;
-    st_extra(ctx);
+    return st_extra(ctx);
 }
 
 int st_extra(ctx_t *ctx) {
-    if (ctx->state->flags & 0x0400) {
-        ctx->copy = ctx->state->length;
-        if (ctx->copy > ctx->have) ctx->copy = ctx->have;
-        if (ctx->copy) {
-            if (ctx->state->head != NULL &&
-                ctx->state->head->extra != NULL &&
-                (ctx->len = ctx->state->head->extra_len - ctx->state->length) < ctx->state->head->extra_max)
-            {
-                int x;
-                if (ctx->len + ctx->copy > ctx->state->head->extra_max) {
-                    x = ctx->state->head->extra_max - ctx->len;
-                } else {
-                    x = ctx->copy;
-                }
-                memcpy(ctx->state->head->extra + ctx->len, ctx->next, x);
+    int is400 = ctx->state->flags & 0x0400;
+    if (!is400) {
+        ctx->state->length = 0;
+        ctx->state->mode = NAME;
+        return st_name(ctx);
+    }
+    
+    ctx->copy = ctx->state->length;
+    if (ctx->copy > ctx->have) {
+        ctx->copy = ctx->have;
+    }
+    if (ctx->copy) {
+        if (ctx->state->head && ctx->state->head->extra &&
+            (ctx->len = ctx->state->head->extra_len - ctx->state->length) < ctx->state->head->extra_max)
+        {
+            int x;
+            if (ctx->len + ctx->copy > ctx->state->head->extra_max) {
+                x = ctx->state->head->extra_max - ctx->len;
+            } else {
+                x = ctx->copy;
             }
-            if ((ctx->state->flags & 0x0200) && (ctx->state->wrap & 4))
-                ctx->state->check = crc32.crc32(ctx->state->check, ctx->next, ctx->copy);
-            ctx->have -= ctx->copy;
-            ctx->next += ctx->copy;
-            ctx->state->length -= ctx->copy;
+            memcpy(ctx->state->head->extra + ctx->len, ctx->next, x);
         }
-        if (ctx->state->length) return inf_leave(ctx);
+        if ((ctx->state->flags & 0x0200) && should_validate_check_value(ctx->state)) {
+            ctx->state->check = crc32.crc32(ctx->state->check, ctx->next, ctx->copy);
+        }
+        ctx->have -= ctx->copy;
+        ctx->next += ctx->copy;
+        ctx->state->length -= ctx->copy;
+    }
+    if (ctx->state->length) {
+        return inf_leave(ctx);
     }
     ctx->state->length = 0;
     ctx->state->mode = NAME;
-    st_name(ctx);
+    return st_name(ctx);
 }
 
 int st_name(ctx_t *ctx) {
@@ -1160,16 +1189,13 @@ int st_name(ctx_t *ctx) {
         ctx->copy = 0;
         while (true) {
             ctx->len = (unsigned)(ctx->next[ctx->copy++]);
-            if (ctx->state->head != NULL &&
-                    ctx->state->head->name != NULL &&
-                    ctx->state->length < ctx->state->head->name_max)
-            {
+            if (ctx->state->head && ctx->state->head->name && ctx->state->length < ctx->state->head->name_max) {
                 ctx->state->head->name[ctx->state->length++] = (uint8_t)ctx->len;
             }
             bool cont = (ctx->len && ctx->copy < ctx->have);
             if (!cont) break;
         }
-        if ((ctx->state->flags & 0x0200) && (ctx->state->wrap & 4)) {
+        if ((ctx->state->flags & 0x0200) && should_validate_check_value(ctx->state)) {
             ctx->state->check = crc32.crc32(ctx->state->check, ctx->next, ctx->copy);
         }
         ctx->have -= ctx->copy;
@@ -1178,7 +1204,7 @@ int st_name(ctx_t *ctx) {
             return inf_leave(ctx);
         }
     }
-    else if (ctx->state->head != NULL) {
+    else if (ctx->state->head) {
         ctx->state->head->name = NULL;
     }
     ctx->state->length = 0;
@@ -1201,7 +1227,7 @@ int st_comment(ctx_t *ctx) {
             bool cont = (ctx->len && ctx->copy < ctx->have);
             if (!cont) break;
         }
-        if ((ctx->state->flags & 0x0200) && (ctx->state->wrap & 4)) {
+        if ((ctx->state->flags & 0x0200) && should_validate_check_value(ctx->state)) {
             ctx->state->check = crc32.crc32(ctx->state->check, ctx->next, ctx->copy);
         }
         ctx->have -= ctx->copy;
@@ -1210,7 +1236,7 @@ int st_comment(ctx_t *ctx) {
             return inf_leave(ctx);
         }
     }
-    else if (ctx->state->head != NULL) {
+    else if (ctx->state->head) {
         ctx->state->head->comment = NULL;
     }
     ctx->state->mode = HCRC;
@@ -1219,27 +1245,32 @@ int st_comment(ctx_t *ctx) {
 
 int st_hcrc(ctx_t *ctx) {
     if (ctx->state->flags & 0x0200) {
-        NEEDBITS(ctx, 16);
-        if ((ctx->state->wrap & 4) && ctx->hold != (ctx->state->check & 0xffff)) {
+        if (!PULLBITS(ctx, 16)) {
+            return inf_leave(ctx);
+        }
+        if (should_validate_check_value(ctx->state) && ctx->hold != (ctx->state->check & 0xffff)) {
             ctx->strm->msg = "header crc mismatch";
             ctx->state->mode = BAD;
-            break;
+            return BREAK;
         }
-        INITBITS(ctx);
+        CLEARBITS(ctx);
     }
-    if (ctx->state->head != NULL) {
+    if (ctx->state->head) {
         ctx->state->head->hcrc = (int)((ctx->state->flags >> 9) & 1);
         ctx->state->head->done = 1;
     }
     ctx->strm->adler = ctx->state->check = crc32.init();
     ctx->state->mode = TYPE;
+    return CONTINUE;
 }
 
 int st_dictid(ctx_t *ctx) {
-    NEEDBITS(ctx, 32);
+    if (!PULLBITS(ctx, 32)) {
+        return inf_leave(ctx);
+    }
     ctx->state->check = ZSWAP32(ctx->hold);
     ctx->strm->adler = ctx->state->check;
-    INITBITS(ctx);
+    CLEARBITS(ctx);
     ctx->state->mode = DICT;
     return st_dict(ctx);
 }
@@ -1267,9 +1298,11 @@ int st_typedo(ctx_t *ctx) {
         ctx->hold >>= ctx->bits & 7;
         ctx->bits -= ctx->bits & 7;
         ctx->state->mode = CHECK;
-        break;
+        return BREAK;
     }
-    NEEDBITS(ctx, 3);
+    if (!PULLBITS(ctx, 3)) {
+        return inf_leave(ctx);
+    }
     ctx->state->last = BITS(ctx, 1);
     DROPBITS(ctx, 1);
     switch (BITS(ctx, 2)) {
@@ -1308,6 +1341,7 @@ int st_typedo(ctx_t *ctx) {
         }
     }
     DROPBITS(ctx, 2);
+    return CONTINUE;
 }
 
 int st_stored(ctx_t *ctx) {
@@ -1315,15 +1349,17 @@ int st_stored(ctx_t *ctx) {
     /* Remove zero to seven bits as needed to go to a byte boundary */
     ctx->hold >>= ctx->bits & 7;
     ctx->bits -= ctx->bits & 7;
-    NEEDBITS(ctx, 32);
+    if (!PULLBITS(ctx, 32)) {
+        return inf_leave(ctx);
+    }
     if ((ctx->hold & 0xffff) != ((ctx->hold >> 16) ^ 0xffff)) {
         ctx->strm->msg = "invalid stored block lengths";
         ctx->state->mode = BAD;
-        break;
+        return BREAK;
     }
     ctx->state->length = (unsigned) ctx->hold & 0xffff;
     trace.Tracev(stderr, "inflate:       stored length %u\n", ctx->state->length);
-    INITBITS(ctx);
+    CLEARBITS(ctx);
     ctx->state->mode = COPY_;
     if (ctx->flush == stream.Z_TREES) {
         return inf_leave(ctx);
@@ -1354,10 +1390,13 @@ int st_copy(ctx_t *ctx) {
     }
     trace.Tracev(stderr, "inflate:       stored end\n");
     ctx->state->mode = TYPE;
+    return CONTINUE;
 }
 
 int st_table(ctx_t *ctx) {
-    NEEDBITS(ctx, 14);
+    if (!PULLBITS(ctx, 14)) {
+        return inf_leave(ctx);
+    }
     ctx->state->nlen = BITS(ctx, 5) + 257;
     DROPBITS(ctx, 5);
     ctx->state->ndist = BITS(ctx, 5) + 1;
@@ -1368,7 +1407,7 @@ int st_table(ctx_t *ctx) {
         if (ctx->state->nlen > 286 || ctx->state->ndist > 30) {
             ctx->strm->msg = "too many length or distance symbols";
             ctx->state->mode = BAD;
-            break;
+            return BREAK;
         }
     }
     trace.Tracev(stderr, "inflate:       table sizes ok\n");
@@ -1379,7 +1418,9 @@ int st_table(ctx_t *ctx) {
 
 int st_lenlens(ctx_t *ctx) {
     while (ctx->state->have < ctx->state->ncode) {
-        NEEDBITS(ctx, 3);
+        if (!PULLBITS(ctx, 3)) {
+            return inf_leave(ctx);
+        }
         ctx->state->lens[order[ctx->state->have++]] = (uint16_t)BITS(ctx, 3);
         DROPBITS(ctx, 3);
     }
@@ -1396,7 +1437,7 @@ int st_lenlens(ctx_t *ctx) {
     if (ctx->ret) {
         ctx->strm->msg = "invalid code lengths set";
         ctx->state->mode = BAD;
-        break;
+        return BREAK;
     }
     trace.Tracev(stderr, "inflate:       code lengths ok\n");
     ctx->state->have = 0;
@@ -1408,8 +1449,12 @@ int st_codelens(ctx_t *ctx) {
     while (ctx->state->have < ctx->state->nlen + ctx->state->ndist) {
         while (true) {
             ctx->here = ctx->state->lencode[BITS(ctx, ctx->state->lenbits)];
-            if (ctx->here.bits <= ctx->bits) break;
-            PULLBYTE(ctx);
+            if (ctx->here.bits <= ctx->bits) {
+                break;
+            }
+            if (!PULLBYTE(ctx)) {
+                return inf_leave(ctx);
+            }
         }
         if (ctx->here.val < 16) {
             DROPBITS(ctx, ctx->here.bits);
@@ -1417,7 +1462,9 @@ int st_codelens(ctx_t *ctx) {
         }
         else {
             if (ctx->here.val == 16) {
-                NEEDBITS(ctx, ctx->here.bits + 2);
+                if (!PULLBITS(ctx, ctx->here.bits + 2)) {
+                    return inf_leave(ctx);
+                }
                 DROPBITS(ctx, ctx->here.bits);
                 if (ctx->state->have == 0) {
                     ctx->strm->msg = "invalid bit length repeat";
@@ -1429,14 +1476,18 @@ int st_codelens(ctx_t *ctx) {
                 DROPBITS(ctx, 2);
             }
             else if (ctx->here.val == 17) {
-                NEEDBITS(ctx, ctx->here.bits + 3);
+                if (!PULLBITS(ctx, ctx->here.bits + 3)) {
+                    return inf_leave(ctx);
+                }
                 DROPBITS(ctx, ctx->here.bits);
                 ctx->len = 0;
                 ctx->copy = 3 + BITS(ctx, 3);
                 DROPBITS(ctx, 3);
             }
             else {
-                NEEDBITS(ctx, ctx->here.bits + 7);
+                if (!PULLBITS(ctx, ctx->here.bits + 7)) {
+                    return inf_leave(ctx);
+                }
                 DROPBITS(ctx, ctx->here.bits);
                 ctx->len = 0;
                 ctx->copy = 11 + BITS(ctx, 7);
@@ -1510,7 +1561,9 @@ int st_len(ctx_t *ctx) {
         if ((unsigned)(ctx->here.bits) <= ctx->bits) {
             break;
         }
-        PULLBYTE(ctx);
+        if (!PULLBYTE(ctx)) {
+            return inf_leave(ctx);
+        }
     }
     if (ctx->here.op && (ctx->here.op & 0xf0) == 0) {
         ctx->last = ctx->here;
@@ -1518,7 +1571,9 @@ int st_len(ctx_t *ctx) {
             int x = BITS(ctx, ctx->last.bits + ctx->last.op) >> ctx->last.bits;
             ctx->here = ctx->state->lencode[ctx->last.val + x];
             if ((unsigned)(ctx->last.bits + ctx->here.bits) <= ctx->bits) break;
-            PULLBYTE(ctx);
+            if (!PULLBYTE(ctx)) {
+                return inf_leave(ctx);
+            }
         }
         DROPBITS(ctx, ctx->last.bits);
         ctx->state->back += ctx->last.bits;
@@ -1553,7 +1608,9 @@ int st_len(ctx_t *ctx) {
 
 int st_lenext(ctx_t *ctx) {
     if (ctx->state->extra) {
-        NEEDBITS(ctx, ctx->state->extra);
+        if (!PULLBITS(ctx, ctx->state->extra)) {
+            return inf_leave(ctx);
+        }
         ctx->state->length += BITS(ctx, ctx->state->extra);
         DROPBITS(ctx, ctx->state->extra);
         ctx->state->back += ctx->state->extra;
@@ -1568,15 +1625,21 @@ int st_dist(ctx_t *ctx) {
     while (true) {
         ctx->here = ctx->state->distcode[BITS(ctx, ctx->state->distbits)];
         if ((unsigned)(ctx->here.bits) <= ctx->bits) break;
-        PULLBYTE(ctx);
+        if (!PULLBYTE(ctx)) {
+            return inf_leave(ctx);
+        }
     }
     if ((ctx->here.op & 0xf0) == 0) {
         ctx->last = ctx->here;
         while (true) {
             int x = BITS(ctx, ctx->last.bits + ctx->last.op) >> ctx->last.bits;
             ctx->here = ctx->state->distcode[ctx->last.val + x];
-            if ((unsigned)(ctx->last.bits + ctx->here.bits) <= ctx->bits) break;
-            PULLBYTE(ctx);
+            if ((unsigned)(ctx->last.bits + ctx->here.bits) <= ctx->bits) {
+                break;
+            }
+            if (!PULLBYTE(ctx)) {
+                return inf_leave(ctx);
+            }
         }
         DROPBITS(ctx, ctx->last.bits);
         ctx->state->back += ctx->last.bits;
@@ -1596,7 +1659,9 @@ int st_dist(ctx_t *ctx) {
 
 int st_distext(ctx_t *ctx) {
     if (ctx->state->extra) {
-        NEEDBITS(ctx, ctx->state->extra);
+        if (!PULLBITS(ctx, ctx->state->extra)) {
+            return inf_leave(ctx);
+        }
         ctx->state->offset += BITS(ctx, ctx->state->extra);
         DROPBITS(ctx, ctx->state->extra);
         ctx->state->back += ctx->state->extra;
@@ -1683,11 +1748,13 @@ int st_lit(ctx_t *ctx) {
 
 int st_check(ctx_t *ctx) {
     if (ctx->state->wrap) {
-        NEEDBITS(ctx, 32);
+        if (!PULLBITS(ctx, 32)) {
+            return inf_leave(ctx);
+        }
         ctx->out -= ctx->left;
         ctx->strm->total_out += ctx->out;
         ctx->state->total += ctx->out;
-        if ((ctx->state->wrap & 4) && ctx->out) {
+        if (should_validate_check_value(ctx->state) && ctx->out) {
             ctx->strm->adler = ctx->state->check = UPDATE_CHECK(ctx, ctx->put - ctx->out, ctx->out);
         }
         ctx->out = ctx->left;
@@ -1697,12 +1764,12 @@ int st_check(ctx_t *ctx) {
         } else {
             x = ZSWAP32(ctx->hold);
         }
-        if ((ctx->state->wrap & 4) && x != ctx->state->check) {
+        if (should_validate_check_value(ctx->state) && x != ctx->state->check) {
             ctx->strm->msg = "incorrect data check";
             ctx->state->mode = BAD;
             return BREAK;
         }
-        INITBITS(ctx);
+        CLEARBITS(ctx);
         trace.Tracev(stderr, "inflate:   check matches trailer\n");
     }
     ctx->state->mode = LENGTH;
@@ -1711,13 +1778,15 @@ int st_check(ctx_t *ctx) {
 
 int st_length(ctx_t *ctx) {
     if (ctx->state->wrap && ctx->state->flags) {
-        NEEDBITS(ctx, 32);
-        if ((ctx->state->wrap & 4) && ctx->hold != (ctx->state->total & 0xffffffff)) {
+        if (!PULLBITS(ctx, 32)) {
+            return inf_leave(ctx);
+        }
+        if (should_validate_check_value(ctx->state) && ctx->hold != (ctx->state->total & 0xffffffff)) {
             ctx->strm->msg = "incorrect length check";
             ctx->state->mode = BAD;
             return BREAK;
         }
-        INITBITS(ctx);
+        CLEARBITS(ctx);
         trace.Tracev(stderr, "inflate:   length matches trailer\n");
     }
     ctx->state->mode = DONE;
@@ -1756,7 +1825,7 @@ int inf_leave(ctx_t *ctx) {
     ctx->strm->total_in += ctx->in;
     ctx->strm->total_out += ctx->out;
     ctx->state->total += ctx->out;
-    if ((ctx->state->wrap & 4) && ctx->out) {
+    if (should_validate_check_value(ctx->state) && ctx->out) {
         ctx->strm->adler = ctx->state->check = UPDATE_CHECK(ctx, ctx->strm->next_out - ctx->out, ctx->out);
     }
     int x1 = 0;

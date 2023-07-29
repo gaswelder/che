@@ -88,10 +88,15 @@ pub typedef {
 } tree_desc;
 
 /* number of distance codes */
-// #define D_CODES   30
+#define D_CODES   30
 
-// #define BL_CODES  19
-/* number of codes used to transfer the bit lengths */
+#define BL_CODES  19
+
+// #define LITERALS  256 /* number of literal bytes 0..255 */
+// #define LENGTH_CODES 29 /* number of length codes, not counting the special END_BLOCK code */
+#define L_CODES (256+1+29)
+#define HEAP_SIZE (2*L_CODES+1)
+#define MAX_BITS 15
 
 pub typedef {
     z_stream *strm;      /* pointer back to this zlib stream */
@@ -266,32 +271,29 @@ pub typedef {
 
 } deflate_state;
 
-typedef void *alloc_func(void *, uint32_t, uint32_t);
-typedef void  free_func(void *, void *);
+pub typedef void *alloc_func(void *, uint32_t, uint32_t);
+pub typedef void  free_func(void *, void *);
 
 pub typedef {
-
-/* strm.total_in and strm_total_out counters may be limited to 4 GB.  These
-    counters are provided as a convenience and are not used internally by
+    /* total_in and total_out are provided as a convenience and are not used internally by
     inflate() or deflate() */
+    size_t total_in;  /* total number of input bytes read so far */
+    size_t total_out; /* total number of bytes output so far */
 
-    const uint8_t *next_in;     /* next input byte */
-    uint32_t     avail_in;  /* number of bytes available at next_in */
-    uint32_t    total_in;  /* total number of input bytes read so far */
+    uint8_t *next_in; /* next input byte */
+    size_t avail_in; /* number of bytes available at next_in */
 
-    uint8_t    *next_out; /* next output byte will go here */
-    uint32_t     avail_out; /* remaining free space at next_out */
-    uint32_t    total_out; /* total number of bytes output so far */
+    uint8_t *next_out; /* next output byte will go here */
+    size_t avail_out; /* remaining free space at next_out */
 
     const char *msg;  /* last error message, NULL if no error */
     deflate_state *state; /* not visible by applications */
 
-    alloc_func zalloc;  /* used to allocate the internal state */
-    free_func  zfree;   /* used to free the internal state */
+    alloc_func *zalloc;  /* used to allocate the internal state */
+    free_func  *zfree;   /* used to free the internal state */
     void*     opaque;  /* private data object passed to zalloc and zfree */
 
-    int     data_type;  /* best guess about the data type: binary or text
-                           for deflate, or the decoding state for inflate */
+    int data_type;  /* best guess about the data type: binary or text for deflate, or the decoding state for inflate */
     uint32_t   adler;      /* Adler-32 or CRC-32 value of the uncompressed data */
     uint32_t   reserved;   /* reserved for future use */
 } z_stream;
