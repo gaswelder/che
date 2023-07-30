@@ -8,6 +8,7 @@ struct StrPos {
 
 struct State {
     errors: Vec<Error>,
+    root_scope: RootScope,
 }
 
 #[derive(Clone, Debug)]
@@ -31,7 +32,7 @@ struct VarInfo {
 }
 
 #[derive(Clone, Debug)]
-struct Scope {
+struct RootScope {
     pre: Vec<String>,
     imports: HashMap<String, ScopeItem1<ImportNode>>,
     types: HashMap<String, ScopeItem>,
@@ -40,22 +41,25 @@ struct Scope {
     funcs: HashMap<String, ScopeItem1<FunctionDeclaration>>,
 }
 
+#[derive(Clone, Debug)]
+struct Scope {
+    vars: HashMap<String, ScopeItem1<VarInfo>>,
+}
+
 fn newscope() -> Scope {
     return Scope {
-        pre: vec![],
-        imports: HashMap::new(),
-        consts: HashMap::new(),
         vars: HashMap::new(),
-        funcs: HashMap::new(),
-        types: HashMap::new(),
     };
 }
 
 pub fn run(m: &Module, imports: &HashMap<String, &Exports>) -> Vec<Error> {
     let mut declared_local_types = Vec::new();
     let mut used_local_types = HashSet::new();
-    let mut state = State { errors: Vec::new() };
-    let mut scopestack = vec![get_module_scope(m)];
+    let mut state = State {
+        errors: Vec::new(),
+        root_scope: get_module_scope(m),
+    };
+    let mut scopestack: Vec<Scope> = Vec::new();
 
     for e in &m.elements {
         check_module_object(
@@ -76,8 +80,7 @@ pub fn run(m: &Module, imports: &HashMap<String, &Exports>) -> Vec<Error> {
         }
     }
 
-    let s = scopestack.pop().unwrap();
-    for (k, v) in s.imports {
+    for (k, v) in state.root_scope.imports {
         if !v.read {
             state.errors.push(Error {
                 message: format!("unused import: {}", k),
@@ -85,7 +88,7 @@ pub fn run(m: &Module, imports: &HashMap<String, &Exports>) -> Vec<Error> {
             })
         }
     }
-    for (k, v) in s.consts {
+    for (k, v) in state.root_scope.consts {
         if !v.ispub && !v.read {
             state.errors.push(Error {
                 message: format!("unused constant: {}", k),
@@ -93,7 +96,7 @@ pub fn run(m: &Module, imports: &HashMap<String, &Exports>) -> Vec<Error> {
             });
         }
     }
-    for (k, v) in s.funcs {
+    for (k, v) in state.root_scope.funcs {
         if !v.val.is_pub && !v.read && k != "main" {
             state.errors.push(Error {
                 message: format!("unused function: {}", k),
@@ -355,8 +358,8 @@ fn has_function_call(e: &Expression) -> bool {
     };
 }
 
-fn get_module_scope(m: &Module) -> Scope {
-    let mut s = Scope {
+fn get_module_scope(m: &Module) -> RootScope {
+    let mut s = RootScope {
         pre: vec![
             String::from("false"),
             String::from("NULL"),
@@ -793,7 +796,7 @@ fn check_expr(
             arguments,
         } => {
             match function.as_ref() {
-                Expression::Identifier(x) => match scopes[0].funcs.get_mut(&x.name) {
+                Expression::Identifier(x) => match state.root_scope.funcs.get_mut(&x.name) {
                     Some(e) => {
                         e.read = true;
                         let f = &e.val;
@@ -885,22 +888,30 @@ fn check_ns_id(
                     }
                     None => {}
                 }
-                if scope.pre.contains(&x.name) {
+            }
+
+            match state.root_scope.vars.get_mut(k) {
+                Some(x) => {
+                    x.read = true;
                     return;
                 }
-                match scope.consts.get_mut(k) {
-                    Some(x) => {
-                        x.read = true;
-                        return;
-                    }
-                    None => {}
-                }
-                if scope.funcs.contains_key(k) {
+                None => {}
+            }
+            if state.root_scope.pre.contains(&x.name) {
+                return;
+            }
+            match state.root_scope.consts.get_mut(k) {
+                Some(x) => {
+                    x.read = true;
                     return;
                 }
-                if scope.types.contains_key(k) {
-                    return;
-                }
+                None => {}
+            }
+            if state.root_scope.funcs.contains_key(k) {
+                return;
+            }
+            if state.root_scope.types.contains_key(k) {
+                return;
             }
             state.errors.push(Error {
                 message: format!("unknown identifier: {}", x.name),
@@ -908,8 +919,7 @@ fn check_ns_id(
             });
         }
         _ => {
-            let s = &mut scopes[0];
-            match s.imports.get_mut(&x.namespace) {
+            match state.root_scope.imports.get_mut(&x.namespace) {
                 Some(imp) => {
                     imp.read = true;
                 }
@@ -949,23 +959,30 @@ fn check_id(x: &Identifier, state: &mut State, scopes: &mut Vec<Scope>) {
             }
             None => {}
         }
-        if scope.pre.contains(&x.name) {
+    }
+    match state.root_scope.vars.get_mut(k) {
+        Some(x) => {
+            x.read = true;
             return;
         }
-        match scope.consts.get_mut(k) {
-            Some(x) => {
-                x.read = true;
-                return;
-            }
-            None => {}
+        None => {}
+    }
+    if state.root_scope.pre.contains(&x.name) {
+        return;
+    }
+    match state.root_scope.consts.get_mut(k) {
+        Some(x) => {
+            x.read = true;
+            return;
         }
-        match scope.funcs.get_mut(k) {
-            Some(x) => {
-                x.read = true;
-                return;
-            }
-            None => {}
+        None => {}
+    }
+    match state.root_scope.funcs.get_mut(k) {
+        Some(x) => {
+            x.read = true;
+            return;
         }
+        None => {}
     }
     state.errors.push(Error {
         message: format!("unknown identifier: {}", x.name),
