@@ -24,12 +24,19 @@ struct ScopeItem1<T> {
 }
 
 #[derive(Clone, Debug)]
+struct VarInfo {
+    pos: Pos,
+    typename: Typename,
+    form: Form,
+}
+
+#[derive(Clone, Debug)]
 struct Scope {
     pre: Vec<String>,
     imports: HashMap<String, ScopeItem1<ImportNode>>,
     types: HashMap<String, ScopeItem>,
     consts: HashMap<String, ScopeItem>,
-    vars: HashMap<String, ScopeItem>,
+    vars: HashMap<String, ScopeItem1<VarInfo>>,
     funcs: HashMap<String, ScopeItem1<FunctionDeclaration>>,
 }
 
@@ -246,10 +253,13 @@ fn check_function_declaration(
             let n = scopestack.len();
             scopestack[n - 1].vars.insert(
                 f.name.clone(),
-                ScopeItem {
+                ScopeItem1 {
                     read: false,
-                    pos: tf.pos.clone(),
-                    ispub: false,
+                    val: VarInfo {
+                        pos: f.pos.clone(),
+                        typename: tf.type_name.clone(),
+                        form: f.clone(),
+                    },
                 },
             );
         }
@@ -260,7 +270,7 @@ fn check_function_declaration(
         if !v.read {
             state.errors.push(Error {
                 message: format!("{} not used", k),
-                pos: v.pos,
+                pos: v.val.pos,
             })
         }
     }
@@ -435,10 +445,14 @@ fn get_module_scope(m: &Module) -> Scope {
             ModuleObject::ModuleVariable(x) => {
                 s.vars.insert(
                     x.form.name.clone(),
-                    ScopeItem {
+                    ScopeItem1 {
                         read: false,
-                        pos: x.pos.clone(),
-                        ispub: false,
+                        val: VarInfo {
+                            pos: x.pos.clone(),
+                            typename: x.type_name.clone(),
+                            form: x.form.clone(),
+                            // ispub: false,
+                        },
                     },
                 );
             }
@@ -521,10 +535,14 @@ fn check_body(
                             check_expr(value, state, scopes, imports);
                             scopes[n - 1].vars.insert(
                                 form.name.clone(),
-                                ScopeItem {
+                                ScopeItem1 {
                                     read: true,
-                                    pos: form.pos.clone(),
-                                    ispub: false,
+                                    val: VarInfo {
+                                        pos: form.pos.clone(),
+                                        typename: type_name.clone(),
+                                        form: form.clone(),
+                                        // ispub: false,
+                                    },
                                 },
                             );
                         }
@@ -621,20 +639,26 @@ fn check_body(
                 if x.value.is_some() {
                     scopes[n - 1].vars.insert(
                         x.form.name.clone(),
-                        ScopeItem {
+                        ScopeItem1 {
                             read: false,
-                            pos: x.pos.clone(),
-                            ispub: false,
+                            val: VarInfo {
+                                pos: x.pos.clone(),
+                                typename: x.type_name.clone(),
+                                form: x.form.clone(), // ispub: false,
+                            },
                         },
                     );
                     check_expr(x.value.as_ref().unwrap(), state, scopes, imports);
                 } else {
                     scopes[n - 1].vars.insert(
                         x.form.name.clone(),
-                        ScopeItem {
+                        ScopeItem1 {
                             read: false,
-                            pos: x.pos.clone(),
-                            ispub: false,
+                            val: VarInfo {
+                                pos: x.pos.clone(),
+                                typename: x.type_name.clone(),
+                                form: x.form.clone(), // ispub: false,
+                            },
                         },
                     );
                 }
@@ -650,9 +674,82 @@ fn check_body(
         if !v.read {
             state.errors.push(Error {
                 message: format!("unused variable: {}", k),
-                pos: v.pos,
+                pos: v.val.pos,
             });
         }
+    }
+}
+
+fn find_var(scopes: &Vec<Scope>, name: &String) -> Option<VarInfo> {
+    let n = scopes.len();
+    for i in 0..n {
+        let s = &scopes[n - i - 1];
+        match s.vars.get(name) {
+            Some(v) => {
+                return Some(v.val.clone());
+            }
+            None => {}
+        }
+    }
+    return None;
+}
+
+fn infer_type(e: &Expression, scopes: &Vec<Scope>) -> Option<Typename> {
+    match e {
+        Expression::ArrayIndex { array: _, index: _ } => None,
+        Expression::BinaryOp { op: _, a: _, b: _ } => None,
+        Expression::FieldAccess {
+            op: _,
+            target,
+            field_name: _,
+        } => match infer_type(target, scopes) {
+            Some(t) => {
+                if t.name.namespace == "" {
+                    Some(t)
+                } else {
+                    None
+                }
+            }
+            None => None,
+        },
+        Expression::Cast {
+            type_name,
+            operand: _,
+        } => Some(type_name.type_name.clone()),
+        Expression::CompositeLiteral(_) => None,
+        Expression::FunctionCall {
+            function: _,
+            arguments: _,
+        } => None,
+        Expression::Identifier(x) => match find_var(scopes, &x.name) {
+            Some(v) => {
+                let mut t = v.typename.clone();
+                for _ in v.form.indexes {
+                    t.name.name += "*";
+                }
+                t.name.name += &v.form.stars;
+                return Some(t);
+            }
+            None => return None,
+        },
+        Expression::Literal(_) => None,
+        Expression::NsName(_) => None,
+        Expression::PostfixOperator {
+            operator: _,
+            operand: _,
+        } => None,
+        Expression::PrefixOperator {
+            operator: _,
+            operand: _,
+        } => None,
+        Expression::Sizeof { argument: _ } => Some(Typename {
+            is_const: true,
+            name: NsName {
+                name: String::from("size_t"),
+                namespace: String::from(""),
+                pos: Pos { col: 0, line: 0 },
+            },
+        }),
     }
 }
 
@@ -667,7 +764,11 @@ fn check_expr(
             check_expr(array, state, scopes, imports);
             check_expr(index, state, scopes, imports);
         }
-        Expression::BinaryOp { op: _, a, b } => {
+        Expression::BinaryOp { op, a, b } => {
+            if op == ">" {
+                infer_type(a, scopes);
+                infer_type(b, scopes);
+            }
             check_expr(a, state, scopes, imports);
             check_expr(b, state, scopes, imports);
         }
