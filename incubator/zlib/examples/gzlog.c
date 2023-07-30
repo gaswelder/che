@@ -617,9 +617,6 @@ local int log_compress(struct log *log, unsigned char *data, size_t len)
     /* compress and append compressed data */
     if (len) {
         /* set up for deflate, allocating memory */
-        strm.zalloc = NULL;
-        strm.zfree = NULL;
-        strm.opaque = NULL;
         deflate_config_t cfg = {
             .level = Z_DEFAULT_COMPRESSION,
             .method = Z_DEFLATED,

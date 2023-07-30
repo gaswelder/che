@@ -42,9 +42,6 @@ int def(FILE *source, FILE *dest, int level)
     unsigned char out[CHUNK];
 
     /* allocate deflate state */
-    strm.zalloc = NULL;
-    strm.zfree = NULL;
-    strm.opaque = NULL;
     ret = deflateInit(&strm, level);
     if (ret != Z_OK)
         return ret;

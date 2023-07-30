@@ -106,10 +106,6 @@ local int gz_look(state)
         }
         state->size = state->want;
 
-        /* allocate inflate memory */
-        state->strm.zalloc = NULL;
-        state->strm.zfree = NULL;
-        state->strm.opaque = NULL;
         state->strm.avail_in = 0;
         state->strm.next_in = NULL;
         if (inflateInit2(&(state->strm), 15 + 16) != Z_OK) {    /* gunzip */

@@ -280,9 +280,6 @@ local int gzscan(char *name, z_stream *strm, int level)
     /* prepare to decompress */
     window = malloc(DSIZE);
     if (window == NULL) bye("out of memory", "");
-    strm->zalloc = NULL;
-    strm->zfree = NULL;
-    strm->opaque = NULL;
     ret = inflateInit(strm);
     assert(ret == Z_OK);
     ret = inflateReset2(strm, -15);

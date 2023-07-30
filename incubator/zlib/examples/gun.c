@@ -637,9 +637,6 @@ int main(int argc, char **argv)
 
     /* initialize inflateBack state for repeated use */
     window = match;                         /* reuse LZW match buffer */
-    strm.zalloc = NULL;
-    strm.zfree = NULL;
-    strm.opaque = NULL;
     ret = inflateBackInit(&strm, 15, window);
     if (ret != Z_OK) {
         fprintf(stderr, "gun out of memory error--aborting\n");

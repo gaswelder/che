@@ -38,9 +38,6 @@ local int gz_init(state)
         }
 
         /* allocate deflate memory, set up for gzip compression */
-        strm->zalloc = NULL;
-        strm->zfree = NULL;
-        strm->opaque = NULL;
         ret = deflateInit2(strm, state->level, Z_DEFLATED,
                            MAX_WBITS + 16, DEF_MEM_LEVEL, state->strategy);
         if (ret != Z_OK) {

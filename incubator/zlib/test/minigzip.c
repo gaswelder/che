@@ -202,9 +202,6 @@ gzFile gz_open(path, fd, mode)
     if (gz == NULL)
         return NULL;
     gz->write = strchr(mode, 'w') != NULL;
-    gz->strm.zalloc = myalloc;
-    gz->strm.zfree = myfree;
-    gz->strm.opaque = NULL;
     if (gz->write) {
         deflate_config_t cfg = {
             .level = -1,

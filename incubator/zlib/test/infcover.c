@@ -18,9 +18,6 @@
    They are used as follows:
 
    z_stream strm;
-   mem_setup(&strm)         initializes the memory tracking and sets the
-                            zalloc, zfree, and opaque members of strm to use
-                            memory tracking for all zlib operations on strm
    mem_limit(&strm, limit)  sets a limit on the total bytes requested -- a
                             request that exceeds this limit will result in an
                             allocation failure (returns NULL) -- setting the
@@ -155,9 +152,6 @@ void mem_setup(z_stream *strm)
     zone->limit = 0;
     zone->notlifo = 0;
     zone->rogue = 0;
-    strm->opaque = zone;
-    strm->zalloc = mem_alloc;
-    strm->zfree = mem_free;
 }
 
 /* set a limit on the total memory allocation, or 0 to remove the limit */
@@ -216,9 +210,6 @@ void mem_done(z_stream *strm, char *prefix)
 
     /* free the zone and delete from the stream */
     free(zone);
-    strm->opaque = NULL;
-    strm->zalloc = NULL;
-    strm->zfree = NULL;
 }
 
 /* -- inflate test routines -- */

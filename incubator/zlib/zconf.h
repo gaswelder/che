@@ -40,7 +40,6 @@
 #  define crc32_z               z_crc32_z
 #  define deflate               z_deflate
 #  define deflateBound          z_deflateBound
-#  define deflateCopy           z_deflateCopy
 #  define deflateEnd            z_deflateEnd
 #  define deflateGetDictionary  z_deflateGetDictionary
 #  define deflateInit           z_deflateInit

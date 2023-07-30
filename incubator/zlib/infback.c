@@ -16,17 +16,12 @@
 #include "inffast.h"
 
 /*
-   strm provides memory allocation functions in zalloc and zfree, or
-   NULL to use the library memory allocation functions.
-
    windowBits is in the range 8..15, and window is a user-supplied
    window and output buffer that is 2**windowBits bytes.
  */
 /*
      Initialize the internal stream state for decompression using inflateBack()
-   calls.  The fields zalloc, zfree and opaque in strm must be initialized
-   before the call.  If zalloc and zfree are NULL, then the default library-
-   derived memory allocation routines are used.  windowBits is the base two
+   calls. windowBits is the base two
    logarithm of the window size, in the range 8..15.  window is a caller
    supplied buffer of that size.  Except for special applications where it is
    assured that deflate was used with small window sizes, windowBits must be 15
@@ -61,13 +56,6 @@ int stream_size;
         windowBits < 8 || windowBits > 15)
         return Z_STREAM_ERROR;
     strm->msg = NULL;                 /* in case we return an error */
-    if (strm->zalloc == NULL) {
-        strm->zalloc = zcalloc;
-        strm->opaque = NULL;
-    }
-    if (strm->zfree == NULL) {
-        strm->zfree = zcfree;
-    }
     state = ZALLOC(strm, 1, sizeof(inflate_state));
     if (state == NULL) {
         return Z_MEM_ERROR;
@@ -714,7 +702,7 @@ void FAR *out_desc;
  * Returns Z_OK on success, or Z_STREAM_ERROR if the stream state was inconsistent.
  */
 pub int inflateBackEnd(z_stream *strm) {
-    if (!strm || !strm->state || !strm->zfree) {
+    if (!strm || !strm->state) {
         return Z_STREAM_ERROR;
     }
     ZFREE(strm, strm->state);

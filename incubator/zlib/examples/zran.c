@@ -144,9 +144,6 @@ int deflate_index_build(FILE *in, off_t span, struct deflate_index **built)
     unsigned char window[WINSIZE];
 
     /* initialize inflate */
-    strm.zalloc = NULL;
-    strm.zfree = NULL;
-    strm.opaque = NULL;
     strm.avail_in = 0;
     strm.next_in = NULL;
     ret = inflateInit2(&strm, 47);      /* automatic zlib or gzip decoding */
@@ -265,9 +262,6 @@ int deflate_index_extract(FILE *in, struct deflate_index *index, off_t offset,
         here++;
 
     /* initialize file and inflate state to start there */
-    strm.zalloc = NULL;
-    strm.zfree = NULL;
-    strm.opaque = NULL;
     strm.avail_in = 0;
     strm.next_in = NULL;
     ret = inflateInit2(&strm, -15);         /* raw inflate */

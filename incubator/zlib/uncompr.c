@@ -54,9 +54,6 @@ pub int uncompress2(dest, destLen, source, sourceLen)
 
     stream.next_in = (const uint8_t *)source;
     stream.avail_in = 0;
-    stream.zalloc = NULL;
-    stream.zfree = NULL;
-    stream.opaque = NULL;
 
     err = inflateInit(&stream);
     if (err != Z_OK) {

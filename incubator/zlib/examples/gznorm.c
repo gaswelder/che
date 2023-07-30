@@ -86,9 +86,6 @@ local char *aprintf(char *fmt, ...) {
 local int gzip_normalize(FILE *in, FILE *out, char **err) {
     // initialize the inflate engine to process a gzip member
     z_stream strm;
-    strm.zalloc = NULL;
-    strm.zfree = NULL;
-    strm.opaque = NULL;
     strm.avail_in = 0;
     strm.next_in = NULL;
     if (inflateInit2(&strm, 15 + 16) != Z_OK)

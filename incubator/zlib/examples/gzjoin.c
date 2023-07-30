@@ -289,9 +289,6 @@ void gzcopy(char *name, int clr, unsigned long *crc, unsigned long *tot,
     /* allocate buffer for uncompressed data and initialize raw inflate
        stream */
     junk = malloc(CHUNK);
-    strm.zalloc = NULL;
-    strm.zfree = NULL;
-    strm.opaque = NULL;
     strm.avail_in = 0;
     strm.next_in = NULL;
     ret = inflateInit(&strm);

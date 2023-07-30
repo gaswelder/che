@@ -46,10 +46,6 @@ pub int compress2(dest, destLen, source, sourceLen, level)
     left = *destLen;
     *destLen = 0;
 
-    stream.zalloc = NULL;
-    stream.zfree = NULL;
-    stream.opaque = NULL;
-
     err = deflateInit(&stream, level);
     if (err != Z_OK) {
       return err;

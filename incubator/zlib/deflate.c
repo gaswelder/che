@@ -7,7 +7,6 @@
 #import assert.c
 #import crc32
 #import trace.c
-#import zmalloc.c
 
  /*
 Maximum value for memLevel in deflateInit2
@@ -52,6 +51,9 @@ The memory requirements for deflate are (in bytes):
 /* The minimum and maximum match lengths */
 #define MIN_MATCH  3
 #define MAX_MATCH  258
+
+/* Maximum stored block length in deflate format (not including header). */
+#define MAX_STORED 65535
 
 #define Buf_size 16
 /* size of bit buffer in bi_buf */
@@ -395,7 +397,7 @@ pub typedef {
     size_t total_in;  /* total number of input bytes read so far */
     size_t total_out; /* total number of bytes output so far */
 
-    uint8_t *next_in; /* next input byte */
+    const uint8_t *next_in; /* next input byte */
     size_t avail_in; /* number of bytes available at next_in */
 
     uint8_t *next_out; /* next output byte will go here */
@@ -404,22 +406,10 @@ pub typedef {
     const char *msg;  /* last error message, NULL if no error */
     deflate_state *state; /* not visible by applications */
 
-    alloc_func *zalloc;  /* used to allocate the internal state */
-    free_func  *zfree;   /* used to free the internal state */
-    void*     opaque;  /* private data object passed to zalloc and zfree */
-
     int data_type;  /* best guess about the data type: binary or text for deflate, or the decoding state for inflate */
     uint32_t   adler;      /* Adler-32 or CRC-32 value of the uncompressed data */
     uint32_t   reserved;   /* reserved for future use */
 } z_stream;
-
-pub void *ZALLOC(z_stream *strm, size_t items, size_t size) {
-    return (strm->zalloc)(strm->opaque, items, size);
-}
-
-pub void ZFREE(z_stream *strm, void *addr) {
-    (strm->zfree)(strm->opaque, addr);
-}
 
 
 
@@ -488,7 +478,7 @@ enum {
 };
 
 /* Compression function. Returns the block state after the call. */
-typedef int *compress_func(deflate_state *, int);
+typedef int compress_func(deflate_state *, int);
 
 enum {
     NIL = 0, /* Tail of hash chains */
@@ -505,7 +495,7 @@ typedef {
    uint16_t max_lazy;    /* do not perform lazy search above this match length */
    uint16_t nice_length; /* quit search above this match length */
    uint16_t max_chain;
-   compress_func func;
+   compress_func *func;
 } config;
 
 const config configuration_table[10] = {
@@ -544,23 +534,6 @@ int RANK(int f) {
  */
 void UPDATE_HASH(deflate_state *s, uint32_t c) {
     s->ins_h = ((s->ins_h << s->hash_shift) ^ (c)) & s->hash_mask;
-}
-
-
-/* ===========================================================================
- * Insert string str in the dictionary and set match_head to the previous head
- * of the hash chain (the most recent string with same hash key). Return
- * the previous length of the hash chain.
- * If this file is compiled with -DFASTEST, the compression level is forced
- * to 1, and no hash chains are maintained.
- * IN  assertion: all calls to INSERT_STRING are made with consecutive input
- *    characters and the first MIN_MATCH bytes of str are valid (except for
- *    the last MIN_MATCH-1 bytes of the input file).
- */
-void INSERT_STRING(deflate_state *s, int str, int *match_head) {
-    UPDATE_HASH(s, s->window[(str) + (MIN_MATCH-1)]);
-    *match_head = s->prev[(str) & s->w_mask] = s->head[s->ins_h];
-    s->head[s->ins_h] = (uint16_t)(str);
 }
 
 
@@ -623,11 +596,6 @@ void slide_hash(deflate_state *s) {
 /*
  * Initializes the internal stream state for compression.
  
- The fields
-   zalloc, zfree and opaque must be initialized before by the caller.
-   
-If zalloc and zfree are set to NULL, deflateInit updates them to use default allocation functions.
-
 The compression level must be Z_DEFAULT_COMPRESSION, or between 0 and 9:
    1 gives best speed, 9 gives best compression, 0 gives no compression at all
    (the input data is simply copied a block at a time).  Z_DEFAULT_COMPRESSION
@@ -721,13 +689,6 @@ pub int deflateInit2(z_stream *strm, deflate_config_t cfg) {
         return Z_STREAM_ERROR;
     }
     strm->msg = NULL;
-    if (strm->zalloc == NULL) {
-        strm->zalloc = zmalloc.zcalloc;
-        strm->opaque = NULL;
-    }
-    if (strm->zfree == NULL) {
-        strm->zfree = zmalloc.zcfree;
-    }
 
     int level = cfg.level;
     if (level == Z_DEFAULT_COMPRESSION) {
@@ -758,7 +719,7 @@ pub int deflateInit2(z_stream *strm, deflate_config_t cfg) {
         return Z_STREAM_ERROR;
     }
     if (windowBits == 8) windowBits = 9;  /* until 256-byte window bug fixed */
-    s = ZALLOC(strm, 1, sizeof(deflate_state));
+    s = calloc(1, sizeof(deflate_state));
     if (s == NULL) return Z_MEM_ERROR;
     strm->state = s;
     s->strm = strm;
@@ -775,9 +736,9 @@ pub int deflateInit2(z_stream *strm, deflate_config_t cfg) {
     s->hash_mask = s->hash_size - 1;
     s->hash_shift =  ((s->hash_bits + MIN_MATCH-1) / MIN_MATCH);
 
-    s->window = (uint8_t *) ZALLOC(strm, s->w_size, 2*sizeof(uint8_t));
-    s->prev   = (uint16_t *)  ZALLOC(strm, s->w_size, sizeof(uint16_t));
-    s->head   = (uint16_t *)  ZALLOC(strm, s->hash_size, sizeof(uint16_t));
+    s->window = calloc(s->w_size, sizeof(uint16_t));
+    s->prev   = calloc(s->w_size, sizeof(uint16_t));
+    s->head   = calloc(s->hash_size, sizeof(uint16_t));
 
     s->high_water = 0;      /* nothing written to s->window yet */
 
@@ -822,7 +783,7 @@ pub int deflateInit2(z_stream *strm, deflate_config_t cfg) {
      * symbols from which it is being constructed.
      */
 
-    s->pending_buf = ZALLOC(strm, s->lit_bufsize, 4);
+    s->pending_buf = calloc(s->lit_bufsize, 4);
     s->pending_buf_size = (uint32_t)s->lit_bufsize * 4;
 
     if (s->window == NULL || s->prev == NULL || s->head == NULL ||
@@ -850,7 +811,7 @@ pub int deflateInit2(z_stream *strm, deflate_config_t cfg) {
  * Check for a valid deflate stream state. Return 0 if ok, 1 if not.
  */
 int deflateStateCheck(z_stream *strm) {
-    if (strm == NULL || strm->zalloc == NULL || strm->zfree == NULL) {
+    if (strm == NULL) {
         return 1;
     }
     deflate_state *s = strm->state;
@@ -1024,7 +985,7 @@ pub int deflateResetKeep(z_stream *strm) {
     }
 
     strm->total_in = strm->total_out = 0;
-    strm->msg = NULL; /* use zfree if we ever allocate msg dynamically */
+    strm->msg = NULL;
     strm->data_type = Z_UNKNOWN;
 
     s = strm->state;
@@ -1055,7 +1016,7 @@ pub int deflateResetKeep(z_stream *strm) {
    set unchanged.
 
      deflateReset returns Z_OK if success, or Z_STREAM_ERROR if the source
-   stream state was inconsistent (such as zalloc or state being NULL).
+   stream state was inconsistent.
 */
 pub int deflateReset(z_stream *strm) {
     int ret = deflateResetKeep(strm);
@@ -1192,11 +1153,11 @@ pub int deflateParams(
     int level,
     int strategy
 ) {
-    deflate_state *s;
-    compress_func func;
-
-    if (deflateStateCheck(strm)) return Z_STREAM_ERROR;
-    s = strm->state;
+    if (deflateStateCheck(strm)) {
+        return Z_STREAM_ERROR;
+    }
+    deflate_state *s = strm->state;
+    compress_func *func;
 
     if (level == Z_DEFAULT_COMPRESSION) level = 6;
     if (level < 0 || level > 9 || strategy < 0 || strategy > Z_FIXED) {
@@ -1774,7 +1735,7 @@ pub int deflate(z_stream *strm, int flush) {
         } else if (s->strategy == Z_RLE) {
             bstate = s->strategy == deflate_rle(s, flush);
         } else {
-            bstate = (*(configuration_table[s->level].func))(s, flush);
+            bstate = configuration_table[s->level].func(s, flush);
         }
 
         if (bstate == finish_started || bstate == finish_done) {
@@ -1872,89 +1833,24 @@ pub int deflateEnd(z_stream *strm) {
 
     /* Deallocate in reverse order of allocations: */
     if (strm->state->pending_buf) {
-        ZFREE(strm, strm->state->pending_buf);
+        free(strm->state->pending_buf);
     }
     if (strm->state->head) {
-        ZFREE(strm, strm->state->head);
+        free(strm->state->head);
     }
     if (strm->state->prev) {
-        ZFREE(strm, strm->state->prev);
+        free(strm->state->prev);
     }
     if (strm->state->window) {
-        ZFREE(strm, strm->state->window);
+        free(strm->state->window);
     }
 
-    ZFREE(strm, strm->state);
+    free(strm->state);
     strm->state = NULL;
 
     if (status == BUSY_STATE) {
         return Z_DATA_ERROR;
     }
-    return Z_OK;
-}
-
-/*
-     Sets the destination stream as a complete copy of the source stream.
-
-     This function can be useful when several compression strategies will be
-   tried, for example when there are several ways of pre-processing the input
-   data with a filter.  The streams that will be discarded should then be freed
-   by calling deflateEnd.  Note that deflateCopy duplicates the internal
-   compression state which can be quite large, so this strategy is slow and can
-   consume lots of memory.
-
-     deflateCopy returns Z_OK if success, Z_MEM_ERROR if there was not
-   enough memory, Z_STREAM_ERROR if the source stream state was inconsistent
-   (such as zalloc being NULL).  msg is left unchanged in both source and
-   destination.
-*/
-/* =========================================================================
- * Copy the source state to the destination state.
- * To simplify the source, this is not supported for 16-bit MSDOS (which
- * doesn't have enough memory anyway to duplicate compression states).
- */
-pub int deflateCopy(z_stream * dest, source) {
-    deflate_state *ds;
-    deflate_state *ss;
-
-
-    if (deflateStateCheck(source) || dest == NULL) {
-        return Z_STREAM_ERROR;
-    }
-
-    ss = source->state;
-
-    memcpy((void *)dest, (void *)source, sizeof(z_stream));
-
-    ds = ZALLOC(dest, 1, sizeof(deflate_state));
-    if (ds == NULL) return Z_MEM_ERROR;
-    dest->state = ds;
-    memcpy((void *)ds, (void *)ss, sizeof(deflate_state));
-    ds->strm = dest;
-
-    ds->window = (uint8_t *) ZALLOC(dest, ds->w_size, 2*sizeof(uint8_t));
-    ds->prev   = (uint16_t *)  ZALLOC(dest, ds->w_size, sizeof(uint16_t));
-    ds->head   = (uint16_t *)  ZALLOC(dest, ds->hash_size, sizeof(uint16_t));
-    ds->pending_buf = (uint8_t *) ZALLOC(dest, ds->lit_bufsize, 4);
-
-    if (ds->window == NULL || ds->prev == NULL || ds->head == NULL ||
-        ds->pending_buf == NULL) {
-        deflateEnd (dest);
-        return Z_MEM_ERROR;
-    }
-    /* following memcpy do not work for 16-bit MSDOS */
-    memcpy(ds->window, ss->window, ds->w_size * 2 * sizeof(uint8_t));
-    memcpy((void *)ds->prev, (void *)ss->prev, ds->w_size * sizeof(uint16_t));
-    memcpy((void *)ds->head, (void *)ss->head, ds->hash_size * sizeof(uint16_t));
-    memcpy(ds->pending_buf, ss->pending_buf, (uint32_t)ds->pending_buf_size);
-
-    ds->pending_out = ds->pending_buf + (ss->pending_out - ss->pending_buf);
-    ds->sym_buf = ds->pending_buf + ds->lit_bufsize;
-
-    ds->l_desc.dyn_tree = ds->dyn_ltree;
-    ds->d_desc.dyn_tree = ds->dyn_dtree;
-    ds->bl_desc.dyn_tree = ds->bl_tree;
-
     return Z_OK;
 }
 
@@ -2300,7 +2196,7 @@ enum {
 };
 
 /* Same but force premature exit if necessary. */
-void FLUSH_BLOCK(deflate_state *s, int last) {
+int FLUSH_BLOCK(deflate_state *s, int last) {
     FLUSH_BLOCK_ONLY(s, last);
     if (s->strm->avail_out == 0) {
         if (last) {
@@ -2311,8 +2207,7 @@ void FLUSH_BLOCK(deflate_state *s, int last) {
     return NO_RETURN;
 }
 
-/* Maximum stored block length in deflate format (not including header). */
-#define MAX_STORED 65535
+
 
 
 /* ===========================================================================
@@ -2527,7 +2422,7 @@ int deflate_stored(deflate_state *s, int flush) {
  * new strings in the dictionary only for unmatched strings or for short
  * matches. It is used only for the fast compression options.
  */
-int deflate_fast(deflate_state *s, bool flush) {
+int deflate_fast(deflate_state *s, int flush) {
     uint32_t hash_head;       /* head of the hash chain */
     int bflush;           /* set if current block must be flushed */
 
@@ -2779,6 +2674,22 @@ int deflate_slow(deflate_state *s, int flush) {
 }
 
 /* ===========================================================================
+ * Insert string str in the dictionary and set match_head to the previous head
+ * of the hash chain (the most recent string with same hash key). Return
+ * the previous length of the hash chain.
+ * If this file is compiled with -DFASTEST, the compression level is forced
+ * to 1, and no hash chains are maintained.
+ * IN  assertion: all calls to INSERT_STRING are made with consecutive input
+ *    characters and the first MIN_MATCH bytes of str are valid (except for
+ *    the last MIN_MATCH-1 bytes of the input file).
+ */
+void INSERT_STRING(deflate_state *s, uint32_t str, uint32_t match_head) {
+    UPDATE_HASH(s, s->window[(str) + (MIN_MATCH-1)]);
+    *match_head = s->prev[(str) & s->w_mask] = s->head[s->ins_h];
+    s->head[s->ins_h] = (uint16_t)(str);
+}
+
+/* ===========================================================================
  * For Z_RLE, simply look for runs of bytes, generate matches only of distance
  * one.  Do not maintain a hash table.  (It will be regenerated if this run of
  * deflate switches away from Z_RLE.)
@@ -2992,18 +2903,18 @@ The actual code strings are reconstructed from the lengths in the inflate proces
 
 
 /* extra bits for each length code */
-const int extra_lbits[LENGTH_CODES] = {0,0,0,0,0,0,0,0,1,1,1,1,2,2,2,2,3,3,3,3,4,4,4,4,5,5,5,5,0};
+int extra_lbits[LENGTH_CODES] = {0,0,0,0,0,0,0,0,1,1,1,1,2,2,2,2,3,3,3,3,4,4,4,4,5,5,5,5,0};
 
 /* extra bits for each distance code */
-const int extra_dbits[D_CODES] = {0,0,0,0,1,1,2,2,3,3,4,4,5,5,6,6,7,7,8,8,9,9,10,10,11,11,12,12,13,13};
+int extra_dbits[D_CODES] = {0,0,0,0,1,1,2,2,3,3,4,4,5,5,6,6,7,7,8,8,9,9,10,10,11,11,12,12,13,13};
 
 /* extra bits for each bit length code */
-const int extra_blbits[BL_CODES] = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,2,3,7};
+int extra_blbits[BL_CODES] = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,2,3,7};
 
 /* The lengths of the bit length codes are sent in order of decreasing
  * probability, to avoid transmitting the lengths for unused bit length codes.
  */
-const uint8_t bl_order[BL_CODES] = {16,17,18,0,8,7,9,6,10,5,11,4,12,3,13,2,14,1,15};
+uint8_t bl_order[BL_CODES] = {16,17,18,0,8,7,9,6,10,5,11,4,12,3,13,2,14,1,15};
 
 #define DIST_CODE_LEN  512 /* see definition of array dist_code below */
 
@@ -4189,17 +4100,8 @@ pub int inflateInit(z_stream *strm) {
 
     strm->msg = NULL;
 
-    // Assign default allocators if not specified.
-    if (strm->zalloc == NULL) {
-        strm->zalloc = zmalloc.zcalloc;
-        strm->opaque = NULL;
-    }
-    if (strm->zfree == NULL) {
-        strm->zfree = zmalloc.zcfree;
-    }
-
     // Allocate the state.
-    inflate_state *state = ZALLOC(strm, 1, sizeof(inflate_state));
+    inflate_state *state = calloc(1, sizeof(inflate_state));
     if (state == NULL) {
         return Z_MEM_ERROR;
     }
@@ -4211,12 +4113,12 @@ pub int inflateInit(z_stream *strm) {
     // ...
     int ret = inflateReset2(strm, DEF_WBITS);
     if (ret != Z_OK) {
-        ZFREE(strm, state);
+        free(state);
         strm->state = NULL;
     }
     return ret;
     /*
-    The fields next_in, avail_in, zalloc, zfree and opaque must be initialized before by the caller.
+    The fields next_in, avail_in must be initialized before by the caller.
     So next_in, and avail_in, next_out, and avail_out are unused and unchanged.  The current
     implementation of inflateInit() does not process any header information --
     that is deferred until inflate() is called.
@@ -4457,7 +4359,7 @@ bool should_validate_check_value(inflate_state *s) {
 
 
 int inflateStateCheck(z_stream *strm) {
-    if (!strm || !strm->zalloc || !strm->zfree) {
+    if (!strm) {
         return 1;
     }
     inflate_state *state = strm->state;
@@ -4498,7 +4400,7 @@ pub int inflateResetKeep(z_stream *strm) {
    stream will keep attributes that may have been set by inflateInit2.
 
      inflateReset returns Z_OK if success, or Z_STREAM_ERROR if the source
-   stream state was inconsistent (such as zalloc or state being NULL).
+   stream state was inconsistent.
 */
 pub int inflateReset(z_stream *strm) {
     if (inflateStateCheck(strm)) {
@@ -4519,7 +4421,7 @@ pub int inflateReset(z_stream *strm) {
    by inflate() if needed.
 
      inflateReset2 returns Z_OK if success, or Z_STREAM_ERROR if the source
-   stream state was inconsistent (such as zalloc or state being NULL), or if
+   stream state was inconsistent, or if
    the windowBits parameter is invalid.
 */
 pub int inflateReset2(z_stream *strm, int windowBits) {
@@ -4547,7 +4449,7 @@ pub int inflateReset2(z_stream *strm, int windowBits) {
     if (windowBits && (windowBits < 8 || windowBits > 15))
         return Z_STREAM_ERROR;
     if (state->window != NULL && state->wbits != (unsigned)windowBits) {
-        ZFREE(strm, state->window);
+        free(state->window);
         state->window = NULL;
     }
 
@@ -4737,7 +4639,7 @@ int updatewindow(
 
     /* if it hasn't been done already, allocate space for the window */
     if (state->window == NULL) {
-        state->window = ZALLOC(strm, 1U << state->wbits, sizeof(uint8_t));
+        state->window = calloc(1U << state->wbits, 1);
         if (state->window == NULL) {
             return 1;
         }
@@ -6003,9 +5905,9 @@ pub int inflateEnd(z_stream *strm) {
     }
     inflate_state *state = strm->state;
     if (state->window != NULL) {
-        ZFREE(strm, state->window);
+        free(state->window);
     }
-    ZFREE(strm, strm->state);
+    free(strm->state);
     strm->state = NULL;
     trace.Tracev(stderr, "inflate: end\n");
     return Z_OK;
@@ -6280,8 +6182,8 @@ pub int inflateSyncPoint(z_stream *strm) {
    stream.
 
      inflateCopy returns Z_OK if success, Z_MEM_ERROR if there was not
-   enough memory, Z_STREAM_ERROR if the source stream state was inconsistent
-   (such as zalloc being NULL).  msg is left unchanged in both source and
+   enough memory, Z_STREAM_ERROR if the source stream state was inconsistent.
+   msg is left unchanged in both source and
    destination.
 */
 pub int inflateCopy(z_stream *dest, *source) {
@@ -6297,15 +6199,15 @@ pub int inflateCopy(z_stream *dest, *source) {
     state = (inflate_state *)source->state;
 
     /* allocate space */
-    copy = ZALLOC(source, 1, sizeof(inflate_state));
+    copy = calloc(1, sizeof(inflate_state));
     if (copy == NULL) {
         return Z_MEM_ERROR;
     }
     window = NULL;
     if (state->window != NULL) {
-        window = ZALLOC(source, 1U << state->wbits, sizeof(uint8_t));
+        window = calloc(1U << state->wbits, sizeof(uint8_t));
         if (window == NULL) {
-            ZFREE(source, copy);
+            free(copy);
             return Z_MEM_ERROR;
         }
     }
@@ -7073,8 +6975,4 @@ int inflate_table(
     *table += used;
     *bits = root;
     return 0;
-}
-
-void *ZALLOC(z_stream *strm, size_t items, size) {
-    return (*((strm)->zalloc))((strm)->opaque, items, size);
 }
