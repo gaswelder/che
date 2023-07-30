@@ -208,7 +208,7 @@ pub fn parse(mainpath: &String) -> Result<Build, Vec<BuildError>> {
             for err in errors {
                 ee.push(BuildError {
                     message: err.message,
-                    pos: err.pos,
+                    pos: err.pos.fmt(),
                     path: path.clone(),
                 })
             }
@@ -240,7 +240,7 @@ pub fn parse(mainpath: &String) -> Result<Build, Vec<BuildError>> {
             errors.push(BuildError {
                 message: err.message,
                 path: work.paths[i].clone(),
-                pos: err.pos,
+                pos: err.pos.fmt(),
             });
         }
     }

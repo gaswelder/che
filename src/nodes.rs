@@ -1,3 +1,5 @@
+use crate::buf::Pos;
+
 #[derive(Debug, Clone)]
 pub struct Module {
     pub elements: Vec<ModuleObject>,
@@ -14,17 +16,17 @@ pub enum ModuleObject {
     Macro {
         name: String,
         value: String,
-        pos: String,
+        pos: Pos,
     },
     Import(ImportNode),
     Enum {
         is_pub: bool,
         members: Vec<EnumItem>,
-        pos: String,
+        pos: Pos,
     },
     // typedef struct tm tm_t;
     StructAliasTypedef {
-        pos: String,
+        pos: Pos,
         is_pub: bool,
         struct_name: String,
         type_alias: String,
@@ -38,7 +40,7 @@ pub enum ModuleObject {
 #[derive(Debug, Clone)]
 pub struct ImportNode {
     pub specified_path: String,
-    pub pos: String,
+    pub pos: Pos,
 }
 
 #[derive(Debug, Clone)]
@@ -48,12 +50,12 @@ pub struct FunctionDeclaration {
     pub form: Form,
     pub parameters: FunctionParameters,
     pub body: Body,
-    pub pos: String,
+    pub pos: Pos,
 }
 
 #[derive(Debug, Clone)]
 pub struct Typedef {
-    pub pos: String,
+    pub pos: Pos,
     pub is_pub: bool,
     pub alias: Identifier,
     pub type_name: Typename,
@@ -64,7 +66,7 @@ pub struct Typedef {
 
 #[derive(Debug, Clone)]
 pub struct StructTypedef {
-    pub pos: String,
+    pub pos: Pos,
     pub is_pub: bool,
     pub fields: Vec<StructEntry>,
     pub name: Identifier,
@@ -82,7 +84,7 @@ pub struct FuncTypedef {
 pub struct EnumItem {
     pub id: Identifier,
     pub value: Option<Expression>,
-    pub pos: String,
+    pub pos: Pos,
 }
 
 #[derive(Debug, Clone)]
@@ -95,7 +97,7 @@ pub struct Typename {
 pub struct NsName {
     pub namespace: String,
     pub name: String,
-    pub pos: String,
+    pub pos: Pos,
 }
 
 #[derive(Debug, Clone)]
@@ -171,7 +173,7 @@ pub struct Body {
 #[derive(Debug, Clone)]
 pub struct Identifier {
     pub name: String,
-    pub pos: String,
+    pub pos: Pos,
 }
 
 #[derive(Debug, Clone)]
@@ -179,7 +181,7 @@ pub struct VariableDeclaration {
     pub type_name: Typename,
     pub form: Form,
     pub value: Option<Expression>,
-    pub pos: String,
+    pub pos: Pos,
 }
 
 #[derive(Debug, Clone)]
@@ -222,6 +224,7 @@ pub struct Form {
     pub stars: String,
     pub name: String,
     pub indexes: Vec<Option<Expression>>,
+    pub pos: Pos,
 }
 
 #[derive(Debug, Clone)]
@@ -264,7 +267,7 @@ pub struct FunctionParameters {
 pub struct TypeAndForms {
     pub type_name: Typename,
     pub forms: Vec<Form>,
-    pub pos: String,
+    pub pos: Pos,
 }
 
 #[derive(Debug, Clone)]

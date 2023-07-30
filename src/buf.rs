@@ -8,6 +8,18 @@ pub struct Buf {
     linelengths: Vec<usize>,
 }
 
+#[derive(Debug, Clone)]
+pub struct Pos {
+    pub line: usize,
+    pub col: usize,
+}
+
+impl Pos {
+    pub fn fmt(&self) -> String {
+        format!("{}:{}", self.line, self.col)
+    }
+}
+
 pub fn new(s: String) -> Buf {
     Buf {
         s: s.chars().collect(),
@@ -28,8 +40,11 @@ impl Buf {
         self.pos < self.s.len()
     }
 
-    pub fn pos(&self) -> String {
-        format!("{}:{}", self.line, self.col)
+    pub fn pos(&self) -> Pos {
+        Pos {
+            line: self.line,
+            col: self.col,
+        }
     }
 
     pub fn peek(&self) -> Option<char> {
@@ -182,7 +197,7 @@ mod tests {
         let mut buf = new(String::from("123\n456"));
         let seq = ["1:1", "1:2", "1:3", "1:4", "2:1", "2:2", "2:3"];
         for pos in &seq {
-            assert_eq!(buf.pos(), pos.to_string());
+            assert_eq!(buf.pos().fmt(), pos.to_string());
             buf.get();
         }
     }

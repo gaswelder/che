@@ -1,4 +1,5 @@
 use crate::buf::Buf;
+use crate::buf::Pos;
 use std::collections::VecDeque;
 use std::fmt;
 use std::fs;
@@ -8,7 +9,7 @@ use substring::Substring;
 pub struct Token {
     pub kind: String,
     pub content: String,
-    pub pos: String,
+    pub pos: Pos,
 }
 
 impl fmt::Display for Token {
@@ -383,7 +384,7 @@ mod tests {
             let t = _read_token(case.input);
             assert_eq!(t.content, case.content);
             assert_eq!(t.kind, case.kind);
-            assert_eq!(t.pos, case.pos);
+            assert_eq!(t.pos.fmt(), case.pos);
         }
 
         let symbols = [
@@ -395,14 +396,14 @@ mod tests {
             let t = _read_token(format!("{}123", sym).as_str());
             assert_eq!(t.content, "");
             assert_eq!(t.kind, sym.to_string());
-            assert_eq!(t.pos, "1:1");
+            assert_eq!(t.pos.fmt(), "1:1");
         }
 
         for kw in KEYWORDS {
             let t = _read_token(format!("{} 123", kw).as_str());
             assert_eq!(t.content, "");
             assert_eq!(t.kind, kw.to_string());
-            assert_eq!(t.pos, "1:1");
+            assert_eq!(t.pos.fmt(), "1:1");
         }
     }
 }
@@ -432,6 +433,10 @@ impl Lexer {
         }
         self.unget(r.unwrap());
         return true;
+    }
+
+    pub fn pos(&self) -> Pos {
+        self.buf.pos()
     }
 
     pub fn get(&mut self) -> Option<Token> {

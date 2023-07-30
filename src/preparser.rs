@@ -23,7 +23,7 @@ pub fn preparse(path: &String) -> Result<Preparse, String> {
             None => break,
             Some(t) => match t.kind.as_str() {
                 "error" => {
-                    return Err(format!("{} at {}:{}", t.content, path, t.pos));
+                    return Err(format!("{} at {}:{}", t.content, path, t.pos.fmt()));
                 }
                 "import" => {
                     let res = resolve::resolve_import(path, &t.content)?;
@@ -135,7 +135,12 @@ fn expect(lexer: &mut Lexer, kind: &str, comment: Option<&str>) -> Result<Token,
     if next.kind != kind {
         return Err(with_comment(
             comment,
-            format!("expected '{}', got '{}' at {}", kind, next.kind, next.pos),
+            format!(
+                "expected '{}', got '{}' at {}",
+                kind,
+                next.kind,
+                next.pos.fmt()
+            ),
         ));
     }
     return Ok(lexer.get().unwrap());

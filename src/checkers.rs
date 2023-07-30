@@ -1,9 +1,9 @@
-use crate::{c, exports::Exports, nodes::*, parser::Error, resolve::getns};
+use crate::{buf::Pos, c, exports::Exports, nodes::*, parser::Error, resolve::getns};
 use std::collections::{HashMap, HashSet};
 
 struct StrPos {
     str: String,
-    pos: String,
+    pos: Pos,
 }
 
 struct State {
@@ -13,7 +13,7 @@ struct State {
 #[derive(Clone, Debug)]
 struct ScopeItem {
     read: bool,
-    pos: String,
+    pos: Pos,
     ispub: bool,
 }
 
@@ -90,7 +90,7 @@ pub fn run(m: &Module, imports: &HashMap<String, &Exports>) -> Vec<Error> {
         if !v.val.is_pub && !v.read && k != "main" {
             state.errors.push(Error {
                 message: format!("unused function: {}", k),
-                pos: format!("{}", v.val.pos),
+                pos: v.val.pos,
             });
         }
     }
@@ -151,7 +151,7 @@ fn check_module_object(
             if has_function_call(x.value.as_ref().unwrap()) {
                 state.errors.push(Error {
                     message: format!("function call in module variable initialization"),
-                    pos: format!("{}", x.pos),
+                    pos: x.pos.clone(),
                 })
             }
             check_ns_id(&x.type_name.name, state, scopestack, imports);
@@ -423,7 +423,7 @@ fn get_module_scope(m: &Module) -> Scope {
                         String::from(parts.next().unwrap()),
                         ScopeItem {
                             read: false,
-                            pos: String::from(pos),
+                            pos: pos.clone(),
                             ispub: false,
                         },
                     );
@@ -523,7 +523,7 @@ fn check_body(
                                 form.name.clone(),
                                 ScopeItem {
                                     read: true,
-                                    pos: String::from("for"),
+                                    pos: form.pos.clone(),
                                     ispub: false,
                                 },
                             );

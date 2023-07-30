@@ -1,10 +1,11 @@
+use crate::buf::Pos;
 use crate::build::Ctx;
 use crate::lexer::{Lexer, Token};
 use crate::{c, nodes::*};
 
 pub struct Error {
     pub message: String,
-    pub pos: String,
+    pub pos: Pos,
 }
 
 struct TWithErrors<T> {
@@ -309,7 +310,7 @@ fn read_expression_atom(l: &mut Lexer, ctx: &Ctx) -> Result<Expression, Error> {
     if !l.more() {
         return Err(Error {
             message: String::from("id: unexpected end of input"),
-            pos: String::from("EOF"),
+            pos: l.pos(),
         });
     }
     if ns_follows(l, ctx) {
@@ -420,7 +421,7 @@ fn expect(l: &mut Lexer, kind: &str, comment: Option<&str>) -> Result<Token, Err
     if !l.more() {
         return Err(Error {
             message: with_comment(comment, format!("expected '{}', got end of file", kind)),
-            pos: String::from("EOF"),
+            pos: l.pos(),
         });
     }
     let next = l.peek().unwrap();
@@ -638,7 +639,7 @@ fn parse_statement(l: &mut Lexer, ctx: &Ctx) -> Result<TWithErrors<Statement>, E
     if !l.more() {
         return Err(Error {
             message: String::from("reached end of file while parsing statement"),
-            pos: String::from("EOF"),
+            pos: l.pos(),
         });
     }
     if type_follows(l, ctx) {
@@ -704,7 +705,7 @@ fn parse_panic(l: &mut Lexer, ctx: &Ctx) -> Result<Statement, Error> {
     expect(l, ";", Some("panic"))?;
     return Ok(Statement::Panic {
         arguments,
-        pos: format!("{}:{}", ctx.path, p.pos),
+        pos: format!("{}:{}", ctx.path, p.pos.fmt()),
     });
 }
 
@@ -739,7 +740,7 @@ fn parse_return(l: &mut Lexer, ctx: &Ctx) -> Result<Statement, Error> {
     });
 }
 
-fn parse_form(lexer: &mut Lexer, ctx: &Ctx) -> Result<Form, Error> {
+fn parse_form(l: &mut Lexer, ctx: &Ctx) -> Result<Form, Error> {
     // *argv[]
     // linechars[]
     // buf[SIZE * 2]
@@ -747,13 +748,14 @@ fn parse_form(lexer: &mut Lexer, ctx: &Ctx) -> Result<Form, Error> {
         stars: String::new(),
         name: String::new(),
         indexes: vec![],
+        pos: l.peek().unwrap().pos.clone(),
     };
 
-    while lexer.follows("*") {
-        node.stars += &lexer.get().unwrap().kind;
+    while l.follows("*") {
+        node.stars += &l.get().unwrap().kind;
     }
 
-    let tok = expect(lexer, "word", None)?;
+    let tok = expect(l, "word", None)?;
     if tok.content == "" {
         return Err(Error {
             message: String::from("missing word content"),
@@ -762,16 +764,16 @@ fn parse_form(lexer: &mut Lexer, ctx: &Ctx) -> Result<Form, Error> {
     }
     node.name = tok.content.clone();
 
-    while lexer.follows("[") {
-        lexer.get().unwrap();
+    while l.follows("[") {
+        l.get().unwrap();
         let e: Option<Expression>;
-        if lexer.more() && lexer.peek().unwrap().kind != "]" {
-            e = Some(parse_expr(lexer, 0, ctx)?);
+        if l.more() && l.peek().unwrap().kind != "]" {
+            e = Some(parse_expr(l, 0, ctx)?);
         } else {
             e = None;
         }
         node.indexes.push(e);
-        expect(lexer, "]", None)?;
+        expect(l, "]", None)?;
     }
     return Ok(node);
 }
@@ -928,7 +930,7 @@ fn parse_function_declaration(
     type_name: Typename,
     form: Form,
     ctx: &Ctx,
-    pos: String,
+    pos: Pos,
 ) -> Result<TWithErrors<ModuleObject>, Error> {
     // void cuespl {WE ARE HERE} (cue_t *c, mp3file *m) {...}
 
