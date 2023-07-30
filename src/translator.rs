@@ -237,15 +237,10 @@ fn translate_module_object(element: &ModuleObject, ctx: &Ctx) -> Vec<CModuleObje
                 }];
             }
         }
-        ModuleObject::ModuleVariable {
-            form,
-            type_name,
-            value,
-            pos: _,
-        } => vec![CModuleObject::ModuleVariable {
-            type_name: translate_typename(type_name, ctx),
-            form: translate_form(form, ctx),
-            value: translate_expression(value, ctx),
+        ModuleObject::ModuleVariable(x) => vec![CModuleObject::ModuleVariable {
+            type_name: translate_typename(&x.type_name, ctx),
+            form: translate_form(&x.form, ctx),
+            value: translate_expression(x.value.as_ref().unwrap(), ctx),
         }],
     }
 }
@@ -643,18 +638,13 @@ fn translate_body(b: &Body, ctx: &Ctx) -> CBody {
                     default: default.as_ref().map(|x| translate_body(&x, ctx)),
                 }
             }
-            Statement::VariableDeclaration {
-                pos: _,
-                type_name,
-                form,
-                value,
-            } => {
+            Statement::VariableDeclaration(x) => {
                 let mut tforms: Vec<CForm> = Vec::new();
-                tforms.push(translate_form(form, ctx));
+                tforms.push(translate_form(&x.form, ctx));
                 let mut tvalues: Vec<Option<CExpression>> = Vec::new();
-                tvalues.push(value.as_ref().map(|x| translate_expression(&x, ctx)));
+                tvalues.push(x.value.as_ref().map(|x| translate_expression(&x, ctx)));
                 CStatement::VariableDeclaration {
-                    type_name: translate_typename(type_name, ctx),
+                    type_name: translate_typename(&x.type_name, ctx),
                     forms: tforms,
                     values: tvalues,
                 }

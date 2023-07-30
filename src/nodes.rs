@@ -31,12 +31,7 @@ pub enum ModuleObject {
     },
     Typedef(Typedef),
     StructTypedef(StructTypedef),
-    ModuleVariable {
-        type_name: Typename,
-        form: Form,
-        value: Expression,
-        pos: String,
-    },
+    ModuleVariable(VariableDeclaration),
     FunctionDeclaration(FunctionDeclaration),
 }
 
@@ -180,15 +175,18 @@ pub struct Identifier {
 }
 
 #[derive(Debug, Clone)]
+pub struct VariableDeclaration {
+    pub type_name: Typename,
+    pub form: Form,
+    pub value: Option<Expression>,
+    pub pos: String,
+}
+
+#[derive(Debug, Clone)]
 pub enum Statement {
     Break,
     Continue,
-    VariableDeclaration {
-        type_name: Typename,
-        form: Form,
-        value: Option<Expression>,
-        pos: String,
-    },
+    VariableDeclaration(VariableDeclaration),
     If {
         condition: Expression,
         body: Body,

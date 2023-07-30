@@ -114,12 +114,12 @@ fn parse_module_object(l: &mut Lexer, ctx: &Ctx) -> Result<TWithErrors<ModuleObj
     let value = parse_expr(l, 0, ctx)?;
     expect(l, ";", Some("module variable declaration"))?;
     return Ok(TWithErrors {
-        obj: ModuleObject::ModuleVariable {
+        obj: ModuleObject::ModuleVariable(VariableDeclaration {
             type_name,
             form,
-            value,
+            value: Some(value),
             pos,
-        },
+        }),
         errors: Vec::new(),
     });
 }
@@ -718,12 +718,12 @@ fn parse_variable_declaration(l: &mut Lexer, ctx: &Ctx) -> Result<Statement, Err
         None
     };
     expect(l, ";", None)?;
-    return Ok(Statement::VariableDeclaration {
+    return Ok(Statement::VariableDeclaration(VariableDeclaration {
         pos,
         type_name,
         form,
         value,
-    });
+    }));
 }
 
 fn parse_return(l: &mut Lexer, ctx: &Ctx) -> Result<Statement, Error> {

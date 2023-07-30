@@ -133,34 +133,29 @@ fn check_module_object(
             check_function_declaration(f, state, scopestack, imports, used_local_types);
         }
         ModuleObject::Macro { .. } => {}
-        ModuleObject::ModuleVariable {
-            type_name,
-            form,
-            value,
-            pos,
-        } => {
+        ModuleObject::ModuleVariable(x) => {
             // Local type? Register the usage.
-            let n = &type_name.name;
+            let n = &x.type_name.name;
             if n.namespace == "" {
                 used_local_types.insert(n.name.clone());
             }
 
             // Array declaration? Look into the index expressions.
-            for i in &form.indexes {
+            for i in &x.form.indexes {
                 match i {
                     Some(e) => check_expr(e, state, scopestack, imports),
                     None => {}
                 }
             }
 
-            if has_function_call(value) {
+            if has_function_call(x.value.as_ref().unwrap()) {
                 state.errors.push(Error {
                     message: format!("function call in module variable initialization"),
-                    pos: format!("{}", pos),
+                    pos: format!("{}", x.pos),
                 })
             }
-            check_ns_id(&type_name.name, state, scopestack, imports);
-            check_expr(value, state, scopestack, imports);
+            check_ns_id(&x.type_name.name, state, scopestack, imports);
+            check_expr(x.value.as_ref().unwrap(), state, scopestack, imports);
         }
         ModuleObject::StructAliasTypedef {
             pos,
@@ -437,17 +432,12 @@ fn get_module_scope(m: &Module) -> Scope {
                     s.pre.push(String::from(value.trim()));
                 }
             }
-            ModuleObject::ModuleVariable {
-                type_name: _,
-                form,
-                value: _,
-                pos,
-            } => {
+            ModuleObject::ModuleVariable(x) => {
                 s.vars.insert(
-                    form.name.clone(),
+                    x.form.name.clone(),
                     ScopeItem {
                         read: false,
-                        pos: pos.clone(),
+                        pos: x.pos.clone(),
                         ispub: false,
                     },
                 );
@@ -609,20 +599,15 @@ fn check_body(
                     );
                 }
             }
-            Statement::VariableDeclaration {
-                type_name,
-                form,
-                value,
-                pos,
-            } => {
+            Statement::VariableDeclaration(x) => {
                 // Local type? Count as usage.
-                if type_name.name.namespace == "" {
-                    used_types.insert(type_name.name.name.clone());
+                if x.type_name.name.namespace == "" {
+                    used_types.insert(x.type_name.name.name.clone());
                 }
 
                 // If it's a variable declaration,
                 // look into the index expressions.
-                for i in &form.indexes {
+                for i in &x.form.indexes {
                     match i {
                         Some(e) => {
                             check_expr(e, state, scopes, imports);
@@ -631,24 +616,24 @@ fn check_body(
                     }
                 }
 
-                check_ns_id(&type_name.name, state, scopes, imports);
+                check_ns_id(&x.type_name.name, state, scopes, imports);
                 let n = scopes.len();
-                if value.is_some() {
+                if x.value.is_some() {
                     scopes[n - 1].vars.insert(
-                        form.name.clone(),
+                        x.form.name.clone(),
                         ScopeItem {
                             read: false,
-                            pos: pos.clone(),
+                            pos: x.pos.clone(),
                             ispub: false,
                         },
                     );
-                    check_expr(value.as_ref().unwrap(), state, scopes, imports);
+                    check_expr(x.value.as_ref().unwrap(), state, scopes, imports);
                 } else {
                     scopes[n - 1].vars.insert(
-                        form.name.clone(),
+                        x.form.name.clone(),
                         ScopeItem {
                             read: false,
-                            pos: pos.clone(),
+                            pos: x.pos.clone(),
                             ispub: false,
                         },
                     );

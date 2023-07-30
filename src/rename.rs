@@ -21,15 +21,15 @@ pub fn prefix_module(m: &mut Module, prefix: &String) {
 
 fn prefix_mod_obj(obj: &mut ModuleObject, prefix: &String, names: &Vec<String>) {
     match obj {
-        ModuleObject::ModuleVariable {
-            form,
-            type_name,
-            value,
-            pos: _,
-        } => {
-            prefix_typename(type_name, prefix, names);
-            prefix_expr(value, prefix, names);
-            prefix_form(form, prefix, names);
+        ModuleObject::ModuleVariable(x) => {
+            prefix_typename(&mut x.type_name, prefix, names);
+            match &mut x.value {
+                Some(v) => {
+                    prefix_expr(v, prefix, names);
+                }
+                None => {}
+            }
+            prefix_form(&mut x.form, prefix, names);
         }
         ModuleObject::Enum {
             is_pub,
@@ -114,18 +114,13 @@ fn prefix_statement(s: &mut Statement, prefix: &String, names: &Vec<String>) {
     match s {
         Statement::Break => {}
         Statement::Continue => {}
-        Statement::VariableDeclaration {
-            pos: _,
-            type_name,
-            form,
-            value,
-        } => {
-            prefix_form(form, prefix, names);
-            match value {
+        Statement::VariableDeclaration(x) => {
+            prefix_form(&mut x.form, prefix, names);
+            match &mut x.value {
                 Some(e) => prefix_expr(e, prefix, names),
                 None => {}
             }
-            prefix_typename(type_name, prefix, names)
+            prefix_typename(&mut x.type_name, prefix, names)
         }
         Statement::If {
             condition,
