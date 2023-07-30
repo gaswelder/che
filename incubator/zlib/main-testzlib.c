@@ -1,6 +1,4 @@
 #import time
-#import inflate.c
-#import stream.c
 #import deflate.c
 
 // see http://msdn2.microsoft.com/library/twchhe95(en-us,vs.80).aspx for __rdtsc
@@ -101,12 +99,12 @@ int main(int argc, char *argv[])
     int64_t li_rdtsc;
     int64_t dwResRdtsc;
     BeginCountRdtsc(&li_rdtsc);
-    stream.z_stream zcpr;
-    int ret=stream.Z_OK;
+    deflate.z_stream zcpr;
+    int ret=deflate.Z_OK;
     int32_t lOrigToDo = lFileSize;
     int32_t lOrigDone = 0;
     int step=0;
-    memset(&zcpr,0,sizeof(stream.z_stream));
+    memset(&zcpr,0,sizeof(deflate.z_stream));
     deflate.deflateInit(&zcpr,cprLevel);
 
     zcpr.next_in = FilePtr;
@@ -118,14 +116,14 @@ int main(int argc, char *argv[])
         zcpr.avail_in = min(lOrigToDo,BlockSizeCompress);
         zcpr.avail_out = BlockSizeCompress;
         if (zcpr.avail_in==lOrigToDo) {
-            ret = deflate.deflate(&zcpr, stream.Z_FINISH);
+            ret = deflate.deflate(&zcpr, deflate.Z_FINISH);
         } else {
-            ret = deflate.deflate(&zcpr, stream.Z_SYNC_FLUSH);
+            ret = deflate.deflate(&zcpr, deflate.Z_SYNC_FLUSH);
         }
         lOrigDone += (zcpr.total_in-all_read_before);
         lOrigToDo -= (zcpr.total_in-all_read_before);
         step++;
-        bool cont = (ret==stream.Z_OK);
+        bool cont = (ret==deflate.Z_OK);
         if (!cont) break;
     }
 
@@ -147,13 +145,13 @@ int main(int argc, char *argv[])
     dwGetTick=GetTickCount();
     BeginCountRdtsc(&li_rdtsc);
     
-    stream.z_stream zcpr;
-    int ret=stream.Z_OK;
+    deflate.z_stream zcpr;
+    int ret=deflate.Z_OK;
     int32_t lOrigToDo = lSizeCpr;
     int32_t lOrigDone = 0;
     int step=0;
-    memset(&zcpr,0,sizeof(stream.z_stream));
-    inflate.inflateInit(&zcpr);
+    memset(&zcpr,0,sizeof(deflate.z_stream));
+    deflate.inflateInit(&zcpr);
 
     zcpr.next_in = CprPtr;
     zcpr.next_out = UncprPtr;
@@ -162,17 +160,17 @@ int main(int argc, char *argv[])
         int32_t all_read_before = zcpr.total_in;
         zcpr.avail_in = min(lOrigToDo,BlockSizeUncompress);
         zcpr.avail_out = BlockSizeUncompress;
-        ret = inflate.inflate(&zcpr,stream.Z_SYNC_FLUSH);
+        ret = deflate.inflate(&zcpr, deflate.Z_SYNC_FLUSH);
         lOrigDone += (zcpr.total_in-all_read_before);
         lOrigToDo -= (zcpr.total_in-all_read_before);
         step++;
-        if (ret != stream.Z_OK) {
+        if (ret != deflate.Z_OK) {
             break;
         }
     }
 
     lSizeUncpr=zcpr.total_out;
-    inflate.inflateEnd(&zcpr);
+    deflate.inflateEnd(&zcpr);
     dwGetTick=GetTickCount()-dwGetTick;
     int64_t dwMsecQP = time.sub(time.now(), li_qp);
 

@@ -205,8 +205,16 @@ gzFile gz_open(path, fd, mode)
     gz->strm.zalloc = myalloc;
     gz->strm.zfree = myfree;
     gz->strm.opaque = NULL;
-    if (gz->write)
-        ret = deflateInit2(&(gz->strm), -1, 8, 15 + 16, 8, 0);
+    if (gz->write) {
+        deflate_config_t cfg = {
+            .level = -1,
+            .method = 8,
+            .windowBits = 15 + 16,
+            .memLevel = 8,
+            .strategy = 0
+        };
+        ret = deflateInit2(&(gz->strm), cfg);
+    }
     else {
         gz->strm.next_in = 0;
         gz->strm.avail_in = NULL;

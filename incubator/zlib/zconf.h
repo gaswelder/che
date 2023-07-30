@@ -44,8 +44,6 @@
 #  define deflateEnd            z_deflateEnd
 #  define deflateGetDictionary  z_deflateGetDictionary
 #  define deflateInit           z_deflateInit
-#  define deflateInit2          z_deflateInit2
-#  define deflateInit2_         z_deflateInit2_
 #  define deflateInit_          z_deflateInit_
 #  define deflateParams         z_deflateParams
 #  define deflatePending        z_deflatePending
@@ -104,12 +102,10 @@
 #  define inflateGetHeader      z_inflateGetHeader
 #  define inflateInit           z_inflateInit
 #  define inflateInit2          z_inflateInit2
-#  define inflateInit2_         z_inflateInit2_
 #  define inflateInit_          z_inflateInit_
 #  define inflateMark           z_inflateMark
 #  define inflatePrime          z_inflatePrime
 #  define inflateReset          z_inflateReset
-#  define inflateReset2         z_inflateReset2
 #  define inflateResetKeep      z_inflateResetKeep
 #  define inflateSetDictionary  z_inflateSetDictionary
 #  define inflateSync           z_inflateSync
@@ -251,35 +247,6 @@ typedef uLong FAR uLongf;
 #  endif
 #endif
 
-#ifdef HAVE_UNISTD_H    /* may be set to #if 1 by ./configure */
-#  define Z_HAVE_UNISTD_H
-#endif
-
-#ifdef HAVE_STDARG_H    /* may be set to #if 1 by ./configure */
-#  define Z_HAVE_STDARG_H
-#endif
-
-#    include <sys/types.h>      /* for off_t */
-
-#    include <stdarg.h>         /* for va_list */
-
-
-#ifndef Z_HAVE_UNISTD_H
-#  ifdef __WATCOMC__
-#    define Z_HAVE_UNISTD_H
-#  endif
-#endif
-#ifndef Z_HAVE_UNISTD_H
-#if defined(_LARGEFILE64_SOURCE)
-#    define Z_HAVE_UNISTD_H
-#endif
-#endif
-#  if defined(Z_HAVE_UNISTD_H)
-#    include <unistd.h>         /* for SEEK_*, off_t, and _LFS64_LARGEFILE */
-#    ifndef z_off_t
-#      define z_off_t off_t
-#    endif
-#  endif
 
 #if defined(_LFS64_LARGEFILE) && _LFS64_LARGEFILE-0
 #  define Z_LFS64
@@ -307,23 +274,6 @@ typedef uLong FAR uLongf;
 #  define z_off64_t off64_t
 #else
 #    define z_off64_t z_off_t
-#endif
-
-/* MVS linker does not support external names larger than 8 bytes */
-#if defined(__MVS__)
-  #pragma map(deflateInit_,"DEIN")
-  #pragma map(deflateInit2_,"DEIN2")
-  #pragma map(deflateEnd,"DEEND")
-  #pragma map(deflateBound,"DEBND")
-  #pragma map(inflateInit_,"ININ")
-  #pragma map(inflateInit2_,"ININ2")
-  #pragma map(inflateEnd,"INEND")
-  #pragma map(inflateSync,"INSY")
-  #pragma map(inflateSetDictionary,"INSEDI")
-  #pragma map(compressBound,"CMBND")
-  #pragma map(inflate_table,"INTABL")
-  #pragma map(inflate_fast,"INFA")
-  #pragma map(inflate_copyright,"INCOPY")
 #endif
 
 #endif /* ZCONF_H */

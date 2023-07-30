@@ -98,9 +98,6 @@ int inf(FILE *source, FILE *dest)
     unsigned char out[CHUNK];
 
     /* allocate inflate state */
-    strm.zalloc = NULL;
-    strm.zfree = NULL;
-    strm.opaque = NULL;
     strm.avail_in = 0;
     strm.next_in = NULL;
     ret = inflateInit(&strm);

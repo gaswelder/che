@@ -283,7 +283,9 @@ local int gzscan(char *name, z_stream *strm, int level)
     strm->zalloc = NULL;
     strm->zfree = NULL;
     strm->opaque = NULL;
-    ret = inflateInit2(strm, -15);
+    ret = inflateInit(strm);
+    assert(ret == Z_OK);
+    ret = inflateReset2(strm, -15);
     if (ret != Z_OK) bye("out of memory", " or library mismatch");
 
     /* decompress the deflate stream, saving append information */

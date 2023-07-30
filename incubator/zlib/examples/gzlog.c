@@ -620,9 +620,16 @@ local int log_compress(struct log *log, unsigned char *data, size_t len)
         strm.zalloc = NULL;
         strm.zfree = NULL;
         strm.opaque = NULL;
-        if (deflateInit2(&strm, Z_DEFAULT_COMPRESSION, Z_DEFLATED, -15, 8,
-                         Z_DEFAULT_STRATEGY) != Z_OK)
+        deflate_config_t cfg = {
+            .level = Z_DEFAULT_COMPRESSION,
+            .method = Z_DEFLATED,
+            .windowBits = -15,
+            .memLevel = 8,
+            .strategy = Z_DEFAULT_STRATEGY
+        };
+        if (deflateInit2(&strm, cfg) != Z_OK) {
             return -2;
+        }
 
         /* read in dictionary (last 32K of data that was compressed) */
         strcpy(log->end, ".dict");

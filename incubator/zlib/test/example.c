@@ -5,13 +5,7 @@
 
 /* @(#) $Id$ */
 
-#include "zlib.h"
-#include <stdio.h>
 
-#ifdef STDC
-#  include <string.h>
-#  include <stdlib.h>
-#endif
 
 #if defined(VMS) || defined(RISCOS)
 #  define TESTFILE "foo-gz"

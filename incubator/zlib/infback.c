@@ -15,10 +15,6 @@
 #include "inflate.h"
 #include "inffast.h"
 
-int inflateInit2(stream.z_stream *strm, int windowBits) {
-    return inflateInit2_(strm, windowBits, ZLIB_VERSION, (int)sizeof(z_stream));
-}
-
 /*
    strm provides memory allocation functions in zalloc and zfree, or
    NULL to use the library memory allocation functions.

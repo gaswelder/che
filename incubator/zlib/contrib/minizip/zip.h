@@ -281,27 +281,6 @@ pub extern int zipOpenNewFileInZip4 OF((zipFile file,
                                             uLong flagBase
                                             ));
 
-
-pub extern int zipOpenNewFileInZip4_64 OF((zipFile file,
-                                            const char* filename,
-                                            const zip_fileinfo* zipfi,
-                                            const void* extrafield_local,
-                                            uInt size_extrafield_local,
-                                            const void* extrafield_global,
-                                            uInt size_extrafield_global,
-                                            const char* comment,
-                                            int method,
-                                            int level,
-                                            int raw,
-                                            int windowBits,
-                                            int memLevel,
-                                            int strategy,
-                                            const char* password,
-                                            uLong crcForCrypting,
-                                            uLong versionMadeBy,
-                                            uLong flagBase,
-                                            int zip64
-                                            ));
 /*
   Same than zipOpenNewFileInZip4, except
     versionMadeBy : value for Version made by field

@@ -77,7 +77,6 @@ Changes in 1.2.9 (31 Dec 2016)
 - Fix bug in test/example.c where error code not saved
 - Remedy Coverity warning [Randers-Pehrson]
 - Improve speed of gzprintf() in transparent mode
-- Fix inflateInit2() bug when windowBits is 16 or 32
 - Change DEBUG macro to ZLIB_DEBUG
 - Avoid uninitialized access by gzclose_w()
 - Allow building zlib outside of the source directory
@@ -516,8 +515,6 @@ Changes in 1.2.3.4 (21 Dec 2009)
 - Put spaces before ;;'s in configure for better sh compatibility
 - Add pigz.c (parallel implementation of gzip) to examples/
 - Correct constant in crc32.c to UL [Leventhal]
-- Reject negative lengths in crc32_combine()
-- Add inflateReset2() function to work like inflateEnd()/inflateInit2()
 - Include sys/types.h for _LARGEFILE64_SOURCE [Brown]
 - Correct typo in doc/algorithm.txt [Janik]
 - Fix bug in adler32_combine() [Zhu]
@@ -1085,8 +1082,6 @@ Changes in 1.0.6 (19 Jan 1998)
   (but the symbol Z_PARTIAL_FLUSH is kept for compatibility with 1.0.4)
 - suppress history buffer provided by application to simplify the interface
   (this feature was not implemented anyway in 1.0.4)
-- next_in and avail_in must be initialized before calling inflateInit or
-  inflateInit2
 - add EXPORT in all exported functions (for Windows DLL)
 - added Makefile.nt (thanks to Stephen Williams)
 - added the unsupported "contrib" directory:
@@ -1192,7 +1187,6 @@ Changes in 1.0.1 (20 May 96) [1.0 skipped to avoid confusion]
 - call ranlib twice for NeXTSTEP
 - use exec_prefix instead of prefix for libz.a
 - renamed ct_* as _tr_* to avoid conflict with applications
-- clear z->msg in inflateInit2 before any error return
 - initialize opaque in example.c, gzio.c, deflate.c and inflate.c
 - fixed typo in zconf.h (_GNUC__ => __GNUC__)
 - check for WIN32 in zconf.h and zutil.c (avoid farmalloc in 32-bit mode)
@@ -1280,7 +1274,6 @@ Changes in 0.5:
 - do real compression in deflate.c. Z_PARTIAL_FLUSH is supported but
   not yet Z_FULL_FLUSH
 - support decompression but only in a single step (forced Z_FINISH)
-- added opaque object for zalloc and zfree
 - added deflateReset and inflateReset
 - added a variable zlib_version for consistency checking
 
@@ -1291,8 +1284,3 @@ Changes in 0.4:
 - added adler32 and crc32
 - renamed deflateOptions as deflateInit2, call one or the other but not both
 - added the method parameter for deflateInit2
-- added inflateInit2
-- simplified considerably deflateInit and inflateInit by not supporting
-  user-provided history buffer. This is supported only in deflateInit2
-  and inflateInit2
-

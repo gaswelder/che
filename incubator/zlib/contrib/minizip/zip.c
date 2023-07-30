@@ -1052,7 +1052,7 @@ local int Write_LocalFileHeader(zip64_internal* zi, const char* filename, uInt s
  It is not done here because then we need to realloc a new buffer since parameters are 'const' and I want to minimize
  unnecessary allocations.
  */
-pub extern int zipOpenNewFileInZip4_64 (zipFile file, const char* filename, const zip_fileinfo* zipfi,
+int zipOpenNewFileInZip4_64 (zipFile file, const char* filename, const zip_fileinfo* zipfi,
                                          const void* extrafield_local, uInt size_extrafield_local,
                                          const void* extrafield_global, uInt size_extrafield_global,
                                          const char* comment, int method, int level, int raw,

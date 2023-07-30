@@ -2,15 +2,6 @@
    Not copyrighted -- provided to the public domain
    Version 1.1  25 November 2004  Mark Adler */
 
-/* Version history:
-   1.0  24 Nov 2004  First version
-   1.1  25 Nov 2004  Change deflateInit2() to deflateInit()
-                     Use fixed-size, stack-allocated raw buffers
-                     Simplify code moving compression to subroutines
-                     Use assert() for internal errors
-                     Add detailed description of approach
- */
-
 /* Approach to just fitting a requested compressed size:
 
    fitblk performs three compression passes on a portion of the input
