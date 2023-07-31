@@ -11,6 +11,7 @@ mod main_deptree;
 mod main_exports;
 mod main_genc;
 mod main_test;
+mod node_queries;
 mod nodes;
 mod nodes_c;
 mod parser;

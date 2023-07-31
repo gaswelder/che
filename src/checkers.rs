@@ -1,4 +1,12 @@
-use crate::{buf::Pos, c, exports::Exports, nodes::*, parser::Error, resolve::getns};
+use crate::{
+    buf::Pos,
+    c,
+    exports::Exports,
+    node_queries::{body_returns, has_function_call, isvoid},
+    nodes::*,
+    parser::Error,
+    resolve::getns,
+};
 use std::collections::HashMap;
 
 struct State {
@@ -92,249 +100,6 @@ pub fn run(m: &Module, imports: &HashMap<String, &Exports>) -> Vec<Error> {
     }
 
     return state.errors;
-}
-
-fn check_module_object(
-    e: &ModuleObject,
-    state: &mut State,
-    scopestack: &mut Vec<Scope>,
-    imports: &HashMap<String, &Exports>,
-) {
-    match e {
-        ModuleObject::Import(_) => {}
-        ModuleObject::Typedef(x) => {
-            check_ns_id(&x.type_name.name, state, scopestack, imports);
-        }
-        ModuleObject::Enum {
-            is_pub: _,
-            members,
-            pos: _,
-        } => {
-            for m in members {
-                match &m.value {
-                    Some(v) => check_expr(v, state, scopestack, imports),
-                    None => {}
-                }
-            }
-        }
-        ModuleObject::FunctionDeclaration(f) => {
-            check_function_declaration(f, state, scopestack, imports);
-        }
-        ModuleObject::Macro { .. } => {}
-        ModuleObject::ModuleVariable(x) => {
-            // Local type? Register the usage.
-            let n = &x.type_name.name;
-            if n.namespace == "" {
-                match state.root_scope.types.get_mut(&n.name) {
-                    Some(t) => {
-                        t.read = true;
-                    }
-                    None => {}
-                }
-            }
-
-            // Array declaration? Look into the index expressions.
-            for i in &x.form.indexes {
-                match i {
-                    Some(e) => check_expr(e, state, scopestack, imports),
-                    None => {}
-                }
-            }
-
-            if has_function_call(x.value.as_ref().unwrap()) {
-                state.errors.push(Error {
-                    message: format!("function call in module variable initialization"),
-                    pos: x.pos.clone(),
-                })
-            }
-            check_ns_id(&x.type_name.name, state, scopestack, imports);
-            check_expr(x.value.as_ref().unwrap(), state, scopestack, imports);
-        }
-        ModuleObject::StructAliasTypedef { .. } => {}
-        ModuleObject::StructTypedef(x) => {
-            for f in &x.fields {
-                match f {
-                    StructEntry::Plain(x) => {
-                        let n = &x.type_name.name;
-                        if n.namespace == "" {
-                            match state.root_scope.types.get_mut(&n.name) {
-                                Some(t) => {
-                                    t.read = true;
-                                }
-                                None => {}
-                            }
-                        }
-                        check_ns_id(&x.type_name.name, state, scopestack, imports);
-                        for f in &x.forms {
-                            for i in &f.indexes {
-                                match i {
-                                    Some(e) => {
-                                        check_expr(e, state, scopestack, imports);
-                                    }
-                                    None => {}
-                                }
-                            }
-                        }
-                    }
-                    StructEntry::Union(x) => {
-                        for f in &x.fields {
-                            let n = &f.type_name.name;
-                            if n.namespace == "" {
-                                match state.root_scope.types.get_mut(&n.name) {
-                                    Some(t) => {
-                                        t.read = true;
-                                    }
-                                    None => {}
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
-
-fn isvoid(t: &Typename) -> bool {
-    return t.name.namespace == "" && t.name.name == "void";
-}
-
-fn check_function_declaration(
-    f: &FunctionDeclaration,
-    state: &mut State,
-    scopestack: &mut Vec<Scope>,
-    imports: &HashMap<String, &Exports>,
-) {
-    let tn = &f.type_name.name;
-    if tn.namespace == "" {
-        match state.root_scope.types.get_mut(&tn.name) {
-            Some(t) => {
-                t.read = true;
-            }
-            None => {}
-        }
-    }
-
-    check_ns_id(&f.type_name.name, state, scopestack, imports);
-
-    scopestack.push(newscope());
-
-    for tf in &f.parameters.list {
-        if isvoid(&tf.type_name) {
-            for f in &tf.forms {
-                if f.stars == "" {
-                    state.errors.push(Error {
-                        message: format!("can't use void as an argument type"),
-                        pos: tf.pos.clone(),
-                    })
-                }
-            }
-        }
-        check_ns_id(&tf.type_name.name, state, scopestack, imports);
-        for f in &tf.forms {
-            let n = scopestack.len();
-            scopestack[n - 1].vars.insert(
-                f.name.clone(),
-                ScopeItem1 {
-                    read: false,
-                    val: VarInfo {
-                        pos: f.pos.clone(),
-                        typename: tf.type_name.clone(),
-                        form: f.clone(),
-                    },
-                },
-            );
-        }
-    }
-    check_body(&f.body, state, scopestack, imports);
-    let s = scopestack.pop().unwrap();
-    for (k, v) in s.vars {
-        if !v.read {
-            state.errors.push(Error {
-                message: format!("{} not used", k),
-                pos: v.val.pos,
-            })
-        }
-    }
-
-    if (!isvoid(&f.type_name) || f.form.stars != "") && !body_returns(&f.body) {
-        state.errors.push(Error {
-            message: format!("{}: missing return", f.form.name),
-            pos: f.pos.clone(),
-        })
-    }
-}
-
-fn body_returns(b: &Body) -> bool {
-    let last = &b.statements[b.statements.len() - 1];
-    return match last {
-        Statement::Return { .. } => true,
-        Statement::Panic { .. } => true,
-        Statement::If {
-            condition: _,
-            body,
-            else_body: _,
-        } => body_returns(&body),
-        Statement::Switch {
-            value: _,
-            cases,
-            default_case,
-        } => {
-            if default_case.is_none() || !body_returns(default_case.as_ref().unwrap()) {
-                return false;
-            }
-            for c in cases {
-                if !body_returns(&c.body) {
-                    return false;
-                }
-            }
-            return true;
-        }
-        Statement::While { condition, body } => istrue(condition) || body_returns(&body),
-        _ => false,
-    };
-}
-
-fn istrue(e: &Expression) -> bool {
-    return match e {
-        Expression::Identifier(x) => x.name == "true",
-        _ => false,
-    };
-}
-
-fn has_function_call(e: &Expression) -> bool {
-    return match e {
-        Expression::ArrayIndex { array, index } => {
-            has_function_call(array) || has_function_call(index)
-        }
-        Expression::BinaryOp { op: _, a, b } => has_function_call(a) || has_function_call(b),
-        Expression::FieldAccess {
-            op: _,
-            target,
-            field_name: _,
-        } => has_function_call(target),
-        Expression::Cast {
-            type_name: _,
-            operand,
-        } => has_function_call(operand),
-        Expression::CompositeLiteral(_) => false,
-        Expression::FunctionCall {
-            function: _,
-            arguments: _,
-        } => true,
-        Expression::Identifier(_) => false,
-        Expression::Literal(_) => false,
-        Expression::NsName(_) => false,
-        Expression::PostfixOperator {
-            operator: _,
-            operand,
-        } => has_function_call(operand),
-        Expression::PrefixOperator {
-            operator: _,
-            operand,
-        } => has_function_call(operand),
-        Expression::Sizeof { argument: _ } => false,
-    };
 }
 
 fn get_module_scope(m: &Module) -> RootScope {
@@ -476,6 +241,173 @@ fn get_module_scope(m: &Module) -> RootScope {
         }
     }
     return s;
+}
+
+fn check_module_object(
+    e: &ModuleObject,
+    state: &mut State,
+    scopestack: &mut Vec<Scope>,
+    imports: &HashMap<String, &Exports>,
+) {
+    match e {
+        ModuleObject::Import(_) => {}
+        ModuleObject::Typedef(x) => {
+            check_ns_id(&x.type_name.name, state, scopestack, imports);
+        }
+        ModuleObject::Enum {
+            is_pub: _,
+            members,
+            pos: _,
+        } => {
+            for m in members {
+                match &m.value {
+                    Some(v) => check_expr(v, state, scopestack, imports),
+                    None => {}
+                }
+            }
+        }
+        ModuleObject::FunctionDeclaration(f) => {
+            check_function_declaration(f, state, scopestack, imports);
+        }
+        ModuleObject::Macro { .. } => {}
+        ModuleObject::ModuleVariable(x) => {
+            // Local type? Register the usage.
+            let n = &x.type_name.name;
+            if n.namespace == "" {
+                match state.root_scope.types.get_mut(&n.name) {
+                    Some(t) => {
+                        t.read = true;
+                    }
+                    None => {}
+                }
+            }
+
+            // Array declaration? Look into the index expressions.
+            for i in &x.form.indexes {
+                match i {
+                    Some(e) => check_expr(e, state, scopestack, imports),
+                    None => {}
+                }
+            }
+
+            if has_function_call(x.value.as_ref().unwrap()) {
+                state.errors.push(Error {
+                    message: format!("function call in module variable initialization"),
+                    pos: x.pos.clone(),
+                })
+            }
+            check_ns_id(&x.type_name.name, state, scopestack, imports);
+            check_expr(x.value.as_ref().unwrap(), state, scopestack, imports);
+        }
+        ModuleObject::StructAliasTypedef { .. } => {}
+        ModuleObject::StructTypedef(x) => {
+            for f in &x.fields {
+                match f {
+                    StructEntry::Plain(x) => {
+                        let n = &x.type_name.name;
+                        if n.namespace == "" {
+                            match state.root_scope.types.get_mut(&n.name) {
+                                Some(t) => {
+                                    t.read = true;
+                                }
+                                None => {}
+                            }
+                        }
+                        check_ns_id(&x.type_name.name, state, scopestack, imports);
+                        for f in &x.forms {
+                            for i in &f.indexes {
+                                match i {
+                                    Some(e) => {
+                                        check_expr(e, state, scopestack, imports);
+                                    }
+                                    None => {}
+                                }
+                            }
+                        }
+                    }
+                    StructEntry::Union(x) => {
+                        for f in &x.fields {
+                            let n = &f.type_name.name;
+                            if n.namespace == "" {
+                                match state.root_scope.types.get_mut(&n.name) {
+                                    Some(t) => {
+                                        t.read = true;
+                                    }
+                                    None => {}
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+fn check_function_declaration(
+    f: &FunctionDeclaration,
+    state: &mut State,
+    scopestack: &mut Vec<Scope>,
+    imports: &HashMap<String, &Exports>,
+) {
+    let tn = &f.type_name.name;
+    if tn.namespace == "" {
+        match state.root_scope.types.get_mut(&tn.name) {
+            Some(t) => {
+                t.read = true;
+            }
+            None => {}
+        }
+    }
+
+    check_ns_id(&f.type_name.name, state, scopestack, imports);
+
+    scopestack.push(newscope());
+
+    for tf in &f.parameters.list {
+        if isvoid(&tf.type_name) {
+            for f in &tf.forms {
+                if f.stars == "" {
+                    state.errors.push(Error {
+                        message: format!("can't use void as an argument type"),
+                        pos: tf.pos.clone(),
+                    })
+                }
+            }
+        }
+        check_ns_id(&tf.type_name.name, state, scopestack, imports);
+        for f in &tf.forms {
+            let n = scopestack.len();
+            scopestack[n - 1].vars.insert(
+                f.name.clone(),
+                ScopeItem1 {
+                    read: false,
+                    val: VarInfo {
+                        pos: f.pos.clone(),
+                        typename: tf.type_name.clone(),
+                        form: f.clone(),
+                    },
+                },
+            );
+        }
+    }
+    check_body(&f.body, state, scopestack, imports);
+    let s = scopestack.pop().unwrap();
+    for (k, v) in s.vars {
+        if !v.read {
+            state.errors.push(Error {
+                message: format!("{} not used", k),
+                pos: v.val.pos,
+            })
+        }
+    }
+
+    if (!isvoid(&f.type_name) || f.form.stars != "") && !body_returns(&f.body) {
+        state.errors.push(Error {
+            message: format!("{}: missing return", f.form.name),
+            pos: f.pos.clone(),
+        })
+    }
 }
 
 fn check_body(
@@ -652,79 +584,6 @@ fn check_body(
                 pos: v.val.pos,
             });
         }
-    }
-}
-
-fn find_var(scopes: &Vec<Scope>, name: &String) -> Option<VarInfo> {
-    let n = scopes.len();
-    for i in 0..n {
-        let s = &scopes[n - i - 1];
-        match s.vars.get(name) {
-            Some(v) => {
-                return Some(v.val.clone());
-            }
-            None => {}
-        }
-    }
-    return None;
-}
-
-fn infer_type(e: &Expression, scopes: &Vec<Scope>) -> Option<Typename> {
-    match e {
-        Expression::ArrayIndex { array: _, index: _ } => None,
-        Expression::BinaryOp { op: _, a: _, b: _ } => None,
-        Expression::FieldAccess {
-            op: _,
-            target,
-            field_name: _,
-        } => match infer_type(target, scopes) {
-            Some(t) => {
-                if t.name.namespace == "" {
-                    Some(t)
-                } else {
-                    None
-                }
-            }
-            None => None,
-        },
-        Expression::Cast {
-            type_name,
-            operand: _,
-        } => Some(type_name.type_name.clone()),
-        Expression::CompositeLiteral(_) => None,
-        Expression::FunctionCall {
-            function: _,
-            arguments: _,
-        } => None,
-        Expression::Identifier(x) => match find_var(scopes, &x.name) {
-            Some(v) => {
-                let mut t = v.typename.clone();
-                for _ in v.form.indexes {
-                    t.name.name += "*";
-                }
-                t.name.name += &v.form.stars;
-                return Some(t);
-            }
-            None => return None,
-        },
-        Expression::Literal(_) => None,
-        Expression::NsName(_) => None,
-        Expression::PostfixOperator {
-            operator: _,
-            operand: _,
-        } => None,
-        Expression::PrefixOperator {
-            operator: _,
-            operand: _,
-        } => None,
-        Expression::Sizeof { argument: _ } => Some(Typename {
-            is_const: true,
-            name: NsName {
-                name: String::from("size_t"),
-                namespace: String::from(""),
-                pos: Pos { col: 0, line: 0 },
-            },
-        }),
     }
 }
 
@@ -960,4 +819,77 @@ fn check_id(x: &Identifier, state: &mut State, scopes: &mut Vec<Scope>) {
         message: format!("unknown identifier: {}", x.name),
         pos: x.pos.clone(),
     });
+}
+
+fn find_var(scopes: &Vec<Scope>, name: &String) -> Option<VarInfo> {
+    let n = scopes.len();
+    for i in 0..n {
+        let s = &scopes[n - i - 1];
+        match s.vars.get(name) {
+            Some(v) => {
+                return Some(v.val.clone());
+            }
+            None => {}
+        }
+    }
+    return None;
+}
+
+fn infer_type(e: &Expression, scopes: &Vec<Scope>) -> Option<Typename> {
+    match e {
+        Expression::ArrayIndex { array: _, index: _ } => None,
+        Expression::BinaryOp { op: _, a: _, b: _ } => None,
+        Expression::FieldAccess {
+            op: _,
+            target,
+            field_name: _,
+        } => match infer_type(target, scopes) {
+            Some(t) => {
+                if t.name.namespace == "" {
+                    Some(t)
+                } else {
+                    None
+                }
+            }
+            None => None,
+        },
+        Expression::Cast {
+            type_name,
+            operand: _,
+        } => Some(type_name.type_name.clone()),
+        Expression::CompositeLiteral(_) => None,
+        Expression::FunctionCall {
+            function: _,
+            arguments: _,
+        } => None,
+        Expression::Identifier(x) => match find_var(scopes, &x.name) {
+            Some(v) => {
+                let mut t = v.typename.clone();
+                for _ in v.form.indexes {
+                    t.name.name += "*";
+                }
+                t.name.name += &v.form.stars;
+                return Some(t);
+            }
+            None => return None,
+        },
+        Expression::Literal(_) => None,
+        Expression::NsName(_) => None,
+        Expression::PostfixOperator {
+            operator: _,
+            operand: _,
+        } => None,
+        Expression::PrefixOperator {
+            operator: _,
+            operand: _,
+        } => None,
+        Expression::Sizeof { argument: _ } => Some(Typename {
+            is_const: true,
+            name: NsName {
+                name: String::from("size_t"),
+                namespace: String::from(""),
+                pos: Pos { col: 0, line: 0 },
+            },
+        }),
+    }
 }
