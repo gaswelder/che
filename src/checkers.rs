@@ -1,58 +1,16 @@
 use crate::{
     buf::Pos,
-    c,
     exports::Exports,
     node_queries::{body_returns, has_function_call, isvoid},
     nodes::*,
     parser::Error,
-    resolve::getns,
+    scopes::{find_var, get_module_scope, newscope, RootScope, Scope, ScopeItem1, VarInfo},
 };
 use std::collections::HashMap;
 
 struct State {
     errors: Vec<Error>,
     root_scope: RootScope,
-}
-
-#[derive(Clone, Debug)]
-struct ScopeItem {
-    read: bool,
-    pos: Pos,
-    ispub: bool,
-}
-
-#[derive(Clone, Debug)]
-struct ScopeItem1<T> {
-    read: bool,
-    val: T,
-}
-
-#[derive(Clone, Debug)]
-struct VarInfo {
-    pos: Pos,
-    typename: Typename,
-    form: Form,
-}
-
-#[derive(Clone, Debug)]
-struct RootScope {
-    pre: Vec<String>,
-    imports: HashMap<String, ScopeItem1<ImportNode>>,
-    types: HashMap<String, ScopeItem>,
-    consts: HashMap<String, ScopeItem>,
-    vars: HashMap<String, ScopeItem1<VarInfo>>,
-    funcs: HashMap<String, ScopeItem1<FunctionDeclaration>>,
-}
-
-#[derive(Clone, Debug)]
-struct Scope {
-    vars: HashMap<String, ScopeItem1<VarInfo>>,
-}
-
-fn newscope() -> Scope {
-    return Scope {
-        vars: HashMap::new(),
-    };
 }
 
 pub fn run(m: &Module, imports: &HashMap<String, &Exports>) -> Vec<Error> {
@@ -100,147 +58,6 @@ pub fn run(m: &Module, imports: &HashMap<String, &Exports>) -> Vec<Error> {
     }
 
     return state.errors;
-}
-
-fn get_module_scope(m: &Module) -> RootScope {
-    let mut s = RootScope {
-        pre: vec![
-            String::from("false"),
-            String::from("NULL"),
-            String::from("true"),
-            // custom
-            String::from("nelem"),
-            String::from("panic"),
-            String::from("min"),
-            String::from("max"),
-        ],
-        imports: HashMap::new(),
-        consts: HashMap::new(),
-        vars: HashMap::new(),
-        funcs: HashMap::new(),
-        types: HashMap::new(),
-    };
-    // let mut scope = vec![
-    //     // should be fixed
-    //     "break", "continue", "false", "NULL", "true", //
-    //     // custom
-    //     "nelem", "panic", "min", "max",
-    // ];
-    for c in c::CCONST {
-        s.pre.push(c.to_string());
-    }
-    for c in c::CFUNCS {
-        s.pre.push(c.to_string());
-    }
-    for c in c::CTYPES {
-        s.pre.push(c.to_string());
-    }
-
-    for e in &m.elements {
-        match e {
-            ModuleObject::Import(x) => {
-                let ns = getns(&x.specified_path);
-                s.imports.insert(
-                    ns,
-                    ScopeItem1 {
-                        read: false,
-                        val: x.clone(),
-                    },
-                );
-            }
-            ModuleObject::FunctionDeclaration(f) => {
-                s.funcs.insert(
-                    f.form.name.clone(),
-                    ScopeItem1 {
-                        read: false,
-                        val: f.clone(),
-                    },
-                );
-            }
-            ModuleObject::Enum {
-                is_pub,
-                members,
-                pos: _,
-            } => {
-                for m in members {
-                    s.consts.insert(
-                        m.id.name.clone(),
-                        ScopeItem {
-                            read: false,
-                            pos: m.pos.clone(),
-                            ispub: *is_pub,
-                        },
-                    );
-                }
-            }
-            ModuleObject::Macro { name, value, pos } => {
-                if name == "define" {
-                    let mut parts = value.trim().split(" ");
-                    s.consts.insert(
-                        String::from(parts.next().unwrap()),
-                        ScopeItem {
-                            read: false,
-                            pos: pos.clone(),
-                            ispub: false,
-                        },
-                    );
-                }
-                if name == "type" {
-                    s.pre.push(String::from(value.trim()));
-                }
-            }
-            ModuleObject::ModuleVariable(x) => {
-                s.vars.insert(
-                    x.form.name.clone(),
-                    ScopeItem1 {
-                        read: false,
-                        val: VarInfo {
-                            pos: x.pos.clone(),
-                            typename: x.type_name.clone(),
-                            form: x.form.clone(),
-                            // ispub: false,
-                        },
-                    },
-                );
-            }
-            ModuleObject::StructTypedef(x) => {
-                s.types.insert(
-                    x.name.name.clone(),
-                    ScopeItem {
-                        read: false,
-                        pos: x.pos.clone(),
-                        ispub: x.is_pub,
-                    },
-                );
-            }
-            ModuleObject::Typedef(x) => {
-                s.types.insert(
-                    x.alias.name.clone(),
-                    ScopeItem {
-                        read: false,
-                        pos: x.pos.clone(),
-                        ispub: x.is_pub,
-                    },
-                );
-            }
-            ModuleObject::StructAliasTypedef {
-                pos,
-                is_pub,
-                struct_name: _,
-                type_alias,
-            } => {
-                s.types.insert(
-                    type_alias.clone(),
-                    ScopeItem {
-                        read: false,
-                        pos: pos.clone(),
-                        ispub: *is_pub,
-                    },
-                );
-            }
-        }
-    }
-    return s;
 }
 
 fn check_module_object(
@@ -819,20 +636,6 @@ fn check_id(x: &Identifier, state: &mut State, scopes: &mut Vec<Scope>) {
         message: format!("unknown identifier: {}", x.name),
         pos: x.pos.clone(),
     });
-}
-
-fn find_var(scopes: &Vec<Scope>, name: &String) -> Option<VarInfo> {
-    let n = scopes.len();
-    for i in 0..n {
-        let s = &scopes[n - i - 1];
-        match s.vars.get(name) {
-            Some(v) => {
-                return Some(v.val.clone());
-            }
-            None => {}
-        }
-    }
-    return None;
 }
 
 fn infer_type(e: &Expression, scopes: &Vec<Scope>) -> Option<Typename> {

@@ -18,6 +18,7 @@ mod parser;
 mod preparser;
 mod rename;
 mod resolve;
+mod scopes;
 mod translator;
 use std::env;
 use std::process::exit;
