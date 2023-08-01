@@ -22,7 +22,7 @@ pub fn newscope() -> Scope {
 pub struct RootScope {
     pub pre: Vec<String>,
     pub imports: HashMap<String, ScopeItem1<ImportNode>>,
-    pub types: HashMap<String, ScopeItem>,
+    pub types: HashMap<String, ScopeItem1<ModuleObject>>,
     pub consts: HashMap<String, ScopeItem>,
     pub vars: HashMap<String, ScopeItem1<VarInfo>>,
     pub funcs: HashMap<String, ScopeItem1<FunctionDeclaration>>,
@@ -152,35 +152,32 @@ pub fn get_module_scope(m: &Module) -> RootScope {
             ModuleObject::StructTypedef(x) => {
                 s.types.insert(
                     x.name.name.clone(),
-                    ScopeItem {
+                    ScopeItem1 {
                         read: false,
-                        pos: x.pos.clone(),
-                        ispub: x.is_pub,
+                        val: e.clone(),
                     },
                 );
             }
             ModuleObject::Typedef(x) => {
                 s.types.insert(
                     x.alias.name.clone(),
-                    ScopeItem {
+                    ScopeItem1 {
                         read: false,
-                        pos: x.pos.clone(),
-                        ispub: x.is_pub,
+                        val: e.clone(),
                     },
                 );
             }
             ModuleObject::StructAliasTypedef {
-                pos,
-                is_pub,
+                pos: _,
+                is_pub: _,
                 struct_name: _,
                 type_alias,
             } => {
                 s.types.insert(
                     type_alias.clone(),
-                    ScopeItem {
+                    ScopeItem1 {
                         read: false,
-                        pos: pos.clone(),
-                        ispub: *is_pub,
+                        val: e.clone(),
                     },
                 );
             }

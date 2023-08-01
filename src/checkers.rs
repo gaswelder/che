@@ -4,18 +4,21 @@ use crate::{
     node_queries::{body_returns, has_function_call, isvoid},
     nodes::*,
     parser::Error,
-    scopes::{find_var, get_module_scope, newscope, RootScope, Scope, ScopeItem1, VarInfo},
+    scopes::{get_module_scope, newscope, RootScope, Scope, ScopeItem1, VarInfo},
+    types::infer_type,
 };
 use std::collections::HashMap;
 
 struct State {
     errors: Vec<Error>,
+    type_errors: Vec<Error>,
     root_scope: RootScope,
 }
 
 pub fn run(m: &Module, imports: &HashMap<String, &Exports>) -> Vec<Error> {
     let mut state = State {
         errors: Vec::new(),
+        type_errors: Vec::new(),
         root_scope: get_module_scope(m),
     };
     let mut scopestack: Vec<Scope> = Vec::new();
@@ -24,7 +27,7 @@ pub fn run(m: &Module, imports: &HashMap<String, &Exports>) -> Vec<Error> {
         check_module_object(e, &mut state, &mut scopestack, imports);
     }
 
-    for (k, v) in state.root_scope.imports {
+    for (k, v) in &state.root_scope.imports {
         if !v.read {
             state.errors.push(Error {
                 message: format!("unused import: {}", k),
@@ -32,32 +35,166 @@ pub fn run(m: &Module, imports: &HashMap<String, &Exports>) -> Vec<Error> {
             })
         }
     }
-    for (k, v) in state.root_scope.types {
-        if !v.ispub && !v.read {
+    for (k, v) in &state.root_scope.types {
+        let ispub;
+        let mut _pos;
+        match &v.val {
+            ModuleObject::Typedef(x) => {
+                ispub = x.is_pub;
+                _pos = x.pos.clone();
+            }
+            ModuleObject::StructAliasTypedef {
+                pos,
+                is_pub,
+                struct_name: _,
+                type_alias: _,
+            } => {
+                ispub = *is_pub;
+                _pos = pos.clone();
+            }
+            ModuleObject::StructTypedef(x) => {
+                ispub = x.is_pub;
+                _pos = x.pos.clone();
+            }
+            _ => panic!("unexpected object in scope types"),
+        }
+        if !ispub && !v.read {
             state.errors.push(Error {
                 message: format!("unused type: {}", k),
-                pos: v.pos.clone(),
+                pos: _pos.clone(),
             })
         }
     }
-    for (k, v) in state.root_scope.consts {
+    for (k, v) in &state.root_scope.consts {
         if !v.ispub && !v.read {
             state.errors.push(Error {
                 message: format!("unused constant: {}", k),
-                pos: v.pos,
+                pos: v.pos.clone(),
             });
         }
     }
-    for (k, v) in state.root_scope.funcs {
+    for (k, v) in &state.root_scope.funcs {
         if !v.val.is_pub && !v.read && k != "main" {
             state.errors.push(Error {
                 message: format!("unused function: {}", k),
-                pos: v.val.pos,
+                pos: v.val.pos.clone(),
             });
         }
     }
 
+    for e in &m.elements {
+        match e {
+            ModuleObject::ModuleVariable(x) => {
+                typecheck(
+                    x.value.as_ref().unwrap(),
+                    x.pos.clone(),
+                    &mut state,
+                    &scopestack,
+                );
+            }
+            ModuleObject::FunctionDeclaration(x) => {
+                typecheck_body(&x.body, &mut state, &scopestack);
+            }
+            _ => {}
+        }
+    }
+
     return state.errors;
+}
+
+fn typecheck_body(b: &Body, state: &mut State, scopestack: &Vec<Scope>) {
+    let todopos = Pos { line: 0, col: 0 };
+    for s in &b.statements {
+        match s {
+            Statement::VariableDeclaration(x) => match &x.value {
+                Some(e) => typecheck(&e, x.pos.clone(), state, scopestack),
+                None => {}
+            },
+            Statement::Break => {}
+            Statement::Continue => {}
+
+            Statement::If {
+                condition,
+                body,
+                else_body,
+            } => {
+                typecheck(&condition, todopos.clone(), state, scopestack);
+                typecheck_body(&body, state, scopestack);
+                match else_body {
+                    Some(b) => {
+                        typecheck_body(&b, state, scopestack);
+                    }
+                    None => {}
+                }
+            }
+            Statement::For {
+                init,
+                condition,
+                action,
+                body,
+            } => {
+                match init {
+                    Some(e) => match e {
+                        ForInit::Expression(e) => {
+                            typecheck(&e, todopos.clone(), state, scopestack);
+                        }
+                        ForInit::LoopCounterDeclaration {
+                            type_name: _,
+                            form: _,
+                            value: _,
+                        } => {
+                            //
+                        }
+                    },
+                    None => {}
+                }
+                match condition {
+                    Some(e) => typecheck(&e, todopos.clone(), state, scopestack),
+                    None => {}
+                }
+                match action {
+                    Some(e) => typecheck(&e, todopos.clone(), state, scopestack),
+                    None => {}
+                }
+                typecheck_body(&body, state, scopestack);
+            }
+            Statement::While { condition, body } => {
+                typecheck(&condition, todopos.clone(), state, scopestack);
+                typecheck_body(&body, state, scopestack);
+            }
+            Statement::Panic { .. } => {}
+            Statement::Return { expression } => match expression {
+                Some(e) => {
+                    typecheck(&e, todopos.clone(), state, scopestack);
+                }
+                None => {}
+            },
+            Statement::Switch {
+                value,
+                cases,
+                default_case,
+            } => {
+                typecheck(&value, todopos.clone(), state, scopestack);
+                for c in cases {
+                    typecheck_body(&c.body, state, scopestack);
+                }
+                match default_case {
+                    Some(b) => typecheck_body(&b, state, scopestack),
+                    None => {}
+                }
+            }
+            Statement::Expression(e) => {
+                typecheck(&e, todopos.clone(), state, scopestack);
+            }
+        }
+    }
+}
+
+fn typecheck(e: &Expression, pos: Pos, state: &mut State, scopestack: &Vec<Scope>) {
+    match infer_type(e, &state.root_scope, scopestack) {
+        Ok(_) => {}
+        Err(err) => state.type_errors.push(Error { message: err, pos }),
+    }
 }
 
 fn check_module_object(
@@ -415,11 +552,7 @@ fn check_expr(
             check_expr(array, state, scopes, imports);
             check_expr(index, state, scopes, imports);
         }
-        Expression::BinaryOp { op, a, b } => {
-            if op == ">" {
-                infer_type(a, scopes);
-                infer_type(b, scopes);
-            }
+        Expression::BinaryOp { op: _, a, b } => {
             check_expr(a, state, scopes, imports);
             check_expr(b, state, scopes, imports);
         }
@@ -636,63 +769,4 @@ fn check_id(x: &Identifier, state: &mut State, scopes: &mut Vec<Scope>) {
         message: format!("unknown identifier: {}", x.name),
         pos: x.pos.clone(),
     });
-}
-
-fn infer_type(e: &Expression, scopes: &Vec<Scope>) -> Option<Typename> {
-    match e {
-        Expression::ArrayIndex { array: _, index: _ } => None,
-        Expression::BinaryOp { op: _, a: _, b: _ } => None,
-        Expression::FieldAccess {
-            op: _,
-            target,
-            field_name: _,
-        } => match infer_type(target, scopes) {
-            Some(t) => {
-                if t.name.namespace == "" {
-                    Some(t)
-                } else {
-                    None
-                }
-            }
-            None => None,
-        },
-        Expression::Cast {
-            type_name,
-            operand: _,
-        } => Some(type_name.type_name.clone()),
-        Expression::CompositeLiteral(_) => None,
-        Expression::FunctionCall {
-            function: _,
-            arguments: _,
-        } => None,
-        Expression::Identifier(x) => match find_var(scopes, &x.name) {
-            Some(v) => {
-                let mut t = v.typename.clone();
-                for _ in v.form.indexes {
-                    t.name.name += "*";
-                }
-                t.name.name += &v.form.stars;
-                return Some(t);
-            }
-            None => return None,
-        },
-        Expression::Literal(_) => None,
-        Expression::NsName(_) => None,
-        Expression::PostfixOperator {
-            operator: _,
-            operand: _,
-        } => None,
-        Expression::PrefixOperator {
-            operator: _,
-            operand: _,
-        } => None,
-        Expression::Sizeof { argument: _ } => Some(Typename {
-            is_const: true,
-            name: NsName {
-                name: String::from("size_t"),
-                namespace: String::from(""),
-                pos: Pos { col: 0, line: 0 },
-            },
-        }),
-    }
 }

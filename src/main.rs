@@ -20,6 +20,7 @@ mod rename;
 mod resolve;
 mod scopes;
 mod translator;
+mod types;
 use std::env;
 use std::process::exit;
 use std::string::String;
