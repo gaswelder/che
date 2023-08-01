@@ -1,4 +1,7 @@
-use crate::nodes::{Body, Expression, Statement, Typename};
+use crate::{
+    buf::Pos,
+    nodes::{Body, Expression, Statement, Typename},
+};
 
 fn istrue(e: &Expression) -> bool {
     return match e {
@@ -74,4 +77,38 @@ pub fn has_function_call(e: &Expression) -> bool {
         } => has_function_call(operand),
         Expression::Sizeof { argument: _ } => false,
     };
+}
+
+pub fn expression_pos(e: &Expression) -> Pos {
+    let todopos = Pos { line: 0, col: 0 };
+    match e {
+        Expression::ArrayIndex { array, index: _ } => expression_pos(array),
+        Expression::BinaryOp { op: _, a, b: _ } => expression_pos(a),
+        Expression::FieldAccess {
+            op: _,
+            target,
+            field_name: _,
+        } => expression_pos(target),
+        Expression::Cast {
+            type_name: _,
+            operand: _,
+        } => todopos,
+        Expression::CompositeLiteral(_) => todopos,
+        Expression::FunctionCall {
+            function,
+            arguments: _,
+        } => expression_pos(function),
+        Expression::Identifier(x) => x.pos.clone(),
+        Expression::Literal(_) => todopos, // x.pos.clone(),
+        Expression::NsName(x) => x.pos.clone(),
+        Expression::PostfixOperator {
+            operator: _,
+            operand,
+        } => expression_pos(operand),
+        Expression::PrefixOperator {
+            operator: _,
+            operand,
+        } => expression_pos(operand),
+        Expression::Sizeof { argument: _ } => todopos,
+    }
 }

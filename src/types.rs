@@ -52,7 +52,7 @@ pub fn infer_type(e: &Expression, rs: &RootScope, scopes: &Vec<Scope>) -> Result
         } => {
             let t = infer_type(target, rs, scopes)?;
             match t {
-                Type::Struct { opaque, fields } => {
+                Type::Struct { opaque: _, fields } => {
                     for x in fields {
                         match x {
                             StructEntry::Plain(x) => {

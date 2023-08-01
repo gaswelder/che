@@ -1,7 +1,6 @@
 use crate::{
-    buf::Pos,
     exports::Exports,
-    node_queries::{body_returns, has_function_call, isvoid},
+    node_queries::{body_returns, expression_pos, has_function_call, isvoid},
     nodes::*,
     parser::Error,
     scopes::{get_module_scope, newscope, RootScope, Scope, ScopeItem1, VarInfo},
@@ -85,12 +84,7 @@ pub fn run(m: &Module, imports: &HashMap<String, &Exports>) -> Vec<Error> {
     for e in &m.elements {
         match e {
             ModuleObject::ModuleVariable(x) => {
-                typecheck(
-                    x.value.as_ref().unwrap(),
-                    x.pos.clone(),
-                    &mut state,
-                    &scopestack,
-                );
+                typecheck(x.value.as_ref().unwrap(), &mut state, &scopestack);
             }
             ModuleObject::FunctionDeclaration(x) => {
                 typecheck_body(&x.body, &mut state, &scopestack);
@@ -103,22 +97,20 @@ pub fn run(m: &Module, imports: &HashMap<String, &Exports>) -> Vec<Error> {
 }
 
 fn typecheck_body(b: &Body, state: &mut State, scopestack: &Vec<Scope>) {
-    let todopos = Pos { line: 0, col: 0 };
     for s in &b.statements {
         match s {
             Statement::VariableDeclaration(x) => match &x.value {
-                Some(e) => typecheck(&e, x.pos.clone(), state, scopestack),
+                Some(e) => typecheck(&e, state, scopestack),
                 None => {}
             },
             Statement::Break => {}
             Statement::Continue => {}
-
             Statement::If {
                 condition,
                 body,
                 else_body,
             } => {
-                typecheck(&condition, todopos.clone(), state, scopestack);
+                typecheck(&condition, state, scopestack);
                 typecheck_body(&body, state, scopestack);
                 match else_body {
                     Some(b) => {
@@ -136,7 +128,7 @@ fn typecheck_body(b: &Body, state: &mut State, scopestack: &Vec<Scope>) {
                 match init {
                     Some(e) => match e {
                         ForInit::Expression(e) => {
-                            typecheck(&e, todopos.clone(), state, scopestack);
+                            typecheck(&e, state, scopestack);
                         }
                         ForInit::LoopCounterDeclaration {
                             type_name: _,
@@ -149,23 +141,23 @@ fn typecheck_body(b: &Body, state: &mut State, scopestack: &Vec<Scope>) {
                     None => {}
                 }
                 match condition {
-                    Some(e) => typecheck(&e, todopos.clone(), state, scopestack),
+                    Some(e) => typecheck(&e, state, scopestack),
                     None => {}
                 }
                 match action {
-                    Some(e) => typecheck(&e, todopos.clone(), state, scopestack),
+                    Some(e) => typecheck(&e, state, scopestack),
                     None => {}
                 }
                 typecheck_body(&body, state, scopestack);
             }
             Statement::While { condition, body } => {
-                typecheck(&condition, todopos.clone(), state, scopestack);
+                typecheck(&condition, state, scopestack);
                 typecheck_body(&body, state, scopestack);
             }
             Statement::Panic { .. } => {}
             Statement::Return { expression } => match expression {
                 Some(e) => {
-                    typecheck(&e, todopos.clone(), state, scopestack);
+                    typecheck(&e, state, scopestack);
                 }
                 None => {}
             },
@@ -174,7 +166,7 @@ fn typecheck_body(b: &Body, state: &mut State, scopestack: &Vec<Scope>) {
                 cases,
                 default_case,
             } => {
-                typecheck(&value, todopos.clone(), state, scopestack);
+                typecheck(&value, state, scopestack);
                 for c in cases {
                     typecheck_body(&c.body, state, scopestack);
                 }
@@ -184,16 +176,19 @@ fn typecheck_body(b: &Body, state: &mut State, scopestack: &Vec<Scope>) {
                 }
             }
             Statement::Expression(e) => {
-                typecheck(&e, todopos.clone(), state, scopestack);
+                typecheck(&e, state, scopestack);
             }
         }
     }
 }
 
-fn typecheck(e: &Expression, pos: Pos, state: &mut State, scopestack: &Vec<Scope>) {
+fn typecheck(e: &Expression, state: &mut State, scopestack: &Vec<Scope>) {
     match infer_type(e, &state.root_scope, scopestack) {
         Ok(_) => {}
-        Err(err) => state.type_errors.push(Error { message: err, pos }),
+        Err(err) => state.type_errors.push(Error {
+            message: err,
+            pos: expression_pos(e),
+        }),
     }
 }
 
