@@ -6,7 +6,7 @@ use crate::{
     scopes::{find_var, get_module_scope, newscope, RootScope, Scope, ScopeItem1, VarInfo},
     types::{self, Type},
 };
-use std::collections::HashMap;
+use std::{collections::HashMap, env};
 
 struct State {
     errors: Vec<Error>,
@@ -78,6 +78,11 @@ pub fn run(m: &Module, imports: &HashMap<String, &Exports>) -> Vec<Error> {
                 message: format!("unused function: {}", k),
                 pos: v.val.pos.clone(),
             });
+        }
+    }
+    if env::var("TYPES").is_ok() {
+        if state.type_errors.len() > 0 {
+            return state.type_errors;
         }
     }
     return state.errors;
@@ -467,12 +472,12 @@ fn check_expr(
             }
         }
         Expression::FieldAccess {
-            op: _,
+            op,
             target,
             field_name,
         } => {
             let stype = check_expr(target, state, scopes, imports);
-            match types::access(stype, field_name, &state.root_scope) {
+            match types::access(&op, stype, field_name, &state.root_scope) {
                 Ok(r) => r,
                 Err(err) => {
                     state.type_errors.push(Error {

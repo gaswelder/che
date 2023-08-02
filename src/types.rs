@@ -51,7 +51,7 @@ impl Type {
             Type::Voidp => format!("void*"),
             Type::Bytes(_) => format!("{{bytes}}"),
             Type::Struct { opaque, fields } => format!("{{struct}}"),
-            Type::Typeop { target, hops } => format!("pointer to {{...}}"),
+            Type::Typeop { target, hops } => format!("{}-pointer to {}", hops, target.fmt()),
             Type::Func { rettype } => format!("function returning {{...}}"),
         }
     }
@@ -62,28 +62,40 @@ pub fn sum(t1: Type, t2: Type) -> Result<Type, String> {
     return Ok(t1);
 }
 
-pub fn access(t: Type, field_name: &Identifier, rs: &RootScope) -> Result<Type, String> {
-    match t {
-        Type::Opaque => Ok(t),
-        Type::Struct { opaque: _, fields } => {
-            for x in fields {
-                match x {
-                    StructEntry::Plain(x) => {
-                        for f in x.forms {
-                            if f.name == field_name.name {
-                                return get_type(&x.type_name, rs);
+pub fn access(
+    op: &String,
+    t: Type,
+    field_name: &Identifier,
+    rs: &RootScope,
+) -> Result<Type, String> {
+    match op.as_str() {
+        "." => match t {
+            Type::Opaque => Ok(t),
+            Type::Struct { opaque: _, fields } => {
+                for x in fields {
+                    match x {
+                        StructEntry::Plain(x) => {
+                            for f in x.forms {
+                                if f.name == field_name.name {
+                                    return get_type(&x.type_name, rs);
+                                }
                             }
                         }
+                        StructEntry::Union(_) => return Ok(Type::Opaque),
                     }
-                    StructEntry::Union(_) => return Ok(Type::Opaque),
                 }
+                return Err(String::from(format!(
+                    "unknown struct field: {}",
+                    &field_name.name
+                )));
             }
-            return Err(String::from(format!(
-                "unknown struct field: {}",
-                &field_name.name
-            )));
+            _ => Err(String::from(format!("field '.' access on a {}", t.fmt()))),
+        },
+        "->" => access(&String::from("."), deref(t)?, field_name, rs),
+        _ => {
+            dbg!(op);
+            todo!();
         }
-        _ => Err(String::from(format!("field access on a {}", t.fmt()))),
     }
 }
 
@@ -158,7 +170,30 @@ fn find_local_typedef(tn: &Typename, s: &RootScope) -> Option<Type> {
                 opaque: true,
                 fields: Vec::new(),
             }),
-            crate::nodes::ModuleObject::Typedef(x) => None,
+            crate::nodes::ModuleObject::Typedef(x) => {
+                let basetype = match get_type(&x.type_name, s) {
+                    Ok(t) => t,
+                    Err(err) => panic!("{}", err),
+                };
+                let mut hops = x.dereference_count;
+                if x.array_size > 0 {
+                    hops += 1;
+                }
+                let t2 = if hops > 0 {
+                    Type::Typeop {
+                        target: Box::new(basetype),
+                        hops,
+                    }
+                } else {
+                    basetype
+                };
+                match x.function_parameters {
+                    Some(_) => Some(Type::Func {
+                        rettype: Box::new(t2),
+                    }),
+                    None => Some(t2),
+                }
+            }
             crate::nodes::ModuleObject::StructTypedef(x) => Some(Type::Struct {
                 opaque: false,
                 fields: x.fields.clone(),
