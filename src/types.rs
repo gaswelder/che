@@ -24,6 +24,7 @@ pub enum Type {
     Float,
     Double,
     Void,
+    Voidp,
     Bytes(Bytes),
     Struct {
         opaque: bool,
@@ -33,7 +34,9 @@ pub enum Type {
         target: Box<Type>,
         hops: usize,
     },
-    Func,
+    Func {
+        rettype: Box<Type>,
+    },
 }
 
 pub fn infer_type(e: &Expression, rs: &RootScope, scopes: &Vec<Scope>) -> Result<Type, String> {
@@ -100,15 +103,28 @@ pub fn infer_type(e: &Expression, rs: &RootScope, scopes: &Vec<Scope>) -> Result
             arguments: _,
         } => match infer_type(function, rs, scopes)? {
             Type::Opaque => Ok(Type::Opaque),
-            Type::Func => todo!(),
+            Type::Func { rettype } => Ok(*rettype),
             _ => {
                 panic!("not a func");
             }
         },
-        Expression::Identifier(x) => match find_var(scopes, &x.name) {
-            Some(v) => Ok(get_type(&v.typename, rs)?),
-            None => return Err(String::from(format!("var {} not found", &x.name))),
-        },
+        Expression::Identifier(x) => {
+            match find_var(scopes, &x.name) {
+                Some(v) => {
+                    return Ok(get_type(&v.typename, rs)?);
+                }
+                None => {}
+            }
+            match find_stdlib(&x.name) {
+                Some(v) => {
+                    return Ok(v);
+                }
+                None => {}
+            }
+            // dbg!(x, scopes);
+            // panic!("var not found");
+            return Err(String::from(format!("var {} not found", &x.name)));
+        }
         Expression::Literal(x) => match x {
             Literal::Char(_) => Ok(Type::Bytes(Bytes {
                 sign: Signedness::Unknonwn,
@@ -146,6 +162,21 @@ pub fn infer_type(e: &Expression, rs: &RootScope, scopes: &Vec<Scope>) -> Result
             sign: Signedness::Signed,
             size: 0,
         })),
+    }
+}
+
+fn find_stdlib(name: &String) -> Option<Type> {
+    let tint = Box::new(Type::Bytes(Bytes {
+        sign: Signedness::Signed,
+        size: 0,
+    }));
+    match name.as_str() {
+        "printf" | "strcmp" => Some(Type::Func { rettype: tint }),
+        "calloc" => Some(Type::Func {
+            rettype: Box::new(Type::Voidp),
+        }),
+        "NULL" => Some(Type::Null),
+        _ => None,
     }
 }
 
