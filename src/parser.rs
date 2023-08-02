@@ -745,14 +745,15 @@ fn parse_form(l: &mut Lexer, ctx: &Ctx) -> Result<Form, Error> {
     // linechars[]
     // buf[SIZE * 2]
     let mut node = Form {
-        stars: String::new(),
+        hops: 0,
         name: String::new(),
         indexes: vec![],
         pos: l.peek().unwrap().pos.clone(),
     };
 
     while l.follows("*") {
-        node.stars += &l.get().unwrap().kind;
+        l.get().unwrap();
+        node.hops += 1;
     }
 
     let tok = expect(l, "word", None)?;

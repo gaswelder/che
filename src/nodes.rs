@@ -221,7 +221,7 @@ pub enum Statement {
 
 #[derive(Debug, Clone)]
 pub struct Form {
-    pub stars: String,
+    pub hops: usize,
     pub name: String,
     pub indexes: Vec<Option<Expression>>,
     pub pos: Pos,

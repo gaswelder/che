@@ -216,7 +216,7 @@ fn check_function_declaration(
     for tf in &f.parameters.list {
         if isvoid(&tf.type_name) {
             for f in &tf.forms {
-                if f.stars == "" {
+                if f.hops == 0 {
                     state.errors.push(Error {
                         message: format!("can't use void as an argument type"),
                         pos: tf.pos.clone(),
@@ -251,7 +251,7 @@ fn check_function_declaration(
         }
     }
 
-    if (!isvoid(&f.type_name) || f.form.stars != "") && !body_returns(&f.body) {
+    if (!isvoid(&f.type_name) || f.form.hops == 1) && !body_returns(&f.body) {
         state.errors.push(Error {
             message: format!("{}: missing return", f.form.name),
             pos: f.pos.clone(),

@@ -116,7 +116,9 @@ pub fn format_type(t: &Typename) -> String {
 
 pub fn format_form(node: &Form) -> String {
     let mut s = String::new();
-    s += &node.stars;
+    for _ in 0..node.hops {
+        s += "*";
+    }
     s += &node.name;
     for expr in &node.indexes {
         match expr {

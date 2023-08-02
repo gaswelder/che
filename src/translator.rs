@@ -256,7 +256,7 @@ fn translate_form(f: &Form, ctx: &Ctx) -> CForm {
     return CForm {
         indexes,
         name: f.name.clone(),
-        stars: f.stars.clone(),
+        stars: "*".repeat(f.hops),
     };
 }
 
