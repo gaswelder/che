@@ -476,7 +476,7 @@ fn check_expr(
                             message: err,
                             pos: expression_pos(e),
                         });
-                        return Type::Opaque;
+                        return Type::Unknown;
                     }
                 },
                 None => {}
@@ -485,12 +485,12 @@ fn check_expr(
                 Some(v) => {
                     return v;
                 }
-                None => return Type::Opaque,
+                None => return Type::Unknown,
             }
         }
         Expression::NsName(x) => {
             check_ns_id(x, state, scopes, imports);
-            Type::Opaque
+            Type::Unknown
         }
         Expression::ArrayIndex { array, index } => {
             let t1 = check_expr(array, state, scopes, imports);
@@ -502,7 +502,7 @@ fn check_expr(
                         message: err,
                         pos: expression_pos(e),
                     });
-                    return Type::Opaque;
+                    return Type::Unknown;
                 }
             }
         }
@@ -516,7 +516,7 @@ fn check_expr(
                         message: err,
                         pos: expression_pos(e),
                     });
-                    return Type::Opaque;
+                    return Type::Unknown;
                 }
             }
         }
@@ -533,7 +533,7 @@ fn check_expr(
                         message: err,
                         pos: expression_pos(e),
                     });
-                    return Type::Opaque;
+                    return Type::Unknown;
                 }
             }
         }
@@ -547,7 +547,7 @@ fn check_expr(
                         message: err,
                         pos: expression_pos(e),
                     });
-                    return Type::Opaque;
+                    return Type::Unknown;
                 }
             }
         }
@@ -555,7 +555,7 @@ fn check_expr(
             for e in &x.entries {
                 check_expr(&e.value, state, scopes, imports);
             }
-            Type::Opaque
+            Type::Unknown
         }
         Expression::FunctionCall {
             function,
@@ -625,7 +625,7 @@ fn check_expr(
                             message: err,
                             pos: expression_pos(e),
                         });
-                        return Type::Opaque;
+                        return Type::Unknown;
                     }
                 },
                 "&" => types::addr(t),

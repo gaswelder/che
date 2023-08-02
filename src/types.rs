@@ -18,7 +18,7 @@ pub struct Bytes {
 
 #[derive(Debug)]
 pub enum Type {
-    Opaque,
+    Unknown,
     Null,
     Bool,
     Float,
@@ -30,7 +30,7 @@ pub enum Type {
         opaque: bool,
         fields: Vec<StructEntry>,
     },
-    Typeop {
+    Pointer {
         target: Box<Type>,
         hops: usize,
     },
@@ -42,7 +42,7 @@ pub enum Type {
 impl Type {
     pub fn fmt(&self) -> String {
         match self {
-            Type::Opaque => format!("unknown"),
+            Type::Unknown => format!("unknown"),
             Type::Null => format!("NULL"),
             Type::Bool => format!("bool"),
             Type::Float => format!("float"),
@@ -51,7 +51,7 @@ impl Type {
             Type::Voidp => format!("void*"),
             Type::Bytes(_) => format!("{{bytes}}"),
             Type::Struct { opaque, fields } => format!("{{struct}}"),
-            Type::Typeop { target, hops } => format!("{}-pointer to {}", hops, target.fmt()),
+            Type::Pointer { target, hops } => format!("{}-pointer to {}", hops, target.fmt()),
             Type::Func { rettype } => format!("function returning {{...}}"),
         }
     }
@@ -70,7 +70,7 @@ pub fn access(
 ) -> Result<Type, String> {
     match op.as_str() {
         "." => match t {
-            Type::Opaque => Ok(t),
+            Type::Unknown => Ok(t),
             Type::Struct { opaque: _, fields } => {
                 for x in fields {
                     match x {
@@ -81,7 +81,7 @@ pub fn access(
                                 }
                             }
                         }
-                        StructEntry::Union(_) => return Ok(Type::Opaque),
+                        StructEntry::Union(_) => return Ok(Type::Unknown),
                     }
                 }
                 return Err(String::from(format!(
@@ -116,11 +116,11 @@ pub fn find_stdlib(name: &String) -> Option<Type> {
 
 pub fn addr(t: Type) -> Type {
     match t {
-        Type::Typeop { target, hops } => Type::Typeop {
+        Type::Pointer { target, hops } => Type::Pointer {
             target,
             hops: hops + 1,
         },
-        _ => Type::Typeop {
+        _ => Type::Pointer {
             target: Box::new(t),
             hops: 1,
         },
@@ -129,12 +129,12 @@ pub fn addr(t: Type) -> Type {
 
 pub fn deref(t: Type) -> Result<Type, String> {
     match t {
-        Type::Opaque => Ok(t),
-        Type::Typeop { target, hops } => {
+        Type::Unknown => Ok(t),
+        Type::Pointer { target, hops } => {
             if hops == 1 {
                 return Ok(*target);
             }
-            return Ok(Type::Typeop {
+            return Ok(Type::Pointer {
                 target,
                 hops: hops - 1,
             });
@@ -154,7 +154,7 @@ pub fn get_type(tn: &Typename, r: &RootScope) -> Result<Type, String> {
             None => return Err(format!("couldn't determine type of {}", &tn.name.name)),
         }
     } else {
-        Ok(Type::Opaque)
+        Ok(Type::Unknown)
     }
 }
 
@@ -180,7 +180,7 @@ fn find_local_typedef(tn: &Typename, s: &RootScope) -> Option<Type> {
                     hops += 1;
                 }
                 let t2 = if hops > 0 {
-                    Type::Typeop {
+                    Type::Pointer {
                         target: Box::new(basetype),
                         hops,
                     }
