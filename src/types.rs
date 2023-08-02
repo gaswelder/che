@@ -1,6 +1,6 @@
 use crate::{
-    nodes::{Expression, Literal, StructEntry, Typename},
-    scopes::{find_var, RootScope, Scope},
+    nodes::{Identifier, StructEntry, Typename},
+    scopes::RootScope,
 };
 
 #[derive(Debug)]
@@ -12,8 +12,8 @@ pub enum Signedness {
 
 #[derive(Debug)]
 pub struct Bytes {
-    sign: Signedness,
-    size: usize, // bits, 0 for unknown
+    pub sign: Signedness,
+    pub size: usize, // bits, 0 for unknown
 }
 
 #[derive(Debug)]
@@ -39,133 +39,55 @@ pub enum Type {
     },
 }
 
-pub fn infer_type(e: &Expression, rs: &RootScope, scopes: &Vec<Scope>) -> Result<Type, String> {
-    match e {
-        Expression::ArrayIndex { array, index: _ } => Ok(deref(infer_type(array, rs, scopes)?)?),
-        Expression::BinaryOp { op: _, a, b: _ } => {
-            // Not checking anything.
-            let ta = infer_type(a, rs, scopes);
-            // let tb = infer_type(b, rs, scopes)?;
-            return ta;
+impl Type {
+    pub fn fmt(&self) -> String {
+        match self {
+            Type::Opaque => format!("unknown"),
+            Type::Null => format!("NULL"),
+            Type::Bool => format!("bool"),
+            Type::Float => format!("float"),
+            Type::Double => format!("double"),
+            Type::Void => format!("void"),
+            Type::Voidp => format!("void*"),
+            Type::Bytes(_) => format!("{{bytes}}"),
+            Type::Struct { opaque, fields } => format!("{{struct}}"),
+            Type::Typeop { target, hops } => format!("pointer to {{...}}"),
+            Type::Func { rettype } => format!("function returning {{...}}"),
         }
-        Expression::FieldAccess {
-            op: _,
-            target,
-            field_name,
-        } => {
-            let t = infer_type(target, rs, scopes)?;
-            match t {
-                Type::Struct { opaque: _, fields } => {
-                    for x in fields {
-                        match x {
-                            StructEntry::Plain(x) => {
-                                for f in x.forms {
-                                    if f.name == field_name.name {
-                                        return get_type(&x.type_name, rs);
-                                    }
-                                }
-                            }
-                            StructEntry::Union(_) => return Ok(Type::Opaque),
-                        }
-                    }
-                    return Err(String::from(format!(
-                        "unknown struct field: {}",
-                        &field_name.name
-                    )));
-                }
-                _ => Err(String::from("field access on a non-struct")),
-            }
-        }
-        Expression::Cast {
-            type_name,
-            operand: _,
-        } => get_type(&type_name.type_name, rs),
-        Expression::CompositeLiteral(x) => {
-            if x.entries.len() == 0 {
-                Ok(Type::Opaque)
-            } else if x.entries[0].is_index {
-                Ok(Type::Typeop {
-                    target: Box::new(Type::Bytes(Bytes {
-                        sign: Signedness::Unknonwn,
-                        size: 1,
-                    })),
-                    hops: 1,
-                })
-            } else {
-                Ok(Type::Struct {
-                    opaque: false,
-                    fields: Vec::new(),
-                })
-            }
-        }
-        Expression::FunctionCall {
-            function,
-            arguments: _,
-        } => match infer_type(function, rs, scopes)? {
-            Type::Opaque => Ok(Type::Opaque),
-            Type::Func { rettype } => Ok(*rettype),
-            _ => {
-                panic!("not a func");
-            }
-        },
-        Expression::Identifier(x) => {
-            match find_var(scopes, &x.name) {
-                Some(v) => {
-                    return Ok(get_type(&v.typename, rs)?);
-                }
-                None => {}
-            }
-            match find_stdlib(&x.name) {
-                Some(v) => {
-                    return Ok(v);
-                }
-                None => {}
-            }
-            // dbg!(x, scopes);
-            // panic!("var not found");
-            return Err(String::from(format!("var {} not found", &x.name)));
-        }
-        Expression::Literal(x) => match x {
-            Literal::Char(_) => Ok(Type::Bytes(Bytes {
-                sign: Signedness::Unknonwn,
-                size: 1,
-            })),
-            Literal::String(_) => Ok(addr(Type::Bytes(Bytes {
-                sign: Signedness::Unknonwn,
-                size: 1,
-            }))),
-            Literal::Number(_) => Ok(Type::Bytes(Bytes {
-                sign: Signedness::Unknonwn,
-                size: 0,
-            })),
-            Literal::Null => Ok(Type::Null),
-        },
-        Expression::NsName(x) => Ok(Type::Opaque),
-        Expression::PostfixOperator { operator, operand } => match operator.as_str() {
-            "++" | "--" => infer_type(operand, rs, scopes),
-            _ => {
-                dbg!(operator);
-                todo!();
-            }
-        },
-        Expression::PrefixOperator { operator, operand } => match operator.as_str() {
-            "++" | "--" => infer_type(operand, rs, scopes),
-            "!" | "-" => infer_type(operand, rs, scopes),
-            "*" => Ok(deref(infer_type(operand, rs, scopes)?)?),
-            "&" => Ok(addr(infer_type(operand, rs, scopes)?)),
-            _ => {
-                dbg!(operator);
-                todo!();
-            }
-        },
-        Expression::Sizeof { argument: _ } => Ok(Type::Bytes(Bytes {
-            sign: Signedness::Signed,
-            size: 0,
-        })),
     }
 }
 
-fn find_stdlib(name: &String) -> Option<Type> {
+pub fn sum(t1: Type, t2: Type) -> Result<Type, String> {
+    // Not checking anything.
+    return Ok(t1);
+}
+
+pub fn access(t: Type, field_name: &Identifier, rs: &RootScope) -> Result<Type, String> {
+    match t {
+        Type::Opaque => Ok(t),
+        Type::Struct { opaque: _, fields } => {
+            for x in fields {
+                match x {
+                    StructEntry::Plain(x) => {
+                        for f in x.forms {
+                            if f.name == field_name.name {
+                                return get_type(&x.type_name, rs);
+                            }
+                        }
+                    }
+                    StructEntry::Union(_) => return Ok(Type::Opaque),
+                }
+            }
+            return Err(String::from(format!(
+                "unknown struct field: {}",
+                &field_name.name
+            )));
+        }
+        _ => Err(String::from(format!("field access on a {}", t.fmt()))),
+    }
+}
+
+pub fn find_stdlib(name: &String) -> Option<Type> {
     let tint = Box::new(Type::Bytes(Bytes {
         sign: Signedness::Signed,
         size: 0,
@@ -180,7 +102,7 @@ fn find_stdlib(name: &String) -> Option<Type> {
     }
 }
 
-fn addr(t: Type) -> Type {
+pub fn addr(t: Type) -> Type {
     match t {
         Type::Typeop { target, hops } => Type::Typeop {
             target,
@@ -193,8 +115,9 @@ fn addr(t: Type) -> Type {
     }
 }
 
-fn deref(t: Type) -> Result<Type, String> {
+pub fn deref(t: Type) -> Result<Type, String> {
     match t {
+        Type::Opaque => Ok(t),
         Type::Typeop { target, hops } => {
             if hops == 1 {
                 return Ok(*target);
@@ -204,11 +127,11 @@ fn deref(t: Type) -> Result<Type, String> {
                 hops: hops - 1,
             });
         }
-        _ => Err(String::from("dereference of a non-pointer")),
+        _ => Err(format!("dereference of a non-pointer {}", t.fmt())),
     }
 }
 
-fn get_type(tn: &Typename, r: &RootScope) -> Result<Type, String> {
+pub fn get_type(tn: &Typename, r: &RootScope) -> Result<Type, String> {
     if tn.name.namespace == "" {
         match get_builtin_type(&tn) {
             Some(x) => return Ok(x),
@@ -235,7 +158,7 @@ fn find_local_typedef(tn: &Typename, s: &RootScope) -> Option<Type> {
                 opaque: true,
                 fields: Vec::new(),
             }),
-            crate::nodes::ModuleObject::Typedef(_) => todo!(),
+            crate::nodes::ModuleObject::Typedef(x) => None,
             crate::nodes::ModuleObject::StructTypedef(x) => Some(Type::Struct {
                 opaque: false,
                 fields: x.fields.clone(),

@@ -3,8 +3,8 @@ use crate::{
     node_queries::{body_returns, expression_pos, has_function_call, isvoid},
     nodes::*,
     parser::Error,
-    scopes::{get_module_scope, newscope, RootScope, Scope, ScopeItem1, VarInfo},
-    types::infer_type,
+    scopes::{find_var, get_module_scope, newscope, RootScope, Scope, ScopeItem1, VarInfo},
+    types::{self, Type},
 };
 use std::collections::HashMap;
 
@@ -80,116 +80,7 @@ pub fn run(m: &Module, imports: &HashMap<String, &Exports>) -> Vec<Error> {
             });
         }
     }
-
-    for e in &m.elements {
-        match e {
-            ModuleObject::ModuleVariable(x) => {
-                typecheck(x.value.as_ref().unwrap(), &mut state, &scopestack);
-            }
-            ModuleObject::FunctionDeclaration(x) => {
-                typecheck_body(&x.body, &mut state, &scopestack);
-            }
-            _ => {}
-        }
-    }
-
     return state.errors;
-}
-
-fn typecheck_body(b: &Body, state: &mut State, scopestack: &Vec<Scope>) {
-    for s in &b.statements {
-        match s {
-            Statement::VariableDeclaration(x) => match &x.value {
-                Some(e) => typecheck(&e, state, scopestack),
-                None => {}
-            },
-            Statement::Break => {}
-            Statement::Continue => {}
-            Statement::If {
-                condition,
-                body,
-                else_body,
-            } => {
-                typecheck(&condition, state, scopestack);
-                typecheck_body(&body, state, scopestack);
-                match else_body {
-                    Some(b) => {
-                        typecheck_body(&b, state, scopestack);
-                    }
-                    None => {}
-                }
-            }
-            Statement::For {
-                init,
-                condition,
-                action,
-                body,
-            } => {
-                match init {
-                    Some(e) => match e {
-                        ForInit::Expression(e) => {
-                            typecheck(&e, state, scopestack);
-                        }
-                        ForInit::LoopCounterDeclaration {
-                            type_name: _,
-                            form: _,
-                            value: _,
-                        } => {
-                            //
-                        }
-                    },
-                    None => {}
-                }
-                match condition {
-                    Some(e) => typecheck(&e, state, scopestack),
-                    None => {}
-                }
-                match action {
-                    Some(e) => typecheck(&e, state, scopestack),
-                    None => {}
-                }
-                typecheck_body(&body, state, scopestack);
-            }
-            Statement::While { condition, body } => {
-                typecheck(&condition, state, scopestack);
-                typecheck_body(&body, state, scopestack);
-            }
-            Statement::Panic { .. } => {}
-            Statement::Return { expression } => match expression {
-                Some(e) => {
-                    typecheck(&e, state, scopestack);
-                }
-                None => {}
-            },
-            Statement::Switch {
-                value,
-                cases,
-                default_case,
-            } => {
-                typecheck(&value, state, scopestack);
-                for c in cases {
-                    typecheck_body(&c.body, state, scopestack);
-                }
-                match default_case {
-                    Some(b) => typecheck_body(&b, state, scopestack),
-                    None => {}
-                }
-            }
-            Statement::Expression(e) => {
-                typecheck(&e, state, scopestack);
-            }
-        }
-    }
-}
-
-fn typecheck(e: &Expression, state: &mut State, scopestack: &Vec<Scope>) {
-    match infer_type(e, &state.root_scope, scopestack) {
-        Ok(_) => {}
-        Err(err) => state.type_errors.push(Error {
-            message: err,
-            pos: expression_pos(e),
-        }),
-    }
 }
 
 fn check_module_object(
@@ -210,7 +101,9 @@ fn check_module_object(
         } => {
             for m in members {
                 match &m.value {
-                    Some(v) => check_expr(v, state, scopestack, imports),
+                    Some(v) => {
+                        check_expr(v, state, scopestack, imports);
+                    }
                     None => {}
                 }
             }
@@ -234,7 +127,9 @@ fn check_module_object(
             // Array declaration? Look into the index expressions.
             for i in &x.form.indexes {
                 match i {
-                    Some(e) => check_expr(e, state, scopestack, imports),
+                    Some(e) => {
+                        check_expr(e, state, scopestack, imports);
+                    }
                     None => {}
                 }
             }
@@ -541,31 +436,72 @@ fn check_expr(
     state: &mut State,
     scopes: &mut Vec<Scope>,
     imports: &HashMap<String, &Exports>,
-) {
+) -> Type {
     match e {
         Expression::ArrayIndex { array, index } => {
-            check_expr(array, state, scopes, imports);
+            let t1 = check_expr(array, state, scopes, imports);
             check_expr(index, state, scopes, imports);
+            match types::deref(t1) {
+                Ok(r) => r,
+                Err(err) => {
+                    state.type_errors.push(Error {
+                        message: err,
+                        pos: expression_pos(e),
+                    });
+                    return Type::Opaque;
+                }
+            }
         }
         Expression::BinaryOp { op: _, a, b } => {
-            check_expr(a, state, scopes, imports);
-            check_expr(b, state, scopes, imports);
+            let t1 = check_expr(a, state, scopes, imports);
+            let t2 = check_expr(b, state, scopes, imports);
+            match types::sum(t1, t2) {
+                Ok(r) => r,
+                Err(err) => {
+                    state.type_errors.push(Error {
+                        message: err,
+                        pos: expression_pos(e),
+                    });
+                    return Type::Opaque;
+                }
+            }
         }
         Expression::FieldAccess {
             op: _,
             target,
-            field_name: _,
+            field_name,
         } => {
-            check_expr(target, state, scopes, imports);
+            let stype = check_expr(target, state, scopes, imports);
+            match types::access(stype, field_name, &state.root_scope) {
+                Ok(r) => r,
+                Err(err) => {
+                    state.type_errors.push(Error {
+                        message: err,
+                        pos: expression_pos(e),
+                    });
+                    return Type::Opaque;
+                }
+            }
         }
         Expression::Cast { type_name, operand } => {
             check_ns_id(&type_name.type_name.name, state, scopes, imports);
             check_expr(operand, state, scopes, imports);
+            match types::get_type(&type_name.type_name, &state.root_scope) {
+                Ok(r) => r,
+                Err(err) => {
+                    state.type_errors.push(Error {
+                        message: err,
+                        pos: expression_pos(e),
+                    });
+                    return Type::Opaque;
+                }
+            }
         }
         Expression::CompositeLiteral(x) => {
             for e in &x.entries {
                 check_expr(&e.value, state, scopes, imports);
             }
+            Type::Opaque
         }
         Expression::FunctionCall {
             function,
@@ -607,29 +543,86 @@ fn check_expr(
                 },
                 _ => {}
             }
-            check_expr(function, state, scopes, imports);
+            let rettype = check_expr(function, state, scopes, imports);
             for x in arguments {
                 check_expr(x, state, scopes, imports);
             }
+            return rettype;
         }
         Expression::Identifier(x) => {
             check_id(x, state, scopes);
+            match find_var(scopes, &x.name) {
+                Some(v) => match types::get_type(&v.typename, &state.root_scope) {
+                    Ok(t) => {
+                        return t;
+                    }
+                    Err(err) => {
+                        state.type_errors.push(Error {
+                            message: err,
+                            pos: expression_pos(e),
+                        });
+                        return Type::Opaque;
+                    }
+                },
+                None => {}
+            }
+            match types::find_stdlib(&x.name) {
+                Some(v) => {
+                    return v;
+                }
+                None => return Type::Opaque,
+            }
         }
-        Expression::Literal(_) => {}
+        Expression::Literal(x) => match x {
+            Literal::Char(_) => Type::Bytes(types::Bytes {
+                sign: types::Signedness::Unknonwn,
+                size: 1,
+            }),
+            Literal::String(_) => types::addr(Type::Bytes(types::Bytes {
+                sign: types::Signedness::Unknonwn,
+                size: 1,
+            })),
+            Literal::Number(_) => Type::Bytes(types::Bytes {
+                sign: types::Signedness::Unknonwn,
+                size: 0,
+            }),
+            Literal::Null => Type::Null,
+        },
         Expression::NsName(x) => {
             check_ns_id(x, state, scopes, imports);
+            Type::Opaque
         }
-        Expression::PostfixOperator {
-            operator: _,
-            operand,
-        } => {
-            check_expr(operand, state, scopes, imports);
+        Expression::PostfixOperator { operator, operand } => {
+            let t = check_expr(operand, state, scopes, imports);
+            match operator.as_str() {
+                "++" | "--" => t,
+                _ => {
+                    dbg!(operator);
+                    todo!();
+                }
+            }
         }
-        Expression::PrefixOperator {
-            operator: _,
-            operand,
-        } => {
-            check_expr(operand, state, scopes, imports);
+        Expression::PrefixOperator { operator, operand } => {
+            let t = check_expr(operand, state, scopes, imports);
+            match operator.as_str() {
+                "++" | "--" => t,
+                "!" | "-" | "~" => t,
+                "*" => match types::deref(t) {
+                    Ok(r) => r,
+                    Err(err) => {
+                        state.type_errors.push(Error {
+                            message: err,
+                            pos: expression_pos(e),
+                        });
+                        return Type::Opaque;
+                    }
+                },
+                "&" => types::addr(t),
+                _ => {
+                    dbg!(operator);
+                    todo!();
+                }
+            }
         }
         Expression::Sizeof { argument } => {
             match argument.as_ref() {
@@ -640,6 +633,10 @@ fn check_expr(
                     check_expr(&x, state, scopes, imports);
                 }
             }
+            Type::Bytes(types::Bytes {
+                sign: types::Signedness::Signed,
+                size: 0,
+            })
         }
     }
 }
