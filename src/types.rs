@@ -32,7 +32,6 @@ pub enum Type {
     },
     Pointer {
         target: Box<Type>,
-        hops: usize,
     },
     Func {
         rettype: Box<Type>,
@@ -51,7 +50,7 @@ impl Type {
             Type::Voidp => format!("void*"),
             Type::Bytes(_) => format!("{{bytes}}"),
             Type::Struct { opaque, fields } => format!("{{struct}}"),
-            Type::Pointer { target, hops } => format!("{}-pointer to {}", hops, target.fmt()),
+            Type::Pointer { target } => format!("pointer to {}", target.fmt()),
             Type::Func { rettype } => format!("function returning {{...}}"),
         }
     }
@@ -115,29 +114,16 @@ pub fn find_stdlib(name: &String) -> Option<Type> {
 }
 
 pub fn addr(t: Type) -> Type {
-    match t {
-        Type::Pointer { target, hops } => Type::Pointer {
-            target,
-            hops: hops + 1,
-        },
-        _ => Type::Pointer {
-            target: Box::new(t),
-            hops: 1,
-        },
+    Type::Pointer {
+        target: Box::new(t),
     }
 }
 
 pub fn deref(t: Type) -> Result<Type, String> {
     match t {
         Type::Unknown => Ok(t),
-        Type::Pointer { target, hops } => {
-            if hops == 1 {
-                return Ok(*target);
-            }
-            return Ok(Type::Pointer {
-                target,
-                hops: hops - 1,
-            });
+        Type::Pointer { target } => {
+            return Ok(*target);
         }
         _ => Err(format!("dereference of a non-pointer {}", t.fmt())),
     }
@@ -171,7 +157,7 @@ fn find_local_typedef(tn: &Typename, s: &RootScope) -> Option<Type> {
                 fields: Vec::new(),
             }),
             crate::nodes::ModuleObject::Typedef(x) => {
-                let basetype = match get_type(&x.type_name, s) {
+                let mut result = match get_type(&x.type_name, s) {
                     Ok(t) => t,
                     Err(err) => panic!("{}", err),
                 };
@@ -179,19 +165,14 @@ fn find_local_typedef(tn: &Typename, s: &RootScope) -> Option<Type> {
                 if x.array_size > 0 {
                     hops += 1;
                 }
-                let t2 = if hops > 0 {
-                    Type::Pointer {
-                        target: Box::new(basetype),
-                        hops,
-                    }
-                } else {
-                    basetype
-                };
+                for _ in 0..hops {
+                    result = addr(result);
+                }
                 match x.function_parameters {
                     Some(_) => Some(Type::Func {
-                        rettype: Box::new(t2),
+                        rettype: Box::new(result),
                     }),
-                    None => Some(t2),
+                    None => Some(result),
                 }
             }
             crate::nodes::ModuleObject::StructTypedef(x) => Some(Type::Struct {
