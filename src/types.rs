@@ -48,10 +48,53 @@ impl Type {
             Type::Double => format!("double"),
             Type::Void => format!("void"),
             Type::Voidp => format!("void*"),
-            Type::Bytes(_) => format!("{{bytes}}"),
-            Type::Struct { opaque, fields } => format!("{{struct}}"),
+            Type::Bytes(x) => match x.sign {
+                Signedness::Signed => {
+                    if x.size > 0 {
+                        format!("{}-bit signed", x.size)
+                    } else {
+                        format!("x-bit signed")
+                    }
+                }
+                Signedness::Unsigned => {
+                    if x.size > 0 {
+                        format!("{}-bit", x.size)
+                    } else {
+                        format!("x-bit unsigned")
+                    }
+                }
+                Signedness::Unknonwn => {
+                    if x.size == 8 {
+                        format!("char")
+                    } else if x.size > 0 {
+                        format!("{}-bit value", x.size)
+                    } else {
+                        format!("bits of unknown size")
+                    }
+                }
+            },
+            Type::Struct { opaque, fields } => {
+                if *opaque {
+                    format!("opaque struct")
+                } else {
+                    let mut s = String::from("");
+                    for f in fields {
+                        match f {
+                            StructEntry::Plain(x) => {
+                                for f in &x.forms {
+                                    s += &format!("{}, ", f.name);
+                                }
+                            }
+                            StructEntry::Union(_) => {
+                                s += &format!("{{union}}, ");
+                            }
+                        }
+                    }
+                    format!("struct {{ {}}}", s)
+                }
+            }
             Type::Pointer { target } => format!("pointer to {}", target.fmt()),
-            Type::Func { rettype } => format!("function returning {{...}}"),
+            Type::Func { rettype } => format!("function returning {}", rettype.fmt()),
         }
     }
 }
@@ -125,7 +168,7 @@ pub fn deref(t: Type) -> Result<Type, String> {
         Type::Pointer { target } => {
             return Ok(*target);
         }
-        _ => Err(format!("dereference of a non-pointer {}", t.fmt())),
+        _ => Err(format!("dereference of a non-pointer ({})", t.fmt())),
     }
 }
 

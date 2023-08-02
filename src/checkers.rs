@@ -9,6 +9,8 @@ use crate::{
 };
 use std::{collections::HashMap, env};
 
+const DUMP_TYPES: bool = false;
+
 struct State {
     errors: Vec<Error>,
     type_errors: Vec<Error>,
@@ -526,6 +528,9 @@ fn check_expr(
             field_name,
         } => {
             let stype = check_expr(target, state, scopes, imports);
+            if DUMP_TYPES {
+                println!("typeof {} = {}", format_expression(target), stype.fmt());
+            }
             match types::access(&op, stype, field_name, &state.root_scope) {
                 Ok(r) => r,
                 Err(err) => {
