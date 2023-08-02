@@ -1,5 +1,6 @@
 use crate::{
     exports::Exports,
+    format_che::format_expression,
     node_queries::{body_returns, expression_pos, has_function_call, isvoid},
     nodes::*,
     parser::Error,
@@ -461,9 +462,14 @@ fn check_expr(
         Expression::Identifier(x) => {
             check_id(x, state, scopes);
             match find_var(scopes, &x.name) {
-                Some(v) => match types::get_type(&v.typename, &state.root_scope) {
+                Some(varinfo) => match types::get_type(&varinfo.typename, &state.root_scope) {
                     Ok(t) => {
-                        return t;
+                        let hops = varinfo.form.hops + varinfo.form.indexes.len();
+                        let mut r = t;
+                        for _ in 0..hops {
+                            r = types::addr(r);
+                        }
+                        return r;
                     }
                     Err(err) => {
                         state.type_errors.push(Error {
