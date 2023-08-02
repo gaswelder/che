@@ -96,9 +96,7 @@ fn check_module_object(
 ) {
     match e {
         ModuleObject::Import(_) => {}
-        ModuleObject::Typedef(x) => {
-            check_ns_id(&x.type_name.name, state, scopestack, imports);
-        }
+        ModuleObject::Macro { .. } => {}
         ModuleObject::Enum {
             is_pub: _,
             members,
@@ -113,40 +111,8 @@ fn check_module_object(
                 }
             }
         }
-        ModuleObject::FunctionDeclaration(f) => {
-            check_function_declaration(f, state, scopestack, imports);
-        }
-        ModuleObject::Macro { .. } => {}
-        ModuleObject::ModuleVariable(x) => {
-            // Local type? Register the usage.
-            let n = &x.type_name.name;
-            if n.namespace == "" {
-                match state.root_scope.types.get_mut(&n.name) {
-                    Some(t) => {
-                        t.read = true;
-                    }
-                    None => {}
-                }
-            }
-
-            // Array declaration? Look into the index expressions.
-            for i in &x.form.indexes {
-                match i {
-                    Some(e) => {
-                        check_expr(e, state, scopestack, imports);
-                    }
-                    None => {}
-                }
-            }
-
-            if has_function_call(x.value.as_ref().unwrap()) {
-                state.errors.push(Error {
-                    message: format!("function call in module variable initialization"),
-                    pos: x.pos.clone(),
-                })
-            }
+        ModuleObject::Typedef(x) => {
             check_ns_id(&x.type_name.name, state, scopestack, imports);
-            check_expr(x.value.as_ref().unwrap(), state, scopestack, imports);
         }
         ModuleObject::StructAliasTypedef { .. } => {}
         ModuleObject::StructTypedef(x) => {
@@ -189,6 +155,40 @@ fn check_module_object(
                     }
                 }
             }
+        }
+        ModuleObject::ModuleVariable(x) => {
+            // Local type? Register the usage.
+            let n = &x.type_name.name;
+            if n.namespace == "" {
+                match state.root_scope.types.get_mut(&n.name) {
+                    Some(t) => {
+                        t.read = true;
+                    }
+                    None => {}
+                }
+            }
+
+            // Array declaration? Look into the index expressions.
+            for i in &x.form.indexes {
+                match i {
+                    Some(e) => {
+                        check_expr(e, state, scopestack, imports);
+                    }
+                    None => {}
+                }
+            }
+
+            if has_function_call(x.value.as_ref().unwrap()) {
+                state.errors.push(Error {
+                    message: format!("function call in module variable initialization"),
+                    pos: x.pos.clone(),
+                })
+            }
+            check_ns_id(&x.type_name.name, state, scopestack, imports);
+            check_expr(x.value.as_ref().unwrap(), state, scopestack, imports);
+        }
+        ModuleObject::FunctionDeclaration(f) => {
+            check_function_declaration(f, state, scopestack, imports);
         }
     }
 }
@@ -443,6 +443,49 @@ fn check_expr(
     imports: &HashMap<String, &Exports>,
 ) -> Type {
     match e {
+        Expression::Literal(x) => match x {
+            Literal::Char(_) => Type::Bytes(types::Bytes {
+                sign: types::Signedness::Unknonwn,
+                size: 1,
+            }),
+            Literal::String(_) => types::addr(Type::Bytes(types::Bytes {
+                sign: types::Signedness::Unknonwn,
+                size: 1,
+            })),
+            Literal::Number(_) => Type::Bytes(types::Bytes {
+                sign: types::Signedness::Unknonwn,
+                size: 0,
+            }),
+            Literal::Null => Type::Null,
+        },
+        Expression::Identifier(x) => {
+            check_id(x, state, scopes);
+            match find_var(scopes, &x.name) {
+                Some(v) => match types::get_type(&v.typename, &state.root_scope) {
+                    Ok(t) => {
+                        return t;
+                    }
+                    Err(err) => {
+                        state.type_errors.push(Error {
+                            message: err,
+                            pos: expression_pos(e),
+                        });
+                        return Type::Opaque;
+                    }
+                },
+                None => {}
+            }
+            match types::find_stdlib(&x.name) {
+                Some(v) => {
+                    return v;
+                }
+                None => return Type::Opaque,
+            }
+        }
+        Expression::NsName(x) => {
+            check_ns_id(x, state, scopes, imports);
+            Type::Opaque
+        }
         Expression::ArrayIndex { array, index } => {
             let t1 = check_expr(array, state, scopes, imports);
             check_expr(index, state, scopes, imports);
@@ -553,49 +596,6 @@ fn check_expr(
                 check_expr(x, state, scopes, imports);
             }
             return rettype;
-        }
-        Expression::Identifier(x) => {
-            check_id(x, state, scopes);
-            match find_var(scopes, &x.name) {
-                Some(v) => match types::get_type(&v.typename, &state.root_scope) {
-                    Ok(t) => {
-                        return t;
-                    }
-                    Err(err) => {
-                        state.type_errors.push(Error {
-                            message: err,
-                            pos: expression_pos(e),
-                        });
-                        return Type::Opaque;
-                    }
-                },
-                None => {}
-            }
-            match types::find_stdlib(&x.name) {
-                Some(v) => {
-                    return v;
-                }
-                None => return Type::Opaque,
-            }
-        }
-        Expression::Literal(x) => match x {
-            Literal::Char(_) => Type::Bytes(types::Bytes {
-                sign: types::Signedness::Unknonwn,
-                size: 1,
-            }),
-            Literal::String(_) => types::addr(Type::Bytes(types::Bytes {
-                sign: types::Signedness::Unknonwn,
-                size: 1,
-            })),
-            Literal::Number(_) => Type::Bytes(types::Bytes {
-                sign: types::Signedness::Unknonwn,
-                size: 0,
-            }),
-            Literal::Null => Type::Null,
-        },
-        Expression::NsName(x) => {
-            check_ns_id(x, state, scopes, imports);
-            Type::Opaque
         }
         Expression::PostfixOperator { operator, operand } => {
             let t = check_expr(operand, state, scopes, imports);
