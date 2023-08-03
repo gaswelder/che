@@ -464,14 +464,13 @@ fn check_expr(
         Expression::Identifier(x) => {
             check_id(x, state, scopes);
             match find_var(scopes, &x.name) {
-                Some(varinfo) => match types::get_type(&varinfo.typename, &state.root_scope) {
+                Some(varinfo) => match types::derive_typeform(
+                    &varinfo.typename,
+                    &varinfo.form,
+                    &state.root_scope,
+                ) {
                     Ok(t) => {
-                        let hops = varinfo.form.hops + varinfo.form.indexes.len();
-                        let mut r = t;
-                        for _ in 0..hops {
-                            r = types::addr(r);
-                        }
-                        return r;
+                        return t;
                     }
                     Err(err) => {
                         state.type_errors.push(Error {

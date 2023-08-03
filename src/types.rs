@@ -1,6 +1,6 @@
 use crate::{
     c,
-    nodes::{Identifier, StructEntry, Typename},
+    nodes::{Form, Identifier, StructEntry, Typename},
     scopes::RootScope,
 };
 
@@ -229,4 +229,18 @@ fn find_local_typedef(tn: &Typename, s: &RootScope) -> Option<Type> {
         },
         None => None,
     }
+}
+
+pub fn derive_typeform(
+    typename: &Typename,
+    form: &Form,
+    root_scope: &RootScope,
+) -> Result<Type, String> {
+    let t = get_type(typename, root_scope)?;
+    let hops = form.hops + form.indexes.len();
+    let mut r = t;
+    for _ in 0..hops {
+        r = addr(r);
+    }
+    return Ok(r);
 }
