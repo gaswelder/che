@@ -1,4 +1,5 @@
 use crate::{
+    c,
     nodes::{Identifier, StructEntry, Typename},
     scopes::RootScope,
 };
@@ -174,8 +175,8 @@ pub fn deref(t: Type) -> Result<Type, String> {
 
 pub fn get_type(tn: &Typename, r: &RootScope) -> Result<Type, String> {
     if tn.name.namespace == "" {
-        match get_builtin_type(&tn) {
-            Some(x) => return Ok(x),
+        match c::get_type(&tn.name.name) {
+            Some(x) => return Ok(x.t),
             None => {}
         }
         match find_local_typedef(&tn, r) {
@@ -227,91 +228,5 @@ fn find_local_typedef(tn: &Typename, s: &RootScope) -> Option<Type> {
             }
         },
         None => None,
-    }
-}
-
-fn get_builtin_type(tn: &Typename) -> Option<Type> {
-    match tn.name.name.as_str() {
-        "bool" => Some(Type::Bool),
-        "float" => Some(Type::Float),
-        "double" => Some(Type::Double),
-        "void" => Some(Type::Void),
-        "char" => Some(Type::Bytes(Bytes {
-            sign: Signedness::Unknonwn,
-            size: 8,
-        })),
-        "clock_t" => Some(Type::Bytes(Bytes {
-            sign: Signedness::Unsigned,
-            size: 0,
-        })),
-        "int" => Some(Type::Bytes(Bytes {
-            sign: Signedness::Signed,
-            size: 0,
-        })),
-        "int16_t" => Some(Type::Bytes(Bytes {
-            sign: Signedness::Signed,
-            size: 16,
-        })),
-        "int32_t" => Some(Type::Bytes(Bytes {
-            sign: Signedness::Signed,
-            size: 32,
-        })),
-        "int64_t" => Some(Type::Bytes(Bytes {
-            sign: Signedness::Signed,
-            size: 64,
-        })),
-        "int8_t" => Some(Type::Bytes(Bytes {
-            sign: Signedness::Signed,
-            size: 8,
-        })),
-        "long" => Some(Type::Bytes(Bytes {
-            sign: Signedness::Signed,
-            size: 0,
-        })),
-        "ptrdiff_t" => Some(Type::Bytes(Bytes {
-            sign: Signedness::Signed,
-            size: 0,
-        })),
-        "short" => Some(Type::Bytes(Bytes {
-            sign: Signedness::Signed,
-            size: 0,
-        })),
-        "size_t" => Some(Type::Bytes(Bytes {
-            sign: Signedness::Unsigned,
-            size: 0,
-        })),
-        "time_t" => Some(Type::Bytes(Bytes {
-            sign: Signedness::Unknonwn,
-            size: 0,
-        })),
-        "uint32_t" => Some(Type::Bytes(Bytes {
-            sign: Signedness::Unsigned,
-            size: 32,
-        })),
-        "uint64_t" => Some(Type::Bytes(Bytes {
-            sign: Signedness::Unsigned,
-            size: 64,
-        })),
-        "unsigned" => Some(Type::Bytes(Bytes {
-            sign: Signedness::Unsigned,
-            size: 0,
-        })),
-        "jmp_buf" => Some(Type::Struct {
-            opaque: true,
-            fields: Vec::new(),
-        }),
-        "va_list" => Some(Type::Struct {
-            opaque: true,
-            fields: Vec::new(),
-        }),
-        "wchar_t" => Some(Type::Struct {
-            opaque: true,
-            fields: Vec::new(),
-        }),
-        "FILE" => Some(Type::Struct {
-            opaque: true,
-            fields: Vec::new(),
-        }),
-        _ => None,
     }
 }

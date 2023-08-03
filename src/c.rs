@@ -1,3 +1,59 @@
+use crate::types::{Bytes, Signedness, Type};
+
+pub struct LibEntry<'a> {
+    pub t: Type,
+    pub header: &'a str,
+}
+
+fn le(header: &str, t: Type) -> Option<LibEntry> {
+    Some(LibEntry { t, header })
+}
+fn by(sign: Signedness, size: usize) -> Type {
+    Type::Bytes(Bytes { sign, size })
+}
+fn obj() -> Type {
+    Type::Struct {
+        opaque: true,
+        fields: Vec::new(),
+    }
+}
+
+pub fn get_type(name: &String) -> Option<LibEntry> {
+    match name.as_str() {
+        // plain C
+        "float" => le("", Type::Float),
+        "double" => le("", Type::Double),
+        "void" => le("", Type::Void),
+        "char" => le("", by(Signedness::Unknonwn, 8)),
+        "int" => le("", by(Signedness::Signed, 0)),
+        "long" => le("", by(Signedness::Signed, 0)),
+        "short" => le("", by(Signedness::Signed, 0)),
+        "unsigned" => le("", by(Signedness::Unsigned, 0)),
+        // stdint.h
+        "int8_t" => le("stdint.h", by(Signedness::Signed, 8)),
+        "int16_t" => le("stdint.h", by(Signedness::Signed, 16)),
+        "int32_t" => le("stdint.h", by(Signedness::Signed, 32)),
+        "int64_t" => le("stdint.h", by(Signedness::Signed, 64)),
+        "uint8_t" => le("stdint.h", by(Signedness::Unsigned, 8)),
+        "uint16_t" => le("stdint.h", by(Signedness::Unsigned, 16)),
+        "uint32_t" => le("stdint.h", by(Signedness::Unsigned, 32)),
+        "uint64_t" => le("stdint.h", by(Signedness::Unsigned, 64)),
+        // stdbool.h
+        "bool" => le("stdbool.h", Type::Bool),
+        // stdio.h
+        "FILE" => le("stdio.h", obj()),
+        // ...
+        "clock_t" => le("?", by(Signedness::Unsigned, 0)),
+        "ptrdiff_t" => le("?", by(Signedness::Signed, 0)),
+        "size_t" => le("?", by(Signedness::Unsigned, 0)),
+        "time_t" => le("?", by(Signedness::Unknonwn, 0)),
+        "jmp_buf" => le("?", obj()),
+        "va_list" => le("?", obj()),
+        "wchar_t" => le("?", obj()),
+        _ => None,
+    }
+}
+
 pub const CLIBS: &[&str] = &[
     "assert", "ctype", "errno", "limits", "math", "stdarg", "stdbool", "stddef", "stdint", "stdio",
     "stdlib", "string", "time", "setjmp", "signal",
