@@ -4,6 +4,7 @@
 // https://www.recordingblogs.com/wiki/midi-registered-parameter-number-rpn
 // https://www.recordingblogs.com/wiki/midi-meta-messages
 // https://www.recordingblogs.com/wiki/midi-marker-meta-message
+// https://www.recordingblogs.com/wiki/time-division-of-a-midi-file
 // https://ibex.tech/resources/geek-area/communications/midi/midi-comms
 // http://www33146ue.sakura.ne.jp/staff/iz/formats/midi-event.html
 // https://ccrma.stanford.edu/~craig/14q/midifile/MidiFileFormat.html
@@ -21,13 +22,12 @@ enum {
 
 const char *formatname(int format) {
     switch (format) {
-        case FORMAT_ONE_MULTI_CHANNEL_TRACK: { return "FORMAT_ONE_MULTI_CHANNEL_TRACK"; }
-        case FORMAT_MANY_SIMULTANEOUS_TRACKS: { return "FORMAT_MANY_SIMULTANEOUS_TRACKS"; }
-        case FORMAT_MANY_INDEPENDENT_TRACKS: { return "FORMAT_MANY_INDEPENDENT_TRACKS"; }
+        case FORMAT_ONE_MULTI_CHANNEL_TRACK: { return "0, single track"; }
+        case FORMAT_MANY_SIMULTANEOUS_TRACKS: { return "1, multiple tracks"; }
+        case FORMAT_MANY_INDEPENDENT_TRACKS: { return "2, multiple songs"; }
         default: { return "unknown format"; }
     }
 }
-
 
 typedef {
     char name[5]; // chunk's type
@@ -78,25 +78,18 @@ void load_head_chunk(midi_t *m) {
         panic("expected length 6, got %u\n", h.length);
     }
 
-    // the format of the MIDI file, 2 bytes.
-    // 0 = single track file format
-    // 1 = multiple track file format
-    // 2 = multiple song file format 
     uint16_t format = bytereader.read16(m->r);
-
-    // the number of tracks that follow, 2 bytes.
-    uint16_t n = bytereader.read16(m->r);
-
+    uint16_t ntracks = bytereader.read16(m->r);
 
     // a timing value specifying delta time units.
     // <division> 2 bytes
     // unit of time for delta timing.
     uint16_t division = (int) bytereader.read16(m->r);
 
-    printf("header chunk: len=%u, format=%s, ntracks=%u, %d ticks per beat\n",
+    printf("header chunk: bytes: %u, format: %s, tracks: %u, ticks per beat: %d\n",
         h.length,
         formatname(format),
-        n,
+        ntracks,
         division
     );
     // If the value is positive, then it represents the units per beat.
@@ -128,10 +121,50 @@ pub bool track_chunk(midi_t *m) {
         int v_time = variable_length_value(m->r);
         int event_type = bytereader.readc(m->r);
 
-        printf("event 0x%X (+%d) ", event_type, v_time);
+        // 0xFF - MIDI meta messages.
+		// Just file meta, not to be sent to midi ports.
+        if (event_type == 0xFF) {
+            int meta_type = bytereader.readc(m->r);
+            int v_length = variable_length_value(m->r);
+            char data[1000] = {0};
+			unsigned data_as_number = 0;
+			int idata[1000] = {0};
+            for (int i = 0; i < v_length; i++) {
+				int ch = bytereader.readc(m->r);
+				// printf("- 0x%x\n", ch);
+				data_as_number *= 256;
+				data_as_number += ch;
+                data[i] = ch;
+				idata[i] = ch;
+                if (i >= 999) {
+                    panic("data too big");
+                }
+            }
+			switch (meta_type) {
+				case META_TEMPO: { printf("Tempo: %u us per beat\n", data_as_number); }
+				case META_SEQ_NAME: { printf("Track name: \"%s\"\n", data); }
+				case META_END_OF_TRACK: { printf("---------- end of track -----------\n"); }
+				case META_TIME_SIGNATURE: {
+					int numerator = idata[0];
+					int power = idata[1];
+					int ticks_per_click = idata[2];
+					int n32th_per_beat = idata[3];
+					printf("Time signature: %d/2^%d, metronome clicks once every %d midi clocks, %d 32th notes per beat\n", numerator, power, ticks_per_click, n32th_per_beat);
+				}
+				default: {
+					printf("META\t%s \t(%d bytes)\t\"%s\"\n", meta_name(meta_type), v_length, data);
+				}
+			}
+            if (meta_type == META_END_OF_TRACK) {
+                break;
+            }
+            continue;
+        }
 
-        // The messages from 0x80 to 0xEF are called Channel Messages because the second four bits of the command specify which channel the message affects.
+        // 0x80..0xEF - channel messages
+        // The second four bits specify which channel the message affects.
         if (event_type >= 0x80 && event_type <= 0xEF) {
+			printf("time +%d: ", v_time);
             int type = (event_type >> 4) & 0xF;
             int channel = event_type & 0xF;
             
@@ -141,13 +174,13 @@ pub bool track_chunk(midi_t *m) {
                     // 0x80-0x8F 	Note off 	2 (note, velocity)
                     int arg1 = bytereader.readc(m->r);
                     int arg2 = bytereader.readc(m->r);
-                    printf("\tnote off, channel=%d note,velocity=%d,%d\n", channel, arg1, arg2);
+                    printf("\tnote off\tchannel=%d\tnote=%d\tvelocity=%d\n", channel, arg1, arg2);
                 }
                 case 0x9: {
                     // 0x90-0x9F 	Note on 	2 (note, velocity)
                     int arg1 = bytereader.readc(m->r);
                     int arg2 = bytereader.readc(m->r);
-                    printf("\tnote on, channel=%d note,velocity=%d,%d\n", channel, arg1, arg2);
+                    printf("\tnote on \tchannel=%d\tnote=%d\tvelocity=%d\n", channel, arg1, arg2);
                 }
                 case 0xA: {
                     // 0xA0-0xAF 	Key Pressure 	2 (note, key pressure)
@@ -194,27 +227,7 @@ pub bool track_chunk(midi_t *m) {
 
         // The messages from 0xF0 to 0xFF are called System Messages; they do not affect any particular channel. 
 
-        // Certain MIDI events are never sent over MIDI ports, but exist in MIDI files.
-        // These events are called meta events and the messages that they carry are called meta messages.
-        // MIDI meta messages are messages that contains information about the MIDI sequence and that are not to be sent over MIDI ports.
-        if (event_type == 0xFF) {
-            // meta_event = 0xFF + <meta_type> + <v_length> + <event_data_bytes>
-            int meta_type = bytereader.readc(m->r); // 1 byte
-            int v_length = variable_length_value(m->r); // var
-            char data[1000] = {0};
-            for (int i = 0; i < v_length; i++) {
-                data[i] = bytereader.readc(m->r);
-                if (i >= 999) {
-                    panic("data too big");
-                }
-            }
-            printf("\t%s \tlen=%d\tdata=%s\n", meta_name(meta_type), v_length, data);
-            if (meta_type == META_END_OF_TRACK) {
-                printf("---------- end -----------\n");
-                break;
-            }
-            continue;
-        }
+        
         printf("\n\n");
         printf("skipping 0x%X\n", event_type);
     }
@@ -245,14 +258,14 @@ char *meta_name(int meta) {
         case META_SEQ_NUM: { return "META_SEQ_NUM"; }
         case META_TEXT: { return "META_TEXT"; }
         case META_COPYRIGHT: { return "META_COPYRIGHT"; }
-        case META_SEQ_NAME: { return "META_SEQ_NAME"; }
+        case META_SEQ_NAME: { return "Track name"; }
         case META_INSTRUMENT_NAME: { return "META_INSTRUMENT_NAME"; }
         case META_LYRIC_TEXT: { return "META_LYRIC_TEXT"; }
         case META_MARKER_TEXT: { return "META_MARKER_TEXT"; }
         case META_CUE_POINT: { return "META_CUE_POINT"; }
         case META_MIDI_CHANNEL_PREFIX_ASSIGNMENT: { return "META_MIDI_CHANNEL_PREFIX_ASSIGNMENT"; }
         case META_END_OF_TRACK: { return "META_END_OF_TRACK"; }
-        case META_TEMPO: { return "META_TEMPO"; }
+        case META_TEMPO: { return "Tempo (microseconds per beat)"; }
         case META_SMPTE_OFFSET: { return "META_SMPTE_OFFSET"; }
         case META_TIME_SIGNATURE: { return "META_TIME_SIGNATURE"; }
         case META_KEY_SIGNATURE: { return "META_KEY_SIGNATURE"; }
