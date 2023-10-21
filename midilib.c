@@ -1,5 +1,6 @@
 #import bytereader
 
+// https://www.recordingblogs.com/wiki/midi-program-change-message
 // https://www.recordingblogs.com/wiki/midi-controller-message
 // https://www.recordingblogs.com/wiki/midi-registered-parameter-number-rpn
 // https://www.recordingblogs.com/wiki/midi-meta-messages
@@ -119,101 +120,22 @@ pub bool track_chunk(midi_t *m) {
     while (!bytereader.ended(m->r)) {
         // Elapsed time (delta time) from the previous event to this event.
         int v_time = variable_length_value(m->r);
+		printf("time +%d:\t", v_time);
+
         int event_type = bytereader.readc(m->r);
 
-        // 0xFF - MIDI meta messages.
-		// Just file meta, not to be sent to midi ports.
+        // 0xFF - just file meta, not to be sent to midi ports.
         if (event_type == 0xFF) {
-            int meta_type = bytereader.readc(m->r);
-            int v_length = variable_length_value(m->r);
-            char data[1000] = {0};
-			unsigned data_as_number = 0;
-			int idata[1000] = {0};
-            for (int i = 0; i < v_length; i++) {
-				int ch = bytereader.readc(m->r);
-				// printf("- 0x%x\n", ch);
-				data_as_number *= 256;
-				data_as_number += ch;
-                data[i] = ch;
-				idata[i] = ch;
-                if (i >= 999) {
-                    panic("data too big");
-                }
-            }
-			switch (meta_type) {
-				case META_TEMPO: { printf("Tempo: %u us per beat\n", data_as_number); }
-				case META_SEQ_NAME: { printf("Track name: \"%s\"\n", data); }
-				case META_END_OF_TRACK: { printf("---------- end of track -----------\n"); }
-				case META_TIME_SIGNATURE: {
-					int numerator = idata[0];
-					int power = idata[1];
-					int ticks_per_click = idata[2];
-					int n32th_per_beat = idata[3];
-					printf("Time signature: %d/2^%d, metronome clicks once every %d midi clocks, %d 32th notes per beat\n", numerator, power, ticks_per_click, n32th_per_beat);
-				}
-				default: {
-					printf("META\t%s \t(%d bytes)\t\"%s\"\n", meta_name(meta_type), v_length, data);
-				}
+            bool ended = read_meta_message(m);
+			if (ended) {
+				break;
 			}
-            if (meta_type == META_END_OF_TRACK) {
-                break;
-            }
             continue;
         }
 
         // 0x80..0xEF - channel messages
-        // The second four bits specify which channel the message affects.
         if (event_type >= 0x80 && event_type <= 0xEF) {
-			printf("time +%d: ", v_time);
-            int type = (event_type >> 4) & 0xF;
-            int channel = event_type & 0xF;
-            
-            // printf("type = %x (%s), channel = %x\n", type, cmdname(type), channel);
-            switch (type) {
-                case 0x8: {
-                    // 0x80-0x8F 	Note off 	2 (note, velocity)
-                    int arg1 = bytereader.readc(m->r);
-                    int arg2 = bytereader.readc(m->r);
-                    printf("\tnote off\tchannel=%d\tnote=%d\tvelocity=%d\n", channel, arg1, arg2);
-                }
-                case 0x9: {
-                    // 0x90-0x9F 	Note on 	2 (note, velocity)
-                    int arg1 = bytereader.readc(m->r);
-                    int arg2 = bytereader.readc(m->r);
-                    printf("\tnote on \tchannel=%d\tnote=%d\tvelocity=%d\n", channel, arg1, arg2);
-                }
-                case 0xA: {
-                    // 0xA0-0xAF 	Key Pressure 	2 (note, key pressure)
-                    int arg1 = bytereader.readc(m->r);
-                    int arg2 = bytereader.readc(m->r);
-                    printf("\tkey pressure, channel=%d note,pressure=%d,%d\n", channel, arg1, arg2);
-                }
-                case 0xB: {
-                    // 0xB0-0xBF 	Control Change 	2 (controller no., value)
-                    int controller = bytereader.readc(m->r);
-                    int value = bytereader.readc(m->r);
-                    printf("\tcontrol change, channel=%d controller=%d value=%d\n", channel, controller, value);
-                }
-                case 0xC: {
-                    // 0xC0-0xCF 	Program Change 	1 (program no.)
-                    int arg1 = bytereader.readc(m->r);
-                    printf("\tprogram change, channel=%d arg=%d\n", channel, arg1);
-                }
-                case 0xD: {
-                    // 0xD0-0xDF 	Channel Pressure 	1 (pressure)
-                    int arg1 = bytereader.readc(m->r);
-                    printf("\tchannel pressure, channel=%d pressure=%d\n", channel, arg1);
-                }
-                case 0xE: {
-                    // 0xE0-0xEF 	Pitch Bend 	2 (least significant byte, most significant byte)
-                    int arg1 = bytereader.readc(m->r);
-                    int arg2 = bytereader.readc(m->r);
-                    printf("\tpitch bend, channel=%d args=%d,%d\n", channel, arg1, arg2);
-                }
-                default: {
-                    panic("unhandled type %X", type);
-                }
-            }
+			read_channel_message(m, event_type);
             continue;
         }
 
@@ -228,10 +150,107 @@ pub bool track_chunk(midi_t *m) {
         // The messages from 0xF0 to 0xFF are called System Messages; they do not affect any particular channel. 
 
         
-        printf("\n\n");
-        printf("skipping 0x%X\n", event_type);
+        printf("(?) skipping 0x%X\n", event_type);
     }
     return true;
+}
+
+bool read_meta_message(midi_t *m) {
+	int meta_type = bytereader.readc(m->r);
+	int v_length = variable_length_value(m->r);
+	char data[1000] = {0};
+	unsigned data_as_number = 0;
+	int idata[1000] = {0};
+	for (int i = 0; i < v_length; i++) {
+		int ch = bytereader.readc(m->r);
+		// printf("- 0x%x\n", ch);
+		data_as_number *= 256;
+		data_as_number += ch;
+		data[i] = ch;
+		idata[i] = ch;
+		if (i >= 999) {
+			panic("data too big");
+		}
+	}
+	switch (meta_type) {
+		case META_TEMPO: {
+			printf("Tempo: %u us per beat\n", data_as_number);
+		}
+		case META_SEQ_NAME: {
+			printf("Track name: \"%s\"\n", data);
+		}
+		case META_END_OF_TRACK: {
+			printf("---------- end of track -----------\n");
+		}
+		case META_TIME_SIGNATURE: {
+			int numerator = idata[0];
+			int power = idata[1];
+			int ticks_per_click = idata[2];
+			int n32th_per_beat = idata[3];
+			printf("Time signature: %d/2^%d, metronome clicks once every %d midi clocks, %d 32th notes per beat\n", numerator, power, ticks_per_click, n32th_per_beat);
+		}
+		default: {
+			printf("META\t%s \t(%d bytes)\t\"%s\"\n", meta_name(meta_type), v_length, data);
+		}
+	}
+	return meta_type == META_END_OF_TRACK;
+}
+
+void read_channel_message(midi_t *m, int event_type) {
+	// The second four bits specify which channel the message affects.
+	int type = (event_type >> 4) & 0xF;
+	int channel = event_type & 0xF;
+	
+	// printf("type = %x (%s), channel = %x\n", type, cmdname(type), channel);
+	switch (type) {
+		case 0x8: {
+			// 0x80-0x8F 	Note off 	2 (note, velocity)
+			int arg1 = bytereader.readc(m->r);
+			int arg2 = bytereader.readc(m->r);
+			printf("\tnote off\tchannel=%d\tnote=%d\tvelocity=%d\n", channel, arg1, arg2);
+		}
+		case 0x9: {
+			// 0x90-0x9F - play a note on channel (0..F)
+			int pitch = bytereader.readc(m->r);
+			int velocity = bytereader.readc(m->r);
+			printf("\tnote on \tchannel=%d\tnote=%d\tvelocity=%d\n", channel, pitch, velocity);
+		}
+		case 0xA: {
+			// 0xA0-0xAF 	Key Pressure 	2 (note, key pressure)
+			int arg1 = bytereader.readc(m->r);
+			int arg2 = bytereader.readc(m->r);
+			printf("\tkey pressure, channel=%d note,pressure=%d,%d\n", channel, arg1, arg2);
+		}
+		case 0xB: {
+			// 0xB0-0xBF 	Control Change 	2 (controller no., value)
+			int controller = bytereader.readc(m->r);
+			int value = bytereader.readc(m->r);
+			printf("\tcontrol change, channel=%d controller=%d value=%d\n", channel, controller, value);
+		}
+		case 0xC: {
+			// 0xC0-0xCF 	Program Change 	1 (program no.)
+			int arg1 = bytereader.readc(m->r);
+			printf("\tprogram change, channel=%d arg=%d\n", channel, arg1);
+		}
+		case 0xD: {
+			// 0xD0-0xDF 	Channel Pressure 	1 (pressure)
+			int arg1 = bytereader.readc(m->r);
+			printf("\tchannel pressure, channel=%d pressure=%d\n", channel, arg1);
+		}
+		case 0xE: {
+			// 0xE0-0xEF bend the pitch on channel (0..F)
+			// (least significant byte, most significant byte)
+			int arg1 = bytereader.readc(m->r);
+			int arg2 = bytereader.readc(m->r);
+			int bend = arg2 * 256 + arg1;
+			// 0 = 2 semitones down
+			// 16383 (or 16384?) = 2 semitones up
+			printf("\tpitch bend, channel=%d bend=%d\n", channel, bend);
+		}
+		default: {
+			panic("unhandled type %X", type);
+		}
+	}
 }
 
 enum {
