@@ -10,46 +10,112 @@
 // http://www33146ue.sakura.ne.jp/staff/iz/formats/midi-event.html
 // https://ccrma.stanford.edu/~craig/14q/midifile/MidiFileFormat.html
 
+
+/*
+ * File contents type:
+ * 0 = single multi-channel track
+ * 1 = one or more simultaneous tracks (or MIDI outputs) of a sequence
+ * 2 = one or more sequentially independent single-track patterns
+ */
 enum {
-    /*
-     * 0-the file contains a single multi-channel track
-     * 1-the file contains one or more simultaneous tracks (or MIDI outputs) of a sequence
-     * 2-the file contains one or more sequentially independent single-track patterns
-     */
     FORMAT_ONE_MULTI_CHANNEL_TRACK = 0,
     FORMAT_MANY_SIMULTANEOUS_TRACKS = 1,
     FORMAT_MANY_INDEPENDENT_TRACKS = 2
 };
 
-const char *formatname(int format) {
-    switch (format) {
-        case FORMAT_ONE_MULTI_CHANNEL_TRACK: { return "0, single track"; }
-        case FORMAT_MANY_SIMULTANEOUS_TRACKS: { return "1, multiple tracks"; }
-        case FORMAT_MANY_INDEPENDENT_TRACKS: { return "2, multiple songs"; }
-        default: { return "unknown format"; }
-    }
-}
-
-typedef {
-    char name[5]; // chunk's type
-    uint32_t length; // chunk's length in bytes
-} chunk_head_t;
-
-bool read_chunk_head(midi_t *m, chunk_head_t *h) {
-    for (int i = 0; i < 4; i++) {
-        int c = bytereader.readc(m->r);
-        if (c == EOF) {
-            return false;
-        }
-        h->name[i] = c;
-    }
-    h->length = bytereader.read32(m->r);
-    return h;
-}
+/*
+ * Message types
+ */
+enum {
+	STATUS_UNKNOWN = 0,
+	STATUS_META,
+	STATUS_CHANNEL,
+	STATUS_SYSTEM
+};
 
 pub typedef {
     bytereader.reader_t *r;
+	/*
+	 * The MIDI spec allows to omit the status byte (event type)
+	 * if the previous transmitted message had the same status.
+	 * This is referred to as running status.
+	 */
+	int running_status;
 } midi_t;
+
+pub void read_file(midi_t *m) {
+	while (true) {
+		bool more = read_track_chunk(m);
+		if (!more) {
+			break;
+		}
+    }
+}
+
+bool read_track_chunk(midi_t *m) {
+    // track_chunk = "MTrk" + <length> + <track_event> [+ <track_event> ...]
+    chunk_head_t h = {};
+    if (!midibin_read_chunk_head(m, &h)) {
+        printf("failed to read head: %s\n", strerror(errno));
+        return false;
+    }
+    if (strcmp("MTrk", h.name)) {
+        panic("expected MTrk, got %s", h.name);
+    }
+	printf("track chunk length: %d\n", h.length);
+    while (!bytereader.ended(m->r)) {
+        bool more = read_track_event(m);
+		if (!more) {
+			break;
+		}
+    }
+    return true;
+}
+
+int get_status_type(int c) {
+	if (c == 0xFF) return STATUS_META;
+	if (c >= 0x80 && c <= 0xEF) return STATUS_CHANNEL;
+	if (c >= 0xF0 && c <= 0xFF) return STATUS_SYSTEM;
+	return STATUS_UNKNOWN;
+}
+
+bool read_track_event(midi_t *m) {
+	// Elapsed time (delta time) from the previous event to this event.
+	int v_time = variable_length_value(m->r);
+	printf("time +%d:\t", v_time);
+
+	if (m->running_status == 0 || get_status_type(bytereader.peekc(m->r)) != STATUS_UNKNOWN) {
+		m->running_status = bytereader.readc(m->r);
+	}
+
+	int event_type = m->running_status;
+
+	switch (get_status_type(m->running_status)) {
+		case STATUS_META: {
+			bool ended = read_meta_message(m);
+			return !ended;
+		}
+		case STATUS_CHANNEL: {
+			read_channel_message(m);
+			return true;
+		}
+	}
+
+	// The messages from 0xF0 to 0xFF are called System Messages; they do not affect any particular channel.
+	// <sysex_event>
+	//     an SMF system exclusive event.
+	// System Exclusive Event
+	// A system exclusive event can take one of two forms:
+	// sysex_event = 0xF0 + <data_bytes> 0xF7 or sysex_event = 0xF7 + <data_bytes> 0xF7
+	// In the first case, the resultant MIDI data stream would include the 0xF0. In the second case the 0xF0 is omitted.
+
+	printf("(?) message 0x%X\n", event_type);
+	// panic("dunno");
+	return true;
+}
+
+
+
 
 pub midi_t *open(const char *path) {
     bytereader.reader_t *r = bytereader.newreader(path);
@@ -68,7 +134,7 @@ pub midi_t *open(const char *path) {
 
 void load_head_chunk(midi_t *m) {
     chunk_head_t h = {};
-    if (!read_chunk_head(m, &h)) {
+    if (!midibin_read_chunk_head(m, &h)) {
         printf("failed to read head: %s\n", strerror(errno));
         return;
     }
@@ -85,7 +151,18 @@ void load_head_chunk(midi_t *m) {
     // a timing value specifying delta time units.
     // <division> 2 bytes
     // unit of time for delta timing.
+	// Either ticks per beat or frames per second.
+	// If the value is positive, then it represents the units per beat.
+    // For example, +96 would mean 96 ticks per beat.
+    // If the value is negative, delta times are in SMPTE compatible units.
+	// If the top bit of the word (bit mask 0x8000) is 0, the following 15 bits describe the time division in ticks per beat. Otherwise the following 15 bits (bit mask 0x7FFF) describe the time division in frames per second.
     uint16_t division = (int) bytereader.read16(m->r);
+
+    if (division > 0) {
+        // printf("(%d ticks per beat)\n", division);
+    } else {
+        printf("(SMPTE compatible units)\n");
+    }
 
     printf("header chunk: bytes: %u, format: %s, tracks: %u, ticks per beat: %d\n",
         h.length,
@@ -93,67 +170,10 @@ void load_head_chunk(midi_t *m) {
         ntracks,
         division
     );
-    // If the value is positive, then it represents the units per beat.
-    // For example, +96 would mean 96 ticks per beat.
-    // If the value is negative, delta times are in SMPTE compatible units.
-    if (division > 0) {
-        // printf("(%d ticks per beat)\n", division);
-    } else {
-        printf("(SMPTE compatible units)\n");
-    }
+
 }
 
-pub bool track_chunk(midi_t *m) {
-    // Each track chunk defines a logical track.
-    // track_chunk = "MTrk" + <length> + <track_event> [+ <track_event> ...]
 
-    chunk_head_t h = {};
-    if (!read_chunk_head(m, &h)) {
-        printf("failed to read head: %s\n", strerror(errno));
-        return false;
-    }
-    if (strcmp("MTrk", h.name)) {
-        panic("expected MTrk, got %s", h.name);
-    }
-
-    // and actual event data making up the track.
-    while (!bytereader.ended(m->r)) {
-        // Elapsed time (delta time) from the previous event to this event.
-        int v_time = variable_length_value(m->r);
-		printf("time +%d:\t", v_time);
-
-        int event_type = bytereader.readc(m->r);
-
-        // 0xFF - just file meta, not to be sent to midi ports.
-        if (event_type == 0xFF) {
-            bool ended = read_meta_message(m);
-			if (ended) {
-				break;
-			}
-            continue;
-        }
-
-        // 0x80..0xEF - channel messages
-        if (event_type >= 0x80 && event_type <= 0xEF) {
-			read_channel_message(m, event_type);
-            continue;
-        }
-
-        // <sysex_event>
-        //     an SMF system exclusive event. 
-        // System Exclusive Event
-        // A system exclusive event can take one of two forms:
-        // sysex_event = 0xF0 + <data_bytes> 0xF7 or sysex_event = 0xF7 + <data_bytes> 0xF7
-        // In the first case, the resultant MIDI data stream would include the 0xF0. In the second case the 0xF0 is omitted. 
-   
-
-        // The messages from 0xF0 to 0xFF are called System Messages; they do not affect any particular channel. 
-
-        
-        printf("(?) skipping 0x%X\n", event_type);
-    }
-    return true;
-}
 
 bool read_meta_message(midi_t *m) {
 	int meta_type = bytereader.readc(m->r);
@@ -196,24 +216,25 @@ bool read_meta_message(midi_t *m) {
 	return meta_type == META_END_OF_TRACK;
 }
 
-void read_channel_message(midi_t *m, int event_type) {
+void read_channel_message(midi_t *m) {
+	int event_type = m->running_status;
 	// The second four bits specify which channel the message affects.
 	int type = (event_type >> 4) & 0xF;
 	int channel = event_type & 0xF;
-	
+
 	// printf("type = %x (%s), channel = %x\n", type, cmdname(type), channel);
 	switch (type) {
 		case 0x8: {
 			// 0x80-0x8F 	Note off 	2 (note, velocity)
-			int arg1 = bytereader.readc(m->r);
-			int arg2 = bytereader.readc(m->r);
-			printf("\tnote off\tchannel=%d\tnote=%d\tvelocity=%d\n", channel, arg1, arg2);
+			int key = bytereader.readc(m->r); // which key to release
+			int velocity = bytereader.readc(m->r); // how fast/hard the key was released (0..127)
+			printf("\tnote off\tchannel=%d\tnote=%d\tvelocity=%d\n", channel, key, velocity);
 		}
 		case 0x9: {
 			// 0x90-0x9F - play a note on channel (0..F)
-			int pitch = bytereader.readc(m->r);
-			int velocity = bytereader.readc(m->r);
-			printf("\tnote on \tchannel=%d\tnote=%d\tvelocity=%d\n", channel, pitch, velocity);
+			int key = bytereader.readc(m->r); // which of the 128 MIDI keys is being played (0..127)
+			int velocity = bytereader.readc(m->r); // volume and intensity (0..127)
+			printf("\tnote on \tchannel=%d\tnote=%d\tvelocity=%d\n", channel, key, velocity);
 		}
 		case 0xA: {
 			// 0xA0-0xAF 	Key Pressure 	2 (note, key pressure)
@@ -223,9 +244,11 @@ void read_channel_message(midi_t *m, int event_type) {
 		}
 		case 0xB: {
 			// 0xB0-0xBF 	Control Change 	2 (controller no., value)
+			// change in a MIDI channels state (knob setting)
+			// There are 128 controllers which define different attributes of the channel including volume, pan, modulation, effects, and more.
 			int controller = bytereader.readc(m->r);
 			int value = bytereader.readc(m->r);
-			printf("\tcontrol change, channel=%d controller=%d value=%d\n", channel, controller, value);
+			printf("0x%X 0x%X 0x%X ch %d: set %-50s %d\n", event_type, controller, value, channel, controller_name(controller), value);
 		}
 		case 0xC: {
 			// 0xC0-0xCF 	Program Change 	1 (program no.)
@@ -322,4 +345,104 @@ int variable_length_value(bytereader.reader_t *r) {
         }
     }
     return result;
+}
+
+const char *formatname(int format) {
+    switch (format) {
+        case FORMAT_ONE_MULTI_CHANNEL_TRACK: { return "0, single track"; }
+        case FORMAT_MANY_SIMULTANEOUS_TRACKS: { return "1, multiple tracks"; }
+        case FORMAT_MANY_INDEPENDENT_TRACKS: { return "2, multiple songs"; }
+        default: { return "unknown format"; }
+    }
+}
+
+
+const char *CONTROLLER_NAMES[] = {
+	"Bank Select", // 0 (0x00)
+	"Modulation", // 1 (0x01)
+	"Breath Controller", // 2 (0x02)
+	NULL,
+	"Foot Controller", // 4 (0x04)
+	"Portamento Time", // 5 (0x05)
+	"Data Entry (MSB)", // 6 (0x06)
+	"Main Volume", // 7 (0x07)
+	"Balance", // 8 (0x08)
+	NULL,
+	"Pan", // 10 (0x0A)
+	"Expression Controller", // 11 (0x0B)
+	"Effect Control 1", // 12 (0x0C)
+	"Effect Control 2", // 13 (0x0D)
+	NULL,
+	NULL,
+	"Generar-purpose Controller 1", // 16-19 (0x10-0x13) 	General-Purpose Controllers 1-4
+	"Generar-purpose Controller 2",
+	"Generar-purpose Controller 3",
+	"Generar-purpose Controller 4", // 19
+	// 32-63 (0x20-0x3F) 	LSB for controllers 0-31
+	NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, // 30
+	NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, // 41
+	NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, // 52
+	NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, // 63
+	"Damper pedal (sustain)", // 64 (0x40)
+	"Portamento", // 65 (0x41)
+	"Sostenuto", // 66 (0x42)
+	"Soft Pedal", // 67 (0x43)
+	"Legato Footswitch", // 68 (0x44)
+	"Hold 2", // 69 (0x45)
+	"Sound Controller 1 (default: Timber Variation)", // 70 (0x46)
+	"Sound Controller 2 (default: Timber/Harmonic Content)", // 71 (0x47)
+	"Sound Controller 3 (default: Release Time)", // 72 (0x48)
+	"Sound Controller 4 (default: Attack Time)", // 73 (0x49)
+	// 74-79 (0x4A-0x4F) 	Sound Controller 6-10
+	"Sound Controller 5", // 74
+	"Sound Controller 6", // 75
+	"Sound Controller 7", // 76
+	"Sound Controller 8", // 77
+	"Sound Controller 9", // 78
+	"Sound Controller 10", // 79
+	// 80-83 (0x50-0x53) 	General-Purpose Controllers 5-8
+	"General-purpose Controller 5", // 80
+	"General-purpose Controller 6", // 81
+	"General-purpose Controller 7", // 82
+	"General-purpose Controller 8", // 83
+	"Portamento Control", // 84 (0x54)
+	NULL, NULL, NULL, NULL, NULL, NULL, // 90
+	"Effects 1 Depth (formerly External Effects Depth)", // 91 (0x5B)
+	"Effects 2 Depth (formerly Tremolo Depth)", // 92 (0x5C)
+	"Effects 3 Depth (formerly Chorus Depth)", // 93 (0x5D)
+	"Effects 4 Depth (formerly Celeste Detune)", // 94 (0x5E)
+	"Effects 5 Depth (formerly Phaser Depth)", // 95 (0x5F)
+	"Data Increment", // 96 (0x60)
+	"Data Decrement", // 97 (0x61)
+	"Non-Registered Parameter Number (LSB)", // 98 (0x62)
+	"Non-Registered Parameter Number (MSB)", // 99 (0x63)
+	"Registered Parameter Number (LSB)", // 100 (0x64)
+	"Registered Parameter Number (MSB)", // 101 (0x65),
+	// 121-127 (0x79-0x7F) 	Mode Messages
+	NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, // 112
+	NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, // 123
+	NULL, NULL, NULL, NULL // 127
+};
+
+const char *controller_name(int controller) {
+	return CONTROLLER_NAMES[controller];
+}
+
+// -------------- midi binary packaging ------------
+
+typedef {
+    char name[5]; // chunk's type
+    uint32_t length; // chunk's length in bytes
+} chunk_head_t;
+
+bool midibin_read_chunk_head(midi_t *m, chunk_head_t *h) {
+    for (int i = 0; i < 4; i++) {
+        int c = bytereader.readc(m->r);
+        if (c == EOF) {
+            return false;
+        }
+        h->name[i] = c;
+    }
+    h->length = bytereader.read32(m->r);
+    return h;
 }

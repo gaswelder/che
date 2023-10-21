@@ -12,11 +12,7 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
-    while (true) {
-        if (!midilib.track_chunk(m)) {
-            break;
-        }
-    }
+	midilib.read_file(m);
     (void) m;
     return 0;
 }
