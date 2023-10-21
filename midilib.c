@@ -8,6 +8,10 @@
 
 pub typedef {
     bytereader.reader_t *r;
+
+	int delta_time_unit;
+	int delta_time_value;
+
 	/*
 	 * The MIDI spec allows to omit the status byte (event type)
 	 * if the previous transmitted message had the same status.
@@ -50,20 +54,18 @@ pub midi_t *open(const char *path) {
     uint16_t format = bytereader.read16(m->r);
     uint16_t ntracks = bytereader.read16(m->r);
 
-    // a timing value specifying delta time units.
-    // <division> 2 bytes
-    // unit of time for delta timing.
-	// Either ticks per beat or frames per second.
-	// If the value is positive, then it represents the units per beat.
-    // For example, +96 would mean 96 ticks per beat.
-    // If the value is negative, delta times are in SMPTE compatible units.
-	// If the top bit of the word (bit mask 0x8000) is 0, the following 15 bits describe the time division in ticks per beat. Otherwise the following 15 bits (bit mask 0x7FFF) describe the time division in frames per second.
+    // Delta time unit. Either ticks per beat or frames per second.
     uint16_t division = (int) bytereader.read16(m->r);
-
     if (division > 0) {
-        // printf("(%d ticks per beat)\n", division);
+		// If the value is positive, then it's in ticks per beat.
+    	// For example, +96 would mean 96 ticks per beat.
+		m->delta_time_unit = TICKS_PER_BEAT;
+		m->delta_time_value = division;
     } else {
-        printf("(SMPTE compatible units)\n");
+		// If the value is negative, delta times are in SMPTE compatible units.
+		// the following 15 bits (bit mask 0x7FFF) describe the time division in frames per second.
+		m->delta_time_unit = FRAMES_PER_SECOND;
+		m->delta_time_value = -division;
     }
 
     printf("header chunk: bytes: %u, format: %s, tracks: %u, ticks per beat: %d\n",
@@ -77,25 +79,24 @@ pub midi_t *open(const char *path) {
 
 pub void read_file(midi_t *m) {
 	while (true) {
-		bool more = read_track_chunk(m);
+		// track_chunk = "MTrk" + <length> + <track_event> [+ <track_event> ...]
+		chunk_head_t h = {};
+		if (!midibin_read_chunk_head(m, &h)) {
+			panic("failed to read head: %s\n", strerror(errno));
+		}
+		if (strcmp("MTrk", h.name)) {
+			panic("expected MTrk, got %s", h.name);
+		}
+		printf("track chunk length: %d\n", h.length);
+		bool more = read_track_chunk_rest(m);
 		if (!more) {
 			break;
 		}
     }
 }
 
-bool read_track_chunk(midi_t *m) {
-    // track_chunk = "MTrk" + <length> + <track_event> [+ <track_event> ...]
-    chunk_head_t h = {};
-    if (!midibin_read_chunk_head(m, &h)) {
-        printf("failed to read head: %s\n", strerror(errno));
-        return false;
-    }
-    if (strcmp("MTrk", h.name)) {
-        panic("expected MTrk, got %s", h.name);
-    }
-	printf("track chunk length: %d\n", h.length);
-    while (!bytereader.ended(m->r)) {
+bool read_track_chunk_rest(midi_t *m) {
+	while (!bytereader.ended(m->r)) {
         bool more = read_track_event(m);
 		if (!more) {
 			break;
@@ -158,7 +159,12 @@ bool read_meta_message(midi_t *m) {
 	}
 	switch (meta_type) {
 		case META_TEMPO: {
-			printf("Tempo: %u us per beat\n", data_as_number);
+			// Tempo in microseconds per quarter-note.
+			// If no set tempo event is present, 120 beats per minute is assumed.
+			// MICROSECONDS_PER_MINUTE = 60000000
+			// BPM = MICROSECONDS_PER_MINUTE / MPQN
+			// MPQN = MICROSECONDS_PER_MINUTE / BPM
+			printf("Tempo: %u us per quarter note\n", data_as_number);
 		}
 		case META_SEQ_NAME: {
 			printf("Track name: \"%s\"\n", data);
@@ -166,10 +172,19 @@ bool read_meta_message(midi_t *m) {
 		case META_END_OF_TRACK: {
 			printf("---------- end of track -----------\n");
 		}
+		// At least one Time Signature Event should appear in the first track chunk (or all track chunks in a Type 2 file) before any non-zero delta time events. If one is not specified 4/4, 24, 8 should be assumed.
 		case META_TIME_SIGNATURE: {
+			// Time signature is <numerator> / 2^<power>.
+			// For "4/4" numerator = 4, power = 2.
 			int numerator = idata[0];
 			int power = idata[1];
+
+			// How many clock signals there are in one metronome click.
+			// Clock signals come at a rate of 24 signals per quarter-note.
+			// 24 = click once every quarter-note, 48 = click once every half-note.
 			int ticks_per_click = idata[2];
+
+			// the number of 32nd notes per 24 MIDI clock signals. This value is usually 8 because there are usually 8 32nd notes in a quarter-note.
 			int n32th_per_beat = idata[3];
 			printf("Time signature: %d/2^%d, metronome clicks once every %d midi clocks, %d 32th notes per beat\n", numerator, power, ticks_per_click, n32th_per_beat);
 		}
@@ -292,6 +307,11 @@ int midibin_variable_length_value(bytereader.reader_t *r) {
 
 
 // --------------- tables -------------------
+
+pub enum {
+	TICKS_PER_BEAT,
+	FRAMES_PER_SECOND
+};
 
 /*
  * File contents type:
