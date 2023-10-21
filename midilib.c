@@ -1,37 +1,10 @@
 #import bytereader
 
-// https://www.recordingblogs.com/wiki/midi-program-change-message
-// https://www.recordingblogs.com/wiki/midi-controller-message
-// https://www.recordingblogs.com/wiki/midi-registered-parameter-number-rpn
-// https://www.recordingblogs.com/wiki/midi-meta-messages
-// https://www.recordingblogs.com/wiki/midi-marker-meta-message
+// http://midi.teragonaudio.com/
+// https://www.recordingblogs.com
 // https://www.recordingblogs.com/wiki/time-division-of-a-midi-file
 // https://ibex.tech/resources/geek-area/communications/midi/midi-comms
-// http://www33146ue.sakura.ne.jp/staff/iz/formats/midi-event.html
-// https://ccrma.stanford.edu/~craig/14q/midifile/MidiFileFormat.html
-
-
-/*
- * File contents type:
- * 0 = single multi-channel track
- * 1 = one or more simultaneous tracks (or MIDI outputs) of a sequence
- * 2 = one or more sequentially independent single-track patterns
- */
-enum {
-    FORMAT_ONE_MULTI_CHANNEL_TRACK = 0,
-    FORMAT_MANY_SIMULTANEOUS_TRACKS = 1,
-    FORMAT_MANY_INDEPENDENT_TRACKS = 2
-};
-
-/*
- * Message types
- */
-enum {
-	STATUS_UNKNOWN = 0,
-	STATUS_META,
-	STATUS_CHANNEL,
-	STATUS_SYSTEM
-};
+// http://www.music.mcgill.ca/~ich/classes/mumt306/StandardMIDIfileformat.html
 
 pub typedef {
     bytereader.reader_t *r;
@@ -42,6 +15,65 @@ pub typedef {
 	 */
 	int running_status;
 } midi_t;
+
+pub midi_t *open(const char *path) {
+    bytereader.reader_t *r = bytereader.newreader(path);
+    if (!r) {
+        return NULL;
+    }
+    midi_t *m = calloc(1, sizeof(midi_t));
+    if (!m) {
+        bytereader.freereader(r);
+        return NULL;
+    }
+    m->r = r;
+    chunk_head_t h = {};
+    if (!midibin_read_chunk_head(m, &h)) {
+        printf("failed to read head: %s\n", strerror(errno));
+		bytereader.freereader(r);
+		free(m);
+        return NULL;
+    }
+    if (strcmp("MThd", h.name)) {
+		printf("not a midi file: expected MThd, got %s\n", h.name);
+        bytereader.freereader(r);
+		free(m);
+        return NULL;
+    }
+    if (h.length != 6) {
+        printf("expected length 6, got %u\n", h.length);
+		bytereader.freereader(r);
+		free(m);
+        return NULL;
+    }
+
+    uint16_t format = bytereader.read16(m->r);
+    uint16_t ntracks = bytereader.read16(m->r);
+
+    // a timing value specifying delta time units.
+    // <division> 2 bytes
+    // unit of time for delta timing.
+	// Either ticks per beat or frames per second.
+	// If the value is positive, then it represents the units per beat.
+    // For example, +96 would mean 96 ticks per beat.
+    // If the value is negative, delta times are in SMPTE compatible units.
+	// If the top bit of the word (bit mask 0x8000) is 0, the following 15 bits describe the time division in ticks per beat. Otherwise the following 15 bits (bit mask 0x7FFF) describe the time division in frames per second.
+    uint16_t division = (int) bytereader.read16(m->r);
+
+    if (division > 0) {
+        // printf("(%d ticks per beat)\n", division);
+    } else {
+        printf("(SMPTE compatible units)\n");
+    }
+
+    printf("header chunk: bytes: %u, format: %s, tracks: %u, ticks per beat: %d\n",
+        h.length,
+        formatname(format),
+        ntracks,
+        division
+    );
+    return m;
+}
 
 pub void read_file(midi_t *m) {
 	while (true) {
@@ -72,16 +104,9 @@ bool read_track_chunk(midi_t *m) {
     return true;
 }
 
-int get_status_type(int c) {
-	if (c == 0xFF) return STATUS_META;
-	if (c >= 0x80 && c <= 0xEF) return STATUS_CHANNEL;
-	if (c >= 0xF0 && c <= 0xFF) return STATUS_SYSTEM;
-	return STATUS_UNKNOWN;
-}
-
 bool read_track_event(midi_t *m) {
 	// Elapsed time (delta time) from the previous event to this event.
-	int v_time = variable_length_value(m->r);
+	int v_time = midibin_variable_length_value(m->r);
 	printf("time +%d:\t", v_time);
 
 	if (m->running_status == 0 || get_status_type(bytereader.peekc(m->r)) != STATUS_UNKNOWN) {
@@ -114,70 +139,9 @@ bool read_track_event(midi_t *m) {
 	return true;
 }
 
-
-
-
-pub midi_t *open(const char *path) {
-    bytereader.reader_t *r = bytereader.newreader(path);
-    if (!r) {
-        return NULL;
-    }
-    midi_t *m = calloc(1, sizeof(midi_t));
-    if (!m) {
-        bytereader.freereader(r);
-        return NULL;
-    }
-    m->r = r;
-    load_head_chunk(m);
-    return m;
-}
-
-void load_head_chunk(midi_t *m) {
-    chunk_head_t h = {};
-    if (!midibin_read_chunk_head(m, &h)) {
-        printf("failed to read head: %s\n", strerror(errno));
-        return;
-    }
-    if (strcmp("MThd", h.name)) {
-        panic("expected MThd, got %s", h.name);
-    }
-    if (h.length != 6) {
-        panic("expected length 6, got %u\n", h.length);
-    }
-
-    uint16_t format = bytereader.read16(m->r);
-    uint16_t ntracks = bytereader.read16(m->r);
-
-    // a timing value specifying delta time units.
-    // <division> 2 bytes
-    // unit of time for delta timing.
-	// Either ticks per beat or frames per second.
-	// If the value is positive, then it represents the units per beat.
-    // For example, +96 would mean 96 ticks per beat.
-    // If the value is negative, delta times are in SMPTE compatible units.
-	// If the top bit of the word (bit mask 0x8000) is 0, the following 15 bits describe the time division in ticks per beat. Otherwise the following 15 bits (bit mask 0x7FFF) describe the time division in frames per second.
-    uint16_t division = (int) bytereader.read16(m->r);
-
-    if (division > 0) {
-        // printf("(%d ticks per beat)\n", division);
-    } else {
-        printf("(SMPTE compatible units)\n");
-    }
-
-    printf("header chunk: bytes: %u, format: %s, tracks: %u, ticks per beat: %d\n",
-        h.length,
-        formatname(format),
-        ntracks,
-        division
-    );
-
-}
-
-
-
 bool read_meta_message(midi_t *m) {
 	int meta_type = bytereader.readc(m->r);
-	int v_length = variable_length_value(m->r);
+	int v_length = midibin_variable_length_value(m->r);
 	char data[1000] = {0};
 	unsigned data_as_number = 0;
 	int idata[1000] = {0};
@@ -276,6 +240,88 @@ void read_channel_message(midi_t *m) {
 	}
 }
 
+// -------------- midi binary packaging ------------
+
+typedef {
+    char name[5]; // chunk's type
+    uint32_t length; // chunk's length in bytes
+} chunk_head_t;
+
+bool midibin_read_chunk_head(midi_t *m, chunk_head_t *h) {
+    for (int i = 0; i < 4; i++) {
+        int c = bytereader.readc(m->r);
+        if (c == EOF) {
+            return false;
+        }
+        h->name[i] = c;
+    }
+    h->length = bytereader.read32(m->r);
+    return h;
+}
+
+int midibin_variable_length_value(bytereader.reader_t *r) {
+    // Variable Length Values
+    // A variable length value uses the low order 7 bits of a byte to represent the value or part of the value
+    // The high order bit is an "escape" or "continuation" bit.
+    // All but the last byte of a variable length value have the high order bit set.
+    // The last byte has the high order bit cleared. The bytes always appear most significant byte first.
+
+    // Here are some examples:
+
+    //    Variable length              Real value
+    //    0x7F                         127 (0x7F)
+    //    0x81 0x7F                    255 (0xFF)
+    //    0x82 0x80 0x00               32768 (0x8000)
+
+    int result = 0;
+    while (true) {
+        int c = bytereader.readc(r);
+        if (c == EOF) {
+            break;
+        }
+        // 7 bits of every byte are the value.
+        result *= 128;
+        result += c & 127;
+        // The 8th bit is a continuation bit.
+        if (c <= 127) {
+            break;
+        }
+    }
+    return result;
+}
+
+
+// --------------- tables -------------------
+
+/*
+ * File contents type:
+ * 0 = single multi-channel track
+ * 1 = one or more simultaneous tracks (or MIDI outputs) of a sequence
+ * 2 = one or more sequentially independent single-track patterns
+ */
+enum {
+    FORMAT_ONE_MULTI_CHANNEL_TRACK = 0,
+    FORMAT_MANY_SIMULTANEOUS_TRACKS = 1,
+    FORMAT_MANY_INDEPENDENT_TRACKS = 2
+};
+
+/*
+ * Message types
+ */
+enum {
+	STATUS_UNKNOWN = 0,
+	STATUS_META,
+	STATUS_CHANNEL,
+	STATUS_SYSTEM
+};
+
+int get_status_type(int c) {
+	if (c == 0xFF) return STATUS_META;
+	if (c >= 0x80 && c <= 0xEF) return STATUS_CHANNEL;
+	if (c >= 0xF0 && c <= 0xFF) return STATUS_SYSTEM;
+	return STATUS_UNKNOWN;
+}
+
 enum {
     META_SEQ_NUM = 0, // number of a sequence
     META_TEXT = 1, // some text
@@ -314,37 +360,6 @@ char *meta_name(int meta) {
         case META_OTHER: { return "META_OTHER"; }
         default: { panic("unknown meta event %d", meta); }
     }
-}
-
-int variable_length_value(bytereader.reader_t *r) {
-    // Variable Length Values
-    // A variable length value uses the low order 7 bits of a byte to represent the value or part of the value
-    // The high order bit is an "escape" or "continuation" bit.
-    // All but the last byte of a variable length value have the high order bit set.
-    // The last byte has the high order bit cleared. The bytes always appear most significant byte first.
-
-    // Here are some examples:
-
-    //    Variable length              Real value
-    //    0x7F                         127 (0x7F)
-    //    0x81 0x7F                    255 (0xFF)
-    //    0x82 0x80 0x00               32768 (0x8000)
-
-    int result = 0;
-    while (true) {
-        int c = bytereader.readc(r);
-        if (c == EOF) {
-            break;
-        }
-        // 7 bits of every byte are the value.
-        result *= 128;
-        result += c & 127;
-        // The 8th bit is a continuation bit.
-        if (c <= 127) {
-            break;
-        }
-    }
-    return result;
 }
 
 const char *formatname(int format) {
@@ -426,23 +441,4 @@ const char *CONTROLLER_NAMES[] = {
 
 const char *controller_name(int controller) {
 	return CONTROLLER_NAMES[controller];
-}
-
-// -------------- midi binary packaging ------------
-
-typedef {
-    char name[5]; // chunk's type
-    uint32_t length; // chunk's length in bytes
-} chunk_head_t;
-
-bool midibin_read_chunk_head(midi_t *m, chunk_head_t *h) {
-    for (int i = 0; i < 4; i++) {
-        int c = bytereader.readc(m->r);
-        if (c == EOF) {
-            return false;
-        }
-        h->name[i] = c;
-    }
-    h->length = bytereader.read32(m->r);
-    return h;
 }
