@@ -1,4 +1,5 @@
 #import bytereader
+#import time
 
 // http://midi.teragonaudio.com/
 // https://www.recordingblogs.com
@@ -18,6 +19,13 @@ pub typedef {
 	 * This is referred to as running status.
 	 */
 	int running_status;
+
+	/*
+	 * Current time position.
+	 */
+	time.duration_t time;
+
+	int quarter_note_duration;
 } midi_t;
 
 pub midi_t *open(const char *path) {
@@ -31,6 +39,8 @@ pub midi_t *open(const char *path) {
         return NULL;
     }
     m->r = r;
+	m->quarter_note_duration = 500000; // us
+
     chunk_head_t h = {};
     if (!midibin_read_chunk_head(m, &h)) {
         printf("failed to read head: %s\n", strerror(errno));
@@ -59,6 +69,7 @@ pub midi_t *open(const char *path) {
     if (division > 0) {
 		// If the value is positive, then it's in ticks per beat.
     	// For example, +96 would mean 96 ticks per beat.
+		// How many ticks is one "beat" (quarter note).
 		m->delta_time_unit = TICKS_PER_BEAT;
 		m->delta_time_value = division;
     } else {
@@ -84,6 +95,7 @@ pub void read_file(midi_t *m) {
 		if (!midibin_read_chunk_head(m, &h)) {
 			panic("failed to read head: %s\n", strerror(errno));
 		}
+		time.dur_set(&m->time, 0, time.US);
 		if (strcmp("MTrk", h.name)) {
 			panic("expected MTrk, got %s", h.name);
 		}
@@ -107,8 +119,19 @@ bool read_track_chunk_rest(midi_t *m) {
 
 bool read_track_event(midi_t *m) {
 	// Elapsed time (delta time) from the previous event to this event.
-	int v_time = midibin_variable_length_value(m->r);
-	printf("time +%d:\t", v_time);
+	int delta_ticks = midibin_variable_length_value(m->r);
+	double delta_quarters = delta_ticks / m->delta_time_value;
+	double delta_us = delta_quarters * m->quarter_note_duration;
+	time.dur_add(&m->time, delta_us, time.US);
+	char formatted_time[100] = {0};
+	if (!time.dur_fmt(&m->time, formatted_time, sizeof(formatted_time))) {
+		panic("failed to format time");
+	}
+	if (delta_ticks == 0) {
+		printf("%30s\t", ".");
+	} else {
+		printf("%s (+%d ticks=%.1fq)\t", formatted_time, delta_ticks, delta_quarters);
+	}
 
 	if (m->running_status == 0 || get_status_type(bytereader.peekc(m->r)) != STATUS_UNKNOWN) {
 		m->running_status = bytereader.readc(m->r);
@@ -165,6 +188,7 @@ bool read_meta_message(midi_t *m) {
 			// BPM = MICROSECONDS_PER_MINUTE / MPQN
 			// MPQN = MICROSECONDS_PER_MINUTE / BPM
 			printf("Tempo: %u us per quarter note\n", data_as_number);
+			m->quarter_note_duration = data_as_number;
 		}
 		case META_SEQ_NAME: {
 			printf("Track name: \"%s\"\n", data);

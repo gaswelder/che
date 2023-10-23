@@ -4,18 +4,48 @@
 typedef struct tm tm_t;
 typedef struct timespec timespec_t;
 
+pub enum {
+    US = 1, // base unit
+    MS = 1000,
+    SECONDS = 1000000,
+	MINUTES = 60000000,
+};
+
 pub typedef struct timeval timeval_t;
 pub typedef {
     timeval_t timeval;
 } t;
 
+pub typedef {
+	int us;
+} duration_t;
 
+pub void dur_add(duration_t *d, int val, int unit) {
+	d->us += val * unit;
+}
 
-pub enum {
-    US = 1, // base unit
-    MS = 1000,
-    SECONDS = 1000000,
-};
+pub void dur_set(duration_t *d, int val, int unit) {
+	d->us = val * unit;
+}
+
+/*
+ * Formats a duration putting its display string into a given buffer
+ * Returns false if the buffer is too small.
+ */
+pub bool dur_fmt(duration_t *d, char *buf, size_t bufsize) {
+	int us = d->us;
+	int min = us / MINUTES;
+	us -= min * MINUTES;
+	double sec = (double) us / SECONDS;
+	int len = 0;
+	if (min > 0) {
+		len = snprintf(buf, bufsize, "%dm %f s", min, sec);
+	} else {
+		len = snprintf(buf, bufsize, "%f s", sec);
+	}
+	return (size_t) len + 1 <= bufsize;
+}
+
 
 /**
  * Returns current system time as an opaque object.
