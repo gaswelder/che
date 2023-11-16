@@ -44,21 +44,40 @@ pub void add(series_t *s, double val) {
     s->values[s->len++] = val;
 }
 
+/*
+ * Returns the number of values in the series.
+ */
+pub size_t count(series_t *s) {
+	return s->len;
+}
+
 pub double min(series_t *s) {
     return s->min;
 }
 pub double max(series_t *s) {
     return s->max;
 }
-pub double mean(series_t *s) {
-    double sum = 0;
-    for (size_t i = 0; i < s->len; i++) {
-        sum += s->values[i];
+
+/*
+ * Returns sum of the values in the series.
+ */
+pub double sum(series_t *s) {
+	double r = 0;
+	for (size_t i = 0; i < s->len; i++) {
+        r += s->values[i];
     }
-    return sum / s->len;
+	return r;
 }
+
+/*
+ * Returns arithmetic average of the values in the series.
+ */
+pub double avg(series_t *s) {
+    return sum(s) / s->len;
+}
+
 pub double sd(series_t *s) {
-    double m = mean(s);
+    double m = avg(s);
     double varsum = 0;
     for (size_t i = 0; i < s->len; i++) {
         double dev = m - s->values[i];

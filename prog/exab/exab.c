@@ -503,20 +503,20 @@ void print_stats() {
     printf("\nConnection Times (ms)\n");
     printf("%-10s %7.2f ± %.2f [%.2f..%.2f]\n",
         "Writing",
-        stats.mean(write_times),
+        stats.avg(write_times),
         stats.sd(write_times),
         stats.min(write_times),
         stats.max(write_times));
     printf("%-10s %7.2f ± %.2f [%.2f..%.2f]\n",
         "Reading",
-        stats.mean(read_times),
+        stats.avg(read_times),
         stats.sd(read_times),
         stats.min(read_times),
         stats.max(read_times)
     );
     printf("%-10s %7.2f ± %.2f [%.2f..%.2f]\n",
         "Sum",
-        stats.mean(sum_times),
+        stats.avg(sum_times),
         stats.sd(sum_times),
         stats.min(sum_times),
         stats.max(sum_times)
