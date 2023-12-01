@@ -218,13 +218,27 @@ pub void opt_usage()
 	}
 	fprintf(stderr, "Options:\n");
 	for (int i = 0; i < flags_num; i++) {
-		fprintf( stderr, "\t-%s", specs[i].name );
-		switch (specs[i].type) {
-			case OPT_STR: { fprintf( stderr, " str" ); }
-			case OPT_INT: { fprintf( stderr, " int" ); }
-			case OPT_UINT: { fprintf( stderr, " int > 0" ); }
+		optspec_t *s = &specs[i];
+		fprintf(stderr, "\t-%s", s->name);
+		switch (s->type) {
+			case OPT_STR: {
+				fprintf( stderr, " str" );
+				fprintf( stderr, "\t%s\n", s->desc );
+			}
+			case OPT_INT: {
+				fprintf(stderr, " int \t%s (%d)\n", s->desc, *((int*) s->value_pointer));
+			}
+			case OPT_UINT: {
+				fprintf( stderr, " int > 0" );
+				fprintf( stderr, "\t%s\n", s->desc );
+			}
+			case OPT_SIZE: {
+				fprintf( stderr, "\t%s (%zu)\n", s->desc, *((size_t *)s->value_pointer));
+			}
+			default: {
+				fprintf( stderr, "\t%s\n", s->desc );
+			}
 		}
-		fprintf( stderr, "\t%s\n", specs[i].desc );
 	}
 }
 
