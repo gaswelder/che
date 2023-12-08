@@ -4,3 +4,4 @@ _heap/
 .vscode
 /target
 *.out
+*.dSYM
