@@ -12,6 +12,7 @@ int main() {
 		append(val);
 	}
     out();
+	return 0;
 }
 
 typedef { int a, b; } range_t;
