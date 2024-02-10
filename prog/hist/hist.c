@@ -73,7 +73,27 @@ int main(int argc, char *argv[]) {
 	return 0;
 }
 
+typedef {
+	char str[100];
+} label_t;
+
 void printbins(bin_t *bins, size_t nbins, size_t maxline) {
+	//
+	// Print the labels to a buffer in advance so that we know
+	// label sizes.
+	//
+	label_t *labels = calloc(nbins, sizeof(label_t));
+	size_t maxlabel = 0;
+	for (size_t i = 0; i < nbins; i++) {
+		bin_t *b = &bins[i];
+		label_t *l = &labels[i];
+		size_t n = snprintf(l->str, sizeof(l->str), "%f..%f", b->a, b->b);
+		if (n > maxlabel) maxlabel = n;
+	}
+
+	//
+	// Find out the max count across bins.
+	//
 	size_t maxcount = 0;
 	for (size_t i = 0; i < nbins; i++) {
 		bin_t *b = &bins[i];
@@ -81,24 +101,48 @@ void printbins(bin_t *bins, size_t nbins, size_t maxline) {
 			maxcount = b->count;
 		}
 	}
+
+	//
+	// Header.
+	//
+	printf("value ");
+	repeat("-", maxlabel + maxline - strlen("value") + 1);
+	printf(" count\n");
+
+	//
+	// Output the bin lines.
+	//
 	for (size_t i = 0; i < nbins; i++) {
 		bin_t *b = &bins[i];
-		printf("%f--%f\t", b->a, b->b);
+		//
+		// label
+		//
+		repeat(" ", maxlabel - strlen(labels[i].str));
+		printf("%s", labels[i].str);
+		printf(" |");
+
+		//
+		// bar
+		//
 		size_t len = 0;
 		if (maxcount > 0 && b->count > 0) {
 			len = b->count * maxline / maxcount;
 		}
-		line(len);
-		if (b->count > 0) {
-			printf(" %zu\n", b->count);
-		} else {
-			printf("\n");
-		}
+		repeat("█", len);
+		repeat(" ", maxline-len);
+
+		//
+		// value
+		//
+		printf(" %zu\n", b->count);
 	}
+
+
+	free(labels);
 }
 
-void line(size_t len) {
-	for (size_t i = 0; i < len; i++) {
-		putchar('=');
+void repeat(const char *s, size_t n) {
+	for (size_t i = 0; i < n; i++) {
+		printf("%s", s);
 	}
 }
