@@ -11,20 +11,22 @@ int main(int argc, char *argv[]) {
 	size_t maxline = 30;
 	bool help = false;
 	opt.opt_summary("reads numeric values from stdin and prints an ASCII histogram");
-	opt.opt_size("n", "number of bins", &nbins);
+	opt.opt_size("n", "number of bins (excluding two padding bins)", &nbins);
 	opt.opt_size("w", "max line width", &maxline);
 	opt.opt_bool("h", "show help", &help);
 	opt.opt_parse(argc, argv);
 
 	if (help) return opt.usage();
 
-	if (nbins == 0) {
-		fprintf(stderr, "the number of bins must be > 0\n");
+	if (nbins < 2) {
+		fprintf(stderr, "The number of bins must be greater than two\n");
 		return 1;
 	}
 
+	//
+	// Collect the values.
+	//
 	stats.series_t *s = stats.newseries();
-
 	double val = 0;
 	while (true) {
 		int r = scanf("%lf\n", &val);
@@ -36,18 +38,30 @@ int main(int argc, char *argv[]) {
 		stats.add(s, val);
 	}
 
-	bin_t *bins = calloc(nbins, sizeof(bin_t));
+	//
+	// Group into bins.
+	//
+	bin_t *bins = calloc(nbins+2, sizeof(bin_t));
 	if (!bins) {
 		panic("failed to get memory");
 	}
+	double _min = stats.min(s);
+	double _max = stats.max(s);
+	double step = (_max - _min) / (nbins-1);
 
-	double binwidth = (stats.max(s) - stats.min(s)) / nbins;
-	double x = stats.min(s);
+	// 1 bin for >= MIN-STEP
+	bins[0].a = _min - step;
+	bins[0].b = _min;
+
+	// n bins for >=MIN, >=MIN+STEP, ...
 	for (size_t i = 0; i < nbins; i++) {
-		bins[i].a = x;
-		x += binwidth;
-		bins[i].b = x;
+		bins[i+1].a = _min + i*step;
+		bins[i+1].b = _min + (i+1)*step;
 	}
+
+	// 1 bin for >= MAX+STEP
+	bins[nbins+1].a = _max + step;
+	bins[nbins+1].b = _max + step + step;
 
 	for (size_t i = 0; i < s->len; i++) {
 		double x = s->values[i];
@@ -56,16 +70,16 @@ int main(int argc, char *argv[]) {
 		// always "match" the last bin because of the floating
 		// point behavior.
 		bin_t *b = NULL;
-		for (size_t pos = 0; pos < nbins; pos++) {
+		for (size_t pos = 0; pos < nbins+2; pos++) {
 			b = &bins[pos];
-			if (x >= b->a && x <= b->b) {
+			if (x >= b->a && x < b->b) {
 				break;
 			}
 		}
 		b->count++;
 	}
 
-	printbins(bins, nbins, maxline);
+	printbins(bins, nbins+2, maxline);
 
 	return 0;
 }
@@ -84,7 +98,7 @@ void printbins(bin_t *bins, size_t nbins, size_t maxline) {
 	for (size_t i = 0; i < nbins; i++) {
 		bin_t *b = &bins[i];
 		label_t *l = &labels[i];
-		size_t n = snprintf(l->str, sizeof(l->str), "%f..%f", b->a, b->b);
+		size_t n = snprintf(l->str, sizeof(l->str), "%f", b->a);
 		if (n > maxlabel) maxlabel = n;
 	}
 
