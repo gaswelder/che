@@ -48,12 +48,7 @@ int main(int argc, char **argv) {
     opt.opt_float("f", "global_scale_factor", &global_scale_factor);
     opt.opt_str("o", "global_outputname", &global_outputname);
     opt.opt_int("s", "global_split", &global_split);
-
-    if (argc == 1) {
-        opt.opt_usage();
-        return 1;
-    }
-
+    if (argc == 1) return opt.usage();
     opt.opt_parse(argc, argv);
 
     if (show_version) {

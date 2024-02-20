@@ -14,10 +14,7 @@ int main(int argc, char **argv) {
 	opt.opt_bool("h", "show help", &help);
 	opt.opt_parse(argc, argv);
 
-	if (help) {
-		opt.opt_usage();
-		return 1;
-	}
+	if (help) return opt.usage();
 
 	const char *alpha;
 	if (!strcmp(a, "an")) {

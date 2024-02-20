@@ -25,10 +25,7 @@ int main( int argc, char *argv[] )
 	opt.opt_str("l", "Convert line format ('unix', 'win' or 'same')", &line_format);
 
 	char **path = opt.opt_parse( argc, argv );
-	if( !path ) {
-		opt.opt_usage();
-		return 1;
-	}
+	if (!path) return opt.usage();
 
 	if( strcmp( line_format, "same" ) == 0 ) {
 		lf = L_SAME;

@@ -9,19 +9,13 @@ int main(int argc, char **argv) {
 	opt.opt_str("a", "SMTP server address", &addr);
 	opt.opt_str("s", "Mail subject", &subj);
 	argv = opt.opt_parse(argc, argv);
-
-	if (!*argv || !*(argv + 1)) {
-		fprintf(stderr, "Missing argument");
-		opt.opt_usage();
-		return 1;
-	}
+	if (!*argv || !*(argv + 1)) return opt.usage();
 
 	const char *from = *argv++;
 	const char *to = *argv++;
 	if (*argv) {
 		fprintf(stderr, "Unexpected argument: %s\n", *argv);
-		opt.opt_usage();
-		return 1;
+		return opt.usage();
 	}
 
 	net.net_t *n = net.net_open("tcp", addr);

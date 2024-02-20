@@ -11,10 +11,7 @@ int main(int argc, char *argv[]) {
     opt.opt_bool("h", "show help", &hflag);
     opt.opt_parse(argc, argv);
 
-    if (hflag) {
-        opt.opt_usage();
-        return 0;
-    }
+    if (hflag) return opt.usage();
 
     while (fgets(buf, 4096, stdin)) {
         strings.rtrim(buf, "\n");

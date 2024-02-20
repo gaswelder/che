@@ -85,7 +85,7 @@ int main(int argc, char **argv) {
     opt.opt_parse(argc, argv);
 
     if (help) {
-        opt.opt_usage();
+        opt.usage();
         for (int i = 1; i < SORTS_TOTAL; i++) {
             fprintf(stderr, "  %d: %s\n", i, sort_names[i]);
         }

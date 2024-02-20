@@ -25,13 +25,10 @@ int main(int argc, char *argv[])
 	opt.opt_bool("o", "Output received lines to stdout", &output);
 
 	char **args = opt.opt_parse(argc, argv);
-	if( !args ) {
-		opt.opt_usage();
-		return 1;
-	}
-	if( *args ) {
+	if (!args) return opt.usage();
+	if (*args) {
 		fprintf(stderr, "no arguments are expected\n");
-		return 1;
+		return opt.usage();
 	}
 
 	dlog_t *log = dlog_init( pername, dir, static_name );

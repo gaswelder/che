@@ -16,10 +16,7 @@ int main(int argc, char *argv[]) {
 	opt.opt_bool("h", "show help", &help);
 	opt.opt_parse(argc, argv);
 
-	if (help) {
-		opt.opt_usage();
-		return 1;
-	}
+	if (help) return opt.usage();
 
 	if (nbins == 0) {
 		fprintf(stderr, "the number of bins must be > 0\n");

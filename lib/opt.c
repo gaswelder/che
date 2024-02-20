@@ -210,9 +210,9 @@ pub void opt_summary(const char *s) {
 
 /*
  * Prints a usage string generated from the flags to stderr.
+ * Returns 1 so it can be used as a return status for main.
  */
-pub void opt_usage()
-{
+pub int usage() {
 	if (summary) {
 		fprintf(stderr, "%s\n", summary);
 	}
@@ -240,6 +240,7 @@ pub void opt_usage()
 			}
 		}
 	}
+	return 1;
 }
 
 int is_numeric(const char *s)

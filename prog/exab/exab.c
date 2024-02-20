@@ -142,10 +142,7 @@ int main(int argc, char *argv[]) {
             exit(1);
         }
     }
-    if (hflag) {
-        opt.opt_usage();
-        return 1;
-    }
+    if (hflag) return opt.usage();
     if (vflag) {
         printf("This is ex-ApacheBench, rewritten\n");
         return 0;
