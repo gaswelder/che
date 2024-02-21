@@ -6,7 +6,6 @@
 #import strings
 #import time
 #import table.c
-#import stats
 
 typedef {
     io.handle_t *connection; // Connection with the server
@@ -20,6 +19,7 @@ typedef {
     time.t time_started;
     time.t time_finished_writing;
     time.t time_finished_reading;
+	int status;
 } request_stats_t;
 
 request_stats_t *request_stats = NULL;
@@ -393,6 +393,7 @@ int routine(void *ctx, int line) {
                 dbg("waiting for more headers");
                 return READ_RESPONSE;
             }
+			c->stats->status = r.status;
             strcpy(servername, r.servername);
             response_length = r.head_length + r.content_length;
             strcpy(response_version, r.version);
@@ -483,53 +484,17 @@ void output_results(int sig) {
 }
 
 void print_stats() {
-    stats.series_t *write_times = stats.newseries();
-    stats.series_t *read_times = stats.newseries();
-    stats.series_t *sum_times = stats.newseries();
-
+	printf("#\tstatus\twriting\treading\ttotal\n");
     for (size_t i = 0; i < requests_done; i++) {
         request_stats_t *s = &request_stats[i];
         int64_t write = time.sub(s->time_finished_writing, s->time_started);
         int64_t read = time.sub(s->time_finished_reading, s->time_finished_writing);
         int64_t total = time.sub(s->time_finished_reading, s->time_started);
-        stats.add(write_times, (double) write / time.MS);
-        stats.add(read_times, (double) read / time.MS);
-        stats.add(sum_times, (double) total / time.MS);
-    }
-
-    printf("\nConnection Times (ms)\n");
-    printf("%-10s %7.2f ± %.2f [%.2f..%.2f]\n",
-        "Writing",
-        stats.avg(write_times),
-        stats.sd(write_times),
-        stats.min(write_times),
-        stats.max(write_times));
-    printf("%-10s %7.2f ± %.2f [%.2f..%.2f]\n",
-        "Reading",
-        stats.avg(read_times),
-        stats.sd(read_times),
-        stats.min(read_times),
-        stats.max(read_times)
-    );
-    printf("%-10s %7.2f ± %.2f [%.2f..%.2f]\n",
-        "Sum",
-        stats.avg(sum_times),
-        stats.sd(sum_times),
-        stats.min(sum_times),
-        stats.max(sum_times)
-    );
-
-    if (requests_done > 1) {
-        int percs[] = {50, 66, 75, 80, 90, 95, 98, 99, 100};
-        printf("\nRequest time percentiles\n");
-        for (size_t i = 0; i < nelem(percs); i++) {
-            int p = percs[i];
-            if (p == 100) {
-                printf(" 100%%  %.1f (longest request)\n", stats.max(sum_times));
-            } else {
-                printf("  %d%%  %.1f\n", p, stats.percentile(sum_times, p));
-            }
-        }
+		printf("%zu\t", i);
+		printf("%d\t", s->status);
+		printf("%f\t", (double) write / time.MS);
+		printf("%f\t", (double) read / time.MS);
+		printf("%f\n", (double) total / time.MS);
     }
 }
 
