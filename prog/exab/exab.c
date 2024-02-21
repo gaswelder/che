@@ -21,6 +21,7 @@ typedef {
     time.t time_finished_reading;
 	int status;
 	size_t total_received;
+	int error;
 } request_stats_t;
 
 request_stats_t *request_stats = NULL;
@@ -60,14 +61,6 @@ size_t concurrency = 1;
 size_t total_sent = 0;
 
 /*
- * Error counters.
- */
-int failed_connects = 0;
-int read_errors = 0;
-int write_errors = 0;
-int error_responses = 0; // non-200
-
-/*
  * Response info.
  */
 char servername[1024] = {0};  /* name that server reports */
@@ -83,14 +76,18 @@ io.buf_t REQUEST = {};
 
 // ----
 
-int heartbeatres = 100; /* How often do we say we're alive */
 size_t tlimit = 0; /* time limit in secs */
-bool keepalive = false;      /* try and do keepalive connections */
 char *postdata = NULL;         /* *buffer containing data from postfile */
 size_t postlen = 0; /* length of data to be POSTed */
 char *colonhost = "";
-int doneka = 0;            /* number of keep alive connections requests_done */
-int bad = 0;
+
+int _bad = 0;
+void bad() {
+	_bad++;
+	if (_bad > 10) {
+		fatal("Test aborted after 10 failures");
+	}
+}
 
 int main(int argc, char *argv[]) {
     opt.opt_summary("exab [options] <url> - makes multiple HTTP requests to <url> and prints statistics");
@@ -98,7 +95,6 @@ int main(int argc, char *argv[]) {
     opt.opt_size("n", "number of requests to perform (1)", &requests_to_do);
     opt.opt_size("c", "number of requests running concurrently (1)", &concurrency);
     opt.opt_size("t", "time limit, number of seconds to wait for responses", &tlimit);
-    opt.opt_bool("k", "use HTTP keep-alive", &keepalive);
     opt.opt_str("C", "cooke value, eg. session_id=123456", &cookie);
     opt.opt_str("a", "HTTP basic auth value (username:password)", &autharg);
 
@@ -158,14 +154,6 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
-    if (heartbeatres && requests_to_do > 150) {
-        heartbeatres = requests_to_do / 10;   /* Print line every 10% of requests */
-        // but never more often than once every 100
-        if (heartbeatres < 100) heartbeatres = 100;
-    } else {
-        heartbeatres = 0;
-    }
-
     if (!*args) {
         fprintf(stderr, "missing the url argument\n");
         return 1;
@@ -191,11 +179,11 @@ void build_request(const char *url) {
     // Parse the URL.
     http.url_t u = {};
     if (!http.parse_url(&u, url)) {
-        fprintf(stderr, "%s: invalid URL\n", url);
+        fprintf(stderr, "invalid URL: %s\n", url);
         exit(1);
     }
     if (!strcmp(u.schema, "https")) {
-        fprintf(stderr, "SSL not compiled in; no https support\n");
+        fprintf(stderr, "no https support\n");
         exit(1);
     }
     if (u.port[0] == '\0') {
@@ -215,13 +203,6 @@ void build_request(const char *url) {
     http.init_request(&req, methodstring, u.path);
     http.set_header(&req, "Host", u.hostname);
 
-    table.add(&REPORT, "Request", "%s %s", methodstring, url);
-    table.add(&REPORT, "Server Port", "%s", u.port);
-
-    // Set various headers.
-    if (keepalive) {
-        http.set_header(&req, "Connection", "Keep-Alive");
-    }
     if (method == POST) {
         char buf[10] = {0};
         sprintf(buf, "%zu", postlen);
@@ -278,11 +259,6 @@ void test() {
             break;
         }
     }
-    if (heartbeatres) {
-        fprintf(stderr, "Finished %zu requests\n", requests_done);
-    } else {
-        printf("..requests_done\n");
-    }
 }
 
 enum {
@@ -301,15 +277,13 @@ int routine(void *ctx, int line) {
          * Connect to the remote host.
          */
         case CONNECT: {
+			c->stats = &request_stats[requests_done++];
             // TODO: connect timeout
             dbg("Connecting to %s", colonhost);
             c->connection = io.connect("tcp", colonhost);
             if (!c->connection) {
-                fprintf(stderr, "failed to connect to %s: %s\n", colonhost, strerror(errno));
-                failed_connects++;
-                if (bad++ > 10) {
-                    fatal("Test aborted after 10 failures");
-                }
+				c->stats->error = errno;
+				bad();
                 return CONNECT;
             }
             dbg("connected");
@@ -320,11 +294,10 @@ int routine(void *ctx, int line) {
          */
         case INIT_REQUEST: {
             if (requests_done >= requests_to_do) {
-                printf("all done\n");
+                dbg("all done\n");
                 io.close(c->connection);
                 return -1;
             }
-            c->stats = &request_stats[requests_done++];
             io.resetbuf(c->inbuf);
             io.resetbuf(c->outbuf);
             dbg("preparing the request (%zu, %zu)", io.bufsize(c->inbuf), io.bufsize(c->outbuf));
@@ -347,8 +320,7 @@ int routine(void *ctx, int line) {
             }
             dbg("writing %zu bytes\n", n);
             if (!io.write(c->connection, c->outbuf)) {
-                write_errors++;
-                fprintf(stderr, "failed to write: %s\n", strerror(errno));
+				c->stats->error = errno;
                 io.close(c->connection);
                 c->stats->time_finished_writing = time.now();
                 return CONNECT;
@@ -366,11 +338,10 @@ int routine(void *ctx, int line) {
             dbg("reading response");
             size_t n0 = io.bufsize(c->inbuf);
             if (!io.read(c->connection, c->inbuf)) {
-                read_errors++;
-                bad++;
-                fprintf(stderr, "socket read failed: %s\n", strerror(errno));
+				c->stats->error = errno;
                 io.close(c->connection);
                 c->stats->time_finished_reading = time.now();
+				bad();
                 return CONNECT;
             }
             size_t n = io.bufsize(c->inbuf);
@@ -378,10 +349,6 @@ int routine(void *ctx, int line) {
             c->stats->total_received += n - n0;
             if (n == 0) {
                 io.close(c->connection);
-                if (heartbeatres && !(requests_done % heartbeatres)) {
-                    fprintf(stderr, "Completed %ld requests\n", requests_done);
-                    fflush(stderr);
-                }
                 c->stats->time_finished_reading = time.now();
                 return CONNECT;
             }
@@ -396,10 +363,6 @@ int routine(void *ctx, int line) {
             strcpy(servername, r.servername);
             response_length = r.head_length + r.content_length;
             strcpy(response_version, r.version);
-            if (r.status < 200 || r.status >= 300) {
-                error_responses++;
-                fprintf(stderr, "WARNING: Response code not 2xx (%d)\n", r.status);
-            }
             io.shift(c->inbuf, r.head_length);
             c->body_bytes_to_read = r.content_length;
             c->body_bytes_to_read -= io.bufsize(c->inbuf);
@@ -421,7 +384,7 @@ int routine(void *ctx, int line) {
                 panic("read failed");
             }
             size_t n = io.bufsize(c->inbuf);
-            printf("read %zu of body\n", n);
+            dbg("read %zu of body\n", n);
             c->body_bytes_to_read -= n;
             io.shift(c->inbuf, n);
             return READ_RESPONSE_BODY;
@@ -444,43 +407,9 @@ void fatal(char *s) {
 }
 
 void output_results(int sig) {
-    time.t now = time.now();
+	time.t now = time.now();
     double timetaken = (double)time.sub(now, START_TIME) / time.SECONDS;
 
-    printf("\n\n");
-    table.add(&REPORT, "Server Software", "%s", servername);
-    table.add(&REPORT, "Response size", "%zu B", response_length);
-    table.add(&REPORT, "HTTP version", "%s", response_version);
-    table.split(&REPORT);
-    table.add(&REPORT, "Concurrency Level", "%zu", concurrency);
-    table.add(&REPORT, "Complete requests", "%ld", requests_done);
-    table.add(&REPORT, "Failed requests", "%d", bad);
-    table.add(&REPORT, "Connect errors", "%d", failed_connects);
-    table.add(&REPORT, "Receive errors", "%d", read_errors);
-    table.add(&REPORT, "Write errors", "%d", write_errors);
-    table.add(&REPORT, "Non-2xx responses", "%d", error_responses);
-    table.add(&REPORT, "Keep-Alive requests", "%d", doneka);
-
-    table.split(&REPORT);
-    table.add(&REPORT, "Total sent", "%ld B", total_sent);
-
-    table.split(&REPORT);
-    table.add(&REPORT, "Time taken for tests", "%.2f s", timetaken);
-    table.add(&REPORT, "Requests per second", "%.2f", requests_done / timetaken);
-    table.add(&REPORT, "Time per request", "%.3f ms", (double) concurrency * timetaken * 1000 / requests_done);
-    table.add(&REPORT, "Time per request", "%.3f (across all concurrent requests)", (double) timetaken * 1000 / requests_done);
-    table.add(&REPORT, "Send rate", "%.2f KB/s", (double) total_sent / 1024 / timetaken);
-    table.print(&REPORT);
-
-    if (requests_done > 0) {
-        print_stats();
-    }
-    if (sig) {
-        exit(1);
-    }
-}
-
-void print_stats() {
 	printf("#\tstatus\twriting\treading\ttotal\tresponse_size\n");
     for (size_t i = 0; i < requests_done; i++) {
         request_stats_t *s = &request_stats[i];
@@ -488,11 +417,28 @@ void print_stats() {
         int64_t read = time.sub(s->time_finished_reading, s->time_finished_writing);
         int64_t total = time.sub(s->time_finished_reading, s->time_started);
 		printf("%zu\t", i);
+		if (s->error) {
+			printf("error: %d (%s)\n", s->error, strerror(s->error));
+			continue;
+		}
 		printf("%d\t", s->status);
 		printf("%f\t", (double) write / time.MS);
 		printf("%f\t", (double) read / time.MS);
 		printf("%f\t", (double) total / time.MS);
 		printf("%zu\n", s->total_received);
+    }
+
+    printf("\n\n");
+    table.add(&REPORT, "Total sent", "%ld B", total_sent);
+    table.add(&REPORT, "Time taken for tests", "%.2f s", timetaken);
+    table.add(&REPORT, "Requests per second", "%.2f", requests_done / timetaken);
+    table.add(&REPORT, "Time per request", "%.3f ms", (double) concurrency * timetaken * 1000 / requests_done);
+    table.add(&REPORT, "Time per request", "%.3f (across all concurrent requests)", (double) timetaken * 1000 / requests_done);
+    table.add(&REPORT, "Send rate", "%.2f KB/s", (double) total_sent / 1024 / timetaken);
+    table.print(&REPORT);
+
+    if (sig) {
+        exit(1);
     }
 }
 
