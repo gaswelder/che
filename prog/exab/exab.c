@@ -20,6 +20,7 @@ typedef {
     time.t time_finished_writing;
     time.t time_finished_reading;
 	int status;
+	size_t total_received;
 } request_stats_t;
 
 request_stats_t *request_stats = NULL;
@@ -56,7 +57,6 @@ size_t concurrency = 1;
 /*
  * Byte counters.
  */
-size_t total_received = 0;
 size_t total_sent = 0;
 
 /*
@@ -357,13 +357,12 @@ int routine(void *ctx, int line) {
             return WRITE_REQUEST;
         }
         /*
-         * Read and parse a response
+         * Read and parse the response.
          */
         case READ_RESPONSE: {
             if (!ioroutine.ioready(c->connection, io.READ)) {
                 return READ_RESPONSE;
             }
-
             dbg("reading response");
             size_t n0 = io.bufsize(c->inbuf);
             if (!io.read(c->connection, c->inbuf)) {
@@ -376,7 +375,7 @@ int routine(void *ctx, int line) {
             }
             size_t n = io.bufsize(c->inbuf);
             dbg("read %zu bytes", n - n0);
-            total_received += n - n0;
+            c->stats->total_received += n - n0;
             if (n == 0) {
                 io.close(c->connection);
                 if (heartbeatres && !(requests_done % heartbeatres)) {
@@ -463,7 +462,6 @@ void output_results(int sig) {
     table.add(&REPORT, "Keep-Alive requests", "%d", doneka);
 
     table.split(&REPORT);
-    table.add(&REPORT, "Total received", "%ld B", total_received);
     table.add(&REPORT, "Total sent", "%ld B", total_sent);
 
     table.split(&REPORT);
@@ -471,7 +469,6 @@ void output_results(int sig) {
     table.add(&REPORT, "Requests per second", "%.2f", requests_done / timetaken);
     table.add(&REPORT, "Time per request", "%.3f ms", (double) concurrency * timetaken * 1000 / requests_done);
     table.add(&REPORT, "Time per request", "%.3f (across all concurrent requests)", (double) timetaken * 1000 / requests_done);
-    table.add(&REPORT, "Receive rate", "%.2f KB/s", (double) total_received / 1024 / timetaken);
     table.add(&REPORT, "Send rate", "%.2f KB/s", (double) total_sent / 1024 / timetaken);
     table.print(&REPORT);
 
@@ -484,7 +481,7 @@ void output_results(int sig) {
 }
 
 void print_stats() {
-	printf("#\tstatus\twriting\treading\ttotal\n");
+	printf("#\tstatus\twriting\treading\ttotal\tresponse_size\n");
     for (size_t i = 0; i < requests_done; i++) {
         request_stats_t *s = &request_stats[i];
         int64_t write = time.sub(s->time_finished_writing, s->time_started);
@@ -494,7 +491,8 @@ void print_stats() {
 		printf("%d\t", s->status);
 		printf("%f\t", (double) write / time.MS);
 		printf("%f\t", (double) read / time.MS);
-		printf("%f\n", (double) total / time.MS);
+		printf("%f\t", (double) total / time.MS);
+		printf("%zu\n", s->total_received);
     }
 }
 
