@@ -16,25 +16,28 @@ int main() {
 		stats.add(s, val);
 	}
 
+	printf("intr %7.2f ± %.2f\n", stats.avg(s), stats.sd(s));
 	printf(
-		"%f ± %f\n"
-		"n = %zu\n"
-		"min = %f\n"
-		"max = %f\n"
-		"sum = %f\n"
-		"avg = %f\n"
-		"p50 = %f\n"
-		"p95 = %f\n"
-		"p99 = %f\n",
-		stats.avg(s), stats.sd(s),
+		"n\t%zu\n"
+		"sum\t%f\n"
+		"min\t%f\n"
+		"avg\t%f\n"
+		"max\t%f\n",
 		stats.count(s),
-		stats.min(s),
-		stats.max(s),
 		stats.sum(s),
+		stats.min(s),
 		stats.avg(s),
-		stats.percentile(s, 50),
-		stats.percentile(s, 95),
-		stats.percentile(s, 99)
+		stats.max(s)
 	);
+
+	int percs[] = {50, 66, 75, 80, 90, 95, 98, 99, 100};
+	for (size_t i = 0; i < nelem(percs); i++) {
+		int p = percs[i];
+		if (p == 100) {
+			printf("p100\t%.1f\n", stats.max(s));
+		} else {
+			printf("p%d\t%.1f\n", p, stats.percentile(s, p));
+		}
+	}
 	return 0;
 }
