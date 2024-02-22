@@ -6,7 +6,6 @@
 #import os/io
 #import strings
 #import time
-#import table.c
 
 typedef {
     io.handle_t *connection; // Connection with the server
@@ -67,7 +66,6 @@ char response_version[20] = {0};
 /*
  * Other state.
  */
-table.t REPORT = {};
 time.t START_TIME = {};
 io.buf_t REQUEST = {};
 
@@ -406,9 +404,6 @@ void fatal(char *s) {
 }
 
 void output_results(int sig) {
-	time.t now = time.now();
-    double timetaken = (double)time.sub(now, START_TIME) / time.SECONDS;
-
 	printf("#\tstatus\twriting\treading\ttotal\tsent\treceived\n");
     for (size_t i = 0; i < requests_done; i++) {
         request_stats_t *s = &request_stats[i];
@@ -427,15 +422,5 @@ void output_results(int sig) {
 		printf("%zu\t", s->total_sent);
 		printf("%zu\n", s->total_received);
     }
-
-    printf("\n\n");
-    table.add(&REPORT, "Time taken for tests", "%.2f s", timetaken);
-    table.add(&REPORT, "Requests per second", "%.2f", requests_done / timetaken);
-    table.add(&REPORT, "Time per request", "%.3f ms", (double) concurrency * timetaken * 1000 / requests_done);
-    table.add(&REPORT, "Time per request", "%.3f (across all concurrent requests)", (double) timetaken * 1000 / requests_done);
-    table.print(&REPORT);
-
-    if (sig) {
-        exit(1);
-    }
+    if (sig) exit(1);
 }
