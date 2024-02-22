@@ -22,6 +22,7 @@ typedef {
     time.t time_finished_reading;
 	int status;
 	size_t total_received;
+	size_t total_sent;
 	int error;
 } request_stats_t;
 
@@ -55,11 +56,6 @@ size_t requests_done = 0;
  */
 #define MAX_CONCURRENCY 20000
 size_t concurrency = 1;
-
-/*
- * Byte counters.
- */
-size_t total_sent = 0;
 
 /*
  * Response info.
@@ -328,7 +324,7 @@ int routine(void *ctx, int line) {
                 c->stats->time_finished_writing = time.now();
                 return CONNECT;
             }
-            total_sent += n - io.bufsize(c->outbuf);
+            c->stats->total_sent += n - io.bufsize(c->outbuf);
             return WRITE_REQUEST;
         }
         /*
@@ -413,7 +409,7 @@ void output_results(int sig) {
 	time.t now = time.now();
     double timetaken = (double)time.sub(now, START_TIME) / time.SECONDS;
 
-	printf("#\tstatus\twriting\treading\ttotal\tresponse_size\n");
+	printf("#\tstatus\twriting\treading\ttotal\tsent\treceived\n");
     for (size_t i = 0; i < requests_done; i++) {
         request_stats_t *s = &request_stats[i];
         int64_t write = time.sub(s->time_finished_writing, s->time_started);
@@ -428,16 +424,15 @@ void output_results(int sig) {
 		printf("%f\t", (double) write / time.MS);
 		printf("%f\t", (double) read / time.MS);
 		printf("%f\t", (double) total / time.MS);
+		printf("%zu\t", s->total_sent);
 		printf("%zu\n", s->total_received);
     }
 
     printf("\n\n");
-    table.add(&REPORT, "Total sent", "%ld B", total_sent);
     table.add(&REPORT, "Time taken for tests", "%.2f s", timetaken);
     table.add(&REPORT, "Requests per second", "%.2f", requests_done / timetaken);
     table.add(&REPORT, "Time per request", "%.3f ms", (double) concurrency * timetaken * 1000 / requests_done);
     table.add(&REPORT, "Time per request", "%.3f (across all concurrent requests)", (double) timetaken * 1000 / requests_done);
-    table.add(&REPORT, "Send rate", "%.2f KB/s", (double) total_sent / 1024 / timetaken);
     table.print(&REPORT);
 
     if (sig) {
