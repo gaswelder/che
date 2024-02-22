@@ -1,3 +1,4 @@
+#import dbg
 #import fs
 #import http
 #import ioroutine
@@ -6,7 +7,6 @@
 #import strings
 #import time
 #import table.c
-#import os/misc
 
 typedef {
     io.handle_t *connection; // Connection with the server
@@ -282,14 +282,14 @@ int routine(void *ctx, int line) {
         case CONNECT: {
 			c->stats = &request_stats[requests_done++];
             // TODO: connect timeout
-            dbg(DBG_TAG, "Connecting to %s", colonhost);
+            dbg.m(DBG_TAG, "Connecting to %s", colonhost);
             c->connection = io.connect("tcp", colonhost);
             if (!c->connection) {
 				c->stats->error = errno;
 				bad();
                 return CONNECT;
             }
-            dbg(DBG_TAG, "connected");
+            dbg.m(DBG_TAG, "connected");
             return INIT_REQUEST;
         }
         /*
@@ -297,13 +297,13 @@ int routine(void *ctx, int line) {
          */
         case INIT_REQUEST: {
             if (requests_done >= requests_to_do) {
-                dbg(DBG_TAG, "all done\n");
+                dbg.m(DBG_TAG, "all done\n");
                 io.close(c->connection);
                 return -1;
             }
             io.resetbuf(c->inbuf);
             io.resetbuf(c->outbuf);
-            dbg(DBG_TAG, "preparing the request (%zu, %zu)", io.bufsize(c->inbuf), io.bufsize(c->outbuf));
+            dbg.m(DBG_TAG, "preparing the request (%zu, %zu)", io.bufsize(c->inbuf), io.bufsize(c->outbuf));
             io.push(c->outbuf, REQUEST.data, io.bufsize(&REQUEST));
             c->stats->time_started = time.now();
             return WRITE_REQUEST;
@@ -314,14 +314,14 @@ int routine(void *ctx, int line) {
         case WRITE_REQUEST: {
             size_t n = io.bufsize(c->outbuf);
             if (n == 0) {
-                dbg(DBG_TAG, "nothing more to write, proceeding to read");
+                dbg.m(DBG_TAG, "nothing more to write, proceeding to read");
                 c->stats->time_finished_writing = time.now();
                 return READ_RESPONSE;
             }
             if (!ioroutine.ioready(c->connection, io.WRITE)) {
                 return WRITE_REQUEST;
             }
-            dbg(DBG_TAG, "writing %zu bytes\n", n);
+            dbg.m(DBG_TAG, "writing %zu bytes\n", n);
             if (!io.write(c->connection, c->outbuf)) {
 				c->stats->error = errno;
                 io.close(c->connection);
@@ -338,7 +338,7 @@ int routine(void *ctx, int line) {
             if (!ioroutine.ioready(c->connection, io.READ)) {
                 return READ_RESPONSE;
             }
-            dbg(DBG_TAG, "reading response");
+            dbg.m(DBG_TAG, "reading response");
             size_t n0 = io.bufsize(c->inbuf);
             if (!io.read(c->connection, c->inbuf)) {
 				c->stats->error = errno;
@@ -348,7 +348,7 @@ int routine(void *ctx, int line) {
                 return CONNECT;
             }
             size_t n = io.bufsize(c->inbuf);
-            dbg(DBG_TAG, "read %zu bytes", n - n0);
+            dbg.m(DBG_TAG, "read %zu bytes", n - n0);
             c->stats->total_received += n - n0;
             if (n == 0) {
                 io.close(c->connection);
@@ -359,7 +359,7 @@ int routine(void *ctx, int line) {
             http.response_t r = {};
             if (!http.parse_response(c->inbuf->data, &r)) {
                 // Assume not enough data was received.
-                dbg(DBG_TAG, "waiting for more headers");
+                dbg.m(DBG_TAG, "waiting for more headers");
                 return READ_RESPONSE;
             }
 			c->stats->status = r.status;
@@ -387,7 +387,7 @@ int routine(void *ctx, int line) {
                 panic("read failed");
             }
             size_t n = io.bufsize(c->inbuf);
-            dbg(DBG_TAG, "read %zu of body\n", n);
+            dbg.m(DBG_TAG, "read %zu of body\n", n);
             c->body_bytes_to_read -= n;
             io.shift(c->inbuf, n);
             return READ_RESPONSE_BODY;
@@ -443,19 +443,4 @@ void output_results(int sig) {
     if (sig) {
         exit(1);
     }
-}
-
-void dbg(const char *tag, *format, ...) {
-	if (!dbg_enabled(tag)) return;
-    printf("[%s] ", tag);
-    va_list l = {0};
-	va_start(l, format);
-	vprintf(format, l);
-	va_end(l);
-    printf("\n");
-}
-
-bool dbg_enabled(const char *tag) {
-	const char *val = misc.getenv("CHE_DEBUG");
-	return val && strcmp(val, tag) == 0;
 }
