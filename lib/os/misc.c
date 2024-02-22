@@ -26,3 +26,7 @@ pub bool get_hostname(char *buf, size_t bufsize) {
 pub bool getcwd(char *buf, size_t n) {
     return OS.getcwd(buf, n) != NULL;
 }
+
+pub const char *getenv(const char *name) {
+	return OS.getenv(name);
+}
