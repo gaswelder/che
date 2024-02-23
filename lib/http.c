@@ -120,7 +120,7 @@ pub int init_request(request_t *r, int method, const char *path) {
     memset(r, 0, sizeof(request_t));
     strcpy(r->method, methodstring);
     strcpy(r->uri, path);
-    strcpy(r->version, "HTTP/1.0");
+    strcpy(r->version, "HTTP/1.1");
     return 0;
 }
 
