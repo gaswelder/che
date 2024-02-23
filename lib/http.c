@@ -67,6 +67,7 @@ pub bool parse_url(url_t *r, const char *s) {
     }
 
     q = r->path;
+	*q = '/';
     if (parsebuf.buf_peek(buf) == '/') {
         while (parsebuf.buf_more(buf)) {
             *q++ = parsebuf.buf_get(buf);
