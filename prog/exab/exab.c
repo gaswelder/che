@@ -199,6 +199,7 @@ int main(int argc, char *argv[]) {
 }
 
 enum {
+	BEGIN,
     CONNECT,
     INIT_REQUEST,
     WRITE_REQUEST,
@@ -212,13 +213,19 @@ int routine(void *ctx, int line) {
     connection_t *c = ctx;
 
     switch (line) {
+		case BEGIN: {
+			dbg.m(DBG_TAG, "getting next request: %zu", requests_done);
+			c->stats = &request_stats[requests_done++];
+			if (!c->connection) {
+				return CONNECT;
+			}
+			return INIT_REQUEST;
+		}
         /*
          * Connect to the remote host.
          */
         case CONNECT: {
-			c->stats = &request_stats[requests_done++];
-            // TODO: connect timeout
-            dbg.m(DBG_TAG, "Connecting to %s", colonhost);
+            dbg.m(DBG_TAG, "connecting to %s", colonhost);
             c->connection = io.connect("tcp", colonhost);
             if (!c->connection) {
 				c->stats->error = errno;
@@ -228,36 +235,25 @@ int routine(void *ctx, int line) {
             dbg.m(DBG_TAG, "connected");
             return INIT_REQUEST;
         }
-        /*
-         * Prepare a new request for writing.
-         */
         case INIT_REQUEST: {
-            if (requests_done >= requests_to_do) {
-                dbg.m(DBG_TAG, "all done\n");
-                io.close(c->connection);
-                return -1;
-            }
+			dbg.m(DBG_TAG, "preparing the request (%zu)", io.bufsize(&REQUEST));
             io.resetbuf(c->inbuf);
-            io.resetbuf(c->outbuf);
-            dbg.m(DBG_TAG, "preparing the request (%zu, %zu)", io.bufsize(c->inbuf), io.bufsize(c->outbuf));
-            io.push(c->outbuf, REQUEST.data, io.bufsize(&REQUEST));
+			io.resetbuf(c->outbuf);
+			io.push(c->outbuf, REQUEST.data, io.bufsize(&REQUEST));
             c->stats->time_started = time.now();
             return WRITE_REQUEST;
         }
-        /*
-         * Write the request.
-         */
         case WRITE_REQUEST: {
             size_t n = io.bufsize(c->outbuf);
             if (n == 0) {
-                dbg.m(DBG_TAG, "nothing more to write, proceeding to read");
+                dbg.m(DBG_TAG, "nothing more to send, proceeding to receive");
                 c->stats->time_finished_writing = time.now();
                 return READ_RESPONSE;
             }
             if (!ioroutine.ioready(c->connection, io.WRITE)) {
                 return WRITE_REQUEST;
             }
-            dbg.m(DBG_TAG, "writing %zu bytes\n", n);
+            dbg.m(DBG_TAG, "sending %zu bytes", n);
             if (!io.write(c->connection, c->outbuf)) {
 				c->stats->error = errno;
                 io.close(c->connection);
@@ -267,9 +263,6 @@ int routine(void *ctx, int line) {
             c->stats->total_sent += n - io.bufsize(c->outbuf);
             return WRITE_REQUEST;
         }
-        /*
-         * Read and parse the response.
-         */
         case READ_RESPONSE: {
             if (!ioroutine.ioready(c->connection, io.READ)) {
                 return READ_RESPONSE;
@@ -310,8 +303,14 @@ int routine(void *ctx, int line) {
          */
         case READ_RESPONSE_BODY: {
             if (c->body_bytes_to_read == 0) {
+				dbg.m(DBG_TAG, "finished reading response, done=%zu, todo=%zu", requests_done, requests_to_do);
                 c->stats->time_finished_reading = time.now();
-                return INIT_REQUEST;
+				if (requests_done >= requests_to_do) {
+                	dbg.m(DBG_TAG, "all done (todo=%zu)\n", requests_to_do);
+                	io.close(c->connection);
+                	return -1;
+            	}
+                return BEGIN;
             }
             if (!ioroutine.ioready(c->connection, io.READ)) {
                 return READ_RESPONSE_BODY;
