@@ -25,8 +25,6 @@ typedef {
     request_stats_t *stats; // Current request's stats
 } connection_t;
 
-enum { GET, POST, HEAD };
-
 int _bad = 0;
 void bad() {
 	_bad++;
@@ -83,22 +81,17 @@ int main(int argc, char *argv[]) {
 
 	char *postdata = NULL;         /* *buffer containing data from postfile */
 	size_t postlen = 0; /* length of data to be POSTed */
-	int method = GET;
 
+	int method = http.GET;
     if (methodstring) {
-        if (strings.casecmp(methodstring, "GET")) {
-            method = GET;
-        } else if (strings.casecmp(methodstring, "POST")) {
-            method = POST;
-        } else if (strings.casecmp(methodstring, "HEAD")) {
-            method = HEAD;
-        } else {
+		method = http.method_from_string(methodstring);
+		if (!method) {
             fprintf(stderr, "unknown request method: %s\n", methodstring);
             return 1;
-        }
+		}
     }
     if (postfile) {
-        if (method != POST) {
+        if (method != http.POST) {
             fprintf(stderr, "postfile option works only with POST method\n");
             exit(1);
         }
@@ -137,16 +130,14 @@ int main(int argc, char *argv[]) {
     // Create the request.
 	//
     http.request_t req = {};
-    switch (method) {
-        case GET: { methodstring = "GET"; }
-        case POST: { methodstring = "POST"; }
-        case HEAD: { methodstring = "HEAD"; }
-        default: { panic("!"); }
-    }
-    http.init_request(&req, methodstring, u.path);
+    int err = http.init_request(&req, method, u.path);
+	if (err) {
+		fprintf(stderr, "failed to init request: %s\n", http.errstr(err));
+		return 1;
+	}
     http.set_header(&req, "Host", u.hostname);
 
-    if (method == POST) {
+    if (method == http.POST) {
         char buf[10] = {0};
         sprintf(buf, "%zu", postlen);
         http.set_header(&req, "Content-Length", buf);
@@ -167,7 +158,7 @@ int main(int argc, char *argv[]) {
         fatal("failed to write request");
     }
     io.push(&REQUEST, buf, strlen(buf));
-    if (method == POST) {
+    if (method == http.POST) {
         io.push(&REQUEST, postdata, strlen(postdata));
     }
 

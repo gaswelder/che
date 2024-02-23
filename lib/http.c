@@ -2,6 +2,24 @@
 #import strings
 #import strbuilder
 
+pub enum {
+	UNKNOWN_METHOD,
+	GET,
+	POST,
+	HEAD
+};
+
+/*
+ * Given a method name string returns the method's enum value.
+ * Returns UNKNOWN_METHOD if the string doesn't match any method.
+ */
+pub int method_from_string(const char *s) {
+	if (strings.casecmp(s, "GET")) return GET;
+    if (strings.casecmp(s, "POST")) return POST;
+    if (strings.casecmp(s, "HEAD")) return HEAD;
+	return UNKNOWN_METHOD;
+}
+
 pub typedef {
     char name[1024];
     char value[1024];
@@ -76,12 +94,33 @@ pub typedef {
     size_t nheaders;
 } request_t;
 
-pub bool init_request(request_t *r, const char *method, const char *path) {
+const char *errors[] = {
+	"no error",
+	"unknown method"
+};
+
+pub const char *errstr(int err) {
+	if (err >= 0 && (size_t) err < nelem(errors)) {
+		return errors[err];
+	}
+	return "unknown error";
+}
+
+pub int init_request(request_t *r, int method, const char *path) {
+	const char *methodstring = NULL;
+	switch (method) {
+        case GET: { methodstring = "GET"; }
+        case POST: { methodstring = "POST"; }
+        case HEAD: { methodstring = "HEAD"; }
+    }
+	if (!methodstring) {
+		return 1; // unknown method
+	}
     memset(r, 0, sizeof(request_t));
-    strcpy(r->method, method);
+    strcpy(r->method, methodstring);
     strcpy(r->uri, path);
     strcpy(r->version, "HTTP/1.0");
-    return true;
+    return 0;
 }
 
 pub bool set_header(request_t *r, const char *name, *value) {
@@ -247,7 +286,6 @@ bool parse_header_line(const char *line, header_t *h) {
     }
     return true;
 }
-
 
 pub typedef {
     char version[100];
