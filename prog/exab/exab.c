@@ -177,7 +177,7 @@ int main(int argc, char *argv[]) {
         //
     }
 
-	printf("#\tstatus\twriting\treading\ttotal\tsent\treceived\n");
+	printf("#\tstatus\ttsending\ttreceiving\ttotaltime\tsent\treceived\n");
     for (size_t i = 0; i < requests_done; i++) {
         request_stats_t *s = &request_stats[i];
         int64_t write = time.sub(s->time_finished_writing, s->time_started);
