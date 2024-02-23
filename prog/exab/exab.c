@@ -38,7 +38,7 @@ int method = GET;
 /*
  * Customizable headers
  */
-char *user_agent = "ex-ApacheBench/0.0";
+char *user_agent = "exab";
 char *opt_accept = NULL;
 char *cookie = NULL;
 char *content_type = "text/plain";
@@ -101,11 +101,8 @@ int main(int argc, char *argv[]) {
     opt.opt_str("p", "path to the file with the POST body", &postfile);
     opt.opt_str("T", "POST body content type (default is text/plain)", &content_type);
 
-    // Commands pretending to be options
     bool hflag = false;
-    bool vflag = false;
     opt.opt_bool("h", "print usage", &hflag);
-    opt.opt_bool("V", "print version and exit", &vflag);
 
     char **args = opt.opt_parse(argc, argv);
 
@@ -134,10 +131,6 @@ int main(int argc, char *argv[]) {
         }
     }
     if (hflag) return opt.usage();
-    if (vflag) {
-        printf("This is ex-ApacheBench, rewritten\n");
-        return 0;
-    }
 
     if (concurrency > MAX_CONCURRENCY) {
         fprintf(stderr, "concurrency is too high (%zu > %d)\n", concurrency, MAX_CONCURRENCY);
