@@ -176,26 +176,28 @@ int main(int argc, char *argv[]) {
     while (ioroutine.step()) {
         //
     }
-
-	printf("#\tstatus\ttsending\ttreceiving\ttotaltime\tsent\treceived\n");
-    for (size_t i = 0; i < requests_done; i++) {
-        request_stats_t *s = &request_stats[i];
-        int64_t write = time.sub(s->time_finished_writing, s->time_started);
-        int64_t read = time.sub(s->time_finished_reading, s->time_finished_writing);
-        int64_t total = time.sub(s->time_finished_reading, s->time_started);
-		printf("%zu\t", i);
-		if (s->error) {
-			printf("error: %d (%s)\n", s->error, strerror(s->error));
-			continue;
-		}
-		printf("%d\t", s->status);
-		printf("%f\t", (double) write / time.MS);
-		printf("%f\t", (double) read / time.MS);
-		printf("%f\t", (double) total / time.MS);
-		printf("%zu\t", s->total_sent);
-		printf("%zu\n", s->total_received);
-    }
     return 0;
+}
+
+int output_lines = 0;
+void output(request_stats_t *s) {
+	if (!output_lines) {
+		printf("#\tstatus\ttsending\ttreceiving\ttotaltime\tsent\treceived\n");
+	}
+	int64_t write = time.sub(s->time_finished_writing, s->time_started);
+	int64_t read = time.sub(s->time_finished_reading, s->time_finished_writing);
+	int64_t total = time.sub(s->time_finished_reading, s->time_started);
+	printf("%d\t", output_lines++);
+	if (s->error) {
+		printf("error: %d (%s)\n", s->error, strerror(s->error));
+		return;
+	}
+	printf("%d\t", s->status);
+	printf("%f\t", (double) write / time.MS);
+	printf("%f\t", (double) read / time.MS);
+	printf("%f\t", (double) total / time.MS);
+	printf("%zu\t", s->total_sent);
+	printf("%zu\n", s->total_received);
 }
 
 enum {
@@ -229,6 +231,7 @@ int routine(void *ctx, int line) {
             c->connection = io.connect("tcp", colonhost);
             if (!c->connection) {
 				c->stats->error = errno;
+				output(c->stats);
 				bad();
                 return CONNECT;
             }
@@ -258,6 +261,7 @@ int routine(void *ctx, int line) {
 				c->stats->error = errno;
                 io.close(c->connection);
                 c->stats->time_finished_writing = time.now();
+				output(c->stats);
                 return CONNECT;
             }
             c->stats->total_sent += n - io.bufsize(c->outbuf);
@@ -273,6 +277,7 @@ int routine(void *ctx, int line) {
 				c->stats->error = errno;
                 io.close(c->connection);
                 c->stats->time_finished_reading = time.now();
+				output(c->stats);
 				bad();
                 return CONNECT;
             }
@@ -282,6 +287,7 @@ int routine(void *ctx, int line) {
             if (n == 0) {
                 io.close(c->connection);
                 c->stats->time_finished_reading = time.now();
+				output(c->stats);
                 return CONNECT;
             }
 
@@ -305,6 +311,7 @@ int routine(void *ctx, int line) {
             if (c->body_bytes_to_read == 0) {
 				dbg.m(DBG_TAG, "finished reading response, done=%zu, todo=%zu", requests_done, requests_to_do);
                 c->stats->time_finished_reading = time.now();
+				output(c->stats);
 				if (requests_done >= requests_to_do) {
                 	dbg.m(DBG_TAG, "all done (todo=%zu)\n", requests_to_do);
                 	io.close(c->connection);
