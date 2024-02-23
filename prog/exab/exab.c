@@ -71,7 +71,6 @@ io.buf_t REQUEST = {};
 
 // ----
 
-size_t tlimit = 0; /* time limit in secs */
 char *postdata = NULL;         /* *buffer containing data from postfile */
 size_t postlen = 0; /* length of data to be POSTed */
 char *colonhost = "";
@@ -89,7 +88,6 @@ int main(int argc, char *argv[]) {
     // Orthogonal options
     opt.opt_size("n", "number of requests to perform (1)", &requests_to_do);
     opt.opt_size("c", "number of requests running concurrently (1)", &concurrency);
-    opt.opt_size("t", "time limit, number of seconds to wait for responses", &tlimit);
     opt.opt_str("C", "cooke value, eg. session_id=123456", &cookie);
     opt.opt_str("a", "HTTP basic auth value (username:password)", &autharg);
 
@@ -164,20 +162,14 @@ int main(int argc, char *argv[]) {
         panic("failed to allocate memory");
     }
 	ioroutine.init();
-    if (!tlimit) {
-        tlimit = INT_MAX;
-    }
 	for (size_t i = 0; i < concurrency; i++) {
         connections[i].outbuf = io.newbuf();
         connections[i].inbuf = io.newbuf();
         ioroutine.spawn(routine, &connections[i]);
     }
 	START_TIME = time.now();
-    time.t stoptime = time.add(START_TIME, tlimit, time.SECONDS);
     while (ioroutine.step()) {
-        if (time.sub(time.now(), stoptime) > 0) {
-            break;
-        }
+        //
     }
     output_results(0);
     return 0;
