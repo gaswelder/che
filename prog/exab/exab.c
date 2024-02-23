@@ -43,25 +43,16 @@ int main(int argc, char *argv[]) {
     opt.opt_summary("exab [options] <url> - makes HTTP requests to <url> and prints statistics");
 
 	// ...
-    opt.opt_size("n", "number of requests to perform (1)", &requests_to_do);
+    opt.opt_size("n", "number of requests to perform", &requests_to_do);
 
 	size_t concurrency = 1;
-    opt.opt_size("c", "number of requests running concurrently (1)", &concurrency);
-
-	char *cookie = NULL;
-    opt.opt_str("C", "cooke value, eg. session_id=123456", &cookie);
-
-	char *autharg = NULL;
-    opt.opt_str("a", "HTTP basic auth value (username:password)", &autharg);
+    opt.opt_size("c", "number of requests running concurrently", &concurrency);
 
     char *methodstring = NULL;
     opt.opt_str("m", "request method (GET, POST, HEAD)", &methodstring);
 
     char *postfile = NULL;
     opt.opt_str("p", "path to the file with the POST body", &postfile);
-
-	char *content_type = "text/plain";
-    opt.opt_str("T", "POST body content type (default is text/plain)", &content_type);
 
     bool hflag = false;
     opt.opt_bool("h", "print usage", &hflag);
@@ -141,18 +132,8 @@ int main(int argc, char *argv[]) {
         char buf[10] = {0};
         sprintf(buf, "%zu", postlen);
         http.set_header(&req, "Content-Length", buf);
-        http.set_header(&req, "Content-Type", content_type);
     }
     http.set_header(&req, "User-Agent", "exab");
-    if (cookie) {
-        http.set_header(&req, "Cookie", cookie);
-    }
-    if (autharg) {
-        // assume username passwd already to be in colon separated form.
-        // Ready to be uu-encoded.
-        panic("base64 encoding not implemented");
-        // http.set_header(&req, "Authorization", strings.newstr("Basic %s", tmp));
-    }
     char buf[1000] = {0};
     if (!http.write_request(&req, buf, sizeof(buf))) {
         fatal("failed to write request");
