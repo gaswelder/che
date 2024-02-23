@@ -8,14 +8,6 @@
 #import time
 
 typedef {
-    io.handle_t *connection; // Connection with the server
-    io.buf_t *outbuf; // Request copy to send
-    io.buf_t *inbuf; // Response to read
-    int body_bytes_to_read; // How many bytes to read to get the full response.
-    request_stats_t *stats; // Current request's stats
-} connection_t;
-
-typedef {
     time.t time_started;
     time.t time_finished_writing;
     time.t time_finished_reading;
@@ -25,55 +17,15 @@ typedef {
 	int error;
 } request_stats_t;
 
-request_stats_t *request_stats = NULL;
+typedef {
+    io.handle_t *connection; // Connection with the server
+    io.buf_t *outbuf; // Request copy to send
+    io.buf_t *inbuf; // Response to read
+    int body_bytes_to_read; // How many bytes to read to get the full response.
+    request_stats_t *stats; // Current request's stats
+} connection_t;
 
-// Request method.
-enum {
-    GET,
-    POST,
-    HEAD
-};
-int method = GET;
-
-/*
- * Customizable headers
- */
-char *user_agent = "exab";
-char *opt_accept = NULL;
-char *cookie = NULL;
-char *content_type = "text/plain";
-char *autharg = NULL;
-
-/*
- * How many requests to do.
- */
-size_t requests_to_do = 1;
-size_t requests_done = 0;
-
-/*
- * How many requests to do in parallel.
- */
-#define MAX_CONCURRENCY 20000
-size_t concurrency = 1;
-
-/*
- * Response info.
- */
-char servername[1024] = {0};  /* name that server reports */
-size_t response_length = 0;
-char response_version[20] = {0};
-
-/*
- * Other state.
- */
-time.t START_TIME = {};
-io.buf_t REQUEST = {};
-
-// ----
-
-char *postdata = NULL;         /* *buffer containing data from postfile */
-size_t postlen = 0; /* length of data to be POSTed */
-char *colonhost = "";
+enum { GET, POST, HEAD };
 
 int _bad = 0;
 void bad() {
@@ -83,26 +35,55 @@ void bad() {
 	}
 }
 
+request_stats_t *request_stats = NULL;
+size_t requests_done = 0;
+char *colonhost = "";
+size_t requests_to_do = 1;
+io.buf_t REQUEST = {};
+
 int main(int argc, char *argv[]) {
-    opt.opt_summary("exab [options] <url> - makes multiple HTTP requests to <url> and prints statistics");
-    // Orthogonal options
+    opt.opt_summary("exab [options] <url> - makes HTTP requests to <url> and prints statistics");
+
+	// ...
     opt.opt_size("n", "number of requests to perform (1)", &requests_to_do);
+
+	size_t concurrency = 1;
     opt.opt_size("c", "number of requests running concurrently (1)", &concurrency);
+
+	char *cookie = NULL;
     opt.opt_str("C", "cooke value, eg. session_id=123456", &cookie);
+
+	char *autharg = NULL;
     opt.opt_str("a", "HTTP basic auth value (username:password)", &autharg);
 
-    // Request config
     char *methodstring = NULL;
     opt.opt_str("m", "request method (GET, POST, HEAD)", &methodstring);
 
     char *postfile = NULL;
     opt.opt_str("p", "path to the file with the POST body", &postfile);
+
+	char *content_type = "text/plain";
     opt.opt_str("T", "POST body content type (default is text/plain)", &content_type);
 
     bool hflag = false;
     opt.opt_bool("h", "print usage", &hflag);
 
     char **args = opt.opt_parse(argc, argv);
+	if (hflag) return opt.usage();
+	if (!*args) {
+        fprintf(stderr, "missing the url argument\n");
+        return 1;
+    }
+	char *url = *args;
+    args++;
+    if (*args) {
+        fprintf(stderr, "unexpected argument: %s\n", *args);
+        return 1;
+    }
+
+	char *postdata = NULL;         /* *buffer containing data from postfile */
+	size_t postlen = 0; /* length of data to be POSTed */
+	int method = GET;
 
     if (methodstring) {
         if (strings.casecmp(methodstring, "GET")) {
@@ -116,7 +97,6 @@ int main(int argc, char *argv[]) {
             return 1;
         }
     }
-
     if (postfile) {
         if (method != POST) {
             fprintf(stderr, "postfile option works only with POST method\n");
@@ -128,54 +108,16 @@ int main(int argc, char *argv[]) {
             exit(1);
         }
     }
-    if (hflag) return opt.usage();
-
+	const size_t MAX_CONCURRENCY = 20000;
     if (concurrency > MAX_CONCURRENCY) {
-        fprintf(stderr, "concurrency is too high (%zu > %d)\n", concurrency, MAX_CONCURRENCY);
+        fprintf(stderr, "concurrency is too high (%zu > %zu)\n", concurrency, MAX_CONCURRENCY);
         return 1;
     }
-
     if (concurrency > requests_to_do) {
         fprintf(stderr, "cannot use concurrency level greater than total number of requests\n");
         return 1;
     }
 
-    if (!*args) {
-        fprintf(stderr, "missing the url argument\n");
-        return 1;
-    }
-    char *url = *args;
-    args++;
-    if (*args) {
-        fprintf(stderr, "unexpected argument: %s\n", *args);
-        return 1;
-    }
-
-    build_request(url);
-
-    /* Output the results if the user terminates the run early. */
-    signal(SIGINT, output_results);
-
-	request_stats = calloc(requests_to_do, sizeof(request_stats_t));
-    connection_t *connections = calloc(concurrency, sizeof(connection_t));
-    if (!connections || !request_stats) {
-        panic("failed to allocate memory");
-    }
-	ioroutine.init();
-	for (size_t i = 0; i < concurrency; i++) {
-        connections[i].outbuf = io.newbuf();
-        connections[i].inbuf = io.newbuf();
-        ioroutine.spawn(routine, &connections[i]);
-    }
-	START_TIME = time.now();
-    while (ioroutine.step()) {
-        //
-    }
-    output_results(0);
-    return 0;
-}
-
-void build_request(const char *url) {
     // Parse the URL.
     http.url_t u = {};
     if (!http.parse_url(&u, url)) {
@@ -191,9 +133,10 @@ void build_request(const char *url) {
     }
     colonhost = strings.newstr("%s:%s", u.hostname, u.port);
 
-    // Create a request.
+	//
+    // Create the request.
+	//
     http.request_t req = {};
-    const char *methodstring = NULL;
     switch (method) {
         case GET: { methodstring = "GET"; }
         case POST: { methodstring = "POST"; }
@@ -209,10 +152,7 @@ void build_request(const char *url) {
         http.set_header(&req, "Content-Length", buf);
         http.set_header(&req, "Content-Type", content_type);
     }
-    http.set_header(&req, "User-Agent", user_agent);
-    if (opt_accept) {
-        http.set_header(&req, "Accept", opt_accept);
-    }
+    http.set_header(&req, "User-Agent", "exab");
     if (cookie) {
         http.set_header(&req, "Cookie", cookie);
     }
@@ -230,6 +170,41 @@ void build_request(const char *url) {
     if (method == POST) {
         io.push(&REQUEST, postdata, strlen(postdata));
     }
+
+	request_stats = calloc(requests_to_do, sizeof(request_stats_t));
+    connection_t *connections = calloc(concurrency, sizeof(connection_t));
+    if (!connections || !request_stats) {
+        panic("failed to allocate memory");
+    }
+	ioroutine.init();
+	for (size_t i = 0; i < concurrency; i++) {
+        connections[i].outbuf = io.newbuf();
+        connections[i].inbuf = io.newbuf();
+        ioroutine.spawn(routine, &connections[i]);
+    }
+    while (ioroutine.step()) {
+        //
+    }
+
+	printf("#\tstatus\twriting\treading\ttotal\tsent\treceived\n");
+    for (size_t i = 0; i < requests_done; i++) {
+        request_stats_t *s = &request_stats[i];
+        int64_t write = time.sub(s->time_finished_writing, s->time_started);
+        int64_t read = time.sub(s->time_finished_reading, s->time_finished_writing);
+        int64_t total = time.sub(s->time_finished_reading, s->time_started);
+		printf("%zu\t", i);
+		if (s->error) {
+			printf("error: %d (%s)\n", s->error, strerror(s->error));
+			continue;
+		}
+		printf("%d\t", s->status);
+		printf("%f\t", (double) write / time.MS);
+		printf("%f\t", (double) read / time.MS);
+		printf("%f\t", (double) total / time.MS);
+		printf("%zu\t", s->total_sent);
+		printf("%zu\n", s->total_received);
+    }
+    return 0;
 }
 
 enum {
@@ -333,9 +308,6 @@ int routine(void *ctx, int line) {
                 return READ_RESPONSE;
             }
 			c->stats->status = r.status;
-            strcpy(servername, r.servername);
-            response_length = r.head_length + r.content_length;
-            strcpy(response_version, r.version);
             io.shift(c->inbuf, r.head_length);
             c->body_bytes_to_read = r.content_length;
             c->body_bytes_to_read -= io.bufsize(c->inbuf);
@@ -377,26 +349,4 @@ void fatal(char *s) {
         printf("Total of %zu requests completed\n" , requests_done);
     }
     exit(1);
-}
-
-void output_results(int sig) {
-	printf("#\tstatus\twriting\treading\ttotal\tsent\treceived\n");
-    for (size_t i = 0; i < requests_done; i++) {
-        request_stats_t *s = &request_stats[i];
-        int64_t write = time.sub(s->time_finished_writing, s->time_started);
-        int64_t read = time.sub(s->time_finished_reading, s->time_finished_writing);
-        int64_t total = time.sub(s->time_finished_reading, s->time_started);
-		printf("%zu\t", i);
-		if (s->error) {
-			printf("error: %d (%s)\n", s->error, strerror(s->error));
-			continue;
-		}
-		printf("%d\t", s->status);
-		printf("%f\t", (double) write / time.MS);
-		printf("%f\t", (double) read / time.MS);
-		printf("%f\t", (double) total / time.MS);
-		printf("%zu\t", s->total_sent);
-		printf("%zu\n", s->total_received);
-    }
-    if (sig) exit(1);
 }
