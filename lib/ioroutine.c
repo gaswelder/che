@@ -1,6 +1,9 @@
+#import dbg
 #import os/io
 
 #define MAX_ROUTINES 1000
+
+const char *DEBTAG = "ioro";
 
 pub typedef int func_t(void *, int);
 
@@ -38,7 +41,7 @@ pub int spawn(func_t f, void *ctx) {
         if (!routines[i]) {
             routines[i] = r;
             r->id = i;
-            deb("spawned routine %d", i);
+            dbg.m(DEBTAG, "spawned routine %d", i);
             return i;
         }
     }
@@ -85,26 +88,26 @@ pub int step() {
         }
         if (r->waithandle) {
             if (r->waitfilter == io.READ) {
-                deb("%d blocked reading from %d", r->id, r->waithandle->fd);
+                dbg.m(DEBTAG, "%d blocked reading from %d", r->id, r->waithandle->fd);
             } else if (r->waitfilter == io.WRITE) {
-                deb("%d blocked writing to %d", r->id, r->waithandle->fd);
+                dbg.m(DEBTAG, "%d blocked writing to %d", r->id, r->waithandle->fd);
             } else {
-                deb("%d waits for %d (%d)", r->id, r->waithandle->fd, r->waitfilter);
+                dbg.m(DEBTAG, "%d waits for %d (%d)", r->id, r->waithandle->fd, r->waitfilter);
             }
             io.add(p, r->waithandle, r->waitfilter);
             handles++;
         }
     }
     if (handles == 0) {
-        deb("no handles to poll, returning false");
+        dbg.m(DEBTAG, "no handles to poll, returning false");
         return false;
     }
-    deb("polling %d handles", handles);
+    dbg.m(DEBTAG, "polling %d handles", handles);
     io.event_t *ev = io.poll(p);
 
     // Unblock relevant routines.
     while (ev->handle) {
-        deb("poll result: %d, r=%d, w=%d", ev->handle->fd, ev->readable, ev->writable);
+        dbg.m(DEBTAG, "poll result: %d, r=%d, w=%d", ev->handle->fd, ev->readable, ev->writable);
         // Find the routine blocked in this IO event.
         routine_t *r = find_routine(ev);
         if (!r) {
@@ -155,14 +158,14 @@ void step_routine(routine_t *r) {
         r->current_line = nextline;
     }
     if (nextline == -1) {
-        deb("routine %d finished", CURRENT_ROUTINE);
+        dbg.m(DEBTAG, "routine %d finished", CURRENT_ROUTINE);
         for (int i = 0; i < MAX_ROUTINES; i++) {
             routine_t *r = routines[i];
             if (!r) {
                 continue;
             }
             if (r->waitroutine == CURRENT_ROUTINE) {
-                deb("unblocking routine %d", r->id);
+                dbg.m(DEBTAG, "unblocking routine %d", r->id);
                 r->waitroutine = -1;
             }
         }
@@ -209,14 +212,4 @@ pub bool done(int id) {
     routines[id] = NULL;
     r->waitroutine = -1;
     return true;
-}
-
-void deb(const char *format, ...) {
-    (void) format;
-    // printf("[ioro] ");
-    // va_list l = {0};
-	// va_start(l, format);
-	// vprintf(format, l);
-	// va_end(l);
-    // printf("\n");
 }
