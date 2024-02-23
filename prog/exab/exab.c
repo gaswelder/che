@@ -158,7 +158,27 @@ int main(int argc, char *argv[]) {
     /* Output the results if the user terminates the run early. */
     signal(SIGINT, output_results);
 
-    test();
+	request_stats = calloc(requests_to_do, sizeof(request_stats_t));
+    connection_t *connections = calloc(concurrency, sizeof(connection_t));
+    if (!connections || !request_stats) {
+        panic("failed to allocate memory");
+    }
+	ioroutine.init();
+    if (!tlimit) {
+        tlimit = INT_MAX;
+    }
+	for (size_t i = 0; i < concurrency; i++) {
+        connections[i].outbuf = io.newbuf();
+        connections[i].inbuf = io.newbuf();
+        ioroutine.spawn(routine, &connections[i]);
+    }
+	START_TIME = time.now();
+    time.t stoptime = time.add(START_TIME, tlimit, time.SECONDS);
+    while (ioroutine.step()) {
+        if (time.sub(time.now(), stoptime) > 0) {
+            break;
+        }
+    }
     output_results(0);
     return 0;
 }
@@ -217,35 +237,6 @@ void build_request(const char *url) {
     io.push(&REQUEST, buf, strlen(buf));
     if (method == POST) {
         io.push(&REQUEST, postdata, strlen(postdata));
-    }
-}
-
-void test() {
-    request_stats = calloc(requests_to_do, sizeof(request_stats_t));
-    connection_t *connections = calloc(concurrency, sizeof(connection_t));
-    if (!connections || !request_stats) {
-        panic("failed to allocate memory");
-    }
-
-    ioroutine.init();
-
-    if (!tlimit) {
-        tlimit = INT_MAX;
-    }
-
-
-    for (size_t i = 0; i < concurrency; i++) {
-        connections[i].outbuf = io.newbuf();
-        connections[i].inbuf = io.newbuf();
-        ioroutine.spawn(routine, &connections[i]);
-    }
-
-    START_TIME = time.now();
-    time.t stoptime = time.add(START_TIME, tlimit, time.SECONDS);
-    while (ioroutine.step()) {
-        if (time.sub(time.now(), stoptime) > 0) {
-            break;
-        }
     }
 }
 
