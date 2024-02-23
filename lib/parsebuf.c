@@ -43,8 +43,7 @@ pub bool buf_more(parsebuf_t *b) {
 	return b->pos < b->len;
 }
 
-pub void buf_fcontext(parsebuf_t *b, char *buf, size_t len)
-{
+pub void buf_fcontext(parsebuf_t *b, char *buf, size_t len) {
 	if(len > b->len - b->pos) {
 		len = b->len - b->pos;
 	}
@@ -127,6 +126,30 @@ pub bool buf_skip_literal(parsebuf_t *b, const char *literal) {
 		buf_get(b);
 	}
 	return true;
+}
+
+pub bool spaces(parsebuf_t *b) {
+	int n = 0;
+	while (isspace(buf_peek(b))) {
+		n++;
+		buf_get(b);
+	}
+	return n > 0;
+}
+
+pub bool tok(parsebuf_t *b, const char *literal, const char *delims) {
+	const char *l = literal;
+	const char *s = b->s + b->pos;
+	while (*l) {
+		if (!*s || *s != *l) return false;
+		l++;
+		s++;
+	}
+	if (!*s || strchr(delims, *s)) {
+		b->pos = s - b->s;
+		return true;
+	}
+	return false;
 }
 
 /*
