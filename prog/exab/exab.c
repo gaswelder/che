@@ -15,15 +15,15 @@ typedef {
 	size_t total_received;
 	size_t total_sent;
 	int error;
-} request_stats_t;
+} result_t;
 
 typedef {
     io.handle_t *connection; // Connection with the server
     io.buf_t *outbuf; // Request copy to send
     io.buf_t *inbuf; // Response to read
     int body_bytes_to_read; // How many bytes to read to get the full response.
-    request_stats_t *stats; // Current request's stats
-} connection_t;
+    result_t *stats; // Current request's stats
+} context_t;
 
 int _bad = 0;
 void bad() {
@@ -33,7 +33,7 @@ void bad() {
 	}
 }
 
-request_stats_t *request_stats = NULL;
+result_t *request_stats = NULL;
 size_t requests_done = 0;
 char *colonhost = "";
 size_t requests_to_do = 1;
@@ -121,19 +121,17 @@ int main(int argc, char *argv[]) {
     // Create the request.
 	//
     http.request_t req = {};
-    int err = http.init_request(&req, method, u.path);
-	if (err) {
-		fprintf(stderr, "failed to init request: %s\n", http.errstr(err));
+    if (!http.init_request(&req, method, u.path)) {
+		fprintf(stderr, "failed to init request: %s\n", http.errstr(req.err));
 		return 1;
 	}
     http.set_header(&req, "Host", u.hostname);
-
+	http.set_header(&req, "User-Agent", "exab");
     if (method == http.POST) {
         char buf[10] = {0};
         sprintf(buf, "%zu", postlen);
         http.set_header(&req, "Content-Length", buf);
     }
-    http.set_header(&req, "User-Agent", "exab");
     char buf[1000] = {0};
     if (!http.write_request(&req, buf, sizeof(buf))) {
         fatal("failed to write request");
@@ -143,8 +141,8 @@ int main(int argc, char *argv[]) {
         io.push(&REQUEST, postdata, strlen(postdata));
     }
 
-	request_stats = calloc(requests_to_do, sizeof(request_stats_t));
-    connection_t *connections = calloc(concurrency, sizeof(connection_t));
+	request_stats = calloc(requests_to_do, sizeof(result_t));
+    context_t *connections = calloc(concurrency, sizeof(context_t));
     if (!connections || !request_stats) {
         panic("failed to allocate memory");
     }
@@ -161,7 +159,7 @@ int main(int argc, char *argv[]) {
 }
 
 int output_lines = 0;
-void output(request_stats_t *s) {
+void output(result_t *s) {
 	if (!output_lines) {
 		printf("#\tstatus\ttsending\ttreceiving\ttotaltime\tsent\treceived\n");
 	}
@@ -193,7 +191,7 @@ enum {
 const char *DBG_TAG = "exab";
 
 int routine(void *ctx, int line) {
-    connection_t *c = ctx;
+    context_t *c = ctx;
 
     switch (line) {
 		case BEGIN: {
@@ -285,34 +283,9 @@ int routine(void *ctx, int line) {
             io.shift(c->inbuf, io.bufsize(c->inbuf));
             return READ_RESPONSE_BODY;
         }
-        /*
-         * Read the rest of the body.
-         */
         case READ_RESPONSE_BODY: {
-            if (c->body_bytes_to_read == 0) {
-				dbg.m(DBG_TAG, "finished reading response, done=%zu, todo=%zu", requests_done, requests_to_do);
-                c->stats->time_finished_reading = time.now();
-				output(c->stats);
-				if (requests_done >= requests_to_do) {
-                	dbg.m(DBG_TAG, "all done (todo=%zu)\n", requests_to_do);
-                	io.close(c->connection);
-                	return -1;
-            	}
-                return BEGIN;
-            }
-            if (!ioroutine.ioready(c->connection, io.READ)) {
-                return READ_RESPONSE_BODY;
-            }
-            if (!io.read(c->connection, c->inbuf)) {
-                panic("read failed");
-            }
-            size_t n = io.bufsize(c->inbuf);
-            dbg.m(DBG_TAG, "read %zu of body\n", n);
-            c->body_bytes_to_read -= n;
-            io.shift(c->inbuf, n);
-            return READ_RESPONSE_BODY;
+            return read_response_body(c);
         }
-
         default: {
             panic("unexpected line: %d", line);
         }
@@ -320,6 +293,30 @@ int routine(void *ctx, int line) {
     return -1;
 }
 
+int read_response_body(context_t *c) {
+	if (c->body_bytes_to_read == 0) {
+		dbg.m(DBG_TAG, "finished reading response, done=%zu, todo=%zu", requests_done, requests_to_do);
+		c->stats->time_finished_reading = time.now();
+		output(c->stats);
+		if (requests_done >= requests_to_do) {
+			dbg.m(DBG_TAG, "all done (todo=%zu)\n", requests_to_do);
+			io.close(c->connection);
+			return -1;
+		}
+		return BEGIN;
+	}
+	if (!ioroutine.ioready(c->connection, io.READ)) {
+		return READ_RESPONSE_BODY;
+	}
+	if (!io.read(c->connection, c->inbuf)) {
+		panic("read failed");
+	}
+	size_t n = io.bufsize(c->inbuf);
+	dbg.m(DBG_TAG, "read %zu of body\n", n);
+	c->body_bytes_to_read -= n;
+	io.shift(c->inbuf, n);
+	return READ_RESPONSE_BODY;
+}
 
 void fatal(char *s) {
     fprintf(stderr, "%s: %s (%d)\n", s, strerror(errno), errno);

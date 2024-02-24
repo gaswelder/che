@@ -81,6 +81,7 @@ pub bool parse_url(url_t *r, const char *s) {
 
 
 pub typedef {
+	int err;
     char method[10];
     char uri[1024];
     char version[10];
@@ -107,21 +108,22 @@ pub const char *errstr(int err) {
 	return "unknown error";
 }
 
-pub int init_request(request_t *r, int method, const char *path) {
+pub bool init_request(request_t *r, int method, const char *path) {
+	memset(r, 0, sizeof(request_t));
 	const char *methodstring = NULL;
 	switch (method) {
         case GET: { methodstring = "GET"; }
         case POST: { methodstring = "POST"; }
         case HEAD: { methodstring = "HEAD"; }
+		default: {
+			r->err = 1; // unknown method
+			return false;
+		}
     }
-	if (!methodstring) {
-		return 1; // unknown method
-	}
-    memset(r, 0, sizeof(request_t));
     strcpy(r->method, methodstring);
     strcpy(r->uri, path);
     strcpy(r->version, "HTTP/1.1");
-    return 0;
+    return true;
 }
 
 pub bool set_header(request_t *r, const char *name, *value) {
