@@ -160,23 +160,24 @@ value_t *read_list(parsebuf.parsebuf_t *b) {
 }
 
 void format_expr(value_t *e, strbuilder.str *s) {
-	char buf[1000] = {};
-	size_t n = 0;
-
 	switch (e->kind) {
-		case UNION: {
-			for (size_t i = 0; i < e->itemslen; i++) {
-				n += format_atom(e->items[i], buf + n, 1000 - n);
-				if (i + 1 < e->itemslen) {
-					n += snprintf(buf + n, 1000-n, " | ");
-				}
-			}
-		}
+		case UNION: { format_union(e, s); }
 		case TYPEDEF: {
-			n += snprintf(buf + n, 1000-n, "type %s<%s> = (...)", e->name, e->arg);
+			strbuilder.addf(s, "type %s<%s> = (...)", e->name, e->arg);
 		}
 		default: {
 			panic("unknown expr kind: %d", e->kind);
+		}
+	}
+}
+
+void format_union(value_t *e, strbuilder.str *s) {
+	char buf[1000] = {};
+	size_t n = 0;
+	for (size_t i = 0; i < e->itemslen; i++) {
+		n += format_atom(e->items[i], buf + n, 1000 - n);
+		if (i + 1 < e->itemslen) {
+			n += snprintf(buf + n, 1000-n, " | ");
 		}
 	}
 	strbuilder.adds(s, buf);

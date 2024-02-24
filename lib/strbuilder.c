@@ -41,6 +41,15 @@ pub bool adds(str *b, const char *s) {
 	return true;
 }
 
+pub bool addf(str *b, const char *format, ...) {
+	char buf[1000] = {};
+	va_list l = {0};
+	va_start(l, format);
+	vsnprintf(buf, sizeof(buf), format, l);
+	va_end(l);
+	return adds(b, buf);
+}
+
 pub char *str_raw(str *s)
 {
 	return s->data;
