@@ -44,6 +44,7 @@ int main() {
 	test("[1, \"a\"]");
 	test("[1, \"a\", true]");
 	test("1 | 2");
+	test("type A = 1");
 	test("type Wrap<T, U> = [1]");
 	// Wrap<true>
 	return 0;
@@ -79,24 +80,25 @@ node_t *read_typedef(parsebuf.parsebuf_t *b) {
 	if (!parsebuf.id(b, t->name, sizeof(t->name))) {
 		panic("failed to read name");
 	}
-	expect(b, '<');
 
-	while (parsebuf.buf_more(b)) {
-		size_t n = t->nargs++;
-		t->args[n] = calloc(1, 100);
-		char param = parsebuf.buf_get(b);
-		if (!isalpha(param)) {
-			panic("expected an id, got '%c'", param);
-		}
-		t->args[n][0] = param;
-		parsebuf.spaces(b);
-		if (!parsebuf.buf_skip(b, ',')) {
-			break;
-		} else {
+	if (parsebuf.buf_skip(b, '<')) {
+		while (parsebuf.buf_more(b)) {
+			size_t n = t->nargs++;
+			t->args[n] = calloc(1, 100);
+			char param = parsebuf.buf_get(b);
+			if (!isalpha(param)) {
+				panic("expected an id, got '%c'", param);
+			}
+			t->args[n][0] = param;
 			parsebuf.spaces(b);
+			if (!parsebuf.buf_skip(b, ',')) {
+				break;
+			} else {
+				parsebuf.spaces(b);
+			}
 		}
+		expect(b, '>');
 	}
-	expect(b, '>');
 	parsebuf.spaces(b);
 	expect(b, '=');
 	parsebuf.spaces(b);
@@ -204,12 +206,16 @@ void format_union(node_t *e, strbuilder.str *s) {
 
 void format_typedef(node_t *e, strbuilder.str *s) {
 	tdef_t *t = e->payload;
-	strbuilder.addf(s, "type %s<", t->name);
-	for (size_t i = 0; i < t->nargs; i++) {
-		if (i > 0) strbuilder.adds(s, ", ");
-		strbuilder.adds(s, t->args[i]);
+	strbuilder.addf(s, "type %s", t->name);
+	if (t->nargs > 0) {
+		strbuilder.adds(s, "<");
+		for (size_t i = 0; i < t->nargs; i++) {
+			if (i > 0) strbuilder.adds(s, ", ");
+			strbuilder.adds(s, t->args[i]);
+		}
+		strbuilder.adds(s, ">");
 	}
-	strbuilder.adds(s, "> = ");
+	strbuilder.adds(s, " = ");
 	format_expr(t->expr, s);
 }
 
