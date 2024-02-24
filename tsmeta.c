@@ -31,7 +31,7 @@ int main() {
 	test("[1, \"a\"]");
 	test("[1, \"a\", true]");
 	test("1 | 2");
-	test("type F<T> = [1]");
+	test("type Wrap<T> = [1]");
 	// Wrap<true>
 	return 0;
 }
@@ -47,10 +47,12 @@ void test(const char *in) {
 
 value_t *read_statement(parsebuf.parsebuf_t *b) {
 	if (parsebuf.tok(b, "type", " ")) {
+		value_t *e = calloc(1, sizeof(value_t));
+		e->kind = TYPEDEF;
+
 		parsebuf.spaces(b);
-		char name = parsebuf.buf_get(b);
-		if (!isalpha(name)) {
-			panic("expected an id, got '%c'", name);
+		if (!parsebuf.id(b, e->name, sizeof(e->name))) {
+			panic("failed to read name");
 		}
 		expect(b, '<');
 		char param = parsebuf.buf_get(b);
@@ -61,10 +63,6 @@ value_t *read_statement(parsebuf.parsebuf_t *b) {
 		parsebuf.spaces(b);
 		expect(b, '=');
 		parsebuf.spaces(b);
-
-		value_t *e = calloc(1, sizeof(value_t));
-		e->kind = TYPEDEF;
-		e->name[0] = name;
 		e->arg[0] = param;
 		e->expr = read_union(b);
 		return e;

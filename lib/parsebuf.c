@@ -152,6 +152,30 @@ pub bool tok(parsebuf_t *b, const char *literal, const char *delims) {
 	return false;
 }
 
+/**
+ * Reads a C-style identifier into the provided buffer.
+ * If the buffer is too small, the identifier is still read
+ * completely, but trimmed to fit the buffer.
+ */
+pub bool id(parsebuf_t *b, char *buf, size_t n) {
+	if (!isalpha(buf_peek(b)) && buf_peek(b) != '_') {
+		return false;
+	}
+	size_t pos = 0;
+	while (buf_more(b)) {
+		int c = buf_peek(b);
+		if (!isalpha(c) && !isdigit(c) && c != '_') {
+			break;
+		}
+		buf_get(b);
+		if (pos < n-1) {
+			buf[pos++] = c;
+		}
+	}
+	buf[pos++] = '\0';
+	return true;
+}
+
 /*
  * Returns true if the given literal is next in the buffer.
  */
