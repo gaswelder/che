@@ -17,10 +17,16 @@ typedef {
 	char name[10];
 	char arg[10];
 	void *expr;
-} value_t;
+} node_t;
 
-value_t True = {.kind = T};
-value_t False = {.kind = F};
+node_t True = {.kind = T};
+node_t False = {.kind = F};
+
+node_t *node(int kind) {
+	node_t *e = calloc(1, sizeof(node_t));
+	e->kind = kind;
+	return e;
+}
 
 int main() {
 	test("true");
@@ -38,41 +44,43 @@ int main() {
 
 void test(const char *in) {
 	parsebuf.parsebuf_t *b = parsebuf.buf_new(in);
-	value_t *e = read_statement(b);
+	node_t *e = read_statement(b);
 
 	strbuilder.str *s = strbuilder.str_new();
 	format_expr(e, s);
 	printf("%s\n", strbuilder.str_raw(s));
 }
 
-value_t *read_statement(parsebuf.parsebuf_t *b) {
+node_t *read_statement(parsebuf.parsebuf_t *b) {
 	if (parsebuf.tok(b, "type", " ")) {
-		value_t *e = calloc(1, sizeof(value_t));
-		e->kind = TYPEDEF;
-
-		parsebuf.spaces(b);
-		if (!parsebuf.id(b, e->name, sizeof(e->name))) {
-			panic("failed to read name");
-		}
-		expect(b, '<');
-		char param = parsebuf.buf_get(b);
-		if (!isalpha(param)) {
-			panic("expected an id, got '%c'", param);
-		}
-		expect(b, '>');
-		parsebuf.spaces(b);
-		expect(b, '=');
-		parsebuf.spaces(b);
-		e->arg[0] = param;
-		e->expr = read_union(b);
-		return e;
+		return read_typedef(b);
 	}
 	return read_union(b);
 }
 
-value_t *read_union(parsebuf.parsebuf_t *b) {
-	value_t *e = calloc(1, sizeof(value_t));
-	e->kind = UNION;
+node_t *read_typedef(parsebuf.parsebuf_t *b) {
+	node_t *e = node(TYPEDEF);
+
+	parsebuf.spaces(b);
+	if (!parsebuf.id(b, e->name, sizeof(e->name))) {
+		panic("failed to read name");
+	}
+	expect(b, '<');
+	char param = parsebuf.buf_get(b);
+	if (!isalpha(param)) {
+		panic("expected an id, got '%c'", param);
+	}
+	expect(b, '>');
+	parsebuf.spaces(b);
+	expect(b, '=');
+	parsebuf.spaces(b);
+	e->arg[0] = param;
+	e->expr = read_union(b);
+	return e;
+}
+
+node_t *read_union(parsebuf.parsebuf_t *b) {
+	node_t *e = node(UNION);
 	e->items[e->itemslen++] = read_value(b);
 	parsebuf.spaces(b);
 	while (parsebuf.buf_skip(b, '|')) {
@@ -82,7 +90,7 @@ value_t *read_union(parsebuf.parsebuf_t *b) {
 	return e;
 }
 
-value_t *read_value(parsebuf.parsebuf_t *b) {
+node_t *read_value(parsebuf.parsebuf_t *b) {
 	if (parsebuf.tok(b, "true", " ]")) {
 		return &True;
 	}
@@ -103,8 +111,8 @@ value_t *read_value(parsebuf.parsebuf_t *b) {
 	panic("failed to parse: '%s", tmp);
 }
 
-value_t *read_number(parsebuf.parsebuf_t *b) {
-	value_t *e = calloc(1, sizeof(value_t));
+node_t *read_number(parsebuf.parsebuf_t *b) {
+	node_t *e = node(NUM);
 	char *p = e->payload;
 	while (isdigit(parsebuf.buf_peek(b))) {
 		*p++ = parsebuf.buf_get(b);
@@ -115,12 +123,11 @@ value_t *read_number(parsebuf.parsebuf_t *b) {
 			*p++ = parsebuf.buf_get(b);
 		}
 	}
-	e->kind = NUM;
 	return e;
 }
 
-value_t *read_string(parsebuf.parsebuf_t *b) {
-	value_t *e = calloc(1, sizeof(value_t));
+node_t *read_string(parsebuf.parsebuf_t *b) {
+	node_t *e = node(STR);
 	char *p = e->payload;
 	*p++ = parsebuf.buf_get(b);
 	while (parsebuf.buf_more(b) && parsebuf.buf_peek(b) != '"') {
@@ -130,7 +137,6 @@ value_t *read_string(parsebuf.parsebuf_t *b) {
 		panic("expected closing quote");
 	}
 	*p++ = parsebuf.buf_get(b);
-	e->kind = STR;
 	return e;
 }
 
@@ -141,8 +147,8 @@ char expect(parsebuf.parsebuf_t *b, char c) {
 	return parsebuf.buf_get(b);
 }
 
-value_t *read_list(parsebuf.parsebuf_t *b) {
-	value_t *e = calloc(1, sizeof(value_t));
+node_t *read_list(parsebuf.parsebuf_t *b) {
+	node_t *e = node(LIST);
 	expect(b, '[');
 	while (parsebuf.buf_more(b) && parsebuf.buf_peek(b) != ']') {
 		e->items[e->itemslen++] = read_value(b);
@@ -153,11 +159,10 @@ value_t *read_list(parsebuf.parsebuf_t *b) {
 		}
 	}
 	expect(b, ']');
-	e->kind = LIST;
 	return e;
 }
 
-void format_expr(value_t *e, strbuilder.str *s) {
+void format_expr(node_t *e, strbuilder.str *s) {
 	switch (e->kind) {
 		case UNION: { format_union(e, s); }
 		case TYPEDEF: {
@@ -170,7 +175,7 @@ void format_expr(value_t *e, strbuilder.str *s) {
 	}
 }
 
-void format_union(value_t *e, strbuilder.str *s) {
+void format_union(node_t *e, strbuilder.str *s) {
 	char buf[1000] = {};
 	size_t n = 0;
 	for (size_t i = 0; i < e->itemslen; i++) {
@@ -182,7 +187,7 @@ void format_union(value_t *e, strbuilder.str *s) {
 	strbuilder.adds(s, buf);
 }
 
-int format_atom(value_t *e, char *buf, size_t n) {
+int format_atom(node_t *e, char *buf, size_t n) {
 	switch (e->kind) {
 		case T: { return snprintf(buf, n, "%s", "true"); }
 		case F: { return snprintf(buf, n, "%s", "false"); }
