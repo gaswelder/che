@@ -1,7 +1,7 @@
 #import parsebuf
 
 enum {
-	T = 1, F, NUM, STR, LIST
+	T = 1, F, NUM, STR, LIST, UNION, TYPEDEF
 };
 
 typedef {
@@ -11,25 +11,12 @@ typedef {
 	// for list
 	void *items[100];
 	size_t itemslen;
-} value_t;
-
-enum {
-	UNION = 1,
-	TYPEDEF
-};
-
-typedef {
-	int kind;
-
-	// union
-	value_t *list[100];
-	int size;
 
 	// typedef
 	char name[10];
 	char arg[10];
 	void *expr;
-} expr_t;
+} value_t;
 
 value_t True = {.kind = T};
 value_t False = {.kind = F};
@@ -50,11 +37,11 @@ int main() {
 
 void test(const char *in) {
 	parsebuf.parsebuf_t *b = parsebuf.buf_new(in);
-	expr_t *e = read_statement(b);
+	value_t *e = read_statement(b);
 	format_expr(e);
 }
 
-expr_t *read_statement(parsebuf.parsebuf_t *b) {
+value_t *read_statement(parsebuf.parsebuf_t *b) {
 	if (parsebuf.tok(b, "type", " ")) {
 		parsebuf.spaces(b);
 		char name = parsebuf.buf_get(b);
@@ -70,26 +57,25 @@ expr_t *read_statement(parsebuf.parsebuf_t *b) {
 		parsebuf.spaces(b);
 		expect(b, '=');
 		parsebuf.spaces(b);
-		expr_t *val = read_union(b);
 
-		expr_t *e = calloc(1, sizeof(expr_t));
+		value_t *e = calloc(1, sizeof(value_t));
 		e->kind = TYPEDEF;
 		e->name[0] = name;
 		e->arg[0] = param;
-		e->expr = val;
+		e->expr = read_union(b);
 		return e;
 	}
 	return read_union(b);
 }
 
-expr_t *read_union(parsebuf.parsebuf_t *b) {
-	expr_t *e = calloc(1, sizeof(expr_t));
+value_t *read_union(parsebuf.parsebuf_t *b) {
+	value_t *e = calloc(1, sizeof(value_t));
 	e->kind = UNION;
-	e->list[e->size++] = read_value(b);
+	e->items[e->itemslen++] = read_value(b);
 	parsebuf.spaces(b);
 	while (parsebuf.buf_skip(b, '|')) {
 		parsebuf.spaces(b);
-		e->list[e->size++] = read_value(b);
+		e->items[e->itemslen++] = read_value(b);
 	}
 	return e;
 }
@@ -169,15 +155,15 @@ value_t *read_list(parsebuf.parsebuf_t *b) {
 	return e;
 }
 
-void format_expr(expr_t *e) {
+void format_expr(value_t *e) {
 	char buf[1000] = {};
 	size_t n = 0;
 
 	switch (e->kind) {
 		case UNION: {
-			for (int i = 0; i < e->size; i++) {
-				n += format_atom(e->list[i], buf + n, 1000 - n);
-				if (i + 1 < e->size) {
+			for (size_t i = 0; i < e->itemslen; i++) {
+				n += format_atom(e->items[i], buf + n, 1000 - n);
+				if (i + 1 < e->itemslen) {
 					n += snprintf(buf + n, 1000-n, " | ");
 				}
 			}
