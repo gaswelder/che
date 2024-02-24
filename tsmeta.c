@@ -7,17 +7,18 @@ enum {
 
 typedef {
 	int kind;
-	char payload[100];
+	void *payload;
 
 	// for list
 	void *items[100];
 	size_t itemslen;
+} node_t;
 
-	// typedef
+typedef {
 	char name[10];
 	char arg[10];
 	void *expr;
-} node_t;
+} tdef_t;
 
 node_t True = {.kind = T};
 node_t False = {.kind = F};
@@ -25,6 +26,11 @@ node_t False = {.kind = F};
 node_t *node(int kind) {
 	node_t *e = calloc(1, sizeof(node_t));
 	e->kind = kind;
+	if (kind == TYPEDEF) {
+		e->payload = calloc(1, sizeof(tdef_t));
+	} else {
+		e->payload = calloc(100, 1);
+	}
 	return e;
 }
 
@@ -66,9 +72,10 @@ node_t *read_statement(parsebuf.parsebuf_t *b) {
 
 node_t *read_typedef(parsebuf.parsebuf_t *b) {
 	node_t *e = node(TYPEDEF);
+	tdef_t *t = e->payload;
 
 	parsebuf.spaces(b);
-	if (!parsebuf.id(b, e->name, sizeof(e->name))) {
+	if (!parsebuf.id(b, t->name, sizeof(t->name))) {
 		panic("failed to read name");
 	}
 	expect(b, '<');
@@ -80,8 +87,8 @@ node_t *read_typedef(parsebuf.parsebuf_t *b) {
 	parsebuf.spaces(b);
 	expect(b, '=');
 	parsebuf.spaces(b);
-	e->arg[0] = param;
-	e->expr = read_union(b);
+	t->arg[0] = param;
+	t->expr = read_union(b);
 	return e;
 }
 
@@ -119,7 +126,7 @@ node_t *read_value(parsebuf.parsebuf_t *b) {
 
 node_t *read_number(parsebuf.parsebuf_t *b) {
 	node_t *e = node(NUM);
-	if (!parsebuf.num(b, e->payload, sizeof(e->payload))) {
+	if (!parsebuf.num(b, e->payload, 100)) {
 		panic("failed to read the number");
 	}
 	return e;
@@ -165,8 +172,9 @@ void format_expr(node_t *e, strbuilder.str *s) {
 	switch (e->kind) {
 		case UNION: { format_union(e, s); }
 		case TYPEDEF: {
-			strbuilder.addf(s, "type %s<%s> = ", e->name, e->arg);
-			format_expr(e->expr, s);
+			tdef_t *t = e->payload;
+			strbuilder.addf(s, "type %s<%s> = ", t->name, t->arg);
+			format_expr(t->expr, s);
 		}
 		default: {
 			panic("unknown expr kind: %d", e->kind);
@@ -190,8 +198,10 @@ int format_atom(node_t *e, char *buf, size_t n) {
 	switch (e->kind) {
 		case T: { return snprintf(buf, n, "%s", "true"); }
 		case F: { return snprintf(buf, n, "%s", "false"); }
-		case NUM: { return snprintf(buf, n, "%s", e->payload); }
-		case STR: { return snprintf(buf, n, "%s", e->payload); }
+		case NUM, STR: {
+			char *p = e->payload;
+			return snprintf(buf, n, "%s", p);
+		}
 		case LIST: {
 			int r = 0;
 			r += snprintf(buf + r, n-r, "[");
