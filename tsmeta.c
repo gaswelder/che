@@ -63,6 +63,25 @@ void test(const char *in) {
 }
 
 node_t *eval(node_t *e) {
+	switch (e->kind) {
+		case T, F, NUM, STR, LIST, TYPEDEF: {
+			return e;
+		}
+		case UNION: {
+			node_t *r = node(UNION);
+			for (size_t i = 0; i < e->itemslen; i++) {
+				r->items[i] = eval(e->items[i]);
+			}
+			r->itemslen = e->itemslen;
+			return r;
+		}
+		case ID: {
+			return e;
+		}
+		default: {
+			panic("don't know how to eval kind %d", e->kind);
+		}
+	}
 	return e;
 }
 
