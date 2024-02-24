@@ -51,6 +51,9 @@ int main() {
 	return 0;
 }
 
+node_t *global_types[100] = {};
+size_t global_typeslen = 0;
+
 void test(const char *in) {
 	parsebuf.parsebuf_t *b = parsebuf.buf_new(in);
 	node_t *e = read_statement(b);
@@ -64,7 +67,11 @@ void test(const char *in) {
 
 node_t *eval(node_t *e) {
 	switch (e->kind) {
-		case T, F, NUM, STR, LIST, TYPEDEF: {
+		case T, F, NUM, STR, LIST: {
+			return e;
+		}
+		case TYPEDEF: {
+			global_types[global_typeslen++] = e;
 			return e;
 		}
 		case UNION: {
@@ -76,7 +83,15 @@ node_t *eval(node_t *e) {
 			return r;
 		}
 		case ID: {
-			return e;
+			char *name = e->payload;
+			for (size_t i = 0; i < global_typeslen; i++) {
+				tdef_t *t = global_types[i]->payload;
+				if (!strcmp(t->name, name)) {
+					return t->expr;
+				}
+			}
+			panic("unknown identifier: %s", name);
+			return NULL;
 		}
 		default: {
 			panic("don't know how to eval kind %d", e->kind);
@@ -206,21 +221,20 @@ void format_expr(node_t *e, strbuilder.str *s) {
 		case UNION: { format_union(e, s); }
 		case TYPEDEF: { format_typedef(e, s); }
 		default: {
-			panic("unknown expr kind: %d", e->kind);
+			char buf[100] = {};
+			format_atom(e, buf, 100);
+			strbuilder.adds(s, buf);
 		}
 	}
 }
 
 void format_union(node_t *e, strbuilder.str *s) {
-	char buf[1000] = {};
-	size_t n = 0;
 	for (size_t i = 0; i < e->itemslen; i++) {
-		n += format_atom(e->items[i], buf + n, 1000 - n);
+		format_expr(e->items[i], s);
 		if (i + 1 < e->itemslen) {
-			n += snprintf(buf + n, 1000-n, " | ");
+			strbuilder.adds(s, " | ");
 		}
 	}
-	strbuilder.adds(s, buf);
 }
 
 void format_typedef(node_t *e, strbuilder.str *s) {
@@ -259,7 +273,7 @@ int format_atom(node_t *e, char *buf, size_t n) {
 			return r;
 		}
 		default: {
-			panic("format: unknown kind");
+			panic("format: unknown kind: %d", e->kind);
 		}
 	}
 }
