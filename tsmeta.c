@@ -46,9 +46,15 @@ void test(const char *in) {
 	parsebuf.parsebuf_t *b = parsebuf.buf_new(in);
 	node_t *e = read_statement(b);
 
+	node_t *r = eval(e);
+
 	strbuilder.str *s = strbuilder.str_new();
-	format_expr(e, s);
+	format_expr(r, s);
 	printf("%s\n", strbuilder.str_raw(s));
+}
+
+node_t *eval(node_t *e) {
+	return e;
 }
 
 node_t *read_statement(parsebuf.parsebuf_t *b) {
