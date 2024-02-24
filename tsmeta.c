@@ -7,13 +7,28 @@ enum {
 typedef {
 	int kind;
 	char payload[100];
+
+	// for list
 	void *items[100];
 	size_t itemslen;
 } value_t;
 
+enum {
+	UNION = 1,
+	TYPEDEF
+};
+
 typedef {
+	int kind;
+
+	// union
 	value_t *list[100];
 	int size;
+
+	// typedef
+	char name[10];
+	char arg[10];
+	void *expr;
 } expr_t;
 
 value_t True = {.kind = T};
@@ -28,17 +43,48 @@ int main() {
 	test("[1, \"a\"]");
 	test("[1, \"a\", true]");
 	test("1 | 2");
+	test("type F<T> = [1]");
+	// Wrap<true>
 	return 0;
 }
 
 void test(const char *in) {
 	parsebuf.parsebuf_t *b = parsebuf.buf_new(in);
-	expr_t *e = read_expr(b);
+	expr_t *e = read_statement(b);
 	format_expr(e);
 }
 
-expr_t *read_expr(parsebuf.parsebuf_t *b) {
+expr_t *read_statement(parsebuf.parsebuf_t *b) {
+	if (parsebuf.tok(b, "type", " ")) {
+		parsebuf.spaces(b);
+		char name = parsebuf.buf_get(b);
+		if (!isalpha(name)) {
+			panic("expected an id, got '%c'", name);
+		}
+		expect(b, '<');
+		char param = parsebuf.buf_get(b);
+		if (!isalpha(param)) {
+			panic("expected an id, got '%c'", param);
+		}
+		expect(b, '>');
+		parsebuf.spaces(b);
+		expect(b, '=');
+		parsebuf.spaces(b);
+		expr_t *val = read_union(b);
+
+		expr_t *e = calloc(1, sizeof(expr_t));
+		e->kind = TYPEDEF;
+		e->name[0] = name;
+		e->arg[0] = param;
+		e->expr = val;
+		return e;
+	}
+	return read_union(b);
+}
+
+expr_t *read_union(parsebuf.parsebuf_t *b) {
 	expr_t *e = calloc(1, sizeof(expr_t));
+	e->kind = UNION;
 	e->list[e->size++] = read_value(b);
 	parsebuf.spaces(b);
 	while (parsebuf.buf_skip(b, '|')) {
@@ -127,10 +173,20 @@ void format_expr(expr_t *e) {
 	char buf[1000] = {};
 	size_t n = 0;
 
-	for (int i = 0; i < e->size; i++) {
-		n += format_atom(e->list[i], buf + n, 1000 - n);
-		if (i + 1 < e->size) {
-			n += snprintf(buf + n, 1000-n, " | ");
+	switch (e->kind) {
+		case UNION: {
+			for (int i = 0; i < e->size; i++) {
+				n += format_atom(e->list[i], buf + n, 1000 - n);
+				if (i + 1 < e->size) {
+					n += snprintf(buf + n, 1000-n, " | ");
+				}
+			}
+		}
+		case TYPEDEF: {
+			n += snprintf(buf + n, 1000-n, "type %s<%s> = (...)", e->name, e->arg);
+		}
+		default: {
+			panic("unknown expr kind: %d", e->kind);
 		}
 	}
 	printf("%s\n", buf);
