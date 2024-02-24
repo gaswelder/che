@@ -1,4 +1,5 @@
 #import parsebuf
+#import strbuilder
 
 enum {
 	T = 1, F, NUM, STR, LIST, UNION, TYPEDEF
@@ -38,7 +39,10 @@ int main() {
 void test(const char *in) {
 	parsebuf.parsebuf_t *b = parsebuf.buf_new(in);
 	value_t *e = read_statement(b);
-	format_expr(e);
+
+	strbuilder.str *s = strbuilder.str_new();
+	format_expr(e, s);
+	printf("%s\n", strbuilder.str_raw(s));
 }
 
 value_t *read_statement(parsebuf.parsebuf_t *b) {
@@ -155,7 +159,7 @@ value_t *read_list(parsebuf.parsebuf_t *b) {
 	return e;
 }
 
-void format_expr(value_t *e) {
+void format_expr(value_t *e, strbuilder.str *s) {
 	char buf[1000] = {};
 	size_t n = 0;
 
@@ -175,7 +179,7 @@ void format_expr(value_t *e) {
 			panic("unknown expr kind: %d", e->kind);
 		}
 	}
-	printf("%s\n", buf);
+	strbuilder.adds(s, buf);
 }
 
 int format_atom(value_t *e, char *buf, size_t n) {
