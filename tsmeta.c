@@ -2,7 +2,7 @@
 #import strbuilder
 
 enum {
-	T = 1, F, NUM, STR, LIST, UNION, TYPEDEF
+	T = 1, F, NUM, STR, LIST, ID, UNION, TYPEDEF
 };
 
 typedef {
@@ -45,6 +45,7 @@ int main() {
 	test("[1, \"a\", true]");
 	test("1 | 2");
 	test("type A = 1");
+	test("A");
 	test("type Wrap<T, U> = [1]");
 	// Wrap<true>
 	return 0;
@@ -118,24 +119,23 @@ node_t *read_union(parsebuf.parsebuf_t *b) {
 }
 
 node_t *read_value(parsebuf.parsebuf_t *b) {
-	if (parsebuf.tok(b, "true", " ]")) {
-		return &True;
+	if (parsebuf.tok(b, "true", " ]")) return &True;
+	if (parsebuf.tok(b, "false", " ]")) return &False;
+	if (parsebuf.buf_peek(b) == '"') return read_string(b);
+	if (parsebuf.buf_peek(b) == '[') return read_list(b);
+	if (isdigit(parsebuf.buf_peek(b))) return read_number(b);
+	return read_identifier(b);
+}
+
+node_t *read_identifier(parsebuf.parsebuf_t *b) {
+	node_t *e = node(ID);
+	char *p = e->payload;
+	if (!parsebuf.id(b, p, 100)) {
+		char tmp[100] = {};
+		parsebuf.buf_fcontext(b, tmp, sizeof(tmp));
+		panic("failed to parse: '%s", tmp);
 	}
-	if (parsebuf.tok(b, "false", " ]")) {
-		return &False;
-	}
-	if (isdigit(parsebuf.buf_peek(b))) {
-		return read_number(b);
-	}
-	if (parsebuf.buf_peek(b) == '"') {
-		return read_string(b);
-	}
-	if (parsebuf.buf_peek(b) == '[') {
-		return read_list(b);
-	}
-	char tmp[100] = {};
-	parsebuf.buf_fcontext(b, tmp, sizeof(tmp));
-	panic("failed to parse: '%s", tmp);
+	return e;
 }
 
 node_t *read_number(parsebuf.parsebuf_t *b) {
@@ -223,7 +223,7 @@ int format_atom(node_t *e, char *buf, size_t n) {
 	switch (e->kind) {
 		case T: { return snprintf(buf, n, "%s", "true"); }
 		case F: { return snprintf(buf, n, "%s", "false"); }
-		case NUM, STR: {
+		case NUM, STR, ID: {
 			char *p = e->payload;
 			return snprintf(buf, n, "%s", p);
 		}
