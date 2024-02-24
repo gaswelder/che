@@ -218,14 +218,25 @@ node_t *read_list(parsebuf.parsebuf_t *b) {
 
 void format_expr(node_t *e, strbuilder.str *s) {
 	switch (e->kind) {
+		case T: { strbuilder.adds(s, "true"); }
+		case F: { strbuilder.adds(s, "false"); }
+		case NUM, STR, ID: { strbuilder.adds(s, e->payload); }
 		case UNION: { format_union(e, s); }
 		case TYPEDEF: { format_typedef(e, s); }
+		case LIST: { format_list(e, s); }
 		default: {
-			char buf[100] = {};
-			format_atom(e, buf, 100);
-			strbuilder.adds(s, buf);
+			panic("format_expr: unknown kind %d", e->kind);
 		}
 	}
+}
+
+void format_list(node_t *e, strbuilder.str *s) {
+	strbuilder.adds(s, "[");
+	for (size_t i = 0; i < e->itemslen; i++) {
+		if (i > 0) strbuilder.adds(s, ", ");
+		format_expr(e->items[i], s);
+	}
+	strbuilder.adds(s, "]");
 }
 
 void format_union(node_t *e, strbuilder.str *s) {
@@ -252,28 +263,3 @@ void format_typedef(node_t *e, strbuilder.str *s) {
 	format_expr(t->expr, s);
 }
 
-int format_atom(node_t *e, char *buf, size_t n) {
-	switch (e->kind) {
-		case T: { return snprintf(buf, n, "%s", "true"); }
-		case F: { return snprintf(buf, n, "%s", "false"); }
-		case NUM, STR, ID: {
-			char *p = e->payload;
-			return snprintf(buf, n, "%s", p);
-		}
-		case LIST: {
-			int r = 0;
-			r += snprintf(buf + r, n-r, "[");
-			for (size_t i = 0; i < e->itemslen; i++) {
-				if (i > 0) {
-					r += snprintf(buf + r, n-r, ", ");
-				}
-				r += format_atom(e->items[i], buf + r, n - r);
-			}
-			r += snprintf(buf + r, n-r, "]");
-			return r;
-		}
-		default: {
-			panic("format: unknown kind: %d", e->kind);
-		}
-	}
-}
