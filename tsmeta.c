@@ -163,7 +163,8 @@ void format_expr(value_t *e, strbuilder.str *s) {
 	switch (e->kind) {
 		case UNION: { format_union(e, s); }
 		case TYPEDEF: {
-			strbuilder.addf(s, "type %s<%s> = (...)", e->name, e->arg);
+			strbuilder.addf(s, "type %s<%s> = ", e->name, e->arg);
+			format_expr(e->expr, s);
 		}
 		default: {
 			panic("unknown expr kind: %d", e->kind);
