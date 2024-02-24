@@ -17,6 +17,17 @@ pub void str_free(str *s)
 	free(s);
 }
 
+/**
+ * Clears the contents of the builder so it can be used again.
+ */
+pub void clear(str *s) {
+	if (s->len == 0) {
+		return;
+	}
+	s->len = 0;
+	s->data[0] = '\0';
+}
+
 pub bool str_addc(str *s, int ch) {
 	if (s->len + 1 >= s->max) {
 		if (!grow(s)) {

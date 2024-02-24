@@ -55,12 +55,18 @@ node_t *global_types[100] = {};
 size_t global_typeslen = 0;
 
 void test(const char *in) {
+	// Read the expression.
 	parsebuf.parsebuf_t *b = parsebuf.buf_new(in);
 	node_t *e = read_statement(b);
 
-	node_t *r = eval(e);
-
+	// Print the input.
 	strbuilder.str *s = strbuilder.str_new();
+	format_expr(e, s);
+	printf("> %s\n", strbuilder.str_raw(s));
+
+	// Evaluate and print the result.
+	node_t *r = eval(e);
+	strbuilder.clear(s);
 	format_expr(r, s);
 	printf("%s\n", strbuilder.str_raw(s));
 }
