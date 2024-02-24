@@ -176,6 +176,24 @@ pub bool id(parsebuf_t *b, char *buf, size_t n) {
 	return true;
 }
 
+pub bool num(parsebuf_t *b, char *buf, size_t n) {
+	(void) n;
+	if (!isdigit(buf_peek(b))) {
+		return false;
+	}
+	char *p = buf;
+	while (isdigit(buf_peek(b))) {
+		*p++ = buf_get(b);
+	}
+	if (buf_peek(b) == '.') {
+		*p++ = buf_get(b);
+		while (isdigit(buf_peek(b))) {
+			*p++ = buf_get(b);
+		}
+	}
+	return true;
+}
+
 /*
  * Returns true if the given literal is next in the buffer.
  */

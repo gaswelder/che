@@ -113,15 +113,8 @@ node_t *read_value(parsebuf.parsebuf_t *b) {
 
 node_t *read_number(parsebuf.parsebuf_t *b) {
 	node_t *e = node(NUM);
-	char *p = e->payload;
-	while (isdigit(parsebuf.buf_peek(b))) {
-		*p++ = parsebuf.buf_get(b);
-	}
-	if (parsebuf.buf_peek(b) == '.') {
-		*p++ = parsebuf.buf_get(b);
-		while (isdigit(parsebuf.buf_peek(b))) {
-			*p++ = parsebuf.buf_get(b);
-		}
+	if (!parsebuf.num(b, e->payload, sizeof(e->payload))) {
+		panic("failed to read the number");
 	}
 	return e;
 }
