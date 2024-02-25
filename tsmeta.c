@@ -46,8 +46,9 @@ int main() {
 	test("1 | 2");
 	test("type A = 1");
 	test("A");
-	test("type Wrap<T, U> = [1]");
-	// Wrap<true>
+	test("type Wrap<T> = [T]");
+	test("Wrap<1>");
+	test("type F<T, U> = [1]");
 	return 0;
 }
 
@@ -90,20 +91,27 @@ node_t *eval(node_t *e) {
 		}
 		case ID: {
 			char *name = e->payload;
-			for (size_t i = 0; i < global_typeslen; i++) {
-				tdef_t *t = global_types[i]->payload;
-				if (!strcmp(t->name, name)) {
-					return t->expr;
-				}
+			tdef_t *t = get_tdef(name);
+			if (!t) {
+				panic("unknown identifier: %s", name);
 			}
-			panic("unknown identifier: %s", name);
-			return NULL;
+			return t->expr;
 		}
 		default: {
 			panic("don't know how to eval kind %d", e->kind);
 		}
 	}
 	return e;
+}
+
+tdef_t *get_tdef(const char *name) {
+	for (size_t i = 0; i < global_typeslen; i++) {
+		tdef_t *t = global_types[i]->payload;
+		if (!strcmp(t->name, name)) {
+			return t;
+		}
+	}
+	return NULL;
 }
 
 node_t *read_statement(parsebuf.parsebuf_t *b) {
@@ -149,16 +157,16 @@ node_t *read_typedef(parsebuf.parsebuf_t *b) {
 
 node_t *read_union(parsebuf.parsebuf_t *b) {
 	node_t *e = node(UNION);
-	e->items[e->itemslen++] = read_value(b);
+	e->items[e->itemslen++] = read_expr(b);
 	parsebuf.spaces(b);
 	while (parsebuf.buf_skip(b, '|')) {
 		parsebuf.spaces(b);
-		e->items[e->itemslen++] = read_value(b);
+		e->items[e->itemslen++] = read_expr(b);
 	}
 	return e;
 }
 
-node_t *read_value(parsebuf.parsebuf_t *b) {
+node_t *read_expr(parsebuf.parsebuf_t *b) {
 	if (parsebuf.tok(b, "true", " ]")) return &True;
 	if (parsebuf.tok(b, "false", " ]")) return &False;
 	if (parsebuf.buf_peek(b) == '"') return read_string(b);
@@ -211,7 +219,7 @@ node_t *read_list(parsebuf.parsebuf_t *b) {
 	node_t *e = node(LIST);
 	expect(b, '[');
 	while (parsebuf.buf_more(b) && parsebuf.buf_peek(b) != ']') {
-		e->items[e->itemslen++] = read_value(b);
+		e->items[e->itemslen++] = read_expr(b);
 		if (!parsebuf.buf_skip(b, ',')) {
 			break;
 		} else {
