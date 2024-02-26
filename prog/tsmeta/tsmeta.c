@@ -58,6 +58,14 @@ nodes.node_t *eval(nodes.node_t *e) {
 			r->itemslen = e->itemslen;
 			return r;
 		}
+		case nodes.TYPECALL: {
+			char *name = e->payload;
+			nodes.tdef_t *t = get_tdef(name);
+			if (!t) {
+				panic("unknown identifier: %s", name);
+			}
+			return t->expr;
+		}
 		case nodes.ID: {
 			char *name = e->payload;
 			nodes.tdef_t *t = get_tdef(name);

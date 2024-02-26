@@ -45,33 +45,48 @@ nodes.node_t *read_typedef(parsebuf.parsebuf_t *b) {
 	return e;
 }
 
+// <expr> | <expr> | ...
 nodes.node_t *read_union(parsebuf.parsebuf_t *b) {
 	nodes.node_t *e = nodes.new(nodes.UNION);
-	e->items[e->itemslen++] = read_expr(b);
+	e->items[e->itemslen++] = read_atom(b);
 	parsebuf.spaces(b);
 	while (parsebuf.buf_skip(b, '|')) {
 		parsebuf.spaces(b);
-		e->items[e->itemslen++] = read_expr(b);
+		e->items[e->itemslen++] = read_atom(b);
 	}
 	return e;
 }
 
-nodes.node_t *read_expr(parsebuf.parsebuf_t *b) {
+nodes.node_t *read_atom(parsebuf.parsebuf_t *b) {
 	if (parsebuf.tok(b, "true", " ]")) return &True;
 	if (parsebuf.tok(b, "false", " ]")) return &False;
 	if (parsebuf.buf_peek(b) == '"') return read_string(b);
 	if (parsebuf.buf_peek(b) == '[') return read_list(b);
 	if (isdigit(parsebuf.buf_peek(b))) return read_number(b);
-	return read_identifier(b);
+	return read_typecall(b);
 }
 
-nodes.node_t *read_identifier(parsebuf.parsebuf_t *b) {
-	nodes.node_t *e = nodes.new(nodes.ID);
+nodes.node_t *read_typecall(parsebuf.parsebuf_t *b) {
+	nodes.node_t *e = nodes.new(nodes.TYPECALL);
+	nodes.tcall_t *t = e->payload;
 	char *p = e->payload;
+
 	if (!parsebuf.id(b, p, 100)) {
 		char tmp[100] = {};
 		parsebuf.buf_fcontext(b, tmp, sizeof(tmp));
 		panic("failed to parse: '%s", tmp);
+	}
+	if (parsebuf.buf_skip(b, '<')) {
+		while (parsebuf.buf_more(b)) {
+			t->args[t->nargs++] = read_atom(b);
+			parsebuf.spaces(b);
+			if (!parsebuf.buf_skip(b, ',')) {
+				break;
+			} else {
+				parsebuf.spaces(b);
+			}
+		}
+		expect(b, '>');
 	}
 	return e;
 }
@@ -109,7 +124,7 @@ nodes.node_t *read_list(parsebuf.parsebuf_t *b) {
 	nodes.node_t *e = nodes.new(nodes.LIST);
 	expect(b, '[');
 	while (parsebuf.buf_more(b) && parsebuf.buf_peek(b) != ']') {
-		e->items[e->itemslen++] = read_expr(b);
+		e->items[e->itemslen++] = read_atom(b);
 		if (!parsebuf.buf_skip(b, ',')) {
 			break;
 		} else {

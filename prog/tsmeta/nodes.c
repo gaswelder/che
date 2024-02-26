@@ -1,5 +1,5 @@
 pub enum {
-	T = 1, F, NUM, STR, LIST, ID, UNION, TYPEDEF
+	T = 1, F, NUM, STR, LIST, ID, UNION, TYPEDEF, TYPECALL
 };
 
 pub typedef {
@@ -18,13 +18,19 @@ pub typedef {
 	void *expr;
 } tdef_t;
 
+pub typedef {
+	char name[10];
+	void *args[10];
+	size_t nargs;
+} tcall_t;
+
 pub node_t *new(int kind) {
 	node_t *e = calloc(1, sizeof(node_t));
 	e->kind = kind;
-	if (kind == TYPEDEF) {
-		e->payload = calloc(1, sizeof(tdef_t));
-	} else {
-		e->payload = calloc(100, 1);
+	switch (kind) {
+		case TYPEDEF: { e->payload = calloc(1, sizeof(tdef_t)); }
+		case TYPECALL: { e-> payload = calloc(1, sizeof(tcall_t)); }
+		default: { e->payload = calloc(100, 1); }
 	}
 	return e;
 }
