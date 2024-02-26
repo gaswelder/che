@@ -24,8 +24,8 @@ pub void clear(str *s) {
 	if (s->len == 0) {
 		return;
 	}
+	memset(s->data, 0, s->len);
 	s->len = 0;
-	s->data[0] = '\0';
 }
 
 pub bool str_addc(str *s, int ch) {
