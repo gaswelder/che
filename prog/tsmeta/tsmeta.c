@@ -42,9 +42,18 @@ void test(const char *in) {
 }
 
 nodes.node_t *eval(nodes.node_t *e) {
+	// printf("eval %s\n", nodes.kindstr(e->kind));
 	switch (e->kind) {
-		case nodes.T, nodes.F, nodes.NUM, nodes.STR, nodes.LIST: {
+		case nodes.T, nodes.F, nodes.NUM, nodes.STR: {
 			return e;
+		}
+		case nodes.LIST: {
+			nodes.node_t *r = nodes.new(nodes.LIST);
+			for (size_t i = 0; i < e->itemslen; i++) {
+				r->items[i] = eval(e->items[i]);
+			}
+			r->itemslen = e->itemslen;
+			return r;
 		}
 		case nodes.TYPEDEF: {
 			global_types[global_typeslen++] = e;
@@ -59,12 +68,23 @@ nodes.node_t *eval(nodes.node_t *e) {
 			return r;
 		}
 		case nodes.TYPECALL: {
-			char *name = e->payload;
-			nodes.tdef_t *t = get_tdef(name);
+			nodes.tcall_t *call = e->payload;
+			nodes.tdef_t *t = get_tdef(call->name);
 			if (!t) {
-				panic("unknown identifier: %s", name);
+				panic("unknown identifier: %s", call->name);
 			}
-			return t->expr;
+			for (size_t i = 0; i < t->nargs; i++) {
+				nodes.node_t *arg = nodes.new(nodes.TYPEDEF);
+				nodes.tdef_t *x = arg->payload;
+				strcpy(x->name, t->args[i]);
+				x->expr = call->args[i];
+				global_types[global_typeslen++] = arg;
+			}
+			nodes.node_t *r = eval(t->expr);
+			for (size_t i = 0; i < t->nargs; i++) {
+				global_typeslen--;
+			}
+			return r;
 		}
 		case nodes.ID: {
 			char *name = e->payload;
@@ -83,7 +103,8 @@ nodes.node_t *eval(nodes.node_t *e) {
 
 nodes.tdef_t *get_tdef(const char *name) {
 	for (size_t i = 0; i < global_typeslen; i++) {
-		nodes.tdef_t *t = global_types[i]->payload;
+		nodes.tdef_t *t = global_types[global_typeslen-1-i]->payload;
+		// printf("?%s -- %zu: %s\n", name, global_typeslen-1-i, t->name);
 		if (!strcmp(t->name, name)) {
 			return t;
 		}

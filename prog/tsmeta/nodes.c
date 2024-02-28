@@ -2,6 +2,21 @@ pub enum {
 	T = 1, F, NUM, STR, LIST, ID, UNION, TYPEDEF, TYPECALL
 };
 
+pub const char *kindstr(int kind) {
+	switch (kind) {
+		case T: { return "TRUE"; }
+		case F: { return "F"; }
+		case NUM: { return "NUM"; }
+		case STR: { return "STR"; }
+		case LIST: { return "LIST"; }
+		case ID: { return "ID"; }
+		case UNION: { return "UNION"; }
+		case TYPEDEF: { return "TYPEDEF"; }
+		case TYPECALL: { return "TYPECALL"; }
+		default: { return "unknown kind"; }
+	}
+}
+
 pub typedef {
 	int kind;
 	void *payload;
