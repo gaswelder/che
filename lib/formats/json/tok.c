@@ -1,10 +1,5 @@
 #import parsebuf
 
-/*
- * A text will be split into tokens. Most of them are simply characters
- * like '{', but there are also "string" and "number" tokens that have
- * additional value.
- */
 pub typedef {
 	// One of the "T_" constance below.
 	int type;
@@ -32,7 +27,10 @@ pub typedef {
 	size_t strcap;
 } json_tokenizer_t;
 
-pub json_tokenizer_t *new_json_tokenizer(const char *s) {
+/**
+ * Returns a new lexer for the given string.
+ */
+pub json_tokenizer_t *new(const char *s) {
     json_tokenizer_t *t = calloc(1, sizeof(json_tokenizer_t));
     if (!t) {
         return t;
@@ -52,20 +50,20 @@ pub json_tokenizer_t *new_json_tokenizer(const char *s) {
     return t;
 }
 
-pub void free_json_tokenizer(json_tokenizer_t *t) {
+/**
+ * Frees the lexer's memory.
+ */
+pub void free(json_tokenizer_t *t) {
     parsebuf.buf_free(t->buf);
-    free(t);
+    OS.free(t);
 }
 
 /**
  * Reads next token into the local buffer.
  * Returns false if there was an error.
  */
-pub bool lexer_read_next(json_tokenizer_t *t) {
-	// Skip spaces
-	while (isspace(parsebuf.buf_peek(t->buf))) {
-		parsebuf.buf_get(t->buf);
-	}
+pub bool read(json_tokenizer_t *t) {
+	parsebuf.spaces(t->buf);
     int c = parsebuf.buf_peek(t->buf);
     if (c == EOF) {
         t->next.type = EOF;
@@ -94,14 +92,14 @@ pub bool lexer_read_next(json_tokenizer_t *t) {
 /*
  * Returns the type of the current token.
  */
-pub int lexer_currtype(json_tokenizer_t *l) {
+pub int currtype(json_tokenizer_t *l) {
 	return l->next.type;
 }
 
 /*
  * Returns current token's string value.
  */
-pub const char *lexer_currstr(json_tokenizer_t *l) {
+pub const char *currstr(json_tokenizer_t *l) {
 	if (l->next.type != T_STR && l->next.type != T_ERR && l->next.type != T_NUM) {
 		return NULL;
 	}

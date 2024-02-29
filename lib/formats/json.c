@@ -1,5 +1,5 @@
 #import arr
-#import jsontok
+#import formats/json/tok
 #import strbuilder
 #import strings
 
@@ -469,7 +469,7 @@ typedef {
 	 * First error reported during parsing.
 	 */
 	char err[256];
-	jsontok.json_tokenizer_t *lexer;
+	tok.json_tokenizer_t *lexer;
 } parser_t;
 
 /*
@@ -487,34 +487,34 @@ typedef {
  */
 pub json_node *json_parse(const char *s) {
 	parser_t p = {};
-	p.lexer = jsontok.new_json_tokenizer(s);
+	p.lexer = tok.new(s);
 	if (!p.lexer) {
 		return NULL;
 	}
-	if (!jsontok.lexer_read_next(p.lexer)) {
+	if (!tok.read(p.lexer)) {
 		error(&p, "%s", p.lexer->next.str);
-		jsontok.free_json_tokenizer(p.lexer);
+		tok.free(p.lexer);
 		return NULL;
 	}
 	if (p.lexer->next.type == EOF) {
-		jsontok.free_json_tokenizer(p.lexer);
+		tok.free(p.lexer);
 		return NULL;
 	}
 
 	json_node *result = read_node(&p);
 	if (!result) {
-		jsontok.free_json_tokenizer(p.lexer);
+		tok.free(p.lexer);
 		return NULL;
 	}
 
 	// Expect end of file at this point.
 	if (p.lexer->next.type != EOF) {
 		json_free(result);
-		jsontok.free_json_tokenizer(p.lexer);
+		tok.free(p.lexer);
 		return NULL;
 	}
 	
-	jsontok.free_json_tokenizer(p.lexer);
+	tok.free(p.lexer);
 	return result;
 }
 
@@ -524,46 +524,40 @@ pub json_node *json_parse(const char *s) {
  */
 json_node *read_node(parser_t *p)
 {
-	switch (jsontok.lexer_currtype(p->lexer)) {
-		case EOF: {
-			return error(p, "Unexpected end of file");
-		}
-		case '[': {
-			return read_array(p);
-		}
-		case '{': {
-			return read_dict(p);
-		}
-		case jsontok.T_STR: {
-			json_node *n = json_newstr(jsontok.lexer_currstr(p->lexer));
-			jsontok.lexer_read_next(p->lexer);
-			if (jsontok.lexer_currtype(p->lexer) == jsontok.T_ERR) {
-				error(p, "%s", jsontok.lexer_currstr(p->lexer));
+	switch (tok.currtype(p->lexer)) {
+		case EOF: { return error(p, "Unexpected end of file"); }
+		case '[': { return read_array(p); }
+		case '{': { return read_dict(p); }
+		case tok.T_STR: {
+			json_node *n = json_newstr(tok.currstr(p->lexer));
+			tok.read(p->lexer);
+			if (tok.currtype(p->lexer) == tok.T_ERR) {
+				error(p, "%s", tok.currstr(p->lexer));
 			}
 			return n;
 		}
-		case jsontok.T_NUM: {
-			const char *val = jsontok.lexer_currstr(p->lexer);
-			double n;
+		case tok.T_NUM: {
+			const char *val = tok.currstr(p->lexer);
+			double n = 0;
 			if (sscanf(val, "%lf", &n) < 1) {
 				error(p, "failed to parser number: %s", val);
 			}
-			jsontok.lexer_read_next(p->lexer);
-			if (jsontok.lexer_currtype(p->lexer) == jsontok.T_ERR) {
-				error(p, "%s", jsontok.lexer_currstr(p->lexer));
+			tok.read(p->lexer);
+			if (tok.currtype(p->lexer) == tok.T_ERR) {
+				error(p, "%s", tok.currstr(p->lexer));
 			}
 			return json_newnum(n);
 		}
-		case jsontok.T_TRUE: {
-			jsontok.lexer_read_next(p->lexer);
+		case tok.T_TRUE: {
+			tok.read(p->lexer);
 			return json_newbool(true);
 		}
-		case jsontok.T_FALSE: {
-			jsontok.lexer_read_next(p->lexer);
+		case tok.T_FALSE: {
+			tok.read(p->lexer);
 			return json_newbool(false);
 		}
-		case jsontok.T_NULL: {
-			jsontok.lexer_read_next(p->lexer);
+		case tok.T_NULL: {
+			tok.read(p->lexer);
 			return json_newnull();
 		}
 	}
@@ -577,47 +571,47 @@ json_node *read_array(parser_t *p)
 	}
 
 	json_node *a = json_newarr();
-	if (jsontok.lexer_currtype(p->lexer) == ']') {
-		jsontok.lexer_read_next(p->lexer);
-		if (jsontok.lexer_currtype(p->lexer) == jsontok.T_ERR) {
-			error(p, "%s", jsontok.lexer_currstr(p->lexer));
+	if (tok.currtype(p->lexer) == ']') {
+		tok.read(p->lexer);
+		if (tok.currtype(p->lexer) == tok.T_ERR) {
+			error(p, "%s", tok.currstr(p->lexer));
 		}
 		return a;
 	}
 
-	while (jsontok.lexer_currtype(p->lexer) != EOF) {
+	while (tok.currtype(p->lexer) != EOF) {
 		json_node *v = read_node(p);
 		if (!v) {
 			json_free(a);
 			return NULL;
 		}
 		json_push(a, v);
-		if(jsontok.lexer_currtype(p->lexer) != ',') {
+		if(tok.currtype(p->lexer) != ',') {
 			break;
 		}
-		jsontok.lexer_read_next(p->lexer);
-		if (jsontok.lexer_currtype(p->lexer) == jsontok.T_ERR) {
-			error(p, "%s", jsontok.lexer_currstr(p->lexer));
+		tok.read(p->lexer);
+		if (tok.currtype(p->lexer) == tok.T_ERR) {
+			error(p, "%s", tok.currstr(p->lexer));
 		}
 	}
-	if (jsontok.lexer_currtype(p->lexer) != ']') {
+	if (tok.currtype(p->lexer) != ']') {
 		json_free(a);
 		return NULL;
 	}
-	jsontok.lexer_read_next(p->lexer);
-	if (jsontok.lexer_currtype(p->lexer) == jsontok.T_ERR) {
-		error(p, "%s", jsontok.lexer_currstr(p->lexer));
+	tok.read(p->lexer);
+	if (tok.currtype(p->lexer) == tok.T_ERR) {
+		error(p, "%s", tok.currstr(p->lexer));
 	}
 	return a;
 }
 
 bool consume(parser_t *p, int toktype) {
-	if (jsontok.lexer_currtype(p->lexer) != toktype) {
+	if (tok.currtype(p->lexer) != toktype) {
 		return false;
 	}
-	jsontok.lexer_read_next(p->lexer);
-	if (jsontok.lexer_currtype(p->lexer) == jsontok.T_ERR) {
-		error(p, "%s", jsontok.lexer_currstr(p->lexer));
+	tok.read(p->lexer);
+	if (tok.currtype(p->lexer) == tok.T_ERR) {
+		error(p, "%s", tok.currstr(p->lexer));
 	}
 	return true;
 }
@@ -635,18 +629,18 @@ json_node *read_dict(parser_t *p)
 		return o;
 	}
 
-	while (jsontok.lexer_currtype(p->lexer) != EOF) {
+	while (tok.currtype(p->lexer) != EOF) {
 		// Get the field name str.
-		if (jsontok.lexer_currtype(p->lexer) != jsontok.T_STR) {
+		if (tok.currtype(p->lexer) != tok.T_STR) {
 			json_free(o);
 			return error(p, "Key expected");
 		}
-		char *key = strings.newstr("%s", jsontok.lexer_currstr(p->lexer));
+		char *key = strings.newstr("%s", tok.currstr(p->lexer));
 		if (!key) {
 			json_free(o);
 			return error(p, "No memory");
 		}
-		jsontok.lexer_read_next(p->lexer);
+		tok.read(p->lexer);
 
 		// Get the ":"
 		if (!expect(p, ':')) {
@@ -669,12 +663,12 @@ json_node *read_dict(parser_t *p)
 			return NULL;
 		}
 
-		if (jsontok.lexer_currtype(p->lexer) != ',') {
+		if (tok.currtype(p->lexer) != ',') {
 			break;
 		}
-		jsontok.lexer_read_next(p->lexer);
-		if (jsontok.lexer_currtype(p->lexer) == jsontok.T_ERR) {
-			error(p, "%s", jsontok.lexer_currstr(p->lexer));
+		tok.read(p->lexer);
+		if (tok.currtype(p->lexer) == tok.T_ERR) {
+			error(p, "%s", tok.currstr(p->lexer));
 		}
 	}
 	if (!expect(p, '}')) {
@@ -686,13 +680,13 @@ json_node *read_dict(parser_t *p)
 
 bool expect(parser_t *p, int toktype)
 {
-	if (jsontok.lexer_currtype(p->lexer) != toktype) {
-		error(p, "'%c' expected, got '%c'", toktype, jsontok.lexer_currtype(p->lexer));
+	if (tok.currtype(p->lexer) != toktype) {
+		error(p, "'%c' expected, got '%c'", toktype, tok.currtype(p->lexer));
 		return false;
 	}
-	jsontok.lexer_read_next(p->lexer);
-	if (jsontok.lexer_currtype(p->lexer) == jsontok.T_ERR) {
-		error(p, "%s", jsontok.lexer_currstr(p->lexer));
+	tok.read(p->lexer);
+	if (tok.currtype(p->lexer) == tok.T_ERR) {
+		error(p, "%s", tok.currstr(p->lexer));
 	}
 	return true;
 }
