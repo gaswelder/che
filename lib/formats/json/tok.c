@@ -113,55 +113,18 @@ void readnum(json_tokenizer_t *l)
 {
 	parsebuf.parsebuf_t *b = l->buf;
 	json_token_t *t = &l->next;
-	resetstr(l);
 
-	// Optional minus
-	if (parsebuf.buf_peek(b) == '-') {
-		addchar(l, parsebuf.buf_get(b));
-	}
-
-	// Integer part
-	if (!isdigit(parsebuf.buf_peek(b))) {
-		seterror(l, "Digit expected");
+	char buf[100] = {};
+	if (!parsebuf.num(b, buf, 100)) {
+		seterror(l, "failed to parse a number");
 		return;
 	}
-	while (isdigit(parsebuf.buf_peek(b))) {
-		addchar(l, parsebuf.buf_get(b));
-	}
 
-	// Optional fractional part
-	if (parsebuf.buf_peek(b) == '.') {
-		addchar(l, parsebuf.buf_get(b));
-		if (!isdigit(parsebuf.buf_peek(b))) {
-			seterror(l, "Digit expected");
+	resetstr(l);
+	for (char *p = buf; *p; p++) {
+		if (!addchar(l, *p)) {
+			seterror(l, "out of memory");
 			return;
-		}
-		while (isdigit(parsebuf.buf_peek(b))) {
-			addchar(l, parsebuf.buf_get(b));
-		}
-	}
-
-	// Optional exponent
-	int c = parsebuf.buf_peek(b);
-	if (c == 'e' || c == 'E') {
-		addchar(l, parsebuf.buf_get(b));
-		
-		// Optional - or +
-		c = parsebuf.buf_peek(b);
-		if (c == '-') {
-			addchar(l, parsebuf.buf_get(b));
-		}
-		else if (c == '+') {
-			addchar(l, parsebuf.buf_get(b));
-		}
-
-		// Sequence of exponent digits
-		if (!isdigit(parsebuf.buf_peek(b))) {
-			seterror(l, "Digit expected");
-			return;
-		}
-		while (isdigit(parsebuf.buf_peek(b))) {
-			addchar(l, parsebuf.buf_get(b));
 		}
 	}
 	t->type = T_NUM;

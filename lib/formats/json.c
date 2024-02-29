@@ -138,10 +138,11 @@ pub json_node *json_newstr(const char *s)
  * Returns a new node of type "number" with the given value
  * as the content.
  */
-pub json_node *json_newnum(double val)
-{
+pub json_node *json_newnum(double val) {
 	json_node *obj = newnode(JSON_NUM);
-	if( !obj ) return NULL;
+	if (!obj) {
+		return NULL;
+	}
 	obj->val.num = val;
 	return obj;
 }
@@ -368,8 +369,10 @@ pub const char *json_getstr( json_node *obj, const char *key )
 	return v->val.str;
 }
 
-pub double json_getdbl( json_node *obj, const char *key )
-{
+/**
+ * Returns the node's value assuming it's a number.
+ */
+pub double json_getdbl(json_node *obj, const char *key) {
 	json_node *v = json_get( obj, key );
 	if( !v || v->type != JSON_NUM ) {
 		return 0.0;

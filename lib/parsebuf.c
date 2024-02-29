@@ -178,15 +178,46 @@ pub bool id(parsebuf_t *b, char *buf, size_t n) {
 
 pub bool num(parsebuf_t *b, char *buf, size_t n) {
 	(void) n;
+	char *p = buf;
+
+	if (buf_peek(b) == '-') {
+		*p++ = buf_get(b);
+	}
+
+	// [digits]
 	if (!isdigit(buf_peek(b))) {
 		return false;
 	}
-	char *p = buf;
 	while (isdigit(buf_peek(b))) {
 		*p++ = buf_get(b);
 	}
+
+	// Optional fractional part
 	if (buf_peek(b) == '.') {
 		*p++ = buf_get(b);
+		if (!isdigit(buf_peek(b))) {
+			return false;
+		}
+		while (isdigit(buf_peek(b))) {
+			*p++ = buf_get(b);
+		}
+	}
+
+	// Optional exponent
+	int c = buf_peek(b);
+	if (c == 'e' || c == 'E') {
+		*p++ = buf_get(b);
+		
+		// Optional - or +
+		c = buf_peek(b);
+		if (c == '-' || c == '+') {
+			*p++ = buf_get(b);
+		}
+
+		// Sequence of exponent digits
+		if (!isdigit(buf_peek(b))) {
+			return false;
+		}
 		while (isdigit(buf_peek(b))) {
 			*p++ = buf_get(b);
 		}
