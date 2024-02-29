@@ -6,6 +6,17 @@ pub typedef {
 	size_t row;
 } parsebuf_t;
 
+int reader_peek(parsebuf_t *b) {
+	if (b->pos >= b->len) {
+		return EOF;
+	}
+	return b->s[b->pos];
+}
+
+bool reader_more(parsebuf_t *b) {
+	return b->pos < b->len;
+}
+
 /*
  * Creates and returns an instance of a parsebuffer with the given string as
  * contents. The string must not be deallocated before the buffer.
@@ -30,17 +41,14 @@ pub void buf_free(parsebuf_t *b) {
  * Returns EOF if there is no next character.
  */
 pub int buf_peek(parsebuf_t *b) {
-	if (b->pos >= b->len) {
-		return EOF;
-	}
-	return b->s[b->pos];
+	return reader_peek(b);
 }
 
 /*
  * Returns true if there is at least one more character in the stream.
  */
 pub bool buf_more(parsebuf_t *b) {
-	return b->pos < b->len;
+	return reader_more(b);
 }
 
 pub void buf_fcontext(parsebuf_t *b, char *buf, size_t len) {
@@ -55,37 +63,30 @@ pub void buf_fcontext(parsebuf_t *b, char *buf, size_t len) {
 	buf[i] = '\0';
 }
 
+int reader_get(parsebuf_t *b) {
+	if (b->pos >= b->len) {
+		return EOF;
+	}
+	return b->s[b->pos++];
+}
+
 /*
  * Returns next character in the buffer and removes it from the stream.
  * Returns EOF if there is no next character.
  */
-pub int buf_get(parsebuf_t *b)
-{
-	if (b->pos >= b->len) {
-		return EOF;
-	}
-	int c = b->s[b->pos];
+pub int buf_get(parsebuf_t *b) {
+	int c = reader_get(b);
 	if (c == '\n') {
 		b->col = 0;
 		b->row++;
 	} else {
 		b->col++;
 	}
-	b->pos++;
 	return c;
 }
 
-bool haschar(const char *s, char c) {
-	const char *p = s;
-	while (*p) {
-		if (*p == c) return true;
-		p++;
-	}
-	return false;
-}
-
 pub void buf_skip_set(parsebuf_t *b, const char *set) {
-	while (buf_more(b) && haschar(set, buf_peek(b))) {
+	while (buf_more(b) && strchr(set, buf_peek(b))) {
 		buf_get(b);
 	}
 }
@@ -104,18 +105,12 @@ pub bool buf_skip(parsebuf_t *b, char c) {
 pub char *buf_read_set(parsebuf_t *b, const char *set) {
 	char *s = calloc(10000, 1);
 	char *p = s;
-	while (buf_more(b) && haschar(set, buf_peek(b))) {
+	while (buf_more(b) && strchr(set, buf_peek(b))) {
 		*p = buf_get(b);
 		p++;
 	}
 	return s;
 }
-
-// void ahead(parsebuf_t *b) {
-// 	for (size_t i = 0; i < 10; i++) {
-// 		putchar(b->s[b->pos + i]);
-// 	}
-// }
 
 pub bool buf_skip_literal(parsebuf_t *b, const char *literal) {
 	if (!buf_literal_follows(b, literal)) {
