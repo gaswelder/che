@@ -37,10 +37,6 @@ typedef {
 	parsebuf.parsebuf_t *buf;
 } lexer_t;
 
-bool streq(char *a, char *b) {
-	return strcmp(a, b) == 0;
-}
-
 int main() {
     char *source = read_stdin();
 	lexer_t *lexer = lexer_make(source);
@@ -54,7 +50,7 @@ int main() {
 			break;
 		}
 
-		if (streq(tok->name, "error")) {
+		if (strcmp(tok->name, "error") == 0) {
 			fprintf(stderr, "%s at %s\n", tok->content, tok->pos);
 			tok_free(tok);
 			return 1;
@@ -65,7 +61,6 @@ int main() {
 
 		tok_free(tok);
     }
-
 	free(source);
 	lexer_free(lexer);
     return 0;
@@ -137,13 +132,12 @@ char *tok_json(tok_t *t) {
 tok_t *lexer_read(lexer_t *l) {
 	parsebuf.parsebuf_t *b = l->buf;
 
-	parsebuf.buf_skip_set(b, " \r\n\t");
+	parsebuf.spaces(b);
 	if (!parsebuf.buf_more(b)) {
 		return NULL;
 	}
 
-	char peek = parsebuf.buf_peek(b);
-
+	int peek = parsebuf.buf_peek(b);
 	if (peek == '#') {
 		// puts("macro");
 		return read_macro(b);
@@ -192,7 +186,6 @@ tok_t *lexer_read(lexer_t *l) {
 		return read_identifier(b);
 	}
 	return tok_make("error", strings.newstr("unexpected character: '%c'", peek), parsebuf.buf_pos(b));
-	
 }
 
 tok_t *read_macro(parsebuf.parsebuf_t *b) {
