@@ -11,7 +11,15 @@ typedef {
 
 enum {
 	STR = 1,
+	STDIN,
 };
+
+pub t *stdin() {
+	t *r = calloc(1, sizeof(t));
+	if (!r) return NULL;
+	r->type = STDIN;
+	return r;
+}
 
 pub t *string(const char *s) {
 	t *r = calloc(1, sizeof(t));
@@ -31,7 +39,9 @@ pub t *string(const char *s) {
 }
 
 pub void free(t *reader) {
-	OS.free(reader->data);
+	if (reader->data) {
+		OS.free(reader->data);
+	}
 	OS.free(reader);
 }
 
@@ -42,6 +52,12 @@ pub int peek(t *reader) {
 			if (data->pos >= data->len) return EOF;
 			return data->s[data->pos];
 		}
+		case STDIN: {
+			int c = fgetc(OS.stdin);
+			if (c == EOF) return c;
+			ungetc(c, OS.stdin);
+			return c;
+		}
 	}
 	panic("unknown type: %d", reader->type);
 }
@@ -51,6 +67,12 @@ pub bool more(t *reader) {
 		case STR: {
 			str_t *data = reader->data;
 			return data->pos < data->len;
+		}
+		case STDIN: {
+			int c = fgetc(OS.stdin);
+			if (c == EOF) return false;
+			ungetc(c, OS.stdin);
+			return true;
 		}
 	}
 	panic("unknown type: %d", reader->type);
@@ -64,6 +86,9 @@ pub int get(t *reader) {
 				return EOF;
 			}
 			return data->s[data->pos++];
+		}
+		case STDIN: {
+			return fgetc(OS.stdin);
 		}
 	}
 	panic("unknown type: %d", reader->type);

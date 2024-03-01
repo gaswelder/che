@@ -9,6 +9,17 @@ pub typedef {
 	size_t cachesize;
 } parsebuf_t;
 
+pub parsebuf_t *from_stdin() {
+	parsebuf_t *b = calloc(1, sizeof(parsebuf_t));
+	if (!b) return NULL;
+	b->reader = reader.stdin();
+	if (!b->reader) {
+		free(b);
+		return NULL;
+	}
+	return b;
+}
+
 /*
  * Creates and returns an instance of a parsebuffer with the given string as
  * contents. The string must not be deallocated before the buffer.

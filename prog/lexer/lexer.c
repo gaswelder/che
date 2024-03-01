@@ -33,14 +33,18 @@ const char *keywords[] = {
 };
 
 typedef {
-	char *source;
 	parsebuf.parsebuf_t *buf;
 } lexer_t;
 
 int main() {
-    char *source = read_stdin();
-	lexer_t *lexer = lexer_make(source);
-	if (!source || !lexer) {
+	lexer_t *lexer = calloc(1, sizeof(lexer_t));
+	if (!lexer) {
+		fprintf(stderr, "failed to get lexer: %s\n", strerror(errno));
+		return 1;
+	}
+	lexer->buf = parsebuf.from_stdin();
+	if (!lexer->buf) {
+		fprintf(stderr, "failed to get parsebuf: %s\n", strerror(errno));
 		return 1;
 	}
 
@@ -61,28 +65,8 @@ int main() {
 
 		tok_free(tok);
     }
-	free(source);
 	lexer_free(lexer);
     return 0;
-}
-
-char *read_stdin() {
-	strbuilder.str *s = strbuilder.str_new();
-	while (!feof(stdin)) {
-		char c = fgetc(stdin);
-		if (c == EOF) break;
-		strbuilder.str_addc(s, c);
-	}
-	return strbuilder.str_unpack(s);
-}
-
-
-
-lexer_t *lexer_make(char *source) {
-	lexer_t *l = calloc(1, sizeof(lexer_t));
-	l->source = source;
-	l->buf = parsebuf.buf_new(source);
-	return l;
 }
 
 void lexer_free(lexer_t *l) {
