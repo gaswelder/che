@@ -132,21 +132,6 @@ pub bool spaces(parsebuf_t *b) {
 	return n > 0;
 }
 
-pub bool tok(parsebuf_t *b, const char *literal, const char *delims) {
-	const char *l = literal;
-	const char *s = b->s + b->pos;
-	while (*l) {
-		if (!*s || *s != *l) return false;
-		l++;
-		s++;
-	}
-	if (!*s || strchr(delims, *s)) {
-		b->pos = s - b->s;
-		return true;
-	}
-	return false;
-}
-
 /**
  * Reads a C-style identifier into the provided buffer.
  * If the buffer is too small, the identifier is still read
