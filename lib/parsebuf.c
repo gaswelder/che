@@ -1,21 +1,13 @@
+#import reader
+
 pub typedef {
-	const char *s;
-	size_t pos;
-	size_t len;
-	size_t col;
-	size_t row;
+	reader.t *reader; // Byte reader.
+	size_t row, col; // Position in the source text.
+
+	// Lookahead cache.
+	char cache[100];
+	size_t cachesize;
 } parsebuf_t;
-
-int reader_peek(parsebuf_t *b) {
-	if (b->pos >= b->len) {
-		return EOF;
-	}
-	return b->s[b->pos];
-}
-
-bool reader_more(parsebuf_t *b) {
-	return b->pos < b->len;
-}
 
 /*
  * Creates and returns an instance of a parsebuffer with the given string as
@@ -24,8 +16,12 @@ bool reader_more(parsebuf_t *b) {
 pub parsebuf_t *buf_new(const char *s) {
 	parsebuf_t *b = calloc(1, sizeof(parsebuf_t));
 	if (!b) return NULL;
-	b->s = s;
-	b->len = strlen(s);
+
+	b->reader = reader.string(s);
+	if (!b->reader) {
+		free(b);
+		return NULL;
+	}
 	return b;
 }
 
@@ -33,6 +29,7 @@ pub parsebuf_t *buf_new(const char *s) {
  * Frees memory used by the buffer.
  */
 pub void buf_free(parsebuf_t *b) {
+	reader.free(b->reader);
 	free(b);
 }
 
@@ -41,33 +38,30 @@ pub void buf_free(parsebuf_t *b) {
  * Returns EOF if there is no next character.
  */
 pub int buf_peek(parsebuf_t *b) {
-	return reader_peek(b);
+	if (b->cachesize > 0) {
+		return b->cache[0];
+	}
+	return reader.peek(b->reader);
 }
 
 /*
  * Returns true if there is at least one more character in the stream.
  */
 pub bool buf_more(parsebuf_t *b) {
-	return reader_more(b);
+	return b->cachesize > 0 || reader.more(b->reader);
 }
 
 pub void buf_fcontext(parsebuf_t *b, char *buf, size_t len) {
-	if(len > b->len - b->pos) {
-		len = b->len - b->pos;
-	}
+	_prefetch(b, len);
 
-	size_t i = 0;
-	for(i = 0; i < len; i++) {
-		buf[i] = b->s[b->pos + i];
+	size_t n = len-1;
+	if (b->cachesize < n) {
+		n = b->cachesize;
 	}
-	buf[i] = '\0';
-}
-
-int reader_get(parsebuf_t *b) {
-	if (b->pos >= b->len) {
-		return EOF;
+	for (size_t i = 0; i < n; i++) {
+		buf[i] = b->cache[i];
 	}
-	return b->s[b->pos++];
+	buf[len-1] = '\0';
 }
 
 /*
@@ -75,14 +69,34 @@ int reader_get(parsebuf_t *b) {
  * Returns EOF if there is no next character.
  */
 pub int buf_get(parsebuf_t *b) {
-	int c = reader_get(b);
+	if (b->cachesize > 0) {
+		int c = b->cache[0];
+		for (size_t i = 0; i < b->cachesize-1; i++) {
+			b->cache[i] = b->cache[i+1];
+		}
+		b->cachesize--;
+		_track_pos(b, c);
+		return c;
+	}
+
+	int c = reader.get(b->reader);
+	_track_pos(b, c);
+	return c;
+}
+
+void _track_pos(parsebuf_t *b, int c) {
 	if (c == '\n') {
 		b->col = 0;
 		b->row++;
 	} else {
 		b->col++;
 	}
-	return c;
+}
+
+void _prefetch(parsebuf_t *b, size_t n) {
+	while (b->cachesize < n && reader.more(b->reader)) {
+		b->cache[b->cachesize++] = reader.get(b->reader);
+	}
 }
 
 pub void buf_skip_set(parsebuf_t *b, const char *set) {
@@ -209,9 +223,13 @@ pub bool num(parsebuf_t *b, char *buf, size_t n) {
  * Returns true if the given literal is next in the buffer.
  */
 pub bool buf_literal_follows(parsebuf_t *b, const char *literal) {
-	const char *p1 = b->s + b->pos;
-	const char *p2 = literal;
+	_prefetch(b, strlen(literal));
+	if (b->cachesize < strlen(literal)) {
+		return false;
+	}
 
+	const char *p1 = b->cache;
+	const char *p2 = literal;
 	while (*p2) {
 		if (!*p1 || *p1 != *p2) {
 			return false;
