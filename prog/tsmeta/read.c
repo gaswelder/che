@@ -58,24 +58,25 @@ nodes.node_t *read_union(parsebuf.parsebuf_t *b) {
 }
 
 nodes.node_t *read_atom(parsebuf.parsebuf_t *b) {
-	if (parsebuf.tok(b, "true", " ]")) return &True;
-	if (parsebuf.tok(b, "false", " ]")) return &False;
 	if (parsebuf.buf_peek(b) == '"') return read_string(b);
 	if (parsebuf.buf_peek(b) == '[') return read_list(b);
 	if (isdigit(parsebuf.buf_peek(b))) return read_number(b);
-	return read_typecall(b);
-}
 
-nodes.node_t *read_typecall(parsebuf.parsebuf_t *b) {
-	nodes.node_t *e = nodes.new(nodes.TYPECALL);
-	nodes.tcall_t *t = e->payload;
-	char *p = e->payload;
-
-	if (!parsebuf.id(b, p, 100)) {
+	char name[100] = {};
+	if (!parsebuf.id(b, name, 100)) {
 		char tmp[100] = {};
 		parsebuf.buf_fcontext(b, tmp, sizeof(tmp));
 		panic("failed to parse: '%s", tmp);
 	}
+	if (!strcmp(name, "true")) return &True;
+	if (!strcmp(name, "false")) return &False;
+	return read_typecall(b, name);
+}
+
+nodes.node_t *read_typecall(parsebuf.parsebuf_t *b, const char *name) {
+	nodes.node_t *e = nodes.new(nodes.TYPECALL);
+	nodes.tcall_t *t = e->payload;
+	strcpy(t->name, name);
 	if (parsebuf.buf_skip(b, '<')) {
 		while (parsebuf.buf_more(b)) {
 			t->args[t->nargs++] = read_atom(b);
