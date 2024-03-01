@@ -4,134 +4,209 @@
 nodes.node_t True = {.kind = nodes.T};
 nodes.node_t False = {.kind = nodes.F};
 
-pub nodes.node_t *read_statement(parsebuf.parsebuf_t *b) {
-	if (parsebuf.tok(b, "type", " ")) {
-		return read_typedef(b);
+pub nodes.node_t *read_statement(lexer_t *l) {
+	tok_t *t = lex_peektok(l);
+	if (t && t->kind == TOK_ID && !strcmp(t->payload, "type")) {
+		return read_typedef(l);
 	}
-	return read_union(b);
+	return read_union(l);
 }
 
-nodes.node_t *read_typedef(parsebuf.parsebuf_t *b) {
-	nodes.node_t *e = nodes.new(nodes.TYPEDEF);
-	nodes.tdef_t *t = e->payload;
+nodes.node_t *read_typedef(lexer_t *l) {
+	lex_pop(l);
 
-	parsebuf.spaces(b);
-	if (!parsebuf.id(b, t->name, sizeof(t->name))) {
-		panic("failed to read name");
-	}
+	nodes.node_t *node = nodes.new(nodes.TYPEDEF);
+	nodes.tdef_t *tdef = node->payload;
 
-	if (parsebuf.buf_skip(b, '<')) {
-		while (parsebuf.buf_more(b)) {
-			size_t n = t->nargs++;
-			t->args[n] = calloc(1, 100);
-			char param = parsebuf.buf_get(b);
-			if (!isalpha(param)) {
-				panic("expected an id, got '%c'", param);
-			}
-			t->args[n][0] = param;
-			parsebuf.spaces(b);
-			if (!parsebuf.buf_skip(b, ',')) {
+	tok_t *tok = expect(l, TOK_ID);
+	strcpy(tdef->name, tok->payload);
+
+	if (lex_get(l, '<')) {
+		while (lex_more(l)) {
+			tok_t *tok = expect(l, TOK_ID);
+
+			size_t n = tdef->nargs++;
+			tdef->args[n] = calloc(1, 100);
+			strcpy(tdef->args[n], tok->payload);
+
+			if (!lex_get(l, ',')) {
 				break;
-			} else {
-				parsebuf.spaces(b);
 			}
 		}
-		expect(b, '>');
+		expect(l, '>');
 	}
-	parsebuf.spaces(b);
-	expect(b, '=');
-	parsebuf.spaces(b);
-	t->expr = read_union(b);
-	return e;
+	expect(l, '=');
+	tdef->expr = read_union(l);
+	return node;
 }
 
 // <expr> | <expr> | ...
-nodes.node_t *read_union(parsebuf.parsebuf_t *b) {
-	nodes.node_t *e = nodes.new(nodes.UNION);
-	e->items[e->itemslen++] = read_atom(b);
-	parsebuf.spaces(b);
-	while (parsebuf.buf_skip(b, '|')) {
-		parsebuf.spaces(b);
-		e->items[e->itemslen++] = read_atom(b);
+nodes.node_t *read_union(lexer_t *l) {
+	nodes.node_t *node = nodes.new(nodes.UNION);
+	node->items[node->itemslen++] = read_atom(l);
+	while (lex_get(l, '|')) {
+		node->items[node->itemslen++] = read_atom(l);
 	}
-	return e;
+	return node;
 }
 
-nodes.node_t *read_atom(parsebuf.parsebuf_t *b) {
-	if (parsebuf.buf_peek(b) == '"') return read_string(b);
-	if (parsebuf.buf_peek(b) == '[') return read_list(b);
-	if (isdigit(parsebuf.buf_peek(b))) return read_number(b);
-
-	char name[100] = {};
-	if (!parsebuf.id(b, name, 100)) {
-		char tmp[100] = {};
-		parsebuf.buf_fcontext(b, tmp, sizeof(tmp));
-		panic("failed to parse: '%s", tmp);
+nodes.node_t *read_atom(lexer_t *l) {
+	if (lex_peek(l) == TOK_STRING) {
+		tok_t *t = lex_get(l, TOK_STRING);
+		nodes.node_t *e = nodes.new(nodes.STR);
+		strcpy(e->payload, t->payload);
+		return e;
 	}
-	if (!strcmp(name, "true")) return &True;
-	if (!strcmp(name, "false")) return &False;
-	return read_typecall(b, name);
+	if (lex_peek(l) == TOK_NUMBER) {
+		tok_t *t = lex_get(l, TOK_NUMBER);
+		nodes.node_t *e = nodes.new(nodes.NUM);
+		strcpy(e->payload, t->payload);
+		return e;
+	}
+	if (lex_peek(l) == '[') {
+		nodes.node_t *e = nodes.new(nodes.LIST);
+		lex_get(l, '[');
+		while (lex_more(l) && lex_peek(l) != ']') {
+			e->items[e->itemslen++] = read_atom(l);
+			if (!lex_get(l, ',')) {
+				break;
+			}
+		}
+		expect(l, ']');
+		return e;
+	}
+	if (lex_peek(l) == TOK_ID) {
+		tok_t *t = lex_get(l, TOK_ID);
+		char *name = t->payload;
+		if (!strcmp(name, "true")) return &True;
+		if (!strcmp(name, "false")) return &False;
+		return read_typecall(l, name);
+	}
+
+	panic("failed to parse");
+	return NULL;
 }
 
-nodes.node_t *read_typecall(parsebuf.parsebuf_t *b, const char *name) {
+nodes.node_t *read_typecall(lexer_t *l, const char *name) {
 	nodes.node_t *e = nodes.new(nodes.TYPECALL);
 	nodes.tcall_t *t = e->payload;
 	strcpy(t->name, name);
-	if (parsebuf.buf_skip(b, '<')) {
-		while (parsebuf.buf_more(b)) {
-			t->args[t->nargs++] = read_atom(b);
-			parsebuf.spaces(b);
-			if (!parsebuf.buf_skip(b, ',')) {
+	if (lex_get(l, '<')) {
+		while (lex_more(l)) {
+			t->args[t->nargs++] = read_atom(l);
+			if (!lex_get(l, ',')) {
 				break;
-			} else {
-				parsebuf.spaces(b);
 			}
 		}
-		expect(b, '>');
+		expect(l, '>');
 	}
 	return e;
 }
 
-nodes.node_t *read_number(parsebuf.parsebuf_t *b) {
-	nodes.node_t *e = nodes.new(nodes.NUM);
-	if (!parsebuf.num(b, e->payload, 100)) {
-		panic("failed to read the number");
+tok_t *expect(lexer_t *l, int kind) {
+	if (lex_peek(l) != kind) {
+		panic("expected %d (%c)", kind, kind);
 	}
-	return e;
+	return lex_get(l, kind);
 }
 
-nodes.node_t *read_string(parsebuf.parsebuf_t *b) {
-	nodes.node_t *e = nodes.new(nodes.STR);
-	char *p = e->payload;
-	*p++ = parsebuf.buf_get(b);
-	while (parsebuf.buf_more(b) && parsebuf.buf_peek(b) != '"') {
-		*p++ = parsebuf.buf_get(b);
+enum {
+	TOK_NUMBER,
+	TOK_STRING,
+	TOK_ID
+};
+
+pub typedef {
+	int kind;
+	char payload[100];
+} tok_t;
+
+pub typedef {
+	parsebuf.parsebuf_t *b;
+	tok_t *next;
+} lexer_t;
+
+int lex_peek(lexer_t *l) {
+	if (!l->next && parsebuf.buf_more(l->b)) {
+		l->next = lex_read(l);
 	}
-	if (parsebuf.buf_peek(b) != '"') {
-		panic("expected closing quote");
+	if (!l->next) {
+		return -1;
 	}
-	*p++ = parsebuf.buf_get(b);
-	return e;
+	return l->next->kind;
 }
 
-char expect(parsebuf.parsebuf_t *b, char c) {
-	if (parsebuf.buf_peek(b) != c) {
-		panic("expected %c", c);
+tok_t *lex_peektok(lexer_t *l) {
+	if (!l->next && parsebuf.buf_more(l->b)) {
+		l->next = lex_read(l);
 	}
-	return parsebuf.buf_get(b);
+	return l->next;
 }
 
-nodes.node_t *read_list(parsebuf.parsebuf_t *b) {
-	nodes.node_t *e = nodes.new(nodes.LIST);
-	expect(b, '[');
-	while (parsebuf.buf_more(b) && parsebuf.buf_peek(b) != ']') {
-		e->items[e->itemslen++] = read_atom(b);
-		if (!parsebuf.buf_skip(b, ',')) {
-			break;
-		} else {
-			parsebuf.spaces(b);
+tok_t *lex_get(lexer_t *l, int kind) {
+	if (!l->next && parsebuf.buf_more(l->b)) {
+		l->next = lex_read(l);
+	}
+	if (!l->next || l->next->kind != kind) {
+		return NULL;
+	}
+	tok_t *t = l->next;
+	l->next = NULL;
+	return t;
+}
+
+bool lex_more(lexer_t *l) {
+	return l->next || parsebuf.buf_more(l->b);
+}
+
+void lex_pop(lexer_t *l) {
+	if (!l->next && parsebuf.buf_more(l->b)) {
+		l->next = lex_read(l);
+	}
+	if (l->next) {
+		l->next = NULL;
+	}
+}
+
+tok_t *lex_read(lexer_t *l) {
+	parsebuf.parsebuf_t *b = l->b;
+	parsebuf.spaces(b);
+	tok_t *t = calloc(1, sizeof(tok_t));
+	int c = parsebuf.buf_peek(b);
+
+	if (isdigit(c)) {
+		if (!parsebuf.num(b, t->payload, 100)) {
+			panic("failed to read the number");
 		}
+		t->kind = TOK_NUMBER;
+		// printf("read token: (%d, %s)\n", t->kind, t->payload);
+		return t;
 	}
-	expect(b, ']');
-	return e;
+	if (isalpha(c)) {
+		parsebuf.id(b, t->payload, 100);
+		t->kind = TOK_ID;
+		// printf("read token: (%d, %s)\n", t->kind, t->payload);
+		return t;
+	}
+	if (c == '[' || c == ']' || c == '|' || c == '<' || c == '>' || c == ',' || c == '=') {
+		parsebuf.buf_get(b);
+		t->kind = c;
+		// printf("read token: (%d, %s)\n", t->kind, t->payload);
+		return t;
+	}
+	if (c == '"') {
+		char *p = t->payload;
+		*p++ = parsebuf.buf_get(b);
+		while (parsebuf.buf_more(b) && parsebuf.buf_peek(b) != '"') {
+			*p++ = parsebuf.buf_get(b);
+		}
+		if (parsebuf.buf_peek(b) != '"') {
+			panic("expected closing quote");
+		}
+		*p++ = parsebuf.buf_get(b);
+		t->kind = TOK_STRING;
+		// printf("read token: (%d, %s)\n", t->kind, t->payload);
+		return t;
+	}
+	panic("lexer: got '%c' (%d)", c, c);
 }

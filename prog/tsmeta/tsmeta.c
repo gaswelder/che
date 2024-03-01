@@ -26,8 +26,9 @@ int main() {
 
 void test(const char *in) {
 	// Read the expression.
-	parsebuf.parsebuf_t *b = parsebuf.buf_new(in);
-	nodes.node_t *e = read.read_statement(b);
+	read.lexer_t *l = calloc(1, sizeof(read.lexer_t));
+	l->b = parsebuf.buf_new(in);
+	nodes.node_t *e = read.read_statement(l);
 
 	// Print the input.
 	strbuilder.str *s = strbuilder.str_new();
