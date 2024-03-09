@@ -18,9 +18,9 @@ int main(int argc, char *argv[]) {
     char *host = "localhost";
     char *configfile = NULL;
 
-    opt.opt_str("p", "port", &port);
-    opt.opt_str("h", "host", &host);
-    opt.opt_str("f", "configfile", &configfile);
+    opt.str("p", "port", &port);
+    opt.str("h", "host", &host);
+    opt.str("f", "configfile", &configfile);
 
     char **rest = opt.opt_parse(argc, argv);
     if (*rest) {

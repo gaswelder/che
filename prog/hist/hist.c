@@ -11,8 +11,8 @@ int main(int argc, char *argv[]) {
 	size_t maxline = 30;
 	bool help = false;
 	opt.opt_summary("reads numeric values from stdin and prints an ASCII histogram");
-	opt.opt_size("n", "number of bins (excluding two padding bins)", &nbins);
-	opt.opt_size("w", "max line width", &maxline);
+	opt.size("n", "number of bins (excluding two padding bins)", &nbins);
+	opt.size("w", "max line width", &maxline);
 	opt.opt_bool("h", "show help", &help);
 	opt.opt_parse(argc, argv);
 

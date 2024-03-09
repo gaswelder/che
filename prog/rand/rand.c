@@ -7,10 +7,10 @@ int main(int argc, char **argv) {
 	size_t seed = (size_t) time(NULL);
 	char *a = "an";
 	bool help = false;
-	opt.opt_size("n", "number of values to generate", &n);
-	opt.opt_size("l", "string length", &len);
-	opt.opt_size("s", "seed value", &seed);
-	opt.opt_str("a", "alphabet (n is numberic, an is alphanumeric)", &a);
+	opt.size("n", "number of values to generate", &n);
+	opt.size("l", "string length", &len);
+	opt.size("s", "seed value", &seed);
+	opt.str("a", "alphabet (n is numberic, an is alphanumeric)", &a);
 	opt.opt_bool("h", "show help", &help);
 	opt.opt_parse(argc, argv);
 

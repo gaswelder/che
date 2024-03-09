@@ -42,17 +42,16 @@ io.buf_t REQUEST = {};
 int main(int argc, char *argv[]) {
     opt.opt_summary("exab [options] <url> - makes HTTP requests to <url> and prints statistics");
 
-	// ...
-    opt.opt_size("n", "number of requests to perform", &requests_to_do);
+    opt.size("n", "number of requests to perform", &requests_to_do);
 
 	size_t concurrency = 1;
-    opt.opt_size("c", "number of requests running concurrently", &concurrency);
+    opt.size("c", "number of requests running concurrently", &concurrency);
 
     char *methodstring = NULL;
-    opt.opt_str("m", "request method (GET, POST, HEAD)", &methodstring);
+    opt.str("m", "request method (GET, POST, HEAD)", &methodstring);
 
     char *postfile = NULL;
-    opt.opt_str("p", "path to the file with the POST body", &postfile);
+    opt.str("p", "path to the file with the POST body", &postfile);
 
     bool hflag = false;
     opt.opt_bool("h", "print usage", &hflag);

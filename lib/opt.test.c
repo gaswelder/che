@@ -2,7 +2,7 @@
 
 int main() {
 	char *s = NULL;
-	opt.opt_str("s", "some string", &s);
+	opt.str("s", "some string", &s);
 	int i = 0;
 	opt.opt_int("i", "some int", &i);
 	float f = 0;

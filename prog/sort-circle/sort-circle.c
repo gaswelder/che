@@ -75,13 +75,13 @@ int main(int argc, char **argv) {
     bool slow_shuffle = false;
     opt.opt_bool("y", "slow down shuffle animation", &slow_shuffle);
     char *audio_output = NULL;
-    opt.opt_str("a", "name of audio output (WAV)", &audio_output);
+    opt.str("a", "name of audio output (WAV)", &audio_output);
     int sort_number = 0;
     opt.opt_int("s", "animate sort number N", &sort_number);
     int delay = 0;
     opt.opt_int("w", "insert a delay of N frames", &delay);
     char *seed_str = NULL;
-    opt.opt_str("x", "seed for shuffling (64-bit HEX string)", &seed_str);
+    opt.str("x", "seed for shuffling (64-bit HEX string)", &seed_str);
     opt.opt_parse(argc, argv);
 
     if (help) {

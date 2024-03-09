@@ -10,7 +10,7 @@ int main(int argc, char **argv) {
     char buf[4096];
 
     char *fields_string = NULL;
-    opt.opt_str("f", "fields to print as columns after the timestamp", &fields_string);
+    opt.str("f", "fields to print as columns after the timestamp", &fields_string);
     opt.opt_parse(argc, argv);
     nreqfields = strings.split(",", fields_string, reqfields, sizeof(reqfields));
 

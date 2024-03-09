@@ -4,7 +4,6 @@
 enum {
 	OPT_STR = 's',
 	OPT_INT = 'i',
-	OPT_UINT = 'u',
 	OPT_BOOL = 'b',
 	OPT_SIZE = 'z',
 	OPT_FLOAT = 'f'
@@ -36,7 +35,7 @@ const char *summary = NULL;
  * 'desc' is text description.
  * 'value_pointer' is a pointer to save the flag value at.
  */
-void opt_opt(int type, const char *name, const char *desc, void *value_pointer) {
+void declare(int type, const char *name, const char *desc, void *value_pointer) {
 	if (strlen(name) > 1) {
 		fprintf(stderr, "Only one-letter flags are supported\n");
 		exit(1);
@@ -52,23 +51,20 @@ void opt_opt(int type, const char *name, const char *desc, void *value_pointer) 
 	flags_num++;
 }
 
-pub void opt_str(const char *name, *desc, char **pointer) {
-	opt_opt(OPT_STR, name, desc, pointer);
+pub void str(const char *name, *desc, char **pointer) {
+	declare(OPT_STR, name, desc, pointer);
 }
 pub void opt_int(const char *name, *desc, int *pointer) {
-	opt_opt(OPT_INT, name, desc, pointer);
-}
-pub void opt_uint(const char *name, *desc, unsigned *pointer) {
-	opt_opt(OPT_UINT, name, desc, pointer);
+	declare(OPT_INT, name, desc, pointer);
 }
 pub void opt_bool(const char *name, *desc, bool *pointer) {
-	opt_opt(OPT_BOOL, name, desc, pointer);
+	declare(OPT_BOOL, name, desc, pointer);
 }
-pub void opt_size(const char *name, *desc, size_t *pointer) {
-	opt_opt(OPT_SIZE, name, desc, pointer);
+pub void size(const char *name, *desc, size_t *pointer) {
+	declare(OPT_SIZE, name, desc, pointer);
 }
 pub void opt_float(const char *name, *desc, float *pointer) {
-	opt_opt(OPT_FLOAT, name, desc, pointer);
+	declare(OPT_FLOAT, name, desc, pointer);
 }
 
 /*
@@ -131,32 +127,19 @@ pub char **opt_parse( int argc, char **argv )
 					*( (char **) flag->value_pointer ) = *arg;
 				}
 
-				case OPT_INT, OPT_UINT, OPT_SIZE: {
-					if (!is_numeric( *arg )) {
-						fprintf(stderr, "Option %c expects a numeric argument\n", c );
+				case OPT_INT, OPT_SIZE: {
+					if (!is_numeric(*arg)) {
+						fprintf(stderr, "Option %c expects a numeric argument\n", c);
 						exit(1);
 					}
-					if( flag->type == OPT_UINT || flag->type == OPT_SIZE )
-					{
-						if( *arg[0] == '-' ) {
-							fprintf(stderr, "Option %c expects a non-negative argument\n", c );
-							exit(1);
-						}
+					if (flag->type == OPT_SIZE && *arg[0] == '-') {
+						fprintf(stderr, "Option %c expects a non-negative argument\n", c );
+						exit(1);
 					}
-					if( flag->type == OPT_UINT )
-					{
-						unsigned val = 0;
-						if( sscanf(*arg, "%u", &val) < 1 ) {
-							fprintf(stderr, "Couldn't parse value");
-							exit(1);
-						}
-						*( (unsigned *) flag->value_pointer ) = val;
-					}
-					else if( flag->type == OPT_SIZE )
-					{
+					if (flag->type == OPT_SIZE) {
 						size_t val = 0;
-						if( sscanf(*arg, "%zu", &val) < 1 ) {
-							fprintf(stderr, "Couldn't parse value");
+						if (sscanf(*arg, "%zu", &val) < 1) {
+							fprintf(stderr, "Couldn't parse size value: %s\n", *arg);
 							exit(1);
 						}
 						*( (size_t *) flag->value_pointer ) = val;
@@ -228,10 +211,6 @@ pub int usage() {
 			case OPT_INT: {
 				fprintf(stderr, " int \t%s (%d)\n", s->desc, *((int*) s->value_pointer));
 			}
-			case OPT_UINT: {
-				fprintf( stderr, " int > 0" );
-				fprintf( stderr, "\t%s\n", s->desc );
-			}
 			case OPT_SIZE: {
 				fprintf( stderr, "\t%s (%zu)\n", s->desc, *((size_t *)s->value_pointer));
 			}
@@ -243,17 +222,12 @@ pub int usage() {
 	return 1;
 }
 
-int is_numeric(const char *s)
-{
+bool is_numeric(const char *s) {
 	const char *p = s;
-
-	if( *p == '-' ) p++;
-	while( *p != '\0' )
-	{
-		if( !isdigit(*p) ) {
-			return 0;
-		}
+	if (*p == '-') p++;
+	while (*p) {
+		if (!isdigit(*p)) return false;
 		p++;
 	}
-	return 1;
+	return true;
 }

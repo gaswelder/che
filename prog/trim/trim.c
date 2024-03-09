@@ -22,7 +22,7 @@ int main( int argc, char *argv[] )
 	char *line_format = "unix";
 
 	opt.opt_summary("trim [-l unix/win/same] path...");
-	opt.opt_str("l", "Convert line format ('unix', 'win' or 'same')", &line_format);
+	opt.str("l", "Convert line format ('unix', 'win' or 'same')", &line_format);
 
 	char **path = opt.opt_parse( argc, argv );
 	if (!path) return opt.usage();

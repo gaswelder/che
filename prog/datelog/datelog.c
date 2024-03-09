@@ -19,9 +19,9 @@ int main(int argc, char *argv[])
 	 * Parse the arguments.
 	 */
 	opt.opt_summary( "datelog [-o] [-p period] [-d dir] [-c current logname]" );
-	opt.opt_str("p", "Log period ('month'/'day'/'hour'/'minute'/'second')", &pername);
-	opt.opt_str("d", "Directory for log files", &dir);
-	opt.opt_str("c", "File name for current log file", &static_name);
+	opt.str("p", "Log period ('month'/'day'/'hour'/'minute'/'second')", &pername);
+	opt.str("d", "Directory for log files", &dir);
+	opt.str("c", "File name for current log file", &static_name);
 	opt.opt_bool("o", "Output received lines to stdout", &output);
 
 	char **args = opt.opt_parse(argc, argv);
