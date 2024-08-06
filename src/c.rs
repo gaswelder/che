@@ -117,6 +117,7 @@ pub const CFUNCS: &[&str] = &[
     "strncat",
     "acos",
     "floor",
+    "ceil",
     "round",
     "strrchr",
     "strncmp",
