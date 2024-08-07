@@ -205,8 +205,10 @@ pub int usage() {
 		fprintf(stderr, "\t-%s", s->name);
 		switch (s->type) {
 			case OPT_STR: {
-				fprintf( stderr, " str" );
-				fprintf( stderr, "\t%s\n", s->desc );
+				char **val = s->value_pointer;
+				fprintf(stderr, " str");
+				fprintf(stderr, "\t%s", s->desc);
+				fprintf(stderr, " (= %s)\n", *val);
 			}
 			case OPT_INT: {
 				fprintf(stderr, " int \t%s (%d)\n", s->desc, *((int*) s->value_pointer));
