@@ -33,7 +33,7 @@ pub t *new(int width, height) {
 	return img;
 }
 
-pub void set(t* img, int x, int y, int r, g, b) {
+pub void set(t* img, int x, y, uint8_t r, g, b) {
 	uint8_t *p = get_pixel(img, x, y);
 	*p++ = b;
 	*p++ = g;
@@ -108,10 +108,13 @@ pub bool write(t* img, char *filename) {
 
 	for (int y = img->height - 1; y >= 0; y--) {
 		for (int x = 0; x < img->width; x++) {
-			uint8_t *pixel = get_pixel(img, x, y);
-			byte(w, *pixel++);
-			byte(w, *pixel++);
-			byte(w, *pixel++);
+			uint8_t *p = get_pixel(img, x, y);
+			uint8_t b = *p++;
+			uint8_t g = *p++;
+			uint8_t r = *p++;
+			byte(w, b);
+			byte(w, g);
+			byte(w, r);
 		}
 		for (int i = 0; i < pad; i++) byte(w, 0);
 	}
@@ -121,6 +124,8 @@ pub bool write(t* img, char *filename) {
 }
 
 uint8_t *get_pixel(t *img, int x, y) {
-    uint8_t *pixel = img->data + (y * img->width + x) * 3;
+    size_t lw = img->width * 3;
+    size_t pos = lw * y + x * 3;
+    uint8_t *pixel = &img->data[pos];
     return pixel;
 }

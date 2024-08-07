@@ -41,7 +41,7 @@ int preblue[]	= { 0, 255, 255, 128, 0,	 0,	 128, 255 };
 int write_text = 0;
 int cmap_len = 8;
 int cmap_edit = 0;
-int cwidth = 50;
+int color_width = 50;
 
 /* The colormap */
 int *red = prered;
@@ -198,7 +198,7 @@ int setvar(char *base, *val) {
 	else if (strcmp (base, "zoom_rate") == 0)
 		zoom_rate = strtod (val, NULL);
 	else if (strcmp (base, "color_width") == 0)
-		cwidth = atoi (val);
+		color_width = atoi (val);
 	else if (strcmp (base, "red") == 0)
 		{
 			red = load_array (val);
@@ -263,8 +263,7 @@ int *load_array (char *list)
 	return c;
 }
 
-Rgb colormap (double val, int iterations)
-{
+Rgb colormap (double val, int iterations) {
 	Rgb color;
 
 	/* Colormap size */
@@ -296,22 +295,20 @@ Rgb colormap (double val, int iterations)
 //		 * (blue[base + 1] - blue[base]);
 // #else
 	(void) iterations;
-	if (val < cwidth)
-		{
-			color.red = red[1] - (red[1] - red[0]) * (cwidth - val) / cwidth;
-			color.green =
-	green[1] - (green[1] - green[0]) * (cwidth - val) / cwidth;
-			color.blue = blue[1] - (blue[1] - blue[0]) * (cwidth - val) / cwidth;
-			return color;
-		}
+	if (val < color_width) {
+		color.red = red[1] - (red[1] - red[0]) * (color_width - val) / color_width;
+		color.green = green[1] - (green[1] - green[0]) * (color_width - val) / color_width;
+		color.blue = blue[1] - (blue[1] - blue[0]) * (color_width - val) / color_width;
+		return color;
+	}
 
-	val -= cwidth;
-	int base = ((int) val / cwidth % (map_len - 1)) + 1;
-	double perc = (val - (cwidth * (int) (val / cwidth))) / cwidth;
+	val -= color_width;
+	int base = ((int) val / color_width % (map_len - 1)) + 1;
+	double perc = (val - (color_width * (int) (val / color_width))) / color_width;
 	int top = base + 1;
-	if (top >= map_len)
+	if (top >= map_len) {
 		top = 1;
-
+	}
 	color.red = red[base] + (red[top] - red[base]) * perc;
 	color.green = green[base] + (green[top] - green[base]) * perc;
 	color.blue = blue[base] + (blue[top] - blue[base]) * perc;
@@ -321,23 +318,17 @@ Rgb colormap (double val, int iterations)
 }
 
 void write_colormap (char *filename) {
-	int w = cwidth * cmap_len * 1.5;
+	int w = color_width * cmap_len * 1.5;
 	int h = 20;
 	bmp.t *cmap = bmp.new(w, h);
-	for (int i = 0; i < w; i++) {
-		Rgb rgb = colormap (i, w);
-		fillRect(cmap, i, 0, i+1, h, rgb.red, rgb.green, rgb.blue);
+	for (int x = 0; x < w; x++) {
+		Rgb rgb = colormap(x, w);
+		for (int y = 0; y < h; y++) {
+			bmp.set(cmap, x, y, rgb.red, rgb.green, rgb.blue);
+		}
 	}
 	bmp.write(cmap, filename);
 	bmp.free(cmap);
-}
-
-void fillRect(bmp.t *i, int left, top, right, bottom, int red, green, blue) {
-	for (int y = top; y < bottom; y++) {
-		for (int x = left; x < right; x++) {
-			bmp.set(i, x, y, red, green, blue);
-		}
-	}
 }
 
 void save_values(char *basename, double *data, dim_t size) {
