@@ -4,7 +4,7 @@
 #import formats/conf
 #import mandel.c
 #import opt
-#import proc.c
+#import os/proc
 
 typedef {
 	int red;
@@ -124,42 +124,24 @@ int main (int argc, char **argv) {
 		// iterations *= (1 + zoom_rate * 0.25 * frame);
 	}
 
-	//
-	// Run the jobs
-	//
-	int nworkers = 0;
-	int jobindex = 0;
-	for (int i = 0; i < 8; i++) {
-		if (jobindex >= zoom_frames) break;
-		spawn(&jobs[jobindex++]);
-		nworkers++;
+	void **clip = calloc(zoom_frames + 1, sizeof(&jobs[0]));
+	for (int i = 0; i < zoom_frames; i++) {
+		clip[i] = &jobs[i];
 	}
-	while (nworkers > 0) {
-		proc.wait(NULL);
-		nworkers--;
-		if (jobindex < zoom_frames) {
-			spawn(&jobs[jobindex++]);
-			nworkers++;
-		}
-	}
+	proc.parallel(&workerfunc, clip);
+	free(clip);
 	return 0;
 }
 
-void spawn(job_t *job) {
-    int pid = proc.fork();
-    if (pid < 0) panic("fork failed");
-    if (pid > 0) return;
-    area_t *a = &job->area;
+int workerfunc(void *arg) {
+	job_t *job = arg;
+	area_t a = job->area;
 	verbprint("frame %d/%d, ", job->frame, zoom_frames);
-	verbprint("x[%f, %f], y[%f, %f]\n", a->xmin, a->xmax, a->ymin, a->ymax);
-	workermain(job->frame, *a, iterations);
-	exit(0);
-}
+	verbprint("x[%f, %f], y[%f, %f]\n", a.xmin, a.xmax, a.ymin, a.ymax);
 
-int workermain(int zi, area_t a, int iterations) {
 	double *data = mandel.gen(image_size.w, image_size.h, a.xmin, a.xmax, a.ymin, a.ymax, iterations);
 	char basename[20];
-	snprintf (basename, 20, "out-%010d", zi);
+	snprintf (basename, 20, "out-%010d", job->frame);
 
 	if (write_text) {
 		save_values(basename, data, image_size);
