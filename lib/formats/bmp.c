@@ -59,7 +59,7 @@ pub bool write(t* img, char *filename) {
 
 	// Pixel rows have to be padded to the nearest multiple of 4 bytes.
 	int remainder = (img->width * 3) % 4;
-	int pad = 4 - remainder;
+	int pad = (4 - remainder) % 4;
 
 	// We have to know the file size in advance.
 	// The file is header (14 bytes) + bitmapinfo (40 bytes) + data.
