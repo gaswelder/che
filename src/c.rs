@@ -106,6 +106,9 @@ pub const CFUNCS: &[&str] = &[
     "atoll",
     "atol_l",
     "atoll_l",
+	"strtod",
+	"strtof",
+	"strtold",
     // string.h
     "memcmp",
     // stdio.h
