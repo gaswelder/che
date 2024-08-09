@@ -2,7 +2,7 @@
  * This is a port of the [https://github.com/skeeto/sort-circle]("sort-circle demo by skeeto).
  */
 
-#import endian
+#import bitwriter
 #import formats/ppm
 #import fs
 #import opt
@@ -97,11 +97,12 @@ int main(int argc, char **argv) {
     }
 
     if (audio_output) {
-        wav = wav_init(audio_output);
-        if (!wav) {
+		wav = fopen(audio_output, "wb");
+		if (!wav) {
             fprintf(stderr, "%s: %s: %s\n", argv[0], strerror(errno), audio_output);
             exit(0);
         }
+        wav_init(wav);
     }
 
     if (delay) {
@@ -197,9 +198,10 @@ void frame() {
         }
 
         /* Write out 16-bit samples */
+		bitwriter.t w = { wav };
         for (int i = 0; i < nsamples; i++) {
             int s = samples[i] * 0x7fff;
-            endian.emit_u16le(s, wav);
+            bitwriter.le16(&w, s);
         }
         fflush(wav);
     }
@@ -376,25 +378,22 @@ void run_sort(int type) {
     frame();
 }
 
-FILE *wav_init(const char *file)
-{
-    FILE *f = fopen(file, "wb");
-    if (f) {
-        endian.emit_u32be(0x52494646UL, f); // "RIFF"
-        endian.emit_u32le(0xffffffffUL, f); // file length
-        endian.emit_u32be(0x57415645UL, f); // "WAVE"
-        endian.emit_u32be(0x666d7420UL, f); // "fmt "
-        endian.emit_u32le(16,           f); // struct size
-        endian.emit_u16le(1,            f); // PCM
-        endian.emit_u16le(1,            f); // mono
-        endian.emit_u32le(HZ,           f); // sample rate (i.e. 44.1 kHz)
-        endian.emit_u32le(HZ * 2,       f); // byte rate
-        endian.emit_u16le(2,            f); // block size
-        endian.emit_u16le(16,           f); // bits per sample
-        endian.emit_u32be(0x64617461UL, f); // "data"
-        endian.emit_u32le(0xffffffffUL, f); // byte length
-    }
-    return f;
+void wav_init(FILE *f) {
+	bitwriter.t w = { f };
+
+    bitwriter.be32(&w, 0x52494646UL); // "RIFF"
+	bitwriter.le32(&w, 0xffffffffUL); // file length
+	bitwriter.be32(&w, 0x57415645UL); // "WAVE"
+	bitwriter.be32(&w, 0x666d7420UL); // "fmt "
+	bitwriter.le32(&w, 16); // struct size
+	bitwriter.le16(&w, 1); // PCM
+	bitwriter.le16(&w, 1); // mono
+	bitwriter.le32(&w, HZ); // sample rate (i.e. 44.1 kHz)
+	bitwriter.le32(&w, HZ * 2); // byte rate
+	bitwriter.le16(&w, 2); // block size
+	bitwriter.le16(&w, 16); // bits per sample
+	bitwriter.be32(&w, 0x64617461UL); // "data"
+	bitwriter.le32(&w, 0xffffffffUL); // byte length
 }
 
 #define R0    (S / 400.0f)  // dot inner radius
