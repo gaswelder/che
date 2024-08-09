@@ -54,33 +54,31 @@ const char *message = "";
 FILE *wav = NULL;
 
 uint8_t *font = NULL;
-const char *FONTPATH = "prog/sort-circle-font.bin";
 
 int main(int argc, char **argv) {
-    font = (uint8_t *) fs.readfile(FONTPATH, NULL);
+    font = (uint8_t *) fs.readfile("prog/sort-circle-font.bin", NULL);
+	if (!font) font = (uint8_t *) fs.readfile("sort-circle-font.bin", NULL);
     if (!font) {
-        fprintf(stderr, "couldn't load font at '%s'\n", FONTPATH);
+        fprintf(stderr, "couldn't load font at '%s'\n", "sort-circle-font.bin");
         return 1;
     }
 
     ppm = ppm.init(S, S);
 
-    /*
-     * Parse the flags.
-     */
     bool help = false;
+	bool hide_shuffle = false;
+	bool slow_shuffle = false;
+	char *audio_output = NULL;
+	int sort_number = 0;
+	int delay = 0;
+	char *seed_str = NULL;
+
     opt.opt_bool("h", "print the help message", &help);
-    bool hide_shuffle = false;
     opt.opt_bool("q", "don't draw the shuffle", &hide_shuffle);
-    bool slow_shuffle = false;
     opt.opt_bool("y", "slow down shuffle animation", &slow_shuffle);
-    char *audio_output = NULL;
     opt.str("a", "name of audio output (WAV)", &audio_output);
-    int sort_number = 0;
     opt.opt_int("s", "animate sort number N", &sort_number);
-    int delay = 0;
     opt.opt_int("w", "insert a delay of N frames", &delay);
-    char *seed_str = NULL;
     opt.str("x", "seed for shuffling (64-bit HEX string)", &seed_str);
     opt.opt_parse(argc, argv);
 
@@ -121,12 +119,8 @@ int main(int argc, char **argv) {
     for (int i = 1; i < SORTS_TOTAL; i++) {
         shuffle(array, hide_shuffle, slow_shuffle);
         run_sort(i);
-        /*
-         * Pause for 1 second
-         */
-        for (int i = 0; i < FPS; i++) {
-            frame();
-        }
+        // Pause for 1 second
+        for (int i = 0; i < FPS; i++) frame();
     }
     return 0;
 }
@@ -418,11 +412,11 @@ void ppm_dot(ppm.ppm_t *p, float x, y, ppm.rgb_t color)
 
 float smoothstep(float lower, float upper, float x)
 {
-    x = clamp((x - lower) / (upper - lower), 0.0f, 1.0f);
+    x = clampf((x - lower) / (upper - lower), 0.0f, 1.0f);
     return x * x * (3.0f - 2.0f * x);
 }
 
-float clamp(float x, float lower, float upper)
+float clampf(float x, float lower, float upper)
 {
     if (x < lower)
         return lower;
@@ -435,8 +429,8 @@ float clamp(float x, float lower, float upper)
 const int PAD = 800 / 128;     // message padding
 #define FONT_W 16
 #define FONT_H 33
-void draw_string(ppm.ppm_t *p, const char *message)
-{
+
+void draw_string(ppm.ppm_t *p, const char *message) {
     ppm.rgb_t fontcolor = {1.0, 1.0, 1.0};
     for (int c = 0; message[c]; c++) {
         int x = c * FONT_W + PAD;
