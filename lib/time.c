@@ -57,6 +57,15 @@ pub t now() {
     return time;
 }
 
+/**
+ * Returns a time object for the given unix time.
+ */
+pub t from_unix(int64_t seconds) {
+	t val = {};
+	val.timeval.tv_sec = seconds;
+	return val;
+}
+
 pub int64_t sub(t a, b) {
     return SECONDS * (a.timeval.tv_sec - b.timeval.tv_sec)
         + US * (a.timeval.tv_usec - b.timeval.tv_usec);
