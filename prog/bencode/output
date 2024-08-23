@@ -1,0 +1,20 @@
+{
+_ announce: https://torrent.ubuntu.com/announce,
+_ announce-list: [
+_ _ 0: [
+_ _ _ 0: https://torrent.ubuntu.com/announce
+_ _ ],
+_ _ 1: [
+_ _ _ 0: https://ipv6.torrent.ubuntu.com/announce
+_ _ ]
+_ ],
+_ comment: Ubuntu CD releases.ubuntu.com,
+_ created by: mktorrent 1.1,
+_ creation date: 1714046391,
+_ info: {
+_ _ length: 1819688960,
+_ _ name: ubuntu-24.04-desktop-amd64.iso,
+_ _ piece length: 262144,
+_ _ pieces: 6269ffffffa55854622f1affffff93fffffffd4eb41ffffffeb19ffffff98ffffffe2ffffffc26071ffffffb76e...466499 more...
+_ }
+}

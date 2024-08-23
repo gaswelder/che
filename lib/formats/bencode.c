@@ -1,12 +1,16 @@
 
 pub typedef {
+	/*
+	 * The input.
+	 */
 	const char *data;
 	size_t size;
 	size_t pos;
 
-	char keybuf[100];
-
-	int stacksize;
+	/*
+	 * Stack for tracking the type of node we're currently in.
+	 */
+	size_t stacksize;
 	char stack[10];
 } reader_t;
 
@@ -40,6 +44,7 @@ pub bool more(reader_t *r) {
 
 /**
  * Returns the type of the value that follows.
+ * Returns 0 at the end of file.
  */
 pub int type(reader_t *r) {
 	switch (peek(r)) {
@@ -56,11 +61,10 @@ pub int type(reader_t *r) {
  * The current node must be a dictionary or a list.
  */
 pub void enter(reader_t *r) {
-	char c = pop(r);
-    r->stack[r->stacksize++] = c;
-	if (c == 'd' && peek(r) != 'e') {
-		loadkey(r);
+	if (r->stacksize == sizeof(r->stack)) {
+		panic("stack too small");
 	}
+    r->stack[r->stacksize++] = pop(r);
 }
 
 /**
@@ -75,59 +79,12 @@ pub void leave(reader_t *r) {
 }
 
 /**
- * Returns current value's key, in case we're inside a dictionary.
+ * When inside a dictionary, reads the next entry's key into buf.
+ * Returns the key length in bytes.
+ * Keep in mind that keys are byte buffers, not guaranteed to be ASCIIZ.
  */
-pub const char *key(reader_t *r) {
-	return r->keybuf;
-}
-
-/**
- * Reads the number that follows.
- */
-pub int readnum(reader_t *r) {
-	consume(r, 'i');
-	int n = num(r);
-	consume(r, 'e');
-
-	if (more(r) && parent(r) == 'd') {
-		loadkey(r);
-	}
-	return n;
-}
-
-/**
- * Reads the string at the current position into the given buffer.
-*/
-pub bool readstr(reader_t *r, char *buf, size_t bufsize) {
-	// <length>:
-	int n = num(r);
-	if (n < 0) panic("negative string length");
-	size_t nz = (size_t) n;
-	consume(r, ':');
-
-	// If no buffer is given, discard the data.
-	if (!buf) {
-		for (size_t i = 0; i < nz; i++) {
-			pop(r);
-		}
-		if (more(r) && parent(r) == 'd') {
-			loadkey(r);
-		}
-		return true;
-	}
-
-	// If a buffer is given, make sure it's big enough
-	// and copy data there.
-	if (nz >= bufsize) {
-		panic("buf too small");
-	}
-    for (size_t i = 0; i < nz; i++) {
-		buf[i] = pop(r);
-    }
-	if (more(r) && parent(r) == 'd') {
-		loadkey(r);
-	}
-	return true;
+pub size_t key(reader_t *r, char *buf, size_t len) {
+	return _readbuf(r, buf, len);
 }
 
 /**
@@ -140,8 +97,54 @@ pub int strsize(reader_t *r) {
 	return n;
 }
 
-pub void skip(reader_t *r) {
+/**
+ * Reads the string at the current position into the given buffer.
+*/
+pub size_t readbuf(reader_t *r, char *buf, size_t bufsize) {
+	return _readbuf(r, buf, bufsize);
+}
+
+size_t _readbuf(reader_t *r, char *buf, size_t len) {
+	int n = num(r);
+	if (n < 0) panic("got negative data length");
+	size_t nz = (size_t) n;
+	if (buf != NULL && nz > len) panic("buffer too small (need %d)", n);
+
+	consume(r, ':');
+
+	// Write the data to the buffer.
+	if (buf) {
+		memset(buf, 0, len);
+		for (int i = 0; i < n; i++) {
+			buf[i] = pop(r);
+		}
+	} else {
+		for (int i = 0; i < n; i++) {
+			pop(r);
+		}
+	}
+	return nz;
+}
+
+/**
+ * Reads the number that follows.
+ */
+pub int readnum(reader_t *r) {
+	consume(r, 'i');
+	int n = num(r);
+	consume(r, 'e');
+	return n;
+}
+
+/**
+ * Skips to the next entry.
+ * Returns false if there is no next entry.
+ */
+pub bool skip(reader_t *r) {
     switch (peek(r)) {
+		case EOF: {
+			return false;
+		}
         case 'i': {
 			consume(r, 'i');
 			num(r);
@@ -161,14 +164,12 @@ pub void skip(reader_t *r) {
 			}
         }
     }
-	if (more(r) && parent(r) == 'd') {
-		loadkey(r);
-	}
+	return true;
 }
 
-int parent(reader_t *r) {
-	return r->stack[r->stacksize-1];
-}
+// int parent(reader_t *r) {
+// 	return r->stack[r->stacksize-1];
+// }
 
 void consume(reader_t *r, char c) {
     if (r->data[r->pos] != c) {
@@ -177,14 +178,6 @@ void consume(reader_t *r, char c) {
     r->pos++;
 }
 
-void loadkey(reader_t *r) {
-	int len = num(r);
-	consume(r, ':');
-	for (int i = 0; i < len; i++) {
-		r->keybuf[i] = pop(r);
-	}
-	r->keybuf[len] = 0;
-}
 
 char peek(reader_t *r) {
     if (r->pos >= r->size) {
