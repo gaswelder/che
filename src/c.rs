@@ -100,6 +100,7 @@ pub const CFUNCS: &[&str] = &[
     "isalpha",
     "tolower",
     "toupper",
+	"isprint",
     // stdlib
     "atoi",
     "atol",
