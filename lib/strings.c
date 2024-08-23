@@ -170,3 +170,15 @@ pub bool allupper(char *s) {
     }
     return true;
 }
+
+pub void fmt_bytes(size_t bytes, char *buf, size_t bufsize) {
+    if (bytes > 1024 * 1024 * 1024) {
+        snprintf(buf, bufsize, "%.2f GB", (double) bytes / 1024 / 1024 / 1024);
+    } else if (bytes > 1024 * 1024) {
+        snprintf(buf, bufsize, "%.2f MB", (double) bytes / 1024 / 1024);
+    } else if (bytes > 1024) {
+        snprintf(buf, bufsize, "%.2f KB", (double) bytes / 1024);
+    } else {
+        snprintf(buf, bufsize, "%zu B", bytes);
+    }
+}
