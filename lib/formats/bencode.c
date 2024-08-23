@@ -207,28 +207,3 @@ int num(reader_t *r) {
 char pop(reader_t *r) {
     return r->data[r->pos++];
 }
-
-
-/*
-#import formats/bencode
-#import fs
-
-int main() {
-    size_t size = 0;
-    char *data = fs.readfile("a.torrent", &size);
-    if (!data) {
-        fprintf(stderr, "failed to read file: %s\n", strerror(errno));
-        return 1;
-    }
-
-    bencode.reader_t *r = bencode.newreader(data, size);
-    bencode.enter(r);
-    while (bencode.more(r)) {
-        printf("[%s] = %c\n", bencode.key(r), bencode.type(r));
-        bencode.skip(r);
-    }
-    bencode.leave(r);
-    bencode.freereader(r);
-    return 0;
-}
-*/
