@@ -27,6 +27,42 @@ pub typedef {
 	char addrstr[300];
 } net_t;
 
+pub typedef {
+	char v; // 4 or 6
+	// 4 bytes for ip4 (struct in_addr),
+	// 16 bytes for ip6 (struct in6_addr)
+	char data[16];
+} ip_addr_t;
+
+/**
+ * Parses a string address into the given address a.
+ * Returns false on failure.
+ */
+pub bool parse_addr(ip_addr_t *a, const char *str) {
+	if (OS.inet_pton(OS.AF_INET6, str, a->data)) {
+		a->v = 6;
+		return true;
+	}
+	if (OS.inet_pton(OS.AF_INET, str, a->data)) {
+		a->v = 4;
+		return true;
+	}
+	return false;
+}
+
+/**
+ * Formats an address writing to buf.
+ * Returns false on failure.
+ */
+pub bool format_addr(ip_addr_t *a, char *buf, size_t bufsize) {
+	int af = 0;
+	switch (a->v) {
+		case 4: { af = OS.AF_INET; }
+		case 6: { af = OS.AF_INET6; }
+	}
+	return OS.inet_ntop(af, a->data, buf, bufsize) != NULL;
+}
+
 pub const char *net_error() {
 	return error;
 }
