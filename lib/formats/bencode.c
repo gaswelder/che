@@ -3,7 +3,7 @@ pub typedef {
 	/*
 	 * The input.
 	 */
-	const char *data;
+	const uint8_t *data;
 	size_t size;
 	size_t pos;
 
@@ -17,7 +17,7 @@ pub typedef {
 /**
  * Allocates a new reader for the given data.
  */
-pub reader_t *newreader(const char *data, size_t size) {
+pub reader_t *newreader(const uint8_t *data, size_t size) {
 	reader_t *r = calloc(1, sizeof(reader_t));
 	if (!r) return NULL;
 	r->data = data;
@@ -83,7 +83,7 @@ pub void leave(reader_t *r) {
  * Returns the key length in bytes.
  * Keep in mind that keys are byte buffers, not guaranteed to be ASCIIZ.
  */
-pub size_t key(reader_t *r, char *buf, size_t len) {
+pub size_t key(reader_t *r, uint8_t *buf, size_t len) {
 	return _readbuf(r, buf, len);
 }
 
@@ -100,11 +100,11 @@ pub int strsize(reader_t *r) {
 /**
  * Reads the string at the current position into the given buffer.
 */
-pub size_t readbuf(reader_t *r, char *buf, size_t bufsize) {
+pub size_t readbuf(reader_t *r, uint8_t *buf, size_t bufsize) {
 	return _readbuf(r, buf, bufsize);
 }
 
-size_t _readbuf(reader_t *r, char *buf, size_t len) {
+size_t _readbuf(reader_t *r, uint8_t *buf, size_t len) {
 	int n = num(r);
 	if (n < 0) panic("got negative data length");
 	size_t nz = (size_t) n;
