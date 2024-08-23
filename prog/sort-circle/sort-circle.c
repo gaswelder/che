@@ -56,8 +56,8 @@ FILE *wav = NULL;
 uint8_t *font = NULL;
 
 int main(int argc, char **argv) {
-    font = (uint8_t *) fs.readfile("prog/sort-circle-font.bin", NULL);
-	if (!font) font = (uint8_t *) fs.readfile("sort-circle-font.bin", NULL);
+    font = fs.readfile("prog/sort-circle-font.bin", NULL);
+	if (!font) font = fs.readfile("sort-circle-font.bin", NULL);
     if (!font) {
         fprintf(stderr, "couldn't load font at '%s'\n", "sort-circle-font.bin");
         return 1;

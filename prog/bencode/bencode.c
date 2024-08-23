@@ -8,7 +8,7 @@ int main(int argc, char *argv[]) {
     }
 
     size_t size = 0;
-    char *data = fs.readfile(argv[1], &size);
+    uint8_t *data = fs.readfile(argv[1], &size);
     if (!data) {
         fprintf(stderr, "failed to read file: %s\n", strerror(errno));
         return 1;
@@ -22,7 +22,7 @@ int main(int argc, char *argv[]) {
     return 0;
 }
 
-void printbuf(const char *buf, size_t buflen) {
+void printbuf(const uint8_t *buf, size_t buflen) {
     bool allprintable = true;
     for (size_t i = 0; i < buflen; i++) {
         if (!isprint(buf[i])) {
@@ -52,7 +52,7 @@ void printval(bencode.reader_t *r) {
             _indent++;
             bencode.enter(r);
             while (bencode.more(r)) {
-                char key[100] = {};
+                uint8_t key[100] = {};
                 size_t keylen = bencode.key(r, key, 100);
                 indent();
                 printbuf(key, keylen);
@@ -73,7 +73,7 @@ void printval(bencode.reader_t *r) {
         }
         case 's': {
             int len = bencode.strsize(r);
-            char *buf = calloc(len+1, 1);
+            uint8_t *buf = calloc(len+1, 1);
             bencode.readbuf(r, buf, len+1);
             printbuf(buf, (size_t) len);
             free(buf);

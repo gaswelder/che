@@ -95,18 +95,17 @@ pub bool is_dir(const char *path) {
 }
 
 /*
- * Reads file at 'path' and returns a pointer to the file's
+ * Reads the file at 'path' and returns a pointer to the file's
  * contents in memory. The contents size is put into 'size'.
  */
-pub char *readfile(const char *path, size_t *size)
-{
+pub uint8_t *readfile(const char *path, size_t *size) {
 	FILE *f = fopen(path, "rb");
-	if( !f ) {
+	if (!f) {
 		return NULL;
 	}
 
 	size_t len = 0;
-	if(!fsize(f, &len)) {
+	if (!fsize(f, &len)) {
 		fclose(f);
 		return NULL;
 	}
@@ -116,34 +115,29 @@ pub char *readfile(const char *path, size_t *size)
 		fclose(f);
 		return NULL;
 	}
-
-	if(!readf(f, data, len)) {
+	if (!readf(f, data, len)) {
 		fclose(f);
 		free( data );
 		return NULL;
 	}
-
 	fclose(f);
-
-	if(size) *size = len;
-	return data;
+	if (size) *size = len;
+	return (uint8_t *) data;
 }
 
 /*
  * Reads file 'path' and returns its contents as string.
  */
-pub char *readfile_str(const char *path)
-{
+pub char *readfile_str(const char *path) {
 	size_t len = 0;
-	char *data = readfile(path, &len);
-	if(!data) return NULL;
+	char *data = (char *) readfile(path, &len);
+	if (!data) return NULL;
 
 	char *new = realloc(data, len+1);
-	if(!new) {
+	if (!new) {
 		free(data);
 		return NULL;
 	}
-
 	new[len] = '\0';
 	return new;
 }

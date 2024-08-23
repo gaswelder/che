@@ -69,7 +69,7 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
-	char *postdata = NULL;         /* *buffer containing data from postfile */
+	uint8_t *postdata = NULL;         /* *buffer containing data from postfile */
 	size_t postlen = 0; /* length of data to be POSTed */
 
 	int method = http.GET;
@@ -137,7 +137,7 @@ int main(int argc, char *argv[]) {
     }
     io.push(&REQUEST, buf, strlen(buf));
     if (method == http.POST) {
-        io.push(&REQUEST, postdata, strlen(postdata));
+        io.push(&REQUEST, (char *)postdata, postlen);
     }
 
 	request_stats = calloc(requests_to_do, sizeof(result_t));
