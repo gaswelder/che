@@ -197,12 +197,20 @@ net_t *newconn(const char *proto, const char *addr) {
 		free(c);
 		return 0;
 	}
-	addrinfo_t query = {
-		.ai_socktype = OS.SOCK_STREAM,
+
+	// filter, specifies what addresses we are interested in.
+	addrinfo_t hints = {
+		// int ai_flags
+		// int ai_family // AF_INET, AF_INET6
+		// socklen_t ai_addrlen
+		// struct sockaddr *ai_addr
+		// char *ai_canonname
+		// struct addrinfo *ai_next
+		.ai_socktype = OS.SOCK_STREAM, // or SOCK_DGRAM
 		.ai_protocol = OS.IPPROTO_TCP,
 	};
 	addrinfo_t *result = NULL;
-	if (OS.getaddrinfo(c->host, c->port, &query, &result) != 0) {
+	if (OS.getaddrinfo(c->host, c->port, &hints, &result) != 0) {
 		error = "getaddrinfo error";
 		free(c);
 		return NULL;
