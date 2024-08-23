@@ -32,48 +32,27 @@ for n in `ls samples`; do
 done
 
 #
-# self-hosted lib tests
+# Run self-hosted lib tests.
 #
 che test lib || exit 1
-
-fail () {
-	echo FAIL $1
-	if [ $BAIL != "" ]; then
-		exit 1
-	fi
-}
 
 #
 # Build and test the world.
 #
 errors=0
-cd prog
-	for i in */; do
-		cd $i
-		name=`basename $i`
-		$che build "$name.c" "$name.out"
-		if [ $? = 0 ]; then
-			echo OK build $name
-		else
-			fail "build $name"
-			errors=`expr $errors + 1`
-			cd ..
-			continue
-		fi
+for p in `ls prog`; do
+	./progtest.sh $p
+	if [ $? != 0 ]; then
+		errors=`expr $errors + 1`
+	fi
+done
 
-		if [ -f test.sh ]; then
-			./test.sh || exit 1
-			echo OK test $i
-		fi
-		rm *.out
-		cd ..
-	done
-cd ..
-
+#
+# Summary.
+#
 if [ $errors = 0 ]; then
 	echo "all OK"
 else
-	echo $errors failed to build
+	echo $errors errors in prog/
 	exit $errors
 fi
-
