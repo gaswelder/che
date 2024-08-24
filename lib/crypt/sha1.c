@@ -4,39 +4,87 @@
 
 #import mem
 
-pub typedef { uint32_t values[5]; } sha1sum_t;
+pub typedef {
+	mem.mem_t *z;
+	size_t pos;
+	bool finished;
+	uint32_t sum[5];
+} digest_t;
 
-/*
- * Returns computed digest for the string `s`.
- */
-pub sha1sum_t sha1_str(const char *s) {
-	return sha1_buf(s, strlen(s));
+void begin(digest_t *hash) {
+	hash->z = mem.memopen();
+	if (!hash->z) panic("memopen failed");
+	/*
+	 * Set the initial sum.
+	 */
+	hash->sum[0] = 0x67452301;
+	hash->sum[1] = 0xefcdab89;
+	hash->sum[2] = 0x98badcfe;
+	hash->sum[3] = 0x10325476;
+	hash->sum[4] = 0xc3d2e1f0;
 }
 
-/*
- * Returns computed digest for the data in buffer `buf` of length `n`.
- */
-pub sha1sum_t sha1_buf(const char *buf, size_t len) {
-	mem.mem_t *z = mem.memopen();
-	assert((size_t) mem.memwrite(z, buf, len) == len);
-	mem.memrewind(z);
-
-	sha1sum_t r = {};
-	sha1(z, r.values);
-	mem.memclose(z);
-	return r;
+pub bool add(digest_t *hash, char byte) {
+	/*
+	 * Make sure add is not called after the end.
+	 */
+	if (hash->finished) return false;
+	/*
+	 * On the first add allocate memory for the data.
+	 */
+	if (!hash->z) {
+		begin(hash);
+	}
+	/*
+	 * Write to the buffer.
+	 */
+	mem.memputc(byte, hash->z);
+	hash->pos++;
+	return true;
 }
 
-/*
- * Writes a hexademical representation of the sum `h` to the given buffer `buf`
- * of length `n`. `n` must be at least 41 bytes. Returns false on failure.
- */
-pub bool sha1_hex(sha1sum_t h, char *buf, size_t n) {
-	if (n <= 40) {
-		return false;
+pub bool end(digest_t *hash) {
+	if (hash->finished) return false;
+	hash->finished = true;
+
+	if (!hash->z) {
+		hash->z = mem.memopen();
+		if (!hash->z) panic("memopen failed");
 	}
 
-	int r = sprintf(buf, "%08x%08x%08x%08x%08x", h.values[0], h.values[1], h.values[2], h.values[3], h.values[4]);
+	uint32_t *sum = hash->sum;
+
+	mem.mem_t *data = hash->z;
+	mem.memrewind(data);
+	src_t s = {};
+	src_init(&s, data);
+
+	uint32_t block[16] = {};
+	while (s.more) {
+		for (int i = 0; i < 16; i++) {
+			block[i] = next_word(&s);
+		}
+		sha1_feed(block, sum);
+	}
+
+	mem.memclose(data);
+
+	return true;
+}
+
+
+/*
+ * Writes a hexademical representation of the digest to `buf`.
+ * bufsize must be at least 41 bytes.
+ * Returns false on failure.
+ */
+pub bool format(digest_t *hash, char *buf, size_t bufsize) {
+	// We can work with 40 if we do the formatting here
+	// instead of relying on sprintf.
+	if (bufsize < 41) return false;
+
+	uint32_t *sum = hash->sum;
+	int r = sprintf(buf, "%08x%08x%08x%08x%08x", sum[0], sum[1], sum[2], sum[3], sum[4]);
 	return r == 40;
 }
 
@@ -153,27 +201,7 @@ void init_padding(src_t *s) {
 	s->zeros = 64 * n - 9 - l;
 }
 
-void sha1(mem.mem_t *data, uint32_t sum[5]) {
-	/*
-	 * Get the initial sum.
-	 */
-	sum[0] = 0x67452301;
-	sum[1] = 0xefcdab89;
-	sum[2] = 0x98badcfe;
-	sum[3] = 0x10325476;
-	sum[4] = 0xc3d2e1f0;
 
-	src_t s = {};
-	uint32_t block[16] = {};
-
-	src_init(&s, data);
-	while (s.more) {
-		for (int i = 0; i < 16; i++) {
-			block[i] = next_word(&s);
-		}
-		sha1_feed(block, sum);
-	}
-}
 
 /**
  * Feeds the next data block into the current sum.
