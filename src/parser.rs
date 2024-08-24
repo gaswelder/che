@@ -650,7 +650,7 @@ fn parse_statement(l: &mut Lexer, ctx: &Ctx) -> Result<TWithErrors<Statement>, E
     }
 
     let next = l.peek().unwrap();
-    return match next.kind.as_str() {
+    match next.kind.as_str() {
         "break" => {
             l.get().unwrap();
             expect(l, ";", Some("break statement"))?;
@@ -687,7 +687,7 @@ fn parse_statement(l: &mut Lexer, ctx: &Ctx) -> Result<TWithErrors<Statement>, E
                 errors: Vec::new(),
             });
         }
-    };
+    }
 }
 
 fn parse_panic(l: &mut Lexer, ctx: &Ctx) -> Result<Statement, Error> {
