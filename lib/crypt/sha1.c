@@ -72,6 +72,7 @@ pub bool end(digest_t *hash) {
 	return true;
 }
 
+const char HEX[] = "0123456789abcdef";
 
 /*
  * Writes a hexademical representation of the digest to `buf`.
@@ -79,13 +80,32 @@ pub bool end(digest_t *hash) {
  * Returns false on failure.
  */
 pub bool format(digest_t *hash, char *buf, size_t bufsize) {
-	// We can work with 40 if we do the formatting here
-	// instead of relying on sprintf.
-	if (bufsize < 41) return false;
+	if (bufsize < 40) return false;
 
-	uint32_t *sum = hash->sum;
-	int r = sprintf(buf, "%08x%08x%08x%08x%08x", sum[0], sum[1], sum[2], sum[3], sum[4]);
-	return r == 40;
+	uint8_t bytes[20];
+	as_bytes(hash, bytes);
+
+	char *p = buf;
+	for (int i = 0; i < 20; i++) {
+		uint8_t b = bytes[i];
+		*p++ = HEX[b/16]; *p++ = HEX[b%16];
+	}
+	return true;
+}
+
+/**
+ * Serializes the digest as a sequence of bytes into buf.
+ * The buffer must be 20 bytes long.
+ */
+pub void as_bytes(digest_t *hash, uint8_t *buf) {
+	uint8_t *bp = buf;
+	for (int i = 0; i < 5; i++) {
+		uint32_t v = hash->sum[i];
+		*bp++ = (v >> 24) & 0xFF;
+		*bp++ = (v >> 16) & 0xFF;
+		*bp++ = (v >> 8) & 0xFF;
+		*bp++ = (v >> 0) & 0xFF;
+	}
 }
 
 /*
