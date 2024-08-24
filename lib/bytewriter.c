@@ -24,6 +24,14 @@ pub t *tobuf(uint8_t *buf, size_t bufsize) {
 	return w;
 }
 
+pub t *tofile(FILE *f) {
+	t *w = calloc(1, sizeof(t));
+	if (!w) return NULL;
+	w->f = f;
+	w->type = FSTREAM;
+	return w;
+}
+
 pub void free(t *w) {
 	OS.free(w);
 }
