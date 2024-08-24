@@ -249,3 +249,13 @@ pub const char *fileext(const char *filepath) {
     }
     return filepath;
 }
+
+pub const char *basename(const char *path) {
+	const char *last = path;
+	const char *p = path;
+	while (*p) {
+		if (*p == '/') last = p+1;
+		p++;
+	}
+	return last;
+}
