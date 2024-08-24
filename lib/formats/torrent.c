@@ -1,6 +1,7 @@
 // *.torrent format
 
 #import formats/bencode
+#import formats/bencode_writer
 
 pub typedef {
     // Tracker URL.
@@ -103,4 +104,32 @@ void parse_info(bencode.reader_t *r, info_t *tf) {
         }
     }
     bencode.leave(r);
+}
+
+pub bool writefile(FILE *f, info_t *info) {
+    size_t npieces = info->length / info->piece_length;
+    size_t lastlen = info->length % info->piece_length;
+    if (lastlen) npieces++;
+
+    bencode_writer.t *w = bencode_writer.tofile(f);
+	if (!w) return false;
+
+    bencode_writer.begin(w, 'd');
+    writestr(w, "announce"); writestr(w, info->announce);
+    writestr(w, "comment"); writestr(w, info->comment);
+    writestr(w, "created by"); writestr(w, info->created_by);
+    writestr(w, "creation date"); bencode_writer.num(w, info->creation_date);
+    writestr(w, "info");
+    bencode_writer.begin(w, 'd');
+    writestr(w, "length"); bencode_writer.num(w, info->length);
+    writestr(w, "name"); writestr(w, info->name);
+    writestr(w, "piece length"); bencode_writer.num(w, info->piece_length);
+    writestr(w, "pieces"); bencode_writer.buf(w, info->pieces, npieces * 20);
+    bencode_writer.end(w);
+    bencode_writer.end(w);
+	return true;
+}
+
+void writestr(bencode_writer.t *w, const char *s) {
+    bencode_writer.buf(w, (uint8_t *) s, strlen(s));
 }
