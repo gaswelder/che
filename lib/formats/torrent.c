@@ -4,6 +4,11 @@
 #import formats/bencode_writer
 
 pub typedef {
+	size_t length;
+	char path[200];
+} file_t;
+
+pub typedef {
     // Tracker URL.
 	char announce[200];
 
@@ -33,19 +38,14 @@ pub typedef {
     // Size of the file in bytes in single-file variant, 0 in multi-file variant.
     size_t length;
 
-/*
-    pieces
-    // multi mode:
-    // A list of dictionaries each corresponding to a file.
-    file_lengths;
-    file_paths;
-    files array of {length, path}
-*/
-    // ---------- end of info section -------------
+	// A list of {length, path} items, each corresponding to a file in the multi-file variant.
+	file_t *files;
+	size_t nfiles;
 } info_t;
 
 pub void free(info_t *tf) {
     OS.free(tf->pieces);
+	if (tf->files) OS.free(tf->files);
     OS.free(tf);
 }
 
@@ -71,8 +71,12 @@ pub info_t *parse(const uint8_t *data, size_t size) {
             bencode.skip(r);
         } else if (strcmp(k, "info") == 0) {
             parse_info(r, tf);
-        } else {
-            panic("unknown meta key: %s (%c)\n", k, bencode.type(r));
+        } else if (strcmp(k, "encoding") == 0) {
+			// uTorrent puts "UTF-8" there.
+			bencode.skip(r);
+		} else {
+			fprintf(stderr, "unknown meta key: %s (%c)\n", k, bencode.type(r));
+			bencode.skip(r);
         }
     }
     bencode.leave(r);
@@ -99,11 +103,78 @@ void parse_info(bencode.reader_t *r, info_t *tf) {
                 panic("failed to allocate %zu bytes", n);
             }
             bencode.readbuf(r, tf->pieces, n);
-        } else {
+        } else if (strcmp(k, "files") == 0) {
+			bencode.enter(r);
+			while (bencode.more(r)) {
+				parse_file(r, tf);
+			}
+			bencode.leave(r);
+		} else {
             panic("UNKNOWN info[%s] = %c\n", k, bencode.type(r));
         }
     }
     bencode.leave(r);
+}
+
+void parse_file(bencode.reader_t *r, info_t *tf) {
+	uint8_t buf[1000] = {};
+	const char *k = (char *) buf;
+
+	allocfiles(tf);
+	file_t *f = &tf->files[tf->nfiles++];
+
+	bencode.enter(r);
+	while (bencode.more(r)) {	
+		bencode.key(r, buf, sizeof(buf));
+		if (strcmp(k, "path") == 0) {
+			readpath(r, f->path, sizeof(f->path));
+		} else if (strcmp(k, "length") == 0) {
+			f->length = bencode.readnum(r);
+		} else {
+			panic("unknown file entry key: %s", k);
+		}
+	}
+	bencode.leave(r);
+}
+
+void readpath(bencode.reader_t *r, char *buf, size_t bufsize) {
+	memset(buf, 0, bufsize);
+	char tmp[1000] = {};
+
+	// path is a list "a", "b", "c.foo" for "a/b/c.foo".
+	bencode.enter(r);
+	bool first = true;
+	while (bencode.more(r)) {
+		bencode.readbuf(r, (uint8_t *)tmp, sizeof(tmp));
+		if (first) {
+			if (strlen(buf) + strlen(tmp) > bufsize) {
+				panic("buffer too small for the path");
+			}
+			strcat(buf, tmp);
+		} else {
+			if (strlen(buf) + strlen(tmp) + 1 > bufsize) {
+				panic("buffer too small for the path");
+			}
+			strcat(buf, "/");
+			strcat(buf, tmp);
+		}
+		first = false;
+	}
+	bencode.leave(r);
+}
+
+void allocfiles(info_t *tf) {
+	switch (tf->nfiles) {
+		case 10000: { panic("too many files"); }
+		case 1000, 100, 10: {
+			tf->files = realloc(tf->files, tf->nfiles * 10 * sizeof(file_t));
+			if (!tf->files) panic("realloc failed");
+		}
+		case 0: {
+			tf->files = realloc(tf->files, 10 * sizeof(file_t));
+			if (!tf->files) panic("realloc failed");
+		}
+	}
 }
 
 pub bool writefile(FILE *f, info_t *info) {
