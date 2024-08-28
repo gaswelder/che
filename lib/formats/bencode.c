@@ -57,6 +57,16 @@ pub int type(reader_t *r) {
 }
 
 /**
+ * Returns the number of bytes consumed in the input data.
+ * The code may use it go get the byte range of an item, by calling pos
+ * before and after reading the item. This is how the torrent info's bytes
+ * can be obtained for hashing.
+ */
+pub size_t pos(reader_t *r) {
+	return r->pos;
+}
+
+/**
  * Enters the current node.
  * The current node must be a dictionary or a list.
  */
