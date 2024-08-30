@@ -42,6 +42,8 @@ pub typedef {
 	// A list of {length, path} items, each corresponding to a file in the multi-file variant.
 	file_t *files;
 	size_t nfiles;
+
+	char infohash[41];
 } info_t;
 
 pub void free(info_t *tf) {
@@ -89,13 +91,11 @@ pub info_t *parse(const uint8_t *data, size_t size) {
 	bencode.freereader(r);
 
 	sha1.digest_t hash = {};
-	char hex[41] = {};
 	for (size_t i = info_begin; i < info_end; i++) {
 		sha1.add(&hash, data[i]);
 	}
 	sha1.end(&hash);
-	sha1.format(&hash, hex, sizeof(hex));
-	printf("infohash: %s\n", hex);
+	sha1.format(&hash, tf->infohash, sizeof(tf->infohash));
 	return tf;
 }
 

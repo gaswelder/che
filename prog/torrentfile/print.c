@@ -48,6 +48,8 @@ pub int cmd(int argc, char *argv[]) {
 		printf("length = %zu (%s), %zu files, %zu pieces\n", total, tmp, tf->nfiles, npieces);
 	}
 
+	printf("infohash = %s\n", tf->infohash);
+
 
 	// Prints piece hashes:
 	// uint8_t *p = tf->pieces;
