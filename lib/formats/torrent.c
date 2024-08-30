@@ -46,6 +46,29 @@ pub typedef {
 	char infohash[41];
 } info_t;
 
+/**
+ * Returns the total size of the torrent's contents.
+ */
+pub size_t total(info_t *tf) {
+	if (tf->nfiles == 0) {
+		return tf->length;
+	}
+	size_t total = 0;
+	for (size_t i = 0; i < tf->nfiles; i++) {
+		total += tf->files[i].length;
+	}
+	return total;
+}
+
+/**
+ * Returns the number of pieces according to the given file info.
+ * It's simply ceil(total size / piece size).
+ */
+pub size_t npieces(info_t *tf) {
+	size_t t = total(tf);
+	return t/tf->piece_length + (t % tf->piece_length != 0);
+}
+
 pub void free(info_t *tf) {
 	OS.free(tf->pieces);
 	if (tf->files) OS.free(tf->files);

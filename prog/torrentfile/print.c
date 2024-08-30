@@ -30,21 +30,13 @@ pub int cmd(int argc, char *argv[]) {
 	strings.fmt_bytes(tf->piece_length, tmp, 100);
 	printf("piece length = %zu (%s)\n", tf->piece_length, tmp);
 
-	size_t total = 0;
+	size_t total = torrent.total(tf);
+	size_t npieces = torrent.npieces(tf);
+	strings.fmt_bytes(total, tmp, 100);
 
 	if (tf->nfiles == 0) {
-		total = tf->length;
-		size_t npieces = total/tf->piece_length + (total % tf->piece_length != 0);
-		strings.fmt_bytes(total, tmp, 100);
 		printf("length = %zu (%s), %zu pieces\n", tf->length, tmp, npieces);
 	} else {
-		for (size_t i = 0; i < tf->nfiles; i++) {
-			total += tf->files[i].length;
-			strings.fmt_bytes(tf->files[i].length, tmp, 100);
-			printf("%zu: %10s\t%s\n", i, tmp, tf->files[i].path);
-		}
-		size_t npieces = total/tf->piece_length + (total % tf->piece_length != 0);
-		strings.fmt_bytes(total, tmp, 100);
 		printf("length = %zu (%s), %zu files, %zu pieces\n", total, tmp, tf->nfiles, npieces);
 	}
 
