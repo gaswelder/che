@@ -801,3 +801,20 @@ bool writebool(json_node *n, strbuilder.str *s) {
         return strbuilder.adds(s, "false");
     }
 }
+
+// ad-hoc function
+// write an escaped quoted string s to f.
+pub void write_string(FILE *f, char *s) {
+	fputc('"', f);
+	while (*s) {
+		switch (*s) {
+			case '\n': { fputc('\\', f); fputc('n', f); }
+			case '\t': { fputc('\\', f); fputc('t', f); }
+			case '\\': { fputc('\\', f); fputc('\\', f); }
+			case '\"': { fputc('\\', f); fputc('"', f); }
+			default: { fputc(*s, f); }
+		}
+		s++;
+	}
+	fputc('"', f);
+}
