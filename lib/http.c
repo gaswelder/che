@@ -26,6 +26,12 @@ pub typedef {
 } header_t;
 
 pub typedef {
+	char name[1024];
+    char value[1024];
+	size_t valuelen;
+} kv_t;
+
+pub typedef {
     char schema[10];
     char hostname[100];
     char port[10];
@@ -36,7 +42,7 @@ pub bool parse_url(url_t *r, const char *s) {
     memset(r, 0, sizeof(url_t));
 
     parsebuf.parsebuf_t *buf = parsebuf.buf_new(s);
-    
+
     // http
     char *q = r->schema;
     while (parsebuf.buf_more(buf) && parsebuf.buf_peek(buf) != ':') {
@@ -91,6 +97,9 @@ pub typedef {
     char filename[1024];
     char query[1024];
 
+	kv_t params[100];
+	size_t nparams;
+
     // Headers
     header_t headers[100];
     size_t nheaders;
@@ -106,6 +115,30 @@ pub const char *errstr(int err) {
 		return errors[err];
 	}
 	return "unknown error";
+}
+
+pub request_t *newreq(int method, const char *path) {
+	request_t *r = calloc(1, sizeof(request_t));
+	if (!r) return NULL;
+	if (!init_request(r, method, path)) {
+		panic("init_request failed");
+	}
+	return r;
+}
+
+pub void freereq(request_t *r) {
+	free(r);
+}
+
+pub void reqparams(request_t *r, const char *name, *value) {
+	reqparam(r, name, value, strlen(value));
+}
+
+pub void reqparam(request_t *r, const char *name, const char *data, size_t datalen) {
+	kv_t *h = &r->params[r->nparams++];
+	strcpy(h->name, name);
+	memcpy(h->value, data, datalen);
+	h->valuelen = datalen;
 }
 
 pub bool init_request(request_t *r, int method, const char *path) {
@@ -136,13 +169,32 @@ pub bool set_header(request_t *r, const char *name, *value) {
 pub bool write_request(request_t *r, char *buf, size_t n) {
     strbuilder.str *sb = strbuilder.str_new();
     bool ok = sb != NULL;
-    
+
+	// Request line.
     ok = ok && strbuilder.adds(sb, r->method)
         && strbuilder.adds(sb, " ")
-        && strbuilder.adds(sb, r->uri)
+        && strbuilder.adds(sb, r->uri);
+
+	// Query params.
+	for (size_t i = 0; i < r->nparams; i++) {
+		if (i == 0) strbuilder.adds(sb, "?");
+		else strbuilder.adds(sb, "&");
+
+		kv_t *param = &r->params[i];
+		strbuilder.adds(sb, param->name);
+		strbuilder.adds(sb, "=");
+
+		char tmp[1000] = {};
+		url_encode(tmp, param->value, param->valuelen);
+		strbuilder.adds(sb, tmp);
+	}
+
+	ok = ok
         && strbuilder.adds(sb, " ")
         && strbuilder.adds(sb, r->version)
         && strbuilder.adds(sb, "\r\n");
+
+	// Headers.
     for (size_t i = 0; i < r->nheaders; i++) {
         header_t *h = &r->headers[i];
         ok = ok
@@ -151,6 +203,7 @@ pub bool write_request(request_t *r, char *buf, size_t n) {
             && strbuilder.adds(sb, h->value)
             && strbuilder.adds(sb, "\r\n");
     }
+
     ok = ok && strbuilder.adds(sb, "\r\n");
     if (!ok || strbuilder.str_len(sb) > n) {
         strbuilder.str_free(sb);
@@ -349,7 +402,7 @@ const char HEX[] = "0123456789ABCDEF";
 /**
  * Puts url-encoded representation of buf into s.
  */
-pub void url_encode(char *s, char *buf, size_t bufsize) {
+void url_encode(char *s, const char *buf, size_t bufsize) {
 	char *p = s;
 	for (size_t i = 0 ; i < bufsize; i++) {
 		char c = buf[i];
