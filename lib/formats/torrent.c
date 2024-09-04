@@ -44,6 +44,7 @@ pub typedef {
 	size_t nfiles;
 
 	char infohash[41];
+	char infohash_bytes[20];
 } info_t;
 
 /**
@@ -119,6 +120,7 @@ pub info_t *parse(const uint8_t *data, size_t size) {
 	}
 	sha1.end(&hash);
 	sha1.format(&hash, tf->infohash, sizeof(tf->infohash));
+	sha1.as_bytes(&hash, (uint8_t*) tf->infohash_bytes);
 	return tf;
 }
 
