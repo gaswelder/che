@@ -1,6 +1,7 @@
+#import enc/urlencode
 #import parsebuf
-#import strings
 #import strbuilder
+#import strings
 
 pub enum {
 	UNKNOWN_METHOD,
@@ -185,7 +186,7 @@ pub bool write_request(request_t *r, char *buf, size_t n) {
 		strbuilder.adds(sb, "=");
 
 		char tmp[1000] = {};
-		url_encode(tmp, param->value, param->valuelen);
+		urlencode.enc(tmp, param->value, param->valuelen);
 		strbuilder.adds(sb, tmp);
 	}
 
@@ -395,24 +396,4 @@ pub bool parse_response(char *data, response_t *r) {
     }
 
     return true;
-}
-
-const char HEX[] = "0123456789ABCDEF";
-
-/**
- * Puts url-encoded representation of buf into s.
- */
-void url_encode(char *s, const char *buf, size_t bufsize) {
-	char *p = s;
-	for (size_t i = 0 ; i < bufsize; i++) {
-		char c = buf[i];
-		if (isalpha(c) || isdigit(c)) {
-			*p++ = c;
-			continue;
-		}
-		*p++ = '%';
-		*p++ = HEX[(c >> 4) & 0x0F];
-		*p++ = HEX[c & 0x0F];
-	}
-	*p++ = '\0';
 }
