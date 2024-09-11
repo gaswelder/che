@@ -106,6 +106,18 @@ pub typedef {
     size_t nheaders;
 } request_t;
 
+pub typedef {
+	char version[100]; // "HTTP/1.1"
+	int status; // 200
+
+    int head_length;
+    int content_length;
+
+	// Headers
+    header_t headers[100];
+    size_t nheaders;
+} response_t;
+
 const char *errors[] = {
 	"no error",
 	"unknown method"
@@ -222,6 +234,17 @@ pub header_t *get_header(request_t *r, const char *name) {
         h = &r->headers[i];
         if (!strcmp(name, h->name)) {
             return h;
+        }
+    }
+    return NULL;
+}
+
+pub const char *get_res_header(response_t *r, const char *name) {
+	header_t *h = NULL;
+    for (size_t i = 0; i < r->nheaders; i++) {
+        h = &r->headers[i];
+        if (!strcmp(name, h->name)) {
+            return h->value;
         }
     }
     return NULL;
@@ -344,17 +367,9 @@ bool parse_header_line(const char *line, header_t *h) {
     return true;
 }
 
-pub typedef {
-    char version[100];
-    int status;
-    char status_text[20];
 
-    char servername[1000];
-    int head_length;
-    int content_length;
-} response_t;
 
-pub bool parse_response(char *data, response_t *r) {
+pub bool parse_response(const char *data, response_t *r) {
     char *s = strstr(data, "\r\n\r\n");
     if (!s) {
         return false;
@@ -378,22 +393,52 @@ pub bool parse_response(char *data, response_t *r) {
     p += 3;
     sscanf(respcode, "%d", &r->status);
 
+	// space
+    p++;
 
-    // ...
-    p = strstr(data, "Server:");
-    if (p) {
-        p += 8;
-        char *q = r->servername;
-        while (*p > 32) {
-            *q++ = *p++;
-        }
-        *q = 0;
+	parsebuf.parsebuf_t *b = parsebuf.buf_new(p);
+
+	// status text
+	while (parsebuf.buf_more(b) && parsebuf.buf_peek(b) != '\r') {
+		parsebuf.buf_get(b);
+	}
+
+	// eol
+	if (!parsebuf.buf_skip_literal(b, "\r\n")) {
+		parsebuf.buf_free(b);
+		return false;
+	}
+
+	while (parsebuf.buf_more(b)) {
+		if (parsebuf.buf_skip_literal(b, "\r\n")) {
+			break;
+		}
+		header_t *h = &r->headers[r->nheaders++];
+		char *tmp = h->name;
+		while (parsebuf.buf_more(b) && parsebuf.buf_peek(b) != ':') {
+			*tmp++ = parsebuf.buf_get(b);
+		}
+		// : space
+		if (!parsebuf.buf_skip_literal(b, ": ")) {
+			parsebuf.buf_free(b);
+			return false;
+		}
+		// value
+		tmp = h->value;
+		while (parsebuf.buf_more(b) && parsebuf.buf_peek(b) != '\r') {
+			*tmp++ = parsebuf.buf_get(b);
+		}
+		// eol
+		if (!parsebuf.buf_skip_literal(b, "\r\n")) {
+			parsebuf.buf_free(b);
+			return false;
+		}
+	}
+	parsebuf.buf_free(b);
+
+    const char *tmp = get_res_header(r, "Content-Length");
+    if (tmp) {
+        r->content_length = atoi(tmp);
     }
-
-    p = strstr(data, "Content-Length:");
-    if (p) {
-        r->content_length = atoi(p + 16);
-    }
-
     return true;
 }
