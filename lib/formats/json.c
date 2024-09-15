@@ -739,7 +739,12 @@ bool writestr(val_t *n, strbuilder.str *s) {
 
 bool writenum(val_t *n, strbuilder.str *s) {
     char buf[100] = {0};
-    sprintf(buf, "%f", json_dbl(n));
+	double v = json_dbl(n);
+	if (v == round(v)) {
+		sprintf(buf, "%.0f", json_dbl(n));
+	} else {
+		sprintf(buf, "%f", json_dbl(n));
+	}
     return strbuilder.adds(s, buf);
 }
 
