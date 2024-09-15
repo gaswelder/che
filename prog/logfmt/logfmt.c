@@ -18,7 +18,7 @@ int main(int argc, char **argv) {
     // fgets will end up delivering whole lines, one line at a time, - and that
     // all lines fit into the buffer.
     while (fgets(buf, 4096, stdin)) {
-        json.json_node *current_object = json.json_parse(buf);
+        json.val_t *current_object = json.parse(buf);
         // If line couldn't be parsed as json - print it as is.
         if (!current_object) {
             printf("%s", buf);
@@ -30,7 +30,7 @@ int main(int argc, char **argv) {
     return 0;
 }
 
-void print_object(json.json_node *current_object) {
+void print_object(json.val_t *current_object) {
     // Print the level in color. If the level field is missing, print a
     // placeholder ("none").
     const char *level = json.json_getstr(current_object, "level");
@@ -60,7 +60,7 @@ void print_object(json.json_node *current_object) {
 
     // Print the requested fields.
     for (int i = 0; i < nreqfields; i++) {
-        json.json_node *v = json.json_get(current_object, reqfields[i]);
+        json.val_t *v = json.get(current_object, reqfields[i]);
         if (v != NULL) {
             printf("\t");
             print_node(reqfields[i], current_object, v);
@@ -81,9 +81,9 @@ void print_object(json.json_node *current_object) {
     }
 
     // Print the remaining fields as k=v
-    size_t n = json.json_size(current_object);
+    size_t n = json.nkeys(current_object);
     for (size_t i = 0; i < n; i++) {
-        const char *key = json.json_key(current_object, i);
+        const char *key = json.key(current_object, i);
 
         // Skip if we have already printed this field.
         if (!strcmp(key, "t") || !strcmp(key, "msg") || !strcmp(key, "level")) {
@@ -99,7 +99,7 @@ void print_object(json.json_node *current_object) {
         if (isreq) {
             continue;
         }
-        json.json_node *val = json.json_val(current_object, i);
+        json.val_t *val = json.json_val(current_object, i);
         printf(" %s=", key);
         print_node(key, current_object, val);
     }
@@ -111,8 +111,8 @@ bool isint(double x) {
 	return (double) a == x;
 }
 
-void print_node(const char *key, json.json_node *e, *val) {
-    switch (json.json_type(val)) {
+void print_node(const char *key, json.val_t *e, *val) {
+    switch (json.type(val)) {
         case json.JSON_STR:  { printf("%s", json.json_getstr(e, key)); }
         case json.JSON_OBJ:  { printf("(object)"); }
         case json.JSON_NULL: { printf("null"); }
@@ -133,7 +133,7 @@ void print_node(const char *key, json.json_node *e, *val) {
             }
         }
         default: {
-            printf("(unknown type %d)", json.json_type(val));
+            printf("(unknown type %d)", json.type(val));
         }
     }
 }

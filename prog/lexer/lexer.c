@@ -106,7 +106,7 @@ void tok_free(tok_t *t) {
 }
 
 char *tok_json(tok_t *t) {
-	json.json_node *tok = json.json_newobj();
+	json.val_t *tok = json.json_newobj();
 	json.json_put(tok, "type", json.json_newstr(t->name));
 	json.json_put(tok, "content", json.json_newstr(t->content));
 	json.json_put(tok, "pos", json.json_newstr(t->pos));

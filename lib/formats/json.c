@@ -3,7 +3,7 @@
 #import strbuilder
 #import strings
 
-// JSON data is represented as a tree where each node is an object of type `json_node`.
+// JSON data is represented as a tree where each node is an object of type `val_t`.
 // A node can be of one of the following types:
 pub enum {
 	JSON_UND = 0,
@@ -16,6 +16,7 @@ pub enum {
 	JSON_NULL = 7 // null value
 };
 
+// An opaque object representing any value representable in JSON.
 pub typedef {
 	int type;
 	union {
@@ -25,14 +26,14 @@ pub typedef {
 		arr.arr_t *obj;
 		bool boolval;
 	} val;
-} json_node;
+} val_t;
 
 typedef {
 	char *key;
-	json_node *val;
+	val_t *val;
 } kv_t;
 
-pub const char *json_err(json_node *n)
+pub const char *json_err(val_t *n)
 {
 	if(n == NULL) {
 		return "No memory";
@@ -43,20 +44,22 @@ pub const char *json_err(json_node *n)
 	return NULL;
 }
 
-json_node *newnode(int type) {
-	json_node *n = calloc(1, sizeof(json_node));
-	if(!n) return NULL;
-	n->type = type;
+val_t *newnode(int valtype) {
+	val_t *n = calloc(1, sizeof(val_t));
+	if (!n) {
+		panic("failed to allocate memory");
+	}
+	n->type = valtype;
 	return n;
 }
 
-pub const char *json_typename(json_node *n)
+pub const char *json_typename(val_t *n)
 {
 	return typename(n->type);
 }
 
-const char *typename(int type) {
-	switch(type) {
+const char *typename(int valtype) {
+	switch(valtype) {
 		case JSON_UND: { return "und"; }
 		case JSON_ERR: { return "err"; }
 		case JSON_ARR: { return "arr"; }
@@ -69,8 +72,8 @@ const char *typename(int type) {
 	return "?";
 }
 
-// json_node *json_newerror(const char *s) {
-// 	json_node *n = newnode(JSON_ERR);
+// val_t *json_newerror(const char *s) {
+// 	val_t *n = newnode(JSON_ERR);
 // 	if(!n) return NULL;
 // 	n->val.str = strings.newstr("%s", s);
 // 	if(!n->val.str) {
@@ -83,11 +86,9 @@ const char *typename(int type) {
 /*
  * Returns a new node of type "object".
  */
-pub json_node *json_newobj()
+pub val_t *json_newobj()
 {
-	json_node *n = newnode(JSON_OBJ);
-	if(!n) return NULL;
-
+	val_t *n = newnode(JSON_OBJ);
 	n->val.obj = arr.arr_new();
 	if(!n->val.obj) {
 		free(n);
@@ -99,11 +100,9 @@ pub json_node *json_newobj()
 /*
  * Returns a new node of type "array".
  */
-pub json_node *json_newarr()
+pub val_t *json_newarr()
 {
-	json_node *n = newnode(JSON_ARR);
-	if(!n) return NULL;
-
+	val_t *n = newnode(JSON_ARR);
 	n->val.obj = arr.arr_new();
 	if(!n->val.obj) {
 		free(n);
@@ -116,13 +115,12 @@ pub json_node *json_newarr()
  * Returns a new node of type "string" with a copy of
  * the given string as the contents.
  */
-pub json_node *json_newstr(const char *s)
+pub val_t *json_newstr(const char *s)
 {
 	if (s == NULL) {
 		return json_newnull();
 	}
-	json_node *obj = newnode(JSON_STR);
-	if( !obj ) return NULL;
+	val_t *obj = newnode(JSON_STR);
 
 	char *copy = mcopy( s, strlen(s) + 1 );
 	if(!copy) {
@@ -138,78 +136,52 @@ pub json_node *json_newstr(const char *s)
  * Returns a new node of type "number" with the given value
  * as the content.
  */
-pub json_node *json_newnum(double val) {
-	json_node *obj = newnode(JSON_NUM);
-	if (!obj) {
-		return NULL;
-	}
+pub val_t *json_newnum(double val) {
+	val_t *obj = newnode(JSON_NUM);
 	obj->val.num = val;
 	return obj;
 }
 
-/*
- * Returns a new node of type "null".
- */
-pub json_node *json_newnull()
-{
+// Returns a new node of type "null".
+pub val_t *json_newnull() {
 	return newnode(JSON_NULL);
 }
 
-/*
- * Returns a new node of type "bool" with the given value.
- */
-pub json_node *json_newbool(bool val)
-{
-	json_node *o = newnode(JSON_BOOL);
-	if(!o) return NULL;
-
-	o->val.boolval = val;
-	return o;
+// Returns a new node of type "bool" with the given value.
+pub val_t *json_newbool(bool val) {
+	val_t *n = newnode(JSON_BOOL);
+	n->val.boolval = val;
+	return n;
 }
 
-
-/*
- * Returns type of the given node.
- */
-pub int json_type( json_node *obj )
-{
-	if( !obj ) {
-		return JSON_UND;
-	}
+// Returns the type of the given node.
+pub int type(val_t *obj) {
+	if (!obj) return JSON_NULL;
 	return obj->type;
 }
 
-/*
- * Returns number of keys in an object node.
- */
-pub size_t json_size(json_node *n)
-{
-	if(!n || n->type != JSON_OBJ) {
+// Returns the number of keys in an object node.
+pub size_t nkeys(val_t *n) {
+	if (!n || n->type != JSON_OBJ) {
 		return 0;
 	}
 	return arr.arr_len(n->val.obj);
 }
 
-/*
- * Returns i-th key in the object node n.
- */
-pub const char *json_key(json_node *n, size_t i)
-{
-	if(!n || n->type != JSON_OBJ) {
+// Returns the i-th key in the object node n.
+pub const char *key(val_t *n, size_t i) {
+	if (!n || n->type != JSON_OBJ) {
 		return NULL;
 	}
 	arr.arr_t *a = n->val.obj;
 	size_t len = arr.arr_len(a);
-	if(i >= len) return NULL;
+	if (i >= len) return NULL;
 	kv_t *kv = arr.arr_get(a, i);
 	return kv->key;
 }
 
-/*
- * Returns value stored under i-th key in the object node n.
- */
-pub json_node *json_val(json_node *n, size_t i)
-{
+// Returns the value stored under the i-th key in the object node n.
+pub val_t *json_val(val_t *n, size_t i) {
 	if (!n || n->type != JSON_OBJ) {
 		return NULL;
 	}
@@ -222,13 +194,9 @@ pub json_node *json_val(json_node *n, size_t i)
 	return kv->val;
 }
 
-/*
- * Returns node stored under the given key of the given node.
- * Returns NULL if the given node is not an object or there is no
- * such key in it.
- */
-pub json_node *json_get(json_node *n, const char *key)
-{
+// Returns the value stored under the given key of the given object.
+// Returns NULL if the node is not an object or there is no such key in it.
+pub val_t *get(val_t *n, const char *k) {
 	if (!n || n->type != JSON_OBJ) {
 		return NULL;
 	}
@@ -236,51 +204,40 @@ pub json_node *json_get(json_node *n, const char *key)
 	size_t len = arr.arr_len(a);
 	for (size_t i = 0; i < len; i++) {
 		kv_t *kv = arr.arr_get(a, i);
-		if (strcmp(kv->key, key) == 0) {
+		if (strcmp(kv->key, k) == 0) {
 			return kv->val;
 		}
 	}
 	return NULL;
 }
 
-/*
- * Returns node stored at given index of the given array.
- * Returns NULL if the given node is not an array or the given
- * index is out of bounds.
- */
-pub json_node *json_at(json_node *n, int index)
-{
+// Returns the value stored at the given index of the given array.
+// Returns NULL if the node is not an array or the given index is out of bounds.
+pub val_t *json_at(val_t *n, int index) {
 	if (!n || n->type != JSON_ARR) {
 		return NULL;
 	}
 	arr.arr_t *a = n->val.arr;
-	if( index < 0 || (size_t) index >= arr.arr_len(a) ) {
+	if (index < 0 || (size_t) index >= arr.arr_len(a)) {
 		return NULL;
 	}
 	return arr.arr_get(a, index);
 }
 
-/*
- * Returns length of the array object. Returns 0 if the object
- * is not an array.
- */
-pub int json_len( json_node *obj )
-{
-	if( !obj || obj->type != JSON_ARR ) {
+// Returns the length of the array object.
+// Returns 0 if the object is not an array.
+pub int json_len( val_t *obj ) {
+	if (!obj || obj->type != JSON_ARR) {
 		return 0;
 	}
 	return arr.arr_len(obj->val.arr);
 }
 
-/*
- * Free the object.
- */
-pub void json_free( json_node *node )
-{
-	if( !node ) return;
+// Frees the value.
+pub void json_free(val_t *node) {
+	if (!node) return;
 
-	if( node->type == JSON_OBJ )
-	{
+	if (node->type == JSON_OBJ) {
 		arr.arr_t *a = node->val.obj;
 		size_t n = arr.arr_len(a);
 		for(size_t i = 0; i < n; i++) {
@@ -290,9 +247,7 @@ pub void json_free( json_node *node )
 			free(kv);
 		}
 		arr.arr_free(a);
-	}
-	else if( node->type == JSON_ARR )
-	{
+	} else if (node->type == JSON_ARR) {
 		arr.arr_t *a = node->val.obj;
 		size_t n = arr.arr_len(a);
 		for(size_t i = 0; i < n; i++) {
@@ -307,24 +262,22 @@ pub void json_free( json_node *node )
 	free(node);
 }
 
-/*
- * Create a copy of an object.
- */
-pub json_node *json_copy( json_node *obj )
+// Creates a copy of the value.
+pub val_t *json_copy( val_t *obj )
 {
 	if( !obj ) return NULL;
 
-	json_node *copy = mcopy( obj, sizeof(json_node) );
+	val_t *copy = mcopy( obj, sizeof(val_t) );
 	if( !copy ) {
 		return NULL;
 	}
 
 	if( obj->type == JSON_OBJ )
 	{
-		size_t n = json_size(obj);
+		size_t n = nkeys(obj);
 		for(size_t i = 0; i < n; i++) {
-			char *k = strings.newstr("%s", json_key(obj, i));
-			json_node *v = json_copy(json_val(obj, i));
+			char *k = strings.newstr("%s", key(obj, i));
+			val_t *v = json_copy(json_val(obj, i));
 			if(!k || !v || !json_put(copy, k, v)) {
 				free(k);
 				json_free(v);
@@ -337,7 +290,7 @@ pub json_node *json_copy( json_node *obj )
 	{
 		size_t n = json_len(obj);
 		for(size_t i = 0; i < n; i++) {
-			json_node *v = json_copy(json_at(obj, i));
+			val_t *v = json_copy(json_at(obj, i));
 			if(!v || !json_push(copy, v)) {
 				json_free(v);
 				json_free(copy);
@@ -357,13 +310,9 @@ pub json_node *json_copy( json_node *obj )
 	return copy;
 }
 
-/*
- * Get wrapped values.
- */
-pub const char *json_getstr( json_node *obj, const char *key )
-{
-	json_node *v = json_get( obj, key );
-	if( !v || v->type != JSON_STR ) {
+pub const char *json_getstr( val_t *obj, const char *k) {
+	val_t *v = get(obj, k);
+	if (!v || v->type != JSON_STR) {
 		return NULL;
 	}
 	return v->val.str;
@@ -372,15 +321,15 @@ pub const char *json_getstr( json_node *obj, const char *key )
 /**
  * Returns the node's value assuming it's a number.
  */
-pub double json_getdbl(json_node *obj, const char *key) {
-	json_node *v = json_get( obj, key );
-	if( !v || v->type != JSON_NUM ) {
+pub double json_getdbl(val_t *obj, const char *k) {
+	val_t *v = get(obj, k);
+	if (!v || v->type != JSON_NUM) {
 		return 0.0;
 	}
 	return v->val.num;
 }
 
-pub bool json_bool(json_node *n)
+pub bool json_bool(val_t *n)
 {
 	if(n && n->type == JSON_BOOL) {
 		return n->val.boolval;
@@ -388,15 +337,15 @@ pub bool json_bool(json_node *n)
 	return false;
 }
 
-pub const char *json_str(json_node *n)
-{
-	if(n && n->type == JSON_STR) {
+// Returns the string from the given string value.
+pub const char *json_str(val_t *n) {
+	if (n && n->type == JSON_STR) {
 		return n->val.str;
 	}
 	return "";
 }
 
-pub double json_dbl(json_node *n)
+pub double json_dbl(val_t *n)
 {
 	if(n && n->type == JSON_NUM) {
 		return n->val.num;
@@ -405,7 +354,7 @@ pub double json_dbl(json_node *n)
 }
 
 
-pub bool json_put( json_node *n, const char *key, json_node *val )
+pub bool json_put( val_t *n, const char *k, val_t *val )
 {
 	if(!n || n->type != JSON_OBJ) {
 		return false;
@@ -419,7 +368,7 @@ pub bool json_put( json_node *n, const char *key, json_node *val )
 	size_t len = arr.arr_len(a);
 	for(size_t i = 0; i < len; i++) {
 		kv = arr.arr_get(a, i);
-		if(strcmp(kv->key, key) == 0) {
+		if(strcmp(kv->key, k) == 0) {
 			break;
 		}
 		kv = NULL;
@@ -434,7 +383,7 @@ pub bool json_put( json_node *n, const char *key, json_node *val )
 	}
 	else {
 		kv = calloc(1, sizeof(*kv));
-		kv->key = strings.newstr("%s", key);
+		kv->key = strings.newstr("%s", k);
 		arr.arr_push(a, kv);
 	}
 
@@ -446,7 +395,7 @@ pub bool json_put( json_node *n, const char *key, json_node *val )
  * Pushes given value to the end of the given array node.
  * Returns false if the given node is not an array and in case of error.
  */
-pub bool json_push( json_node *n, json_node *val )
+pub bool json_push( val_t *n, val_t *val )
 {
 	if( !n || n->type != JSON_ARR ) {
 		return false;
@@ -475,8 +424,8 @@ typedef {
 	tok.json_tokenizer_t *lexer;
 } parser_t;
 
-/*
- * Parses a given JSON string and returns a pointer to a json_node object.
+/**
+ * Parses a given JSON string and returns a pointer to a val_t object.
  *
  * If the parsing succeeds, the node will be a valid one.
  * In the case of error, a special error node is returned.
@@ -488,7 +437,7 @@ typedef {
  * because `json_error` will do that and return the "not enough memory" message
  * (which is the sole cause for the `NULL` return value).
  */
-pub json_node *json_parse(const char *s) {
+pub val_t *parse(const char *s) {
 	parser_t p = {};
 	p.lexer = tok.new(s);
 	if (!p.lexer) {
@@ -504,7 +453,7 @@ pub json_node *json_parse(const char *s) {
 		return NULL;
 	}
 
-	json_node *result = read_node(&p);
+	val_t *result = read_node(&p);
 	if (!result) {
 		tok.free(p.lexer);
 		return NULL;
@@ -525,14 +474,14 @@ pub json_node *json_parse(const char *s) {
  * Reads one node and returns it.
  * Returns NULL in case of error.
  */
-json_node *read_node(parser_t *p)
+val_t *read_node(parser_t *p)
 {
 	switch (tok.currtype(p->lexer)) {
 		case EOF: { return error(p, "Unexpected end of file"); }
 		case '[': { return read_array(p); }
 		case '{': { return read_dict(p); }
 		case tok.T_STR: {
-			json_node *n = json_newstr(tok.currstr(p->lexer));
+			val_t *n = json_newstr(tok.currstr(p->lexer));
 			tok.read(p->lexer);
 			if (tok.currtype(p->lexer) == tok.T_ERR) {
 				error(p, "%s", tok.currstr(p->lexer));
@@ -567,13 +516,13 @@ json_node *read_node(parser_t *p)
 	return NULL;
 }
 
-json_node *read_array(parser_t *p)
+val_t *read_array(parser_t *p)
 {
 	if(!expect(p, '[')) {
 		return NULL;
 	}
 
-	json_node *a = json_newarr();
+	val_t *a = json_newarr();
 	if (tok.currtype(p->lexer) == ']') {
 		tok.read(p->lexer);
 		if (tok.currtype(p->lexer) == tok.T_ERR) {
@@ -583,7 +532,7 @@ json_node *read_array(parser_t *p)
 	}
 
 	while (tok.currtype(p->lexer) != EOF) {
-		json_node *v = read_node(p);
+		val_t *v = read_node(p);
 		if (!v) {
 			json_free(a);
 			return NULL;
@@ -619,12 +568,12 @@ bool consume(parser_t *p, int toktype) {
 	return true;
 }
 
-json_node *read_dict(parser_t *p)
+val_t *read_dict(parser_t *p)
 {
 	if (!expect(p, '{')) {
 		return NULL;
 	}
-	json_node *o = json_newobj();
+	val_t *o = json_newobj();
 	if (!o) {
 		return NULL;
 	}
@@ -652,7 +601,7 @@ json_node *read_dict(parser_t *p)
 			return NULL;
 		}
 
-		json_node *val = read_node(p);
+		val_t *val = read_node(p);
 		if (!val) {
 			free(key);
 			json_free(o);
@@ -707,7 +656,7 @@ void *error(parser_t *p, const char *fmt, ...) {
 }
 
 
-pub char *format(json_node *n) {
+pub char *format(val_t *n) {
 	strbuilder.str *s = strbuilder.str_new();
 	if (!s) {
 		return NULL;
@@ -719,8 +668,8 @@ pub char *format(json_node *n) {
 	return strbuilder.str_unpack(s);
 }
 
-bool writenode(json_node *n, strbuilder.str *s) {
-	switch(json_type(n)) {
+bool writenode(val_t *n, strbuilder.str *s) {
+	switch(type(n)) {
         case JSON_OBJ: { return writeobj(n, s); }
         case JSON_ARR: { return writearr(n, s); }
         case JSON_STR: { return writestr(n, s); }
@@ -728,16 +677,16 @@ bool writenode(json_node *n, strbuilder.str *s) {
         case JSON_BOOL: { return writebool(n, s); }
         case JSON_NULL: { return strbuilder.adds(s, "null"); }
     }
-	panic("unhandled json node type: %d", json_type(n));
+	panic("unhandled json node type: %d", type(n));
 }
 
-bool writeobj(json_node *n, strbuilder.str *s) {
-	size_t len = json_size(n);
+bool writeobj(val_t *n, strbuilder.str *s) {
+	size_t len = nkeys(n);
 	bool ok = strbuilder.adds(s, "{");
 	for (size_t i = 0; i < len; i++) {
 		ok = ok
             && strbuilder.adds(s, "\"")
-            && strbuilder.adds(s, json_key(n, i))
+            && strbuilder.adds(s, key(n, i))
             && strbuilder.adds(s, "\":")
             && writenode(json_val(n, i), s);
 		if (i + 1 < len) {
@@ -748,7 +697,7 @@ bool writeobj(json_node *n, strbuilder.str *s) {
 	return ok;
 }
 
-bool writearr(json_node *n, strbuilder.str *s) {
+bool writearr(val_t *n, strbuilder.str *s) {
     size_t len = json_len(n);
     bool ok = strbuilder.adds(s, "[");
     for (size_t i = 0; i < len; i++) {
@@ -761,7 +710,7 @@ bool writearr(json_node *n, strbuilder.str *s) {
 	return ok;
 }
 
-bool writestr(json_node *n, strbuilder.str *s) {
+bool writestr(val_t *n, strbuilder.str *s) {
 	const char *content = json_str(n);
 	size_t len = strlen(content);
     bool ok = strbuilder.adds(s, "\"");
@@ -788,13 +737,13 @@ bool writestr(json_node *n, strbuilder.str *s) {
     return ok;
 }
 
-bool writenum(json_node *n, strbuilder.str *s) {
+bool writenum(val_t *n, strbuilder.str *s) {
     char buf[100] = {0};
     sprintf(buf, "%f", json_dbl(n));
     return strbuilder.adds(s, buf);
 }
 
-bool writebool(json_node *n, strbuilder.str *s) {
+bool writebool(val_t *n, strbuilder.str *s) {
     if (json_bool(n)) {
         return strbuilder.adds(s, "true");
     } else {

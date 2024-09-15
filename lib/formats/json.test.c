@@ -20,14 +20,14 @@ int main() {
 	/*
 	 * Read-write-read-write
 	 */
-	json.json_node *n1 = json.json_parse(test);
+	json.val_t *n1 = json.parse(test);
 	if (json.json_err(n1)) {
 		panic("Couldn't parse: %s", json.json_err(n1));
 	}
 	char *s1 = json.format(n1);
 	test.streq(s1, "{\"defaults\":{\"login\":\"foo\",\"password\":\"123\",\"prob\":0.100000},\"bots\":[{\"login\":\"foo1\"},{\"login\":\"foo2\",\"prob\":0.200000}]}");
 
-	json.json_node *n2 = json.json_parse(s1);
+	json.val_t *n2 = json.parse(s1);
 	if (json.json_err(n2)) {
 		panic("Couldn't parse the copy: %s", json.json_err(n2));
 	}
