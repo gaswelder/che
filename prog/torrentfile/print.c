@@ -30,7 +30,7 @@ pub int cmd(int argc, char *argv[]) {
 	strings.fmt_bytes(tf->piece_length, tmp, 100);
 	printf("piece length = %zu (%s)\n", tf->piece_length, tmp);
 
-	size_t total = torrent.total(tf);
+	size_t total = torrent.totalsize(tf);
 	size_t npieces = torrent.npieces(tf);
 	strings.fmt_bytes(total, tmp, 100);
 

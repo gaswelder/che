@@ -10,34 +10,26 @@ pub typedef {
 } file_t;
 
 pub typedef {
-	// Tracker URL.
-	char announce[200];
-
-	// Free text.
-	char created_by[200];
-
-	// Creation date, UNIX seconds.
-	int creation_date;
-
-	// Free text.
-	char comment[200];
+	char announce[200]; // Tracker URL.
+	char created_by[200]; // Free text.
+	int creation_date; // Creation date, UNIX seconds.
+	char comment[200]; // Free text.
 
 	// ------------ info section -------------
+
+	size_t piece_length; // Number of bytes per piece, typically 256 KB.
 
 	// Filename in single-file variant, or directory name in multi-file variant.
 	// UTF-8.
 	char name[200];
-
-	// Number of bytes per piece, typically 256 KB.
-	size_t piece_length;
 
 	// Concatenation of each piece's SHA-1.
 	// In multi-file variant the pieces are formed by concatenating the files
 	// in the listing order.
 	uint8_t *pieces;
 
-	// Size of the file in bytes in single-file variant, 0 in multi-file variant.
-	size_t length;
+	
+	size_t length; // Size of the file in bytes in single-file variant, 0 in multi-file variant.
 
 	// A list of {length, path} items, each corresponding to a file in the multi-file variant.
 	file_t *files;
@@ -47,10 +39,15 @@ pub typedef {
 	char infohash_bytes[20];
 } info_t;
 
-/**
- * Returns the total size of the torrent's contents.
- */
-pub size_t total(info_t *tf) {
+pub void piecehash(info_t *tf, size_t piece_index, uint8_t *buf) {
+	uint8_t *p = tf->pieces + piece_index * 20;
+	for (size_t i = 0; i < 20; i++) {
+		*buf++ = *p++;
+	}
+}
+
+// Returns the total size in bytes of the torrent's contents.
+pub size_t totalsize(info_t *tf) {
 	if (tf->nfiles == 0) {
 		return tf->length;
 	}
@@ -61,13 +58,21 @@ pub size_t total(info_t *tf) {
 	return total;
 }
 
-/**
- * Returns the number of pieces according to the given file info.
- * It's simply ceil(total size / piece size).
- */
+// Returns the number of pieces in the torrent.
+// It's simply ceil(total size / piece size).
 pub size_t npieces(info_t *tf) {
-	size_t t = total(tf);
+	size_t t = totalsize(tf);
 	return t/tf->piece_length + (t % tf->piece_length != 0);
+}
+
+// Returns the size of the last piece in bytes.
+// All pieces have the same size, piece_length,
+// but the last piece may be shorter.
+pub size_t lastlen(info_t *tf) {
+	size_t total = totalsize(tf);
+	size_t rem = total % tf->piece_length;
+	if (rem) return rem;
+	return tf->piece_length;
 }
 
 pub void free(info_t *tf) {
