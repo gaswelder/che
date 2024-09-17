@@ -1,3 +1,4 @@
+#import formats/csv
 #import formats/json
 #import strings
 
@@ -38,29 +39,21 @@ json.val_t *readobj() {
 }
 
 void printobj(json.val_t *obj) {
+	csv.writer_t w = {
+		.f = stdout
+	};
     for (size_t i = 0; i < nheader; i++) {
-		if (i > 0) putchar(',');
         json.val_t *v = json.get(obj, header[i]);
 		switch (json.type(v)) {
-			case json.JSON_NULL: { emit(""); }
-			case json.JSON_STR: { emit(json.json_str(v)); }
+			case json.JSON_NULL: { csv.writeval(&w, ""); }
+			case json.JSON_STR: { csv.writeval(&w, json.json_str(v)); }
 			default: {
 				char *s = json.format(v);
-				emit(s);
+				csv.writeval(&w, s);
 				free(s);
 			}
 		}
     }
-	putchar('\n');
+	csv.writeval(&w, NULL);
     json.json_free(obj);
-}
-
-void emit(const char *x) {
-	putchar('"');
-	while (*x) {
-		if (*x == '"') putchar('\\');
-		putchar(*x);
-		x++;
-	}
-	putchar('"');	
 }

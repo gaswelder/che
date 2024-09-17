@@ -6,6 +6,11 @@ pub typedef {
 	char line[4096];
 } reader_t;
 
+pub typedef {
+	FILE *f;
+	int col;
+} writer_t;
+
 pub reader_t *new_reader() {
 	reader_t *r = calloc(1, sizeof(reader_t));
 	return r;
@@ -58,4 +63,25 @@ pub bool read_val(reader_t *r, char *buf, size_t bufsize) {
 	*p++ = '\0';
 	r->vals++;
 	return true;
+}
+
+// Writes the next column's value.
+// If x is null, ends the current line and starts a new one.
+pub void writeval(writer_t *w, const char *x) {
+	if (x == NULL) {
+		w->col = 0;
+		fputc('\n', w->f);
+		return;
+	}
+	if (w->col > 0) {
+		fputc(',', w->f);
+	}
+	w->col++;
+	fputc('"', w->f);
+	while (*x) {
+		if (*x == '"') fputc('\\', w->f);
+		fputc(*x, w->f);
+		x++;
+	}
+	fputc('"', w->f);
 }
