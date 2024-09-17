@@ -1,3 +1,5 @@
+#import enc/hex
+
 /*
  * http://csrc.nist.gov/publications/fips/fips180-4/fips-180-4.pdf
  */
@@ -21,8 +23,6 @@ pub void reset(digest_t *hash) {
 	memset(hash, 0, sizeof(digest_t));
 }
 
-const char HEX[] = "0123456789abcdef";
-
 /*
  * Writes a hexademical representation of the digest to `buf`.
  * bufsize must be at least 41 bytes.
@@ -36,8 +36,7 @@ pub bool format(digest_t *hash, char *buf, size_t bufsize) {
 
 	char *p = buf;
 	for (int i = 0; i < 20; i++) {
-		uint8_t b = bytes[i];
-		*p++ = HEX[b/16]; *p++ = HEX[b%16];
+		p = hex.writebyte(bytes[i], p);
 	}
 	return true;
 }
