@@ -10,8 +10,16 @@ int main(int argc, char **argv) {
     char buf[4096];
 
     char *fields_string = NULL;
-    opt.str("f", "fields to print as columns after the timestamp", &fields_string);
+    bool help = false;
+    opt.str("f", "comma-separated list of fields to print as columns after the timestamp", &fields_string);
+    opt.opt_bool("h", "show help", &help);
     opt.opt_parse(argc, argv);
+
+    if (help) {
+        opt.usage();
+        return 0;
+    }
+
     nreqfields = strings.split(",", fields_string, reqfields, sizeof(reqfields));
 
     // This assumes that stdin has the default "line discipline" - that is,
