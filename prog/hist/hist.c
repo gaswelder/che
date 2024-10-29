@@ -10,9 +10,11 @@ int main(int argc, char *argv[]) {
 	size_t nbins = 10;
 	size_t maxline = 30;
 	bool help = false;
-	opt.opt_summary("reads numeric values from stdin and prints an ASCII histogram");
+	bool raw = false;
+	opt.opt_summary("reads numeric values from stdin and prints their histogram");
 	opt.size("n", "number of bins (excluding two padding bins)", &nbins);
 	opt.size("w", "max line width", &maxline);
+	opt.opt_bool("r", "print raw numbers, no fancy ASCII art", &raw);
 	opt.opt_bool("h", "show help", &help);
 	opt.opt_parse(argc, argv);
 
@@ -79,16 +81,27 @@ int main(int argc, char *argv[]) {
 		b->count++;
 	}
 
-	printbins(bins, nbins+2, maxline);
+	if (raw) {
+		printbins(bins, nbins+2);
+	} else {
+		printbins_ascii(bins, nbins+2, maxline);
+	}
 
 	return 0;
+}
+
+void printbins(bin_t *bins, size_t nbins) {
+	for (size_t i = 0; i < nbins; i++) {
+		bin_t *b = &bins[i];
+		printf("%f\t%zu\n", (b->a + b->b)/2, b->count);
+	}
 }
 
 typedef {
 	char str[100];
 } label_t;
 
-void printbins(bin_t *bins, size_t nbins, size_t maxline) {
+void printbins_ascii(bin_t *bins, size_t nbins, size_t maxline) {
 	//
 	// Print the labels to a buffer in advance so that we know
 	// label sizes.
