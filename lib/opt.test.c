@@ -8,9 +8,9 @@ int main() {
 	float f = 0;
 	opt.opt_float("f", "some float", &f);
 	bool p = false;
-	opt.opt_bool("p", "some bool1", &p);
+	opt.flag("p", "some bool1", &p);
 	bool q = false;
-	opt.opt_bool("q", "some bool2", &q);
+	opt.flag("q", "some bool2", &q);
 
 	char *argv[] = {"progname", "-s", "foo", "-i", "10", "-pq", "-f", "3.14", "one", "two", NULL};
 	int argc = 0;

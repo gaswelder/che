@@ -57,12 +57,17 @@ pub void str(const char *name, *desc, char **pointer) {
 pub void opt_int(const char *name, *desc, int *pointer) {
 	declare(OPT_INT, name, desc, pointer);
 }
-pub void opt_bool(const char *name, *desc, bool *pointer) {
+
+// Declares a boolean flag, that is a flag that can be only present or missing
+// and doesn't take any value.
+pub void flag(const char *name, *desc, bool *pointer) {
 	declare(OPT_BOOL, name, desc, pointer);
 }
+// Declares a size option. The value is parsed and stored as size_t.
 pub void size(const char *name, *desc, size_t *pointer) {
 	declare(OPT_SIZE, name, desc, pointer);
 }
+
 pub void opt_float(const char *name, *desc, float *pointer) {
 	declare(OPT_FLOAT, name, desc, pointer);
 }

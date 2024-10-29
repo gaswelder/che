@@ -64,11 +64,11 @@ int cmd_hide(int argc, char **argv) {
 
 int cmd_list(int argc, char **argv) {
     bool all = false;
-    opt.opt_bool("a", "show all torrents", &all);
+    opt.flag("a", "show all torrents", &all);
     bool hidden = false;
-    opt.opt_bool("i", "show hidden torrents", &hidden);
+    opt.flag("i", "show hidden torrents", &hidden);
     bool order = false;
-    opt.opt_bool("r", "order by seed ratio", &order);
+    opt.flag("r", "order by seed ratio", &order);
     opt.opt_parse(argc, argv);
 
     bool showhidden = all || hidden;

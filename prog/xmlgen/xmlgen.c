@@ -42,9 +42,9 @@ int main(int argc, char **argv) {
     bool show_version = false;
     float global_scale_factor = 1;
 
-    opt.opt_bool("e", "dumpdtd", &dumpdtd);
-    opt.opt_bool("d", "document_type=2", &doctype_is_2);    
-    opt.opt_bool("v", "show version", &show_version);
+    opt.flag("e", "dumpdtd", &dumpdtd);
+    opt.flag("d", "document_type=2", &doctype_is_2);    
+    opt.flag("v", "show version", &show_version);
     opt.opt_float("f", "global_scale_factor", &global_scale_factor);
     opt.str("o", "global_outputname", &global_outputname);
     opt.opt_int("s", "global_split", &global_split);

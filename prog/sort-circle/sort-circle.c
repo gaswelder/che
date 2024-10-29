@@ -73,9 +73,9 @@ int main(int argc, char **argv) {
 	int delay = 0;
 	char *seed_str = NULL;
 
-    opt.opt_bool("h", "print the help message", &help);
-    opt.opt_bool("q", "don't draw the shuffle", &hide_shuffle);
-    opt.opt_bool("y", "slow down shuffle animation", &slow_shuffle);
+    opt.flag("h", "print the help message", &help);
+    opt.flag("q", "don't draw the shuffle", &hide_shuffle);
+    opt.flag("y", "slow down shuffle animation", &slow_shuffle);
     opt.str("a", "name of audio output (WAV)", &audio_output);
     opt.opt_int("s", "animate sort number N", &sort_number);
     opt.opt_int("w", "insert a delay of N frames", &delay);

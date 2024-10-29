@@ -64,10 +64,10 @@ int main (int argc, char **argv) {
 	char *confpath = "example.conf";
 
 	opt.str("c", "config file", &confpath);
-	opt.opt_bool("m", "create a colormap image", &flag_colormap);
-	opt.opt_bool("q", "quiet mode", &flag_quiet);
-	opt.opt_bool("h", "help", &flag_help);
-	opt.opt_bool("v", "version", &flag_v);
+	opt.flag("m", "create a colormap image", &flag_colormap);
+	opt.flag("q", "quiet mode", &flag_quiet);
+	opt.flag("h", "help", &flag_help);
+	opt.flag("v", "version", &flag_v);
 	char **args = opt.opt_parse(argc, argv);
 	if (*args) {
 		fprintf(stderr, "this program only has options, got %s\n", *args);

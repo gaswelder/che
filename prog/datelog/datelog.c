@@ -22,7 +22,7 @@ int main(int argc, char *argv[])
 	opt.str("p", "Log period ('month'/'day'/'hour'/'minute'/'second')", &pername);
 	opt.str("d", "Directory for log files", &dir);
 	opt.str("c", "File name for current log file", &static_name);
-	opt.opt_bool("o", "Output received lines to stdout", &output);
+	opt.flag("o", "Output received lines to stdout", &output);
 
 	char **args = opt.opt_parse(argc, argv);
 	if (!args) return opt.usage();

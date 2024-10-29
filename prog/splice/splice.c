@@ -8,7 +8,7 @@ int main(int argc, char *argv[]) {
 
     bool hflag = false;
     opt.size("n", "number of columns", &size);
-    opt.opt_bool("h", "show help", &hflag);
+    opt.flag("h", "show help", &hflag);
     opt.opt_parse(argc, argv);
 
     if (hflag) return opt.usage();

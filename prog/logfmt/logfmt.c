@@ -12,7 +12,7 @@ int main(int argc, char **argv) {
     char *fields_string = NULL;
     bool help = false;
     opt.str("f", "comma-separated list of fields to print as columns after the timestamp", &fields_string);
-    opt.opt_bool("h", "show help", &help);
+    opt.flag("h", "show help", &help);
     opt.opt_parse(argc, argv);
 
     if (help) {

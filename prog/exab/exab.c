@@ -54,7 +54,7 @@ int main(int argc, char *argv[]) {
     opt.str("p", "path to the file with the POST body", &postfile);
 
     bool hflag = false;
-    opt.opt_bool("h", "print usage", &hflag);
+    opt.flag("h", "print usage", &hflag);
 
     char **args = opt.opt_parse(argc, argv);
 	if (hflag) return opt.usage();

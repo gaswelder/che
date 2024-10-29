@@ -11,7 +11,7 @@ int main(int argc, char **argv) {
 	opt.size("l", "string length", &len);
 	opt.size("s", "seed value", &seed);
 	opt.str("a", "alphabet (n is numberic, an is alphanumeric)", &a);
-	opt.opt_bool("h", "show help", &help);
+	opt.flag("h", "show help", &help);
 	opt.opt_parse(argc, argv);
 
 	if (help) return opt.usage();
