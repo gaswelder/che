@@ -18,12 +18,9 @@ typedef {
 	const char *desc;
 	void *value_pointer;
 } optspec_t;
-/*
- * Twice as much as a borderline sane program would need.
- */
-const int MAX_FLAGS = 32;
+
 optspec_t specs[32] = {};
-int flags_num = 0;
+size_t flags_num = 0;
 
 const char *progname = "progname";
 const char *summary = NULL;
@@ -40,8 +37,8 @@ void declare(int type, const char *name, const char *desc, void *value_pointer) 
 		fprintf(stderr, "Only one-letter flags are supported\n");
 		exit(1);
 	}
-	if (flags_num >= MAX_FLAGS) {
-		fprintf(stderr, "Too many flags, max is %d\n", MAX_FLAGS);
+	if (flags_num >= nelem(specs)) {
+		fprintf(stderr, "Too many flags, max is %zu\n", nelem(specs));
 		exit(1);
 	}
 	specs[flags_num].type = type;
@@ -183,9 +180,10 @@ pub char **opt_parse( int argc, char **argv )
 	return arg;
 }
 
+// Returns a pointer to the optspec with name c or null.
 optspec_t *find(int c) {
-	for(int i = 0; i < flags_num; i++) {
-		if( specs[i].name[0] == c ) {
+	for (size_t i = 0; i < flags_num; i++) {
+		if (specs[i].name[0] == c) {
 			return &specs[i];
 		}
 	}
@@ -205,7 +203,7 @@ pub int usage() {
 		fprintf(stderr, "%s\n", summary);
 	}
 	fprintf(stderr, "Options:\n");
-	for (int i = 0; i < flags_num; i++) {
+	for (size_t i = 0; i < flags_num; i++) {
 		optspec_t *s = &specs[i];
 		fprintf(stderr, "\t-%s", s->name);
 		switch (s->type) {
