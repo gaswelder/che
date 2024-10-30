@@ -53,11 +53,7 @@ int main(int argc, char *argv[]) {
     char *postfile = NULL;
     opt.str("p", "path to the file with the POST body", &postfile);
 
-    bool hflag = false;
-    opt.flag("h", "print usage", &hflag);
-
     char **args = opt.opt_parse(argc, argv);
-	if (hflag) return opt.usage();
 	if (!*args) {
         fprintf(stderr, "missing the url argument\n");
         return 1;

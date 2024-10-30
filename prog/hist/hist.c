@@ -9,16 +9,12 @@ typedef {
 int main(int argc, char *argv[]) {
 	size_t nbins = 10;
 	size_t maxline = 30;
-	bool help = false;
 	bool raw = false;
 	opt.opt_summary("reads numeric values from stdin and prints their histogram");
 	opt.size("n", "number of bins (excluding two padding bins)", &nbins);
 	opt.size("w", "max line width", &maxline);
 	opt.flag("r", "print raw numbers, no fancy ASCII art", &raw);
-	opt.flag("h", "show help", &help);
 	opt.opt_parse(argc, argv);
-
-	if (help) return opt.usage();
 
 	if (nbins < 2) {
 		fprintf(stderr, "The number of bins must be greater than two\n");

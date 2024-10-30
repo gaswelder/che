@@ -10,15 +10,8 @@ int main(int argc, char **argv) {
     char buf[4096];
 
     char *fields_string = NULL;
-    bool help = false;
     opt.str("f", "comma-separated list of fields to print as columns after the timestamp", &fields_string);
-    opt.flag("h", "show help", &help);
     opt.opt_parse(argc, argv);
-
-    if (help) {
-        opt.usage();
-        return 0;
-    }
 
     nreqfields = strings.split(",", fields_string, reqfields, sizeof(reqfields));
 

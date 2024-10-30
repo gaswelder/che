@@ -86,6 +86,10 @@ pub char **opt_parse(int argc, char **argv) {
 		if (strlen(*arg) > 2) {
 			for (char *c = *arg + 1; *c; c++) {
 				optspec_t *flag = find(*c);
+				if (!flag && *c == 'h') {
+					usage();
+					exit(1);
+				}
 				if (!flag) {
 					fprintf(stderr, "unknown flag: '%c'\n", *c);
 					exit(1);
@@ -105,6 +109,10 @@ pub char **opt_parse(int argc, char **argv) {
 			char *d = *arg + 1;
 			char c = *d;
 			optspec_t *flag = find(c);
+			if (!flag && c == 'h') {
+				usage();
+				exit(1);
+			}
 			if (!flag) {
 				fprintf(stderr, "unknown flag: %c\n", c);
 				exit(1);

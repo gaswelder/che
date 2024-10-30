@@ -60,20 +60,17 @@ int main (int argc, char **argv) {
 	bool flag_colormap = false;
 	bool flag_quiet = false;
 	bool flag_v = false;
-	bool flag_help = false;
 	char *confpath = "example.conf";
 
 	opt.str("c", "config file", &confpath);
 	opt.flag("m", "create a colormap image", &flag_colormap);
 	opt.flag("q", "quiet mode", &flag_quiet);
-	opt.flag("h", "help", &flag_help);
 	opt.flag("v", "version", &flag_v);
 	char **args = opt.opt_parse(argc, argv);
 	if (*args) {
 		fprintf(stderr, "this program only has options, got %s\n", *args);
 		return 1;
 	}
-	if (flag_help) exit(opt.usage());
 	if (flag_v) {
 		verbprint("mandelgen, version %s.\n", version);
 		verbprint("Copyright (C) 2007 Chris Wellons\n");

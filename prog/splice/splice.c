@@ -6,12 +6,8 @@ int main(int argc, char *argv[]) {
     size_t size = 2;
     size_t cols = 0;
 
-    bool hflag = false;
     opt.size("n", "number of columns", &size);
-    opt.flag("h", "show help", &hflag);
     opt.opt_parse(argc, argv);
-
-    if (hflag) return opt.usage();
 
     while (fgets(buf, 4096, stdin)) {
         strings.rtrim(buf, "\n");
