@@ -2,13 +2,12 @@
 #import strings
 
 int main(int argc, char *argv[]) {
-    char buf[4096] = {};
     size_t size = 2;
-    size_t cols = 0;
-
     opt.size("n", "number of columns", &size);
-    opt.opt_parse(argc, argv);
+    opt.parse(argc, argv);
 
+	char buf[4096] = {};
+	size_t cols = 0;
     while (fgets(buf, 4096, stdin)) {
         strings.rtrim(buf, "\n");
         if (cols > 0) {

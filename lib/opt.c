@@ -71,7 +71,7 @@ pub void opt_float(const char *name, *desc, float *pointer) {
 
 // Parses the given arguments according to the spec.
 // Returns a pointer to a null-terminated list of positional arguments.
-pub char **opt_parse(int argc, char **argv) {
+pub char **parse(int argc, char **argv) {
 	(void) argc;
 	// Set global progname from the given args vector.
 	progname = argv[0];

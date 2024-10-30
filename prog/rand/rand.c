@@ -10,7 +10,7 @@ int main(int argc, char **argv) {
 	opt.size("l", "string length", &len);
 	opt.size("s", "seed value", &seed);
 	opt.str("a", "alphabet (n is numberic, an is alphanumeric)", &a);
-	opt.opt_parse(argc, argv);
+	opt.parse(argc, argv);
 
 	const char *alpha;
 	if (!strcmp(a, "an")) {

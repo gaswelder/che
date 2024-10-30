@@ -18,7 +18,7 @@ int main() {
 		argc++;
 	}
 
-	char **args = opt.opt_parse(argc, argv);
+	char **args = opt.parse(argc, argv);
 	bool fail = false;
 	if (i != 10) {
 		fprintf(stderr, "i: %d != %d\n", i, 10);

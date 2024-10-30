@@ -5,26 +5,19 @@
 
 #define MAXPATH 255
 
-/*
- * datelog [-p <period>] [-d <dir>] [-c <current file name>] [-o]
- */
-int main(int argc, char *argv[])
-{
+int main(int argc, char *argv[]) {
 	char *pername = "month";
 	char *dir = ".";
 	char *static_name = NULL;
 	bool output = false;
 
-	/*
-	 * Parse the arguments.
-	 */
-	opt.opt_summary( "datelog [-o] [-p period] [-d dir] [-c current logname]" );
+	opt.opt_summary("datelog [-o] [-p period] [-d dir] [-c current logname]");
 	opt.str("p", "Log period ('month'/'day'/'hour'/'minute'/'second')", &pername);
 	opt.str("d", "Directory for log files", &dir);
 	opt.str("c", "File name for current log file", &static_name);
 	opt.flag("o", "Output received lines to stdout", &output);
 
-	char **args = opt.opt_parse(argc, argv);
+	char **args = opt.parse(argc, argv);
 	if (!args) return opt.usage();
 	if (*args) {
 		fprintf(stderr, "no arguments are expected\n");

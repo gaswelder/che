@@ -66,7 +66,7 @@ int main (int argc, char **argv) {
 	opt.flag("m", "create a colormap image", &flag_colormap);
 	opt.flag("q", "quiet mode", &flag_quiet);
 	opt.flag("v", "version", &flag_v);
-	char **args = opt.opt_parse(argc, argv);
+	char **args = opt.parse(argc, argv);
 	if (*args) {
 		fprintf(stderr, "this program only has options, got %s\n", *args);
 		return 1;

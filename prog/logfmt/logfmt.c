@@ -11,7 +11,7 @@ int main(int argc, char **argv) {
 
     char *fields_string = NULL;
     opt.str("f", "comma-separated list of fields to print as columns after the timestamp", &fields_string);
-    opt.opt_parse(argc, argv);
+    opt.parse(argc, argv);
 
     nreqfields = strings.split(",", fields_string, reqfields, sizeof(reqfields));
 

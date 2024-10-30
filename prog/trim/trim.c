@@ -17,14 +17,13 @@ enum {
  */
 int lf = L_SAME;
 
-int main( int argc, char *argv[] )
-{
+int main( int argc, char *argv[]) {
 	char *line_format = "unix";
 
 	opt.opt_summary("trim [-l unix/win/same] path...");
 	opt.str("l", "Convert line format ('unix', 'win' or 'same')", &line_format);
 
-	char **path = opt.opt_parse( argc, argv );
+	char **path = opt.parse( argc, argv );
 	if (!path) return opt.usage();
 
 	if( strcmp( line_format, "same" ) == 0 ) {

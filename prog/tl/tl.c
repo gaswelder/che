@@ -69,7 +69,7 @@ int cmd_list(int argc, char **argv) {
     opt.flag("i", "show hidden torrents", &hidden);
     bool order = false;
     opt.flag("r", "order by seed ratio", &order);
-    opt.opt_parse(argc, argv);
+    opt.parse(argc, argv);
 
     bool showhidden = all || hidden;
     bool showvisible = all || !hidden;

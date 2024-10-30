@@ -80,7 +80,7 @@ int main(int argc, char **argv) {
     opt.opt_int("s", "animate sort number N", &sort_number);
     opt.opt_int("w", "insert a delay of N frames", &delay);
     opt.str("x", "seed for shuffling (64-bit HEX string)", &seed_str);
-    opt.opt_parse(argc, argv);
+    opt.parse(argc, argv);
 
     if (help) {
         opt.usage();

@@ -8,7 +8,7 @@ int main(int argc, char **argv) {
 	opt.opt_summary("post [-a addr] [-s subject] <from> <to>");
 	opt.str("a", "SMTP server address", &addr);
 	opt.str("s", "Mail subject", &subj);
-	argv = opt.opt_parse(argc, argv);
+	argv = opt.parse(argc, argv);
 	if (!*argv || !*(argv + 1)) return opt.usage();
 
 	const char *from = *argv++;

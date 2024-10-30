@@ -49,7 +49,7 @@ int main(int argc, char **argv) {
     opt.str("o", "global_outputname", &global_outputname);
     opt.opt_int("s", "global_split", &global_split);
     if (argc == 1) return opt.usage();
-    opt.opt_parse(argc, argv);
+    opt.parse(argc, argv);
 
     if (show_version) {
         fprintf(stderr, "This is xmlgen, version ? by Florian Waas (flw@mx4.org)");

@@ -14,7 +14,7 @@ int main(int argc, char *argv[]) {
 	opt.size("n", "number of bins (excluding two padding bins)", &nbins);
 	opt.size("w", "max line width", &maxline);
 	opt.flag("r", "print raw numbers, no fancy ASCII art", &raw);
-	opt.opt_parse(argc, argv);
+	opt.parse(argc, argv);
 
 	if (nbins < 2) {
 		fprintf(stderr, "The number of bins must be greater than two\n");

@@ -22,7 +22,7 @@ int main(int argc, char *argv[]) {
     opt.str("h", "host", &host);
     opt.str("f", "configfile", &configfile);
 
-    char **rest = opt.opt_parse(argc, argv);
+    char **rest = opt.parse(argc, argv);
     if (*rest) {
         fprintf(stderr, "too many arguments\n");
         exit(1);
