@@ -11,18 +11,12 @@ int main(int argc, char *argv[]) {
 	char *static_name = NULL;
 	bool output = false;
 
-	opt.opt_summary("datelog [-o] [-p period] [-d dir] [-c current logname]");
+	opt.nargs(0, "");
 	opt.str("p", "Log period ('month'/'day'/'hour'/'minute'/'second')", &pername);
 	opt.str("d", "Directory for log files", &dir);
 	opt.str("c", "File name for current log file", &static_name);
 	opt.flag("o", "Output received lines to stdout", &output);
-
-	char **args = opt.parse(argc, argv);
-	if (!args) return opt.usage();
-	if (*args) {
-		fprintf(stderr, "no arguments are expected\n");
-		return opt.usage();
-	}
+	opt.parse(argc, argv);
 
 	dlog_t *log = dlog_init( pername, dir, static_name );
 	if( !log ) {

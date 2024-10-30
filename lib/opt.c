@@ -25,6 +25,20 @@ size_t flags_num = 0;
 const char *progname = "progname";
 const char *summary = NULL;
 
+const char *args_summary = "";
+size_t expect_nargs = 0;
+bool expect_nargs_set = false;
+
+// Sets the expected number of positional arguments and their summary
+// string for the -h output.
+// If the number is set, the parse function will check the number of actual
+// arguments and if will exit with a help message if the number is incorrect.
+pub void nargs(size_t n, const char *summary) {
+	expect_nargs_set = true;
+	expect_nargs = n;
+	args_summary = summary;
+}
+
 /*
  * Declares an option.
  * `type` is one of the `OPT_` constants.
@@ -136,6 +150,20 @@ pub char **parse(int argc, char **argv) {
 		fprintf(stderr, "couldn't parse flag group: %s\n", *arg);
 		exit(1);
 	}
+
+	if (expect_nargs_set) {
+		size_t count = 0;
+		char **p = arg;
+		while (*p) {
+			count++;
+			p++;
+		}
+		if (count != expect_nargs) {
+			fprintf(stderr, "expected %zu arguments, got %zu\n", expect_nargs, count);
+			exit(1);
+		}
+	}
+
 	return arg;
 }
 
@@ -204,10 +232,23 @@ pub void opt_summary(const char *s) {
  * Returns 1 so it can be used as a return status for main.
  */
 pub int usage() {
-	if (summary) {
-		fprintf(stderr, "%s\n", summary);
+	fprintf(stderr, "%s", progname);
+	if (flags_num > 0) {
+		fprintf(stderr, " [options]");
 	}
-	fprintf(stderr, "Options:\n");
+	if (expect_nargs_set) {
+		fprintf(stderr, " %s", args_summary);
+	} else {
+		fprintf(stderr, " <arguments>");
+	}
+	if (summary) {
+		fprintf(stderr, " - %s", summary);
+	}
+	fprintf(stderr, "\n");
+
+	if (flags_num > 0) {
+		fprintf(stderr, "Options:\n");
+	}
 	for (size_t i = 0; i < flags_num; i++) {
 		optspec_t *s = &specs[i];
 		fprintf(stderr, "\t-%s", s->name);

@@ -20,8 +20,8 @@ int lf = L_SAME;
 int main( int argc, char *argv[]) {
 	char *line_format = "unix";
 
-	opt.opt_summary("trim [-l unix/win/same] path...");
-	opt.str("l", "Convert line format ('unix', 'win' or 'same')", &line_format);
+	opt.opt_summary("converts line formats in files");
+	opt.str("l", "line format ('unix', 'win' or 'same')", &line_format);
 
 	char **path = opt.parse( argc, argv );
 	if (!path) return opt.usage();

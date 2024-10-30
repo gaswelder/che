@@ -3,20 +3,15 @@
 
 int main(int argc, char **argv) {
 	char *addr = "127.0.0.1:25";
-	char *subj = "";
+	char *subj = "no subject";
 
-	opt.opt_summary("post [-a addr] [-s subject] <from> <to>");
+	opt.opt_summary("sends a mail to an SMTP server");
+	opt.nargs(2, "<from> <to>");
 	opt.str("a", "SMTP server address", &addr);
 	opt.str("s", "Mail subject", &subj);
 	argv = opt.parse(argc, argv);
-	if (!*argv || !*(argv + 1)) return opt.usage();
-
 	const char *from = *argv++;
 	const char *to = *argv++;
-	if (*argv) {
-		fprintf(stderr, "Unexpected argument: %s\n", *argv);
-		return opt.usage();
-	}
 
 	net.net_t *n = net.net_open("tcp", addr);
 	if (!n) {

@@ -40,30 +40,19 @@ size_t requests_to_do = 1;
 io.buf_t REQUEST = {};
 
 int main(int argc, char *argv[]) {
-    opt.opt_summary("exab [options] <url> - makes HTTP requests to <url> and prints statistics");
-
-    opt.size("n", "number of requests to perform", &requests_to_do);
-
 	size_t concurrency = 1;
-    opt.size("c", "number of requests running concurrently", &concurrency);
-
     char *methodstring = NULL;
-    opt.str("m", "request method (GET, POST, HEAD)", &methodstring);
+	char *postfile = NULL;
 
-    char *postfile = NULL;
+	opt.nargs(1, "<url>");
+    opt.opt_summary("makes a series of HTTP requests to <url> and prints statistics");
+    opt.size("n", "number of requests to perform", &requests_to_do);
+    opt.size("c", "number of requests running concurrently", &concurrency);
+    opt.str("m", "request method (GET, POST, HEAD)", &methodstring);
     opt.str("p", "path to the file with the POST body", &postfile);
 
     char **args = opt.parse(argc, argv);
-	if (!*args) {
-        fprintf(stderr, "missing the url argument\n");
-        return 1;
-    }
 	char *url = *args;
-    args++;
-    if (*args) {
-        fprintf(stderr, "unexpected argument: %s\n", *args);
-        return 1;
-    }
 
 	uint8_t *postdata = NULL;         /* *buffer containing data from postfile */
 	size_t postlen = 0; /* length of data to be POSTed */
