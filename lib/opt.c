@@ -69,14 +69,11 @@ pub void opt_float(const char *name, *desc, float *pointer) {
 	declare(OPT_FLOAT, name, desc, pointer);
 }
 
-/*
- * Parses the given arguments using the information defined with previous 'opt'
- * function calls.
- */
-pub char **opt_parse( int argc, char **argv )
-{
+// Parses the given arguments according to the spec.
+// Returns a pointer to a null-terminated list of positional arguments.
+pub char **opt_parse(int argc, char **argv) {
 	(void) argc;
-	// Set global prognme from the given args vector.
+	// Set global progname from the given args vector.
 	progname = argv[0];
 
 	char **arg = argv + 1;
@@ -124,53 +121,7 @@ pub char **opt_parse( int argc, char **argv )
 				exit(1);
 			}
 
-			switch (flag->type) {
-				case OPT_STR: {
-					*( (char **) flag->value_pointer ) = *arg;
-				}
-
-				case OPT_INT, OPT_SIZE: {
-					if (!is_numeric(*arg)) {
-						fprintf(stderr, "Option %c expects a numeric argument\n", c);
-						exit(1);
-					}
-					if (flag->type == OPT_SIZE && *arg[0] == '-') {
-						fprintf(stderr, "Option %c expects a non-negative argument\n", c );
-						exit(1);
-					}
-					if (flag->type == OPT_SIZE) {
-						size_t val = 0;
-						if (sscanf(*arg, "%zu", &val) < 1) {
-							fprintf(stderr, "Couldn't parse size value: %s\n", *arg);
-							exit(1);
-						}
-						*( (size_t *) flag->value_pointer ) = val;
-					}
-					else {
-						int val = 0;
-						if (sscanf(*arg, "%d", &val) < 1) {
-							fprintf(stderr, "Couldn't parse value");
-							exit(1);
-						}
-						int *p = flag->value_pointer;
-						*p = val;
-					}
-				}
-
-				case OPT_FLOAT: {
-					float val = 0;
-					if (sscanf(*arg, "%f", &val) < 1) {
-						fprintf(stderr, "Couldn't parse value for flag '%c': %s", c, *arg);
-						exit(1);
-					}
-					*( (float *) flag->value_pointer ) = val;
-				}
-
-				default: {
-					fprintf(stderr, "Unhandled flag type: %c\n", flag->type);
-					exit(1);
-				}
-			}
+			set_flag(flag, arg);
 			arg++;
 			continue;
 		}
@@ -178,6 +129,52 @@ pub char **opt_parse( int argc, char **argv )
 		exit(1);
 	}
 	return arg;
+}
+
+void set_flag(optspec_t *spec, char **arg) {
+	switch (spec->type) {
+		case OPT_STR: {
+			*( (char **) spec->value_pointer ) = *arg;
+		}
+		case OPT_INT, OPT_SIZE: {
+			if (!is_numeric(*arg)) {
+				fprintf(stderr, "Option %s expects a numeric argument\n", spec->name);
+				exit(1);
+			}
+			if (spec->type == OPT_SIZE && *arg[0] == '-') {
+				fprintf(stderr, "Option %s expects a non-negative argument\n", spec->name);
+				exit(1);
+			}
+			if (spec->type == OPT_SIZE) {
+				size_t val = 0;
+				if (sscanf(*arg, "%zu", &val) < 1) {
+					fprintf(stderr, "Option %s: couldn't parse size value: %s\n", spec->name, *arg);
+					exit(1);
+				}
+				*( (size_t *) spec->value_pointer ) = val;
+			} else {
+				int val = 0;
+				if (sscanf(*arg, "%d", &val) < 1) {
+					fprintf(stderr, "Option %s: couldn't parse value: %s\n", spec->name, *arg);
+					exit(1);
+				}
+				int *p = spec->value_pointer;
+				*p = val;
+			}
+		}
+		case OPT_FLOAT: {
+			float val = 0;
+			if (sscanf(*arg, "%f", &val) < 1) {
+				fprintf(stderr, "Option %s: couldn't parse value: %s", spec->name, *arg);
+				exit(1);
+			}
+			*( (float *) spec->value_pointer ) = val;
+		}
+		default: {
+			fprintf(stderr, "Unhandled spec type: %c\n", spec->type);
+			exit(1);
+		}
+	}
 }
 
 // Returns a pointer to the optspec with name c or null.
