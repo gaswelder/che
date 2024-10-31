@@ -143,7 +143,7 @@ uint32_t hue(int v) {
 
 void frame() {
     for (int i = 0; i < N; i++) {
-        float delta = fabs(i - array[i]) / (N / 2.0f);
+        float delta = fabs((float)(i - array[i])) / (N / 2.0f);
         float x = -sinf(i * 2.0f * PI / N);
         float y = -cosf(i * 2.0f * PI / N);
         float r = S * 15.0f / 32.0f * (1.0f - delta);
