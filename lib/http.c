@@ -4,15 +4,15 @@
 #import strings
 
 pub enum {
-	UNKNOWN_METHOD,
-	GET,
-	POST,
+	UNKNOWN_METHOD = 0,
+	GET = 1,
+	POST = 2,
 	HEAD
 };
 
 /*
  * Given a method name string returns the method's enum value.
- * Returns UNKNOWN_METHOD if the string doesn't match any method.
+ * Returns UNKNOWN_METHOD (=0) if the string doesn't match any method.
  */
 pub int method_from_string(const char *s) {
 	if (strings.casecmp(s, "GET")) return GET;
@@ -33,34 +33,30 @@ pub typedef {
 } kv_t;
 
 pub typedef {
-	int err;
-    char method[10];
-    char uri[1024];
-    char version[10];
+	char version[10]; // "HTTP/1.0"
+	char method[10]; // GET
+	char path[1024]; // /img/index.html
+	kv_t params[100]; // ?a=123&b=foo
+	size_t nparams;
+	header_t headers[100]; // Accept: */*
+    size_t nheaders;
 
-    // parsed uri
-    char path[1024];
+	// ...
+	int err;
+    char uri[1024];
     char filename[1024];
     char query[1024];
-
-	kv_t params[100];
-	size_t nparams;
-
-    // Headers
-    header_t headers[100];
-    size_t nheaders;
 } request_t;
 
 pub typedef {
-	char version[100]; // "HTTP/1.1"
+	char version[10]; // "HTTP/1.0"
 	int status; // 200
+	header_t headers[100]; // Content-Type: text/html
+    size_t nheaders;
 
+	// ...
     int head_length;
     int content_length;
-
-	// Headers
-    header_t headers[100];
-    size_t nheaders;
 } response_t;
 
 const char *errors[] = {
