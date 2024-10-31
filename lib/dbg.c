@@ -4,6 +4,16 @@ bool env_parsed = false;
 const char *list[10] = {};
 size_t n = 0;
 
+
+const char *default_filter = NULL;
+
+// Sets the default debug filter.
+// Might be convenient during development to not have to set the env var.
+// The env var will still take precedence if set.
+pub void set(const char *s) {
+	default_filter = s;
+}
+
 /**
  * Makes a debug printf under the given tag.
  * If the tag is not given in the DEBUG env var list, ignores the message.
@@ -38,6 +48,7 @@ bool dbg_enabled(const char *tag) {
 void parse_env() {
 	const char *val = misc.getenv("CHE_DEBUG");
 	if (!val) val = misc.getenv("DEBUG");
+	if (!val) val = default_filter;
 	if (!val) return;
 
 	char *copy = calloc(strlen(val)+1, 1);
