@@ -7,17 +7,17 @@ typedef {
 } bin_t;
 
 int main(int argc, char *argv[]) {
-	size_t nbins = 10;
+	size_t nbins = 0;
 	size_t maxline = 30;
 	bool raw = false;
 	opt.nargs(0, "");
 	opt.opt_summary("reads numeric values from stdin and prints their histogram");
-	opt.size("n", "number of bins (excluding two padding bins)", &nbins);
+	opt.size("n", "number of bins (excluding two padding bins); if zero, will be set to sqrt(n_values)", &nbins);
 	opt.size("w", "max line width", &maxline);
 	opt.flag("r", "print raw numbers, no fancy ASCII art", &raw);
 	opt.parse(argc, argv);
 
-	if (nbins < 2) {
+	if (nbins != 0 && nbins < 2) {
 		fprintf(stderr, "The number of bins must be greater than two\n");
 		return 1;
 	}
@@ -35,6 +35,10 @@ int main(int argc, char *argv[]) {
 			return 1;
 		}
 		stats.add(s, val);
+	}
+
+	if (nbins == 0) {
+		nbins = (size_t) sqrt(s->len);
 	}
 
 	//
