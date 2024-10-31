@@ -259,3 +259,24 @@ pub const char *basename(const char *path) {
 	}
 	return last;
 }
+
+// Puts the directory part the path into buf and return true.
+// Returns false if buf is too small.
+pub bool dirname(const char *path, char *buf, size_t bufsize) {
+    if (strlen(path) >= bufsize) {
+        return false;
+    }
+    strcpy(buf, path);
+    char *p = buf;
+    char *last_slash = NULL;
+    while (*p) {
+        if (*p == '/') last_slash = p;
+        p++;
+    }
+    if (last_slash) {
+        *last_slash = '\0';
+    } else {
+        buf[0] = '\0';
+    }
+    return true;
+}
