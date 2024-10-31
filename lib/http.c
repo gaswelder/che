@@ -168,7 +168,7 @@ pub bool init_request(request_t *r, int method, const char *path) {
     }
     strcpy(r->method, methodstring);
     strcpy(r->uri, path);
-    strcpy(r->version, "HTTP/1.1");
+    strcpy(r->version, "HTTP/1.0");
     return true;
 }
 
