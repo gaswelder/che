@@ -3,7 +3,6 @@
 
 int main() {
     request();
-    url();
 	response();
     return test.fails();
 }
@@ -27,16 +26,6 @@ void request() {
     http.header_t *h = http.get_header(&r, "Accept");
     test.streq(h->name, "Accept");
     test.streq(h->value, "application/json; charset=utf-8");
-}
-
-void url() {
-    http.url_t r = {};
-
-    test.truth("parsing", http.parse_url(&r, "http://example.net:123/foo/bar?q=1"));
-    test.streq(r.schema, "http");
-    test.streq(r.hostname, "example.net");
-    test.streq(r.port, "123");
-    test.streq(r.path, "/foo/bar?q=1");
 }
 
 void response() {

@@ -6,6 +6,7 @@
 #import os/io
 #import strings
 #import time
+#import url
 
 typedef {
     time.t time_started;
@@ -52,7 +53,7 @@ int main(int argc, char *argv[]) {
     opt.str("p", "path to the file with the POST body", &postfile);
 
     char **args = opt.parse(argc, argv);
-	char *url = *args;
+	char *urlstr = *args;
 
 	uint8_t *postdata = NULL;         /* *buffer containing data from postfile */
 	size_t postlen = 0; /* length of data to be POSTed */
@@ -87,29 +88,29 @@ int main(int argc, char *argv[]) {
     }
 
     // Parse the URL.
-    http.url_t u = {};
-    if (!http.parse_url(&u, url)) {
-        fprintf(stderr, "invalid URL: %s\n", url);
+	url.t *u = url.parse(urlstr);
+	if (!u) {
+        fprintf(stderr, "invalid URL: %s\n", urlstr);
         exit(1);
     }
-    if (!strcmp(u.schema, "https")) {
+    if (!strcmp(u->schema, "https")) {
         fprintf(stderr, "no https support\n");
         exit(1);
     }
-    if (u.port[0] == '\0') {
-        strcpy(u.port, "80");
+    if (u->port[0] == '\0') {
+        strcpy(u->port, "80");
     }
-    colonhost = strings.newstr("%s:%s", u.hostname, u.port);
+    colonhost = strings.newstr("%s:%s", u->hostname, u->port);
 
 	//
     // Create the request.
 	//
     http.request_t req = {};
-    if (!http.init_request(&req, method, u.path)) {
+    if (!http.init_request(&req, method, u->path)) {
 		fprintf(stderr, "failed to init request: %s\n", http.errstr(req.err));
 		return 1;
 	}
-    http.set_header(&req, "Host", u.hostname);
+    http.set_header(&req, "Host", u->hostname);
 	http.set_header(&req, "User-Agent", "exab");
     if (method == http.POST) {
         char buf[10] = {0};
