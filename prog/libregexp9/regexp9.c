@@ -545,17 +545,14 @@ void evaluntil(int pri) {
 Reprog* optimize(Reprog *pp) {
 	Reinst *inst = NULL;
 	Reinst *target = NULL;
-	int size = 0;
-	Reprog *npp = NULL;
 	Reclass *cl = NULL;
-	ptrdiff_t diff = 0;
 
 	/*
 	 *  get rid of NOOP chains
 	 */
-	for(inst=pp->firstinst; inst->type!=END; inst++){
+	for (inst=pp->firstinst; inst->type!=END; inst++) {
 		target = inst->u2.next;
-		while(target->type == NOP)
+		while (target->type == NOP)
 			target = target->u2.next;
 		inst->u2.next = target;
 	}
@@ -565,11 +562,17 @@ Reprog* optimize(Reprog *pp) {
 	 *  necessary.  Reallocate to the actual space used
 	 *  and then relocate the code.
 	 */
-	size = sizeof(Reprog) + (freep - pp->firstinst)*sizeof(Reinst);
-	npp = realloc(pp, size);
-	if(npp==0 || npp==pp)
-		return pp;
-	diff = (char *)npp - (char *)pp;
+	int size = sizeof(Reprog) + (freep - pp->firstinst)*sizeof(Reinst);
+	ptrdiff_t pp_pos = (char *)pp - (char *)NULL;
+	Reprog *npp = realloc(pp, size);
+	if (npp == NULL) {
+		panic("realloc failed: %s", strerror(errno));
+	}
+	if (npp == pp) {
+		return npp;
+	}
+	ptrdiff_t npp_pos = (char *)npp - (char *)NULL;
+	ptrdiff_t diff = npp_pos - pp_pos;
 	freep = (Reinst *)((char *)freep + diff);
 	for (inst=npp->firstinst; inst<freep; inst++) {
 		switch(inst->type){

@@ -69,7 +69,7 @@ int main() {
             int xi = (int) wtfx;
             int yi = (int) wtfy;
             if ( xi >= 0 && xi < WIDTH && yi >= 0 && yi < HEIGHT ) {
-                ppm.merge(ppm, xi, yi, color, 0.9);
+                ppm.blend(ppm, xi, yi, color, 0.9);
             }
         }
 

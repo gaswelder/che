@@ -9,7 +9,7 @@ cd prog/$1
 	if [ $? = 0 ]; then
 		echo OK build $name
 	else
-		fail "build $name"
+		echo FAIL build $name
 		cd ..
 		continue
 	fi

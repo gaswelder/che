@@ -14,7 +14,7 @@ pub t *make(char *buf, size_t n) {
 }
 
 pub void free(t *r) {
-    free(r);
+    OS.free(r);
 }
 
 /**
