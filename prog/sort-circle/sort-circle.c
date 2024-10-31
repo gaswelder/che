@@ -4,9 +4,9 @@
 
 #import bitwriter
 #import formats/ppm
-#import fs
 #import opt
 #import rnd
+#import font.c
 
 /*
  * The array that's being shuffled and sorted.
@@ -53,15 +53,15 @@ int swaps[N] = {};
 const char *message = "";
 FILE *wav = NULL;
 
-uint8_t *font = NULL;
+font.t f = {};
 
 int main(int argc, char **argv) {
-    font = fs.readfile("prog/sort-circle/sort-circle-font.bin", NULL);
-	if (!font) font = fs.readfile("sort-circle-font.bin", NULL);
-    if (!font) {
-        fprintf(stderr, "couldn't load font at '%s'\n", "sort-circle-font.bin");
+	f = font.load("prog/sort-circle/sort-circle-font.bin");
+	if (!f.data) f = font.load("sort-circle-font.bin");
+	if (!f.data) {
+		fprintf(stderr, "couldn't load font at '%s'\n", "sort-circle-font.bin");
         return 1;
-    }
+	}
 
     ppm = ppm.init(S, S);
 
@@ -161,7 +161,7 @@ void frame() {
         ppm_dot(ppm, px, py, color);
     }
     if (message) {
-        draw_string(ppm, message);
+        draw_string(f, ppm, message);
     }
     ppm.write(ppm, stdout);
     ppm.clear(ppm);
@@ -407,7 +407,7 @@ void ppm_dot(ppm.ppm_t *p, float x, y, ppm.rgb_t color)
             float dx = px - x;
             float d = sqrtf(dy * dy + dx * dx);
             float alpha = smoothstep(R1, R0, d);
-            ppm.merge(p, px, py, color, alpha);
+            ppm.blend(p, px, py, color, alpha);
         }
     }
 }
@@ -429,31 +429,20 @@ float clampf(float x, float lower, float upper)
 
 
 const int PAD = 800 / 128;     // message padding
-#define FONT_W 16
-#define FONT_H 33
 
-void draw_string(ppm.ppm_t *p, const char *message) {
+
+void draw_string(font.t f, ppm.ppm_t *p, const char *message) {
     ppm.rgb_t fontcolor = {1.0, 1.0, 1.0};
     for (int c = 0; message[c]; c++) {
-        int x = c * FONT_W + PAD;
+        int x = c * f.w + PAD;
         int y = PAD;
-        for (int dy = 0; dy < FONT_H; dy++) {
-            for (int dx = 0; dx < FONT_W; dx++) {
-                float alpha = font_value(message[c], dx, dy);
+        for (int dy = 0; dy < f.h; dy++) {
+            for (int dx = 0; dx < f.w; dx++) {
+                float alpha = font.value(f, message[c], dx, dy);
                 if (alpha > 0.0f) {
-                    ppm.merge(p, x + dx, y + dy, fontcolor, alpha);
+                    ppm.blend(p, x + dx, y + dy, fontcolor, alpha);
                 }
             }
         }
     }
-}
-
-float font_value(int c, int x, int y) {
-    if (c < 32 || c > 127) {
-        return 0.0f;
-    }
-    int cx = c % 16;
-    int cy = (c - 32) / 16;
-    int v = font[(cy * FONT_H + y) * FONT_W * 16 + (cx * FONT_W) + x];
-    return sqrtf(v / 255.0f);
 }

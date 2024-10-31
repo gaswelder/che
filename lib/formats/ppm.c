@@ -33,12 +33,12 @@ pub rgb_t get(ppm_t *p, int x, y)
     return p->frame[x + p->width * y];
 }
 
-pub void merge(ppm_t *p, int x, y, rgb_t color, float a)
-{
+// Blends color with the current color at pixel (x, y).
+pub void blend(ppm_t *p, int x, y, rgb_t color, float opacity) {
     rgb_t newcolor = get(p, x, y);
-    newcolor.r = a * color.r + (a - 1) * newcolor.r;
-    newcolor.g = a * color.g + (a - 1) * newcolor.g;
-    newcolor.b = a * color.b + (a - 1) * newcolor.b;
+    newcolor.r = opacity * color.r + (opacity - 1) * newcolor.r;
+    newcolor.g = opacity * color.g + (opacity - 1) * newcolor.g;
+    newcolor.b = opacity * color.b + (opacity - 1) * newcolor.b;
     set(p, x, y, newcolor);
 }
 
