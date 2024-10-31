@@ -56,7 +56,7 @@ FILE *wav = NULL;
 uint8_t *font = NULL;
 
 int main(int argc, char **argv) {
-    font = fs.readfile("prog/sort-circle-font.bin", NULL);
+    font = fs.readfile("prog/sort-circle/sort-circle-font.bin", NULL);
 	if (!font) font = fs.readfile("sort-circle-font.bin", NULL);
     if (!font) {
         fprintf(stderr, "couldn't load font at '%s'\n", "sort-circle-font.bin");
@@ -73,6 +73,8 @@ int main(int argc, char **argv) {
 	int delay = 0;
 	char *seed_str = NULL;
 
+	opt.nargs(0, "");
+	opt.opt_summary("animated sorting demo - pipe the output to mpv");
     opt.flag("h", "print the help message", &help);
     opt.flag("q", "don't draw the shuffle", &hide_shuffle);
     opt.flag("y", "slow down shuffle animation", &slow_shuffle);
