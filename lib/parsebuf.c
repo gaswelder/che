@@ -2,6 +2,8 @@
 
 pub typedef {
 	reader.t *reader; // Byte reader.
+	bool reader_own;
+
 	size_t row, col; // Position in the source text.
 
 	// Lookahead cache.
@@ -10,37 +12,33 @@ pub typedef {
 } parsebuf_t;
 
 pub parsebuf_t *from_stdin() {
-	parsebuf_t *b = calloc(1, sizeof(parsebuf_t));
-	if (!b) return NULL;
-	b->reader = reader.stdin();
-	if (!b->reader) {
-		free(b);
-		return NULL;
-	}
+	parsebuf_t *b = new(reader.stdin());
+	b->reader_own = true;
 	return b;
 }
 
-/*
- * Creates and returns an instance of a parsebuffer with the given string as
- * contents. The string must not be deallocated before the buffer.
- */
+// Returns a new parsebuf instance reading from the given string.
+// The string must not be deallocated before the buffer.
 pub parsebuf_t *buf_new(const char *s) {
-	parsebuf_t *b = calloc(1, sizeof(parsebuf_t));
-	if (!b) return NULL;
-
-	b->reader = reader.string(s);
-	if (!b->reader) {
-		free(b);
-		return NULL;
-	}
+	parsebuf_t *b = new(reader.string(s));
+	b->reader_own = true;
 	return b;
 }
 
-/*
- * Frees memory used by the buffer.
- */
+// Returns a parsebuf instance reading from the given reader.
+pub parsebuf_t *new(reader.t *r) {
+	if (!r) panic("got null reader");
+	parsebuf_t *b = calloc(1, sizeof(parsebuf_t));
+	if (!b) panic("calloc failed");
+	b->reader = r;
+	return b;
+}
+
+// Frees memory used by the buffer.
 pub void buf_free(parsebuf_t *b) {
-	reader.free(b->reader);
+	if (b->reader_own) {
+		reader.free(b->reader);
+	}
 	free(b);
 }
 

@@ -1,5 +1,6 @@
 #import enc/urlencode
 #import parsebuf
+#import reader
 #import strbuilder
 #import strings
 
@@ -308,13 +309,8 @@ bool parse_header_line(const char *line, header_t *h) {
     return true;
 }
 
-pub bool parse_response(const char *data, response_t *r) {
-    char *s = strstr(data, "\r\n\r\n");
-    if (!s) {
-        return false;
-    }
-
-	parsebuf.parsebuf_t *b = parsebuf.buf_new(data);
+pub bool parse_response(reader.t *re, response_t *r) {
+	parsebuf.parsebuf_t *b = parsebuf.new(re);
 	if (!read_status_line(b, r)) {
 		parsebuf.buf_free(b);
 		return false;

@@ -4,6 +4,7 @@
 #import ioroutine
 #import opt
 #import os/io
+#import reader
 #import strings
 #import time
 #import url
@@ -255,11 +256,14 @@ int routine(void *ctx, int line) {
             }
 
             http.response_t r = {};
-            if (!http.parse_response(c->inbuf->data, &r)) {
+			reader.t *re = reader.string(c->inbuf->data);
+            if (!http.parse_response(re, &r)) {
                 // Assume not enough data was received.
                 dbg.m(DBG_TAG, "waiting for more data");
+				reader.free(re);
                 return READ_RESPONSE;
             }
+			reader.free(re);
 			c->stats->status = r.status;
             io.shift(c->inbuf, io.bufsize(c->inbuf));
             return READ_RESPONSE_BODY;
