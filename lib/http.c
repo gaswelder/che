@@ -55,7 +55,7 @@ pub typedef {
     size_t nheaders;
 
 	// ...
-    int head_length;
+	char body[1000];
     int content_length;
 } response_t;
 
@@ -308,36 +308,71 @@ bool parse_header_line(const char *line, header_t *h) {
     return true;
 }
 
-
-
 pub bool parse_response(const char *data, response_t *r) {
     char *s = strstr(data, "\r\n\r\n");
     if (!s) {
         return false;
     }
-    r->head_length = s - data + 4;
 
-    // HTTP/1.1
-    char *p = strstr(data, "HTTP/");
-    if (!p) {
-        return false;
-    }
-    strncpy(r->version, p, strlen("HTTP/1.x"));
-    p += strlen("HTTP/1.x");
+	parsebuf.parsebuf_t *b = parsebuf.buf_new(data);
+	if (!read_status_line(b, r)) {
+		parsebuf.buf_free(b);
+		return false;
+	}
+	while (parsebuf.buf_more(b)) {
+		if (parsebuf.buf_skip_literal(b, "\r\n")) {
+			break;
+		}
+		header_t *h = &r->headers[r->nheaders++];
+		if (!read_header(b, h)) {
+			parsebuf.buf_free(b);
+			return false;
+		}
+	}
+
+
+    const char *tmp = get_res_header(r, "Content-Length");
+	if (!tmp) {
+		panic("Expected a content-length header");
+	}
+
+	r->content_length = atoi(tmp);
+	for (int i = 0; i < r->content_length; i++) {
+		char c = parsebuf.buf_get(b);
+		if (c == EOF) {
+			parsebuf.buf_free(b);
+			return false;
+		}
+		r->body[i] = c;
+	}
+
+	parsebuf.buf_free(b);
+    return true;
+}
+
+bool read_status_line(parsebuf.parsebuf_t *b, response_t *r) {
+	// HTTP/1.1
+	for (int i = 0; i < 8; i++) {
+		r->version[i] = parsebuf.buf_get(b);
+	}
+	if (strcmp(r->version, "HTTP/1.0") && strcmp(r->version, "HTTP/1.1")) {
+		return false;
+	}
 
     // space
-    p++;
+    if (parsebuf.buf_get(b) != ' ') return false;
 
-    // 200
-    char respcode[4] = {0};
-    strncpy(respcode, p, 3);
-    p += 3;
-    sscanf(respcode, "%d", &r->status);
+	// 200
+	r->status = 0;
+	for (int i = 0; i < 3; i++) {
+		char c = parsebuf.buf_get(b);
+		if (!isdigit(c)) return false;
+		r->status *= 10;
+		r->status += c - '0';
+	}
 
 	// space
-    p++;
-
-	parsebuf.parsebuf_t *b = parsebuf.buf_new(p);
+	if (parsebuf.buf_get(b) != ' ') return false;
 
 	// status text
 	while (parsebuf.buf_more(b) && parsebuf.buf_peek(b) != '\r') {
@@ -346,40 +381,28 @@ pub bool parse_response(const char *data, response_t *r) {
 
 	// eol
 	if (!parsebuf.buf_skip_literal(b, "\r\n")) {
-		parsebuf.buf_free(b);
 		return false;
 	}
+	return true;
+}
 
-	while (parsebuf.buf_more(b)) {
-		if (parsebuf.buf_skip_literal(b, "\r\n")) {
-			break;
-		}
-		header_t *h = &r->headers[r->nheaders++];
-		char *tmp = h->name;
-		while (parsebuf.buf_more(b) && parsebuf.buf_peek(b) != ':') {
-			*tmp++ = parsebuf.buf_get(b);
-		}
-		// : space
-		if (!parsebuf.buf_skip_literal(b, ": ")) {
-			parsebuf.buf_free(b);
-			return false;
-		}
-		// value
-		tmp = h->value;
-		while (parsebuf.buf_more(b) && parsebuf.buf_peek(b) != '\r') {
-			*tmp++ = parsebuf.buf_get(b);
-		}
-		// eol
-		if (!parsebuf.buf_skip_literal(b, "\r\n")) {
-			parsebuf.buf_free(b);
-			return false;
-		}
+bool read_header(parsebuf.parsebuf_t *b, header_t *h) {
+	char *tmp = h->name;
+	while (parsebuf.buf_more(b) && parsebuf.buf_peek(b) != ':') {
+		*tmp++ = parsebuf.buf_get(b);
 	}
-	parsebuf.buf_free(b);
-
-    const char *tmp = get_res_header(r, "Content-Length");
-    if (tmp) {
-        r->content_length = atoi(tmp);
-    }
-    return true;
+	// : space
+	if (!parsebuf.buf_skip_literal(b, ": ")) {
+		return false;
+	}
+	// value
+	tmp = h->value;
+	while (parsebuf.buf_more(b) && parsebuf.buf_peek(b) != '\r') {
+		*tmp++ = parsebuf.buf_get(b);
+	}
+	// eol
+	if (!parsebuf.buf_skip_literal(b, "\r\n")) {
+		return false;
+	}
+	return true;
 }

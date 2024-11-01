@@ -41,4 +41,5 @@ void response() {
 	test.streq(http.get_res_header(&r, "Keep-Alive"), "timeout=5");
 	test.streq(http.get_res_header(&r, "Content-Length"), "116");
 	test.truth("content length", r.content_length == 116);
+	test.streq(r.body, "d8:completei0e10:incompletei1e8:intervali600e5:peersld2:ip9:127.0.0.17:peer id20:123456789012345678904:porti6881eeee");
 }

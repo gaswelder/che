@@ -22,7 +22,6 @@ typedef {
     io.handle_t *connection; // Connection with the server
     io.buf_t *outbuf; // Request copy to send
     io.buf_t *inbuf; // Response to read
-    int body_bytes_to_read; // How many bytes to read to get the full response.
     result_t *stats; // Current request's stats
 } context_t;
 
@@ -258,49 +257,29 @@ int routine(void *ctx, int line) {
             http.response_t r = {};
             if (!http.parse_response(c->inbuf->data, &r)) {
                 // Assume not enough data was received.
-                dbg.m(DBG_TAG, "waiting for more headers");
+                dbg.m(DBG_TAG, "waiting for more data");
                 return READ_RESPONSE;
             }
 			c->stats->status = r.status;
-            io.shift(c->inbuf, r.head_length);
-            c->body_bytes_to_read = r.content_length;
-            c->body_bytes_to_read -= io.bufsize(c->inbuf);
             io.shift(c->inbuf, io.bufsize(c->inbuf));
             return READ_RESPONSE_BODY;
         }
         case READ_RESPONSE_BODY: {
-            return read_response_body(c);
+            dbg.m(DBG_TAG, "finished reading response, done=%zu, todo=%zu", requests_done, requests_to_do);
+			c->stats->time_finished_reading = time.now();
+			output(c->stats);
+			if (requests_done >= requests_to_do) {
+				dbg.m(DBG_TAG, "all done (todo=%zu)\n", requests_to_do);
+				io.close(c->connection);
+				return -1;
+			}
+			return BEGIN;
         }
         default: {
             panic("unexpected line: %d", line);
         }
     }
     return -1;
-}
-
-int read_response_body(context_t *c) {
-	if (c->body_bytes_to_read == 0) {
-		dbg.m(DBG_TAG, "finished reading response, done=%zu, todo=%zu", requests_done, requests_to_do);
-		c->stats->time_finished_reading = time.now();
-		output(c->stats);
-		if (requests_done >= requests_to_do) {
-			dbg.m(DBG_TAG, "all done (todo=%zu)\n", requests_to_do);
-			io.close(c->connection);
-			return -1;
-		}
-		return BEGIN;
-	}
-	if (!ioroutine.ioready(c->connection, io.READ)) {
-		return READ_RESPONSE_BODY;
-	}
-	if (!io.read(c->connection, c->inbuf)) {
-		panic("read failed");
-	}
-	size_t n = io.bufsize(c->inbuf);
-	dbg.m(DBG_TAG, "read %zu of body\n", n);
-	c->body_bytes_to_read -= n;
-	io.shift(c->inbuf, n);
-	return READ_RESPONSE_BODY;
 }
 
 void fatal(char *s) {
