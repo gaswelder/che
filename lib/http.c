@@ -325,25 +325,39 @@ pub bool parse_response(reader.t *re, response_t *r) {
 			return false;
 		}
 	}
-
-
-    const char *tmp = get_res_header(r, "Content-Length");
-	if (!tmp) {
-		panic("Expected a content-length header");
-	}
-
-	r->content_length = atoi(tmp);
-	for (int i = 0; i < r->content_length; i++) {
-		char c = parsebuf.buf_get(b);
-		if (c == EOF) {
-			parsebuf.buf_free(b);
-			return false;
-		}
-		r->body[i] = c;
-	}
-
+	bool ok = read_body(b, r);
 	parsebuf.buf_free(b);
-    return true;
+    return ok;
+}
+
+bool read_body(parsebuf.parsebuf_t *b, response_t *r) {
+	const char *tmp = get_res_header(r, "Content-Length");
+	if (tmp) {
+		r->content_length = atoi(tmp);
+		for (int i = 0; i < r->content_length; i++) {
+			char c = parsebuf.buf_get(b);
+			if (c == EOF) {
+				return false;
+			}
+			r->body[i] = c;
+		}
+		return true;
+	}
+
+	// Connection: close implies that the rest of the data is body.
+	tmp = get_res_header(r, "Connection");
+	if (!strcmp(tmp, "close")) {
+		size_t i = 0;
+		while (parsebuf.buf_more(b)) {
+			if (i + 1 == sizeof(r->body)) {
+				panic("body buffer too small");
+			}
+			r->body[i++] = parsebuf.buf_get(b);
+		}
+		return true;
+	}
+	panic("unknown response body format");
+	return false;
 }
 
 bool read_status_line(parsebuf.parsebuf_t *b, response_t *r) {
