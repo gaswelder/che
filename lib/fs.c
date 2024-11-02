@@ -98,7 +98,7 @@ pub bool is_dir(const char *path) {
  * Reads the file at 'path' and returns a pointer to the file's
  * contents in memory. The contents size is put into 'size'.
  */
-pub uint8_t *readfile(const char *path, size_t *size) {
+pub char *readfile(const char *path, size_t *size) {
 	FILE *f = fopen(path, "rb");
 	if (!f) {
 		return NULL;
@@ -122,7 +122,7 @@ pub uint8_t *readfile(const char *path, size_t *size) {
 	}
 	fclose(f);
 	if (size) *size = len;
-	return (uint8_t *) data;
+	return data;
 }
 
 /*
