@@ -39,6 +39,10 @@ pub void free(t *w) {
 	OS.free(w);
 }
 
+pub int writebyte(t *w, char b) {
+	return write(w, &b, 1);
+}
+
 // Writes n bytes from data to w.
 // Returns the number of bytes written.
 pub int write(t *w, const char *data, size_t n) {
