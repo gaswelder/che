@@ -1,6 +1,7 @@
 #import enc/urlencode
 #import parsebuf
 #import reader
+#import writer
 #import strbuilder
 #import strings
 
@@ -140,7 +141,10 @@ pub bool write_request(request_t *r, char *buf, size_t n) {
 		strbuilder.adds(sb, "=");
 
 		char tmp[1000] = {};
-		urlencode.enc(tmp, param->value, param->valuelen);
+		writer.t *w = writer.static_buffer(tmp, sizeof(tmp));
+		urlencode.write(w, param->value, param->valuelen);
+		writer.free(w);
+
 		strbuilder.adds(sb, tmp);
 	}
 

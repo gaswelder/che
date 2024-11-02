@@ -1,19 +1,27 @@
+#import writer
+
 const char HEX[] = "0123456789ABCDEF";
 
-/**
- * Puts url-encoded representation of buf into s.
- */
-pub void enc(char *s, const char *buf, size_t bufsize) {
-	char *p = s;
-	for (size_t i = 0 ; i < bufsize; i++) {
-		char c = buf[i];
+// Writes URL-encoded representation of data into the writer.
+pub int write(writer.t *w, const char *data, size_t datalen) {
+	int len = 0;
+	char tmp[3] = {};
+	for (size_t i = 0; i < datalen; i++) {
+		char c = data[i];
 		if (isalpha(c) || isdigit(c)) {
-			*p++ = c;
+			if (writer.write(w, &c, 1) != 1) {
+				return -1;
+			}
+			len++;
 			continue;
 		}
-		*p++ = '%';
-		*p++ = HEX[(c >> 4) & 0x0F];
-		*p++ = HEX[c & 0x0F];
+		tmp[0] = '%';
+		tmp[1] = HEX[(c >> 4) & 0x0F];
+		tmp[2] = HEX[c & 0x0F];
+		if (writer.write(w, tmp, 3) != 3) {
+			return -1;
+		}
+		len += 3;
 	}
-	*p++ = '\0';
+	return len;
 }
