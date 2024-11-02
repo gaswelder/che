@@ -19,7 +19,7 @@ pub typedef {
  */
 pub reader_t *newreader(const uint8_t *data, size_t size) {
 	reader_t *r = calloc(1, sizeof(reader_t));
-	if (!r) return NULL;
+	if (!r) panic("calloc failed");
 	r->data = data;
 	r->size = size;
 	return r;
