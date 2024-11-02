@@ -8,13 +8,13 @@ int main(int argc, char *argv[]) {
     }
 
     size_t size = 0;
-    uint8_t *data = fs.readfile(argv[1], &size);
+    char *data = fs.readfile(argv[1], &size);
     if (!data) {
         fprintf(stderr, "failed to read file: %s\n", strerror(errno));
         return 1;
     }
 
-    bencode.reader_t *r = bencode.newreader(data, size);
+    bencode.reader_t *r = bencode.newreader((uint8_t *)data, size);
     while (bencode.more(r)) {
         printval(r);
     }

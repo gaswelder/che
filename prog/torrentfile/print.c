@@ -9,12 +9,12 @@ pub int cmd(int argc, char *argv[]) {
 		return 1;
 	}
 	size_t size = 0;
-	uint8_t *data = fs.readfile(argv[1], &size);
+	char *data = fs.readfile(argv[1], &size);
 	if (!data) {
 		fprintf(stderr, "failed to read file: %s\n", strerror(errno));
 		return 1;
 	}
-	torrent.info_t *tf = torrent.parse(data, size);
+	torrent.info_t *tf = torrent.parse((uint8_t *)data, size);
 
 	char tmp[100] = {};
 

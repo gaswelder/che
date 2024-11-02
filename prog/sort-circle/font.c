@@ -2,7 +2,7 @@
 
 pub typedef {
 	int w, h;
-	uint8_t *data;
+	char *data;
 } t;
 
 pub float value(t f, int c, int x, int y) {

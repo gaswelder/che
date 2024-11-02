@@ -56,7 +56,7 @@ int main(int argc, char *argv[]) {
     char **args = opt.parse(argc, argv);
 	char *urlstr = *args;
 
-	uint8_t *postdata = NULL;         /* *buffer containing data from postfile */
+	char *postdata = NULL;         /* *buffer containing data from postfile */
 	size_t postlen = 0; /* length of data to be POSTed */
 
 	int method = http.GET;
