@@ -81,7 +81,7 @@ pub void free(info_t *tf) {
 	OS.free(tf);
 }
 
-pub info_t *parse(const uint8_t *data, size_t size) {
+pub info_t *parse(const char *data, size_t size) {
 	info_t *tf = calloc(1, sizeof(info_t));
 	if (!tf) return NULL;
 

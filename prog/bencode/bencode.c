@@ -14,7 +14,7 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
-    bencode.reader_t *r = bencode.newreader((uint8_t *)data, size);
+    bencode.reader_t *r = bencode.newreader(data, size);
     while (bencode.more(r)) {
         printval(r);
     }

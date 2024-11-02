@@ -14,7 +14,7 @@ pub int cmd(int argc, char *argv[]) {
 		fprintf(stderr, "failed to read file: %s\n", strerror(errno));
 		return 1;
 	}
-	torrent.info_t *tf = torrent.parse((uint8_t *)data, size);
+	torrent.info_t *tf = torrent.parse(data, size);
 
 	char tmp[100] = {};
 

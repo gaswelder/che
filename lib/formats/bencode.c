@@ -1,15 +1,10 @@
 
 pub typedef {
-	/*
-	 * The input.
-	 */
-	const uint8_t *data;
+	const char *data;
 	size_t size;
 	size_t pos;
 
-	/*
-	 * Stack for tracking the type of node we're currently in.
-	 */
+	// Stack for tracking the type of node we're currently in.
 	size_t stacksize;
 	char stack[10];
 } reader_t;
@@ -17,7 +12,7 @@ pub typedef {
 /**
  * Allocates a new reader for the given data.
  */
-pub reader_t *newreader(const uint8_t *data, size_t size) {
+pub reader_t *newreader(const char *data, size_t size) {
 	reader_t *r = calloc(1, sizeof(reader_t));
 	if (!r) panic("calloc failed");
 	r->data = data;
