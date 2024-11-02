@@ -5,6 +5,7 @@
 #import opt
 #import os/io
 #import reader
+#import writer
 #import strings
 #import time
 #import url
@@ -118,9 +119,11 @@ int main(int argc, char *argv[]) {
         http.set_header(&req, "Content-Length", buf);
     }
     char buf[1000] = {0};
-    if (!http.write_request(&req, buf, sizeof(buf))) {
+	writer.t *w = writer.static_buffer(buf, sizeof(buf));
+    if (!http.write_request(w, &req)) {
         fatal("failed to write request");
     }
+	writer.free(w);
     io.push(&REQUEST, buf, strlen(buf));
     if (method == http.POST) {
         io.push(&REQUEST, (char *)postdata, postlen);

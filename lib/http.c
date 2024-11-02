@@ -122,14 +122,16 @@ pub bool set_header(request_t *r, const char *name, *value) {
     return true;
 }
 
-pub bool write_request(request_t *r, char *buf, size_t n) {
+// Writes the request to the writer w.
+// Return the number of bytes written or -1 on error.
+pub int write_request(writer.t *w, request_t *r) {
     strbuilder.str *sb = strbuilder.str_new();
     bool ok = sb != NULL;
 
 	// Request line.
     ok = ok && strbuilder.adds(sb, r->method)
-        && strbuilder.adds(sb, " ")
-        && strbuilder.adds(sb, r->uri);
+		&& strbuilder.adds(sb, " ")
+		&& strbuilder.adds(sb, r->uri);
 
 	// Query params.
 	for (size_t i = 0; i < r->nparams; i++) {
@@ -141,9 +143,9 @@ pub bool write_request(request_t *r, char *buf, size_t n) {
 		strbuilder.adds(sb, "=");
 
 		char tmp[1000] = {};
-		writer.t *w = writer.static_buffer(tmp, sizeof(tmp));
-		urlencode.write(w, param->value, param->valuelen);
-		writer.free(w);
+		writer.t *w2 = writer.static_buffer(tmp, sizeof(tmp));
+		urlencode.write(w2, param->value, param->valuelen);
+		writer.free(w2);
 
 		strbuilder.adds(sb, tmp);
 	}
@@ -164,13 +166,13 @@ pub bool write_request(request_t *r, char *buf, size_t n) {
     }
 
     ok = ok && strbuilder.adds(sb, "\r\n");
-    if (!ok || strbuilder.str_len(sb) > n) {
-        strbuilder.str_free(sb);
-        return false;
-    }
-    memcpy(buf, strbuilder.str_raw(sb), n);
+
+	const char *s = strbuilder.str_raw(sb);
+	int len = writer.write(w, s, strlen(s));
+	ok = ok && len == (int)strlen(s);
     strbuilder.str_free(sb);
-    return true;
+    if (!ok) return -1;
+	return len;
 }
 
 
