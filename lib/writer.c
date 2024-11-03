@@ -15,6 +15,17 @@ pub typedef {
 	FILE *f;
 } t;
 
+t *_stdout = NULL;
+
+// Returns a global instance of a stdout writer.
+// This function is not thread safe.
+pub t *stdout() {
+	if (!_stdout) {
+		_stdout = file(OS.stdout);
+	}
+	return _stdout;
+}
+
 // Returns a writer to a static buffer.
 // When the buffer's place runs out, write will return EOF.
 pub t *static_buffer(char *data, size_t size) {
