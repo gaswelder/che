@@ -22,7 +22,11 @@ pub fn run(args: &[String]) -> i32 {
             }
         }
     }
-    println!("fails: {}, total: {}", s.fails, s.total);
+    if s.fails > 0 {
+        println!("fails: {}, total: {}", s.fails, s.total);
+    } else if s.fails == 0 {
+        println!("OK {} tests", s.total);
+    }
     return s.fails;
 }
 
