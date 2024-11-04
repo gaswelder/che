@@ -15,7 +15,11 @@ pub fn isvoid(t: &Typename) -> bool {
 }
 
 pub fn body_returns(b: &Body) -> bool {
-    let last = &b.statements[b.statements.len() - 1];
+    let n = b.statements.len();
+    if n == 0 {
+        return false;
+    }
+    let last = &b.statements[n - 1];
     return match last {
         Statement::Return { .. } => true,
         Statement::Panic { .. } => true,
