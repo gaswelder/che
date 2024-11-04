@@ -100,8 +100,8 @@ impl Type {
     }
 }
 
-pub fn sum(t1: Type, t2: Type) -> Result<Type, String> {
-    // Not checking anything.
+pub fn sum(t1: Type, _t2: Type) -> Result<Type, String> {
+    // Not checking anything for now.
     return Ok(t1);
 }
 
