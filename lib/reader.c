@@ -1,6 +1,7 @@
 pub typedef {
 	int type;
 	void *data;
+	size_t pos;
 } t;
 
 typedef {
@@ -106,7 +107,9 @@ int st_read(str_t *s, char *buf, size_t n) {
 
 pub int read(t *reader, char *buf, size_t n) {
 	if (reader->type == STR) {
-		return st_read(reader->data, buf, n);
+		int r = st_read(reader->data, buf, n);
+		if (r > 0) reader->pos += r;
+		return r;
 	}
 	int r = 0;
 	for (size_t i = 0; i < n; i++) {

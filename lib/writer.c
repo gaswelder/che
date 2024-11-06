@@ -5,6 +5,7 @@ enum {
 
 pub typedef {
 	int type;
+	size_t nwritten;
 
 	// T_STATIC:
 	char *data;
@@ -57,8 +58,13 @@ pub int writebyte(t *w, char b) {
 // Writes n bytes from data to w.
 // Returns the number of bytes written.
 pub int write(t *w, const char *data, size_t n) {
-	if (w->type == T_STATIC) return st_write(w, data, n);
+	if (w->type == T_STATIC) {
+		int r = st_write(w, data, n);
+		if (r > 0) w->nwritten += r;
+		return r;
+	}
 	size_t r = fwrite(data, 1, n, w->f);
+	w->nwritten += r;
 	return (int) r;
 }
 
