@@ -6,6 +6,7 @@
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <unistd.h>
+#include <fcntl.h>
 
 const char *error = "no error";
 pub typedef struct sockaddr sockaddr_t;
@@ -104,17 +105,29 @@ pub int net_write(net_t *c, const char *buf, size_t n) {
 	return n;
 }
 
-/**
- * Creates a connection with the protocol `proto` to the destination address
- * `addr`. Returns NULL on failure.
- */
-pub net_t *net_open(const char *proto, const char *addr) {
+// Creates a connection over the protocol proto ("tcp") to the destination
+// address addr.
+// On failure return NULL, check errno.
+pub net_t *connect(const char *proto, const char *addr) {
 	net_t *c = newconn(proto, addr);
-	if(!c) {
+	if (!c) return NULL;
+	if (OS.connect(c->fd, &(c->ai_addr), c->addrlen) < 0) {
+		free(c);
 		return NULL;
 	}
-	if (OS.connect(c->fd, &(c->ai_addr), c->addrlen) == -1 ) {
-		error = "connect failed";
+	return c;
+}
+
+// Same as connect, but doesn't block and returns immediately without
+// waiting for the actual connection to happen.
+pub net_t *connect_nonblock(const char *proto, *addr) {
+	net_t *c = newconn(proto, addr);
+	if (!c) return NULL;
+	int flags = OS.fcntl(c->fd, OS.F_GETFL, 0);
+	if (flags < 0) panic("fcntl failed");
+	if (OS.fcntl(c->fd, OS.F_SETFL, flags | OS.O_NONBLOCK) < 0) panic("fcntl failed");
+	if (OS.connect(c->fd, &(c->ai_addr), c->addrlen) < 0) {
+		if (errno == OS.EINPROGRESS) return c;
 		free(c);
 		return NULL;
 	}

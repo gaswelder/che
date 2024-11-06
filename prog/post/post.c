@@ -13,7 +13,7 @@ int main(int argc, char **argv) {
 	const char *from = *argv++;
 	const char *to = *argv++;
 
-	net.net_t *n = net.net_open("tcp", addr);
+	net.net_t *n = net.connect("tcp", addr);
 	if (!n) {
 		fprintf(stderr, "connect to '%s' failed: %s\n", addr, strerror(errno));
 		exit(1);

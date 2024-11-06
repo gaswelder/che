@@ -161,7 +161,7 @@ pub handle_t *connect(const char *proto, const char *addr) {
         return NULL;
     }
 
-    net.net_t *conn = net.net_open(proto, addr);
+    net.net_t *conn = net.connect(proto, addr);
     if (!conn) {
         free(h);
         return NULL;
