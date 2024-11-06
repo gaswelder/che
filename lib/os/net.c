@@ -134,6 +134,18 @@ pub net_t *connect_nonblock(const char *proto, *addr) {
 	return c;
 }
 
+// getsockopt(...SO_ERROR...)
+// int get_socket_error(int fd) {
+// 	int error = 0;
+// 	size_t n = sizeof(error);
+// // so_error may contain connection error on a non-blocking socket.
+// 	if (getsockopt(fd, SOL_SOCKET,SO_ERROR, &error, &n) < 0) {
+// 		return -1;
+// 	}
+// 	return error;
+// }
+
+
 pub net_t *net_listen(const char *proto, const char *addr) {
 	net_t *c = newconn(proto, addr);
 	if(!c) {
