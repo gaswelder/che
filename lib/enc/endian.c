@@ -18,8 +18,8 @@ pub int write4be(writer.t *w, uint32_t v) {
 	return writer.write(w, (char *)buf, 4);
 }
 
-pub int read1(reader.t *r, char *v) {
-	return reader.read(r, v, 1);
+pub int read1(reader.t *r, uint8_t *v) {
+	return reader.read(r, (char *)v, 1);
 }
 
 // Reads a big-endian uint32 from the reader r.
