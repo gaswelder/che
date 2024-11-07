@@ -1,6 +1,6 @@
 pub typedef void freefunc_t(void *);
 pub typedef bool morefunc_t(void *);
-pub typedef int readfunc_t(void *, char *, size_t);
+pub typedef int readfunc_t(void *, uint8_t *, size_t);
 
 pub typedef {
 	void *data;
@@ -11,12 +11,12 @@ pub typedef {
 } t;
 
 typedef {
-	const char *s;
+	const uint8_t *s;
 	size_t pos;
 	size_t len;
 } str_t;
 
-pub t *static_buffer(const char *data, size_t n) {
+pub t *static_buffer(const uint8_t *data, size_t n) {
 	t *r = calloc(1, sizeof(t));
 	str_t *s = calloc(1, sizeof(str_t));
 	if (!r || !s) panic("calloc failed");
@@ -38,13 +38,13 @@ pub t *stdin() {
 }
 
 pub t *string(const char *s) {
-	return static_buffer(s, strlen(s));
+	return static_buffer((uint8_t *)s, strlen(s));
 }
 
 // Reads up to n bytes from r to buf.
 // Returns the number of bytes read or a negative value for EOF or an error.
 // Zero return means no bytes to read at the moment.
-pub int read(t *reader, char *buf, size_t n) {
+pub int read(t *reader, uint8_t *buf, size_t n) {
 	int r = reader->read(reader->data, buf, n);
 	if (r > 0) reader->pos += r;
 	return r;
@@ -66,7 +66,7 @@ bool st_more(void *ctx) {
 	return data->pos < data->len;
 }
 
-int st_read(void *ctx, char *buf, size_t n) {
+int st_read(void *ctx, uint8_t *buf, size_t n) {
 	str_t *s = ctx;
 	if (s->pos >= s->len) return EOF;
 	int r = 0;
@@ -84,7 +84,7 @@ bool io_more(void *ctx) {
 	return !feof(OS.stdin) && !ferror(OS.stdin);
 }
 
-int io_read(void *ctx, char *buf, size_t n) {
+int io_read(void *ctx, uint8_t *buf, size_t n) {
 	(void) ctx;
 	size_t r = fread(buf, 1, n, OS.stdin);
 	if (r == 0) {

@@ -7,7 +7,7 @@ pub typedef {
 	size_t row, col; // Position in the source text.
 
 	// Lookahead cache.
-	char cache[100];
+	uint8_t cache[100];
 	size_t cachesize;
 } parsebuf_t;
 
@@ -85,7 +85,7 @@ pub int buf_get(parsebuf_t *b) {
 		return c;
 	}
 
-	char c;
+	uint8_t c;
 	int r = reader.read(b->reader, &c, 1);
 	if (r != 1) return EOF;
 	_track_pos(b, c);
@@ -237,8 +237,8 @@ pub bool buf_literal_follows(parsebuf_t *b, const char *literal) {
 		return false;
 	}
 
-	const char *p1 = b->cache;
-	const char *p2 = literal;
+	const uint8_t *p1 = b->cache;
+	const uint8_t *p2 = (void *) literal;
 	while (*p2) {
 		if (!*p1 || *p1 != *p2) {
 			return false;
