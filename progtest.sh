@@ -11,7 +11,7 @@ cd prog/$1
 	else
 		echo FAIL build $name
 		cd ..
-		continue
+		exit 1
 	fi
 
 	if [ -f 1.test ]; then
