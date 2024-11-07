@@ -142,12 +142,12 @@ pub int write_request(writer.t *w, request_t *r) {
 		strbuilder.adds(sb, param->name);
 		strbuilder.adds(sb, "=");
 
-		char tmp[1000] = {};
+		uint8_t tmp[1000] = {};
 		writer.t *w2 = writer.static_buffer(tmp, sizeof(tmp));
 		urlencode.write(w2, param->value, param->valuelen);
 		writer.free(w2);
 
-		strbuilder.adds(sb, tmp);
+		strbuilder.adds(sb, (char *)tmp);
 	}
 
 	ok = ok
@@ -168,7 +168,7 @@ pub int write_request(writer.t *w, request_t *r) {
     ok = ok && strbuilder.adds(sb, "\r\n");
 
 	const char *s = strbuilder.str_raw(sb);
-	int len = writer.write(w, s, strlen(s));
+	int len = writer.write(w, (uint8_t *)s, strlen(s));
 	ok = ok && len == (int)strlen(s);
     strbuilder.str_free(sb);
     if (!ok) return -1;

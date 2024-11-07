@@ -12,7 +12,7 @@ pub char *writebyte(uint8_t b, char *p) {
 // Returns the number of data bytes written or a negative value for errors.
 pub int write(writer.t *w, const char *data, size_t n) {
 	int len = 0;
-	char two[2];
+	uint8_t two[2];
 	for (size_t i = 0; i < n; i++) {
 		uint8_t b = (uint8_t) data[i];
 		two[0] = HEX[b/16];

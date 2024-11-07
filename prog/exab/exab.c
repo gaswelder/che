@@ -118,13 +118,13 @@ int main(int argc, char *argv[]) {
         sprintf(buf, "%zu", postlen);
         http.set_header(&req, "Content-Length", buf);
     }
-    char buf[1000] = {0};
+    uint8_t buf[1000] = {0};
 	writer.t *w = writer.static_buffer(buf, sizeof(buf));
     if (!http.write_request(w, &req)) {
         fatal("failed to write request");
     }
 	writer.free(w);
-    io.push(&REQUEST, buf, strlen(buf));
+    io.push(&REQUEST, (char *)buf, strlen((char *)buf));
     if (method == http.POST) {
         io.push(&REQUEST, (char *)postdata, postlen);
     }
