@@ -20,14 +20,14 @@ pub int write4be(writer.t *w, uint32_t v) {
 }
 
 pub int read1(reader.t *r, uint8_t *v) {
-	return reader.read(r, (char *)v, 1);
+	return reader.read(r, v, 1);
 }
 
 // Reads a big-endian uint32 from the reader r.
 // Returns the number of bytes read (4) or one of the error values.
 pub int read4be(reader.t *r, uint32_t *v) {
 	uint8_t buf[4];
-	int n = reader.read(r, (char *)buf, 4);
+	int n = reader.read(r, buf, 4);
 	uint32_t x = 0;
 	x = x * 256 + buf[0];
 	x = x * 256 + buf[1];
