@@ -1,7 +1,13 @@
+pub typedef void freefunc_t(void *);
+pub typedef bool morefunc_t(void *);
+pub typedef int readfunc_t(void *, char *, size_t);
+
 pub typedef {
-	int type;
 	void *data;
 	size_t pos;
+	freefunc_t *free;
+	morefunc_t *more;
+	readfunc_t *read;
 } t;
 
 typedef {
@@ -10,18 +16,14 @@ typedef {
 	size_t len;
 } str_t;
 
-enum {
-	STR = 1,
-	STDIN,
-};
-
 pub t *static_buffer(const char *data, size_t n) {
 	t *r = calloc(1, sizeof(t));
 	str_t *s = calloc(1, sizeof(str_t));
 	if (!r || !s) panic("calloc failed");
-
-	r->type = STR;
 	r->data = s;
+	r->free = OS.free;
+	r->more = st_more;
+	r->read = st_read;
 	s->s = data;
 	s->len = n;
 	return r;
@@ -30,7 +32,8 @@ pub t *static_buffer(const char *data, size_t n) {
 pub t *stdin() {
 	t *r = calloc(1, sizeof(t));
 	if (!r) return NULL;
-	r->type = STDIN;
+	r->more = io_more;
+	r->read = io_read;
 	return r;
 }
 
@@ -38,38 +41,33 @@ pub t *string(const char *s) {
 	return static_buffer(s, strlen(s));
 }
 
-pub void free(t *reader) {
-	switch (reader->type) {
-		case STR: { OS.free(reader->data); }
-		case STDIN: {}
-		default: { panic("unknown reader type: %d", reader->type); }
-	}
-}
-
+// Reads up to n bytes from r to buf.
+// Returns the number of bytes read or a negative value for EOF or an error.
+// Zero return means no bytes to read at the moment.
 pub int read(t *reader, char *buf, size_t n) {
-	int r;
-	switch (reader->type) {
-		case STR: { r = st_read(reader->data, buf, n); }
-		case STDIN: { r = io_read(buf, n); }
-		default: { panic("unknown reader type: %d", reader->type); }
-	}
+	int r = reader->read(reader->data, buf, n);
 	if (r > 0) reader->pos += r;
 	return r;
 }
 
+// Returns true if the reader hasn't been closed.
+// It does not guarantee that a read will return a byte.
 pub bool more(t *reader) {
-	switch (reader->type) {
-		case STR: { return st_more(reader->data); }
-		case STDIN: { return io_more(); }
-	}
-	panic("unknown type: %d", reader->type);
+	return reader->more(reader->data);
 }
 
-bool st_more(str_t *data) {
+// Frees the reader.
+pub void free(t *reader) {
+	if (reader->free) reader->free(reader->data);
+}
+
+bool st_more(void *ctx) {
+	str_t *data = ctx;
 	return data->pos < data->len;
 }
 
-int st_read(str_t *s, char *buf, size_t n) {
+int st_read(void *ctx, char *buf, size_t n) {
+	str_t *s = ctx;
 	if (s->pos >= s->len) return EOF;
 	int r = 0;
 	for (size_t i = 0; i < n; i++) {
@@ -80,11 +78,13 @@ int st_read(str_t *s, char *buf, size_t n) {
 	return r;
 }
 
-bool io_more() {
+bool io_more(void *ctx) {
+	(void) ctx;
 	return !feof(OS.stdin) && !ferror(OS.stdin);
 }
 
-int io_read(char *buf, size_t n) {
+int io_read(void *ctx, char *buf, size_t n) {
+	(void) ctx;
 	size_t r = fread(buf, 1, n, OS.stdin);
 	if (r == 0) {
 		if (feof(OS.stdin) || ferror(OS.stdin)) return EOF;
