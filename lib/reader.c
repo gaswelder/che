@@ -39,59 +39,34 @@ pub t *string(const char *s) {
 }
 
 pub void free(t *reader) {
-	if (reader->data) {
-		OS.free(reader->data);
+	switch (reader->type) {
+		case STR: { OS.free(reader->data); }
+		case STDIN: {}
+		default: { panic("unknown reader type: %d", reader->type); }
 	}
-	OS.free(reader);
 }
 
-pub int peek(t *reader) {
+pub int read(t *reader, char *buf, size_t n) {
+	int r;
 	switch (reader->type) {
-		case STR: {
-			str_t *data = reader->data;
-			if (data->pos >= data->len) return EOF;
-			return data->s[data->pos];
-		}
-		case STDIN: {
-			int c = fgetc(OS.stdin);
-			if (c == EOF) return c;
-			ungetc(c, OS.stdin);
-			return c;
-		}
+		case STR: { r = st_read(reader->data, buf, n); }
+		case STDIN: { r = io_read(buf, n); }
+		default: { panic("unknown reader type: %d", reader->type); }
 	}
-	panic("unknown type: %d", reader->type);
+	if (r > 0) reader->pos += r;
+	return r;
 }
 
 pub bool more(t *reader) {
 	switch (reader->type) {
-		case STR: {
-			str_t *data = reader->data;
-			return data->pos < data->len;
-		}
-		case STDIN: {
-			int c = fgetc(OS.stdin);
-			if (c == EOF) return false;
-			ungetc(c, OS.stdin);
-			return true;
-		}
+		case STR: { return st_more(reader->data); }
+		case STDIN: { return io_more(); }
 	}
 	panic("unknown type: %d", reader->type);
 }
 
-pub int get(t *reader) {
-	switch (reader->type) {
-		case STR: {
-			str_t *data = reader->data;
-			if (data->pos >= data->len) {
-				return EOF;
-			}
-			return data->s[data->pos++];
-		}
-		case STDIN: {
-			return fgetc(OS.stdin);
-		}
-	}
-	panic("unknown type: %d", reader->type);
+bool st_more(str_t *data) {
+	return data->pos < data->len;
 }
 
 int st_read(str_t *s, char *buf, size_t n) {
@@ -105,22 +80,14 @@ int st_read(str_t *s, char *buf, size_t n) {
 	return r;
 }
 
-pub int read(t *reader, char *buf, size_t n) {
-	if (reader->type == STR) {
-		int r = st_read(reader->data, buf, n);
-		if (r > 0) reader->pos += r;
-		return r;
+bool io_more() {
+	return !feof(OS.stdin) && !ferror(OS.stdin);
+}
+
+int io_read(char *buf, size_t n) {
+	size_t r = fread(buf, 1, n, OS.stdin);
+	if (r == 0) {
+		if (feof(OS.stdin) || ferror(OS.stdin)) return EOF;
 	}
-	int r = 0;
-	for (size_t i = 0; i < n; i++) {
-		int c = get(reader);
-		if (c == EOF && r == 0) {
-			return EOF;
-		}
-		printf("read %zu: got %d\n", i, c);
-		if (c < 0) break;
-		if (buf) buf[i] = c;
-		r++;
-	}
-	return r;
+	return (int) r;
 }

@@ -42,15 +42,12 @@ pub void buf_free(parsebuf_t *b) {
 	free(b);
 }
 
-/*
- * Returns the next character in the buffer.
- * Returns EOF if there is no next character.
- */
+// Returns the next character in the buffer.
+// Returns EOF if there is no next character.
 pub int buf_peek(parsebuf_t *b) {
-	if (b->cachesize > 0) {
-		return b->cache[0];
-	}
-	return reader.peek(b->reader);
+	_prefetch(b, 1);
+	if (b->cachesize == 0) return EOF;
+	return b->cache[0];
 }
 
 /*
@@ -88,7 +85,9 @@ pub int buf_get(parsebuf_t *b) {
 		return c;
 	}
 
-	int c = reader.get(b->reader);
+	char c;
+	int r = reader.read(b->reader, &c, 1);
+	if (r != 1) return EOF;
 	_track_pos(b, c);
 	return c;
 }
@@ -103,9 +102,10 @@ void _track_pos(parsebuf_t *b, int c) {
 }
 
 void _prefetch(parsebuf_t *b, size_t n) {
-	while (b->cachesize < n && reader.more(b->reader)) {
-		b->cache[b->cachesize++] = reader.get(b->reader);
-	}
+	if (b->cachesize >= n) return;
+	size_t len = n - b->cachesize;
+	int r = reader.read(b->reader, b->cache + b->cachesize, len);
+	if (r > 0) b->cachesize += r;
 }
 
 pub void buf_skip_set(parsebuf_t *b, const char *set) {
