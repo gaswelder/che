@@ -72,7 +72,8 @@ int st_read(void *ctx, char *buf, size_t n) {
 	int r = 0;
 	for (size_t i = 0; i < n; i++) {
 		if (s->pos == s->len) break;
-		if (buf) buf[i] = s->s[s->pos++];
+		if (buf) buf[i] = s->s[s->pos];
+		s->pos++;
 		r++;
 	}
 	return r;
