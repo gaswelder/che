@@ -64,3 +64,25 @@ void parse_env() {
 		p++;
 	}
 }
+
+// Debug utility to print bytes.
+pub void print_bytes(uint8_t *data, size_t n) {
+    printf("\t --------- %zu bytes ---------------------------\n", n);
+    int w = 0;
+	for (size_t i = 0; i < n; i++) {
+        if (w == 0) printf("\t ");
+        if (w >= 60) {
+            printf("\n\t ");
+            w = 0;
+        }
+		char c = data[i];
+		if (isprint(c)) {
+            w++;
+			printf("%c", c);
+		} else {
+            w += 2;
+			printf(" %x ", (uint8_t)(int)c);
+		}
+	}
+	printf("\n\t --------- end data ----------------------------\n");
+}
