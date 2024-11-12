@@ -106,7 +106,11 @@ client_t *addclient(net.net_t *conn, handler_t *h) {
             break;
         }
     }
-    dbg.m(DBG_TAG, "#%d: new client, %s", slot, conn->addrstr);
+	if (conn->is_listener) {
+		dbg.m(DBG_TAG, "#%d: new listener, %s", slot, conn->addrstr);
+	} else {
+		dbg.m(DBG_TAG, "#%d: new connection, %s", slot, conn->addrstr);
+	}
     if (slot == -1) return false;
 
     //

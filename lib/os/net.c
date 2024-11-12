@@ -26,6 +26,7 @@ pub typedef {
 	sockaddr_t ai_addr;
 	socklen_t addrlen;
 	char addrstr[300];
+	bool is_listener;
 } net_t;
 
 pub typedef {
@@ -148,9 +149,9 @@ pub net_t *connect_nonblock(const char *proto, *addr) {
 
 pub net_t *net_listen(const char *proto, const char *addr) {
 	net_t *c = newconn(proto, addr);
-	if(!c) {
-		return NULL;
-	}
+	if (!c) return NULL;
+	c->is_listener = true;
+
 	int yes = 1;
 	if (OS.setsockopt(c->fd, OS.SOL_SOCKET, OS.SO_REUSEADDR, &yes, sizeof(int)) != 0) {
 		error = "setsockopt failed";
