@@ -3,6 +3,7 @@
 #import formats/bencode
 #import formats/bencode_writer
 #import crypt/sha1
+#import fs
 
 pub typedef {
 	size_t length;
@@ -40,6 +41,15 @@ pub typedef {
 
 	bool private;
 } info_t;
+
+pub info_t *from_file(const char *path) {
+	size_t size = 0;
+	char *data = fs.readfile(path, &size);
+	if (!data) return NULL;
+	info_t *tf = parse(data, size);
+	OS.free(data);
+	return tf;
+}
 
 pub void piecehash(info_t *tf, size_t piece_index, uint8_t *buf) {
 	uint8_t *p = tf->pieces + piece_index * 20;
