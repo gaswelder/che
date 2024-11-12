@@ -37,6 +37,8 @@ pub typedef {
 
 	char infohash[41];
 	char infohash_bytes[20];
+
+	bool private;
 } info_t;
 
 pub void piecehash(info_t *tf, size_t piece_index, uint8_t *buf) {
@@ -154,6 +156,8 @@ void parse_info(bencode.reader_t *r, info_t *tf) {
 				parse_file(r, tf);
 			}
 			bencode.leave(r);
+		} else if (strcmp(k, "private") == 0) {
+			tf->private = bencode.readnum(r);
 		} else {
 			panic("UNKNOWN info[%s] = %c\n", k, bencode.type(r));
 		}
