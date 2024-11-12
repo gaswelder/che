@@ -187,6 +187,12 @@ pub bool write(void *ctx, char *data, size_t len) {
     return buffer.write(c->outgoing, data, len);
 }
 
+// Returns the free space size in the outbox in bytes.
+pub size_t write_space(void *ctx) {
+	client_t *c = ctx;
+	return MAX_OUT_SIZE - buffer.size(c->outgoing);
+}
+
 pub void close(void *ctx) {
     client_t *c = ctx;
     c->close = true;
