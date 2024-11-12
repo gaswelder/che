@@ -1,24 +1,33 @@
+#import clip/vec
+#import files.c
 #import formats/torrent
-#import fs
+#import opt
 #import strings
 #import time
 
-pub int cmd(int argc, char *argv[]) {
-	if (argc != 2) {
-		fprintf(stderr, "arguments: <torrentfile>\n");
+pub int run(int argc, char **argv) {
+	opt.nargs(1, "<torrent-file>");
+	char **args = opt.parse(argc, argv);
+
+    torrent.info_t *tf = torrent.from_file(args[0]);
+	if (!tf) {
+		fprintf(stderr, "failed to load torrent file: %s\n", strerror(errno));
 		return 1;
 	}
-	size_t size = 0;
-	char *data = fs.readfile(argv[1], &size);
-	if (!data) {
-		fprintf(stderr, "failed to read file: %s\n", strerror(errno));
-		return 1;
-	}
-	torrent.info_t *tf = torrent.parse(data, size);
+	printtorrent(tf);
 
-	char tmp[100] = {};
+    vec.t *l = files.get_file_list(tf);
+    for (size_t i = 0; i < l->len; i++) {
+        files.file_t *f = vec.index(l, i);
+        printf("%zu: %10zu .. %-10zu %s\n", i, f->beginpos, f->endpos, f->path);
+    }
+    return 0;
+}
 
-	printf("announce = %s\n", tf->announce);
+void printtorrent(torrent.info_t *tf) {
+    char tmp[100] = {};
+
+    printf("announce = %s\n", tf->announce);
 
 	time.t t = time.from_unix(tf->creation_date);
 	time.format(t, time.knownformat(time.FMT_FOO), tmp, 100);
@@ -41,18 +50,4 @@ pub int cmd(int argc, char *argv[]) {
 	}
 
 	printf("infohash = %s\n", tf->infohash);
-
-
-	// Prints piece hashes:
-	// uint8_t *p = tf->pieces;
-	// for (size_t n = 0; n < npieces; n++) {
-	//	 printf("piece %zu: ", n);
-	//	 for (int i = 0; i < 20; i++) {
-	//		 printf("%02x", *p++);
-	//	 }
-	//	 printf("\n");
-	// }
-
-	torrent.free(tf);
-	return 0;
 }
