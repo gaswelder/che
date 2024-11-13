@@ -182,6 +182,7 @@ fn prefix_statement(s: &mut Statement, prefix: &String, names: &Vec<String>) {
             None => {}
         },
         Statement::Switch {
+            is_str: _,
             value,
             cases,
             default_case: default,

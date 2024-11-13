@@ -38,13 +38,11 @@ void print_object(json.val_t *current_object) {
     if (level == NULL) {
         level = "none";
     }
-    if (strcmp(level, "error") == 0) {
-        tty.ttycolor(tty.RED);
-    } else if (strcmp(level, "info") == 0) {
-        tty.ttycolor(tty.BLUE);
-    } else {
-        tty.ttycolor(tty.YELLOW);
-    }
+	switch str (level) {
+		case "error": { tty.ttycolor(tty.RED); }
+		case "info": { tty.ttycolor(tty.BLUE); }
+		default: { tty.ttycolor(tty.YELLOW); }
+	}
     printf("%s", level);
     tty.ttycolor(tty.RESET_ALL);
 

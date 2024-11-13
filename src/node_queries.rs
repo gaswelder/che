@@ -29,6 +29,7 @@ pub fn body_returns(b: &Body) -> bool {
             else_body: _,
         } => body_returns(&body),
         Statement::Switch {
+            is_str: _,
             value: _,
             cases,
             default_case,

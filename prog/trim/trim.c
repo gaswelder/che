@@ -26,18 +26,14 @@ int main( int argc, char *argv[]) {
 	char **path = opt.parse( argc, argv );
 	if (!path) return opt.usage();
 
-	if( strcmp( line_format, "same" ) == 0 ) {
-		lf = L_SAME;
-	}
-	else if( strcmp( line_format, "unix" ) == 0 ) {
-		lf = L_UNIX;
-	}
-	else if( strcmp( line_format, "win" ) == 0 ) {
-		lf = L_WIN;
-	}
-	else {
-		fprintf( stderr, "Unknown line format: '%s'\n", line_format );
-		return 1;
+	switch str (line_format) {
+		case "same": { lf = L_SAME; }
+		case "unix": { lf = L_UNIX; }
+		case "win": { lf = L_WIN; }
+		default: {
+			fprintf(stderr, "Unknown line format: '%s'\n", line_format);
+			return 1;
+		}
 	}
 
 	while (*path) {

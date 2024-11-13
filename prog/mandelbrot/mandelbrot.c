@@ -154,51 +154,33 @@ int workerfunc(void *arg) {
 }
 
 int setvar(char *base, *val) {
-	if (strcmp (base, "xmin") == 0)
-		xmin = strtod (val, NULL);
-	else if (strcmp (base, "xmax") == 0)
-		xmax = strtod (val, NULL);
-	else if (strcmp (base, "ymin") == 0)
-		ymin = strtod (val, NULL);
-	else if (strcmp (base, "ymax") == 0)
-		ymax = strtod (val, NULL);
-	else if (strcmp (base, "zoomx") == 0)
-		zoomx = strtod (val, NULL);
-	else if (strcmp (base, "zoomy") == 0)
-		zoomy = strtod (val, NULL);
-	else if (strcmp (base, "iterations") == 0)
-		iterations = atoi (val);
-	else if (strcmp (base, "image_width") == 0)
-		image_size.w = atoi (val);
-	else if (strcmp (base, "image_height") == 0)
-		image_size.h = atoi (val);
-	else if (strcmp (base, "zoom_frames") == 0)
-		zoom_frames = atoi (val);
-	else if (strcmp (base, "zoom_rate") == 0)
-		zoom_rate = strtod (val, NULL);
-	else if (strcmp (base, "color_width") == 0)
-		color_width = atoi (val);
-	else if (strcmp (base, "red") == 0)
-		{
+	switch str (base) {
+		case "xmin": { xmin = strtod(val, NULL); }
+		case "xmax": { xmax = strtod(val, NULL); }
+		case "ymin": { ymin = strtod(val, NULL); }
+		case "ymax": { ymax = strtod(val, NULL); }
+		case "zoomx": { zoomx = strtod(val, NULL); }
+		case "zoomy": { zoomy = strtod(val, NULL); }
+		case "iterations": { iterations = atoi(val); }
+		case "image_width": { image_size.w = atoi(val); }
+		case "image_height": { image_size.h = atoi(val); }
+		case "zoom_frames": { zoom_frames = atoi(val); }
+		case "zoom_rate": { zoom_rate = strtod(val, NULL); }
+		case "color_width": { color_width = atoi(val); }
+		case "red": {
 			red = load_array (val);
-			if (red == NULL)
-	return 1;
+			if (red == NULL) return 1;
 		}
-	else if (strcmp (base, "green") == 0)
-		{
+		case "green": {
 			green = load_array (val);
-			if (green == NULL)
-	return 1;
+			if (green == NULL) return 1;
 		}
-	else if (strcmp (base, "blue") == 0)
-		{
+		case "blue": {
 			blue = load_array (val);
-			if (blue == NULL)
-	return 1;
+			if (blue == NULL) return 1;
 		}
-	else
-		return 1;
-
+		default: { return 1; }
+	}
 	return 0;
 }
 

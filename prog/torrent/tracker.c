@@ -108,22 +108,21 @@ void read_tracker_response(char *body, tracker_response_t *resp) {
 	bencode.enter(ber);
 	while (bencode.more(ber)) {
 		bencode.key(ber, (uint8_t *)key, 1000);
-		if (!strcmp(key, "complete")) {
-			resp->complete = bencode.readnum(ber);
-		} else if (!strcmp(key, "incomplete")) {
-			resp->incomplete = bencode.readnum(ber);
-		} else if (!strcmp(key, "interval")) {
-			resp->interval = bencode.readnum(ber);
-		} else if (!strcmp(key, "peers")) {
-			bencode.enter(ber);
-			while (bencode.more(ber)) {
-				peer_entry_t *peer = &resp->peers[resp->peers_number++];
-				read_peer(ber, peer);
+		switch str (key) {
+			case "complete": { resp->complete = bencode.readnum(ber); }
+			case "incomplete": { resp->incomplete = bencode.readnum(ber); }
+			case "interval": { resp->interval = bencode.readnum(ber); }
+			case "peers": {
+				bencode.enter(ber);
+				while (bencode.more(ber)) {
+					peer_entry_t *peer = &resp->peers[resp->peers_number++];
+					read_peer(ber, peer);
+				}
+				bencode.leave(ber);
 			}
-			bencode.leave(ber);
-		}
-		else {
-			panic("unknown key: %s", key);
+			default: {
+				panic("unknown key: %s", key);
+			}
 		}
 	}
 	bencode.leave(ber);
@@ -136,14 +135,11 @@ void read_peer(bencode.reader_t *ber, peer_entry_t *p) {
 	bencode.enter(ber);
 	while (bencode.more(ber)) {
 		bencode.key(ber, (uint8_t *)key, 1000);
-		if (!strcmp(key, "ip")) {
-			bencode.readbuf(ber, (uint8_t*)&p->ip, sizeof(p->ip));
-		} else if (!strcmp(key, "peer id")) {
-			bencode.readbuf(ber, (uint8_t*)&p->id, sizeof(p->id));
-		} else if (!strcmp(key, "port")) {
-			p->port = bencode.readnum(ber);
-		} else {
-			panic("unknown peer dict key: %s", key);
+		switch str (key) {
+			case "ip": { bencode.readbuf(ber, (uint8_t*)&p->ip, sizeof(p->ip)); }
+			case "peer id": { bencode.readbuf(ber, (uint8_t*)&p->id, sizeof(p->id)); }
+			case "port": { p->port = bencode.readnum(ber); }
+			default: { panic("unknown peer dict key: %s", key); }
 		}
 	}
 	bencode.leave(ber);

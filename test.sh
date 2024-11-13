@@ -17,9 +17,20 @@ che=$CHELANG_HOME/target/debug/che
 #
 sampletest () {
 	name=$1
-	che build samples/$name/main.c || return 1
-	./main > tmp/output || return 1
-	diff tmp/output samples/$name/out.snapshot || return 1
+	cd samples/$name
+		che build main.c || return 1
+		if [ -f 1.test ]; then
+			sh 1.test > 1.output || exit 1
+			diff 1.output 1.snapshot || exit 1
+			echo OK sample "$1/1.test"
+			rm 1.output
+		else
+			./main > output || return 1
+			diff output out.snapshot || return 1
+			rm output
+		fi
+		rm main
+	cd ../../
 }
 for n in `ls samples`; do
 	sampletest $n

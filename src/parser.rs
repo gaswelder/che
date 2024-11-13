@@ -677,7 +677,7 @@ fn parse_statement(l: &mut Lexer, ctx: &Ctx) -> Result<TWithErrors<Statement>, E
             obj: parse_return(l, ctx)?,
             errors: Vec::new(),
         }),
-        "switch" => parse_switch(l, ctx),
+        "switch" => read_switch(l, ctx),
         "while" => parse_while(l, ctx),
         _ => {
             let expr = parse_expr(l, 0, ctx)?;
@@ -862,8 +862,18 @@ fn parse_for(l: &mut Lexer, ctx: &Ctx) -> Result<TWithErrors<Statement>, Error> 
     });
 }
 
-fn parse_switch(l: &mut Lexer, ctx: &Ctx) -> Result<TWithErrors<Statement>, Error> {
+fn read_switch(l: &mut Lexer, ctx: &Ctx) -> Result<TWithErrors<Statement>, Error> {
     expect(l, "switch", None)?;
+    let mut is_str = false;
+    match l.peek() {
+        Some(t) => {
+            if t.kind == "word" && t.content == "str" {
+                is_str = true;
+                l.get();
+            }
+        }
+        None => {}
+    };
     expect(l, "(", None)?;
     let value = parse_expr(l, 0, ctx)?;
     let mut cases: Vec<SwitchCase> = vec![];
@@ -890,6 +900,7 @@ fn parse_switch(l: &mut Lexer, ctx: &Ctx) -> Result<TWithErrors<Statement>, Erro
     expect(l, "}", None)?;
     return Ok(TWithErrors {
         obj: Statement::Switch {
+            is_str,
             value,
             cases,
             default_case: default,

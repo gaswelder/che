@@ -143,17 +143,11 @@ void readkw(json_tokenizer_t *l)
 	}
 	kw[i] = '\0';
 
-	if (strcmp(kw, "true") == 0) {
-		t->type = T_TRUE;
-	}
-	else if (strcmp(kw, "false") == 0) {
-		t->type = T_FALSE;
-	}
-	else if (strcmp(kw, "null") == 0) {
-		t->type = T_NULL;
-	}
-	else {
-		seterror(l, "Unknown keyword");
+	switch str (kw) {
+		case "true": { t->type = T_TRUE; }
+		case "false": { t->type = T_FALSE; }
+		case "null": { t->type = T_NULL; }
+		default: { seterror(l, "Unknown keyword"); }
 	}
 }
 

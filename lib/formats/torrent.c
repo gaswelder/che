@@ -106,26 +106,22 @@ pub info_t *parse(const char *data, size_t size) {
 	while (bencode.more(r)) {
 		bencode.key(r, buf, sizeof(buf));
 		char *k = (char *)buf;
-		if (strcmp(k, "announce") == 0) {
-			bencode.readbuf(r, (uint8_t *) tf->announce, sizeof(tf->announce));
-		} else if (strcmp(k, "creation date") == 0) {
-			tf->creation_date = bencode.readnum(r);
-		} else if (strcmp(k, "created by") == 0) {
-			bencode.readbuf(r, (uint8_t *) tf->created_by, sizeof(tf->created_by));
-		} else if (strcmp(k, "comment") == 0) {
-			bencode.readbuf(r, (uint8_t *) tf->comment, sizeof(tf->comment));
-		} else if (strcmp(k, "announce-list") == 0) {
-			bencode.skip(r);
-		} else if (strcmp(k, "info") == 0) {
-			info_begin = bencode.pos(r);
-			parse_info(r, tf);
-			info_end = bencode.pos(r);
-		} else if (strcmp(k, "encoding") == 0) {
-			// uTorrent puts "UTF-8" there.
-			bencode.skip(r);
-		} else {
-			fprintf(stderr, "unknown meta key: %s (%c)\n", k, bencode.type(r));
-			bencode.skip(r);
+		switch str (k) {
+			case "announce": { bencode.readbuf(r, (uint8_t *) tf->announce, sizeof(tf->announce)); }
+			case "creation date": { tf->creation_date = bencode.readnum(r); }
+			case "created by": { bencode.readbuf(r, (uint8_t *) tf->created_by, sizeof(tf->created_by)); }
+			case "comment": { bencode.readbuf(r, (uint8_t *) tf->comment, sizeof(tf->comment)); }
+			case "announce-list": { bencode.skip(r); }
+			case "info": {
+				info_begin = bencode.pos(r);
+				parse_info(r, tf);
+				info_end = bencode.pos(r);
+			}
+			case "encoding": { bencode.skip(r); } // uTorrent puts "UTF-8" there.
+			default: {
+				fprintf(stderr, "unknown meta key: %s (%c)\n", k, bencode.type(r));
+				bencode.skip(r);
+			}
 		}
 	}
 	bencode.leave(r);

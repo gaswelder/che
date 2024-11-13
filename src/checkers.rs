@@ -350,6 +350,7 @@ fn check_body(
                 None => {}
             },
             Statement::Switch {
+                is_str: _,
                 value,
                 cases,
                 default_case: default,

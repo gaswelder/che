@@ -356,6 +356,17 @@ fn translate_function_call(
     }
 }
 
+fn gencall0(func: &str, args: Vec<CExpression>) -> CExpression {
+    CExpression::FunctionCall {
+        function: Box::new(CExpression::Identifier(String::from(func))),
+        arguments: args,
+    }
+}
+
+fn gencall(func: &str, args: Vec<CExpression>) -> CStatement {
+    CStatement::Expression(gencall0(func, args))
+}
+
 fn generate_panic(ctx: &Ctx, pos: &String, arguments: &Vec<Expression>) -> CStatement {
     let mut args = vec![CExpression::Identifier(String::from("stderr"))];
     for arg in arguments {
@@ -363,29 +374,26 @@ fn generate_panic(ctx: &Ctx, pos: &String, arguments: &Vec<Expression>) -> CStat
     }
     CStatement::Block {
         statements: vec![
-            CStatement::Expression(CExpression::FunctionCall {
-                function: Box::new(CExpression::Identifier(String::from("fprintf"))),
-                arguments: vec![
+            gencall(
+                "fprintf",
+                vec![
                     CExpression::Identifier(String::from("stderr")),
                     CExpression::Literal(CLiteral::String(String::from("*** panic at %s ***\\n"))),
                     CExpression::Literal(CLiteral::String(pos.clone())),
                 ],
-            }),
-            CStatement::Expression(CExpression::FunctionCall {
-                function: Box::new(CExpression::Identifier(String::from("fprintf"))),
-                arguments: args,
-            }),
-            CStatement::Expression(CExpression::FunctionCall {
-                function: Box::new(CExpression::Identifier(String::from("fprintf"))),
-                arguments: vec![
+            ),
+            gencall("fprintf", args),
+            gencall(
+                "fprintf",
+                vec![
                     CExpression::Identifier(String::from("stderr")),
                     CExpression::Literal(CLiteral::String(String::from("\\n"))),
                 ],
-            }),
-            CStatement::Expression(CExpression::FunctionCall {
-                function: Box::new(CExpression::Identifier(String::from("exit"))),
-                arguments: vec![CExpression::Literal(CLiteral::Number(String::from("1")))],
-            }),
+            ),
+            gencall(
+                "exit",
+                vec![CExpression::Literal(CLiteral::Number(String::from("1")))],
+            ),
         ],
     }
 }
@@ -609,33 +617,44 @@ fn translate_body(b: &Body, ctx: &Ctx) -> CBody {
             },
             Statement::Panic { arguments, pos } => generate_panic(ctx, pos, arguments),
             Statement::Switch {
+                is_str,
                 value,
                 cases,
                 default_case: default,
             } => {
-                let mut tcases: Vec<CSwitchCase> = Vec::new();
-                for c in cases {
-                    let mut values = Vec::new();
-                    for v in &c.values {
-                        let tv = match v {
-                            SwitchCaseValue::Identifier(x) => {
-                                CSwitchCaseValue::Identifier(translate_ns_name(x, ctx))
-                            }
-                            SwitchCaseValue::Literal(x) => {
-                                CSwitchCaseValue::Literal(translate_literal(x))
-                            }
-                        };
-                        values.push(tv)
+                let switchval = translate_expression(value, ctx);
+                if *is_str {
+                    let c0 = &cases[0];
+                    CStatement::If {
+                        condition: translate_switch_str_cond(ctx, c0, &switchval),
+                        body: translate_body(&c0.body, ctx),
+                        else_body: tr_switchstr_else(cases, 1, default, ctx, &switchval),
                     }
-                    tcases.push(CSwitchCase {
-                        values,
-                        body: translate_body(&c.body, ctx),
-                    })
-                }
-                CStatement::Switch {
-                    value: translate_expression(value, ctx),
-                    cases: tcases,
-                    default: default.as_ref().map(|x| translate_body(&x, ctx)),
+                } else {
+                    let mut tcases: Vec<CSwitchCase> = Vec::new();
+                    for c in cases {
+                        let mut values = Vec::new();
+                        for v in &c.values {
+                            let tv = match v {
+                                SwitchCaseValue::Identifier(x) => {
+                                    CSwitchCaseValue::Identifier(translate_ns_name(x, ctx))
+                                }
+                                SwitchCaseValue::Literal(x) => {
+                                    CSwitchCaseValue::Literal(translate_literal(x))
+                                }
+                            };
+                            values.push(tv)
+                        }
+                        tcases.push(CSwitchCase {
+                            values,
+                            body: translate_body(&c.body, ctx),
+                        })
+                    }
+                    CStatement::Switch {
+                        value: switchval,
+                        cases: tcases,
+                        default: default.as_ref().map(|x| translate_body(&x, ctx)),
+                    }
                 }
             }
             Statement::VariableDeclaration(x) => {
@@ -656,6 +675,67 @@ fn translate_body(b: &Body, ctx: &Ctx) -> CBody {
         });
     }
     return CBody { statements };
+}
+
+fn tr_switchstr_else(
+    cases: &Vec<SwitchCase>,
+    i: usize,
+    default: &Option<Body>,
+    ctx: &Ctx,
+    switchval: &CExpression,
+) -> Option<CBody> {
+    if i == cases.len() {
+        return default.as_ref().map(|x| translate_body(x, ctx));
+    }
+    let c = &cases[i];
+    let e = CStatement::If {
+        condition: translate_switch_str_cond(ctx, c, &switchval),
+        body: translate_body(&c.body, ctx),
+        else_body: tr_switchstr_else(cases, i + 1, default, ctx, switchval),
+    };
+    return Some(CBody {
+        statements: vec![e],
+    });
+}
+
+fn genneg(operand: CExpression) -> CExpression {
+    CExpression::PrefixOperator {
+        operator: String::from("!"),
+        operand: Box::new(operand),
+    }
+}
+
+fn genor(a: CExpression, b: CExpression) -> CExpression {
+    CExpression::BinaryOp {
+        op: String::from("||"),
+        a: Box::new(a),
+        b: Box::new(b),
+    }
+}
+
+fn translate_switch_str_cond(ctx: &Ctx, sw: &SwitchCase, switchval: &CExpression) -> CExpression {
+    let mut args: Vec<CExpression> = Vec::new();
+    args.push(match &sw.values[0] {
+        SwitchCaseValue::Identifier(ns_name) => {
+            CExpression::Identifier(translate_ns_name(&ns_name, ctx))
+        }
+        SwitchCaseValue::Literal(literal) => CExpression::Literal(translate_literal(&literal)),
+    });
+    args.push(switchval.clone());
+    let mut root = genneg(gencall0("strcmp", args));
+    let n = sw.values.len();
+    for i in 1..n {
+        let mut args: Vec<CExpression> = Vec::new();
+        args.push(match &sw.values[i] {
+            SwitchCaseValue::Identifier(ns_name) => {
+                CExpression::Identifier(translate_ns_name(&ns_name, ctx))
+            }
+            SwitchCaseValue::Literal(literal) => CExpression::Literal(translate_literal(&literal)),
+        });
+        args.push(switchval.clone());
+        root = genor(root, genneg(gencall0("strcmp", args)));
+    }
+    return root;
 }
 
 fn translate_literal(x: &Literal) -> CLiteral {

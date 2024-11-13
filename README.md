@@ -78,25 +78,9 @@ int sum(int a, b, c) {
 ```
 
 _Switch syntax_.
-Switch cases don't need the break keyword and require brackes instead.
-It's also possible to enumerate switch cases using comma.
-So the following:
-
-```c
-switch (val) {
-	case OPT_INT, OPT_UINT, OPT_SIZE: {
-		handle_int();
-	}
-	case OPT_STR: {
-		handle_str();
-	}
-	default: {
-		handle_unknown();
-	}
-}
-```
-
-which is equivalent to c:
+Switch cases don't need the break keyword and require brackets instead.
+It's also possible to enumerate switch cases using a comma.
+So the following C code:
 
 ```c
 switch (val) {
@@ -105,6 +89,40 @@ switch (val) {
 	case OPT_SIZE: { handle_int(); break; }
 	case OPT_STR: { handle_str(); break; }
 	default: { handle_unknown(); }
+}
+```
+
+can be written as:
+
+```c
+switch (val) {
+	case OPT_INT, OPT_UINT, OPT_SIZE: { handle_int(); }
+	case OPT_STR: { handle_str(); }
+	default: { handle_unknown(); }
+}
+```
+
+_The switch extension for strings_.
+`switch str` behaves like a switch but the comparisons are done using the `strcmp` function.
+So instead of this:
+
+```c
+if (!strcmp(s, "foo")) {
+	...
+} else if (!strcmp(s, "bar")) {
+	...
+} else {
+	...
+}
+```
+
+we could write:
+
+```c
+switch str (s) {
+	case "foo": { ... }
+	case "bar": { ... }
+	default: { ... }
 }
 ```
 

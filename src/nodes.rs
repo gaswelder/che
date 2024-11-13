@@ -212,6 +212,7 @@ pub enum Statement {
         expression: Option<Expression>,
     },
     Switch {
+        is_str: bool,
         value: Expression,
         cases: Vec<SwitchCase>,
         default_case: Option<Body>,
