@@ -16,9 +16,7 @@ typedef { int w, h; } dim_t;
 typedef { double xmin, xmax, ymin, ymax; } area_t;
 typedef { area_t area; int frame; } job_t;
 
-char *version = "0.1-alpha";
-
-bool verbose = true;
+bool verbose = false;
 
 // -----------------
 // config parameters
@@ -58,28 +56,16 @@ void verbprint(const char *format, ...) {
 
 int main (int argc, char **argv) {
 	bool flag_colormap = false;
-	bool flag_quiet = false;
-	bool flag_v = false;
 	char *confpath = "example.conf";
 
 	opt.str("c", "config file", &confpath);
 	opt.flag("m", "create a colormap image", &flag_colormap);
-	opt.flag("q", "quiet mode", &flag_quiet);
-	opt.flag("v", "version", &flag_v);
+	opt.flag("v", "verbose mode", &verbose);
 	char **args = opt.parse(argc, argv);
 	if (*args) {
 		fprintf(stderr, "this program only has options, got %s\n", *args);
 		return 1;
 	}
-	if (flag_v) {
-		verbprint("mandelgen, version %s.\n", version);
-		verbprint("Copyright (C) 2007 Chris Wellons\n");
-		verbprint("This is free software; see the source code ");
-		verbprint("for copying conditions.\n");
-		verbprint("There is ABSOLUTELY NO WARRANTY; not even for ");
-		verbprint("MERCHANTIBILITY or\nFITNESS FOR A PARTICULAR PURPOSE.\n\n");
-	}
-	if (flag_quiet) verbose = false;
 	if (flag_colormap) {
 		verbprint("written colormap to cmap.bmp\n");
 		write_colormap("cmap.bmp");
