@@ -1,16 +1,12 @@
 // The original is at https://github.com/skeeto/mandelbrot
 
 #import formats/bmp
-#import formats/conf
 #import mandel.c
 #import opt
 #import os/proc
+#import mconfig.c
 
-typedef {
-	int red;
-	int green;
-	int blue;
-} Rgb;
+typedef { int red, green, blue; } Rgb;
 
 typedef { int w, h; } dim_t;
 typedef { double xmin, xmax, ymin, ymax; } area_t;
@@ -18,33 +14,19 @@ typedef { area_t area; int frame; } job_t;
 
 bool verbose = false;
 
-// -----------------
-// config parameters
-// -----------------
-dim_t image_size = { 800, 600 };
-double xmin = -2.5;
-double xmax = 1.5;
-double ymin = -1.5;
-double ymax = 1.5;
-int iterations = 256;
-int zoom_frames = 1;
-double zoom_rate = 0.1;
-double zoomx = -1.268794803623;
-double zoomy = 0.353676833206;
-int prered[]	 = { 0, 0,	 0,	 0,	 128, 255, 255, 255 };
-int pregreen[] = { 0, 0,	 128, 255, 128, 128, 255, 255 };
-int preblue[]	= { 0, 255, 255, 128, 0,	 0,	 128, 255 };
-// -------------
+mconfig.config_t config = {};
+int _prered[] = { 0, 0,	 0,	 0,	 128, 255, 255, 255 };
+int _pregreen[] = { 0, 0,	 128, 255, 128, 128, 255, 255 };
+int _preblue[] = { 0, 255, 255, 128, 0,	 0,	 128, 255 };
 
 int write_text = 0;
-int cmap_len = 8;
-int cmap_edit = 0;
-int color_width = 50;
+int CMAP_LEN = 8;
+
 
 /* The colormap */
-int *red = prered;
-int *green = pregreen;
-int *blue = preblue;
+int *red = _prered;
+int *green = _pregreen;
+int *blue = _preblue;
 
 void verbprint(const char *format, ...) {
 	if (!verbose) return;
@@ -57,13 +39,14 @@ void verbprint(const char *format, ...) {
 int main (int argc, char **argv) {
 	bool flag_colormap = false;
 	char *confpath = "example.conf";
-
+	opt.nargs(0, "");
 	opt.str("c", "config file", &confpath);
 	opt.flag("m", "create a colormap image", &flag_colormap);
 	opt.flag("v", "verbose mode", &verbose);
-	char **args = opt.parse(argc, argv);
-	if (*args) {
-		fprintf(stderr, "this program only has options, got %s\n", *args);
+	opt.parse(argc, argv);
+
+	if (!mconfig.load(&config, confpath)) {
+		fprintf(stderr, "failed to load config from %s: %s\n", confpath, strerror(errno));
 		return 1;
 	}
 	if (flag_colormap) {
@@ -72,43 +55,28 @@ int main (int argc, char **argv) {
 		return 0;
 	}
 
-	FILE *infile = fopen (confpath, "r");
-	if (!infile) {
-		fprintf(stderr, "failed to open %s: %s\n", confpath, strerror(errno));
-		return 1;
-	}
-	conf.reader_t *p = conf.new(infile);
-	while (conf.next(p)) {
-		if (setvar(p->key, p->val)) {
-			fprintf (stderr, "invalid key-value (%s=%s)\n", p->key, p->val);
-			exit (1);
-		}
-	}
-	conf.free(p);
-	fclose(infile);
-
 	//
 	// Create the jobs table.
 	//
-	double hw = (xmax - xmin) / 2;
-	double hh = (ymax - ymin) / 2;
-	job_t *jobs = calloc(zoom_frames, sizeof(job_t));
+	double hw = (config.xmax - config.xmin) / 2;
+	double hh = (config.ymax - config.ymin) / 2;
+	job_t *jobs = calloc(config.zoom_frames, sizeof(job_t));
 	if (!jobs) panic("calloc failed");
-	for (int frame = 0; frame < zoom_frames; frame++) {
+	for (int frame = 0; frame < config.zoom_frames; frame++) {
 		// The first frame spans [center-hwidth, center+hwidth]
 		// The next frame space [center-hwidth/(1+zoom_rate), center+hwidth/(1+zoom_rate)]
 		jobs[frame].frame = frame;
-		jobs[frame].area.xmin = zoomx - hw;
-		jobs[frame].area.xmax = zoomx + hw;
-		jobs[frame].area.ymin = zoomy - hh;
-		jobs[frame].area.ymax = zoomy + hh;
-		hw /= (1 + zoom_rate);
-		hh /= (1 + zoom_rate);
+		jobs[frame].area.xmin = config.zoomx - hw;
+		jobs[frame].area.xmax = config.zoomx + hw;
+		jobs[frame].area.ymin = config.zoomy - hh;
+		jobs[frame].area.ymax = config.zoomy + hh;
+		hw /= (1 + config.zoom_rate);
+		hh /= (1 + config.zoom_rate);
 		// iterations *= (1 + zoom_rate * 0.25 * frame);
 	}
 
-	void **clip = calloc(zoom_frames + 1, sizeof(&jobs[0]));
-	for (int i = 0; i < zoom_frames; i++) {
+	void **clip = calloc(config.zoom_frames + 1, sizeof(&jobs[0]));
+	for (int i = 0; i < config.zoom_frames; i++) {
 		clip[i] = &jobs[i];
 	}
 	proc.parallel(&workerfunc, clip);
@@ -119,12 +87,14 @@ int main (int argc, char **argv) {
 int workerfunc(void *arg) {
 	job_t *job = arg;
 	area_t a = job->area;
-	verbprint("frame %d/%d, ", job->frame, zoom_frames);
+	verbprint("frame %d/%d, ", job->frame, config.zoom_frames);
 	verbprint("x[%f, %f], y[%f, %f]\n", a.xmin, a.xmax, a.ymin, a.ymax);
 
-	double *data = mandel.gen(image_size.w, image_size.h, a.xmin, a.xmax, a.ymin, a.ymax, iterations);
+	double *data = mandel.gen(config.image_width, config.image_height, a.xmin, a.xmax, a.ymin, a.ymax, config.iterations);
 	char basename[20];
 	snprintf (basename, 20, "out-%010d", job->frame);
+
+	dim_t image_size = { config.image_width, config.image_height };
 
 	if (write_text) {
 		save_values(basename, data, image_size);
@@ -132,89 +102,18 @@ int workerfunc(void *arg) {
 	
 	char filename[100] = {};
 	snprintf(filename, sizeof(filename), "dump/%s.bmp", basename);
-	save_image(filename, data, iterations, image_size);
+	save_image(filename, data, config.iterations, image_size);
 	fprintf(stderr, "written %s\n", filename);
 
 	free (data);
 	return 0;
 }
 
-int setvar(char *base, *val) {
-	switch str (base) {
-		case "xmin": { xmin = strtod(val, NULL); }
-		case "xmax": { xmax = strtod(val, NULL); }
-		case "ymin": { ymin = strtod(val, NULL); }
-		case "ymax": { ymax = strtod(val, NULL); }
-		case "zoomx": { zoomx = strtod(val, NULL); }
-		case "zoomy": { zoomy = strtod(val, NULL); }
-		case "iterations": { iterations = atoi(val); }
-		case "image_width": { image_size.w = atoi(val); }
-		case "image_height": { image_size.h = atoi(val); }
-		case "zoom_frames": { zoom_frames = atoi(val); }
-		case "zoom_rate": { zoom_rate = strtod(val, NULL); }
-		case "color_width": { color_width = atoi(val); }
-		case "red": {
-			red = load_array (val);
-			if (red == NULL) return 1;
-		}
-		case "green": {
-			green = load_array (val);
-			if (green == NULL) return 1;
-		}
-		case "blue": {
-			blue = load_array (val);
-			if (blue == NULL) return 1;
-		}
-		default: { return 1; }
-	}
-	return 0;
-}
-
-/* Load an array for a colormap */
-int *load_array (char *list)
-{
-	int *c = calloc (cmap_len, sizeof (int));
-	int ci = 0;
-
-	char *ptr = list;
-	while (*ptr != '{' && *ptr != 0) ptr++;
-	if (*ptr == 0) return NULL;
-
-	ptr++;
-	while (*ptr != 0) {
-		if (*ptr == '}') break;
-
-		c[ci] = atoi (ptr);
-		ci++;
-		if (ci > cmap_len) {
-			/* Badly formed colormap */
-			if (cmap_edit) return NULL;
-
-			cmap_len *= 2;
-			c = realloc (c, cmap_len);
-			if (c == NULL) {
-				fprintf (stderr, "cmap realloc failed - %s\n", strerror (errno));
-				exit (1);
-			}
-		}
-
-		while (*ptr != ',' && *ptr != 0) ptr++;
-		ptr++;
-	}
-
-	/* Make sure we read in enough values. */
-	if (cmap_edit && cmap_len != ci) return NULL;
-
-	cmap_len = ci;
-	cmap_edit = 1;
-	return c;
-}
-
 Rgb colormap (double val, int iterations) {
 	Rgb color;
 
 	/* Colormap size */
-	int map_len = cmap_len;
+	int map_len = CMAP_LEN;
 
 // #if FLAT_CMAP
 //	 map_len--;
@@ -242,16 +141,16 @@ Rgb colormap (double val, int iterations) {
 //		 * (blue[base + 1] - blue[base]);
 // #else
 	(void) iterations;
-	if (val < color_width) {
-		color.red = red[1] - (red[1] - red[0]) * (color_width - val) / color_width;
-		color.green = green[1] - (green[1] - green[0]) * (color_width - val) / color_width;
-		color.blue = blue[1] - (blue[1] - blue[0]) * (color_width - val) / color_width;
+	if (val < config.color_width) {
+		color.red = red[1] - (red[1] - red[0]) * (config.color_width - val) / config.color_width;
+		color.green = green[1] - (green[1] - green[0]) * (config.color_width - val) / config.color_width;
+		color.blue = blue[1] - (blue[1] - blue[0]) * (config.color_width - val) / config.color_width;
 		return color;
 	}
 
-	val -= color_width;
-	int base = ((int) val / color_width % (map_len - 1)) + 1;
-	double perc = (val - (color_width * (int) (val / color_width))) / color_width;
+	val -= config.color_width;
+	int base = ((int) val / config.color_width % (map_len - 1)) + 1;
+	double perc = (val - (config.color_width * (int) (val / config.color_width))) / config.color_width;
 	int top = base + 1;
 	if (top >= map_len) {
 		top = 1;
@@ -265,7 +164,7 @@ Rgb colormap (double val, int iterations) {
 }
 
 void write_colormap (char *filename) {
-	int w = color_width * cmap_len * 1.5;
+	int w = config.color_width * CMAP_LEN * 1.5;
 	int h = 20;
 	bmp.t *cmap = bmp.new(w, h);
 	for (int x = 0; x < w; x++) {
