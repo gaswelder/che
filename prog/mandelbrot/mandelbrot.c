@@ -1,14 +1,12 @@
 // The original is at https://github.com/skeeto/mandelbrot
 
 #import formats/bmp
+#import image
 #import mandel.c
+#import mconfig.c
 #import opt
 #import os/proc
-#import mconfig.c
 
-typedef { int red, green, blue; } Rgb;
-
-typedef { int w, h; } dim_t;
 typedef { double xmin, xmax, ymin, ymax; } area_t;
 typedef { area_t area; int frame; } job_t;
 
@@ -94,7 +92,7 @@ int workerfunc(void *arg) {
 	char basename[20];
 	snprintf (basename, 20, "out-%010d", job->frame);
 
-	dim_t image_size = { config.image_width, config.image_height };
+	image.dim_t image_size = { config.image_width, config.image_height };
 
 	if (write_text) {
 		save_values(basename, data, image_size);
@@ -109,8 +107,8 @@ int workerfunc(void *arg) {
 	return 0;
 }
 
-Rgb colormap (double val, int iterations) {
-	Rgb color;
+image.rgb_t colormap (double val, int iterations) {
+	image.rgb_t color;
 
 	/* Colormap size */
 	int map_len = CMAP_LEN;
@@ -163,21 +161,19 @@ Rgb colormap (double val, int iterations) {
 	return color;
 }
 
-void write_colormap (char *filename) {
-	int w = config.color_width * CMAP_LEN * 1.5;
-	int h = 20;
-	bmp.t *cmap = bmp.new(w, h);
-	for (int x = 0; x < w; x++) {
-		Rgb rgb = colormap(x, w);
-		for (int y = 0; y < h; y++) {
-			bmp.set(cmap, x, y, rgb.red, rgb.green, rgb.blue);
+void write_colormap(const char *filename) {
+	image.image_t *img = image.new(config.color_width * CMAP_LEN * 1.5, 20);
+	for (int x = 0; x < img->width; x++) {
+		image.rgb_t c = colormap(x, img->width);
+		for (int y = 0; y < img->height; y++) {
+			*image.getpixel(img, x, y) = c;
 		}
 	}
-	bmp.write(cmap, filename);
-	bmp.free(cmap);
+	bmp.writeimg(img, filename);
+	image.free(img);
 }
 
-void save_values(char *basename, double *data, dim_t size) {
+void save_values(char *basename, double *data, image.dim_t size) {
 	char filename[100] = {};
 	snprintf (filename, sizeof(filename), "%s.txt", basename);
 	FILE *fout = fopen (filename, "w");
@@ -189,14 +185,14 @@ void save_values(char *basename, double *data, dim_t size) {
 	fclose (fout);
 }
 
-void save_image(char *filename, double *data, int iterations, dim_t size) {
-	bmp.t *img = bmp.new(size.w, size.h);
+void save_image(const char *filename, double *data, int iterations, image.dim_t size) {
+	image.image_t *img = image.new(size.w, size.h);
 	for (int j = 0; j < size.h; j++) {
 		for (int i = 0; i < size.w; i++) {
-			Rgb rgb = colormap(data[i + j * size.w], iterations);
-			bmp.set(img, i, j, rgb.red, rgb.green, rgb.blue);
+			image.rgb_t c = colormap(data[i + j * size.w], iterations);
+			*image.getpixel(img, i, j) = c;
 		}
 	}
-	bmp.write(img, filename);
-	bmp.free(img);
+	bmp.writeimg(img, filename);
+	image.free(img);
 }

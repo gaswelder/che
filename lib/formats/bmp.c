@@ -1,4 +1,5 @@
 #import bitwriter
+#import image
 
 pub typedef	{
 	uint8_t *data;
@@ -26,7 +27,19 @@ pub void free(t *img) {
 	OS.free(img);
 }
 
-pub bool write(t* img, char *filename) {
+pub void writeimg(image.image_t *img, const char *filename) {
+	t *cmap = new(img->width, img->height);
+	for (int x = 0; x < img->width; x++) {
+		for (int y = 0; y < img->height; y++) {
+			image.rgb_t *c = image.getpixel(img, x, y);
+			set(cmap, x, y, c->red, c->green, c->blue);
+		}
+	}
+	_write(cmap, filename);
+	free(cmap);
+}
+
+bool _write(t* img, const char *filename) {
 	FILE *out = fopen(filename, "w");
 	if (!out) return false;
 
