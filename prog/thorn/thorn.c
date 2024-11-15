@@ -1,11 +1,21 @@
 #import formats/png
 #import image
+#import opt
 
 const double PI = 3.141592653589793;
 
-int main() {
-    const int width = 1000;
-    const int height = 1000;
+int main(int argc, char *argv[]) {
+	char *size = "1000x1000";
+	opt.nargs(0, "");
+	opt.str("s", "image size", &size);
+	opt.parse(argc, argv);
+
+	int width;
+	int height;
+	if (sscanf(size, "%dx%d", &width, &height) != 2) {
+		fprintf(stderr, "failed to parse the size\n");
+		return 1;
+	}
 
 	image.image_t *img = image.new(width, height);
 	thorn(img);
@@ -14,6 +24,7 @@ int main() {
 	return 0;
 }
 
+// Draws thorn in the given image.
 void thorn(image.image_t *img) {
 	srand(time(NULL));
 	double cr = (rand() % 10000) / 500.0 - 10; // -10 -> 10;
