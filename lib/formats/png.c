@@ -1,4 +1,5 @@
 #import endian
+#import image
 
 /**
  * The type of PNG image. It determines how the pixels are stored.
@@ -528,6 +529,18 @@ pub void png_destroy(png_t *png) {
     free(png->data);
     png->data = NULL;
     free(png);
+}
+
+pub void writeimg(image.image_t *img, const char *path) {
+	png_t *tmp = png_new(img->width, img->height, PNG_GRAYSCALE);
+    for (int j=0; j < img->height; j++) {
+        for (int i=0; i < img->width; i++) {
+			image.rgb_t c = image.get(img, i, j);
+            png_set_pixel(tmp, i, j, (uint8_t) c.red);
+        }
+    }
+    png_save(tmp, path);
+    png_destroy(tmp);
 }
 
 /**

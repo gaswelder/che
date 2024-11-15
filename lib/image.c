@@ -11,6 +11,14 @@ pub rgb_t *getpixel(image_t *img, int x, y) {
 	return &img->data[y * img->width + x];
 }
 
+pub void set(image_t *img, int x, y, rgb_t c) {
+	*getpixel(img, x, y) = c;
+}
+
+pub rgb_t get(image_t *img, int x, y) {
+	return *getpixel(img, x, y);
+}
+
 pub image_t *new(int width, height) {
 	image_t *img = calloc(1, sizeof(image_t));
 	if (!img) panic("calloc failed");

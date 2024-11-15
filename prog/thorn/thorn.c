@@ -1,4 +1,5 @@
 #import formats/png
+#import image
 
 const double PI = 3.141592653589793;
 
@@ -14,6 +15,10 @@ int main() {
     double ymin = -PI;
     double ymax =  PI;
 
+	image.image_t *img0 = image.new(width, height);
+	image.rgb_t rgb;
+	
+
     uint8_t *values = calloc(width*height, sizeof(uint8_t));
     for (int i = 0; i < width; i++) {
         // map i=[0..width] to zr=[xmin..xmax]
@@ -21,21 +26,18 @@ int main() {
         for (int j = 0; j < height; j++) {
             // map j=[0..height] to zi=[ymin..ymax]
             double zi = ymin + j * (ymax - ymin) / height;
-            values[j*width+i] = get_sample(ci, cr, zi, zr);
+			double val = get_sample(ci, cr, zi, zr);
+            values[j*width+i] = val;
+
+			rgb.red = (int) val;
+			rgb.green = (int) val;
+			rgb.blue = (int) val;
+			image.set(img0, i, j, rgb);
         }
     }
 
-    /*
-     * Render the buffer as an image.
-     */
-    png.png_t *img = png.png_new(width, height, png.PNG_GRAYSCALE);
-    for (int j=0; j < height; j++) {
-        for (int i=0; i < width; i++) {
-            png.png_set_pixel(img, i, j, values[j*width+i]);
-        }
-    }
-    png.png_save(img, "thorn.png");
-    png.png_destroy(img);
+	png.writeimg(img0, "thorn.png");
+	image.free(img0);
 	return 0;
 }
 
