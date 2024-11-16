@@ -3,13 +3,24 @@
  */
 #import formats/ppm
 #import image
+#import opt
 
-int main() {
-    const int WIDTH = 800;
-    const int HEIGHT = 600;
+int main(int argc, char *argv[]) {
+    char *size = "1000x1000";
+	opt.nargs(0, "");
+	opt.str("s", "image size", &size);
+	opt.parse(argc, argv);
+
+	int width;
+	int height;
+	if (sscanf(size, "%dx%d", &width, &height) != 2) {
+		fprintf(stderr, "failed to parse the size\n");
+		return 1;
+	}
+
     const int FRAMES = 10000;
 
-	image.image_t *img = image.new(WIDTH, HEIGHT);
+	image.image_t *img = image.new(width, height);
     for (int i = 0; i < FRAMES; i++) {
 		image.apply(img, fade);
 		draw(img, i, FRAMES);
@@ -64,10 +75,9 @@ void draw(image.image_t *img, int i, FRAMES) {
 }
 
 void fade(image.rgb_t *c) {
-	double sensitivity = 0.02;
-	c->red = (int) (1.0 - exp( -sensitivity * (float) c->red ));
-	c->green = (int) (1.0 - exp( -sensitivity * (float) c->green ));
-	c->blue = (int) (1.0 - exp( -sensitivity * (float) c->blue ));
+	c->red /= 2;
+	c->green /= 2;
+	c->blue /= 2;
 }
 
 image.rgb_t create_hue(double h) {
