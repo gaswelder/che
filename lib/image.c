@@ -21,6 +21,10 @@ pub rgb_t get(image_t *img, int x, y) {
 	return *getpixel(img, x, y);
 }
 
+pub void clear(image_t *img) {
+	memset(img->data, 0, img->width * img->height * sizeof(rgb_t));
+}
+
 // Blends color with the current color at pixel (x, y).
 pub void blend(image_t *img, int x, y, rgb_t color, float opacity) {
     rgb_t newcolor = get(img, x, y);
