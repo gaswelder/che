@@ -19,6 +19,15 @@ pub rgb_t get(image_t *img, int x, y) {
 	return *getpixel(img, x, y);
 }
 
+// Blends color with the current color at pixel (x, y).
+pub void blend(image_t *img, int x, y, rgb_t color, float opacity) {
+    rgb_t newcolor = get(img, x, y);
+    newcolor.red = opacity * color.red + (opacity - 1) * newcolor.red;
+    newcolor.green = opacity * color.green + (opacity - 1) * newcolor.green;
+    newcolor.blue = opacity * color.blue + (opacity - 1) * newcolor.blue;
+    set(img, x, y, newcolor);
+}
+
 pub image_t *new(int width, height) {
 	image_t *img = calloc(1, sizeof(image_t));
 	if (!img) panic("calloc failed");

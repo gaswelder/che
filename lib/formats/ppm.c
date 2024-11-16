@@ -2,6 +2,8 @@
 
 // Pipe the output into mpv
 
+#import image
+
 pub typedef { float r, g, b; } rgb_t;
 
 pub typedef {
@@ -15,6 +17,11 @@ pub ppm_t *init(int width, height) {
     p->height = height;
     p->frame = calloc(width * height, sizeof(rgb_t));
     return p;
+}
+
+pub void free(ppm_t *p) {
+	OS.free(p->frame);
+	OS.free(p);
 }
 
 /**
@@ -69,4 +76,21 @@ uint32_t format_rgb(rgb_t c)
     uint32_t ig = roundf(c.g * 255.0f);
     uint32_t ib = roundf(c.b * 255.0f);
     return (ir << 16) | (ig << 8) | ib;
+}
+
+pub void writeimg(image.image_t *img, FILE *f) {
+	ppm_t *ppm = init(img->width, img->height);
+	for (int x = 0; x < img->width; x++) {
+		for (int y = 0; y < img->height; y++) {
+			image.rgb_t c = image.get(img, x, y);
+			rgb_t c2 = {
+				.r = (float) c.red,
+				.g = (float) c.green,
+				.b = (float) c.blue
+			};
+			set(ppm, x, y, c2);
+		}
+	}
+	write(ppm, f);
+	free(ppm);
 }
