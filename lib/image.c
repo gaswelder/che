@@ -7,6 +7,8 @@ pub typedef {
 	rgb_t *data;
 } image_t;
 
+pub typedef void pixelfunc_t(rgb_t *);
+
 pub rgb_t *getpixel(image_t *img, int x, y) {
 	return &img->data[y * img->width + x];
 }
@@ -26,6 +28,17 @@ pub void blend(image_t *img, int x, y, rgb_t color, float opacity) {
     newcolor.green = opacity * color.green + (opacity - 1) * newcolor.green;
     newcolor.blue = opacity * color.blue + (opacity - 1) * newcolor.blue;
     set(img, x, y, newcolor);
+}
+
+// Applies f to every pixel of the image.
+pub void apply(image_t *img, pixelfunc_t *f) {
+	for (int y = 0; y < img->height; y++) {
+		for (int x = 0; x < img->width; x++) {
+			rgb_t color = get(img, x, y);
+			f(&color);
+			set(img, x, y, color);
+		}
+	}
 }
 
 pub image_t *new(int width, height) {

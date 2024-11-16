@@ -11,7 +11,7 @@ int main() {
 
 	image.image_t *img = image.new(WIDTH, HEIGHT);
     for (int i = 0; i < FRAMES; i++) {
-		fade(img);
+		image.apply(img, fade);
 		draw(img, i, FRAMES);
 		ppm.writeimg(img, stdout);
     }
@@ -63,21 +63,11 @@ void draw(image.image_t *img, int i, FRAMES) {
 	}
 }
 
-void fade(image.image_t *img) {
-	int WIDTH = img->width;
-	int HEIGHT = img->height;
+void fade(image.rgb_t *c) {
 	double sensitivity = 0.02;
-	for (int y = 0; y < HEIGHT; y++) {
-		for (int x = 0; x < WIDTH; x++) {
-			image.rgb_t current_color = image.get(img, x, y);
-			image.rgb_t out = {
-				.red = (int) (1.0 - exp( -sensitivity * (float) current_color.red )),
-				.green = (int) (1.0 - exp( -sensitivity * (float) current_color.green )),
-				.blue = (int) (1.0 - exp( -sensitivity * (float) current_color.blue ))
-			};
-			image.set(img, x, y, out);
-		}
-	}
+	c->red = (int) (1.0 - exp( -sensitivity * (float) c->red ));
+	c->green = (int) (1.0 - exp( -sensitivity * (float) c->green ));
+	c->blue = (int) (1.0 - exp( -sensitivity * (float) c->blue ));
 }
 
 image.rgb_t create_hue(double h) {
