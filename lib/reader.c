@@ -29,12 +29,17 @@ pub t *static_buffer(const uint8_t *data, size_t n) {
 	return r;
 }
 
-pub t *stdin() {
+pub t *file(FILE *f) {
 	t *r = calloc(1, sizeof(t));
 	if (!r) return NULL;
+	r->data = f;
 	r->more = io_more;
 	r->read = io_read;
 	return r;
+}
+
+pub t *stdin() {
+	return file(OS.stdin);
 }
 
 pub t *string(const char *s) {
@@ -80,15 +85,15 @@ int st_read(void *ctx, uint8_t *buf, size_t n) {
 }
 
 bool io_more(void *ctx) {
-	(void) ctx;
-	return !feof(OS.stdin) && !ferror(OS.stdin);
+	FILE *f = ctx;
+	return !feof(f) && !ferror(f);
 }
 
 int io_read(void *ctx, uint8_t *buf, size_t n) {
-	(void) ctx;
-	size_t r = fread(buf, 1, n, OS.stdin);
+	FILE *f = ctx;
+	size_t r = fread(buf, 1, n, f);
 	if (r == 0) {
-		if (feof(OS.stdin) || ferror(OS.stdin)) return EOF;
+		if (feof(f) || ferror(f)) return EOF;
 	}
 	return (int) r;
 }
