@@ -36,3 +36,27 @@ pub int read4be(reader.t *r, uint32_t *v) {
 	*v = x;
 	return n;
 }
+
+// Reads a little-endian uint32 from the reader r.
+// Returns the number of bytes read or one of the error values.
+pub int read4le(reader.t *r, uint32_t *v) {
+	uint8_t buf[4];
+	int n = reader.read(r, buf, 4);
+	uint32_t x = 0;
+	x = x * 256 + buf[3];
+	x = x * 256 + buf[2];
+	x = x * 256 + buf[1];
+	x = x * 256 + buf[0];
+	*v = x;
+	return n;
+}
+
+pub int read2le(reader.t *r, uint16_t *v) {
+	uint8_t buf[4];
+	int n = reader.read(r, buf, 2);
+	uint16_t x = 0;
+	x = x * 256 + buf[1];
+	x = x * 256 + buf[0];
+	*v = x;
+	return n;
+}
