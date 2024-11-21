@@ -1,5 +1,6 @@
 #import reader
 #import enc/endian
+#import writer
 
 pub typedef {
     uint16_t format; // 1=PCM
@@ -17,8 +18,50 @@ pub typedef {
 } reader_t;
 
 pub typedef {
+	writer.t *writer;
+	FILE *file; // hack
+} writer_t;
+
+pub typedef {
 	int left, right;
 } sample_t;
+
+pub writer_t *open_writer(const char *path) {
+	FILE *f = fopen(path, "wb");
+	if (!f) panic("failed to open %s for writing", path);
+	writer_t *w = calloc(1, sizeof(writer_t));
+	if (!w) panic("calloc failed");
+	w->writer = writer.file(f);
+	w->file = f;
+
+
+	uint32_t riff_length = -1;
+	uint32_t datalen = -1;
+	writetag(w->writer, "RIFF");
+    endian.write4le(w->writer, riff_length);
+    writetag(w->writer, "WAVE");
+	writetag(w->writer, "fmt ");
+
+    endian.write4le(w->writer, 16); // fmt chunk size, 16 bytes
+	uint16_t channels = 2;
+	uint16_t bytes_per_sample = 2;
+	uint16_t bytes_per_block = channels * bytes_per_sample;
+    endian.write2le(w->writer, 1); // format
+    endian.write2le(w->writer, 2); // channels
+    endian.write4le(w->writer, 44100); // frequency
+    endian.write4le(w->writer, 44100 * bytes_per_block); // bytes per second
+    endian.write2le(w->writer, bytes_per_block);
+    endian.write2le(w->writer, bytes_per_sample * 8); // bits per sample
+	writetag(w->writer, "data");
+    endian.write4le(w->writer, datalen);
+	return w;
+}
+
+pub void close_writer(writer_t *w) {
+	writer.free(w->writer);
+	fclose(w->file);
+	OS.free(w);
+}
 
 pub reader_t *open_reader(const char *path) {
 	uint32_t tmp4u;
@@ -112,6 +155,16 @@ pub sample_t read_sample(reader_t *r) {
     return sa;
 }
 
+pub void write_sample(writer_t *w, sample_t sa) {
+	int s = sa.left;
+	if (s < 0) s += 65536;
+	endian.write2le(w->writer, (uint16_t) s);
+
+	s = sa.right;
+	if (s < 0) s += 65536;
+	endian.write2le(w->writer, (uint16_t) s);
+}
+
 pub void close_reader(reader_t *r) {
     reader.free(r->reader);
     fclose(r->file);
@@ -145,4 +198,8 @@ bool readtag(reader.t *r, const char *tag) {
     reader.read(r, (uint8_t*) tmp, 4);
     if (strcmp(tmp, tag)) panic("wanted %s, got %s", tag, tmp);
     return true;
+}
+
+void writetag(writer.t *w, const char *tag) {
+	writer.write(w, (uint8_t *)tag, 4);
 }

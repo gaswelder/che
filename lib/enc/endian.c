@@ -19,6 +19,24 @@ pub int write4be(writer.t *w, uint32_t v) {
 	return writer.write(w, buf, 4);
 }
 
+pub int write4le(writer.t *w, uint32_t v) {
+	uint8_t buf[4];
+	int pos = 0;
+	buf[pos++] = v % 256; v /= 256;
+	buf[pos++] = v % 256; v /= 256;
+	buf[pos++] = v % 256; v /= 256;
+	buf[pos++] = v % 256; v /= 256;
+	return writer.write(w, buf, 4);
+}
+
+pub int write2le(writer.t *w, uint32_t v) {
+	uint8_t buf[2];
+	int pos = 0;
+	buf[pos++] = v % 256; v /= 256;
+	buf[pos++] = v % 256; v /= 256;
+	return writer.write(w, buf, 2);
+}
+
 pub int read1(reader.t *r, uint8_t *v) {
 	return reader.read(r, v, 1);
 }
