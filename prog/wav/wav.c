@@ -68,8 +68,8 @@ bool readwav() {
     int i = 0;
     int bps = w.bits_per_sample / 8;
     for (uint32_t done = 0; done < datalen; done += bps) {
-        int left = sample(f);
-        int right = sample(f);
+        int left = sample(r);
+        int right = sample(r);
         printf("%f\t%d\t%d\n", t, left, right);
         i++;
         t = dt * i;
@@ -108,10 +108,12 @@ bool readtag(reader.t *r, const char *tag) {
     return true;
 }
 
-int sample(FILE *f) {
-    int x = 0;
-    int a = fgetc(f);
-    int b = fgetc(f);
-    x = a + 256 * b;
-    return x;
+int sample(reader.t *r) {
+	uint16_t u = 0;
+	endian.read2le(r, &u);
+	int s = (int) u;
+	if (s >= 32768) {
+		s -= 65536;
+	}
+    return s;
 }
