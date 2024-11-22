@@ -2,13 +2,13 @@
  * This is a port of the [https://github.com/skeeto/sort-circle]("sort-circle demo by skeeto).
  */
 
-#import bitwriter
-#import formats/ppm
-#import opt
-#import rnd
 #import font.c
+#import formats/ppm
+#import formats/wav
 #import image
 #import lib.c
+#import opt
+#import rnd
 
 /*
  * The array that's being shuffled and sorted.
@@ -48,7 +48,8 @@ const char *sort_names[] = {
 int swaps[N] = {};
 const char *global_message = "";
 const int MESSAGE_PADDING = 800 / 128;
-FILE *wav = NULL;
+
+wav.writer_t *wavout = NULL;
 
 font.t f = {};
 
@@ -92,12 +93,11 @@ int main(int argc, char **argv) {
     }
 
     if (audio_output) {
-		wav = fopen(audio_output, "wb");
-		if (!wav) {
-            fprintf(stderr, "%s: %s: %s\n", argv[0], strerror(errno), audio_output);
+		wavout = wav.open_writer(audio_output);
+		if (!wavout) {
+            fprintf(stderr, "failed out create wav output %s: %s\n", audio_output, strerror(errno));
             exit(0);
         }
-        wav_init(wav);
     }
 
 	image.image_t *img = image.new(800, 800);
@@ -169,42 +169,46 @@ void frame(image.image_t *img) {
 	fflush(stdout);
 	image.clear(img);
 
-    /* Output audio */
-    if (wav) {
-        int nsamples = HZ / FPS;
-        float samples[HZ / FPS] = {};
-        memset(samples, 0, sizeof(samples));
-
-        /* How many voices to mix? */
-        int voices = 0;
-        for (int i = 0; i < N; i++) {
-            voices += swaps[i];
-        }
-
-        /* Generate each voice */
-        for (int i = 0; i < N; i++) {
-            if (swaps[i]) {
-                float hz = i * (MAXHZ - MINHZ) / (float)N + MINHZ;
-                for (int j = 0; j < nsamples; j++) {
-                    float u = 1.0f - j / (float)(nsamples - 1);
-                    float parabola = 1.0f - (u * 2 - 1) * (u * 2 - 1);
-                    float envelope = parabola * parabola * parabola;
-                    float v = sinf(j * 2.0f * PI / HZ * hz) * envelope;
-                    samples[j] += swaps[i] * v / voices;
-                }
-            }
-        }
-
-        /* Write out 16-bit samples */
-		bitwriter.t w = { wav };
-        for (int i = 0; i < nsamples; i++) {
-            int s = samples[i] * 0x7fff;
-            bitwriter.le16(&w, s);
-        }
-        fflush(wav);
-    }
-
+	audio();
     memset(swaps, 0, sizeof(swaps));
+}
+
+void audio() {
+	if (!wavout) return;
+
+	// 44100 samples per second, 60 frames per second
+	// means one frame has 44100/60 samples.
+	int nsamples = HZ / FPS;
+	float samples[HZ / FPS] = {};
+
+	/* How many voices to mix? */
+	int voices = 0;
+	for (int i = 0; i < N; i++) {
+		voices += swaps[i];
+	}
+
+	/* Generate each voice */
+	for (int i = 0; i < N; i++) {
+		if (!swaps[i]) continue;
+
+		float hz = MINHZ + (MAXHZ - MINHZ) * i / (float)N;
+
+		for (int j = 0; j < nsamples; j++) {
+			float u = 1.0f - j / (float)(nsamples - 1);
+			float parabola = 1.0f - (u * 2 - 1) * (u * 2 - 1);
+			float envelope = parabola * parabola * parabola;
+			float v = sinf(j * 2.0f * PI / HZ * hz) * envelope;
+			samples[j] += swaps[i] * v / voices;
+		}
+	}
+
+	for (int i = 0; i < nsamples; i++) {
+		wav.sample_t s = {
+			.left = samples[i] * 32768,
+			.right = samples[i] * 32768
+		};
+		wav.write_sample(wavout, s);
+	}
 }
 
 void draw_array(image.image_t *img) {
@@ -352,26 +356,6 @@ void sort_radix_lsd(image.image_t *img, int array[N], int b) {
         }
     }
 }
-
-void wav_init(FILE *f) {
-	bitwriter.t w = { f };
-
-    bitwriter.be32(&w, 0x52494646UL); // "RIFF"
-	bitwriter.le32(&w, 0xffffffffUL); // file length
-	bitwriter.be32(&w, 0x57415645UL); // "WAVE"
-	bitwriter.be32(&w, 0x666d7420UL); // "fmt "
-	bitwriter.le32(&w, 16); // struct size
-	bitwriter.le16(&w, 1); // PCM
-	bitwriter.le16(&w, 1); // mono
-	bitwriter.le32(&w, HZ); // sample rate (i.e. 44.1 kHz)
-	bitwriter.le32(&w, HZ * 2); // byte rate
-	bitwriter.le16(&w, 2); // block size
-	bitwriter.le16(&w, 16); // bits per sample
-	bitwriter.be32(&w, 0x64617461UL); // "data"
-	bitwriter.le32(&w, 0xffffffffUL); // byte length
-}
-
-
 
 void draw_dot(image.image_t *img, float x, y, image.rgb_t color) {
 	float S = 800; // image size
