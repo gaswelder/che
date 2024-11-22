@@ -13,8 +13,9 @@
 /*
  * The array that's being shuffled and sorted.
  */
-#define N     360
-int array[N] = {};
+const int N = 360;
+int array[360] = {};
+int swaps[360] = {};
 
 /*
  * The sorting algorithms.
@@ -45,7 +46,7 @@ const char *sort_names[] = {
 #define MINHZ 20            // lowest tone
 #define MAXHZ 1000          // highest tone
 #define PI 3.141592653589793f
-int swaps[N] = {};
+
 const char *global_message = "";
 const int MESSAGE_PADDING = 800 / 128;
 
@@ -108,9 +109,6 @@ int main(int argc, char **argv) {
         }
     }
 
-    /*
-     * Fill the array
-     */
     for (int i = 0; i < N; i++) {
         array[i] = i;
     }
@@ -123,7 +121,7 @@ int main(int argc, char **argv) {
     return 0;
 }
 
-void shuffle(image.image_t *img, int array[N], bool hide, slow) {
+void shuffle(image.image_t *img, int *array, bool hide, slow) {
     global_message = "Fisher-Yates";
     for (int i = N - 1; i > 0; i--) {
         uint32_t r = rnd.u32() % (i + 1);
@@ -161,7 +159,7 @@ void pause_1s(image.image_t *img) {
 }
 
 void frame(image.image_t *img) {
-    draw_array(img);
+    draw_array(img, array, N);
     if (global_message) {
         draw_string(img, f, global_message);
     }
@@ -211,7 +209,7 @@ void audio() {
 	}
 }
 
-void draw_array(image.image_t *img) {
+void draw_array(image.image_t *img, int *array, int N) {
 	float S = 800;
 	for (int i = 0; i < N; i++) {
         float delta = fabs((float)(i - array[i])) / (N / 2.0f);
@@ -231,8 +229,7 @@ void draw_array(image.image_t *img) {
     }
 }
 
-void swap(int a[N], int i, int j)
-{
+void swap(int *a, int i, j) {
     int tmp = a[i];
     a[i] = a[j];
     a[j] = tmp;
@@ -240,7 +237,7 @@ void swap(int a[N], int i, int j)
     swaps[(a - array) + j]++;
 }
 
-void sort_bubble(image.image_t *img, int array[N]) {
+void sort_bubble(image.image_t *img, int *array) {
     int c = 0;
     while (1) {
         c = 0;
@@ -255,7 +252,7 @@ void sort_bubble(image.image_t *img, int array[N]) {
     }
 }
 
-void sort_odd_even(image.image_t *img, int array[N]) {
+void sort_odd_even(image.image_t *img, int *array) {
     int c = 0;
     while (1) {
         c = 0;
@@ -276,7 +273,7 @@ void sort_odd_even(image.image_t *img, int array[N]) {
     }
 }
 
-void sort_insertion(image.image_t *img, int array[N])
+void sort_insertion(image.image_t *img, int *array)
 {
     for (int i = 1; i < N; i++) {
         for (int j = i; j > 0 && array[j - 1] > array[j]; j--) {
@@ -330,7 +327,7 @@ digit(int v, int b, int d)
     return v % b;
 }
 
-void sort_radix_lsd(image.image_t *img, int array[N], int b) {
+void sort_radix_lsd(image.image_t *img, int *array, int b) {
     int c = 0;
     int total = 1;
     for (int d = 0; total; d++) {
