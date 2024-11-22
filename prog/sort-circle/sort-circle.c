@@ -13,9 +13,9 @@
 /*
  * The array that's being shuffled and sorted.
  */
-const int N = 360;
-int array[360] = {};
-int swaps[360] = {};
+int global_N = 100;
+int *array = NULL;
+int *swaps = NULL;
 
 /*
  * The sorting algorithms.
@@ -81,6 +81,7 @@ int main(int argc, char **argv) {
     opt.flag("y", "slow down shuffle animation", &slow_shuffle);
     opt.opt_int("s", "animate sort number N", &sort_number);
     opt.opt_int("w", "insert a delay of N frames", &delay);
+	opt.opt_int("n", "size of the array", &global_N);
     opt.str("x", "seed for shuffling (64-bit HEX string)", &seed_str);
     opt.parse(argc, argv);
 
@@ -91,6 +92,9 @@ int main(int argc, char **argv) {
         }
         exit(0);
     }
+
+	array = calloc(global_N, sizeof(int));
+	swaps = calloc(global_N, sizeof(int));
 
     if (seed_str) {
         rnd.seed(strtoull(seed_str, NULL, 16));
@@ -112,7 +116,7 @@ int main(int argc, char **argv) {
         }
     }
 
-    for (int i = 0; i < N; i++) {
+    for (int i = 0; i < global_N; i++) {
         array[i] = i;
     }
 
@@ -126,7 +130,7 @@ int main(int argc, char **argv) {
 
 void shuffle(image.image_t *img, int *array, bool hide, slow) {
     global_message = "Fisher-Yates";
-    for (int i = N - 1; i > 0; i--) {
+    for (int i = global_N - 1; i > 0; i--) {
         uint32_t r = rnd.u32() % (i + 1);
         swap(array, i, r);
         if (hide) {
@@ -149,8 +153,8 @@ void run_sort(image.image_t *img, int type) {
         case SORT_ODD_EVEN: { sort_odd_even(img, array); }
         case SORT_BUBBLE: { sort_bubble(img, array); }
         case SORT_INSERTION: { sort_insertion(img, array); }
-        case SORT_STOOGESORT: { sort_stoogesort(img, array, 0, N - 1); }
-        case SORT_QUICKSORT: { sort_quicksort(img, array, N); }
+        case SORT_STOOGESORT: { sort_stoogesort(img, array, 0, global_N - 1); }
+        case SORT_QUICKSORT: { sort_quicksort(img, array, global_N); }
         case SORT_RADIX_8_LSD: { sort_radix_lsd(img, array, 8); }
         case SORTS_TOTAL: {}
     }
@@ -162,7 +166,7 @@ void pause_1s(image.image_t *img) {
 }
 
 void frame(image.image_t *img) {
-    draw_array(img, array, N, global_flag_circle);
+    draw_array(img, array, global_N, global_flag_circle);
     if (global_message) {
         draw_string(img, f, global_message);
     }
@@ -171,7 +175,7 @@ void frame(image.image_t *img) {
 	image.clear(img);
 
 	audio();
-    memset(swaps, 0, sizeof(swaps));
+    memset(swaps, 0, global_N * sizeof(swaps[0]));
 }
 
 void audio() {
@@ -184,15 +188,15 @@ void audio() {
 
 	/* How many voices to mix? */
 	int voices = 0;
-	for (int i = 0; i < N; i++) {
+	for (int i = 0; i < global_N; i++) {
 		voices += swaps[i];
 	}
 
 	/* Generate each voice */
-	for (int i = 0; i < N; i++) {
+	for (int i = 0; i < global_N; i++) {
 		if (!swaps[i]) continue;
 
-		float hz = MINHZ + (MAXHZ - MINHZ) * i / (float)N;
+		float hz = MINHZ + (MAXHZ - MINHZ) * i / (float)global_N;
 
 		for (int j = 0; j < nsamples; j++) {
 			float u = 1.0f - j / (float)(nsamples - 1);
@@ -233,6 +237,7 @@ void draw_array(image.image_t *img, int *array, int N, bool circle) {
 		}
 	}
 	else {
+		float lenscale = 200 / (float)global_N;
 		for (int i = 0; i < N; i++) {
 			int32_t h = hue(array[i]);
 			image.rgb_t color = {
@@ -241,7 +246,8 @@ void draw_array(image.image_t *img, int *array, int N, bool circle) {
 				.blue = ((h & 0xff))
 			};
 			int x = 100 + (S-200)*(float)i/(float)N;
-			for (int l = 0; l < array[i]/10; l++) {
+			int maxlen = (int) (array[i] * lenscale);
+			for (int l = 0; l < maxlen; l++) {
 				draw_dot(img, x, S/2+180 - l, color);
 			}
 		}
@@ -260,7 +266,7 @@ void sort_bubble(image.image_t *img, int *array) {
     int c = 0;
     while (1) {
         c = 0;
-        for (int i = 1; i < N; i++) {
+        for (int i = 1; i < global_N; i++) {
             if (array[i - 1] > array[i]) {
                 swap(array, i - 1, i);
                 c = 1;
@@ -275,13 +281,13 @@ void sort_odd_even(image.image_t *img, int *array) {
     int c = 0;
     while (1) {
         c = 0;
-        for(int i = 1; i < N - 1; i += 2) {
+        for(int i = 1; i < global_N - 1; i += 2) {
             if (array[i] > array[i + 1]) {
                 swap(array, i, i + 1);
                 c = 1;
             }
         }
-        for (int i = 0; i < N - 1; i += 2) {
+        for (int i = 0; i < global_N - 1; i += 2) {
             if (array[i] > array[i + 1]) {
                 swap(array, i, i + 1);
                 c = 1;
@@ -292,9 +298,8 @@ void sort_odd_even(image.image_t *img, int *array) {
     }
 }
 
-void sort_insertion(image.image_t *img, int *array)
-{
-    for (int i = 1; i < N; i++) {
+void sort_insertion(image.image_t *img, int *array) {
+    for (int i = 1; i < global_N; i++) {
         for (int j = i; j > 0 && array[j - 1] > array[j]; j--) {
             swap(array, j, j - 1);
         }
@@ -355,13 +360,13 @@ void sort_radix_lsd(image.image_t *img, int *array, int b) {
         while (1) {
             total++;
             c = 0;
-            for(int i = 1; i < N - 1; i += 2) {
+            for(int i = 1; i < global_N - 1; i += 2) {
                 if (digit(array[i], b, d) > digit(array[i + 1], b, d)) {
                     swap(array, i, i + 1);
                     c = 1;
                 }
             }
-            for (int i = 0; i < N - 1; i += 2) {
+            for (int i = 0; i < global_N - 1; i += 2) {
                 if (digit(array[i], b, d) > digit(array[i + 1], b, d)) {
                     swap(array, i, i + 1);
                     c = 1;
@@ -416,9 +421,9 @@ void draw_string(image.image_t *img, font.t f, const char *message) {
 }
 
 uint32_t hue(int v) {
-    uint32_t h = v / (N / 6);
-    uint32_t f = v % (N / 6);
-    uint32_t t = 0xff * f / (N / 6);
+    uint32_t h = v / (global_N / 6);
+    uint32_t f = v % (global_N / 6);
+    uint32_t t = 0xff * f / (global_N / 6);
     uint32_t q = 0xff - t;
     switch (h) {
         case 0: { return 0xff0000UL | (t << 8); }
