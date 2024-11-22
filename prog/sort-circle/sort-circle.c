@@ -50,6 +50,8 @@ const char *sort_names[] = {
 const char *global_message = "";
 const int MESSAGE_PADDING = 800 / 128;
 
+bool global_flag_circle = false;
+
 wav.writer_t *wavout = NULL;
 
 font.t f = {};
@@ -73,9 +75,10 @@ int main(int argc, char **argv) {
 	opt.nargs(0, "");
 	opt.opt_summary("animated sorting demo - pipe the output to mpv");
     opt.flag("h", "print the help message", &help);
+	opt.str("a", "name of audio output (WAV)", &audio_output);
+	opt.flag("c", "use the original circle rendering", &global_flag_circle);
     opt.flag("q", "don't draw the shuffle", &hide_shuffle);
     opt.flag("y", "slow down shuffle animation", &slow_shuffle);
-    opt.str("a", "name of audio output (WAV)", &audio_output);
     opt.opt_int("s", "animate sort number N", &sort_number);
     opt.opt_int("w", "insert a delay of N frames", &delay);
     opt.str("x", "seed for shuffling (64-bit HEX string)", &seed_str);
@@ -159,7 +162,7 @@ void pause_1s(image.image_t *img) {
 }
 
 void frame(image.image_t *img) {
-    draw_array(img, array, N);
+    draw_array(img, array, N, global_flag_circle);
     if (global_message) {
         draw_string(img, f, global_message);
     }
@@ -209,24 +212,40 @@ void audio() {
 	}
 }
 
-void draw_array(image.image_t *img, int *array, int N) {
+void draw_array(image.image_t *img, int *array, int N, bool circle) {
 	float S = 800;
-	for (int i = 0; i < N; i++) {
-        float delta = fabs((float)(i - array[i])) / (N / 2.0f);
-        float x = -sinf(i * 2.0f * PI / N);
-        float y = -cosf(i * 2.0f * PI / N);
-        float r = S * 15.0f / 32.0f * (1.0f - delta);
-        float px = r * x + S / 2.0f;
-        float py = r * y + S / 2.0f;
+	if (circle) {
+		for (int i = 0; i < N; i++) {
+			float delta = fabs((float)(i - array[i])) / (N / 2.0f);
+			float x = -sinf(i * 2.0f * PI / N);
+			float y = -cosf(i * 2.0f * PI / N);
+			float r = S * 15.0f / 32.0f * (1.0f - delta);
+			float px = r * x + S / 2.0f;
+			float py = r * y + S / 2.0f;
 
-        int32_t h = hue(array[i]);
-        image.rgb_t color = {
-            .red = ((h >> 16)),
-            .green = (((h >> 8) & 0xff)),
-            .blue = ((h & 0xff))
-        };
-        draw_dot(img, px, py, color);
-    }
+			int32_t h = hue(array[i]);
+			image.rgb_t color = {
+				.red = ((h >> 16)),
+				.green = (((h >> 8) & 0xff)),
+				.blue = ((h & 0xff))
+			};
+			draw_dot(img, px, py, color);
+		}
+	}
+	else {
+		for (int i = 0; i < N; i++) {
+			int32_t h = hue(array[i]);
+			image.rgb_t color = {
+				.red = ((h >> 16)),
+				.green = (((h >> 8) & 0xff)),
+				.blue = ((h & 0xff))
+			};
+			int x = 100 + (S-200)*(float)i/(float)N;
+			for (int l = 0; l < array[i]/10; l++) {
+				draw_dot(img, x, S/2+180 - l, color);
+			}
+		}
+	}
 }
 
 void swap(int *a, int i, j) {
