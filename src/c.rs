@@ -100,16 +100,16 @@ pub const CFUNCS: &[&str] = &[
     "isalpha",
     "tolower",
     "toupper",
-	"isprint",
+    "isprint",
     // stdlib
     "atoi",
     "atol",
     "atoll",
     "atol_l",
     "atoll_l",
-	"strtod",
-	"strtof",
-	"strtold",
+    "strtod",
+    "strtof",
+    "strtold",
     // string.h
     "memcmp",
     // stdio.h
@@ -134,6 +134,7 @@ pub const CFUNCS: &[&str] = &[
     "sinf",
     "cosf",
     "fabs",
+    "fmod",
     "strtoull",
     "strncpy",
     "rewind",
