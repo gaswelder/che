@@ -59,3 +59,43 @@ pub void free(image_t *img) {
 	OS.free(img->data);
 	OS.free(img);
 }
+
+pub rgb_t rgb_from_hsl(float h, s, l) {
+	float c = (1 - fabs(2*l-1)) * s;
+	float h1 = h / 60;
+	float x = c * (1 - fabs(fmod(h1, 2)-1));
+	float red;
+	float green;
+	float blue;
+	if (h1 <= 1) {
+		red = c;
+		green = x;
+		blue = 0;
+	} else if (h1 <= 2) {
+		red = x;
+		green = c;
+		blue = 0;
+	} else if (h1 <= 3) {
+		red = 0;
+		green = c;
+		blue = x;
+	} else if (h1 <= 4) {
+		red = 0;
+		green = x;
+		blue = c;
+	} else if (h1 <= 5) {
+		red = x;
+		green = 0;
+		blue = c;
+	} else if (h1 <= 6) {
+		red = c;
+		green = 0;
+		blue = x;
+	}
+	rgb_t color = {
+		.red = (int) (255.0 * red),
+		.green = (int) (255.0 * green),
+		.blue = (int) (255.0 * blue)
+	};
+	return color;
+}

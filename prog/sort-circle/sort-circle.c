@@ -218,6 +218,7 @@ void audio() {
 
 void draw_array(image.image_t *img, int *array, int N, bool circle) {
 	float S = 800;
+	float fn = (float) global_N;
 	if (circle) {
 		for (int i = 0; i < N; i++) {
 			float delta = fabs((float)(i - array[i])) / (N / 2.0f);
@@ -226,29 +227,18 @@ void draw_array(image.image_t *img, int *array, int N, bool circle) {
 			float r = S * 15.0f / 32.0f * (1.0f - delta);
 			float px = r * x + S / 2.0f;
 			float py = r * y + S / 2.0f;
-
-			int32_t h = hue(array[i]);
-			image.rgb_t color = {
-				.red = ((h >> 16)),
-				.green = (((h >> 8) & 0xff)),
-				.blue = ((h & 0xff))
-			};
+			image.rgb_t color = image.rgb_from_hsl(array[i] * 360.0 / fn, 1, 0.5);
 			draw_dot(img, px, py, color);
 		}
 	}
 	else {
 		float lenscale = 200 / (float)global_N;
 		for (int i = 0; i < N; i++) {
-			int32_t h = hue(array[i]);
-			image.rgb_t color = {
-				.red = ((h >> 16)),
-				.green = (((h >> 8) & 0xff)),
-				.blue = ((h & 0xff))
-			};
+			image.rgb_t color = image.rgb_from_hsl(array[i] * 360.0 / fn, 1, 0.5);
 			int x = 100 + (S-200)*(float)i/(float)N;
 			int maxlen = (int) (array[i] * lenscale);
 			for (int l = 0; l < maxlen; l++) {
-				draw_dot(img, x, S/2+180 - l, color);
+				image.set(img, x, S/2+180 - l, color);
 			}
 		}
 	}
@@ -417,21 +407,5 @@ void draw_string(image.image_t *img, font.t f, const char *message) {
                 }
             }
         }
-    }
-}
-
-uint32_t hue(int v) {
-    uint32_t h = v / (global_N / 6);
-    uint32_t f = v % (global_N / 6);
-    uint32_t t = 0xff * f / (global_N / 6);
-    uint32_t q = 0xff - t;
-    switch (h) {
-        case 0: { return 0xff0000UL | (t << 8); }
-        case 1: { return (q << 16) | 0x00ff00UL; }
-        case 2: { return 0x00ff00UL | t; }
-        case 3: { return (q << 8) | 0x0000ffUL; }
-        case 4: { return (t << 16) | 0x0000ffUL; }
-        case 5: { return 0xff0000UL | q; }
-        default: { panic("!"); }
     }
 }
