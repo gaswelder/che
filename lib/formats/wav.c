@@ -19,47 +19,36 @@ pub typedef {
 
 pub typedef {
 	writer.t *writer;
-	FILE *file; // hack
+	FILE *file; // file pointer if we own it.
 } writer_t;
 
 pub typedef {
 	int left, right;
 } sample_t;
 
+pub writer_t *open_writer2(writer.t *wr) {
+	writer_t *w = calloc(1, sizeof(writer_t));
+	if (!w) panic("calloc failed");
+	w->writer = wr;
+	write_headers(w);
+	return w;
+}
+
 pub writer_t *open_writer(const char *path) {
 	FILE *f = fopen(path, "wb");
 	if (!f) panic("failed to open %s for writing", path);
-	writer_t *w = calloc(1, sizeof(writer_t));
-	if (!w) panic("calloc failed");
-	w->writer = writer.file(f);
+
+	writer.t *wr = writer.file(f);
+	writer_t *w = open_writer2(wr);
 	w->file = f;
-
-
-	uint32_t riff_length = -1;
-	uint32_t datalen = -1;
-	writetag(w->writer, "RIFF");
-    endian.write4le(w->writer, riff_length);
-    writetag(w->writer, "WAVE");
-	writetag(w->writer, "fmt ");
-
-    endian.write4le(w->writer, 16); // fmt chunk size, 16 bytes
-	uint16_t channels = 2;
-	uint16_t bytes_per_sample = 2;
-	uint16_t bytes_per_block = channels * bytes_per_sample;
-    endian.write2le(w->writer, 1); // format
-    endian.write2le(w->writer, 2); // channels
-    endian.write4le(w->writer, 44100); // frequency
-    endian.write4le(w->writer, 44100 * bytes_per_block); // bytes per second
-    endian.write2le(w->writer, bytes_per_block);
-    endian.write2le(w->writer, bytes_per_sample * 8); // bits per sample
-	writetag(w->writer, "data");
-    endian.write4le(w->writer, datalen);
 	return w;
 }
 
 pub void close_writer(writer_t *w) {
 	writer.free(w->writer);
-	fclose(w->file);
+	if (w->file) {
+		fclose(w->file);
+	}
 	OS.free(w);
 }
 
@@ -153,6 +142,28 @@ pub sample_t read_sample(reader_t *r) {
 	int bps = r->wav.bits_per_sample / 8;
 	r->done += bps;
     return sa;
+}
+
+void write_headers(writer_t *w) {
+	uint32_t riff_length = -1;
+	uint32_t datalen = -1;
+	writetag(w->writer, "RIFF");
+    endian.write4le(w->writer, riff_length);
+    writetag(w->writer, "WAVE");
+	writetag(w->writer, "fmt ");
+
+    endian.write4le(w->writer, 16); // fmt chunk size, 16 bytes
+	uint16_t channels = 2;
+	uint16_t bytes_per_sample = 2;
+	uint16_t bytes_per_block = channels * bytes_per_sample;
+    endian.write2le(w->writer, 1); // format
+    endian.write2le(w->writer, 2); // channels
+    endian.write4le(w->writer, 44100); // frequency
+    endian.write4le(w->writer, 44100 * bytes_per_block); // bytes per second
+    endian.write2le(w->writer, bytes_per_block);
+    endian.write2le(w->writer, bytes_per_sample * 8); // bits per sample
+	writetag(w->writer, "data");
+    endian.write4le(w->writer, datalen);
 }
 
 pub void write_sample(writer_t *w, sample_t sa) {
