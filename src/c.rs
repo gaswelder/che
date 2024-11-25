@@ -90,6 +90,8 @@ pub const CCONST: &[&str] = &[
     // limits.h
     "INT_MAX", "LONG_MAX", "SIZE_MAX", // signal.h
     "SIGABRT", "SIGFPE", "SIGILL", "SIGINT", "SIGSEGV", "SIGTERM", "SIG_DFL", "SIG_IGN",
+    // math.h
+    "M_PI",
 ];
 
 pub const CFUNCS: &[&str] = &[

@@ -45,7 +45,6 @@ const char *sort_names[] = {
 #define HZ    44100         // audio sample rate
 #define MINHZ 20            // lowest tone
 #define MAXHZ 1000          // highest tone
-#define PI 3.141592653589793f
 
 const char *global_message = "";
 const int MESSAGE_PADDING = 800 / 128;
@@ -202,7 +201,7 @@ void audio() {
 			float u = 1.0f - j / (float)(nsamples - 1);
 			float parabola = 1.0f - (u * 2 - 1) * (u * 2 - 1);
 			float envelope = parabola * parabola * parabola;
-			float v = sinf(j * 2.0f * PI / HZ * hz) * envelope;
+			float v = sinf(j * 2.0f * M_PI / HZ * hz) * envelope;
 			samples[j] += swaps[i] * v / voices;
 		}
 	}
@@ -222,8 +221,8 @@ void draw_array(image.image_t *img, int *array, int N, bool circle) {
 	if (circle) {
 		for (int i = 0; i < N; i++) {
 			float delta = fabs((float)(i - array[i])) / (N / 2.0f);
-			float x = -sinf(i * 2.0f * PI / N);
-			float y = -cosf(i * 2.0f * PI / N);
+			float x = -sinf(i * 2.0f * M_PI / N);
+			float y = -cosf(i * 2.0f * M_PI / N);
 			float r = S * 15.0f / 32.0f * (1.0f - delta);
 			float px = r * x + S / 2.0f;
 			float py = r * y + S / 2.0f;

@@ -2,8 +2,6 @@
 #import image
 #import opt
 
-const double PI = 3.141592653589793;
-
 int main(int argc, char *argv[]) {
 	char *size = "1000x1000";
 	opt.nargs(0, "");
@@ -29,10 +27,10 @@ void thorn(image.image_t *img) {
 	srand(time(NULL));
 	double cr = (rand() % 10000) / 500.0 - 10; // -10 -> 10;
     double ci = (rand() % 10000) / 500.0 - 10;
-    double xmin = -PI;
-    double xmax =  PI;
-    double ymin = -PI;
-    double ymax =  PI;
+    double xmin = -M_PI;
+    double xmax =  M_PI;
+    double ymin = -M_PI;
+    double ymax =  M_PI;
 	int width = img->width;
 	int height = img->height;
 	image.rgb_t rgb;
