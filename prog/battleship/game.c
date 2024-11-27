@@ -20,6 +20,7 @@ pub typedef {
 } ship_t;
 
 pub typedef {
+	int STATE;
 	int turn; /* 0=player, 1=computer */
 	int plywon, cpuwon;
 	int curx, cury;
@@ -46,4 +47,6 @@ pub typedef {
 	ship_t *sunk_by_player;
 
 	int winner;
+
+	int nx, ny;
 } state_t;
