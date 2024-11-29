@@ -46,7 +46,21 @@ enum {
 game.state_t gamestate = {
 	.curx = BWIDTH / 2,
 	.cury = BDEPTH / 2,
-	.ai_srchstep = BEGINSTEP
+};
+
+typedef {
+	int ai_next;
+	int ai_last_x;
+	int ai_last_y;
+	int ai_turncount;
+	int ai_srchstep;
+	int ai_huntoffs; /* Offset on search strategy */
+	bool used[4];
+	game.ship_t ts;
+} ai_state_t;
+
+ai_state_t AI = {
+	//
 };
 
 const int SHIPTYPES = 5;
@@ -82,7 +96,19 @@ int main(int argc, char *argv[]) {
 // #endif /* NCURSES_MOUSE_VERSION*/
 
 	while (true) {
-		initgame();
+		game.reset(&gamestate);
+		memset(&AI, 0, sizeof(AI));
+		AI.ai_srchstep = BEGINSTEP;
+		ai_place_ships();
+		render_reset();
+		place_ships();
+		if (rnd(2)) {
+			gamestate.turn = COMPUTER;
+		} else {
+			gamestate.turn = PLAYER;
+		}
+		render_manual2();
+		input_any();
 		play();
 		int winner = game.winner(&gamestate);
 		gamestate.winner = winner;
@@ -213,19 +239,17 @@ void closegame(int sig) {
 	exit(sig);
 }
 
-void initgame() {
-	game.reset(&gamestate);
-	/* have the computer place ships */
+void ai_place_ships() {
 	game.ship_t *ss = NULL;
 	for (ss = gamestate.players[COMPUTER].ships; ss < gamestate.players[COMPUTER].ships + SHIPTYPES; ss++) {
 		game.randomplace(&gamestate, COMPUTER, ss);
 		game.placeship(&gamestate, COMPUTER, ss);
 	}
+}
 
-	render_reset();
-
-
+void place_ships() {
 	int unplaced;
+	game.ship_t *ss = NULL;
 	while (true) {
 		/* figure which ships still wait to be placed */
 		char *cp = gamestate.docked;
@@ -318,15 +342,6 @@ void initgame() {
 		if (unplaced) continue;
 		else break;
 	}
-
-	if (rnd(2)) {
-		gamestate.turn = COMPUTER;
-	} else {
-		gamestate.turn = PLAYER;
-	}
-
-	render_manual2();
-	input_any();
 }
 
 int getcoord(int atcpu) {
@@ -491,7 +506,7 @@ typedef {
 bool seq_cputurn() {
 	turn_state_t st = {.hit = game.S_MISS};
 
-	switch (gamestate.ai_next) {
+	switch (AI.ai_next) {
 		/* last shot was random and missed */
 		case RANDOM_FIRE: {
 			ai_randomfire(&st.x, &st.y);
@@ -499,25 +514,25 @@ bool seq_cputurn() {
 			int result = ai_cpufire(st.x, st.y);
 			st.hit = result;
 			if (!st.hit) {
-				gamestate.ai_next = RANDOM_FIRE;
+				AI.ai_next = RANDOM_FIRE;
 			} else {
-				gamestate.ts.x = st.x;
-				gamestate.ts.y = st.y;
-				gamestate.ts.hits = 1;
+				AI.ts.x = st.x;
+				AI.ts.y = st.y;
+				AI.ts.hits = 1;
 				if (st.hit == game.S_SUNK) {
-					gamestate.ai_next = RANDOM_FIRE;
+					AI.ai_next = RANDOM_FIRE;
 				} else {
-					gamestate.ai_next = RANDOM_HIT;
+					AI.ai_next = RANDOM_HIT;
 				}
 			}
 		}
 
 		/* last shot was random and hit */
 		case RANDOM_HIT: {
-			gamestate.used[E / 2] = false;
-			gamestate.used[S / 2] = false;
-			gamestate.used[W / 2] = false;
-			gamestate.used[N / 2] = false;
+			AI.used[E / 2] = false;
+			AI.used[S / 2] = false;
+			AI.used[W / 2] = false;
+			AI.used[N / 2] = false;
 			ai_do_hunt_direct(&st);
 		}
 
@@ -528,8 +543,8 @@ bool seq_cputurn() {
 
 		/* we have a start and a direction now */
 		case FIRST_PASS: {
-			st.x = gamestate.ts.x + xincr[gamestate.ts.dir];
-			st.y = gamestate.ts.y + yincr[gamestate.ts.dir];
+			st.x = AI.ts.x + xincr[AI.ts.dir];
+			st.y = AI.ts.y + yincr[AI.ts.dir];
 			int foo = game.coords_possible(&gamestate, st.x, st.y);
 			if (foo) {
 				int result = ai_cpufire(st.x, st.y);
@@ -537,24 +552,24 @@ bool seq_cputurn() {
 				foo = st.hit;
 			}
 			if (foo) {
-				gamestate.ts.x = st.x;
-				gamestate.ts.y = st.y;
-				gamestate.ts.hits++;
+				AI.ts.x = st.x;
+				AI.ts.y = st.y;
+				AI.ts.hits++;
 				if (st.hit == game.S_SUNK) {
-					gamestate.ai_next = RANDOM_FIRE;
+					AI.ai_next = RANDOM_FIRE;
 				} else {
-					gamestate.ai_next = FIRST_PASS;
+					AI.ai_next = FIRST_PASS;
 				}
 			} else {
-				gamestate.ai_next = REVERSE_JUMP;
+				AI.ai_next = REVERSE_JUMP;
 			}
 		}
 
 		/* nail down the ship's other end */
 		case REVERSE_JUMP: {
-			st.d = gamestate.ts.dir + 4;
-			st.x = gamestate.ts.x + gamestate.ts.hits * xincr[st.d];
-			st.y = gamestate.ts.y + gamestate.ts.hits * yincr[st.d];
+			st.d = AI.ts.dir + 4;
+			st.x = AI.ts.x + AI.ts.hits * xincr[st.d];
+			st.y = AI.ts.y + AI.ts.hits * yincr[st.d];
 			int foo = game.coords_possible(&gamestate, st.x, st.y);
 			if (foo) {
 				int result = ai_cpufire(st.x, st.y);
@@ -562,24 +577,24 @@ bool seq_cputurn() {
 				foo = st.hit;
 			}
 			if (foo) {
-				gamestate.ts.x = st.x;
-				gamestate.ts.y = st.y;
-				gamestate.ts.dir = st.d;
-				gamestate.ts.hits++;
+				AI.ts.x = st.x;
+				AI.ts.y = st.y;
+				AI.ts.dir = st.d;
+				AI.ts.hits++;
 				if (st.hit == game.S_SUNK) {
-					gamestate.ai_next = RANDOM_FIRE;
+					AI.ai_next = RANDOM_FIRE;
 				} else {
-					gamestate.ai_next = SECOND_PASS;
+					AI.ai_next = SECOND_PASS;
 				}
 			} else {
-				gamestate.ai_next = RANDOM_FIRE;
+				AI.ai_next = RANDOM_FIRE;
 			}
 		}
 
 		/* kill squares not caught on first pass */
 		case SECOND_PASS: {
-			st.x = gamestate.ts.x + xincr[gamestate.ts.dir];
-			st.y = gamestate.ts.y + yincr[gamestate.ts.dir];
+			st.x = AI.ts.x + xincr[AI.ts.dir];
+			st.y = AI.ts.y + yincr[AI.ts.dir];
 			int foo = game.coords_possible(&gamestate, st.x, st.y);
 			if (foo) {
 				int result = ai_cpufire(st.x, st.y);
@@ -587,16 +602,16 @@ bool seq_cputurn() {
 				foo = st.hit;
 			}
 			if (foo) {
-				gamestate.ts.x = st.x;
-				gamestate.ts.y = st.y;
-				gamestate.ts.hits++;
+				AI.ts.x = st.x;
+				AI.ts.y = st.y;
+				AI.ts.hits++;
 				if (st.hit == game.S_SUNK) {
-					gamestate.ai_next = RANDOM_FIRE;
+					AI.ai_next = RANDOM_FIRE;
 				} else {
-					gamestate.ai_next = SECOND_PASS;
+					AI.ai_next = SECOND_PASS;
 				}
 			} else {
-				gamestate.ai_next = RANDOM_FIRE;
+				AI.ai_next = RANDOM_FIRE;
 			}
 		}
 	}
@@ -610,7 +625,7 @@ bool seq_cputurn() {
 	}
 
 	if (DEBUG) {
-		OS.mvprintw(PROMPTLINE + 2, 0, "New state %d, x=%d, y=%d, d=%d", gamestate.ai_next, st.x, st.y, st.d);
+		OS.mvprintw(PROMPTLINE + 2, 0, "New state %d, x=%d, y=%d, d=%d", AI.ai_next, st.x, st.y, st.d);
 	}
 	return st.hit;
 }
@@ -622,8 +637,8 @@ void ai_randomfire(int *px, int *py) {
 	int ypreferred[BWIDTH * BDEPTH];
 	int xpreferred[BWIDTH * BDEPTH];
 
-	if (gamestate.ai_turncount++ == 0) {
-		gamestate.ai_huntoffs = rnd(gamestate.ai_srchstep);
+	if (AI.ai_turncount++ == 0) {
+		AI.ai_huntoffs = rnd(AI.ai_srchstep);
 	}
 
 	/* first, list all possible moves */
@@ -635,8 +650,7 @@ void ai_randomfire(int *px, int *py) {
 				xpossible[nposs] = x;
 				ypossible[nposs] = y;
 				nposs++;
-				if (((x + gamestate.ai_huntoffs) % gamestate.ai_srchstep) !=
-				    (y % gamestate.ai_srchstep)) {
+				if (((x + AI.ai_huntoffs) % AI.ai_srchstep) != (y % AI.ai_srchstep)) {
 					xpreferred[npref] = x;
 					ypreferred[npref] = y;
 					npref++;
@@ -653,8 +667,8 @@ void ai_randomfire(int *px, int *py) {
 		int i = rnd(nposs);
 		*px = xpossible[i];
 		*py = ypossible[i];
-		if (gamestate.ai_srchstep > 1) {
-			--gamestate.ai_srchstep;
+		if (AI.ai_srchstep > 1) {
+			--AI.ai_srchstep;
 		}
 	} else {
 		panic("No moves possible?? Help!");
@@ -662,8 +676,8 @@ void ai_randomfire(int *px, int *py) {
 }
 
 int ai_cpufire(int x, y) {
-	gamestate.ai_last_x = x;
-	gamestate.ai_last_y = y;
+	AI.ai_last_x = x;
+	AI.ai_last_y = y;
 
 	int result = game.shoot(&gamestate, COMPUTER, x, y);
 	if (result == game.S_SUNK) {
@@ -678,12 +692,12 @@ void ai_do_hunt_direct(turn_state_t *st) {
 	int navail = 0;
 	st->d = 0;
 	while (st->d < 4) {
-		st->x = gamestate.ts.x + xincr[st->d * 2];
-		st->y = gamestate.ts.y + yincr[st->d * 2];
-		if (!gamestate.used[st->d] && game.coords_possible(&gamestate, st->x, st->y)) {
+		st->x = AI.ts.x + xincr[st->d * 2];
+		st->y = AI.ts.y + yincr[st->d * 2];
+		if (!AI.used[st->d] && game.coords_possible(&gamestate, st->x, st->y)) {
 			navail++;
 		} else {
-			gamestate.used[st->d] = true;
+			AI.used[st->d] = true;
 		}
 		st->d++;
 	}
@@ -692,22 +706,22 @@ void ai_do_hunt_direct(turn_state_t *st) {
 		int result = ai_cpufire(st->x, st->y);
 		st->hit = result;
 		if (!st->hit) {
-			gamestate.ai_next = RANDOM_FIRE;
+			AI.ai_next = RANDOM_FIRE;
 		} else {
-			gamestate.ts.x = st->x;
-			gamestate.ts.y = st->y;
-			gamestate.ts.hits = 1;
+			AI.ts.x = st->x;
+			AI.ts.y = st->y;
+			AI.ts.hits = 1;
 			if (st->hit == game.S_SUNK) {
-				gamestate.ai_next = RANDOM_FIRE;
+				AI.ai_next = RANDOM_FIRE;
 			} else {
-				gamestate.ai_next = RANDOM_HIT;
+				AI.ai_next = RANDOM_HIT;
 			}
 		}
 	} else {
 		st->d = 0;
 		int n = rnd(navail) + 1;
 		while (n) {
-			while (gamestate.used[st->d]) {
+			while (AI.used[st->d]) {
 				st->d++;
 			}
 			n--;
@@ -715,24 +729,24 @@ void ai_do_hunt_direct(turn_state_t *st) {
 
 		assert(st->d <= 4);
 
-		gamestate.used[st->d] = false;
-		st->x = gamestate.ts.x + xincr[st->d * 2];
-		st->y = gamestate.ts.y + yincr[st->d * 2];
+		AI.used[st->d] = false;
+		st->x = AI.ts.x + xincr[st->d * 2];
+		st->y = AI.ts.y + yincr[st->d * 2];
 
 		assert(game.coords_possible(&gamestate, st->x, st->y));
 		int result = ai_cpufire(st->x, st->y);
 		st->hit = result;
 		if (!st->hit) {
-			gamestate.ai_next = HUNT_DIRECT;
+			AI.ai_next = HUNT_DIRECT;
 		} else {
-			gamestate.ts.x = st->x;
-			gamestate.ts.y = st->y;
-			gamestate.ts.dir = st->d * 2;
-			gamestate.ts.hits++;
+			AI.ts.x = st->x;
+			AI.ts.y = st->y;
+			AI.ts.dir = st->d * 2;
+			AI.ts.hits++;
 			if (st->hit == game.S_SUNK) {
-				gamestate.ai_next = RANDOM_FIRE;
+				AI.ai_next = RANDOM_FIRE;
 			} else {
-				gamestate.ai_next = FIRST_PASS;
+				AI.ai_next = FIRST_PASS;
 			}
 		}
 	}
@@ -777,8 +791,8 @@ void render_reset() {
 }
 
 void render_ai_shot() {
-	int x = gamestate.ai_last_x;
-	int y = gamestate.ai_last_y;
+	int x = AI.ai_last_x;
+	int y = AI.ai_last_y;
 	if (gamestate.players[COMPUTER].shots[x][y] == game.MARK_HIT) {
 		render_ai_hit();
 	} else {
@@ -1004,8 +1018,8 @@ void render_player_shot() {
 }
 
 void render_ai_hit() {
-	int x = gamestate.ai_last_x;
-	int y = gamestate.ai_last_y;
+	int x = AI.ai_last_x;
+	int y = AI.ai_last_y;
 	OS.mvprintw(PROMPTLINE, 0, "I shoot at %c%d. I %s!", y + 'A', x, "hit");
 	if (gamestate.sunk_by_ai) {
 		OS.printw(" I've sunk your %s", shipname(gamestate.sunk_by_ai->kind));
@@ -1020,8 +1034,8 @@ void render_ai_hit() {
 }
 
 void render_ai_miss() {
-	int x = gamestate.ai_last_x;
-	int y = gamestate.ai_last_y;
+	int x = AI.ai_last_x;
+	int y = AI.ai_last_y;
 	OS.mvprintw(PROMPTLINE, 0, "I shoot at %c%d. I %s!", y + 'A', x, "miss");
 	OS.clrtoeol();
 	pgoto(y, x);

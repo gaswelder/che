@@ -63,31 +63,23 @@ pub typedef {
 
 pub typedef {
 	bool closepack;
+
 	player_t players[2];
+	int turn;
 
-
-	int turn; /* 0=player, 1=computer */	
 	int curx, cury;
-	bool used[4];
-	ship_t ts;
 
 	// placing mode
 	char docked[10]; // ships that the player has to place
 	// --placing mode
 
-	int ai_next;
-	int ai_turncount;
-	int ai_srchstep;
-	int ai_huntoffs; /* Offset on search strategy */
-
-	int ai_last_x, ai_last_y;
+	// render state
 	ship_t *sunk_by_ai;
-
 	int player_hit;
 	ship_t *sunk_by_player;
 
+	//
 	int winner;
-
 	int nx, ny;
 } state_t;
 
