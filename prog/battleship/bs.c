@@ -141,10 +141,7 @@ void play_blitz() {
 			if (gamestate.turn == COMPUTER) {
 				ok = seq_cputurn();
 			} else {
-				int state = STATE_SELECT_SHOT_INIT;
-				while (state) {
-					state = s_input_player_shot(state);
-				}
+				s_input_player_shot();
 				ok = seq_playerturn();
 			}
 			render_turn();
@@ -165,10 +162,7 @@ void play_salvo() {
 					i = 0;
 				}
 			} else {
-				int state = STATE_SELECT_SHOT_INIT;
-				while (state) {
-					state = s_input_player_shot(state);
-				}
+				s_input_player_shot();
 				int result = seq_playerturn();
 				if (result && game.winner(&gamestate) != -1) {
 					i = 0;
@@ -185,10 +179,7 @@ void play_regular() {
 		if (gamestate.turn == COMPUTER) {
 			seq_cputurn();
 		} else {
-			int state = STATE_SELECT_SHOT_INIT;
-			while (state) {
-				state = s_input_player_shot(state);
-			}
+			s_input_player_shot();
 			seq_playerturn();
 		}
 		render_turn();
@@ -357,34 +348,19 @@ int getcoord(int atcpu) {
 	return c;
 }
 
-enum {
-	STATE_SHOT_SELECTED,
-	STATE_SELECT_SHOT_INIT,
-	STATE_SELECT_SHOT,
-};
-
-int s_input_player_shot(int state) {
-	switch (state) {
-		case STATE_SELECT_SHOT_INIT: {
-			render_prompt(1, "Where do you want to shoot? ", "");
-			return STATE_SELECT_SHOT;
+void s_input_player_shot() {
+	render_prompt(1, "Where do you want to shoot? ", "");
+	while (true) {
+		getcoord(COMPUTER);
+		render_clear_coords(COMPUTER);
+		if (gamestate.players[PLAYER].shots[gamestate.curx][gamestate.cury]) {
+			render_prompt(1, "You shelled this spot already! Try again.", "");
+			OS.beep();
+			continue;
 		}
-		case STATE_SELECT_SHOT: {
-			getcoord(COMPUTER);
-			render_clear_coords(COMPUTER);
-			if (gamestate.players[PLAYER].shots[gamestate.curx][gamestate.cury]) {
-				render_prompt(1, "You shelled this spot already! Try again.", "");
-				OS.beep();
-				return STATE_SELECT_SHOT;
-			}
-			return STATE_SHOT_SELECTED;
-		}
+		break;
 	}
-	panic("unknown state");
 }
-
-/////////////////////////////////////////////////////////
-// -------------------- input --------------------
 
 int input_key() {
 	return OS.getch();
