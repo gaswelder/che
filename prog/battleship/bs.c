@@ -20,7 +20,6 @@ bool salvo = false;
 bool blitz = false;
 bool closepack = false;
 bool PENGUIN = true;
-bool DEBUG = false;
 
 // ai_next values
 enum {
@@ -56,11 +55,15 @@ typedef {
 	int ai_huntoffs; /* Offset on search strategy */
 	bool used[4];
 	game.ship_t ts;
+
+	int x;
+	int y;
+	int hit;
+	int d;
 } ai_state_t;
 
-ai_state_t AI = {
-	//
-};
+
+ai_state_t AI = {};
 
 const int SHIPTYPES = 5;
 
@@ -483,55 +486,25 @@ int seq_playerturn() {
 	return false;
 }
 
-typedef {
-	int x, y, hit, d;
-} turn_state_t;
+
 
 
 
 bool seq_cputurn() {
-	turn_state_t st = {.hit = game.S_MISS};
-
 	switch (AI.ai_next) {
-		case RANDOM_FIRE: { ai_random_fire(&st); }
+		case RANDOM_FIRE: { ai_random_fire(); }
 
 		/* last shot hit, we're looking for ship's axis */
-		case HUNT_DIRECT: { ai_do_hunt_direct(&st); }
+		case HUNT_DIRECT: { ai_find_orientation(); }
 
 		/* we have a start and a direction now */
-		case FIRST_PASS: { ai_first_pass(&st); }
+		case FIRST_PASS: { ai_first_pass(); }
 
 		/* nail down the ship's other end */
-		case REVERSE_JUMP: {
-			st.d = AI.ts.dir + 4;
-			xy_t xy = shipxy(AI.ts.x, AI.ts.y, st.d, AI.ts.hits);
-			st.x = xy.x;
-			st.y = xy.y;
-			int foo = game.coords_possible(&gamestate, st.x, st.y);
-			if (foo) {
-				int result = ai_cpufire(st.x, st.y);
-				st.hit = result;
-				foo = st.hit;
-			}
-			if (foo) {
-				AI.ts.x = st.x;
-				AI.ts.y = st.y;
-				AI.ts.dir = st.d;
-				AI.ts.hits++;
-				if (st.hit == game.S_SUNK) {
-					AI.ai_next = RANDOM_FIRE;
-				} else {
-					AI.ai_next = SECOND_PASS;
-				}
-			} else {
-				AI.ai_next = RANDOM_FIRE;
-			}
-		}
+		case REVERSE_JUMP: { ai_reverse_jump(); }
 
 		/* kill squares not caught on first pass */
-		case SECOND_PASS: {
-			ai_second_pass(&st);
-		}
+		case SECOND_PASS: { ai_second_pass(); }
 	}
 	/* check for continuation and/or winner */
 	if (salvo) {
@@ -541,30 +514,53 @@ bool seq_cputurn() {
 	if (game.winner(&gamestate) != -1) {
 		return false;
 	}
-
-	if (DEBUG) {
-		OS.mvprintw(PROMPTLINE + 2, 0, "New state %d, x=%d, y=%d, d=%d", AI.ai_next, st.x, st.y, st.d);
-	}
-	return st.hit;
+	
+	return AI.hit;
 }
 
-void ai_second_pass(turn_state_t *st) {
-	xy_t xy = shipxy(AI.ts.x, AI.ts.y, AI.ts.dir, 1);
-	st->x = xy.x;
-	st->y = xy.y;
-	if (!game.coords_possible(&gamestate, st->x, st->y)) {
+void ai_reverse_jump() {
+	AI.d = AI.ts.dir + 4;
+	xy_t xy = shipxy(AI.ts.x, AI.ts.y, AI.d, AI.ts.hits);
+	AI.x = xy.x;
+	AI.y = xy.y;
+	if (!game.coords_possible(&gamestate, AI.x, AI.y)) {
 		AI.ai_next = RANDOM_FIRE;
 		return;
 	}
-	int result = ai_cpufire(st->x, st->y);
-	st->hit = result;
+	int result = ai_cpufire(AI.x, AI.y);
+	AI.hit = result;
 	switch (result) {
 		case game.S_MISS, game.S_SUNK: {
 			AI.ai_next = RANDOM_FIRE;
 		}
 		case game.S_HIT: {
-			AI.ts.x = st->x;
-			AI.ts.y = st->y;
+			AI.ts.x = AI.x;
+			AI.ts.y = AI.y;
+			AI.ts.dir = AI.d;
+			AI.ts.hits++;
+			AI.ai_next = SECOND_PASS;
+		}
+		default: { panic("!"); }
+	}
+}
+
+void ai_second_pass() {
+	xy_t xy = shipxy(AI.ts.x, AI.ts.y, AI.ts.dir, 1);
+	AI.x = xy.x;
+	AI.y = xy.y;
+	if (!game.coords_possible(&gamestate, AI.x, AI.y)) {
+		AI.ai_next = RANDOM_FIRE;
+		return;
+	}
+	int result = ai_cpufire(AI.x, AI.y);
+	AI.hit = result;
+	switch (result) {
+		case game.S_MISS, game.S_SUNK: {
+			AI.ai_next = RANDOM_FIRE;
+		}
+		case game.S_HIT: {
+			AI.ts.x = AI.x;
+			AI.ts.y = AI.y;
 			AI.ts.hits++;
 		}
 		default: {
@@ -573,22 +569,22 @@ void ai_second_pass(turn_state_t *st) {
 	}
 }
 
-void ai_first_pass(turn_state_t *st) {
+void ai_first_pass() {
 	xy_t xy = shipxy(AI.ts.x, AI.ts.y, AI.ts.dir, 1);
-	st->x = xy.x;
-	st->y = xy.y;
-	if (!game.coords_possible(&gamestate, st->x, st->y)) {
+	AI.x = xy.x;
+	AI.y = xy.y;
+	if (!game.coords_possible(&gamestate, AI.x, AI.y)) {
 		AI.ai_next = REVERSE_JUMP;
 		return;
 	}
-	int result = ai_cpufire(st->x, st->y);
-	st->hit = result;
+	int result = ai_cpufire(AI.x, AI.y);
+	AI.hit = result;
 	switch (result) {
 		case game.S_MISS: { AI.ai_next = REVERSE_JUMP; }
 		case game.S_SUNK: { AI.ai_next = RANDOM_FIRE; }
 		case game.S_HIT: {
-			AI.ts.x = st->x;
-			AI.ts.y = st->y;
+			AI.ts.x = AI.x;
+			AI.ts.y = AI.y;
 			AI.ts.hits++;
 			// continue first pass
 		}
@@ -657,12 +653,12 @@ int ai_cpufire(int x, y) {
 	return result;
 }
 
-void ai_random_fire(turn_state_t *st) {
-	ai_choose_move(&st->x, &st->y);
-	switch (ai_cpufire(st->x, st->y)) {
+void ai_random_fire() {
+	ai_choose_move(&AI.x, &AI.y);
+	switch (ai_cpufire(AI.x, AI.y)) {
 		case game.S_HIT: {
-			AI.ts.x = st->x;
-			AI.ts.y = st->y;
+			AI.ts.x = AI.x;
+			AI.ts.y = AI.y;
 			AI.ts.hits = 1;
 			AI.used[E / 2] = false;
 			AI.used[S / 2] = false;
@@ -677,55 +673,59 @@ void ai_random_fire(turn_state_t *st) {
 	}
 }
 
-void ai_do_hunt_direct(turn_state_t *st) {
+void ai_warn(const char *msg) {
+	(void) msg;
+}
+
+void ai_find_orientation() {
 	int navail = 0;
-	st->d = 0;
-	while (st->d < 4) {
-		xy_t xy = shipxy(AI.ts.x, AI.ts.y, st->d * 2, 1);
-		st->x = xy.x;
-		st->y = xy.y;
-		if (!AI.used[st->d] && game.coords_possible(&gamestate, st->x, st->y)) {
-			navail++;
-		} else {
-			AI.used[st->d] = true;
+	for (int i = 0; i < 4; i++) {
+		if (AI.used[i]) continue;
+		xy_t xy = shipxy(AI.ts.x, AI.ts.y, i * 2, 1);
+		if (!game.coords_possible(&gamestate, xy.x, xy.y)) {
+			AI.used[i] = true;
+			continue;
 		}
-		st->d++;
+		navail++;
 	}
-	if (navail == 0) /* no valid places for shots adjacent... */ {
-		ai_random_fire(st);
+	if (navail == 0) {
+		ai_warn("orientation: ship not sunk and no valid coords");
+		ai_random_fire();
 		return;
 	}
 
-	st->d = 0;
+	AI.d = 0;
 	int n = rnd(navail) + 1;
 	while (n) {
-		while (AI.used[st->d]) {
-			st->d++;
+		while (AI.used[AI.d]) {
+			AI.d++;
 		}
 		n--;
 	}
+	AI.used[AI.d] = false;
+	xy_t xy = shipxy(AI.ts.x, AI.ts.y, AI.d * 2, 1);
+	AI.x = xy.x;
+	AI.y = xy.y;
 
-	assert(st->d <= 4);
 
-	AI.used[st->d] = false;
-	xy_t xy = shipxy(AI.ts.x, AI.ts.y, st->d * 2, 1);
-	st->x = xy.x;
-	st->y = xy.y;
-
-	assert(game.coords_possible(&gamestate, st->x, st->y));
-	int result = ai_cpufire(st->x, st->y);
-	st->hit = result;
-	if (!st->hit) {
-		AI.ai_next = HUNT_DIRECT;
-	} else {
-		AI.ts.x = st->x;
-		AI.ts.y = st->y;
-		AI.ts.dir = st->d * 2;
-		AI.ts.hits++;
-		if (st->hit == game.S_SUNK) {
+	int result = ai_cpufire(AI.x, AI.y);
+	AI.hit = result;
+	switch (result) {
+		case game.S_MISS: {
+			// keep trying
+		}
+		case game.S_SUNK: {
 			AI.ai_next = RANDOM_FIRE;
-		} else {
+		}
+		case game.S_HIT: {
+			AI.ts.x = AI.x;
+			AI.ts.y = AI.y;
+			AI.ts.dir = AI.d * 2;
+			AI.ts.hits++;
 			AI.ai_next = FIRST_PASS;
+		}
+		default: {
+			panic("!");
 		}
 	}
 }
