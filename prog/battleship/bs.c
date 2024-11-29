@@ -64,8 +64,16 @@ ai_state_t AI = {
 };
 
 const int SHIPTYPES = 5;
-const int xincr[8] = {1, 1, 0, -1, -1, -1, 0, 1};
-const int yincr[8] = {0, 1, 1, 1, 0, -1, -1, -1};
+
+xy_t shipxy(int x, y, dir, dist) {
+	const int xincr[8] = {1, 1, 0, -1, -1, -1, 0, 1};
+	const int yincr[8] = {0, 1, 1, 1, 0, -1, -1, -1};
+	xy_t r = {
+		.x = x + dist * xincr[dir],
+		.y = y + dist * yincr[dir]
+	};
+	return r;
+}
 
 int main(int argc, char *argv[]) {
 	opt.flag("b", "play a blitz game", &blitz);
@@ -483,26 +491,21 @@ bool seq_cputurn() {
 	turn_state_t st = {.hit = game.S_MISS};
 
 	switch (AI.ai_next) {
-		/* last shot was random and missed */
 		case RANDOM_FIRE: {
-			ai_randomfire(&st.x, &st.y);
-
-			int result = ai_cpufire(st.x, st.y);
-			st.hit = result;
-			if (!st.hit) {
-				AI.ai_next = RANDOM_FIRE;
-			} else {
-				AI.ts.x = st.x;
-				AI.ts.y = st.y;
-				AI.ts.hits = 1;
-				if (st.hit == game.S_SUNK) {
-					AI.ai_next = RANDOM_FIRE;
-				} else {
+			ai_choose_move(&st.x, &st.y);
+			switch (ai_cpufire(st.x, st.y)) {
+				case game.S_HIT: {
+					AI.ts.x = st.x;
+					AI.ts.y = st.y;
+					AI.ts.hits = 1;
 					AI.ai_next = RANDOM_HIT;
 				}
+				case game.S_MISS, game.S_SUNK: {
+					// keep random shooting
+				}
+				default: { panic("!"); }
 			}
 		}
-
 		/* last shot was random and hit */
 		case RANDOM_HIT: {
 			AI.used[E / 2] = false;
@@ -519,8 +522,9 @@ bool seq_cputurn() {
 
 		/* we have a start and a direction now */
 		case FIRST_PASS: {
-			st.x = AI.ts.x + xincr[AI.ts.dir];
-			st.y = AI.ts.y + yincr[AI.ts.dir];
+			xy_t xy = shipxy(AI.ts.x, AI.ts.y, AI.ts.dir, 1);
+			st.x = xy.x;
+			st.y = xy.y;
 			int foo = game.coords_possible(&gamestate, st.x, st.y);
 			if (foo) {
 				int result = ai_cpufire(st.x, st.y);
@@ -544,8 +548,9 @@ bool seq_cputurn() {
 		/* nail down the ship's other end */
 		case REVERSE_JUMP: {
 			st.d = AI.ts.dir + 4;
-			st.x = AI.ts.x + AI.ts.hits * xincr[st.d];
-			st.y = AI.ts.y + AI.ts.hits * yincr[st.d];
+			xy_t xy = shipxy(AI.ts.x, AI.ts.y, st.d, AI.ts.hits);
+			st.x = xy.x;
+			st.y = xy.y;
 			int foo = game.coords_possible(&gamestate, st.x, st.y);
 			if (foo) {
 				int result = ai_cpufire(st.x, st.y);
@@ -569,8 +574,9 @@ bool seq_cputurn() {
 
 		/* kill squares not caught on first pass */
 		case SECOND_PASS: {
-			st.x = AI.ts.x + xincr[AI.ts.dir];
-			st.y = AI.ts.y + yincr[AI.ts.dir];
+			xy_t xy = shipxy(AI.ts.x, AI.ts.y, AI.ts.dir, 1);
+			st.x = xy.x;
+			st.y = xy.y;
 			int foo = game.coords_possible(&gamestate, st.x, st.y);
 			if (foo) {
 				int result = ai_cpufire(st.x, st.y);
@@ -606,32 +612,37 @@ bool seq_cputurn() {
 	return st.hit;
 }
 
-// implements simple diagonal-striping strategy
-void ai_randomfire(int *px, int *py) {
+void ai_choose_move(int *px, int *py) {
+	// List all possible moves.
+	int nposs = 0;
 	int ypossible[BWIDTH * BDEPTH];
 	int xpossible[BWIDTH * BDEPTH];
-	int ypreferred[BWIDTH * BDEPTH];
-	int xpreferred[BWIDTH * BDEPTH];
+	for (int x = 0; x < BWIDTH; x++) {
+		for (int y = 0; y < BDEPTH; y++) {
+			if (gamestate.players[COMPUTER].shots[x][y]) continue;
+			xpossible[nposs] = x;
+			ypossible[nposs] = y;
+			nposs++;
+		}
+	}
+	if (!nposs) {
+		panic("No moves possible?? Help!");
+	}
 
+	// List preferred possible moves.
 	if (AI.ai_turncount++ == 0) {
 		AI.ai_huntoffs = rnd(AI.ai_srchstep);
 	}
-
-	/* first, list all possible moves */
-	int nposs = 0;
 	int npref = 0;
-	for (int x = 0; x < BWIDTH; x++) {
-		for (int y = 0; y < BDEPTH; y++) {
-			if (!gamestate.players[COMPUTER].shots[x][y]) {
-				xpossible[nposs] = x;
-				ypossible[nposs] = y;
-				nposs++;
-				if (((x + AI.ai_huntoffs) % AI.ai_srchstep) != (y % AI.ai_srchstep)) {
-					xpreferred[npref] = x;
-					ypreferred[npref] = y;
-					npref++;
-				}
-			}
+	int ypreferred[BWIDTH * BDEPTH];
+	int xpreferred[BWIDTH * BDEPTH];
+	for (int i = 0; i < nposs; i++) {
+		int x = xpossible[i];
+		int y = ypossible[i];
+		if (((x + AI.ai_huntoffs) % AI.ai_srchstep) != (y % AI.ai_srchstep)) {
+			xpreferred[npref] = x;
+			ypreferred[npref] = y;
+			npref++;
 		}
 	}
 
@@ -639,15 +650,13 @@ void ai_randomfire(int *px, int *py) {
 		int i = rnd(npref);
 		*px = xpreferred[i];
 		*py = ypreferred[i];
-	} else if (nposs) {
+	} else {
 		int i = rnd(nposs);
 		*px = xpossible[i];
 		*py = ypossible[i];
 		if (AI.ai_srchstep > 1) {
 			--AI.ai_srchstep;
 		}
-	} else {
-		panic("No moves possible?? Help!");
 	}
 }
 
@@ -668,8 +677,9 @@ void ai_do_hunt_direct(turn_state_t *st) {
 	int navail = 0;
 	st->d = 0;
 	while (st->d < 4) {
-		st->x = AI.ts.x + xincr[st->d * 2];
-		st->y = AI.ts.y + yincr[st->d * 2];
+		xy_t xy = shipxy(AI.ts.x, AI.ts.y, st->d * 2, 1);
+		st->x = xy.x;
+		st->y = xy.y;
 		if (!AI.used[st->d] && game.coords_possible(&gamestate, st->x, st->y)) {
 			navail++;
 		} else {
@@ -678,7 +688,7 @@ void ai_do_hunt_direct(turn_state_t *st) {
 		st->d++;
 	}
 	if (navail == 0) /* no valid places for shots adjacent... */ {
-		ai_randomfire(&st->x, &st->y);
+		ai_choose_move(&st->x, &st->y);
 		int result = ai_cpufire(st->x, st->y);
 		st->hit = result;
 		if (!st->hit) {
@@ -706,8 +716,9 @@ void ai_do_hunt_direct(turn_state_t *st) {
 		assert(st->d <= 4);
 
 		AI.used[st->d] = false;
-		st->x = AI.ts.x + xincr[st->d * 2];
-		st->y = AI.ts.y + yincr[st->d * 2];
+		xy_t xy = shipxy(AI.ts.x, AI.ts.y, st->d * 2, 1);
+		st->x = xy.x;
+		st->y = xy.y;
 
 		assert(game.coords_possible(&gamestate, st->x, st->y));
 		int result = ai_cpufire(st->x, st->y);
@@ -845,11 +856,14 @@ void render_options() {
 	}
 }
 
+typedef { int x, y; } xy_t;
+
+
+
 void render_placed_ship(game.ship_t *ss) {
 	for (int l = 0; l < ss->length; ++l) {
-		int x = ss->x + l * xincr[ss->dir];
-		int y = ss->y + l * yincr[ss->dir];
-		pgoto(y, x);
+		xy_t xy = shipxy(ss->x, ss->y, ss->dir, l);
+		pgoto(xy.y, xy.x);
 		OS.addch(ss->symbol);
 	}
 }
@@ -1027,7 +1041,8 @@ void render_cpu_ships() {
 	game.ship_t *ss;
 	for (ss = gamestate.players[COMPUTER].ships; ss < gamestate.players[COMPUTER].ships + SHIPTYPES; ss++) {
 		for (j = 0; j < ss->length; j++) {
-			cgoto(ss->y + j * yincr[ss->dir], ss->x + j * xincr[ss->dir]);
+			xy_t xy = shipxy(ss->x, ss->y, ss->dir, j);
+			cgoto(xy.y, xy.x);
 			OS.addch(ss->symbol);
 		}
 	}
@@ -1060,8 +1075,9 @@ void render_turn() {
 
 void render_reveal_ship(game.ship_t *ss) {
 	for (int i = 0; i < ss->length; ++i) {
-		int x1 = ss->x + i * xincr[ss->dir];
-		int y1 = ss->y + i * yincr[ss->dir];
+		xy_t xy = shipxy(ss->x, ss->y, ss->dir, i);
+		int x1 = xy.x;
+		int y1 = xy.y;
 
 		gamestate.players[gamestate.turn].shots[x1][y1] = ss->symbol;
 		if (gamestate.turn % 2 == PLAYER) {
@@ -1081,11 +1097,13 @@ void render_reveal_ship(game.ship_t *ss) {
 void render_empty_water(game.ship_t *ss) {
 	if (closepack) return;
 	for (int j = -1; j <= 1; j++) {
-		int bx = ss->x + j * xincr[(ss->dir + 2) % 8];
-		int by = ss->y + j * yincr[(ss->dir + 2) % 8];
+		xy_t xy = shipxy(ss->x, ss->y, (ss->dir + 2) % 8, j);
+		int bx = xy.x;
+		int by = xy.y;
 		for (int i = -1; i <= ss->length; ++i) {
-			int x1 = bx + i * xincr[ss->dir];
-			int y1 = by + i * yincr[ss->dir];
+			xy_t xy1 = shipxy(bx, by, ss->dir, i);
+			int x1 = xy1.x;
+			int y1 = xy1.y;
 			if (game.coords_valid(x1, y1)) {
 				if (gamestate.turn % 2 == PLAYER) {
 					cgoto(y1, x1);
