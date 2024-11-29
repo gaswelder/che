@@ -83,6 +83,18 @@ pub typedef {
 	int nx, ny;
 } state_t;
 
+pub typedef { int x, y; } xy_t;
+
+pub xy_t shipxy(int x, y, dir, dist) {
+	const int xincr[8] = {1, 1, 0, -1, -1, -1, 0, 1};
+	const int yincr[8] = {0, 1, 1, 1, 0, -1, -1, -1};
+	xy_t r = {
+		.x = x + dist * xincr[dir],
+		.y = y + dist * yincr[dir]
+	};
+	return r;
+}
+
 pub void reset(state_t *g) {
 	memset(g->players, 0, 2 * sizeof(player_t));
 	for (int player = 0; player < 2; player++) {
@@ -271,3 +283,4 @@ pub int shipscount(state_t *g, int player) {
 	}
 	return n;
 }
+
