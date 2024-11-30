@@ -13,11 +13,12 @@
 #import rnd
 #import time
 
+#define CTRLC '\003' /* used as terminate command */
+
 // options
 bool salvo = false;
 bool blitz = false;
 bool closepack = false;
-bool PENGUIN = true;
 
 // /* direction constants */
 enum {
@@ -59,10 +60,6 @@ int main(int argc, char *argv[]) {
 	}
 
 	render.init();
-	if (PENGUIN) {
-		render.render_penguin();
-		input_any();
-	}
 
 // #ifdef NCURSES_MOUSE_VERSION
 	// OS.mousemask(OS.BUTTON1_CLICKED, NULL);
@@ -79,7 +76,8 @@ int main(int argc, char *argv[]) {
 		} else {
 			gamestate.turn = PLAYER;
 		}
-		render.render_manual2();
+		strcpy(gamestate.status, "Arrows: move the cursor; any key: shoot");
+		render.draw_status(&gamestate);
 		input_any();
 		play();
 		int winner = game.winner(&gamestate);
@@ -145,21 +143,57 @@ void play_salvo() {
 int turn() {
 	if (gamestate.turn == COMPUTER) {
 		int result = ai.turn(&gamestate, &AI);
-		if (result == game.S_SUNK) {
-			render.render_hit_ship(&gamestate, gamestate.sunk_by_ai);
+		int x = AI.ai_last_x;
+		int y = AI.ai_last_y;
+		switch (result) {
+			case game.S_SUNK: {
+				game.ship_t *ss = gamestate.sunk_by_ai;
+				game.log(&gamestate, "computer: %c%d - hit", y + 'A', x);
+				game.log(&gamestate, "computer has sunk your %s", game.shipname(ss->kind));
+				render.render_hit_ship(&gamestate, ss);
+			}
+			case game.S_HIT: {
+				game.log(&gamestate, "computer: %c%d - hit", y + 'A', x);
+			}
+			case game.S_MISS: {
+				game.log(&gamestate, "computer: %c%d - miss", y + 'A', x);
+			}
 		}
+		render.refresh_log(&gamestate);
 		if (game.winner(&gamestate) != -1) {
 			return false;
 		}
 		return AI.hit;
 	} else {
-		return playerturn();
+		game.xy_t xy = playerturn_getcoords();
+		int result = game.shoot(&gamestate, PLAYER, xy.x, xy.y);
+		int x = xy.x;
+		int y = xy.y;
+		if (result == game.S_SUNK) {
+			game.ship_t *ss = game.getshipat(&gamestate, COMPUTER, x, y);
+			game.log(&gamestate, "player: %c%d - hit", y + 'A', x);
+			game.log(&gamestate, "player has sunk computer's %s", game.shipname(ss->kind));
+			gamestate.player_hit = true;
+			gamestate.sunk_by_player = ss;
+			render.render_hit_ship(&gamestate, ss);
+			return game.winner(&gamestate) == -1;
+		}
+		if (result == game.S_HIT) {
+			game.log(&gamestate, "player: %c%d - hit", y + 'A', x);
+			gamestate.player_hit = true;
+			gamestate.sunk_by_player = NULL;
+			return true;
+		}
+		game.log(&gamestate, "player: %c%d - miss", y + 'A', x);
+		gamestate.player_hit = false;
+		gamestate.sunk_by_player = NULL;
+		return false;
 	}
 }
 
 
 
-#define CTRLC '\003' /* used as terminate command */
+
 
 #define PYBASE 3
 #define PXBASE 3
@@ -194,7 +228,8 @@ void place_ships() {
 		}
 		*cp = '\0';
 
-		render.render_prompt(1, "Move the cursor and type one of [%s] to place a ship.", docked + 1);
+		sprintf(gamestate.status, "[%s]: place ship at current position; r: place remaining ships at random.", docked + 1);
+		render.draw_status(&gamestate);
 
 		int c;
 		while (true) {
@@ -219,7 +254,8 @@ void place_ships() {
 					break;
 				}
 			}
-			render.render_prompt(1, "Use arrows to place the %s.", game.shipname(ss->kind));
+			sprintf(gamestate.status, "Use arrows to place the %s.", game.shipname(ss->kind));
+			render.draw_status(&gamestate);
 			pgoto(gamestate.cury, gamestate.curx);
 		}
 
@@ -254,39 +290,33 @@ int unplaced() {
 
 void placeall_random() {
 	game.ship_t *ss;
-	render.render_prompt(1, "Placing the rest of your fleet at random...", "");
+	sprintf(gamestate.status, "Placing the rest of your fleet at random...");
+	render.draw_status(&gamestate);
 	for (ss = gamestate.players[PLAYER].ships; ss < gamestate.players[PLAYER].ships + SHIPTYPES; ss++) {
 		if (ss->placed) continue;
 		game.randomplace(&gamestate, PLAYER, ss);
 		game.placeship(&gamestate, PLAYER, ss);
 		ss->placed = true;
-		render.draw_placed_ship(ss);					
+		render.draw_placed_ships(&gamestate);
 	}
-	render.render_error(NULL);
 }
 
 void placeship_random(game.ship_t *ss) {
-	render.render_prompt(1, "Random-placing your %s", game.shipname(ss->kind));
 	game.randomplace(&gamestate, PLAYER, ss);
 	game.placeship(&gamestate, PLAYER, ss);
 	ss->placed = true;
-	render.draw_placed_ship(ss);
-	render.render_error(NULL);
+	render.draw_placed_ships(&gamestate);
 }
 
 void placeship(game.ship_t *ss, int dir) {
 	ss->x = gamestate.curx;
 	ss->y = gamestate.cury;
 	ss->dir = dir;
-	int err = game.checkplacement(&gamestate, PLAYER, ss);
-	if (err) {
-		render.render_placement_error(err);
-		return;
-	}
+	gamestate.error = game.checkplacement(&gamestate, PLAYER, ss);
+	render.draw_error(&gamestate);
 	game.placeship(&gamestate, PLAYER, ss);
 	ss->placed = true;
-	render.draw_placed_ship(ss);
-	render.render_error(NULL);
+	render.draw_placed_ships(&gamestate);
 }
 
 int getcoord(int atcpu, game.xy_t *xy) {
@@ -352,8 +382,7 @@ int input_keychoice(const char *s) {
 	panic("return");
 }
 
-int playerturn() {
-	render.render_prompt(1, "Where do you want to shoot? ", "");
+game.xy_t playerturn_getcoords() {
 	while (true) {
 		game.xy_t xy = {
 			.x = gamestate.curx,
@@ -363,28 +392,16 @@ int playerturn() {
 		gamestate.curx = xy.x;
 		gamestate.cury = xy.y;
 		if (gamestate.players[PLAYER].shots[gamestate.curx][gamestate.cury]) {
-			render.render_prompt(1, "You shelled this spot already! Try again.", "");
+			sprintf(gamestate.status, "You shelled this spot already! Try again.");
+			render.draw_status(&gamestate);
 			OS.beep();
 			continue;
 		}
 		break;
 	}
-	int x = gamestate.curx;
-	int y = gamestate.cury;
-	int result = game.shoot(&gamestate, PLAYER, x, y);
-
-	if (result == game.S_SUNK) {
-		gamestate.player_hit = true;
-		gamestate.sunk_by_player = game.getshipat(&gamestate, COMPUTER, x, y);
-		render.render_hit_ship(&gamestate, gamestate.sunk_by_player);
-		return game.winner(&gamestate) == -1;
-	}
-	if (result == game.S_HIT) {
-		gamestate.player_hit = true;
-		gamestate.sunk_by_player = NULL;
-		return true;
-	}
-	gamestate.player_hit = false;
-	gamestate.sunk_by_player = NULL;
-	return false;
+	game.xy_t xy = {
+		.x = gamestate.curx,
+		.y = gamestate.cury
+	};
+	return xy;
 }

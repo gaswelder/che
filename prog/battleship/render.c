@@ -14,17 +14,11 @@ const int SHIPTYPES = 5;
 
 #define SHOWSPLASH ' '
 #define SHOWHIT '*'
-const int PROMPTLINE = 21;
+const int PROMPTLINE = 14;
 const int CXBASE = 48;
 const int CYBASE = 3;
-const int HXBASE = 0;
-const int HYBASE = 3 + BDEPTH + 3 - 1;
-// const int MXBASE = 64;
-// const int MYBASE = 3 + BDEPTH + 3 - 1;
 const int PXBASE = 3;
 const int PYBASE = 3;
-// const int SXBASE = 63;
-// const int SYBASE = 3 + BDEPTH + 3;
 int COLWIDTH = 80;
 const char *numbers = "   0  1  2  3  4  5  6  7  8  9";
 const char *name = "stranger";
@@ -73,7 +67,7 @@ pub void reset() {
 }
 
 void draw_empty_boards() {
-	OS.mvaddstr(PYBASE - 2, PXBASE + 5, "Main Board");
+	OS.mvaddstr(PYBASE - 2, PXBASE + 5, "Player");
 	OS.mvaddstr(PYBASE - 1, PXBASE - 3, numbers);
 	for (int i = 0; i < BDEPTH; ++i) {
 		OS.mvaddch(PYBASE + i, PXBASE - 3, (i + 'A'));
@@ -89,7 +83,7 @@ void draw_empty_boards() {
 		OS.addch((i + 'A'));
 	}
 	OS.mvaddstr(PYBASE + BDEPTH, PXBASE - 3, numbers);
-	OS.mvaddstr(CYBASE - 2, CXBASE + 7, "Hit/Miss Board");
+	OS.mvaddstr(CYBASE - 2, CXBASE + 7, "Computer");
 	OS.mvaddstr(CYBASE - 1, CXBASE - 3, numbers);
 	for (int i = 0; i < BDEPTH; ++i) {
 		OS.mvaddch(CYBASE + i, CXBASE - 3, (i + 'A'));
@@ -107,40 +101,33 @@ void draw_empty_boards() {
 	OS.mvaddstr(CYBASE + BDEPTH, CXBASE - 3, numbers);
 }
 
-pub void draw_placed_ship(game.ship_t *ss) {
-	for (int l = 0; l < ss->length; ++l) {
-		game.xy_t xy = game.shipxy(ss->x, ss->y, ss->dir, l);
-		pgoto(xy.y, xy.x);
-		OS.addch(ss->symbol);
+void clear_field() {
+	for (int i = 0; i < BDEPTH; ++i) {
+		OS.mvaddch(PYBASE + i, PXBASE - 3, (i + 'A'));
+		if (OS.has_colors()) {
+			OS.attron(OS.COLOR_PAIR(OS.COLOR_BLUE));
+		}
+		OS.addch(' ');
+		for (int j = 0; j < BWIDTH; j++) {
+			OS.addstr(" . ");
+		}
+		OS.attrset(0);
+		OS.addch(' ');
+		OS.addch((i + 'A'));
 	}
 }
 
-void render_ai_shot(game.state_t *g, ai.state_t *ai) {
-	int x = ai->ai_last_x;
-	int y = ai->ai_last_y;
-	if (g->players[COMPUTER].shots[x][y] == game.MARK_HIT) {
-		render_ai_hit(g, ai);
-	} else {
-		render_ai_miss(ai);
+pub void draw_placed_ships(game.state_t *g) {
+	clear_field();
+	for (int i = 0; i < SHIPTYPES; i++) {
+		game.ship_t *ss = &g->players[PLAYER].ships[i];
+		if (!ss->placed) continue;
+		for (int l = 0; l < ss->length; ++l) {
+			game.xy_t xy = game.shipxy(ss->x, ss->y, ss->dir, l);
+			pgoto(xy.y, xy.x);
+			OS.addch(ss->symbol);
+		}
 	}
-}
-
-pub void render_penguin() {
-	OS.clear();
-	OS.mvaddstr(4, 29, "Welcome to Battleship!");
-	OS.move(8,0);
-	OS.addstr("                                                  \\\n");
-	OS.addstr("                           \\                     \\ \\\n");
-	OS.addstr("                          \\ \\                   \\ \\ \\_____________\n");
-	OS.addstr("                         \\ \\ \\_____________      \\ \\/            |\n");
-	OS.addstr("                          \\ \\/             \\      \\/             |\n");
-	OS.addstr("                           \\/               \\_____/              |__\n");
-	OS.addstr("           ________________/                                       |\n");
-	OS.addstr("           \\  S.S. Penguin                                         |\n");
-	OS.addstr("            \\                                                     /\n");
-	OS.addstr("             \\___________________________________________________/\n");
-	OS.mvaddstr(22, 27, "Hit any key to continue...");
-	OS.refresh();
 }
 
 pub void render_cursor(game.state_t *g) {
@@ -163,48 +150,49 @@ pub void render_clear_coords() {
 	OS.mvaddstr(PYBASE + BDEPTH + 1, PXBASE + 11,"      ");
 }
 
-pub void render_manual2() {
-	OS.mvprintw(HYBASE, HXBASE, "To fire, move the cursor to your chosen aiming point   ");
-	OS.mvprintw(HYBASE + 1, HXBASE, "and strike any key other than a motion key.            ");
-	OS.mvprintw(HYBASE + 2, HXBASE, "                                                       ");
-	OS.mvprintw(HYBASE + 3, HXBASE, "                                                       ");
-	OS.mvprintw(HYBASE + 4, HXBASE, "                                                       ");
-	OS.mvprintw(HYBASE + 5, HXBASE, "                                                       ");
-	render_prompt(0, "Press any key to start...", "");
-}
-
-pub void render_placement_error(int err) {
-	if (err == game.ERR_HANGING) {
-		switch (rnd.intn(3)) {
-			case 0: { render_error("Ship is hanging from the edge of the world"); }
-			case 1: { render_error("Try fitting it on the board"); }
-			case 2: { render_error("Figure I won't find it if you put it there?"); }
-		}
-	}
-	if (err == game.ERR_COLLISION) {
-		switch (rnd.intn(3)) {
-			case 0: { render_error("There's already a ship there"); }
-			case 1: { render_error("Collision alert!  Aaaaaagh!"); }
-			case 2: { render_error("Er, Admiral, what about the other ship?"); }
-		}
-	}
-}
-
-pub void render_prompt(int n, const char *f, const char *s) {
-	OS.move(PROMPTLINE + n, 0);
+pub void draw_status(game.state_t *g) {
+	OS.move(PROMPTLINE + 1, 0);
 	OS.clrtoeol();
-	OS.printw(f, s);
+	OS.printw(" *** %s", g->status);
 	OS.refresh();
 }
 
-pub void render_error(const char *s) {
+pub void refresh_log(game.state_t *g) {
+	for (int i = 0; i < g->logsize; i++) {
+		OS.move(17 + i, 0);
+		OS.clrtoeol();
+		OS.printw("%s", g->log[i]);
+		OS.refresh();
+	}
+}
+
+const char *errstr_hanging[] = {
+	"Ship is hanging from the edge of the world",
+	"Try fitting it on the board",
+	"Figure I won't find it if you put it there?",
+};
+const char *errstr_collision[] = {
+	"There's already a ship there",
+	"Collision alert!  Aaaaaagh!",
+	"Er, Admiral, what about the other ship?",
+};
+
+pub void draw_error(game.state_t *g) {
+	const char *s;
+	switch (g->error) {
+		case 0: { s = NULL; }
+		case game.ERR_HANGING: { s = errstr_hanging[rnd.intn(3)]; }
+		case game.ERR_COLLISION: { s = errstr_collision[rnd.intn(3)]; }
+		default: { s = "unknown error"; }
+	}
 	OS.move(PROMPTLINE + 2, 0);
 	OS.clrtoeol();
 	if (s) {
-		OS.addstr(s);
-		OS.beep();
+		OS.printw("%s", s);
 	}
+	OS.refresh();
 }
+
 
 void render_player_shot(game.state_t *g) {
 	int cury = g->cury;
@@ -222,10 +210,11 @@ void render_player_shot(game.state_t *g) {
 	OS.addch(g->players[PLAYER].shots[curx][cury]);
 	OS.attrset(0);
 	if (hit) {
-		render_prompt(1, "You scored a hit.", "");
+		sprintf(g->status, "You scored a hit.");
 	} else {
-		render_prompt(1, "You missed.", "");
+		sprintf(g->status, "You missed.");
 	}
+	draw_status(g);
 	if (sunk) {
 		char *m;
 		switch (rnd.intn(5)) {
@@ -238,35 +227,6 @@ void render_player_shot(game.state_t *g) {
 		OS.printw(m, game.shipname(sunk->kind));
 		OS.beep();
 	}
-}
-
-void render_ai_hit(game.state_t *g, ai.state_t *ai) {
-	int x = ai->ai_last_x;
-	int y = ai->ai_last_y;
-	OS.mvprintw(PROMPTLINE, 0, "I shoot at %c%d. I %s!", y + 'A', x, "hit");
-	if (g->sunk_by_ai) {
-		OS.printw(" I've sunk your %s", game.shipname(g->sunk_by_ai->kind));
-	}
-	OS.clrtoeol();
-	pgoto(y, x);
-	if (OS.has_colors()) {
-		OS.attron(OS.COLOR_PAIR(OS.COLOR_RED));
-	}
-	OS.addch(SHOWHIT);
-	OS.attrset(0);
-}
-
-void render_ai_miss(ai.state_t *ai) {
-	int x = ai->ai_last_x;
-	int y = ai->ai_last_y;
-	OS.mvprintw(PROMPTLINE, 0, "I shoot at %c%d. I %s!", y + 'A', x, "miss");
-	OS.clrtoeol();
-	pgoto(y, x);
-	if (OS.has_colors()) {
-		OS.attron(OS.COLOR_PAIR(OS.COLOR_GREEN));
-	}
-	OS.addch(SHOWSPLASH);
-	OS.attrset(0);
 }
 
 pub void render_cpu_ships(game.state_t *g) {
@@ -291,16 +251,28 @@ pub void render_winner(game.state_t *g) {
 }
 
 pub void render_playagain_prompt(game.state_t *g) {
-	if (g->winner == COMPUTER) {
-		render_prompt(2, "Want to be humiliated again [yn]?", "");
-	} else {
-		render_prompt(2, "Going to give me a chance for revenge [yn]?", "");
-	}
+	sprintf(g->status, "Play again? [yn]");
+	draw_status(g);
 }
 
 pub void render_turn(game.state_t *g, ai.state_t *ai) {
 	if (g->turn == COMPUTER) {
-		render_ai_shot(g, ai);
+		int x = ai->ai_last_x;
+		int y = ai->ai_last_y;
+		OS.clrtoeol();
+		pgoto(y, x);
+		if (g->players[COMPUTER].shots[x][y] == game.MARK_HIT) {
+			if (OS.has_colors()) {
+				OS.attron(OS.COLOR_PAIR(OS.COLOR_RED));
+			}
+			OS.addch(SHOWHIT);
+		} else {
+			if (OS.has_colors()) {
+				OS.attron(OS.COLOR_PAIR(OS.COLOR_GREEN));
+			}
+			OS.addch(SHOWSPLASH);
+		}
+		OS.attrset(0);
 	} else {
 		render_player_shot(g);
 	}

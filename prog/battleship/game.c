@@ -91,8 +91,28 @@ pub typedef {
 
 	//
 	int winner;
+
+	char status[200];
+	int error;
+
+	char log[10][200];
+	int logsize;
 } state_t;
 
+pub void log(state_t *g, const char *fmt, ...) {
+	if (g->logsize == 10) {
+		for (int i = 0; i < 10-1; i++) {
+			strcpy(g->log[i], g->log[i+1]);
+		}
+		g->logsize--;
+	}
+	va_list args = {};
+	va_start(args, fmt);
+	char *buf = g->log[g->logsize];
+	vsprintf(buf, fmt, args);
+	va_end(args);
+	g->logsize++;
+}
 
 
 pub xy_t shipxy(int x, y, dir, dist) {
