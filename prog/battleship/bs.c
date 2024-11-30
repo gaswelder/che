@@ -113,7 +113,7 @@ void play() {
 void play_regular() {
 	while (game.winner(&gamestate) == -1) {
 		turn();
-		render.render_turn(&gamestate, &AI);
+		render.refresh(&gamestate);
 		gamestate.turn = 1 - gamestate.turn;
 	}
 }
@@ -121,7 +121,7 @@ void play_regular() {
 void play_blitz() {
 	while (game.winner(&gamestate) == -1) {
 		int result = turn();
-		render.render_turn(&gamestate, &AI);
+		render.refresh(&gamestate);
 		if (!result) {
 			gamestate.turn = 1 - gamestate.turn;
 		}
@@ -133,7 +133,7 @@ void play_salvo() {
 		int nships = game.shipscount(&gamestate, gamestate.turn);
 		while (nships--) {
 			turn();
-			render.render_turn(&gamestate, &AI);
+			render.refresh(&gamestate);
 			if (game.winner(&gamestate) != -1) {
 				break;
 			}
@@ -156,7 +156,7 @@ int turn() {
 				game.ship_t *ss = gamestate.sunk_by_ai;
 				game.log(&gamestate, "computer: %c%d - hit", y + 'A', x);
 				game.log(&gamestate, "computer has sunk your %s", game.shipname(ss->kind));
-				render.render_hit_ship(&gamestate, ss);
+				game.mark_sunk(&gamestate, gamestate.turn, ss);
 			}
 			case game.S_HIT: {
 				game.log(&gamestate, "computer: %c%d - hit", y + 'A', x);
@@ -181,7 +181,7 @@ int turn() {
 			game.log(&gamestate, "player has sunk computer's %s", game.shipname(ss->kind));
 			gamestate.player_hit = true;
 			gamestate.sunk_by_player = ss;
-			render.render_hit_ship(&gamestate, ss);
+			game.mark_sunk(&gamestate, gamestate.turn, ss);
 			return game.winner(&gamestate) == -1;
 		}
 		if (result == game.S_HIT) {
@@ -313,7 +313,6 @@ int input_coords_and_command(int atcpu, game.xy_t *xy) {
 			break;
 		}
 	}
-	render.render_clear_coords();
 	return c;
 }
 

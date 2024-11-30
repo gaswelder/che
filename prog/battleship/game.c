@@ -325,3 +325,10 @@ pub int shipscount(state_t *g, int player) {
 	}
 	return n;
 }
+
+pub void mark_sunk(state_t *g, int player, ship_t *ss) {
+	for (int i = 0; i < ss->length; ++i) {
+		xy_t xy = shipxy(ss->x, ss->y, ss->dir, i);
+		g->players[player].shots[xy.x][xy.y] = ss->symbol;
+	}
+}
