@@ -1,5 +1,4 @@
-// lib
-int rnd(int n) { return (((rand() & 0x7FFF) % n)); }
+#import rnd
 
 pub enum {
 	SHIP_CARRIER = 1,
@@ -192,14 +191,14 @@ pub int checkplacement(state_t *g, int b, ship_t *ss) {
 // Generates a valid random ship placement.
 pub void randomplace(state_t *g, int player, ship_t *ss) {
 	while (true) {
-		if (rnd(2)) {
+		if (rnd.intn(2)) {
 			ss->dir = E;
-			ss->x = rnd(BWIDTH - ss->length);
-			ss->y = rnd(BDEPTH);
+			ss->x = rnd.intn(BWIDTH - ss->length);
+			ss->y = rnd.intn(BDEPTH);
 		} else {
 			ss->dir = S;
-			ss->x = rnd(BWIDTH);
-			ss->y = rnd(BDEPTH - ss->length);
+			ss->x = rnd.intn(BWIDTH);
+			ss->y = rnd.intn(BDEPTH - ss->length);
 		}
 		int err = checkplacement(g, player, ss);
 		if (!err) break;

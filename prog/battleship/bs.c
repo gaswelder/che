@@ -12,9 +12,7 @@
 #import time
 #import game.c
 #import ai.c
-
-// lib
-int rnd(int n) { return (((rand() & 0x7FFF) % n)); }
+#import rnd
 
 // options
 bool salvo = false;
@@ -78,7 +76,7 @@ int main(int argc, char *argv[]) {
 		ai_place_ships();
 		render_reset();
 		place_ships();
-		if (rnd(2)) {
+		if (rnd.intn(2)) {
 			gamestate.turn = COMPUTER;
 		} else {
 			gamestate.turn = PLAYER;
@@ -663,14 +661,14 @@ void render_manual2() {
 
 void render_placement_error(int err) {
 	if (err == game.ERR_HANGING) {
-		switch (rnd(3)) {
+		switch (rnd.intn(3)) {
 			case 0: { render_error("Ship is hanging from the edge of the world"); }
 			case 1: { render_error("Try fitting it on the board"); }
 			case 2: { render_error("Figure I won't find it if you put it there?"); }
 		}
 	}
 	if (err == game.ERR_COLLISION) {
-		switch (rnd(3)) {
+		switch (rnd.intn(3)) {
 			case 0: { render_error("There's already a ship there"); }
 			case 1: { render_error("Collision alert!  Aaaaaagh!"); }
 			case 2: { render_error("Er, Admiral, what about the other ship?"); }
@@ -716,7 +714,7 @@ void render_player_shot() {
 	}
 	if (sunk) {
 		char *m;
-		switch (rnd(5)) {
+		switch (rnd.intn(5)) {
 			case 0: { m = " You sank my %s!"; }
 			case 1: { m = " I have this sinking feeling about my %s...."; }
 			case 2: { m = " My %s has gone to Davy Jones's locker!"; }

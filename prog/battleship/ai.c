@@ -1,10 +1,9 @@
 #import game.c
+#import rnd
 
 #define BWIDTH 10
 #define BDEPTH 10
 
-// lib
-int rnd(int n) { return (((rand() & 0x7FFF) % n)); }
 
 // /* direction constants */
 enum {
@@ -101,7 +100,7 @@ int ai_find_orientation(game.state_t *g, state_t *s) {
 	}
 
 	s->d = 0;
-	int n = rnd(navail) + 1;
+	int n = rnd.intn(navail) + 1;
 	while (n) {
 		while (s->used[s->d]) {
 			s->d++;
@@ -236,7 +235,7 @@ void ai_choose_move(game.state_t *g, state_t *s, int *px, int *py) {
 
 	// List preferred possible moves.
 	if (s->ai_turncount++ == 0) {
-		s->ai_huntoffs = rnd(s->ai_srchstep);
+		s->ai_huntoffs = rnd.intn(s->ai_srchstep);
 	}
 	int npref = 0;
 	int ypreferred[BWIDTH * BDEPTH];
@@ -252,11 +251,11 @@ void ai_choose_move(game.state_t *g, state_t *s, int *px, int *py) {
 	}
 
 	if (npref) {
-		int i = rnd(npref);
+		int i = rnd.intn(npref);
 		*px = xpreferred[i];
 		*py = ypreferred[i];
 	} else {
-		int i = rnd(nposs);
+		int i = rnd.intn(nposs);
 		*px = xpossible[i];
 		*py = ypossible[i];
 		if (s->ai_srchstep > 1) {
