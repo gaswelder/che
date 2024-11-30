@@ -6,13 +6,12 @@
  * SPDX-FileCopyrightText: (C) Eric S. Raymond <esr@thyrsus.com>
  * SPDX-License-Identifier: BSD-2-Clause
  */
-#link ncurses
-#include <curses.h>
-#import opt
-#import time
-#import game.c
 #import ai.c
+#import game.c
+#import opt
+#import render.c
 #import rnd
+#import time
 
 // options
 bool salvo = false;
@@ -59,9 +58,9 @@ int main(int argc, char *argv[]) {
 		signal(OS.SIGQUIT, closegame);
 	}
 
-	render_init();
+	render.init();
 	if (PENGUIN) {
-		render_penguin();
+		render.render_penguin();
 		input_any();
 	}
 
@@ -71,25 +70,24 @@ int main(int argc, char *argv[]) {
 
 	while (true) {
 		game.reset(&gamestate);
-		memset(&AI, 0, sizeof(AI));
-		AI.ai_srchstep = BEGINSTEP;
+		ai.reset(&AI);
 		ai_place_ships();
-		render_reset();
+		render.reset();
 		place_ships();
 		if (rnd.intn(2)) {
 			gamestate.turn = COMPUTER;
 		} else {
 			gamestate.turn = PLAYER;
 		}
-		render_manual2();
+		render.render_manual2();
 		input_any();
 		play();
 		int winner = game.winner(&gamestate);
 		gamestate.winner = winner;
 		gamestate.players[winner].wins++;
-		render_cpu_ships();
-		render_winner();
-		render_playgain_prompt();
+		render.render_cpu_ships(&gamestate);
+		render.render_winner(&gamestate);
+		render.render_playagain_prompt(&gamestate);
 		if (input_keychoice("YN") != 'Y') {
 			break;
 		}
@@ -118,7 +116,7 @@ void play_blitz() {
 				s_input_player_shot();
 				ok = seq_playerturn();
 			}
-			render_turn();
+			render.render_turn(&gamestate, &AI);
 			if (!ok) {
 				break;
 			}
@@ -142,7 +140,7 @@ void play_salvo() {
 					i = 0;
 				}
 			}
-			render_turn();
+			render.render_turn(&gamestate, &AI);
 		}
 		gamestate.turn = 1 - gamestate.turn;
 	}
@@ -156,17 +154,10 @@ void play_regular() {
 			s_input_player_shot();
 			seq_playerturn();
 		}
-		render_turn();
+		render.render_turn(&gamestate, &AI);
 		gamestate.turn = 1 - gamestate.turn;
 	}
 }
-
-// /*
-//  * Constants for tuning the random-fire algorithm. It prefers moves that
-//  * diagonal-stripe the board with a stripe separation of gamestate.ai_srchstep. If
-//  * no such preferred moves are found, gamestate.ai_srchstep is decremented.
-//  */
-#define BEGINSTEP 3 /* initial value of gamestate.ai_srchstep */
 
 enum {
 	PLAYER = 0,
@@ -178,25 +169,12 @@ enum {
 #define PYBASE 3
 #define PXBASE 3
 
-int CYBASE = 3;
-int CXBASE = 48;
-
 void pgoto(int y, x) {
 	OS.move(PYBASE + y, PXBASE + x*3);
 }
-void cgoto(int y, x) {
-	OS.move(CYBASE + y, CXBASE + x*3);
-}
-
-#define SYBASE CYBASE + BDEPTH + 3 /* move key diagram */
-#define SXBASE 63
-#define MYBASE SYBASE - 1 /* diagram caption */
-#define MXBASE 64
-#define HYBASE SYBASE - 1 /* help area */
-#define HXBASE 0
 
 void closegame(int sig) {
-	render_exit();
+	render.end();
 	exit(sig);
 }
 
@@ -222,13 +200,12 @@ void place_ships() {
 		}
 		*cp = '\0';
 
-
-		render_placement_prompt();
+		render.render_placement_prompt(&gamestate);
 
 		char c;
 		while (true) {
 			c = toupper(getcoord(PLAYER));
-			render_clear_coords(PLAYER);
+			render.render_clear_coords(PLAYER);
 			if (!strchr(gamestate.docked, c)) continue;
 			else break;
 		}
@@ -243,7 +220,7 @@ void place_ships() {
 				}
 			}
 
-			render_prompt(1, "Type one of [hjklrR] to place your %s.", shipname(ss->kind));
+			render.render_prompt(1, "Type one of [hjklrR] to place your %s.", game.shipname(ss->kind));
 			pgoto(gamestate.cury, gamestate.curx);
 		}
 
@@ -254,27 +231,27 @@ void place_ships() {
 		}
 
 		if (c == 'r') {
-			render_prompt(1, "Random-placing your %s", shipname(ss->kind));
+			render.render_prompt(1, "Random-placing your %s", game.shipname(ss->kind));
 
 			game.randomplace(&gamestate, PLAYER, ss);
 			game.placeship(&gamestate, PLAYER, ss);
 			ss->placed = true;
 
-			render_placed_ship(ss);
-			render_error(NULL);
+			render.draw_placed_ship(ss);
+			render.render_error(NULL);
 			
 		} else if (c == 'R') {
-			render_prompt(1, "Placing the rest of your fleet at random...", "");
+			render.render_prompt(1, "Placing the rest of your fleet at random...", "");
 			for (ss = gamestate.players[PLAYER].ships; ss < gamestate.players[PLAYER].ships + SHIPTYPES; ss++) {
 				if (!ss->placed) {
 					game.randomplace(&gamestate, PLAYER, ss);
 					game.placeship(&gamestate, PLAYER, ss);
 					ss->placed = true;
 
-					render_placed_ship(ss);					
+					render.draw_placed_ship(ss);					
 				}
 			}
-			render_error(NULL);
+			render.render_error(NULL);
 		} else if (strchr("hjkl8462", c)) {
 			ss->x = gamestate.curx;
 			ss->y = gamestate.cury;
@@ -287,13 +264,13 @@ void place_ships() {
 
 			int err = game.checkplacement(&gamestate, PLAYER, ss);
 			if (err) {
-				render_placement_error(err);
+				render.render_placement_error(err);
 			} else {
 				game.placeship(&gamestate, PLAYER, ss);
 				ss->placed = true;
 				
-				render_placed_ship(ss);
-				render_error(NULL);
+				render.draw_placed_ship(ss);
+				render.render_error(NULL);
 			}
 		}
 		unplaced = 0;
@@ -306,10 +283,10 @@ void place_ships() {
 }
 
 int getcoord(int atcpu) {
-	render_cursor(atcpu);
+	render.render_cursor(&gamestate, atcpu);
 	int c;
 	for (;;) {
-		render_current_coords(atcpu);
+		render.render_current_coords(&gamestate, atcpu);
 		c = input_key();
 		if (!game_applycoord(c)) {
 			break;
@@ -319,12 +296,12 @@ int getcoord(int atcpu) {
 }
 
 void s_input_player_shot() {
-	render_prompt(1, "Where do you want to shoot? ", "");
+	render.render_prompt(1, "Where do you want to shoot? ", "");
 	while (true) {
 		getcoord(COMPUTER);
-		render_clear_coords(COMPUTER);
+		render.render_clear_coords(COMPUTER);
 		if (gamestate.players[PLAYER].shots[gamestate.curx][gamestate.cury]) {
-			render_prompt(1, "You shelled this spot already! Try again.", "");
+			render.render_prompt(1, "You shelled this spot already! Try again.", "");
 			OS.beep();
 			continue;
 		}
@@ -339,8 +316,6 @@ int input_key() {
 void input_any() {
 	OS.getch();
 }
-
-
 
 int input_keychoice(const char *s) {
 	const char *s1;
@@ -433,7 +408,7 @@ int seq_playerturn() {
 	if (result == game.S_SUNK) {
 		gamestate.player_hit = true;
 		gamestate.sunk_by_player = game.getshipat(&gamestate, COMPUTER, x, y);
-		render_hit_ship(gamestate.sunk_by_player);
+		render.render_hit_ship(&gamestate, gamestate.sunk_by_player);
 		return game.winner(&gamestate) == -1;
 	}
 	if (result == game.S_HIT) {
@@ -449,7 +424,7 @@ int seq_playerturn() {
 bool seq_cputurn() {
 	int result = ai.turn(&gamestate, &AI);
 	if (result == game.S_SUNK) {
-		render_hit_ship(gamestate.sunk_by_ai);
+		render.render_hit_ship(&gamestate, gamestate.sunk_by_ai);
 	}
 	/* check for continuation and/or winner */
 	if (salvo) {
@@ -460,408 +435,4 @@ bool seq_cputurn() {
 		return false;
 	}
 	return AI.hit;
-}
-
-
-/////////////////////////////////////////////////////////
-// -------------------- render --------------------
-
-#define SHOWHIT '*'
-#define SHOWSPLASH ' '
-int COLWIDTH = 80;
-int PROMPTLINE = 21;
-
-const char *numbers = "   0  1  2  3  4  5  6  7  8  9";
-const char *name = "stranger";
-
-const char *shipname(int s) {
-	switch (s) {
-		case game.SHIP_CARRIER: { return "Aircraft Carrier"; }
-		case game.SHIP_BATTLESHIP: { return "Battleship"; }
-		case game.SHIP_SUBMARINE: { return "Submarine"; }
-		case game.SHIP_DESTROYER: { return "Destroyer"; }
-		case game.SHIP_PTBOAT: { return "PT Boat"; }
-	}
-	return "unknown";
-}
-
-void render_placement_prompt() {
-	render_prompt(1, "Type one of [%s] to pick a ship.", gamestate.docked + 1);
-}
-
-void render_reset() {
-	OS.clear();
-	OS.mvaddstr(0, 35, "BATTLESHIPS");
-	OS.move(PROMPTLINE + 2, 0);
-	render_options();
-	render_empty_boards();
-	OS.mvaddstr(CYBASE + BDEPTH, CXBASE - 3, numbers);
-	render_manual();
-	render_keys();
-}
-
-void render_ai_shot() {
-	int x = AI.ai_last_x;
-	int y = AI.ai_last_y;
-	if (gamestate.players[COMPUTER].shots[x][y] == game.MARK_HIT) {
-		render_ai_hit();
-	} else {
-		render_ai_miss();
-	}
-}
-
-void render_init() {
-	OS.initscr();
-	if (OS.KEY_MIN) OS.keypad(OS.stdscr, true);
-	OS.saveterm();
-	OS.nonl();
-	OS.cbreak();
-	OS.noecho();
-	if (OS.A_COLOR) {
-		OS.start_color();
-		OS.init_pair(OS.COLOR_BLACK, OS.COLOR_BLACK, OS.COLOR_BLACK);
-		OS.init_pair(OS.COLOR_GREEN, OS.COLOR_GREEN, OS.COLOR_BLACK);
-		OS.init_pair(OS.COLOR_RED, OS.COLOR_RED, OS.COLOR_BLACK);
-		OS.init_pair(OS.COLOR_CYAN, OS.COLOR_CYAN, OS.COLOR_BLACK);
-		OS.init_pair(OS.COLOR_WHITE, OS.COLOR_WHITE, OS.COLOR_BLACK);
-		OS.init_pair(OS.COLOR_MAGENTA, OS.COLOR_MAGENTA, OS.COLOR_BLACK);
-		OS.init_pair(OS.COLOR_BLUE, OS.COLOR_BLUE, OS.COLOR_BLACK);
-		OS.init_pair(OS.COLOR_YELLOW, OS.COLOR_YELLOW, OS.COLOR_BLACK);
-	}
-}
-
-void render_exit() {
-	OS.clear();
-	OS.refresh();
-	OS.resetterm();
-	OS.echo();
-	OS.endwin();
-}
-
-void render_penguin() {
-	OS.clear();
-	OS.mvaddstr(4, 29, "Welcome to Battleship!");
-	OS.move(8,0);
-	OS.addstr("                                                  \\\n");
-	OS.addstr("                           \\                     \\ \\\n");
-	OS.addstr("                          \\ \\                   \\ \\ \\_____________\n");
-	OS.addstr("                         \\ \\ \\_____________      \\ \\/            |\n");
-	OS.addstr("                          \\ \\/             \\      \\/             |\n");
-	OS.addstr("                           \\/               \\_____/              |__\n");
-	OS.addstr("           ________________/                                       |\n");
-	OS.addstr("           \\  S.S. Penguin                                         |\n");
-	OS.addstr("            \\                                                     /\n");
-	OS.addstr("             \\___________________________________________________/\n");
-	OS.mvaddstr(22, 27, "Hit any key to continue...");
-	OS.refresh();
-}
-
-void render_options() {
-	if (salvo || blitz || closepack) {
-		OS.printw("Playing optional game (");
-		if (salvo) {
-			OS.printw("salvo, ");
-		} else {
-			OS.printw("nosalvo, ");
-		}
-		if (blitz) {
-			OS.printw("blitz ");
-		} else {
-			OS.printw("noblitz, ");
-		}
-		if (closepack) {
-			OS.printw("closepack)");
-		} else {
-			OS.printw("noclosepack)");
-		}
-	} else {
-		OS.printw("Playing standard game (noblitz, nosalvo, noclosepack)");
-	}
-}
-
-void render_placed_ship(game.ship_t *ss) {
-	for (int l = 0; l < ss->length; ++l) {
-		game.xy_t xy = game.shipxy(ss->x, ss->y, ss->dir, l);
-		pgoto(xy.y, xy.x);
-		OS.addch(ss->symbol);
-	}
-}
-
-void render_current_coords(int atcpu) {
-	if (atcpu) {
-		OS.mvprintw(CYBASE + BDEPTH + 1, CXBASE + 11, "(%d, %c)", gamestate.curx, 'A' + gamestate.cury);
-		cgoto(gamestate.cury, gamestate.curx);
-	} else {
-		OS.mvprintw(PYBASE + BDEPTH + 1, PXBASE + 11, "(%d, %c)", gamestate.curx, 'A' + gamestate.cury);
-		pgoto(gamestate.cury, gamestate.curx);
-	}
-}
-
-void render_empty_boards() {
-	OS.mvaddstr(PYBASE - 2, PXBASE + 5, "Main Board");
-	OS.mvaddstr(PYBASE - 1, PXBASE - 3, numbers);
-	for (int i = 0; i < BDEPTH; ++i) {
-		OS.mvaddch(PYBASE + i, PXBASE - 3, (i + 'A'));
-		if (OS.has_colors()) {
-			OS.attron(OS.COLOR_PAIR(OS.COLOR_BLUE));
-		}
-		OS.addch(' ');
-		for (int j = 0; j < BWIDTH; j++) {
-			OS.addstr(" . ");
-		}
-		OS.attrset(0);
-		OS.addch(' ');
-		OS.addch((i + 'A'));
-	}
-	OS.mvaddstr(PYBASE + BDEPTH, PXBASE - 3, numbers);
-	OS.mvaddstr(CYBASE - 2, CXBASE + 7, "Hit/Miss Board");
-	OS.mvaddstr(CYBASE - 1, CXBASE - 3, numbers);
-	for (int i = 0; i < BDEPTH; ++i) {
-		OS.mvaddch(CYBASE + i, CXBASE - 3, (i + 'A'));
-		if (OS.has_colors()) {
-			OS.attron(OS.COLOR_PAIR(OS.COLOR_BLUE));
-		}
-		OS.addch(' ');
-		for (int j = 0; j < BWIDTH; j++) {
-			OS.addstr(" . ");
-		}
-		OS.attrset(0);
-		OS.addch(' ');
-		OS.addch(i + 'A');
-	}
-}
-
-void render_manual() {
-	OS.mvprintw(HYBASE, HXBASE, "To position your ships: move the cursor to a spot, then");
-	OS.mvprintw(HYBASE + 1, HXBASE, "type the first letter of a ship type to select it, then");
-	OS.mvprintw(HYBASE + 2, HXBASE, "type a direction ([hjkl] or [4862]), indicating how the");
-	OS.mvprintw(HYBASE + 3, HXBASE, "ship should be pointed. You may also type a ship letter");
-	OS.mvprintw(HYBASE + 4, HXBASE, "followed by `r' to position it randomly, or type `R' to");
-	OS.mvprintw(HYBASE + 5, HXBASE, "place all remaining ships randomly.");
-}
-
-void render_keys() {
-	OS.mvaddstr(MYBASE, MXBASE, "Aiming keys:");
-	OS.mvaddstr(SYBASE, SXBASE, "y k u    7 8 9");
-	OS.mvaddstr(SYBASE + 1, SXBASE, " \\|/      \\|/ ");
-	OS.mvaddstr(SYBASE + 2, SXBASE, "h-+-l    4-+-6");
-	OS.mvaddstr(SYBASE + 3, SXBASE, " /|\\      /|\\ ");
-	OS.mvaddstr(SYBASE + 4, SXBASE, "b j n    1 2 3");
-}
-
-void render_manual2() {
-	OS.mvprintw(HYBASE, HXBASE, "To fire, move the cursor to your chosen aiming point   ");
-	OS.mvprintw(HYBASE + 1, HXBASE, "and strike any key other than a motion key.            ");
-	OS.mvprintw(HYBASE + 2, HXBASE, "                                                       ");
-	OS.mvprintw(HYBASE + 3, HXBASE, "                                                       ");
-	OS.mvprintw(HYBASE + 4, HXBASE, "                                                       ");
-	OS.mvprintw(HYBASE + 5, HXBASE, "                                                       ");
-	render_prompt(0, "Press any key to start...", "");
-}
-
-void render_placement_error(int err) {
-	if (err == game.ERR_HANGING) {
-		switch (rnd.intn(3)) {
-			case 0: { render_error("Ship is hanging from the edge of the world"); }
-			case 1: { render_error("Try fitting it on the board"); }
-			case 2: { render_error("Figure I won't find it if you put it there?"); }
-		}
-	}
-	if (err == game.ERR_COLLISION) {
-		switch (rnd.intn(3)) {
-			case 0: { render_error("There's already a ship there"); }
-			case 1: { render_error("Collision alert!  Aaaaaagh!"); }
-			case 2: { render_error("Er, Admiral, what about the other ship?"); }
-		}
-	}
-}
-
-void render_prompt(int n, const char *f, const char *s) {
-	OS.move(PROMPTLINE + n, 0);
-	OS.clrtoeol();
-	OS.printw(f, s);
-	OS.refresh();
-}
-
-void render_error(const char *s) {
-	OS.move(PROMPTLINE + 2, 0);
-	OS.clrtoeol();
-	if (s) {
-		OS.addstr(s);
-		OS.beep();
-	}
-}
-
-void render_player_shot() {
-	int cury = gamestate.cury;
-	int curx = gamestate.curx;
-	bool hit = gamestate.player_hit;
-	game.ship_t *sunk = gamestate.sunk_by_player;
-	cgoto(cury, curx);
-	if (OS.has_colors()) {
-		if (hit) {
-			OS.attron(OS.COLOR_PAIR(OS.COLOR_RED));
-		} else {
-			OS.attron(OS.COLOR_PAIR(OS.COLOR_GREEN));
-		}
-	}
-	OS.addch(gamestate.players[PLAYER].shots[curx][cury]);
-	OS.attrset(0);
-	if (hit) {
-		render_prompt(1, "You scored a hit.", "");
-	} else {
-		render_prompt(1, "You missed.", "");
-	}
-	if (sunk) {
-		char *m;
-		switch (rnd.intn(5)) {
-			case 0: { m = " You sank my %s!"; }
-			case 1: { m = " I have this sinking feeling about my %s...."; }
-			case 2: { m = " My %s has gone to Davy Jones's locker!"; }
-			case 3: { m = " Glub, glub -- my %s is headed for the bottom!"; }
-			case 4: { m = " You'll pick up survivors from my %s, I hope...!"; }
-		}
-		OS.printw(m, shipname(sunk->kind));
-		OS.beep();
-	}
-}
-
-void render_ai_hit() {
-	int x = AI.ai_last_x;
-	int y = AI.ai_last_y;
-	OS.mvprintw(PROMPTLINE, 0, "I shoot at %c%d. I %s!", y + 'A', x, "hit");
-	if (gamestate.sunk_by_ai) {
-		OS.printw(" I've sunk your %s", shipname(gamestate.sunk_by_ai->kind));
-	}
-	OS.clrtoeol();
-	pgoto(y, x);
-	if (OS.has_colors()) {
-		OS.attron(OS.COLOR_PAIR(OS.COLOR_RED));
-	}
-	OS.addch(SHOWHIT);
-	OS.attrset(0);
-}
-
-void render_ai_miss() {
-	int x = AI.ai_last_x;
-	int y = AI.ai_last_y;
-	OS.mvprintw(PROMPTLINE, 0, "I shoot at %c%d. I %s!", y + 'A', x, "miss");
-	OS.clrtoeol();
-	pgoto(y, x);
-	if (OS.has_colors()) {
-		OS.attron(OS.COLOR_PAIR(OS.COLOR_GREEN));
-	}
-	OS.addch(SHOWSPLASH);
-	OS.attrset(0);
-}
-
-void render_cpu_ships() {
-	int j;
-	game.ship_t *ss;
-	for (ss = gamestate.players[COMPUTER].ships; ss < gamestate.players[COMPUTER].ships + SHIPTYPES; ss++) {
-		for (j = 0; j < ss->length; j++) {
-			game.xy_t xy = game.shipxy(ss->x, ss->y, ss->dir, j);
-			cgoto(xy.y, xy.x);
-			OS.addch(ss->symbol);
-		}
-	}
-}
-
-void render_winner() {
-	int j = 18 + strlen(name);
-	int pwins = gamestate.players[PLAYER].wins;
-	int cwins = gamestate.players[COMPUTER].wins;
-	if (pwins >= 10) ++j;
-	if (cwins >= 10) ++j;
-	OS.mvprintw(1, (COLWIDTH - j) / 2, "%s: %d     Computer: %d", name, pwins, cwins);
-}
-
-void render_playgain_prompt() {
-	if (gamestate.winner == COMPUTER) {
-		render_prompt(2, "Want to be humiliated again [yn]?", "");
-	} else {
-		render_prompt(2, "Going to give me a chance for revenge [yn]?", "");
-	}
-}
-
-void render_turn() {
-	if (gamestate.turn == COMPUTER) {
-		render_ai_shot();
-	} else {
-		render_player_shot();
-	}
-}
-
-void render_reveal_ship(game.ship_t *ss) {
-	for (int i = 0; i < ss->length; ++i) {
-		game.xy_t xy = game.shipxy(ss->x, ss->y, ss->dir, i);
-		int x1 = xy.x;
-		int y1 = xy.y;
-
-		gamestate.players[gamestate.turn].shots[x1][y1] = ss->symbol;
-		if (gamestate.turn % 2 == PLAYER) {
-			cgoto(y1, x1);
-			OS.addch(ss->symbol);
-		} else {
-			pgoto(y1, x1);
-			if (OS.has_colors()) {
-				OS.attron(OS.COLOR_PAIR(OS.COLOR_RED));
-			}
-			OS.addch(SHOWHIT);
-			OS.attrset(0);
-		}
-	}
-}
-
-void render_empty_water(game.ship_t *ss) {
-	if (closepack) return;
-	for (int j = -1; j <= 1; j++) {
-		game.xy_t xy = game.shipxy(ss->x, ss->y, (ss->dir + 2) % 8, j);
-		int bx = xy.x;
-		int by = xy.y;
-		for (int i = -1; i <= ss->length; ++i) {
-			game.xy_t xy1 = game.shipxy(bx, by, ss->dir, i);
-			int x1 = xy1.x;
-			int y1 = xy1.y;
-			if (game.coords_valid(x1, y1)) {
-				if (gamestate.turn % 2 == PLAYER) {
-					cgoto(y1, x1);
-					if (OS.has_colors()) {
-						OS.attron(OS.COLOR_PAIR(OS.COLOR_GREEN));
-					}
-					OS.addch(game.MARK_MISS);
-					OS.attrset(0);
-				} else {
-					pgoto(y1, x1);
-					OS.addch(SHOWSPLASH);
-				}
-			}
-		}
-	}
-}
-
-void render_hit_ship(game.ship_t *ss) {
-	int oldx;
-	int oldy;
-	OS.getyx(OS.stdscr, oldy, oldx);
-	render_empty_water(ss);
-	render_reveal_ship(ss);
-	OS.move(oldy, oldx);
-}
-
-void render_cursor(int atcpu) {
-	if (atcpu) {
-		cgoto(gamestate.cury, gamestate.curx);
-	} else {
-		pgoto(gamestate.cury, gamestate.curx);
-	}
-	OS.refresh();
-}
-
-void render_clear_coords(int atcpu) {
-	if (atcpu) {
-		OS.mvaddstr(CYBASE + BDEPTH + 1, CXBASE + 11,"      ");
-	} else {
-		OS.mvaddstr(PYBASE + BDEPTH + 1, PXBASE + 11,"      ");
-	}
 }

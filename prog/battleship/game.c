@@ -8,6 +8,17 @@ pub enum {
 	SHIP_PTBOAT,
 };
 
+pub const char *shipname(int s) {
+	switch (s) {
+		case SHIP_CARRIER: { return "Aircraft Carrier"; }
+		case SHIP_BATTLESHIP: { return "Battleship"; }
+		case SHIP_SUBMARINE: { return "Submarine"; }
+		case SHIP_DESTROYER: { return "Destroyer"; }
+		case SHIP_PTBOAT: { return "PT Boat"; }
+	}
+	return "unknown";
+}
+
 // /* direction constants */
 enum {
 	E = 0,

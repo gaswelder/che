@@ -42,6 +42,11 @@ enum {
 	SECOND_PASS = 5,
 };
 
+pub void reset(state_t *s) {
+	memset(s, 0, sizeof(state_t));
+	s->ai_srchstep = 3;
+}
+
 pub int turn(game.state_t *g, state_t *s) {
 	switch (s->ai_next) {
 		case RANDOM_FIRE: { return ai_random_fire(g, s); }
