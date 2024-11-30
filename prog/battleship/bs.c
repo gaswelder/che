@@ -68,24 +68,30 @@ int main(int argc, char *argv[]) {
 	while (true) {
 		game.reset(&gamestate);
 		ai.reset(&AI);
-		ai_place_ships();
 		render.reset();
+
+		placeall_random(COMPUTER);
 		place_ships();
+
+		gamestate.state = game.ST_PLAYING;
 		if (rnd.intn(2)) {
 			gamestate.turn = COMPUTER;
 		} else {
 			gamestate.turn = PLAYER;
 		}
+
+		
 		strcpy(gamestate.status, "Arrows: move the cursor; any key: shoot");
-		render.draw_status(&gamestate);
-		input_any();
+		render.refresh(&gamestate);
+
+		OS.getch();
 		play();
+
+		gamestate.state = game.ST_FINISHED;
 		int winner = game.winner(&gamestate);
 		gamestate.winner = winner;
 		gamestate.players[winner].wins++;
-		render.render_cpu_ships(&gamestate);
-		render.render_winner(&gamestate);
-		render.render_playagain_prompt(&gamestate);
+		render.refresh(&gamestate);
 		if (input_keychoice("YN") != 'Y') {
 			break;
 		}
@@ -159,7 +165,7 @@ int turn() {
 				game.log(&gamestate, "computer: %c%d - miss", y + 'A', x);
 			}
 		}
-		render.refresh_log(&gamestate);
+		render.refresh(&gamestate);
 		if (game.winner(&gamestate) != -1) {
 			return false;
 		}
@@ -191,28 +197,9 @@ int turn() {
 	}
 }
 
-
-
-
-
-#define PYBASE 3
-#define PXBASE 3
-
-void pgoto(int y, x) {
-	OS.move(PYBASE + y, PXBASE + x*3);
-}
-
 void closegame(int sig) {
 	render.end();
 	exit(sig);
-}
-
-void ai_place_ships() {
-	game.ship_t *ss = NULL;
-	for (ss = gamestate.players[COMPUTER].ships; ss < gamestate.players[COMPUTER].ships + SHIPTYPES; ss++) {
-		game.randomplace(&gamestate, COMPUTER, ss);
-		game.placeship(&gamestate, COMPUTER, ss);
-	}
 }
 
 void place_ships() {
@@ -229,51 +216,44 @@ void place_ships() {
 		*cp = '\0';
 
 		sprintf(gamestate.status, "[%s]: place ship at current position; r: place remaining ships at random.", docked + 1);
-		render.draw_status(&gamestate);
+		render.refresh(&gamestate);
 
-		int c;
-		while (true) {
-			game.xy_t xy = {
-				.x = gamestate.curx,
-				.y = gamestate.cury
-			};
-			c = toupper(getcoord(PLAYER, &xy));
-			gamestate.curx = xy.x;
-			gamestate.cury = xy.y;
-			if (!strchr(docked, c)) continue;
-			else break;
+		game.xy_t xy = {};
+		xy.x = gamestate.curx;
+		xy.y = gamestate.cury;
+		int c = input_coords_and_command(PLAYER, &xy);
+		gamestate.curx = xy.x;
+		gamestate.cury = xy.y;
+
+		if (c == 'r') {
+			placeall_random(PLAYER);
+			render.refresh(&gamestate);
+			break;
 		}
 
+		// See if a ship has been selected.
+		game.ship_t *ships = gamestate.players[PLAYER].ships;
 		game.ship_t *ss = NULL;
-		if (c == 'R') {
-			OS.ungetch('R');
-		} else {
-			/* map that into the corresponding symbol */
-			for (ss = gamestate.players[PLAYER].ships; ss < gamestate.players[PLAYER].ships + SHIPTYPES; ss++) {
-				if (ss->symbol == c) {
-					break;
-				}
+		for (int i = 0; i < SHIPTYPES; i++) {
+			if (toupper(ships[i].symbol) == toupper(c) && !ships[i].placed) {
+				ss = &ships[i];
+				break;
 			}
-			sprintf(gamestate.status, "Use arrows to place the %s.", game.shipname(ss->kind));
-			render.draw_status(&gamestate);
-			pgoto(gamestate.cury, gamestate.curx);
+		}
+		if (!ss) {
+			continue;
 		}
 
-		bool ok = false;
-		while (!ok) {
-			ok = true;
-			c = OS.getch();
-			switch (c) {
-				case 'r': { placeship_random(ss); }
-				case 'R': { placeall_random(); }
-				case OS.KEY_UP: { placeship(ss, N); }
-				case OS.KEY_DOWN: { placeship(ss, S); }
-				case OS.KEY_LEFT: { placeship(ss, W); }
-				case OS.KEY_RIGHT: { placeship(ss, E); }
-				default: {
-					ok = false;
-				}
-			}
+		sprintf(gamestate.status, "Use arrows to place the %s.", game.shipname(ss->kind));
+		gamestate.render_cursor = xy;
+		gamestate.render_cursor_at = PLAYER;
+		render.refresh(&gamestate);
+
+		switch (OS.getch()) {
+			case OS.KEY_UP: { placeship(ss, N); }
+			case OS.KEY_DOWN: { placeship(ss, S); }
+			case OS.KEY_LEFT: { placeship(ss, W); }
+			case OS.KEY_RIGHT: { placeship(ss, E); }
 		}
 	}
 }
@@ -288,44 +268,41 @@ int unplaced() {
 	return n;
 }
 
-void placeall_random() {
+void placeall_random(int player) {
 	game.ship_t *ss;
-	sprintf(gamestate.status, "Placing the rest of your fleet at random...");
-	render.draw_status(&gamestate);
-	for (ss = gamestate.players[PLAYER].ships; ss < gamestate.players[PLAYER].ships + SHIPTYPES; ss++) {
+	for (ss = gamestate.players[player].ships; ss < gamestate.players[player].ships + SHIPTYPES; ss++) {
 		if (ss->placed) continue;
-		game.randomplace(&gamestate, PLAYER, ss);
-		game.placeship(&gamestate, PLAYER, ss);
-		ss->placed = true;
-		render.draw_placed_ships(&gamestate);
+		placeship_random(player, ss);
 	}
 }
 
-void placeship_random(game.ship_t *ss) {
-	game.randomplace(&gamestate, PLAYER, ss);
-	game.placeship(&gamestate, PLAYER, ss);
+void placeship_random(int player, game.ship_t *ss) {
+	game.randomplace(&gamestate, player, ss);
+	game.placeship(&gamestate, player, ss);
 	ss->placed = true;
-	render.draw_placed_ships(&gamestate);
 }
 
 void placeship(game.ship_t *ss, int dir) {
 	ss->x = gamestate.curx;
 	ss->y = gamestate.cury;
 	ss->dir = dir;
-	gamestate.error = game.checkplacement(&gamestate, PLAYER, ss);
-	render.draw_error(&gamestate);
-	game.placeship(&gamestate, PLAYER, ss);
-	ss->placed = true;
-	render.draw_placed_ships(&gamestate);
+	int err = game.placeship(&gamestate, PLAYER, ss);
+	if (err) {
+		gamestate.error = err;
+	} else {
+		gamestate.error = 0;
+		ss->placed = true;
+	}
+	render.refresh(&gamestate);
 }
 
-int getcoord(int atcpu, game.xy_t *xy) {
+int input_coords_and_command(int atcpu, game.xy_t *xy) {
 	gamestate.render_cursor = *xy;
 	gamestate.render_cursor_at = atcpu;
 	render.render_cursor(&gamestate);
 	int c;
 	for (;;) {
-		c = input_key();
+		c = OS.getch();
 		if (update_coords(xy, c)) {
 			xy->x = xy->x % BWIDTH;
 			xy->y = xy->y % BDEPTH;	
@@ -349,14 +326,6 @@ bool update_coords(game.xy_t *xy, int c) {
 		default: { return false; }
 	}
 	return true;
-}
-
-int input_key() {
-	return OS.getch();
-}
-
-void input_any() {
-	OS.getch();
 }
 
 int input_keychoice(const char *s) {
@@ -388,12 +357,12 @@ game.xy_t playerturn_getcoords() {
 			.x = gamestate.curx,
 			.y = gamestate.cury
 		};
-		getcoord(COMPUTER, &xy);
+		input_coords_and_command(COMPUTER, &xy);
 		gamestate.curx = xy.x;
 		gamestate.cury = xy.y;
 		if (gamestate.players[PLAYER].shots[gamestate.curx][gamestate.cury]) {
 			sprintf(gamestate.status, "You shelled this spot already! Try again.");
-			render.draw_status(&gamestate);
+			render.refresh(&gamestate);
 			OS.beep();
 			continue;
 		}

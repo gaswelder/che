@@ -73,8 +73,16 @@ pub typedef {
 
 pub typedef { int x, y; } xy_t;
 
+pub enum {
+	ST_PLACING,
+	ST_PLAYING,
+	ST_FINISHED
+};
+
 pub typedef {
 	bool closepack;
+
+	int state;
 
 	player_t players[2];
 	int turn;
@@ -199,7 +207,7 @@ bool has_collision(state_t *g, int b, int y, int x) {
 	return collide;
 }
 
-pub int checkplacement(state_t *g, int b, ship_t *ss) {
+int checkplacement(state_t *g, int b, ship_t *ss) {
 	int err = 0;
 
 	// Check board edges
@@ -236,13 +244,17 @@ pub void randomplace(state_t *g, int player, ship_t *ss) {
 	}
 }
 
-pub void placeship(state_t *g, int player, ship_t *ss) {
+pub int placeship(state_t *g, int player, ship_t *ss) {
+	int err = checkplacement(g, player, ss);
+	if (err) {
+		return err;
+	}
 	for (int l = 0; l < ss->length; ++l) {
 		int x = ss->x + l * xincr[ss->dir];
 		int y = ss->y + l * yincr[ss->dir];
 		g->players[player].board[x][y] = ss->symbol;
 	}
-	ss->hits = 0;
+	return 0;
 }
 
 pub bool is_ship(int c) {
@@ -313,4 +325,3 @@ pub int shipscount(state_t *g, int player) {
 	}
 	return n;
 }
-

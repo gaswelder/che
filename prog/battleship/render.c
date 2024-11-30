@@ -15,20 +15,23 @@ const int SHIPTYPES = 5;
 #define SHOWSPLASH ' '
 #define SHOWHIT '*'
 const int PROMPTLINE = 14;
-const int CXBASE = 48;
+const int COMPUTER_FIELD_X = 48;
 const int CYBASE = 3;
-const int PXBASE = 3;
-const int PYBASE = 3;
+const int PLAYER_FIELD_X = 3;
+
+// Upper y-coordinate of the boards.
+const int BOARD_TOP = 3;
+
 int COLWIDTH = 80;
 const char *numbers = "   0  1  2  3  4  5  6  7  8  9";
 const char *name = "stranger";
 
 void cgoto(int y, x) {
-	OS.move(CYBASE + y, CXBASE + x*3);
+	OS.move(CYBASE + y, COMPUTER_FIELD_X + x*3);
 }
 
 void pgoto(int y, x) {
-	OS.move(PYBASE + y, PXBASE + x*3);
+	OS.move(BOARD_TOP + y, PLAYER_FIELD_X + x*3);
 }
 
 pub void init() {
@@ -66,11 +69,11 @@ pub void reset() {
 	draw_empty_boards();
 }
 
-void draw_empty_boards() {
-	OS.mvaddstr(PYBASE - 2, PXBASE + 5, "Player");
-	OS.mvaddstr(PYBASE - 1, PXBASE - 3, numbers);
+void draw_board(const char *title, int x0) {
+	OS.mvaddstr(BOARD_TOP - 2, x0 + 5, title);
+	OS.mvaddstr(BOARD_TOP - 1, x0 - 3, numbers);
 	for (int i = 0; i < BDEPTH; ++i) {
-		OS.mvaddch(PYBASE + i, PXBASE - 3, (i + 'A'));
+		OS.mvaddch(BOARD_TOP + i, x0 - 3, (i + 'A'));
 		if (OS.has_colors()) {
 			OS.attron(OS.COLOR_PAIR(OS.COLOR_BLUE));
 		}
@@ -82,11 +85,15 @@ void draw_empty_boards() {
 		OS.addch(' ');
 		OS.addch((i + 'A'));
 	}
-	OS.mvaddstr(PYBASE + BDEPTH, PXBASE - 3, numbers);
-	OS.mvaddstr(CYBASE - 2, CXBASE + 7, "Computer");
-	OS.mvaddstr(CYBASE - 1, CXBASE - 3, numbers);
+	OS.mvaddstr(BOARD_TOP + BDEPTH, x0 - 3, numbers);
+}
+
+void draw_empty_boards() {
+	draw_board("Player", PLAYER_FIELD_X);
+	OS.mvaddstr(CYBASE - 2, COMPUTER_FIELD_X + 7, "Computer");
+	OS.mvaddstr(CYBASE - 1, COMPUTER_FIELD_X - 3, numbers);
 	for (int i = 0; i < BDEPTH; ++i) {
-		OS.mvaddch(CYBASE + i, CXBASE - 3, (i + 'A'));
+		OS.mvaddch(CYBASE + i, COMPUTER_FIELD_X - 3, (i + 'A'));
 		if (OS.has_colors()) {
 			OS.attron(OS.COLOR_PAIR(OS.COLOR_BLUE));
 		}
@@ -98,12 +105,12 @@ void draw_empty_boards() {
 		OS.addch(' ');
 		OS.addch(i + 'A');
 	}
-	OS.mvaddstr(CYBASE + BDEPTH, CXBASE - 3, numbers);
+	OS.mvaddstr(CYBASE + BDEPTH, COMPUTER_FIELD_X - 3, numbers);
 }
 
 void clear_field() {
 	for (int i = 0; i < BDEPTH; ++i) {
-		OS.mvaddch(PYBASE + i, PXBASE - 3, (i + 'A'));
+		OS.mvaddch(BOARD_TOP + i, PLAYER_FIELD_X - 3, (i + 'A'));
 		if (OS.has_colors()) {
 			OS.attron(OS.COLOR_PAIR(OS.COLOR_BLUE));
 		}
@@ -135,19 +142,19 @@ pub void render_cursor(game.state_t *g) {
 	int atcpu = g->render_cursor_at;
 	if (atcpu) {
 		cgoto(xy.y, xy.x);
-		OS.mvprintw(CYBASE + BDEPTH + 1, CXBASE + 11, "(%d, %c)", xy.x, 'A' + xy.y);
+		OS.mvprintw(CYBASE + BDEPTH + 1, COMPUTER_FIELD_X + 11, "(%d, %c)", xy.x, 'A' + xy.y);
 		cgoto(xy.y, xy.x);
 	} else {
 		pgoto(xy.y, xy.x);
-		OS.mvprintw(PYBASE + BDEPTH + 1, PXBASE + 11, "(%d, %c)", xy.x, 'A' + xy.y);
+		OS.mvprintw(BOARD_TOP + BDEPTH + 1, PLAYER_FIELD_X + 11, "(%d, %c)", xy.x, 'A' + xy.y);
 		pgoto(xy.y, xy.x);
 	}
 	OS.refresh();
 }
 
 pub void render_clear_coords() {
-	OS.mvaddstr(CYBASE + BDEPTH + 1, CXBASE + 11,"      ");
-	OS.mvaddstr(PYBASE + BDEPTH + 1, PXBASE + 11,"      ");
+	OS.mvaddstr(CYBASE + BDEPTH + 1, COMPUTER_FIELD_X + 11,"      ");
+	OS.mvaddstr(BOARD_TOP + BDEPTH + 1, PLAYER_FIELD_X + 11,"      ");
 }
 
 pub void draw_status(game.state_t *g) {
@@ -157,14 +164,7 @@ pub void draw_status(game.state_t *g) {
 	OS.refresh();
 }
 
-pub void refresh_log(game.state_t *g) {
-	for (int i = 0; i < g->logsize; i++) {
-		OS.move(17 + i, 0);
-		OS.clrtoeol();
-		OS.printw("%s", g->log[i]);
-		OS.refresh();
-	}
-}
+
 
 const char *errstr_hanging[] = {
 	"Ship is hanging from the edge of the world",
@@ -194,7 +194,7 @@ pub void draw_error(game.state_t *g) {
 }
 
 
-void render_player_shot(game.state_t *g) {
+pub void render_player_shot(game.state_t *g) {
 	int cury = g->cury;
 	int curx = g->curx;
 	bool hit = g->player_hit;
@@ -257,25 +257,29 @@ pub void render_playagain_prompt(game.state_t *g) {
 
 pub void render_turn(game.state_t *g, ai.state_t *ai) {
 	if (g->turn == COMPUTER) {
-		int x = ai->ai_last_x;
-		int y = ai->ai_last_y;
-		OS.clrtoeol();
-		pgoto(y, x);
-		if (g->players[COMPUTER].shots[x][y] == game.MARK_HIT) {
-			if (OS.has_colors()) {
-				OS.attron(OS.COLOR_PAIR(OS.COLOR_RED));
-			}
-			OS.addch(SHOWHIT);
-		} else {
-			if (OS.has_colors()) {
-				OS.attron(OS.COLOR_PAIR(OS.COLOR_GREEN));
-			}
-			OS.addch(SHOWSPLASH);
-		}
-		OS.attrset(0);
+		render_ai_turn(g, ai);
 	} else {
 		render_player_shot(g);
 	}
+}
+
+pub void render_ai_turn(game.state_t *g, ai.state_t *ai) {
+	int x = ai->ai_last_x;
+	int y = ai->ai_last_y;
+	OS.clrtoeol();
+	pgoto(y, x);
+	if (g->players[COMPUTER].shots[x][y] == game.MARK_HIT) {
+		if (OS.has_colors()) {
+			OS.attron(OS.COLOR_PAIR(OS.COLOR_RED));
+		}
+		OS.addch(SHOWHIT);
+	} else {
+		if (OS.has_colors()) {
+			OS.attron(OS.COLOR_PAIR(OS.COLOR_GREEN));
+		}
+		OS.addch(SHOWSPLASH);
+	}
+	OS.attrset(0);
 }
 
 void draw_revealed_ship(game.state_t *g, int player, game.ship_t *ss) {
@@ -333,4 +337,33 @@ pub void render_hit_ship(game.state_t *g, game.ship_t *ss) {
 	draw_empty_water(g, ss);
 	draw_revealed_ship(g, g->turn, ss);
 	OS.move(oldy, oldx);
+}
+
+pub void refresh(game.state_t *g) {
+	switch (g->state) {
+		case game.ST_PLACING: {
+			draw_status(g);
+			draw_placed_ships(g);
+			draw_error(g);
+			render_cursor(g);
+		}
+		case game.ST_PLAYING: {
+			draw_status(g);
+			draw_log(g);
+		}
+		case game.ST_FINISHED: {
+			render_cpu_ships(g);
+			render_winner(g);
+			render_playagain_prompt(g);
+		}
+	}
+}
+
+void draw_log(game.state_t *g) {
+	for (int i = 0; i < g->logsize; i++) {
+		OS.move(17 + i, 0);
+		OS.clrtoeol();
+		OS.printw("%s", g->log[i]);
+		OS.refresh();
+	}
 }
