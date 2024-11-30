@@ -71,6 +71,8 @@ pub typedef {
 	ship_t ships[5];
 } player_t;
 
+pub typedef { int x, y; } xy_t;
+
 pub typedef {
 	bool closepack;
 
@@ -79,9 +81,8 @@ pub typedef {
 
 	int curx, cury;
 
-	// placing mode
-	char docked[10]; // ships that the player has to place
-	// --placing mode
+	xy_t render_cursor;
+	int render_cursor_at;
 
 	// render state
 	ship_t *sunk_by_ai;
@@ -92,7 +93,7 @@ pub typedef {
 	int winner;
 } state_t;
 
-pub typedef { int x, y; } xy_t;
+
 
 pub xy_t shipxy(int x, y, dir, dist) {
 	const int xincr[8] = {1, 1, 0, -1, -1, -1, 0, 1};

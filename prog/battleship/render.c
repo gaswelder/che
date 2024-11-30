@@ -70,7 +70,6 @@ pub void reset() {
 	OS.mvaddstr(0, 35, "BATTLESHIPS");
 	OS.move(PROMPTLINE + 2, 0);
 	draw_empty_boards();
-	draw_manual();
 }
 
 void draw_empty_boards() {
@@ -108,27 +107,12 @@ void draw_empty_boards() {
 	OS.mvaddstr(CYBASE + BDEPTH, CXBASE - 3, numbers);
 }
 
-void draw_manual() {
-	OS.mvprintw(HYBASE, HXBASE, "To position your ships: move the cursor to a spot, then");
-	OS.mvprintw(HYBASE + 1, HXBASE, "type the first letter of a ship type to select it, then");
-	OS.mvprintw(HYBASE + 2, HXBASE, "type a direction ([hjkl] or [4862]), indicating how the");
-	OS.mvprintw(HYBASE + 3, HXBASE, "ship should be pointed. You may also type a ship letter");
-	OS.mvprintw(HYBASE + 4, HXBASE, "followed by `r' to position it randomly, or type `R' to");
-	OS.mvprintw(HYBASE + 5, HXBASE, "place all remaining ships randomly.");
-}
-
-
-
 pub void draw_placed_ship(game.ship_t *ss) {
 	for (int l = 0; l < ss->length; ++l) {
 		game.xy_t xy = game.shipxy(ss->x, ss->y, ss->dir, l);
 		pgoto(xy.y, xy.x);
 		OS.addch(ss->symbol);
 	}
-}
-
-pub void render_placement_prompt(game.state_t *g) {
-	render_prompt(1, "Type one of [%s] to pick a ship.", g->docked + 1);
 }
 
 void render_ai_shot(game.state_t *g, ai.state_t *ai) {
@@ -159,23 +143,24 @@ pub void render_penguin() {
 	OS.refresh();
 }
 
-pub void render_current_coords(game.xy_t xy, int atcpu) {
+pub void render_cursor(game.state_t *g) {
+	game.xy_t xy = g->render_cursor;
+	int atcpu = g->render_cursor_at;
 	if (atcpu) {
+		cgoto(xy.y, xy.x);
 		OS.mvprintw(CYBASE + BDEPTH + 1, CXBASE + 11, "(%d, %c)", xy.x, 'A' + xy.y);
 		cgoto(xy.y, xy.x);
 	} else {
+		pgoto(xy.y, xy.x);
 		OS.mvprintw(PYBASE + BDEPTH + 1, PXBASE + 11, "(%d, %c)", xy.x, 'A' + xy.y);
 		pgoto(xy.y, xy.x);
 	}
+	OS.refresh();
 }
 
-pub void render_cursor(game.xy_t xy, int atcpu) {
-	if (atcpu) {
-		cgoto(xy.y, xy.x);
-	} else {
-		pgoto(xy.y, xy.x);
-	}
-	OS.refresh();
+pub void render_clear_coords() {
+	OS.mvaddstr(CYBASE + BDEPTH + 1, CXBASE + 11,"      ");
+	OS.mvaddstr(PYBASE + BDEPTH + 1, PXBASE + 11,"      ");
 }
 
 pub void render_manual2() {
@@ -376,12 +361,4 @@ pub void render_hit_ship(game.state_t *g, game.ship_t *ss) {
 	draw_empty_water(g, ss);
 	draw_revealed_ship(g, g->turn, ss);
 	OS.move(oldy, oldx);
-}
-
-pub void render_clear_coords(int atcpu) {
-	if (atcpu) {
-		OS.mvaddstr(CYBASE + BDEPTH + 1, CXBASE + 11,"      ");
-	} else {
-		OS.mvaddstr(PYBASE + BDEPTH + 1, PXBASE + 11,"      ");
-	}
 }
