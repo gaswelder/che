@@ -90,7 +90,6 @@ pub typedef {
 
 	//
 	int winner;
-	int nx, ny;
 } state_t;
 
 pub typedef { int x, y; } xy_t;

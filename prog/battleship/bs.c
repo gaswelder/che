@@ -39,6 +39,11 @@ ai.state_t AI = {};
 
 const int SHIPTYPES = 5;
 
+enum {
+	PLAYER = 0,
+	COMPUTER = 1,
+};
+
 
 int main(int argc, char *argv[]) {
 	opt.flag("b", "play a blitz game", &blitz);
@@ -106,63 +111,51 @@ void play() {
 	}
 }
 
-void play_blitz() {
-	while (game.winner(&gamestate) == -1) {
-		while (true) {
-			bool ok;
-			if (gamestate.turn == COMPUTER) {
-				ok = seq_cputurn();
-			} else {
-				s_input_player_shot();
-				ok = seq_playerturn();
-			}
-			render.render_turn(&gamestate, &AI);
-			if (!ok) {
-				break;
-			}
-		}
-		gamestate.turn = 1 - gamestate.turn;
-	}
-}
-
-void play_salvo() {
-	while (game.winner(&gamestate) == -1) {
-		int i = game.shipscount(&gamestate, gamestate.turn);
-		while (i--) {
-			if (gamestate.turn == COMPUTER) {
-				if (seq_cputurn() && game.winner(&gamestate) != -1) {
-					i = 0;
-				}
-			} else {
-				s_input_player_shot();
-				int result = seq_playerturn();
-				if (result && game.winner(&gamestate) != -1) {
-					i = 0;
-				}
-			}
-			render.render_turn(&gamestate, &AI);
-		}
-		gamestate.turn = 1 - gamestate.turn;
-	}
-}
-
 void play_regular() {
 	while (game.winner(&gamestate) == -1) {
-		if (gamestate.turn == COMPUTER) {
-			seq_cputurn();
-		} else {
-			s_input_player_shot();
-			seq_playerturn();
-		}
+		turn();
 		render.render_turn(&gamestate, &AI);
 		gamestate.turn = 1 - gamestate.turn;
 	}
 }
 
-enum {
-	PLAYER = 0,
-	COMPUTER = 1,
-};
+void play_blitz() {
+	while (game.winner(&gamestate) == -1) {
+		int result = turn();
+		render.render_turn(&gamestate, &AI);
+		if (!result) {
+			gamestate.turn = 1 - gamestate.turn;
+		}
+	}
+}
+
+void play_salvo() {
+	while (game.winner(&gamestate) == -1) {
+		int nships = game.shipscount(&gamestate, gamestate.turn);
+		while (nships--) {
+			turn();
+			render.render_turn(&gamestate, &AI);
+			if (game.winner(&gamestate) != -1) {
+				break;
+			}
+			if (gamestate.turn == COMPUTER) {
+				OS.refresh();
+				time.sleep(1);
+			}
+		}
+		gamestate.turn = 1 - gamestate.turn;
+	}
+}
+
+int turn() {
+	if (gamestate.turn == COMPUTER) {
+		return aiturn();
+	} else {
+		return playerturn();
+	}
+}
+
+
 
 #define CTRLC '\003' /* used as terminate command */
 
@@ -283,30 +276,36 @@ void place_ships() {
 }
 
 int getcoord(int atcpu) {
-	render.render_cursor(&gamestate, atcpu);
+	game.xy_t xy = {
+		.x = gamestate.curx,
+		.y = gamestate.cury
+	};
+	render.render_cursor(xy, atcpu);
 	int c;
 	for (;;) {
-		render.render_current_coords(&gamestate, atcpu);
+		xy.x = gamestate.curx;
+		xy.y = gamestate.cury;
+		render.render_current_coords(xy, atcpu);
 		c = input_key();
-		if (!game_applycoord(c)) {
+		if (update_coords(&xy, c)) {
+			gamestate.curx = xy.x % BWIDTH;
+			gamestate.cury = xy.y % BDEPTH;
+		} else {
 			break;
 		}
 	}
 	return c;
 }
 
-void s_input_player_shot() {
-	render.render_prompt(1, "Where do you want to shoot? ", "");
-	while (true) {
-		getcoord(COMPUTER);
-		render.render_clear_coords(COMPUTER);
-		if (gamestate.players[PLAYER].shots[gamestate.curx][gamestate.cury]) {
-			render.render_prompt(1, "You shelled this spot already! Try again.", "");
-			OS.beep();
-			continue;
-		}
-		break;
+bool update_coords(game.xy_t *xy, int c) {
+	switch (c) {
+		case OS.KEY_UP: { xy->y += (BDEPTH - 1); }
+		case OS.KEY_DOWN: { xy->y += 1; }
+		case OS.KEY_LEFT: { xy->x += (BWIDTH - 1); }
+		case OS.KEY_RIGHT: { xy->x += 1; }
+		default: { return false; }
 	}
+	return true;
 }
 
 int input_key() {
@@ -341,66 +340,19 @@ int input_keychoice(const char *s) {
 }
 
 
-/////////////////////////////////////////////////////////
-// -------------------- game --------------------
 
-bool game_applycoord(int c) {
-	switch (c) {
-		case 'k', '8', OS.KEY_UP: {
-			gamestate.ny = gamestate.cury + BDEPTH - 1;
-			gamestate.nx = gamestate.curx;
+int playerturn() {
+	render.render_prompt(1, "Where do you want to shoot? ", "");
+	while (true) {
+		getcoord(COMPUTER);
+		render.render_clear_coords(COMPUTER);
+		if (gamestate.players[PLAYER].shots[gamestate.curx][gamestate.cury]) {
+			render.render_prompt(1, "You shelled this spot already! Try again.", "");
+			OS.beep();
+			continue;
 		}
-		case 'j', '2', OS.KEY_DOWN: {
-			gamestate.ny = gamestate.cury + 1;
-			gamestate.nx = gamestate.curx;
-		}
-		case 'h', '4', OS.KEY_LEFT: {
-			gamestate.ny = gamestate.cury;
-			gamestate.nx = gamestate.curx + BWIDTH - 1;
-		}
-		case 'l', '6', OS.KEY_RIGHT: {
-			gamestate.ny = gamestate.cury;
-			gamestate.nx = gamestate.curx + 1;
-		}
-		case 'y', '7', OS.KEY_A1: {
-			gamestate.ny = gamestate.cury + BDEPTH - 1;
-			gamestate.nx = gamestate.curx + BWIDTH - 1;
-		}
-		case 'b', '1', OS.KEY_C1: {
-			gamestate.ny = gamestate.cury + 1;
-			gamestate.nx = gamestate.curx + BWIDTH - 1;
-		}
-		case 'u', '9', OS.KEY_A3: {
-			gamestate.ny = gamestate.cury + BDEPTH - 1;
-			gamestate.nx = gamestate.curx + 1;
-		}
-		case 'n', '3', OS.KEY_C3: {
-			gamestate.ny = gamestate.cury + 1;
-			gamestate.nx = gamestate.curx + 1;
-		}
-		// case OS.KEY_MOUSE: {
-			// 	OS.MEVENT myevent;
-			// 	OS.getmouse(&myevent);
-			// 	if (atcpu && myevent.y >= CY(0) &&
-			// 		myevent.y <= CY(BDEPTH) && myevent.x >= CX(0) &&
-			// 		myevent.x <= CX(BDEPTH)) {
-			// 		curx = CXINV(myevent.x);
-			// 		cury = CYINV(myevent.y);
-			// 		return (' ');
-			// 	}
-			// 	OS.beep();
-			// 	continue;
-			// }
-		default: {
-			return false;
-		}
+		break;
 	}
-	gamestate.curx = gamestate.nx % BWIDTH;
-	gamestate.cury = gamestate.ny % BDEPTH;
-	return true;
-}
-
-int seq_playerturn() {
 	int x = gamestate.curx;
 	int y = gamestate.cury;
 	int result = game.shoot(&gamestate, PLAYER, x, y);
@@ -421,15 +373,10 @@ int seq_playerturn() {
 	return false;
 }
 
-bool seq_cputurn() {
+bool aiturn() {
 	int result = ai.turn(&gamestate, &AI);
 	if (result == game.S_SUNK) {
 		render.render_hit_ship(&gamestate, gamestate.sunk_by_ai);
-	}
-	/* check for continuation and/or winner */
-	if (salvo) {
-		OS.refresh();
-		time.sleep(1);
 	}
 	if (game.winner(&gamestate) != -1) {
 		return false;

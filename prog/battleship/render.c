@@ -159,14 +159,23 @@ pub void render_penguin() {
 	OS.refresh();
 }
 
-pub void render_current_coords(game.state_t *g, int atcpu) {
+pub void render_current_coords(game.xy_t xy, int atcpu) {
 	if (atcpu) {
-		OS.mvprintw(CYBASE + BDEPTH + 1, CXBASE + 11, "(%d, %c)", g->curx, 'A' + g->cury);
-		cgoto(g->cury, g->curx);
+		OS.mvprintw(CYBASE + BDEPTH + 1, CXBASE + 11, "(%d, %c)", xy.x, 'A' + xy.y);
+		cgoto(xy.y, xy.x);
 	} else {
-		OS.mvprintw(PYBASE + BDEPTH + 1, PXBASE + 11, "(%d, %c)", g->curx, 'A' + g->cury);
-		pgoto(g->cury, g->curx);
+		OS.mvprintw(PYBASE + BDEPTH + 1, PXBASE + 11, "(%d, %c)", xy.x, 'A' + xy.y);
+		pgoto(xy.y, xy.x);
 	}
+}
+
+pub void render_cursor(game.xy_t xy, int atcpu) {
+	if (atcpu) {
+		cgoto(xy.y, xy.x);
+	} else {
+		pgoto(xy.y, xy.x);
+	}
+	OS.refresh();
 }
 
 pub void render_manual2() {
@@ -367,15 +376,6 @@ pub void render_hit_ship(game.state_t *g, game.ship_t *ss) {
 	draw_empty_water(g, ss);
 	draw_revealed_ship(g, g->turn, ss);
 	OS.move(oldy, oldx);
-}
-
-pub void render_cursor(game.state_t *g, int atcpu) {
-	if (atcpu) {
-		cgoto(g->cury, g->curx);
-	} else {
-		pgoto(g->cury, g->curx);
-	}
-	OS.refresh();
 }
 
 pub void render_clear_coords(int atcpu) {
