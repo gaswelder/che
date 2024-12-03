@@ -33,35 +33,23 @@ pub char *newsubstr(const char *s, int p1, p2) {
     return buf;
 }
 
-/**
- * Trims all characters from the set at the beginning and at the end of string s
- * by adding zeros at the end and adjusting the pointer at the beginning.
- *
- * Modifies the buffer and returns the adjusted pointer.
- * Don't pass readonly buffers such as stack allocated or static data.
- */
+// Trims spaces at both sides of s.
 pub char *trim(char *s) {
 	char *left = s;
 	while (*left && isspace(*left)) left++;
-
-	rtrim(left, " \t\r\n");
-	return left;
+	if (left > s) {
+		memmove(s, left, strlen(left));
+	}
+	rtrim(s, " \t\r\n");
+	return s;
 }
 
-/**
- * Trims all characters from the set at the end of string s by inserting zeros.
- *
- * Modifies the buffer.
- * Don't pass readonly buffers such as stack allocated or static data.
- */
+// Trims all characters from the set at the end of string s by inserting zeros.
 pub void rtrim(char *s, *set) {
-	char *right = s;
-	while (*right) right++;
-	right--;
-
-	while (right > s && strchr(set, *right)) {
-		*right = '\0';
-		right--;
+	size_t n = strlen(s);
+	while (n > 0 && strchr(set, s[n-1])) {
+		s[n-1] = '\0';
+		n--;
 	}
 }
 
