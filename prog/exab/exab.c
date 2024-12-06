@@ -1,14 +1,14 @@
 #import dbg
-#import fs
 #import http
-#import ioroutine
 #import opt
-#import os/io
+#import os/ioloop
 #import reader
-#import writer
 #import strings
 #import time
 #import url
+#import writer
+
+const char *DBG_TAG = "exab";
 
 typedef {
     time.t time_started;
@@ -18,80 +18,46 @@ typedef {
 	size_t total_received;
 	size_t total_sent;
 	int error;
-} result_t;
 
-typedef {
-    io.handle_t *connection; // Connection with the server
-    io.buf_t *outbuf; // Request copy to send
-    io.buf_t *inbuf; // Response to read
-    result_t *stats; // Current request's stats
-} context_t;
+	char response[1000];
+	size_t responselen;
+} request_t;
 
-int _bad = 0;
-void bad() {
-	_bad++;
-	if (_bad > 10) {
-		fatal("Test aborted after 10 failures");
-	}
-}
-
-result_t *request_stats = NULL;
+request_t *requests = NULL;
 size_t requests_done = 0;
-char *colonhost = "";
 size_t requests_to_do = 1;
-io.buf_t REQUEST = {};
+
+char *addr = NULL;
+uint8_t REQUEST[1000] = {};
+size_t REQUESTLEN = 0;
+
 
 int main(int argc, char *argv[]) {
 	size_t concurrency = 1;
-    char *methodstring = NULL;
-	char *postfile = NULL;
 
 	opt.nargs(1, "<url>");
     opt.opt_summary("makes a series of HTTP requests to <url> and prints statistics");
     opt.size("n", "number of requests to perform", &requests_to_do);
     opt.size("c", "number of requests running concurrently", &concurrency);
-    opt.str("m", "request method (GET, POST, HEAD)", &methodstring);
-    opt.str("p", "path to the file with the POST body", &postfile);
 
     char **args = opt.parse(argc, argv);
 	char *urlstr = *args;
+	init_request(urlstr);
+	requests = calloc(requests_to_do, sizeof(request_t));
+	if (!requests) panic("calloc failed");
+	for (size_t i = 0; i < concurrency; i++) {
+		next();
+    }
+	while (ioloop.process()) {
+		//
+	}
+    return 0;
+}
 
-	char *postdata = NULL;         /* *buffer containing data from postfile */
-	size_t postlen = 0; /* length of data to be POSTed */
-
-	int method = http.GET;
-    if (methodstring) {
-		method = http.method_from_string(methodstring);
-		if (!method) {
-            fprintf(stderr, "unknown request method: %s\n", methodstring);
-            return 1;
-		}
-    }
-    if (postfile) {
-        if (method != http.POST) {
-            fprintf(stderr, "postfile option works only with POST method\n");
-            exit(1);
-        }
-        postdata = fs.readfile(postfile, &postlen);
-        if (!postdata) {
-            fprintf(stderr, "failed to read file %s: %s\n", postfile, strerror(errno));
-            exit(1);
-        }
-    }
-	const size_t MAX_CONCURRENCY = 20000;
-    if (concurrency > MAX_CONCURRENCY) {
-        fprintf(stderr, "concurrency is too high (%zu > %zu)\n", concurrency, MAX_CONCURRENCY);
-        return 1;
-    }
-    if (concurrency > requests_to_do) {
-        fprintf(stderr, "cannot use concurrency level greater than total number of requests\n");
-        return 1;
-    }
-
-    // Parse the URL.
+void init_request(const char *urlstr) {
 	url.t *u = url.parse(urlstr);
 	if (!u) {
-        fprintf(stderr, "invalid URL: %s\n", urlstr);
+        fprintf(stderr, "failed to parse URL: %s\n", urlstr);
         exit(1);
     }
     if (!strcmp(u->schema, "https")) {
@@ -101,53 +67,89 @@ int main(int argc, char *argv[]) {
     if (u->port[0] == '\0') {
         strcpy(u->port, "80");
     }
-    colonhost = strings.newstr("%s:%s", u->hostname, u->port);
+    addr = strings.newstr("%s:%s", u->hostname, u->port);
 
-	//
-    // Create the request.
-	//
-    http.request_t req = {};
-    if (!http.init_request(&req, method, u->path)) {
+	http.request_t req = {};
+    if (!http.init_request(&req, http.GET, u->path)) {
 		fprintf(stderr, "failed to init request: %s\n", http.errstr(req.err));
-		return 1;
+		exit(1);
 	}
     http.set_header(&req, "Host", u->hostname);
 	http.set_header(&req, "User-Agent", "exab");
-    if (method == http.POST) {
-        char buf[10] = {0};
-        sprintf(buf, "%zu", postlen);
-        http.set_header(&req, "Content-Length", buf);
-    }
-    uint8_t buf[1000] = {0};
-	writer.t *w = writer.static_buffer(buf, sizeof(buf));
-    if (!http.write_request(w, &req)) {
-        fatal("failed to write request");
-    }
-	writer.free(w);
-    io.push(&REQUEST, (char *)buf, strlen((char *)buf));
-    if (method == http.POST) {
-        io.push(&REQUEST, (char *)postdata, postlen);
-    }
 
-	request_stats = calloc(requests_to_do, sizeof(result_t));
-    context_t *connections = calloc(concurrency, sizeof(context_t));
-    if (!connections || !request_stats) {
-        panic("failed to allocate memory");
+	writer.t *w = writer.static_buffer(REQUEST, sizeof(REQUEST));
+    if (!http.write_request(w, &req)) {
+        panic("failed to write the request");
     }
-	ioroutine.init();
-	for (size_t i = 0; i < concurrency; i++) {
-        connections[i].outbuf = io.newbuf();
-        connections[i].inbuf = io.newbuf();
-        ioroutine.spawn(routine, &connections[i]);
-    }
-    while (ioroutine.step()) {
-        //
-    }
-    return 0;
+	REQUESTLEN = w->nwritten;
+	writer.free(w);
+}
+
+void next() {
+	if (requests_done >= requests_to_do) {
+		dbg.m(DBG_TAG, "no more requests");
+		return;
+	}
+	dbg.m(DBG_TAG, "getting next request: %zu", requests_done);
+	request_t *req = &requests[requests_done];
+	requests_done++;
+	ioloop.connect(addr, handler, req);
+}
+
+void handler(void *ctx, int event, void *data) {
+	switch (event) {
+		case ioloop.CONNECTED: {
+			request_t *req = data;
+			ioloop.set_stash(ctx, data);
+            req->time_started = time.now();
+			if (!ioloop.write(ctx, (char *)REQUEST, REQUESTLEN)) {
+				panic("write failed");
+			}
+			req->total_sent = REQUESTLEN;
+		}
+		case ioloop.DATA_IN: {
+			request_t *req = ioloop.get_stash(ctx);
+
+			// Append the data to the buffer.
+			ioloop.buff_t *buf = data;
+			for (size_t i = 0; i < buf->len; i++) {
+				if (req->responselen == 1000) {
+					panic("response buffer too small");
+				}
+				req->response[req->responselen++] = buf->data[i];
+			}
+
+			// Try to parse the response.
+			http.response_t r = {};
+			reader.t *re = reader.string(req->response);
+            if (!http.parse_response(re, &r)) {
+                // Assume not enough data was received.
+                dbg.m(DBG_TAG, "waiting for more data");
+				reader.free(re);
+				return;
+            }
+			reader.free(re);
+			req->status = r.status;
+			req->total_received = req->responselen;
+			req->time_finished_reading = time.now();
+			dbg.m(DBG_TAG, "finished reading response, done=%zu, todo=%zu", requests_done, requests_to_do);
+			done(req);
+		}
+		case ioloop.WRITE_FINISHED: {
+			request_t *req = ioloop.get_stash(ctx);
+			req->time_finished_writing = time.now();
+		}
+		case ioloop.EXIT: {
+			next();
+		}
+		default: {
+			panic("got event %d", event);
+		}
+	}
 }
 
 int output_lines = 0;
-void output(result_t *s) {
+void done(request_t *s) {
 	if (!output_lines) {
 		printf("#\tstatus\ttsending\ttreceiving\ttotaltime\tsent\treceived\n");
 	}
@@ -165,134 +167,4 @@ void output(result_t *s) {
 	printf("%f\t", (double) total / time.MS);
 	printf("%zu\t", s->total_sent);
 	printf("%zu\n", s->total_received);
-}
-
-enum {
-	BEGIN,
-    CONNECT,
-    INIT_REQUEST,
-    WRITE_REQUEST,
-    READ_RESPONSE,
-    READ_RESPONSE_BODY,
-};
-
-const char *DBG_TAG = "exab";
-
-int routine(void *ctx, int line) {
-    context_t *c = ctx;
-
-    switch (line) {
-		case BEGIN: {
-			dbg.m(DBG_TAG, "getting next request: %zu", requests_done);
-			c->stats = &request_stats[requests_done++];
-			if (!c->connection) {
-				return CONNECT;
-			}
-			return INIT_REQUEST;
-		}
-        /*
-         * Connect to the remote host.
-         */
-        case CONNECT: {
-            dbg.m(DBG_TAG, "connecting to %s", colonhost);
-            c->connection = io.connect("tcp", colonhost);
-            if (!c->connection) {
-				c->stats->error = errno;
-				output(c->stats);
-				bad();
-                return CONNECT;
-            }
-            dbg.m(DBG_TAG, "connected");
-            return INIT_REQUEST;
-        }
-        case INIT_REQUEST: {
-			dbg.m(DBG_TAG, "preparing the request (%zu)", io.bufsize(&REQUEST));
-            io.resetbuf(c->inbuf);
-			io.resetbuf(c->outbuf);
-			io.push(c->outbuf, REQUEST.data, io.bufsize(&REQUEST));
-            c->stats->time_started = time.now();
-            return WRITE_REQUEST;
-        }
-        case WRITE_REQUEST: {
-            size_t n = io.bufsize(c->outbuf);
-            if (n == 0) {
-                dbg.m(DBG_TAG, "nothing more to send, proceeding to receive");
-                c->stats->time_finished_writing = time.now();
-                return READ_RESPONSE;
-            }
-            if (!ioroutine.ioready(c->connection, io.WRITE)) {
-                return WRITE_REQUEST;
-            }
-            dbg.m(DBG_TAG, "sending %zu bytes", n);
-            if (!io.write(c->connection, c->outbuf)) {
-				c->stats->error = errno;
-                io.close(c->connection);
-                c->stats->time_finished_writing = time.now();
-				output(c->stats);
-                return CONNECT;
-            }
-            c->stats->total_sent += n - io.bufsize(c->outbuf);
-            return WRITE_REQUEST;
-        }
-        case READ_RESPONSE: {
-            if (!ioroutine.ioready(c->connection, io.READ)) {
-                return READ_RESPONSE;
-            }
-            dbg.m(DBG_TAG, "reading response");
-            size_t n0 = io.bufsize(c->inbuf);
-            if (!io.read(c->connection, c->inbuf)) {
-				c->stats->error = errno;
-                io.close(c->connection);
-                c->stats->time_finished_reading = time.now();
-				output(c->stats);
-				bad();
-                return CONNECT;
-            }
-            size_t n = io.bufsize(c->inbuf);
-            dbg.m(DBG_TAG, "read %zu bytes", n - n0);
-            c->stats->total_received += n - n0;
-            if (n == 0) {
-                io.close(c->connection);
-                c->stats->time_finished_reading = time.now();
-				output(c->stats);
-                return CONNECT;
-            }
-
-            http.response_t r = {};
-			reader.t *re = reader.string(c->inbuf->data);
-            if (!http.parse_response(re, &r)) {
-                // Assume not enough data was received.
-                dbg.m(DBG_TAG, "waiting for more data");
-				reader.free(re);
-                return READ_RESPONSE;
-            }
-			reader.free(re);
-			c->stats->status = r.status;
-            io.shift(c->inbuf, io.bufsize(c->inbuf));
-            return READ_RESPONSE_BODY;
-        }
-        case READ_RESPONSE_BODY: {
-            dbg.m(DBG_TAG, "finished reading response, done=%zu, todo=%zu", requests_done, requests_to_do);
-			c->stats->time_finished_reading = time.now();
-			output(c->stats);
-			if (requests_done >= requests_to_do) {
-				dbg.m(DBG_TAG, "all done (todo=%zu)\n", requests_to_do);
-				io.close(c->connection);
-				return -1;
-			}
-			return BEGIN;
-        }
-        default: {
-            panic("unexpected line: %d", line);
-        }
-    }
-    return -1;
-}
-
-void fatal(char *s) {
-    fprintf(stderr, "%s: %s (%d)\n", s, strerror(errno), errno);
-    if (requests_done) {
-        printf("Total of %zu requests completed\n" , requests_done);
-    }
-    exit(1);
 }
