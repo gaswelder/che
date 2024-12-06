@@ -296,6 +296,11 @@ void dispatch_updates(fd_set *rset, *wset) {
                 int datalen = OS.read(c->conn->fd, buf, sizeof(buf));
                 dbg.m(DBG_TAG, "#%d: read %d, %s", i, datalen, strerror(errno));
                 if (datalen < 0) {
+					// EAGAIN (11) means the non-blocking socket is not ready
+					// yet, skip it.
+					if (errno == OS.EAGAIN) {
+						continue;
+					}
                     panic("got r=%d, err=%d (%s)", datalen, errno, strerror(errno));
                 }
                 if (datalen == 0) {
