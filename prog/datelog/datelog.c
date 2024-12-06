@@ -1,262 +1,91 @@
-#import fs
 #import opt
-#import strings
 #import time
 
-#define MAXPATH 255
+const size_t MAXPATH = 512;
+
+// { "month", "%Y-%m" },
+// { "day", "%Y-%m-%d" },
+// { "hour", "%Y-%m-%d-%H" },
+// { "minute", "%Y-%m-%d-%H-%M" },
+// { "second", "%Y-%m-%d-%H-%M-%S" }
 
 int main(int argc, char *argv[]) {
-	char *pername = "month";
-	char *dir = ".";
-	char *static_name = NULL;
+	char *path_tpl = "%Y-%m.log";
 	bool output = false;
 
 	opt.nargs(0, "");
-	opt.str("p", "Log period ('month'/'day'/'hour'/'minute'/'second')", &pername);
-	opt.str("d", "Directory for log files", &dir);
-	opt.str("c", "File name for current log file", &static_name);
-	opt.flag("o", "Output received lines to stdout", &output);
+	opt.str("p", "path template (see man strftime for tokens)", &path_tpl);
+	opt.flag("o", "output lines to stdout", &output);
 	opt.parse(argc, argv);
 
-	dlog_t *log = dlog_init( pername, dir, static_name );
-	if( !log ) {
+	dlog_t *log = dlog_init(path_tpl);
+	if (!log) {
 		return 1;
 	}
 
 	char buf[BUFSIZ] = {};
-	while( fgets(buf, sizeof(buf), stdin) )
-	{
-		if( output ) {
-			fprintf( stdout, "%s", buf );
-		}
-		if( !dlog_put( log, buf ) ) {
-			fprintf( stderr, "Write to a log failed.\n" );
-			break;
+	while (fgets(buf, sizeof(buf), stdin)) {
+		if (output) fprintf(stdout, "%s", buf);
+		int err = dlog_put(log, buf);
+		if (err) {
+			fprintf(stderr, "Failed to write the log. err=%d, os error=%s.\n", err, strerror(errno));
+			dlog_free(log);
+			return 1;
 		}
 	}
-
-	dlog_free( log );
+	dlog_free(log);
 	return 0;
 }
 
 typedef {
-	const char *name;
-	const char *format;
-} period_t;
-
-period_t periods[] = {
-	{ "month", "%Y-%m" },
-	{ "day", "%Y-%m-%d" },
-	{ "hour", "%Y-%m-%d-%H" },
-	{ "minute", "%Y-%m-%d-%H-%M" },
-	{ "second", "%Y-%m-%d-%H-%M-%S" }
-};
-
-typedef {
-	period_t *per;
-	char *dir;
-	char *static_path;
-	char current_path[MAXPATH];
+	const char *path_tpl;
+	char *current_path;
+	char *new_path;
 	FILE *fp;
 } dlog_t;
 
+enum {
+	E_FORMAT = 1, // "Could not format new path\n"
+	E_FOPEN, // "Could not open file '%s' for writing\n"
+	E_FPUTS, //
+};
 
-dlog_t *dlog_init( const char *pername, const char *dir,
-	const char *static_name )
-{
-	/*
-	 * Find the specified period in the list.
-	 */
-	period_t *per = find_period( pername );
-	if( !per ) {
-		fprintf(stderr, "Unknown period: %s\n", pername);
-		return NULL;
-	}
-
-	/*
-	 * Check if the directory exists.
-	 */
-	if( !fs.is_dir( dir ) ) {
-		return NULL;
-	}
-
-	dlog_t *log = calloc( 1, sizeof(dlog_t) );
-	if( !log ) {
-		fprintf(stderr, "Memory allocation failed\n");
-		return NULL;
-	}
-
-	log->per = per;
-	if( dir ) {
-		log->dir = strings.newstr("%s", dir);
-	}
-	if( static_name ) {
-		log->static_path = create_static_path( log, static_name );
-	}
+dlog_t *dlog_init(const char *path_tpl) {
+	dlog_t *log = calloc(1, sizeof(dlog_t));
+	if (!log) panic("calloc failed");
+	log->path_tpl = path_tpl;
+	log->current_path = calloc(1, MAXPATH+1);
+	if (!log->current_path) panic("calloc failed");
+	log->new_path = calloc(1, MAXPATH+1);
+	if (!log->new_path) panic("calloc failed");
 	return log;
 }
 
-int dlog_put( dlog_t *log, const char *line )
-{
-	/*
-	 * Switch the output file if needed.
-	 */
-	switch_file( log );
-	if( !log->fp ) {
-		return 0;
-	}
-
-	if( fputs( line, log->fp ) == EOF ) {
-		return 0;
-	}
-
-	return 1;
+void dlog_free(dlog_t *log) {
+	if (log->fp) fclose(log->fp);
+	free(log->current_path);
+	free(log->new_path);
+	free(log);
 }
 
-void dlog_free( dlog_t *log )
-{
-	close_log( log );
-	free( log->dir );
-	free( log->static_path );
-	free( log );
-}
+int dlog_put(dlog_t *log, const char *line) {
+	if (!time.time_format(log->new_path, MAXPATH, log->path_tpl)) {
+		return E_FORMAT;
+	}
 
-
-/*
- * Returns a pointer to the period with the given name or NULL.
- */
-period_t *find_period( const char *pername )
-{
-	int n = (int) nelem(periods);
-
-	for( int i = 0; i < n; i++ ) {
-		if( strcmp( periods[i].name, pername ) == 0 ) {
-			return &periods[i];
+	// If the file name hasn't changed, return the current file.
+	if (!log->fp || strcmp(log->new_path, log->current_path)) {
+		if (log->fp) {
+			fclose(log->fp);
+		}
+		strcpy(log->current_path, log->new_path);
+		log->fp = fopen(log->current_path, "ab+");
+		if (!log->fp) {
+			return E_FOPEN;
 		}
 	}
-	return NULL;
-}
-
-
-
-/*
- * Allocates, formats and returns a full path for the current file.
- */
-char *create_static_path( dlog_t *log, const char *static_name )
-{
-	char *static_path = calloc(MAXPATH, 1);
-	if (!static_path) {
-		fprintf(stderr, "Memory allocation failed.\n");
-		return NULL;
+	if (fputs(line, log->fp) == EOF) {
+		return E_FPUTS;
 	}
-
-	int len = snprintf(static_path, MAXPATH, "%s/%s", log->dir, static_name);
-	if( len < 0 || len >= MAXPATH ) {
-		fprintf(stderr, "Static path is too long.\n");
-		free( static_path );
-		return NULL;
-	}
-
-	return static_path;
-}
-
-
-int switch_file( dlog_t *log )
-{
-	/*
-	 * Determine the name the current file should have.
-	 */
-	char new_path[MAXPATH] = {};
-	if( !format_path( log, new_path, sizeof(new_path) ) ) {
-		fprintf( stderr, "Could not format new path\n" );
-		return 0;
-	}
-
-	/*
-	 * If the file name hasn't changed, return the current file.
-	 */
-	if( log->fp && strcmp( new_path, log->current_path ) == 0 ) {
-		return 1;
-	}
-
-	/*
-	 * If the name has changed, close previous file and open the
-	 * new one.
-	 */
-	close_log( log );
-	strcpy( log->current_path, new_path );
-
-	const char *path = NULL;
-	if (log->static_path) {
-		path = log->static_path;
-	} else {
-		path = log->current_path;
-	}
-	log->fp = fopen( path, "ab+" );
-	if( !log->fp ) {
-		fprintf( stderr, "Could not open file '%s' for writing\n",
-			path );
-		return 0;
-	}
-	/*
-	 * Set line-buffering mode.
-	 */
-	if( setvbuf( log->fp, NULL, _IOLBF, BUFSIZ ) != 0 ) {
-		fprintf( stderr, "Could not change buffer mode\n" );
-	}
-	return 1;
-}
-
-/*
- * Closes current file and renames it if needed.
- */
-int close_log( dlog_t *log )
-{
-	if( !log->fp ) {
-		return 1;
-	}
-
-	fclose( log->fp );
-	log->fp = NULL;
-
-	if( !log->static_path ) {
-		return 1;
-	}
-
-	/*
-	 * Move the contents from the temporary path to the corresponding
-	 * file.
-	 */
-	if (fs.file_exists(log->current_path)) {
-		if (!fs.append_file(log->current_path, log->static_path)) {
-			fprintf(stderr, "Couldn't append %s to %s\n", log->static_path, log->current_path);
-			return 0;
-		}
-		remove( log->static_path );
-	}
-	else {
-		if( rename( log->static_path, log->current_path ) != 0 ) {
-			fprintf( stderr, "Couldn't rename %s to %s\n",
-				log->static_path, log->current_path );
-			return 0;
-		}
-	}
-
-	return 1;
-}
-
-/*
- * Puts path for the current file into the given buffer.
- */
-bool format_path( dlog_t *log, char *buf, size_t len ) {
-	char name[200] = {};
-	if( !time.time_format(name, sizeof(name), log->per->format) ) {
-		return false;
-	}
-	int r = snprintf(buf, len, "%s/%s.log", log->dir, name);
-	if( r < 0 || (size_t) r >= len ) {
-		return false;
-	}
-
-	return true;
+	return 0;
 }
