@@ -12,9 +12,9 @@ const char *default_files[] = {
     "default.htm"
 };
 
-pub void serve(http.request_t *req, net.net_t *conn, server.hostconfig_t *hc) {
+pub void serve(http.request_t *req, net.net_t *conn, server.server_t *server) {
     printf("resolving %s %s\n", req->method, req->path);
-	char *filepath = resolve_path(hc->homedir, req->path);
+	char *filepath = resolve_path(server->homedir, req->path);
 	if (!filepath) {
 		printf("file \"%s\" not found\n", req->path);
 		http.write_404(req, conn);
@@ -48,10 +48,9 @@ pub void serve(http.request_t *req, net.net_t *conn, server.hostconfig_t *hc) {
 	while (true) {
 		char tmp[4096];
 		size_t n = fread(tmp, 1, 4096, f);
-		printf("read %zu from file\n", n);
 		if (n == 0) break;
 		int r = net.net_write(conn, tmp, n);
-		printf("wrote %d\n", r);
+		if (r < 0) panic("write failed");
 	}
 	fclose(f);
 }

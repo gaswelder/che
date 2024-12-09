@@ -2,21 +2,15 @@
 #import http
 #import protocols/cgi
 #import os/exec
-#import os/io
 #import os/misc
 #import strings
 #import os/net
 #import server.c
 
-pub int client_routine(void *_ctx) {
-    server.ctx_t *ctx = _ctx;
-    http.request_t *req = &ctx->req;
-    server.hostconfig_t *hc = ctx->hc;
-	net.net_t *conn = ctx->conn;
-
+pub int client_routine(server.server_t *server, http.request_t *req, net.net_t *conn) {
 	printf("resolving CGI script path\n");
 	char path[1000] = {0};
-	if (!resolve_path(hc, req, path, sizeof(path))) {
+	if (!resolve_path(server, req, path, sizeof(path))) {
 		printf("invalid path: %s\n", req->path);
 		http.write_404(req, conn);
 		return 123;
@@ -33,11 +27,11 @@ pub int client_routine(void *_ctx) {
 	*p++ = strings.newstr("SERVER_PORT", "todo", 1);
 	*p++ = strings.newstr("SERVER_SOFTWARE=webserver");
 	*p++ = strings.newstr("SERVER_PROTOCOL=HTTP/1.0");
-	*p++ = strings.newstr("DOCUMENT_ROOT=%s", hc->homedir);
+	*p++ = strings.newstr("DOCUMENT_ROOT=%s", server->homedir);
 	*p++ = strings.newstr("HTTP_USER_AGENT=%s", header(req, "User-Agent", ""));
 	*p++ = strings.newstr("HTTP_HOST=%s", header(req, "Host", ""));
 	*p++ = strings.newstr("CONTENT_TYPE=%s", header(req, "Content-Type", ""));
-	*p++ = strings.newstr("SCRIPT_FILENAME=%s/%s", hc->homedir, req->path);
+	*p++ = strings.newstr("SCRIPT_FILENAME=%s/%s", server->homedir, req->path);
 	*p++ = strings.newstr("REQUEST_METHOD=%s", req->method);
 	*p++ = strings.newstr("SCRIPT_NAME=%s", req->path);
 	*p++ = strings.newstr("REQUEST_URI=%s", req->uri);
@@ -47,35 +41,37 @@ pub int client_routine(void *_ctx) {
 	*p++ = strings.newstr("REMOTE_PORT=%s", "todo");
 
 	char *args[] = {path, NULL};
-	ctx->cgiproc = exec.spawn(args, env);
-	if (!ctx->cgiproc) {
+	exec.proc_t *proc = exec.spawn(args, env);
+	if (!proc) {
 		panic("spawn failed");
 	}
-	printf("spawned process %d\n", ctx->cgiproc->pid);
+	printf("spawned process %d\n", proc->pid);
 	p = env;
 	while (*p) {
 		free(*p);
 		p++;
 	}
 
-	if (!io.read(ctx->cgiproc->stdout, ctx->tmpbuf)) {
-		panic("read failed");
-		return -1;
-	}
+	
+	// if (!io.read(proc->stdout, ctx->tmpbuf)) {
+	// 	panic("read failed");
+	// 	return -1;
+	// }
 	// Try to parse the CGI headers in the buffer.
 	// If not, wait for more data.
 	cgi.head_t head = {};
-	size_t headsize = cgi.parse_head(&head, ctx->tmpbuf->data, ctx->tmpbuf->size);
+	char tmpbuf[4096] = {};
+	size_t headsize = cgi.parse_head(&head, tmpbuf, 4096);
 	if (!headsize) {
 		return 123;
 	}
-	io.shift(ctx->tmpbuf, headsize);
+	// io.shift(ctx->tmpbuf, headsize);
 
 	// Write the output headers.
-	if (!io.pushf(ctx->outbuf, "%s 200 OK\n", req->version)) {
+	if (!fprintf(stdout, "%s 200 OK\n", req->version)) {
 		panic("!");
 	}
-	if (!io.pushf(ctx->outbuf, "Transfer-Encoding: chunked\n")) {
+	if (!fprintf(stdout, "Transfer-Encoding: chunked\n")) {
 		panic("!");
 	}
 	for (size_t i = 0; i < head.nheaders; i++) {
@@ -91,52 +87,53 @@ pub int client_routine(void *_ctx) {
 		if (!strcmp(name, "Content-Length")) {
 			panic("omitting content length");
 		}
-		if (!io.pushf(ctx->outbuf, "%s: %s\n", name, value)) {
+		if (!fprintf(stderr, "%s: %s\n", name, value)) {
 			panic("!");
 		}
 	}
-	if (!io.pushf(ctx->outbuf, "\n")) {
+	if (!fprintf(stderr, "\n")) {
 		panic("!");
 	}
 
-	if (!io.read(ctx->cgiproc->stdout, ctx->tmpbuf)) {
-		panic("read failed");
-		return -1;
-	}
-	size_t n = io.bufsize(ctx->tmpbuf);
+	// if (!io.read(proc->stdout, ctx->tmpbuf)) {
+	// 	panic("read failed");
+	// 	return -1;
+	// }
+	// size_t n = io.bufsize(ctx->tmpbuf);
+	size_t n = 123;
 
 	// Move the chunk from tmpbuf to outbuf.
-	if (!io.pushf(ctx->outbuf, "%lx\r\n", n)) {
+	if (!fprintf(stderr, "%lx\r\n", n)) {
 		panic("!");
 	}
-	if (!io.push(ctx->outbuf, ctx->tmpbuf->data, ctx->tmpbuf->size)) {
+	// if (!io.push(ctx->outbuf, ctx->tmpbuf->data, ctx->tmpbuf->size)) {
+	// 	panic("!");
+	// }
+	if (!fprintf(stderr, "\r\n")) {
 		panic("!");
 	}
-	if (!io.pushf(ctx->outbuf, "\r\n")) {
-		panic("!");
-	}
-	io.shift(ctx->tmpbuf, n);
+	// io.shift(ctx->tmpbuf, n);
 
 	if (n == 0) {
-		if (!io.pushf(ctx->outbuf, "\r\n")) {
+		if (!fprintf(stderr, "\r\n")) {
 			panic("!");
 		}
 		// The process has exited, see if there's anything in stderr.
 		char buf[4096] = {0};
-		size_t rr = OS.read(ctx->cgiproc->stderr->fd, buf, 4096);
+		size_t rr = OS.read(proc->stderr->fd, buf, 4096);
 		printf("rr = %zu\n", rr);
 		printf("%s\n", buf);
 		printf("waiting\n");
 		int status = 0;
-		exec.wait(ctx->cgiproc, &status);
+		exec.wait(proc, &status);
 		printf("process exited with %d\n", status);
-		ctx->cgiproc = NULL;
+		proc = NULL;
 		return 123;
 	}
 	return 123;
 }
 
-bool resolve_path(server.hostconfig_t *hc, http.request_t *req, char *path, size_t n) {
+bool resolve_path(server.server_t *hc, http.request_t *req, char *path, size_t n) {
     char *naivepath = strings.newstr("%s/%s", hc->homedir, req->path);
     printf("naivepath = %s\n", naivepath);
     bool pathok = fs.realpath(naivepath, path, n);
