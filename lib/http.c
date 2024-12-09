@@ -198,10 +198,10 @@ pub const char *get_res_header(response_t *r, const char *name) {
     return NULL;
 }
 
-pub bool parse_request(request_t *r, const char *head) {
+pub bool parse_request(request_t *r, const char *buf) {
     memset(r, 0, sizeof(request_t));
     char *lines[100] = {0};
-    size_t nlines = strings.split("\r\n", head, lines, sizeof(lines));
+    size_t nlines = strings.split("\r\n", buf, lines, sizeof(lines));
     if (nlines == sizeof(lines)) {
         // Lines array too small.
         return false;
@@ -229,7 +229,7 @@ pub bool parse_request(request_t *r, const char *head) {
  * Puts the values into the provided struct r.
  * Returns false on failure.
  */
-bool parse_start_line(char *line, request_t *r) {
+bool parse_start_line(const char *line, request_t *r) {
     parsebuf.parsebuf_t *b = parsebuf.buf_new(line);
 
     // method
@@ -261,7 +261,6 @@ bool parse_start_line(char *line, request_t *r) {
     if (!ok) {
         return false;
     }
-
     return parse_query(r);
 }
 
@@ -281,15 +280,16 @@ bool parse_query(request_t *r) {
         }
     }
 
-    // Remove trailing slashes from path
-    strings.rtrim(r->path, "/");
+    // strings.rtrim(r->path, "/");
 
     // Extract filename from path. "/path/blog/file1.html" ==> "file1.html"
     const char *filename = strrchr(r->path, '/');
-    if (*filename == '/') {
-        filename++;
-    }
-    strcpy(r->filename, filename);
+	if (filename) {
+		if (*filename == '/') {
+			filename++;
+		}
+		strcpy(r->filename, filename);
+	}
     return true;
 }
 

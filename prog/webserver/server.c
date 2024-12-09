@@ -2,6 +2,7 @@
 #import http
 #import os/exec
 #import os/io
+#import os/net
 
 pub typedef {
     io.handle_t *listener;
@@ -25,7 +26,7 @@ pub hostconfig_t *lk_hostconfig_new(char *hostname) {
 }
 
 pub typedef {
-    io.handle_t *client_handle; // Connected client.
+	net.net_t *conn; // Connected client.
     io.buf_t *inbuf, *outbuf; // Buffers for incoming and outgoing data.
     http.request_t req; // parsed request.
     hostconfig_t *hc; // resolved host config.
@@ -36,9 +37,9 @@ pub typedef {
     io.buf_t *tmpbuf;
 } ctx_t;
 
-pub ctx_t *newctx(io.handle_t *h) {
+pub ctx_t *newctx(net.net_t *conn) {
     ctx_t *ctx = calloc(1, sizeof(ctx_t));
-    ctx->client_handle = h;
+    ctx->conn = conn;
     ctx->inbuf = io.newbuf();
     ctx->outbuf = io.newbuf();
     ctx->tmpbuf = io.newbuf();

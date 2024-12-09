@@ -1,15 +1,14 @@
+#import configparser.c
 #import fs
 #import http
-#import ioroutine
 #import opt
-#import os/io
 #import os/misc
-#import strings
-
-#import configparser.c
+#import os/net
 #import server.c
 #import srvcgi.c
 #import srvfiles.c
+#import strings
+#import os/threads
 
 server.server_t SERVER = {};
 
@@ -76,159 +75,59 @@ int main(int argc, char *argv[]) {
     signal(SIGINT, handle_sigint);
 
     char *addr = strings.newstr("%s:%s", host, port);
-    SERVER.listener = io.listen("tcp", addr);
-    if (!SERVER.listener) {
+	net.net_t *ln = net.net_listen("tcp", addr);
+    if (!ln) {
         fprintf(stderr, "listen failed: %s\n", strerror(errno));
         return 1;
     }
-    printf("listening at %d\n", SERVER.listener->fd);
     printf("Serving at http://%s\n", addr);
     free(addr);
 
-    /*
-     * Run the io routines.
-     */
-    ioroutine.init();
-    ioroutine.spawn(listener_routine, &SERVER);
-    int c = 0;
-    while (true) {
-        printf("-------------- loop %d --------------\n", c++);
-        // if (c > 100) {
-        //     panic("!");
-        // }
-        ioroutine.step();
-    }
+	while (true) {
+		net.net_t *conn = net.net_accept(ln);
+		if (!conn) panic("accept failed");
+		server.ctx_t *ctx = server.newctx(conn);
+		threads.thr_new(client_routine, ctx);
+	}
     panic("unreachable");
 }
 
-int listener_routine(void *_ctx, int line) {
-    server.server_t *s = _ctx;
-    switch (line) {
-        /*
-         * The only state for this routine.
-         * Waits for a new connection, accepts and spawns a new routine for
-         * the new connection.
-         */
-        case 0: {
-            if (!ioroutine.ioready(s->listener, io.READ)) {
-                return 0;
-            }
-            io.handle_t *conn = io.accept(s->listener);
-            if (!conn) {
-                panic("accept failed: %s\n", strerror(errno));
-            }
-            printf("accepted %d\n", conn->fd);
-            server.ctx_t *ctx = server.newctx(conn);
-            ioroutine.spawn(client_routine, ctx);
-            return 0;
-        }
-        default: {
-            panic("unexpected line: %d", line);
-        }
-    }
-}
-
-enum {
-    READ_REQUEST,
-    RESOLVE_REQUEST,
-    WAIT_SUBROUTINE
-};
-
-int client_routine(void *_ctx, int line) {
+void *client_routine(void *_ctx) {
     server.ctx_t *ctx = _ctx;
-    switch (line) {
-    /*
-     * Read data from the socket until a full request head is parsed.
-     */
-    case READ_REQUEST: {
-        if (!ioroutine.ioready(ctx->client_handle, io.READ)) {
-            return READ_REQUEST;
-        }
-        printf("[io] reading up to %zu bytes from client %d\n", io.bufspace(ctx->inbuf), io.id(ctx->client_handle));
-        if (!io.read(ctx->client_handle, ctx->inbuf)) {
-            printf("[io] read from client failed: %s\n", strerror(errno));
-            io.close(ctx->client_handle);
-            server.freectx(ctx);
-            return -1;
-        }
-        size_t n = io.bufsize(ctx->inbuf);
-        if (!n) {
-            printf("[io] read from client failed: %s\n", strerror(errno));
-            io.close(ctx->client_handle);
-            server.freectx(ctx);
-            return -1;
-        }
-        printf("[io] read from %d, have %zu\n", io.id(ctx->client_handle), n);
-        if (!parse_request(ctx)) {
-            return READ_REQUEST;
-        }
-        return RESOLVE_REQUEST;
-    }
-
-    /*
-     * Look at the request and spawn a corresponding routine to process it.
-     */
-    case RESOLVE_REQUEST: {
-        http.header_t *host = http.get_header(&ctx->req, "Host");
-        if (host) {
-            ctx->hc = server.find_hostconfig(&SERVER, host->value);
-        }
-        // If host is not specified of there's no config for the host,
-        // fall back to the "*" config.
-        if (!ctx->hc) {
-            ctx->hc = server.find_hostconfig(&SERVER, "*");
-            if (!ctx->hc) {
-                panic("failed to get the fallback host config");
-            }
-        }
-        if (strlen(ctx->hc->cgidir) > 0 && strings.starts_with(ctx->req.path, ctx->hc->cgidir)) {
-            printf("spawning a cgi subroutine\n");
-            ctx->subroutine = ioroutine.spawn(srvcgi.client_routine, ctx);
-            return WAIT_SUBROUTINE;
-        }
-        // Fall back to serving local files.
-        printf("spawning a files subroutine\n");
-        ctx->subroutine = ioroutine.spawn(srvfiles.client_routine, ctx);
-        return WAIT_SUBROUTINE;
-    }
-
-    /*
-     * Wait for the subroutine to finish.
-     */
-    case WAIT_SUBROUTINE: {
-        if (!ioroutine.done(ctx->subroutine)) {
-            return WAIT_SUBROUTINE;
-        }
-        printf("subroutine done\n");
-        return READ_REQUEST;
-    }
-    default: {
-        panic("unhandled state: %d", line);
-    }
-    }
+	while (true) {
+		// read request
+		char buf[1000] = {};
+		size_t size = 1000;
+		net.net_t *conn = ctx->conn;
+		int r = net.readconn(conn, buf, size);
+		if (r < 0) {
+			panic("read failed");
+		}
+		if (!http.parse_request(&ctx->req, buf)) {
+			panic("failed to parse request");
+		}
+		http.header_t *host = http.get_header(&ctx->req, "Host");
+		if (host) {
+			ctx->hc = server.find_hostconfig(&SERVER, host->value);
+		}
+		// If host is not specified of there's no config for the host,
+		// fall back to the "*" config.
+		if (!ctx->hc) {
+			ctx->hc = server.find_hostconfig(&SERVER, "*");
+			if (!ctx->hc) {
+				panic("failed to get the fallback host config");
+			}
+		}
+		printf("cgi? %s\n", ctx->hc->cgidir);
+		if (strlen(ctx->hc->cgidir) > 0 && strings.starts_with(ctx->req.path, ctx->hc->cgidir)) {
+			printf("spawning a cgi subroutine\n");
+			srvcgi.client_routine(ctx);
+		} else {
+			srvfiles.serve(ctx);
+		}
+	}
 }
 
-bool parse_request(server.ctx_t *ctx) {
-    // See if the input buffer has a finished request header yet.
-    char *split = strstr(ctx->inbuf->data, "\r\n\r\n");
-    if (!split || (size_t)(split - ctx->inbuf->data) > ctx->inbuf->size) {
-        return false;
-    }
-    split += 4;
-
-    // Extract the headers and shift the buffer.
-    char head[4096] = {0};
-    size_t headlen = split - ctx->inbuf->data;
-    memcpy(head, ctx->inbuf->data, headlen);
-    io.shift(ctx->inbuf, headlen);
-    // fprintf(stderr, "got a request:\n=============\n%s\n=============\n", head);
-
-    // Parse the request.
-    if (!http.parse_request(&ctx->req, head)) {
-        panic("failed to parse the request");
-    }
-    return true;
-}
 
 // bool resolve_request(server_t *server, server.ctx_t *ctx) {
 
