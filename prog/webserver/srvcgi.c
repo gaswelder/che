@@ -5,20 +5,20 @@
 #import os/io
 #import os/misc
 #import strings
-// #import os/net
+#import os/net
 #import server.c
-#import srvstd.c
 
 pub int client_routine(void *_ctx) {
     server.ctx_t *ctx = _ctx;
     http.request_t *req = &ctx->req;
     server.hostconfig_t *hc = ctx->hc;
+	net.net_t *conn = ctx->conn;
 
 	printf("resolving CGI script path\n");
 	char path[1000] = {0};
 	if (!resolve_path(hc, req, path, sizeof(path))) {
 		printf("invalid path: %s\n", req->path);
-		srvstd.write_404(req, ctx);
+		http.write_404(req, conn);
 		return 123;
 	}
 

@@ -3,7 +3,6 @@
 #import mime
 #import os/net
 #import server.c
-#import srvstd.c
 #import strings
 
 const char *default_files[] = {
@@ -13,15 +12,12 @@ const char *default_files[] = {
     "default.htm"
 };
 
-pub void serve(server.ctx_t *ctx) {
-    http.request_t *req = &ctx->req;
-	net.net_t *conn = ctx->conn;
-
+pub void serve(http.request_t *req, net.net_t *conn, server.ctx_t *ctx) {
     printf("resolving %s %s\n", req->method, req->path);
 	char *filepath = resolve_path(ctx->hc->homedir, req->path);
 	if (!filepath) {
 		printf("file \"%s\" not found\n", req->path);
-		srvstd.write_404(req, ctx);
+		http.write_404(req, conn);
 		return;
 	}
 	printf("resolved %s as %s\n", req->path, filepath);
