@@ -4,6 +4,7 @@
 #import writer
 #import strbuilder
 #import strings
+#import os/net
 
 pub enum {
 	UNKNOWN_METHOD = 0,
@@ -421,4 +422,17 @@ bool read_header(parsebuf.parsebuf_t *b, header_t *h) {
 		return false;
 	}
 	return true;
+}
+
+pub int read_request(request_t *req, net.net_t *conn) {
+	char buf[1000] = {};
+	size_t size = 1000;
+	int r = net.readconn(conn, buf, size);
+	if (r < 0) {
+		return EOF;
+	}
+	if (!parse_request(req, buf)) {
+		return 2;
+	}
+	return 0;
 }

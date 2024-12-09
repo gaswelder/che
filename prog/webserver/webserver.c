@@ -94,17 +94,15 @@ int main(int argc, char *argv[]) {
 
 void *client_routine(void *_ctx) {
     server.ctx_t *ctx = _ctx;
+	net.net_t *conn = ctx->conn;
 	while (true) {
-		// read request
-		char buf[1000] = {};
-		size_t size = 1000;
-		net.net_t *conn = ctx->conn;
-		int r = net.readconn(conn, buf, size);
-		if (r < 0) {
-			panic("read failed");
+		int err = http.read_request(&ctx->req, conn);
+		if (err == EOF) {
+			printf("failed to read request: EOF\n");
+			break;
 		}
-		if (!http.parse_request(&ctx->req, buf)) {
-			panic("failed to parse request");
+		if (err) {
+			panic("failed to read request: err = %d\n", err);
 		}
 		http.header_t *host = http.get_header(&ctx->req, "Host");
 		if (host) {
@@ -126,6 +124,8 @@ void *client_routine(void *_ctx) {
 			srvfiles.serve(ctx);
 		}
 	}
+	net.net_close(conn);
+	return NULL;
 }
 
 
