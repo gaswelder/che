@@ -5,7 +5,6 @@
 #import os/net
 #import server.c
 #import srvcgi.c
-#import srvfiles.c
 #import strings
 #import os/threads
 
@@ -82,7 +81,7 @@ void *client_routine(void *arg) {
 			printf("spawning a cgi subroutine\n");
 			srvcgi.client_routine(s, &req, conn);
 		} else {
-			srvfiles.serve(&req, conn, s);
+			http.servefile(&req, conn, s->homedir);
 		}
 	}
 	net.net_close(conn);
