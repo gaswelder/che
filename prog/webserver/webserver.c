@@ -121,7 +121,7 @@ void *client_routine(void *_ctx) {
 			printf("spawning a cgi subroutine\n");
 			srvcgi.client_routine(ctx);
 		} else {
-			srvfiles.serve(&ctx->req, conn, ctx);
+			srvfiles.serve(&ctx->req, conn, ctx->hc);
 		}
 	}
 	net.net_close(conn);
