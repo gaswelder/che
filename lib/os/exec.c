@@ -2,13 +2,12 @@
 #include <unistd.h>
 #include <sys/wait.h>
 
-#import os/io
 #import reader
-// #import writer
+#import writer
 
 pub typedef {
 	reader.t *stdout, *stderr;
-    io.handle_t *stdin;
+	writer.t *stdin;
     int pid;
 } proc_t;
 
@@ -18,7 +17,8 @@ pub typedef {
  * env is a NULL-terminated list of k=v strings specifying environment variables.
  */
 pub proc_t *spawn(char *argv[], *env[]) {
-    // Make three pipes
+    // Make three pipes.
+	// Remember they are {read, write}.
     int in[2] = {0};
     int out[2] = {0};
     int err[2] = {0};
@@ -58,19 +58,19 @@ pub proc_t *spawn(char *argv[], *env[]) {
             return NULL;
         }
         p->pid = pid;
-        p->stdin = io.fdhandle(in[0]);
+        p->stdin = writer.fd(in[1]);
         p->stdout = reader.fd(out[0]);
         p->stderr = reader.fd(err[0]);
-        OS.close(in[1]);
+        OS.close(in[0]);
         OS.close(out[1]);
         OS.close(err[1]);
         return p;
     } else {
         // child proc
-        OS.close(in[0]);
+        OS.close(in[1]);
         OS.close(out[0]);
         OS.close(err[0]);
-        if (OS.dup2(in[1], OS.STDIN_FILENO) < 0) {
+        if (OS.dup2(in[0], OS.STDIN_FILENO) < 0) {
             panic("dup2 failed");
         }
         if (OS.dup2(out[1], OS.STDOUT_FILENO) < 0) {

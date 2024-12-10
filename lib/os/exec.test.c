@@ -1,20 +1,44 @@
 #import os/exec
 #import test
-#import os/io
 #import reader
+#import writer
 
 int main() {
+	testcat();
+	testecho();
+    return test.fails();
+}
+
+void testcat() {
+	char *argv[] = {"/bin/cat", NULL};
+    char *env[] = {NULL};
+    exec.proc_t *p = exec.spawn(argv, env);
+    if (!p) {
+        fprintf(stderr, "spawn failed: %s\n", strerror(errno));
+        exit(1);
+    }
+
+	int r = writer.write(p->stdin, (uint8_t*)"foo\n", 4);
+	test.truth("nwrite == 4", r == 4);
+	writer.close(p->stdin);
+
+	uint8_t buf[4096] = {};
+	reader.read(p->stdout, buf, sizeof(buf));
+	test.streq((char*) buf, "foo\n");
+}
+
+void testecho() {
 	// Spawn the process.
 	char *argv[] = {"/bin/echo", "this is a test from /bin/echo", NULL};
     char *env[] = {NULL};
     exec.proc_t *p = exec.spawn(argv, env);
     if (!p) {
         fprintf(stderr, "spawn failed: %s\n", strerror(errno));
-        return 1;
+        exit(1);
     }
 
 	// Close its input.
-    io.close(p->stdin);
+    writer.close(p->stdin);
 
 	// Read its stdout.
 	uint8_t buf[4096] = {};
@@ -31,9 +55,8 @@ int main() {
     int status = 0;
     if (!exec.wait(p, &status)) {
         fprintf(stderr, "wait failed: %s\n", strerror(errno));
-        return 1;
+        exit(1);
     }
     test.truth("status == 0", status == 0);
     test.truth("errno == 0", errno == 0);
-    return test.fails();
 }
