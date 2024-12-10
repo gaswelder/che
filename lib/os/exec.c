@@ -3,9 +3,12 @@
 #include <sys/wait.h>
 
 #import os/io
+#import reader
+// #import writer
 
 pub typedef {
-    io.handle_t *stdin, *stdout, *stderr;
+	reader.t *stdout, *stderr;
+    io.handle_t *stdin;
     int pid;
 } proc_t;
 
@@ -56,8 +59,8 @@ pub proc_t *spawn(char *argv[], *env[]) {
         }
         p->pid = pid;
         p->stdin = io.fdhandle(in[0]);
-        p->stdout = io.fdhandle(out[0]);
-        p->stderr = io.fdhandle(err[0]);
+        p->stdout = reader.fd(out[0]);
+        p->stderr = reader.fd(err[0]);
         OS.close(in[1]);
         OS.close(out[1]);
         OS.close(err[1]);
@@ -84,6 +87,8 @@ pub proc_t *spawn(char *argv[], *env[]) {
 
 pub bool wait(proc_t *p, int *status) {
     bool ok = OS.waitpid(p->pid, status, 0) == p->pid;
+	reader.free(p->stdout);
+	reader.free(p->stderr);
     free(p);
     return ok;
 }
