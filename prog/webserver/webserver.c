@@ -77,11 +77,19 @@ void *client_routine(void *arg) {
 		if (err) {
 			panic("failed to read request: err = %d\n", err);
 		}
-		if (strlen(s->cgidir) > 0 && strings.starts_with(req.path, s->cgidir)) {
-			printf("spawning a cgi subroutine\n");
-			srvcgi.client_routine(s, &req, conn);
+
+		printf("resolving %s %s\n", req.method, req.path);
+		char *filepath = resolve_path(s->homedir, req.path);
+		if (!filepath) {
+			printf("file \"%s\" not found\n", req.path);
+			http.write_404(&req, conn);
+			continue;
+		}
+		printf("resolved %s as %s\n", req.path, filepath);
+		if (strings.starts_with(req.path, "/cgi-bin/")) {
+			srvcgi.cgi(filepath, &req, conn);
 		} else {
-			http.servefile(&req, conn, s->homedir);
+			http.servefile(&req, conn, filepath);
 		}
 	}
 	net.net_close(conn);
@@ -106,4 +114,43 @@ void handle_sigint(int sig) {
     printf("SIGINT received: %d\n", sig);
     fflush(stdout);
     exit(0);
+}
+
+const char *index_files[] = {
+    "index.html",
+    "index.htm",
+    "default.html",
+    "default.htm"
+};
+
+char *resolve_path(const char *homedir, *reqpath) {
+    if (!strcmp(reqpath, "/")) {
+        for (size_t i = 0; i < nelem(index_files); i++) {
+            char *p = resolve_inner(homedir, index_files[i]);
+            if (p) {
+                return p;
+            }
+        }
+        return NULL;
+    }
+    return resolve_inner(homedir, reqpath);
+}
+
+char *resolve_inner(const char *homedir, *reqpath) {
+    char naive_path[4096] = {0};
+    if (strlen(homedir) + strlen(reqpath) + 1 >= sizeof(naive_path)) {
+        printf("ERROR: requested path is too long: %s\n", reqpath);
+        return NULL;
+    }
+    sprintf(naive_path, "%s/%s", homedir, reqpath);
+
+    char realpath[4096] = {0};
+    if (!fs.realpath(naive_path, realpath, sizeof(realpath))) {
+        return NULL;
+    }
+    if (!strings.starts_with(realpath, homedir)) {
+        printf("resolved path \"%s\" doesn't start with homedir=\"%s\"\n", realpath, homedir);
+        return NULL;
+    }
+    return strings.newstr("%s", realpath);
 }

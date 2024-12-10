@@ -499,22 +499,7 @@ pub void write_501(request_t *req, net.net_t *conn) {
 	}
 }
 
-const char *index_files[] = {
-    "index.html",
-    "index.htm",
-    "default.html",
-    "default.htm"
-};
-
-pub void servefile(request_t *req, net.net_t *conn, const char *homedir) {
-    printf("resolving %s %s\n", req->method, req->path);
-	char *filepath = resolve_path(homedir, req->path);
-	if (!filepath) {
-		printf("file \"%s\" not found\n", req->path);
-		write_404(req, conn);
-		return;
-	}
-	printf("resolved %s as %s\n", req->path, filepath);
+pub void servefile(request_t *req, net.net_t *conn, const char *filepath) {
 	const char *ext = fs.fileext(filepath);
 	const char *content_type = mime.lookup(ext);
 	if (content_type == NULL) {
@@ -547,36 +532,4 @@ pub void servefile(request_t *req, net.net_t *conn, const char *homedir) {
 		if (r < 0) panic("write failed");
 	}
 	fclose(f);
-}
-
-char *resolve_path(const char *homedir, *reqpath) {
-    if (!strcmp(reqpath, "/")) {
-        for (size_t i = 0; i < nelem(index_files); i++) {
-            char *p = resolve_inner(homedir, index_files[i]);
-            if (p) {
-                return p;
-            }
-        }
-        return NULL;
-    }
-    return resolve_inner(homedir, reqpath);
-}
-
-char *resolve_inner(const char *homedir, *reqpath) {
-    char naive_path[4096] = {0};
-    if (strlen(homedir) + strlen(reqpath) + 1 >= sizeof(naive_path)) {
-        printf("ERROR: requested path is too long: %s\n", reqpath);
-        return NULL;
-    }
-    sprintf(naive_path, "%s/%s", homedir, reqpath);
-
-    char realpath[4096] = {0};
-    if (!fs.realpath(naive_path, realpath, sizeof(realpath))) {
-        return NULL;
-    }
-    if (!strings.starts_with(realpath, homedir)) {
-        printf("resolved path \"%s\" doesn't start with homedir=\"%s\"\n", realpath, homedir);
-        return NULL;
-    }
-    return strings.newstr("%s", realpath);
 }
