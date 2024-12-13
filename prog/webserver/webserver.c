@@ -3,49 +3,42 @@
 #import opt
 #import os/os
 #import os/net
-#import server.c
 #import srvcgi.c
 #import strings
 #import os/threads
 
+typedef {
+    char homedir[1000];
+} server_t;
+
+typedef {
+	server_t *s;
+	net.net_t *conn;
+} ctx_t;
+
+
 int main(int argc, char *argv[]) {
-    char *port = "8000";
-    char *host = "localhost";
-    opt.str("p", "port", &port);
-    opt.str("h", "host", &host);
+	char *addr = "localhost:8000";
+    opt.str("a", "listen address", &addr);
 	opt.nargs(0, "");
+	opt.parse(argc, argv);
 
-    char **rest = opt.parse(argc, argv);
-    if (*rest) {
-        fprintf(stderr, "too many arguments\n");
-        exit(1);
-    }
-
-	server.server_t SERVER = {};
+	signal(SIGINT, handle_sigint);
+	server_t SERVER = {};
 	if (!os.getcwd(SERVER.homedir, sizeof(SERVER.homedir))) {
 		panic("failed to get current working directory: %s", strerror(errno));
 	}
-	strcpy(SERVER.cgidir, "/cgi-bin/");
-	if (!fs.realpath("/cgi-bin/", SERVER.cgidir, sizeof(SERVER.cgidir))) {
-		fprintf(stderr, "failed to resolve cgidir: %s\n", strerror(errno));
-	}
-	printf("homedir = %s\n", SERVER.homedir);
-	printf("cgidir = %s\n", SERVER.cgidir);
-
-    signal(SIGINT, handle_sigint);
-
-    char *addr = strings.newstr("%s:%s", host, port);
 	net.net_t *ln = net.net_listen("tcp", addr);
     if (!ln) {
-        fprintf(stderr, "listen failed: %s\n", strerror(errno));
+        fprintf(stderr, "Failed to listen at %s: %s\n", addr, strerror(errno));
         return 1;
     }
-    printf("Serving at http://%s\n", addr);
-    free(addr);
+    printf("Serving %s at http://%s\n", SERVER.homedir, addr);
 
 	while (true) {
 		net.net_t *conn = net.net_accept(ln);
 		if (!conn) panic("accept failed");
+		printf("%s connected\n", net.net_addr(conn));
 		ctx_t *ctx = calloc(1, sizeof(ctx));
 		ctx->s = &SERVER;
 		ctx->conn = conn;
@@ -55,15 +48,10 @@ int main(int argc, char *argv[]) {
     panic("unreachable");
 }
 
-typedef {
-	server.server_t *s;
-	net.net_t *conn;
-} ctx_t;
-
 void *client_routine(void *arg) {
 	ctx_t *ctx = arg;
 	net.net_t *conn = ctx->conn;
-	server.server_t *s = ctx->s;
+	server_t *s = ctx->s;
 
 	http.request_t req = {};
 	while (true) {
@@ -91,6 +79,7 @@ void *client_routine(void *arg) {
 		}
 	}
 	net.net_close(conn);
+
 	return NULL;
 }
 
