@@ -2,7 +2,6 @@
  * LC-3 emulator from https://justinmeiners.github.io/lc3-vm/
  */
 #import os/term
-#import os/os
 #import bytereader
 
 /**
@@ -158,7 +157,7 @@ uint16_t mem_read(uint16_t address)
 {
     if (address == MR_KBSR)
     {
-        if (os.stdin_has_input())
+        if (term.stdin_has_input())
         {
             memory[MR_KBSR] = (1 << 15);
             memory[MR_KBDR] = getchar();

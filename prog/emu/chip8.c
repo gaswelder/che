@@ -1,5 +1,4 @@
 #import os/term
-#import os/os
 #import rnd
 #import time
 
@@ -130,7 +129,7 @@ pub int run(char *rompath) {
 
 	while (true) {
 		int code = -1;
-		if (os.stdin_has_input()) {
+		if (term.stdin_has_input()) {
 			int c = getchar();
 			code = keycode(c);
 			if (code >= 0) {
