@@ -95,60 +95,18 @@ pub char **parse(int argc, char **argv) {
 		if (!strcmp(*arg, "-") || *arg[0] != '-') {
 			break;
 		}
-
-		// Group of flags (-abc) - must be a run of booleans.
 		if (strlen(*arg) > 2) {
-			for (char *c = *arg + 1; *c; c++) {
-				optspec_t *flag = find(*c);
-				if (!flag && *c == 'h') {
-					usage();
-					exit(1);
-				}
-				if (!flag) {
-					fprintf(stderr, "unknown flag: '%c'\n", *c);
-					exit(1);
-				}
-				if (flag->type != OPT_BOOL) {
-					fprintf(stderr, "flag %c requires a value\n", *c);
-					exit(1);
-				}
-				*((bool*) flag->value_pointer) = true;
-			}
+			// Group of flags (-abc) - must be a run of booleans.
+			boolrun(*arg + 1);
 			arg++;
+		} else if (strlen(*arg) == 2) {
+			// Single flag (-k)
+			arg = readarg(arg);
 			continue;
+		} else {
+			fprintf(stderr, "couldn't parse flag group: %s\n", *arg);
+			exit(1);
 		}
-
-		// Single flag (-k)
-		if (strlen(*arg) == 2) {
-			char *d = *arg + 1;
-			char c = *d;
-			optspec_t *flag = find(c);
-			if (!flag && c == 'h') {
-				usage();
-				exit(1);
-			}
-			if (!flag) {
-				fprintf(stderr, "unknown flag: %c\n", c);
-				exit(1);
-			}
-			if (flag->type == OPT_BOOL) {
-				*((bool*) flag->value_pointer) = true;
-				arg++;
-				continue;
-			}
-
-			arg++;
-			if (!arg) {
-				fprintf(stderr, "%c flag requires an argument\n", c);
-				exit(1);
-			}
-
-			set_flag(flag, arg);
-			arg++;
-			continue;
-		}
-		fprintf(stderr, "couldn't parse flag group: %s\n", *arg);
-		exit(1);
 	}
 
 	if (expect_nargs_set) {
@@ -158,13 +116,62 @@ pub char **parse(int argc, char **argv) {
 			count++;
 			p++;
 		}
+		if (expect_nargs == 0 && count > 0) {
+			fprintf(stderr, "This program doesn't accept positional arguments.\n");
+			exit(1);
+		}
 		if (count != expect_nargs) {
-			fprintf(stderr, "expected %zu arguments, got %zu\n", expect_nargs, count);
+			fprintf(stderr, "Expected %zu arguments, got %zu.\n", expect_nargs, count);
 			exit(1);
 		}
 	}
 
 	return arg;
+}
+
+char **readarg(char **arg) {
+	char c = *(*arg + 1);
+	optspec_t *flag = find(c);
+	if (!flag && c == 'h') {
+		usage();
+		exit(1);
+	}
+	if (!flag) {
+		fprintf(stderr, "unknown flag: %c\n", c);
+		exit(1);
+	}
+	if (flag->type == OPT_BOOL) {
+		*((bool*) flag->value_pointer) = true;
+		return arg + 1;
+	}
+
+	arg++;
+	if (!*arg) {
+		fprintf(stderr, "The '%c' flag requires a value.\n", c);
+		exit(1);
+	}
+	set_flag(flag, arg);
+	arg++;
+	return arg;
+}
+
+void boolrun(char *arg) {
+	for (char *c = arg; *c; c++) {
+		optspec_t *flag = find(*c);
+		if (!flag && *c == 'h') {
+			usage();
+			exit(1);
+		}
+		if (!flag) {
+			fprintf(stderr, "Unknown flag: '%c'.\n", *c);
+			exit(1);
+		}
+		if (flag->type != OPT_BOOL) {
+			fprintf(stderr, "The '%c' flag requires a value.\n", *c);
+			exit(1);
+		}
+		*((bool*) flag->value_pointer) = true;
+	}
 }
 
 void set_flag(optspec_t *spec, char **arg) {
@@ -174,11 +181,11 @@ void set_flag(optspec_t *spec, char **arg) {
 		}
 		case OPT_INT, OPT_SIZE: {
 			if (!is_numeric(*arg)) {
-				fprintf(stderr, "Option %s expects a numeric argument\n", spec->name);
+				fprintf(stderr, "Option %s expects a numeric value\n", spec->name);
 				exit(1);
 			}
 			if (spec->type == OPT_SIZE && *arg[0] == '-') {
-				fprintf(stderr, "Option %s expects a non-negative argument\n", spec->name);
+				fprintf(stderr, "Option %s expects a non-negative value\n", spec->name);
 				exit(1);
 			}
 			if (spec->type == OPT_SIZE) {

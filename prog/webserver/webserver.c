@@ -11,11 +11,9 @@
 int main(int argc, char *argv[]) {
     char *port = "8000";
     char *host = "localhost";
-    char *configfile = NULL;
-
     opt.str("p", "port", &port);
     opt.str("h", "host", &host);
-    opt.str("f", "configfile", &configfile);
+	opt.nargs(0, "");
 
     char **rest = opt.parse(argc, argv);
     if (*rest) {
