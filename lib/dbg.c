@@ -1,4 +1,4 @@
-#import os/misc
+#import os/os
 
 bool env_parsed = false;
 const char *list[10] = {};
@@ -46,8 +46,8 @@ bool dbg_enabled(const char *tag) {
 }
 
 void parse_env() {
-	const char *val = misc.getenv("CHE_DEBUG");
-	if (!val) val = misc.getenv("DEBUG");
+	const char *val = os.getenv("CHE_DEBUG");
+	if (!val) val = os.getenv("DEBUG");
 	if (!val) val = default_filter;
 	if (!val) return;
 

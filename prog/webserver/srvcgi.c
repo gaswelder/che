@@ -1,10 +1,10 @@
 #import http
-#import protocols/cgi
 #import os/exec
-#import os/misc
-#import strings
 #import os/net
+#import os/os
+#import protocols/cgi
 #import reader
+#import strings
 
 pub void cgi(char *path, http.request_t *req, net.net_t *conn) {
 	exec.proc_t *proc = start(path, req);
@@ -52,7 +52,7 @@ pub void cgi(char *path, http.request_t *req, net.net_t *conn) {
 
 exec.proc_t *start(char *path, http.request_t *req) {
 	char hostname[1024] = {0};
-	if (!misc.get_hostname(hostname, sizeof(hostname))) {
+	if (!os.get_hostname(hostname, sizeof(hostname))) {
 		panic("failed to get hostname: %s", strerror(errno));
 	}
 

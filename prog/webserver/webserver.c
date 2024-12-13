@@ -1,7 +1,7 @@
 #import fs
 #import http
 #import opt
-#import os/misc
+#import os/os
 #import os/net
 #import server.c
 #import srvcgi.c
@@ -22,7 +22,7 @@ int main(int argc, char *argv[]) {
     }
 
 	server.server_t SERVER = {};
-	if (!misc.getcwd(SERVER.homedir, sizeof(SERVER.homedir))) {
+	if (!os.getcwd(SERVER.homedir, sizeof(SERVER.homedir))) {
 		panic("failed to get current working directory: %s", strerror(errno));
 	}
 	strcpy(SERVER.cgidir, "/cgi-bin/");
