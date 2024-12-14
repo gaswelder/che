@@ -66,6 +66,7 @@ pub bool more(t *reader) {
 // Frees the reader.
 pub void free(t *reader) {
 	if (reader->free) reader->free(reader->data);
+	OS.free(reader);
 }
 
 bool mem_more(void *ctx) {
