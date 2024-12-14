@@ -14,7 +14,7 @@ void request() {
 	reader.t *re = reader.string("GET /path/blog/file1.html?a=1&b=2 HTTP/1.0\r\n"
         "Host: example.net\r\n"
         "Accept: application/json; charset=utf-8\r\n\r\n");
-    test.truth("parsing", http.parse_request(&r, re));
+    test.truth("parsing", http.read_request(re, &r));
 	reader.free(re);
 
     test.streq(r.method, "GET");

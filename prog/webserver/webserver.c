@@ -57,7 +57,7 @@ void *client_routine(void *arg) {
 
 	http.request_t req = {};
 	while (true) {
-		if (!http.parse_request(&req, re)) {
+		if (!http.read_request(re, &req)) {
 			panic("failed to read request");
 		}
 		printf("resolving %s %s\n", req.method, req.path);

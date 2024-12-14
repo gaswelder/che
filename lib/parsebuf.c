@@ -268,3 +268,18 @@ pub char *buf_skip_until(parsebuf_t *b, const char *literal) {
 	}
 	return s;
 }
+
+// Reads characters into buf until the character 'until' is encountered
+// or the input ends. Returns true on success and false if the buffer is filled
+// without reaching the character.
+pub bool read_until(parsebuf_t *b, char until, char *buf, size_t len) {
+	size_t pos = 0;
+	while (buf_more(b) && buf_peek(b) != until) {
+		if (pos == len-1) {
+			return false;
+		}
+		buf[pos++] = buf_get(b);
+	}
+	buf[pos] = '\0';
+	return true;
+}
