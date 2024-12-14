@@ -201,31 +201,7 @@ pub const char *get_res_header(response_t *r, const char *name) {
     return NULL;
 }
 
-pub bool parse_request(request_t *r, const char *buf) {
-    memset(r, 0, sizeof(request_t));
-    char *lines[100] = {0};
-    size_t nlines = strings.split("\r\n", buf, lines, sizeof(lines));
-    if (nlines == sizeof(lines)) {
-        // Lines array too small.
-        return false;
-    }
-    if (!parse_start_line(lines[0], r)) {
-        return false;
-    }
-    for (size_t i = 1; i < nlines; i++) {
-        if (!strcmp(lines[i], "")) {
-            break;
-        }
-        if (!parse_header_line(lines[i], &r->headers[r->nheaders])) {
-            return false;
-        }
-        r->nheaders++;
-    }
-    for (size_t i = 0; i < nlines; i++) {
-        free(lines[i]);
-    }
-    return true;
-}
+
 
 /**
  * Parses an HTTP request line in format "GET /path/blog/file1.html?a=1&b=2 HTTP/1.0".
@@ -426,17 +402,59 @@ bool read_header(parsebuf.parsebuf_t *b, header_t *h) {
 	return true;
 }
 
-pub int read_request(request_t *req, net.net_t *conn) {
+pub bool parse_request(request_t *r, reader.t *br) {
+    memset(r, 0, sizeof(request_t));
+	
+	// GET /path/blog/file1.html?a=1&b=2 HTTP/1.0\r\n
+	char line[4096] = {};
+	int n = readline(br, line, sizeof(line));
+	if (n < 0) return false;
+	if (!parse_start_line(line, r)) {
+        return false;
+    }
+
 	char buf[1000] = {};
-	size_t size = 1000;
-	int r = net.readconn(conn, buf, size);
-	if (r < 0) {
-		return EOF;
+	n = reader.read(br, (uint8_t *)buf, sizeof(buf));
+	if (n < 0) return false;
+
+	char *lines[100] = {0};
+    size_t nlines = strings.split("\r\n", buf, lines, sizeof(lines));
+    if (nlines == sizeof(lines)) {
+        // Lines array too small.
+        return false;
+    }
+    for (size_t i = 1; i < nlines; i++) {
+        if (!strcmp(lines[i], "")) {
+            break;
+        }
+        if (!parse_header_line(lines[i], &r->headers[r->nheaders])) {
+            return false;
+        }
+        r->nheaders++;
+    }
+    for (size_t i = 0; i < nlines; i++) {
+        free(lines[i]);
+    }
+    return true;
+}
+
+int readline(reader.t *r, char *buf, size_t bufsize) {
+	size_t len = 0;
+	uint8_t c;
+	bool cr = false;
+	while (true) {
+		if (len == bufsize-1) return -1;
+		int n = reader.read(r, &c, 1);
+		if (n != 1) return -1;
+		buf[len++] = (char) c;
+		if (!cr) {
+			if (c == '\r') cr = true;
+		} else {
+			if (c != '\n') return -1;
+			break;
+		}
 	}
-	if (!parse_request(req, buf)) {
-		return 2;
-	}
-	return 0;
+	return (int) len;
 }
 
 pub void write_404(request_t *req, net.net_t *conn) {

@@ -1,11 +1,12 @@
 #import fs
 #import http
 #import opt
-#import os/os
 #import os/net
+#import os/os
+#import os/threads
+#import reader
 #import srvcgi.c
 #import strings
-#import os/threads
 
 typedef {
     char homedir[1000];
@@ -51,19 +52,14 @@ int main(int argc, char *argv[]) {
 void *client_routine(void *arg) {
 	ctx_t *ctx = arg;
 	net.net_t *conn = ctx->conn;
+	reader.t *re = net.getreader(conn);
 	server_t *s = ctx->s;
 
 	http.request_t req = {};
 	while (true) {
-		int err = http.read_request(&req, conn);
-		if (err == EOF) {
-			printf("failed to read request: EOF\n");
-			break;
+		if (!http.parse_request(&req, re)) {
+			panic("failed to read request");
 		}
-		if (err) {
-			panic("failed to read request: err = %d\n", err);
-		}
-
 		printf("resolving %s %s\n", req.method, req.path);
 		char *filepath = resolve_path(s->homedir, req.path);
 		if (!filepath) {
@@ -78,8 +74,8 @@ void *client_routine(void *arg) {
 			http.servefile(&req, conn, filepath);
 		}
 	}
+	reader.free(re);
 	net.net_close(conn);
-
 	return NULL;
 }
 
