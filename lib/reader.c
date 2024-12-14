@@ -77,7 +77,9 @@ bool mem_more(void *ctx) {
 
 int mem_read(void *ctx, uint8_t *buf, size_t n) {
 	membuf_t *s = ctx;
-	if (s->pos >= s->len) return EOF;
+	if (s->pos >= s->len) {
+		return 0;
+	}
 	int r = 0;
 	for (size_t i = 0; i < n; i++) {
 		if (s->pos == s->len) break;
