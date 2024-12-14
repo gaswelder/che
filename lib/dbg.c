@@ -79,6 +79,10 @@ pub void print_bytes(uint8_t *data, size_t n) {
 		if (isprint(c)) {
             w++;
 			printf("%c", c);
+		} else if (c == '\r') {
+			printf("\\r");
+		} else if (c == '\n') {
+			printf("\\n");
 		} else {
             w += 2;
 			printf(" %x ", (uint8_t)(int)c);
