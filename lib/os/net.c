@@ -1,3 +1,5 @@
+#import reader
+
 // #define _XOPEN_SOURCE 700
 
 #include <arpa/inet.h>
@@ -339,4 +341,19 @@ pub void net_printf(net_t *c, const char *fmt, ...) {
 
 	net_puts(buf, c);
 	free(buf);
+}
+
+// Returns a reader interface for the given connection.
+// Freeing the reader will not close the connection, the caller will still own it.
+pub reader.t *getreader(net_t *conn) {
+	reader.t *r = calloc(1, sizeof(reader.t));
+	if (!r) panic("calloc failed");
+	r->data = conn;
+	r->read = reader_read;
+	return r;
+}
+
+int reader_read(void *ctx, uint8_t *buf, size_t n) {
+	net_t *conn = ctx;
+	return OS.read(conn->fd, buf, n);
 }

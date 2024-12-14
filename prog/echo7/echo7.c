@@ -1,13 +1,11 @@
-/*
- * Echo server for a single client
- */
+// Echo server, rfc862.
 
-#import os/net
 #import log
+#import os/net
 #import os/threads
+#import reader
 
-int main()
-{
+int main() {
 	const char *addr = "0.0.0.0:7000";
 	net.net_t *l = net.net_listen("tcp", addr);
 	if(!l) {
@@ -22,7 +20,9 @@ int main()
 			continue;
 		}
 		threads.thr_t *t = threads.thr_new(process_client, s);
-		assert(t);
+		if (!t) {
+			panic("failed to create a thread");
+		}
 		threads.thr_detach(t);
 	}
 
@@ -30,15 +30,15 @@ int main()
 	return 0;
 }
 
-void *process_client(void *arg)
-{
+void *process_client(void *arg) {
 	net.net_t *c = arg;
 	log.logmsg("%s connected", net.net_addr(c));
-	char buf[256] = {0};
+	uint8_t buf[256] = {0};
+	reader.t *r = net.getreader(c);
 
 	while(1) {
-		int len = net.readconn(c, buf, sizeof(buf));
-		if (len == -1) {
+		int len = reader.read(r, buf, sizeof(buf));
+		if (len < 0) {
 			fprintf(stderr, "read error: %s\n", strerror(errno));
 			break;
 		}
@@ -46,12 +46,13 @@ void *process_client(void *arg)
 			break;
 		}
 
-		if(net.net_write(c, buf, len) < len) {
+		if(net.net_write(c, (char *)buf, len) < len) {
 			fprintf(stderr, "write error: %s\n", strerror(errno));
 			break;
 		}
 	}
 	log.logmsg("%s disconnected", net.net_addr(c));
+	reader.free(r);
 	net.net_close(c);
 	return NULL;
 }

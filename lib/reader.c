@@ -60,6 +60,7 @@ pub int read(t *reader, uint8_t *buf, size_t n) {
 // Returns true if the reader hasn't been closed.
 // It does not guarantee that a read will return a byte.
 pub bool more(t *reader) {
+	if (!reader->more) return true;
 	return reader->more(reader->data);
 }
 
