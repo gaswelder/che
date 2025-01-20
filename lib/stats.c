@@ -141,17 +141,21 @@ pub void normalize(double *xs, size_t n) {
     }
 }
 
-// Samples the list of probabilities and returns an index from that list.
-// The list must be normalized to sum to 1.
-pub int sample_from_distribution(double *probs, size_t n) {
-    int r = -1;
-    double x = rnd.uniform(0, 1);
-
-    // Here we calculate cumularive probabilities implicitly using
+// Samples the list of observation frequencies and returns an index from that list.
+// For example, for a list [100, 1254, 3],
+// it will return index 1 with probability 1254/(1254+100+3).
+pub int sample_from_distribution(size_t *freqs, size_t n) {
+	size_t sum = 0;
+	for (size_t i = 0; i < n; i++) {
+		sum += freqs[i];
+	}
+    size_t x = rnd.range(0, sum);
+	int r = -1;
+    // Here we calculate cumulative probabilities implicitly using
     // just one sum.
-    double cdf = 0;
+    size_t cdf = 0;
     for (size_t i = 0; i < n; i++) {
-        cdf += probs[i];
+        cdf += freqs[i];
         if (cdf > x) {
             r = (int) i;
             break;

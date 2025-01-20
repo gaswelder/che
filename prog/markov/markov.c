@@ -48,10 +48,11 @@ void genword(size_t *counts) {
 
 uint8_t nextchar(size_t *counts, uint8_t c) {
     // Get a list of frequencies for completions of c
-    double freqs[256] = {};
+	size_t freqs[256] = {};
+	size_t *p = &counts[c*256];
     for (int i = 0; i < 256; i++) {
-        freqs[i] = (double) (counts[c*256 + i]);
+        freqs[i] = *p++;
     }
-    stats.normalize(freqs, 256);
+	// Sample and return a completion.
     return stats.sample_from_distribution(freqs, 256);
 }

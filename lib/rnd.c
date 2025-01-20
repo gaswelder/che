@@ -1,5 +1,25 @@
 const int n = 10;
 
+// Returns a random number in the range [min, max).
+// Panics if min >= max.
+pub uint32_t range(uint32_t min, max) {
+	if (min >= max) {
+		panic("expected min < max, got min=%d, max=%d", min, max);
+	}
+	uint32_t size = max - min;
+	// There's a bias here, but it'll do for now.
+	return min + pcg32() % size;
+}
+
+// Returns a random integer in the range [0, n).
+// Panics if n = 0.
+pub int intn(int n) {
+	if (n == 0) {
+		panic("got n = 0");
+	}
+	return (rand() & 0x7FFF) % n;
+}
+
 pub double gauss() {
     // Brute-force approach until something better comes.
     double v = (double)rand() / RAND_MAX;
@@ -13,11 +33,6 @@ pub double uniform(double low, high) {
     return low + (high-low) * u();
 }
 
-pub uint32_t range(uint32_t min, max) {
-    double r = u() * (max - min + 1);
-    return min + (uint32_t) r;
-}
-
 pub double exponential(double mean) {
     return mean * -log(u());
 }
@@ -28,15 +43,6 @@ double u() {
 
 pub uint32_t u32() {
     return pcg32();
-}
-
-// Returns a random integer in the range [0, n).
-// Panics if n = 0.
-pub int intn(int n) {
-	if (n == 0) {
-		panic("got n = 0");
-	}
-	return (rand() & 0x7FFF) % n;
 }
 
 uint64_t pcg32_value = 0;
