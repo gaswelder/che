@@ -1,3 +1,5 @@
+#import rnd
+
 pub typedef {
     double *values;
     size_t len;
@@ -126,4 +128,35 @@ bool grow(series_t *a) {
 	a->values = new;
 	a->cap = newcap;
 	return true;
+}
+
+// Normalizes the list xs of length n so that the sum of all elements is 1.
+pub void normalize(double *xs, size_t n) {
+    double sum = 0;
+    for (size_t i = 0; i < n; i++) {
+        sum += xs[i];
+    }
+    for (size_t i = 0; i < n; i++) {
+        xs[i] /= sum;
+    }
+}
+
+// Samples the list of probabilities and returns an index from that list.
+// The list must be normalized to sum to 1.
+pub int sample_from_distribution(double *probs, size_t n) {
+    int r = -1;
+    double x = rnd.uniform(0, 1);
+
+    // Here we calculate cumularive probabilities implicitly using
+    // just one sum.
+    double cdf = 0;
+    for (size_t i = 0; i < n; i++) {
+        cdf += probs[i];
+        if (cdf > x) {
+            r = (int) i;
+            break;
+        }
+    }
+    if (r < 0) panic("oopsie, couldn't choose");
+    return r;
 }
