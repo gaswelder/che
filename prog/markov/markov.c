@@ -1,13 +1,10 @@
 #import strings
-#import rnd
 #import stats
 
 // Reads lines of ASCII text, counts character pair frequencies,
 // generates lines from the frequencies.
 
 int main() {
-    rnd.seed(time(NULL));
-
     char word[100];
     size_t *counts = calloc(256*256, sizeof(size_t));
     if (!counts) panic("calloc failed");

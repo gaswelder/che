@@ -18,7 +18,6 @@ int main() {
     double expected = sample_size - rng_range * (- OS.expm1(sample_size*OS.log1p(-1/rng_range)));
     float p_zero = exp(-expected);
 
-	rnd.seed(time(NULL));
     uint32_t *values = calloc(sample_size, sizeof(uint32_t));
     for (size_t i = 0; i < sample_size; ++i) {
         values[i] = (int) rnd.intn(MAX);

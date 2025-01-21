@@ -1,5 +1,27 @@
 const int n = 10;
 
+bool _seeded = false;
+uint64_t pcg32_value = 0;
+uint64_t pcg32_m = 0x9b60933458e17d7d;
+uint64_t pcg32_a = 0xd737232eeccdf7ed;
+
+uint32_t pcg32() {
+	if (!_seeded) {
+		seed(time(NULL));
+	}
+    pcg32_value = pcg32_value * pcg32_m + pcg32_a;
+    int shift = 29 - (pcg32_value >> 61);
+    return pcg32_value >> shift;
+}
+
+// Seeds the generator's state.
+// Use this for reproducible runs.
+// If not called, a seed will be chosen automatically.
+pub void seed(uint64_t s) {
+    pcg32_value = s;
+	_seeded = true;
+}
+
 // Returns a random integer in the range [0, n).
 // Panics if n = 0.
 pub uint32_t intn(uint32_t n) {
@@ -31,16 +53,3 @@ double u() {
     return (double) pcg32() / 0xffffffff;
 }
 
-uint64_t pcg32_value = 0;
-uint64_t pcg32_m = 0x9b60933458e17d7d;
-uint64_t pcg32_a = 0xd737232eeccdf7ed;
-
-pub void seed(uint64_t s) {
-    pcg32_value = s;
-}
-
-uint32_t pcg32() {
-    pcg32_value = pcg32_value * pcg32_m + pcg32_a;
-    int shift = 29 - (pcg32_value >> 61);
-    return pcg32_value >> shift;
-}

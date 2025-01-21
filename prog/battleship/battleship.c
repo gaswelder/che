@@ -50,7 +50,6 @@ int main(int argc, char *argv[]) {
 		fprintf(stderr, "-b and -s are mutually exclusive\n");
 		exit(1);
 	}
-	srand(time(NULL));
 
 	signal(SIGINT, closegame);
 	signal(SIGINT, closegame);
