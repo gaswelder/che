@@ -232,12 +232,12 @@ pub void randomplace(state_t *g, int player, ship_t *ss) {
 	while (true) {
 		if (rnd.intn(2)) {
 			ss->dir = E;
-			ss->x = rnd.intn(BWIDTH - ss->length);
-			ss->y = rnd.intn(BDEPTH);
+			ss->x = (int) rnd.intn(BWIDTH - ss->length);
+			ss->y = (int) rnd.intn(BDEPTH);
 		} else {
 			ss->dir = S;
-			ss->x = rnd.intn(BWIDTH);
-			ss->y = rnd.intn(BDEPTH - ss->length);
+			ss->x = (int) rnd.intn(BWIDTH);
+			ss->y = (int) rnd.intn(BDEPTH - ss->length);
 		}
 		int err = checkplacement(g, player, ss);
 		if (!err) break;

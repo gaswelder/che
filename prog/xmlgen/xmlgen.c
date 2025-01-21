@@ -159,14 +159,14 @@ void Tree(FILE *out, schema.Element *element) {
             schema.PRICE: { ipsum.fprice(out); }
 
         case schema.TYPE: {
-            fprintf(out, "%s", GenContents_auction_type[rnd.range(0,1)]);
-            if (GenContents_quantity>1 && rnd.range(0,1)) fprintf(out,", Dutch");
+            fprintf(out, "%s", GenContents_auction_type[rnd.intn(2)]);
+            if (GenContents_quantity>1 && rnd.intn(2)) fprintf(out,", Dutch");
         }
         case schema.LOCATION, schema.COUNTRY: {
             if (rnd.uniform(0, 1) < 0.75) {
                 GenContents_country = COUNTRIES_USA;
             } else {
-                GenContents_country = rnd.range(0, words.dictlen("countries") - 1);
+                GenContents_country = rnd.intn(words.dictlen("countries"));
             }
             fprintf(out, "%s", words.dictentry("countries", GenContents_country));
         }
@@ -178,7 +178,7 @@ void Tree(FILE *out, schema.Element *element) {
             }
         }
         case schema.EDUCATION: {
-            fprintf(out, "%s", GenContents_education[rnd.range(0,3)]);
+            fprintf(out, "%s", GenContents_education[rnd.intn(4)]);
         }
         case schema.HOMEPAGE: {
             fprintf(out, "http://www.%s/~%s",
@@ -188,7 +188,7 @@ void Tree(FILE *out, schema.Element *element) {
         case schema.PAYMENT: {
             r=0;
             for (int i=0; i<4; i++) {
-                if (rnd.range(0,1)) {
+                if (rnd.intn(2)) {
                     char *x = "";
                     if (r++) {
                         x = ", ";
@@ -198,10 +198,10 @@ void Tree(FILE *out, schema.Element *element) {
             }
         }
         case schema.BUSINESS, schema.PRIVACY: {
-            fprintf(out, "%s", GenContents_yesno[rnd.range(0,1)]);
+            fprintf(out, "%s", GenContents_yesno[rnd.intn(2)]);
         }
         case schema.CATNAME, schema.ITEMNAME: {
-            ipsum.fsentence(out, rnd.range(1,4));
+            ipsum.fsentence(out, 1 + rnd.intn(4));
         }
         case schema.NAME: { PrintName(); }
         case schema.FROM, schema.TO: {
@@ -209,7 +209,7 @@ void Tree(FILE *out, schema.Element *element) {
             fprintf(out," ");
         }
         case schema.EMAIL: {
-            GenContents_email = rnd.range(0, words.dictlen("emails") - 1);
+            GenContents_email = rnd.intn(words.dictlen("emails"));
             fprintf(out, "mailto:%s@%s",
                 words.dictentry("lastnames", GenContents_lstname),
                 words.dictentry("emails", GenContents_email));
@@ -381,7 +381,7 @@ void PrintANY(FILE *out) {
     for (int i=0; i < sen; i++) {
         if (rnd.uniform(0, 1) < 0.1 && stptr < 2) {
             while (true) {
-                PrintANY_st[stptr] = rnd.range(0, 2);
+                PrintANY_st[stptr] = rnd.intn(3);
                 if (!tick[PrintANY_st[stptr]]) {
                     break;
                 }
@@ -429,11 +429,11 @@ int GenItemIdRef(schema.idrepro *rep, int *idref) {
         return 2;
     }
 
-    rep->dir = rnd.range(0, 1);
+    rep->dir = rnd.intn(2);
     while (rep->dir != rep->mydir && rep->brosout < rep->brosmax) {
         rep->brosout++;
         rep->cur++;
-        rep->dir = rnd.range(0, 1);
+        rep->dir = rnd.intn(2);
     }
     *idref = rep->cur++;
     return 1;

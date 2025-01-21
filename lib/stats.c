@@ -149,7 +149,7 @@ pub int sample_from_distribution(size_t *freqs, size_t n) {
 	for (size_t i = 0; i < n; i++) {
 		sum += freqs[i];
 	}
-    size_t x = rnd.range(0, sum);
+    size_t x = (size_t) rnd.intn(sum);
 	int r = -1;
     // Here we calculate cumulative probabilities implicitly using
     // just one sum.

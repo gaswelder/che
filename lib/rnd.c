@@ -1,23 +1,13 @@
 const int n = 10;
 
-// Returns a random number in the range [min, max).
-// Panics if min >= max.
-pub uint32_t range(uint32_t min, max) {
-	if (min >= max) {
-		panic("expected min < max, got min=%d, max=%d", min, max);
-	}
-	uint32_t size = max - min;
-	// There's a bias here, but it'll do for now.
-	return min + pcg32() % size;
-}
-
 // Returns a random integer in the range [0, n).
 // Panics if n = 0.
-pub int intn(int n) {
+pub uint32_t intn(uint32_t n) {
 	if (n == 0) {
-		panic("got n = 0");
+		panic("got n = 0 in rand.intn");
 	}
-	return (rand() & 0x7FFF) % n;
+	// There's a bias here, but it'll do for now.
+	return pcg32() % n;
 }
 
 pub double gauss() {

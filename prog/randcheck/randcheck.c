@@ -21,7 +21,7 @@ int main() {
 	rnd.seed(time(NULL));
     uint32_t *values = calloc(sample_size, sizeof(uint32_t));
     for (size_t i = 0; i < sample_size; ++i) {
-        values[i] = rnd.intn(MAX);
+        values[i] = (int) rnd.intn(MAX);
 	}
 
     size_t repeats = count_repeats(values, sample_size);
