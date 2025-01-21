@@ -41,7 +41,7 @@ int main(int argc, char **argv) {
 	rnd.seed((uint64_t) seed);
 	while (n-- > 0) {
 		for (size_t i = 0; i < len; i++) {
-			putchar(set[rnd.u32() % alphasize]);
+			putchar(set[rnd.intn(alphasize)]);
 		}
 		putchar('\n');
 	}

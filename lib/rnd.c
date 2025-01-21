@@ -31,10 +31,6 @@ double u() {
     return (double) pcg32() / 0xffffffff;
 }
 
-pub uint32_t u32() {
-    return pcg32();
-}
-
 uint64_t pcg32_value = 0;
 uint64_t pcg32_m = 0x9b60933458e17d7d;
 uint64_t pcg32_a = 0xd737232eeccdf7ed;

@@ -130,7 +130,7 @@ int main(int argc, char **argv) {
 void shuffle(image.image_t *img, int *array, bool hide, slow) {
     global_message = "Fisher-Yates";
     for (int i = global_N - 1; i > 0; i--) {
-        uint32_t r = rnd.u32() % (i + 1);
+        uint32_t r = rnd.intn(i+1);
         swap(array, i, r);
         if (hide) {
             continue;

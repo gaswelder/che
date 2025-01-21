@@ -334,7 +334,7 @@ void cycle(chip8_t *c8) {
 		case 0xC: {
 			// Cxkk - RND Vx, kk
 			// Set Vx = random byte AND kk.
-			c8->registers[x] = rnd.u32() & kk;
+			c8->registers[x] = rnd.intn(256) & kk;
 		}
 		case 0xD: {
 			// Dxyn - DRW Vx, Vy, n
