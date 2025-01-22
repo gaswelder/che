@@ -1,53 +1,54 @@
 pub typedef {
 	int size;
 	const char *keys[200];
-	void *values[200];
+	uint64_t values[200];
+	size_t valsize;
 } map_t;
 
 // Creates a new map instance.
-pub map_t *new() {
+pub map_t *new(size_t valsize) {
+	// Keeping it simple for now.
+	if (valsize > sizeof(uint64_t)) {
+		panic("value sizes > 8 bytes are not supported");
+	}
 	map_t *m = calloc(1, sizeof(map_t));
 	if (!m) panic("calloc failed");
+	m->valsize = valsize;
 	return m;
 }
 
-/*
- * Frees the given instance of map.
- */
-pub void map_free(map_t *m) {
-	free(m);
+// Frees the given instance of map.
+pub void free(map_t *m) {
+	OS.free(m);
 }
 
-/*
- * Assigns value to given key
- */
-pub void map_set(map_t *m, const char *key, void *val) {
+// Assigns a value to the given key.
+pub void set(map_t *m, const char *key, void *val) {
 	int pos = find(m, key);
 	if (pos < 0) {
+		if (m->size == 200) {
+			panic("max map size reached");
+		}
 		pos = m->size++;
 	}
 	m->keys[pos] = key;
-	m->values[pos] = val;
+	memcpy(&m->values[pos], val, m->valsize);
 }
 
-/*
- * Returns true if given key exists.
- */
-pub bool map_has(map_t *m, const char *key) {
-	return find(m, key) >= 0;
-}
-
-/*
- * Returns the value from the given key.
- * Returns null if there is no entry with the given key.
- * If entries can themselves be nulls, use map_has for explicit checks.
- */
-pub void *map_get(map_t *m, const char *key) {
+// Copies the value stored at the given key into the buffer val.
+// If the value doesn't exist, doesn't modify val and returns false.
+pub bool get(map_t *m, const char *key, void *val) {
 	int pos = find(m, key);
 	if (pos < 0) {
-		return NULL;
+		return false;
 	}
+	memcpy(val, &m->values[pos], m->valsize);
 	return m->values[pos];
+}
+
+// Returns true if the map has the entry with the given key.
+pub bool has(map_t *m, const char *key) {
+	return find(m, key) >= 0;
 }
 
 int find(map_t *m, const char *key) {
@@ -59,16 +60,17 @@ int find(map_t *m, const char *key) {
 	return -1;
 }
 
-pub typedef { map_t *map; int pos; } map_iter_t;
+pub typedef { map_t *map; int pos; } iter_t;
 
-pub map_iter_t *map_iter(map_t *m) {
-	map_iter_t *it = calloc(1, sizeof(map_iter_t));
+pub iter_t *iter(map_t *m) {
+	iter_t *it = calloc(1, sizeof(iter_t));
+	if (!it) panic("calloc failed");
 	it->map = m;
 	it->pos = -1;
 	return it;
 }
 
-pub bool map_iter_next(map_iter_t *it) {
+pub bool next(iter_t *it) {
 	if (it->pos + 1 >= it->map->size) {
 		return false;
 	}
@@ -76,14 +78,14 @@ pub bool map_iter_next(map_iter_t *it) {
 	return true;
 }
 
-pub const char *map_iter_key(map_iter_t *it) {
+pub const char *itkey(iter_t *it) {
 	return it->map->keys[it->pos];
 }
 
-pub void *map_iter_val(map_iter_t *it) {
-	return it->map->values[it->pos];
+pub void itval(iter_t *it, void *val) {
+	memcpy(val, &it->map->values[it->pos], it->map->valsize);
 }
 
-pub void map_iter_free(map_iter_t *it) {
-	free(it);
+pub void end(iter_t *it) {
+	OS.free(it);
 }
