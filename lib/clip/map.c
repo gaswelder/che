@@ -4,11 +4,10 @@ pub typedef {
 	void *values[200];
 } map_t;
 
-/*
- * Creates a new map instance.
- */
-pub map_t *map_new() {
+// Creates a new map instance.
+pub map_t *new() {
 	map_t *m = calloc(1, sizeof(map_t));
+	if (!m) panic("calloc failed");
 	return m;
 }
 

@@ -1,4 +1,4 @@
-#import map
+#import clip/map
 #import parsebuf
 #import strings
 
@@ -171,7 +171,7 @@ void print_map(map.map_t *m) {
 }
 
 void run(char *t1, *t2) {
-    map.map_t *s = unify(parse_term(t1), parse_term(t2), map.map_new());
+    map.map_t *s = unify(parse_term(t1), parse_term(t2), map.new());
     if (s) {
         print_map(s);
         printf("\n");
