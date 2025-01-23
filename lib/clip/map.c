@@ -1,7 +1,7 @@
 typedef {
 	// Each entry has its own key size.
 	size_t keysize;
-	uint8_t key[8];
+	uint8_t *key;
 
 	// Value, the size is constant for the map instance.
 	uint8_t value[8];
@@ -35,14 +35,27 @@ pub map_t *new(size_t valsize) {
 
 // Frees the given instance of map.
 pub void free(map_t *m) {
+	entry_t *ee = m->entries;
+	for (size_t i = 0; i < m->size; i++) {
+		OS.free(ee[i].key);
+	}
 	OS.free(m->entries);
 	OS.free(m);
 }
 
 // Assigns a value to the given key.
 pub void set(map_t *m, const char *key, void *val) {
+	// Find or create the entry.
 	entry_t *e = find(m, key);
-	if (!e) e = create(m, key);
+	if (!e) e = create(m);
+
+	// Set the key.
+	e->keysize = strlen(key) + 1;
+	e->key = realloc(e->key, e->keysize);
+	if (!e->key) panic("key realloc failed");
+	memcpy(e->key, key, e->keysize);
+
+	// Set the value.
 	memcpy(e->value, val, m->valsize);
 }
 
@@ -71,10 +84,7 @@ entry_t *find(map_t *m, const char *key) {
 	return NULL;
 }
 
-entry_t *create(map_t *m, const char *key) {
-	if (strlen(key) > 7) {
-		panic("key too long");
-	}
+entry_t *create(map_t *m) {
 	if (m->size == m->cap) {
 		m->cap *= 2;
 		m->entries = realloc(m->entries, m->cap * sizeof(entry_t));
@@ -83,7 +93,6 @@ entry_t *create(map_t *m, const char *key) {
 	entry_t *ee = m->entries;
 	entry_t *e = &ee[m->size++];
 	memset(e, 0, sizeof(entry_t));
-	memcpy(e->key, key, strlen(key));
 	return e;
 }
 

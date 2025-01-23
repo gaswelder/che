@@ -29,5 +29,11 @@ int main() {
 		test.truth("get", map.get(m, key, &val));
 		test.truth("[key-i] == i", val == i);
 	}
+
+	// long key
+	val = 34;
+	map.set(m, "1234567890abcdefghijklmnopqrstuvwxyz", &val);
+	test.truth("get", map.get(m, "1234567890abcdefghijklmnopqrstuvwxyz", &val));
+	test.truth("val == 34", val == 34);
 	return test.fails();
 }
