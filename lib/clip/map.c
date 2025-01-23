@@ -74,6 +74,10 @@ pub bool has(map_t *m, uint8_t *key, size_t keysize) {
 	return find(m, key, keysize) != NULL;
 }
 
+pub size_t size(map_t *m) {
+	return m->size;
+}
+
 pub void sets(map_t *m, const char *key, void *val) {
 	set(m, (uint8_t *) key, strlen(key) + 1, val);
 }
@@ -126,12 +130,20 @@ pub bool next(iter_t *it) {
 	return true;
 }
 
-pub const char *itkey(iter_t *it) {
+// Copies the current entry's key into buf.
+// Returns the number of bytes copied.
+// If the buffer is too small, returns 0.
+pub size_t itkey(iter_t *it, uint8_t *buf, size_t bufsize) {
 	entry_t *ee = it->map->entries;
-	const char *k = (char *)ee[it->pos].key;
-	return k;
+	entry_t *e = &ee[it->pos];
+	if (e->keysize > bufsize) {
+		return 0;
+	}
+	memcpy(buf, e->key, e->keysize);
+	return e->keysize;
 }
 
+// Copies the current entry's value into val.
 pub void itval(iter_t *it, void *val) {
 	entry_t *ee = it->map->entries;
 	entry_t *e = &ee[it->pos];

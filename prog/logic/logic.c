@@ -176,15 +176,18 @@ term_t *parse_term(const char *s) {
 }
 
 void print_map(map.map_t *m) {
-    map.iter_t *it = map.iter(m);
     bool first = true;
+	uint8_t key[100];
+
+	map.iter_t *it = map.iter(m);
     while (map.next(it)) {
         if (first) {
             first = false;
         } else {
             fprintf(stdout, " ");
         }
-        fprintf(stdout, "%s=", map.itkey(it));
+		key[map.itkey(it, key, sizeof(key))] = 0;
+        fprintf(stdout, "%s=", key);
 		term_t *x = NULL;
 		map.itval(it, &x);
         print_term(x);
