@@ -17,6 +17,7 @@ pub typedef {
 } map_t;
 
 // Creates a new map instance.
+// valsize specifies the size of the stored values in bytes.
 pub map_t *new(size_t valsize) {
 	// Keeping it simple for now.
 	if (valsize > sizeof(uint64_t)) {
@@ -44,13 +45,13 @@ pub void free(map_t *m) {
 }
 
 // Assigns a value to the given key.
-pub void set(map_t *m, const char *key, void *val) {
+pub void set(map_t *m, uint8_t *key, size_t keysize, void *val) {
 	// Find or create the entry.
-	entry_t *e = find(m, key);
+	entry_t *e = find(m, key, keysize);
 	if (!e) e = create(m);
 
 	// Set the key.
-	e->keysize = strlen(key) + 1;
+	e->keysize = keysize;
 	e->key = realloc(e->key, e->keysize);
 	if (!e->key) panic("key realloc failed");
 	memcpy(e->key, key, e->keysize);
@@ -61,23 +62,34 @@ pub void set(map_t *m, const char *key, void *val) {
 
 // Copies the value stored at the given key into the buffer val.
 // If the value doesn't exist, doesn't modify val and returns false.
-pub bool get(map_t *m, const char *key, void *val) {
-	entry_t *e = find(m, key);
+pub bool get(map_t *m, uint8_t *key, size_t keysize, void *val) {
+	entry_t *e = find(m, key, keysize);
 	if (!e) return false;
 	memcpy(val, e->value, m->valsize);
 	return true;
 }
 
 // Returns true if the map has the entry with the given key.
-pub bool has(map_t *m, const char *key) {
-	return find(m, key) != NULL;
+pub bool has(map_t *m, uint8_t *key, size_t keysize) {
+	return find(m, key, keysize) != NULL;
 }
 
-entry_t *find(map_t *m, const char *key) {
+pub void sets(map_t *m, const char *key, void *val) {
+	set(m, (uint8_t *) key, strlen(key) + 1, val);
+}
+pub bool gets(map_t *m, const char *key, void *val) {
+	return get(m, (uint8_t *) key, strlen(key) + 1, val);
+}
+pub bool hass(map_t *m, const char *key) {
+	return has(m, (uint8_t *) key, strlen(key) + 1);
+}
+
+entry_t *find(map_t *m, uint8_t *key, size_t keysize) {
 	entry_t *ee = m->entries;
 	for (size_t i = 0; i < m->size; i++) {
 		entry_t *e = &ee[i];
-		if (!strcmp(key, (char *)e->key)) {
+		if (e->keysize != keysize) continue;
+		if (!memcmp(key, e->key, keysize)) {
 			return e;
 		}
 	}

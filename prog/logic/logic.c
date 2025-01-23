@@ -67,17 +67,17 @@ map.map_t *unify(term_t *x, *y, map.map_t *subst) {
 // Unifies variable v with term_t x, using subst.
 map.map_t *unify_variable(term_t *v, term_t *x, map.map_t *subst) {
 	term_t *deref = NULL;
-    if (map.get(subst, v->name, &deref)) {
+    if (map.gets(subst, v->name, &deref)) {
         return unify(deref, x, subst);
     }
-    if (x->type == VAR && map.get(subst, x->name, &deref)) {
+    if (x->type == VAR && map.gets(subst, x->name, &deref)) {
         return unify(v, deref, subst);
     }
     if (term_has_var(v, x, subst)) {
         return NULL;
     }
     // v is not yet in subst and can't simplify x. Extend subst.
-    map.set(subst, v->name, &x);
+    map.sets(subst, v->name, &x);
     return subst;
 }
 
@@ -108,7 +108,7 @@ bool term_has_var(term_t *t, *v, map.map_t *subst) {
         return true;
     }
 	term_t *deref = NULL;
-    if (t->type == VAR && map.get(subst, t->name, &deref)) {
+    if (t->type == VAR && map.gets(subst, t->name, &deref)) {
         return term_has_var(deref, v, subst);
     }
     if (t->type == FUNC) {
