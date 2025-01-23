@@ -1,6 +1,7 @@
 #import strings
 #import stats
 #import clip/map
+#import utf
 
 // Reads lines of ASCII text, counts character pair frequencies,
 // generates lines from the frequencies.
@@ -33,56 +34,74 @@ model_t *new() {
 	return m;
 }
 
-void learnword(model_t *m, char *word) {
-    size_t n = strlen(word);
-    add_pair(m, 0, (uint8_t) word[0]);
-    add_pair(m, (uint8_t) word[n-1], 0);
+void learnword(model_t *m, const char *word) {
+	// Split the word into chars.
+	size_t n = utf.runecount(word);
+	utf.Rune *chars = calloc(n, sizeof(utf.Rune));
+	if (!chars) panic("calloc failed");
+	const char *s = word;
+	for (size_t i = 0; i < n; i++) {
+		utf.Rune c = 0;
+		s += utf.get_rune(&c, s);
+		chars[i] = c;
+	}
+
+	// Process the pairs.
+	add_pair(m, 0, chars[0]);
+	add_pair(m, chars[n-1], 0);
     for (size_t i = 1; i < n; i++) {
-        add_pair(m, (uint8_t) word[i-1], (uint8_t) word[i]);
+        add_pair(m, chars[i-1], chars[i]);
     }
 }
 
-void add_pair(model_t *m, uint8_t a, b) {
+void putrune(utf.Rune c) {
+	char buf[4];
+	int size = utf.runetochar(buf, &c);
+	buf[size] = 0;
+	printf("%s", buf);
+}
+
+void add_pair(model_t *m, utf.Rune a, b) {
 	// Get the map of completions for a.
 	// If no map yet, create one.
 	map.map_t *m2 = NULL;
-	if (!map.get(m->counts, &a, 1, &m2)) {
+	if (!map.get(m->counts, (uint8_t *)&a, sizeof(a), &m2)) {
 		m2 = map.new(sizeof(size_t));
-		map.set(m->counts, &a, 1, &m2);
+		map.set(m->counts, (uint8_t *)&a, sizeof(a), &m2);
 	}
 
 	// Increment b's count in the completions map.
 	size_t val = 0;
-	map.get(m2, &b, 1, &val);
+	map.get(m2, (uint8_t *)&b, sizeof(b), &val);
 	val++;
-	map.set(m2, &b, 1, &val);
+	map.set(m2, (uint8_t *)&b, sizeof(b), &val);
 }
 
 void genword(model_t *m) {
-    uint8_t c = 0;
+    utf.Rune c = 0;
     while (true) {
         c = nextchar(m, c);
         if (!c) break;
-        printf("%c", c);
+		putrune(c);
     }
     putchar('\n');
 }
 
-uint8_t nextchar(model_t *m, uint8_t c) {
+utf.Rune nextchar(model_t *m, utf.Rune c) {
 	//
 	// Pull out all possible completions and their frequencies.
 	//
 	map.map_t *m2 = NULL;
-	if (!map.get(m->counts, &c, 1, &m2)) {
+	if (!map.get(m->counts, (uint8_t *)&c, sizeof(c), &m2)) {
 		panic("failed to get submap");
 	}
 	size_t size = map.size(m2);
-	uint8_t *keys = calloc(size, 1);
+	utf.Rune *keys = calloc(size, sizeof(utf.Rune));
 	size_t *freqs = calloc(size, sizeof(size_t));
 	map.iter_t *it = map.iter(m2);
 	int pos = 0;
 	while (map.next(it)) {
-		map.itkey(it, &keys[pos], 1);
+		map.itkey(it, (uint8_t *)&keys[pos], sizeof(utf.Rune));
 		map.itval(it, &freqs[pos]);
 		pos++;
 	}
@@ -92,7 +111,7 @@ uint8_t nextchar(model_t *m, uint8_t c) {
 	// Select a completion.
 	//
 	pos = stats.sample_from_distribution(freqs, size);
-	uint8_t next = keys[pos];
+	utf.Rune next = keys[pos];
 
 	// Cleanup
 	free(keys);

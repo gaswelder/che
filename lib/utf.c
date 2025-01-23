@@ -279,10 +279,9 @@ enum {
 	Testx	= Maskx ^ 0xFF			/* 1100 0000 */
 };
 
-// copies at most UTFmax bytes starting at s to one rune at r and returns the number of bytes copied.
+// Copies the first rune from str to rune and returns the rune's size in bytes.
 // If the input is not exactly in UTF format, will convert to 0x80 and return 1.
-pub int chartorune(Rune *rune, char *str)
-{
+pub int get_rune(Rune *rune, const char *str) {
 	int c2 = 0;
 	int c3 = 0;
 	long l = 0;
@@ -382,7 +381,7 @@ pub int runenlen(Rune *r, int nrune) {
 	return nb;
 }
 
-// returns 1 if the string s of length n is long enough to be decoded by chartorune
+// returns 1 if the string s of length n is long enough to be decoded by get_rune
 // and 0 otherwise.
 // This does not guarantee that the string
 // contains a legal
@@ -1512,11 +1511,8 @@ pub bool isspacerune(Rune c) {
 	return 0;
 }
 
-/*
- * Copies one rune at r to at most UTFmax bytes starting at s and returns the
- * number of bytes copied. UTFmax, defined as 3, is the maximum number of bytes
- * required to represent a rune.
- */
+// Copies the rune to at most UTFmax bytes starting at str and returns
+// the number of bytes copied.
 pub int runetochar(char *str, Rune *rune) {
 	/*
 	 * one character sequence
@@ -1590,25 +1586,24 @@ pub int runelen(long c) {
 
 // The case-conversion routines return the character unchanged if it has no case.
 
-/*
- * Returns the number of runes that are represented by the UTF string s.
- */
-pub int utflen(char *s)
-{
+// Returns the number of runes that are represented by the UTF string s.
+pub size_t runecount(const char *s) {
 	int c = 0;
 	Rune rune = 0;
-
-	long n = 0;
+	size_t n = 0;
 	while (true) {
 		c = *(uint8_t*)s;
-		if(c < Runeself) {
-			if(c == 0)
-				return n;
+		if (c < Runeself) {
+			if (c == 0) {
+				break;
+			}
 			s++;
-		} else
-			s += chartorune(&rune, s);
+		} else {
+			s += get_rune(&rune, s);
+		}
 		n++;
 	}
+	return n;
 }
 
 
@@ -1639,7 +1634,7 @@ pub char* utfecpy(char *to, char *e, char *from)
  * Returns the number of complete runes that are represented by the first n
  * bytes of UTF string s. If the last few bytes of the string contain an
  * incompletely coded rune, utfnlen will not count them; in this way, it differs
- * from utflen, which includes every byte of the string.
+ * from runecount, which includes every byte of the string.
  */
 pub int utfnlen(char *s, long n)
 {
@@ -1658,7 +1653,7 @@ pub int utfnlen(char *s, long n)
 		}
 		if(!fullrune(s, es-s))
 			break;
-		s += chartorune(&rune, s);
+		s += get_rune(&rune, s);
 	}
 	return count;
 }
@@ -1686,7 +1681,7 @@ pub char *utfrune(char *s, long c) {
 			s++;
 			continue;
 		}
-		n = chartorune(&r, s);
+		n = get_rune(&r, s);
 		if(r == c)
 			return s;
 		s += n;
@@ -1715,7 +1710,7 @@ pub char *utfrrune(char *s, Rune c) {
 			s++;
 			continue;
 		}
-		c1 = chartorune(&r, s);
+		c1 = get_rune(&r, s);
 		if(r == c)
 			s1 = s;
 		s += c1;
@@ -1733,7 +1728,7 @@ pub char *utfutf(char *s1, char *s2) {
 	long n2 = 0;
 	Rune r = 0;
 
-	long n1 = chartorune(&r, s2);
+	long n1 = get_rune(&r, s2);
 	f = r;
 	if(f <= Runesync)		/* represents self */
 		return strstr(s1, s2);
