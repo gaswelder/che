@@ -9,20 +9,53 @@ pub typedef {
 
 pub typedef void pixelfunc_t(rgb_t *);
 
+pub rgb_t white() {
+	rgb_t c = {255, 255, 255};
+	return c;
+}
+
+// Creates a new image with the given dimensions.
+pub image_t *new(int width, height) {
+	image_t *img = calloc(1, sizeof(image_t));
+	if (!img) panic("calloc failed");
+	img->width = width;
+	img->height = height;
+	img->data = calloc(width * height, sizeof(rgb_t));
+	if (!img->data) panic("calloc failed");
+	return img;
+}
+
 pub rgb_t *getpixel(image_t *img, int x, y) {
 	return &img->data[y * img->width + x];
 }
 
 pub void set(image_t *img, int x, y, rgb_t c) {
+	checkcoords(img, x, y);
 	*getpixel(img, x, y) = c;
 }
 
 pub rgb_t get(image_t *img, int x, y) {
+	checkcoords(img, x, y);
 	return *getpixel(img, x, y);
+}
+
+void checkcoords(image_t *img, int x, y) {
+	if (x >= img->width || y >= img->height) {
+		panic("invalid pixel coordinates: %d, %d (should be less than %d, %d)", x, y, img->width, img->height);
+	}
 }
 
 pub void clear(image_t *img) {
 	memset(img->data, 0, img->width * img->height * sizeof(rgb_t));
+}
+
+// Fills the whole image with the given color.
+pub void fill(image_t *img, rgb_t color) {
+	for (int x = 0; x < img->width; x++) {
+		for (int y = 0; y < img->height; y++) {
+			*getpixel(img, x, y) = color;
+		}
+	}
 }
 
 // Blends color with the current color at pixel (x, y).
@@ -43,16 +76,6 @@ pub void apply(image_t *img, pixelfunc_t *f) {
 			set(img, x, y, color);
 		}
 	}
-}
-
-pub image_t *new(int width, height) {
-	image_t *img = calloc(1, sizeof(image_t));
-	if (!img) panic("calloc failed");
-	img->width = width;
-	img->height = height;
-	img->data = calloc(width * height, sizeof(rgb_t));
-	if (!img->data) panic("calloc failed");
-	return img;
 }
 
 pub void free(image_t *img) {
