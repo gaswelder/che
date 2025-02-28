@@ -39,8 +39,8 @@ void print_object(json.val_t *current_object) {
         level = "none";
     }
 	switch str (level) {
-		case "error": { tty.ttycolor(tty.RED); }
-		case "info": { tty.ttycolor(tty.BLUE); }
+		case "error", "ERROR": { tty.ttycolor(tty.RED); }
+		case "info", "INFO": { tty.ttycolor(tty.BLUE); }
 		default: { tty.ttycolor(tty.YELLOW); }
 	}
     printf("%s", level);
