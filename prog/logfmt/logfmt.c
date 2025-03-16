@@ -53,7 +53,7 @@ void print_entry(json.val_t *entry) {
             printf("\t");
             print_node(reqfields[i], entry, v);
         } else {
-            printf("\t(?%s)", reqfields[i]);
+            printf("\t", reqfields[i]);
         }
     }
 
