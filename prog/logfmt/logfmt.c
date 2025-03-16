@@ -20,37 +20,25 @@ int main(int argc, char **argv) {
     // fgets will end up delivering whole lines, one line at a time, - and that
     // all lines fit into the buffer.
     while (fgets(buf, 4096, stdin)) {
-        json.val_t *current_object = json.parse(buf);
+        json.val_t *entry = json.parse(buf);
         // If line couldn't be parsed as json - print it as is.
-        if (!current_object) {
+        if (!entry) {
             printf("%s", buf);
             continue;
         }
-        print_object(current_object);
-        json.json_free(current_object);
+        print_entry(entry);
+        json.json_free(entry);
     }
     return 0;
 }
 
-void print_object(json.val_t *current_object) {
-    // Print the level in color. If the level field is missing, print a
-    // placeholder ("none").
-    const char *level = json.getstr(current_object, "level");
-    if (level == NULL) {
-        level = "none";
-    }
-	switch str (level) {
-		case "error", "ERROR": { tty.ttycolor(tty.RED); }
-		case "info", "INFO": { tty.ttycolor(tty.BLUE); }
-		default: { tty.ttycolor(tty.YELLOW); }
-	}
-    printf("%s", level);
-    tty.ttycolor(tty.RESET_ALL);
+void print_entry(json.val_t *entry) {
+    print_level(entry);
 
     // Print the timestamp or a placeholder.
-    const char *ts = json.getstr(current_object, "t");
+    const char *ts = json.getstr(entry, "t");
     if (!ts) {
-        ts = json.getstr(current_object, "timestamp");
+        ts = json.getstr(entry, "timestamp");
     }
     if (!ts) {
         printf("\t(?time)");
@@ -60,19 +48,19 @@ void print_object(json.val_t *current_object) {
 
     // Print the requested fields.
     for (int i = 0; i < nreqfields; i++) {
-        json.val_t *v = json.get(current_object, reqfields[i]);
+        json.val_t *v = json.get(entry, reqfields[i]);
         if (v != NULL) {
             printf("\t");
-            print_node(reqfields[i], current_object, v);
+            print_node(reqfields[i], entry, v);
         } else {
             printf("\t(?%s)", reqfields[i]);
         }
     }
 
     // Print the message.
-    const char *msg = json.getstr(current_object, "msg");
+    const char *msg = json.getstr(entry, "msg");
     if (!msg) {
-        msg = json.getstr(current_object, "message");
+        msg = json.getstr(entry, "message");
     }
     if (msg != NULL) {
         printf("\t%s", msg);
@@ -81,9 +69,9 @@ void print_object(json.val_t *current_object) {
     }
 
     // Print the remaining fields as k=v
-    size_t n = json.nkeys(current_object);
+    size_t n = json.nkeys(entry);
     for (size_t i = 0; i < n; i++) {
-        const char *key = json.key(current_object, i);
+        const char *key = json.key(entry, i);
 
         // Skip if we have already printed this field.
         if (!strcmp(key, "t") || !strcmp(key, "msg") || !strcmp(key, "level")) {
@@ -99,11 +87,35 @@ void print_object(json.val_t *current_object) {
         if (isreq) {
             continue;
         }
-        json.val_t *val = json.json_val(current_object, i);
+        json.val_t *val = json.json_val(entry, i);
         printf(" %s=", key);
-        print_node(key, current_object, val);
+        print_node(key, entry, val);
     }
     puts("");
+}
+
+// Prints the level in color.
+// If the level field is missing, prints a placeholder ("none").
+void print_level(json.val_t *entry) {
+	const char *level = json.getstr(entry, "level");
+    if (level == NULL) {
+		printf("%s", "none");
+		return;
+    }
+
+	switch str (level) {
+		case "error", "ERROR": { tty.ttycolor(tty.RED); }
+		case "info", "INFO": { tty.ttycolor(tty.BLUE); }
+		default: { tty.ttycolor(tty.YELLOW); }
+	}
+
+	// Print the level in lower case.
+	const char *p = level;
+	while (*p) {
+		putchar(tolower(*p));
+		p++;
+	}
+    tty.ttycolor(tty.RESET_ALL);
 }
 
 bool isint(double x) {
