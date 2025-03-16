@@ -49,11 +49,9 @@ void print_entry(json.val_t *entry) {
     // Print the requested fields.
     for (int i = 0; i < nreqfields; i++) {
         json.val_t *v = json.get(entry, reqfields[i]);
+		printf("\t");
         if (v != NULL) {
-            printf("\t");
             print_node(reqfields[i], entry, v);
-        } else {
-            printf("\t", reqfields[i]);
         }
     }
 
