@@ -10,6 +10,7 @@ int main(int argc, char **argv) {
     char buf[4096];
 
     char *fields_string = NULL;
+	opt.nargs(0, "");
     opt.str("f", "comma-separated list of fields to print as columns after the timestamp", &fields_string);
     opt.parse(argc, argv);
 

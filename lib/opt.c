@@ -32,7 +32,7 @@ bool expect_nargs_set = false;
 // Sets the expected number of positional arguments and their summary
 // string for the -h output.
 // If the number is set, the parse function will check the number of actual
-// arguments and if will exit with a help message if the number is incorrect.
+// arguments and will exit with a help message if the number is incorrect.
 pub void nargs(size_t n, const char *summary) {
 	expect_nargs_set = true;
 	expect_nargs = n;
