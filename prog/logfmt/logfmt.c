@@ -34,7 +34,7 @@ int main(int argc, char **argv) {
 void print_object(json.val_t *current_object) {
     // Print the level in color. If the level field is missing, print a
     // placeholder ("none").
-    const char *level = json.json_getstr(current_object, "level");
+    const char *level = json.getstr(current_object, "level");
     if (level == NULL) {
         level = "none";
     }
@@ -47,9 +47,9 @@ void print_object(json.val_t *current_object) {
     tty.ttycolor(tty.RESET_ALL);
 
     // Print the timestamp or a placeholder.
-    const char *ts = json.json_getstr(current_object, "t");
+    const char *ts = json.getstr(current_object, "t");
     if (!ts) {
-        ts = json.json_getstr(current_object, "timestamp");
+        ts = json.getstr(current_object, "timestamp");
     }
     if (!ts) {
         printf("\t(?time)");
@@ -69,9 +69,9 @@ void print_object(json.val_t *current_object) {
     }
 
     // Print the message.
-    const char *msg = json.json_getstr(current_object, "msg");
+    const char *msg = json.getstr(current_object, "msg");
     if (!msg) {
-        msg = json.json_getstr(current_object, "message");
+        msg = json.getstr(current_object, "message");
     }
     if (msg != NULL) {
         printf("\t%s", msg);
@@ -112,7 +112,7 @@ bool isint(double x) {
 
 void print_node(const char *key, json.val_t *e, *val) {
     switch (json.type(val)) {
-        case json.JSON_STR:  { printf("%s", json.json_getstr(e, key)); }
+        case json.JSON_STR:  { printf("%s", json.getstr(e, key)); }
         case json.JSON_OBJ:  { printf("(object)"); }
         case json.JSON_NULL: { printf("null"); }
         case json.JSON_ARR:  { printf("(array)"); }

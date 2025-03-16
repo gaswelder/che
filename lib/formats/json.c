@@ -310,7 +310,9 @@ pub val_t *json_copy( val_t *obj )
 	return copy;
 }
 
-pub const char *json_getstr( val_t *obj, const char *k) {
+// Returns a pointer to the string under the given key.
+// If the key doesn't exist or the value is not a string, returns NULL.
+pub const char *getstr(val_t *obj, const char *k) {
 	val_t *v = get(obj, k);
 	if (!v || v->type != JSON_STR) {
 		return NULL;
