@@ -124,8 +124,8 @@ pub int run(char *rompath) {
 	c8.PC = MEM_BEGIN;
 
 	signal(SIGINT, handle_interrupt);
-    term = term.term_get_stdin();
-    term.term_disable_input_buffering(term);
+	term = term.term_get_stdin();
+	term.term_disable_input_buffering(term);
 
 	while (true) {
 		int code = -1;
@@ -177,7 +177,7 @@ void cycle(chip8_t *c8) {
 	// "C?kk" - "kk" is a byte value
 	int c = d1;
 	int x = d2;
-	int y = d3;	
+	int y = d3;
 	uint16_t nnn = b2 + (b1 & 0xF) * 256;
 	int kk = b2;
 
@@ -466,9 +466,9 @@ void clearDisplay(chip8_t *c8) {
 }
 
 void handle_interrupt(int signal) {
-    term.term_restore(term);
-    printf("exit on signal %d\n", signal);
-    exit(-2);
+	term.term_restore(term);
+	printf("exit on signal %d\n", signal);
+	exit(-2);
 }
 
 void buzz() {
