@@ -160,7 +160,7 @@ pub void print_instr(instr_t i) {
 			fprintf(stdout, "LD I 0x%x \t// I = %x", i.nnn, i.nnn);
 		}
 		case JPV0nnn: {
-			fprintf(stdout, "JP V0 nnn");
+			fprintf(stdout, "JP V%x 0x%x \t// jump to V[%x] + %d", i.x, i.nnn, i.x, i.nnn);
 		}
 		case RNDVxkk: {
 			fprintf(stdout, "RND V%x 0x%x \t// V[%x] = random & 0x%x", i.x, i.kk, i.x, i.kk);

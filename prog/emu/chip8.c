@@ -5,8 +5,8 @@
 
 enum {
 	MEM_BEGIN = 0x200,
-	videoWidth = 64,
-	videoHeight = 32,
+	VID_WIDTH = 64,
+	VID_HEIGHT = 32,
 	V0 = 0x0,
 	VF = 0xF,
 };
@@ -100,26 +100,23 @@ uint8_t DIGITS[] = {
 
 term.term_t *term = NULL;
 
+const bool DEBUG = false;
+
 pub int run(char *rompath) {
 	chip8_t c8 = {};
-
-	// Put the digit sprits into the reserved memory.
 	memcpy(c8.memory, DIGITS, sizeof(DIGITS));
 
-	// Load the ROM into the available memory.
+	// Load the ROM.
+	c8.PC = MEM_BEGIN;
 	FILE *f = fopen(rompath, "rb");
 	if (!f) {
 		fprintf(stderr, "failed to open file: %s\n", strerror(errno));
 		return 1;
 	}
-	uint8_t *p = c8.memory + MEM_BEGIN;
 	while (true) {
 		int c = fgetc(f);
-		if (c == EOF) {
-			break;
-		}
-		*p++ = (uint8_t) c;
-		p++;
+		if (c == EOF) break;
+		c8.memory[c8.PC++] = (uint8_t) c;
 	}
 	fclose(f);
 	c8.PC = MEM_BEGIN;
@@ -129,58 +126,68 @@ pub int run(char *rompath) {
 	term.term_disable_input_buffering(term);
 
 	while (true) {
-		int code = -1;
-		if (term.stdin_has_input()) {
-			int c = getchar();
-			code = keycode(c);
-			if (code >= 0) {
+		bool skip = false;
+		if (c8.DT) {
+			c8.DT--;
+			skip = true;
+		}
+		if (c8.ST) {
+			c8.ST--;
+			skip = true;
+			buzz();
+		}
+		if (skip) continue;
+
+
+		int code = pollkeyboard();
+		if (code >= 0) {
+			if (DEBUG) {
 				printf("pressed %X\n", code);
 			}
 			c8.keyBuffer[code] = 1;
 		}
-		// printf("PC %x\t%02x%02x\n", c8->PC, b1, b2);
-		cycle(&c8);
+
+		uint8_t b1 = c8.memory[c8.PC];
+		uint8_t b2 = c8.memory[c8.PC + 1];
+		chip8instr.instr_t instr;
+		chip8instr.decode(&instr, b1, b2);
+
+		if (DEBUG) {
+			printf("0x%x ", c8.PC);
+			chip8instr.print_instr(instr);
+			putchar('\n');
+		}
+
+		c8.PC += 2;
+
+		step(&c8, instr);
 		if (code >= 0) {
 			c8.keyBuffer[code] = 0;
 		}
-		if (0) draw(&c8);
+
+		if (DEBUG) {
+			printf("\t");
+			for (int i = 0; i < 16; i++) {
+				printf(" %x", c8.registers[i]);
+			}
+			printf(" I:%x\n\n", c8.I);
+		}
+
+
+		draw(&c8);
 		// 60Hz
-		time.sleep(time.SECONDS/60);
+		time.sleep(time.SECONDS/10);
 	}
 }
 
-
-
-void cycle(chip8_t *c8) {
-	bool skip = false;
-	if (c8->DT) {
-		c8->DT--;
-		skip = true;
+int pollkeyboard() {
+	if (!term.stdin_has_input()) {
+		return -1;
 	}
-	if (c8->ST) {
-		c8->ST--;
-		skip = true;
-		buzz();
-	}
-	if (skip) {
-		return;
-	}
+	return keycode(getchar());
+}
 
-	uint8_t b1 = c8->memory[c8->PC++];
-	uint8_t b2 = c8->memory[c8->PC++];
-	chip8instr.instr_t instr = {};
-	chip8instr.decode(&instr, b1, b2);
-
-	// debug
-	printf("0x%x ", c8->PC);
-	chip8instr.print_instr(instr);
-	putchar('\n');
-	for (int i = 0; i < 16; i++) {
-		printf(" V[%x] = 0x%x", i, c8->registers[i]);
-		if (i % 4 == 0) putchar('\n');
-	}
-	putchar('\n');
-
+void step(chip8_t *c8, chip8instr.instr_t instr) {
 	int OP = instr.OP;
 	int x = instr.x;
 	int y = instr.y;
@@ -196,7 +203,7 @@ void cycle(chip8_t *c8) {
 			c8->callStack[c8->SP] = 0;
 		}
 		case chip8instr.CLS: {
-			memset(c8->video, 0, videoWidth * videoHeight);
+			memset(c8->video, 0, VID_WIDTH * VID_HEIGHT);
 		}
 		// Jump to location nnn.
 		case chip8instr.JPnnn: {
@@ -413,8 +420,8 @@ bool xor_sprite(chip8_t *c8, int x, y, uint8_t sprite) {
 }
 
 bool xor_pixel(chip8_t *c8, int x, y, value) {
-	printf("pixel at %d,%d -> %d\n", x, y, value);
-	int pos = (x % videoWidth) + videoWidth * (y % videoHeight);
+	// printf("pixel at %d,%d -> %d\n", x, y, value);
+	int pos = (x % VID_WIDTH) + VID_WIDTH * (y % VID_HEIGHT);
 	char oldval = c8->video[pos];
 	char newval = oldval ^ value;
 	c8->video[pos] = newval;
@@ -432,18 +439,20 @@ void buzz() {
 }
 
 void draw(chip8_t *c8) {
-	int n = videoWidth * videoHeight;
+	puts("-----------------");
+	int n = VID_WIDTH * VID_HEIGHT;
 	for (int i = 0; i < n; i++) {
 		int val = c8->video[i];
 		if (val) {
 			putchar('x');
 		} else {
-			putchar('.');
+			putchar(' ');
 		}
-		if ((i+1) % videoWidth == 0) {
+		if ((i+1) % VID_WIDTH == 0) {
 			putchar('\n');
 		}
 	}
+	puts("");
 }
 
 pub int disas(char *rompath) {
