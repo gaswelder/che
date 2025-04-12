@@ -171,6 +171,16 @@ void cycle(chip8_t *c8) {
 	chip8instr.instr_t instr = {};
 	chip8instr.decode(&instr, b1, b2);
 
+	// debug
+	printf("0x%x ", c8->PC);
+	chip8instr.print_instr(instr);
+	putchar('\n');
+	for (int i = 0; i < 16; i++) {
+		printf(" V[%x] = 0x%x", i, c8->registers[i]);
+		if (i % 4 == 0) putchar('\n');
+	}
+	putchar('\n');
+
 	int OP = instr.OP;
 	int x = instr.x;
 	int y = instr.y;
