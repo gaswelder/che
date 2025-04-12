@@ -1,6 +1,7 @@
 #import os/term
 #import rnd
 #import time
+#import chip8instr.c
 
 enum {
 	MEM_BEGIN = 0x200,
@@ -99,43 +100,6 @@ uint8_t DIGITS[] = {
 
 term.term_t *term = NULL;
 
-enum {
-	JPnnn = 1,
-	CALLnnn,
-	SEVxkk,
-	SNEVxkk,
-	SEVxVy,
-	LDVxkk,
-	ADDVxkk,
-	LDVxVy,
-	ORVxVy,
-	ANDVxVy,
-	XORVxVy,
-	ADDVxVy,
-	SUBVxVy,
-	SHRVx_Vy_,
-	SUBNVxVy,
-	SHLVx_Vy_,
-	SNEVxVy,
-	LDInnn,
-	JPV0nnn,
-	RNDVxkk,
-	DRWVxVyn,
-	SKPVx,
-	SKNPVx,
-	LDVxDT,
-	LDVxK,
-	LDDTVx,
-	LDSTVx,
-	ADDIVx,
-	LDFVx,
-	LDBVx,
-	LD_I_Vx,
-	LDVx_I_,
-	RET,
-	CLS,
-};
-
 pub int run(char *rompath) {
 	chip8_t c8 = {};
 
@@ -185,101 +149,7 @@ pub int run(char *rompath) {
 	}
 }
 
-typedef {
-	int OP;
-	int x, y;
-	uint16_t nnn;
-	int kk;
-	int d4;
-} instr_t;
 
-
-// Decodes the instruction from bytes [b1 b2] into i.
-void decode(instr_t *i, uint8_t b1, b2) {
-	memset(i, 0, sizeof(instr_t));
-
-	int d1 = b1 >> 4;
-	int d2 = b1 & 0xF;
-	int d3 = b2 >> 4;
-	int d4 = b2 & 0xF;
-
-	// 00EE - RET
-	if (b1 == 0 && b2 == 0xEE) {
-		i->OP = RET;
-		return;
-	}
-
-	// 00E0 - CLS
-	if (b1 == 0 && b2 == 0xE0) {
-		i->OP = CLS;
-		return;
-	}
-
-	// "C???" - "C" is a command
-	// "Cxy?" - "x" and "y" are numbers of registers
-	// "Cnnn" - nnn is an address
-	// "C?kk" - "kk" is a byte value
-	int c = d1;
-	int x = d2;
-	int y = d3;
-	uint16_t nnn = b2 + (b1 & 0xF) * 256;
-	int kk = b2;
-
-	i->x = x;
-	i->y = y;
-	i->nnn = nnn;
-	i->kk = kk;
-	i->d4 = d4;
-
-	int OP;
-	switch (c) {
-		case 1: { OP = JPnnn; } // 1nnn - JP nnn
-		case 2: { OP = CALLnnn; } // 2nnn - CALL nnn
-		case 3: { OP = SEVxkk; } // 3xkk - SE Vx, kk
-		case 4: { OP = SNEVxkk; } // 4xkk - SNE Vx, kk
-		case 5: { OP = SEVxVy; } // 5xy0 - SE Vx, Vy
-		case 6: { OP = LDVxkk; } // 6xkk - LD Vx, kk
-		case 7: { OP = ADDVxkk; } // 7xkk - ADD Vx, kk
-		case 8: {
-			switch (d4) {
-				case 0: { OP = LDVxVy; } // 8xy0 - LD Vx, Vy
-				case 1: { OP = ORVxVy; } // 8xy1 - OR Vx, Vy
-				case 2: { OP = ANDVxVy; } // 8xy2 - AND Vx, Vy
-				case 3: { OP = XORVxVy; } // 8xy3 - XOR Vx, Vy
-				case 4: { OP = ADDVxVy; } // 8xy4 - ADD Vx, Vy
-				case 5: { OP = SUBVxVy; } // 8xy5 - SUB Vx, Vy
-				case 6: { OP = SHRVx_Vy_; } // 8xy6 - SHR Vx {, Vy}
-				case 7: { OP = SUBNVxVy; } // 8xy7 - SUBN Vx, Vy
-				case 0xE: { OP = SHLVx_Vy_; } // 8xyE - SHL Vx {, Vy}
-			}
-		}
-		case 9: { OP = SNEVxVy; } // 9xy0 - SNE Vx, Vy
-		case 0xA: { OP = LDInnn; } // Annn - LD I, nnn
-		case 0xB: { OP = JPV0nnn; } // Bnnn - JP V0, nnn
-		case 0xC: { OP = RNDVxkk; } // Cxkk - RND Vx, kk
-		case 0xD: { OP = DRWVxVyn; } // Dxyn - DRW Vx, Vy, n
-		case 0xE: {
-			switch (b2) {
-				case 0x9E: { OP = SKPVx; } // Ex9E - SKP Vx
-				case 0xA1: { OP = SKNPVx; } // ExA1 - SKNP Vx
-			}
-		}
-		case 0xF: {
-			switch (b2) {
-				case 0x07: { OP = LDVxDT; } // Fx07 - LD Vx, DT
-				case 0x0A: { OP = LDVxK; } // Fx0A - LD Vx, K
-				case 0x15: { OP = LDDTVx; } // Fx15 - LD DT, Vx
-				case 0x18: { OP = LDSTVx; } // Fx18 - LD ST, Vx
-				case 0x1E: { OP = ADDIVx; } // Fx1E - ADD I, Vx
-				case 0x29: { OP = LDFVx; } // Fx29 - LD F, Vx
-				case 0x33: { OP = LDBVx; } // Fx33 - LD B, Vx
-				case 0x55: { OP = LD_I_Vx; } // Fx55 - LD [I], Vx
-				case 0x65: { OP = LDVx_I_; } // Fx65 - LD Vx, [I]
-			}
-		}
-	}
-	i->OP = OP;
-}
 
 void cycle(chip8_t *c8) {
 	bool skip = false;
@@ -298,8 +168,8 @@ void cycle(chip8_t *c8) {
 
 	uint8_t b1 = c8->memory[c8->PC++];
 	uint8_t b2 = c8->memory[c8->PC++];
-	instr_t instr = {};
-	decode(&instr, b1, b2);
+	chip8instr.instr_t instr = {};
+	chip8instr.decode(&instr, b1, b2);
 
 	int OP = instr.OP;
 	int x = instr.x;
@@ -310,67 +180,67 @@ void cycle(chip8_t *c8) {
 
 
 	switch (OP) {
-		case RET: {
+		case chip8instr.RET: {
 			c8->SP--;
 			c8->PC = c8->callStack[c8->SP];
 			c8->callStack[c8->SP] = 0;
 		}
-		case CLS: {
+		case chip8instr.CLS: {
 			memset(c8->video, 0, videoWidth * videoHeight);
 		}
 		// Jump to location nnn.
-		case JPnnn: {
+		case chip8instr.JPnnn: {
 			c8->PC = nnn;
 		}
 		// Call subroutine at nnn.
-		case CALLnnn: {
+		case chip8instr.CALLnnn: {
 			c8->callStack[c8->SP] = c8->PC;
 			c8->SP++;
 			c8->PC = nnn;
 		}
 		// Skip next instruction if Vx = kk.
-		case SEVxkk: {
+		case chip8instr.SEVxkk: {
 			if (c8->registers[x] == kk) {
 				c8->PC += 2;
 			}
 		}
-		case SNEVxkk: {
+		case chip8instr.SNEVxkk: {
 			// Skip next instruction if Vx != kk.
 			if (c8->registers[x] != kk) {
 				c8->PC += 2;
 			}
 		}
-		case SEVxVy: {
+		case chip8instr.SEVxVy: {
 			// Skip next instruction if Vx = Vy.
 			if (c8->registers[x] == c8->registers[y]) {
 				c8->PC += 2;
 			}
 		}
-		case LDVxkk: {
+		case chip8instr.LDVxkk: {
 			// Set Vx = kk.
 			c8->registers[x] = kk;
 		}
-		case ADDVxkk: {
+		case chip8instr.ADDVxkk: {
 			// Set Vx = Vx + kk.
 			c8->registers[x] += kk;
 		}
-		case LDVxVy: {
+		case chip8instr.LDVxVy: {
 			// Set Vx = Vy.
 			c8->registers[x] = c8->registers[y];
 		}
-		case ORVxVy: {
+		case chip8instr.ORVxVy: {
 			// Set Vx = Vx OR Vy.
 			c8->registers[x] = c8->registers[x] | c8->registers[y];
 		}
-		case ANDVxVy: {
+		case chip8instr.ANDVxVy: {
 			// Set Vx = Vx AND Vy.
 			c8->registers[x] = c8->registers[x] & c8->registers[y];
 		}
-		case XORVxVy: {
+		case chip8instr.XORVxVy: {
 			// Set Vx = Vx XOR Vy.
 			c8->registers[x] = c8->registers[x] ^ c8->registers[y];
 		}
-		case ADDVxVy: {
+		case chip8instr.ADDVxVy: {
 			// Set Vx = Vx + Vy, set VF = carry.
 			// The values of Vx and Vy are added together.
 			// If the result is greater than 8 bits (i.e., > 255,) VF is set to 1, otherwise 0.
@@ -383,7 +253,7 @@ void cycle(chip8_t *c8) {
 				c8->registers[VF] = 0;
 			}
 		}
-		case SUBVxVy: {
+		case chip8instr.SUBVxVy: {
 			// Set Vx = Vx - Vy, set VF = NOT borrow.
 			// If Vx > Vy, then VF is set to 1, otherwise 0. Then Vy is subtracted from Vx, and the results stored in Vx.
 			if (c8->registers[x] < c8->registers[y]) {
@@ -395,14 +265,14 @@ void cycle(chip8_t *c8) {
 			}
 		}
 		// Shift Vx to the right, set VF to the popped bit.
-		case SHRVx_Vy_: {
+		case chip8instr.SHRVx_Vy_: {
 			c8->registers[VF] = c8->registers[x] & 1;
 			c8->registers[x] = c8->registers[x] >> 1;
 		}
 		// Set Vx = Vy - Vx, set VF = NOT borrow.
 		// If Vy > Vx, then VF is set to 1, otherwise 0.
 		// Then Vx is subtracted from Vy, and the results stored in Vx.
-		case SUBNVxVy: {
+		case chip8instr.SUBNVxVy: {
 			if (c8->registers[y] < c8->registers[x]) {
 				c8->registers[x] = 255 + c8->registers[y] - c8->registers[x];
 				c8->registers[VF] = 0;
@@ -411,7 +281,7 @@ void cycle(chip8_t *c8) {
 				c8->registers[VF] = 1;
 			}
 		}
-		case SHLVx_Vy_: {
+		case chip8instr.SHLVx_Vy_: {
 			// Set Vx = Vx SHL 1.
 			// If the most-significant bit of Vx is 1, then VF is set to 1, otherwise to 0.
 			// Then Vx is multiplied by 2.
@@ -419,24 +289,24 @@ void cycle(chip8_t *c8) {
 			c8->registers[VF] = r > 255;
 			c8->registers[x] = r & 0xFF;
 		}
-		case SNEVxVy: {
+		case chip8instr.SNEVxVy: {
 			// Skip next instruction if Vx != Vy.
 			if (c8->registers[x] != c8->registers[y]) {
 				c8->PC += 2;
 			}
 		}
-		case LDInnn: {
+		case chip8instr.LDInnn: {
 			c8->I = nnn;
 		}
-		case JPV0nnn: {
+		case chip8instr.JPV0nnn: {
 			// Jump to location V0 + nnn.
 			c8->PC = c8->registers[V0] + nnn;
 		}
-		case RNDVxkk: {
+		case chip8instr.RNDVxkk: {
 			// Set Vx = random byte AND kk.
 			c8->registers[x] = rnd.intn(256) & kk;
 		}
-		case DRWVxVyn: {
+		case chip8instr.DRWVxVyn: {
 			// Display n-byte sprite starting at memory location I at (Vx, Vy), set VF = collision.
 			// The interpreter reads n bytes from memory, starting at the address stored in I. These bytes are then displayed as sprites on screen at coordinates (Vx, Vy). Sprites are XORed onto the existing screen. If this causes any pixels to be erased, VF is set to 1, otherwise it is set to 0. If the sprite is positioned so part of it is outside the coordinates of the display, it wraps around to the opposite side of the screen. See instruction 8xy3 for more information on XOR, and section 2.4, Display, for more information on the Chip-8 screen and sprites.
 			uint8_t *p = c8->memory + c8->I;
@@ -451,46 +321,46 @@ void cycle(chip8_t *c8) {
 				c8->registers[VF] = 0;
 			}
 		}
-		case SKPVx: {
+		case chip8instr.SKPVx: {
 			// Skip next instruction if key with the value of Vx is pressed.
 			int key = c8->registers[x];
 			if (c8->keyBuffer[key]) {
 				c8->PC += 2;
 			}
 		}
-		case SKNPVx: {
+		case chip8instr.SKNPVx: {
 			// Skip next instruction if key with the value of Vx is not pressed.
 			int key = c8->registers[x];
 			if (!c8->keyBuffer[key]) {
 				c8->PC += 2;
 			}
 		}
-		case LDVxDT: {
+		case chip8instr.LDVxDT: {
 			// Set Vx = delay timer value.
 			c8->registers[x] = c8->DT;
 		}
-		case LDVxK: {
+		case chip8instr.LDVxK: {
 			// Wait for a key press, store the value of the key in Vx.
 			c8->registers[x] = getchar();
 		}
-		case LDDTVx: {
+		case chip8instr.LDDTVx: {
 			// Set delay timer = Vx.
 			c8->DT = c8->registers[x];
 		}
-		case LDSTVx: {
+		case chip8instr.LDSTVx: {
 			// Set sound timer = Vx.
 			c8->ST = c8->registers[x];
 		}
-		case ADDIVx: {
+		case chip8instr.ADDIVx: {
 			// Set I = I + Vx.
 			c8->I += c8->registers[x];
 		}
-		case LDFVx: {
+		case chip8instr.LDFVx: {
 			// Set I = location of sprite for digit Vx.
 			// The value of I is set to the location for the hexadecimal sprite corresponding to the value of Vx. See section 2.4, Display, for more information on the Chip-8 hexadecimal font.
 			c8->I = c8->registers[x] * 5;
 		}
-		case LDBVx: {
+		case chip8instr.LDBVx: {
 			// Store BCD representation of Vx in memory locations I, I+1, and I+2.
 			// The interpreter takes the decimal value of Vx, and places the hundreds digit in memory at location in I, the tens digit at location I+1, and the ones digit at location I+2.
 			uint8_t val = c8->registers[x];
@@ -505,14 +375,14 @@ void cycle(chip8_t *c8) {
 			*p++ = tens;
 			*p++ = ones;
 		}
-		case LD_I_Vx: {
+		case chip8instr.LD_I_Vx: {
 			// Store registers V0 through Vx in memory starting at location I.
 			uint8_t *p = &c8->memory[c8->I];
 			for (int i = 0; i <= x; i++) {
 				*p++ = c8->registers[i];
 			}
 		}
-		case LDVx_I_: {
+		case chip8instr.LDVx_I_: {
 			// Read registers V0 through Vx from memory starting at location I.
 			uint8_t *p = &c8->memory[c8->I];
 			for (int i = 0; i <= x; i++) {
@@ -566,109 +436,9 @@ void draw(chip8_t *c8) {
 	}
 }
 
-void print_instr(instr_t i) {
-	switch (i.OP) {
-		case JPnnn: { fprintf(stdout, "JP 0x%x", i.nnn); }
-		case CALLnnn: { fprintf(stdout, "CALL 0x%x", i.nnn); }
-		case SEVxkk: { fprintf(stdout, "SE V%x 0x%x \t// skip if V[%x] == %d", i.x, i.kk, i.x, i.kk); }
-		case SNEVxkk: {
-			fprintf(stdout, "SNE V%x 0x%x \t// skip if V[%x] != %d", i.x, i.kk, i.x, i.kk);
-		}
-		case SEVxVy: {
-			fprintf(stdout, "SE V%x V%x \t// skip if equal", i.x, i.y);
-		}
-		case LDVxkk: {
-			fprintf(stdout, "LD V%x 0x%x \t// V[%x] = %d", i.x, i.kk, i.x, i.kk);
-		}
-		case ADDVxkk: {
-			fprintf(stdout, "ADD V%x 0x%x \t// V[%x] += %d", i.x, i.kk, i.x, i.kk);
-		}
-		case LDVxVy: {
-			fprintf(stdout, "LD V%x V%x \t// V[%x] = V[%x]", i.x, i.y, i.x, i.y);
-		}
-		case ORVxVy: {
-			fprintf(stdout, "OR V%x V%x \t// V[%x] |= V[%x]", i.x, i.y, i.x, i.y);
-		}
-		case ANDVxVy: {
-			fprintf(stdout, "AND V%x V%x \t// V[%x] &= V[%x]", i.x, i.y, i.x, i.y);
-		}
-		case XORVxVy: {
-			fprintf(stdout, "XOR V%x V%x \t// V[%x] ^= V[%x]", i.x, i.y, i.x, i.y);
-		}
-		case ADDVxVy: {
-			fprintf(stdout, "ADD V%x V%x \t// V[%x] += V[%x]", i.x, i.y, i.x, i.y);
-		}
-		case SUBVxVy: {
-			fprintf(stdout, "SUB V%x V%x \t// V[%x] -= V[%x]", i.x, i.y, i.x, i.y);
-		}
-		case SHRVx_Vy_: {
-			fprintf(stdout, "SHR Vx _Vy_");
-		}
-		case SUBNVxVy: {
-			fprintf(stdout, "SUBN Vx Vy");
-		}
-		case SHLVx_Vy_: {
-			fprintf(stdout, "SHL Vx _Vy_");
-		}
-		case SNEVxVy: {
-			fprintf(stdout, "SNE V%x V%x \t// skip if V[%x] != V[%x]", i.x, i.y, i.x, i.y);
-		}
-		case LDInnn: {
-			fprintf(stdout, "LD I 0x%x \t// I = %x", i.nnn, i.nnn);
-		}
-		case JPV0nnn: {
-			fprintf(stdout, "JP V0 nnn");
-		}
-		case RNDVxkk: {
-			fprintf(stdout, "RND V%x 0x%x \t// V[%x] = random & 0x%x", i.x, i.kk, i.x, i.kk);
-		}
-		case DRWVxVyn: {
-			fprintf(stdout, "DRW V%x V%x %x \t// draw %d bytes from I at (V[%x], V[%x])", i.x, i.y, i.d4, i.d4, i.x, i.y);
-		}
-		case SKPVx: {
-			fprintf(stdout, "SKP Vx");
-		}
-		case SKNPVx: {
-			fprintf(stdout, "SKNP Vx");
-		}
-		case LDVxDT: {
-			fprintf(stdout, "LD Vx DT");
-		}
-		case LDVxK: {
-			fprintf(stdout, "LD Vx K");
-		}
-		case LDDTVx: {
-			fprintf(stdout, "LD DT Vx");
-		}
-		case LDSTVx: {
-			fprintf(stdout, "LD ST Vx");
-		}
-		case ADDIVx: {
-			fprintf(stdout, "ADD I Vx");
-		}
-		case LDFVx: {
-			fprintf(stdout, "LD F Vx");
-		}
-		case LDBVx: {
-			fprintf(stdout, "LDBVx");
-		}
-		case LD_I_Vx: {
-			fprintf(stdout, "LD_I_Vx");
-		}
-		case LDVx_I_: {
-			fprintf(stdout, "LD V%x [I] \t// init V[0]..V[%x] from memory at I", i.x, i.x);
-		}
-		case RET: { fprintf(stdout, "RET\n"); }
-		case CLS: { fprintf(stdout, "CLS"); }
-		default: {
-			fprintf(stdout, "unknown op %x", i.OP);
-		}
-	}
-}
-
 pub int disas(char *rompath) {
 	// Read and parse the whole thing.
-	instr_t img[4000];
+	chip8instr.instr_t img[4000];
 	size_t n = 0;
 	FILE *in = fopen(rompath, "rb");
 	if (!in) {
@@ -685,7 +455,7 @@ pub int disas(char *rompath) {
 		}
 		uint8_t byte1 = (uint8_t) a;
 		uint8_t byte2 = (uint8_t) b;
-		decode(&img[n], byte1, byte2);
+		chip8instr.decode(&img[n], byte1, byte2);
 		n++;
 	}
 	fclose(in);
@@ -693,8 +463,8 @@ pub int disas(char *rompath) {
 	size_t call_targets[100] = {};
 	size_t call_targets_len = 0;
 	for (size_t j = 0; j < n; j++) {
-		instr_t i = img[j];
-		if (i.OP == CALLnnn) {
+		chip8instr.instr_t i = img[j];
+		if (i.OP == chip8instr.CALLnnn) {
 			call_targets[call_targets_len++] = i.nnn;
 		}
 	}
@@ -703,8 +473,8 @@ pub int disas(char *rompath) {
 	size_t pos = MEM_BEGIN;
 	for (size_t j = 0; j < n; j++) {
 		fprintf(stdout, "0x%x\t", (int) pos);
-		instr_t i = img[j];
-		print_instr(i);
+		chip8instr.instr_t i = img[j];
+		chip8instr.print_instr(i);
 		fprintf(stdout, "\n");
 		pos += 2;
 		if (contains(call_targets, call_targets_len, pos)) {
