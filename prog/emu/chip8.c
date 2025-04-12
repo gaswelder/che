@@ -99,6 +99,43 @@ uint8_t DIGITS[] = {
 
 term.term_t *term = NULL;
 
+enum {
+	JPnnn = 1,
+	CALLnnn,
+	SEVxkk,
+	SNEVxkk,
+	SEVxVy,
+	LDVxkk,
+	ADDVxkk,
+	LDVxVy,
+	ORVxVy,
+	ANDVxVy,
+	XORVxVy,
+	ADDVxVy,
+	SUBVxVy,
+	SHRVx_Vy_,
+	SUBNVxVy,
+	SHLVx_Vy_,
+	SNEVxVy,
+	LDInnn,
+	JPV0nnn,
+	RNDVxkk,
+	DRWVxVyn,
+	SKPVx,
+	SKNPVx,
+	LDVxDT,
+	LDVxK,
+	LDDTVx,
+	LDSTVx,
+	ADDIVx,
+	LDFVx,
+	LDBVx,
+	LD_I_Vx,
+	LDVx_I_,
+	RET,
+	CLS,
+};
+
 pub int run(char *rompath) {
 	chip8_t c8 = {};
 
@@ -148,6 +185,102 @@ pub int run(char *rompath) {
 	}
 }
 
+typedef {
+	int OP;
+	int x, y;
+	uint16_t nnn;
+	int kk;
+	int d4;
+} instr_t;
+
+
+// Decodes the instruction from bytes [b1 b2] into i.
+void decode(instr_t *i, uint8_t b1, b2) {
+	memset(i, 0, sizeof(instr_t));
+
+	int d1 = b1 >> 4;
+	int d2 = b1 & 0xF;
+	int d3 = b2 >> 4;
+	int d4 = b2 & 0xF;
+
+	// 00EE - RET
+	if (b1 == 0 && b2 == 0xEE) {
+		i->OP = RET;
+		return;
+	}
+
+	// 00E0 - CLS
+	if (b1 == 0 && b2 == 0xE0) {
+		i->OP = CLS;
+		return;
+	}
+
+	// "C???" - "C" is a command
+	// "Cxy?" - "x" and "y" are numbers of registers
+	// "Cnnn" - nnn is an address
+	// "C?kk" - "kk" is a byte value
+	int c = d1;
+	int x = d2;
+	int y = d3;
+	uint16_t nnn = b2 + (b1 & 0xF) * 256;
+	int kk = b2;
+
+	i->x = x;
+	i->y = y;
+	i->nnn = nnn;
+	i->kk = kk;
+	i->d4 = d4;
+
+	int OP;
+	switch (c) {
+		case 1: { OP = JPnnn; } // 1nnn - JP nnn
+		case 2: { OP = CALLnnn; } // 2nnn - CALL nnn
+		case 3: { OP = SEVxkk; } // 3xkk - SE Vx, kk
+		case 4: { OP = SNEVxkk; } // 4xkk - SNE Vx, kk
+		case 5: { OP = SEVxVy; } // 5xy0 - SE Vx, Vy
+		case 6: { OP = LDVxkk; } // 6xkk - LD Vx, kk
+		case 7: { OP = ADDVxkk; } // 7xkk - ADD Vx, kk
+		case 8: {
+			switch (d4) {
+				case 0: { OP = LDVxVy; } // 8xy0 - LD Vx, Vy
+				case 1: { OP = ORVxVy; } // 8xy1 - OR Vx, Vy
+				case 2: { OP = ANDVxVy; } // 8xy2 - AND Vx, Vy
+				case 3: { OP = XORVxVy; } // 8xy3 - XOR Vx, Vy
+				case 4: { OP = ADDVxVy; } // 8xy4 - ADD Vx, Vy
+				case 5: { OP = SUBVxVy; } // 8xy5 - SUB Vx, Vy
+				case 6: { OP = SHRVx_Vy_; } // 8xy6 - SHR Vx {, Vy}
+				case 7: { OP = SUBNVxVy; } // 8xy7 - SUBN Vx, Vy
+				case 0xE: { OP = SHLVx_Vy_; } // 8xyE - SHL Vx {, Vy}
+			}
+		}
+		case 9: { OP = SNEVxVy; } // 9xy0 - SNE Vx, Vy
+		case 0xA: { OP = LDInnn; } // Annn - LD I, nnn
+		case 0xB: { OP = JPV0nnn; } // Bnnn - JP V0, nnn
+		case 0xC: { OP = RNDVxkk; } // Cxkk - RND Vx, kk
+		case 0xD: { OP = DRWVxVyn; } // Dxyn - DRW Vx, Vy, n
+		case 0xE: {
+			switch (b2) {
+				case 0x9E: { OP = SKPVx; } // Ex9E - SKP Vx
+				case 0xA1: { OP = SKNPVx; } // ExA1 - SKNP Vx
+			}
+		}
+		case 0xF: {
+			switch (b2) {
+				case 0x07: { OP = LDVxDT; } // Fx07 - LD Vx, DT
+				case 0x0A: { OP = LDVxK; } // Fx0A - LD Vx, K
+				case 0x15: { OP = LDDTVx; } // Fx15 - LD DT, Vx
+				case 0x18: { OP = LDSTVx; } // Fx18 - LD ST, Vx
+				case 0x1E: { OP = ADDIVx; } // Fx1E - ADD I, Vx
+				case 0x29: { OP = LDFVx; } // Fx29 - LD F, Vx
+				case 0x33: { OP = LDBVx; } // Fx33 - LD B, Vx
+				case 0x55: { OP = LD_I_Vx; } // Fx55 - LD [I], Vx
+				case 0x65: { OP = LDVx_I_; } // Fx65 - LD Vx, [I]
+			}
+		}
+	}
+	i->OP = OP;
+}
+
 void cycle(chip8_t *c8) {
 	bool skip = false;
 	if (c8->DT) {
@@ -165,179 +298,145 @@ void cycle(chip8_t *c8) {
 
 	uint8_t b1 = c8->memory[c8->PC++];
 	uint8_t b2 = c8->memory[c8->PC++];
+	instr_t instr = {};
+	decode(&instr, b1, b2);
 
-	int d1 = b1 >> 4;
-	int d2 = b1 & 0xF;
-	int d3 = b2 >> 4;
-	int d4 = b2 & 0xF;
+	int OP = instr.OP;
+	int x = instr.x;
+	int y = instr.y;
+	uint16_t nnn = instr.nnn;
+	int kk = instr.kk;
+	int d4 = instr.d4;
 
-	// "C???" - "C" is a command
-	// "Cxy?" - "x" and "y" are numbers of registers
-	// "Cnnn" - nnn is an address
-	// "C?kk" - "kk" is a byte value
-	int c = d1;
-	int x = d2;
-	int y = d3;
-	uint16_t nnn = b2 + (b1 & 0xF) * 256;
-	int kk = b2;
 
-	if (b1 == 0 && b2 == 0xEE) {
-		// 00EE: RET
-		c8->SP--;
-		c8->PC = c8->callStack[c8->SP];
-		c8->callStack[c8->SP] = 0;
-		return;
-	}
-
-	if (b1 == 0 && b2 == 0xE0) {
-		// 00E0: CLS
-		clearDisplay(c8);
-		return;
-	}
-
-	switch (c) {
-		// 1nnn - JP nnn
+	switch (OP) {
+		case RET: {
+			c8->SP--;
+			c8->PC = c8->callStack[c8->SP];
+			c8->callStack[c8->SP] = 0;
+		}
+		case CLS: {
+			memset(c8->video, 0, videoWidth * videoHeight);
+		}
 		// Jump to location nnn.
-		case 1: {
+		case JPnnn: {
 			c8->PC = nnn;
 		}
-		// 2nnn - CALL nnn
 		// Call subroutine at nnn.
-		case 2: {
+		case CALLnnn: {
 			c8->callStack[c8->SP] = c8->PC;
 			c8->SP++;
 			c8->PC = nnn;
 		}
-		// 3xkk - SE Vx, kk
 		// Skip next instruction if Vx = kk.
-		case 3: {
+		case SEVxkk: {
 			if (c8->registers[x] == kk) {
 				c8->PC += 2;
 			}
 		}
-		// 4xkk - SNE Vx, kk
-		// Skip next instruction if Vx != kk.
-		case 4: {
+		case SNEVxkk: {
+			// Skip next instruction if Vx != kk.
 			if (c8->registers[x] != kk) {
 				c8->PC += 2;
 			}
 		}
-		// 5xy0 - SE Vx, Vy
-		// Skip next instruction if Vx = Vy.
-		case 5: {
+		case SEVxVy: {
+			// Skip next instruction if Vx = Vy.
 			if (c8->registers[x] == c8->registers[y]) {
 				c8->PC += 2;
 			}
 		}
-		case 6: {
-			// 6xkk - LD Vx, kk
+		case LDVxkk: {
 			// Set Vx = kk.
 			c8->registers[x] = kk;
 		}
-		case 7: {
-			// 7xkk - ADD Vx, kk
+		case ADDVxkk: {
 			// Set Vx = Vx + kk.
 			c8->registers[x] += kk;
 		}
-		case 8: {
-			switch (d4) {
-				case 0: {
-					// 8xy0 - LD Vx, Vy
-					// Set Vx = Vy.
-					c8->registers[x] = c8->registers[y];
-				}
-				case 1: {
-					// 8xy1 - OR Vx, Vy
-					// Set Vx = Vx OR Vy.
-					c8->registers[x] = c8->registers[x] | c8->registers[y];
-				}
-				case 2: {
-					// 8xy2 - AND Vx, Vy
-					// Set Vx = Vx AND Vy.
-					c8->registers[x] = c8->registers[x] & c8->registers[y];
-				}
-				case 3: {
-					// 8xy3 - XOR Vx, Vy
-					// Set Vx = Vx XOR Vy.
-					c8->registers[x] = c8->registers[x] ^ c8->registers[y];
-				}
-				case 4: {
-					// 8xy4 - ADD Vx, Vy
-					// Set Vx = Vx + Vy, set VF = carry.
-					// The values of Vx and Vy are added together.
-					// If the result is greater than 8 bits (i.e., > 255,) VF is set to 1, otherwise 0.
-					// Only the lowest 8 bits of the result are kept and stored in Vx.
-					uint16_t sum = c8->registers[x] + c8->registers[y];
-					c8->registers[x] = sum & 0xFF;
-					if (sum > 255) {
-						c8->registers[VF] = 1;
-					} else {
-						c8->registers[VF] = 0;
-					}
-				}
-				case 5: {
-					// 8xy5 - SUB Vx, Vy
-					// Set Vx = Vx - Vy, set VF = NOT borrow.
-					// If Vx > Vy, then VF is set to 1, otherwise 0. Then Vy is subtracted from Vx, and the results stored in Vx.
-					if (c8->registers[x] < c8->registers[y]) {
-						c8->registers[VF] = 1;
-						c8->registers[x] = 255 + c8->registers[x] - c8->registers[y];
-					} else {
-						c8->registers[VF] = 0;
-						c8->registers[x] -= c8->registers[y];
-					}
-				}
-				case 6: {
-					// 8xy6 - SHR Vx {, Vy}
-					// Shift Vx to the right, set VF to the popped bit.
-					c8->registers[VF] = c8->registers[x] & 1;
-					c8->registers[x] = c8->registers[x] >> 1;
-				}
-				case 7: {
-					// 8xy7 - SUBN Vx, Vy
-					// Set Vx = Vy - Vx, set VF = NOT borrow.
-					// If Vy > Vx, then VF is set to 1, otherwise 0. Then Vx is subtracted from Vy, and the results stored in Vx.
-					if (c8->registers[y] < c8->registers[x]) {
-						c8->registers[x] = 255 + c8->registers[y] - c8->registers[x];
-						c8->registers[VF] = 0;
-					} else {
-						c8->registers[x] = c8->registers[y] - c8->registers[x];
-						c8->registers[VF] = 1;
-					}
-				}
-				case 0xE: {
-					// 8xyE - SHL Vx {, Vy}
-					// Set Vx = Vx SHL 1.
-					// If the most-significant bit of Vx is 1, then VF is set to 1, otherwise to 0. Then Vx is multiplied by 2.
-					uint16_t r = c8->registers[x] << 1;
-					c8->registers[VF] = r > 255;
-					c8->registers[x] = r & 0xFF;
-				}
+		case LDVxVy: {
+			// Set Vx = Vy.
+			c8->registers[x] = c8->registers[y];
+		}
+		case ORVxVy: {
+			// Set Vx = Vx OR Vy.
+			c8->registers[x] = c8->registers[x] | c8->registers[y];
+		}
+		case ANDVxVy: {
+			// Set Vx = Vx AND Vy.
+			c8->registers[x] = c8->registers[x] & c8->registers[y];
+		}
+		case XORVxVy: {
+			// Set Vx = Vx XOR Vy.
+			c8->registers[x] = c8->registers[x] ^ c8->registers[y];
+		}
+		case ADDVxVy: {
+			// Set Vx = Vx + Vy, set VF = carry.
+			// The values of Vx and Vy are added together.
+			// If the result is greater than 8 bits (i.e., > 255,) VF is set to 1, otherwise 0.
+			// Only the lowest 8 bits of the result are kept and stored in Vx.
+			uint16_t sum = c8->registers[x] + c8->registers[y];
+			c8->registers[x] = sum & 0xFF;
+			if (sum > 255) {
+				c8->registers[VF] = 1;
+			} else {
+				c8->registers[VF] = 0;
 			}
 		}
-		case 9: {
-			// 9xy0 - SNE Vx, Vy
+		case SUBVxVy: {
+			// Set Vx = Vx - Vy, set VF = NOT borrow.
+			// If Vx > Vy, then VF is set to 1, otherwise 0. Then Vy is subtracted from Vx, and the results stored in Vx.
+			if (c8->registers[x] < c8->registers[y]) {
+				c8->registers[VF] = 1;
+				c8->registers[x] = 255 + c8->registers[x] - c8->registers[y];
+			} else {
+				c8->registers[VF] = 0;
+				c8->registers[x] -= c8->registers[y];
+			}
+		}
+		// Shift Vx to the right, set VF to the popped bit.
+		case SHRVx_Vy_: {
+			c8->registers[VF] = c8->registers[x] & 1;
+			c8->registers[x] = c8->registers[x] >> 1;
+		}
+		// Set Vx = Vy - Vx, set VF = NOT borrow.
+		// If Vy > Vx, then VF is set to 1, otherwise 0.
+		// Then Vx is subtracted from Vy, and the results stored in Vx.
+		case SUBNVxVy: {
+			if (c8->registers[y] < c8->registers[x]) {
+				c8->registers[x] = 255 + c8->registers[y] - c8->registers[x];
+				c8->registers[VF] = 0;
+			} else {
+				c8->registers[x] = c8->registers[y] - c8->registers[x];
+				c8->registers[VF] = 1;
+			}
+		}
+		case SHLVx_Vy_: {
+			// Set Vx = Vx SHL 1.
+			// If the most-significant bit of Vx is 1, then VF is set to 1, otherwise to 0.
+			// Then Vx is multiplied by 2.
+			uint16_t r = c8->registers[x] << 1;
+			c8->registers[VF] = r > 255;
+			c8->registers[x] = r & 0xFF;
+		}
+		case SNEVxVy: {
 			// Skip next instruction if Vx != Vy.
 			if (c8->registers[x] != c8->registers[y]) {
 				c8->PC += 2;
 			}
 		}
-		// Annn - LD I, nnn
-		case 0xA: {
+		case LDInnn: {
 			c8->I = nnn;
 		}
-		case 0xB: {
-			// Bnnn - JP V0, nnn
+		case JPV0nnn: {
 			// Jump to location V0 + nnn.
 			c8->PC = c8->registers[V0] + nnn;
 		}
-		case 0xC: {
-			// Cxkk - RND Vx, kk
+		case RNDVxkk: {
 			// Set Vx = random byte AND kk.
 			c8->registers[x] = rnd.intn(256) & kk;
 		}
-		case 0xD: {
-			// Dxyn - DRW Vx, Vy, n
+		case DRWVxVyn: {
 			// Display n-byte sprite starting at memory location I at (Vx, Vy), set VF = collision.
 			// The interpreter reads n bytes from memory, starting at the address stored in I. These bytes are then displayed as sprites on screen at coordinates (Vx, Vy). Sprites are XORed onto the existing screen. If this causes any pixels to be erased, VF is set to 1, otherwise it is set to 0. If the sprite is positioned so part of it is outside the coordinates of the display, it wraps around to the opposite side of the screen. See instruction 8xy3 for more information on XOR, and section 2.4, Display, for more information on the Chip-8 screen and sprites.
 			uint8_t *p = c8->memory + c8->I;
@@ -352,91 +451,72 @@ void cycle(chip8_t *c8) {
 				c8->registers[VF] = 0;
 			}
 		}
-		case 0xE: {
-			switch (b2) {
-				case 0x9E: {
-					// Ex9E - SKP Vx
-					// Skip next instruction if key with the value of Vx is pressed.
-					int key = c8->registers[x];
-					if (c8->keyBuffer[key]) {
-						c8->PC += 2;
-					}
-				}
-				case 0xA1: {
-					// ExA1 - SKNP Vx
-					// Skip next instruction if key with the value of Vx is not pressed.
-					int key = c8->registers[x];
-					if (!c8->keyBuffer[key]) {
-						c8->PC += 2;
-					}
-				}
+		case SKPVx: {
+			// Skip next instruction if key with the value of Vx is pressed.
+			int key = c8->registers[x];
+			if (c8->keyBuffer[key]) {
+				c8->PC += 2;
 			}
 		}
-		case 0xF: {
-			switch (b2) {
-				// Fx07 - LD Vx, DT
-				// Set Vx = delay timer value.
-				case 0x07: {
-					c8->registers[x] = c8->DT;
-				}
-				// Fx0A - LD Vx, K
-				// Wait for a key press, store the value of the key in Vx.
-				case 0x0A: {
-					c8->registers[x] = getchar();
-				}
-				case 0x15: {
-					// Fx15 - LD DT, Vx
-					// Set delay timer = Vx.
-					c8->DT = c8->registers[x];
-				}
-				case 0x18: {
-					// Fx18 - LD ST, Vx
-					// Set sound timer = Vx.
-					c8->ST = c8->registers[x];
-				}
-				case 0x1E: {
-					// Fx1E - ADD I, Vx
-					// Set I = I + Vx.
-					c8->I += c8->registers[x];
-				}
-				case 0x29: {
-					// Fx29 - LD F, Vx
-					// Set I = location of sprite for digit Vx.
-					// The value of I is set to the location for the hexadecimal sprite corresponding to the value of Vx. See section 2.4, Display, for more information on the Chip-8 hexadecimal font.
-					c8->I = c8->registers[x] * 5;
-				}
-				case 0x33: {
-					// Fx33 - LD B, Vx
-					// Store BCD representation of Vx in memory locations I, I+1, and I+2.
-					// The interpreter takes the decimal value of Vx, and places the hundreds digit in memory at location in I, the tens digit at location I+1, and the ones digit at location I+2.
-					uint8_t val = c8->registers[x];
-					uint8_t ones = val % 10;
-					val /= 10;
-					uint8_t tens = val % 10;
-					val /= 10;
-					uint8_t hundreds = val;
+		case SKNPVx: {
+			// Skip next instruction if key with the value of Vx is not pressed.
+			int key = c8->registers[x];
+			if (!c8->keyBuffer[key]) {
+				c8->PC += 2;
+			}
+		}
+		case LDVxDT: {
+			// Set Vx = delay timer value.
+			c8->registers[x] = c8->DT;
+		}
+		case LDVxK: {
+			// Wait for a key press, store the value of the key in Vx.
+			c8->registers[x] = getchar();
+		}
+		case LDDTVx: {
+			// Set delay timer = Vx.
+			c8->DT = c8->registers[x];
+		}
+		case LDSTVx: {
+			// Set sound timer = Vx.
+			c8->ST = c8->registers[x];
+		}
+		case ADDIVx: {
+			// Set I = I + Vx.
+			c8->I += c8->registers[x];
+		}
+		case LDFVx: {
+			// Set I = location of sprite for digit Vx.
+			// The value of I is set to the location for the hexadecimal sprite corresponding to the value of Vx. See section 2.4, Display, for more information on the Chip-8 hexadecimal font.
+			c8->I = c8->registers[x] * 5;
+		}
+		case LDBVx: {
+			// Store BCD representation of Vx in memory locations I, I+1, and I+2.
+			// The interpreter takes the decimal value of Vx, and places the hundreds digit in memory at location in I, the tens digit at location I+1, and the ones digit at location I+2.
+			uint8_t val = c8->registers[x];
+			uint8_t ones = val % 10;
+			val /= 10;
+			uint8_t tens = val % 10;
+			val /= 10;
+			uint8_t hundreds = val;
 
-					uint8_t *p = &c8->memory[c8->I];
-					*p++ = hundreds;
-					*p++ = tens;
-					*p++ = ones;
-				}
-				case 0x55: {
-					// Fx55 - LD [I], Vx
-					// Store registers V0 through Vx in memory starting at location I.
-					uint8_t *p = &c8->memory[c8->I];
-					for (int i = 0; i <= x; i++) {
-						*p++ = c8->registers[i];
-					}
-				}
-				case 0x65: {
-					// Fx65 - LD Vx, [I]
-					// Read registers V0 through Vx from memory starting at location I.
-					uint8_t *p = &c8->memory[c8->I];
-					for (int i = 0; i <= x; i++) {
-						c8->registers[i] = *p++;
-					}
-				}
+			uint8_t *p = &c8->memory[c8->I];
+			*p++ = hundreds;
+			*p++ = tens;
+			*p++ = ones;
+		}
+		case LD_I_Vx: {
+			// Store registers V0 through Vx in memory starting at location I.
+			uint8_t *p = &c8->memory[c8->I];
+			for (int i = 0; i <= x; i++) {
+				*p++ = c8->registers[i];
+			}
+		}
+		case LDVx_I_: {
+			// Read registers V0 through Vx from memory starting at location I.
+			uint8_t *p = &c8->memory[c8->I];
+			for (int i = 0; i <= x; i++) {
+				c8->registers[i] = *p++;
 			}
 		}
 	}
@@ -459,10 +539,6 @@ bool xor_pixel(chip8_t *c8, int x, y, value) {
 	char newval = oldval ^ value;
 	c8->video[pos] = newval;
 	return oldval && !newval;
-}
-
-void clearDisplay(chip8_t *c8) {
-	memset(c8->video, 0, videoWidth * videoHeight);
 }
 
 void handle_interrupt(int signal) {
