@@ -190,7 +190,7 @@ pub void print_instr(instr_t i) {
 			fprintf(stdout, "ADD I Vx");
 		}
 		case LDFVx: {
-			fprintf(stdout, "LD F Vx");
+			fprintf(stdout, "LD F V%x \t// I = sprite_addr(V[%x])", i.x, i.x);
 		}
 		case LDBVx: {
 			fprintf(stdout, "LDBVx");

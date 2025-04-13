@@ -102,24 +102,32 @@ term.term_t *term = NULL;
 
 const bool DEBUG = false;
 
-pub int run(char *rompath) {
-	chip8_t c8 = {};
-	memcpy(c8.memory, DIGITS, sizeof(DIGITS));
-
-	// Load the ROM.
-	c8.PC = MEM_BEGIN;
+void loadrom(chip8_t *c8, const char *rompath) {
 	FILE *f = fopen(rompath, "rb");
 	if (!f) {
 		fprintf(stderr, "failed to open file: %s\n", strerror(errno));
-		return 1;
+		exit(1);
 	}
+	int pos = MEM_BEGIN;
 	while (true) {
 		int c = fgetc(f);
 		if (c == EOF) break;
-		c8.memory[c8.PC++] = (uint8_t) c;
+		c8->memory[pos++] = (uint8_t) c;
 	}
 	fclose(f);
+}
+
+pub int run(char *rompath) {
+	chip8_t c8 = {};
+
+	// Load digit sprites into memory at zero.
+	// Technically, we don't need this as we can load sprites directly,
+	// but there might be some crazy code that assumes the sprites are here.
+	memcpy(c8.memory, DIGITS, sizeof(DIGITS));
+
 	c8.PC = MEM_BEGIN;
+
+	loadrom(&c8, rompath);
 
 	signal(SIGINT, handle_interrupt);
 	term = term.term_get_stdin();
@@ -174,9 +182,10 @@ pub int run(char *rompath) {
 		}
 
 
-		draw(&c8);
+		draw(c8.video, VID_WIDTH, VID_HEIGHT);
+
 		// 60Hz
-		time.sleep(time.SECONDS/10);
+		time.sleep(time.SECONDS / 60);
 	}
 }
 
@@ -192,194 +201,29 @@ void step(chip8_t *c8, chip8instr.instr_t instr) {
 	int x = instr.x;
 	int y = instr.y;
 	uint16_t nnn = instr.nnn;
-	int kk = instr.kk;
-	int d4 = instr.d4;
 
 
 	switch (OP) {
-		case chip8instr.RET: {
-			c8->SP--;
-			c8->PC = c8->callStack[c8->SP];
-			c8->callStack[c8->SP] = 0;
-		}
+		//
+		// Drawing
+		//
+
+		// Clear screen
 		case chip8instr.CLS: {
 			memset(c8->video, 0, VID_WIDTH * VID_HEIGHT);
 		}
-		// Jump to location nnn.
-		case chip8instr.JPnnn: {
-			c8->PC = nnn;
-		}
-		// Call subroutine at nnn.
-		case chip8instr.CALLnnn: {
-			c8->callStack[c8->SP] = c8->PC;
-			c8->SP++;
-			c8->PC = nnn;
-		}
-		// Skip next instruction if Vx = kk.
-		case chip8instr.SEVxkk: {
-			if (c8->registers[x] == kk) {
-				c8->PC += 2;
-			}
-		}
-		case chip8instr.SNEVxkk: {
-			// Skip next instruction if Vx != kk.
-			if (c8->registers[x] != kk) {
-				c8->PC += 2;
-			}
-		}
-		case chip8instr.SEVxVy: {
-			// Skip next instruction if Vx = Vy.
-			if (c8->registers[x] == c8->registers[y]) {
-				c8->PC += 2;
-			}
-		}
-		case chip8instr.LDVxkk: {
-			// Set Vx = kk.
-			c8->registers[x] = kk;
-		}
-		case chip8instr.ADDVxkk: {
-			// Set Vx = Vx + kk.
-			c8->registers[x] += kk;
-		}
-		case chip8instr.LDVxVy: {
-			// Set Vx = Vy.
-			c8->registers[x] = c8->registers[y];
-		}
-		case chip8instr.ORVxVy: {
-			// Set Vx = Vx OR Vy.
-			c8->registers[x] = c8->registers[x] | c8->registers[y];
-		}
-		case chip8instr.ANDVxVy: {
-			// Set Vx = Vx AND Vy.
-			c8->registers[x] = c8->registers[x] & c8->registers[y];
-		}
-		case chip8instr.XORVxVy: {
-			// Set Vx = Vx XOR Vy.
-			c8->registers[x] = c8->registers[x] ^ c8->registers[y];
-		}
-		case chip8instr.ADDVxVy: {
-			// Set Vx = Vx + Vy, set VF = carry.
-			// The values of Vx and Vy are added together.
-			// If the result is greater than 8 bits (i.e., > 255,) VF is set to 1, otherwise 0.
-			// Only the lowest 8 bits of the result are kept and stored in Vx.
-			uint16_t sum = c8->registers[x] + c8->registers[y];
-			c8->registers[x] = sum & 0xFF;
-			if (sum > 255) {
-				c8->registers[VF] = 1;
-			} else {
-				c8->registers[VF] = 0;
-			}
-		}
-		case chip8instr.SUBVxVy: {
-			// Set Vx = Vx - Vy, set VF = NOT borrow.
-			// If Vx > Vy, then VF is set to 1, otherwise 0. Then Vy is subtracted from Vx, and the results stored in Vx.
-			if (c8->registers[x] < c8->registers[y]) {
-				c8->registers[VF] = 1;
-				c8->registers[x] = 255 + c8->registers[x] - c8->registers[y];
-			} else {
-				c8->registers[VF] = 0;
-				c8->registers[x] -= c8->registers[y];
-			}
-		}
-		// Shift Vx to the right, set VF to the popped bit.
-		case chip8instr.SHRVx_Vy_: {
-			c8->registers[VF] = c8->registers[x] & 1;
-			c8->registers[x] = c8->registers[x] >> 1;
-		}
-		// Set Vx = Vy - Vx, set VF = NOT borrow.
-		// If Vy > Vx, then VF is set to 1, otherwise 0.
-		// Then Vx is subtracted from Vy, and the results stored in Vx.
-		case chip8instr.SUBNVxVy: {
-			if (c8->registers[y] < c8->registers[x]) {
-				c8->registers[x] = 255 + c8->registers[y] - c8->registers[x];
-				c8->registers[VF] = 0;
-			} else {
-				c8->registers[x] = c8->registers[y] - c8->registers[x];
-				c8->registers[VF] = 1;
-			}
-		}
-		case chip8instr.SHLVx_Vy_: {
-			// Set Vx = Vx SHL 1.
-			// If the most-significant bit of Vx is 1, then VF is set to 1, otherwise to 0.
-			// Then Vx is multiplied by 2.
-			uint16_t r = c8->registers[x] << 1;
-			c8->registers[VF] = r > 255;
-			c8->registers[x] = r & 0xFF;
-		}
-		case chip8instr.SNEVxVy: {
-			// Skip next instruction if Vx != Vy.
-			if (c8->registers[x] != c8->registers[y]) {
-				c8->PC += 2;
-			}
-		}
-		case chip8instr.LDInnn: {
-			c8->I = nnn;
-		}
-		case chip8instr.JPV0nnn: {
-			// Jump to location V0 + nnn.
-			c8->PC = c8->registers[V0] + nnn;
-		}
-		case chip8instr.RNDVxkk: {
-			// Set Vx = random byte AND kk.
-			c8->registers[x] = rnd.intn(256) & kk;
-		}
-		case chip8instr.DRWVxVyn: {
-			// Display n-byte sprite starting at memory location I at (Vx, Vy), set VF = collision.
-			// The interpreter reads n bytes from memory, starting at the address stored in I. These bytes are then displayed as sprites on screen at coordinates (Vx, Vy). Sprites are XORed onto the existing screen. If this causes any pixels to be erased, VF is set to 1, otherwise it is set to 0. If the sprite is positioned so part of it is outside the coordinates of the display, it wraps around to the opposite side of the screen. See instruction 8xy3 for more information on XOR, and section 2.4, Display, for more information on the Chip-8 screen and sprites.
-			uint8_t *p = c8->memory + c8->I;
-			bool collision = false;
-			for (int i = 0; i < d4; i++) {
-				collision = xor_sprite(c8, x, y + i, *p) || collision;
-				p++;
-			}
-			if (collision) {
-				c8->registers[VF] = 1;
-			} else {
-				c8->registers[VF] = 0;
-			}
-		}
-		case chip8instr.SKPVx: {
-			// Skip next instruction if key with the value of Vx is pressed.
-			int key = c8->registers[x];
-			if (c8->keyBuffer[key]) {
-				c8->PC += 2;
-			}
-		}
-		case chip8instr.SKNPVx: {
-			// Skip next instruction if key with the value of Vx is not pressed.
-			int key = c8->registers[x];
-			if (!c8->keyBuffer[key]) {
-				c8->PC += 2;
-			}
-		}
-		case chip8instr.LDVxDT: {
-			// Set Vx = delay timer value.
-			c8->registers[x] = c8->DT;
-		}
-		case chip8instr.LDVxK: {
-			// Wait for a key press, store the value of the key in Vx.
-			c8->registers[x] = getchar();
-		}
-		case chip8instr.LDDTVx: {
-			// Set delay timer = Vx.
-			c8->DT = c8->registers[x];
-		}
-		case chip8instr.LDSTVx: {
-			// Set sound timer = Vx.
-			c8->ST = c8->registers[x];
-		}
-		case chip8instr.ADDIVx: {
-			// Set I = I + Vx.
-			c8->I += c8->registers[x];
-		}
+
+		// I = digit_sprite_addr(Vx)
 		case chip8instr.LDFVx: {
-			// Set I = location of sprite for digit Vx.
-			// The value of I is set to the location for the hexadecimal sprite corresponding to the value of Vx. See section 2.4, Display, for more information on the Chip-8 hexadecimal font.
-			c8->I = c8->registers[x] * 5;
+			int num = c8->registers[instr.x];
+			if (num < 0 || num > 15) {
+				panic("loading sprite for number %d - out of bounds\n", num);
+			}
+			c8->I = c8->registers[instr.x] * 5;
 		}
+
+		// Put decimal digits for Vx into I for drawing.
 		case chip8instr.LDBVx: {
-			// Store BCD representation of Vx in memory locations I, I+1, and I+2.
-			// The interpreter takes the decimal value of Vx, and places the hundreds digit in memory at location in I, the tens digit at location I+1, and the ones digit at location I+2.
 			uint8_t val = c8->registers[x];
 			uint8_t ones = val % 10;
 			val /= 10;
@@ -392,36 +236,231 @@ void step(chip8_t *c8, chip8instr.instr_t instr) {
 			*p++ = tens;
 			*p++ = ones;
 		}
+
+		// Draw first n bytes of selected sprite at (Vx, Vy), set VF to collision.
+		case chip8instr.DRWVxVyn: {
+			uint8_t *p = c8->memory + c8->I;
+
+			bool collision = false;
+			for (int i = 0; i < instr.d4; i++) {
+				collision = xor_sprite(c8, c8->registers[instr.x], c8->registers[instr.y] + i, *p) || collision;
+				p++;
+			}
+			if (collision) {
+				c8->registers[VF] = 1;
+			} else {
+				c8->registers[VF] = 0;
+			}
+		}
+
+		//
+		// Keyboard
+		//
+		// Wait for a key press, Vx = key code.
+		case chip8instr.LDVxK: {
+			c8->registers[x] = getchar();
+		}
+
+		//
+		// Jumping
+		//
+
+		// Goto nnn.
+		case chip8instr.JPnnn: {
+			c8->PC = instr.nnn;
+		}
+		// Goto V0 + nnn.
+		case chip8instr.JPV0nnn: {
+			c8->PC = c8->registers[V0] + nnn;
+		}
+		// Call subroutine at nnn.
+		case chip8instr.CALLnnn: {
+			c8->callStack[c8->SP] = c8->PC;
+			c8->SP++;
+			c8->PC = instr.nnn;
+		}
+		// Return from a call.
+		case chip8instr.RET: {
+			c8->SP--;
+			c8->PC = c8->callStack[c8->SP];
+			c8->callStack[c8->SP] = 0;
+		}
+		// Skip next instruction if Vx = kk.
+		case chip8instr.SEVxkk: {
+			if (c8->registers[x] == instr.kk) {
+				c8->PC += 2;
+			}
+		}
+		// Skip next instruction if Vx != kk.
+		case chip8instr.SNEVxkk: {
+			if (c8->registers[instr.x] != instr.kk) {
+				c8->PC += 2;
+			}
+		}
+		// Skip next instruction if Vx = Vy.
+		case chip8instr.SEVxVy: {
+			if (c8->registers[instr.x] == c8->registers[instr.y]) {
+				c8->PC += 2;
+			}
+		}
+		// Skip next instruction if Vx != Vy.
+		case chip8instr.SNEVxVy: {
+			if (c8->registers[instr.x] != c8->registers[instr.y]) {
+				c8->PC += 2;
+			}
+		}
+		// Skip next instruction if key with the value of Vx is pressed.
+		case chip8instr.SKPVx: {
+			int key = c8->registers[x];
+			if (c8->keyBuffer[key]) {
+				c8->PC += 2;
+			}
+		}
+		// Skip next instruction if key with the value of Vx is not pressed.
+		case chip8instr.SKNPVx: {
+			int key = c8->registers[x];
+			if (!c8->keyBuffer[key]) {
+				c8->PC += 2;
+			}
+		}
+
+		//
+		// Moves
+		//
+
+		// Vx = kk
+		case chip8instr.LDVxkk: {
+			c8->registers[instr.x] = instr.kk;
+		}
+		// Vx += kk
+		case chip8instr.ADDVxkk: {
+			c8->registers[instr.x] += instr.kk;
+		}
+		// Vx = Vy
+		case chip8instr.LDVxVy: {
+			c8->registers[instr.x] = c8->registers[instr.y];
+		}
+		// I = nnn
+		case chip8instr.LDInnn: {
+			c8->I = nnn;
+		}
+		// I += Vx.
+		case chip8instr.ADDIVx: {
+			c8->I += c8->registers[x];
+		}
+		// Dump V0..Vx to memory at I
 		case chip8instr.LD_I_Vx: {
-			// Store registers V0 through Vx in memory starting at location I.
 			uint8_t *p = &c8->memory[c8->I];
 			for (int i = 0; i <= x; i++) {
 				*p++ = c8->registers[i];
 			}
 		}
+		// Read V0..Vx from memory at I
 		case chip8instr.LDVx_I_: {
-			// Read registers V0 through Vx from memory starting at location I.
 			uint8_t *p = &c8->memory[c8->I];
 			for (int i = 0; i <= x; i++) {
 				c8->registers[i] = *p++;
 			}
 		}
+		// ST = Vx.
+		case chip8instr.LDSTVx: {
+			c8->ST = c8->registers[x];
+		}
+		// Vx = DT.
+		case chip8instr.LDVxDT: {
+			c8->registers[instr.x] = c8->DT;
+		}
+		// DT = Vx.
+		case chip8instr.LDDTVx: {
+			c8->DT = c8->registers[instr.x];
+		}
+
+		//
+		// Arithmetic
+		//
+
+		// Vx |= Vy
+		case chip8instr.ORVxVy: {
+			c8->registers[instr.x] = c8->registers[instr.x] | c8->registers[instr.y];
+		}
+		// Vx &= Vy
+		case chip8instr.ANDVxVy: {
+			c8->registers[instr.x] = c8->registers[instr.x] & c8->registers[instr.y];
+		}
+		// Vx ^= Vy
+		case chip8instr.XORVxVy: {
+			c8->registers[instr.x] = c8->registers[instr.x] ^ c8->registers[instr.y];
+		}
+		// Vx += Vy, VF = carry
+		case chip8instr.ADDVxVy: {
+			uint16_t sum = c8->registers[instr.x] + c8->registers[instr.y];
+			c8->registers[x] = sum & 0xFF;
+			if (sum > 255) {
+				c8->registers[VF] = 1;
+			} else {
+				c8->registers[VF] = 0;
+			}
+		}
+		// Vx -= Vy, VF = not borrow
+		case chip8instr.SUBVxVy: {
+			if (c8->registers[instr.x] < c8->registers[instr.y]) {
+				c8->registers[VF] = 1;
+				c8->registers[instr.x] = 255 + c8->registers[instr.x] - c8->registers[instr.y];
+			} else {
+				c8->registers[VF] = 0;
+				c8->registers[instr.x] -= c8->registers[instr.y];
+			}
+		}
+		// Shift Vx to the right, VF = popped bit.
+		case chip8instr.SHRVx_Vy_: {
+			c8->registers[VF] = c8->registers[x] & 1;
+			c8->registers[x] = c8->registers[x] >> 1;
+		}
+		// Shift Vx to the left, VF = popped bit.
+		case chip8instr.SHLVx_Vy_: {
+			uint16_t r = c8->registers[x] << 1;
+			c8->registers[VF] = r > 255;
+			c8->registers[x] = r & 0xFF;
+		}
+		// Vx = Vy - Vx, VF = not borrow
+		case chip8instr.SUBNVxVy: {
+			if (c8->registers[y] < c8->registers[x]) {
+				c8->registers[x] = 255 + c8->registers[y] - c8->registers[x];
+				c8->registers[VF] = 0;
+			} else {
+				c8->registers[x] = c8->registers[y] - c8->registers[x];
+				c8->registers[VF] = 1;
+			}
+		}
+		
+		// Vx = random & kk.
+		case chip8instr.RNDVxkk: {
+			c8->registers[x] = rnd.intn(256) & instr.kk;
+		}
+	}
+}
+
+// Unpacks bits from a byte into a given array.
+void getbits(uint8_t byte, uint8_t *bits) {
+	for (int i = 7; i >= 0; i--) {
+		bits[i] = byte % 2;
+		byte /= 2;
 	}
 }
 
 bool xor_sprite(chip8_t *c8, int x, y, uint8_t sprite) {
+	uint8_t bits[8];
+	getbits(sprite, bits);
+
 	bool collision = false;
-	for (int i = 7; i >= 0; i--) {
-		int bit = sprite % 2;
-		sprite /= 2;
-		collision = xor_pixel(c8, x+i, y, bit) || collision;
+	for (int i = 0; i < 8; i++) {
+		collision = xor_pixel(c8, x+i, y, bits[i]) || collision;
 	}
 	return collision;
 }
 
 bool xor_pixel(chip8_t *c8, int x, y, value) {
-	// printf("pixel at %d,%d -> %d\n", x, y, value);
-	int pos = (x % VID_WIDTH) + VID_WIDTH * (y % VID_HEIGHT);
+	int pos = y * VID_WIDTH + x;
 	char oldval = c8->video[pos];
 	char newval = oldval ^ value;
 	c8->video[pos] = newval;
@@ -436,23 +475,6 @@ void handle_interrupt(int signal) {
 
 void buzz() {
 	putchar('\b');
-}
-
-void draw(chip8_t *c8) {
-	puts("-----------------");
-	int n = VID_WIDTH * VID_HEIGHT;
-	for (int i = 0; i < n; i++) {
-		int val = c8->video[i];
-		if (val) {
-			putchar('x');
-		} else {
-			putchar(' ');
-		}
-		if ((i+1) % VID_WIDTH == 0) {
-			putchar('\n');
-		}
-	}
-	puts("");
 }
 
 pub int disas(char *rompath) {
@@ -510,4 +532,29 @@ bool contains(size_t *xs, size_t n, size_t x) {
 		}
 	}
 	return false;
+}
+
+int _prevsum = -1;
+void draw(char *buf, int width, height) {
+	int n = width * height;
+
+	int sum = 0;
+	for (int i = 0; i < n; i++) {
+		sum += buf[i];
+	}
+	if (sum == _prevsum) {
+		return;
+	}
+	_prevsum = sum;
+	for (int i = 0; i < n; i++) {
+		if (buf[i]) {
+			putchar('x');
+		} else {
+			putchar('.');
+		}
+		if ((i+1) % width == 0) {
+			putchar('\n');
+		}
+	}
+	puts("");
 }
