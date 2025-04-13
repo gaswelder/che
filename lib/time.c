@@ -105,9 +105,11 @@ pub bool time_format(char *buf, size_t size, const char *fmt)
 }
 
 pub bool sleep(int64_t dt) {
+	int64_t s = dt / SECONDS;
+	int64_t us = dt % SECONDS;
     timespec_t t = {
-        .tv_sec = dt / SECONDS,
-        .tv_nsec = 0
+        .tv_sec = s,
+        .tv_nsec = us * 1000
     };
     return OS.nanosleep(&t, NULL) == 0;
 }
