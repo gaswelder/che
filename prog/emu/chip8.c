@@ -100,8 +100,6 @@ uint8_t DIGITS[] = {
 
 term.term_t *term = NULL;
 
-const bool DEBUG = false;
-
 void loadrom(chip8_t *c8, const char *rompath) {
 	FILE *f = fopen(rompath, "rb");
 	if (!f) {
@@ -124,10 +122,9 @@ pub int run(char *rompath) {
 	// Technically, we don't need this as we can load sprites directly,
 	// but there might be some crazy code that assumes the sprites are here.
 	memcpy(c8.memory, DIGITS, sizeof(DIGITS));
-
+	loadrom(&c8, rompath);
 	c8.PC = MEM_BEGIN;
 
-	loadrom(&c8, rompath);
 
 	signal(SIGINT, handle_interrupt);
 	term = term.term_get_stdin();
@@ -146,12 +143,8 @@ pub int run(char *rompath) {
 		}
 		if (skip) continue;
 
-
 		int code = pollkeyboard();
 		if (code >= 0) {
-			if (DEBUG) {
-				printf("pressed %X\n", code);
-			}
 			c8.keyBuffer[code] = 1;
 		}
 
@@ -160,28 +153,9 @@ pub int run(char *rompath) {
 		chip8instr.instr_t instr;
 		chip8instr.decode(&instr, b1, b2);
 
-		if (DEBUG) {
-			printf("0x%x ", c8.PC);
-			chip8instr.print_instr(instr);
-			putchar('\n');
-		}
-
 		c8.PC += 2;
 
 		step(&c8, instr);
-		if (code >= 0) {
-			c8.keyBuffer[code] = 0;
-		}
-
-		if (DEBUG) {
-			printf("\t");
-			for (int i = 0; i < 16; i++) {
-				printf(" %x", c8.registers[i]);
-			}
-			printf(" I:%x\n\n", c8.I);
-		}
-
-
 		draw(c8.video, VID_WIDTH, VID_HEIGHT);
 
 		// 60Hz
@@ -197,13 +171,7 @@ int pollkeyboard() {
 }
 
 void step(chip8_t *c8, chip8instr.instr_t instr) {
-	int OP = instr.OP;
-	int x = instr.x;
-	int y = instr.y;
-	uint16_t nnn = instr.nnn;
-
-
-	switch (OP) {
+	switch (instr.OP) {
 		//
 		// Drawing
 		//
@@ -224,7 +192,7 @@ void step(chip8_t *c8, chip8instr.instr_t instr) {
 
 		// Put decimal digits for Vx into I for drawing.
 		case chip8instr.LDBVx: {
-			uint8_t val = c8->registers[x];
+			uint8_t val = c8->registers[instr.x];
 			uint8_t ones = val % 10;
 			val /= 10;
 			uint8_t tens = val % 10;
@@ -259,7 +227,7 @@ void step(chip8_t *c8, chip8instr.instr_t instr) {
 		// Wait for a key press, Vx = key code.
 		case chip8instr.LDVxK: {
 			panic("implement key waiting");
-			c8->registers[x] = getchar();
+			c8->registers[instr.x] = getchar();
 		}
 
 		//
@@ -272,7 +240,7 @@ void step(chip8_t *c8, chip8instr.instr_t instr) {
 		}
 		// Goto V0 + nnn.
 		case chip8instr.JPV0nnn: {
-			c8->PC = c8->registers[V0] + nnn;
+			c8->PC = c8->registers[V0] + instr.nnn;
 		}
 		// Call subroutine at nnn.
 		case chip8instr.CALLnnn: {
@@ -288,7 +256,7 @@ void step(chip8_t *c8, chip8instr.instr_t instr) {
 		}
 		// Skip next instruction if Vx = kk.
 		case chip8instr.SEVxkk: {
-			if (c8->registers[x] == instr.kk) {
+			if (c8->registers[instr.x] == instr.kk) {
 				c8->PC += 2;
 			}
 		}
@@ -320,7 +288,7 @@ void step(chip8_t *c8, chip8instr.instr_t instr) {
 		}
 		// Skip next instruction if key with the value of Vx is not pressed.
 		case chip8instr.SKNPVx: {
-			int key = c8->registers[x];
+			int key = c8->registers[instr.x];
 			if (!c8->keyBuffer[key]) {
 				c8->PC += 2;
 			}
@@ -344,29 +312,29 @@ void step(chip8_t *c8, chip8instr.instr_t instr) {
 		}
 		// I = nnn
 		case chip8instr.LDInnn: {
-			c8->I = nnn;
+			c8->I = instr.nnn;
 		}
 		// I += Vx.
 		case chip8instr.ADDIVx: {
-			c8->I += c8->registers[x];
+			c8->I += c8->registers[instr.x];
 		}
 		// Dump V0..Vx to memory at I
 		case chip8instr.LD_I_Vx: {
 			uint8_t *p = &c8->memory[c8->I];
-			for (int i = 0; i <= x; i++) {
+			for (int i = 0; i <= instr.x; i++) {
 				*p++ = c8->registers[i];
 			}
 		}
 		// Read V0..Vx from memory at I
 		case chip8instr.LDVx_I_: {
 			uint8_t *p = &c8->memory[c8->I];
-			for (int i = 0; i <= x; i++) {
+			for (int i = 0; i <= instr.x; i++) {
 				c8->registers[i] = *p++;
 			}
 		}
 		// ST = Vx.
 		case chip8instr.LDSTVx: {
-			c8->ST = c8->registers[x];
+			c8->ST = c8->registers[instr.x];
 		}
 		// Vx = DT.
 		case chip8instr.LDVxDT: {
@@ -396,7 +364,7 @@ void step(chip8_t *c8, chip8instr.instr_t instr) {
 		// Vx += Vy, VF = carry
 		case chip8instr.ADDVxVy: {
 			uint16_t sum = c8->registers[instr.x] + c8->registers[instr.y];
-			c8->registers[x] = sum & 0xFF;
+			c8->registers[instr.x] = sum & 0xFF;
 			if (sum > 255) {
 				c8->registers[VF] = 1;
 			} else {
@@ -415,29 +383,29 @@ void step(chip8_t *c8, chip8instr.instr_t instr) {
 		}
 		// Shift Vx to the right, VF = popped bit.
 		case chip8instr.SHRVx_Vy_: {
-			c8->registers[VF] = c8->registers[x] & 1;
-			c8->registers[x] = c8->registers[x] >> 1;
+			c8->registers[VF] = c8->registers[instr.x] & 1;
+			c8->registers[instr.x] = c8->registers[instr.x] >> 1;
 		}
 		// Shift Vx to the left, VF = popped bit.
 		case chip8instr.SHLVx_Vy_: {
-			uint16_t r = c8->registers[x] << 1;
+			uint16_t r = c8->registers[instr.x] << 1;
 			c8->registers[VF] = r > 255;
-			c8->registers[x] = r & 0xFF;
+			c8->registers[instr.x] = r & 0xFF;
 		}
 		// Vx = Vy - Vx, VF = not borrow
 		case chip8instr.SUBNVxVy: {
-			if (c8->registers[y] < c8->registers[x]) {
-				c8->registers[x] = 255 + c8->registers[y] - c8->registers[x];
+			if (c8->registers[instr.y] < c8->registers[instr.x]) {
+				c8->registers[instr.x] = 255 + c8->registers[instr.y] - c8->registers[instr.x];
 				c8->registers[VF] = 0;
 			} else {
-				c8->registers[x] = c8->registers[y] - c8->registers[x];
+				c8->registers[instr.x] = c8->registers[instr.y] - c8->registers[instr.x];
 				c8->registers[VF] = 1;
 			}
 		}
 		
 		// Vx = random & kk.
 		case chip8instr.RNDVxkk: {
-			c8->registers[x] = rnd.intn(256) & instr.kk;
+			c8->registers[instr.x] = rnd.intn(256) & instr.kk;
 		}
 	}
 }

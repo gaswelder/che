@@ -110,101 +110,108 @@ pub void decode(instr_t *i, uint8_t b1, b2) {
 }
 
 pub void print_instr(instr_t i) {
+	FILE *f = stdout;
 	switch (i.OP) {
-		case JPnnn: { fprintf(stdout, "JP 0x%x", i.nnn); }
-		case CALLnnn: { fprintf(stdout, "CALL 0x%x", i.nnn); }
-		case SEVxkk: { fprintf(stdout, "SE V%x 0x%x \t// skip if V[%x] == %d", i.x, i.kk, i.x, i.kk); }
+		case JPnnn: {
+			fprintf(f, "JP 0x%x\t# goto 0x%x", i.nnn, i.nnn);
+		}
+		case CALLnnn: {
+			fprintf(f, "CALL 0x%x", i.nnn);
+		}
+		case SEVxkk: {
+			fprintf(f, "SE V%x 0x%x\t# skip if V[%x] == %d", i.x, i.kk, i.x, i.kk);
+		}
 		case SNEVxkk: {
-			fprintf(stdout, "SNE V%x 0x%x \t// skip if V[%x] != %d", i.x, i.kk, i.x, i.kk);
+			fprintf(f, "SNE V%x 0x%x\t# skip if V[%x] != %d", i.x, i.kk, i.x, i.kk);
 		}
 		case SEVxVy: {
-			fprintf(stdout, "SE V%x V%x \t// skip if equal", i.x, i.y);
+			fprintf(f, "SE V%x V%x\t# skip if equal", i.x, i.y);
 		}
 		case LDVxkk: {
-			fprintf(stdout, "LD V%x 0x%x \t// V[%x] = %d", i.x, i.kk, i.x, i.kk);
+			fprintf(f, "LD V%x 0x%x\t# V[%x] = %d", i.x, i.kk, i.x, i.kk);
 		}
 		case ADDVxkk: {
-			fprintf(stdout, "ADD V%x 0x%x \t// V[%x] += %d", i.x, i.kk, i.x, i.kk);
+			fprintf(f, "ADD V%x 0x%x\t# V[%x] += %d", i.x, i.kk, i.x, i.kk);
 		}
 		case LDVxVy: {
-			fprintf(stdout, "LD V%x V%x \t// V[%x] = V[%x]", i.x, i.y, i.x, i.y);
+			fprintf(f, "LD V%x V%x\t# V[%x] = V[%x]", i.x, i.y, i.x, i.y);
 		}
 		case ORVxVy: {
-			fprintf(stdout, "OR V%x V%x \t// V[%x] |= V[%x]", i.x, i.y, i.x, i.y);
+			fprintf(f, "OR V%x V%x\t# V[%x] |= V[%x]", i.x, i.y, i.x, i.y);
 		}
 		case ANDVxVy: {
-			fprintf(stdout, "AND V%x V%x \t// V[%x] &= V[%x]", i.x, i.y, i.x, i.y);
+			fprintf(f, "AND V%x V%x\t# V[%x] &= V[%x]", i.x, i.y, i.x, i.y);
 		}
 		case XORVxVy: {
-			fprintf(stdout, "XOR V%x V%x \t// V[%x] ^= V[%x]", i.x, i.y, i.x, i.y);
+			fprintf(f, "XOR V%x V%x\t# V[%x] ^= V[%x]", i.x, i.y, i.x, i.y);
 		}
 		case ADDVxVy: {
-			fprintf(stdout, "ADD V%x V%x \t// V[%x] += V[%x]", i.x, i.y, i.x, i.y);
+			fprintf(f, "ADD V%x V%x\t# V[%x] += V[%x]", i.x, i.y, i.x, i.y);
 		}
 		case SUBVxVy: {
-			fprintf(stdout, "SUB V%x V%x \t// V[%x] -= V[%x]", i.x, i.y, i.x, i.y);
+			fprintf(f, "SUB V%x V%x\t# V[%x] -= V[%x]", i.x, i.y, i.x, i.y);
 		}
 		case SHRVx_Vy_: {
-			fprintf(stdout, "SHR Vx _Vy_");
+			fprintf(f, "SHR Vx _Vy_");
 		}
 		case SUBNVxVy: {
-			fprintf(stdout, "SUBN Vx Vy");
+			fprintf(f, "SUBN Vx Vy");
 		}
 		case SHLVx_Vy_: {
-			fprintf(stdout, "SHL Vx _Vy_");
+			fprintf(f, "SHL Vx _Vy_");
 		}
 		case SNEVxVy: {
-			fprintf(stdout, "SNE V%x V%x \t// skip if V[%x] != V[%x]", i.x, i.y, i.x, i.y);
+			fprintf(f, "SNE V%x V%x\t# skip if V[%x] != V[%x]", i.x, i.y, i.x, i.y);
 		}
 		case LDInnn: {
-			fprintf(stdout, "LD I 0x%x \t// I = %x", i.nnn, i.nnn);
+			fprintf(f, "LD I 0x%x\t# I = %x", i.nnn, i.nnn);
 		}
 		case JPV0nnn: {
-			fprintf(stdout, "JP V%x 0x%x \t// jump to V[%x] + %d", i.x, i.nnn, i.x, i.nnn);
+			fprintf(f, "JP V%x 0x%x\t# jump to V[%x] + %d", i.x, i.nnn, i.x, i.nnn);
 		}
 		case RNDVxkk: {
-			fprintf(stdout, "RND V%x 0x%x \t// V[%x] = random & 0x%x", i.x, i.kk, i.x, i.kk);
+			fprintf(f, "RND V%x 0x%x\t# V[%x] = random & 0x%x", i.x, i.kk, i.x, i.kk);
 		}
 		case DRWVxVyn: {
-			fprintf(stdout, "DRW V%x V%x %x \t// draw %d bytes from I at (V[%x], V[%x])", i.x, i.y, i.d4, i.d4, i.x, i.y);
+			fprintf(f, "DRW V%x V%x %x\t# draw %d bytes from I at (V[%x], V[%x])", i.x, i.y, i.d4, i.d4, i.x, i.y);
 		}
 		case SKPVx: {
-			fprintf(stdout, "SKP Vx");
+			fprintf(f, "SKP V%x  \t# skip next instruction if key V[%x] is pressed", i.x, i.x);
 		}
 		case SKNPVx: {
-			fprintf(stdout, "SKNP Vx");
+			fprintf(f, "SKNP V%x  \t# skip next instruction if key V[%x] is not pressed", i.x, i.x);
 		}
 		case LDVxDT: {
-			fprintf(stdout, "LD Vx DT");
-		}
-		case LDVxK: {
-			fprintf(stdout, "LD Vx K");
+			fprintf(f, "LD V%x DT\t# V[%x] = DT", i.x, i.x);
 		}
 		case LDDTVx: {
-			fprintf(stdout, "LD DT Vx");
+			fprintf(f, "LD DT V%d\t# DT = V[%x]", i.x, i.x);
+		}
+		case LDVxK: {
+			fprintf(f, "LD V%x K\t# V%x = wait_key_press()", i.x, i.x);
 		}
 		case LDSTVx: {
-			fprintf(stdout, "LD ST Vx");
+			fprintf(f, "LD ST V%x\t# ST = V%x", i.x, i.x);
 		}
 		case ADDIVx: {
-			fprintf(stdout, "ADD I Vx");
+			fprintf(f, "ADD I V%x\t# I = V%x", i.x, i.x);
 		}
 		case LDFVx: {
-			fprintf(stdout, "LD F V%x \t// I = sprite_addr(V[%x])", i.x, i.x);
+			fprintf(f, "LD F V%x \t# I = sprite_addr(V[%x])", i.x, i.x);
 		}
 		case LDBVx: {
-			fprintf(stdout, "LDBVx");
+			fprintf(f, "LD B V%x \t# build_sprites_for(V[%x])", i.x, i.x);
 		}
 		case LD_I_Vx: {
-			fprintf(stdout, "LD_I_Vx");
+			fprintf(f, "LD [I] V%x\t# dump registers 0..%x to I", i.x, i.x);
 		}
 		case LDVx_I_: {
-			fprintf(stdout, "LD V%x [I] \t// init V[0]..V[%x] from memory at I", i.x, i.x);
+			fprintf(f, "LD V%x [I] \t# load registers 0..%x from I", i.x, i.x);
 		}
-		case RET: { fprintf(stdout, "RET\n"); }
-		case CLS: { fprintf(stdout, "CLS"); }
+		case RET: { fprintf(f, "RET\n"); }
+		case CLS: { fprintf(f, "CLS"); }
 		default: {
-			fprintf(stdout, "unknown op %x", i.OP);
+			fprintf(f, "unknown op %x", i.OP);
 		}
 	}
 }
