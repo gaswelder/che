@@ -547,11 +547,8 @@ void draw(char *buf, int width, height) {
 	}
 	_prevsum = sum;
 	for (int i = 0; i < n; i++) {
-		if (buf[i]) {
-			putchar('x');
-		} else {
-			putchar('.');
-		}
+		if (buf[i]) printf("█");
+		else printf(" ");
 		if ((i+1) % width == 0) {
 			putchar('\n');
 		}
