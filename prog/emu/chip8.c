@@ -258,6 +258,7 @@ void step(chip8_t *c8, chip8instr.instr_t instr) {
 		//
 		// Wait for a key press, Vx = key code.
 		case chip8instr.LDVxK: {
+			panic("implement key waiting");
 			c8->registers[x] = getchar();
 		}
 
@@ -311,10 +312,11 @@ void step(chip8_t *c8, chip8instr.instr_t instr) {
 		}
 		// Skip next instruction if key with the value of Vx is pressed.
 		case chip8instr.SKPVx: {
-			int key = c8->registers[x];
+			int key = c8->registers[instr.x];
 			if (c8->keyBuffer[key]) {
 				c8->PC += 2;
 			}
+			memset(c8->keyBuffer, 0, 16);
 		}
 		// Skip next instruction if key with the value of Vx is not pressed.
 		case chip8instr.SKNPVx: {
