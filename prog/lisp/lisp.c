@@ -175,8 +175,7 @@ item_t *eval(item_t *i) {
 	if (i->list) {
 		return eval_list(i);
 	}
-	dunno(i);
-	return NULL;
+	return i;
 }
 
 item_t *eval_list(item_t *l) {
