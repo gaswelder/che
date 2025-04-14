@@ -45,10 +45,11 @@ pub item_t *car(item_t *x) {
 	return x->data;
 }
 
-void dbgprint(item_t *x) {
+// Prints the given item to stdout for debugging.
+pub void dbgprint(item_t *x) {
 	char buf[4096];
 	print(x, buf, 4096);
-	puts(buf);
+	printf("%p (data %p) %s\n", (void *)x, x->data, buf);
 }
 
 pub item_t *cdr(item_t *x) {

@@ -56,8 +56,6 @@ rt.item_t *runfunc(char *name, rt.item_t *args) {
 
 void dunno(rt.item_t *i) {
 	fprintf(stderr, "how to eval? ");
-	char buf[4096];
-	rt.print(i, buf, 4096);
-	puts(buf);
+	rt.dbgprint(i);
 	exit(1);
 }
