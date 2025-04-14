@@ -13,7 +13,7 @@ pub t *parse(const char *s) {
 		panic("calloc failed");
 	}
 
-    parsebuf.parsebuf_t *buf = parsebuf.buf_new(s);
+    parsebuf.parsebuf_t *buf = parsebuf.from_str(s);
 
     // http
     char *q = r->schema;

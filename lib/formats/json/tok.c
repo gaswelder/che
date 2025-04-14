@@ -35,7 +35,7 @@ pub json_tokenizer_t *new(const char *s) {
     if (!t) {
         return t;
     }
-    t->buf = parsebuf.buf_new(s);
+    t->buf = parsebuf.from_str(s);
     if (!t->buf) {
         free(t);
         return NULL;

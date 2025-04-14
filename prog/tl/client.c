@@ -131,7 +131,7 @@ torr_t parseline(char *line)
 	// 41     n/a        None  Unknown      0.0     0.0   None  Idle          Books
 	// 38*    n/a        None  Unknown      0.0     0.0   None  Stopped       name
 
-    parsebuf.parsebuf_t *b = parsebuf.buf_new(line);
+    parsebuf.parsebuf_t *b = parsebuf.from_str(line);
 
     torr_t t = {};
     parsebuf.buf_skip_set(b, " \t");

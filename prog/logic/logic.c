@@ -172,7 +172,7 @@ term_t *parse_term1(parsebuf.parsebuf_t *b) {
 }
 
 term_t *parse_term(const char *s) {
-    return parse_term1(parsebuf.buf_new(s));
+    return parse_term1(parsebuf.from_str(s));
 }
 
 void print_map(map.map_t *m) {

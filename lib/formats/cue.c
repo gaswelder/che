@@ -70,7 +70,7 @@ pub cue_t *cue_parse(const char *s, char **err)
 {
 	context_t c = {};
 
-	c.buf = parsebuf.buf_new(s);
+	c.buf = parsebuf.from_str(s);
 	if (!c.buf) {
 		*err = strerror(errno);
 		return NULL;

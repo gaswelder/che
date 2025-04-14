@@ -26,7 +26,7 @@ pub bool read_line(reader_t *r) {
 		parsebuf.buf_free(r->b);
 		r->b = NULL;
 	}
-	r->b = parsebuf.buf_new(r->line);
+	r->b = parsebuf.from_str(r->line);
 	r->vals = 0;
 	return true;
 }

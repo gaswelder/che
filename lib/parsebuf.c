@@ -19,7 +19,7 @@ pub parsebuf_t *from_stdin() {
 
 // Returns a new parsebuf instance reading from the given string.
 // The string must not be deallocated before the buffer.
-pub parsebuf_t *buf_new(const char *s) {
+pub parsebuf_t *from_str(const char *s) {
 	parsebuf_t *b = new(reader.string(s));
 	b->reader_own = true;
 	return b;
