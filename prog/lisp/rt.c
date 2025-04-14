@@ -1,4 +1,5 @@
 #import strings
+#import strbuilder
 
 pub typedef {
 	bool list;
@@ -38,10 +39,16 @@ pub item_t *car(item_t *x) {
 		panic("car: NULL");
 	}
 	if (!x->list) {
-		print(x);
+		dbgprint(x);
 		panic("car: item not a list");
 	}
 	return x->data;
+}
+
+void dbgprint(item_t *x) {
+	char buf[4096];
+	print(x, buf, 4096);
+	puts(buf);
 }
 
 pub item_t *cdr(item_t *x) {
@@ -49,7 +56,7 @@ pub item_t *cdr(item_t *x) {
 		panic("cdr: NULL");
 	}
 	if (!x->list) {
-		print(x);
+		dbgprint(x);
 		panic("cdr: item not a list: %s", desc(x));
 	}
 	return x->next;
@@ -74,27 +81,36 @@ pub char *intern(char *text) {
 	return symbols[i];
 }
 
-pub void print(item_t *x) {
+void _print(strbuilder.str *s, item_t *x) {
 	if (!x) {
-		puts("NULL");
+		strbuilder.adds(s, "NULL");
 		return;
 	}
 	if (!x->list) {
-		printf("%s", (char *) x->data);
+		strbuilder.adds(s, x->data);
 		return;
 	}
-	putchar('(');
+	strbuilder.str_addc(s, '(');
 	item_t *l = x;
 	int i = 0;
 	while (l) {
 		if (i > 0) {
-			putchar(' ');
+			strbuilder.str_addc(s, ' ');
 		}
-		print(car(l));
+		_print(s, car(l));
 		l = cdr(l);
 		i++;
 	}
-	putchar(')');
+	strbuilder.str_addc(s, ')');
+}
+
+pub void print(item_t *x, char *buf, size_t len) {
+	strbuilder.str *s = strbuilder.str_new();
+	_print(s, x);
+	char *r = strbuilder.str_unpack(s);
+
+	strncpy(buf, r, len);
+	free(r);
 }
 
 char *desc(item_t *x) {

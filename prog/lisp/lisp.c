@@ -6,14 +6,18 @@ int main() {
 	parsebuf.parsebuf_t *b = parsebuf.from_stdin();
 	rt.item_t *input = read.read(b);
 	rt.item_t *r = eval(input);
-	rt.print(r);
+
+	char buf[4096];
+	rt.print(r, buf, 4096);
+	puts(buf);
 	return 0;
 }
 
 void dunno(rt.item_t *i) {
 	fprintf(stderr, "how to eval? ");
-	rt.print(i);
-	puts("");
+	char buf[4096];
+	rt.print(i, buf, 4096);
+	puts(buf);
 	exit(1);
 }
 
