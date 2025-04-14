@@ -45,13 +45,28 @@ rt.item_t *runfunc(char *name, rt.item_t *args) {
 	if (name == rt.intern("cons")) return rt.cons(rt.car(args), rt.car(rt.cdr(args)));
 	if (name == rt.intern("cond")) return cond(args);
 	if (name == rt.intern("eq?")) {
-		if (eval(rt.car(args)) == eval(rt.car(rt.cdr(args)))) {
-			return rt.sym("true");
-		}
-		return NULL;
+		return eq(eval(rt.car(args)), eval(rt.car(rt.cdr(args))));
 	}
 	panic("unknown function %s", name);
 	return NULL;
+}
+
+rt.item_t *eq(rt.item_t *a, *b) {
+	int t = rt.typeof(a);
+	// If types don't match, then not equal.
+	if (rt.typeof(b) != t) {
+		return NULL;
+	}
+	switch (t) {
+		// Compare symbols by their content.
+		case rt.SYMBOL: {
+			if (a->data == b->data) {
+				return rt.sym("true");
+			}
+			return NULL;
+		}
+	}
+	panic("unhandled item type: %d", t);
 }
 
 void dunno(rt.item_t *i) {

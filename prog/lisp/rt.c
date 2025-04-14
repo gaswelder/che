@@ -1,12 +1,35 @@
 #import strings
 #import strbuilder
 
+pub enum {
+	UNKNOWN,
+	NIL,
+	LIST,
+	SYMBOL
+};
+
+const char *typename(int type) {
+	switch (type) {
+		case NIL: { return "NIL"; }
+		case LIST: { return "LIST"; }
+		case SYMBOL: { return "SYMBOL"; }
+		default: { return "UNKNOWN TYPE"; }
+	}
+}
+
 pub typedef {
 	bool list;
 	bool num;
 	void *data;
 	item_t *next;
 } item_t;
+
+// Returns the item's type.
+pub int typeof(item_t *x) {
+	if (!x) return NIL;
+	if (x->list) return LIST;
+	return SYMBOL;
+}
 
 // Creates a new symbol with the given text content.
 pub item_t *sym(char *s) {
@@ -49,7 +72,7 @@ pub item_t *car(item_t *x) {
 pub void dbgprint(item_t *x) {
 	char buf[4096];
 	print(x, buf, 4096);
-	printf("%p (data %p) %s\n", (void *)x, x->data, buf);
+	printf("%s %p (data %p) %s\n", typename(typeof(x)), (void *)x, x->data, buf);
 }
 
 pub item_t *cdr(item_t *x) {
