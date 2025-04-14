@@ -1,52 +1,38 @@
 #import rt.c
+#import parsebuf
 
-// Reads next item from stdin.
-pub rt.item_t *read() {
-	skipspaces();
-	if (peek() == '(') {
-		return readlist();
+// Reads next item from the buffer.
+pub rt.item_t *read(parsebuf.parsebuf_t *b) {
+	parsebuf.spaces(b);
+	if (parsebuf.buf_peek(b) == '(') {
+		return readlist(b);
 	}
-	return readsymbol();
+	return readsymbol(b);
 }
 
 // Reads a symbol.
-rt.item_t *readsymbol() {
+rt.item_t *readsymbol(parsebuf.parsebuf_t *b) {
 	char buf[60] = {0};
 	int pos = 0;
-	while (peek() != EOF && !isspace(peek()) && peek() != ')') {
-		buf[pos++] = getchar();
+	while (parsebuf.buf_more(b) && !isspace(parsebuf.buf_peek(b)) && parsebuf.buf_peek(b) != ')') {
+		buf[pos++] = parsebuf.buf_get(b);
 	}
 	return rt.sym(rt.intern(buf));
 }
 
 // Reads a list.
-rt.item_t *readlist() {
-	getchar(); // "("
+rt.item_t *readlist(parsebuf.parsebuf_t *b) {
+	parsebuf.buf_get(b); // "("
 	rt.item_t *r = NULL;
 
-	skipspaces();
-	while (peek() != EOF && peek() != ')') {
-		r = rt.cons(read(), r);
-		skipspaces();
+	parsebuf.spaces(b);
+	while (parsebuf.buf_peek(b) != EOF && parsebuf.buf_peek(b) != ')') {
+		r = rt.cons(read(b), r);
+		parsebuf.spaces(b);
 	}
-	if (peek() != ')') {
+	if (parsebuf.buf_peek(b) != ')') {
 		panic("expected )");
 	}
-	getchar(); // ")"
+	parsebuf.buf_get(b); // ")"
 	return rt.reverse(r);
-}
-
-void skipspaces() {
-	while (isspace(peek())) {
-		getchar();
-	}
-}
-
-int peek() {
-	int c = getchar();
-	if (c == EOF) {
-		return EOF;
-	}
-	ungetc(c, stdin);
-	return c;
 }

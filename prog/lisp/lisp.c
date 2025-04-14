@@ -1,8 +1,10 @@
 #import read.c
 #import rt.c
+#import parsebuf
 
 int main() {
-	rt.item_t *input = read.read();
+	parsebuf.parsebuf_t *b = parsebuf.from_stdin();
+	rt.item_t *input = read.read(b);
 	rt.item_t *r = eval(input);
 	rt.print(r);
 	return 0;
