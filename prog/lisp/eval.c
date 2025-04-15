@@ -42,16 +42,22 @@ rt.item_t *apply(rt.item_t *args) {
 rt.item_t *runfunc(char *name, rt.item_t *args) {
 	if (name == rt.intern("apply")) return apply(args);
 	if (name == rt.intern("quote")) return rt.car(args);
-	if (name == rt.intern("cons")) return rt.cons(rt.car(args), rt.car(rt.cdr(args)));
+	if (name == rt.intern("cons")) return cons(args);
 	if (name == rt.intern("cond")) return cond(args);
-	if (name == rt.intern("eq?")) {
-		return eq(eval(rt.car(args)), eval(rt.car(rt.cdr(args))));
-	}
+	if (name == rt.intern("eq?")) return eq(args);
 	panic("unknown function %s", name);
 	return NULL;
 }
 
-rt.item_t *eq(rt.item_t *a, *b) {
+rt.item_t *cons(rt.item_t *args) {
+	return rt.cons(rt.car(args), rt.car(rt.cdr(args)));
+}
+
+// Implements the eq? function.
+rt.item_t *eq(rt.item_t *args) {
+	rt.item_t *a = eval(rt.car(args));
+	rt.item_t *b = eval(rt.car(rt.cdr(args)));
+
 	int t = rt.typeof(a);
 	// If types don't match, then not equal.
 	if (rt.typeof(b) != t) {
