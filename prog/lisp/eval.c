@@ -61,6 +61,7 @@ tok.tok_t *runfunc(const char *name, tok.tok_t *args) {
 		case "quote": { return car(args); }
 		case "cons": { return cons(args); }
 		case "define": { return define(args); }
+		case "*": { return mul(args); }
 	}
 	// if (name == rt.intern("cond")) return cond(args);
 	panic("unknown function %s", name);
@@ -100,7 +101,17 @@ tok.tok_t *apply(tok.tok_t *list) {
 	return runfunc(fn->name, eval(car(cdr(list))));
 }
 
-
+// (* a b) returns a * b
+tok.tok_t *mul(tok.tok_t *args) {
+	tok.tok_t *a = eval(car(args));
+	tok.tok_t *b = eval(car(cdr(args)));
+	if (a->type != tok.NUMBER || b->type != tok.NUMBER) {
+		panic("not a number");
+	}
+	char buf[100];
+	sprintf(buf, "%d", atoi(a->value) * atoi(b->value));
+	return tok.newnumber(buf);
+}
 
 // (eq? a b) returns true if a equals b.
 tok.tok_t *eq(tok.tok_t *args) {
@@ -124,8 +135,6 @@ tok.tok_t *eq(tok.tok_t *args) {
 	}
 	return NULL;
 }
-
-
 
 // (cons 1 x) constructs a list (1, ...x)
 tok.tok_t *cons(tok.tok_t *args) {

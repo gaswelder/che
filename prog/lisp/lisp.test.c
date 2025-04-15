@@ -17,6 +17,7 @@ case_t cases[] = {
 	{"(cons 1 (2))", "(1 2)"},
 	{"(apply cons (quote (a (b c))))", "(a b c)"},
 	{"(define x 1) x", "1"},
+	{"(* 2 6)", "12"},
 };
 
 int main() {
