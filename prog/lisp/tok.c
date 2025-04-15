@@ -4,22 +4,39 @@ pub enum {
 	UNKNOWN,
 	LIST,
 	SYMBOL,
+	NUMBER,
 };
 
 const char *typename(int type) {
 	switch (type) {
 		case LIST: { return "LIST"; }
 		case SYMBOL: { return "SYMBOL"; }
+		case NUMBER: { return "NUMBER"; }
 		default: { return "UNKNOWN TYPE"; }
 	}
 }
 
 pub typedef {
 	int type;
+
+	// for number:
+	char *value;
+
+	// for symbol:
 	char *name;
+
+	// for list:
 	tok_t **items;
 	size_t nitems;
 } tok_t;
+
+pub tok_t *newnumber(const char *val) {
+	tok_t *t = calloc(1, sizeof(tok_t));
+	t->type = NUMBER;
+	t->value = calloc(60, 1);
+	strcpy(t->value, val);
+	return t;
+}
 
 pub tok_t *newlist() {
 	tok_t *t = calloc(1, sizeof(tok_t));
@@ -60,6 +77,9 @@ void _print(strbuilder.str *s, tok_t *x) {
 	switch (x->type) {
 		case SYMBOL: {
 			strbuilder.adds(s, x->name);
+		}
+		case NUMBER: {
+			strbuilder.adds(s, x->value);
 		}
 		case LIST: {
 			strbuilder.str_addc(s, '(');

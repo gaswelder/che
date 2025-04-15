@@ -21,7 +21,19 @@ pub tok.tok_t *read(parsebuf.parsebuf_t *b) {
 	if (parsebuf.peek(b) == '(') {
 		return readlist(b);
 	}
+	if (isdigit(parsebuf.peek(b))) {
+		return readnum(b);
+	}
 	return readsymbol(b);
+}
+
+// Reads a number.
+tok.tok_t *readnum(parsebuf.parsebuf_t *b) {
+	char buf[100];
+	if (!parsebuf.num(b, buf, 100)) {
+		panic("failed to read a number");
+	}
+	return tok.newnumber(buf);
 }
 
 // Reads a symbol.

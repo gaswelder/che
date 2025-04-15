@@ -23,8 +23,9 @@ pub tok.tok_t *evalall(tok.tok_t **all) {
 // Evaluates a node.
 pub tok.tok_t *eval(tok.tok_t *x) {
 	switch (x->type) {
+		case tok.SYMBOL: { return eval_symbol(x); }
 		case tok.LIST: { return eval_list(x); }
-		case tok.SYMBOL: { return x; }
+		case tok.NUMBER: { return x; }
 		default: {
 			panic("unexpected node type: %d", x->type);
 		}
@@ -90,7 +91,7 @@ tok.tok_t *apply(tok.tok_t *list) {
 
 
 
-// Implements the eq? function.
+// (eq? a b) returns true if a equals b.
 tok.tok_t *eq(tok.tok_t *args) {
 	tok.tok_t *a = eval(car(args));
 	tok.tok_t *b = eval(car(cdr(args)));
@@ -99,16 +100,18 @@ tok.tok_t *eq(tok.tok_t *args) {
 	if (a->type != b->type) {
 		return NULL;
 	}
+	bool same = false;
 	switch (a->type) {
-		// Compare symbols by their content.
-		case tok.SYMBOL: {
-			if (!strcmp(a->name, b->name)) {
-				return tok.newsym("true");
-			}
-			return NULL;
+		case tok.SYMBOL: { same = !strcmp(a->name, b->name); }
+		case tok.NUMBER: { same = !strcmp(a->value, b->value); }
+		default: {
+			panic("unhandled item type: %d", a->type);
 		}
 	}
-	panic("unhandled item type: %d", a->type);
+	if (same) {
+		return tok.newsym("true");
+	}
+	return NULL;
 }
 
 
