@@ -32,6 +32,17 @@ pub tok.tok_t *eval(tok.tok_t *x) {
 	}
 }
 
+// Looks up a symbol.
+tok.tok_t *eval_symbol(tok.tok_t *x) {
+	tok.tok_t *r = NULL;
+	for (size_t i = 0; i < ndefs; i++) {
+		if (!strcmp(defs[i].name, x->name)) {
+			r = defs[i].val;
+		}
+	}
+	return r;
+}
+
 // Evaluates a list node.
 tok.tok_t *eval_list(tok.tok_t *x) {
 	tok.tok_t *first = car(x);
