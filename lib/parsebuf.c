@@ -225,6 +225,7 @@ pub bool num(parsebuf_t *b, char *buf, size_t n) {
 			*p++ = buf_get(b);
 		}
 	}
+	*p++ = '\0';
 	return true;
 }
 
