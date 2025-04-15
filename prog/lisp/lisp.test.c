@@ -10,6 +10,7 @@ typedef {
 
 case_t cases[] = {
 	{"12", "12"},
+	{"1 2", "2"},
 	{"(eq? 1 1)", "true"},
 	{"(eq? 1 2)", "NULL"},
 	{"(cons 1 nil)", "(1)"},
@@ -23,8 +24,8 @@ int main() {
 	for (size_t i = 0; i < nelem(cases); i++) {
 		case_t c = cases[i];
 		parsebuf.parsebuf_t *b = parsebuf.from_str(c.in);
-		tok.tok_t *x = read.read(b);
-		x = eval.eval(x);
+		tok.tok_t **all = read.readall(b);
+		tok.tok_t *x = eval.evalall(all);
 		tok.print(x, buf, 4096);
 		test.streq(buf, c.out);
 		parsebuf.buf_free(b);

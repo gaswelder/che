@@ -8,6 +8,17 @@ typedef {
 size_t ndefs = 0;
 def_t defs[100] = {};
 
+pub tok.tok_t *evalall(tok.tok_t **all) {
+	tok.tok_t *r = NULL;
+	size_t n = 0;
+	tok.tok_t *x = all[n++];
+	while (x) {
+		r = eval(x);
+		x = all[n++];
+	}
+	return r;
+}
+
 
 // Evaluates a node.
 pub tok.tok_t *eval(tok.tok_t *x) {

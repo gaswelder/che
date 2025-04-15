@@ -1,9 +1,23 @@
 #import parsebuf
 #import tok.c
 
+pub tok.tok_t **readall(parsebuf.parsebuf_t *b) {
+	tok.tok_t **all = calloc(100, sizeof(b));
+	size_t n = 0;
+	while (true) {
+		tok.tok_t *t = read(b);
+		if (!t) break;
+		all[n++] = t;
+	}
+	return all;
+}
+
 // Reads next item from the buffer.
 pub tok.tok_t *read(parsebuf.parsebuf_t *b) {
 	parsebuf.spaces(b);
+	if (!parsebuf.buf_more(b)) {
+		return NULL;
+	}
 	if (parsebuf.peek(b) == '(') {
 		return readlist(b);
 	}
