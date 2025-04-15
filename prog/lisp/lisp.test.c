@@ -1,8 +1,8 @@
 #import eval.c
 #import parsebuf
 #import read.c
-#import rt.c
 #import test
+#import tok.c
 
 typedef {
 	const char *in, *out;
@@ -13,6 +13,7 @@ case_t cases[] = {
 	{"(apply cons (quote (a (b c))))", "(a b c)"},
 	{"(eq? 1 1)", "true"},
 	{"(eq? 1 2)", "NULL"},
+	// {"(define x 1)", "NULL"},
 };
 
 int main() {
@@ -20,9 +21,9 @@ int main() {
 	for (size_t i = 0; i < nelem(cases); i++) {
 		case_t c = cases[i];
 		parsebuf.parsebuf_t *b = parsebuf.from_str(c.in);
-		rt.item_t *x = read.read(b);
+		tok.tok_t *x = read.read(b);
 		x = eval.eval(x);
-		rt.print(x, buf, 4096);
+		tok.print(x, buf, 4096);
 		test.streq(buf, c.out);
 		parsebuf.buf_free(b);
 	}

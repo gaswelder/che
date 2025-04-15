@@ -1,82 +1,119 @@
-#import rt.c
+#import tok.c
 
-pub rt.item_t *eval(rt.item_t *i) {
-	if (i->list) {
-		return eval_list(i);
-	}
-	return i;
-}
-
-rt.item_t *eval_list(rt.item_t *l) {
-	rt.item_t *first = rt.car(l);
-	if (first->list) {
-		dunno(first);
-		return NULL;
-	}
-	return runfunc(first->data, rt.cdr(l));
-}
-
-rt.item_t *cond(rt.item_t *args) {
-	rt.item_t *l = args;
-	while (l) {
-		rt.item_t *cas = rt.car(l);
-		rt.item_t *cond = rt.car(cas);
-		if (eval(cond)) {
-			rt.item_t *result = rt.car(rt.cdr(cas));
-			return eval(result);
+// Evaluates a node.
+pub tok.tok_t *eval(tok.tok_t *x) {
+	switch (x->type) {
+		case tok.LIST: { return eval_list(x); }
+		case tok.SYMBOL: { return x; }
+		default: {
+			panic("unexpected node type: %d", x->type);
 		}
-		l = rt.cdr(l);
 	}
-	return NULL;
 }
 
-rt.item_t *apply(rt.item_t *args) {
-	rt.item_t *fn = rt.car(args);
-	if (fn->list) {
-		puts("how to apply list?");
-		exit(1);
+// Evaluates a list node.
+tok.tok_t *eval_list(tok.tok_t *x) {
+	tok.tok_t *first = car(x);
+	if (first->type != tok.SYMBOL) {
+		tok.dbgprint(x);
+		panic("first element is a non-symbol");
 	}
-	return runfunc(fn->data, eval(rt.car(rt.cdr(args))));
+	return runfunc(first->name, cdr(x));
 }
 
-rt.item_t *runfunc(char *name, rt.item_t *args) {
-	if (name == rt.intern("apply")) return apply(args);
-	if (name == rt.intern("quote")) return rt.car(args);
-	if (name == rt.intern("cons")) return cons(args);
-	if (name == rt.intern("cond")) return cond(args);
-	if (name == rt.intern("eq?")) return eq(args);
+// Runs a function.
+tok.tok_t *runfunc(const char *name, tok.tok_t *args) {
+	switch str (name) {
+		case "apply": { return apply(args); }
+		case "eq?": { return eq(args); }
+		case "quote": { return car(args); }
+		case "cons": { return cons(args); }
+	}
+	// if (name == rt.intern("cond")) return cond(args);
 	panic("unknown function %s", name);
 	return NULL;
 }
 
-rt.item_t *cons(rt.item_t *args) {
-	return rt.cons(rt.car(args), rt.car(rt.cdr(args)));
+
+
+// rt.item_t *cond(rt.item_t *args) {
+// 	rt.item_t *l = args;
+// 	while (l) {
+// 		rt.item_t *cas = rt.car(l);
+// 		rt.item_t *cond = rt.car(cas);
+// 		if (eval(cond)) {
+// 			rt.item_t *result = rt.car(rt.cdr(cas));
+// 			return eval(result);
+// 		}
+// 		l = rt.cdr(l);
+// 	}
+// 	return NULL;
+// }
+
+tok.tok_t *apply(tok.tok_t *list) {
+	tok.tok_t *fn = car(list);
+	if (fn->type != tok.SYMBOL) {
+		tok.dbgprint(list);
+		panic("first element is a non-symbol");
+	}
+	return runfunc(fn->name, eval(car(cdr(list))));
 }
 
-// Implements the eq? function.
-rt.item_t *eq(rt.item_t *args) {
-	rt.item_t *a = eval(rt.car(args));
-	rt.item_t *b = eval(rt.car(rt.cdr(args)));
 
-	int t = rt.typeof(a);
+
+// Implements the eq? function.
+tok.tok_t *eq(tok.tok_t *args) {
+	tok.tok_t *a = eval(car(args));
+	tok.tok_t *b = eval(car(cdr(args)));
+
 	// If types don't match, then not equal.
-	if (rt.typeof(b) != t) {
+	if (a->type != b->type) {
 		return NULL;
 	}
-	switch (t) {
+	switch (a->type) {
 		// Compare symbols by their content.
-		case rt.SYMBOL: {
-			if (a->data == b->data) {
-				return rt.sym("true");
+		case tok.SYMBOL: {
+			if (!strcmp(a->name, b->name)) {
+				return tok.newsym("true");
 			}
 			return NULL;
 		}
 	}
-	panic("unhandled item type: %d", t);
+	panic("unhandled item type: %d", a->type);
 }
 
-void dunno(rt.item_t *i) {
-	fprintf(stderr, "how to eval? ");
-	rt.dbgprint(i);
-	exit(1);
+
+
+// (cons 1 x) constructs a list (1, ...x)
+tok.tok_t *cons(tok.tok_t *args) {
+	tok.tok_t *head = car(args);
+	tok.tok_t *tail = car(cdr(args));
+
+	tok.tok_t *r = tok.newlist();
+	r->items[r->nitems++] = head;
+	for (size_t i = 0; i < tail->nitems; i++) {
+		r->items[r->nitems++] = tail->items[i];
+	}
+	return r;
+}
+
+// Returns the first item of the list x.
+tok.tok_t *car(tok.tok_t *x) {
+	if (x->type != tok.LIST || x->nitems == 0) {
+		return NULL;
+	}
+	return x->items[0];
+}
+
+// Returns the tail of the list x.
+tok.tok_t *cdr(tok.tok_t *x) {
+	if (!x || x->type != tok.LIST || x->nitems <= 1) {
+		return NULL;
+	}
+	tok.tok_t *r = tok.newlist();
+	for (size_t i = 1; i < x->nitems; i++) {
+		r->items[i-1] = x->items[i];
+	}
+	r->nitems = x->nitems-1;
+	return r;
 }

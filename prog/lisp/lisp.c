@@ -1,7 +1,6 @@
 #import eval.c
 #import parsebuf
 #import read.c
-#import rt.c
 
 int main() {
 	parsebuf.parsebuf_t *b = parsebuf.from_stdin();

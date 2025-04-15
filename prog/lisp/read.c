@@ -1,8 +1,8 @@
-#import rt.c
 #import parsebuf
+#import tok.c
 
 // Reads next item from the buffer.
-pub rt.item_t *read(parsebuf.parsebuf_t *b) {
+pub tok.tok_t *read(parsebuf.parsebuf_t *b) {
 	parsebuf.spaces(b);
 	if (parsebuf.peek(b) == '(') {
 		return readlist(b);
@@ -11,28 +11,29 @@ pub rt.item_t *read(parsebuf.parsebuf_t *b) {
 }
 
 // Reads a symbol.
-rt.item_t *readsymbol(parsebuf.parsebuf_t *b) {
-	char buf[60] = {0};
+tok.tok_t *readsymbol(parsebuf.parsebuf_t *b) {
+	tok.tok_t *t = tok.newsym("");
 	int pos = 0;
 	while (parsebuf.buf_more(b) && !isspace(parsebuf.peek(b)) && parsebuf.peek(b) != ')') {
-		buf[pos++] = parsebuf.buf_get(b);
+		t->name[pos++] = parsebuf.buf_get(b);
 	}
-	return rt.sym(rt.intern(buf));
+	return t;
 }
 
-// Reads a list.
-rt.item_t *readlist(parsebuf.parsebuf_t *b) {
-	parsebuf.buf_get(b); // "("
-	rt.item_t *r = NULL;
 
+// Reads a list.
+tok.tok_t *readlist(parsebuf.parsebuf_t *b) {
+	tok.tok_t *t = tok.newlist();
+
+	parsebuf.buf_get(b); // "("
 	parsebuf.spaces(b);
 	while (parsebuf.peek(b) != EOF && parsebuf.peek(b) != ')') {
-		r = rt.cons(read(b), r);
+		t->items[t->nitems++] = read(b);
 		parsebuf.spaces(b);
 	}
 	if (parsebuf.peek(b) != ')') {
 		panic("expected )");
 	}
 	parsebuf.buf_get(b); // ")"
-	return rt.reverse(r);
+	return t;
 }
