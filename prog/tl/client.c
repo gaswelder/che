@@ -159,7 +159,7 @@ torr_t parseline(char *line)
 }
 
 void word(parsebuf.parsebuf_t *b, char *p, size_t n) {
-    while (parsebuf.buf_more(b) && parsebuf.buf_peek(b) != ' ') {
+    while (parsebuf.buf_more(b) && parsebuf.peek(b) != ' ') {
         if (n == 0) return;
         n--;
         *p++ = parsebuf.buf_get(b);
@@ -168,14 +168,14 @@ void word(parsebuf.parsebuf_t *b, char *p, size_t n) {
 }
 
 void spaces(parsebuf.parsebuf_t *b) {
-    while (parsebuf.buf_more(b) && parsebuf.buf_peek(b) == ' ') {
+    while (parsebuf.buf_more(b) && parsebuf.peek(b) == ' ') {
         parsebuf.buf_get(b);
     }
 }
 
 void size(parsebuf.parsebuf_t *b, char *p, size_t n) {
-    if (isdigit(parsebuf.buf_peek(b))) {
-        while (parsebuf.buf_more(b) && parsebuf.buf_peek(b) != ' ') {
+    if (isdigit(parsebuf.peek(b))) {
+        while (parsebuf.buf_more(b) && parsebuf.peek(b) != ' ') {
             if (n == 0) return;
             n--;
             *p++ = parsebuf.buf_get(b);

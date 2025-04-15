@@ -86,7 +86,7 @@ pub cue_t *cue_parse(const char *s, char **err)
 	/*
 	 * Skip the UTF-8 mark
 	 */
-	if((uint8_t) parsebuf.buf_peek(c.buf) == 0xEF) {
+	if((uint8_t) parsebuf.peek(c.buf) == 0xEF) {
 		parsebuf.buf_get(c.buf);
 		if((uint8_t) parsebuf.buf_get(c.buf) != 0xBB || (uint8_t) parsebuf.buf_get(c.buf) != 0xBF) {
 			free(cue);
@@ -220,10 +220,10 @@ bool read_track(context_t *c, cuetrack_t *track, char **err)
  */
 void skip_line(parsebuf.parsebuf_t *b)
 {
-	while(parsebuf.buf_more(b) && parsebuf.buf_peek(b) != '\n') {
+	while(parsebuf.buf_more(b) && parsebuf.peek(b) != '\n') {
 		parsebuf.buf_get(b);
 	}
-	if(parsebuf.buf_peek(b) == '\n') {
+	if(parsebuf.peek(b) == '\n') {
 		parsebuf.buf_get(b);
 	}
 }
@@ -233,16 +233,16 @@ void skip_line(parsebuf.parsebuf_t *b)
  */
 void read_command(context_t *c)
 {
-	while(parsebuf.buf_peek(c->buf) == ' ' || parsebuf.buf_peek(c->buf) == '\t') {
+	while(parsebuf.peek(c->buf) == ' ' || parsebuf.peek(c->buf) == '\t') {
 		parsebuf.buf_get(c->buf);
 	}
 	int i = 0;
-	while(isalpha(parsebuf.buf_peek(c->buf))) {
+	while(isalpha(parsebuf.peek(c->buf))) {
 		c->cmd[i] = parsebuf.buf_get(c->buf);
 		i++;
 	}
 	c->cmd[i] = '\0';
-	while(isspace(parsebuf.buf_peek(c->buf))) {
+	while(isspace(parsebuf.peek(c->buf))) {
 		parsebuf.buf_get(c->buf);
 	}
 }

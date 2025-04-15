@@ -41,7 +41,7 @@ pub void free_reader(reader_t *r) {
  * Returns false if there are no more values.
  */
 pub bool read_val(reader_t *r, char *buf, size_t bufsize) {
-	int next = parsebuf.buf_peek(r->b);
+	int next = parsebuf.peek(r->b);
 	if (next == '\n' || next == '\r') return false;
 	if (!parsebuf.buf_more(r->b)) return false;
 
@@ -54,7 +54,7 @@ pub bool read_val(reader_t *r, char *buf, size_t bufsize) {
 	}
 
 	if (!parsebuf.buf_skip(b, '"')) panic("expected '\"'");
-	while (parsebuf.buf_more(b) && parsebuf.buf_peek(b) != '\"') {
+	while (parsebuf.buf_more(b) && parsebuf.peek(b) != '\"') {
 		if (n + 1 == bufsize) panic("buf too small");
 		n++;
 		*p++ = parsebuf.buf_get(b);

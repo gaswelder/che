@@ -172,7 +172,7 @@ tok_t *lex_read(lexer_t *l) {
 	parsebuf.parsebuf_t *b = l->b;
 	parsebuf.spaces(b);
 	tok_t *t = calloc(1, sizeof(tok_t));
-	int c = parsebuf.buf_peek(b);
+	int c = parsebuf.peek(b);
 
 	if (isdigit(c)) {
 		if (!parsebuf.num(b, t->payload, 100)) {
@@ -197,10 +197,10 @@ tok_t *lex_read(lexer_t *l) {
 	if (c == '"') {
 		char *p = t->payload;
 		*p++ = parsebuf.buf_get(b);
-		while (parsebuf.buf_more(b) && parsebuf.buf_peek(b) != '"') {
+		while (parsebuf.buf_more(b) && parsebuf.peek(b) != '"') {
 			*p++ = parsebuf.buf_get(b);
 		}
-		if (parsebuf.buf_peek(b) != '"') {
+		if (parsebuf.peek(b) != '"') {
 			panic("expected closing quote");
 		}
 		*p++ = parsebuf.buf_get(b);

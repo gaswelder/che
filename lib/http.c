@@ -310,7 +310,7 @@ bool read_status_line(parsebuf.parsebuf_t *b, response_t *r) {
 	if (parsebuf.buf_get(b) != ' ') return false;
 
 	// status text
-	while (parsebuf.buf_more(b) && parsebuf.buf_peek(b) != '\r') {
+	while (parsebuf.buf_more(b) && parsebuf.peek(b) != '\r') {
 		parsebuf.buf_get(b);
 	}
 
@@ -323,7 +323,7 @@ bool read_status_line(parsebuf.parsebuf_t *b, response_t *r) {
 
 bool read_header(parsebuf.parsebuf_t *b, header_t *h) {
 	char *tmp = h->name;
-	while (parsebuf.buf_more(b) && parsebuf.buf_peek(b) != ':') {
+	while (parsebuf.buf_more(b) && parsebuf.peek(b) != ':') {
 		*tmp++ = parsebuf.buf_get(b);
 	}
 	// : space
@@ -332,7 +332,7 @@ bool read_header(parsebuf.parsebuf_t *b, header_t *h) {
 	}
 	// value
 	tmp = h->value;
-	while (parsebuf.buf_more(b) && parsebuf.buf_peek(b) != '\r') {
+	while (parsebuf.buf_more(b) && parsebuf.peek(b) != '\r') {
 		*tmp++ = parsebuf.buf_get(b);
 	}
 	// eol

@@ -64,7 +64,7 @@ pub void free(json_tokenizer_t *t) {
  */
 pub bool read(json_tokenizer_t *t) {
 	parsebuf.spaces(t->buf);
-    int c = parsebuf.buf_peek(t->buf);
+    int c = parsebuf.peek(t->buf);
     if (c == EOF) {
         t->next.type = EOF;
     }
@@ -137,7 +137,7 @@ void readkw(json_tokenizer_t *l)
 	char kw[8] = {};
 	int i = 0;
 
-	while (isalpha(parsebuf.buf_peek(b)) && i < 7) {
+	while (isalpha(parsebuf.peek(b)) && i < 7) {
 		kw[i] = parsebuf.buf_get(b);
 		i++;
 	}
@@ -163,7 +163,7 @@ void readstr(json_tokenizer_t *l)
 	}
 	resetstr(l);
 
-	while (parsebuf.buf_more(b) && parsebuf.buf_peek(b) != '"') {
+	while (parsebuf.buf_more(b) && parsebuf.peek(b) != '"') {
 		// Get next string character
 		int ch = parsebuf.buf_get(b);
 		if (ch == '\\') {

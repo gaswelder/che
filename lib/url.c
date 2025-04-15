@@ -17,7 +17,7 @@ pub t *parse(const char *s) {
 
     // http
     char *q = r->schema;
-    while (parsebuf.buf_more(buf) && parsebuf.buf_peek(buf) != ':') {
+    while (parsebuf.buf_more(buf) && parsebuf.peek(buf) != ':') {
         *q++ = parsebuf.buf_get(buf);
     }
 
@@ -30,21 +30,21 @@ pub t *parse(const char *s) {
 
     // domain or ip address
     q = r->hostname;
-    while (parsebuf.buf_more(buf) && parsebuf.buf_peek(buf) != ':' && parsebuf.buf_peek(buf) != '/') {
+    while (parsebuf.buf_more(buf) && parsebuf.peek(buf) != ':' && parsebuf.peek(buf) != '/') {
         *q++ = parsebuf.buf_get(buf);
     }
 
     q = r->port;
-    if (parsebuf.buf_peek(buf) == ':') {
+    if (parsebuf.peek(buf) == ':') {
         parsebuf.buf_get(buf);
-        while (parsebuf.buf_more(buf) && parsebuf.buf_peek(buf) != '/') {
+        while (parsebuf.buf_more(buf) && parsebuf.peek(buf) != '/') {
             *q++ = parsebuf.buf_get(buf);
         }
     }
 
     q = r->path;
 	*q = '/';
-    if (parsebuf.buf_peek(buf) == '/') {
+    if (parsebuf.peek(buf) == '/') {
         while (parsebuf.buf_more(buf)) {
             *q++ = parsebuf.buf_get(buf);
         }

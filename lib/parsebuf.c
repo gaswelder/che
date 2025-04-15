@@ -44,7 +44,7 @@ pub void buf_free(parsebuf_t *b) {
 
 // Returns the next character in the buffer.
 // Returns EOF if there is no next character.
-pub int buf_peek(parsebuf_t *b) {
+pub int peek(parsebuf_t *b) {
 	_prefetch(b, 1);
 	if (b->cachesize == 0) return EOF;
 	return b->cache[0];
@@ -109,7 +109,7 @@ void _prefetch(parsebuf_t *b, size_t n) {
 }
 
 pub void buf_skip_set(parsebuf_t *b, const char *set) {
-	while (buf_more(b) && strchr(set, buf_peek(b))) {
+	while (buf_more(b) && strchr(set, peek(b))) {
 		buf_get(b);
 	}
 }
@@ -118,7 +118,7 @@ pub void buf_skip_set(parsebuf_t *b, const char *set) {
  * Skips one character if it's equal to c.
  */
 pub bool buf_skip(parsebuf_t *b, char c) {
-	if (buf_peek(b) == c) {
+	if (peek(b) == c) {
 		buf_get(b);
 		return true;
 	}
@@ -128,7 +128,7 @@ pub bool buf_skip(parsebuf_t *b, char c) {
 pub char *buf_read_set(parsebuf_t *b, const char *set) {
 	char *s = calloc(10000, 1);
 	char *p = s;
-	while (buf_more(b) && strchr(set, buf_peek(b))) {
+	while (buf_more(b) && strchr(set, peek(b))) {
 		*p = buf_get(b);
 		p++;
 	}
@@ -148,7 +148,7 @@ pub bool buf_skip_literal(parsebuf_t *b, const char *literal) {
 
 pub bool spaces(parsebuf_t *b) {
 	int n = 0;
-	while (isspace(buf_peek(b))) {
+	while (isspace(peek(b))) {
 		n++;
 		buf_get(b);
 	}
@@ -161,12 +161,12 @@ pub bool spaces(parsebuf_t *b) {
  * completely, but trimmed to fit the buffer.
  */
 pub bool id(parsebuf_t *b, char *buf, size_t n) {
-	if (!isalpha(buf_peek(b)) && buf_peek(b) != '_') {
+	if (!isalpha(peek(b)) && peek(b) != '_') {
 		return false;
 	}
 	size_t pos = 0;
 	while (buf_more(b)) {
-		int c = buf_peek(b);
+		int c = peek(b);
 		if (!isalpha(c) && !isdigit(c) && c != '_') {
 			break;
 		}
@@ -183,45 +183,45 @@ pub bool num(parsebuf_t *b, char *buf, size_t n) {
 	(void) n;
 	char *p = buf;
 
-	if (buf_peek(b) == '-') {
+	if (peek(b) == '-') {
 		*p++ = buf_get(b);
 	}
 
 	// [digits]
-	if (!isdigit(buf_peek(b))) {
+	if (!isdigit(peek(b))) {
 		return false;
 	}
-	while (isdigit(buf_peek(b))) {
+	while (isdigit(peek(b))) {
 		*p++ = buf_get(b);
 	}
 
 	// Optional fractional part
-	if (buf_peek(b) == '.') {
+	if (peek(b) == '.') {
 		*p++ = buf_get(b);
-		if (!isdigit(buf_peek(b))) {
+		if (!isdigit(peek(b))) {
 			return false;
 		}
-		while (isdigit(buf_peek(b))) {
+		while (isdigit(peek(b))) {
 			*p++ = buf_get(b);
 		}
 	}
 
 	// Optional exponent
-	int c = buf_peek(b);
+	int c = peek(b);
 	if (c == 'e' || c == 'E') {
 		*p++ = buf_get(b);
 		
 		// Optional - or +
-		c = buf_peek(b);
+		c = peek(b);
 		if (c == '-' || c == '+') {
 			*p++ = buf_get(b);
 		}
 
 		// Sequence of exponent digits
-		if (!isdigit(buf_peek(b))) {
+		if (!isdigit(peek(b))) {
 			return false;
 		}
-		while (isdigit(buf_peek(b))) {
+		while (isdigit(peek(b))) {
 			*p++ = buf_get(b);
 		}
 	}
@@ -274,7 +274,7 @@ pub char *buf_skip_until(parsebuf_t *b, const char *literal) {
 // without reaching the character.
 pub bool read_until(parsebuf_t *b, char until, char *buf, size_t len) {
 	size_t pos = 0;
-	while (buf_more(b) && buf_peek(b) != until) {
+	while (buf_more(b) && peek(b) != until) {
 		if (pos == len-1) {
 			return false;
 		}

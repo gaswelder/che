@@ -121,7 +121,7 @@ tok_t *lexer_read(lexer_t *l) {
 		return NULL;
 	}
 
-	int peek = parsebuf.buf_peek(b);
+	int peek = parsebuf.peek(b);
 	if (peek == '#') {
 		// puts("macro");
 		return read_macro(b);
@@ -185,7 +185,7 @@ tok_t *read_number(parsebuf.parsebuf_t *b) {
 
 	char *pos = parsebuf.buf_pos(b);
 	char *num = parsebuf.buf_read_set(b, "0123456789");
-	if (parsebuf.buf_peek(b) == '.') {
+	if (parsebuf.peek(b) == '.') {
 		parsebuf.buf_get(b);
 		char *frac = parsebuf.buf_read_set(b, "0123456789");
 		char *modifiers = parsebuf.buf_read_set(b, "ULf");
@@ -196,8 +196,8 @@ tok_t *read_number(parsebuf.parsebuf_t *b) {
 
 	char *modifiers = parsebuf.buf_read_set(b, "UL");
 
-	if (parsebuf.buf_more(b) && isalpha(parsebuf.buf_peek(b))) {
-		return tok_make("error", strings.newstr("unknown modifier: %c", parsebuf.buf_peek(b)), pos);
+	if (parsebuf.buf_more(b) && isalpha(parsebuf.peek(b))) {
+		return tok_make("error", strings.newstr("unknown modifier: %c", parsebuf.peek(b)), pos);
 	}
 
 	char *result = strings.newstr("%s%s", num, modifiers);
@@ -270,12 +270,12 @@ tok_t *read_char(parsebuf.parsebuf_t *b) {
 	
 	parsebuf.buf_get(b);
 
-	if (parsebuf.buf_peek(b) == '\\') {
+	if (parsebuf.peek(b) == '\\') {
 		*p++ = parsebuf.buf_get(b);
 	}
 	*p++ = parsebuf.buf_get(b);
 
-	if (parsebuf.buf_peek(b) != '\'') {
+	if (parsebuf.peek(b) != '\'') {
 		free(s);
 		return tok_make("error", strings.newstr("single quote expected"), pos);
 	}
@@ -306,7 +306,7 @@ tok_t *read_identifier(parsebuf.parsebuf_t *b) {
 	char *pos = parsebuf.buf_pos(b);
 
 	while (parsebuf.buf_more(b)) {
-		char c = parsebuf.buf_peek(b);
+		char c = parsebuf.peek(b);
 		if (!isalpha(c) && !isdigit(c) && c != '_') {
 			break;
 		}

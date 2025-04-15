@@ -143,7 +143,7 @@ term_t *parse_term1(parsebuf.parsebuf_t *b) {
     term_t *t = calloc(1, sizeof(term_t));
 
     int n = 0;
-    while (isalpha(parsebuf.buf_peek(b))) {
+    while (isalpha(parsebuf.peek(b))) {
         t->name[n++] = parsebuf.buf_get(b);
     }
 
@@ -163,7 +163,7 @@ term_t *parse_term1(parsebuf.parsebuf_t *b) {
             break;
         }
         if (!parsebuf.buf_skip(b, ')')) {
-            panic("missing closing brace: '%c'", parsebuf.buf_peek(b));
+            panic("missing closing brace: '%c'", parsebuf.peek(b));
         }
         return t;
     }
