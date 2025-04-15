@@ -18,6 +18,7 @@ case_t cases[] = {
 	{"(apply cons (quote (a (b c))))", "(a b c)"},
 	{"(define x 1) x", "1"},
 	{"(* 2 6)", "12"},
+	{"(define (sqr x) (* x x)) (sqr 11)", "121"},
 };
 
 int main() {
