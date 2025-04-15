@@ -1,5 +1,14 @@
 #import tok.c
 
+typedef {
+	char name[80];
+	tok.tok_t *val;
+} def_t;
+
+size_t ndefs = 0;
+def_t defs[100] = {};
+
+
 // Evaluates a node.
 pub tok.tok_t *eval(tok.tok_t *x) {
 	switch (x->type) {
@@ -28,12 +37,21 @@ tok.tok_t *runfunc(const char *name, tok.tok_t *args) {
 		case "eq?": { return eq(args); }
 		case "quote": { return car(args); }
 		case "cons": { return cons(args); }
+		case "define": { return define(args); }
 	}
 	// if (name == rt.intern("cond")) return cond(args);
 	panic("unknown function %s", name);
 	return NULL;
 }
 
+tok.tok_t *define(tok.tok_t *args) {
+	tok.tok_t *name = car(args);
+	tok.tok_t *val = car(cdr(args));
+	strcpy(defs[ndefs].name, name->name);
+	defs[ndefs].val = val;
+	ndefs++;
+	return NULL;
+}
 
 
 // rt.item_t *cond(rt.item_t *args) {

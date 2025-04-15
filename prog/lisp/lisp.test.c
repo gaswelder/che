@@ -13,7 +13,7 @@ case_t cases[] = {
 	{"(apply cons (quote (a (b c))))", "(a b c)"},
 	{"(eq? 1 1)", "true"},
 	{"(eq? 1 2)", "NULL"},
-	// {"(define x 1)", "NULL"},
+	{"(define x 1)", "NULL"},
 };
 
 int main() {
