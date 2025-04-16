@@ -9,13 +9,25 @@ size_t ndefs = 0;
 def_t defs[100] = {};
 
 typedef {
+	// Name of the function.
 	char name[80];
-	char argname[10];
+
+	size_t nargs;
+	char argnames[10][10];
 	tok.tok_t *body;
 } fn_t;
 
 size_t nfns = 0;
 fn_t fns[100] = {};
+
+// void printfn(fn_t *f) {
+// 	printf("fn %s(", f->name);
+// 	for (size_t i = 0; i < f->nargs; i++) {
+// 		if (i > 0) printf(" ");
+// 		printf("%s", f->argnames[i]);
+// 	}
+// 	printf(")");
+// }
 
 void pushdef(const char *name, tok.tok_t *val) {
 	strcpy(defs[ndefs].name, name);
@@ -83,19 +95,22 @@ tok.tok_t *runfunc(const char *name, tok.tok_t *args) {
 	}
 
 	// See if there is a defined function with this name.
+	fn_t *f = NULL;
 	for (size_t i = 0; i < nfns; i++) {
 		if (!strcmp(name, fns[i].name)) {
-			pushdef("x", car(args));
-			tok.tok_t *r = eval(fns[i].body);
-			ndefs--;
-			return r;
+			f = &fns[i];
+			break;
 		}
 	}
-
-
-	// if (name == rt.intern("cond")) return cond(args);
-	panic("unknown function %s", name);
-	return NULL;
+	if (!f) {
+		panic("unknown function %s", name);
+	}
+	for (size_t a = 0; a < f->nargs; a++) {
+		pushdef(f->argnames[a], args->items[a]);
+	}
+	tok.tok_t *r = eval(f->body);
+	ndefs -= f->nargs;
+	return r;	
 }
 
 // (define x const) defines a constant.
@@ -110,12 +125,14 @@ tok.tok_t *define(tok.tok_t *args) {
 
 	// (twice x) (* x 2)
 	if (def->type == tok.LIST) {
+		fn_t *f = &fns[nfns++];
+		f->body = val;
+
 		tok.tok_t *name = car(def);
-		tok.tok_t *arg = car(cdr(def));
-		strcpy(fns[nfns].name, name->name);
-		strcpy(fns[nfns].argname, arg->name);
-		fns[nfns].body = val;
-		nfns++;
+		strcpy(f->name, name->name);
+		for (size_t i = 1; i < def->nitems; i++) {
+			strcpy(f->argnames[f->nargs++], def->items[i]->name);
+		}
 		return NULL;
 	}
 

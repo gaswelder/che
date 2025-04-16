@@ -39,6 +39,12 @@ case_t cases[] = {
 
 	// Function defines
 	{"(define (sqr x) (* x x)) (sqr 11)", "121"},
+	{
+		"(define pi 3.14159)"
+		"(define (circumference radius) (* 2 pi radius))"
+		"(circumference 10)",
+		"62.8318"
+	},
 
 	// ...
 	{"(apply cons (quote (a (b c))))", "(a b c)"},
