@@ -97,6 +97,8 @@ tok.tok_t *runfunc(const char *name, tok.tok_t *args) {
 		case "=": { return numeq(args); }
 		case "cond": { return cond(args); }
 		case "if": { return fif(args); }
+		case "and": { return and(args); }
+		case "or": { return or(args); }
 	}
 
 	// See if there is a defined function with this name.
@@ -168,6 +170,24 @@ tok.tok_t *fif(tok.tok_t *args) {
 		return eval(ethen);
 	}
 	return eval(eelse);
+}
+
+tok.tok_t *and(tok.tok_t *args) {
+	for (size_t i = 0; i < args->nitems; i++) {
+		if (!eval(args->items[i])) {
+			return NULL;
+		}
+	}
+	return tok.newsym("true");
+}
+
+tok.tok_t *or(tok.tok_t *args) {
+	for (size_t i = 0; i < args->nitems; i++) {
+		if (eval(args->items[i])) {
+			return tok.newsym("true");
+		}
+	}
+	return NULL;
 }
 
 tok.tok_t *apply(tok.tok_t *list) {
