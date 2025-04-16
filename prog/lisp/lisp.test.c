@@ -85,8 +85,15 @@ case_t cases[] = {
 		"123",
 	},
 
-	// ...
+	// Examples
 	{"(apply cons (quote (a (b c))))", "(a b c)"},
+	{
+		"(define a 3)"
+		"(define b (+ a 1))"
+		"(+ a b (* a b))",
+		"19"
+	},
+
 };
 
 tok.tok_t *evalstr(const char *s) {
