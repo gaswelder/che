@@ -192,10 +192,13 @@ tok.tok_t *not(tok.tok_t *args) {
 tok.tok_t *fif(tok.tok_t *args) {
 	tok.tok_t *pred = car(args);
 	tok.tok_t *ethen = car(cdr(args));
-	tok.tok_t *eelse = car(cdr(cdr(args)));
 	if (eval(pred)) {
 		return eval(ethen);
 	}
+	if (args->nitems < 3) {
+		return NULL;
+	}
+	tok.tok_t *eelse = car(cdr(cdr(args)));
 	return eval(eelse);
 }
 

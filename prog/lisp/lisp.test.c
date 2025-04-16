@@ -70,7 +70,8 @@ case_t cases[] = {
 		"62.8318"
 	},
 
-	// Cond
+	// Conditionals
+	{"(if (not 1) 1)", "NULL"},
 	{
 		"(define (abs x)"
 			"(cond ((> x 0) x)"
