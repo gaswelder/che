@@ -77,15 +77,16 @@ pub tok.tok_t *eval(tok.tok_t *x) {
 
 // Looks up a symbol.
 tok.tok_t *eval_symbol(tok.tok_t *x) {
-	if (!strcmp(x->name, "true")) {
-		return x;
-	}
+	// if (!strcmp(x->name, "true") || !strcmp(x->name, "+") || !strcmp(x->name, "-")) {
+	// 	return x;
+	// }
 	tok.tok_t *r = NULL;
 	for (size_t i = 0; i < ndefs; i++) {
 		if (!strcmp(defs[i].name, x->name)) {
 			r = defs[i].val;
 		}
 	}
+	if (!r) return x;
 	return r;
 }
 
@@ -93,8 +94,7 @@ tok.tok_t *eval_symbol(tok.tok_t *x) {
 tok.tok_t *eval_list(tok.tok_t *x) {
 	tok.tok_t *first = car(x);
 	if (first->type != tok.SYMBOL) {
-		tok.dbgprint(x);
-		panic("first element is a non-symbol");
+		first = eval(first);
 	}
 	return runfunc(first->name, cdr(x));
 }

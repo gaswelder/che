@@ -93,6 +93,11 @@ case_t cases[] = {
 		"(+ a b (* a b))",
 		"19"
 	},
+	{
+		"(define (a-plus-abs-b a b) ((if (> b 0) + -) a b))"
+		"(a-plus-abs-b 10 (- 2))",
+		"12"
+	}
 
 };
 
