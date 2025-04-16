@@ -23,6 +23,9 @@ case_t cases[] = {
 	{"(+ 21 35 12 7)", "75"},
 	{"(* 25 4 12)", "1200"},
 
+	// Nested math
+	{"(+ (* 3 (+ (* 2 4) (+ 3 5))) (+ (- 10 7) 6))", "57"},
+
 	// Comparisons
 	{"(eq? 1 1)", "true"},
 	{"(eq? 1 2)", "NULL"},
@@ -35,7 +38,8 @@ case_t cases[] = {
 	{"1 2", "2"},
 
 	// Constant defines
-	{"(define x 1) x", "1"},
+	{"(define x 2) x", "2"},
+	{"(define x 2) (* x 5)", "10"},
 
 	// Function defines
 	{"(define (sqr x) (* x x)) (sqr 11)", "121"},
