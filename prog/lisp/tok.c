@@ -9,9 +9,9 @@ pub enum {
 
 const char *typename(int type) {
 	switch (type) {
-		case LIST: { return "LIST"; }
-		case SYMBOL: { return "SYMBOL"; }
-		case NUMBER: { return "NUMBER"; }
+		case LIST: { return "list"; }
+		case SYMBOL: { return "sym"; }
+		case NUMBER: { return "num"; }
 		default: { return "UNKNOWN TYPE"; }
 	}
 }

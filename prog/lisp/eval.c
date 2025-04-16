@@ -46,17 +46,33 @@ pub tok.tok_t *evalall(tok.tok_t **all) {
 	return r;
 }
 
+bool trace = false;
+size_t indent = 0;
 
 // Evaluates a node.
 pub tok.tok_t *eval(tok.tok_t *x) {
+	if (trace) {
+		indent++;
+		for (size_t i = 0; i < indent; i++) printf("  ");
+		printf("eval: ");
+		tok.dbgprint(x);
+	}
+	tok.tok_t *r = NULL;
 	switch (x->type) {
-		case tok.SYMBOL: { return eval_symbol(x); }
-		case tok.LIST: { return eval_list(x); }
-		case tok.NUMBER: { return x; }
+		case tok.SYMBOL: { r = eval_symbol(x); }
+		case tok.LIST: { r = eval_list(x); }
+		case tok.NUMBER: { r = x; }
 		default: {
 			panic("unexpected node type: %d", x->type);
 		}
 	}
+	if (trace) {
+		for (size_t i = 0; i < indent; i++) printf("  ");
+		printf("result: ");
+		tok.dbgprint(r);
+		indent--;
+	}
+	return r;
 }
 
 // Looks up a symbol.
