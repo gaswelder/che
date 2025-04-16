@@ -44,6 +44,11 @@ case_t cases[] = {
 	// Function defines
 	{"(define (sqr x) (* x x)) (sqr 11)", "121"},
 	{
+		"(define (sqr x) (* x x))"
+		"(sqr (+ 2 5))",
+		"49"
+	},
+	{
 		"(define pi 3.14159)"
 		"(define (circumference radius) (* 2 pi radius))"
 		"(circumference 10)",

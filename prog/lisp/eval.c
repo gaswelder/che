@@ -106,7 +106,7 @@ tok.tok_t *runfunc(const char *name, tok.tok_t *args) {
 		panic("unknown function %s", name);
 	}
 	for (size_t a = 0; a < f->nargs; a++) {
-		pushdef(f->argnames[a], args->items[a]);
+		pushdef(f->argnames[a], eval(args->items[a]));
 	}
 	tok.tok_t *r = eval(f->body);
 	ndefs -= f->nargs;
