@@ -151,27 +151,40 @@ void printnum(char *buf, double x) {
 	sprintf(buf, "%g", x);
 }
 
+double reduce(tok.tok_t *args, double start, int op) {
+	if (args->type != tok.LIST) {
+		panic("not a list");
+	}
+	if (args->nitems < 2) {
+		panic("want 2 or more arguments");
+	}
+	double r = start;
+	for (size_t i = 0; i < args->nitems; i++) {
+		tok.tok_t *x = eval(args->items[i]);
+		if (x->type != tok.NUMBER) {
+			panic("not a number");
+		}
+		double next = atof(x->value);
+		switch (op) {
+			case 1: { r *= next; }
+			case 2: { r += next; }
+			default: { panic("unknown op"); }
+		}
+	}
+	return r;
+}
+
 // (* a b) returns a * b
 tok.tok_t *mul(tok.tok_t *args) {
-	tok.tok_t *a = eval(car(args));
-	tok.tok_t *b = eval(car(cdr(args)));
-	if (a->type != tok.NUMBER || b->type != tok.NUMBER) {
-		panic("not a number");
-	}
 	char buf[100];
-	printnum(buf, atof(a->value) * atof(b->value));
+	printnum(buf, reduce(args, 1, 1));
 	return tok.newnumber(buf);
 }
 
 // (+ a b) returns a + b
 tok.tok_t *add(tok.tok_t *args) {
-	tok.tok_t *a = eval(car(args));
-	tok.tok_t *b = eval(car(cdr(args)));
-	if (a->type != tok.NUMBER || b->type != tok.NUMBER) {
-		panic("not a number");
-	}
 	char buf[100];
-	printnum(buf, atof(a->value) + atof(b->value));
+	printnum(buf, reduce(args, 0, 2));
 	return tok.newnumber(buf);
 }
 

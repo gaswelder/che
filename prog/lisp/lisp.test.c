@@ -9,20 +9,39 @@ typedef {
 } case_t;
 
 case_t cases[] = {
+	// Echoes a number
 	{"12", "12"},
+
+	// Basic math
 	{"(+ 137 349)", "486"},
 	{"(- 1000 334)", "666"},
+	{"(* 2 6)", "12"},
 	{"(/ 10 5)", "2"},
 	{"(+ 2.7 10)", "12.7"},
-	{"1 2", "2"},
+
+	// >2 args in math
+	{"(+ 21 35 12 7)", "75"},
+	{"(* 25 4 12)", "1200"},
+
+	// Comparisons
 	{"(eq? 1 1)", "true"},
 	{"(eq? 1 2)", "NULL"},
+
+	// List ops
 	{"(cons 1 nil)", "(1)"},
 	{"(cons 1 (2))", "(1 2)"},
-	{"(apply cons (quote (a (b c))))", "(a b c)"},
+
+	// Reads multiple forms, returns the last evaluation
+	{"1 2", "2"},
+
+	// Constant defines
 	{"(define x 1) x", "1"},
-	{"(* 2 6)", "12"},
+
+	// Function defines
 	{"(define (sqr x) (* x x)) (sqr 11)", "121"},
+
+	// ...
+	{"(apply cons (quote (a (b c))))", "(a b c)"},
 };
 
 int main() {
