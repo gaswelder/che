@@ -3,6 +3,7 @@
 #import read.c
 #import test
 #import tok.c
+#import opt
 
 typedef {
 	const char *in, *out;
@@ -109,9 +110,17 @@ tok.tok_t *evalstr(const char *s) {
 	return eval.evalall(all);
 }
 
-int main() {
+int main(int argc, char **argv) {
+	bool last = false;
+	opt.flag("l", "run only the last test", &last);
+	opt.nargs(0, "");
+	opt.parse(argc, argv);
+
 	char buf[4096];
 	for (size_t i = 0; i < nelem(cases); i++) {
+		if (last && i != nelem(cases)-1) {
+			continue;
+		}
 		case_t c = cases[i];
 
 		tok.tok_t *x = evalstr(c.in);
