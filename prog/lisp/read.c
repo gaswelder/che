@@ -15,7 +15,7 @@ pub tok.tok_t **readall(parsebuf.parsebuf_t *b) {
 // Reads next item from the buffer.
 pub tok.tok_t *read(parsebuf.parsebuf_t *b) {
 	parsebuf.spaces(b);
-	if (!parsebuf.buf_more(b)) {
+	if (!parsebuf.more(b)) {
 		return NULL;
 	}
 	if (parsebuf.peek(b) == '(') {
@@ -40,7 +40,7 @@ tok.tok_t *readnum(parsebuf.parsebuf_t *b) {
 tok.tok_t *readsymbol(parsebuf.parsebuf_t *b) {
 	tok.tok_t *t = tok.newsym("");
 	int pos = 0;
-	while (parsebuf.buf_more(b) && !isspace(parsebuf.peek(b)) && parsebuf.peek(b) != ')') {
+	while (parsebuf.more(b) && !isspace(parsebuf.peek(b)) && parsebuf.peek(b) != ')') {
 		t->name[pos++] = parsebuf.buf_get(b);
 	}
 	return t;

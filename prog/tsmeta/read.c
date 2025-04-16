@@ -127,7 +127,7 @@ pub typedef {
 } lexer_t;
 
 int lex_peek(lexer_t *l) {
-	if (!l->next && parsebuf.buf_more(l->b)) {
+	if (!l->next && parsebuf.more(l->b)) {
 		l->next = lex_read(l);
 	}
 	if (!l->next) {
@@ -137,14 +137,14 @@ int lex_peek(lexer_t *l) {
 }
 
 tok_t *lex_peektok(lexer_t *l) {
-	if (!l->next && parsebuf.buf_more(l->b)) {
+	if (!l->next && parsebuf.more(l->b)) {
 		l->next = lex_read(l);
 	}
 	return l->next;
 }
 
 tok_t *lex_get(lexer_t *l, int kind) {
-	if (!l->next && parsebuf.buf_more(l->b)) {
+	if (!l->next && parsebuf.more(l->b)) {
 		l->next = lex_read(l);
 	}
 	if (!l->next || l->next->kind != kind) {
@@ -156,11 +156,11 @@ tok_t *lex_get(lexer_t *l, int kind) {
 }
 
 bool lex_more(lexer_t *l) {
-	return l->next || parsebuf.buf_more(l->b);
+	return l->next || parsebuf.more(l->b);
 }
 
 void lex_pop(lexer_t *l) {
-	if (!l->next && parsebuf.buf_more(l->b)) {
+	if (!l->next && parsebuf.more(l->b)) {
 		l->next = lex_read(l);
 	}
 	if (l->next) {
@@ -197,7 +197,7 @@ tok_t *lex_read(lexer_t *l) {
 	if (c == '"') {
 		char *p = t->payload;
 		*p++ = parsebuf.buf_get(b);
-		while (parsebuf.buf_more(b) && parsebuf.peek(b) != '"') {
+		while (parsebuf.more(b) && parsebuf.peek(b) != '"') {
 			*p++ = parsebuf.buf_get(b);
 		}
 		if (parsebuf.peek(b) != '"') {

@@ -117,7 +117,7 @@ tok_t *lexer_read(lexer_t *l) {
 	parsebuf.parsebuf_t *b = l->buf;
 
 	parsebuf.spaces(b);
-	if (!parsebuf.buf_more(b)) {
+	if (!parsebuf.more(b)) {
 		return NULL;
 	}
 
@@ -196,7 +196,7 @@ tok_t *read_number(parsebuf.parsebuf_t *b) {
 
 	char *modifiers = parsebuf.buf_read_set(b, "UL");
 
-	if (parsebuf.buf_more(b) && isalpha(parsebuf.peek(b))) {
+	if (parsebuf.more(b) && isalpha(parsebuf.peek(b))) {
 		return tok_make("error", strings.newstr("unknown modifier: %c", parsebuf.peek(b)), pos);
 	}
 
@@ -227,7 +227,7 @@ tok_t *read_string(parsebuf.parsebuf_t *b) {
 	parsebuf.buf_get(b);
 	strbuilder.str *s = strbuilder.str_new();
 
-	while (parsebuf.buf_more(b)) {
+	while (parsebuf.more(b)) {
 		char c = parsebuf.buf_get(b);
 		if (c == '"') {
 			return tok_make("string", strbuilder.str_unpack(s), pos);
@@ -305,7 +305,7 @@ tok_t *read_identifier(parsebuf.parsebuf_t *b) {
 	strbuilder.str *s = strbuilder.str_new();
 	char *pos = parsebuf.buf_pos(b);
 
-	while (parsebuf.buf_more(b)) {
+	while (parsebuf.more(b)) {
 		char c = parsebuf.peek(b);
 		if (!isalpha(c) && !isdigit(c) && c != '_') {
 			break;

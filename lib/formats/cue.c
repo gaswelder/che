@@ -129,7 +129,7 @@ pub cue_t *cue_parse(const char *s, char **err)
 		}
 	}
 
-	if(parsebuf.buf_more(c.buf)) {
+	if(parsebuf.more(c.buf)) {
 		free(cue);
 		parsebuf.buf_free(c.buf);
 		*err = makeerr("unexpected command: '%s'", c.cmd);
@@ -163,7 +163,7 @@ bool read_track(context_t *c, cuetrack_t *track, char **err)
 		}
 
 		int i = 0;
-		while(parsebuf.buf_more(c->buf)) {
+		while(parsebuf.more(c->buf)) {
 			int ch = parsebuf.buf_get(c->buf);
 			val[i++] = ch;
 			if(ch == '\n') break;
@@ -220,7 +220,7 @@ bool read_track(context_t *c, cuetrack_t *track, char **err)
  */
 void skip_line(parsebuf.parsebuf_t *b)
 {
-	while(parsebuf.buf_more(b) && parsebuf.peek(b) != '\n') {
+	while(parsebuf.more(b) && parsebuf.peek(b) != '\n') {
 		parsebuf.buf_get(b);
 	}
 	if(parsebuf.peek(b) == '\n') {

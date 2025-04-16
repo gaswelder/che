@@ -240,7 +240,7 @@ pub bool parse_response(reader.t *re, response_t *r) {
 		parsebuf.buf_free(b);
 		return false;
 	}
-	while (parsebuf.buf_more(b)) {
+	while (parsebuf.more(b)) {
 		if (parsebuf.buf_skip_literal(b, "\r\n")) {
 			break;
 		}
@@ -273,7 +273,7 @@ bool read_body(parsebuf.parsebuf_t *b, response_t *r) {
 	tmp = get_res_header(r, "Connection");
 	if (!strcmp(tmp, "close")) {
 		size_t i = 0;
-		while (parsebuf.buf_more(b)) {
+		while (parsebuf.more(b)) {
 			if (i + 1 == sizeof(r->body)) {
 				panic("body buffer too small");
 			}
@@ -310,7 +310,7 @@ bool read_status_line(parsebuf.parsebuf_t *b, response_t *r) {
 	if (parsebuf.buf_get(b) != ' ') return false;
 
 	// status text
-	while (parsebuf.buf_more(b) && parsebuf.peek(b) != '\r') {
+	while (parsebuf.more(b) && parsebuf.peek(b) != '\r') {
 		parsebuf.buf_get(b);
 	}
 
@@ -323,7 +323,7 @@ bool read_status_line(parsebuf.parsebuf_t *b, response_t *r) {
 
 bool read_header(parsebuf.parsebuf_t *b, header_t *h) {
 	char *tmp = h->name;
-	while (parsebuf.buf_more(b) && parsebuf.peek(b) != ':') {
+	while (parsebuf.more(b) && parsebuf.peek(b) != ':') {
 		*tmp++ = parsebuf.buf_get(b);
 	}
 	// : space
@@ -332,7 +332,7 @@ bool read_header(parsebuf.parsebuf_t *b, header_t *h) {
 	}
 	// value
 	tmp = h->value;
-	while (parsebuf.buf_more(b) && parsebuf.peek(b) != '\r') {
+	while (parsebuf.more(b) && parsebuf.peek(b) != '\r') {
 		*tmp++ = parsebuf.buf_get(b);
 	}
 	// eol

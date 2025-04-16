@@ -163,7 +163,7 @@ void readstr(json_tokenizer_t *l)
 	}
 	resetstr(l);
 
-	while (parsebuf.buf_more(b) && parsebuf.peek(b) != '"') {
+	while (parsebuf.more(b) && parsebuf.peek(b) != '"') {
 		// Get next string character
 		int ch = parsebuf.buf_get(b);
 		if (ch == '\\') {

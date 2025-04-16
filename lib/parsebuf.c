@@ -50,10 +50,8 @@ pub int peek(parsebuf_t *b) {
 	return b->cache[0];
 }
 
-/*
- * Returns true if there is at least one more character in the stream.
- */
-pub bool buf_more(parsebuf_t *b) {
+// Returns true if there is at least one more character to be read.
+pub bool more(parsebuf_t *b) {
 	return b->cachesize > 0 || reader.more(b->reader);
 }
 
@@ -109,7 +107,7 @@ void _prefetch(parsebuf_t *b, size_t n) {
 }
 
 pub void buf_skip_set(parsebuf_t *b, const char *set) {
-	while (buf_more(b) && strchr(set, peek(b))) {
+	while (more(b) && strchr(set, peek(b))) {
 		buf_get(b);
 	}
 }
@@ -128,7 +126,7 @@ pub bool buf_skip(parsebuf_t *b, char c) {
 pub char *buf_read_set(parsebuf_t *b, const char *set) {
 	char *s = calloc(10000, 1);
 	char *p = s;
-	while (buf_more(b) && strchr(set, peek(b))) {
+	while (more(b) && strchr(set, peek(b))) {
 		*p = buf_get(b);
 		p++;
 	}
@@ -165,7 +163,7 @@ pub bool id(parsebuf_t *b, char *buf, size_t n) {
 		return false;
 	}
 	size_t pos = 0;
-	while (buf_more(b)) {
+	while (more(b)) {
 		int c = peek(b);
 		if (!isalpha(c) && !isdigit(c) && c != '_') {
 			break;
@@ -260,7 +258,7 @@ pub char *buf_skip_until(parsebuf_t *b, const char *literal) {
 	char *s = calloc(10000, 1);
 	char *p = s;
 
-	while (buf_more(b)) {
+	while (more(b)) {
 		if (buf_literal_follows(b, literal)) {
 			break;
 		}
@@ -275,7 +273,7 @@ pub char *buf_skip_until(parsebuf_t *b, const char *literal) {
 // without reaching the character.
 pub bool read_until(parsebuf_t *b, char until, char *buf, size_t len) {
 	size_t pos = 0;
-	while (buf_more(b) && peek(b) != until) {
+	while (more(b) && peek(b) != until) {
 		if (pos == len-1) {
 			return false;
 		}
