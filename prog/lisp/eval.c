@@ -77,6 +77,9 @@ pub tok.tok_t *eval(tok.tok_t *x) {
 
 // Looks up a symbol.
 tok.tok_t *eval_symbol(tok.tok_t *x) {
+	if (!strcmp(x->name, "true")) {
+		return x;
+	}
 	tok.tok_t *r = NULL;
 	for (size_t i = 0; i < ndefs; i++) {
 		if (!strcmp(defs[i].name, x->name)) {

@@ -12,6 +12,9 @@ case_t cases[] = {
 	// Echoes a number
 	{"12", "12"},
 
+	// true is true
+	{"true", "true"},
+
 	// Basic math
 	{"(+ 137 349)", "486"},
 	{"(- 1000 334)", "666"},
