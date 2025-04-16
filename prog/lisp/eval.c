@@ -207,12 +207,17 @@ tok.tok_t *add(tok.tok_t *args) {
 
 // (- a b) returns a - b
 tok.tok_t *sub(tok.tok_t *args) {
+	char buf[100];
+
 	tok.tok_t *a = eval(car(args));
+	if (args->nitems == 1) {
+		printnum(buf, -atof(a->value));
+		return tok.newnumber(buf);
+	}
 	tok.tok_t *b = eval(car(cdr(args)));
 	if (a->type != tok.NUMBER || b->type != tok.NUMBER) {
 		panic("not a number");
 	}
-	char buf[100];
 	printnum(buf, atof(a->value) - atof(b->value));
 	return tok.newnumber(buf);
 }
@@ -228,8 +233,6 @@ tok.tok_t *over(tok.tok_t *args) {
 	printnum(buf, atof(a->value) / atof(b->value));
 	return tok.newnumber(buf);
 }
-
-
 
 // (eq? a b) returns true if a equals b.
 tok.tok_t *eq(tok.tok_t *args) {
