@@ -118,6 +118,7 @@ tok.tok_t *runfunc(const char *name, tok.tok_t *args) {
 		case "if": { return fif(args); }
 		case "and": { return and(args); }
 		case "or": { return or(args); }
+		case "not": { return not(args); }
 	}
 
 	// See if there is a defined function with this name.
@@ -179,6 +180,13 @@ tok.tok_t *cond(tok.tok_t *args) {
 		l = cdr(l);
 	}
 	return NULL;
+}
+
+tok.tok_t *not(tok.tok_t *args) {
+	if (eval(car(args))) {
+		return NULL;
+	}
+	return tok.newsym("true");
 }
 
 tok.tok_t *fif(tok.tok_t *args) {

@@ -42,6 +42,8 @@ case_t cases[] = {
 	// Logicals
 	{"(and (> 7 5) (< 7 10))", "true"},
 	{"(and (> 7 5) (> 7 10))", "NULL"},
+	{"(not 1)", "NULL"},
+	{"(not (not 1))", "true"},
 
 	// List ops
 	{"(cons 1 nil)", "(1)"},
