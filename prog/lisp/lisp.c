@@ -1,14 +1,21 @@
 #import eval.c
 #import parsebuf
 #import read.c
+#import tok.c
 
 int main() {
-	parsebuf.parsebuf_t *b = parsebuf.from_stdin();
-	rt.item_t *input = read.read(b);
-	rt.item_t *r = eval.eval(input);
-
 	char buf[4096];
-	rt.print(r, buf, 4096);
-	puts(buf);
+
+	parsebuf.parsebuf_t *b = parsebuf.from_stdin();
+	while (true) {
+		tok.tok_t *in = read.read(b);
+		if (!in) break;
+		printf("> ");
+		tok.print(in, buf, 4096);
+		puts(buf);
+		tok.tok_t *out = eval.eval(in);
+		tok.print(out, buf, 4096);
+		puts(buf);
+	}
 	return 0;
 }
