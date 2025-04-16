@@ -146,7 +146,7 @@ tok.tok_t *define(tok.tok_t *args) {
 	tok.tok_t *def = car(args);
 	tok.tok_t *val = car(cdr(args));
 	if (def->type == tok.SYMBOL) {
-		pushdef(def->name, val);
+		pushdef(def->name, eval(val));
 		return NULL;
 	}
 

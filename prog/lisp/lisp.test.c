@@ -55,6 +55,7 @@ case_t cases[] = {
 	// Constant defines
 	{"(define x 2) x", "2"},
 	{"(define x 2) (* x 5)", "10"},
+	{"(define b (+ 1 2)) b", "3"},
 
 	// Function defines
 	{"(define (sqr x) (* x x)) (sqr 11)", "121"},
