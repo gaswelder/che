@@ -56,6 +56,10 @@ pub tok_t *newsym(const char *s) {
 // Prints the given item to stdout for debugging.
 pub void dbgprint(tok_t *x) {
 	char buf[4096];
+	if (!x) {
+		printf("NULL\n");
+		return;
+	}
 	print(x, buf, 4096);
 	printf("%s %s\n", typename(x->type), buf);
 }
