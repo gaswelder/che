@@ -96,6 +96,7 @@ tok.tok_t *runfunc(const char *name, tok.tok_t *args) {
 		case "<": { return lt(args); }
 		case "=": { return numeq(args); }
 		case "cond": { return cond(args); }
+		case "if": { return fif(args); }
 	}
 
 	// See if there is a defined function with this name.
@@ -157,6 +158,16 @@ tok.tok_t *cond(tok.tok_t *args) {
 		l = cdr(l);
 	}
 	return NULL;
+}
+
+tok.tok_t *fif(tok.tok_t *args) {
+	tok.tok_t *pred = car(args);
+	tok.tok_t *ethen = car(cdr(args));
+	tok.tok_t *eelse = car(cdr(cdr(args)));
+	if (eval(pred)) {
+		return eval(ethen);
+	}
+	return eval(eelse);
 }
 
 tok.tok_t *apply(tok.tok_t *list) {

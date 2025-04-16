@@ -69,6 +69,10 @@ case_t cases[] = {
 			"((< x 0) (- x)))) (abs (- 123))",
 		"123"
 	},
+	{
+		"(define (abs1 x) (if (< x 0) (- x) x)) (abs1 (- 123))",
+		"123",
+	},
 
 	// ...
 	{"(apply cons (quote (a (b c))))", "(a b c)"},
