@@ -105,6 +105,7 @@ pub const CFUNCS: &[&str] = &[
     "isprint",
     // stdlib
     "atoi",
+    "atof",
     "atol",
     "atoll",
     "atol_l",

@@ -147,6 +147,10 @@ tok.tok_t *apply(tok.tok_t *list) {
 	return runfunc(fn->name, eval(car(cdr(list))));
 }
 
+void printnum(char *buf, double x) {
+	sprintf(buf, "%g", x);
+}
+
 // (* a b) returns a * b
 tok.tok_t *mul(tok.tok_t *args) {
 	tok.tok_t *a = eval(car(args));
@@ -155,7 +159,7 @@ tok.tok_t *mul(tok.tok_t *args) {
 		panic("not a number");
 	}
 	char buf[100];
-	sprintf(buf, "%d", atoi(a->value) * atoi(b->value));
+	printnum(buf, atof(a->value) * atof(b->value));
 	return tok.newnumber(buf);
 }
 
@@ -167,7 +171,7 @@ tok.tok_t *add(tok.tok_t *args) {
 		panic("not a number");
 	}
 	char buf[100];
-	sprintf(buf, "%d", atoi(a->value) + atoi(b->value));
+	printnum(buf, atof(a->value) + atof(b->value));
 	return tok.newnumber(buf);
 }
 
@@ -179,7 +183,7 @@ tok.tok_t *sub(tok.tok_t *args) {
 		panic("not a number");
 	}
 	char buf[100];
-	sprintf(buf, "%d", atoi(a->value) - atoi(b->value));
+	printnum(buf, atof(a->value) - atof(b->value));
 	return tok.newnumber(buf);
 }
 
@@ -191,7 +195,7 @@ tok.tok_t *over(tok.tok_t *args) {
 		panic("not a number");
 	}
 	char buf[100];
-	sprintf(buf, "%d", atoi(a->value) / atoi(b->value));
+	printnum(buf, atof(a->value) / atof(b->value));
 	return tok.newnumber(buf);
 }
 
