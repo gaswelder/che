@@ -85,16 +85,25 @@ case_t cases[] = {
 	{"(apply cons (quote (a (b c))))", "(a b c)"},
 };
 
+tok.tok_t *evalstr(const char *s) {
+	parsebuf.parsebuf_t *b = parsebuf.from_str(s);
+	tok.tok_t **all = read.readall(b);
+	parsebuf.buf_free(b);
+
+	return eval.evalall(all);
+}
+
 int main() {
 	char buf[4096];
 	for (size_t i = 0; i < nelem(cases); i++) {
 		case_t c = cases[i];
-		parsebuf.parsebuf_t *b = parsebuf.from_str(c.in);
-		tok.tok_t **all = read.readall(b);
-		tok.tok_t *x = eval.evalall(all);
+
+		tok.tok_t *x = evalstr(c.in);
+
 		tok.print(x, buf, 4096);
-		test.streq(buf, c.out);
-		parsebuf.buf_free(b);
+		if (!test.streq(buf, c.out)) {
+			puts(c.in);
+		}
 	}
 	return test.fails();
 }
