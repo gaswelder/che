@@ -92,6 +92,8 @@ tok.tok_t *runfunc(const char *name, tok.tok_t *args) {
 		case "+": { return add(args); }
 		case "-": { return sub(args); }
 		case "/": { return over(args); }
+		case ">": { return gt(args); }
+		case "<": { return lt(args); }
 	}
 
 	// See if there is a defined function with this name.
@@ -252,6 +254,26 @@ tok.tok_t *eq(tok.tok_t *args) {
 		}
 	}
 	if (same) {
+		return tok.newsym("true");
+	}
+	return NULL;
+}
+
+// (> a b) returns true if a > b
+tok.tok_t *gt(tok.tok_t *args) {
+	tok.tok_t *a = eval(car(args));
+	tok.tok_t *b = eval(car(cdr(args)));
+	if (atof(a->value) > atof(b->value)) {
+		return tok.newsym("true");
+	}
+	return NULL;
+}
+
+// (< a b) returns true if a < b
+tok.tok_t *lt(tok.tok_t *args) {
+	tok.tok_t *a = eval(car(args));
+	tok.tok_t *b = eval(car(cdr(args)));
+	if (atof(a->value) < atof(b->value)) {
 		return tok.newsym("true");
 	}
 	return NULL;

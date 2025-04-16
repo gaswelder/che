@@ -32,6 +32,8 @@ case_t cases[] = {
 	// Comparisons
 	{"(eq? 1 1)", "true"},
 	{"(eq? 1 2)", "NULL"},
+	{"(> 1 2)", "NULL"},
+	{"(< 1 2)", "true"},
 
 	// List ops
 	{"(cons 1 nil)", "(1)"},
