@@ -47,13 +47,16 @@ pub tok.tok_t *evalall(tok.tok_t **all) {
 }
 
 bool trace = false;
-size_t indent = 0;
+size_t depth = 0;
 
 // Evaluates a node.
 pub tok.tok_t *eval(tok.tok_t *x) {
+	depth++;
+	if (depth == 100) {
+		panic("eval stack overflow (%zu)", depth);
+	}
 	if (trace) {
-		indent++;
-		for (size_t i = 0; i < indent; i++) printf("  ");
+		for (size_t i = 0; i < depth; i++) printf("  ");
 		printf("eval: ");
 		tok.dbgprint(x);
 	}
@@ -67,11 +70,11 @@ pub tok.tok_t *eval(tok.tok_t *x) {
 		}
 	}
 	if (trace) {
-		for (size_t i = 0; i < indent; i++) printf("  ");
+		for (size_t i = 0; i < depth; i++) printf("  ");
 		printf("result: ");
 		tok.dbgprint(r);
-		indent--;
 	}
+	depth--;
 	return r;
 }
 
