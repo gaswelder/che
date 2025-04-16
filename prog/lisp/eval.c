@@ -95,6 +95,7 @@ tok.tok_t *runfunc(const char *name, tok.tok_t *args) {
 		case ">": { return gt(args); }
 		case "<": { return lt(args); }
 		case "=": { return numeq(args); }
+		case "cond": { return cond(args); }
 	}
 
 	// See if there is a defined function with this name.
@@ -144,19 +145,19 @@ tok.tok_t *define(tok.tok_t *args) {
 }
 
 
-// rt.item_t *cond(rt.item_t *args) {
-// 	rt.item_t *l = args;
-// 	while (l) {
-// 		rt.item_t *cas = rt.car(l);
-// 		rt.item_t *cond = rt.car(cas);
-// 		if (eval(cond)) {
-// 			rt.item_t *result = rt.car(rt.cdr(cas));
-// 			return eval(result);
-// 		}
-// 		l = rt.cdr(l);
-// 	}
-// 	return NULL;
-// }
+tok.tok_t *cond(tok.tok_t *args) {
+	tok.tok_t *l = args;
+	while (l) {
+		tok.tok_t *cas = car(l);
+		tok.tok_t *cond = car(cas);
+		if (eval(cond)) {
+			tok.tok_t *result = car(cdr(cas));
+			return eval(result);
+		}
+		l = cdr(l);
+	}
+	return NULL;
+}
 
 tok.tok_t *apply(tok.tok_t *list) {
 	tok.tok_t *fn = car(list);

@@ -61,6 +61,15 @@ case_t cases[] = {
 		"62.8318"
 	},
 
+	// Cond
+	{
+		"(define (abs x)"
+			"(cond ((> x 0) x)"
+			"((= x 0) 0)"
+			"((< x 0) (- x)))) (abs (- 123))",
+		"123"
+	},
+
 	// ...
 	{"(apply cons (quote (a (b c))))", "(a b c)"},
 };
