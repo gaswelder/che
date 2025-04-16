@@ -94,6 +94,7 @@ tok.tok_t *runfunc(const char *name, tok.tok_t *args) {
 		case "/": { return over(args); }
 		case ">": { return gt(args); }
 		case "<": { return lt(args); }
+		case "=": { return numeq(args); }
 	}
 
 	// See if there is a defined function with this name.
@@ -234,6 +235,15 @@ tok.tok_t *over(tok.tok_t *args) {
 	char buf[100];
 	printnum(buf, atof(a->value) / atof(b->value));
 	return tok.newnumber(buf);
+}
+
+tok.tok_t *numeq(tok.tok_t *args) {
+	tok.tok_t *a = eval(car(args));
+	tok.tok_t *b = eval(car(cdr(args)));
+	if (atof(a->value) == atof(b->value)) {
+		return tok.newsym("true");
+	}
+	return NULL;
 }
 
 // (eq? a b) returns true if a equals b.
