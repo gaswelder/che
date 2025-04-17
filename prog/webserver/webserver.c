@@ -2,7 +2,7 @@
 #import http
 #import opt
 #import os/net
-#import os/os
+#import os/self
 #import os/threads
 #import reader
 #import srvcgi.c
@@ -26,7 +26,7 @@ int main(int argc, char *argv[]) {
 
 	signal(SIGINT, handle_sigint);
 	server_t SERVER = {};
-	if (!os.getcwd(SERVER.homedir, sizeof(SERVER.homedir))) {
+	if (!self.getcwd(SERVER.homedir, sizeof(SERVER.homedir))) {
 		panic("failed to get current working directory: %s", strerror(errno));
 	}
 	net.net_t *ln = net.net_listen("tcp", addr);
