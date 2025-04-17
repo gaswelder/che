@@ -41,7 +41,7 @@ tok.tok_t *readsymbol(parsebuf.parsebuf_t *b) {
 	tok.tok_t *t = tok.newsym("");
 	int pos = 0;
 	while (parsebuf.more(b) && !isspace(parsebuf.peek(b)) && parsebuf.peek(b) != ')') {
-		t->name[pos++] = parsebuf.buf_get(b);
+		t->name[pos++] = parsebuf.get(b);
 	}
 	return t;
 }
@@ -51,7 +51,7 @@ tok.tok_t *readsymbol(parsebuf.parsebuf_t *b) {
 tok.tok_t *readlist(parsebuf.parsebuf_t *b) {
 	tok.tok_t *t = tok.newlist();
 
-	parsebuf.buf_get(b); // "("
+	parsebuf.get(b); // "("
 	parsebuf.spaces(b);
 	while (parsebuf.peek(b) != EOF && parsebuf.peek(b) != ')') {
 		t->items[t->nitems++] = read(b);
@@ -60,6 +60,6 @@ tok.tok_t *readlist(parsebuf.parsebuf_t *b) {
 	if (parsebuf.peek(b) != ')') {
 		panic("expected )");
 	}
-	parsebuf.buf_get(b); // ")"
+	parsebuf.get(b); // ")"
 	return t;
 }

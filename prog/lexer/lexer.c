@@ -42,7 +42,7 @@ int main() {
 		fprintf(stderr, "failed to get lexer: %s\n", strerror(errno));
 		return 1;
 	}
-	lexer->buf = parsebuf.from_stdin();
+	lexer->buf = parsebuf.stdin();
 	if (!lexer->buf) {
 		fprintf(stderr, "failed to get parsebuf: %s\n", strerror(errno));
 		return 1;
@@ -70,7 +70,7 @@ int main() {
 }
 
 void lexer_free(lexer_t *l) {
-	parsebuf.buf_free(l->buf);
+	parsebuf.free(l->buf);
 	free(l);
 }
 
@@ -186,7 +186,7 @@ tok_t *read_number(parsebuf.parsebuf_t *b) {
 	char *pos = parsebuf.buf_pos(b);
 	char *num = parsebuf.buf_read_set(b, "0123456789");
 	if (parsebuf.peek(b) == '.') {
-		parsebuf.buf_get(b);
+		parsebuf.get(b);
 		char *frac = parsebuf.buf_read_set(b, "0123456789");
 		char *modifiers = parsebuf.buf_read_set(b, "ULf");
 		// defer free(modifiers);
@@ -208,8 +208,8 @@ tok_t *read_number(parsebuf.parsebuf_t *b) {
 
 tok_t *read_hex_number(parsebuf.parsebuf_t *b) {
 	// Skip "0x"
-	parsebuf.buf_get(b);
-	parsebuf.buf_get(b);
+	parsebuf.get(b);
+	parsebuf.get(b);
 
 	char *num = parsebuf.buf_read_set(b, "0123456789ABCDEFabcdef");
 	char *modifiers = parsebuf.buf_read_set(b, "UL");
@@ -224,23 +224,23 @@ tok_t *read_string(parsebuf.parsebuf_t *b) {
 	char *pos = parsebuf.buf_pos(b);
 
 	// Skip the opening quote
-	parsebuf.buf_get(b);
+	parsebuf.get(b);
 	strbuilder.str *s = strbuilder.str_new();
 
 	while (parsebuf.more(b)) {
-		char c = parsebuf.buf_get(b);
+		char c = parsebuf.get(b);
 		if (c == '"') {
 			return tok_make("string", strbuilder.str_unpack(s), pos);
 		}
 		strbuilder.str_addc(s, c);
 		if (c == '\\') {
-			strbuilder.str_addc(s, parsebuf.buf_get(b));
+			strbuilder.str_addc(s, parsebuf.get(b));
 		}
 	}
 	return tok_make("error", strings.newstr("double quote expected"), pos);
 
 	// // Expect the closing quote
-	// if (parsebuf.buf_get(b) != '"') {
+	// if (parsebuf.get(b) != '"') {
 		
 	// }
 
@@ -268,18 +268,18 @@ tok_t *read_char(parsebuf.parsebuf_t *b) {
 	char *p = s;
 	char *pos = parsebuf.buf_pos(b);
 	
-	parsebuf.buf_get(b);
+	parsebuf.get(b);
 
 	if (parsebuf.peek(b) == '\\') {
-		*p++ = parsebuf.buf_get(b);
+		*p++ = parsebuf.get(b);
 	}
-	*p++ = parsebuf.buf_get(b);
+	*p++ = parsebuf.get(b);
 
 	if (parsebuf.peek(b) != '\'') {
 		free(s);
 		return tok_make("error", strings.newstr("single quote expected"), pos);
 	}
-	parsebuf.buf_get(b);
+	parsebuf.get(b);
 	return tok_make("char", s, pos);
 }
 
@@ -310,7 +310,7 @@ tok_t *read_identifier(parsebuf.parsebuf_t *b) {
 		if (!isalpha(c) && !isdigit(c) && c != '_') {
 			break;
 		}
-		strbuilder.str_addc(s, parsebuf.buf_get(b));
+		strbuilder.str_addc(s, parsebuf.get(b));
 	}
 	return tok_make("word", strbuilder.str_unpack(s), pos);
 }

@@ -144,7 +144,7 @@ term_t *parse_term1(parsebuf.parsebuf_t *b) {
 
     int n = 0;
     while (isalpha(parsebuf.peek(b))) {
-        t->name[n++] = parsebuf.buf_get(b);
+        t->name[n++] = parsebuf.get(b);
     }
 
     if (strings.allupper(t->name)) {

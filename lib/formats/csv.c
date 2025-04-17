@@ -23,7 +23,7 @@ pub reader_t *new_reader() {
 pub bool read_line(reader_t *r) {
 	if (!fgets(r->line, sizeof(r->line), stdin)) return false;
 	if (r->b) {
-		parsebuf.buf_free(r->b);
+		parsebuf.free(r->b);
 		r->b = NULL;
 	}
 	r->b = parsebuf.from_str(r->line);
@@ -32,7 +32,7 @@ pub bool read_line(reader_t *r) {
 }
 
 pub void free_reader(reader_t *r) {
-	if (r->b) parsebuf.buf_free(r->b);
+	if (r->b) parsebuf.free(r->b);
 	free(r);
 }
 
@@ -57,7 +57,7 @@ pub bool read_val(reader_t *r, char *buf, size_t bufsize) {
 	while (parsebuf.more(b) && parsebuf.peek(b) != '\"') {
 		if (n + 1 == bufsize) panic("buf too small");
 		n++;
-		*p++ = parsebuf.buf_get(b);
+		*p++ = parsebuf.get(b);
 	}
 	if (!parsebuf.buf_skip(b, '"')) panic("expected '\"'");
 	*p++ = '\0';

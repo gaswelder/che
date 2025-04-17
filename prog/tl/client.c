@@ -162,14 +162,14 @@ void word(parsebuf.parsebuf_t *b, char *p, size_t n) {
     while (parsebuf.more(b) && parsebuf.peek(b) != ' ') {
         if (n == 0) return;
         n--;
-        *p++ = parsebuf.buf_get(b);
+        *p++ = parsebuf.get(b);
     }
     spaces(b);
 }
 
 void spaces(parsebuf.parsebuf_t *b) {
     while (parsebuf.more(b) && parsebuf.peek(b) == ' ') {
-        parsebuf.buf_get(b);
+        parsebuf.get(b);
     }
 }
 
@@ -178,7 +178,7 @@ void size(parsebuf.parsebuf_t *b, char *p, size_t n) {
         while (parsebuf.more(b) && parsebuf.peek(b) != ' ') {
             if (n == 0) return;
             n--;
-            *p++ = parsebuf.buf_get(b);
+            *p++ = parsebuf.get(b);
         }
         spaces(b);
         word(b, p, n);
@@ -191,6 +191,6 @@ void rest(parsebuf.parsebuf_t *b, char *p, size_t n) {
     while (parsebuf.more(b)) {
         if (n == 0) return;
         n--;
-        *p++ = parsebuf.buf_get(b);
+        *p++ = parsebuf.get(b);
     }
 }

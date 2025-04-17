@@ -6,7 +6,7 @@
 int main() {
 	char buf[4096];
 
-	parsebuf.parsebuf_t *b = parsebuf.from_stdin();
+	parsebuf.parsebuf_t *b = parsebuf.stdin();
 	while (true) {
 		tok.tok_t *in = read.read(b);
 		if (!in) break;

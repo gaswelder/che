@@ -105,7 +105,7 @@ case_t cases[] = {
 tok.tok_t *evalstr(const char *s) {
 	parsebuf.parsebuf_t *b = parsebuf.from_str(s);
 	tok.tok_t **all = read.readall(b);
-	parsebuf.buf_free(b);
+	parsebuf.free(b);
 
 	return eval.evalall(all);
 }

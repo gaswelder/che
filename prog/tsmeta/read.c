@@ -189,21 +189,21 @@ tok_t *lex_read(lexer_t *l) {
 		return t;
 	}
 	if (c == '[' || c == ']' || c == '|' || c == '<' || c == '>' || c == ',' || c == '=') {
-		parsebuf.buf_get(b);
+		parsebuf.get(b);
 		t->kind = c;
 		// printf("read token: (%d, %s)\n", t->kind, t->payload);
 		return t;
 	}
 	if (c == '"') {
 		char *p = t->payload;
-		*p++ = parsebuf.buf_get(b);
+		*p++ = parsebuf.get(b);
 		while (parsebuf.more(b) && parsebuf.peek(b) != '"') {
-			*p++ = parsebuf.buf_get(b);
+			*p++ = parsebuf.get(b);
 		}
 		if (parsebuf.peek(b) != '"') {
 			panic("expected closing quote");
 		}
-		*p++ = parsebuf.buf_get(b);
+		*p++ = parsebuf.get(b);
 		t->kind = TOK_STRING;
 		// printf("read token: (%d, %s)\n", t->kind, t->payload);
 		return t;

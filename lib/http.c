@@ -237,7 +237,7 @@ bool parse_query(request_t *r) {
 pub bool parse_response(reader.t *re, response_t *r) {
 	parsebuf.parsebuf_t *b = parsebuf.new(re);
 	if (!read_status_line(b, r)) {
-		parsebuf.buf_free(b);
+		parsebuf.free(b);
 		return false;
 	}
 	while (parsebuf.more(b)) {
@@ -246,12 +246,12 @@ pub bool parse_response(reader.t *re, response_t *r) {
 		}
 		header_t *h = &r->headers[r->nheaders++];
 		if (!read_header(b, h)) {
-			parsebuf.buf_free(b);
+			parsebuf.free(b);
 			return false;
 		}
 	}
 	bool ok = read_body(b, r);
-	parsebuf.buf_free(b);
+	parsebuf.free(b);
     return ok;
 }
 
@@ -260,7 +260,7 @@ bool read_body(parsebuf.parsebuf_t *b, response_t *r) {
 	if (tmp) {
 		r->content_length = atoi(tmp);
 		for (int i = 0; i < r->content_length; i++) {
-			char c = parsebuf.buf_get(b);
+			char c = parsebuf.get(b);
 			if (c == EOF) {
 				return false;
 			}
@@ -277,7 +277,7 @@ bool read_body(parsebuf.parsebuf_t *b, response_t *r) {
 			if (i + 1 == sizeof(r->body)) {
 				panic("body buffer too small");
 			}
-			r->body[i++] = parsebuf.buf_get(b);
+			r->body[i++] = parsebuf.get(b);
 		}
 		return true;
 	}
@@ -288,30 +288,30 @@ bool read_body(parsebuf.parsebuf_t *b, response_t *r) {
 bool read_status_line(parsebuf.parsebuf_t *b, response_t *r) {
 	// HTTP/1.1
 	for (int i = 0; i < 8; i++) {
-		r->version[i] = parsebuf.buf_get(b);
+		r->version[i] = parsebuf.get(b);
 	}
 	if (strcmp(r->version, "HTTP/1.0") && strcmp(r->version, "HTTP/1.1")) {
 		return false;
 	}
 
     // space
-    if (parsebuf.buf_get(b) != ' ') return false;
+    if (parsebuf.get(b) != ' ') return false;
 
 	// 200
 	r->status = 0;
 	for (int i = 0; i < 3; i++) {
-		char c = parsebuf.buf_get(b);
+		char c = parsebuf.get(b);
 		if (!isdigit(c)) return false;
 		r->status *= 10;
 		r->status += c - '0';
 	}
 
 	// space
-	if (parsebuf.buf_get(b) != ' ') return false;
+	if (parsebuf.get(b) != ' ') return false;
 
 	// status text
 	while (parsebuf.more(b) && parsebuf.peek(b) != '\r') {
-		parsebuf.buf_get(b);
+		parsebuf.get(b);
 	}
 
 	// eol
@@ -324,7 +324,7 @@ bool read_status_line(parsebuf.parsebuf_t *b, response_t *r) {
 bool read_header(parsebuf.parsebuf_t *b, header_t *h) {
 	char *tmp = h->name;
 	while (parsebuf.more(b) && parsebuf.peek(b) != ':') {
-		*tmp++ = parsebuf.buf_get(b);
+		*tmp++ = parsebuf.get(b);
 	}
 	// : space
 	if (!parsebuf.buf_skip_literal(b, ": ")) {
@@ -333,7 +333,7 @@ bool read_header(parsebuf.parsebuf_t *b, header_t *h) {
 	// value
 	tmp = h->value;
 	while (parsebuf.more(b) && parsebuf.peek(b) != '\r') {
-		*tmp++ = parsebuf.buf_get(b);
+		*tmp++ = parsebuf.get(b);
 	}
 	// eol
 	if (!parsebuf.buf_skip_literal(b, "\r\n")) {
@@ -371,7 +371,7 @@ pub bool read_request(reader.t *br, request_t *r) {
 			&& parsebuf.buf_skip_literal(b, "\r\n");
 		if (ok) r->nheaders++;
 	}
-	parsebuf.buf_free(b);
+	parsebuf.free(b);
     return ok;
 }
 

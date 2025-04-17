@@ -11,13 +11,14 @@ pub typedef {
 	size_t cachesize;
 } parsebuf_t;
 
-pub parsebuf_t *from_stdin() {
+// Returns a new instance reading from stdin.
+pub parsebuf_t *stdin() {
 	parsebuf_t *b = new(reader.stdin());
 	b->reader_own = true;
 	return b;
 }
 
-// Returns a new parsebuf instance reading from the given string.
+// Returns a new instance reading from the given string.
 // The string must not be deallocated before the buffer.
 pub parsebuf_t *from_str(const char *s) {
 	parsebuf_t *b = new(reader.string(s));
@@ -35,11 +36,11 @@ pub parsebuf_t *new(reader.t *r) {
 }
 
 // Frees memory used by the buffer.
-pub void buf_free(parsebuf_t *b) {
+pub void free(parsebuf_t *b) {
 	if (b->reader_own) {
 		reader.free(b->reader);
 	}
-	free(b);
+	OS.free(b);
 }
 
 // Returns the next character in the buffer.
@@ -68,11 +69,9 @@ pub void buf_fcontext(parsebuf_t *b, char *buf, size_t len) {
 	buf[len-1] = '\0';
 }
 
-/*
- * Returns next character in the buffer and removes it from the stream.
- * Returns EOF if there is no next character.
- */
-pub int buf_get(parsebuf_t *b) {
+// Returns next character in the buffer and removes it from the stream.
+// Returns EOF if there is no next character.
+pub int get(parsebuf_t *b) {
 	if (b->cachesize > 0) {
 		int c = b->cache[0];
 		for (size_t i = 0; i < b->cachesize-1; i++) {
@@ -108,7 +107,7 @@ void _prefetch(parsebuf_t *b, size_t n) {
 
 pub void buf_skip_set(parsebuf_t *b, const char *set) {
 	while (more(b) && strchr(set, peek(b))) {
-		buf_get(b);
+		get(b);
 	}
 }
 
@@ -117,7 +116,7 @@ pub void buf_skip_set(parsebuf_t *b, const char *set) {
  */
 pub bool buf_skip(parsebuf_t *b, char c) {
 	if (peek(b) == c) {
-		buf_get(b);
+		get(b);
 		return true;
 	}
 	return false;
@@ -127,7 +126,7 @@ pub char *buf_read_set(parsebuf_t *b, const char *set) {
 	char *s = calloc(10000, 1);
 	char *p = s;
 	while (more(b) && strchr(set, peek(b))) {
-		*p = buf_get(b);
+		*p = get(b);
 		p++;
 	}
 	return s;
@@ -139,7 +138,7 @@ pub bool buf_skip_literal(parsebuf_t *b, const char *literal) {
 	}
 	size_t n = strlen(literal);
 	for (size_t i = 0; i < n; i++) {
-		buf_get(b);
+		get(b);
 	}
 	return true;
 }
@@ -148,7 +147,7 @@ pub bool spaces(parsebuf_t *b) {
 	int n = 0;
 	while (isspace(peek(b))) {
 		n++;
-		buf_get(b);
+		get(b);
 	}
 	return n > 0;
 }
@@ -168,7 +167,7 @@ pub bool id(parsebuf_t *b, char *buf, size_t n) {
 		if (!isalpha(c) && !isdigit(c) && c != '_') {
 			break;
 		}
-		buf_get(b);
+		get(b);
 		if (pos < n-1) {
 			buf[pos++] = c;
 		}
@@ -182,7 +181,7 @@ pub bool num(parsebuf_t *b, char *buf, size_t n) {
 	char *p = buf;
 
 	if (peek(b) == '-') {
-		*p++ = buf_get(b);
+		*p++ = get(b);
 	}
 
 	// [digits]
@@ -190,29 +189,29 @@ pub bool num(parsebuf_t *b, char *buf, size_t n) {
 		return false;
 	}
 	while (isdigit(peek(b))) {
-		*p++ = buf_get(b);
+		*p++ = get(b);
 	}
 
 	// Optional fractional part
 	if (peek(b) == '.') {
-		*p++ = buf_get(b);
+		*p++ = get(b);
 		if (!isdigit(peek(b))) {
 			return false;
 		}
 		while (isdigit(peek(b))) {
-			*p++ = buf_get(b);
+			*p++ = get(b);
 		}
 	}
 
 	// Optional exponent
 	int c = peek(b);
 	if (c == 'e' || c == 'E') {
-		*p++ = buf_get(b);
+		*p++ = get(b);
 		
 		// Optional - or +
 		c = peek(b);
 		if (c == '-' || c == '+') {
-			*p++ = buf_get(b);
+			*p++ = get(b);
 		}
 
 		// Sequence of exponent digits
@@ -220,7 +219,7 @@ pub bool num(parsebuf_t *b, char *buf, size_t n) {
 			return false;
 		}
 		while (isdigit(peek(b))) {
-			*p++ = buf_get(b);
+			*p++ = get(b);
 		}
 	}
 	*p++ = '\0';
@@ -262,7 +261,7 @@ pub char *buf_skip_until(parsebuf_t *b, const char *literal) {
 		if (buf_literal_follows(b, literal)) {
 			break;
 		}
-		*p = buf_get(b);
+		*p = get(b);
 		p++;
 	}
 	return s;
@@ -277,7 +276,7 @@ pub bool read_until(parsebuf_t *b, char until, char *buf, size_t len) {
 		if (pos == len-1) {
 			return false;
 		}
-		buf[pos++] = buf_get(b);
+		buf[pos++] = get(b);
 	}
 	buf[pos] = '\0';
 	return true;
