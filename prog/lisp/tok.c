@@ -7,14 +7,14 @@ pub enum {
 	NUMBER,
 };
 
-const char *typename(int type) {
-	switch (type) {
-		case LIST: { return "list"; }
-		case SYMBOL: { return "sym"; }
-		case NUMBER: { return "num"; }
-		default: { return "UNKNOWN TYPE"; }
-	}
-}
+// const char *typename(int type) {
+// 	switch (type) {
+// 		case LIST: { return "list"; }
+// 		case SYMBOL: { return "sym"; }
+// 		case NUMBER: { return "num"; }
+// 		default: { return "UNKNOWN TYPE"; }
+// 	}
+// }
 
 pub typedef {
 	int type;
@@ -61,7 +61,7 @@ pub void dbgprint(tok_t *x) {
 		return;
 	}
 	print(x, buf, 4096);
-	printf("%s %s\n", typename(x->type), buf);
+	printf("%s\n", buf);
 }
 
 // Prints the given node into the buf.

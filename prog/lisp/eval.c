@@ -51,6 +51,16 @@ size_t depth = 0;
 
 // Evaluates a node.
 pub tok.tok_t *eval(tok.tok_t *x) {
+	if (x->type == tok.NUMBER) return x;
+	if (x->type == tok.SYMBOL) {
+		tok.tok_t *r = eval_symbol(x);
+		if (trace) {
+			for (size_t i = 0; i < depth; i++) printf("  ");
+			printf("%s: ", x->name);
+			tok.dbgprint(r);
+		}
+		return r;
+	}
 	depth++;
 	if (depth == 100) {
 		panic("eval stack overflow (%zu)", depth);
@@ -61,14 +71,7 @@ pub tok.tok_t *eval(tok.tok_t *x) {
 		tok.dbgprint(x);
 	}
 	tok.tok_t *r = NULL;
-	switch (x->type) {
-		case tok.SYMBOL: { r = eval_symbol(x); }
-		case tok.LIST: { r = eval_list(x); }
-		case tok.NUMBER: { r = x; }
-		default: {
-			panic("unexpected node type: %d", x->type);
-		}
-	}
+	r = eval_list(x);
 	if (trace) {
 		for (size_t i = 0; i < depth; i++) printf("  ");
 		printf("result: ");
