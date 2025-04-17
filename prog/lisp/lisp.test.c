@@ -1,5 +1,5 @@
 #import eval.c
-#import parsebuf
+#import tokenizer
 #import read.c
 #import test
 #import tok.c
@@ -103,9 +103,9 @@ case_t cases[] = {
 };
 
 tok.tok_t *evalstr(const char *s) {
-	parsebuf.parsebuf_t *b = parsebuf.from_str(s);
+	tokenizer.t *b = tokenizer.from_str(s);
 	tok.tok_t **all = read.readall(b);
-	parsebuf.free(b);
+	tokenizer.free(b);
 
 	return eval.evalall(all);
 }

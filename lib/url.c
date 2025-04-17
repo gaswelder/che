@@ -1,4 +1,4 @@
-#import parsebuf
+#import tokenizer
 
 pub typedef {
     char schema[10];
@@ -13,43 +13,43 @@ pub t *parse(const char *s) {
 		panic("calloc failed");
 	}
 
-    parsebuf.parsebuf_t *buf = parsebuf.from_str(s);
+    tokenizer.t *buf = tokenizer.from_str(s);
 
     // http
     char *q = r->schema;
-    while (parsebuf.more(buf) && parsebuf.peek(buf) != ':') {
-        *q++ = parsebuf.get(buf);
+    while (tokenizer.more(buf) && tokenizer.peek(buf) != ':') {
+        *q++ = tokenizer.get(buf);
     }
 
     // ://
-    if (parsebuf.get(buf) != ':' || parsebuf.get(buf) != '/' || parsebuf.get(buf) != '/') {
-        parsebuf.free(buf);
+    if (tokenizer.get(buf) != ':' || tokenizer.get(buf) != '/' || tokenizer.get(buf) != '/') {
+        tokenizer.free(buf);
 		free(r);
         return NULL;
     }
 
     // domain or ip address
     q = r->hostname;
-    while (parsebuf.more(buf) && parsebuf.peek(buf) != ':' && parsebuf.peek(buf) != '/') {
-        *q++ = parsebuf.get(buf);
+    while (tokenizer.more(buf) && tokenizer.peek(buf) != ':' && tokenizer.peek(buf) != '/') {
+        *q++ = tokenizer.get(buf);
     }
 
     q = r->port;
-    if (parsebuf.peek(buf) == ':') {
-        parsebuf.get(buf);
-        while (parsebuf.more(buf) && parsebuf.peek(buf) != '/') {
-            *q++ = parsebuf.get(buf);
+    if (tokenizer.peek(buf) == ':') {
+        tokenizer.get(buf);
+        while (tokenizer.more(buf) && tokenizer.peek(buf) != '/') {
+            *q++ = tokenizer.get(buf);
         }
     }
 
     q = r->path;
 	*q = '/';
-    if (parsebuf.peek(buf) == '/') {
-        while (parsebuf.more(buf)) {
-            *q++ = parsebuf.get(buf);
+    if (tokenizer.peek(buf) == '/') {
+        while (tokenizer.more(buf)) {
+            *q++ = tokenizer.get(buf);
         }
     }
 
-    parsebuf.free(buf);
+    tokenizer.free(buf);
     return r;
 }

@@ -1,5 +1,5 @@
 #import clip/map
-#import parsebuf
+#import tokenizer
 #import strings
 
 enum { FUNC, VAR, CONST };
@@ -139,12 +139,12 @@ bool eq(term_t *x, *y) {
     return true;
 }
 
-term_t *parse_term1(parsebuf.parsebuf_t *b) {
+term_t *parse_term1(tokenizer.t *b) {
     term_t *t = calloc(1, sizeof(term_t));
 
     int n = 0;
-    while (isalpha(parsebuf.peek(b))) {
-        t->name[n++] = parsebuf.get(b);
+    while (isalpha(tokenizer.peek(b))) {
+        t->name[n++] = tokenizer.get(b);
     }
 
     if (strings.allupper(t->name)) {
@@ -152,18 +152,18 @@ term_t *parse_term1(parsebuf.parsebuf_t *b) {
         return t;
     }
 
-    if (parsebuf.buf_skip(b, '(')) {
+    if (tokenizer.buf_skip(b, '(')) {
         t->type = FUNC;
         while (true) {
             t->args[t->args_length++] = parse_term1(b);
-            if (parsebuf.buf_skip(b, ',')) {
-                parsebuf.buf_skip_set(b, " ");
+            if (tokenizer.buf_skip(b, ',')) {
+                tokenizer.buf_skip_set(b, " ");
                 continue;
             }
             break;
         }
-        if (!parsebuf.buf_skip(b, ')')) {
-            panic("missing closing brace: '%c'", parsebuf.peek(b));
+        if (!tokenizer.buf_skip(b, ')')) {
+            panic("missing closing brace: '%c'", tokenizer.peek(b));
         }
         return t;
     }
@@ -172,7 +172,7 @@ term_t *parse_term1(parsebuf.parsebuf_t *b) {
 }
 
 term_t *parse_term(const char *s) {
-    return parse_term1(parsebuf.from_str(s));
+    return parse_term1(tokenizer.from_str(s));
 }
 
 void print_map(map.map_t *m) {

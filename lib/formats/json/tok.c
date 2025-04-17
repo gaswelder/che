@@ -1,4 +1,4 @@
-#import parsebuf
+#import tokenizer
 
 pub typedef {
 	// One of the "T_" constance below.
@@ -21,7 +21,7 @@ pub enum {
 };
 
 pub typedef {
-    parsebuf.parsebuf_t *buf;
+    tokenizer.t *buf;
     json_token_t next;
 	size_t strlen;
 	size_t strcap;
@@ -35,7 +35,7 @@ pub json_tokenizer_t *new(const char *s) {
     if (!t) {
         return t;
     }
-    t->buf = parsebuf.from_str(s);
+    t->buf = tokenizer.from_str(s);
     if (!t->buf) {
         free(t);
         return NULL;
@@ -43,7 +43,7 @@ pub json_tokenizer_t *new(const char *s) {
 	t->strcap = 4096;
 	t->next.str = calloc(1, 4096);
 	if (!t->next.str) {
-		parsebuf.free(t->buf);
+		tokenizer.free(t->buf);
 		free(t);
 		return NULL;
 	}
@@ -54,7 +54,7 @@ pub json_tokenizer_t *new(const char *s) {
  * Frees the lexer's memory.
  */
 pub void free(json_tokenizer_t *t) {
-    parsebuf.free(t->buf);
+    tokenizer.free(t->buf);
     OS.free(t);
 }
 
@@ -63,8 +63,8 @@ pub void free(json_tokenizer_t *t) {
  * Returns false if there was an error.
  */
 pub bool read(json_tokenizer_t *t) {
-	parsebuf.spaces(t->buf);
-    int c = parsebuf.peek(t->buf);
+	tokenizer.spaces(t->buf);
+    int c = tokenizer.peek(t->buf);
     if (c == EOF) {
         t->next.type = EOF;
     }
@@ -72,7 +72,7 @@ pub bool read(json_tokenizer_t *t) {
         readstr(t);
     }
     else if (c == ':' || c == ',' || c == '{' || c == '}' || c == '[' || c == ']') {
-        t->next.type = parsebuf.get(t->buf);
+        t->next.type = tokenizer.get(t->buf);
     }
     else if (c == '-' || isdigit(c)) {
 		readnum(t);
@@ -111,11 +111,11 @@ pub const char *currstr(json_tokenizer_t *l) {
  */
 void readnum(json_tokenizer_t *l)
 {
-	parsebuf.parsebuf_t *b = l->buf;
+	tokenizer.t *b = l->buf;
 	json_token_t *t = &l->next;
 
 	char buf[100] = {};
-	if (!parsebuf.num(b, buf, 100)) {
+	if (!tokenizer.num(b, buf, 100)) {
 		seterror(l, "failed to parse a number");
 		return;
 	}
@@ -132,13 +132,13 @@ void readnum(json_tokenizer_t *l)
 
 void readkw(json_tokenizer_t *l)
 {
-	parsebuf.parsebuf_t *b = l->buf;
+	tokenizer.t *b = l->buf;
 	json_token_t *t = &l->next;
 	char kw[8] = {};
 	int i = 0;
 
-	while (isalpha(parsebuf.peek(b)) && i < 7) {
-		kw[i] = parsebuf.get(b);
+	while (isalpha(tokenizer.peek(b)) && i < 7) {
+		kw[i] = tokenizer.get(b);
 		i++;
 	}
 	kw[i] = '\0';
@@ -153,21 +153,21 @@ void readkw(json_tokenizer_t *l)
 
 void readstr(json_tokenizer_t *l)
 {
-	parsebuf.parsebuf_t *b = l->buf;
+	tokenizer.t *b = l->buf;
 	json_token_t *t = &l->next;
 
-	char g = parsebuf.get(b);
+	char g = tokenizer.get(b);
 	if (g != '"') {
 		seterror(l, "'\"' expected");
 		return;
 	}
 	resetstr(l);
 
-	while (parsebuf.more(b) && parsebuf.peek(b) != '"') {
+	while (tokenizer.more(b) && tokenizer.peek(b) != '"') {
 		// Get next string character
-		int ch = parsebuf.get(b);
+		int ch = tokenizer.get(b);
 		if (ch == '\\') {
-			ch = parsebuf.get(b);
+			ch = tokenizer.get(b);
 			if (ch == EOF) {
 				seterror(l, "Unexpected end of input");
 				return;
@@ -181,7 +181,7 @@ void readstr(json_tokenizer_t *l)
 		}
 	}
 
-	g = parsebuf.get(b);
+	g = tokenizer.get(b);
 	if (g != '"') {
 		seterror(l, "'\"' expected");
 		return;

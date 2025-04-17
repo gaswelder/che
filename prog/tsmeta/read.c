@@ -1,4 +1,4 @@
-#import parsebuf
+#import tokenizer
 #import nodes.c
 
 nodes.node_t True = {.kind = nodes.T};
@@ -122,12 +122,12 @@ pub typedef {
 } tok_t;
 
 pub typedef {
-	parsebuf.parsebuf_t *b;
+	tokenizer.t *b;
 	tok_t *next;
 } lexer_t;
 
 int lex_peek(lexer_t *l) {
-	if (!l->next && parsebuf.more(l->b)) {
+	if (!l->next && tokenizer.more(l->b)) {
 		l->next = lex_read(l);
 	}
 	if (!l->next) {
@@ -137,14 +137,14 @@ int lex_peek(lexer_t *l) {
 }
 
 tok_t *lex_peektok(lexer_t *l) {
-	if (!l->next && parsebuf.more(l->b)) {
+	if (!l->next && tokenizer.more(l->b)) {
 		l->next = lex_read(l);
 	}
 	return l->next;
 }
 
 tok_t *lex_get(lexer_t *l, int kind) {
-	if (!l->next && parsebuf.more(l->b)) {
+	if (!l->next && tokenizer.more(l->b)) {
 		l->next = lex_read(l);
 	}
 	if (!l->next || l->next->kind != kind) {
@@ -156,11 +156,11 @@ tok_t *lex_get(lexer_t *l, int kind) {
 }
 
 bool lex_more(lexer_t *l) {
-	return l->next || parsebuf.more(l->b);
+	return l->next || tokenizer.more(l->b);
 }
 
 void lex_pop(lexer_t *l) {
-	if (!l->next && parsebuf.more(l->b)) {
+	if (!l->next && tokenizer.more(l->b)) {
 		l->next = lex_read(l);
 	}
 	if (l->next) {
@@ -169,13 +169,13 @@ void lex_pop(lexer_t *l) {
 }
 
 tok_t *lex_read(lexer_t *l) {
-	parsebuf.parsebuf_t *b = l->b;
-	parsebuf.spaces(b);
+	tokenizer.t *b = l->b;
+	tokenizer.spaces(b);
 	tok_t *t = calloc(1, sizeof(tok_t));
-	int c = parsebuf.peek(b);
+	int c = tokenizer.peek(b);
 
 	if (isdigit(c)) {
-		if (!parsebuf.num(b, t->payload, 100)) {
+		if (!tokenizer.num(b, t->payload, 100)) {
 			panic("failed to read the number");
 		}
 		t->kind = TOK_NUMBER;
@@ -183,27 +183,27 @@ tok_t *lex_read(lexer_t *l) {
 		return t;
 	}
 	if (isalpha(c)) {
-		parsebuf.id(b, t->payload, 100);
+		tokenizer.id(b, t->payload, 100);
 		t->kind = TOK_ID;
 		// printf("read token: (%d, %s)\n", t->kind, t->payload);
 		return t;
 	}
 	if (c == '[' || c == ']' || c == '|' || c == '<' || c == '>' || c == ',' || c == '=') {
-		parsebuf.get(b);
+		tokenizer.get(b);
 		t->kind = c;
 		// printf("read token: (%d, %s)\n", t->kind, t->payload);
 		return t;
 	}
 	if (c == '"') {
 		char *p = t->payload;
-		*p++ = parsebuf.get(b);
-		while (parsebuf.more(b) && parsebuf.peek(b) != '"') {
-			*p++ = parsebuf.get(b);
+		*p++ = tokenizer.get(b);
+		while (tokenizer.more(b) && tokenizer.peek(b) != '"') {
+			*p++ = tokenizer.get(b);
 		}
-		if (parsebuf.peek(b) != '"') {
+		if (tokenizer.peek(b) != '"') {
 			panic("expected closing quote");
 		}
-		*p++ = parsebuf.get(b);
+		*p++ = tokenizer.get(b);
 		t->kind = TOK_STRING;
 		// printf("read token: (%d, %s)\n", t->kind, t->payload);
 		return t;

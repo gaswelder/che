@@ -1,5 +1,5 @@
 #import formats/json
-#import parsebuf
+#import tokenizer
 #import strbuilder
 #import strings
 
@@ -33,7 +33,7 @@ const char *keywords[] = {
 };
 
 typedef {
-	parsebuf.parsebuf_t *buf;
+	tokenizer.t *buf;
 } lexer_t;
 
 int main() {
@@ -42,9 +42,9 @@ int main() {
 		fprintf(stderr, "failed to get lexer: %s\n", strerror(errno));
 		return 1;
 	}
-	lexer->buf = parsebuf.stdin();
+	lexer->buf = tokenizer.stdin();
 	if (!lexer->buf) {
-		fprintf(stderr, "failed to get parsebuf: %s\n", strerror(errno));
+		fprintf(stderr, "failed to get tokenizer: %s\n", strerror(errno));
 		return 1;
 	}
 
@@ -70,7 +70,7 @@ int main() {
 }
 
 void lexer_free(lexer_t *l) {
-	parsebuf.free(l->buf);
+	tokenizer.free(l->buf);
 	free(l);
 }
 
@@ -114,14 +114,14 @@ char *tok_json(tok_t *t) {
 }
 
 tok_t *lexer_read(lexer_t *l) {
-	parsebuf.parsebuf_t *b = l->buf;
+	tokenizer.t *b = l->buf;
 
-	parsebuf.spaces(b);
-	if (!parsebuf.more(b)) {
+	tokenizer.spaces(b);
+	if (!tokenizer.more(b)) {
 		return NULL;
 	}
 
-	int peek = parsebuf.peek(b);
+	int peek = tokenizer.peek(b);
 	if (peek == '#') {
 		// puts("macro");
 		return read_macro(b);
@@ -138,27 +138,27 @@ tok_t *lexer_read(lexer_t *l) {
 		// puts("char");
 		return read_char(b);
 	}
-	if (parsebuf.buf_literal_follows(b, "/*")) {
+	if (tokenizer.buf_literal_follows(b, "/*")) {
 		// puts("mcomm");
 		return read_multiline_comment(b);
 	}
-	if (parsebuf.buf_literal_follows(b, "//")) {
+	if (tokenizer.buf_literal_follows(b, "//")) {
 		// puts("comm");
 		return read_line_comment(b);
 	}
 
 	
-	char *pos = parsebuf.buf_pos(b);
+	char *pos = tokenizer.buf_pos(b);
 	for (size_t i = 0; i < nelem(keywords); i++) {
 		const char *keyword = keywords[i];
-		if (parsebuf.buf_skip_literal(b, keyword)) {
+		if (tokenizer.buf_skip_literal(b, keyword)) {
 			// puts("keyword");
 			return tok_make(strings.newstr("%s", keyword), NULL, pos);
 		}
 	}
 	for (size_t i = 0; i < nelem(symbols); i++) {
 		const char *symbol = symbols[i];
-		if (parsebuf.buf_skip_literal(b, symbol)) {
+		if (tokenizer.buf_skip_literal(b, symbol)) {
 			// puts("symbol");
 			return tok_make(strings.newstr("%s", symbol), NULL, pos);
 		}
@@ -169,35 +169,35 @@ tok_t *lexer_read(lexer_t *l) {
 		// puts("ident");
 		return read_identifier(b);
 	}
-	return tok_make("error", strings.newstr("unexpected character: '%c'", peek), parsebuf.buf_pos(b));
+	return tok_make("error", strings.newstr("unexpected character: '%c'", peek), tokenizer.buf_pos(b));
 }
 
-tok_t *read_macro(parsebuf.parsebuf_t *b) {
-	char *s = parsebuf.buf_skip_until(b, "\n");
-	return tok_make("macro", s, parsebuf.buf_pos(b));
+tok_t *read_macro(tokenizer.t *b) {
+	char *s = tokenizer.buf_skip_until(b, "\n");
+	return tok_make("macro", s, tokenizer.buf_pos(b));
 }
 
-tok_t *read_number(parsebuf.parsebuf_t *b) {
+tok_t *read_number(tokenizer.t *b) {
 	// If "0x" follows, read a hexademical constant.
-	if (parsebuf.buf_skip_literal(b, "0x")) {
+	if (tokenizer.buf_skip_literal(b, "0x")) {
 		return read_hex_number(b);
 	}
 
-	char *pos = parsebuf.buf_pos(b);
-	char *num = parsebuf.buf_read_set(b, "0123456789");
-	if (parsebuf.peek(b) == '.') {
-		parsebuf.get(b);
-		char *frac = parsebuf.buf_read_set(b, "0123456789");
-		char *modifiers = parsebuf.buf_read_set(b, "ULf");
+	char *pos = tokenizer.buf_pos(b);
+	char *num = tokenizer.buf_read_set(b, "0123456789");
+	if (tokenizer.peek(b) == '.') {
+		tokenizer.get(b);
+		char *frac = tokenizer.buf_read_set(b, "0123456789");
+		char *modifiers = tokenizer.buf_read_set(b, "ULf");
 		// defer free(modifiers);
 		// defer free(frac);
 		return tok_make("num", strings.newstr("%s.%s%s", num, frac, modifiers), pos);
 	}
 
-	char *modifiers = parsebuf.buf_read_set(b, "UL");
+	char *modifiers = tokenizer.buf_read_set(b, "UL");
 
-	if (parsebuf.more(b) && isalpha(parsebuf.peek(b))) {
-		return tok_make("error", strings.newstr("unknown modifier: %c", parsebuf.peek(b)), pos);
+	if (tokenizer.more(b) && isalpha(tokenizer.peek(b))) {
+		return tok_make("error", strings.newstr("unknown modifier: %c", tokenizer.peek(b)), pos);
 	}
 
 	char *result = strings.newstr("%s%s", num, modifiers);
@@ -206,41 +206,41 @@ tok_t *read_number(parsebuf.parsebuf_t *b) {
 	return tok_make("num", result, pos);
 }
 
-tok_t *read_hex_number(parsebuf.parsebuf_t *b) {
+tok_t *read_hex_number(tokenizer.t *b) {
 	// Skip "0x"
-	parsebuf.get(b);
-	parsebuf.get(b);
+	tokenizer.get(b);
+	tokenizer.get(b);
 
-	char *num = parsebuf.buf_read_set(b, "0123456789ABCDEFabcdef");
-	char *modifiers = parsebuf.buf_read_set(b, "UL");
+	char *num = tokenizer.buf_read_set(b, "0123456789ABCDEFabcdef");
+	char *modifiers = tokenizer.buf_read_set(b, "UL");
 	// defer free(num);
 	// defer free(modifiers);
-	return tok_make("num", strings.newstr("0x%s%s", num, modifiers), parsebuf.buf_pos(b));
+	return tok_make("num", strings.newstr("0x%s%s", num, modifiers), tokenizer.buf_pos(b));
 }
 
 // // TODO: clip/str: str_new() -> str_new(template, args...)
 
-tok_t *read_string(parsebuf.parsebuf_t *b) {
-	char *pos = parsebuf.buf_pos(b);
+tok_t *read_string(tokenizer.t *b) {
+	char *pos = tokenizer.buf_pos(b);
 
 	// Skip the opening quote
-	parsebuf.get(b);
+	tokenizer.get(b);
 	strbuilder.str *s = strbuilder.str_new();
 
-	while (parsebuf.more(b)) {
-		char c = parsebuf.get(b);
+	while (tokenizer.more(b)) {
+		char c = tokenizer.get(b);
 		if (c == '"') {
 			return tok_make("string", strbuilder.str_unpack(s), pos);
 		}
 		strbuilder.str_addc(s, c);
 		if (c == '\\') {
-			strbuilder.str_addc(s, parsebuf.get(b));
+			strbuilder.str_addc(s, tokenizer.get(b));
 		}
 	}
 	return tok_make("error", strings.newstr("double quote expected"), pos);
 
 	// // Expect the closing quote
-	// if (parsebuf.get(b) != '"') {
+	// if (tokenizer.get(b) != '"') {
 		
 	// }
 
@@ -260,57 +260,57 @@ tok_t *read_string(parsebuf.parsebuf_t *b) {
 		// }
 
 
-	// return tok_make("error", "double quote expected", parsebuf.buf_pos(b));
+	// return tok_make("error", "double quote expected", tokenizer.buf_pos(b));
 }
 
-tok_t *read_char(parsebuf.parsebuf_t *b) {
+tok_t *read_char(tokenizer.t *b) {
 	char *s = calloc(3, 1);
 	char *p = s;
-	char *pos = parsebuf.buf_pos(b);
+	char *pos = tokenizer.buf_pos(b);
 	
-	parsebuf.get(b);
+	tokenizer.get(b);
 
-	if (parsebuf.peek(b) == '\\') {
-		*p++ = parsebuf.get(b);
+	if (tokenizer.peek(b) == '\\') {
+		*p++ = tokenizer.get(b);
 	}
-	*p++ = parsebuf.get(b);
+	*p++ = tokenizer.get(b);
 
-	if (parsebuf.peek(b) != '\'') {
+	if (tokenizer.peek(b) != '\'') {
 		free(s);
 		return tok_make("error", strings.newstr("single quote expected"), pos);
 	}
-	parsebuf.get(b);
+	tokenizer.get(b);
 	return tok_make("char", s, pos);
 }
 
 
-tok_t *read_multiline_comment(parsebuf.parsebuf_t *b) {
-	char *pos = parsebuf.buf_pos(b);
-	parsebuf.buf_skip_literal(b, "/*");
-	char *comment = parsebuf.buf_skip_until(b, "*/");
-	if (!parsebuf.buf_skip_literal(b, "*/")) {
+tok_t *read_multiline_comment(tokenizer.t *b) {
+	char *pos = tokenizer.buf_pos(b);
+	tokenizer.buf_skip_literal(b, "/*");
+	char *comment = tokenizer.buf_skip_until(b, "*/");
+	if (!tokenizer.buf_skip_literal(b, "*/")) {
 		free(comment);
 		return tok_make("error", strings.newstr("'*/' expected"), pos);
 	}
 	return tok_make("comment", comment, pos);
 }
 
-tok_t *read_line_comment(parsebuf.parsebuf_t *b) {
-	char *pos = parsebuf.buf_pos(b);
-	parsebuf.buf_skip_literal(b, "//");
-	return tok_make("comment", parsebuf.buf_skip_until(b, "\n"), pos);
+tok_t *read_line_comment(tokenizer.t *b) {
+	char *pos = tokenizer.buf_pos(b);
+	tokenizer.buf_skip_literal(b, "//");
+	return tok_make("comment", tokenizer.buf_skip_until(b, "\n"), pos);
 }
 
-tok_t *read_identifier(parsebuf.parsebuf_t *b) {
+tok_t *read_identifier(tokenizer.t *b) {
 	strbuilder.str *s = strbuilder.str_new();
-	char *pos = parsebuf.buf_pos(b);
+	char *pos = tokenizer.buf_pos(b);
 
-	while (parsebuf.more(b)) {
-		char c = parsebuf.peek(b);
+	while (tokenizer.more(b)) {
+		char c = tokenizer.peek(b);
 		if (!isalpha(c) && !isdigit(c) && c != '_') {
 			break;
 		}
-		strbuilder.str_addc(s, parsebuf.get(b));
+		strbuilder.str_addc(s, tokenizer.get(b));
 	}
 	return tok_make("word", strbuilder.str_unpack(s), pos);
 }

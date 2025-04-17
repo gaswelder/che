@@ -1,5 +1,5 @@
 #import os/exec
-#import parsebuf
+#import tokenizer
 #import strings
 #import os/io
 
@@ -131,10 +131,10 @@ torr_t parseline(char *line)
 	// 41     n/a        None  Unknown      0.0     0.0   None  Idle          Books
 	// 38*    n/a        None  Unknown      0.0     0.0   None  Stopped       name
 
-    parsebuf.parsebuf_t *b = parsebuf.from_str(line);
+    tokenizer.t *b = tokenizer.from_str(line);
 
     torr_t t = {};
-    parsebuf.buf_skip_set(b, " \t");
+    tokenizer.buf_skip_set(b, " \t");
     // ID: 1 | 38*
     word(b, t.id, sizeof(t.id));
     // "Done": 20% | n/a
@@ -148,7 +148,7 @@ torr_t parseline(char *line)
     word(b, t.down, sizeof(t.down));
     word(b, t.ratio, sizeof(t.ratio));
     // "Status": Idle | Stopped | Up & Down
-    if (parsebuf.buf_skip_literal(b, "Up & Down")) {
+    if (tokenizer.buf_skip_literal(b, "Up & Down")) {
         strcpy(t.status, "Up & Down");
     }
     else word(b, t.status, sizeof(t.status));
@@ -158,27 +158,27 @@ torr_t parseline(char *line)
     return t;
 }
 
-void word(parsebuf.parsebuf_t *b, char *p, size_t n) {
-    while (parsebuf.more(b) && parsebuf.peek(b) != ' ') {
+void word(tokenizer.t *b, char *p, size_t n) {
+    while (tokenizer.more(b) && tokenizer.peek(b) != ' ') {
         if (n == 0) return;
         n--;
-        *p++ = parsebuf.get(b);
+        *p++ = tokenizer.get(b);
     }
     spaces(b);
 }
 
-void spaces(parsebuf.parsebuf_t *b) {
-    while (parsebuf.more(b) && parsebuf.peek(b) == ' ') {
-        parsebuf.get(b);
+void spaces(tokenizer.t *b) {
+    while (tokenizer.more(b) && tokenizer.peek(b) == ' ') {
+        tokenizer.get(b);
     }
 }
 
-void size(parsebuf.parsebuf_t *b, char *p, size_t n) {
-    if (isdigit(parsebuf.peek(b))) {
-        while (parsebuf.more(b) && parsebuf.peek(b) != ' ') {
+void size(tokenizer.t *b, char *p, size_t n) {
+    if (isdigit(tokenizer.peek(b))) {
+        while (tokenizer.more(b) && tokenizer.peek(b) != ' ') {
             if (n == 0) return;
             n--;
-            *p++ = parsebuf.get(b);
+            *p++ = tokenizer.get(b);
         }
         spaces(b);
         word(b, p, n);
@@ -187,10 +187,10 @@ void size(parsebuf.parsebuf_t *b, char *p, size_t n) {
     }
 }
 
-void rest(parsebuf.parsebuf_t *b, char *p, size_t n) {
-    while (parsebuf.more(b)) {
+void rest(tokenizer.t *b, char *p, size_t n) {
+    while (tokenizer.more(b)) {
         if (n == 0) return;
         n--;
-        *p++ = parsebuf.get(b);
+        *p++ = tokenizer.get(b);
     }
 }

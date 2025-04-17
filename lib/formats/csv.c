@@ -1,7 +1,7 @@
-#import parsebuf
+#import tokenizer
 
 pub typedef {
-	parsebuf.parsebuf_t *b;
+	tokenizer.t *b;
 	int vals;
 	char line[4096];
 } reader_t;
@@ -23,16 +23,16 @@ pub reader_t *new_reader() {
 pub bool read_line(reader_t *r) {
 	if (!fgets(r->line, sizeof(r->line), stdin)) return false;
 	if (r->b) {
-		parsebuf.free(r->b);
+		tokenizer.free(r->b);
 		r->b = NULL;
 	}
-	r->b = parsebuf.from_str(r->line);
+	r->b = tokenizer.from_str(r->line);
 	r->vals = 0;
 	return true;
 }
 
 pub void free_reader(reader_t *r) {
-	if (r->b) parsebuf.free(r->b);
+	if (r->b) tokenizer.free(r->b);
 	free(r);
 }
 
@@ -41,25 +41,25 @@ pub void free_reader(reader_t *r) {
  * Returns false if there are no more values.
  */
 pub bool read_val(reader_t *r, char *buf, size_t bufsize) {
-	int next = parsebuf.peek(r->b);
+	int next = tokenizer.peek(r->b);
 	if (next == '\n' || next == '\r') return false;
-	if (!parsebuf.more(r->b)) return false;
+	if (!tokenizer.more(r->b)) return false;
 
 	char *p = buf;
 	size_t n = 0;
-	parsebuf.parsebuf_t *b = r->b;
+	tokenizer.t *b = r->b;
 
 	if (r->vals > 0) {
-		if (!parsebuf.buf_skip(b, ',')) panic("expected ',' (vals=%d, next=%c)", r->vals, next);
+		if (!tokenizer.buf_skip(b, ',')) panic("expected ',' (vals=%d, next=%c)", r->vals, next);
 	}
 
-	if (!parsebuf.buf_skip(b, '"')) panic("expected '\"'");
-	while (parsebuf.more(b) && parsebuf.peek(b) != '\"') {
+	if (!tokenizer.buf_skip(b, '"')) panic("expected '\"'");
+	while (tokenizer.more(b) && tokenizer.peek(b) != '\"') {
 		if (n + 1 == bufsize) panic("buf too small");
 		n++;
-		*p++ = parsebuf.get(b);
+		*p++ = tokenizer.get(b);
 	}
-	if (!parsebuf.buf_skip(b, '"')) panic("expected '\"'");
+	if (!tokenizer.buf_skip(b, '"')) panic("expected '\"'");
 	*p++ = '\0';
 	r->vals++;
 	return true;

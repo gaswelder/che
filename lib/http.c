@@ -2,7 +2,7 @@
 #import fs
 #import mime
 #import os/net
-#import parsebuf
+#import tokenizer
 #import reader
 #import strbuilder
 #import strings
@@ -235,32 +235,32 @@ bool parse_query(request_t *r) {
 
 
 pub bool parse_response(reader.t *re, response_t *r) {
-	parsebuf.parsebuf_t *b = parsebuf.new(re);
+	tokenizer.t *b = tokenizer.new(re);
 	if (!read_status_line(b, r)) {
-		parsebuf.free(b);
+		tokenizer.free(b);
 		return false;
 	}
-	while (parsebuf.more(b)) {
-		if (parsebuf.buf_skip_literal(b, "\r\n")) {
+	while (tokenizer.more(b)) {
+		if (tokenizer.buf_skip_literal(b, "\r\n")) {
 			break;
 		}
 		header_t *h = &r->headers[r->nheaders++];
 		if (!read_header(b, h)) {
-			parsebuf.free(b);
+			tokenizer.free(b);
 			return false;
 		}
 	}
 	bool ok = read_body(b, r);
-	parsebuf.free(b);
+	tokenizer.free(b);
     return ok;
 }
 
-bool read_body(parsebuf.parsebuf_t *b, response_t *r) {
+bool read_body(tokenizer.t *b, response_t *r) {
 	const char *tmp = get_res_header(r, "Content-Length");
 	if (tmp) {
 		r->content_length = atoi(tmp);
 		for (int i = 0; i < r->content_length; i++) {
-			char c = parsebuf.get(b);
+			char c = tokenizer.get(b);
 			if (c == EOF) {
 				return false;
 			}
@@ -273,11 +273,11 @@ bool read_body(parsebuf.parsebuf_t *b, response_t *r) {
 	tmp = get_res_header(r, "Connection");
 	if (!strcmp(tmp, "close")) {
 		size_t i = 0;
-		while (parsebuf.more(b)) {
+		while (tokenizer.more(b)) {
 			if (i + 1 == sizeof(r->body)) {
 				panic("body buffer too small");
 			}
-			r->body[i++] = parsebuf.get(b);
+			r->body[i++] = tokenizer.get(b);
 		}
 		return true;
 	}
@@ -285,58 +285,58 @@ bool read_body(parsebuf.parsebuf_t *b, response_t *r) {
 	return false;
 }
 
-bool read_status_line(parsebuf.parsebuf_t *b, response_t *r) {
+bool read_status_line(tokenizer.t *b, response_t *r) {
 	// HTTP/1.1
 	for (int i = 0; i < 8; i++) {
-		r->version[i] = parsebuf.get(b);
+		r->version[i] = tokenizer.get(b);
 	}
 	if (strcmp(r->version, "HTTP/1.0") && strcmp(r->version, "HTTP/1.1")) {
 		return false;
 	}
 
     // space
-    if (parsebuf.get(b) != ' ') return false;
+    if (tokenizer.get(b) != ' ') return false;
 
 	// 200
 	r->status = 0;
 	for (int i = 0; i < 3; i++) {
-		char c = parsebuf.get(b);
+		char c = tokenizer.get(b);
 		if (!isdigit(c)) return false;
 		r->status *= 10;
 		r->status += c - '0';
 	}
 
 	// space
-	if (parsebuf.get(b) != ' ') return false;
+	if (tokenizer.get(b) != ' ') return false;
 
 	// status text
-	while (parsebuf.more(b) && parsebuf.peek(b) != '\r') {
-		parsebuf.get(b);
+	while (tokenizer.more(b) && tokenizer.peek(b) != '\r') {
+		tokenizer.get(b);
 	}
 
 	// eol
-	if (!parsebuf.buf_skip_literal(b, "\r\n")) {
+	if (!tokenizer.buf_skip_literal(b, "\r\n")) {
 		return false;
 	}
 	return true;
 }
 
-bool read_header(parsebuf.parsebuf_t *b, header_t *h) {
+bool read_header(tokenizer.t *b, header_t *h) {
 	char *tmp = h->name;
-	while (parsebuf.more(b) && parsebuf.peek(b) != ':') {
-		*tmp++ = parsebuf.get(b);
+	while (tokenizer.more(b) && tokenizer.peek(b) != ':') {
+		*tmp++ = tokenizer.get(b);
 	}
 	// : space
-	if (!parsebuf.buf_skip_literal(b, ": ")) {
+	if (!tokenizer.buf_skip_literal(b, ": ")) {
 		return false;
 	}
 	// value
 	tmp = h->value;
-	while (parsebuf.more(b) && parsebuf.peek(b) != '\r') {
-		*tmp++ = parsebuf.get(b);
+	while (tokenizer.more(b) && tokenizer.peek(b) != '\r') {
+		*tmp++ = tokenizer.get(b);
 	}
 	// eol
-	if (!parsebuf.buf_skip_literal(b, "\r\n")) {
+	if (!tokenizer.buf_skip_literal(b, "\r\n")) {
 		return false;
 	}
 	return true;
@@ -346,32 +346,32 @@ bool read_header(parsebuf.parsebuf_t *b, header_t *h) {
 // Returns true on success.
 pub bool read_request(reader.t *br, request_t *r) {
     memset(r, 0, sizeof(request_t));
-	parsebuf.parsebuf_t *b = parsebuf.new(br);
+	tokenizer.t *b = tokenizer.new(br);
 	
 	// GET /path/blog/file1.html?a=1&b=2 HTTP/1.0\r\n
 	bool ok = true
-		&& parsebuf.read_until(b, ' ', r->method, sizeof(r->method))
-		&& parsebuf.buf_skip(b, ' ')
-		&& parsebuf.read_until(b, ' ', r->uri, sizeof(r->uri))
-		&& parsebuf.buf_skip(b, ' ')
-		&& parsebuf.read_until(b, '\r', r->version, sizeof(r->version))
-		&& parsebuf.buf_skip_literal(b, "\r\n");
+		&& tokenizer.read_until(b, ' ', r->method, sizeof(r->method))
+		&& tokenizer.buf_skip(b, ' ')
+		&& tokenizer.read_until(b, ' ', r->uri, sizeof(r->uri))
+		&& tokenizer.buf_skip(b, ' ')
+		&& tokenizer.read_until(b, '\r', r->version, sizeof(r->version))
+		&& tokenizer.buf_skip_literal(b, "\r\n");
 	ok = ok && parse_query(r);
 
 	// Header: Value\r\n ...
 	while (ok) {
 		// Empty line terminates the headers list.
-		if (parsebuf.buf_skip_literal(b, "\r\n")) break;
+		if (tokenizer.buf_skip_literal(b, "\r\n")) break;
 
 		header_t *h = &r->headers[r->nheaders];
 		ok = true
-			&& parsebuf.read_until(b, ':', h->name, sizeof(h->name))
-			&& parsebuf.buf_skip_literal(b, ": ")
-			&& parsebuf.read_until(b, '\r', h->value, sizeof(h->value))
-			&& parsebuf.buf_skip_literal(b, "\r\n");
+			&& tokenizer.read_until(b, ':', h->name, sizeof(h->name))
+			&& tokenizer.buf_skip_literal(b, ": ")
+			&& tokenizer.read_until(b, '\r', h->value, sizeof(h->value))
+			&& tokenizer.buf_skip_literal(b, "\r\n");
 		if (ok) r->nheaders++;
 	}
-	parsebuf.free(b);
+	tokenizer.free(b);
     return ok;
 }
 

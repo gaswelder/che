@@ -1,12 +1,12 @@
 #import eval.c
-#import parsebuf
+#import tokenizer
 #import read.c
 #import tok.c
 
 int main() {
 	char buf[4096];
 
-	parsebuf.parsebuf_t *b = parsebuf.stdin();
+	tokenizer.t *b = tokenizer.stdin();
 	while (true) {
 		tok.tok_t *in = read.read(b);
 		if (!in) break;

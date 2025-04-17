@@ -1,4 +1,4 @@
-#import parsebuf
+#import tokenizer
 #import strbuilder
 #import nodes.c
 #import format.c
@@ -27,7 +27,7 @@ int main() {
 void test(const char *in) {
 	// Read the expression.
 	read.lexer_t *l = calloc(1, sizeof(read.lexer_t));
-	l->b = parsebuf.from_str(in);
+	l->b = tokenizer.from_str(in);
 	nodes.node_t *e = read.read_statement(l);
 
 	// Print the input.

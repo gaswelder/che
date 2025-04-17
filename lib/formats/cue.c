@@ -2,7 +2,7 @@
  * CUE format parser
  * http://wiki.hydrogenaud.io/index.php?title=Cue_sheet
  */
-#import parsebuf
+#import tokenizer
 
 /*
  * Track info: title and position in microseconds
@@ -29,7 +29,7 @@ pub typedef {
  */
 typedef {
 	char cmd[40];
-	parsebuf.parsebuf_t *buf;
+	tokenizer.t *buf;
 } context_t;
 
 /*
@@ -70,7 +70,7 @@ pub cue_t *cue_parse(const char *s, char **err)
 {
 	context_t c = {};
 
-	c.buf = parsebuf.from_str(s);
+	c.buf = tokenizer.from_str(s);
 	if (!c.buf) {
 		*err = strerror(errno);
 		return NULL;
@@ -78,7 +78,7 @@ pub cue_t *cue_parse(const char *s, char **err)
 
 	cue_t *cue = calloc(1, sizeof(cue_t));
 	if (!cue) {
-		parsebuf.free(c.buf);
+		tokenizer.free(c.buf);
 		*err = strerror(errno);
 		return NULL;
 	}
@@ -86,11 +86,11 @@ pub cue_t *cue_parse(const char *s, char **err)
 	/*
 	 * Skip the UTF-8 mark
 	 */
-	if((uint8_t) parsebuf.peek(c.buf) == 0xEF) {
-		parsebuf.get(c.buf);
-		if((uint8_t) parsebuf.get(c.buf) != 0xBB || (uint8_t) parsebuf.get(c.buf) != 0xBF) {
+	if((uint8_t) tokenizer.peek(c.buf) == 0xEF) {
+		tokenizer.get(c.buf);
+		if((uint8_t) tokenizer.get(c.buf) != 0xBB || (uint8_t) tokenizer.get(c.buf) != 0xBF) {
 			free(cue);
-			parsebuf.free(c.buf);
+			tokenizer.free(c.buf);
 			*err = "Unknown byte-order mark";
 			return NULL;
 		}
@@ -116,27 +116,27 @@ pub cue_t *cue_parse(const char *s, char **err)
 		while(strcmp(c.cmd, "TRACK") == 0) {
 			if(cue->ntracks == MAXTRACKS) {
 				free(cue);
-				parsebuf.free(c.buf);
+				tokenizer.free(c.buf);
 				*err = makeerr("too many tracks (limit = %d)", MAXTRACKS);
 				return NULL;
 			}
 			if (!read_track(&c, &cue->tracks[cue->ntracks], err)) {
 				free(cue);
-				parsebuf.free(c.buf);
+				tokenizer.free(c.buf);
 				return NULL;
 			}
 			cue->ntracks++;
 		}
 	}
 
-	if(parsebuf.more(c.buf)) {
+	if(tokenizer.more(c.buf)) {
 		free(cue);
-		parsebuf.free(c.buf);
+		tokenizer.free(c.buf);
 		*err = makeerr("unexpected command: '%s'", c.cmd);
 		return NULL;
 	}
 
-	parsebuf.free(c.buf);
+	tokenizer.free(c.buf);
 	return cue;
 }
 
@@ -163,8 +163,8 @@ bool read_track(context_t *c, cuetrack_t *track, char **err)
 		}
 
 		int i = 0;
-		while(parsebuf.more(c->buf)) {
-			int ch = parsebuf.get(c->buf);
+		while(tokenizer.more(c->buf)) {
+			int ch = tokenizer.get(c->buf);
 			val[i++] = ch;
 			if(ch == '\n') break;
 		}
@@ -218,13 +218,13 @@ bool read_track(context_t *c, cuetrack_t *track, char **err)
 /*
  * Discards rest of the current line
  */
-void skip_line(parsebuf.parsebuf_t *b)
+void skip_line(tokenizer.t *b)
 {
-	while(parsebuf.more(b) && parsebuf.peek(b) != '\n') {
-		parsebuf.get(b);
+	while(tokenizer.more(b) && tokenizer.peek(b) != '\n') {
+		tokenizer.get(b);
 	}
-	if(parsebuf.peek(b) == '\n') {
-		parsebuf.get(b);
+	if(tokenizer.peek(b) == '\n') {
+		tokenizer.get(b);
 	}
 }
 
@@ -233,17 +233,17 @@ void skip_line(parsebuf.parsebuf_t *b)
  */
 void read_command(context_t *c)
 {
-	while(parsebuf.peek(c->buf) == ' ' || parsebuf.peek(c->buf) == '\t') {
-		parsebuf.get(c->buf);
+	while(tokenizer.peek(c->buf) == ' ' || tokenizer.peek(c->buf) == '\t') {
+		tokenizer.get(c->buf);
 	}
 	int i = 0;
-	while(isalpha(parsebuf.peek(c->buf))) {
-		c->cmd[i] = parsebuf.get(c->buf);
+	while(isalpha(tokenizer.peek(c->buf))) {
+		c->cmd[i] = tokenizer.get(c->buf);
 		i++;
 	}
 	c->cmd[i] = '\0';
-	while(isspace(parsebuf.peek(c->buf))) {
-		parsebuf.get(c->buf);
+	while(isspace(tokenizer.peek(c->buf))) {
+		tokenizer.get(c->buf);
 	}
 }
 
