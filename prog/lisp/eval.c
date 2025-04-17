@@ -1,24 +1,36 @@
 #import tok.c
 
 typedef {
+	bool isfunc;
+
+	// Name of the function or constant.
 	char name[80];
+
+	// Argument names, if it's a function.
+	size_t nargs;
+	char argnames[10][10];
+
+	// Constant value or function body.
 	tok.tok_t *val;
 } def_t;
 
 size_t ndefs = 0;
 def_t defs[100] = {};
 
-typedef {
-	// Name of the function.
-	char name[80];
+def_t *lookup(const char *name) {
+	for (size_t i = 0; i < ndefs; i++) {
+		if (!strcmp(name, defs[i].name)) {
+			return &defs[i];
+		}
+	}
+	return NULL;
+}
 
-	size_t nargs;
-	char argnames[10][10];
-	tok.tok_t *body;
-} fn_t;
-
-size_t nfns = 0;
-fn_t fns[100] = {};
+void pushdef(const char *name, tok.tok_t *val) {
+	strcpy(defs[ndefs].name, name);
+	defs[ndefs].val = val;
+	ndefs++;
+}
 
 // void printfn(fn_t *f) {
 // 	printf("fn %s(", f->name);
@@ -28,12 +40,6 @@ fn_t fns[100] = {};
 // 	}
 // 	printf(")");
 // }
-
-void pushdef(const char *name, tok.tok_t *val) {
-	strcpy(defs[ndefs].name, name);
-	defs[ndefs].val = val;
-	ndefs++;
-}
 
 pub tok.tok_t *evalall(tok.tok_t **all) {
 	tok.tok_t *r = NULL;
@@ -128,20 +134,18 @@ tok.tok_t *runfunc(const char *name, tok.tok_t *args) {
 	}
 
 	// See if there is a defined function with this name.
-	fn_t *f = NULL;
-	for (size_t i = 0; i < nfns; i++) {
-		if (!strcmp(name, fns[i].name)) {
-			f = &fns[i];
-			break;
-		}
-	}
+	def_t *f = lookup(name);
 	if (!f) {
 		panic("unknown function %s", name);
 	}
+	if (!f->isfunc) {
+		panic("%s is not a function", name);
+	}
+
 	for (size_t a = 0; a < f->nargs; a++) {
 		pushdef(f->argnames[a], eval(args->items[a]));
 	}
-	tok.tok_t *r = eval(f->body);
+	tok.tok_t *r = eval(f->val);
 	ndefs -= f->nargs;
 	return r;	
 }
@@ -158,13 +162,13 @@ tok.tok_t *define(tok.tok_t *args) {
 
 	// (twice x) (* x 2)
 	if (def->type == tok.LIST) {
-		fn_t *f = &fns[nfns++];
-		f->body = val;
-
 		tok.tok_t *name = car(def);
-		strcpy(f->name, name->name);
+		def_t *d = &defs[ndefs++];
+		strcpy(d->name, name->name);
+		d->isfunc = true;
+		d->val = val;
 		for (size_t i = 1; i < def->nitems; i++) {
-			strcpy(f->argnames[f->nargs++], def->items[i]->name);
+			strcpy(d->argnames[d->nargs++], def->items[i]->name);
 		}
 		return NULL;
 	}
