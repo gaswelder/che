@@ -1,3 +1,5 @@
+#import bitreader
+
 // prints bits of float64 numbers.
 int main() {
 	printfloat(-OS.INFINITY);
@@ -12,27 +14,19 @@ int main() {
 	return 0;
 }
 
-typedef {
-	uint8_t *bytep;
-	size_t bytepos;
-} bitreader_t;
-
-int nextbit(bitreader_t *r) {
-	int bit = (*r->bytep & (1<<r->bytepos)) >> r->bytepos;
-	r->bytepos++;
-	if (r->bytepos == 8) {
-		r->bytep++;
-		r->bytepos = 0;
-	}
-	return bit;
-}
-
 void printfloat(double x) {
+	// Look at x as a sequence of bytes.
 	void *p = &x;
-	bitreader_t r = {p, 0};
+	uint8_t *bytes = p;
+
+	// Unpack the bits.
 	char bits[64] = {};
-	for (int i = 0; i < 64; i++) {
-		bits[i] = nextbit(&r);
+	uint8_t bits8[8] = {};
+	for (int i = 0; i < 8; i++) {
+		bitreader.getbits_lsfirst(bytes[i], bits8);
+		for (int j = 0; j < 8; j++) {
+			bits[8*i + j] = bits8[j];
+		}
 	}
 
 	printf("%30.20f\t", x);

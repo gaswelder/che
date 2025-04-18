@@ -1,7 +1,8 @@
+#import bitreader
+#import chip8instr.c
 #import os/term
 #import rnd
 #import time
-#import chip8instr.c
 
 enum {
 	MEM_BEGIN = 0x200,
@@ -410,17 +411,9 @@ void step(chip8_t *c8, chip8instr.instr_t instr) {
 	}
 }
 
-// Unpacks bits from a byte into a given array.
-void getbits(uint8_t byte, uint8_t *bits) {
-	for (int i = 7; i >= 0; i--) {
-		bits[i] = byte % 2;
-		byte /= 2;
-	}
-}
-
 bool xor_sprite(chip8_t *c8, int x, y, uint8_t sprite) {
 	uint8_t bits[8];
-	getbits(sprite, bits);
+	bitreader.getbits_msfirst(sprite, bits);
 
 	bool collision = false;
 	for (int i = 0; i < 8; i++) {

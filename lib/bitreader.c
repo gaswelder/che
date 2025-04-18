@@ -1,3 +1,18 @@
+// Unpacks bits from a byte into a given array, least significant bit first.
+pub void getbits_lsfirst(uint8_t byte, uint8_t *bits) {
+	for (int i = 0; i < 8; i++) {
+		bits[i] = byte % 2;
+		byte /= 2;
+	}
+}
+
+// Unpacks bits from a byte into a given array, most significant bit first.
+pub void getbits_msfirst(uint8_t byte, uint8_t *bits) {
+	for (int i = 7; i >= 0; i--) {
+		bits[i] = byte % 2;
+		byte /= 2;
+	}
+}
 
 pub typedef {
 	FILE *f;
