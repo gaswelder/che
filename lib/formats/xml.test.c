@@ -1,6 +1,6 @@
 #import xml.c
 #import test
-#import fs
+#import os/fs
 
 const char *data = "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n"
 "<root>\n"

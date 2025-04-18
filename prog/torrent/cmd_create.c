@@ -1,6 +1,6 @@
 #import crypt/sha1
 #import formats/torrent
-#import fs
+#import os/fs
 #import opt
 
 const size_t PIECE_LENGTH = 256 * 1024;

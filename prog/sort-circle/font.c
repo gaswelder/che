@@ -1,4 +1,4 @@
-#import fs
+#import os/fs
 
 pub typedef {
 	int w, h;

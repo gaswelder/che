@@ -1,6 +1,6 @@
 #import formats/cue
 #import formats/mp3
-#import fs
+#import os/fs
 
 int main(int argc, char *argv[]) {
 	if (argc != 3) {

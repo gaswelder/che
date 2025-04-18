@@ -1,4 +1,4 @@
-#import fs
+#import os/fs
 
 const char *PATH = "fs-test.tmp";
 

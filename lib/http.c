@@ -1,5 +1,5 @@
 #import enc/urlencode
-#import fs
+#import os/fs
 #import mime
 #import os/net
 #import tokenizer

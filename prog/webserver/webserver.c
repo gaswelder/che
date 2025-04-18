@@ -1,4 +1,4 @@
-#import fs
+#import os/fs
 #import http
 #import opt
 #import os/net

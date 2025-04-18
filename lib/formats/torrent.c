@@ -3,7 +3,7 @@
 #import formats/bencode
 #import formats/bencode_writer
 #import crypt/sha1
-#import fs
+#import os/fs
 
 pub typedef {
 	size_t length;
