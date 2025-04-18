@@ -8,17 +8,16 @@ pub int write1(writer.t *w, char b) {
 	return writer.write(w, &bu, 1);
 }
 
-// Writes 4 bytes in big-endian order to the writer w.
-pub int write4be(writer.t *w, uint32_t v) {
-	uint8_t buf[4];
-	int pos = 3;
-	buf[pos--] = v % 256; v /= 256;
-	buf[pos--] = v % 256; v /= 256;
-	buf[pos--] = v % 256; v /= 256;
-	buf[pos--] = v % 256; v /= 256;
-	return writer.write(w, buf, 4);
+// Writes v into w as 2 little-endian bytes (16 bits).
+pub int write2le(writer.t *w, uint32_t v) {
+	uint8_t buf[2];
+	int pos = 0;
+	buf[pos++] = v % 256; v /= 256;
+	buf[pos++] = v % 256; v /= 256;
+	return writer.write(w, buf, 2);
 }
 
+// Writes v into w as 4 little-endian bytes (32 bits).
 pub int write4le(writer.t *w, uint32_t v) {
 	uint8_t buf[4];
 	int pos = 0;
@@ -29,12 +28,15 @@ pub int write4le(writer.t *w, uint32_t v) {
 	return writer.write(w, buf, 4);
 }
 
-pub int write2le(writer.t *w, uint32_t v) {
-	uint8_t buf[2];
-	int pos = 0;
-	buf[pos++] = v % 256; v /= 256;
-	buf[pos++] = v % 256; v /= 256;
-	return writer.write(w, buf, 2);
+// Writes 4 bytes in big-endian order to the writer w.
+pub int write4be(writer.t *w, uint32_t v) {
+	uint8_t buf[4];
+	int pos = 3;
+	buf[pos--] = v % 256; v /= 256;
+	buf[pos--] = v % 256; v /= 256;
+	buf[pos--] = v % 256; v /= 256;
+	buf[pos--] = v % 256; v /= 256;
+	return writer.write(w, buf, 4);
 }
 
 pub int read1(reader.t *r, uint8_t *v) {

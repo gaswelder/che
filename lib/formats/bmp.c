@@ -1,5 +1,6 @@
-#import bitwriter
 #import image
+#import writer
+#import enc/endian
 
 pub typedef	{
 	uint8_t *data;
@@ -42,14 +43,7 @@ pub void writeimg(image.image_t *img, const char *filename) {
 bool _write(t* img, const char *filename) {
 	FILE *out = fopen(filename, "w");
 	if (!out) return false;
-
-	bitwriter.t *w = calloc(1, sizeof(bitwriter.t));
-	if (!w) {
-		fclose(out);
-		return false;
-	}
-
-	w->f = out;
+	writer.t *w = writer.file(out);
 
 	// Pixel rows have to be padded to the nearest multiple of 4 bytes.
 	int remainder = (img->width * 3) % 4;
@@ -65,40 +59,41 @@ bool _write(t* img, const char *filename) {
 
 	// -- header --
 	// 2 bytes magic number: 0x42 0x4d.
-	bitwriter.byte(w, 0x42);
-	bitwriter.byte(w, 0x4d);
-	// file size in bytes
-	bitwriter.le32(w, file_size);
-	// reserved 4 bytes
-	bitwriter.le32(w, 0);
-	// image data offset
-	bitwriter.le32(w, headers_size);
+	endian.write1(w, 0x42);
+	endian.write1(w, 0x4d);
+
+	endian.write4le(w, file_size); // file size in bytes
+	endian.write4le(w, 0); // reserved 4 bytes
+	endian.write4le(w, headers_size); // image data offset
 
 	// -- windows bitmap info --
 	// 4 the size of this header, in bytes (40)
-	bitwriter.le32(w, 40);
+	endian.write4le(w, 40);
 	// width and height, 4 bytes signed each.
-	bitwriter.le32(w, img->width);
-	bitwriter.le32(w, img->height);
+	endian.write4le(w, img->width);
+	endian.write4le(w, img->height);
 	// 2 bytes, the number of color planes (must be 1).
-	bitwriter.le16(w, 1);
+	endian.write2le(w, 1);
+
 	// 2 bytes, the number of bits per pixel.
 	// Typical values are 1, 4, 8, 16, 24 and 32.
-	bitwriter.le16(w, 24);
-	// 4 bytes, the compression method being used.
-	bitwriter.le32(w, 0);
+	endian.write2le(w, 24);
 
-	// 4 bytes, the size of the raw bitmap data; a dummy 0 can be given for BI_RGB bitmaps.
-	bitwriter.le32(w, image_data_size);
+	// compression method
+	endian.write4le(w, 0);
+
+	// size of the raw bitmap data
+	// dummy 0 can be given for BI_RGB bitmaps.
+	endian.write4le(w, image_data_size);
 
 	// horizontal and vertical resolution, pixel per metre, signed integer, 4 bytes each.
-	bitwriter.le32(w, 0);
-	bitwriter.le32(w, 0);
+	endian.write4le(w, 0);
+	endian.write4le(w, 0);
 
 	// 4 bytes, the number of colors in the color palette. 0 to default to 2^n
-	// 4 bytes, the number of important colors used, or 0 when every color is important; generally ignored 
-	bitwriter.le32(w, 0);
-	bitwriter.le32(w, 0);
+	// 4 bytes, the number of important colors used, or 0 when every color is important; generally ignored
+	endian.write4le(w, 0);
+	endian.write4le(w, 0);
 
 	for (int y = img->height - 1; y >= 0; y--) {
 		for (int x = 0; x < img->width; x++) {
@@ -106,11 +101,11 @@ bool _write(t* img, const char *filename) {
 			uint8_t b = *p++;
 			uint8_t g = *p++;
 			uint8_t r = *p++;
-			bitwriter.byte(w, b);
-			bitwriter.byte(w, g);
-			bitwriter.byte(w, r);
+			endian.write1(w, b);
+			endian.write1(w, g);
+			endian.write1(w, r);
 		}
-		for (int i = 0; i < pad; i++) bitwriter.byte(w, 0);
+		for (int i = 0; i < pad; i++) endian.write1(w, 0);
 	}
 
 	OS.free(w);
