@@ -1,60 +1,27 @@
+#import enc/endian
 #import image
 #import writer
-#import enc/endian
 
-pub typedef	{
-	uint8_t *data;
-	int width;
-	int height;
-} t;
-
-pub t *new(int width, height) {
-	t* img = calloc(sizeof(t), 1);
-	img->width = width;
-	img->height = height;
-	img->data = calloc(width * height * 3, 1);
-	return img;
-}
-
-pub void set(t* img, int x, y, uint8_t r, g, b) {
-	uint8_t *p = get_pixel(img, x, y);
-	*p++ = b;
-	*p++ = g;
-	*p++ = r;
-}
-
-pub void free(t *img) {
-	OS.free(img->data);
-	OS.free(img);
-}
-
-pub void writeimg(image.image_t *img, const char *filename) {
-	t *cmap = new(img->width, img->height);
-	for (int x = 0; x < img->width; x++) {
-		for (int y = 0; y < img->height; y++) {
-			image.rgb_t *c = image.getpixel(img, x, y);
-			set(cmap, x, y, c->red, c->green, c->blue);
-		}
-	}
-	_write(cmap, filename);
-	free(cmap);
-}
-
-bool _write(t* img, const char *filename) {
+// Writes the image img to the specified file.
+pub bool write(image.image_t *img, const char *filename) {
 	FILE *out = fopen(filename, "w");
-	if (!out) return false;
+	if (!out) {
+		return false;
+	}
 	writer.t *w = writer.file(out);
 
+	int width = img->width;
+	int height = img->height;
+
 	// Pixel rows have to be padded to the nearest multiple of 4 bytes.
-	int remainder = (img->width * 3) % 4;
+	int remainder = (width * 3) % 4;
 	int pad = (4 - remainder) % 4;
 
 	// We have to know the file size in advance.
 	// The file is header (14 bytes) + bitmapinfo (40 bytes) + data.
 	// The data is rows (height) * row size (pixel size * width + pad).
-
 	size_t headers_size = 14 + 40;
-	size_t image_data_size = (img->height * (img->width * 3 + pad));
+	size_t image_data_size = (height * (width * 3 + pad));
 	size_t file_size = headers_size + image_data_size;
 
 	// -- header --
@@ -67,12 +34,12 @@ bool _write(t* img, const char *filename) {
 	endian.write4le(w, headers_size); // image data offset
 
 	// -- windows bitmap info --
-	// 4 the size of this header, in bytes (40)
+	// size of this header, in bytes (40)
 	endian.write4le(w, 40);
 	// width and height, 4 bytes signed each.
-	endian.write4le(w, img->width);
-	endian.write4le(w, img->height);
-	// 2 bytes, the number of color planes (must be 1).
+	endian.write4le(w, width);
+	endian.write4le(w, height);
+	// number of color planes (must be 1).
 	endian.write2le(w, 1);
 
 	// 2 bytes, the number of bits per pixel.
@@ -95,26 +62,18 @@ bool _write(t* img, const char *filename) {
 	endian.write4le(w, 0);
 	endian.write4le(w, 0);
 
-	for (int y = img->height - 1; y >= 0; y--) {
-		for (int x = 0; x < img->width; x++) {
-			uint8_t *p = get_pixel(img, x, y);
-			uint8_t b = *p++;
-			uint8_t g = *p++;
-			uint8_t r = *p++;
-			endian.write1(w, b);
-			endian.write1(w, g);
-			endian.write1(w, r);
+	for (int y = height - 1; y >= 0; y--) {
+		for (int x = 0; x < width; x++) {
+			image.rgb_t *c = image.getpixel(img, x, y);
+			endian.write1(w, c->blue);
+			endian.write1(w, c->green);
+			endian.write1(w, c->red);
 		}
-		for (int i = 0; i < pad; i++) endian.write1(w, 0);
+		for (int i = 0; i < pad; i++) {
+			endian.write1(w, 0);
+		}
 	}
 
 	OS.free(w);
 	return fclose(out) == 0;
-}
-
-uint8_t *get_pixel(t *img, int x, y) {
-    size_t lw = img->width * 3;
-    size_t pos = lw * y + x * 3;
-    uint8_t *pixel = &img->data[pos];
-    return pixel;
 }

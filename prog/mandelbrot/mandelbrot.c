@@ -169,7 +169,9 @@ void write_colormap(const char *filename) {
 			*image.getpixel(img, x, y) = c;
 		}
 	}
-	bmp.writeimg(img, filename);
+	if (!bmp.write(img, filename)) {
+		panic("failed to write bmp: %s", strerror(errno));
+	}
 	image.free(img);
 }
 
@@ -193,6 +195,8 @@ void save_image(const char *filename, double *data, int iterations, image.dim_t 
 			*image.getpixel(img, i, j) = c;
 		}
 	}
-	bmp.writeimg(img, filename);
+	if (!bmp.write(img, filename)) {
+		panic("failed to write bmp: %s", strerror(errno));
+	}
 	image.free(img);
 }
