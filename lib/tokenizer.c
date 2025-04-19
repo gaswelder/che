@@ -9,6 +9,9 @@ pub typedef {
 	// Lookahead cache.
 	uint8_t cache[100];
 	size_t cachesize;
+
+	// Buffer for a string with current position.
+	char posstrbuf[10];
 } t;
 
 // Returns a new instance reading from stdin.
@@ -247,10 +250,11 @@ pub bool buf_literal_follows(t *b, const char *literal) {
 	return true;
 }
 
-pub char *buf_pos(t *b) {
-	char *s = calloc(10, 1);
-	sprintf(s, "%zu:%zu", b->row + 1, b->col + 1);
-	return s;
+// Returns a pointer to an internal string with the current position
+// formatted as line:char.
+pub const char *posstr(t *b) {
+	snprintf(b->posstrbuf, sizeof(b->posstrbuf), "%zu:%zu", b->row + 1, b->col + 1);
+	return b->posstrbuf;
 }
 
 pub char *buf_skip_until(t *b, const char *literal) {

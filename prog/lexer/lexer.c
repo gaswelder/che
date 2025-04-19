@@ -148,7 +148,7 @@ tok_t *lexer_read(lexer_t *l) {
 	}
 
 	
-	char *pos = tokenizer.buf_pos(b);
+	char *pos = tokenizer.posstr(b);
 	for (size_t i = 0; i < nelem(keywords); i++) {
 		const char *keyword = keywords[i];
 		if (tokenizer.buf_skip_literal(b, keyword)) {
@@ -169,12 +169,12 @@ tok_t *lexer_read(lexer_t *l) {
 		// puts("ident");
 		return read_identifier(b);
 	}
-	return tok_make("error", strings.newstr("unexpected character: '%c'", peek), tokenizer.buf_pos(b));
+	return tok_make("error", strings.newstr("unexpected character: '%c'", peek), tokenizer.posstr(b));
 }
 
 tok_t *read_macro(tokenizer.t *b) {
 	char *s = tokenizer.buf_skip_until(b, "\n");
-	return tok_make("macro", s, tokenizer.buf_pos(b));
+	return tok_make("macro", s, tokenizer.posstr(b));
 }
 
 tok_t *read_number(tokenizer.t *b) {
@@ -183,7 +183,7 @@ tok_t *read_number(tokenizer.t *b) {
 		return read_hex_number(b);
 	}
 
-	char *pos = tokenizer.buf_pos(b);
+	char *pos = tokenizer.posstr(b);
 	char *num = tokenizer.buf_read_set(b, "0123456789");
 	if (tokenizer.peek(b) == '.') {
 		tokenizer.get(b);
@@ -215,13 +215,13 @@ tok_t *read_hex_number(tokenizer.t *b) {
 	char *modifiers = tokenizer.buf_read_set(b, "UL");
 	// defer free(num);
 	// defer free(modifiers);
-	return tok_make("num", strings.newstr("0x%s%s", num, modifiers), tokenizer.buf_pos(b));
+	return tok_make("num", strings.newstr("0x%s%s", num, modifiers), tokenizer.posstr(b));
 }
 
 // // TODO: clip/str: str_new() -> str_new(template, args...)
 
 tok_t *read_string(tokenizer.t *b) {
-	char *pos = tokenizer.buf_pos(b);
+	char *pos = tokenizer.posstr(b);
 
 	// Skip the opening quote
 	tokenizer.get(b);
@@ -260,13 +260,13 @@ tok_t *read_string(tokenizer.t *b) {
 		// }
 
 
-	// return tok_make("error", "double quote expected", tokenizer.buf_pos(b));
+	// return tok_make("error", "double quote expected", tokenizer.posstr(b));
 }
 
 tok_t *read_char(tokenizer.t *b) {
 	char *s = calloc(3, 1);
 	char *p = s;
-	char *pos = tokenizer.buf_pos(b);
+	char *pos = tokenizer.posstr(b);
 	
 	tokenizer.get(b);
 
@@ -285,7 +285,7 @@ tok_t *read_char(tokenizer.t *b) {
 
 
 tok_t *read_multiline_comment(tokenizer.t *b) {
-	char *pos = tokenizer.buf_pos(b);
+	char *pos = tokenizer.posstr(b);
 	tokenizer.buf_skip_literal(b, "/*");
 	char *comment = tokenizer.buf_skip_until(b, "*/");
 	if (!tokenizer.buf_skip_literal(b, "*/")) {
@@ -296,14 +296,14 @@ tok_t *read_multiline_comment(tokenizer.t *b) {
 }
 
 tok_t *read_line_comment(tokenizer.t *b) {
-	char *pos = tokenizer.buf_pos(b);
+	char *pos = tokenizer.posstr(b);
 	tokenizer.buf_skip_literal(b, "//");
 	return tok_make("comment", tokenizer.buf_skip_until(b, "\n"), pos);
 }
 
 tok_t *read_identifier(tokenizer.t *b) {
 	strbuilder.str *s = strbuilder.str_new();
-	char *pos = tokenizer.buf_pos(b);
+	char *pos = tokenizer.posstr(b);
 
 	while (tokenizer.more(b)) {
 		char c = tokenizer.peek(b);
