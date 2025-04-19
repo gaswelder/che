@@ -408,7 +408,13 @@ fn format_compat_function_parameters(parameters: &CompatFunctionParameters) -> S
 fn format_literal(node: &CLiteral) -> String {
     match node {
         CLiteral::Char(val) => format!("\'{}\'", val),
-        CLiteral::String(val) => format!("\"{}\"", val),
+        CLiteral::String(val) => {
+            return val
+                .split("\n")
+                .map(|line| format!("\"{}\"", line))
+                .collect::<Vec<String>>()
+                .join("\"\\n\"\n");
+        }
         CLiteral::Number(val) => format!("{}", val),
         CLiteral::Null => String::from("NULL"),
     }

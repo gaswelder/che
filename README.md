@@ -126,6 +126,21 @@ switch str (s) {
 }
 ```
 
+_Multi-line string literals_.
+It is possible to specify a multi-line string constant:
+
+```c
+const char *s = "multiline
+string";
+```
+
+This is equivalent to the standard C way:
+
+```c
+const char *s = "multiline\n"
+	"string";
+```
+
 _The `nelem` macro_.
 One common idiom to get a static array's length is:
 
