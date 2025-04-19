@@ -3,7 +3,7 @@ mod build;
 mod c;
 mod checkers;
 mod exports;
-mod format;
+mod format_c;
 mod format_che;
 mod lexer;
 mod main_build;

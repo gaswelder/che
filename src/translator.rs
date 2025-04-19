@@ -1,5 +1,5 @@
 use crate::build::Ctx;
-use crate::format;
+use crate::format_c;
 use crate::format_che;
 use crate::nodes::*;
 use crate::nodes_c::*;
@@ -60,7 +60,7 @@ pub fn translate(m: &Module, ctx: &Ctx) -> CModule {
             CModuleObject::Typedef {
                 type_name, form, ..
             } => {
-                let s = format::format_typedef(&type_name, &form);
+                let s = format_c::format_typedef(&type_name, &form);
                 if set.contains(&s) {
                     continue;
                 }
@@ -71,7 +71,7 @@ pub fn translate(m: &Module, ctx: &Ctx) -> CModule {
                 fields,
                 is_pub: _,
             } => {
-                let s = format::format_compat_struct_definition(name, fields);
+                let s = format_c::format_compat_struct_definition(name, fields);
                 if set.contains(&s) {
                     continue;
                 }

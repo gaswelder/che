@@ -1,7 +1,7 @@
 use crate::c;
 use crate::checkers;
 use crate::exports::get_exports;
-use crate::format;
+use crate::format_c;
 use crate::lexer;
 use crate::nodes::Module;
 use crate::nodes_c::CModule;
@@ -353,7 +353,7 @@ pub fn write_c99(work: &Build, dirpath: &String) -> Result<Vec<PathId>, String> 
     // files.
     let mut paths: Vec<PathId> = Vec::new();
     for (i, cm) in work.c.iter().enumerate() {
-        let src = format::format_module(&cm);
+        let src = format_c::format_module(&cm);
         let path = format!("{}/{:x}.c", dirpath, md5::compute(&work.paths[i]));
         paths.push(PathId {
             path: String::from(&path),
