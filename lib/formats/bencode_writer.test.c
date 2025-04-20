@@ -13,7 +13,7 @@ int main() {
     test.truth("4", bencode_writer.end(bw));
     test.truth("memcmp", memcmp(buf, "d3:fooi12345678ee", bencode_writer.pos(bw)) == 0);
 
-    bencode_writer.freewriter(bw);
+    bencode_writer.free(bw);
 
     return test.fails();
 }

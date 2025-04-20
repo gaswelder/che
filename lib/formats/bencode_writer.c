@@ -1,37 +1,64 @@
-#import bytewriter
+enum {
+	FSTREAM = 'f',
+	BUF = 'b'
+};
 
 pub typedef {
-	bytewriter.t *bw;
+	int type;
+
+	// The number of bytes written so far.
 	size_t pos;
+
+	// for type == file
+	FILE *file_f;
+
+	// for type == buf
+	uint8_t *buf_buf;
+	size_t buf_size;
 } t;
 
 pub t *tobuf(uint8_t *buff, size_t bufsize) {
 	t *w = calloc(1, sizeof(t));
-	if (!w) return NULL;
-	w->bw = bytewriter.tobuf(buff, bufsize);
-	if (!w->bw) {
-		OS.free(w);
-		return NULL;
-	}
+	if (!w) panic("calloc failed");
+	w->type = BUF;
+	w->buf_buf = buff;
+	w->buf_size = bufsize;
 	return w;
 }
 
 pub t *tofile(FILE *f) {
 	t *w = calloc(1, sizeof(t));
-	if (!w) return NULL;
-	w->bw = bytewriter.tofile(f);
-	if (!w->bw) {
-		OS.free(w);
-		return NULL;
-	}
+	if (!w) panic("calloc failed");	
+	w->type = FSTREAM;
+	w->file_f = f;
 	return w;
 }
 
-pub void freewriter(t *w) {
-	bytewriter.free(w->bw);
+bool byte(t *w, uint8_t b) {
+	switch (w->type) {
+		case BUF: {
+			if (w->pos >= w->buf_size) {
+				return false;
+			}
+			w->buf_buf[w->pos++] = b;
+			return true;
+		}
+		case FSTREAM: {
+			if (fputc(b, w->file_f) == EOF) {
+				return false;
+			}
+			w->pos++;
+			return true;
+		}
+	}
+	panic("unknown type");
+}
+
+pub void free(t *w) {
 	OS.free(w);
 }
 
+// Starts a list or a dictionary.
 pub bool begin(t *w, int type) {
 	if (type != 'l' && type != 'd') {
 		panic("unknown type");
@@ -39,18 +66,13 @@ pub bool begin(t *w, int type) {
 	return byte(w, type);
 }
 
-pub size_t pos(t *w) {
-	return w->pos;
-}
-
-bool byte(t *w, uint8_t b) {
-	if (!bytewriter.byte(w->bw, b)) return false;
-	w->pos++;
-	return true;
-}
-
+// Enads a list or a dictionary.
 pub bool end(t *w) {
 	return byte(w, 'e');
+}
+
+pub size_t pos(t *w) {
+	return w->pos;
 }
 
 pub bool num(t *w, int n) {
