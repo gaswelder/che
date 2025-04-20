@@ -1,5 +1,5 @@
 #import dbg
-#import http
+#import protocols/http
 #import opt
 #import os/ioloop
 #import reader

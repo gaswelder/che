@@ -1,4 +1,4 @@
-#import http
+#import protocols/http
 #import os/exec
 #import os/net
 #import os/self

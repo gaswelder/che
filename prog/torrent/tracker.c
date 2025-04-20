@@ -1,9 +1,9 @@
-#import formats/torrent
-#import http
-#import reader
-#import os/ioloop
-#import writer
 #import formats/bencode
+#import formats/torrent
+#import os/ioloop
+#import protocols/http
+#import reader
+#import writer
 
 pub typedef {
 	char id[20];

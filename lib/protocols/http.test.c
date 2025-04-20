@@ -1,4 +1,4 @@
-#import http
+#import protocols/http
 #import reader
 #import test
 
