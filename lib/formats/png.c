@@ -214,62 +214,6 @@ pub uint32_t png_get_pixel(png_t* png, size_t x, size_t y) {
     return endian.get_u32le(png->data, 4 * (x + y * png->width));
 }
 
-/**
- * @function png_start_stream
- *
- * @brief Set the start position for a batch of pixels
- *
- * @param png  Reference to the image
- * @param x    X coordinate
- * @param y    Y coordinate
- *
- * @see png_put_pixel
- */
-pub void png_start_stream(png_t* png, size_t x, size_t y) {
-    if(!png || x >= png->width || y >= png->height) {
-        return;
-    }
-    png->stream_x = x;
-    png->stream_y = y;
-}
-
-/**
- * @function png_put_pixel
- *
- * @brief Sets the pixel of the current pixel within a stream and advances to the next pixel
- *
- * @param png   Reference to the image
- * @param color The pixel value, depending on the type this is
- *              - the 8bit palette index (\ref PNG_PALETTE)
- *              - the 8bit gray value (\ref PNG_GRAYSCALE)
- *              - a 16bit value where the lower 8bit are the gray value and
- *                the upper 8bit are the opacity (\ref PNG_GRAYSCALE_ALPHA)
- *              - a 24bit RGB value (\ref PNG_RGB)
- *              - a 32bit RGBA value (\ref PNG_RGBA)
- */
-pub void png_put_pixel(png_t* png, uint32_t color) {
-    size_t x = png->stream_x;
-    size_t y = png->stream_y;
-    if (png->type == PNG_PALETTE || png->type == PNG_GRAYSCALE) {
-        png->data[x + y * png->width] = (char) (color & 0xff);
-    } else if (png->type == PNG_GRAYSCALE_ALPHA) {
-        endian.set_u16le(png->data, 2 * (x + y * png->width), (uint16_t) color);
-    } else {
-        endian.set_u32le(png->data, 4 * (x + y * png->width), color);
-    }
-    x++;
-    if(x >= png->width) {
-        x = 0;
-        y++;
-        if(y >= png->height) {
-            y = 0;
-        }
-    }
-    png->stream_x = x;
-    png->stream_y = y;
-}
-
-
 uint32_t png_swap32(uint32_t num) {
     return ((num >> 24) & 0xff) |
            ((num << 8) & 0xff0000) |

@@ -74,26 +74,35 @@ int main() {
 
     // -----------------
 
-    p = png.png_new(W, H, png.PNG_GRAYSCALE_ALPHA);
+    grayalpha();
+    graystream();
 
-    for (y = 0; y < H; y++) {
-        for (x = 0; x < W; x++) {
+    return 0;
+}
+
+void grayalpha() {
+	png.png_t *p = png.png_new(W, H, png.PNG_GRAYSCALE_ALPHA);
+
+    for (int y = 0; y < H; y++) {
+        for (int x = 0; x < W; x++) {
             png.png_set_pixel(p, x, y, ALPHA(((x + y) / 2) & 255, 255 - ((y / 2) & 255)));
         }
     }
     png.png_save(p, "test_gray_alpha.png");
     png.png_destroy(p);
+}
 
-    // -----------------
+void graystream() {
+	png.png_t *p = png.png_new(W, H, png.PNG_GRAYSCALE);
 
-    p = png.png_new(W, H, png.PNG_GRAYSCALE);
+	int n = 0;
+	for (int y = 0; y < H; y++) {
+		for (int x = 0; x < W; x++) {
+			png.png_set_pixel(p, x, y, 255 * n / (W * H));
+			n++;
+		}
+	}
 
-    png.png_start_stream(p, 0, 0);
-    for (x = 0; x < W * H; x++) {
-        png.png_put_pixel(p, 255 * x / (W * H));
-    }
     png.png_save(p, "test_gray_stream.png");
     png.png_destroy(p);
-
-    return 0;
 }
