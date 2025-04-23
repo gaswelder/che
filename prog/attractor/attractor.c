@@ -52,7 +52,7 @@ void draw(image.image_t *img, int i, FRAMES) {
 	double b = cos( minB + p * (maxB - minB) ) * 2.0;
 	double c = cos( minC + p * (maxC - minC) ) * 2.0;
 	double d = cos( minD + p * (maxD - minD) ) * 2.0;
-	image.rgb_t color = create_hue(p);
+	image.rgba_t color = create_hue(p);
 	double x = 0.0;
 	double y = 0.0;
 	for (int j = 0; j < iters; j++) {
@@ -74,17 +74,17 @@ void draw(image.image_t *img, int i, FRAMES) {
 	}
 }
 
-void fade(image.rgb_t *c) {
+void fade(image.rgba_t *c) {
 	c->red /= 2;
 	c->green /= 2;
 	c->blue /= 2;
 }
 
-image.rgb_t create_hue(double h) {
+image.rgba_t create_hue(double h) {
     h *= 6.0;
 	int inth = (int)h;
     double hf = h - inth;
-    image.rgb_t r = {};
+    image.rgba_t r = {};
     switch (inth % 6) {
         case 0: { r.red = 255; r.green = 255 * hf; r.blue = 0; }
         case 1: { r.red = 255 * (1.0 - hf); r.green = 255; r.blue = 0; }

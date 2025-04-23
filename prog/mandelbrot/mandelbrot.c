@@ -107,8 +107,8 @@ int workerfunc(void *arg) {
 	return 0;
 }
 
-image.rgb_t colormap (double val, int iterations) {
-	image.rgb_t color;
+image.rgba_t colormap(double val, int iterations) {
+	image.rgba_t color;
 
 	/* Colormap size */
 	int map_len = CMAP_LEN;
@@ -164,7 +164,7 @@ image.rgb_t colormap (double val, int iterations) {
 void write_colormap(const char *filename) {
 	image.image_t *img = image.new(config.color_width * CMAP_LEN * 1.5, 20);
 	for (int x = 0; x < img->width; x++) {
-		image.rgb_t c = colormap(x, img->width);
+		image.rgba_t c = colormap(x, img->width);
 		for (int y = 0; y < img->height; y++) {
 			*image.getpixel(img, x, y) = c;
 		}
@@ -191,7 +191,7 @@ void save_image(const char *filename, double *data, int iterations, image.dim_t 
 	image.image_t *img = image.new(size.w, size.h);
 	for (int j = 0; j < size.h; j++) {
 		for (int i = 0; i < size.w; i++) {
-			image.rgb_t c = colormap(data[i + j * size.w], iterations);
+			image.rgba_t c = colormap(data[i + j * size.w], iterations);
 			*image.getpixel(img, i, j) = c;
 		}
 	}

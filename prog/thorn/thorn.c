@@ -33,7 +33,7 @@ void thorn(image.image_t *img) {
     double ymax =  M_PI;
 	int width = img->width;
 	int height = img->height;
-	image.rgb_t rgb;
+	image.rgba_t rgb;
     for (int i = 0; i < width; i++) {
         // map i=[0..width] to zr=[xmin..xmax]
         double zr = xmin + i * (xmax - xmin) / width;

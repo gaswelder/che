@@ -8,7 +8,7 @@
 pub int main() {
 	image.image_t *img = image.new(1040, 1040);
 	image.fill(img, image.white());
-	image.rgb_t color = {};
+	image.rgba_t color = {};
 	float alpha = 1.0/64;
 	for (uint32_t i = 0; i < 100000000; i++) {
 		uint32_t s = rnd.intn(0xFFFFFFFF);

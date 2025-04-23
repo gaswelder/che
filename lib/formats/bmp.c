@@ -64,7 +64,7 @@ pub bool write(image.image_t *img, const char *filename) {
 
 	for (int y = height - 1; y >= 0; y--) {
 		for (int x = 0; x < width; x++) {
-			image.rgb_t *c = image.getpixel(img, x, y);
+			image.rgba_t *c = image.getpixel(img, x, y);
 			endian.write1(w, c->blue);
 			endian.write1(w, c->green);
 			endian.write1(w, c->red);

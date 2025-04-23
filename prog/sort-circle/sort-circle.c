@@ -226,14 +226,14 @@ void draw_array(image.image_t *img, int *array, int N, bool circle) {
 			float r = S * 15.0f / 32.0f * (1.0f - delta);
 			float px = r * x + S / 2.0f;
 			float py = r * y + S / 2.0f;
-			image.rgb_t color = image.rgb_from_hsl(array[i] * 360.0 / fn, 1, 0.5);
+			image.rgba_t color = image.from_hsl(array[i] * 360.0 / fn, 1, 0.5);
 			draw_dot(img, px, py, color);
 		}
 	}
 	else {
 		float lenscale = 200 / (float)global_N;
 		for (int i = 0; i < N; i++) {
-			image.rgb_t color = image.rgb_from_hsl(array[i] * 360.0 / fn, 1, 0.5);
+			image.rgba_t color = image.from_hsl(array[i] * 360.0 / fn, 1, 0.5);
 			int x = 100 + (S-200)*(float)i/(float)N;
 			int maxlen = (int) (array[i] * lenscale);
 			for (int l = 0; l < maxlen; l++) {
@@ -367,7 +367,7 @@ void sort_radix_lsd(image.image_t *img, int *array, int b) {
     }
 }
 
-void draw_dot(image.image_t *img, float x, y, image.rgb_t color) {
+void draw_dot(image.image_t *img, float x, y, image.rgba_t color) {
 	float S = 800; // image size
 	float R0 = S  / 400.0f;  // dot inner radius
 	float R1 = S / 200.0f;  // dot outer radius
@@ -394,7 +394,7 @@ float smoothstep(float lower, float upper, float x) {
 }
 
 void draw_string(image.image_t *img, font.t f, const char *message) {
-    image.rgb_t fontcolor = {255, 255, 255};
+    image.rgba_t fontcolor = {255, 255, 255};
     for (int c = 0; message[c]; c++) {
         int x = c * f.w + MESSAGE_PADDING;
         int y = MESSAGE_PADDING;
