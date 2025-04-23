@@ -1,4 +1,4 @@
-use crate::nodes_c::*;
+use crate::c::*;
 use crate::parser;
 
 pub fn format_module(cm: &CModule) -> String {

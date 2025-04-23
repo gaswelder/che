@@ -1,5 +1,5 @@
 use crate::{
-    c,
+    cspec,
     nodes::{Form, Identifier, StructEntry, Typename},
     scopes::RootScope,
 };
@@ -175,7 +175,7 @@ pub fn deref(t: Type) -> Result<Type, String> {
 
 pub fn get_type(tn: &Typename, r: &RootScope) -> Result<Type, String> {
     if tn.name.namespace == "" {
-        match c::get_type(&tn.name.name) {
+        match cspec::get_type(&tn.name.name) {
             Some(x) => return Ok(x.t),
             None => {}
         }

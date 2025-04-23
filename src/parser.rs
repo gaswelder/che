@@ -1,7 +1,7 @@
 use crate::buf::Pos;
 use crate::build::Ctx;
 use crate::lexer::{Lexer, Token};
-use crate::{c, nodes::*};
+use crate::{cspec, nodes::*};
 
 pub struct Error {
     pub message: String,
@@ -404,7 +404,7 @@ fn is_type(name: &str, typenames: &Vec<String>) -> bool {
         // "ssize_t",
     ];
 
-    return c::CTYPES.contains(&name)
+    return cspec::CTYPES.contains(&name)
         || keywords.to_vec().contains(&name)
         || typenames.to_vec().contains(&String::from(name));
     // || name.ends_with("_t");

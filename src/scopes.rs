@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use crate::{
     buf::Pos,
-    c,
+    cspec,
     nodes::{Form, FunctionDeclaration, ImportNode, Module, ModuleObject, Typename},
     resolve::getns,
 };
@@ -72,13 +72,13 @@ pub fn get_module_scope(m: &Module) -> RootScope {
     //     // custom
     //     "nelem", "panic", "min", "max",
     // ];
-    for c in c::CCONST {
+    for c in cspec::CCONST {
         s.pre.push(c.to_string());
     }
-    for c in c::CFUNCS {
+    for c in cspec::CFUNCS {
         s.pre.push(c.to_string());
     }
-    for c in c::CTYPES {
+    for c in cspec::CTYPES {
         s.pre.push(c.to_string());
     }
 

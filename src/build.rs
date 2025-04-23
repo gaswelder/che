@@ -1,11 +1,11 @@
-use crate::c;
 use crate::checkers;
+use crate::cspec;
 use crate::exports::get_exports;
 use crate::format_c;
 use crate::lexer;
 use crate::nodes::Module;
-use crate::nodes_c::CModule;
-use crate::nodes_c::CModuleObject;
+use crate::c::CModule;
+use crate::c::CModuleObject;
 use crate::parser;
 use crate::preparser;
 use crate::preparser::Import;
@@ -268,7 +268,7 @@ pub fn translate(work: &mut Build) {
         });
 
         // Include all standard C library.
-        for n in c::CLIBS {
+        for n in cspec::CLIBS {
             cnodes.push(CModuleObject::Include(format!("<{}.h>", n)));
         }
         // Include custom utils
