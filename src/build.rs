@@ -1,11 +1,10 @@
+use crate::c;
 use crate::checkers;
 use crate::cspec;
 use crate::exports::get_exports;
 use crate::format_c;
 use crate::lexer;
 use crate::nodes::Module;
-use crate::c::CModule;
-use crate::c::CModuleObject;
 use crate::parser;
 use crate::preparser;
 use crate::preparser::Import;
@@ -51,7 +50,7 @@ pub struct Build {
     pub imports: Vec<Vec<Import>>,
     pub ctx: Vec<Ctx>,
     pub m: Vec<Module>,
-    pub c: Vec<CModule>,
+    pub c: Vec<c::CModule>,
 }
 
 pub struct PathId {
@@ -259,23 +258,23 @@ pub fn translate(work: &mut Build) {
 
     // Translate each node.
     for (i, m) in work.m.iter().enumerate() {
-        let mut cnodes: Vec<CModuleObject> = Vec::new();
+        let mut cnodes: Vec<c::ModElem> = Vec::new();
 
         // A hack to make os libs build on Linux.
-        cnodes.push(CModuleObject::Macro {
+        cnodes.push(c::ModElem::Macro(c::Macro {
             name: "define".to_string(),
             value: "_XOPEN_SOURCE 700".to_string(),
-        });
+        }));
 
         // Include all standard C library.
         for n in cspec::CLIBS {
-            cnodes.push(CModuleObject::Include(format!("<{}.h>", n)));
+            cnodes.push(c::ModElem::Include(format!("<{}.h>", n)));
         }
         // Include custom utils
-        cnodes.push(CModuleObject::Macro {
+        cnodes.push(c::ModElem::Macro(c::Macro {
             name: "define".to_string(),
             value: "nelem(x) (sizeof (x)/sizeof (x)[0])".to_string(),
-        });
+        }));
 
         let node_imports = &work.imports[i];
         let mut present = HashSet::new();
@@ -287,7 +286,7 @@ pub fn translate(work: &mut Build) {
                 // a module encounters another module in dependencies more than
                 // once.
                 let id = match &obj {
-                    CModuleObject::EnumDefinition {
+                    c::ModElem::EnumDefinition {
                         members,
                         is_hidden: _,
                     } => {
@@ -297,31 +296,31 @@ pub fn translate(work: &mut Build) {
                         }
                         format!("enum-{}", names.join(","))
                     }
-                    CModuleObject::Typedef {
+                    c::ModElem::Typedef {
                         is_pub: _,
                         type_name: _,
                         form,
                     } => form.alias.clone(),
-                    CModuleObject::StructDefinition {
+                    c::ModElem::StructDefinition {
                         name,
                         fields: _,
                         is_pub: _,
                     } => name.clone(),
-                    CModuleObject::Include(x) => x.clone(),
-                    CModuleObject::Macro { name: _, value } => value.clone(),
-                    CModuleObject::StructForwardDeclaration(x) => x.clone(),
-                    CModuleObject::ModuleVariable {
+                    c::ModElem::Include(x) => x.clone(),
+                    c::ModElem::Macro(x) => x.value.clone(),
+                    c::ModElem::StructForwardDeclaration(x) => x.clone(),
+                    c::ModElem::ModuleVariable {
                         type_name: _,
                         form: _,
                         value: _,
                     } => String::new(), // We shouldn't see module variables here, they are unexportable.
-                    CModuleObject::FunctionForwardDeclaration {
+                    c::ModElem::FunctionForwardDeclaration {
                         is_static: _,
                         type_name: _,
                         form,
                         parameters: _,
                     } => form.name.clone(),
-                    CModuleObject::FunctionDefinition {
+                    c::ModElem::FunctionDefinition {
                         is_static: _,
                         type_name: _,
                         form: _,

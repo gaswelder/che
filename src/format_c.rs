@@ -5,7 +5,7 @@ pub fn format_module(cm: &CModule) -> String {
     let mut s = String::new();
     for e in &cm.elements {
         s += &match e {
-            CModuleObject::ModuleVariable {
+            ModElem::ModuleVariable {
                 type_name,
                 form,
                 value,
@@ -15,12 +15,12 @@ pub fn format_module(cm: &CModule) -> String {
                 format_form(form),
                 format_expression(value)
             ),
-            CModuleObject::Typedef {
+            ModElem::Typedef {
                 type_name, form, ..
             } => format_typedef(&type_name, &form),
-            CModuleObject::Macro { name, value } => format!("#{} {}\n", name, value),
-            CModuleObject::Include(x) => format!("#include {}\n", x),
-            CModuleObject::EnumDefinition { members, .. } => {
+            ModElem::Macro(x) => format!("#{} {}\n", x.name, x.value),
+            ModElem::Include(x) => format!("#include {}\n", x),
+            ModElem::EnumDefinition { members, .. } => {
                 let mut s1 = String::from("enum {\n");
                 for (i, member) in members.iter().enumerate() {
                     if i > 0 {
@@ -31,19 +31,19 @@ pub fn format_module(cm: &CModule) -> String {
                 s1 += "\n};\n";
                 s1
             }
-            CModuleObject::StructForwardDeclaration(x) => format!("struct {};\n", x),
-            CModuleObject::StructDefinition {
+            ModElem::StructForwardDeclaration(x) => format!("struct {};\n", x),
+            ModElem::StructDefinition {
                 name,
                 fields,
                 is_pub: _,
             } => format_compat_struct_definition(name, fields),
-            CModuleObject::FunctionForwardDeclaration {
+            ModElem::FunctionForwardDeclaration {
                 is_static,
                 type_name,
                 form,
                 parameters,
             } => format_function_forward_declaration(*is_static, type_name, form, parameters),
-            CModuleObject::FunctionDefinition {
+            ModElem::FunctionDefinition {
                 is_static,
                 type_name,
                 form,

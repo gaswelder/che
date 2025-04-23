@@ -1,23 +1,28 @@
 #[derive(Debug, Clone)]
+pub struct CModule {
+    pub elements: Vec<ModElem>,
+    // Ambient libraries to link with, populated with #link hints.
+    pub link: Vec<String>,
+}
+
+// Old-school macro, #<name> <value>.
+// Name is typically "define".
+#[derive(Debug, Clone)]
+pub struct Macro {
+    pub name: String,
+    pub value: String,
+}
+
+#[derive(Debug, Clone)]
 pub struct CEnumItem {
     pub id: String,
     pub value: Option<CExpression>,
 }
 
 #[derive(Debug, Clone)]
-pub struct CModule {
-    // pub id: String,
-    pub elements: Vec<CModuleObject>,
-    pub link: Vec<String>,
-}
-
-#[derive(Debug, Clone)]
-pub enum CModuleObject {
+pub enum ModElem {
     Include(String),
-    Macro {
-        name: String,
-        value: String,
-    },
+    Macro(Macro),
     EnumDefinition {
         members: Vec<CEnumItem>,
         is_hidden: bool,
