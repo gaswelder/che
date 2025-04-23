@@ -96,7 +96,7 @@ const uint32_t crc32[256] = {
  *                  - PNG_RGB (24bit RGB values)
  *                  - PNG_RGBA (32bit RGB values with alpha)
  */
-pub png_t *png_new(size_t width, size_t height, int type) {
+png_t *png_new(size_t width, size_t height, int type) {
     if (SIZE_MAX / 4 / width < height) {
         /* ensure no type leads to an integer overflow */
         return NULL;
@@ -154,7 +154,7 @@ pub png_t *png_new(size_t width, size_t height, int type) {
  * @param length   Number of palette entries
  * @return 0 on success, 1 if the palette contained more than 256 entries
  */
-pub int png_set_palette(png_t *png, uint32_t *palette, size_t length) {
+int png_set_palette(png_t *png, uint32_t *palette, size_t length) {
     if (length > 256) {
         return 1;
     }
@@ -176,7 +176,7 @@ pub int png_set_palette(png_t *png, uint32_t *palette, size_t length) {
  * @note If the coordinates are not within the bounds of the image,
  *       the functions does nothing.
  */
-pub void png_set_pixel(png_t *png, size_t x, size_t y, uint32_t color) {
+void png_set_pixel(png_t *png, size_t x, size_t y, uint32_t color) {
     if (x >= png->width || y >= png->height) {
         return;
     }
@@ -190,7 +190,7 @@ pub void png_set_pixel(png_t *png, size_t x, size_t y, uint32_t color) {
 }
 
 /**
- * Returns the pixel color of image `png` at position (`x`, `y`).
+ * pixel
  *
  * Depending on the type this is
  * - the 8bit palette index (PNG_PALETTE)
@@ -201,18 +201,18 @@ pub void png_set_pixel(png_t *png, size_t x, size_t y, uint32_t color) {
  * - a 32bit RGBA value (PNG_RGBA)
  * - 0 if the coordinates are out of bounds
  */
-pub uint32_t png_get_pixel(png_t* png, size_t x, size_t y) {
-    if (x >= png->width || y >= png->height) {
-        return 0;
-    }
-    if (png->type == PNG_PALETTE || png->type == PNG_GRAYSCALE) {
-        return (uint32_t) png->data[x + y * png->width];
-    }
-    if (png->type == PNG_GRAYSCALE_ALPHA) {
-        return (uint32_t) endian.get_u16le(png->data, 2 * (x + y * png->width));
-    }
-    return endian.get_u32le(png->data, 4 * (x + y * png->width));
-}
+// uint32_t png_get_pixel(png_t* png, size_t x, size_t y) {
+//     if (x >= png->width || y >= png->height) {
+//         return 0;
+//     }
+//     if (png->type == PNG_PALETTE || png->type == PNG_GRAYSCALE) {
+//         return (uint32_t) png->data[x + y * png->width];
+//     }
+//     if (png->type == PNG_GRAYSCALE_ALPHA) {
+//         return (uint32_t) endian.get_u16le(png->data, 2 * (x + y * png->width));
+//     }
+//     return endian.get_u32le(png->data, 4 * (x + y * png->width));
+// }
 
 uint32_t png_swap32(uint32_t num) {
     return ((num >> 24) & 0xff) |
@@ -434,38 +434,12 @@ char *png_get_data(png_t *png, size_t *len) {
     return png->out;
 }
 
-/**
- * @function png_save
- *
- * @brief Saves the image as a PNG file
- *
- * @param png      Reference to the image
- * @param filename Name of the file
- * @return 0 on success, 1 on error
- */
-pub int png_save(png_t *png, const char *filename) {
-    size_t len;
-    FILE* f;
-    char *data = png_get_data(png, &len);
-    if (!data) {
-        return 1;
-    }
-    f = fopen(filename, "wb");
-    if (!f) {
-        return 1;
-    }
-    if (fwrite(data, len, 1, f) != 1) {
-        fclose(f);
-        return 1;
-    }
-    fclose(f);
-    return 0;
-}
+
 
 /**
  * Frees all memory associated with the given image.
  */
-pub void png_destroy(png_t *png) {
+void png_destroy(png_t *png) {
     free(png->palette);
     png->palette = NULL;
     free(png->out);
@@ -475,33 +449,98 @@ pub void png_destroy(png_t *png) {
     free(png);
 }
 
-pub void writeimg(image.image_t *img, const char *path) {
-	png_t *tmp = png_new(img->width, img->height, PNG_GRAYSCALE);
-    for (int j=0; j < img->height; j++) {
-        for (int i=0; i < img->width; i++) {
-			image.rgb_t c = image.get(img, i, j);
-            png_set_pixel(tmp, i, j, (uint8_t) c.red);
-        }
-    }
-    png_save(tmp, path);
-    png_destroy(tmp);
+int RGBA(int r, g, b, a) {
+    return (r) | (g << 8) | (b << 16) | (a << 24);
 }
 
-/**
- * @brief A minimal C library to write uncompressed PNG files.
- *
- * png is a minimal C library to create uncompressed PNG images.
- * The library supports palette, grayscale as well as raw RGB images all with and without transparency.
- *
- * @author Michael Schwarz
- * @date 29 Jan 2017
- */
+int RGB(int r, g, b) {
+    return RGBA(r, g, b, 0xff);
+}
+
+int ALPHA(int c, a) {
+    return (c) | ((a) << 8);
+}
+
+
+pub bool write(image.image_t *img, const char *path, int mode) {
+	uint32_t palette[256] = {};
+	size_t psize = 0;
+
+	png_t *tmp = png_new(img->width, img->height, mode);
+    for (int j=0; j < img->height; j++) {
+        for (int i=0; i < img->width; i++) {
+			image.rgba_t c = image.get(img, i, j);
+
+			switch (mode) {
+				case PNG_PALETTE: {
+					uint32_t encoded = RGBA(c.red, c.green, c.blue, c.transparency);
+
+					// get color index
+					int index = -1;
+					for (size_t z = 0; z < psize; z++) {
+						if (palette[z] == encoded) {
+							index = z;
+							break;
+						}
+					}
+					if (index < 0) {
+						if (psize < 256) {
+							index = psize;
+							palette[psize++] = encoded;
+							png_set_palette(tmp, palette, psize);
+						} else {
+							index = psize - 1;
+						}
+					}
+
+					png_set_pixel(tmp, i, j, index);
+				}
+				case PNG_RGB: {
+					png_set_pixel(tmp, i, j, RGB(c.red, c.green, c.blue));
+				}
+				case PNG_GRAYSCALE: {
+					png_set_pixel(tmp, i, j, (uint8_t) (c.red * 0.2989 + c.green * 0.5870 + c.blue * 0.1140));
+				}
+				case PNG_GRAYSCALE_ALPHA: {
+					int g = (uint8_t) (c.red * 0.2989 + c.green * 0.5870 + c.blue * 0.1140);
+					int a = c.transparency;
+
+					png_set_pixel(tmp, i, j, ALPHA(g, a));
+				}
+				case PNG_RGBA: {
+					png_set_pixel(tmp, i, j, RGBA(c.red, c.green, c.blue, c.transparency));
+				}
+				default: {
+					panic("unknown mode");
+				}
+			}
+
+
+
+        }
+    }
+
+	size_t len;
+    char *data = png_get_data(tmp, &len);
+    FILE *f = fopen(path, "wb");
+    if (!f) {
+		png_destroy(tmp);
+        return false;
+    }
+    if (fwrite(data, len, 1, f) != 1) {
+        fclose(f);
+		png_destroy(tmp);
+        return false;
+    }
+    fclose(f);
+	png_destroy(tmp);
+    return true;
+
+}
+
 
 // https://github.com/misc0110/libattopng
-
-// MIT License
-
-// Copyright (c) 2018 Michael Schwarz
+// Copyright (c) 2018 Michael Schwarz and others
 
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal

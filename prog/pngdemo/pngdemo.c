@@ -1,19 +1,8 @@
 #import formats/png
+#import image
 
 const int W = 250;
 const int H = 200;
-
-int RGBA(int r, g, b, a) {
-    return (r) | (g << 8) | (b << 16) | (a << 24);
-}
-
-int RGB(int r, g, b) {
-    return RGBA(r, g, b, 0xff);
-}
-
-int ALPHA(int c, a) {
-    return (c) | ((a) << 8);
-}
 
 int main() {
     palette();
@@ -26,86 +15,109 @@ int main() {
 }
 
 void palette() {
-	png.png_t *p = png.png_new(W, H, png.PNG_PALETTE);
-    uint32_t palette[] = {
-            RGBA(0, 0, 0xff, 0xff),
-            RGBA(0, 0xff, 0, 0x80),
-            RGBA(0xff, 0, 0, 0xff),
-            RGBA(0xff, 0, 0xff, 0x80)
-    };
-    png.png_set_palette(p, palette, 4);
+	image.rgba_t colors[] = {
+		{0, 0, 0xff, 0xff},
+		{0, 0xff, 0, 0x80},
+		{0xff, 0, 0, 0xff},
+		{0xff, 0, 0xff, 0x80}
+	};
 
-    int x;
-    int y;
-    for (y = 0; y < H; y++) {
-        for (x = 0; x < W; x++) {
-            png.png_set_pixel(p, x, y, (x % 16) / 4);
+	image.image_t *img = image.new(W, H);
+    for (int y = 0; y < H; y++) {
+        for (int x = 0; x < W; x++) {
+			image.rgba_t c = colors[(x%16)/4];
+			image.set(img, x, y, c);
         }
     }
-
-    png.png_save(p, "test_palette.png");
-    png.png_destroy(p);
+	png.write(img, "test_palette.png", png.PNG_PALETTE);
+	image.free(img);
 }
 
 void rgba() {
-	png.png_t *p = png.png_new(W, H, png.PNG_RGBA);
-
+	image.image_t *img = image.new(W, H);
+	image.rgba_t c = {};
     for (int y = 0; y < H; y++) {
         for (int x = 0; x < W; x++) {
-            png.png_set_pixel(p, x, y, RGBA(x & 255, y & 255, 128, (255 - ((x / 2) & 255))));
+			c.red = x & 255;
+			c.green = y & 255;
+			c.blue = 128;
+			c.transparency = (255 - ((x / 2) & 255));
+			image.set(img, x, y, c);
         }
     }
-    png.png_save(p, "test_rgba.png");
-    png.png_destroy(p);
+	png.write(img, "test_rgba.png", png.PNG_RGBA);
+	image.free(img);
 }
 
 void rgb() {
-	png.png_t *p = png.png_new(W, H, png.PNG_RGB);
+	image.image_t *img = image.new(W, H);
+	image.rgba_t c = {};
 
     for (int y = 0; y < H; y++) {
         for (int x = 0; x < W; x++) {
-            png.png_set_pixel(p, x, y, RGB(x & 255, y & 255, 128));
+			c.red = x;
+			c.green = y;
+			c.blue = 128;
+			image.set(img, x, y, c);
         }
     }
-    png.png_save(p, "test_rgb.png");
-    png.png_destroy(p);
+
+	png.write(img, "test_rgb.png", png.PNG_RGB);
+	image.free(img);
 }
 
 void gray() {
-	png.png_t *p = png.png_new(W, H, png.PNG_GRAYSCALE);
-
+	image.image_t *img = image.new(W, H);
+	image.rgba_t c = {};
     for (int y = 0; y < H; y++) {
         for (int x = 0; x < W; x++) {
-            png.png_set_pixel(p, x, y, (((x + y) / 2) & 255));
+			int gray = (((x + y) / 2) & 255);
+			c.red = gray;
+			c.green = gray;
+			c.blue = gray;
+			image.set(img, x, y, c);
         }
     }
-    png.png_save(p, "test_gray.png");
-    png.png_destroy(p);
+	png.write(img, "test_gray.png", png.PNG_GRAYSCALE);
+	image.free(img);
 }
 
 void grayalpha() {
-	png.png_t *p = png.png_new(W, H, png.PNG_GRAYSCALE_ALPHA);
-
+	image.image_t *img = image.new(W, H);
+	image.rgba_t c = {};
     for (int y = 0; y < H; y++) {
         for (int x = 0; x < W; x++) {
-            png.png_set_pixel(p, x, y, ALPHA(((x + y) / 2) & 255, 255 - ((y / 2) & 255)));
+			int gray = ((x + y) / 2) & 255;
+			int alpha = 255 - ((y / 2) & 255);
+
+			c.red = gray;
+			c.green = gray;
+			c.blue = gray;
+			c.transparency = alpha;
+
+			image.set(img, x, y, c);
         }
     }
-    png.png_save(p, "test_gray_alpha.png");
-    png.png_destroy(p);
+	png.write(img, "test_gray_alpha.png", png.PNG_GRAYSCALE_ALPHA);
+	image.free(img);
 }
 
 void graystream() {
-	png.png_t *p = png.png_new(W, H, png.PNG_GRAYSCALE);
+	image.image_t *img = image.new(W, H);
+	image.rgba_t c = {};
 
 	int n = 0;
 	for (int y = 0; y < H; y++) {
 		for (int x = 0; x < W; x++) {
-			png.png_set_pixel(p, x, y, 255 * n / (W * H));
+			int gray = 255 * (double) n / (double) (W * H);
+			c.red = gray;
+			c.green = gray;
+			c.blue = gray;
+			image.set(img, x, y, c);
 			n++;
 		}
 	}
 
-    png.png_save(p, "test_gray_stream.png");
-    png.png_destroy(p);
+	png.write(img, "test_gray_stream.png", png.PNG_GRAYSCALE);
+	image.free(img);
 }

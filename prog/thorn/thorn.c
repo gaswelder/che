@@ -17,7 +17,7 @@ int main(int argc, char *argv[]) {
 
 	image.image_t *img = image.new(width, height);
 	thorn(img);
-	png.writeimg(img, "thorn.png");
+	png.write(img, "thorn.png", png.PNG_GRAYSCALE);
 	image.free(img);
 	return 0;
 }

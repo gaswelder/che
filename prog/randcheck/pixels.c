@@ -16,6 +16,6 @@ pub int main() {
 		uint32_t y = (s / 0x0000FFFF) / 64;
 		image.blend(img, x, y, color, alpha);
 	}
-	png.writeimg(img, "out.png");
+	png.write(img, "out.png", png.PNG_GRAYSCALE);
 	return 0;
 }
