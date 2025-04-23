@@ -184,12 +184,6 @@ pub struct CSwitchCase {
 }
 
 #[derive(Debug, Clone)]
-pub struct CompatMacro {
-    pub name: String,
-    pub value: String,
-}
-
-#[derive(Debug, Clone)]
 pub struct CTypedefForm {
     pub stars: String,
     pub params: Option<CAnonymousParameters>,

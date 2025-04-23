@@ -5,11 +5,11 @@ pub struct Module {
     pub elements: Vec<ModuleObject>,
 }
 
-#[derive(Debug, Clone)]
-pub struct ModuleRef {
-    pub source_path: String,
-    pub id: String,
-}
+// #[derive(Debug, Clone)]
+// pub struct ModuleRef {
+//     pub source_path: String,
+//     pub id: String,
+// }
 
 #[derive(Debug, Clone)]
 pub enum ModuleObject {
@@ -72,13 +72,13 @@ pub struct StructTypedef {
     pub name: Identifier,
 }
 
-#[derive(Debug, Clone)]
-pub struct FuncTypedef {
-    pub is_pub: bool,
-    pub return_type: Typename,
-    pub name: String,
-    pub params: AnonymousParameters,
-}
+// #[derive(Debug, Clone)]
+// pub struct FuncTypedef {
+//     pub is_pub: bool,
+//     pub return_type: Typename,
+//     pub name: String,
+//     pub params: AnonymousParameters,
+// }
 
 #[derive(Debug, Clone)]
 pub struct EnumItem {

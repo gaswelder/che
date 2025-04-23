@@ -39,7 +39,7 @@ fn prefix_mod_obj(obj: &mut ModuleObject, prefix: &String, names: &Vec<String>) 
             if !*is_pub {
                 return;
             }
-            for mut m in members {
+            for m in members {
                 m.id.name = newname(&m.id.name, prefix, names);
             }
         }
