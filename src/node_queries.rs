@@ -49,71 +49,44 @@ pub fn body_returns(b: &Body) -> bool {
     };
 }
 
+// Returns true if the given expression contains a function call.
+// This is simply to check that module variable initializations are
+// compile-time expressions.
 pub fn has_function_call(e: &Expression) -> bool {
     return match e {
-        Expression::ArrayIndex { array, index } => {
-            has_function_call(array) || has_function_call(index)
-        }
-        Expression::BinaryOp { op: _, a, b } => has_function_call(a) || has_function_call(b),
-        Expression::FieldAccess {
-            op: _,
-            target,
-            field_name: _,
-        } => has_function_call(target),
-        Expression::Cast {
-            type_name: _,
-            operand,
-        } => has_function_call(operand),
+        Expression::FunctionCall(_) => true,
         Expression::CompositeLiteral(_) => false,
-        Expression::FunctionCall {
-            function: _,
-            arguments: _,
-        } => true,
         Expression::Identifier(_) => false,
         Expression::Literal(_) => false,
         Expression::NsName(_) => false,
-        Expression::PostfixOperator {
-            operator: _,
-            operand,
-        } => has_function_call(operand),
-        Expression::PrefixOperator {
-            operator: _,
-            operand,
-        } => has_function_call(operand),
-        Expression::Sizeof { argument: _ } => false,
+        Expression::Sizeof(_) => false,
+        Expression::ArrayIndex(x) => has_function_call(&x.array) || has_function_call(&x.index),
+        Expression::BinaryOp(x) => has_function_call(&x.a) || has_function_call(&x.b),
+        Expression::FieldAccess(x) => has_function_call(&x.target),
+        Expression::Cast(x) => has_function_call(&x.operand),
+        Expression::PostfixOperator(x) => has_function_call(&x.operand),
+        Expression::PrefixOperator(x) => has_function_call(&x.operand),
     };
 }
 
+// Returns source position of the given expression
+// for compilation error reports.
 pub fn expression_pos(e: &Expression) -> Pos {
+    // Not all nodes have source position yet, so traverse the expression
+    // and find any node inside with a position field.
     let todopos = Pos { line: 0, col: 0 };
     match e {
-        Expression::ArrayIndex { array, index: _ } => expression_pos(array),
-        Expression::BinaryOp { op: _, a, b: _ } => expression_pos(a),
-        Expression::FieldAccess {
-            op: _,
-            target,
-            field_name: _,
-        } => expression_pos(target),
-        Expression::Cast {
-            type_name: _,
-            operand: _,
-        } => todopos,
+        Expression::ArrayIndex(x) => expression_pos(&x.array),
+        Expression::BinaryOp(x) => expression_pos(&x.a),
+        Expression::FieldAccess(x) => expression_pos(&x.target),
+        Expression::Cast(_) => todopos,
         Expression::CompositeLiteral(_) => todopos,
-        Expression::FunctionCall {
-            function,
-            arguments: _,
-        } => expression_pos(function),
+        Expression::FunctionCall(x) => expression_pos(&x.function),
         Expression::Identifier(x) => x.pos.clone(),
         Expression::Literal(_) => todopos, // x.pos.clone(),
         Expression::NsName(x) => x.pos.clone(),
-        Expression::PostfixOperator {
-            operator: _,
-            operand,
-        } => expression_pos(operand),
-        Expression::PrefixOperator {
-            operator: _,
-            operand,
-        } => expression_pos(operand),
-        Expression::Sizeof { argument: _ } => todopos,
+        Expression::PostfixOperator(x) => expression_pos(&x.operand),
+        Expression::PrefixOperator(x) => expression_pos(&x.operand),
+        Expression::Sizeof(_) => todopos,
     }
 }

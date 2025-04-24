@@ -2,39 +2,60 @@ use crate::buf::Pos;
 
 #[derive(Debug, Clone)]
 pub struct Module {
-    pub elements: Vec<ModuleObject>,
+    pub elements: Vec<ModElem>,
 }
 
-// #[derive(Debug, Clone)]
-// pub struct ModuleRef {
-//     pub source_path: String,
-//     pub id: String,
-// }
-
+// Elements than can be at module level.
 #[derive(Debug, Clone)]
-pub enum ModuleObject {
-    Macro {
-        name: String,
-        value: String,
-        pos: Pos,
-    },
+pub enum ModElem {
+    Macro(Macro),
     Import(ImportNode),
-    Enum {
-        is_pub: bool,
-        members: Vec<EnumItem>,
-        pos: Pos,
-    },
-    // typedef struct tm tm_t;
-    StructAliasTypedef {
-        pos: Pos,
-        is_pub: bool,
-        struct_name: String,
-        type_alias: String,
-    },
+    Enum(Enum),
+    StructAliasTypedef(StructAlias),
     Typedef(Typedef),
     StructTypedef(StructTypedef),
     ModuleVariable(VariableDeclaration),
     FunctionDeclaration(FunctionDeclaration),
+}
+
+// Elements that can participate in expressions.
+#[derive(Debug, Clone)]
+pub enum Expression {
+    ArrayIndex(ArrayIndex),
+    BinaryOp(BinaryOp),
+    FieldAccess(FieldAccess),
+    Cast(Cast),
+    CompositeLiteral(CompositeLiteral),
+    FunctionCall(FunctionCall),
+    Identifier(Identifier),
+    Literal(Literal),
+    NsName(NsName),
+    PostfixOperator(PostfixOperator),
+    PrefixOperator(PrefixOperator),
+    Sizeof(Sizeof),
+}
+
+// typedef struct tm tm_t;
+#[derive(Debug, Clone)]
+pub struct StructAlias {
+    pub pos: Pos,
+    pub is_pub: bool,
+    pub struct_name: String,
+    pub type_alias: String,
+}
+
+#[derive(Debug, Clone)]
+pub struct Macro {
+    pub name: String,
+    pub value: String,
+    pub pos: Pos,
+}
+
+#[derive(Debug, Clone)]
+pub struct Enum {
+    pub is_pub: bool,
+    pub members: Vec<EnumItem>,
+    pub pos: Pos,
 }
 
 #[derive(Debug, Clone)]
@@ -118,45 +139,55 @@ pub struct CompositeLiteralEntry {
     pub value: Expression,
 }
 
+// ...[...]
 #[derive(Debug, Clone)]
-pub enum Expression {
-    ArrayIndex {
-        array: Box<Expression>,
-        index: Box<Expression>,
-    },
-    BinaryOp {
-        op: String,
-        a: Box<Expression>,
-        b: Box<Expression>,
-    },
-    FieldAccess {
-        op: String,
-        target: Box<Expression>,
-        field_name: Identifier,
-    },
-    Cast {
-        type_name: AnonymousTypeform,
-        operand: Box<Expression>,
-    },
-    CompositeLiteral(CompositeLiteral),
-    FunctionCall {
-        function: Box<Expression>,
-        arguments: Vec<Expression>,
-    },
-    Identifier(Identifier),
-    Literal(Literal),
-    NsName(NsName),
-    PostfixOperator {
-        operator: String,
-        operand: Box<Expression>,
-    },
-    PrefixOperator {
-        operator: String,
-        operand: Box<Expression>,
-    },
-    Sizeof {
-        argument: Box<SizeofArgument>,
-    },
+pub struct ArrayIndex {
+    pub array: Box<Expression>,
+    pub index: Box<Expression>,
+}
+
+// ...(...)
+#[derive(Debug, Clone)]
+pub struct FunctionCall {
+    pub function: Box<Expression>,
+    pub arguments: Vec<Expression>,
+}
+
+#[derive(Debug, Clone)]
+pub struct BinaryOp {
+    pub op: String,
+    pub a: Box<Expression>,
+    pub b: Box<Expression>,
+}
+
+#[derive(Debug, Clone)]
+pub struct FieldAccess {
+    pub op: String,
+    pub target: Box<Expression>,
+    pub field_name: Identifier,
+}
+
+#[derive(Debug, Clone)]
+pub struct Cast {
+    pub type_name: AnonymousTypeform,
+    pub operand: Box<Expression>,
+}
+
+#[derive(Debug, Clone)]
+pub struct PostfixOperator {
+    pub operator: String,
+    pub operand: Box<Expression>,
+}
+
+#[derive(Debug, Clone)]
+pub struct PrefixOperator {
+    pub operator: String,
+    pub operand: Box<Expression>,
+}
+
+#[derive(Debug, Clone)]
+pub struct Sizeof {
+    pub argument: Box<SizeofArgument>,
 }
 
 #[derive(Debug, Clone)]

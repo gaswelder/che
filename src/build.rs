@@ -286,47 +286,21 @@ pub fn translate(work: &mut Build) {
                 // a module encounters another module in dependencies more than
                 // once.
                 let id = match &obj {
-                    c::ModElem::EnumDefinition {
-                        members,
-                        is_hidden: _,
-                    } => {
+                    c::ModElem::DefEnum(x) => {
                         let mut names: Vec<String> = Vec::new();
-                        for m in members {
+                        for m in x.members.clone() {
                             names.push(m.id.clone());
                         }
                         format!("enum-{}", names.join(","))
                     }
-                    c::ModElem::Typedef {
-                        is_pub: _,
-                        type_name: _,
-                        form,
-                    } => form.alias.clone(),
-                    c::ModElem::StructDefinition {
-                        name,
-                        fields: _,
-                        is_pub: _,
-                    } => name.clone(),
+                    c::ModElem::DefType(x) => x.form.alias.clone(),
+                    c::ModElem::DefStruct(x) => x.name.clone(),
                     c::ModElem::Include(x) => x.clone(),
                     c::ModElem::Macro(x) => x.value.clone(),
-                    c::ModElem::StructForwardDeclaration(x) => x.clone(),
-                    c::ModElem::ModuleVariable {
-                        type_name: _,
-                        form: _,
-                        value: _,
-                    } => String::new(), // We shouldn't see module variables here, they are unexportable.
-                    c::ModElem::FunctionForwardDeclaration {
-                        is_static: _,
-                        type_name: _,
-                        form,
-                        parameters: _,
-                    } => form.name.clone(),
-                    c::ModElem::FunctionDefinition {
-                        is_static: _,
-                        type_name: _,
-                        form: _,
-                        parameters: _,
-                        body: _,
-                    } => String::new(), // Shouldn't see functions here.
+                    c::ModElem::ForwardStruct(x) => x.clone(),
+                    c::ModElem::DeclVar(_) => String::new(), // We shouldn't see module variables here, they are unexportable.
+                    c::ModElem::ForwardFunc(x) => x.form.name.clone(),
+                    c::ModElem::DefFunc(_) => String::new(), // Shouldn't see functions here.
                 };
                 if present.contains(&id) {
                     continue;

@@ -1,3 +1,4 @@
+use crate::c;
 use crate::c::*;
 use crate::parser;
 
@@ -5,24 +6,18 @@ pub fn format_module(cm: &CModule) -> String {
     let mut s = String::new();
     for e in &cm.elements {
         s += &match e {
-            ModElem::ModuleVariable {
-                type_name,
-                form,
-                value,
-            } => format!(
+            ModElem::DeclVar(x) => format!(
                 "static {} {} = {};\n",
-                format_type(type_name),
-                format_form(form),
-                format_expression(value)
+                format_type(&x.type_name),
+                format_form(&x.form),
+                format_expression(&x.value)
             ),
-            ModElem::Typedef {
-                type_name, form, ..
-            } => format_typedef(&type_name, &form),
+            ModElem::DefType(x) => format_typedef(&x),
             ModElem::Macro(x) => format!("#{} {}\n", x.name, x.value),
             ModElem::Include(x) => format!("#include {}\n", x),
-            ModElem::EnumDefinition { members, .. } => {
+            ModElem::DefEnum(x) => {
                 let mut s1 = String::from("enum {\n");
-                for (i, member) in members.iter().enumerate() {
+                for (i, member) in x.members.iter().enumerate() {
                     if i > 0 {
                         s1 += ",\n";
                     }
@@ -31,42 +26,29 @@ pub fn format_module(cm: &CModule) -> String {
                 s1 += "\n};\n";
                 s1
             }
-            ModElem::StructForwardDeclaration(x) => format!("struct {};\n", x),
-            ModElem::StructDefinition {
-                name,
-                fields,
-                is_pub: _,
-            } => format_compat_struct_definition(name, fields),
-            ModElem::FunctionForwardDeclaration {
-                is_static,
-                type_name,
-                form,
-                parameters,
-            } => format_function_forward_declaration(*is_static, type_name, form, parameters),
-            ModElem::FunctionDefinition {
-                is_static,
-                type_name,
-                form,
-                parameters,
-                body,
-            } => {
-                let form = format_form(&form);
-                let mut s = String::new();
-                if *is_static && form != "main" {
-                    s += "static ";
-                }
-                s += &format!(
-                    "{} {} {} {}",
-                    format_type(&type_name),
-                    form,
-                    format_compat_function_parameters(&parameters),
-                    format_body(&body)
-                );
-                s
-            }
+            ModElem::ForwardStruct(x) => format!("struct {};\n", x),
+            ModElem::DefStruct(x) => format_compat_struct_definition(&x),
+            ModElem::ForwardFunc(x) => fmt_function_forward_declaration(&x),
+            ModElem::DefFunc(x) => fmt_func_def(&x),
         }
     }
     return s;
+}
+
+fn fmt_func_def(x: &c::FunctionDef) -> String {
+    let form = format_form(&x.form);
+    let mut s = String::new();
+    if x.is_static && form != "main" {
+        s += "static ";
+    }
+    s += &format!(
+        "{} {} {} {}",
+        format_type(&x.type_name),
+        form,
+        format_compat_function_parameters(&x.parameters),
+        format_body(&x.body)
+    );
+    s
 }
 
 fn format_union(node: &CUnion) -> String {
@@ -85,7 +67,7 @@ fn format_union(node: &CUnion) -> String {
     );
 }
 
-pub fn format_type(t: &CTypename) -> String {
+pub fn format_type(t: &Typename) -> String {
     return format!("{}{}", if t.is_const { "const " } else { "" }, t.name);
 }
 
@@ -176,7 +158,7 @@ fn format_expression(expr: &CExpression) -> String {
             }
             return format!("{}{}{}", format_expression(target), op, field_name);
         }
-        CExpression::BinaryOp { op, a, b } => format_binary_op(op, a, b),
+        CExpression::BinaryOp(x) => format_binary_op(&x),
         CExpression::PrefixOperator { operator, operand } => {
             let expr = &**operand;
             match is_binary_op(expr) {
@@ -189,8 +171,8 @@ fn format_expression(expr: &CExpression) -> String {
                 None => {}
             }
             return match expr {
-                CExpression::BinaryOp { op, a, b } => {
-                    format!("{}({})", operator, format_binary_op(&op, &a, &b))
+                CExpression::BinaryOp(x) => {
+                    format!("{}({})", operator, format_binary_op(&x))
                 }
                 CExpression::Cast { type_name, operand } => format!(
                     "{}{}",
@@ -238,21 +220,24 @@ fn format_anonymous_parameters(params: &CAnonymousParameters) -> String {
 
 fn is_binary_op(a: &CExpression) -> Option<&String> {
     match a {
-        CExpression::BinaryOp { op, .. } => Some(op),
+        CExpression::BinaryOp(x) => Some(&x.op),
         _ => None,
     }
 }
 
 fn is_op(e: &CExpression) -> Option<String> {
     match e {
-        CExpression::BinaryOp { op, .. } => Some(String::from(op)),
+        CExpression::BinaryOp(x) => Some(String::from(&x.op)),
         CExpression::PostfixOperator { .. } => Some(String::from("prefix")),
         CExpression::PrefixOperator { .. } => Some(String::from("prefix")),
         _ => None,
     }
 }
 
-fn format_binary_op(op: &String, a: &CExpression, b: &CExpression) -> String {
+fn format_binary_op(x: &c::BinaryOp) -> String {
+    let op = &x.op;
+    let a = &x.a;
+    let b = &x.b;
     // If a is an op weaker than op, wrap it
     let a_formatted = match is_op(a) {
         Some(k) => {
@@ -294,22 +279,17 @@ fn format_body(node: &CBody) -> String {
     return format!("{{\n{}}}\n", indent(&s));
 }
 
-fn format_function_forward_declaration(
-    is_static: bool,
-    type_name: &CTypename,
-    form: &CForm,
-    parameters: &CompatFunctionParameters,
-) -> String {
+fn fmt_function_forward_declaration(x: &c::ForwardFunc) -> String {
     let mut s = String::new();
-    let form = format_form(form);
-    if is_static && form != "main" {
+    let form = format_form(&x.form);
+    if x.is_static && form != "main" {
         s += "static ";
     }
     s += &format!(
         "{} {} {};\n",
-        format_type(type_name),
+        format_type(&x.type_name),
         form,
-        format_compat_function_parameters(parameters)
+        format_compat_function_parameters(&x.parameters)
     );
     return s;
 }
@@ -318,7 +298,9 @@ fn format_typeform(x: &CTypeForm) -> String {
     return format!("{} {};\n", format_type(&x.type_name), format_form(&x.form));
 }
 
-pub fn format_compat_struct_definition(name: &String, fields: &Vec<CStructItem>) -> String {
+pub fn format_compat_struct_definition(x: &c::StructDef) -> String {
+    let name = &x.name;
+    let fields = &x.fields;
     let mut s = String::new();
     for entry in fields {
         match entry {
@@ -355,16 +337,7 @@ fn format_for(
     let init = match init {
         Some(init) => match init {
             CForInit::Expression(x) => format_expression(&x),
-            CForInit::LoopCounterDeclaration {
-                type_name,
-                form,
-                value,
-            } => format!(
-                "{} {} = {}",
-                format_type(type_name),
-                format_form(form),
-                format_expression(value)
-            ),
+            CForInit::LoopCounterDeclaration(x) => fmt_vardecl(&x),
         },
         None => String::from(""),
     };
@@ -383,6 +356,15 @@ fn format_for(
         action,
         format_body(body)
     );
+}
+
+fn fmt_vardecl(x: &c::VarDecl) -> String {
+    format!(
+        "{} {} = {}",
+        format_type(&x.type_name),
+        format_form(&x.form),
+        format_expression(&x.value)
+    )
 }
 
 fn format_compat_function_parameters(parameters: &CompatFunctionParameters) -> String {
@@ -483,16 +465,15 @@ fn format_statement(node: &CStatement) -> String {
                 Some(x) => format!("return {}", format_expression(&x)),
             } + ";";
         }
-        CStatement::Switch {
-            value,
-            cases,
-            default,
-        } => format_switch(value, cases, default),
+        CStatement::Switch(x) => fmt_switch(&x),
         CStatement::Expression(x) => format_expression(&x) + ";",
     }
 }
 
-fn format_switch(value: &CExpression, cases: &Vec<CSwitchCase>, default: &Option<CBody>) -> String {
+fn fmt_switch(x: &c::Switch) -> String {
+    let value = &x.value;
+    let cases = &x.cases;
+    let default = &x.default;
     let mut s = String::new();
     for case in cases {
         for v in &case.values {
@@ -527,7 +508,9 @@ fn format_switch(value: &CExpression, cases: &Vec<CSwitchCase>, default: &Option
     );
 }
 
-pub fn format_typedef(t: &CTypename, form: &CTypedefForm) -> String {
+pub fn format_typedef(x: &c::Typedef) -> String {
+    let form = &x.form;
+    let t = &x.type_name;
     let mut formstr = form.stars.clone() + &form.alias;
     if form.params.is_some() {
         formstr += &format_anonymous_parameters(&form.params.as_ref().unwrap());

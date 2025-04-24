@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use crate::{
     buf::Pos,
     cspec,
-    nodes::{Form, FunctionDeclaration, ImportNode, Module, ModuleObject, Typename},
+    nodes::{Form, FunctionDeclaration, ImportNode, ModElem, Module, Typename},
     resolve::getns,
 };
 
@@ -22,7 +22,7 @@ pub fn newscope() -> Scope {
 pub struct RootScope {
     pub pre: Vec<String>,
     pub imports: HashMap<String, ScopeItem1<ImportNode>>,
-    pub types: HashMap<String, ScopeItem1<ModuleObject>>,
+    pub types: HashMap<String, ScopeItem1<ModElem>>,
     pub consts: HashMap<String, ScopeItem>,
     pub vars: HashMap<String, ScopeItem1<VarInfo>>,
     pub funcs: HashMap<String, ScopeItem1<FunctionDeclaration>>,
@@ -84,7 +84,7 @@ pub fn get_module_scope(m: &Module) -> RootScope {
 
     for e in &m.elements {
         match e {
-            ModuleObject::Import(x) => {
+            ModElem::Import(x) => {
                 let ns = getns(&x.specified_path);
                 s.imports.insert(
                     ns,
@@ -94,7 +94,7 @@ pub fn get_module_scope(m: &Module) -> RootScope {
                     },
                 );
             }
-            ModuleObject::FunctionDeclaration(f) => {
+            ModElem::FunctionDeclaration(f) => {
                 s.funcs.insert(
                     f.form.name.clone(),
                     ScopeItem1 {
@@ -103,23 +103,22 @@ pub fn get_module_scope(m: &Module) -> RootScope {
                     },
                 );
             }
-            ModuleObject::Enum {
-                is_pub,
-                members,
-                pos: _,
-            } => {
-                for m in members {
+            ModElem::Enum(x) => {
+                for m in &x.members {
                     s.consts.insert(
                         m.id.name.clone(),
                         ScopeItem {
                             read: false,
                             pos: m.pos.clone(),
-                            ispub: *is_pub,
+                            ispub: x.is_pub,
                         },
                     );
                 }
             }
-            ModuleObject::Macro { name, value, pos } => {
+            ModElem::Macro(x) => {
+                let name = &x.name;
+                let value = &x.value;
+                let pos = &x.pos;
                 if name == "define" {
                     let mut parts = value.trim().split(" ");
                     s.consts.insert(
@@ -135,7 +134,7 @@ pub fn get_module_scope(m: &Module) -> RootScope {
                     s.pre.push(String::from(value.trim()));
                 }
             }
-            ModuleObject::ModuleVariable(x) => {
+            ModElem::ModuleVariable(x) => {
                 s.vars.insert(
                     x.form.name.clone(),
                     ScopeItem1 {
@@ -149,7 +148,7 @@ pub fn get_module_scope(m: &Module) -> RootScope {
                     },
                 );
             }
-            ModuleObject::StructTypedef(x) => {
+            ModElem::StructTypedef(x) => {
                 s.types.insert(
                     x.name.name.clone(),
                     ScopeItem1 {
@@ -158,7 +157,7 @@ pub fn get_module_scope(m: &Module) -> RootScope {
                     },
                 );
             }
-            ModuleObject::Typedef(x) => {
+            ModElem::Typedef(x) => {
                 s.types.insert(
                     x.alias.name.clone(),
                     ScopeItem1 {
@@ -167,14 +166,9 @@ pub fn get_module_scope(m: &Module) -> RootScope {
                     },
                 );
             }
-            ModuleObject::StructAliasTypedef {
-                pos: _,
-                is_pub: _,
-                struct_name: _,
-                type_alias,
-            } => {
+            ModElem::StructAliasTypedef(x) => {
                 s.types.insert(
-                    type_alias.clone(),
+                    x.type_alias.clone(),
                     ScopeItem1 {
                         read: false,
                         val: e.clone(),

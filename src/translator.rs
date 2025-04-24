@@ -13,6 +13,47 @@ pub fn module_gid(path: &String) -> String {
     );
 }
 
+// Module synopsis is what you would extract into a header file:
+// function prototypes, typedefs, struct declarations.
+pub fn get_module_synopsis(module: &c::CModule) -> Vec<c::ModElem> {
+    let mut elements: Vec<c::ModElem> = vec![];
+
+    for element in &module.elements {
+        match element {
+            c::ModElem::DefType(x) => {
+                if x.is_pub {
+                    elements.push(c::ModElem::DefType(x.clone()))
+                }
+            }
+            c::ModElem::DefStruct(x) => {
+                if x.is_pub {
+                    elements.push(c::ModElem::DefStruct(x.clone()))
+                }
+            }
+            c::ModElem::ForwardFunc(x) => {
+                if !x.is_static {
+                    elements.push(c::ModElem::ForwardFunc(x.clone()))
+                }
+            }
+            c::ModElem::Macro(x) => {
+                // if name == "include" {
+                elements.push(c::ModElem::Macro(c::Macro {
+                    name: x.name.clone(),
+                    value: x.value.clone(),
+                }))
+                // }
+            }
+            c::ModElem::DefEnum(x) => {
+                if !x.is_hidden {
+                    elements.push(c::ModElem::DefEnum(x.clone()))
+                }
+            }
+            _ => {}
+        }
+    }
+    return elements;
+}
+
 // Translates a module to c module.
 pub fn translate(m: &nodes::Module, ctx: &Ctx) -> c::CModule {
     // Build the list of modules to link.
@@ -20,13 +61,9 @@ pub fn translate(m: &nodes::Module, ctx: &Ctx) -> c::CModule {
     let mut link: Vec<String> = Vec::new();
     for node in &m.elements {
         match node {
-            nodes::ModuleObject::Macro {
-                name,
-                value,
-                pos: _,
-            } => {
-                if name == "link" {
-                    link.push(value.clone())
+            nodes::ModElem::Macro(x) => {
+                if x.name == "link" {
+                    link.push(x.value.clone())
                 }
             }
             _ => {}
@@ -35,7 +72,7 @@ pub fn translate(m: &nodes::Module, ctx: &Ctx) -> c::CModule {
 
     let mut elements: Vec<c::ModElem> = Vec::new();
     for element in &m.elements {
-        for node in translate_module_object(element, ctx) {
+        for node in tr_mod_elem(element, ctx) {
             elements.push(node)
         }
     }
@@ -49,31 +86,25 @@ pub fn translate(m: &nodes::Module, ctx: &Ctx) -> c::CModule {
         let order = match element {
             c::ModElem::Include(_) => 0,
             c::ModElem::Macro { .. } => 0,
-            c::ModElem::StructForwardDeclaration(_) => 1,
-            c::ModElem::Typedef { .. } => 2,
-            c::ModElem::StructDefinition { .. } => 3,
-            c::ModElem::EnumDefinition { .. } => 3,
-            c::ModElem::FunctionForwardDeclaration { .. } => 4,
-            c::ModElem::ModuleVariable { .. } => 5,
+            c::ModElem::ForwardStruct(_) => 1,
+            c::ModElem::DefType { .. } => 2,
+            c::ModElem::DefStruct { .. } => 3,
+            c::ModElem::DefEnum { .. } => 3,
+            c::ModElem::ForwardFunc { .. } => 4,
+            c::ModElem::DeclVar { .. } => 5,
             _ => 6,
         };
 
         match &element {
-            c::ModElem::Typedef {
-                type_name, form, ..
-            } => {
-                let s = format_c::format_typedef(&type_name, &form);
+            c::ModElem::DefType(x) => {
+                let s = format_c::format_typedef(&x);
                 if set.contains(&s) {
                     continue;
                 }
                 set.insert(s);
             }
-            c::ModElem::StructDefinition {
-                name,
-                fields,
-                is_pub: _,
-            } => {
-                let s = format_c::format_compat_struct_definition(name, fields);
+            c::ModElem::DefStruct(x) => {
+                let s = format_c::format_compat_struct_definition(&x);
                 if set.contains(&s) {
                     continue;
                 }
@@ -95,159 +126,164 @@ pub fn translate(m: &nodes::Module, ctx: &Ctx) -> c::CModule {
     };
 }
 
-fn translate_module_object(element: &nodes::ModuleObject, ctx: &Ctx) -> Vec<c::ModElem> {
+fn tr_mod_elem(element: &nodes::ModElem, ctx: &Ctx) -> Vec<c::ModElem> {
     match element {
-        // Ignore import nodes, the upper-lever build function will do all
-        // linking and synopses.
-        nodes::ModuleObject::Import(_) => Vec::new(),
-        nodes::ModuleObject::Typedef(nodes::Typedef {
-            pos: _,
-            is_pub,
-            type_name,
-            alias,
-            array_size,
-            dereference_count,
-            function_parameters,
-        }) => vec![c::ModElem::Typedef {
-            is_pub: *is_pub,
-            type_name: tr_typename(type_name, ctx),
-            form: c::CTypedefForm {
-                stars: "*".repeat(*dereference_count),
-                params: function_parameters.as_ref().map(|x| {
-                    let mut forms: Vec<c::CAnonymousTypeform> = Vec::new();
-                    for f in &x.forms {
-                        forms.push(translate_anonymous_typeform(&f, ctx));
-                    }
-                    c::CAnonymousParameters {
-                        ellipsis: x.ellipsis,
-                        forms,
-                    }
-                }),
-                size: *array_size,
-                alias: alias.name.clone(),
-            },
-        }],
-        nodes::ModuleObject::StructAliasTypedef {
-            pos: _,
-            is_pub,
-            struct_name,
-            type_alias,
-        } => vec![c::ModElem::Typedef {
-            is_pub: *is_pub,
-            type_name: c::CTypename {
-                is_const: false,
-                name: format!("struct {}", struct_name),
-            },
-            form: c::CTypedefForm {
-                stars: String::new(),
-                params: None,
-                size: 0,
-                alias: type_alias.clone(),
-            },
-        }],
-        nodes::ModuleObject::StructTypedef(nodes::StructTypedef {
-            pos: _,
-            is_pub,
-            fields,
-            name,
-        }) => {
-            // A sugary "typedef {int a} foo_t" is translated to
-            // "struct __foo_t_struct {int a}; typedef __foo_t_struct foo_t;".
-            // And remember that the struct definition itself is sugar that
-            // should be translated as well.
-            let struct_name = format!("__{}_struct", name.name);
-
-            // Build the compat struct fields.
-            let mut compat_fields: Vec<c::CStructItem> = Vec::new();
-            for entry in fields {
-                match entry {
-                    // One fieldlist is multiple fields of the same type.
-                    nodes::StructEntry::Plain(x) => {
-                        for f in &x.forms {
-                            compat_fields.push(c::CStructItem::Field(c::CTypeForm {
-                                type_name: tr_typename(&x.type_name, ctx),
-                                form: translate_form(f, ctx),
-                            }));
-                        }
-                    }
-                    nodes::StructEntry::Union(x) => {
-                        compat_fields.push(c::CStructItem::Union(translate_union(x, ctx)));
-                    }
-                }
-            }
-            vec![
-                c::ModElem::StructForwardDeclaration(struct_name.clone()),
-                c::ModElem::StructDefinition {
-                    name: struct_name.clone(),
-                    fields: compat_fields,
-                    is_pub: *is_pub,
-                },
-                c::ModElem::Typedef {
-                    is_pub: *is_pub,
-                    type_name: c::CTypename {
-                        is_const: false,
-                        name: format!("struct {}", struct_name.clone()),
-                    },
-                    form: c::CTypedefForm {
-                        stars: "".to_string(),
-                        size: 0,
-                        params: None,
-                        alias: name.name.clone(),
-                    },
-                },
-            ]
-        }
-        // nodes::ModuleObject::Import { .. } => {
-        //     return Vec::new();
-        // }
-        nodes::ModuleObject::FunctionDeclaration(nodes::FunctionDeclaration {
-            is_pub,
-            type_name,
-            form,
-            parameters,
-            body,
-            pos: _,
-        }) => translate_function_declaration(*is_pub, type_name, form, parameters, body, ctx),
-        nodes::ModuleObject::Enum {
-            is_pub,
-            members,
-            pos: _,
-        } => {
-            let mut tm: Vec<c::CEnumItem> = Vec::new();
-            for member in members {
-                tm.push(c::CEnumItem {
-                    id: member.id.name.clone(),
-                    value: member.value.as_ref().map(|v| tr_expr(&v, ctx)),
-                })
-            }
-            return vec![c::ModElem::EnumDefinition {
-                members: tm,
-                is_hidden: !is_pub,
-            }];
-        }
-        nodes::ModuleObject::Macro {
-            name,
-            value,
-            pos: _,
-        } => {
-            if name == "type" || name == "link" {
-                return vec![];
-            } else {
-                return vec![c::ModElem::Macro(c::Macro {
-                    name: name.clone(),
-                    value: value.clone(),
-                })];
-            }
-        }
-        nodes::ModuleObject::ModuleVariable(x) => vec![c::ModElem::ModuleVariable {
-            type_name: tr_typename(&x.type_name, ctx),
-            form: translate_form(&x.form, ctx),
-            value: tr_expr(x.value.as_ref().unwrap(), ctx),
-        }],
+        nodes::ModElem::Import(_) => Vec::new(),
+        nodes::ModElem::Typedef(x) => tr_typedef(&x, ctx),
+        nodes::ModElem::StructAliasTypedef(x) => tr_struct_alias(&x),
+        nodes::ModElem::StructTypedef(x) => tr_struct_typedef(&x, ctx),
+        nodes::ModElem::FunctionDeclaration(x) => tr_func_decl(&x, ctx),
+        nodes::ModElem::Enum(x) => tr_enum(&x, ctx),
+        nodes::ModElem::Macro(x) => tr_macro(&x),
+        nodes::ModElem::ModuleVariable(x) => tr_mod_var(&x, ctx),
     }
 }
 
-fn translate_form(f: &nodes::Form, ctx: &Ctx) -> c::CForm {
+fn tr_expr(e: &nodes::Expression, ctx: &Ctx) -> c::CExpression {
+    return match e {
+        nodes::Expression::NsName(n) => c::CExpression::Identifier(tr_ns_name(n, ctx)),
+        nodes::Expression::ArrayIndex(x) => tr_array_index(&x, ctx),
+        nodes::Expression::BinaryOp(x) => tr_binary_op(&x, ctx),
+        nodes::Expression::FieldAccess(x) => tr_field_access(&x, ctx),
+        nodes::Expression::CompositeLiteral(x) => tr_comp_literal(&x, ctx),
+        nodes::Expression::Literal(x) => c::CExpression::Literal(tr_literal(x)),
+        nodes::Expression::Identifier(x) => c::CExpression::Identifier(x.name.clone()),
+        nodes::Expression::PrefixOperator(x) => tr_prefix(&x, ctx),
+        nodes::Expression::PostfixOperator(x) => tr_postfix(&x, ctx),
+        nodes::Expression::Cast(x) => tr_cast(&x, ctx),
+        nodes::Expression::FunctionCall(x) => tr_call(&x, ctx),
+        nodes::Expression::Sizeof(x) => tr_sizeof(&x, ctx),
+    };
+}
+
+fn tr_struct_alias(x: &nodes::StructAlias) -> Vec<c::ModElem> {
+    vec![c::ModElem::DefType(c::Typedef {
+        is_pub: x.is_pub,
+        type_name: c::Typename {
+            is_const: false,
+            name: format!("struct {}", x.struct_name),
+        },
+        form: c::CTypedefForm {
+            stars: String::new(),
+            params: None,
+            size: 0,
+            alias: x.type_alias.clone(),
+        },
+    })]
+}
+
+fn tr_typedef(x: &nodes::Typedef, ctx: &Ctx) -> Vec<c::ModElem> {
+    let array_size = &x.array_size;
+    let alias = &x.alias;
+    let function_parameters = &x.function_parameters;
+    let dereference_count = &x.dereference_count;
+    let type_name = &x.type_name;
+    vec![c::ModElem::DefType(c::Typedef {
+        is_pub: x.is_pub,
+        type_name: tr_typename(type_name, ctx),
+        form: c::CTypedefForm {
+            stars: "*".repeat(*dereference_count),
+            params: function_parameters.as_ref().map(|x| {
+                let mut forms: Vec<c::CAnonymousTypeform> = Vec::new();
+                for f in &x.forms {
+                    forms.push(translate_anonymous_typeform(&f, ctx));
+                }
+                c::CAnonymousParameters {
+                    ellipsis: x.ellipsis,
+                    forms,
+                }
+            }),
+            size: *array_size,
+            alias: alias.name.clone(),
+        },
+    })]
+}
+
+fn tr_struct_typedef(x: &nodes::StructTypedef, ctx: &Ctx) -> Vec<c::ModElem> {
+    // A sugary "typedef {int a} foo_t" is translated to
+    // "struct __foo_t_struct {int a}; typedef __foo_t_struct foo_t;".
+    // And remember that the struct definition itself is sugar that
+    // should be translated as well.
+
+    let name = &x.name;
+    let fields = &x.fields;
+    let struct_name = format!("__{}_struct", name.name);
+
+    // Build the compat struct fields.
+    let mut compat_fields: Vec<c::CStructItem> = Vec::new();
+    for entry in fields {
+        match entry {
+            // One fieldlist is multiple fields of the same type.
+            nodes::StructEntry::Plain(x) => {
+                for f in &x.forms {
+                    compat_fields.push(c::CStructItem::Field(c::CTypeForm {
+                        type_name: tr_typename(&x.type_name, ctx),
+                        form: tr_form(f, ctx),
+                    }));
+                }
+            }
+            nodes::StructEntry::Union(x) => {
+                compat_fields.push(c::CStructItem::Union(tr_union(x, ctx)));
+            }
+        }
+    }
+    vec![
+        c::ModElem::ForwardStruct(struct_name.clone()),
+        c::ModElem::DefStruct(c::StructDef {
+            name: struct_name.clone(),
+            fields: compat_fields,
+            is_pub: x.is_pub,
+        }),
+        c::ModElem::DefType(c::Typedef {
+            is_pub: x.is_pub,
+            type_name: c::Typename {
+                is_const: false,
+                name: format!("struct {}", struct_name.clone()),
+            },
+            form: c::CTypedefForm {
+                stars: "".to_string(),
+                size: 0,
+                params: None,
+                alias: name.name.clone(),
+            },
+        }),
+    ]
+}
+
+fn tr_enum(x: &nodes::Enum, ctx: &Ctx) -> Vec<c::ModElem> {
+    let mut tm: Vec<c::CEnumItem> = Vec::new();
+    for m in &x.members {
+        tm.push(c::CEnumItem {
+            id: m.id.name.clone(),
+            value: m.value.as_ref().map(|v| tr_expr(&v, ctx)),
+        })
+    }
+    return vec![c::ModElem::DefEnum(c::EnumDef {
+        members: tm,
+        is_hidden: !x.is_pub,
+    })];
+}
+
+fn tr_macro(x: &nodes::Macro) -> Vec<c::ModElem> {
+    let name = &x.name;
+    if name == "type" || name == "link" {
+        return vec![];
+    }
+    return vec![c::ModElem::Macro(c::Macro {
+        name: name.clone(),
+        value: x.value.clone(),
+    })];
+}
+
+fn tr_mod_var(x: &nodes::VariableDeclaration, ctx: &Ctx) -> Vec<c::ModElem> {
+    vec![c::ModElem::DeclVar(c::VarDecl {
+        type_name: tr_typename(&x.type_name, ctx),
+        form: tr_form(&x.form, ctx),
+        value: tr_expr(x.value.as_ref().unwrap(), ctx),
+    })]
+}
+
+fn tr_form(f: &nodes::Form, ctx: &Ctx) -> c::CForm {
     let mut indexes: Vec<Option<c::CExpression>> = vec![];
     for index in &f.indexes {
         indexes.push(match index {
@@ -262,91 +298,104 @@ fn translate_form(f: &nodes::Form, ctx: &Ctx) -> c::CForm {
     };
 }
 
-fn translate_union(x: &nodes::Union, ctx: &Ctx) -> c::CUnion {
+fn tr_union(x: &nodes::Union, ctx: &Ctx) -> c::CUnion {
     let mut fields: Vec<c::CUnionField> = Vec::new();
     for f in &x.fields {
         fields.push(c::CUnionField {
             type_name: tr_typename(&f.type_name, ctx),
-            form: translate_form(&f.form, ctx),
+            form: tr_form(&f.form, ctx),
         })
     }
     return c::CUnion {
-        form: translate_form(&x.form, ctx),
+        form: tr_form(&x.form, ctx),
         fields,
     };
 }
 
-fn tr_expr(e: &nodes::Expression, ctx: &Ctx) -> c::CExpression {
-    return match e {
-        nodes::Expression::NsName(n) => c::CExpression::Identifier(tr_ns_name(n, ctx)),
-        nodes::Expression::ArrayIndex { array, index } => c::CExpression::ArrayIndex {
-            array: Box::new(tr_expr(array, ctx)),
-            index: Box::new(tr_expr(index, ctx)),
-        },
-        nodes::Expression::BinaryOp { op, a, b } => c::CExpression::BinaryOp {
-            op: op.clone(),
-            a: Box::new(tr_expr(a, ctx)),
-            b: Box::new(tr_expr(b, ctx)),
-        },
-        nodes::Expression::FieldAccess {
-            op,
-            target,
-            field_name,
-        } => c::CExpression::FieldAccess {
-            op: op.clone(),
-            target: Box::new(tr_expr(target, ctx)),
-            field_name: field_name.name.clone(),
-        },
-        nodes::Expression::CompositeLiteral(x) => {
-            let mut entries: Vec<c::CCompositeLiteralEntry> = Vec::new();
-            for e in &x.entries {
-                entries.push(c::CCompositeLiteralEntry {
-                    is_index: e.is_index,
-                    key: e.key.as_ref().map(|x| tr_expr(&x, ctx)),
-                    value: tr_expr(&e.value, ctx),
-                })
-            }
-            c::CExpression::CompositeLiteral(c::CCompositeLiteral { entries })
-        }
-        nodes::Expression::Literal(x) => c::CExpression::Literal(tr_literal(x)),
-        nodes::Expression::Identifier(x) => c::CExpression::Identifier(x.name.clone()),
-        nodes::Expression::PrefixOperator { operator, operand } => c::CExpression::PrefixOperator {
-            operator: operator.clone(),
-            operand: Box::new(tr_expr(operand, ctx)),
-        },
-        nodes::Expression::PostfixOperator { operator, operand } => {
-            c::CExpression::PostfixOperator {
-                operator: operator.clone(),
-                operand: Box::new(tr_expr(operand, ctx)),
-            }
-        }
-        nodes::Expression::Cast { type_name, operand } => c::CExpression::Cast {
-            type_name: translate_anonymous_typeform(type_name, ctx),
-            operand: Box::new(tr_expr(operand, ctx)),
-        },
-        nodes::Expression::FunctionCall {
-            function,
-            arguments,
-        } => tr_call(function, arguments, ctx),
-        nodes::Expression::Sizeof { argument } => {
-            let c = *argument.clone();
-            let arg = match c {
-                nodes::SizeofArgument::Expression(x) => {
-                    c::CSizeofArgument::Expression(tr_expr(&x, ctx))
-                }
-                nodes::SizeofArgument::Typename(x) => {
-                    c::CSizeofArgument::Typename(tr_typename(&x, ctx))
-                }
-            };
-            c::CExpression::Sizeof {
-                argument: Box::new(arg),
-            }
-        }
+fn tr_binary_op(x: &nodes::BinaryOp, ctx: &Ctx) -> c::CExpression {
+    let op = &x.op;
+    let a = &x.a;
+    let b = &x.b;
+    c::CExpression::BinaryOp(c::BinaryOp {
+        op: op.clone(),
+        a: Box::new(tr_expr(a, ctx)),
+        b: Box::new(tr_expr(b, ctx)),
+    })
+}
+
+fn tr_field_access(x: &nodes::FieldAccess, ctx: &Ctx) -> c::CExpression {
+    let op = &x.op;
+    let target = &x.target;
+    let field_name = &x.field_name;
+    c::CExpression::FieldAccess {
+        op: op.clone(),
+        target: Box::new(tr_expr(target, ctx)),
+        field_name: field_name.name.clone(),
+    }
+}
+
+fn tr_comp_literal(x: &nodes::CompositeLiteral, ctx: &Ctx) -> c::CExpression {
+    let mut entries: Vec<c::CCompositeLiteralEntry> = Vec::new();
+    for e in &x.entries {
+        entries.push(c::CCompositeLiteralEntry {
+            is_index: e.is_index,
+            key: e.key.as_ref().map(|x| tr_expr(&x, ctx)),
+            value: tr_expr(&e.value, ctx),
+        })
+    }
+    c::CExpression::CompositeLiteral(c::CCompositeLiteral { entries })
+}
+
+fn tr_prefix(x: &nodes::PrefixOperator, ctx: &Ctx) -> c::CExpression {
+    let operator = &x.operator;
+    let operand = &x.operand;
+    c::CExpression::PrefixOperator {
+        operator: operator.clone(),
+        operand: Box::new(tr_expr(operand, ctx)),
+    }
+}
+
+fn tr_postfix(x: &nodes::PostfixOperator, ctx: &Ctx) -> c::CExpression {
+    let operator = &x.operator;
+    let operand = &x.operand;
+    c::CExpression::PostfixOperator {
+        operator: operator.clone(),
+        operand: Box::new(tr_expr(operand, ctx)),
+    }
+}
+
+fn tr_cast(x: &nodes::Cast, ctx: &Ctx) -> c::CExpression {
+    let type_name = &x.type_name;
+    let operand = &x.operand;
+    c::CExpression::Cast {
+        type_name: translate_anonymous_typeform(type_name, ctx),
+        operand: Box::new(tr_expr(operand, ctx)),
+    }
+}
+
+fn tr_array_index(x: &nodes::ArrayIndex, ctx: &Ctx) -> c::CExpression {
+    c::CExpression::ArrayIndex {
+        array: Box::new(tr_expr(&x.array, ctx)),
+        index: Box::new(tr_expr(&x.index, ctx)),
+    }
+}
+
+fn tr_sizeof(x: &nodes::Sizeof, ctx: &Ctx) -> c::CExpression {
+    let argument = &x.argument;
+    let c = *argument.clone();
+    let arg = match c {
+        nodes::SizeofArgument::Expression(x) => c::CSizeofArgument::Expression(tr_expr(&x, ctx)),
+        nodes::SizeofArgument::Typename(x) => c::CSizeofArgument::Typename(tr_typename(&x, ctx)),
     };
+    c::CExpression::Sizeof {
+        argument: Box::new(arg),
+    }
 }
 
 // f(args)
-fn tr_call(f: &Box<nodes::Expression>, args: &Vec<nodes::Expression>, ctx: &Ctx) -> c::CExpression {
+fn tr_call(x: &nodes::FunctionCall, ctx: &Ctx) -> c::CExpression {
+    let f = &x.function;
+    let args = &x.arguments;
     let mut targs: Vec<c::CExpression> = Vec::new();
     for arg in args {
         targs.push(tr_expr(arg, ctx))
@@ -357,127 +406,11 @@ fn tr_call(f: &Box<nodes::Expression>, args: &Vec<nodes::Expression>, ctx: &Ctx)
     }
 }
 
-fn gencall0(func: &str, args: Vec<c::CExpression>) -> c::CExpression {
-    c::CExpression::FunctionCall {
-        function: Box::new(c::CExpression::Identifier(String::from(func))),
-        arguments: args,
-    }
-}
-
-fn gencall(func: &str, args: Vec<c::CExpression>) -> c::CStatement {
-    c::CStatement::Expression(gencall0(func, args))
-}
-
-fn generate_panic(ctx: &Ctx, pos: &String, arguments: &Vec<nodes::Expression>) -> c::CStatement {
-    let mut args = vec![c::CExpression::Identifier(String::from("stderr"))];
-    for arg in arguments {
-        args.push(tr_expr(arg, ctx));
-    }
-    c::CStatement::Block {
-        statements: vec![
-            gencall(
-                "fprintf",
-                vec![
-                    c::CExpression::Identifier(String::from("stderr")),
-                    c::CExpression::Literal(c::CLiteral::String(String::from(
-                        "*** panic at %s ***\\n",
-                    ))),
-                    c::CExpression::Literal(c::CLiteral::String(pos.clone())),
-                ],
-            ),
-            gencall("fprintf", args),
-            gencall(
-                "fprintf",
-                vec![
-                    c::CExpression::Identifier(String::from("stderr")),
-                    c::CExpression::Literal(c::CLiteral::String(String::from("\\n"))),
-                ],
-            ),
-            gencall(
-                "exit",
-                vec![c::CExpression::Literal(c::CLiteral::Number(String::from(
-                    "1",
-                )))],
-            ),
-        ],
-    }
-}
-
 fn translate_anonymous_typeform(x: &nodes::AnonymousTypeform, ctx: &Ctx) -> c::CAnonymousTypeform {
     return c::CAnonymousTypeform {
         type_name: tr_typename(&x.type_name, ctx),
         ops: x.ops.clone(),
     };
-}
-
-// Module synopsis is what you would usually extract into a header file:
-// function prototypes, typedefs, struct declarations.
-pub fn get_module_synopsis(module: &c::CModule) -> Vec<c::ModElem> {
-    let mut elements: Vec<c::ModElem> = vec![];
-
-    for element in &module.elements {
-        match element {
-            c::ModElem::Typedef {
-                is_pub,
-                form,
-                type_name,
-            } => {
-                if *is_pub {
-                    elements.push(c::ModElem::Typedef {
-                        is_pub: true,
-                        type_name: type_name.clone(),
-                        form: form.clone(),
-                    })
-                }
-            }
-            c::ModElem::StructDefinition {
-                name,
-                fields,
-                is_pub,
-            } => {
-                if *is_pub {
-                    elements.push(c::ModElem::StructDefinition {
-                        name: name.clone(),
-                        fields: fields.clone(),
-                        is_pub: *is_pub,
-                    })
-                }
-            }
-            c::ModElem::FunctionForwardDeclaration {
-                is_static,
-                type_name,
-                form,
-                parameters,
-            } => {
-                if !*is_static {
-                    elements.push(c::ModElem::FunctionForwardDeclaration {
-                        is_static: *is_static,
-                        type_name: type_name.clone(),
-                        form: form.clone(),
-                        parameters: parameters.clone(),
-                    })
-                }
-            }
-            c::ModElem::Macro(x) => {
-                // if name == "include" {
-                elements.push(c::ModElem::Macro(c::Macro {
-                    name: x.name.clone(),
-                    value: x.value.clone(),
-                }))
-                // }
-            }
-            c::ModElem::EnumDefinition { is_hidden, members } => {
-                if !*is_hidden {
-                    elements.push(c::ModElem::EnumDefinition {
-                        is_hidden: *is_hidden,
-                        members: members.clone(),
-                    })
-                }
-            }
-            _ => {}
-        }
-    }
-    return elements;
 }
 
 fn tr_func_params(node: &nodes::FunctionParameters, ctx: &Ctx) -> c::CompatFunctionParameters {
@@ -488,7 +421,7 @@ fn tr_func_params(node: &nodes::FunctionParameters, ctx: &Ctx) -> c::CompatFunct
         for form in &parameter.forms {
             parameters.push(c::CTypeForm {
                 type_name: tr_typename(&parameter.type_name, ctx),
-                form: translate_form(form, ctx),
+                form: tr_form(form, ctx),
             })
         }
     }
@@ -498,15 +431,8 @@ fn tr_func_params(node: &nodes::FunctionParameters, ctx: &Ctx) -> c::CompatFunct
     };
 }
 
-fn translate_function_declaration(
-    is_pub: bool,
-    typename: &nodes::Typename,
-    form: &nodes::Form,
-    parameters: &nodes::FunctionParameters,
-    body: &nodes::Body,
-    ctx: &Ctx,
-) -> Vec<c::ModElem> {
-    let tbody = translate_body(body, ctx);
+fn tr_func_decl(x: &nodes::FunctionDeclaration, ctx: &Ctx) -> Vec<c::ModElem> {
+    let tbody = translate_body(&x.body, ctx);
     let mut rbody = c::CBody {
         statements: Vec::new(),
     };
@@ -523,26 +449,26 @@ fn translate_function_declaration(
     for s in tbody.statements {
         rbody.statements.push(s);
     }
-    let mut r = vec![c::ModElem::FunctionDefinition {
-        is_static: !is_pub,
-        type_name: tr_typename(typename, ctx),
-        form: translate_form(form, ctx),
-        parameters: tr_func_params(&parameters, ctx),
+    let mut r = vec![c::ModElem::DefFunc(c::FunctionDef {
+        is_static: !x.is_pub,
+        type_name: tr_typename(&x.type_name, ctx),
+        form: tr_form(&x.form, ctx),
+        parameters: tr_func_params(&x.parameters, ctx),
         body: rbody,
-    }];
-    if format_che::format_form(&form) != "main" {
-        r.push(c::ModElem::FunctionForwardDeclaration {
-            is_static: !is_pub,
-            type_name: tr_typename(typename, ctx),
-            form: translate_form(form, ctx),
-            parameters: tr_func_params(&parameters, ctx),
-        });
+    })];
+    if format_che::format_form(&x.form) != "main" {
+        r.push(c::ModElem::ForwardFunc(c::ForwardFunc {
+            is_static: !x.is_pub,
+            type_name: tr_typename(&x.type_name, ctx),
+            form: tr_form(&x.form, ctx),
+            parameters: tr_func_params(&x.parameters, ctx),
+        }));
     }
     return r;
 }
 
-fn tr_typename(t: &nodes::Typename, ctx: &Ctx) -> c::CTypename {
-    return c::CTypename {
+fn tr_typename(t: &nodes::Typename, ctx: &Ctx) -> c::Typename {
+    return c::Typename {
         is_const: t.is_const,
         name: tr_ns_name(&t.name, ctx),
     };
@@ -584,11 +510,11 @@ fn translate_body(b: &nodes::Body, ctx: &Ctx) -> c::CBody {
                             type_name,
                             form,
                             value,
-                        } => c::CForInit::LoopCounterDeclaration {
+                        } => c::CForInit::LoopCounterDeclaration(c::VarDecl {
                             type_name: tr_typename(type_name, ctx),
-                            form: translate_form(form, ctx),
+                            form: tr_form(form, ctx),
                             value: tr_expr(value, ctx),
-                        },
+                        }),
                     }),
                     None => None,
                 };
@@ -619,7 +545,7 @@ fn translate_body(b: &nodes::Body, ctx: &Ctx) -> c::CBody {
             nodes::Statement::Return { expression } => c::CStatement::Return {
                 expression: expression.as_ref().map(|e| tr_expr(&e, ctx)),
             },
-            nodes::Statement::Panic { arguments, pos } => generate_panic(ctx, pos, arguments),
+            nodes::Statement::Panic { arguments, pos } => mk_panic(ctx, pos, arguments),
             nodes::Statement::Switch {
                 is_str,
                 value,
@@ -630,7 +556,7 @@ fn translate_body(b: &nodes::Body, ctx: &Ctx) -> c::CBody {
                 if *is_str {
                     let c0 = &cases[0];
                     c::CStatement::If {
-                        condition: translate_switch_str_cond(ctx, c0, &switchval),
+                        condition: tr_switchstr_cond(ctx, c0, &switchval),
                         body: translate_body(&c0.body, ctx),
                         else_body: tr_switchstr_else(cases, 1, default, ctx, &switchval),
                     }
@@ -654,16 +580,16 @@ fn translate_body(b: &nodes::Body, ctx: &Ctx) -> c::CBody {
                             body: translate_body(&c.body, ctx),
                         })
                     }
-                    c::CStatement::Switch {
+                    c::CStatement::Switch(c::Switch {
                         value: switchval,
                         cases: tcases,
                         default: default.as_ref().map(|x| translate_body(&x, ctx)),
-                    }
+                    })
                 }
             }
             nodes::Statement::VariableDeclaration(x) => {
                 let mut tforms: Vec<c::CForm> = Vec::new();
-                tforms.push(translate_form(&x.form, ctx));
+                tforms.push(tr_form(&x.form, ctx));
                 let mut tvalues: Vec<Option<c::CExpression>> = Vec::new();
                 tvalues.push(x.value.as_ref().map(|x| tr_expr(&x, ctx)));
                 c::CStatement::VariableDeclaration {
@@ -693,7 +619,7 @@ fn tr_switchstr_else(
     }
     let c = &cases[i];
     let e = c::CStatement::If {
-        condition: translate_switch_str_cond(ctx, c, &switchval),
+        condition: tr_switchstr_cond(ctx, c, &switchval),
         body: translate_body(&c.body, ctx),
         else_body: tr_switchstr_else(cases, i + 1, default, ctx, switchval),
     };
@@ -702,23 +628,7 @@ fn tr_switchstr_else(
     });
 }
 
-// Makes a negation of the given expression.
-fn mk_neg(operand: c::CExpression) -> c::CExpression {
-    c::CExpression::PrefixOperator {
-        operator: String::from("!"),
-        operand: Box::new(operand),
-    }
-}
-
-fn mk_or(a: c::CExpression, b: c::CExpression) -> c::CExpression {
-    c::CExpression::BinaryOp {
-        op: String::from("||"),
-        a: Box::new(a),
-        b: Box::new(b),
-    }
-}
-
-fn translate_switch_str_cond(
+fn tr_switchstr_cond(
     ctx: &Ctx,
     sw: &nodes::SwitchCase,
     switchval: &c::CExpression,
@@ -731,7 +641,7 @@ fn translate_switch_str_cond(
         nodes::SwitchCaseValue::Literal(literal) => c::CExpression::Literal(tr_literal(&literal)),
     });
     args.push(switchval.clone());
-    let mut root = mk_neg(gencall0("strcmp", args));
+    let mut root = mk_neg(mk_call0("strcmp", args));
     let n = sw.values.len();
     for i in 1..n {
         let mut args: Vec<c::CExpression> = Vec::new();
@@ -744,7 +654,7 @@ fn translate_switch_str_cond(
             }
         });
         args.push(switchval.clone());
-        root = mk_or(root, mk_neg(gencall0("strcmp", args)));
+        root = mk_or(root, mk_neg(mk_call0("strcmp", args)));
     }
     return root;
 }
@@ -757,4 +667,66 @@ fn tr_literal(x: &nodes::Literal) -> c::CLiteral {
         nodes::Literal::Number(val) => c::CLiteral::Number(val.clone()),
         nodes::Literal::Null => c::CLiteral::Null,
     }
+}
+
+fn mk_call0(func: &str, args: Vec<c::CExpression>) -> c::CExpression {
+    c::CExpression::FunctionCall {
+        function: Box::new(c::CExpression::Identifier(String::from(func))),
+        arguments: args,
+    }
+}
+
+fn mk_call(func: &str, args: Vec<c::CExpression>) -> c::CStatement {
+    c::CStatement::Expression(mk_call0(func, args))
+}
+
+fn mk_panic(ctx: &Ctx, pos: &String, arguments: &Vec<nodes::Expression>) -> c::CStatement {
+    let mut args = vec![c::CExpression::Identifier(String::from("stderr"))];
+    for arg in arguments {
+        args.push(tr_expr(arg, ctx));
+    }
+    c::CStatement::Block {
+        statements: vec![
+            mk_call(
+                "fprintf",
+                vec![
+                    c::CExpression::Identifier(String::from("stderr")),
+                    c::CExpression::Literal(c::CLiteral::String(String::from(
+                        "*** panic at %s ***\\n",
+                    ))),
+                    c::CExpression::Literal(c::CLiteral::String(pos.clone())),
+                ],
+            ),
+            mk_call("fprintf", args),
+            mk_call(
+                "fprintf",
+                vec![
+                    c::CExpression::Identifier(String::from("stderr")),
+                    c::CExpression::Literal(c::CLiteral::String(String::from("\\n"))),
+                ],
+            ),
+            mk_call(
+                "exit",
+                vec![c::CExpression::Literal(c::CLiteral::Number(String::from(
+                    "1",
+                )))],
+            ),
+        ],
+    }
+}
+
+// Makes a negation of the given expression.
+fn mk_neg(operand: c::CExpression) -> c::CExpression {
+    c::CExpression::PrefixOperator {
+        operator: String::from("!"),
+        operand: Box::new(operand),
+    }
+}
+
+fn mk_or(a: c::CExpression, b: c::CExpression) -> c::CExpression {
+    c::CExpression::BinaryOp(c::BinaryOp {
+        op: String::from("||"),
+        a: Box::new(a),
+        b: Box::new(b),
+    })
 }

@@ -41,20 +41,15 @@ pub fn run(m: &Module, imports: &HashMap<String, &Exports>) -> Vec<Error> {
         let ispub;
         let mut _pos;
         match &v.val {
-            ModuleObject::Typedef(x) => {
+            ModElem::Typedef(x) => {
                 ispub = x.is_pub;
                 _pos = x.pos.clone();
             }
-            ModuleObject::StructAliasTypedef {
-                pos,
-                is_pub,
-                struct_name: _,
-                type_alias: _,
-            } => {
-                ispub = *is_pub;
-                _pos = pos.clone();
+            ModElem::StructAliasTypedef(x) => {
+                ispub = x.is_pub;
+                _pos = x.pos.clone();
             }
-            ModuleObject::StructTypedef(x) => {
+            ModElem::StructTypedef(x) => {
                 ispub = x.is_pub;
                 _pos = x.pos.clone();
             }
@@ -92,20 +87,16 @@ pub fn run(m: &Module, imports: &HashMap<String, &Exports>) -> Vec<Error> {
 }
 
 fn check_module_object(
-    e: &ModuleObject,
+    e: &ModElem,
     state: &mut State,
     scopestack: &mut Vec<Scope>,
     imports: &HashMap<String, &Exports>,
 ) {
     match e {
-        ModuleObject::Import(_) => {}
-        ModuleObject::Macro { .. } => {}
-        ModuleObject::Enum {
-            is_pub: _,
-            members,
-            pos: _,
-        } => {
-            for m in members {
+        ModElem::Import(_) => {}
+        ModElem::Macro { .. } => {}
+        ModElem::Enum(x) => {
+            for m in &x.members {
                 match &m.value {
                     Some(v) => {
                         check_expr(v, state, scopestack, imports);
@@ -114,11 +105,11 @@ fn check_module_object(
                 }
             }
         }
-        ModuleObject::Typedef(x) => {
+        ModElem::Typedef(x) => {
             check_ns_id(&x.type_name.name, state, scopestack, imports);
         }
-        ModuleObject::StructAliasTypedef { .. } => {}
-        ModuleObject::StructTypedef(x) => {
+        ModElem::StructAliasTypedef { .. } => {}
+        ModElem::StructTypedef(x) => {
             for f in &x.fields {
                 match f {
                     StructEntry::Plain(x) => {
@@ -159,7 +150,7 @@ fn check_module_object(
                 }
             }
         }
-        ModuleObject::ModuleVariable(x) => {
+        ModElem::ModuleVariable(x) => {
             // Local type? Register the usage.
             let n = &x.type_name.name;
             if n.namespace == "" {
@@ -190,7 +181,7 @@ fn check_module_object(
             check_ns_id(&x.type_name.name, state, scopestack, imports);
             check_expr(x.value.as_ref().unwrap(), state, scopestack, imports);
         }
-        ModuleObject::FunctionDeclaration(f) => {
+        ModElem::FunctionDeclaration(f) => {
             check_function_declaration(f, state, scopestack, imports);
         }
     }
@@ -449,15 +440,15 @@ fn check_expr(
     match e {
         Expression::Literal(x) => match x {
             Literal::Char(_) => Type::Bytes(types::Bytes {
-                sign: types::Signedness::Unknonwn,
+                sign: types::Signedness::Unknown,
                 size: 1,
             }),
             Literal::String(_) => types::addr(Type::Bytes(types::Bytes {
-                sign: types::Signedness::Unknonwn,
+                sign: types::Signedness::Unknown,
                 size: 1,
             })),
             Literal::Number(_) => Type::Bytes(types::Bytes {
-                sign: types::Signedness::Unknonwn,
+                sign: types::Signedness::Unknown,
                 size: 0,
             }),
             Literal::Null => Type::Null,
@@ -494,7 +485,9 @@ fn check_expr(
             check_ns_id(x, state, scopes, imports);
             Type::Unknown
         }
-        Expression::ArrayIndex { array, index } => {
+        Expression::ArrayIndex(x) => {
+            let array = &x.array;
+            let index = &x.index;
             let t1 = check_expr(array, state, scopes, imports);
             check_expr(index, state, scopes, imports);
             match types::deref(t1) {
@@ -508,7 +501,9 @@ fn check_expr(
                 }
             }
         }
-        Expression::BinaryOp { op: _, a, b } => {
+        Expression::BinaryOp(x) => {
+            let a = &x.a;
+            let b = &x.b;
             let t1 = check_expr(a, state, scopes, imports);
             let t2 = check_expr(b, state, scopes, imports);
             match types::sum(t1, t2) {
@@ -522,11 +517,10 @@ fn check_expr(
                 }
             }
         }
-        Expression::FieldAccess {
-            op,
-            target,
-            field_name,
-        } => {
+        Expression::FieldAccess(x) => {
+            let op = &x.op;
+            let target = &x.target;
+            let field_name = &x.field_name;
             let stype = check_expr(target, state, scopes, imports);
             if DUMP_TYPES {
                 println!("typeof {} = {}", format_expression(target), stype.fmt());
@@ -542,7 +536,9 @@ fn check_expr(
                 }
             }
         }
-        Expression::Cast { type_name, operand } => {
+        Expression::Cast(x) => {
+            let type_name = &x.type_name;
+            let operand = &x.operand;
             check_ns_id(&type_name.type_name.name, state, scopes, imports);
             check_expr(operand, state, scopes, imports);
             match types::get_type(&type_name.type_name, &state.root_scope) {
@@ -562,10 +558,9 @@ fn check_expr(
             }
             Type::Unknown
         }
-        Expression::FunctionCall {
-            function,
-            arguments,
-        } => {
+        Expression::FunctionCall(x) => {
+            let function = &x.function;
+            let arguments = &x.arguments;
             match function.as_ref() {
                 Expression::Identifier(x) => match state.root_scope.funcs.get_mut(&x.name) {
                     Some(e) => {
@@ -608,7 +603,9 @@ fn check_expr(
             }
             return rettype;
         }
-        Expression::PostfixOperator { operator, operand } => {
+        Expression::PostfixOperator(x) => {
+            let operand = &x.operand;
+            let operator = &x.operator;
             let t = check_expr(operand, state, scopes, imports);
             match operator.as_str() {
                 "++" | "--" => t,
@@ -618,7 +615,9 @@ fn check_expr(
                 }
             }
         }
-        Expression::PrefixOperator { operator, operand } => {
+        Expression::PrefixOperator(x) => {
+            let operand = &x.operand;
+            let operator = &x.operator;
             let t = check_expr(operand, state, scopes, imports);
             match operator.as_str() {
                 "++" | "--" => t,
@@ -640,7 +639,8 @@ fn check_expr(
                 }
             }
         }
-        Expression::Sizeof { argument } => {
+        Expression::Sizeof(x) => {
+            let argument = &x.argument;
             match argument.as_ref() {
                 SizeofArgument::Typename(_) => {
                     //

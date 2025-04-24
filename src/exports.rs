@@ -17,23 +17,19 @@ pub fn get_exports(m: &Module) -> Exports {
     };
     for e in &m.elements {
         match e {
-            ModuleObject::Enum {
-                is_pub,
-                members,
-                pos: _,
-            } => {
-                if *is_pub {
-                    for member in members {
-                        exports.consts.push(member.clone());
+            ModElem::Enum(x) => {
+                if x.is_pub {
+                    for m in &x.members {
+                        exports.consts.push(m.clone());
                     }
                 }
             }
-            ModuleObject::Typedef(x) => {
+            ModElem::Typedef(x) => {
                 if x.is_pub {
                     exports.types.push(x.alias.name.clone());
                 }
             }
-            ModuleObject::StructTypedef(x) => {
+            ModElem::StructTypedef(x) => {
                 if x.is_pub {
                     exports.types.push(x.name.name.clone());
                 }
@@ -51,7 +47,7 @@ pub fn get_exports(m: &Module) -> Exports {
             //         })
             //     }
             // }
-            ModuleObject::FunctionDeclaration(f) => {
+            ModElem::FunctionDeclaration(f) => {
                 if f.is_pub {
                     exports.fns.push(f.clone())
                 }

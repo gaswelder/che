@@ -8,7 +8,7 @@ use crate::{
 pub enum Signedness {
     Signed,
     Unsigned,
-    Unknonwn,
+    Unknown,
 }
 
 #[derive(Debug)]
@@ -64,7 +64,7 @@ impl Type {
                         format!("x-bit unsigned")
                     }
                 }
-                Signedness::Unknonwn => {
+                Signedness::Unknown => {
                     if x.size == 8 {
                         format!("char")
                     } else if x.size > 0 {
@@ -191,16 +191,11 @@ pub fn get_type(tn: &Typename, r: &RootScope) -> Result<Type, String> {
 fn find_local_typedef(tn: &Typename, s: &RootScope) -> Option<Type> {
     match s.types.get(&tn.name.name) {
         Some(t) => match &t.val {
-            crate::nodes::ModuleObject::StructAliasTypedef {
-                pos: _,
-                is_pub: _,
-                struct_name: _,
-                type_alias: _,
-            } => Some(Type::Struct {
+            crate::nodes::ModElem::StructAliasTypedef(_) => Some(Type::Struct {
                 opaque: true,
                 fields: Vec::new(),
             }),
-            crate::nodes::ModuleObject::Typedef(x) => {
+            crate::nodes::ModElem::Typedef(x) => {
                 let mut result = match get_type(&x.type_name, s) {
                     Ok(t) => t,
                     Err(err) => panic!("{}", err),
@@ -219,7 +214,7 @@ fn find_local_typedef(tn: &Typename, s: &RootScope) -> Option<Type> {
                     None => Some(result),
                 }
             }
-            crate::nodes::ModuleObject::StructTypedef(x) => Some(Type::Struct {
+            crate::nodes::ModElem::StructTypedef(x) => Some(Type::Struct {
                 opaque: false,
                 fields: x.fields.clone(),
             }),

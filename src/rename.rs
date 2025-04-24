@@ -19,9 +19,9 @@ pub fn prefix_module(m: &mut Module, prefix: &String) {
     }
 }
 
-fn prefix_mod_obj(obj: &mut ModuleObject, prefix: &String, names: &Vec<String>) {
+fn prefix_mod_obj(obj: &mut ModElem, prefix: &String, names: &Vec<String>) {
     match obj {
-        ModuleObject::ModuleVariable(x) => {
+        ModElem::ModuleVariable(x) => {
             prefix_typename(&mut x.type_name, prefix, names);
             match &mut x.value {
                 Some(v) => {
@@ -31,19 +31,15 @@ fn prefix_mod_obj(obj: &mut ModuleObject, prefix: &String, names: &Vec<String>) 
             }
             prefix_form(&mut x.form, prefix, names);
         }
-        ModuleObject::Enum {
-            is_pub,
-            members,
-            pos: _,
-        } => {
-            if !*is_pub {
+        ModElem::Enum(x) => {
+            if !x.is_pub {
                 return;
             }
-            for m in members {
+            for m in &mut x.members {
                 m.id.name = newname(&m.id.name, prefix, names);
             }
         }
-        ModuleObject::FunctionDeclaration(FunctionDeclaration {
+        ModElem::FunctionDeclaration(FunctionDeclaration {
             is_pub: _,
             type_name,
             form,
@@ -58,7 +54,7 @@ fn prefix_mod_obj(obj: &mut ModuleObject, prefix: &String, names: &Vec<String>) 
             prefix_body(body, prefix, names);
             prefix_form(form, prefix, names);
         }
-        ModuleObject::Typedef(Typedef {
+        ModElem::Typedef(Typedef {
             pos: _,
             type_name,
             is_pub: _,
@@ -78,7 +74,7 @@ fn prefix_mod_obj(obj: &mut ModuleObject, prefix: &String, names: &Vec<String>) 
             alias.name = newname(&alias.name, prefix, names);
             prefix_typename(type_name, prefix, names);
         }
-        ModuleObject::StructTypedef(StructTypedef {
+        ModElem::StructTypedef(StructTypedef {
             pos: _,
             fields,
             name,
@@ -259,53 +255,50 @@ fn prefix_expr(e: &mut Expression, prefix: &String, names: &Vec<String>) {
         Expression::Identifier(x) => {
             x.name = newname(&x.name, prefix, names);
         }
-        Expression::BinaryOp { op: _, a, b } => {
+        Expression::BinaryOp(x) => {
+            let a = &mut x.a;
+            let b = &mut x.b;
             prefix_expr(a, prefix, names);
             prefix_expr(b, prefix, names);
         }
-        Expression::FieldAccess {
-            op: _,
-            target,
-            field_name: _,
-        } => {
+        Expression::FieldAccess(x) => {
+            let target = &mut x.target;
             prefix_expr(target, prefix, names);
         }
-        Expression::PrefixOperator {
-            operator: _,
-            operand,
-        } => {
+        Expression::PrefixOperator(x) => {
+            let operand = &mut x.operand;
             prefix_expr(operand, prefix, names);
         }
-        Expression::PostfixOperator {
-            operator: _,
-            operand,
-        } => {
+        Expression::PostfixOperator(x) => {
+            let operand = &mut x.operand;
             prefix_expr(operand, prefix, names);
         }
-        Expression::Cast { type_name, operand } => {
+        Expression::Cast(x) => {
+            let type_name = &mut x.type_name;
+            let operand = &mut x.operand;
             prefix_typename(&mut type_name.type_name, prefix, names);
             prefix_expr(operand, prefix, names);
         }
-        Expression::FunctionCall {
-            function,
-            arguments,
-        } => {
-            prefix_expr(function, prefix, names);
-            for arg in arguments {
+        Expression::FunctionCall(x) => {
+            prefix_expr(&mut x.function, prefix, names);
+            for arg in &mut x.arguments {
                 prefix_expr(arg, prefix, names);
             }
         }
-        Expression::Sizeof { argument } => match &mut **argument {
-            SizeofArgument::Expression(e) => {
-                prefix_expr(e, prefix, names);
+        Expression::Sizeof(x) => {
+            let argument = &mut x.argument;
+            match &mut **argument {
+                SizeofArgument::Expression(e) => {
+                    prefix_expr(e, prefix, names);
+                }
+                SizeofArgument::Typename(e) => {
+                    prefix_typename(e, prefix, names);
+                }
             }
-            SizeofArgument::Typename(e) => {
-                prefix_typename(e, prefix, names);
-            }
-        },
-        Expression::ArrayIndex { array, index } => {
-            prefix_expr(array, prefix, names);
-            prefix_expr(index, prefix, names);
+        }
+        Expression::ArrayIndex(x) => {
+            prefix_expr(&mut x.array, prefix, names);
+            prefix_expr(&mut x.index, prefix, names);
         }
     }
 }
