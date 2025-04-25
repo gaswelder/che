@@ -16,7 +16,21 @@ struct VisitorState {
     type_errors: Vec<Error>,
     root_scope: RootScope,
     imports: HashMap<String, Exports>,
-    // scopestack: Vec<Scope>,
+    scopestack: Vec<Scope>,
+}
+
+fn track_type_usage(state: &mut VisitorState, t: &Typename) {
+    let tn = &t.name;
+    // Not checking imported types.
+    if tn.namespace != "" {
+        return;
+    }
+    match state.root_scope.types.get_mut(&tn.name) {
+        Some(t) => {
+            t.read = true;
+        }
+        None => {}
+    }
 }
 
 pub fn run(m: &Module, imports: &HashMap<String, &Exports>) -> Vec<Error> {
@@ -30,11 +44,11 @@ pub fn run(m: &Module, imports: &HashMap<String, &Exports>) -> Vec<Error> {
         type_errors: Vec::new(),
         root_scope: get_module_scope(m),
         imports: imps,
+        scopestack: Vec::new(),
     };
-    let mut scopestack: Vec<Scope> = Vec::new();
 
     for e in &m.elements {
-        check_module_object(e, &mut state, &mut scopestack);
+        check_module_object(e, &mut state);
     }
 
     for (k, v) in &state.root_scope.imports {
@@ -94,150 +108,121 @@ pub fn run(m: &Module, imports: &HashMap<String, &Exports>) -> Vec<Error> {
     return state.errors;
 }
 
-fn check_module_object(e: &ModElem, state: &mut VisitorState, scopestack: &mut Vec<Scope>) {
+fn check_module_object(e: &ModElem, state: &mut VisitorState) {
     match e {
         ModElem::Import(_) => {}
         ModElem::Macro { .. } => {}
-        ModElem::Enum(x) => {
-            for m in &x.members {
-                match &m.value {
-                    Some(v) => {
-                        check_expr(v, state, scopestack);
-                    }
-                    None => {}
-                }
-            }
-        }
-        ModElem::Typedef(x) => {
-            check_ns_id(&x.type_name.name, state, scopestack);
-        }
+        ModElem::Enum(x) => check_enumdef(x, state),
+        ModElem::Typedef(x) => check_nsname(&x.type_name.name, state),
         ModElem::StructAliasTypedef { .. } => {}
-        ModElem::StructTypedef(x) => {
-            for f in &x.fields {
-                match f {
-                    StructEntry::Plain(x) => {
-                        let n = &x.type_name.name;
-                        if n.namespace == "" {
-                            match state.root_scope.types.get_mut(&n.name) {
-                                Some(t) => {
-                                    t.read = true;
-                                }
-                                None => {}
-                            }
-                        }
-                        check_ns_id(&x.type_name.name, state, scopestack);
-                        for f in &x.forms {
-                            for i in &f.indexes {
-                                match i {
-                                    Some(e) => {
-                                        check_expr(e, state, scopestack);
-                                    }
-                                    None => {}
-                                }
-                            }
-                        }
-                    }
-                    StructEntry::Union(x) => {
-                        for f in &x.fields {
-                            let n = &f.type_name.name;
-                            if n.namespace == "" {
-                                match state.root_scope.types.get_mut(&n.name) {
-                                    Some(t) => {
-                                        t.read = true;
-                                    }
-                                    None => {}
-                                }
-                            }
-                        }
-                    }
-                }
+        ModElem::StructTypedef(x) => check_structdef(x, state),
+        ModElem::ModuleVariable(x) => check_modvar(x, state),
+        ModElem::FunctionDeclaration(f) => check_function_declaration(f, state),
+    }
+}
+
+fn check_body(body: &Body, state: &mut VisitorState) {
+    state.scopestack.push(newscope());
+    for s in &body.statements {
+        match s {
+            Statement::Break => {}
+            Statement::Continue => {}
+            Statement::For(x) => check_for(x, state),
+            Statement::If(x) => check_if(x, state),
+            Statement::Return(x) => check_return(x, state),
+            Statement::Switch(x) => check_switch(x, state),
+            Statement::VariableDeclaration(x) => check_vardecl(x, state),
+            Statement::While(x) => check_while(x, state),
+            Statement::Expression(e) => {
+                check_expr(e, state);
             }
         }
-        ModElem::ModuleVariable(x) => {
-            // Local type? Register the usage.
-            let n = &x.type_name.name;
-            if n.namespace == "" {
-                match state.root_scope.types.get_mut(&n.name) {
-                    Some(t) => {
-                        t.read = true;
-                    }
-                    None => {}
-                }
-            }
-
-            // Array declaration? Look into the index expressions.
-            for i in &x.form.indexes {
-                match i {
-                    Some(e) => {
-                        check_expr(e, state, scopestack);
-                    }
-                    None => {}
-                }
-            }
-
-            if has_function_call(x.value.as_ref().unwrap()) {
-                state.errors.push(Error {
-                    message: format!("function call in module variable initialization"),
-                    pos: x.pos.clone(),
-                })
-            }
-            check_ns_id(&x.type_name.name, state, scopestack);
-            check_expr(x.value.as_ref().unwrap(), state, scopestack);
-        }
-        ModElem::FunctionDeclaration(f) => {
-            check_function_declaration(f, state, scopestack);
+    }
+    let s = state.scopestack.pop().unwrap();
+    for (k, v) in s.vars {
+        if !v.read {
+            state.errors.push(Error {
+                message: format!("unused variable: {}", k),
+                pos: v.val.pos,
+            });
         }
     }
 }
 
-fn check_function_declaration(
-    f: &FunctionDeclaration,
-    state: &mut VisitorState,
-    scopestack: &mut Vec<Scope>,
-) {
-    let tn = &f.type_name.name;
-    if tn.namespace == "" {
-        match state.root_scope.types.get_mut(&tn.name) {
-            Some(t) => {
-                t.read = true;
+fn check_enumdef(x: &Enum, state: &mut VisitorState) {
+    for m in &x.members {
+        match &m.value {
+            Some(v) => {
+                check_expr(v, state);
             }
             None => {}
         }
     }
+}
 
-    check_ns_id(&f.type_name.name, state, scopestack);
+fn check_structdef(x: &StructTypedef, state: &mut VisitorState) {
+    for f in &x.fields {
+        match f {
+            StructEntry::Plain(x) => {
+                track_type_usage(state, &x.type_name);
+                check_nsname(&x.type_name.name, state);
+                for f in &x.forms {
+                    for i in &f.indexes {
+                        match i {
+                            Some(e) => {
+                                check_expr(e, state);
+                            }
+                            None => {}
+                        }
+                    }
+                }
+            }
+            StructEntry::Union(x) => {
+                for f in &x.fields {
+                    track_type_usage(state, &f.type_name)
+                }
+            }
+        }
+    }
+}
 
-    scopestack.push(newscope());
+fn check_function_declaration(f: &FunctionDeclaration, state: &mut VisitorState) {
+    track_type_usage(state, &f.type_name);
+    check_nsname(&f.type_name.name, state);
 
-    for tf in &f.parameters.list {
-        if is_void(&tf.type_name) {
-            for f in &tf.forms {
+    state.scopestack.push(newscope());
+
+    for params in &f.parameters.list {
+        // void a, *b is an error.
+        // void *a, *b is ok.
+        if is_void(&params.type_name) {
+            for f in &params.forms {
                 if f.hops == 0 {
                     state.errors.push(Error {
                         message: format!("can't use void as an argument type"),
-                        pos: tf.pos.clone(),
+                        pos: params.pos.clone(),
                     })
                 }
             }
         }
-        check_ns_id(&tf.type_name.name, state, scopestack);
-        for f in &tf.forms {
-            let n = scopestack.len();
-            scopestack[n - 1].vars.insert(
+        check_nsname(&params.type_name.name, state);
+        for f in &params.forms {
+            let n = state.scopestack.len();
+            state.scopestack[n - 1].vars.insert(
                 f.name.clone(),
                 ScopeItem1 {
                     read: false,
                     val: VarInfo {
                         pos: f.pos.clone(),
-                        typename: tf.type_name.clone(),
+                        typename: params.type_name.clone(),
                         form: f.clone(),
                     },
                 },
             );
         }
     }
-    check_body(&f.body, state, scopestack);
-    let s = scopestack.pop().unwrap();
+    check_body(&f.body, state);
+    let s = state.scopestack.pop().unwrap();
     for (k, v) in s.vars {
         if !v.read {
             state.errors.push(Error {
@@ -255,176 +240,163 @@ fn check_function_declaration(
     }
 }
 
-fn check_body(body: &Body, state: &mut VisitorState, scopestack: &mut Vec<Scope>) {
-    scopestack.push(newscope());
-    for s in &body.statements {
-        match s {
-            Statement::Break => {}
-            Statement::Continue => {}
-            Statement::Expression(e) => {
-                check_expr(e, state, scopestack);
-            }
-            Statement::For(x) => {
-                let init = &x.init;
-                let condition = &x.condition;
-                let action = &x.action;
-                let body = &x.body;
-                scopestack.push(newscope());
-                let n = scopestack.len();
-                match init {
-                    Some(init) => match init {
-                        ForInit::LoopCounterDeclaration {
-                            type_name,
-                            form,
-                            value,
-                        } => {
-                            check_ns_id(&type_name.name, state, scopestack);
-                            check_expr(value, state, scopestack);
-                            scopestack[n - 1].vars.insert(
-                                form.name.clone(),
-                                ScopeItem1 {
-                                    read: true,
-                                    val: VarInfo {
-                                        pos: form.pos.clone(),
-                                        typename: type_name.clone(),
-                                        form: form.clone(),
-                                        // ispub: false,
-                                    },
-                                },
-                            );
-                        }
-                        ForInit::Expression(x) => {
-                            check_expr(x, state, scopestack);
-                        }
-                    },
-                    None => {}
-                }
-                match condition {
-                    Some(condition) => {
-                        check_expr(condition, state, scopestack);
-                    }
-                    None => {}
-                }
-                match action {
-                    Some(action) => {
-                        check_expr(action, state, scopestack);
-                    }
-                    None => {}
-                }
-                check_body(body, state, scopestack);
-                scopestack.pop();
-            }
-            Statement::If(x) => {
-                let condition = &x.condition;
-                let body = &x.body;
-                let else_body = &x.else_body;
-                check_expr(condition, state, scopestack);
-                check_body(body, state, scopestack);
-                if else_body.is_some() {
-                    check_body(else_body.as_ref().unwrap(), state, scopestack);
-                }
-            }
-            Statement::Return(x) => {
-                let expression = &x.expression;
-                match expression {
-                    Some(x) => {
-                        check_expr(&x, state, scopestack);
-                    }
-                    None => {}
-                }
-            }
-            Statement::Switch(x) => {
-                let value = &x.value;
-                let cases = &x.cases;
-                let default = &x.default_case;
-                check_expr(value, state, scopestack);
-                for c in cases {
-                    for v in &c.values {
-                        match v {
-                            SwitchCaseValue::Identifier(x) => {
-                                check_ns_id(x, state, scopestack);
-                            }
-                            SwitchCaseValue::Literal(_) => {}
-                        }
-                    }
-                    check_body(&c.body, state, scopestack);
-                }
-                if default.is_some() {
-                    check_body(default.as_ref().unwrap(), state, scopestack);
-                }
-            }
-            Statement::VariableDeclaration(x) => {
-                // Local type? Count as usage.
-                let n = &x.type_name.name;
-                if n.namespace == "" {
-                    match state.root_scope.types.get_mut(&n.name) {
-                        Some(t) => {
-                            t.read = true;
-                        }
-                        None => {}
-                    }
-                }
-
-                // If it's a variable declaration,
-                // look into the index expressions.
-                for i in &x.form.indexes {
-                    match i {
-                        Some(e) => {
-                            check_expr(e, state, scopestack);
-                        }
-                        None => {}
-                    }
-                }
-
-                check_ns_id(&x.type_name.name, state, scopestack);
-                let n = scopestack.len();
-                if x.value.is_some() {
-                    scopestack[n - 1].vars.insert(
-                        x.form.name.clone(),
-                        ScopeItem1 {
-                            read: false,
-                            val: VarInfo {
-                                pos: x.pos.clone(),
-                                typename: x.type_name.clone(),
-                                form: x.form.clone(), // ispub: false,
-                            },
-                        },
-                    );
-                    check_expr(x.value.as_ref().unwrap(), state, scopestack);
-                } else {
-                    scopestack[n - 1].vars.insert(
-                        x.form.name.clone(),
-                        ScopeItem1 {
-                            read: false,
-                            val: VarInfo {
-                                pos: x.pos.clone(),
-                                typename: x.type_name.clone(),
-                                form: x.form.clone(), // ispub: false,
-                            },
-                        },
-                    );
-                }
-            }
-            Statement::While(x) => {
-                let condition = &x.condition;
-                let body = &x.body;
-                check_expr(condition, state, scopestack);
-                check_body(body, state, scopestack);
-            }
+fn check_return(x: &Return, state: &mut VisitorState) {
+    let expression = &x.expression;
+    match expression {
+        Some(x) => {
+            check_expr(&x, state);
         }
-    }
-    let s = scopestack.pop().unwrap();
-    for (k, v) in s.vars {
-        if !v.read {
-            state.errors.push(Error {
-                message: format!("unused variable: {}", k),
-                pos: v.val.pos,
-            });
-        }
+        None => {}
     }
 }
 
-fn check_expr(e: &Expression, state: &mut VisitorState, scopes: &mut Vec<Scope>) -> Type {
+fn check_if(x: &If, state: &mut VisitorState) {
+    let condition = &x.condition;
+    let body = &x.body;
+    let else_body = &x.else_body;
+    check_expr(condition, state);
+    check_body(body, state);
+    if else_body.is_some() {
+        check_body(else_body.as_ref().unwrap(), state);
+    }
+}
+
+fn check_for(x: &For, state: &mut VisitorState) {
+    let init = &x.init;
+    let condition = &x.condition;
+    let action = &x.action;
+    let body = &x.body;
+    state.scopestack.push(newscope());
+    let n = state.scopestack.len();
+    match init {
+        Some(init) => match init {
+            ForInit::LoopCounterDeclaration {
+                type_name,
+                form,
+                value,
+            } => {
+                check_nsname(&type_name.name, state);
+                check_expr(value, state);
+                state.scopestack[n - 1].vars.insert(
+                    form.name.clone(),
+                    ScopeItem1 {
+                        read: true,
+                        val: VarInfo {
+                            pos: form.pos.clone(),
+                            typename: type_name.clone(),
+                            form: form.clone(),
+                            // ispub: false,
+                        },
+                    },
+                );
+            }
+            ForInit::Expression(x) => {
+                check_expr(x, state);
+            }
+        },
+        None => {}
+    }
+    match condition {
+        Some(condition) => {
+            check_expr(condition, state);
+        }
+        None => {}
+    }
+    match action {
+        Some(action) => {
+            check_expr(action, state);
+        }
+        None => {}
+    }
+    check_body(body, state);
+    state.scopestack.pop();
+}
+
+fn check_switch(x: &Switch, state: &mut VisitorState) {
+    let cases = &x.cases;
+    let default = &x.default_case;
+    check_expr(&x.value, state);
+    for c in cases {
+        for v in &c.values {
+            match v {
+                SwitchCaseValue::Identifier(x) => {
+                    check_nsname(x, state);
+                }
+                SwitchCaseValue::Literal(_) => {}
+            }
+        }
+        check_body(&c.body, state);
+    }
+    if default.is_some() {
+        check_body(default.as_ref().unwrap(), state);
+    }
+}
+
+fn check_while(x: &While, state: &mut VisitorState) {
+    check_expr(&x.condition, state);
+    check_body(&x.body, state);
+}
+
+fn pushvar(state: &mut VisitorState, x: &VariableDeclaration) {
+    let n = state.scopestack.len();
+    state.scopestack[n - 1].vars.insert(
+        x.form.name.clone(),
+        ScopeItem1 {
+            read: false,
+            val: VarInfo {
+                pos: x.pos.clone(),
+                typename: x.type_name.clone(),
+                form: x.form.clone(), // ispub: false,
+            },
+        },
+    );
+}
+
+fn check_modvar(x: &VariableDeclaration, state: &mut VisitorState) {
+    track_type_usage(state, &x.type_name);
+
+    // Array declaration? Look into the index expressions.
+    for i in &x.form.indexes {
+        match i {
+            Some(e) => {
+                check_expr(e, state);
+            }
+            None => {}
+        }
+    }
+
+    if has_function_call(x.value.as_ref().unwrap()) {
+        state.errors.push(Error {
+            message: format!("function call in module variable initialization"),
+            pos: x.pos.clone(),
+        })
+    }
+    check_nsname(&x.type_name.name, state);
+    check_expr(x.value.as_ref().unwrap(), state);
+}
+
+// Checks int foo = val.
+fn check_vardecl(x: &VariableDeclaration, state: &mut VisitorState) {
+    track_type_usage(state, &x.type_name);
+
+    // Check ... in "int foo[...]".
+    for i in &x.form.indexes {
+        match i {
+            Some(e) => {
+                check_expr(e, state);
+            }
+            None => {}
+        }
+    }
+
+    check_nsname(&x.type_name.name, state);
+    pushvar(state, x);
+    if x.value.is_some() {
+        check_expr(x.value.as_ref().unwrap(), state);
+    }
+}
+
+fn check_expr(e: &Expression, state: &mut VisitorState) -> Type {
     match e {
         Expression::Literal(x) => match x {
             Literal::Char(_) => Type::Bytes(types::Bytes {
@@ -442,8 +414,8 @@ fn check_expr(e: &Expression, state: &mut VisitorState, scopes: &mut Vec<Scope>)
             Literal::Null => Type::Null,
         },
         Expression::Identifier(x) => {
-            check_id(x, state, scopes);
-            match find_var(scopes, &x.name) {
+            check_id(x, state);
+            match find_var(&state.scopestack, &x.name) {
                 Some(varinfo) => match types::derive_typeform(
                     &varinfo.typename,
                     &varinfo.form,
@@ -470,14 +442,14 @@ fn check_expr(e: &Expression, state: &mut VisitorState, scopes: &mut Vec<Scope>)
             }
         }
         Expression::NsName(x) => {
-            check_ns_id(x, state, scopes);
+            check_nsname(x, state);
             Type::Unknown
         }
         Expression::ArrayIndex(x) => {
             let array = &x.array;
             let index = &x.index;
-            let t1 = check_expr(array, state, scopes);
-            check_expr(index, state, scopes);
+            let t1 = check_expr(array, state);
+            check_expr(index, state);
             match types::deref(t1) {
                 Ok(r) => r,
                 Err(err) => {
@@ -492,8 +464,8 @@ fn check_expr(e: &Expression, state: &mut VisitorState, scopes: &mut Vec<Scope>)
         Expression::BinaryOp(x) => {
             let a = &x.a;
             let b = &x.b;
-            let t1 = check_expr(a, state, scopes);
-            let t2 = check_expr(b, state, scopes);
+            let t1 = check_expr(a, state);
+            let t2 = check_expr(b, state);
             match types::sum(t1, t2) {
                 Ok(r) => r,
                 Err(err) => {
@@ -509,7 +481,7 @@ fn check_expr(e: &Expression, state: &mut VisitorState, scopes: &mut Vec<Scope>)
             let op = &x.op;
             let target = &x.target;
             let field_name = &x.field_name;
-            let stype = check_expr(target, state, scopes);
+            let stype = check_expr(target, state);
             if DUMP_TYPES {
                 println!("typeof {} = {}", format_expression(target), stype.fmt());
             }
@@ -527,8 +499,8 @@ fn check_expr(e: &Expression, state: &mut VisitorState, scopes: &mut Vec<Scope>)
         Expression::Cast(x) => {
             let type_name = &x.type_name;
             let operand = &x.operand;
-            check_ns_id(&type_name.type_name.name, state, scopes);
-            check_expr(operand, state, scopes);
+            check_nsname(&type_name.type_name.name, state);
+            check_expr(operand, state);
             match types::get_type(&type_name.type_name, &state.root_scope) {
                 Ok(r) => r,
                 Err(err) => {
@@ -542,7 +514,7 @@ fn check_expr(e: &Expression, state: &mut VisitorState, scopes: &mut Vec<Scope>)
         }
         Expression::CompositeLiteral(x) => {
             for e in &x.entries {
-                check_expr(&e.value, state, scopes);
+                check_expr(&e.value, state);
             }
             Type::Unknown
         }
@@ -585,16 +557,16 @@ fn check_expr(e: &Expression, state: &mut VisitorState, scopes: &mut Vec<Scope>)
                 },
                 _ => {}
             }
-            let rettype = check_expr(function, state, scopes);
+            let rettype = check_expr(function, state);
             for x in arguments {
-                check_expr(x, state, scopes);
+                check_expr(x, state);
             }
             return rettype;
         }
         Expression::PostfixOperator(x) => {
             let operand = &x.operand;
             let operator = &x.operator;
-            let t = check_expr(operand, state, scopes);
+            let t = check_expr(operand, state);
             match operator.as_str() {
                 "++" | "--" => t,
                 _ => {
@@ -606,7 +578,7 @@ fn check_expr(e: &Expression, state: &mut VisitorState, scopes: &mut Vec<Scope>)
         Expression::PrefixOperator(x) => {
             let operand = &x.operand;
             let operator = &x.operator;
-            let t = check_expr(operand, state, scopes);
+            let t = check_expr(operand, state);
             match operator.as_str() {
                 "++" | "--" => t,
                 "!" | "-" | "~" => t,
@@ -634,7 +606,7 @@ fn check_expr(e: &Expression, state: &mut VisitorState, scopes: &mut Vec<Scope>)
                     //
                 }
                 SizeofArgument::Expression(x) => {
-                    check_expr(&x, state, scopes);
+                    check_expr(&x, state);
                 }
             }
             Type::Bytes(types::Bytes {
@@ -645,14 +617,14 @@ fn check_expr(e: &Expression, state: &mut VisitorState, scopes: &mut Vec<Scope>)
     }
 }
 
-fn check_ns_id(x: &NsName, state: &mut VisitorState, scopes: &mut Vec<Scope>) {
+fn check_nsname(x: &NsName, state: &mut VisitorState) {
     match x.namespace.as_str() {
         "OS" => {}
         "" => {
             let k = x.name.as_str();
-            let n = scopes.len();
+            let n = state.scopestack.len();
             for i in 0..n {
-                let scope = &mut scopes[n - i - 1];
+                let scope = &mut state.scopestack[n - i - 1];
                 match scope.vars.get_mut(k) {
                     Some(x) => {
                         x.read = true;
@@ -719,11 +691,11 @@ fn check_ns_id(x: &NsName, state: &mut VisitorState, scopes: &mut Vec<Scope>) {
     }
 }
 
-fn check_id(x: &Identifier, state: &mut VisitorState, scopes: &mut Vec<Scope>) {
+fn check_id(x: &Identifier, state: &mut VisitorState) {
     let k = x.name.as_str();
-    let n = scopes.len();
+    let n = state.scopestack.len();
     for i in 0..n {
-        let scope = &mut scopes[n - i - 1];
+        let scope = &mut state.scopestack[n - i - 1];
         match scope.vars.get_mut(k) {
             Some(x) => {
                 x.read = true;
