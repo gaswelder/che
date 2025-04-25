@@ -475,7 +475,7 @@ fn tr_func_decl(x: &nodes::FunctionDeclaration, ctx: &Ctx) -> Vec<c::ModElem> {
         parameters: tr_func_params(&x.parameters, ctx),
         body: rbody,
     })];
-    if format_che::format_form(&x.form) != "main" {
+    if format_che::fmt_form(&x.form) != "main" {
         r.push(c::ModElem::ForwardFunc(c::ForwardFunc {
             is_static: !x.is_pub,
             type_name: tr_typename(&x.type_name, ctx),

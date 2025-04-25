@@ -48,10 +48,10 @@ fn print_exports(exports: Exports) {
                 if i > 0 {
                     params += ", ";
                 }
-                params += &format_che::format_type(&parameter.type_name);
+                params += &format_che::fmt_typename(&parameter.type_name);
                 params += " ";
                 for form in &parameter.forms {
-                    params += &format_che::format_form(&form);
+                    params += &format_che::fmt_form(&form);
                 }
             }
             if c.parameters.variadic {
@@ -59,12 +59,12 @@ fn print_exports(exports: Exports) {
             }
             params += ")";
 
-            let t = format_che::format_type(&c.type_name);
+            let t = format_che::fmt_typename(&c.type_name);
             if t.len() > type_width {
                 type_width = t.len();
             }
             types.push(String::from(t));
-            forms.push(format!("{} {}", &format_che::format_form(&c.form), &params));
+            forms.push(format!("{} {}", &format_che::fmt_form(&c.form), &params));
         }
         println!("functions");
         for (i, t) in types.iter().enumerate() {

@@ -15,7 +15,7 @@ pub fn format_expression(expr: &Expression) -> String {
             let operand = &x.operand;
             return format!(
                 "({})({})",
-                format_anonymous_typeform(&type_name),
+                fmt_anonymous_typeform(&type_name),
                 format_expression(&operand)
             );
         }
@@ -33,7 +33,7 @@ pub fn format_expression(expr: &Expression) -> String {
             s1 += ")";
             return format!("{}{}", format_expression(&function), s1);
         }
-        Expression::Literal(x) => format_literal(x),
+        Expression::Literal(x) => fmt_literal(x),
         Expression::Identifier(x) => x.name.clone(),
         Expression::CompositeLiteral(CompositeLiteral { entries }) => {
             if entries.len() == 0 {
@@ -65,12 +65,12 @@ pub fn format_expression(expr: &Expression) -> String {
         Expression::Sizeof(x) => {
             let argument = &x.argument;
             let arg = match &**argument {
-                SizeofArgument::Typename(x) => format_type(&x),
+                SizeofArgument::Typename(x) => fmt_typename(&x),
                 SizeofArgument::Expression(x) => format_expression(&x),
             };
             return format!("sizeof({})", arg);
         }
-        Expression::BinaryOp(x) => format_binary_op(&x),
+        Expression::BinaryOp(x) => fmt_binop(&x),
         Expression::PrefixOperator(x) => {
             let operand = &x.operand;
             let operator = &x.operator;
@@ -86,7 +86,7 @@ pub fn format_expression(expr: &Expression) -> String {
             }
             return match expr {
                 Expression::BinaryOp(x) => {
-                    format!("{}({})", operator, format_binary_op(&x))
+                    format!("{}({})", operator, fmt_binop(&x))
                 }
                 Expression::Cast(x) => {
                     let type_name = &x.type_name;
@@ -96,7 +96,7 @@ pub fn format_expression(expr: &Expression) -> String {
                         operator,
                         format!(
                             "({})({})",
-                            format_anonymous_typeform(&type_name),
+                            fmt_anonymous_typeform(&type_name),
                             format_expression(&operand)
                         )
                     )
@@ -119,7 +119,7 @@ pub fn format_expression(expr: &Expression) -> String {
     }
 }
 
-pub fn format_type(t: &Typename) -> String {
+pub fn fmt_typename(t: &Typename) -> String {
     let name = if t.name.namespace != "" {
         format!("{}.{}", t.name.namespace, t.name.name)
     } else {
@@ -128,7 +128,7 @@ pub fn format_type(t: &Typename) -> String {
     return format!("{}{}", if t.is_const { "const " } else { "" }, name);
 }
 
-pub fn format_form(node: &Form) -> String {
+pub fn fmt_form(node: &Form) -> String {
     let mut s = String::new();
     for _ in 0..node.hops {
         s += "*";
@@ -143,15 +143,15 @@ pub fn format_form(node: &Form) -> String {
     return s;
 }
 
-fn format_anonymous_typeform(node: &AnonymousTypeform) -> String {
-    let mut s = format_type(&node.type_name);
+fn fmt_anonymous_typeform(node: &AnonymousTypeform) -> String {
+    let mut s = fmt_typename(&node.type_name);
     for op in &node.ops {
         s += &op;
     }
     return s;
 }
 
-fn format_binary_op(x: &nodes::BinaryOp) -> String {
+fn fmt_binop(x: &nodes::BinaryOp) -> String {
     let op = &x.op;
     let a = &x.a;
     let b = &x.b;
@@ -183,23 +183,7 @@ fn format_binary_op(x: &nodes::BinaryOp) -> String {
     return parts.join(glue);
 }
 
-fn is_op(e: &Expression) -> Option<String> {
-    match e {
-        Expression::BinaryOp(x) => Some(String::from(&x.op)),
-        Expression::PostfixOperator { .. } => Some(String::from("prefix")),
-        Expression::PrefixOperator { .. } => Some(String::from("prefix")),
-        _ => None,
-    }
-}
-
-fn is_binary_op(a: &Expression) -> Option<&String> {
-    match a {
-        Expression::BinaryOp(x) => Some(&x.op),
-        _ => None,
-    }
-}
-
-fn format_literal(node: &Literal) -> String {
+fn fmt_literal(node: &Literal) -> String {
     match node {
         Literal::Char(val) => format!("\'{}\'", val),
         Literal::String(val) => format!("\"{}\"", val),

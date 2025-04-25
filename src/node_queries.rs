@@ -1,18 +1,4 @@
-use crate::{
-    buf::Pos,
-    nodes::{Body, Expression, Statement, Typename},
-};
-
-fn istrue(e: &Expression) -> bool {
-    return match e {
-        Expression::Identifier(x) => x.name == "true",
-        _ => false,
-    };
-}
-
-pub fn isvoid(t: &Typename) -> bool {
-    return t.name.namespace == "" && t.name.name == "void";
-}
+use crate::{buf::Pos, nodes::*};
 
 pub fn body_returns(b: &Body) -> bool {
     let n = b.statements.len();
@@ -37,7 +23,7 @@ pub fn body_returns(b: &Body) -> bool {
             }
             return true;
         }
-        Statement::While(x) => istrue(&x.condition) || body_returns(&x.body),
+        Statement::While(x) => is_true(&x.condition) || body_returns(&x.body),
         _ => false,
     };
 }

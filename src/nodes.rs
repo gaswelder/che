@@ -346,3 +346,30 @@ pub enum StructEntry {
     Plain(TypeAndForms),
     Union(Union),
 }
+
+pub fn is_op(e: &Expression) -> Option<String> {
+    match e {
+        Expression::BinaryOp(x) => Some(String::from(&x.op)),
+        Expression::PostfixOperator { .. } => Some(String::from("prefix")),
+        Expression::PrefixOperator { .. } => Some(String::from("prefix")),
+        _ => None,
+    }
+}
+
+pub fn is_binary_op(a: &Expression) -> Option<&String> {
+    match a {
+        Expression::BinaryOp(x) => Some(&x.op),
+        _ => None,
+    }
+}
+
+pub fn is_true(e: &Expression) -> bool {
+    return match e {
+        Expression::Identifier(x) => x.name == "true",
+        _ => false,
+    };
+}
+
+pub fn is_void(t: &Typename) -> bool {
+    return t.name.namespace == "" && t.name.name == "void";
+}

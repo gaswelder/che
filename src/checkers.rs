@@ -1,7 +1,7 @@
 use crate::{
     exports::Exports,
     format_che::format_expression,
-    node_queries::{body_returns, expression_pos, has_function_call, isvoid},
+    node_queries::{body_returns, expression_pos, has_function_call},
     nodes::*,
     parser::Error,
     scopes::{find_var, get_module_scope, newscope, RootScope, Scope, ScopeItem1, VarInfo},
@@ -208,7 +208,7 @@ fn check_function_declaration(
     scopestack.push(newscope());
 
     for tf in &f.parameters.list {
-        if isvoid(&tf.type_name) {
+        if is_void(&tf.type_name) {
             for f in &tf.forms {
                 if f.hops == 0 {
                     state.errors.push(Error {
@@ -245,7 +245,7 @@ fn check_function_declaration(
         }
     }
 
-    if (!isvoid(&f.type_name) || f.form.hops == 1) && !body_returns(&f.body) {
+    if (!is_void(&f.type_name) || f.form.hops == 1) && !body_returns(&f.body) {
         state.errors.push(Error {
             message: format!("{}: missing return", f.form.name),
             pos: f.pos.clone(),
