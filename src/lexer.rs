@@ -22,8 +22,8 @@ impl fmt::Display for Token {
 const SPACES: &str = "\r\n\t ";
 
 const KEYWORDS: &[&str] = &[
-    "break", "case", "const", "continue", "default", "else", "enum", "for", "if", "panic", "pub",
-    "return", "sizeof", "struct", "switch", "typedef", "union", "while",
+    "break", "case", "const", "continue", "default", "else", "enum", "for", "if", "pub", "return",
+    "sizeof", "struct", "switch", "typedef", "union", "while",
 ];
 
 fn read_token(buf: &mut Buf) -> Option<Token> {

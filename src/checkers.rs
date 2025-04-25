@@ -267,12 +267,6 @@ fn check_body(
             Statement::Expression(e) => {
                 check_expr(e, state, scopestack, imports);
             }
-            Statement::Panic(x) => {
-                let arguments = &x.arguments;
-                for e in arguments {
-                    check_expr(e, state, scopestack, imports);
-                }
-            }
             Statement::For(x) => {
                 let init = &x.init;
                 let condition = &x.condition;

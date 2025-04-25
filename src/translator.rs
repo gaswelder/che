@@ -2,6 +2,7 @@ use crate::build::Ctx;
 use crate::c;
 use crate::format_c;
 use crate::format_che;
+use crate::node_queries::expression_pos;
 use crate::nodes;
 use std::collections::HashSet;
 
@@ -162,11 +163,25 @@ fn tr_body(b: &nodes::Body, ctx: &Ctx) -> c::CBody {
         statements.push(match s {
             nodes::Statement::Break => c::CStatement::Break,
             nodes::Statement::Continue => c::CStatement::Continue,
-            nodes::Statement::Expression(x) => c::CStatement::Expression(tr_expr(&x, ctx)),
+            nodes::Statement::Expression(x) => {
+                match x {
+                    nodes::Expression::FunctionCall(call) => {
+                        // panic is unwrapped at this level because a panic
+                        // call is a stand-alone statement and can't be part
+                        // of expression.
+                        if nodes::is_ident(&call.function, "panic") {
+                            let pos = expression_pos(x).fmt();
+                            mk_panic(ctx, &pos, &call.arguments)
+                        } else {
+                            c::CStatement::Expression(tr_expr(&x, ctx))
+                        }
+                    }
+                    _ => c::CStatement::Expression(tr_expr(&x, ctx)),
+                }
+            }
             nodes::Statement::For(x) => tr_for(x, ctx),
             nodes::Statement::If(x) => tr_if(x, ctx),
             nodes::Statement::Return(x) => tr_return(x, ctx),
-            nodes::Statement::Panic(x) => tr_panic(x, ctx),
             nodes::Statement::Switch(x) => tr_switch(x, ctx),
             nodes::Statement::VariableDeclaration(x) => tr_vardecl(x, ctx),
             nodes::Statement::While(x) => tr_while(x, ctx),
@@ -561,12 +576,6 @@ fn tr_return(x: &nodes::Return, ctx: &Ctx) -> c::CStatement {
     c::CStatement::Return {
         expression: expression.as_ref().map(|e| tr_expr(&e, ctx)),
     }
-}
-
-fn tr_panic(x: &nodes::Panic, ctx: &Ctx) -> c::CStatement {
-    let arguments = &x.arguments;
-    let pos = &x.pos;
-    mk_panic(ctx, pos, arguments)
 }
 
 fn tr_switch(x: &nodes::Switch, ctx: &Ctx) -> c::CStatement {

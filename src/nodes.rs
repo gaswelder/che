@@ -27,7 +27,6 @@ pub enum Statement {
     If(If),
     For(For),
     While(While),
-    Panic(Panic),
     Return(Return),
     Switch(Switch),
     Expression(Expression),
@@ -233,12 +232,6 @@ pub struct VariableDeclaration {
 }
 
 #[derive(Debug, Clone)]
-pub struct Panic {
-    pub arguments: Vec<Expression>,
-    pub pos: String,
-}
-
-#[derive(Debug, Clone)]
 pub struct If {
     pub condition: Expression,
     pub body: Body,
@@ -363,11 +356,13 @@ pub fn is_binary_op(a: &Expression) -> Option<&String> {
     }
 }
 
-pub fn is_true(e: &Expression) -> bool {
-    return match e {
-        Expression::Identifier(x) => x.name == "true",
+// Returns true if the given expression is an identifier with the given name.
+pub fn is_ident(x: &Expression, name: &str) -> bool {
+    match x {
+        Expression::NsName(ns_name) => ns_name.namespace == "" && ns_name.name == name,
+        Expression::Identifier(x) => x.name == name,
         _ => false,
-    };
+    }
 }
 
 pub fn is_void(t: &Typename) -> bool {

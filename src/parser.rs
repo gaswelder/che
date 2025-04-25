@@ -670,10 +670,6 @@ fn parse_statement(l: &mut Lexer, ctx: &Ctx) -> Result<TWithErrors<Statement>, E
         }
         "for" => parse_for(l, ctx),
         "if" => parse_if(l, ctx),
-        "panic" => Ok(TWithErrors {
-            obj: parse_panic(l, ctx)?,
-            errors: Vec::new(),
-        }),
         "return" => Ok(TWithErrors {
             obj: parse_return(l, ctx)?,
             errors: Vec::new(),
@@ -689,25 +685,6 @@ fn parse_statement(l: &mut Lexer, ctx: &Ctx) -> Result<TWithErrors<Statement>, E
             });
         }
     }
-}
-
-fn parse_panic(l: &mut Lexer, ctx: &Ctx) -> Result<Statement, Error> {
-    let mut arguments: Vec<Expression> = Vec::new();
-    let p = expect(l, "panic", None)?;
-    expect(l, "(", Some("panic"))?;
-    if l.more() && l.peek().unwrap().kind != ")" {
-        arguments.push(parse_expr(l, 0, ctx)?);
-        while l.follows(",") {
-            l.get();
-            arguments.push(parse_expr(l, 0, ctx)?);
-        }
-    }
-    expect(l, ")", Some("panic"))?;
-    expect(l, ";", Some("panic"))?;
-    return Ok(Statement::Panic(nodes::Panic {
-        arguments,
-        pos: format!("{}:{}", ctx.path, p.pos.fmt()),
-    }));
 }
 
 fn parse_variable_declaration(l: &mut Lexer, ctx: &Ctx) -> Result<Statement, Error> {

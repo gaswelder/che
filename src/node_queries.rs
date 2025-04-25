@@ -8,7 +8,6 @@ pub fn body_returns(b: &Body) -> bool {
     let last = &b.statements[n - 1];
     return match last {
         Statement::Return { .. } => true,
-        Statement::Panic { .. } => true,
         Statement::If(x) => body_returns(&x.body),
         Statement::Switch(x) => {
             let default_case = &x.default_case;
@@ -23,7 +22,16 @@ pub fn body_returns(b: &Body) -> bool {
             }
             return true;
         }
-        Statement::While(x) => is_true(&x.condition) || body_returns(&x.body),
+        Statement::While(x) => is_ident(&x.condition, "true") || body_returns(&x.body),
+        Statement::Expression(x) => match x {
+            Expression::FunctionCall(function_call) => {
+                if is_ident(&function_call.function, "panic") {
+                    return true;
+                }
+                return false;
+            }
+            _ => false,
+        },
         _ => false,
     };
 }

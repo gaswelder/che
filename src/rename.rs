@@ -207,12 +207,6 @@ fn prefix_statement(s: &mut Statement, prefix: &String, names: &Vec<String>) {
                 None => {}
             }
         }
-        Statement::Panic(x) => {
-            let arguments = &mut x.arguments;
-            for e in arguments {
-                prefix_expr(e, prefix, names);
-            }
-        }
         Statement::Expression(e) => {
             prefix_expr(e, prefix, names);
         }
