@@ -7,7 +7,7 @@ enum {
 	OPT_BOOL = 'b',
 	OPT_SIZE = 'z',
 	OPT_FLOAT = 'f'
-};
+}
 
 /*
  * List of defined options.

@@ -12,7 +12,7 @@ pub enum {
 	SHLVx_Vy_, SHRVx_Vy_,
 	SKNPVx, SKPVx, SNEVxkk, SNEVxVy,
 	ORVxVy, XORVxVy,
-};
+}
 
 pub typedef {
 	int OP;

@@ -28,7 +28,7 @@ enum {
      * Condition flags
      */
     R_COND = 9
-};
+}
 
 /**
  * Possible Condition flags for the condition register.
@@ -37,7 +37,7 @@ enum {
     FL_POS = 1,
     FL_ZRO = 2,
     FL_NEG = 4
-};
+}
 
 /**
  * Memory is a contiguous block of 65536 16-bit values.
@@ -58,9 +58,9 @@ enum {
     TRAP_IN = 0x23,    /* get character from keyboard, echoed onto the terminal */
     TRAP_PUTSP = 0x24, /* output a byte string */
     TRAP_HALT = 0x25   /* halt the program */
-};
-enum
-{
+}
+
+enum {
     OP_BR = 0, /* branch */
     OP_ADD,    /* add  */
     OP_LD,     /* load */
@@ -77,7 +77,7 @@ enum
     OP_RES,    /* reserved (unused) */
     OP_LEA,    /* load effective address */
     OP_TRAP    /* execute trap */
-};
+}
 
 term.term_t *term = NULL;
 bool running = true;
@@ -142,11 +142,10 @@ pub int run(char *rompath) {
     return 1;
 }
 
-enum
-{
-    MR_KBSR = 0xFE00, /* keyboard status */
+enum {
+	MR_KBSR = 0xFE00, /* keyboard status */
     MR_KBDR = 0xFE02  /* keyboard data */
-};
+}
 
 void mem_write(uint16_t address, uint16_t val)
 {

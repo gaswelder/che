@@ -114,7 +114,7 @@ enum {
 	TOK_NUMBER,
 	TOK_STRING,
 	TOK_ID
-};
+}
 
 pub typedef {
 	int kind;

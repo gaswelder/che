@@ -9,7 +9,7 @@
 enum {
 	PLAYER = 0,
 	COMPUTER = 1,
-};
+}
 const int SHIPTYPES = 5;
 
 const int STATUS_Y = 14;

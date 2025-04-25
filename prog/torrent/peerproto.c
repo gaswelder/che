@@ -54,7 +54,7 @@ pub enum {
     MSG_BITFIELD = 5,
     MSG_REQUEST = 6,
     MSG_PIECE = 7
-};
+}
 
 pub typedef {
     uint8_t id;

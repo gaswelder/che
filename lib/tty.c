@@ -24,7 +24,7 @@ pub enum {
     MAGENTA_BG = 45,
     CYAN_BG = 46,
     WHITE_BG = 47
-};
+}
 
 pub void ttycolor(int color) {
     printf("\033[%dm", color);

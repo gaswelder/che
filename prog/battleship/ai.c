@@ -11,12 +11,12 @@ enum {
 	S = 2,
 	W = 4,
 	N = 6,
-};
+}
 
 enum {
 	PLAYER = 0,
 	COMPUTER = 1,
-};
+}
 
 pub typedef {
 	int ai_next;
@@ -40,7 +40,7 @@ enum {
 	FIRST_PASS = 3,
 	REVERSE_JUMP = 4,
 	SECOND_PASS = 5,
-};
+}
 
 pub void reset(state_t *s) {
 	memset(s, 0, sizeof(state_t));

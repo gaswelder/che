@@ -19,7 +19,7 @@ enum {
 	T_OPEN, // opening tag
 	T_CLOSE, // closing tag
 	T_MONO // self-closing tag
-};
+}
 
 pub typedef {
 	char name[MAXNAME];

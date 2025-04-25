@@ -28,9 +28,9 @@ enum {
     SORT_STOOGESORT,
     SORT_QUICKSORT,
     SORT_RADIX_8_LSD,
-
     SORTS_TOTAL
-};
+}
+
 const char *sort_names[] = {
     [SORT_ODD_EVEN] = "Odd-even",
     [SORT_BUBBLE] = "Bubble",

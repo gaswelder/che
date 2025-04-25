@@ -28,7 +28,7 @@ pub bool init(torrent.info_t *tf, uint8_t *peer_id) {
 enum {
 	WAITING_HANDSHAKE,
     READING_MESSAGE_LENGTH,
-};
+}
 
 typedef {
     int state;
@@ -148,7 +148,7 @@ pub void handle(void *ctx, int event, void *edata) {
     }
 }
 
-enum { HANDSHAKE, KEEPALIVE, MSG };
+enum { HANDSHAKE, KEEPALIVE, MSG }
 
 typedef {
     int type;

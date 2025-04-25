@@ -2,7 +2,7 @@
 #import tokenizer
 #import strings
 
-enum { FUNC, VAR, CONST };
+enum { FUNC, VAR, CONST }
 
 typedef {
     int type;

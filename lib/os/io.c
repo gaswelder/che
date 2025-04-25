@@ -15,7 +15,7 @@ enum {
     TYPE_FD,
     TYPE_NET,
     TYPE_FILE
-};
+}
 
 pub typedef {
     char data[4096];
@@ -247,7 +247,7 @@ pub bool close(handle_t *h) {
 pub enum {
     READ = 1,
     WRITE = 2
-};
+}
 
 pub typedef {
     handle_t *handle;

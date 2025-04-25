@@ -1,7 +1,7 @@
 enum {
 	FSTREAM = 'f',
 	BUF = 'b'
-};
+}
 
 pub typedef {
 	int type;

@@ -6,13 +6,13 @@ pub enum {
 	TIFF_SHORT = 3,
 	TIFF_LONG = 4,
 	TIFF_RATIONAL = 5
-};
+}
 
 // endiannes
 enum {
 	LITTLE = 0,
 	BIG = 1
-};
+}
 
 pub enum {
 	TIFF_ImageWidth = 256,
@@ -25,7 +25,7 @@ pub enum {
 	TIFF_StripOffsets = 273,
 	TIFF_RowsPerStrip = 278,
 	TIFF_StripByteCounts = 279
-};
+}
 
 pub typedef {
 	int tag;

@@ -3,7 +3,7 @@ enum {
     END,
     LITERAL,
     SPACE
-};
+}
 
 pub typedef {
     int type;

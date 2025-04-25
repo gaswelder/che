@@ -26,7 +26,7 @@ enum {
 	S = 2,
 	W = 4,
 	N = 6,
-};
+}
 
 #define BWIDTH 10
 #define BDEPTH 10
@@ -39,7 +39,7 @@ const int SHIPTYPES = 5;
 enum {
 	PLAYER = 0,
 	COMPUTER = 1,
-};
+}
 
 int main(int argc, char *argv[]) {
 	opt.flag("b", "play a blitz game", &blitz);

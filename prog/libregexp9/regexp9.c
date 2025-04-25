@@ -235,7 +235,7 @@ enum {
 	CCLASS = 0305, /* Character class, [] */
 	NCCLASS = 0306, /* Negated character class, [] */
 	END = 0377	/* Terminate: match found */
-};
+}
 // #define RUNE		0177
 // #define	OPERATOR	0200	/* Bitmask of all operators */
 // #define	START		0200	/* Start, used for marker on stack */
@@ -263,7 +263,7 @@ const int BIGLISTSIZE = 250; //	(25*LISTSIZE)
 
 enum {
 	NSTACK = 20
-};
+}
 Node	andstack[NSTACK] = {};
 Node	*andp = NULL;
 int	atorstack[NSTACK] = {};

@@ -48,7 +48,7 @@ pub enum {
     // The handler will receive this event whenever the outgoing buffer becomes
     // empty. This event can be used to know when the handler can send more data.
     WRITE_FINISHED = -231,
-};
+}
 
 const char *eventname(int event) {
     switch (event) {

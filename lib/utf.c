@@ -96,7 +96,7 @@ pub enum {
 	Runeself	= 0x80,		/* rune and UTF sequences are the same (<) */
 	Runeerror	= 0xFFFD,	/* decoding error in UTF */
 	Runemax = 0x10FFFF	/* maximum rune value */
-};
+}
 
 pub Rune *runestrcat(Rune *s1, *s2) {
 	runestrcpy(runestrchr(s1, 0), s2);

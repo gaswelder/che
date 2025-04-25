@@ -15,17 +15,7 @@ pub fn format_module(cm: &CModule) -> String {
             ModElem::DefType(x) => format_typedef(&x),
             ModElem::Macro(x) => format!("#{} {}\n", x.name, x.value),
             ModElem::Include(x) => format!("#include {}\n", x),
-            ModElem::DefEnum(x) => {
-                let mut s1 = String::from("enum {\n");
-                for (i, member) in x.members.iter().enumerate() {
-                    if i > 0 {
-                        s1 += ",\n";
-                    }
-                    s1 += &format!("\t{}", format_enum_member(&member));
-                }
-                s1 += "\n};\n";
-                s1
-            }
+            ModElem::DefEnum(x) => fmt_enumdef(x),
             ModElem::ForwardStruct(x) => format!("struct {};\n", x),
             ModElem::DefStruct(x) => format_compat_struct_definition(&x),
             ModElem::ForwardFunc(x) => fmt_function_forward_declaration(&x),
@@ -33,6 +23,18 @@ pub fn format_module(cm: &CModule) -> String {
         }
     }
     return s;
+}
+
+fn fmt_enumdef(x: &c::EnumDef) -> String {
+    let mut s1 = String::from("enum {\n");
+    for (i, member) in x.members.iter().enumerate() {
+        if i > 0 {
+            s1 += ",\n";
+        }
+        s1 += &format!("\t{}", format_enum_member(&member));
+    }
+    s1 += "\n};\n";
+    s1
 }
 
 fn fmt_func_def(x: &c::FunctionDef) -> String {

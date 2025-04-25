@@ -10,7 +10,7 @@ enum {
 	 * L_NONE may occur at the end of file
 	 */
 	L_NONE
-};
+}
 
 /*
  * Line-ending format

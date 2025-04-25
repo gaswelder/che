@@ -10,7 +10,7 @@ enum {
 	VID_HEIGHT = 32,
 	V0 = 0x0,
 	VF = 0xF,
-};
+}
 
 typedef {
 	// 4 KB of RAM, 0x000...0xFFF.

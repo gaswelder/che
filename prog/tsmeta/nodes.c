@@ -1,6 +1,6 @@
 pub enum {
 	T = 1, F, NUM, STR, LIST, ID, UNION, TYPEDEF, TYPECALL
-};
+}
 
 pub const char *kindstr(int kind) {
 	switch (kind) {

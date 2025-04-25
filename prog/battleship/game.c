@@ -6,7 +6,7 @@ pub enum {
 	SHIP_SUBMARINE,
 	SHIP_DESTROYER,
 	SHIP_PTBOAT,
-};
+}
 
 pub const char *shipname(int s) {
 	switch (s) {
@@ -25,24 +25,24 @@ enum {
 	S = 2,
 	// W = 4,
 	// N = 6,
-};
+}
 
 pub enum {
 	MARK_HIT = 'H',
 	MARK_MISS = 'o',
-};
+}
 
 pub enum {
 	ERR_HANGING = 1,
 	ERR_COLLISION = 2,
-};
+}
 
 // Result of shoot.
 pub enum {
 	S_MISS = 0,
 	S_HIT = 1,
 	S_SUNK = -1,
-};
+}
 
 const int SHIPTYPES = 5;
 const int xincr[8] = {1, 1, 0, -1, -1, -1, 0, 1};
@@ -77,7 +77,7 @@ pub enum {
 	ST_PLACING,
 	ST_PLAYING,
 	ST_FINISHED
-};
+}
 
 pub typedef {
 	bool closepack;

@@ -7,7 +7,7 @@ pub enum {
 	PNG_PALETTE = 3, // Up to 256 RGBA colors, 8 bits per pixel
 	PNG_GRAYSCALE_ALPHA = 4, // 256 shades of gray plus alpha channel, 16 bits per pixel
 	PNG_RGBA = 6 // 24-bit RGB values plus 8-bit alpha channel
-};
+}
 
 typedef {
 	uint32_t crc; // crc register

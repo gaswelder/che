@@ -118,7 +118,7 @@ pub enum {
     INCATEGORY, MAILBOX, BIDDER, PRIVACY, ITEMREF, SELLER, TYPE, TIME,
     STATUS, PERSONREF, INIT_PRICE, START, END, BUYER, PRICE, ANNOTATION,
     HAPPINESS, AUTHOR
-};
+}
 
 pub typedef {
     int type;
@@ -129,7 +129,7 @@ pub enum {
     ATTR_TYPE_1 = 1,
     ATTR_TYPE_2 = 2,
     ATTR_TYPE_3 = 3
-};
+}
 
 pub typedef {
     char name[20];

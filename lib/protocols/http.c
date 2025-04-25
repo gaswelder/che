@@ -13,7 +13,7 @@ pub enum {
 	GET = 1,
 	POST = 2,
 	HEAD
-};
+}
 
 /*
  * Given a method name string returns the method's enum value.

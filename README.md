@@ -77,8 +77,19 @@ int sum(int a, b, c) {
 }
 ```
 
+_No semicolons after enums_.
+Semicolons after enum declarations are optional:
+
+```c
+// before
+enum { A, B, C };
+
+// after
+enum { A, B, C }
+```
+
 _Switch syntax_.
-Switch cases don't need the break keyword and require brackets instead.
+Switch cases don't need the break keyword and require braces instead.
 It's also possible to enumerate switch cases using a comma.
 So the following C code:
 

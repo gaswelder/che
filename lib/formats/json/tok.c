@@ -18,7 +18,7 @@ pub enum {
 	T_NULL,
 	T_STR,
 	T_NUM
-};
+}
 
 pub typedef {
     tokenizer.t *buf;

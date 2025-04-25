@@ -48,7 +48,7 @@ enum {
 	E_FORMAT = 1, // "Could not format new path\n"
 	E_FOPEN, // "Could not open file '%s' for writing\n"
 	E_FPUTS, //
-};
+}
 
 dlog_t *dlog_init(const char *path_tpl) {
 	dlog_t *log = calloc(1, sizeof(dlog_t));

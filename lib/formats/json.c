@@ -14,7 +14,7 @@ pub enum {
 	JSON_NUM = 5, // number
 	JSON_BOOL = 6, // true or false
 	JSON_NULL = 7 // null value
-};
+}
 
 // An opaque object representing any value representable in JSON.
 pub typedef {

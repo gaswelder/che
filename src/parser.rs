@@ -527,7 +527,7 @@ fn parse_enum(l: &mut Lexer, is_pub: bool, ctx: &Ctx) -> Result<ModElem, Error> 
         }
     }
     expect(l, "}", Some("enum definition"))?;
-    expect(l, ";", Some("enum definition"))?;
+    l.eat(";");
     return Ok(ModElem::Enum(nodes::Enum {
         is_pub,
         members,

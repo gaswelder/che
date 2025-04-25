@@ -9,7 +9,7 @@ pub enum {
     MS = 1000,
     SECONDS = 1000000,
 	MINUTES = 60000000,
-};
+}
 
 pub typedef struct timeval timeval_t;
 pub typedef {
@@ -73,7 +73,7 @@ pub int64_t sub(t a, b) {
 
 pub enum {
     FMT_FOO
-};
+}
 
 pub const char *knownformat(int fmtid) {
     switch (fmtid) {
