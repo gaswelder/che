@@ -118,11 +118,10 @@ fn prefix_statement(s: &mut Statement, prefix: &String, names: &Vec<String>) {
             }
             prefix_typename(&mut x.type_name, prefix, names)
         }
-        Statement::If {
-            condition,
-            body,
-            else_body,
-        } => {
+        Statement::If(x) => {
+            let condition = &mut x.condition;
+            let body = &mut x.body;
+            let else_body = &mut x.else_body;
             prefix_expr(condition, prefix, names);
             prefix_body(body, prefix, names);
             match else_body {
@@ -130,12 +129,11 @@ fn prefix_statement(s: &mut Statement, prefix: &String, names: &Vec<String>) {
                 None => {}
             }
         }
-        Statement::For {
-            init,
-            condition,
-            action,
-            body,
-        } => {
+        Statement::For(x) => {
+            let init = &mut x.init;
+            let condition = &mut x.condition;
+            let action = &mut x.action;
+            let body = &mut x.body;
             match init {
                 Some(init) => match init {
                     ForInit::Expression(e) => {
@@ -167,22 +165,25 @@ fn prefix_statement(s: &mut Statement, prefix: &String, names: &Vec<String>) {
             }
             prefix_body(body, prefix, names);
         }
-        Statement::While { condition, body } => {
+        Statement::While(x) => {
+            let condition = &mut x.condition;
+            let body = &mut x.body;
             prefix_expr(condition, prefix, names);
             prefix_body(body, prefix, names);
         }
-        Statement::Return { expression } => match expression {
-            Some(e) => {
-                prefix_expr(e, prefix, names);
+        Statement::Return(x) => {
+            let expression = &mut x.expression;
+            match expression {
+                Some(e) => {
+                    prefix_expr(e, prefix, names);
+                }
+                None => {}
             }
-            None => {}
-        },
-        Statement::Switch {
-            is_str: _,
-            value,
-            cases,
-            default_case: default,
-        } => {
+        }
+        Statement::Switch(x) => {
+            let value = &mut x.value;
+            let cases = &mut x.cases;
+            let default = &mut x.default_case;
             prefix_expr(value, prefix, names);
             for c in cases.iter_mut() {
                 for v in c.values.iter_mut() {
@@ -206,7 +207,8 @@ fn prefix_statement(s: &mut Statement, prefix: &String, names: &Vec<String>) {
                 None => {}
             }
         }
-        Statement::Panic { arguments, pos: _ } => {
+        Statement::Panic(x) => {
+            let arguments = &mut x.arguments;
             for e in arguments {
                 prefix_expr(e, prefix, names);
             }

@@ -23,17 +23,10 @@ pub fn body_returns(b: &Body) -> bool {
     return match last {
         Statement::Return { .. } => true,
         Statement::Panic { .. } => true,
-        Statement::If {
-            condition: _,
-            body,
-            else_body: _,
-        } => body_returns(&body),
-        Statement::Switch {
-            is_str: _,
-            value: _,
-            cases,
-            default_case,
-        } => {
+        Statement::If(x) => body_returns(&x.body),
+        Statement::Switch(x) => {
+            let default_case = &x.default_case;
+            let cases = &x.cases;
             if default_case.is_none() || !body_returns(default_case.as_ref().unwrap()) {
                 return false;
             }
@@ -44,7 +37,7 @@ pub fn body_returns(b: &Body) -> bool {
             }
             return true;
         }
-        Statement::While { condition, body } => istrue(condition) || body_returns(&body),
+        Statement::While(x) => istrue(&x.condition) || body_returns(&x.body),
         _ => false,
     };
 }

@@ -18,6 +18,21 @@ pub enum ModElem {
     FunctionDeclaration(FunctionDeclaration),
 }
 
+// Elements than can be a part of a function body.
+#[derive(Debug, Clone)]
+pub enum Statement {
+    Break,
+    Continue,
+    VariableDeclaration(VariableDeclaration),
+    If(If),
+    For(For),
+    While(While),
+    Panic(Panic),
+    Return(Return),
+    Switch(Switch),
+    Expression(Expression),
+}
+
 // Elements that can participate in expressions.
 #[derive(Debug, Clone)]
 pub enum Expression {
@@ -33,6 +48,13 @@ pub enum Expression {
     PostfixOperator(PostfixOperator),
     PrefixOperator(PrefixOperator),
     Sizeof(Sizeof),
+}
+
+// #import foo
+#[derive(Debug, Clone)]
+pub struct ImportNode {
+    pub specified_path: String,
+    pub pos: Pos,
 }
 
 // typedef struct tm tm_t;
@@ -51,16 +73,18 @@ pub struct Macro {
     pub pos: Pos,
 }
 
+// enum { A = 1, B, ... }
 #[derive(Debug, Clone)]
 pub struct Enum {
     pub is_pub: bool,
-    pub members: Vec<EnumItem>,
+    pub members: Vec<EnumEntry>,
     pub pos: Pos,
 }
 
 #[derive(Debug, Clone)]
-pub struct ImportNode {
-    pub specified_path: String,
+pub struct EnumEntry {
+    pub id: Identifier,
+    pub value: Option<Expression>,
     pub pos: Pos,
 }
 
@@ -100,13 +124,6 @@ pub struct StructTypedef {
 //     pub name: String,
 //     pub params: AnonymousParameters,
 // }
-
-#[derive(Debug, Clone)]
-pub struct EnumItem {
-    pub id: Identifier,
-    pub value: Option<Expression>,
-    pub pos: Pos,
-}
 
 #[derive(Debug, Clone)]
 pub struct Typename {
@@ -216,39 +233,43 @@ pub struct VariableDeclaration {
 }
 
 #[derive(Debug, Clone)]
-pub enum Statement {
-    Break,
-    Continue,
-    VariableDeclaration(VariableDeclaration),
-    If {
-        condition: Expression,
-        body: Body,
-        else_body: Option<Body>,
-    },
-    For {
-        init: Option<ForInit>,
-        condition: Option<Expression>,
-        action: Option<Expression>,
-        body: Body,
-    },
-    While {
-        condition: Expression,
-        body: Body,
-    },
-    Panic {
-        arguments: Vec<Expression>,
-        pos: String,
-    },
-    Return {
-        expression: Option<Expression>,
-    },
-    Switch {
-        is_str: bool,
-        value: Expression,
-        cases: Vec<SwitchCase>,
-        default_case: Option<Body>,
-    },
-    Expression(Expression),
+pub struct Panic {
+    pub arguments: Vec<Expression>,
+    pub pos: String,
+}
+
+#[derive(Debug, Clone)]
+pub struct If {
+    pub condition: Expression,
+    pub body: Body,
+    pub else_body: Option<Body>,
+}
+
+#[derive(Debug, Clone)]
+pub struct For {
+    pub init: Option<ForInit>,
+    pub condition: Option<Expression>,
+    pub action: Option<Expression>,
+    pub body: Body,
+}
+
+#[derive(Debug, Clone)]
+pub struct While {
+    pub condition: Expression,
+    pub body: Body,
+}
+
+#[derive(Debug, Clone)]
+pub struct Return {
+    pub expression: Option<Expression>,
+}
+
+#[derive(Debug, Clone)]
+pub struct Switch {
+    pub is_str: bool,
+    pub value: Expression,
+    pub cases: Vec<SwitchCase>,
+    pub default_case: Option<Body>,
 }
 
 #[derive(Debug, Clone)]

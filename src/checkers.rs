@@ -267,17 +267,17 @@ fn check_body(
             Statement::Expression(e) => {
                 check_expr(e, state, scopestack, imports);
             }
-            Statement::Panic { arguments, pos: _ } => {
+            Statement::Panic(x) => {
+                let arguments = &x.arguments;
                 for e in arguments {
                     check_expr(e, state, scopestack, imports);
                 }
             }
-            Statement::For {
-                init,
-                condition,
-                action,
-                body,
-            } => {
+            Statement::For(x) => {
+                let init = &x.init;
+                let condition = &x.condition;
+                let action = &x.action;
+                let body = &x.body;
                 scopestack.push(newscope());
                 let n = scopestack.len();
                 match init {
@@ -323,29 +323,29 @@ fn check_body(
                 check_body(body, state, scopestack, imports);
                 scopestack.pop();
             }
-            Statement::If {
-                condition,
-                body,
-                else_body,
-            } => {
+            Statement::If(x) => {
+                let condition = &x.condition;
+                let body = &x.body;
+                let else_body = &x.else_body;
                 check_expr(condition, state, scopestack, imports);
                 check_body(body, state, scopestack, imports);
                 if else_body.is_some() {
                     check_body(else_body.as_ref().unwrap(), state, scopestack, imports);
                 }
             }
-            Statement::Return { expression } => match expression {
-                Some(x) => {
-                    check_expr(x, state, scopestack, imports);
+            Statement::Return(x) => {
+                let expression = &x.expression;
+                match expression {
+                    Some(x) => {
+                        check_expr(&x, state, scopestack, imports);
+                    }
+                    None => {}
                 }
-                None => {}
-            },
-            Statement::Switch {
-                is_str: _,
-                value,
-                cases,
-                default_case: default,
-            } => {
+            }
+            Statement::Switch(x) => {
+                let value = &x.value;
+                let cases = &x.cases;
+                let default = &x.default_case;
                 check_expr(value, state, scopestack, imports);
                 for c in cases {
                     for v in &c.values {
@@ -414,7 +414,9 @@ fn check_body(
                     );
                 }
             }
-            Statement::While { condition, body } => {
+            Statement::While(x) => {
+                let condition = &x.condition;
+                let body = &x.body;
                 check_expr(condition, state, scopestack, imports);
                 check_body(body, state, scopestack, imports);
             }

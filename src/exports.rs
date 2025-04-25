@@ -2,7 +2,7 @@ use crate::nodes::*;
 
 #[derive(Debug)]
 pub struct Exports {
-    pub consts: Vec<EnumItem>,
+    pub consts: Vec<EnumEntry>,
     pub fns: Vec<FunctionDeclaration>,
     pub types: Vec<String>,
     // pub structs: Vec<StructTypedef>,

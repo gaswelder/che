@@ -156,6 +156,25 @@ fn tr_expr(e: &nodes::Expression, ctx: &Ctx) -> c::CExpression {
     };
 }
 
+fn tr_body(b: &nodes::Body, ctx: &Ctx) -> c::CBody {
+    let mut statements: Vec<c::CStatement> = Vec::new();
+    for s in &b.statements {
+        statements.push(match s {
+            nodes::Statement::Break => c::CStatement::Break,
+            nodes::Statement::Continue => c::CStatement::Continue,
+            nodes::Statement::Expression(x) => c::CStatement::Expression(tr_expr(&x, ctx)),
+            nodes::Statement::For(x) => tr_for(x, ctx),
+            nodes::Statement::If(x) => tr_if(x, ctx),
+            nodes::Statement::Return(x) => tr_return(x, ctx),
+            nodes::Statement::Panic(x) => tr_panic(x, ctx),
+            nodes::Statement::Switch(x) => tr_switch(x, ctx),
+            nodes::Statement::VariableDeclaration(x) => tr_vardecl(x, ctx),
+            nodes::Statement::While(x) => tr_while(x, ctx),
+        });
+    }
+    return c::CBody { statements };
+}
+
 fn tr_struct_alias(x: &nodes::StructAlias) -> Vec<c::ModElem> {
     vec![c::ModElem::DefType(c::Typedef {
         is_pub: x.is_pub,
@@ -432,7 +451,7 @@ fn tr_func_params(node: &nodes::FunctionParameters, ctx: &Ctx) -> c::CompatFunct
 }
 
 fn tr_func_decl(x: &nodes::FunctionDeclaration, ctx: &Ctx) -> Vec<c::ModElem> {
-    let tbody = translate_body(&x.body, ctx);
+    let tbody = tr_body(&x.body, ctx);
     let mut rbody = c::CBody {
         statements: Vec::new(),
     };
@@ -490,121 +509,126 @@ fn tr_ns_name(nsid: &nodes::NsName, ctx: &Ctx) -> String {
     return nsid.name.clone();
 }
 
-fn translate_body(b: &nodes::Body, ctx: &Ctx) -> c::CBody {
-    let mut statements: Vec<c::CStatement> = Vec::new();
-    for s in &b.statements {
-        statements.push(match s {
-            nodes::Statement::Break => c::CStatement::Break,
-            nodes::Statement::Continue => c::CStatement::Continue,
-            nodes::Statement::Expression(x) => c::CStatement::Expression(tr_expr(&x, ctx)),
-            nodes::Statement::For {
-                init,
-                condition,
-                action,
-                body,
-            } => {
-                let init = match init {
-                    Some(init) => Some(match &init {
-                        nodes::ForInit::Expression(x) => c::CForInit::Expression(tr_expr(x, ctx)),
-                        nodes::ForInit::LoopCounterDeclaration {
-                            type_name,
-                            form,
-                            value,
-                        } => c::CForInit::LoopCounterDeclaration(c::VarDecl {
-                            type_name: tr_typename(type_name, ctx),
-                            form: tr_form(form, ctx),
-                            value: tr_expr(value, ctx),
-                        }),
-                    }),
-                    None => None,
-                };
-                let condition = match condition {
-                    Some(x) => Some(tr_expr(&x, ctx)),
-                    None => None,
-                };
-                let action = match action {
-                    Some(x) => Some(tr_expr(&x, ctx)),
-                    None => None,
-                };
-                c::CStatement::For {
-                    init,
-                    condition,
-                    action,
-                    body: translate_body(body, ctx),
-                }
-            }
-            nodes::Statement::If {
-                condition,
-                body,
-                else_body,
-            } => c::CStatement::If {
-                condition: tr_expr(condition, ctx),
-                body: translate_body(body, ctx),
-                else_body: else_body.as_ref().map(|x| translate_body(&x, ctx)),
-            },
-            nodes::Statement::Return { expression } => c::CStatement::Return {
-                expression: expression.as_ref().map(|e| tr_expr(&e, ctx)),
-            },
-            nodes::Statement::Panic { arguments, pos } => mk_panic(ctx, pos, arguments),
-            nodes::Statement::Switch {
-                is_str,
+fn tr_for(x: &nodes::For, ctx: &Ctx) -> c::CStatement {
+    let init = &x.init;
+    let condition = &x.condition;
+    let action = &x.action;
+    let body = &x.body;
+    let init1 = match init {
+        Some(init) => Some(match &init {
+            nodes::ForInit::Expression(x) => c::CForInit::Expression(tr_expr(x, ctx)),
+            nodes::ForInit::LoopCounterDeclaration {
+                type_name,
+                form,
                 value,
-                cases,
-                default_case: default,
-            } => {
-                let switchval = tr_expr(value, ctx);
-                if *is_str {
-                    let c0 = &cases[0];
-                    c::CStatement::If {
-                        condition: tr_switchstr_cond(ctx, c0, &switchval),
-                        body: translate_body(&c0.body, ctx),
-                        else_body: tr_switchstr_else(cases, 1, default, ctx, &switchval),
-                    }
-                } else {
-                    let mut tcases: Vec<c::CSwitchCase> = Vec::new();
-                    for c in cases {
-                        let mut values = Vec::new();
-                        for v in &c.values {
-                            let tv = match v {
-                                nodes::SwitchCaseValue::Identifier(x) => {
-                                    c::CSwitchCaseValue::Identifier(tr_ns_name(x, ctx))
-                                }
-                                nodes::SwitchCaseValue::Literal(x) => {
-                                    c::CSwitchCaseValue::Literal(tr_literal(x))
-                                }
-                            };
-                            values.push(tv)
-                        }
-                        tcases.push(c::CSwitchCase {
-                            values,
-                            body: translate_body(&c.body, ctx),
-                        })
-                    }
-                    c::CStatement::Switch(c::Switch {
-                        value: switchval,
-                        cases: tcases,
-                        default: default.as_ref().map(|x| translate_body(&x, ctx)),
-                    })
-                }
-            }
-            nodes::Statement::VariableDeclaration(x) => {
-                let mut tforms: Vec<c::CForm> = Vec::new();
-                tforms.push(tr_form(&x.form, ctx));
-                let mut tvalues: Vec<Option<c::CExpression>> = Vec::new();
-                tvalues.push(x.value.as_ref().map(|x| tr_expr(&x, ctx)));
-                c::CStatement::VariableDeclaration {
-                    type_name: tr_typename(&x.type_name, ctx),
-                    forms: tforms,
-                    values: tvalues,
-                }
-            }
-            nodes::Statement::While { condition, body } => c::CStatement::While {
-                condition: tr_expr(condition, ctx),
-                body: translate_body(body, ctx),
-            },
-        });
+            } => c::CForInit::LoopCounterDeclaration(c::VarDecl {
+                type_name: tr_typename(type_name, ctx),
+                form: tr_form(form, ctx),
+                value: tr_expr(value, ctx),
+            }),
+        }),
+        None => None,
+    };
+    let condition = match condition {
+        Some(x) => Some(tr_expr(&x, ctx)),
+        None => None,
+    };
+    let action = match action {
+        Some(x) => Some(tr_expr(&x, ctx)),
+        None => None,
+    };
+    c::CStatement::For {
+        init: init1,
+        condition,
+        action,
+        body: tr_body(body, ctx),
     }
-    return c::CBody { statements };
+}
+
+fn tr_if(x: &nodes::If, ctx: &Ctx) -> c::CStatement {
+    let condition = &x.condition;
+    let body = &x.body;
+    let else_body = &x.else_body;
+    c::CStatement::If {
+        condition: tr_expr(condition, ctx),
+        body: tr_body(body, ctx),
+        else_body: else_body.as_ref().map(|x| tr_body(&x, ctx)),
+    }
+}
+
+fn tr_return(x: &nodes::Return, ctx: &Ctx) -> c::CStatement {
+    let expression = &x.expression;
+    c::CStatement::Return {
+        expression: expression.as_ref().map(|e| tr_expr(&e, ctx)),
+    }
+}
+
+fn tr_panic(x: &nodes::Panic, ctx: &Ctx) -> c::CStatement {
+    let arguments = &x.arguments;
+    let pos = &x.pos;
+    mk_panic(ctx, pos, arguments)
+}
+
+fn tr_switch(x: &nodes::Switch, ctx: &Ctx) -> c::CStatement {
+    let is_str = &x.is_str;
+    let value = &x.value;
+    let cases = &x.cases;
+    let default = &x.default_case;
+    let switchval = tr_expr(value, ctx);
+    if *is_str {
+        let c0 = &cases[0];
+        c::CStatement::If {
+            condition: tr_switchstr_cond(ctx, c0, &switchval),
+            body: tr_body(&c0.body, ctx),
+            else_body: tr_switchstr_else(cases, 1, default, ctx, &switchval),
+        }
+    } else {
+        let mut tcases: Vec<c::CSwitchCase> = Vec::new();
+        for c in cases {
+            let mut values = Vec::new();
+            for v in &c.values {
+                let tv = match v {
+                    nodes::SwitchCaseValue::Identifier(x) => {
+                        c::CSwitchCaseValue::Identifier(tr_ns_name(x, ctx))
+                    }
+                    nodes::SwitchCaseValue::Literal(x) => {
+                        c::CSwitchCaseValue::Literal(tr_literal(x))
+                    }
+                };
+                values.push(tv)
+            }
+            tcases.push(c::CSwitchCase {
+                values,
+                body: tr_body(&c.body, ctx),
+            })
+        }
+        c::CStatement::Switch(c::Switch {
+            value: switchval,
+            cases: tcases,
+            default: default.as_ref().map(|x| tr_body(&x, ctx)),
+        })
+    }
+}
+
+fn tr_vardecl(x: &nodes::VariableDeclaration, ctx: &Ctx) -> c::CStatement {
+    let mut tforms: Vec<c::CForm> = Vec::new();
+    tforms.push(tr_form(&x.form, ctx));
+    let mut tvalues: Vec<Option<c::CExpression>> = Vec::new();
+    tvalues.push(x.value.as_ref().map(|x| tr_expr(&x, ctx)));
+    c::CStatement::VariableDeclaration {
+        type_name: tr_typename(&x.type_name, ctx),
+        forms: tforms,
+        values: tvalues,
+    }
+}
+
+fn tr_while(x: &nodes::While, ctx: &Ctx) -> c::CStatement {
+    let condition = &x.condition;
+    let body = &x.body;
+    c::CStatement::While {
+        condition: tr_expr(condition, ctx),
+        body: tr_body(body, ctx),
+    }
 }
 
 fn tr_switchstr_else(
@@ -615,12 +639,12 @@ fn tr_switchstr_else(
     switchval: &c::CExpression,
 ) -> Option<c::CBody> {
     if i == cases.len() {
-        return default.as_ref().map(|x| translate_body(x, ctx));
+        return default.as_ref().map(|x| tr_body(x, ctx));
     }
     let c = &cases[i];
     let e = c::CStatement::If {
         condition: tr_switchstr_cond(ctx, c, &switchval),
-        body: translate_body(&c.body, ctx),
+        body: tr_body(&c.body, ctx),
         else_body: tr_switchstr_else(cases, i + 1, default, ctx, switchval),
     };
     return Some(c::CBody {

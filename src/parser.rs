@@ -507,7 +507,7 @@ fn parse_literal(l: &mut Lexer) -> Result<Literal, Error> {
 
 fn parse_enum(l: &mut Lexer, is_pub: bool, ctx: &Ctx) -> Result<ModElem, Error> {
     let pos = l.peek().unwrap().pos.clone();
-    let mut members: Vec<EnumItem> = Vec::new();
+    let mut members: Vec<EnumEntry> = Vec::new();
     expect(l, "enum", Some("enum definition"))?;
     expect(l, "{", Some("enum definition"))?;
     loop {
@@ -518,7 +518,7 @@ fn parse_enum(l: &mut Lexer, is_pub: bool, ctx: &Ctx) -> Result<ModElem, Error> 
         } else {
             None
         };
-        members.push(EnumItem { id, value, pos });
+        members.push(EnumEntry { id, value, pos });
         if !l.eat(",") {
             break;
         }
@@ -628,10 +628,10 @@ fn parse_while(l: &mut Lexer, ctx: &Ctx) -> Result<TWithErrors<Statement>, Error
     expect(l, ")", None)?;
     let body = parse_statements_block(l, ctx)?;
     return Ok(TWithErrors {
-        obj: Statement::While {
+        obj: Statement::While(nodes::While {
             condition,
             body: body.obj,
-        },
+        }),
         errors: body.errors,
     });
 }
@@ -704,10 +704,10 @@ fn parse_panic(l: &mut Lexer, ctx: &Ctx) -> Result<Statement, Error> {
     }
     expect(l, ")", Some("panic"))?;
     expect(l, ";", Some("panic"))?;
-    return Ok(Statement::Panic {
+    return Ok(Statement::Panic(nodes::Panic {
         arguments,
         pos: format!("{}:{}", ctx.path, p.pos.fmt()),
-    });
+    }));
 }
 
 fn parse_variable_declaration(l: &mut Lexer, ctx: &Ctx) -> Result<Statement, Error> {
@@ -732,13 +732,13 @@ fn parse_return(l: &mut Lexer, ctx: &Ctx) -> Result<Statement, Error> {
     expect(l, "return", None)?;
     if l.peek().unwrap().kind == ";" {
         l.get();
-        return Ok(Statement::Return { expression: None });
+        return Ok(Statement::Return(nodes::Return { expression: None }));
     }
     let expression = parse_expr(l, 0, ctx)?;
     expect(l, ";", None)?;
-    return Ok(Statement::Return {
+    return Ok(Statement::Return(nodes::Return {
         expression: Some(expression),
-    });
+    }));
 }
 
 fn parse_form(l: &mut Lexer, ctx: &Ctx) -> Result<Form, Error> {
@@ -803,11 +803,11 @@ fn parse_if(lexer: &mut Lexer, ctx: &Ctx) -> Result<TWithErrors<Statement>, Erro
         else_body = Some(r.obj);
     }
     return Ok(TWithErrors {
-        obj: Statement::If {
+        obj: Statement::If(nodes::If {
             condition,
             body: body.obj,
             else_body,
-        },
+        }),
         errors,
     });
 }
@@ -853,12 +853,12 @@ fn parse_for(l: &mut Lexer, ctx: &Ctx) -> Result<TWithErrors<Statement>, Error> 
     let body = parse_statements_block(l, ctx)?;
 
     return Ok(TWithErrors {
-        obj: Statement::For {
+        obj: Statement::For(nodes::For {
             init,
             condition,
             action,
             body: body.obj,
-        },
+        }),
         errors: body.errors,
     });
 }
@@ -900,12 +900,12 @@ fn read_switch(l: &mut Lexer, ctx: &Ctx) -> Result<TWithErrors<Statement>, Error
     }
     expect(l, "}", None)?;
     return Ok(TWithErrors {
-        obj: Statement::Switch {
+        obj: Statement::Switch(nodes::Switch {
             is_str,
             value,
             cases,
             default_case: default,
-        },
+        }),
         errors,
     });
 }
