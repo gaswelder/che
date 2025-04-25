@@ -1,6 +1,6 @@
 use crate::nodes::*;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Exports {
     pub consts: Vec<EnumEntry>,
     pub fns: Vec<FunctionDeclaration>,

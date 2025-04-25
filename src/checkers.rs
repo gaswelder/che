@@ -1,9 +1,9 @@
 use crate::{
+    errors::Error,
     exports::Exports,
     format_che::format_expression,
     node_queries::{body_returns, expression_pos, has_function_call},
     nodes::*,
-    parser::Error,
     scopes::{find_var, get_module_scope, newscope, RootScope, Scope, ScopeItem1, VarInfo},
     types::{self, Type},
 };
@@ -11,22 +11,30 @@ use std::{collections::HashMap, env};
 
 const DUMP_TYPES: bool = false;
 
-struct State {
+struct VisitorState {
     errors: Vec<Error>,
     type_errors: Vec<Error>,
     root_scope: RootScope,
+    imports: HashMap<String, Exports>,
+    // scopestack: Vec<Scope>,
 }
 
 pub fn run(m: &Module, imports: &HashMap<String, &Exports>) -> Vec<Error> {
-    let mut state = State {
+    let mut imps = HashMap::new();
+    for (k, v) in imports.iter() {
+        imps.insert(k.clone(), (**v).clone());
+    }
+
+    let mut state = VisitorState {
         errors: Vec::new(),
         type_errors: Vec::new(),
         root_scope: get_module_scope(m),
+        imports: imps,
     };
     let mut scopestack: Vec<Scope> = Vec::new();
 
     for e in &m.elements {
-        check_module_object(e, &mut state, &mut scopestack, imports);
+        check_module_object(e, &mut state, &mut scopestack);
     }
 
     for (k, v) in &state.root_scope.imports {
@@ -86,12 +94,7 @@ pub fn run(m: &Module, imports: &HashMap<String, &Exports>) -> Vec<Error> {
     return state.errors;
 }
 
-fn check_module_object(
-    e: &ModElem,
-    state: &mut State,
-    scopestack: &mut Vec<Scope>,
-    imports: &HashMap<String, &Exports>,
-) {
+fn check_module_object(e: &ModElem, state: &mut VisitorState, scopestack: &mut Vec<Scope>) {
     match e {
         ModElem::Import(_) => {}
         ModElem::Macro { .. } => {}
@@ -99,14 +102,14 @@ fn check_module_object(
             for m in &x.members {
                 match &m.value {
                     Some(v) => {
-                        check_expr(v, state, scopestack, imports);
+                        check_expr(v, state, scopestack);
                     }
                     None => {}
                 }
             }
         }
         ModElem::Typedef(x) => {
-            check_ns_id(&x.type_name.name, state, scopestack, imports);
+            check_ns_id(&x.type_name.name, state, scopestack);
         }
         ModElem::StructAliasTypedef { .. } => {}
         ModElem::StructTypedef(x) => {
@@ -122,12 +125,12 @@ fn check_module_object(
                                 None => {}
                             }
                         }
-                        check_ns_id(&x.type_name.name, state, scopestack, imports);
+                        check_ns_id(&x.type_name.name, state, scopestack);
                         for f in &x.forms {
                             for i in &f.indexes {
                                 match i {
                                     Some(e) => {
-                                        check_expr(e, state, scopestack, imports);
+                                        check_expr(e, state, scopestack);
                                     }
                                     None => {}
                                 }
@@ -166,7 +169,7 @@ fn check_module_object(
             for i in &x.form.indexes {
                 match i {
                     Some(e) => {
-                        check_expr(e, state, scopestack, imports);
+                        check_expr(e, state, scopestack);
                     }
                     None => {}
                 }
@@ -178,20 +181,19 @@ fn check_module_object(
                     pos: x.pos.clone(),
                 })
             }
-            check_ns_id(&x.type_name.name, state, scopestack, imports);
-            check_expr(x.value.as_ref().unwrap(), state, scopestack, imports);
+            check_ns_id(&x.type_name.name, state, scopestack);
+            check_expr(x.value.as_ref().unwrap(), state, scopestack);
         }
         ModElem::FunctionDeclaration(f) => {
-            check_function_declaration(f, state, scopestack, imports);
+            check_function_declaration(f, state, scopestack);
         }
     }
 }
 
 fn check_function_declaration(
     f: &FunctionDeclaration,
-    state: &mut State,
+    state: &mut VisitorState,
     scopestack: &mut Vec<Scope>,
-    imports: &HashMap<String, &Exports>,
 ) {
     let tn = &f.type_name.name;
     if tn.namespace == "" {
@@ -203,7 +205,7 @@ fn check_function_declaration(
         }
     }
 
-    check_ns_id(&f.type_name.name, state, scopestack, imports);
+    check_ns_id(&f.type_name.name, state, scopestack);
 
     scopestack.push(newscope());
 
@@ -218,7 +220,7 @@ fn check_function_declaration(
                 }
             }
         }
-        check_ns_id(&tf.type_name.name, state, scopestack, imports);
+        check_ns_id(&tf.type_name.name, state, scopestack);
         for f in &tf.forms {
             let n = scopestack.len();
             scopestack[n - 1].vars.insert(
@@ -234,7 +236,7 @@ fn check_function_declaration(
             );
         }
     }
-    check_body(&f.body, state, scopestack, imports);
+    check_body(&f.body, state, scopestack);
     let s = scopestack.pop().unwrap();
     for (k, v) in s.vars {
         if !v.read {
@@ -253,19 +255,14 @@ fn check_function_declaration(
     }
 }
 
-fn check_body(
-    body: &Body,
-    state: &mut State,
-    scopestack: &mut Vec<Scope>,
-    imports: &HashMap<String, &Exports>,
-) {
+fn check_body(body: &Body, state: &mut VisitorState, scopestack: &mut Vec<Scope>) {
     scopestack.push(newscope());
     for s in &body.statements {
         match s {
             Statement::Break => {}
             Statement::Continue => {}
             Statement::Expression(e) => {
-                check_expr(e, state, scopestack, imports);
+                check_expr(e, state, scopestack);
             }
             Statement::For(x) => {
                 let init = &x.init;
@@ -281,8 +278,8 @@ fn check_body(
                             form,
                             value,
                         } => {
-                            check_ns_id(&type_name.name, state, scopestack, imports);
-                            check_expr(value, state, scopestack, imports);
+                            check_ns_id(&type_name.name, state, scopestack);
+                            check_expr(value, state, scopestack);
                             scopestack[n - 1].vars.insert(
                                 form.name.clone(),
                                 ScopeItem1 {
@@ -297,41 +294,41 @@ fn check_body(
                             );
                         }
                         ForInit::Expression(x) => {
-                            check_expr(x, state, scopestack, imports);
+                            check_expr(x, state, scopestack);
                         }
                     },
                     None => {}
                 }
                 match condition {
                     Some(condition) => {
-                        check_expr(condition, state, scopestack, imports);
+                        check_expr(condition, state, scopestack);
                     }
                     None => {}
                 }
                 match action {
                     Some(action) => {
-                        check_expr(action, state, scopestack, imports);
+                        check_expr(action, state, scopestack);
                     }
                     None => {}
                 }
-                check_body(body, state, scopestack, imports);
+                check_body(body, state, scopestack);
                 scopestack.pop();
             }
             Statement::If(x) => {
                 let condition = &x.condition;
                 let body = &x.body;
                 let else_body = &x.else_body;
-                check_expr(condition, state, scopestack, imports);
-                check_body(body, state, scopestack, imports);
+                check_expr(condition, state, scopestack);
+                check_body(body, state, scopestack);
                 if else_body.is_some() {
-                    check_body(else_body.as_ref().unwrap(), state, scopestack, imports);
+                    check_body(else_body.as_ref().unwrap(), state, scopestack);
                 }
             }
             Statement::Return(x) => {
                 let expression = &x.expression;
                 match expression {
                     Some(x) => {
-                        check_expr(&x, state, scopestack, imports);
+                        check_expr(&x, state, scopestack);
                     }
                     None => {}
                 }
@@ -340,20 +337,20 @@ fn check_body(
                 let value = &x.value;
                 let cases = &x.cases;
                 let default = &x.default_case;
-                check_expr(value, state, scopestack, imports);
+                check_expr(value, state, scopestack);
                 for c in cases {
                     for v in &c.values {
                         match v {
                             SwitchCaseValue::Identifier(x) => {
-                                check_ns_id(x, state, scopestack, imports);
+                                check_ns_id(x, state, scopestack);
                             }
                             SwitchCaseValue::Literal(_) => {}
                         }
                     }
-                    check_body(&c.body, state, scopestack, imports);
+                    check_body(&c.body, state, scopestack);
                 }
                 if default.is_some() {
-                    check_body(default.as_ref().unwrap(), state, scopestack, imports);
+                    check_body(default.as_ref().unwrap(), state, scopestack);
                 }
             }
             Statement::VariableDeclaration(x) => {
@@ -373,13 +370,13 @@ fn check_body(
                 for i in &x.form.indexes {
                     match i {
                         Some(e) => {
-                            check_expr(e, state, scopestack, imports);
+                            check_expr(e, state, scopestack);
                         }
                         None => {}
                     }
                 }
 
-                check_ns_id(&x.type_name.name, state, scopestack, imports);
+                check_ns_id(&x.type_name.name, state, scopestack);
                 let n = scopestack.len();
                 if x.value.is_some() {
                     scopestack[n - 1].vars.insert(
@@ -393,7 +390,7 @@ fn check_body(
                             },
                         },
                     );
-                    check_expr(x.value.as_ref().unwrap(), state, scopestack, imports);
+                    check_expr(x.value.as_ref().unwrap(), state, scopestack);
                 } else {
                     scopestack[n - 1].vars.insert(
                         x.form.name.clone(),
@@ -411,8 +408,8 @@ fn check_body(
             Statement::While(x) => {
                 let condition = &x.condition;
                 let body = &x.body;
-                check_expr(condition, state, scopestack, imports);
-                check_body(body, state, scopestack, imports);
+                check_expr(condition, state, scopestack);
+                check_body(body, state, scopestack);
             }
         }
     }
@@ -427,12 +424,7 @@ fn check_body(
     }
 }
 
-fn check_expr(
-    e: &Expression,
-    state: &mut State,
-    scopes: &mut Vec<Scope>,
-    imports: &HashMap<String, &Exports>,
-) -> Type {
+fn check_expr(e: &Expression, state: &mut VisitorState, scopes: &mut Vec<Scope>) -> Type {
     match e {
         Expression::Literal(x) => match x {
             Literal::Char(_) => Type::Bytes(types::Bytes {
@@ -478,14 +470,14 @@ fn check_expr(
             }
         }
         Expression::NsName(x) => {
-            check_ns_id(x, state, scopes, imports);
+            check_ns_id(x, state, scopes);
             Type::Unknown
         }
         Expression::ArrayIndex(x) => {
             let array = &x.array;
             let index = &x.index;
-            let t1 = check_expr(array, state, scopes, imports);
-            check_expr(index, state, scopes, imports);
+            let t1 = check_expr(array, state, scopes);
+            check_expr(index, state, scopes);
             match types::deref(t1) {
                 Ok(r) => r,
                 Err(err) => {
@@ -500,8 +492,8 @@ fn check_expr(
         Expression::BinaryOp(x) => {
             let a = &x.a;
             let b = &x.b;
-            let t1 = check_expr(a, state, scopes, imports);
-            let t2 = check_expr(b, state, scopes, imports);
+            let t1 = check_expr(a, state, scopes);
+            let t2 = check_expr(b, state, scopes);
             match types::sum(t1, t2) {
                 Ok(r) => r,
                 Err(err) => {
@@ -517,7 +509,7 @@ fn check_expr(
             let op = &x.op;
             let target = &x.target;
             let field_name = &x.field_name;
-            let stype = check_expr(target, state, scopes, imports);
+            let stype = check_expr(target, state, scopes);
             if DUMP_TYPES {
                 println!("typeof {} = {}", format_expression(target), stype.fmt());
             }
@@ -535,8 +527,8 @@ fn check_expr(
         Expression::Cast(x) => {
             let type_name = &x.type_name;
             let operand = &x.operand;
-            check_ns_id(&type_name.type_name.name, state, scopes, imports);
-            check_expr(operand, state, scopes, imports);
+            check_ns_id(&type_name.type_name.name, state, scopes);
+            check_expr(operand, state, scopes);
             match types::get_type(&type_name.type_name, &state.root_scope) {
                 Ok(r) => r,
                 Err(err) => {
@@ -550,7 +542,7 @@ fn check_expr(
         }
         Expression::CompositeLiteral(x) => {
             for e in &x.entries {
-                check_expr(&e.value, state, scopes, imports);
+                check_expr(&e.value, state, scopes);
             }
             Type::Unknown
         }
@@ -593,16 +585,16 @@ fn check_expr(
                 },
                 _ => {}
             }
-            let rettype = check_expr(function, state, scopes, imports);
+            let rettype = check_expr(function, state, scopes);
             for x in arguments {
-                check_expr(x, state, scopes, imports);
+                check_expr(x, state, scopes);
             }
             return rettype;
         }
         Expression::PostfixOperator(x) => {
             let operand = &x.operand;
             let operator = &x.operator;
-            let t = check_expr(operand, state, scopes, imports);
+            let t = check_expr(operand, state, scopes);
             match operator.as_str() {
                 "++" | "--" => t,
                 _ => {
@@ -614,7 +606,7 @@ fn check_expr(
         Expression::PrefixOperator(x) => {
             let operand = &x.operand;
             let operator = &x.operator;
-            let t = check_expr(operand, state, scopes, imports);
+            let t = check_expr(operand, state, scopes);
             match operator.as_str() {
                 "++" | "--" => t,
                 "!" | "-" | "~" => t,
@@ -642,7 +634,7 @@ fn check_expr(
                     //
                 }
                 SizeofArgument::Expression(x) => {
-                    check_expr(&x, state, scopes, imports);
+                    check_expr(&x, state, scopes);
                 }
             }
             Type::Bytes(types::Bytes {
@@ -653,12 +645,7 @@ fn check_expr(
     }
 }
 
-fn check_ns_id(
-    x: &NsName,
-    state: &mut State,
-    scopes: &mut Vec<Scope>,
-    imports: &HashMap<String, &Exports>,
-) {
+fn check_ns_id(x: &NsName, state: &mut VisitorState, scopes: &mut Vec<Scope>) {
     match x.namespace.as_str() {
         "OS" => {}
         "" => {
@@ -710,7 +697,7 @@ fn check_ns_id(
                 }
                 None => {}
             }
-            let e = imports.get(&x.namespace).unwrap();
+            let e = state.imports.get(&x.namespace).unwrap();
             for f in &e.fns {
                 if f.form.name == x.name {
                     return;
@@ -732,7 +719,7 @@ fn check_ns_id(
     }
 }
 
-fn check_id(x: &Identifier, state: &mut State, scopes: &mut Vec<Scope>) {
+fn check_id(x: &Identifier, state: &mut VisitorState, scopes: &mut Vec<Scope>) {
     let k = x.name.as_str();
     let n = scopes.len();
     for i in 0..n {

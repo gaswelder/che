@@ -24,6 +24,7 @@ mod types;
 use std::env;
 use std::process::exit;
 use std::string::String;
+mod errors;
 
 fn main() {
     let args: Vec<String> = env::args().collect();

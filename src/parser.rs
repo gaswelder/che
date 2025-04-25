@@ -1,18 +1,9 @@
 use crate::buf::Pos;
 use crate::build::Ctx;
+use crate::errors::{Error, TWithErrors};
 use crate::lexer::{Lexer, Token};
 use crate::nodes;
 use crate::{cspec, nodes::*};
-
-pub struct Error {
-    pub message: String,
-    pub pos: Pos,
-}
-
-struct TWithErrors<T> {
-    obj: T,
-    errors: Vec<Error>,
-}
 
 pub fn parse_module(l: &mut Lexer, ctx: &Ctx) -> Result<Module, Vec<Error>> {
     let mut module_objects: Vec<ModElem> = vec![];
