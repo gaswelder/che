@@ -1,4 +1,4 @@
-use crate::build::{self, Build};
+use crate::build::{self, Project};
 use std::string::String;
 
 pub fn run(argv: &[String]) -> i32 {
@@ -7,9 +7,9 @@ pub fn run(argv: &[String]) -> i32 {
         return 1;
     }
     let path = &argv[0];
-    match build::parse(path) {
+    match build::parse_project(path) {
         Ok(build) => {
-            let pos = build.paths.len();
+            let pos = build.modheads.len();
             let mut p = Printer {
                 indent: 0,
                 first_line: true,
@@ -34,10 +34,10 @@ struct Printer {
 impl Printer {
     fn writeline(&mut self, s: &String) {
         for _ in 0..self.indent {
-            print!(" ");
+            print!("  ");
         }
         if self.indent > 0 && self.first_line {
-            print!("{}", if self.first_line { " └" } else { " ├" });
+            print!("{}", if self.first_line { "- " } else { "- " });
         }
         println!("{}", s);
         self.first_line = false;
@@ -52,12 +52,16 @@ impl Printer {
     }
 }
 
-fn render_tree(p: &mut Printer, build: &Build, pos: usize) {
-    let path = &build.paths[pos];
+fn render_tree(p: &mut Printer, build: &Project, pos: usize) {
+    let path = &build.modheads[pos].filepath;
     p.writeline(path);
     p.indent();
-    for imp in &build.imports[pos] {
-        let deppos = build.paths.iter().position(|x| *x == imp.path).unwrap();
+    for imp in &build.modheads[pos].imports {
+        let deppos = build
+            .modheads
+            .iter()
+            .position(|x| x.filepath == imp.path)
+            .unwrap();
         render_tree(p, build, deppos);
     }
     p.unindent();

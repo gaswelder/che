@@ -1,22 +1,24 @@
 use crate::lexer::{self, Lexer, Token};
-use crate::resolve;
-
-#[derive(Debug)]
-pub struct Preparse {
-    pub imports: Vec<Import>,
-    pub typenames: Vec<String>,
-}
+use crate::resolve::{self, ModuleRef};
 
 #[derive(Debug, Clone)]
-pub struct Import {
-    pub ns: String,
-    pub path: String,
-    // pub specified_path: String,
+pub struct ModuleInfo {
+    // References to other modules that this module contains.
+    pub imports: Vec<ModuleRef>,
+
+    // Types that this module declares,
+    // both exported and non-exported.
+    pub typedefs: Vec<String>,
+
+    // Path where this module is located.
+    pub filepath: String,
+
+    pub uniqid: String,
 }
 
-pub fn preparse(path: &String) -> Result<Preparse, String> {
+pub fn preparse(path: &String) -> Result<ModuleInfo, String> {
     let mut typenames: Vec<String> = vec![];
-    let mut imports: Vec<Import> = Vec::new();
+    let mut imports: Vec<ModuleRef> = Vec::new();
     let mut l = lexer::for_file(path)?;
     loop {
         match l.get() {
@@ -27,20 +29,16 @@ pub fn preparse(path: &String) -> Result<Preparse, String> {
                 }
                 "import" => {
                     let res = resolve::resolve_import(path, &t.content)?;
-                    imports.push(Import {
-                        ns: res.ns,
-                        path: res.path,
-                        // specified_path: t.content.clone(),
-                    });
+                    imports.push(res);
                 }
                 "typedef" => {
                     // When a 'typedef' is encountered, look ahead to find the type name.
                     typenames.push(get_typename(&mut l)?);
                 }
                 _ => {
-                    // The special #type hint tells for a fact that a type name exists
-                    // without defining it. It's used in modules that interface with the
-                    // OS headers.
+                    // The special #type hint declares that a type name exists
+                    // without defining it. These hints are needed in modules
+                    // that interface with the OS headers.
                     if t.kind == "macro" && t.content.starts_with("#type") {
                         let name = t.content[6..].trim().to_string();
                         typenames.push(name);
@@ -49,7 +47,15 @@ pub fn preparse(path: &String) -> Result<Preparse, String> {
             },
         }
     }
-    return Ok(Preparse { imports, typenames });
+    return Ok(ModuleInfo {
+        imports,
+        typedefs: typenames,
+        filepath: path.clone(),
+        uniqid: format!(
+            "ns_{}",
+            path.replace("/", "_").replace(".", "_").replace("-", "_")
+        ),
+    });
 }
 
 fn get_typename(lexer: &mut Lexer) -> Result<String, String> {

@@ -21,8 +21,8 @@ pub fn format_expression(expr: &Expression) -> String {
         }
         Expression::NsName(n) => format!("{}.{}", &n.namespace, &n.name),
         Expression::FunctionCall(x) => {
-            let arguments = &x.arguments;
-            let function = &x.function;
+            let arguments = &x.args;
+            let function = &x.func;
             let mut s1 = String::from("(");
             for (i, argument) in arguments.iter().enumerate() {
                 if i > 0 {
@@ -65,8 +65,8 @@ pub fn format_expression(expr: &Expression) -> String {
         Expression::Sizeof(x) => {
             let argument = &x.argument;
             let arg = match &**argument {
-                SizeofArgument::Typename(x) => fmt_typename(&x),
-                SizeofArgument::Expression(x) => format_expression(&x),
+                SizeofArg::Typename(x) => fmt_typename(&x),
+                SizeofArg::Expr(x) => format_expression(&x),
             };
             return format!("sizeof({})", arg);
         }

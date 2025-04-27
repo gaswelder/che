@@ -1,13 +1,11 @@
 use crate::c;
-use crate::checkers;
-use crate::cspec;
-use crate::exports::get_exports;
+use crate::errors::BuildError;
 use crate::format_c;
 use crate::lexer;
 use crate::nodes::Module;
 use crate::parser;
 use crate::preparser;
-use crate::preparser::Import;
+use crate::preparser::ModuleInfo;
 use crate::rename;
 use crate::resolve;
 use crate::translator;
@@ -18,39 +16,11 @@ use std::fs;
 use std::io::BufRead;
 use std::process::{Command, Stdio};
 
-#[derive(Clone, Debug)]
-pub struct Ctx {
-    pub path: String,
-    pub typenames: Vec<String>,
-    pub deps: Vec<Dep>,
-}
-
-impl Ctx {
-    pub fn has_ns(&self, ns: &String) -> bool {
-        for dep in &self.deps {
-            if dep.ns == *ns {
-                return true;
-            }
-        }
-        return false;
-    }
-}
-
-#[derive(Clone, Debug)]
-pub struct Dep {
-    pub ns: String,
-    pub typenames: Vec<String>,
-    pub path: String,
-}
-
 #[derive(Debug)]
-pub struct Build {
-    pub paths: Vec<String>,
-    pub typenames: Vec<Vec<String>>,
-    pub imports: Vec<Vec<Import>>,
-    pub ctx: Vec<Ctx>,
-    pub m: Vec<Module>,
-    pub c: Vec<c::CModule>,
+pub struct Project {
+    pub modheads: Vec<ModuleInfo>,
+    pub modules: Vec<Module>,
+    pub cmodules: Vec<c::CModule>,
 }
 
 pub struct PathId {
@@ -65,16 +35,17 @@ pub fn build_prog(source_path: &String, output_name: &String) -> Result<(), Vec<
         fs::create_dir(&tmp_dir_path).unwrap();
     }
 
-    let mut work = parse(source_path)?;
-    translate(&mut work);
-    let pathsmap = write_c99(&work, &tmp_dir_path).unwrap();
+    let proj = parse_project(source_path)?;
+
+    // translate(&mut proj).map_err(|e| vec![e])?;
+    let pathsmap = write_c99(&proj, &tmp_dir_path).unwrap();
 
     // Determine the list of OS libraries to link. "m" is the library for code
     // in included <math.h>. For simplicity both the header and the library are
     // always included.
     // Other libraries are simply taked from the #link hints in the source code.
     let mut link: Vec<String> = vec!["m".to_string()];
-    for c in work.c {
+    for c in proj.cmodules {
         for l in &c.link {
             if link.iter().position(|x| x == l).is_none() {
                 link.push(l.clone());
@@ -122,87 +93,51 @@ pub fn build_prog(source_path: &String, output_name: &String) -> Result<(), Vec<
     }]);
 }
 
-pub struct BuildError {
-    pub path: String,
-    pub pos: String,
-    pub message: String,
-}
+fn load_tree(mainpath: &String) -> Result<Vec<ModuleInfo>, String> {
+    // Cache of loaded module heads by path.
+    let mut heads = HashMap::new();
 
-pub fn parse(mainpath: &String) -> Result<Build, Vec<BuildError>> {
-    let mut work = Build {
-        paths: Vec::new(),
-        typenames: Vec::new(),
-        imports: Vec::new(),
-        ctx: Vec::new(),
-        m: Vec::new(),
-        c: Vec::new(),
-    };
-
-    // Load pre-parsed modules in their dependency order.
-    let mut preps = HashMap::new();
     let mut i = 0;
-    let mut deppath: Vec<String> = vec![mainpath.clone()];
-    while i < deppath.len() {
-        let p = &deppath[i];
-        if !preps.contains_key(p) {
-            let prep = preparser::preparse(p).map_err(|message| {
-                vec![BuildError {
-                    message,
-                    pos: "".to_string(),
-                    path: p.clone(),
-                }]
-            })?;
-            preps.insert(p.clone(), prep);
+    let mut paths: Vec<String> = vec![mainpath.clone()];
+    while i < paths.len() {
+        // Load this module's meta, if not loaded yet.
+        let p = &paths[i];
+        if !heads.contains_key(p) {
+            heads.insert(p.clone(), preparser::preparse(p)?);
         }
-        let prep = preps.get(p).unwrap();
-        for imp in &prep.imports {
-            deppath.push(imp.path.clone());
+
+        //
+        let m = heads.get(p).unwrap();
+        for imp in &m.imports {
+            paths.push(imp.path.clone());
         }
         i += 1;
     }
-    deppath.reverse();
+    paths.reverse();
 
-    // Load the resolved dependencies into the build in reverse order,
-    // skipping duplicates on the way. This basically achieves topological
-    // ordering of the dependencies.
-    for p in deppath {
-        if work.paths.contains(&p) {
+    let mut result: Vec<ModuleInfo> = Vec::new();
+    let mut seen = HashSet::new();
+    for p in paths {
+        if seen.contains(&p) {
             continue;
         }
-        let prep = preps.get(&p).unwrap();
-        work.paths.push(p);
-        work.typenames.push(prep.typenames.clone());
-        work.imports.push(prep.imports.clone());
+        seen.insert(p.clone());
+        let m = heads.get(&p).unwrap();
+        result.push((*m).clone());
     }
+    return Ok(result);
+}
 
-    for (i, path) in work.paths.iter().enumerate() {
-        let mut deps: Vec<Dep> = Vec::new();
-        for imp in &work.imports[i] {
-            let pos = work.paths.iter().position(|x| *x == imp.path).unwrap();
-            deps.push(Dep {
-                ns: imp.ns.clone(),
-                typenames: work.typenames[pos].clone(),
-                path: imp.path.clone(),
-            });
-        }
-        // Add a fake dep for OS calls.
-        deps.push(Dep {
-            ns: String::from("OS"),
-            typenames: Vec::new(),
-            path: String::from(""),
-        });
-        work.ctx.push(Ctx {
-            typenames: work.typenames[i].clone(),
-            path: path.clone(),
-            deps,
-        });
-    }
-
-    // Parse each item.
-    for (i, path) in work.paths.iter().enumerate() {
+fn parse_mods(modheads: &Vec<ModuleInfo>) -> Result<Vec<Module>, Vec<BuildError>> {
+    let mut modules = Vec::new();
+    for m in modheads {
+        let ctx = parser::ParseCtx {
+            thismod: m.clone(),
+            allmods: modheads.clone(),
+        };
+        let path = &m.filepath;
         let mut l = lexer::for_file(&path).unwrap();
-        let ctx = &work.ctx[i];
-        let m = parser::parse_module(&mut l, ctx).map_err(|errors| {
+        modules.push(parser::parse_module(&mut l, &ctx).map_err(|errors| {
             let mut ee = Vec::new();
             for err in errors {
                 ee.push(BuildError {
@@ -212,125 +147,80 @@ pub fn parse(mainpath: &String) -> Result<Build, Vec<BuildError>> {
                 })
             }
             ee
-        })?;
-        work.m.push(m);
+        })?);
     }
-
-    //
-    // Dome some checks.
-    //
-
-    // path -> exports map
-    let mut exports_by_path = HashMap::new();
-    for (i, m) in work.m.iter().enumerate() {
-        let path = &work.paths[i];
-        exports_by_path.insert(path, get_exports(m));
-    }
-
-    let mut errors: Vec<BuildError> = Vec::new();
-    for (i, m) in work.m.iter().enumerate() {
-        // Make a map namespace->exports for this module's imports.
-        // The checkers will do lookups based on namespace part on identifiers.
-        let mut dependencies = HashMap::new();
-        for imp in &work.imports[i] {
-            dependencies.insert(imp.ns.clone(), exports_by_path.get(&imp.path).unwrap());
-        }
-        for err in checkers::run(m, &dependencies) {
-            errors.push(BuildError {
-                message: err.message,
-                path: work.paths[i].clone(),
-                pos: err.pos.fmt(),
-            });
-        }
-    }
-    if errors.len() > 0 {
-        return Err(errors);
-    }
-    return Ok(work);
+    Ok(modules)
 }
 
-pub fn translate(work: &mut Build) {
+// Parses the full project starting with the file at mainpath
+// and including and parsing all its dependencies.
+pub fn parse_project(mainpath: &String) -> Result<Project, Vec<BuildError>> {
+    //
+    // // todo check for loops
+    //
+
+    let modheads = load_tree(mainpath).map_err(|err| {
+        vec![BuildError {
+            message: err,
+            path: String::new(),
+            pos: String::new(),
+        }]
+    })?;
+
+    let modules = parse_mods(&modheads)?;
+    let cmodules = translate_mods(modules.clone(), &modheads).map_err(|e| vec![e])?;
+    Ok(Project {
+        modheads,
+        modules,
+        cmodules,
+    })
+}
+
+fn translate_mods(
+    mut mods: Vec<Module>,
+    modmetas: &Vec<ModuleInfo>,
+) -> Result<Vec<c::CModule>, BuildError> {
+    let n = mods.len();
+
     // Globalize all modules
-    for (i, m) in work.m.iter_mut().enumerate() {
-        let path = &work.paths[i];
-        rename::prefix_module(m, &translator::module_gid(path));
+    for i in 0..n {
+        rename::prefix_module(&mut mods[i], &modmetas[i].uniqid);
     }
 
-    // Translate each node.
-    for (i, m) in work.m.iter().enumerate() {
-        let mut cnodes: Vec<c::ModElem> = Vec::new();
+    // let mut exports = Vec::new();
+    // for i in 0..n {
+    //     exports.push(get_exports(&mods[i]));
+    // }
 
-        // A hack to make os libs build on Linux.
-        cnodes.push(c::ModElem::Macro(c::Macro {
-            name: "define".to_string(),
-            value: "_XOPEN_SOURCE 700".to_string(),
-        }));
-
-        // Include all standard C library.
-        for n in cspec::CLIBS {
-            cnodes.push(c::ModElem::Include(format!("<{}.h>", n)));
-        }
-        // Include custom utils
-        cnodes.push(c::ModElem::Macro(c::Macro {
-            name: "define".to_string(),
-            value: "nelem(x) (sizeof (x)/sizeof (x)[0])".to_string(),
-        }));
-
-        let node_imports = &work.imports[i];
-        let mut present = HashSet::new();
-        for imp in node_imports {
-            let pos = work.paths.iter().position(|x| *x == imp.path).unwrap();
-            let cmodule = &work.c[pos];
-            for obj in translator::get_module_synopsis(&cmodule) {
-                // This naive synopsis generation produces duplicates when
-                // a module encounters another module in dependencies more than
-                // once.
-                let id = match &obj {
-                    c::ModElem::DefEnum(x) => {
-                        let mut names: Vec<String> = Vec::new();
-                        for m in x.members.clone() {
-                            names.push(m.id.clone());
-                        }
-                        format!("enum-{}", names.join(","))
-                    }
-                    c::ModElem::DefType(x) => x.form.alias.clone(),
-                    c::ModElem::DefStruct(x) => x.name.clone(),
-                    c::ModElem::Include(x) => x.clone(),
-                    c::ModElem::Macro(x) => x.value.clone(),
-                    c::ModElem::ForwardStruct(x) => x.clone(),
-                    c::ModElem::DeclVar(_) => String::new(), // We shouldn't see module variables here, they are unexportable.
-                    c::ModElem::ForwardFunc(x) => x.form.name.clone(),
-                    c::ModElem::DefFunc(_) => String::new(), // Shouldn't see functions here.
-                };
-                if present.contains(&id) {
-                    continue;
-                }
-                present.insert(id);
-                cnodes.push(obj)
-            }
-        }
-        let ctx = &work.ctx[i];
-        let mut c = translator::translate(m, ctx);
-        for e in c.elements {
-            cnodes.push(e);
-        }
-        c.elements = cnodes;
-        work.c.push(c);
+    let mut cmods = Vec::new();
+    for i in 0..n {
+        let ctx = translator::TrParams {
+            cmods: cmods.clone(),
+            all_mod_heads: modmetas.clone(),
+            this_mod_head: modmetas[i].clone(),
+            mods: mods.clone(),
+        };
+        cmods.push(translator::translate(&mods[i], &ctx)?);
     }
+    Ok(cmods)
 }
 
-pub fn write_c99(work: &Build, dirpath: &String) -> Result<Vec<PathId>, String> {
+pub fn write_c99(work: &Project, dirpath: &String) -> Result<Vec<PathId>, String> {
     // Write the generated C source files in the temp directory and build the
     // mapping of the generated C file path to the original source file path,
     // that will be used to trace C compiler's errors at least to the original
     // files.
     let mut paths: Vec<PathId> = Vec::new();
-    for (i, cm) in work.c.iter().enumerate() {
+    for (i, cm) in work.cmodules.iter().enumerate() {
         let src = format_c::format_module(&cm);
-        let path = format!("{}/{:x}.c", dirpath, md5::compute(&work.paths[i]));
+        let path = format!(
+            "{}/{:x}.c",
+            dirpath,
+            md5::compute(&work.modheads[i].filepath)
+        );
         paths.push(PathId {
             path: String::from(&path),
-            id: String::from(&work.paths[i]),
+            id: String::from(&work.modheads[i].filepath),
         });
         fs::write(&path, &src).unwrap();
     }

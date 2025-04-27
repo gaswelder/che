@@ -27,7 +27,7 @@ pub fn format_module(cm: &CModule) -> String {
 
 fn fmt_enumdef(x: &c::EnumDef) -> String {
     let mut s1 = String::from("enum {\n");
-    for (i, member) in x.members.iter().enumerate() {
+    for (i, member) in x.entries.iter().enumerate() {
         if i > 0 {
             s1 += ",\n";
         }
@@ -73,7 +73,7 @@ pub fn format_type(t: &Typename) -> String {
     return format!("{}{}", if t.is_const { "const " } else { "" }, t.name);
 }
 
-pub fn format_form(node: &CForm) -> String {
+pub fn format_form(node: &Form) -> String {
     let mut s = String::new();
     s += &node.stars;
     s += &node.name;
@@ -86,18 +86,18 @@ pub fn format_form(node: &CForm) -> String {
     return s;
 }
 
-fn format_expression(expr: &CExpression) -> String {
+fn format_expression(expr: &Expr) -> String {
     match expr {
-        CExpression::Cast { type_name, operand } => {
+        Expr::Cast { type_name, operand } => {
             return format!(
                 "({})({})",
                 format_anonymous_typeform(&type_name),
                 format_expression(&operand)
             );
         }
-        CExpression::FunctionCall {
-            function,
-            arguments,
+        Expr::Call {
+            func: function,
+            args: arguments,
         } => {
             let mut s1 = String::from("(");
             for (i, argument) in arguments.iter().enumerate() {
@@ -109,9 +109,9 @@ fn format_expression(expr: &CExpression) -> String {
             s1 += ")";
             return format!("{}{}", format_expression(&function), s1);
         }
-        CExpression::Literal(x) => format_literal(x),
-        CExpression::Identifier(x) => x.clone(),
-        CExpression::CompositeLiteral(CCompositeLiteral { entries }) => {
+        Expr::Literal(x) => format_literal(x),
+        Expr::Ident(x) => x.clone(),
+        Expr::CompositeLiteral(CCompositeLiteral { entries }) => {
             if entries.len() == 0 {
                 // Print {0} to avoid "ISO C forbids empty initializers".
                 return String::from("{0}");
@@ -122,7 +122,7 @@ fn format_expression(expr: &CExpression) -> String {
                     s += ",\n";
                 }
                 s += "\t";
-                let v = format_expression(&e.value);
+                let v = format_expression(&e.val);
                 match &e.key {
                     Some(expr) => {
                         let k = format_expression(expr);
@@ -138,14 +138,14 @@ fn format_expression(expr: &CExpression) -> String {
             s += "\n}";
             return s;
         }
-        CExpression::Sizeof { argument } => {
+        Expr::Sizeof { arg: argument } => {
             let arg = match &**argument {
-                CSizeofArgument::Typename(x) => format_type(&x),
-                CSizeofArgument::Expression(x) => format_expression(&x),
+                SizeofArg::Typename(x) => format_type(&x),
+                SizeofArg::Expression(x) => format_expression(&x),
             };
             return format!("sizeof({})", arg);
         }
-        CExpression::FieldAccess {
+        Expr::FieldAccess {
             op,
             target,
             field_name,
@@ -160,8 +160,8 @@ fn format_expression(expr: &CExpression) -> String {
             }
             return format!("{}{}{}", format_expression(target), op, field_name);
         }
-        CExpression::BinaryOp(x) => format_binary_op(&x),
-        CExpression::PrefixOperator { operator, operand } => {
+        Expr::BinaryOp(x) => format_binary_op(&x),
+        Expr::PrefixOp { operator, operand } => {
             let expr = &**operand;
             match is_binary_op(expr) {
                 Some(op) => {
@@ -173,10 +173,10 @@ fn format_expression(expr: &CExpression) -> String {
                 None => {}
             }
             return match expr {
-                CExpression::BinaryOp(x) => {
+                Expr::BinaryOp(x) => {
                     format!("{}({})", operator, format_binary_op(&x))
                 }
-                CExpression::Cast { type_name, operand } => format!(
+                Expr::Cast { type_name, operand } => format!(
                     "{}{}",
                     operator,
                     format!(
@@ -188,10 +188,10 @@ fn format_expression(expr: &CExpression) -> String {
                 _ => format!("{}{}", operator, format_expression(&operand)),
             };
         }
-        CExpression::PostfixOperator { operator, operand } => {
+        Expr::PostfixOp { operator, operand } => {
             return format_expression(&operand) + &operator;
         }
-        CExpression::ArrayIndex { array, index } => {
+        Expr::ArrayIndex { array, index } => {
             return format!("{}[{}]", format_expression(array), format_expression(index));
         }
     }
@@ -220,18 +220,18 @@ fn format_anonymous_parameters(params: &CAnonymousParameters) -> String {
     return s;
 }
 
-fn is_binary_op(a: &CExpression) -> Option<&String> {
+fn is_binary_op(a: &Expr) -> Option<&String> {
     match a {
-        CExpression::BinaryOp(x) => Some(&x.op),
+        Expr::BinaryOp(x) => Some(&x.op),
         _ => None,
     }
 }
 
-fn is_op(e: &CExpression) -> Option<String> {
+fn is_op(e: &Expr) -> Option<String> {
     match e {
-        CExpression::BinaryOp(x) => Some(String::from(&x.op)),
-        CExpression::PostfixOperator { .. } => Some(String::from("prefix")),
-        CExpression::PrefixOperator { .. } => Some(String::from("prefix")),
+        Expr::BinaryOp(x) => Some(String::from(&x.op)),
+        Expr::PostfixOp { .. } => Some(String::from("prefix")),
+        Expr::PrefixOp { .. } => Some(String::from("prefix")),
         _ => None,
     }
 }
@@ -321,7 +321,7 @@ pub fn format_compat_struct_definition(x: &c::StructDef) -> String {
     );
 }
 
-fn format_enum_member(node: &CEnumItem) -> String {
+fn format_enum_member(node: &EnumEntry) -> String {
     let mut s = node.id.clone();
     if node.value.is_some() {
         s += " = ";
@@ -331,15 +331,15 @@ fn format_enum_member(node: &CEnumItem) -> String {
 }
 
 fn format_for(
-    init: &Option<CForInit>,
-    condition: &Option<CExpression>,
-    action: &Option<CExpression>,
+    init: &Option<ForInit>,
+    condition: &Option<Expr>,
+    action: &Option<Expr>,
     body: &CBody,
 ) -> String {
     let init = match init {
         Some(init) => match init {
-            CForInit::Expression(x) => format_expression(&x),
-            CForInit::LoopCounterDeclaration(x) => fmt_vardecl(&x),
+            ForInit::Expr(x) => format_expression(&x),
+            ForInit::DeclLoopCounter(x) => fmt_vardecl(&x),
         },
         None => String::from(""),
     };
@@ -360,7 +360,7 @@ fn format_for(
     );
 }
 
-fn fmt_vardecl(x: &c::VarDecl) -> String {
+fn fmt_vardecl(x: &c::DeclVar) -> String {
     format!(
         "{} {} = {}",
         format_type(&x.type_name),
@@ -369,7 +369,7 @@ fn fmt_vardecl(x: &c::VarDecl) -> String {
     )
 }
 
-fn format_compat_function_parameters(parameters: &CompatFunctionParameters) -> String {
+fn format_compat_function_parameters(parameters: &FuncParams) -> String {
     let mut s = String::from("(");
     for (i, parameter) in parameters.list.iter().enumerate() {
         if i > 0 {
@@ -404,14 +404,14 @@ fn format_literal(node: &CLiteral) -> String {
     }
 }
 
-fn format_statement(node: &CStatement) -> String {
+fn format_statement(node: &Statement) -> String {
     match node {
-        CStatement::Block { statements } => format_body(&CBody {
+        Statement::Block { statements } => format_body(&CBody {
             statements: statements.clone(),
         }),
-        CStatement::Break => format!("break;"),
-        CStatement::Continue => format!("continue;"),
-        CStatement::VariableDeclaration {
+        Statement::Break => format!("break;"),
+        Statement::Continue => format!("continue;"),
+        Statement::VariableDeclaration {
             type_name,
             forms,
             values,
@@ -433,7 +433,7 @@ fn format_statement(node: &CStatement) -> String {
             }
             return s + ";";
         }
-        CStatement::If {
+        Statement::If {
             condition,
             body,
             else_body,
@@ -448,27 +448,30 @@ fn format_statement(node: &CStatement) -> String {
             }
             return s;
         }
-        CStatement::For {
+        Statement::For {
             init,
             condition,
             action,
             body,
         } => format_for(init, condition, action, body),
-        CStatement::While { condition, body } => {
+        Statement::While {
+            cond: condition,
+            body,
+        } => {
             return format!(
                 "while ({}) {}",
                 format_expression(condition),
                 format_body(body)
             );
         }
-        CStatement::Return { expression } => {
+        Statement::Return { expression } => {
             return match expression {
                 None => String::from("return;"),
                 Some(x) => format!("return {}", format_expression(&x)),
             } + ";";
         }
-        CStatement::Switch(x) => fmt_switch(&x),
-        CStatement::Expression(x) => format_expression(&x) + ";",
+        Statement::Switch(x) => fmt_switch(&x),
+        Statement::Expression(x) => format_expression(&x) + ";",
     }
 }
 
@@ -480,7 +483,7 @@ fn fmt_switch(x: &c::Switch) -> String {
     for case in cases {
         for v in &case.values {
             let valstring = match v {
-                CSwitchCaseValue::Identifier(x) => x.clone(),
+                CSwitchCaseValue::Ident(x) => x.clone(),
                 CSwitchCaseValue::Literal(x) => format_literal(&x),
             };
             s += &format!("case {}:\n", valstring);

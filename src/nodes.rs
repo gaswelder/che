@@ -3,19 +3,33 @@ use crate::buf::Pos;
 #[derive(Debug, Clone)]
 pub struct Module {
     pub elements: Vec<ModElem>,
+    pub exports: Exports,
+}
+
+#[derive(Debug, Clone)]
+pub struct Exports {
+    pub consts: Vec<EnumEntry>,
+    pub fns: Vec<DeclFunc>,
+    pub types: Vec<String>,
+    // pub structs: Vec<StructTypedef>,
+}
+
+pub fn exports_has(e: &Exports, name: &str) -> bool {
+    e.consts.iter().any(|x| x.id.name == name)
+        || e.fns.iter().any(|x| x.form.name == name)
+        || e.types.iter().any(|x| x == name)
 }
 
 // Elements than can be at module level.
 #[derive(Debug, Clone)]
 pub enum ModElem {
     Macro(Macro),
-    Import(ImportNode),
     Enum(Enum),
     StructAliasTypedef(StructAlias),
     Typedef(Typedef),
     StructTypedef(StructTypedef),
-    ModuleVariable(VariableDeclaration),
-    FunctionDeclaration(FunctionDeclaration),
+    ModuleVariable(DeclVar),
+    DeclFunc(DeclFunc),
 }
 
 // Elements than can be a part of a function body.
@@ -23,7 +37,7 @@ pub enum ModElem {
 pub enum Statement {
     Break,
     Continue,
-    VariableDeclaration(VariableDeclaration),
+    VariableDeclaration(DeclVar),
     If(If),
     For(For),
     While(While),
@@ -44,16 +58,9 @@ pub enum Expression {
     Identifier(Identifier),
     Literal(Literal),
     NsName(NsName),
-    PostfixOperator(PostfixOperator),
-    PrefixOperator(PrefixOperator),
+    PostfixOperator(PostfixOp),
+    PrefixOperator(PrefixOp),
     Sizeof(Sizeof),
-}
-
-// #import foo
-#[derive(Debug, Clone)]
-pub struct ImportNode {
-    pub specified_path: String,
-    pub pos: Pos,
 }
 
 // typedef struct tm tm_t;
@@ -76,7 +83,7 @@ pub struct Macro {
 #[derive(Debug, Clone)]
 pub struct Enum {
     pub is_pub: bool,
-    pub members: Vec<EnumEntry>,
+    pub entries: Vec<EnumEntry>,
     pub pos: Pos,
 }
 
@@ -84,15 +91,15 @@ pub struct Enum {
 pub struct EnumEntry {
     pub id: Identifier,
     pub value: Option<Expression>,
-    pub pos: Pos,
+    // pub pos: Pos,
 }
 
 #[derive(Debug, Clone)]
-pub struct FunctionDeclaration {
+pub struct DeclFunc {
     pub is_pub: bool,
     pub type_name: Typename,
     pub form: Form,
-    pub parameters: FunctionParameters,
+    pub parameters: FuncParams,
     pub body: Body,
     pub pos: Pos,
 }
@@ -165,8 +172,8 @@ pub struct ArrayIndex {
 // ...(...)
 #[derive(Debug, Clone)]
 pub struct FunctionCall {
-    pub function: Box<Expression>,
-    pub arguments: Vec<Expression>,
+    pub func: Box<Expression>,
+    pub args: Vec<Expression>,
 }
 
 #[derive(Debug, Clone)]
@@ -190,26 +197,26 @@ pub struct Cast {
 }
 
 #[derive(Debug, Clone)]
-pub struct PostfixOperator {
+pub struct PostfixOp {
     pub operator: String,
     pub operand: Box<Expression>,
 }
 
 #[derive(Debug, Clone)]
-pub struct PrefixOperator {
+pub struct PrefixOp {
     pub operator: String,
     pub operand: Box<Expression>,
 }
 
 #[derive(Debug, Clone)]
 pub struct Sizeof {
-    pub argument: Box<SizeofArgument>,
+    pub argument: Box<SizeofArg>,
 }
 
 #[derive(Debug, Clone)]
-pub enum SizeofArgument {
+pub enum SizeofArg {
     Typename(Typename),
-    Expression(Expression),
+    Expr(Expression),
 }
 
 #[derive(Debug, Clone)]
@@ -224,7 +231,7 @@ pub struct Identifier {
 }
 
 #[derive(Debug, Clone)]
-pub struct VariableDeclaration {
+pub struct DeclVar {
     pub type_name: Typename,
     pub form: Form,
     pub value: Option<Expression>,
@@ -248,7 +255,7 @@ pub struct For {
 
 #[derive(Debug, Clone)]
 pub struct While {
-    pub condition: Expression,
+    pub cond: Expression,
     pub body: Body,
 }
 
@@ -275,8 +282,8 @@ pub struct Form {
 
 #[derive(Debug, Clone)]
 pub enum ForInit {
-    Expression(Expression),
-    LoopCounterDeclaration {
+    Expr(Expression),
+    DeclLoopCounter {
         type_name: Typename,
         form: Form,
         value: Expression,
@@ -285,7 +292,7 @@ pub enum ForInit {
 
 #[derive(Debug, Clone)]
 pub enum SwitchCaseValue {
-    Identifier(NsName),
+    Ident(NsName),
     Literal(Literal),
 }
 
@@ -304,7 +311,7 @@ pub struct SwitchCase {
 }
 
 #[derive(Debug, Clone)]
-pub struct FunctionParameters {
+pub struct FuncParams {
     pub list: Vec<TypeAndForms>,
     pub variadic: bool,
 }
@@ -313,7 +320,7 @@ pub struct FunctionParameters {
 pub struct TypeAndForms {
     pub type_name: Typename,
     pub forms: Vec<Form>,
-    pub pos: Pos,
+    // pub pos: Pos,
 }
 
 #[derive(Debug, Clone)]

@@ -22,10 +22,10 @@ pub fn body_returns(b: &Body) -> bool {
             }
             return true;
         }
-        Statement::While(x) => is_ident(&x.condition, "true") || body_returns(&x.body),
+        Statement::While(x) => is_ident(&x.cond, "true") || body_returns(&x.body),
         Statement::Expression(x) => match x {
             Expression::FunctionCall(function_call) => {
-                if is_ident(&function_call.function, "panic") {
+                if is_ident(&function_call.func, "panic") {
                     return true;
                 }
                 return false;
@@ -36,25 +36,25 @@ pub fn body_returns(b: &Body) -> bool {
     };
 }
 
-// Returns true if the given expression contains a function call.
-// This is simply to check that module variable initializations are
-// compile-time expressions.
-pub fn has_function_call(e: &Expression) -> bool {
-    return match e {
-        Expression::FunctionCall(_) => true,
-        Expression::CompositeLiteral(_) => false,
-        Expression::Identifier(_) => false,
-        Expression::Literal(_) => false,
-        Expression::NsName(_) => false,
-        Expression::Sizeof(_) => false,
-        Expression::ArrayIndex(x) => has_function_call(&x.array) || has_function_call(&x.index),
-        Expression::BinaryOp(x) => has_function_call(&x.a) || has_function_call(&x.b),
-        Expression::FieldAccess(x) => has_function_call(&x.target),
-        Expression::Cast(x) => has_function_call(&x.operand),
-        Expression::PostfixOperator(x) => has_function_call(&x.operand),
-        Expression::PrefixOperator(x) => has_function_call(&x.operand),
-    };
-}
+// // Returns true if the given expression contains a function call.
+// // This is simply to check that module variable initializations are
+// // compile-time expressions.
+// pub fn has_function_call(e: &Expression) -> bool {
+//     return match e {
+//         Expression::FunctionCall(_) => true,
+//         Expression::CompositeLiteral(_) => false,
+//         Expression::Identifier(_) => false,
+//         Expression::Literal(_) => false,
+//         Expression::NsName(_) => false,
+//         Expression::Sizeof(_) => false,
+//         Expression::ArrayIndex(x) => has_function_call(&x.array) || has_function_call(&x.index),
+//         Expression::BinaryOp(x) => has_function_call(&x.a) || has_function_call(&x.b),
+//         Expression::FieldAccess(x) => has_function_call(&x.target),
+//         Expression::Cast(x) => has_function_call(&x.operand),
+//         Expression::PostfixOperator(x) => has_function_call(&x.operand),
+//         Expression::PrefixOperator(x) => has_function_call(&x.operand),
+//     };
+// }
 
 // Returns source position of the given expression
 // for compilation error reports.
@@ -68,7 +68,7 @@ pub fn expression_pos(e: &Expression) -> Pos {
         Expression::FieldAccess(x) => expression_pos(&x.target),
         Expression::Cast(_) => todopos,
         Expression::CompositeLiteral(_) => todopos,
-        Expression::FunctionCall(x) => expression_pos(&x.function),
+        Expression::FunctionCall(x) => expression_pos(&x.func),
         Expression::Identifier(x) => x.pos.clone(),
         Expression::Literal(_) => todopos, // x.pos.clone(),
         Expression::NsName(x) => x.pos.clone(),

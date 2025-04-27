@@ -7,7 +7,7 @@ pub fn run(args: &[String]) -> i32 {
     if fs::metadata(&dirpath).is_err() {
         fs::create_dir(&dirpath).unwrap();
     }
-    let mut work = match build::parse(modpath) {
+    let work = match build::parse_project(modpath) {
         Ok(work) => work,
         Err(errors) => {
             for err in errors {
@@ -16,7 +16,7 @@ pub fn run(args: &[String]) -> i32 {
             return 1;
         }
     };
-    build::translate(&mut work);
+    // build::translate(&mut work);
     build::write_c99(&work, dirpath).unwrap();
     return 0;
 }

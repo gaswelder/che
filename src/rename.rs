@@ -1,21 +1,20 @@
-use crate::exports::get_exports;
 use crate::nodes::*;
 
 // globalize a module: prefix each exported name with modid_
 pub fn prefix_module(m: &mut Module, prefix: &String) {
-    let exports = get_exports(&m);
-    let mut names: Vec<String> = Vec::new();
-    for e in exports.consts {
-        names.push(e.id.name);
+    let exports = &m.exports;
+    let mut exported_names: Vec<String> = Vec::new();
+    for e in &exports.consts {
+        exported_names.push(e.id.name.clone());
     }
-    for f in exports.fns {
-        names.push(f.form.name);
+    for f in &exports.fns {
+        exported_names.push(f.form.name.clone());
     }
-    for t in exports.types {
-        names.push(t);
+    for t in &exports.types {
+        exported_names.push(t.clone());
     }
     for obj in &mut m.elements {
-        prefix_mod_obj(obj, prefix, &names);
+        prefix_mod_obj(obj, prefix, &exported_names);
     }
 }
 
@@ -35,11 +34,11 @@ fn prefix_mod_obj(obj: &mut ModElem, prefix: &String, names: &Vec<String>) {
             if !x.is_pub {
                 return;
             }
-            for m in &mut x.members {
+            for m in &mut x.entries {
                 m.id.name = newname(&m.id.name, prefix, names);
             }
         }
-        ModElem::FunctionDeclaration(FunctionDeclaration {
+        ModElem::DeclFunc(DeclFunc {
             is_pub: _,
             type_name,
             form,
@@ -136,10 +135,10 @@ fn prefix_statement(s: &mut Statement, prefix: &String, names: &Vec<String>) {
             let body = &mut x.body;
             match init {
                 Some(init) => match init {
-                    ForInit::Expression(e) => {
+                    ForInit::Expr(e) => {
                         prefix_expr(e, prefix, names);
                     }
-                    ForInit::LoopCounterDeclaration {
+                    ForInit::DeclLoopCounter {
                         type_name,
                         form,
                         value,
@@ -166,7 +165,7 @@ fn prefix_statement(s: &mut Statement, prefix: &String, names: &Vec<String>) {
             prefix_body(body, prefix, names);
         }
         Statement::While(x) => {
-            let condition = &mut x.condition;
+            let condition = &mut x.cond;
             let body = &mut x.body;
             prefix_expr(condition, prefix, names);
             prefix_body(body, prefix, names);
@@ -188,7 +187,7 @@ fn prefix_statement(s: &mut Statement, prefix: &String, names: &Vec<String>) {
             for c in cases.iter_mut() {
                 for v in c.values.iter_mut() {
                     match v {
-                        SwitchCaseValue::Identifier(x) => {
+                        SwitchCaseValue::Ident(x) => {
                             x.name = newname(&x.name, prefix, names);
                         }
                         SwitchCaseValue::Literal(_) => {}
@@ -276,18 +275,18 @@ fn prefix_expr(e: &mut Expression, prefix: &String, names: &Vec<String>) {
             prefix_expr(operand, prefix, names);
         }
         Expression::FunctionCall(x) => {
-            prefix_expr(&mut x.function, prefix, names);
-            for arg in &mut x.arguments {
+            prefix_expr(&mut x.func, prefix, names);
+            for arg in &mut x.args {
                 prefix_expr(arg, prefix, names);
             }
         }
         Expression::Sizeof(x) => {
             let argument = &mut x.argument;
             match &mut **argument {
-                SizeofArgument::Expression(e) => {
+                SizeofArg::Expr(e) => {
                     prefix_expr(e, prefix, names);
                 }
-                SizeofArgument::Typename(e) => {
+                SizeofArg::Typename(e) => {
                     prefix_typename(e, prefix, names);
                 }
             }
@@ -299,8 +298,8 @@ fn prefix_expr(e: &mut Expression, prefix: &String, names: &Vec<String>) {
     }
 }
 
-fn newname(current: &String, prefix: &String, names: &Vec<String>) -> String {
-    return if names.contains(current) {
+fn newname(current: &String, prefix: &String, exported_names: &Vec<String>) -> String {
+    return if exported_names.contains(current) {
         format!("{}__{}", prefix, current)
     } else {
         current.clone()

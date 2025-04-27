@@ -17,13 +17,13 @@ pub struct Macro {
 #[derive(Debug, Clone)]
 pub struct EnumDef {
     pub is_hidden: bool,
-    pub members: Vec<CEnumItem>,
+    pub entries: Vec<EnumEntry>,
 }
 
 #[derive(Debug, Clone)]
-pub struct CEnumItem {
+pub struct EnumEntry {
     pub id: String,
-    pub value: Option<CExpression>,
+    pub value: Option<Expr>,
 }
 
 // typedef const char *foo_t;
@@ -36,10 +36,10 @@ pub struct Typedef {
 
 // int foo = 1
 #[derive(Debug, Clone)]
-pub struct VarDecl {
+pub struct DeclVar {
     pub type_name: Typename,
-    pub form: CForm,
-    pub value: CExpression,
+    pub form: Form,
+    pub value: Expr,
 }
 // struct foo { int x; double y; }
 #[derive(Debug, Clone)]
@@ -54,8 +54,8 @@ pub struct StructDef {
 pub struct ForwardFunc {
     pub is_static: bool,
     pub type_name: Typename,
-    pub form: CForm,
-    pub parameters: CompatFunctionParameters,
+    pub form: Form,
+    pub parameters: FuncParams,
 }
 
 // const char *f(int n, double x) { ... }
@@ -63,8 +63,8 @@ pub struct ForwardFunc {
 pub struct FunctionDef {
     pub is_static: bool,
     pub type_name: Typename,
-    pub form: CForm,
-    pub parameters: CompatFunctionParameters,
+    pub form: Form,
+    pub parameters: FuncParams,
     pub body: CBody,
 }
 
@@ -77,19 +77,19 @@ pub enum ModElem {
     DefEnum(EnumDef),
     DefType(Typedef),
     DefStruct(StructDef),
-    DeclVar(VarDecl),
+    DeclVar(DeclVar),
     DefFunc(FunctionDef),
 }
 
 #[derive(Debug, Clone)]
-pub struct CompatFunctionParameters {
+pub struct FuncParams {
     pub list: Vec<CTypeForm>,
     pub variadic: bool,
 }
 
 #[derive(Debug, Clone)]
 pub struct CBody {
-    pub statements: Vec<CStatement>,
+    pub statements: Vec<Statement>,
 }
 
 #[derive(Debug, Clone)]
@@ -100,111 +100,111 @@ pub struct CCompositeLiteral {
 #[derive(Debug, Clone)]
 pub struct CCompositeLiteralEntry {
     pub is_index: bool,
-    pub key: Option<CExpression>,
-    pub value: CExpression,
+    pub key: Option<Expr>,
+    pub val: Expr,
 }
 
 // <a> <op> <b>
 #[derive(Debug, Clone)]
 pub struct BinaryOp {
     pub op: String,
-    pub a: Box<CExpression>,
-    pub b: Box<CExpression>,
+    pub a: Box<Expr>,
+    pub b: Box<Expr>,
 }
 
 #[derive(Debug, Clone)]
-pub enum CExpression {
+pub enum Expr {
     Literal(CLiteral),
     CompositeLiteral(CCompositeLiteral),
-    Identifier(String),
+    Ident(String),
     BinaryOp(BinaryOp),
     FieldAccess {
         op: String,
-        target: Box<CExpression>,
+        target: Box<Expr>,
         field_name: String,
     },
-    PrefixOperator {
+    PrefixOp {
         operator: String,
-        operand: Box<CExpression>,
+        operand: Box<Expr>,
     },
-    PostfixOperator {
+    PostfixOp {
         operator: String,
-        operand: Box<CExpression>,
+        operand: Box<Expr>,
     },
     Cast {
         type_name: CAnonymousTypeform,
-        operand: Box<CExpression>,
+        operand: Box<Expr>,
     },
-    FunctionCall {
-        function: Box<CExpression>,
-        arguments: Vec<CExpression>,
+    Call {
+        func: Box<Expr>,
+        args: Vec<Expr>,
     },
     Sizeof {
-        argument: Box<CSizeofArgument>,
+        arg: Box<SizeofArg>,
     },
     ArrayIndex {
-        array: Box<CExpression>,
-        index: Box<CExpression>,
+        array: Box<Expr>,
+        index: Box<Expr>,
     },
 }
 
 #[derive(Debug, Clone)]
-pub enum CForInit {
-    Expression(CExpression),
-    LoopCounterDeclaration(VarDecl),
+pub enum ForInit {
+    Expr(Expr),
+    DeclLoopCounter(DeclVar),
 }
 
 #[derive(Debug, Clone)]
-pub struct CForm {
+pub struct Form {
     pub stars: String,
     pub name: String,
-    pub indexes: Vec<Option<CExpression>>,
+    pub indexes: Vec<Option<Expr>>,
 }
 
 #[derive(Debug, Clone)]
-pub enum CSizeofArgument {
+pub enum SizeofArg {
     Typename(Typename),
-    Expression(CExpression),
+    Expression(Expr),
 }
 
 #[derive(Debug, Clone)]
-pub enum CStatement {
+pub enum Statement {
     Block {
-        statements: Vec<CStatement>,
+        statements: Vec<Statement>,
     },
     Break,
     Continue,
     VariableDeclaration {
         type_name: Typename,
-        forms: Vec<CForm>,
-        values: Vec<Option<CExpression>>,
+        forms: Vec<Form>,
+        values: Vec<Option<Expr>>,
     },
     If {
-        condition: CExpression,
+        condition: Expr,
         body: CBody,
         else_body: Option<CBody>,
     },
     For {
-        init: Option<CForInit>,
-        condition: Option<CExpression>,
-        action: Option<CExpression>,
+        init: Option<ForInit>,
+        condition: Option<Expr>,
+        action: Option<Expr>,
         body: CBody,
     },
     While {
-        condition: CExpression,
+        cond: Expr,
         body: CBody,
     },
     Return {
-        expression: Option<CExpression>,
+        expression: Option<Expr>,
     },
     Switch(Switch),
-    Expression(CExpression),
+    Expression(Expr),
 }
 
 // switch (x) { case 1: ... case 2: ... default: ... }
 #[derive(Debug, Clone)]
 pub struct Switch {
-    pub value: CExpression,
+    pub value: Expr,
     pub cases: Vec<CSwitchCase>,
     pub default: Option<CBody>,
 }
@@ -237,7 +237,7 @@ pub struct CAnonymousTypeform {
 
 #[derive(Debug, Clone)]
 pub enum CSwitchCaseValue {
-    Identifier(String),
+    Ident(String),
     Literal(CLiteral),
 }
 
@@ -258,7 +258,7 @@ pub struct Typename {
 #[derive(Debug, Clone)]
 pub struct CTypeForm {
     pub type_name: Typename,
-    pub form: CForm,
+    pub form: Form,
 }
 
 #[derive(Debug, Clone)]
@@ -269,12 +269,12 @@ pub enum CStructItem {
 
 #[derive(Debug, Clone)]
 pub struct CUnion {
-    pub form: CForm,
+    pub form: Form,
     pub fields: Vec<CUnionField>,
 }
 
 #[derive(Debug, Clone)]
 pub struct CUnionField {
     pub type_name: Typename,
-    pub form: CForm,
+    pub form: Form,
 }

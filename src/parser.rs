@@ -1,11 +1,31 @@
 use crate::buf::Pos;
-use crate::build::Ctx;
 use crate::errors::{Error, TWithErrors};
 use crate::lexer::{Lexer, Token};
 use crate::nodes;
+use crate::preparser::ModuleInfo;
 use crate::{cspec, nodes::*};
 
-pub fn parse_module(l: &mut Lexer, ctx: &Ctx) -> Result<Module, Vec<Error>> {
+#[derive(Clone, Debug)]
+pub struct ParseCtx {
+    pub thismod: ModuleInfo,
+    pub allmods: Vec<ModuleInfo>,
+}
+
+impl ParseCtx {
+    pub fn is_imported_ns(&self, ns: &String) -> bool {
+        if ns == "OS" {
+            return true;
+        }
+        for x in &self.thismod.imports {
+            if x.ns == *ns {
+                return true;
+            }
+        }
+        return false;
+    }
+}
+
+pub fn parse_module(l: &mut Lexer, ctx: &ParseCtx) -> Result<Module, Vec<Error>> {
     let mut module_objects: Vec<ModElem> = vec![];
     let mut errors = Vec::new();
     while l.more() {
@@ -14,11 +34,11 @@ pub fn parse_module(l: &mut Lexer, ctx: &Ctx) -> Result<Module, Vec<Error>> {
                 // The context already contains all parsed and resolved imports,
                 // here this node is added only for completeness, to allow the
                 // source code checkers look at them.
-                let t = l.get().unwrap();
-                module_objects.push(ModElem::Import(ImportNode {
-                    specified_path: t.content.clone(),
-                    pos: t.pos.clone(),
-                }))
+                l.get().unwrap();
+                // module_objects.push(ModElem::Import(ImportNode {
+                //     specified_path: t.content.clone(),
+                //     pos: t.pos.clone(),
+                // }))
             }
             "macro" => match parse_compat_macro(l) {
                 Ok(r) => module_objects.push(r),
@@ -44,9 +64,61 @@ pub fn parse_module(l: &mut Lexer, ctx: &Ctx) -> Result<Module, Vec<Error>> {
     if errors.len() > 0 {
         return Err(errors);
     }
+    let exports = get_exports(&module_objects);
     return Ok(Module {
         elements: module_objects,
+        exports,
     });
+}
+
+fn get_exports(elems: &Vec<ModElem>) -> Exports {
+    let mut exports = Exports {
+        consts: Vec::new(),
+        fns: Vec::new(),
+        types: Vec::new(),
+        // structs: Vec::new(),
+    };
+    for e in elems {
+        match e {
+            ModElem::Enum(x) => {
+                if x.is_pub {
+                    for m in &x.entries {
+                        exports.consts.push(m.clone());
+                    }
+                }
+            }
+            ModElem::Typedef(x) => {
+                if x.is_pub {
+                    exports.types.push(x.alias.name.clone());
+                }
+            }
+            ModElem::StructTypedef(x) => {
+                if x.is_pub {
+                    exports.types.push(x.name.name.clone());
+                }
+            }
+            // ModuleObject::StructAliasTypedef {
+            //     is_pub,
+            //     struct_name: _,
+            //     type_alias,
+            // } => {
+            //     if *is_pub {
+            //         exports.structs.push(StructTypedef {
+            //             fields: Vec::new(),
+            //             is_pub: *is_pub,
+            //             name: type_alias.clone(),
+            //         })
+            //     }
+            // }
+            ModElem::DeclFunc(f) => {
+                if f.is_pub {
+                    exports.fns.push(f.clone())
+                }
+            }
+            _ => {}
+        }
+    }
+    return exports;
 }
 
 fn parse_compat_macro(l: &mut Lexer) -> Result<ModElem, Error> {
@@ -68,7 +140,7 @@ fn parse_compat_macro(l: &mut Lexer) -> Result<ModElem, Error> {
     }));
 }
 
-fn parse_module_object(l: &mut Lexer, ctx: &Ctx) -> Result<TWithErrors<ModElem>, Error> {
+fn parse_module_object(l: &mut Lexer, ctx: &ParseCtx) -> Result<TWithErrors<ModElem>, Error> {
     let mut is_pub = false;
     let pos = l.peek().unwrap().pos.clone();
     if l.follows("pub") {
@@ -107,7 +179,7 @@ fn parse_module_object(l: &mut Lexer, ctx: &Ctx) -> Result<TWithErrors<ModElem>,
     let value = parse_expr(l, 0, ctx)?;
     expect(l, ";", Some("module variable declaration"))?;
     return Ok(TWithErrors {
-        obj: ModElem::ModuleVariable(VariableDeclaration {
+        obj: ModElem::ModuleVariable(DeclVar {
             type_name,
             form,
             value: Some(value),
@@ -117,7 +189,7 @@ fn parse_module_object(l: &mut Lexer, ctx: &Ctx) -> Result<TWithErrors<ModElem>,
     });
 }
 
-fn parse_expr(l: &mut Lexer, strength: usize, ctx: &Ctx) -> Result<Expression, Error> {
+fn parse_expr(l: &mut Lexer, strength: usize, ctx: &ParseCtx) -> Result<Expression, Error> {
     let prefix_strength = operator_strength("prefix");
     if strength < prefix_strength {
         return parse_seq_expr(l, strength, ctx);
@@ -131,7 +203,7 @@ fn parse_expr(l: &mut Lexer, strength: usize, ctx: &Ctx) -> Result<Expression, E
     panic!("unexpected n: {}", strength)
 }
 
-fn parse_seq_expr(l: &mut Lexer, strength: usize, ctx: &Ctx) -> Result<Expression, Error> {
+fn parse_seq_expr(l: &mut Lexer, strength: usize, ctx: &ParseCtx) -> Result<Expression, Error> {
     let mut r = parse_expr(l, strength + 1, ctx)?;
     while l.more() {
         // Continue if next is an operator with the same strength.
@@ -150,13 +222,13 @@ fn parse_seq_expr(l: &mut Lexer, strength: usize, ctx: &Ctx) -> Result<Expressio
     return Ok(r);
 }
 
-fn parse_prefix_expr(l: &mut Lexer, ctx: &Ctx) -> Result<Expression, Error> {
+fn parse_prefix_expr(l: &mut Lexer, ctx: &ParseCtx) -> Result<Expression, Error> {
     let token = l.get().unwrap();
 
     // *{we are here}*foo
     if is_prefix_op(&token.kind) {
         let r = parse_prefix_expr(l, ctx)?;
-        return Ok(Expression::PrefixOperator(nodes::PrefixOperator {
+        return Ok(Expression::PrefixOperator(nodes::PrefixOp {
             operator: token.kind,
             operand: Box::new(r),
         }));
@@ -167,7 +239,7 @@ fn parse_prefix_expr(l: &mut Lexer, ctx: &Ctx) -> Result<Expression, Error> {
     // * (foo_t)x
     if next == "("
         && l.peek().unwrap().kind == "word"
-        && is_type(l.peek().unwrap().content.as_str(), &ctx.typenames)
+        && is_type(l.peek().unwrap().content.as_str(), &ctx.thismod.typedefs)
     {
         let typeform = parse_anonymous_typeform(l, ctx)?;
         expect(l, ")", Some("typecast"))?;
@@ -186,7 +258,7 @@ fn parse_prefix_expr(l: &mut Lexer, ctx: &Ctx) -> Result<Expression, Error> {
     return base(l, ctx);
 }
 
-fn base(l: &mut Lexer, ctx: &Ctx) -> Result<Expression, Error> {
+fn base(l: &mut Lexer, ctx: &ParseCtx) -> Result<Expression, Error> {
     // println!("      base(): {:?}", l.peek());
     let mut r = read_expression_atom(l, ctx)?;
     while l.more() {
@@ -210,7 +282,7 @@ fn base(l: &mut Lexer, ctx: &Ctx) -> Result<Expression, Error> {
         }
 
         if is_postfix_op(&next.kind) {
-            r = Expression::PostfixOperator(nodes::PostfixOperator {
+            r = Expression::PostfixOperator(nodes::PostfixOp {
                 operator: l.get().unwrap().kind,
                 operand: Box::new(r),
             });
@@ -231,7 +303,7 @@ fn base(l: &mut Lexer, ctx: &Ctx) -> Result<Expression, Error> {
     return Ok(r);
 }
 
-fn type_follows(l: &mut Lexer, ctx: &Ctx) -> bool {
+fn type_follows(l: &mut Lexer, ctx: &ParseCtx) -> bool {
     if !l.peek().is_some() {
         return false;
     }
@@ -245,21 +317,32 @@ fn type_follows(l: &mut Lexer, ctx: &Ctx) -> bool {
     match l.peekn(3) {
         Some(three) => {
             if three[1].kind == "." && three[2].kind == "word" {
-                let a = three[0];
-                let c = three[2];
-                let pos = ctx.deps.iter().position(|x| x.ns == *a.content);
-                if pos.is_some() && ctx.deps[pos.unwrap()].typenames.contains(&c.content) {
-                    return true;
+                let nsname = &three[0].content;
+                let typename = &three[2].content;
+
+                let import = ctx
+                    .thismod
+                    .imports
+                    .iter()
+                    .find(|x| x.ns == *nsname)
+                    .and_then(|imp| ctx.allmods.iter().find(|x| x.filepath == imp.path));
+                match import {
+                    Some(imp) => {
+                        if imp.typedefs.contains(typename) {
+                            return true;
+                        }
+                    }
+                    None => {}
                 }
             }
         }
         None => {}
     }
     // any of locally defined types?
-    return is_type(&l.peek().unwrap().content, &ctx.typenames);
+    return is_type(&l.peek().unwrap().content, &ctx.thismod.typedefs);
 }
 
-fn ns_follows(l: &mut Lexer, ctx: &Ctx) -> bool {
+fn ns_follows(l: &mut Lexer, ctx: &ParseCtx) -> bool {
     if !l.more() {
         return false;
     }
@@ -267,15 +350,15 @@ fn ns_follows(l: &mut Lexer, ctx: &Ctx) -> bool {
     if t.kind != "word" {
         return false;
     }
-    return ctx.has_ns(&l.peek().unwrap().content);
+    return ctx.is_imported_ns(&l.peek().unwrap().content);
 }
 
 // foo.bar where foo is a module
 // or just bar
-fn read_ns_id(l: &mut Lexer, ctx: &Ctx) -> Result<NsName, Error> {
+fn read_ns_id(l: &mut Lexer, ctx: &ParseCtx) -> Result<NsName, Error> {
     let a = expect(l, "word", None)?;
     let name = &a.content;
-    if ctx.has_ns(name) {
+    if ctx.is_imported_ns(name) {
         match l.peekn(2) {
             Some(two) => {
                 if two[0].kind == "." && two[1].kind == "word" {
@@ -298,7 +381,7 @@ fn read_ns_id(l: &mut Lexer, ctx: &Ctx) -> Result<NsName, Error> {
     });
 }
 
-fn read_expression_atom(l: &mut Lexer, ctx: &Ctx) -> Result<Expression, Error> {
+fn read_expression_atom(l: &mut Lexer, ctx: &ParseCtx) -> Result<Expression, Error> {
     if !l.more() {
         return Err(Error {
             message: String::from("id: unexpected end of input"),
@@ -435,13 +518,13 @@ fn read_identifier(lexer: &mut Lexer) -> Result<Identifier, Error> {
     return Ok(Identifier { name, pos: tok.pos });
 }
 
-fn parse_typename(l: &mut Lexer, ctx: &Ctx) -> Result<Typename, Error> {
+fn parse_typename(l: &mut Lexer, ctx: &ParseCtx) -> Result<Typename, Error> {
     let is_const = l.eat("const");
     let name = read_ns_id(l, ctx)?;
     return Ok(Typename { is_const, name });
 }
 
-fn parse_anonymous_typeform(lexer: &mut Lexer, ctx: &Ctx) -> Result<AnonymousTypeform, Error> {
+fn parse_anonymous_typeform(lexer: &mut Lexer, ctx: &ParseCtx) -> Result<AnonymousTypeform, Error> {
     let type_name = parse_typename(lexer, ctx)?;
     let mut ops: Vec<String> = Vec::new();
     while lexer.follows("*") {
@@ -450,7 +533,7 @@ fn parse_anonymous_typeform(lexer: &mut Lexer, ctx: &Ctx) -> Result<AnonymousTyp
     return Ok(AnonymousTypeform { type_name, ops });
 }
 
-fn parse_anonymous_parameters(l: &mut Lexer, ctx: &Ctx) -> Result<AnonymousParameters, Error> {
+fn parse_anonymous_parameters(l: &mut Lexer, ctx: &ParseCtx) -> Result<AnonymousParameters, Error> {
     let mut params = AnonymousParameters {
         ellipsis: false,
         forms: Vec::new(),
@@ -496,20 +579,20 @@ fn parse_literal(l: &mut Lexer) -> Result<Literal, Error> {
     });
 }
 
-fn parse_enum(l: &mut Lexer, is_pub: bool, ctx: &Ctx) -> Result<ModElem, Error> {
+fn parse_enum(l: &mut Lexer, is_pub: bool, ctx: &ParseCtx) -> Result<ModElem, Error> {
     let pos = l.peek().unwrap().pos.clone();
     let mut members: Vec<EnumEntry> = Vec::new();
     expect(l, "enum", Some("enum definition"))?;
     expect(l, "{", Some("enum definition"))?;
     loop {
         let id = read_identifier(l)?;
-        let pos = id.pos.clone();
+        // let pos = id.pos.clone();
         let value: Option<Expression> = if l.eat("=") {
             Some(parse_expr(l, 0, ctx)?)
         } else {
             None
         };
-        members.push(EnumEntry { id, value, pos });
+        members.push(EnumEntry { id, value });
         if !l.eat(",") {
             break;
         }
@@ -521,12 +604,12 @@ fn parse_enum(l: &mut Lexer, is_pub: bool, ctx: &Ctx) -> Result<ModElem, Error> 
     l.eat(";");
     return Ok(ModElem::Enum(nodes::Enum {
         is_pub,
-        members,
+        entries: members,
         pos,
     }));
 }
 
-fn parse_composite_literal(l: &mut Lexer, ctx: &Ctx) -> Result<CompositeLiteral, Error> {
+fn parse_composite_literal(l: &mut Lexer, ctx: &ParseCtx) -> Result<CompositeLiteral, Error> {
     let mut result = CompositeLiteral {
         entries: Vec::new(),
     };
@@ -546,7 +629,10 @@ fn parse_composite_literal(l: &mut Lexer, ctx: &Ctx) -> Result<CompositeLiteral,
     return Ok(result);
 }
 
-fn parse_composite_literal_entry(l: &mut Lexer, ctx: &Ctx) -> Result<CompositeLiteralEntry, Error> {
+fn parse_composite_literal_entry(
+    l: &mut Lexer,
+    ctx: &ParseCtx,
+) -> Result<CompositeLiteralEntry, Error> {
     if l.peek().unwrap().kind == "." {
         expect(l, ".", Some("struct literal member"))?;
         let key = Expression::Identifier(read_identifier(l)?);
@@ -577,13 +663,13 @@ fn parse_composite_literal_entry(l: &mut Lexer, ctx: &Ctx) -> Result<CompositeLi
     });
 }
 
-fn parse_sizeof(l: &mut Lexer, ctx: &Ctx) -> Result<Expression, Error> {
+fn parse_sizeof(l: &mut Lexer, ctx: &ParseCtx) -> Result<Expression, Error> {
     expect(l, "sizeof", None)?;
     expect(l, "(", None)?;
     let argument = if type_follows(l, ctx) {
-        SizeofArgument::Typename(parse_typename(l, ctx)?)
+        SizeofArg::Typename(parse_typename(l, ctx)?)
     } else {
-        SizeofArgument::Expression(parse_expr(l, 0, ctx)?)
+        SizeofArg::Expr(parse_expr(l, 0, ctx)?)
     };
     expect(l, ")", None)?;
     return Ok(Expression::Sizeof(nodes::Sizeof {
@@ -593,7 +679,7 @@ fn parse_sizeof(l: &mut Lexer, ctx: &Ctx) -> Result<Expression, Error> {
 
 fn parse_function_call(
     l: &mut Lexer,
-    ctx: &Ctx,
+    ctx: &ParseCtx,
     function_name: Expression,
 ) -> Result<Expression, Error> {
     let mut arguments: Vec<Expression> = Vec::new();
@@ -607,12 +693,12 @@ fn parse_function_call(
     }
     expect(l, ")", None)?;
     return Ok(Expression::FunctionCall(nodes::FunctionCall {
-        function: Box::new(function_name),
-        arguments: arguments,
+        func: Box::new(function_name),
+        args: arguments,
     }));
 }
 
-fn parse_while(l: &mut Lexer, ctx: &Ctx) -> Result<TWithErrors<Statement>, Error> {
+fn parse_while(l: &mut Lexer, ctx: &ParseCtx) -> Result<TWithErrors<Statement>, Error> {
     expect(l, "while", None)?;
     expect(l, "(", None)?;
     let condition = parse_expr(l, 0, ctx)?;
@@ -620,14 +706,14 @@ fn parse_while(l: &mut Lexer, ctx: &Ctx) -> Result<TWithErrors<Statement>, Error
     let body = parse_statements_block(l, ctx)?;
     return Ok(TWithErrors {
         obj: Statement::While(nodes::While {
-            condition,
+            cond: condition,
             body: body.obj,
         }),
         errors: body.errors,
     });
 }
 
-fn parse_statement(l: &mut Lexer, ctx: &Ctx) -> Result<TWithErrors<Statement>, Error> {
+fn parse_statement(l: &mut Lexer, ctx: &ParseCtx) -> Result<TWithErrors<Statement>, Error> {
     if !l.more() {
         return Err(Error {
             message: String::from("reached end of file while parsing statement"),
@@ -678,7 +764,7 @@ fn parse_statement(l: &mut Lexer, ctx: &Ctx) -> Result<TWithErrors<Statement>, E
     }
 }
 
-fn parse_variable_declaration(l: &mut Lexer, ctx: &Ctx) -> Result<Statement, Error> {
+fn parse_variable_declaration(l: &mut Lexer, ctx: &ParseCtx) -> Result<Statement, Error> {
     let pos = l.peek().unwrap().pos.clone();
     let type_name = parse_typename(l, ctx)?;
     let form = parse_form(l, ctx)?;
@@ -688,7 +774,7 @@ fn parse_variable_declaration(l: &mut Lexer, ctx: &Ctx) -> Result<Statement, Err
         None
     };
     expect(l, ";", None)?;
-    return Ok(Statement::VariableDeclaration(VariableDeclaration {
+    return Ok(Statement::VariableDeclaration(DeclVar {
         pos,
         type_name,
         form,
@@ -696,7 +782,7 @@ fn parse_variable_declaration(l: &mut Lexer, ctx: &Ctx) -> Result<Statement, Err
     }));
 }
 
-fn parse_return(l: &mut Lexer, ctx: &Ctx) -> Result<Statement, Error> {
+fn parse_return(l: &mut Lexer, ctx: &ParseCtx) -> Result<Statement, Error> {
     expect(l, "return", None)?;
     if l.peek().unwrap().kind == ";" {
         l.get();
@@ -709,7 +795,7 @@ fn parse_return(l: &mut Lexer, ctx: &Ctx) -> Result<Statement, Error> {
     }));
 }
 
-fn parse_form(l: &mut Lexer, ctx: &Ctx) -> Result<Form, Error> {
+fn parse_form(l: &mut Lexer, ctx: &ParseCtx) -> Result<Form, Error> {
     // *argv[]
     // linechars[]
     // buf[SIZE * 2]
@@ -748,7 +834,7 @@ fn parse_form(l: &mut Lexer, ctx: &Ctx) -> Result<Form, Error> {
     return Ok(node);
 }
 
-fn parse_if(lexer: &mut Lexer, ctx: &Ctx) -> Result<TWithErrors<Statement>, Error> {
+fn parse_if(lexer: &mut Lexer, ctx: &ParseCtx) -> Result<TWithErrors<Statement>, Error> {
     let condition;
     let body;
     let mut else_body = None;
@@ -780,7 +866,7 @@ fn parse_if(lexer: &mut Lexer, ctx: &Ctx) -> Result<TWithErrors<Statement>, Erro
     });
 }
 
-fn parse_for(l: &mut Lexer, ctx: &Ctx) -> Result<TWithErrors<Statement>, Error> {
+fn parse_for(l: &mut Lexer, ctx: &ParseCtx) -> Result<TWithErrors<Statement>, Error> {
     expect(l, "for", None)?;
     expect(l, "(", None)?;
 
@@ -788,19 +874,19 @@ fn parse_for(l: &mut Lexer, ctx: &Ctx) -> Result<TWithErrors<Statement>, Error> 
     if l.follows(";") {
         init = None;
     } else if l.peek().unwrap().kind == "word"
-        && is_type(&l.peek().unwrap().content, &ctx.typenames)
+        && is_type(&l.peek().unwrap().content, &ctx.thismod.typedefs)
     {
         let type_name = parse_typename(l, ctx)?;
         let form = parse_form(l, ctx)?;
         expect(l, "=", None)?;
         let value = parse_expr(l, 0, ctx)?;
-        init = Some(ForInit::LoopCounterDeclaration {
+        init = Some(ForInit::DeclLoopCounter {
             type_name,
             form,
             value,
         });
     } else {
-        init = Some(ForInit::Expression(parse_expr(l, 0, ctx)?));
+        init = Some(ForInit::Expr(parse_expr(l, 0, ctx)?));
     }
     expect(l, ";", Some("for loop initializer"))?;
 
@@ -831,7 +917,7 @@ fn parse_for(l: &mut Lexer, ctx: &Ctx) -> Result<TWithErrors<Statement>, Error> 
     });
 }
 
-fn read_switch(l: &mut Lexer, ctx: &Ctx) -> Result<TWithErrors<Statement>, Error> {
+fn read_switch(l: &mut Lexer, ctx: &ParseCtx) -> Result<TWithErrors<Statement>, Error> {
     expect(l, "switch", None)?;
     let mut is_str = false;
     match l.peek() {
@@ -878,12 +964,12 @@ fn read_switch(l: &mut Lexer, ctx: &Ctx) -> Result<TWithErrors<Statement>, Error
     });
 }
 
-fn read_switch_case(l: &mut Lexer, ctx: &Ctx) -> Result<TWithErrors<SwitchCase>, Error> {
+fn read_switch_case(l: &mut Lexer, ctx: &ParseCtx) -> Result<TWithErrors<SwitchCase>, Error> {
     expect(l, "case", None)?;
     let mut values = Vec::new();
     loop {
         let case_value = if l.follows("word") {
-            SwitchCaseValue::Identifier(read_ns_id(l, ctx)?)
+            SwitchCaseValue::Ident(read_ns_id(l, ctx)?)
         } else {
             SwitchCaseValue::Literal(parse_literal(l)?)
         };
@@ -910,7 +996,7 @@ fn parse_function_declaration(
     is_pub: bool,
     type_name: Typename,
     form: Form,
-    ctx: &Ctx,
+    ctx: &ParseCtx,
     pos: Pos,
 ) -> Result<TWithErrors<ModElem>, Error> {
     // void cuespl {WE ARE HERE} (cue_t *c, mp3file *m) {...}
@@ -934,11 +1020,11 @@ fn parse_function_declaration(
 
     let body = parse_statements_block(l, ctx)?;
     return Ok(TWithErrors {
-        obj: ModElem::FunctionDeclaration(FunctionDeclaration {
+        obj: ModElem::DeclFunc(DeclFunc {
             is_pub,
             type_name,
             form,
-            parameters: FunctionParameters {
+            parameters: FuncParams {
                 list: parameters,
                 variadic,
             },
@@ -949,10 +1035,10 @@ fn parse_function_declaration(
     });
 }
 
-fn parse_function_parameter(l: &mut Lexer, ctx: &Ctx) -> Result<TypeAndForms, Error> {
+fn parse_function_parameter(l: &mut Lexer, ctx: &ParseCtx) -> Result<TypeAndForms, Error> {
     // int a,b
     // const char *s
-    let pos = l.peek().unwrap().pos.clone();
+    // let pos = l.peek().unwrap().pos.clone();
     let type_name = parse_typename(l, ctx)?;
     let mut forms: Vec<Form> = Vec::new();
     forms.push(parse_form(l, ctx)?);
@@ -967,11 +1053,11 @@ fn parse_function_parameter(l: &mut Lexer, ctx: &Ctx) -> Result<TypeAndForms, Er
     return Ok(TypeAndForms {
         type_name,
         forms,
-        pos,
+        // pos,
     });
 }
 
-fn parse_statements_block(l: &mut Lexer, ctx: &Ctx) -> Result<TWithErrors<Body>, Error> {
+fn parse_statements_block(l: &mut Lexer, ctx: &ParseCtx) -> Result<TWithErrors<Body>, Error> {
     if l.follows("{") {
         return read_body(l, ctx);
     }
@@ -984,7 +1070,7 @@ fn parse_statements_block(l: &mut Lexer, ctx: &Ctx) -> Result<TWithErrors<Body>,
     });
 }
 
-fn read_body(l: &mut Lexer, ctx: &Ctx) -> Result<TWithErrors<Body>, Error> {
+fn read_body(l: &mut Lexer, ctx: &ParseCtx) -> Result<TWithErrors<Body>, Error> {
     let mut statements: Vec<Statement> = Vec::new();
     let mut errors = Vec::new();
     expect(l, "{", None)?;
@@ -1014,7 +1100,7 @@ fn read_body(l: &mut Lexer, ctx: &Ctx) -> Result<TWithErrors<Body>, Error> {
     });
 }
 
-fn parse_union(l: &mut Lexer, ctx: &Ctx) -> Result<Union, Error> {
+fn parse_union(l: &mut Lexer, ctx: &ParseCtx) -> Result<Union, Error> {
     let mut fields: Vec<UnionField> = vec![];
     expect(l, "union", None)?;
     expect(l, "{", None)?;
@@ -1030,7 +1116,7 @@ fn parse_union(l: &mut Lexer, ctx: &Ctx) -> Result<Union, Error> {
     return Ok(Union { form, fields });
 }
 
-fn parse_typedef(is_pub: bool, l: &mut Lexer, ctx: &Ctx) -> Result<ModElem, Error> {
+fn parse_typedef(is_pub: bool, l: &mut Lexer, ctx: &ParseCtx) -> Result<ModElem, Error> {
     let pos = l.peek().unwrap().pos.clone();
     expect(l, "typedef", None)?;
 
@@ -1107,7 +1193,7 @@ fn parse_typedef(is_pub: bool, l: &mut Lexer, ctx: &Ctx) -> Result<ModElem, Erro
     }));
 }
 
-fn parse_type_and_forms(l: &mut Lexer, ctx: &Ctx) -> Result<TypeAndForms, Error> {
+fn parse_type_and_forms(l: &mut Lexer, ctx: &ParseCtx) -> Result<TypeAndForms, Error> {
     if l.follows("struct") {
         return Err(Error {
             message: "Unexpected struct".to_string(),
@@ -1115,7 +1201,7 @@ fn parse_type_and_forms(l: &mut Lexer, ctx: &Ctx) -> Result<TypeAndForms, Error>
         });
     }
 
-    let pos = l.peek().unwrap().pos.clone();
+    // let pos = l.peek().unwrap().pos.clone();
     let type_name = parse_typename(l, ctx)?;
 
     let mut forms: Vec<Form> = vec![];
@@ -1129,7 +1215,7 @@ fn parse_type_and_forms(l: &mut Lexer, ctx: &Ctx) -> Result<TypeAndForms, Error>
     return Ok(TypeAndForms {
         type_name,
         forms,
-        pos,
+        // pos,
     });
 }
 

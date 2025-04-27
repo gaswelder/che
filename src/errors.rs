@@ -1,5 +1,11 @@
 use crate::buf::Pos;
 
+pub struct BuildError {
+    pub path: String,
+    pub pos: String,
+    pub message: String,
+}
+
 pub struct Error {
     pub message: String,
     pub pos: Pos,

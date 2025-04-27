@@ -1,16 +1,16 @@
 use crate::build;
-use crate::exports::{get_exports, Exports};
 use crate::format_che;
+use crate::nodes::Exports;
 
 pub fn run(argv: &[String]) -> i32 {
     for path in argv {
-        match build::parse(path) {
+        match build::parse_project(path) {
             Ok(build) => {
-                let pos = build.m.len() - 1;
-                let m = &build.m[pos];
-                let path = &build.paths[pos];
+                let pos = build.modules.len() - 1;
+                let m = &build.modules[pos];
+                let path = &build.modheads[pos].filepath;
                 println!("mod {}", path);
-                let exports = get_exports(&m);
+                let exports = m.exports.clone();
                 print_exports(exports);
             }
             Err(errors) => {

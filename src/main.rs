@@ -1,9 +1,7 @@
 mod buf;
 mod build;
 mod c;
-mod checkers;
 mod cspec;
-mod exports;
 mod format_c;
 mod format_che;
 mod lexer;
@@ -18,7 +16,6 @@ mod parser;
 mod preparser;
 mod rename;
 mod resolve;
-mod scopes;
 mod translator;
 mod types;
 use std::env;
