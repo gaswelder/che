@@ -13,7 +13,6 @@ use crate::nodes::exports_has;
 use crate::nodes::is_void;
 use crate::nodes::Literal;
 use crate::preparser::ModuleInfo;
-use crate::types;
 use crate::types::Type;
 use std::collections::HashSet;
 
@@ -369,18 +368,9 @@ fn tr_expr(e: &nodes::Expression, ctx: &mut TrCtx) -> Result<Typed<c::Expr>, Bui
     return match e {
         nodes::Expression::Literal(x) => {
             let typ = match x {
-                Literal::Char(_) => Type::Bytes(types::Bytes {
-                    sign: types::Signedness::Unknown,
-                    size: 1,
-                }),
-                Literal::String(_) => types::addr(Type::Bytes(types::Bytes {
-                    sign: types::Signedness::Unknown,
-                    size: 1,
-                })),
-                Literal::Number(_) => Type::Bytes(types::Bytes {
-                    sign: types::Signedness::Unknown,
-                    size: 0,
-                }),
+                Literal::Char(_) => Type::Char,
+                Literal::String(_) => Type::Constcharp,
+                Literal::Number(_) => Type::Unknown,
                 Literal::Null => Type::Null,
             };
             Ok(Typed {
@@ -761,10 +751,7 @@ fn tr_sizeof(x: &nodes::Sizeof, ctx: &mut TrCtx) -> Result<Typed<c::Expr>, Build
         nodes::SizeofArg::Typename(x) => c::SizeofArg::Typename(tr_typename(&x, ctx)?),
     };
     Ok(Typed {
-        typ: Type::Bytes(types::Bytes {
-            sign: types::Signedness::Signed,
-            size: 0,
-        }),
+        typ: Type::Unknown,
         val: c::Expr::Sizeof { arg: Box::new(arg) },
     })
 }
