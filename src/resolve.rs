@@ -35,6 +35,6 @@ pub fn resolve_import(base_path: &String, name: &String) -> Result<ModuleRef, St
     return Ok(ModuleRef { path, ns });
 }
 
-fn basename(s: &String) -> String {
+pub fn basename(s: &str) -> String {
     return s.split("/").last().unwrap().to_string();
 }

@@ -8,6 +8,7 @@ use crate::preparser;
 use crate::preparser::ModuleInfo;
 use crate::rename;
 use crate::resolve;
+use crate::resolve::basename;
 use crate::translator;
 use md5;
 use std::collections::HashMap;
@@ -159,13 +160,16 @@ pub fn parse_project(mainpath: &String) -> Result<Project, Vec<BuildError>> {
     // // todo check for loops
     //
 
-    let modheads = load_tree(mainpath).map_err(|err| {
+    let mut modheads = load_tree(mainpath).map_err(|err| {
         vec![BuildError {
             message: err,
             path: String::new(),
             pos: String::new(),
         }]
     })?;
+    for (i, m) in modheads.iter_mut().enumerate() {
+        m.uniqid = format! {"{}_{}", basename(&m.filepath).replace(".c", ""), i};
+    }
 
     let modules = parse_mods(&modheads)?;
     let cmodules = translate_mods(modules.clone(), &modheads).map_err(|e| vec![e])?;
