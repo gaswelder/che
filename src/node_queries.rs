@@ -24,7 +24,7 @@ pub fn body_returns(b: &Body) -> bool {
         }
         Statement::While(x) => is_ident(&x.cond, "true") || body_returns(&x.body),
         Statement::Expression(x) => match x {
-            Expression::FunctionCall(function_call) => {
+            Expr::Call(function_call) => {
                 if is_ident(&function_call.func, "panic") {
                     return true;
                 }
@@ -58,22 +58,22 @@ pub fn body_returns(b: &Body) -> bool {
 
 // Returns source position of the given expression
 // for compilation error reports.
-pub fn expression_pos(e: &Expression) -> Pos {
+pub fn expression_pos(e: &Expr) -> Pos {
     // Not all nodes have source position yet, so traverse the expression
     // and find any node inside with a position field.
     let todopos = Pos { line: 0, col: 0 };
     match e {
-        Expression::ArrayIndex(x) => expression_pos(&x.array),
-        Expression::BinaryOp(x) => expression_pos(&x.a),
-        Expression::FieldAccess(x) => expression_pos(&x.target),
-        Expression::Cast(_) => todopos,
-        Expression::CompositeLiteral(_) => todopos,
-        Expression::FunctionCall(x) => expression_pos(&x.func),
-        Expression::Identifier(x) => x.pos.clone(),
-        Expression::Literal(_) => todopos, // x.pos.clone(),
-        Expression::NsName(x) => x.pos.clone(),
-        Expression::PostfixOperator(x) => expression_pos(&x.operand),
-        Expression::PrefixOperator(x) => expression_pos(&x.operand),
-        Expression::Sizeof(_) => todopos,
+        Expr::ArrIndex(x) => expression_pos(&x.array),
+        Expr::BinaryOp(x) => expression_pos(&x.a),
+        Expr::FieldAccess(x) => expression_pos(&x.target),
+        Expr::Cast(_) => todopos,
+        Expr::CompositeLiteral(_) => todopos,
+        Expr::Call(x) => expression_pos(&x.func),
+        Expr::Ident(x) => x.pos.clone(),
+        Expr::Literal(_) => todopos, // x.pos.clone(),
+        Expr::NsName(x) => x.pos.clone(),
+        Expr::PostfixOperator(x) => expression_pos(&x.operand),
+        Expr::PrefixOperator(x) => expression_pos(&x.operand),
+        Expr::Sizeof(_) => todopos,
     }
 }

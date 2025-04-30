@@ -13,16 +13,28 @@
 //     pub size: usize, // bits, 0 for unknown
 // }
 
+use crate::nodes::Typename;
+
+pub fn stdlib(name: &str) -> Option<Type> {
+    match name {
+        "puts" | "printf" => Some(Type::Func {
+            rettype: Box::new(Type::Void),
+        }),
+        _ => None,
+    }
+}
+
 #[derive(Debug)]
 pub enum Type {
     Unknown,
     Null,
     Constcharp,
     Char,
+    Number,
     // Bool,
     // Float,
     // Double,
-    // Void,
+    Void,
     // Voidp,
     // Bytes(Bytes),
     // Struct {
@@ -32,9 +44,8 @@ pub enum Type {
     // Pointer {
     //     target: Box<Type>,
     // },
-    // Func {
-    //     rettype: Box<Type>,
-    // },
+    Typename(Typename),
+    Func { rettype: Box<Type> },
 }
 
 // impl Type {

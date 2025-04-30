@@ -9,13 +9,13 @@ pub struct Module {
 #[derive(Debug, Clone)]
 pub struct Exports {
     pub consts: Vec<EnumEntry>,
-    pub fns: Vec<DeclFunc>,
+    pub fns: Vec<FuncDecl>,
     pub types: Vec<String>,
     // pub structs: Vec<StructTypedef>,
 }
 
 pub fn exports_has(e: &Exports, name: &str) -> bool {
-    e.consts.iter().any(|x| x.id == name)
+    e.consts.iter().any(|x| x.name == name)
         || e.fns.iter().any(|x| x.form.name == name)
         || e.types.iter().any(|x| x == name)
 }
@@ -29,7 +29,7 @@ pub enum ModElem {
     Typedef(Typedef),
     StructTypedef(StructTypedef),
     ModuleVariable(VarDecl),
-    DeclFunc(DeclFunc),
+    FuncDecl(FuncDecl),
 }
 
 // Elements than can be a part of a function body.
@@ -43,19 +43,19 @@ pub enum Statement {
     While(While),
     Return(Return),
     Switch(Switch),
-    Expression(Expression),
+    Expression(Expr),
 }
 
 // Elements that can participate in expressions.
 #[derive(Debug, Clone)]
-pub enum Expression {
-    ArrayIndex(ArrayIndex),
+pub enum Expr {
+    ArrIndex(ArrayIndex),
     BinaryOp(BinaryOp),
     FieldAccess(FieldAccess),
     Cast(Cast),
     CompositeLiteral(CompositeLiteral),
-    FunctionCall(FunctionCall),
-    Identifier(Ident),
+    Call(Call),
+    Ident(Ident),
     Literal(Literal),
     NsName(NsName),
     PostfixOperator(PostfixOp),
@@ -90,14 +90,14 @@ pub struct Enum {
 
 #[derive(Debug, Clone)]
 pub struct EnumEntry {
-    pub id: String,
-    pub value: Option<Expression>,
+    pub name: String,
+    pub value: Option<Expr>,
     // pub pos: Pos,
 }
 
 // pub? int *f(int a, b; double *foo) { ... }
 #[derive(Debug, Clone)]
-pub struct DeclFunc {
+pub struct FuncDecl {
     pub pos: Pos,
     pub ispub: bool,
     pub typename: Typename,
@@ -110,7 +110,7 @@ pub struct DeclFunc {
 pub struct Typedef {
     pub pos: Pos,
     pub is_pub: bool,
-    pub alias: Ident,
+    pub alias: String,
     pub type_name: Typename,
     pub dereference_count: usize,
     pub array_size: usize,
@@ -122,8 +122,8 @@ pub struct Typedef {
 pub struct StructTypedef {
     pub pos: Pos,
     pub ispub: bool,
-    pub fields: Vec<StructEntry>,
-    pub name: Ident,
+    pub entries: Vec<StructEntry>,
+    pub name: String,
 }
 
 #[derive(Debug, Clone)]
@@ -146,11 +146,12 @@ pub struct Typename {
     pub name: NsName,
 }
 
+// strings.casecmp
 #[derive(Debug, Clone)]
 pub struct NsName {
-    pub namespace: String,
-    pub name: String,
     pub pos: Pos,
+    pub ns: String,
+    pub name: String,
 }
 
 #[derive(Debug, Clone)]
@@ -167,54 +168,56 @@ pub struct CompositeLiteral {
 #[derive(Debug, Clone)]
 pub struct CompositeLiteralEntry {
     pub is_index: bool,
-    pub key: Option<Expression>,
-    pub value: Expression,
+    pub key: Option<Expr>,
+    pub value: Expr,
 }
 
 // ...[...]
 #[derive(Debug, Clone)]
 pub struct ArrayIndex {
-    pub array: Box<Expression>,
-    pub index: Box<Expression>,
+    pub array: Box<Expr>,
+    pub index: Box<Expr>,
 }
 
 // ...(...)
 #[derive(Debug, Clone)]
-pub struct FunctionCall {
-    pub func: Box<Expression>,
-    pub args: Vec<Expression>,
+pub struct Call {
+    pub func: Box<Expr>,
+    pub args: Vec<Expr>,
 }
 
+// a <op> b
 #[derive(Debug, Clone)]
 pub struct BinaryOp {
     pub op: String,
-    pub a: Box<Expression>,
-    pub b: Box<Expression>,
+    pub a: Box<Expr>,
+    pub b: Box<Expr>,
 }
 
+// a->b, a.b
 #[derive(Debug, Clone)]
 pub struct FieldAccess {
     pub op: String,
-    pub target: Box<Expression>,
-    pub field_name: Ident,
+    pub target: Box<Expr>,
+    pub field_name: String,
 }
 
 #[derive(Debug, Clone)]
 pub struct Cast {
     pub type_name: AnonymousTypeform,
-    pub operand: Box<Expression>,
+    pub operand: Box<Expr>,
 }
 
 #[derive(Debug, Clone)]
 pub struct PostfixOp {
     pub operator: String,
-    pub operand: Box<Expression>,
+    pub operand: Box<Expr>,
 }
 
 #[derive(Debug, Clone)]
 pub struct PrefixOp {
     pub operator: String,
-    pub operand: Box<Expression>,
+    pub operand: Box<Expr>,
 }
 
 #[derive(Debug, Clone)]
@@ -225,7 +228,7 @@ pub struct Sizeof {
 #[derive(Debug, Clone)]
 pub enum SizeofArg {
     Typename(Typename),
-    Expr(Expression),
+    Expr(Expr),
 }
 
 #[derive(Debug, Clone)]
@@ -233,23 +236,25 @@ pub struct Body {
     pub statements: Vec<Statement>,
 }
 
+// foo
+// It would be just a string, but we need pos too.
 #[derive(Debug, Clone)]
 pub struct Ident {
-    pub name: String,
     pub pos: Pos,
+    pub name: String,
 }
 
 #[derive(Debug, Clone)]
 pub struct VarDecl {
     pub type_name: Typename,
     pub form: Form,
-    pub value: Option<Expression>,
+    pub value: Option<Expr>,
     pub pos: Pos,
 }
 
 #[derive(Debug, Clone)]
 pub struct If {
-    pub condition: Expression,
+    pub condition: Expr,
     pub body: Body,
     pub else_body: Option<Body>,
 }
@@ -257,26 +262,26 @@ pub struct If {
 #[derive(Debug, Clone)]
 pub struct For {
     pub init: Option<ForInit>,
-    pub condition: Option<Expression>,
-    pub action: Option<Expression>,
+    pub condition: Option<Expr>,
+    pub action: Option<Expr>,
     pub body: Body,
 }
 
 #[derive(Debug, Clone)]
 pub struct While {
-    pub cond: Expression,
+    pub cond: Expr,
     pub body: Body,
 }
 
 #[derive(Debug, Clone)]
 pub struct Return {
-    pub expression: Option<Expression>,
+    pub expression: Option<Expr>,
 }
 
 #[derive(Debug, Clone)]
 pub struct Switch {
     pub is_str: bool,
-    pub value: Expression,
+    pub value: Expr,
     pub cases: Vec<SwitchCase>,
     pub default_case: Option<Body>,
 }
@@ -286,17 +291,17 @@ pub struct Switch {
 pub struct Form {
     pub pos: Pos,
     pub name: String,
-    pub hops: usize, // the number of dereferences, stars on the left
-    pub indexes: Vec<Option<Expression>>, // brackets on the right
+    pub hops: usize,                // the number of dereferences, stars on the left
+    pub indexes: Vec<Option<Expr>>, // brackets on the right
 }
 
 #[derive(Debug, Clone)]
 pub enum ForInit {
-    Expr(Expression),
+    Expr(Expr),
     DeclLoopCounter {
         type_name: Typename,
         form: Form,
-        value: Expression,
+        value: Expr,
     },
 }
 
@@ -351,31 +356,31 @@ pub struct AnonymousParameters {
     pub forms: Vec<AnonymousTypeform>,
 }
 
-pub fn is_op(e: &Expression) -> Option<String> {
+pub fn is_op(e: &Expr) -> Option<String> {
     match e {
-        Expression::BinaryOp(x) => Some(String::from(&x.op)),
-        Expression::PostfixOperator { .. } => Some(String::from("prefix")),
-        Expression::PrefixOperator { .. } => Some(String::from("prefix")),
+        Expr::BinaryOp(x) => Some(String::from(&x.op)),
+        Expr::PostfixOperator { .. } => Some(String::from("prefix")),
+        Expr::PrefixOperator { .. } => Some(String::from("prefix")),
         _ => None,
     }
 }
 
-pub fn is_binary_op(a: &Expression) -> Option<&String> {
+pub fn is_binary_op(a: &Expr) -> Option<&String> {
     match a {
-        Expression::BinaryOp(x) => Some(&x.op),
+        Expr::BinaryOp(x) => Some(&x.op),
         _ => None,
     }
 }
 
 // Returns true if the given expression is an identifier with the given name.
-pub fn is_ident(x: &Expression, name: &str) -> bool {
+pub fn is_ident(x: &Expr, name: &str) -> bool {
     match x {
-        Expression::NsName(ns_name) => ns_name.namespace == "" && ns_name.name == name,
-        Expression::Identifier(x) => x.name == name,
+        Expr::NsName(ns_name) => ns_name.ns == "" && ns_name.name == name,
+        Expr::Ident(x) => x.name == name,
         _ => false,
     }
 }
 
 pub fn is_void(t: &Typename) -> bool {
-    return t.name.namespace == "" && t.name.name == "void";
+    return t.name.ns == "" && t.name.name == "void";
 }

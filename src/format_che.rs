@@ -2,25 +2,22 @@ use crate::nodes;
 use crate::nodes::*;
 use crate::parser;
 
-pub fn format_expression(expr: &Expression) -> String {
+pub fn fmt_expr(expr: &Expr) -> String {
     match expr {
-        Expression::FieldAccess(x) => {
-            let op = &x.op;
-            let target = &x.target;
-            let field_name = &x.field_name;
-            return format!("{}{}{}", format_expression(target), op, field_name.name);
+        Expr::FieldAccess(x) => {
+            format!("{}{}{}", fmt_expr(&x.target), &x.op, &x.field_name)
         }
-        Expression::Cast(x) => {
+        Expr::Cast(x) => {
             let type_name = &x.type_name;
             let operand = &x.operand;
             return format!(
                 "({})({})",
                 fmt_anonymous_typeform(&type_name),
-                format_expression(&operand)
+                fmt_expr(&operand)
             );
         }
-        Expression::NsName(n) => format!("{}.{}", &n.namespace, &n.name),
-        Expression::FunctionCall(x) => {
+        Expr::NsName(n) => format!("{}.{}", &n.ns, &n.name),
+        Expr::Call(x) => {
             let arguments = &x.args;
             let function = &x.func;
             let mut s1 = String::from("(");
@@ -28,14 +25,14 @@ pub fn format_expression(expr: &Expression) -> String {
                 if i > 0 {
                     s1 += ", ";
                 }
-                s1 += &format_expression(&argument);
+                s1 += &fmt_expr(&argument);
             }
             s1 += ")";
-            return format!("{}{}", format_expression(&function), s1);
+            return format!("{}{}", fmt_expr(&function), s1);
         }
-        Expression::Literal(x) => fmt_literal(x),
-        Expression::Ident(x) => x.name.clone(),
-        Expression::CompositeLiteral(CompositeLiteral { entries }) => {
+        Expr::Literal(x) => fmt_literal(x),
+        Expr::Ident(x) => x.name.clone(),
+        Expr::CompositeLiteral(CompositeLiteral { entries }) => {
             if entries.len() == 0 {
                 // Print {0} to avoid "ISO C forbids empty initializers".
                 return String::from("{0}");
@@ -46,10 +43,10 @@ pub fn format_expression(expr: &Expression) -> String {
                     s += ",\n";
                 }
                 s += "\t";
-                let v = format_expression(&e.value);
+                let v = fmt_expr(&e.value);
                 match &e.key {
                     Some(expr) => {
-                        let k = format_expression(expr);
+                        let k = fmt_expr(expr);
                         if e.is_index {
                             s += &format!("[{}] = {}", k, v)
                         } else {
@@ -62,33 +59,33 @@ pub fn format_expression(expr: &Expression) -> String {
             s += "\n}";
             return s;
         }
-        Expression::Sizeof(x) => {
+        Expr::Sizeof(x) => {
             let argument = &x.argument;
             let arg = match &**argument {
                 SizeofArg::Typename(x) => fmt_typename(&x),
-                SizeofArg::Expr(x) => format_expression(&x),
+                SizeofArg::Expr(x) => fmt_expr(&x),
             };
             return format!("sizeof({})", arg);
         }
-        Expression::BinaryOp(x) => fmt_binop(&x),
-        Expression::PrefixOperator(x) => {
+        Expr::BinaryOp(x) => fmt_binop(&x),
+        Expr::PrefixOperator(x) => {
             let operand = &x.operand;
             let operator = &x.operator;
             let expr = &**operand;
             match is_binary_op(expr) {
                 Some(op) => {
                     if parser::operator_strength("prefix") > parser::operator_strength(op) {
-                        return format!("{}({})", operator, format_expression(expr));
+                        return format!("{}({})", operator, fmt_expr(expr));
                     }
-                    return format!("{}{}", operator, format_expression(expr));
+                    return format!("{}{}", operator, fmt_expr(expr));
                 }
                 None => {}
             }
             return match expr {
-                Expression::BinaryOp(x) => {
+                Expr::BinaryOp(x) => {
                     format!("{}({})", operator, fmt_binop(&x))
                 }
-                Expression::Cast(x) => {
+                Expr::Cast(x) => {
                     let type_name = &x.type_name;
                     let operand = &x.operand;
                     format!(
@@ -97,31 +94,27 @@ pub fn format_expression(expr: &Expression) -> String {
                         format!(
                             "({})({})",
                             fmt_anonymous_typeform(&type_name),
-                            format_expression(&operand)
+                            fmt_expr(&operand)
                         )
                     )
                 }
-                _ => format!("{}{}", operator, format_expression(&operand)),
+                _ => format!("{}{}", operator, fmt_expr(&operand)),
             };
         }
-        Expression::PostfixOperator(x) => {
+        Expr::PostfixOperator(x) => {
             let operand = &x.operand;
             let operator = &x.operator;
-            return format_expression(&operand) + &operator;
+            return fmt_expr(&operand) + &operator;
         }
-        Expression::ArrayIndex(x) => {
-            return format!(
-                "{}[{}]",
-                format_expression(&x.array),
-                format_expression(&x.index)
-            );
+        Expr::ArrIndex(x) => {
+            return format!("{}[{}]", fmt_expr(&x.array), fmt_expr(&x.index));
         }
     }
 }
 
 pub fn fmt_typename(t: &Typename) -> String {
-    let name = if t.name.namespace != "" {
-        format!("{}.{}", t.name.namespace, t.name.name)
+    let name = if t.name.ns != "" {
+        format!("{}.{}", t.name.ns, t.name.name)
     } else {
         t.name.name.clone()
     };
@@ -136,7 +129,7 @@ pub fn fmt_form(node: &Form) -> String {
     s += &node.name;
     for expr in &node.indexes {
         match expr {
-            Some(e) => s += &format!("[{}]", format_expression(&e)),
+            Some(e) => s += &format!("[{}]", fmt_expr(&e)),
             None => s += "[]",
         }
     }
@@ -160,23 +153,23 @@ fn fmt_binop(x: &nodes::BinaryOp) -> String {
     let af = match is_op(a) {
         Some(k) => {
             if parser::operator_strength(&k) < parser::operator_strength(op) {
-                format!("({})", format_expression(a))
+                format!("({})", fmt_expr(a))
             } else {
-                format_expression(a)
+                fmt_expr(a)
             }
         }
-        None => format_expression(a),
+        None => fmt_expr(a),
     };
     // If b is an op weaker than op, wrap it
     let bf = match is_op(b) {
         Some(k) => {
             if parser::operator_strength(&k) < parser::operator_strength(op) {
-                format!("({})", format_expression(b))
+                format!("({})", fmt_expr(b))
             } else {
-                format_expression(b)
+                fmt_expr(b)
             }
         }
-        None => format_expression(b),
+        None => fmt_expr(b),
     };
     let parts = vec![af, op.clone(), bf];
     let glue = if op == "." || op == "->" { "" } else { " " };

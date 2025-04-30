@@ -28,7 +28,7 @@ fn print_exports(exports: Exports) {
     if !exports.consts.is_empty() {
         println!("constants");
         for c in exports.consts {
-            println!("\t{}", c.id);
+            println!("\t{}", c.name);
         }
     }
     if !exports.types.is_empty() {
