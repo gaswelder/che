@@ -30,8 +30,8 @@ pub struct EnumEntry {
 #[derive(Debug, Clone)]
 pub struct Typedef {
     pub is_pub: bool,
-    pub type_name: Typename,
-    pub form: CTypedefForm,
+    pub typename: Typename,
+    pub form: TypedefForm,
 }
 
 // int foo = 1
@@ -60,7 +60,7 @@ pub struct ForwardFunc {
 
 // const char *f(int n, double x) { ... }
 #[derive(Debug, Clone)]
-pub struct FunctionDef {
+pub struct FuncDef {
     pub is_static: bool,
     pub type_name: Typename,
     pub form: Form,
@@ -75,10 +75,10 @@ pub enum ModElem {
     ForwardStruct(String),
     ForwardFunc(ForwardFunc),
     DefEnum(EnumDef),
-    DefType(Typedef),
+    Typedef(Typedef),
     DefStruct(StructDef),
     DeclVar(DeclVar),
-    DefFunc(FunctionDef),
+    FuncDef(FuncDef),
 }
 
 #[derive(Debug, Clone)]
@@ -174,7 +174,7 @@ pub enum Statement {
     },
     Break,
     Continue,
-    VariableDeclaration {
+    VarDecl {
         type_name: Typename,
         forms: Vec<Form>,
         values: Vec<Option<Expr>>,
@@ -216,7 +216,7 @@ pub struct CSwitchCase {
 }
 
 #[derive(Debug, Clone)]
-pub struct CTypedefForm {
+pub struct TypedefForm {
     pub stars: String,
     pub params: Option<CAnonymousParameters>,
     pub size: usize,

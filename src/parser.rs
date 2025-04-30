@@ -93,7 +93,7 @@ fn get_exports(elems: &Vec<ModElem>) -> Exports {
                 }
             }
             ModElem::StructTypedef(x) => {
-                if x.is_pub {
+                if x.ispub {
                     exports.types.push(x.name.name.clone());
                 }
             }
@@ -111,7 +111,7 @@ fn get_exports(elems: &Vec<ModElem>) -> Exports {
             //     }
             // }
             ModElem::DeclFunc(f) => {
-                if f.is_pub {
+                if f.ispub {
                     exports.fns.push(f.clone())
                 }
             }
@@ -179,7 +179,7 @@ fn parse_module_object(l: &mut Lexer, ctx: &ParseCtx) -> Result<TWithErrors<ModE
     let value = parse_expr(l, 0, ctx)?;
     expect(l, ";", Some("module variable declaration"))?;
     return Ok(TWithErrors {
-        obj: ModElem::ModuleVariable(DeclVar {
+        obj: ModElem::ModuleVariable(VarDecl {
             type_name,
             form,
             value: Some(value),
@@ -394,7 +394,7 @@ fn read_expression_atom(l: &mut Lexer, ctx: &ParseCtx) -> Result<Expression, Err
 
     let next = l.get().unwrap();
     return match next.kind.as_str() {
-        "word" => Ok(Expression::Identifier(Identifier {
+        "word" => Ok(Expression::Identifier(Ident {
             name: next.content,
             pos: next.pos,
         })),
@@ -512,10 +512,10 @@ fn expect(l: &mut Lexer, kind: &str, comment: Option<&str>) -> Result<Token, Err
     return Ok(l.get().unwrap());
 }
 
-fn read_identifier(lexer: &mut Lexer) -> Result<Identifier, Error> {
+fn read_identifier(lexer: &mut Lexer) -> Result<Ident, Error> {
     let tok = expect(lexer, "word", None)?;
     let name = String::from(tok.content);
-    return Ok(Identifier { name, pos: tok.pos });
+    return Ok(Ident { name, pos: tok.pos });
 }
 
 fn parse_typename(l: &mut Lexer, ctx: &ParseCtx) -> Result<Typename, Error> {
@@ -774,7 +774,7 @@ fn parse_variable_declaration(l: &mut Lexer, ctx: &ParseCtx) -> Result<Statement
         None
     };
     expect(l, ";", None)?;
-    return Ok(Statement::VariableDeclaration(DeclVar {
+    return Ok(Statement::VarDecl(VarDecl {
         pos,
         type_name,
         form,
@@ -1021,10 +1021,10 @@ fn parse_function_declaration(
     let body = parse_statements_block(l, ctx)?;
     return Ok(TWithErrors {
         obj: ModElem::DeclFunc(DeclFunc {
-            is_pub,
-            type_name,
+            ispub: is_pub,
+            typename: type_name,
             form,
-            parameters: FuncParams {
+            params: FuncParams {
                 list: parameters,
                 variadic,
             },
@@ -1051,7 +1051,7 @@ fn parse_function_parameter(l: &mut Lexer, ctx: &ParseCtx) -> Result<TypeAndForm
         forms.push(parse_form(l, ctx)?);
     }
     return Ok(TypeAndForms {
-        type_name,
+        typename: type_name,
         forms,
         // pos,
     });
@@ -1139,7 +1139,7 @@ fn parse_typedef(is_pub: bool, l: &mut Lexer, ctx: &ParseCtx) -> Result<ModElem,
         expect(l, ";", Some("typedef"))?;
         return Ok(ModElem::StructTypedef(StructTypedef {
             pos,
-            is_pub,
+            ispub: is_pub,
             fields,
             name,
         }));
@@ -1150,11 +1150,11 @@ fn parse_typedef(is_pub: bool, l: &mut Lexer, ctx: &ParseCtx) -> Result<ModElem,
         let struct_name = expect(l, "word", None)?.content;
         let type_alias = expect(l, "word", None)?.content;
         expect(l, ";", Some("typedef"))?;
-        return Ok(ModElem::StructAliasTypedef(nodes::StructAlias {
+        return Ok(ModElem::StructAlias(nodes::StructAlias {
             pos,
-            is_pub,
-            struct_name,
-            type_alias,
+            ispub: is_pub,
+            structname: struct_name,
+            typename: type_alias,
         }));
     }
 
@@ -1213,7 +1213,7 @@ fn parse_type_and_forms(l: &mut Lexer, ctx: &ParseCtx) -> Result<TypeAndForms, E
 
     expect(l, ";", None)?;
     return Ok(TypeAndForms {
-        type_name,
+        typename: type_name,
         forms,
         // pos,
     });

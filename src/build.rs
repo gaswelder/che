@@ -6,7 +6,6 @@ use crate::nodes::Module;
 use crate::parser;
 use crate::preparser;
 use crate::preparser::ModuleInfo;
-use crate::rename;
 use crate::resolve;
 use crate::resolve::basename;
 use crate::translator;
@@ -167,8 +166,11 @@ pub fn parse_project(mainpath: &String) -> Result<Project, Vec<BuildError>> {
             pos: String::new(),
         }]
     })?;
+
+    // Every modhead already has a unique key based on path, but we'll give
+    // them nicer ones here to make outputs easier for debugging.
     for (i, m) in modheads.iter_mut().enumerate() {
-        m.uniqid = format! {"{}_{}", basename(&m.filepath).replace(".c", ""), i};
+        m.uniqid = format!("mod{}_{}", i, basename(&m.filepath).replace(".c", ""));
     }
 
     let modules = parse_mods(&modheads)?;
@@ -181,20 +183,10 @@ pub fn parse_project(mainpath: &String) -> Result<Project, Vec<BuildError>> {
 }
 
 fn translate_mods(
-    mut mods: Vec<Module>,
+    mods: Vec<Module>,
     modmetas: &Vec<ModuleInfo>,
 ) -> Result<Vec<c::CModule>, BuildError> {
     let n = mods.len();
-
-    // Globalize all modules
-    for i in 0..n {
-        rename::prefix_module(&mut mods[i], &modmetas[i].uniqid);
-    }
-
-    // let mut exports = Vec::new();
-    // for i in 0..n {
-    //     exports.push(get_exports(&mods[i]));
-    // }
 
     let mut cmods = Vec::new();
     for i in 0..n {

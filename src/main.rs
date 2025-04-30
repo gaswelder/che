@@ -14,7 +14,6 @@ mod node_queries;
 mod nodes;
 mod parser;
 mod preparser;
-mod rename;
 mod resolve;
 mod translator;
 mod types;

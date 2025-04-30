@@ -25,10 +25,10 @@ pub fn exports_has(e: &Exports, name: &str) -> bool {
 pub enum ModElem {
     Macro(Macro),
     Enum(Enum),
-    StructAliasTypedef(StructAlias),
+    StructAlias(StructAlias),
     Typedef(Typedef),
     StructTypedef(StructTypedef),
-    ModuleVariable(DeclVar),
+    ModuleVariable(VarDecl),
     DeclFunc(DeclFunc),
 }
 
@@ -37,7 +37,7 @@ pub enum ModElem {
 pub enum Statement {
     Break,
     Continue,
-    VariableDeclaration(DeclVar),
+    VarDecl(VarDecl),
     If(If),
     For(For),
     While(While),
@@ -55,7 +55,7 @@ pub enum Expression {
     Cast(Cast),
     CompositeLiteral(CompositeLiteral),
     FunctionCall(FunctionCall),
-    Identifier(Identifier),
+    Identifier(Ident),
     Literal(Literal),
     NsName(NsName),
     PostfixOperator(PostfixOp),
@@ -63,13 +63,14 @@ pub enum Expression {
     Sizeof(Sizeof),
 }
 
-// typedef struct tm tm_t;
+// pub? typedef struct tm tm_t;
+// Compatibility hatch to expose an existing struct as a type.
 #[derive(Debug, Clone)]
 pub struct StructAlias {
     pub pos: Pos,
-    pub is_pub: bool,
-    pub struct_name: String,
-    pub type_alias: String,
+    pub ispub: bool,
+    pub structname: String,
+    pub typename: String,
 }
 
 #[derive(Debug, Clone)]
@@ -89,38 +90,46 @@ pub struct Enum {
 
 #[derive(Debug, Clone)]
 pub struct EnumEntry {
-    pub id: Identifier,
+    pub id: Ident,
     pub value: Option<Expression>,
     // pub pos: Pos,
 }
 
+// pub? int *f(int a, b; double *foo) { ... }
 #[derive(Debug, Clone)]
 pub struct DeclFunc {
-    pub is_pub: bool,
-    pub type_name: Typename,
-    pub form: Form,
-    pub parameters: FuncParams,
-    pub body: Body,
     pub pos: Pos,
+    pub ispub: bool,
+    pub typename: Typename,
+    pub form: Form,
+    pub params: FuncParams,
+    pub body: Body,
 }
 
 #[derive(Debug, Clone)]
 pub struct Typedef {
     pub pos: Pos,
     pub is_pub: bool,
-    pub alias: Identifier,
+    pub alias: Ident,
     pub type_name: Typename,
     pub dereference_count: usize,
     pub array_size: usize,
     pub function_parameters: Option<AnonymousParameters>,
 }
 
+// typedef { int x, y; double *f; } foo_t
 #[derive(Debug, Clone)]
 pub struct StructTypedef {
     pub pos: Pos,
-    pub is_pub: bool,
+    pub ispub: bool,
     pub fields: Vec<StructEntry>,
-    pub name: Identifier,
+    pub name: Ident,
+}
+
+#[derive(Debug, Clone)]
+pub enum StructEntry {
+    Plain(TypeAndForms),
+    Union(Union),
 }
 
 // #[derive(Debug, Clone)]
@@ -187,7 +196,7 @@ pub struct BinaryOp {
 pub struct FieldAccess {
     pub op: String,
     pub target: Box<Expression>,
-    pub field_name: Identifier,
+    pub field_name: Ident,
 }
 
 #[derive(Debug, Clone)]
@@ -225,13 +234,13 @@ pub struct Body {
 }
 
 #[derive(Debug, Clone)]
-pub struct Identifier {
+pub struct Ident {
     pub name: String,
     pub pos: Pos,
 }
 
 #[derive(Debug, Clone)]
-pub struct DeclVar {
+pub struct VarDecl {
     pub type_name: Typename,
     pub form: Form,
     pub value: Option<Expression>,
@@ -272,12 +281,13 @@ pub struct Switch {
     pub default_case: Option<Body>,
 }
 
+// *foo[]
 #[derive(Debug, Clone)]
 pub struct Form {
-    pub hops: usize,
-    pub name: String,
-    pub indexes: Vec<Option<Expression>>,
     pub pos: Pos,
+    pub name: String,
+    pub hops: usize, // the number of dereferences, stars on the left
+    pub indexes: Vec<Option<Expression>>, // brackets on the right
 }
 
 #[derive(Debug, Clone)]
@@ -318,7 +328,7 @@ pub struct FuncParams {
 
 #[derive(Debug, Clone)]
 pub struct TypeAndForms {
-    pub type_name: Typename,
+    pub typename: Typename,
     pub forms: Vec<Form>,
     // pub pos: Pos,
 }
@@ -339,12 +349,6 @@ pub struct UnionField {
 pub struct AnonymousParameters {
     pub ellipsis: bool,
     pub forms: Vec<AnonymousTypeform>,
-}
-
-#[derive(Debug, Clone)]
-pub enum StructEntry {
-    Plain(TypeAndForms),
-    Union(Union),
 }
 
 pub fn is_op(e: &Expression) -> Option<String> {

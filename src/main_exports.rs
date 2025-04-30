@@ -44,22 +44,22 @@ fn print_exports(exports: Exports) {
 
         for c in exports.fns {
             let mut params = String::from("(");
-            for (i, parameter) in c.parameters.list.iter().enumerate() {
+            for (i, parameter) in c.params.list.iter().enumerate() {
                 if i > 0 {
                     params += ", ";
                 }
-                params += &format_che::fmt_typename(&parameter.type_name);
+                params += &format_che::fmt_typename(&parameter.typename);
                 params += " ";
                 for form in &parameter.forms {
                     params += &format_che::fmt_form(&form);
                 }
             }
-            if c.parameters.variadic {
+            if c.params.variadic {
                 params += ", ...";
             }
             params += ")";
 
-            let t = format_che::fmt_typename(&c.type_name);
+            let t = format_che::fmt_typename(&c.typename);
             if t.len() > type_width {
                 type_width = t.len();
             }

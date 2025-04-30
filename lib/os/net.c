@@ -15,7 +15,6 @@ pub typedef struct sockaddr sockaddr_t;
 typedef struct sockaddr_in sockaddr_in_t;
 typedef struct addrinfo addrinfo_t;
 
-#type fd_set
 #type socklen_t
 
 pub typedef {

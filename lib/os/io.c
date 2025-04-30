@@ -9,7 +9,6 @@
 #include <unistd.h>
 
 #type fd_set
-#type socklen_t
 
 enum {
     TYPE_FD,

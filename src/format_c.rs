@@ -12,14 +12,14 @@ pub fn format_module(cm: &CModule) -> String {
                 format_form(&x.form),
                 format_expression(&x.value)
             ),
-            ModElem::DefType(x) => format_typedef(&x),
+            ModElem::Typedef(x) => format_typedef(&x),
             ModElem::Macro(x) => format!("#{} {}\n", x.name, x.value),
             ModElem::Include(x) => format!("#include {}\n", x),
             ModElem::DefEnum(x) => fmt_enumdef(x),
             ModElem::ForwardStruct(x) => format!("struct {};\n", x),
             ModElem::DefStruct(x) => format_compat_struct_definition(&x),
             ModElem::ForwardFunc(x) => fmt_function_forward_declaration(&x),
-            ModElem::DefFunc(x) => fmt_func_def(&x),
+            ModElem::FuncDef(x) => fmt_func_def(&x),
         }
     }
     return s;
@@ -37,7 +37,7 @@ fn fmt_enumdef(x: &c::EnumDef) -> String {
     s1
 }
 
-fn fmt_func_def(x: &c::FunctionDef) -> String {
+fn fmt_func_def(x: &c::FuncDef) -> String {
     let form = format_form(&x.form);
     let mut s = String::new();
     if x.is_static && form != "main" {
@@ -411,7 +411,7 @@ fn format_statement(node: &Statement) -> String {
         }),
         Statement::Break => format!("break;"),
         Statement::Continue => format!("continue;"),
-        Statement::VariableDeclaration {
+        Statement::VarDecl {
             type_name,
             forms,
             values,
@@ -476,46 +476,40 @@ fn format_statement(node: &Statement) -> String {
 }
 
 fn fmt_switch(x: &c::Switch) -> String {
-    let value = &x.value;
-    let cases = &x.cases;
-    let default = &x.default;
     let mut s = String::new();
-    for case in cases {
-        for v in &case.values {
+    s.push_str(&format!("switch ({}) {{\n", format_expression(&x.value)));
+
+    for case in &x.cases {
+        for (i, v) in case.values.iter().enumerate() {
+            if i > 0 {
+                s.push_str("\n");
+            }
             let valstring = match v {
                 CSwitchCaseValue::Ident(x) => x.clone(),
                 CSwitchCaseValue::Literal(x) => format_literal(&x),
             };
-            s += &format!("case {}:\n", valstring);
+            s.push_str(&format!("case {}:", valstring));
         }
-        s += &format!("{{\n");
+        s.push_str(" {\n");
         for statement in &case.body.statements {
-            s += &format_statement(&statement);
-            s += ";\n";
+            s.push_str(&format!("\t{};\n", &format_statement(&statement)));
         }
-        s += "break; }\n";
+        s.push_str("\tbreak;\n}\n");
     }
-    match default {
-        None => {}
-        Some(b) => {
-            s += "default: {\n";
-            for statement in &b.statements {
-                s += &format_statement(statement);
-                s += ";\n";
-            }
-            s += "}\n";
+    if let Some(b) = &x.default {
+        s.push_str("default: {\n");
+        for statement in &b.statements {
+            s.push_str(&format!("\t{};\n", &format_statement(statement)));
         }
+        s.push_str("}\n");
     }
-    return format!(
-        "switch ({}) {{\n{}\n}}",
-        format_expression(value),
-        indent(&s)
-    );
+    s.push_str("}");
+    s
 }
 
 pub fn format_typedef(x: &c::Typedef) -> String {
     let form = &x.form;
-    let t = &x.type_name;
+    let t = &x.typename;
     let mut formstr = form.stars.clone() + &form.alias;
     if form.params.is_some() {
         formstr += &format_anonymous_parameters(&form.params.as_ref().unwrap());
