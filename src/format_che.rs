@@ -34,7 +34,7 @@ pub fn format_expression(expr: &Expression) -> String {
             return format!("{}{}", format_expression(&function), s1);
         }
         Expression::Literal(x) => fmt_literal(x),
-        Expression::Identifier(x) => x.name.clone(),
+        Expression::Ident(x) => x.name.clone(),
         Expression::CompositeLiteral(CompositeLiteral { entries }) => {
             if entries.len() == 0 {
                 // Print {0} to avoid "ISO C forbids empty initializers".

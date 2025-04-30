@@ -577,9 +577,9 @@ fn tr_enum(x: &nodes::Enum, ctx: &mut TrCtx) -> Result<Vec<c::ModElem>, BuildErr
     let mut entries = Vec::new();
     for e in &x.entries {
         let id = if x.is_pub {
-            nsprefix(&ctx.this_mod_head.uniqid, &e.id.name)
+            nsprefix(&ctx.this_mod_head.uniqid, &e.id)
         } else {
-            e.id.name.clone()
+            e.id.clone()
         };
         entries.push(c::EnumEntry {
             id,

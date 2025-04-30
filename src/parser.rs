@@ -587,12 +587,12 @@ fn parse_enum(l: &mut Lexer, is_pub: bool, ctx: &ParseCtx) -> Result<ModElem, Er
     loop {
         let id = read_identifier(l)?;
         // let pos = id.pos.clone();
-        let value: Option<Expression> = if l.eat("=") {
+        let value = if l.eat("=") {
             Some(parse_expr(l, 0, ctx)?)
         } else {
             None
         };
-        members.push(EnumEntry { id, value });
+        members.push(EnumEntry { id: id.name, value });
         if !l.eat(",") {
             break;
         }

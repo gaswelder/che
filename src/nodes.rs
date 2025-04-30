@@ -15,7 +15,7 @@ pub struct Exports {
 }
 
 pub fn exports_has(e: &Exports, name: &str) -> bool {
-    e.consts.iter().any(|x| x.id.name == name)
+    e.consts.iter().any(|x| x.id == name)
         || e.fns.iter().any(|x| x.form.name == name)
         || e.types.iter().any(|x| x == name)
 }
@@ -90,7 +90,7 @@ pub struct Enum {
 
 #[derive(Debug, Clone)]
 pub struct EnumEntry {
-    pub id: Ident,
+    pub id: String,
     pub value: Option<Expression>,
     // pub pos: Pos,
 }
