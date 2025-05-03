@@ -291,16 +291,11 @@ fn base(l: &mut Lexer, ctx: &ParseCtx) -> Result<Expr, Error> {
 
         if next.kind == "->" || next.kind == "." {
             let op = l.get().unwrap().kind;
-            let id = {
-                let parent: &str = "field access field name";
-                let tok = expect(l, "word", Some(&format!("{} - identifier", parent)))?;
-                let name = String::from(tok.content);
-                Ok(Ident { name, pos: tok.pos })
-            }?;
+            let tok = expect(l, "word", Some("field access field name - identifier"))?;
             r = Expr::FieldAccess(nodes::FieldAccess {
                 op,
                 target: Box::new(r),
-                field_name: id.name,
+                field_name: tok.content,
             });
             continue;
         }
@@ -615,8 +610,8 @@ fn parse_enum(l: &mut Lexer, is_pub: bool, ctx: &ParseCtx) -> Result<ModElem, Er
     }));
 }
 
-fn parse_composite_literal(l: &mut Lexer, ctx: &ParseCtx) -> Result<CompositeLiteral, Error> {
-    let mut result = CompositeLiteral {
+fn parse_composite_literal(l: &mut Lexer, ctx: &ParseCtx) -> Result<CompLiteral, Error> {
+    let mut result = CompLiteral {
         entries: Vec::new(),
     };
     expect(l, "{", Some("composite literal"))?;
@@ -641,16 +636,16 @@ fn parse_composite_literal_entry(
 ) -> Result<CompositeLiteralEntry, Error> {
     if l.peek().unwrap().kind == "." {
         expect(l, ".", Some("struct literal member"))?;
-        let key = Expr::Ident({
-            let tok = expect(l, "word", Some("struct literal entry - identifier"))?;
-            let name = String::from(tok.content);
-            Ok(Ident { name, pos: tok.pos })
-        }?);
+        let tok = expect(l, "word", Some("struct literal entry - identifier"))?;
         expect(l, "=", Some("struct literal member"))?;
         let value = parse_expr(l, 0, ctx)?;
         return Ok(CompositeLiteralEntry {
             is_index: false,
-            key: Some(key),
+            key: Some(Expr::NsName(NsName {
+                pos: tok.pos,
+                ns: String::from(""),
+                name: tok.content,
+            })),
             value,
         });
     }
@@ -1141,17 +1136,13 @@ fn parse_typedef(is_pub: bool, l: &mut Lexer, ctx: &ParseCtx) -> Result<ModElem,
         expect(l, "}", None)?;
 
         // type name
-        let name = {
-            let tok = expect(l, "word", Some("typedef typename - identifier"))?;
-            let name = String::from(tok.content);
-            Ok(Ident { name, pos: tok.pos })
-        }?;
+        let tok = expect(l, "word", Some("typedef typename - identifier"))?;
         expect(l, ";", Some("typedef"))?;
         return Ok(ModElem::StructTypedef(StructTypedef {
             pos,
             ispub: is_pub,
             entries: fields,
-            name: name.name,
+            name: tok.content,
         }));
     }
 
@@ -1177,13 +1168,7 @@ fn parse_typedef(is_pub: bool, l: &mut Lexer, ctx: &ParseCtx) -> Result<ModElem,
         l.get();
         stars += 1;
     }
-    let alias = {
-        let parent: &str = "typedef alias";
-        let tok = expect(l, "word", Some(&format!("{} - identifier", parent)))?;
-        let name = String::from(tok.content);
-        Ok(Ident { name, pos: tok.pos })
-    }?;
-
+    let tok = expect(l, "word", Some("typedef alias - identifier"))?;
     let params = if l.follows("(") {
         Some(parse_anonymous_parameters(l, ctx)?)
     } else {
@@ -1204,7 +1189,7 @@ fn parse_typedef(is_pub: bool, l: &mut Lexer, ctx: &ParseCtx) -> Result<ModElem,
         dereference_count: stars,
         function_parameters: params,
         array_size: size,
-        alias: alias.name,
+        alias: tok.content,
     }));
 }
 

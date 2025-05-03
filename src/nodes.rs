@@ -53,9 +53,8 @@ pub enum Expr {
     BinaryOp(BinaryOp),
     FieldAccess(FieldAccess),
     Cast(Cast),
-    CompositeLiteral(CompositeLiteral),
+    CompositeLiteral(CompLiteral),
     Call(Call),
-    Ident(Ident),
     Literal(Literal),
     NsName(NsName),
     PostfixOperator(PostfixOp),
@@ -161,7 +160,7 @@ pub struct AnonymousTypeform {
 }
 
 #[derive(Debug, Clone)]
-pub struct CompositeLiteral {
+pub struct CompLiteral {
     pub entries: Vec<CompositeLiteralEntry>,
 }
 
@@ -236,20 +235,14 @@ pub struct Body {
     pub statements: Vec<Statement>,
 }
 
-// foo
-// It would be just a string, but we need pos too.
-#[derive(Debug, Clone)]
-pub struct Ident {
-    pub pos: Pos,
-    pub name: String,
-}
-
+// int foo = 1;
+// int foo;
 #[derive(Debug, Clone)]
 pub struct VarDecl {
+    pub pos: Pos,
     pub typename: Typename,
     pub form: Form,
     pub value: Option<Expr>,
-    pub pos: Pos,
 }
 
 #[derive(Debug, Clone)]
@@ -376,7 +369,6 @@ pub fn is_binary_op(a: &Expr) -> Option<&String> {
 pub fn is_ident(x: &Expr, name: &str) -> bool {
     match x {
         Expr::NsName(ns_name) => ns_name.ns == "" && ns_name.name == name,
-        Expr::Ident(x) => x.name == name,
         _ => false,
     }
 }

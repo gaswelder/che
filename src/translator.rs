@@ -426,7 +426,6 @@ fn tr_expr(e: &nodes::Expr, ctx: &mut TrCtx) -> Result<Typed<c::Expr>, BuildErro
             typ: x.typ,
             val: c::Expr::Ident(x.val),
         }),
-        nodes::Expr::Ident(x) => tr_ident(x, ctx),
         nodes::Expr::ArrIndex(x) => tr_arr_index(&x, ctx),
         nodes::Expr::BinaryOp(x) => tr_binary_op(&x, ctx),
         nodes::Expr::FieldAccess(x) => tr_field_access(&x, ctx),
@@ -441,38 +440,6 @@ fn tr_expr(e: &nodes::Expr, ctx: &mut TrCtx) -> Result<Typed<c::Expr>, BuildErro
 
 fn tr_expr0(e: &nodes::Expr, ctx: &mut TrCtx) -> Result<c::Expr, BuildError> {
     tr_expr(e, ctx).map(|x| x.val)
-}
-
-fn tr_ident(x: &nodes::Ident, ctx: &mut TrCtx) -> Result<Typed<c::Expr>, BuildError> {
-    let name: String;
-    let typ: Type;
-    match find_binding(ctx, &x.name) {
-        Some(b) => {
-            if b.ispub {
-                name = nsprefix(&ctx.this_mod_head.uniqid, &x.name);
-            } else {
-                name = x.name.clone();
-            }
-            typ = types::todo();
-        }
-        None => {
-            name = x.name.clone();
-            match types::stdlib(&x.name) {
-                Some(t) => {
-                    typ = t;
-                }
-                None => {
-                    typ = types::todo();
-                }
-            }
-        }
-    }
-
-    mark_binding_use(ctx, &x.name);
-    Ok(Typed {
-        typ,
-        val: c::Expr::Ident(name),
-    })
 }
 
 fn tr_body(b: &nodes::Body, ctx: &mut TrCtx) -> Result<c::CBody, BuildError> {
@@ -819,17 +786,22 @@ fn tr_field_access(x: &nodes::FieldAccess, ctx: &mut TrCtx) -> Result<Typed<c::E
 }
 
 // { .field = <...>, .field = <...>, ... }
-fn tr_comp_literal(
-    x: &nodes::CompositeLiteral,
-    ctx: &mut TrCtx,
-) -> Result<Typed<c::Expr>, BuildError> {
+fn tr_comp_literal(x: &nodes::CompLiteral, ctx: &mut TrCtx) -> Result<Typed<c::Expr>, BuildError> {
     let mut entries = Vec::new();
     for e in &x.entries {
         let key = match &e.key {
-            Some(x) => {
-                let tr = tr_expr(x, ctx)?;
-                Some(tr.val)
-            }
+            Some(x) => match x {
+                nodes::Expr::NsName(ns_name) => {
+                    if ns_name.ns != "" {
+                        panic!("expected field name")
+                    }
+                    Some(c::Expr::Ident(ns_name.name.clone()))
+                }
+                _ => {
+                    dbg!(x);
+                    panic!("unexpected entry");
+                }
+            },
             None => None,
         };
         let val = tr_expr(&e.value, ctx)?;

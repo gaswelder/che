@@ -69,7 +69,6 @@ pub fn expression_pos(e: &Expr) -> Pos {
         Expr::Cast(_) => todopos,
         Expr::CompositeLiteral(_) => todopos,
         Expr::Call(x) => expression_pos(&x.func),
-        Expr::Ident(x) => x.pos.clone(),
         Expr::Literal(_) => todopos, // x.pos.clone(),
         Expr::NsName(x) => x.pos.clone(),
         Expr::PostfixOperator(x) => expression_pos(&x.operand),

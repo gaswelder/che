@@ -37,8 +37,7 @@ pub fn fmt_expr(expr: &Expr) -> String {
             return format!("{}{}", fmt_expr(&function), s1);
         }
         Expr::Literal(x) => fmt_literal(x),
-        Expr::Ident(x) => x.name.clone(),
-        Expr::CompositeLiteral(CompositeLiteral { entries }) => {
+        Expr::CompositeLiteral(CompLiteral { entries }) => {
             if entries.len() == 0 {
                 // Print {0} to avoid "ISO C forbids empty initializers".
                 return String::from("{0}");
