@@ -179,8 +179,8 @@ fn parse_module_object(l: &mut Lexer, ctx: &ParseCtx) -> Result<TWithErrors<ModE
     let value = parse_expr(l, 0, ctx)?;
     expect(l, ";", Some("module variable declaration"))?;
     return Ok(TWithErrors {
-        obj: ModElem::ModuleVariable(VarDecl {
-            type_name,
+        obj: ModElem::ModVar(VarDecl {
+            typename: type_name,
             form,
             value: Some(value),
             pos,
@@ -291,7 +291,12 @@ fn base(l: &mut Lexer, ctx: &ParseCtx) -> Result<Expr, Error> {
 
         if next.kind == "->" || next.kind == "." {
             let op = l.get().unwrap().kind;
-            let id = read_identifier(l, "field access field name")?;
+            let id = {
+                let parent: &str = "field access field name";
+                let tok = expect(l, "word", Some(&format!("{} - identifier", parent)))?;
+                let name = String::from(tok.content);
+                Ok(Ident { name, pos: tok.pos })
+            }?;
             r = Expr::FieldAccess(nodes::FieldAccess {
                 op,
                 target: Box::new(r),
@@ -517,12 +522,6 @@ fn expect(l: &mut Lexer, kind: &str, comment: Option<&str>) -> Result<Token, Err
     return Ok(l.get().unwrap());
 }
 
-fn read_identifier(lexer: &mut Lexer, parent: &str) -> Result<Ident, Error> {
-    let tok = expect(lexer, "word", Some(&format!("{} - identifier", parent)))?;
-    let name = String::from(tok.content);
-    return Ok(Ident { name, pos: tok.pos });
-}
-
 fn parse_typename(l: &mut Lexer, ctx: &ParseCtx) -> Result<Typename, Error> {
     let is_const = l.eat("const");
     let name = read_ns_id(l, ctx)?;
@@ -586,20 +585,19 @@ fn parse_literal(l: &mut Lexer) -> Result<Literal, Error> {
 
 fn parse_enum(l: &mut Lexer, is_pub: bool, ctx: &ParseCtx) -> Result<ModElem, Error> {
     let pos = l.peek().unwrap().pos.clone();
-    let mut members: Vec<EnumEntry> = Vec::new();
+    let mut entries: Vec<EnumEntry> = Vec::new();
     expect(l, "enum", Some("enum definition"))?;
     expect(l, "{", Some("enum definition"))?;
     loop {
-        let id = read_identifier(l, "enum entry")?;
-        // let pos = id.pos.clone();
-        let value = if l.eat("=") {
+        let name = expect(l, "word", Some("enum entry - identifier"))?;
+        let val = if l.eat("=") {
             Some(parse_expr(l, 0, ctx)?)
         } else {
             None
         };
-        members.push(EnumEntry {
-            name: id.name,
-            value,
+        entries.push(EnumEntry {
+            name: name.content,
+            val,
         });
         if !l.eat(",") {
             break;
@@ -612,7 +610,7 @@ fn parse_enum(l: &mut Lexer, is_pub: bool, ctx: &ParseCtx) -> Result<ModElem, Er
     l.eat(";");
     return Ok(ModElem::Enum(nodes::Enum {
         is_pub,
-        entries: members,
+        entries,
         pos,
     }));
 }
@@ -643,7 +641,11 @@ fn parse_composite_literal_entry(
 ) -> Result<CompositeLiteralEntry, Error> {
     if l.peek().unwrap().kind == "." {
         expect(l, ".", Some("struct literal member"))?;
-        let key = Expr::Ident(read_identifier(l, "comp entry")?);
+        let key = Expr::Ident({
+            let tok = expect(l, "word", Some("struct literal entry - identifier"))?;
+            let name = String::from(tok.content);
+            Ok(Ident { name, pos: tok.pos })
+        }?);
         expect(l, "=", Some("struct literal member"))?;
         let value = parse_expr(l, 0, ctx)?;
         return Ok(CompositeLiteralEntry {
@@ -780,7 +782,7 @@ fn parse_variable_declaration(l: &mut Lexer, ctx: &ParseCtx) -> Result<Statement
     expect(l, ";", None)?;
     return Ok(Statement::VarDecl(VarDecl {
         pos,
-        type_name,
+        typename: type_name,
         form,
         value,
     }));
@@ -1139,7 +1141,11 @@ fn parse_typedef(is_pub: bool, l: &mut Lexer, ctx: &ParseCtx) -> Result<ModElem,
         expect(l, "}", None)?;
 
         // type name
-        let name = read_identifier(l, "typedef typename")?;
+        let name = {
+            let tok = expect(l, "word", Some("typedef typename - identifier"))?;
+            let name = String::from(tok.content);
+            Ok(Ident { name, pos: tok.pos })
+        }?;
         expect(l, ";", Some("typedef"))?;
         return Ok(ModElem::StructTypedef(StructTypedef {
             pos,
@@ -1171,7 +1177,12 @@ fn parse_typedef(is_pub: bool, l: &mut Lexer, ctx: &ParseCtx) -> Result<ModElem,
         l.get();
         stars += 1;
     }
-    let alias = read_identifier(l, "typedef alias")?;
+    let alias = {
+        let parent: &str = "typedef alias";
+        let tok = expect(l, "word", Some(&format!("{} - identifier", parent)))?;
+        let name = String::from(tok.content);
+        Ok(Ident { name, pos: tok.pos })
+    }?;
 
     let params = if l.follows("(") {
         Some(parse_anonymous_parameters(l, ctx)?)

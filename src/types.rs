@@ -1,4 +1,5 @@
-// use crate::{cspec, nodes};
+use crate::nodes;
+// use std::collections::HashMap;
 
 // #[derive(Debug)]
 // pub enum Signedness {
@@ -13,77 +14,93 @@
 //     pub size: usize, // bits, 0 for unknown
 // }
 
-use crate::nodes::Typename;
-
 pub fn stdlib(name: &str) -> Option<Type> {
     match name {
-        "puts" | "printf" => Some(Type::Func {
-            rettype: Box::new(Type::Void),
-        }),
+        "puts" | "printf" => Some(ftype(justval(Valtype::Void))),
+        "nelem" => Some(ftype(justval(Valtype::Size))),
         _ => None,
     }
 }
 
-#[derive(Debug)]
-pub enum Type {
-    Unknown,
-    Null,
-    Constcharp,
-    Char,
-    Number,
-    // Bool,
-    // Float,
-    // Double,
-    Void,
-    // Voidp,
-    // Bytes(Bytes),
-    // Struct {
-    //     opaque: bool,
-    //     fields: Vec<StructEntry>,
-    // },
-    // Pointer {
-    //     target: Box<Type>,
-    // },
-    Typename(Typename),
-    Func { rettype: Box<Type> },
+fn ftype(ret: Type) -> Type {
+    Type {
+        // isconst: true,
+        val: Valtype::Func {
+            rettype: Box::new(ret),
+        },
+        // ops: Vec::new(),
+    }
 }
 
-// impl Type {
-//     pub fn fmt(&self) -> String {
-//         match self {
-//             Type::Char => format!("char"),
-//             Type::Unknown => format!("unknown"),
-//             Type::Null => format!("NULL"),
-//             // Type::Bytes(x) => match x.sign {
-//             //     Signedness::Signed => {
-//             //         if x.size > 0 {
-//             //             format!("{}-bit signed", x.size)
-//             //         } else {
-//             //             format!("x-bit signed")
-//             //         }
-//             //     }
-//             //     Signedness::Unsigned => {
-//             //         if x.size > 0 {
-//             //             format!("{}-bit", x.size)
-//             //         } else {
-//             //             format!("x-bit unsigned")
-//             //         }
-//             //     }
-//             //     Signedness::Unknown => {
-//             //         if x.size == 8 {
-//             //             format!("char")
-//             //         } else if x.size > 0 {
-//             //             format!("{}-bit value", x.size)
-//             //         } else {
-//             //             format!("bits of unknown size")
-//             //         }
-//             //     }
-//             // },
-//             Type::Charp => format!("char"),
-//             Type::Constcharp => format!("char pointer"),
-//         }
-//     }
+#[derive(Clone, Debug)]
+pub struct Type {
+    // pub isconst: bool,
+    pub val: Valtype,
+    // pub ops: Vec<TypeOp>,
+}
+
+pub fn constcharp() -> Type {
+    Type {
+        // isconst: true,
+        val: Valtype::Char,
+        // ops: vec![TypeOp::Deref],
+    }
+}
+
+pub fn justval(val: Valtype) -> Type {
+    Type {
+        // isconst: false,
+        val,
+        // ops: Vec::new(),
+    }
+}
+
+pub fn fromtn(_tn: &nodes::Typename) -> Type {
+    todo()
+}
+
+pub fn fromstruct(_s: &nodes::StructTypedef) -> Type {
+    todo()
+}
+
+pub fn todo() -> Type {
+    justval(Valtype::Unknown)
+}
+
+// #[derive(Clone, Debug)]
+// pub enum TypeOp {
+//     Deref,
+//     // Index,
 // }
+
+#[derive(Clone, Debug)]
+pub enum Valtype {
+    Unknown,
+    Null,
+    Char,
+    Number,
+    Size,
+    Void,
+    // Name(String),
+    Func { rettype: Box<Type> },
+    // Struct { fields: HashMap<String, Type> },
+}
+
+impl Type {
+    pub fn fmt(&self) -> String {
+        match &self.val {
+            Valtype::Char => format!("char"),
+            Valtype::Unknown => format!("unknown"),
+            Valtype::Null => format!("NULL"),
+            Valtype::Number => format!("number"),
+            Valtype::Void => format!("void"),
+            Valtype::Func { rettype } => format!("func (?) -> {}", rettype.fmt()),
+            Valtype::Size => format!("size"),
+            // Valtype::Name(s) => format!("{}", s),
+            // Valtype::Struct { fields } => format!("struct with {} fields", fields.len()),
+        }
+    }
+}
 
 // pub fn sum(t1: Type, _t2: Type) -> Result<Type, String> {
 //     // Not checking anything for now.

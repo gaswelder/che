@@ -28,7 +28,7 @@ pub enum ModElem {
     StructAlias(StructAlias),
     Typedef(Typedef),
     StructTypedef(StructTypedef),
-    ModuleVariable(VarDecl),
+    ModVar(VarDecl),
     FuncDecl(FuncDecl),
 }
 
@@ -91,7 +91,7 @@ pub struct Enum {
 #[derive(Debug, Clone)]
 pub struct EnumEntry {
     pub name: String,
-    pub value: Option<Expr>,
+    pub val: Option<Expr>,
     // pub pos: Pos,
 }
 
@@ -246,7 +246,7 @@ pub struct Ident {
 
 #[derive(Debug, Clone)]
 pub struct VarDecl {
-    pub type_name: Typename,
+    pub typename: Typename,
     pub form: Form,
     pub value: Option<Expr>,
     pub pos: Pos,

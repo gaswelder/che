@@ -16,7 +16,13 @@ pub fn fmt_expr(expr: &Expr) -> String {
                 fmt_expr(&operand)
             );
         }
-        Expr::NsName(n) => format!("{}.{}", &n.ns, &n.name),
+        Expr::NsName(n) => {
+            if n.ns == "" {
+                format!("{}", &n.name)
+            } else {
+                format!("{}.{}", &n.ns, &n.name)
+            }
+        }
         Expr::Call(x) => {
             let arguments = &x.args;
             let function = &x.func;

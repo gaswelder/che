@@ -10,7 +10,7 @@ pub fn format_module(cm: &CModule) -> String {
                 "static {} {} = {};\n",
                 format_type(&x.type_name),
                 format_form(&x.form),
-                format_expression(&x.value)
+                fmt_expr(&x.value)
             ),
             ModElem::Typedef(x) => format_typedef(&x),
             ModElem::Macro(x) => format!("#{} {}\n", x.name, x.value),
@@ -79,20 +79,20 @@ pub fn format_form(node: &Form) -> String {
     s += &node.name;
     for expr in &node.indexes {
         match expr {
-            Some(e) => s += &format!("[{}]", format_expression(&e)),
+            Some(e) => s += &format!("[{}]", fmt_expr(&e)),
             None => s += "[]",
         }
     }
     return s;
 }
 
-fn format_expression(expr: &Expr) -> String {
+pub fn fmt_expr(expr: &Expr) -> String {
     match expr {
         Expr::Cast { type_name, operand } => {
             return format!(
                 "({})({})",
                 format_anonymous_typeform(&type_name),
-                format_expression(&operand)
+                fmt_expr(&operand)
             );
         }
         Expr::Call {
@@ -104,10 +104,10 @@ fn format_expression(expr: &Expr) -> String {
                 if i > 0 {
                     s1 += ", ";
                 }
-                s1 += &format_expression(&argument);
+                s1 += &fmt_expr(&argument);
             }
             s1 += ")";
-            return format!("{}{}", format_expression(&function), s1);
+            return format!("{}{}", fmt_expr(&function), s1);
         }
         Expr::Literal(x) => format_literal(x),
         Expr::Ident(x) => x.clone(),
@@ -122,10 +122,10 @@ fn format_expression(expr: &Expr) -> String {
                     s += ",\n";
                 }
                 s += "\t";
-                let v = format_expression(&e.val);
+                let v = fmt_expr(&e.val);
                 match &e.key {
                     Some(expr) => {
-                        let k = format_expression(expr);
+                        let k = fmt_expr(expr);
                         if e.is_index {
                             s += &format!("[{}] = {}", k, v)
                         } else {
@@ -141,7 +141,7 @@ fn format_expression(expr: &Expr) -> String {
         Expr::Sizeof { arg: argument } => {
             let arg = match &**argument {
                 SizeofArg::Typename(x) => format_type(&x),
-                SizeofArg::Expression(x) => format_expression(&x),
+                SizeofArg::Expression(x) => fmt_expr(&x),
             };
             return format!("sizeof({})", arg);
         }
@@ -153,12 +153,12 @@ fn format_expression(expr: &Expr) -> String {
             match is_op(target) {
                 Some(targetop) => {
                     if parser::operator_strength(&targetop) < parser::operator_strength(op) {
-                        return format!("({}){}{}", format_expression(target), op, field_name);
+                        return format!("({}){}{}", fmt_expr(target), op, field_name);
                     }
                 }
                 None => {}
             }
-            return format!("{}{}{}", format_expression(target), op, field_name);
+            return format!("{}{}{}", fmt_expr(target), op, field_name);
         }
         Expr::BinaryOp(x) => format_binary_op(&x),
         Expr::PrefixOp { operator, operand } => {
@@ -166,9 +166,9 @@ fn format_expression(expr: &Expr) -> String {
             match is_binary_op(expr) {
                 Some(op) => {
                     if parser::operator_strength("prefix") > parser::operator_strength(op) {
-                        return format!("{}({})", operator, format_expression(expr));
+                        return format!("{}({})", operator, fmt_expr(expr));
                     }
-                    return format!("{}{}", operator, format_expression(expr));
+                    return format!("{}{}", operator, fmt_expr(expr));
                 }
                 None => {}
             }
@@ -182,17 +182,17 @@ fn format_expression(expr: &Expr) -> String {
                     format!(
                         "({})({})",
                         format_anonymous_typeform(&type_name),
-                        format_expression(&operand)
+                        fmt_expr(&operand)
                     )
                 ),
-                _ => format!("{}{}", operator, format_expression(&operand)),
+                _ => format!("{}{}", operator, fmt_expr(&operand)),
             };
         }
         Expr::PostfixOp { operator, operand } => {
-            return format_expression(&operand) + &operator;
+            return fmt_expr(&operand) + &operator;
         }
         Expr::ArrayIndex { array, index } => {
-            return format!("{}[{}]", format_expression(array), format_expression(index));
+            return format!("{}[{}]", fmt_expr(array), fmt_expr(index));
         }
     }
 }
@@ -244,23 +244,23 @@ fn format_binary_op(x: &c::BinaryOp) -> String {
     let a_formatted = match is_op(a) {
         Some(k) => {
             if parser::operator_strength(&k) < parser::operator_strength(op) {
-                format!("({})", format_expression(a))
+                format!("({})", fmt_expr(a))
             } else {
-                format_expression(a)
+                fmt_expr(a)
             }
         }
-        None => format_expression(a),
+        None => fmt_expr(a),
     };
     // If b is an op weaker than op, wrap it
     let b_formatted = match is_op(b) {
         Some(k) => {
             if parser::operator_strength(&k) < parser::operator_strength(op) {
-                format!("({})", format_expression(b))
+                format!("({})", fmt_expr(b))
             } else {
-                format_expression(b)
+                fmt_expr(b)
             }
         }
-        None => format_expression(b),
+        None => fmt_expr(b),
     };
     return format!("{} {} {}", a_formatted, op.clone(), b_formatted);
 }
@@ -325,7 +325,7 @@ fn format_enum_member(node: &EnumEntry) -> String {
     let mut s = node.id.clone();
     if node.value.is_some() {
         s += " = ";
-        s += &format_expression(node.value.as_ref().unwrap());
+        s += &fmt_expr(node.value.as_ref().unwrap());
     }
     return s;
 }
@@ -338,17 +338,17 @@ fn format_for(
 ) -> String {
     let init = match init {
         Some(init) => match init {
-            ForInit::Expr(x) => format_expression(&x),
+            ForInit::Expr(x) => fmt_expr(&x),
             ForInit::DeclLoopCounter(x) => fmt_vardecl(&x),
         },
         None => String::from(""),
     };
     let condition = match condition {
-        Some(c) => format_expression(c),
+        Some(c) => fmt_expr(c),
         None => String::from(""),
     };
     let action = match action {
-        Some(a) => format_expression(a),
+        Some(a) => fmt_expr(a),
         None => String::from(""),
     };
     return format!(
@@ -365,7 +365,7 @@ fn fmt_vardecl(x: &c::DeclVar) -> String {
         "{} {} = {}",
         format_type(&x.type_name),
         format_form(&x.form),
-        format_expression(&x.value)
+        fmt_expr(&x.value)
     )
 }
 
@@ -424,7 +424,7 @@ fn format_statement(node: &Statement) -> String {
                 }
                 match value {
                     Some(x) => {
-                        s += &format!("{} = {}", &format_form(&form), &format_expression(x));
+                        s += &format!("{} = {}", &format_form(&form), &fmt_expr(x));
                     }
                     None => {
                         s += &format!("{}", format_form(&form));
@@ -440,7 +440,7 @@ fn format_statement(node: &Statement) -> String {
         } => {
             let mut s = format!(
                 "if ({cond}) {body}",
-                cond = format_expression(condition),
+                cond = fmt_expr(condition),
                 body = format_body(body)
             );
             if else_body.is_some() {
@@ -458,26 +458,22 @@ fn format_statement(node: &Statement) -> String {
             cond: condition,
             body,
         } => {
-            return format!(
-                "while ({}) {}",
-                format_expression(condition),
-                format_body(body)
-            );
+            return format!("while ({}) {}", fmt_expr(condition), format_body(body));
         }
         Statement::Return { expression } => {
             return match expression {
                 None => String::from("return;"),
-                Some(x) => format!("return {}", format_expression(&x)),
+                Some(x) => format!("return {}", fmt_expr(&x)),
             } + ";";
         }
         Statement::Switch(x) => fmt_switch(&x),
-        Statement::Expression(x) => format_expression(&x) + ";",
+        Statement::Expression(x) => fmt_expr(&x) + ";",
     }
 }
 
 fn fmt_switch(x: &c::Switch) -> String {
     let mut s = String::new();
-    s.push_str(&format!("switch ({}) {{\n", format_expression(&x.value)));
+    s.push_str(&format!("switch ({}) {{\n", fmt_expr(&x.value)));
 
     for case in &x.cases {
         for (i, v) in case.values.iter().enumerate() {
