@@ -491,10 +491,6 @@ fn tr_expr(e: &nodes::Expr, ctx: &mut TrCtx) -> Result<Typed<c::Expr>, BuildErro
     };
 }
 
-fn tr_expr0(e: &nodes::Expr, ctx: &mut TrCtx) -> Result<c::Expr, BuildError> {
-    tr_expr(e, ctx).map(|x| x.val)
-}
-
 fn tr_body(b: &nodes::Body, ctx: &mut TrCtx) -> Result<c::CBody, BuildError> {
     let mut statements: Vec<c::Statement> = Vec::new();
     begin_scope(ctx);
@@ -512,10 +508,10 @@ fn tr_body(b: &nodes::Body, ctx: &mut TrCtx) -> Result<c::CBody, BuildError> {
                             let pos = expression_pos(x).fmt();
                             mk_panic(ctx, &pos, &call.args)?
                         } else {
-                            c::Statement::Expression(tr_expr0(&x, ctx)?)
+                            c::Statement::Expression(tr_expr(&x, ctx)?.val)
                         }
                     }
-                    _ => c::Statement::Expression(tr_expr0(&x, ctx)?),
+                    _ => c::Statement::Expression(tr_expr(&x, ctx)?.val),
                 }
             }
             nodes::Statement::For(x) => tr_for(x, ctx)?,
@@ -654,7 +650,7 @@ fn tr_enum(x: &nodes::Enum, ctx: &mut TrCtx) -> Result<Vec<c::ModElem>, BuildErr
         entries.push(c::EnumEntry {
             id,
             value: match &e.val {
-                Some(v) => Some(tr_expr0(v, ctx)?),
+                Some(v) => Some(tr_expr(v, ctx)?.val),
                 None => None,
             },
         })
@@ -681,7 +677,7 @@ fn tr_modvar(x: &nodes::VarDecl, ctx: &mut TrCtx) -> Result<Vec<c::ModElem>, Bui
     Ok(vec![c::ModElem::VarDecl(c::VarDecl {
         typename: tr_typename(&x.typename, ctx)?,
         form: tr_form(&x.form, ctx, true)?,
-        value: tr_expr0(x.value.as_ref().unwrap(), ctx)?,
+        value: tr_expr(x.value.as_ref().unwrap(), ctx)?.val,
     })])
 }
 
@@ -690,7 +686,7 @@ fn tr_form(x: &nodes::Form, ctx: &mut TrCtx, publishable: bool) -> Result<c::For
     let mut indexes = Vec::new();
     for index in &x.indexes {
         indexes.push(match index {
-            Some(e) => Some(tr_expr0(e, ctx)?),
+            Some(e) => Some(tr_expr(e, ctx)?.val),
             None => None,
         })
     }
@@ -974,7 +970,7 @@ fn tr_comp_literal(x: &nodes::CompLiteral, ctx: &mut TrCtx) -> Result<Typed<c::E
 // sizeof(...)
 fn tr_sizeof(x: &nodes::Sizeof, ctx: &mut TrCtx) -> Result<Typed<c::Expr>, BuildError> {
     let arg = match x.arg.as_ref() {
-        nodes::SizeofArg::Expr(x) => c::SizeofArg::Expression(tr_expr0(&x, ctx)?),
+        nodes::SizeofArg::Expr(x) => c::SizeofArg::Expression(tr_expr(&x, ctx)?.val),
         nodes::SizeofArg::Typename(x) => c::SizeofArg::Typename(tr_typename(&x, ctx)?),
     };
     Ok(Typed {
@@ -1244,7 +1240,7 @@ fn tr_for(x: &nodes::For, ctx: &mut TrCtx) -> Result<c::Statement, BuildError> {
         init: match &x.init {
             Some(init) => Some(match &init {
                 // i = 0
-                nodes::ForInit::Expr(x) => c::ForInit::Expr(tr_expr0(x, ctx)?),
+                nodes::ForInit::Expr(x) => c::ForInit::Expr(tr_expr(x, ctx)?.val),
 
                 // int i = 0
                 nodes::ForInit::DeclLoopCounter {
@@ -1262,18 +1258,18 @@ fn tr_for(x: &nodes::For, ctx: &mut TrCtx) -> Result<c::Statement, BuildError> {
                     c::ForInit::DeclLoopCounter(c::VarDecl {
                         typename: tr_typename(type_name, ctx)?,
                         form: tr_form(form, ctx, false)?,
-                        value: tr_expr0(value, ctx)?,
+                        value: tr_expr(value, ctx)?.val,
                     })
                 }
             }),
             None => None,
         },
         condition: match &x.condition {
-            Some(x) => Some(tr_expr0(&x, ctx)?),
+            Some(x) => Some(tr_expr(&x, ctx)?.val),
             None => None,
         },
         action: match &x.action {
-            Some(x) => Some(tr_expr0(&x, ctx)?),
+            Some(x) => Some(tr_expr(&x, ctx)?.val),
             None => None,
         },
         body: tr_body(&x.body, ctx)?,
@@ -1302,7 +1298,7 @@ fn tr_if(x: &nodes::If, ctx: &mut TrCtx) -> Result<c::Statement, BuildError> {
 fn tr_return(x: &nodes::Return, ctx: &mut TrCtx) -> Result<c::Statement, BuildError> {
     Ok(c::Statement::Return {
         expression: match &x.expression {
-            Some(e) => Some(tr_expr0(e, ctx)?),
+            Some(e) => Some(tr_expr(e, ctx)?.val),
             None => None,
         },
     })
@@ -1341,7 +1337,7 @@ fn mk_old_switch(x: &nodes::Switch, ctx: &mut TrCtx) -> Result<c::Statement, Bui
         })
     }
     Ok(c::Statement::Switch(c::Switch {
-        value: tr_expr0(value, ctx)?,
+        value: tr_expr(value, ctx)?.val,
         cases: tcases,
         default: match default {
             Some(x) => Some(tr_body(&x, ctx)?),
@@ -1354,7 +1350,7 @@ fn mk_str_switch(x: &nodes::Switch, ctx: &mut TrCtx) -> Result<c::Statement, Bui
     let value = &x.value;
     let cases = &x.cases;
     let default = &x.default_case;
-    let switchval = tr_expr0(value, ctx)?;
+    let switchval = tr_expr(value, ctx)?.val;
 
     let c0 = &cases[0];
     Ok(c::Statement::If {
@@ -1431,7 +1427,7 @@ fn tr_vardecl(x: &nodes::VarDecl, ctx: &mut TrCtx) -> Result<c::Statement, Build
         type_name: tr_typename(&x.typename, ctx)?,
         forms: vec![tr_form(&x.form, ctx, false)?],
         values: vec![match &x.value {
-            Some(x) => Some(tr_expr0(&x, ctx)?),
+            Some(x) => Some(tr_expr(&x, ctx)?.val),
             None => None,
         }],
     })
@@ -1440,7 +1436,7 @@ fn tr_vardecl(x: &nodes::VarDecl, ctx: &mut TrCtx) -> Result<c::Statement, Build
 // while (...) { ... }
 fn tr_while(x: &nodes::While, ctx: &mut TrCtx) -> Result<c::Statement, BuildError> {
     Ok(c::Statement::While {
-        cond: tr_expr0(&x.cond, ctx)?,
+        cond: tr_expr(&x.cond, ctx)?.val,
         body: tr_body(&x.body, ctx)?,
     })
 }
@@ -1473,7 +1469,7 @@ fn mk_panic(
 ) -> Result<c::Statement, BuildError> {
     let mut args = vec![c::Expr::Ident(String::from("stderr"))];
     for arg in arguments {
-        args.push(tr_expr0(arg, ctx)?);
+        args.push(tr_expr(arg, ctx)?.val);
     }
     Ok(c::Statement::Block {
         statements: vec![
