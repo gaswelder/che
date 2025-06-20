@@ -18,7 +18,7 @@ pub typedef void voidfunc_t();
 
 typedef {
     bool on;
-    time_t t;
+    int64_t t;
     voidfunc_t *f;
 } ioloop_timer_t;
 
@@ -211,7 +211,11 @@ pub void set_timer(voidfunc_t *f, int seconds) {
 
     timeouts[slot].on = true;
     timeouts[slot].f = f;
-    timeouts[slot].t = (int32_t) time(NULL) + seconds;
+    timeouts[slot].t = gettime() + seconds;
+}
+
+int64_t gettime() {
+	return (int64_t) time(NULL);
 }
 
 
@@ -231,7 +235,7 @@ pub bool process() {
 
     ioloop_timer_t *closest_timer = closest_timeout();
     if (closest_timer) {
-        timeout.tv_sec = closest_timer->t - time(NULL);
+        timeout.tv_sec = closest_timer->t - gettime();
         dbg.m(DBG_TAG, "closest timeout in %ld s", timeout.tv_sec);
     }
 
@@ -357,7 +361,7 @@ ioloop_timer_t *closest_timeout() {
 }
 
 void dispatch_timers() {
-    time_t now = time(NULL);
+    int64_t now = gettime();
     for (int i = 0; i < 100; i++) {
         if (!timeouts[i].on) continue;
         if (timeouts[i].t > now) continue;

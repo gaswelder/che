@@ -165,7 +165,7 @@ fn is_sint(x: &Type) -> bool {
         x.fmt().as_str(),
         "int" | "int16_t" | "int32_t" | "int64_t" | "int8_t"
 		// sloppy
-		| "char" | "ptrdiff_t" | "time_t"
+		| "char" | "ptrdiff_t"
     )
 }
 
