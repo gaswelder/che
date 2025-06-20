@@ -21,20 +21,20 @@ pub typedef {
 } handshake_t;
 
 pub int read_handshake(reader.t *r, handshake_t *hs) {
-	uint8_t pstrlen = 0;
-    int c = 0;
-    c += reader.read(r, &pstrlen, 1);
-    if (pstrlen != 19) {
-        panic("expected protocol string length 19, got %u", pstrlen);
+	size_t c = 0;
+	uint8_t len = 0;
+    c += reader.read(r, &len, 1);
+    if (len != 19) {
+        panic("expected protocol string length 19, got %u", len);
     }
-    c += reader.read(r, hs->proto, pstrlen);
+    c += reader.read(r, hs->proto, len);
     c += reader.read(r, NULL, 8);
     c += reader.read(r, hs->infohash, 20);
     c += reader.read(r, hs->peer_id, 20);
-    if (c < 1 + pstrlen + 8 + 20 + 20) {
+    if (c < (uint32_t) len + 49) {
         return EOF;
     }
-	return c;
+	return (int) c;
 }
 
 pub int write_handshake(writer.t *w, uint8_t *infohash, *peer_id) {
@@ -114,7 +114,7 @@ pub void read_message(reader.t *r, uint32_t msglen, msg_t *m) {
                 for (int j = 0; j < 8; j++) {
                     bool set = byte & (1<<(7-j));
                     flags[n++] = set;
-                    printf("piece %d: %d\n", i * 8 + j, set);
+                    printf("piece %d: %d\n", i * 8 + (uint32_t) j, set);
                 }
             }
         }

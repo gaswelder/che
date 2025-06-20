@@ -1,7 +1,8 @@
-size = 4
+val.a = 0
+val.b.b = 0
+size = 8
 one = 1
-x.a = 0
 OK
 not one
 y=10, a = 0
-size = 4
+size = 8

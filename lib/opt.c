@@ -220,8 +220,9 @@ void set_flag(optspec_t *spec, char **arg) {
 	}
 }
 
-// Returns a pointer to the optspec with name c or null.
-optspec_t *find(int c) {
+// Returns a pointer to the optspec with name c.
+// Returns NULL if there is no such spec.
+optspec_t *find(char c) {
 	for (size_t i = 0; i < flags_num; i++) {
 		if (specs[i].name[0] == c) {
 			return &specs[i];

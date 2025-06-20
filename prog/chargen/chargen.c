@@ -13,7 +13,7 @@
 typedef {
 	net.net_t *conn;
 	char data[2048];
-	int len;
+	size_t len;
 } nbuf_t;
 
 typedef {
@@ -21,13 +21,7 @@ typedef {
 	nbuf_t out;
 } client_t;
 
-char linechars[] =
-	"!\"#$%&'()*+,-./0123456789:;<=>?@"
-	"ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`"
-	"abcdefghijklmnopqrstuvwxyz{|}~ ";
-
-int main()
-{
+int main() {
 	char address[] = "0.0.0.0:1900";
 	net.net_t *l = net.net_listen("tcp", address);
 	if(!l) {
@@ -37,33 +31,27 @@ int main()
 
 	while(1) {
 		net.net_t *s = net.net_accept(l);
-		if(!s) {
+		if (!s) {
 			fprintf(stderr, "accept failed: %s\n", strerror(errno));
 			continue;
 		}
-
+		log.logmsg("%s connected", net.net_addr(s));
 		client_t *c = calloc(1, sizeof(client_t));
 		c->out.conn = s;
 		process_client(c);
-		//th_detach(th_start(&process_client, c));
 	}
-
 	net.net_close(l);
 	return 0;
 }
 
-void *process_client(client_t *c)
-{
+void *process_client(client_t *c) {
 	net.net_t *conn = c->out.conn;
-	log.logmsg("%s connected", net.net_addr(conn));
 	char buf[256] = {};
-
-	while(1) {
+	while (1) {
 		if (net.readconn(conn, buf, sizeof(buf)) == 0) {
 			break;
 		}
-
-		if(!send_line(c)) {
+		if (!send_line(c)) {
 			fprintf(stderr, "send_line error: %s\n", strerror(errno));
 			break;
 		}
@@ -74,40 +62,37 @@ void *process_client(client_t *c)
 	return NULL;
 }
 
-bool send_line(client_t *c)
-{
-	for(int i = 0; i < 72; i++) {
-		/*
-		 * Get next character
-		 */
-		char ch = linechars[c->charpos];
-		c->charpos++;
-		if(c->charpos == sizeof(linechars)) {
-			c->charpos = 0;
-		}
-
-		/*
-		 * Put it to the client's output buffer
-		 */
-		if(putch(ch, &(c->out)) == EOF) {
+bool send_line(client_t *c) {
+	for (int i = 0; i < 72; i++) {
+		if (!writech(c, nextch(c))) {
 			return false;
 		}
 	}
 	return true;
 }
 
-/*
- * Puts a character to the client output buffer.
- * Flushes the buffer when it fills.
- */
-int putch(int ch, nbuf_t *b)
-{
+bool writech(client_t *c, char ch) {
+	nbuf_t *b = &(c->out);
 	b->data[b->len++] = ch;
-	if(b->len == sizeof(b->data)) {
-		if(net.net_write(b->conn, b->data, b->len) < b->len) {
-			return EOF;
+	if (b->len == sizeof(b->data)) {
+		int r = net.net_write(b->conn, b->data, b->len);
+		if (r < 0 || (size_t) r < b->len) {
+			return false;
 		}
 		b->len = 0;
+	}
+	return true;
+}
+
+char linechars[] =
+	"!\"#$%&'()*+,-./0123456789:;<=>?@"
+	"ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`"
+	"abcdefghijklmnopqrstuvwxyz{|}~ ";
+
+char nextch(client_t *c) {
+	char ch = linechars[c->charpos++];
+	if ((size_t) c->charpos == sizeof(linechars)) {
+		c->charpos = 0;
 	}
 	return ch;
 }

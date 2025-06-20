@@ -6,7 +6,7 @@ nodes.node_t False = {.kind = nodes.F};
 
 pub nodes.node_t *read_statement(lexer_t *l) {
 	tok_t *t = lex_peektok(l);
-	if (t && t->kind == TOK_ID && !strcmp(t->payload, "type")) {
+	if (t != NULL && t->kind == TOK_ID && !strcmp(t->payload, "type")) {
 		return read_typedef(l);
 	}
 	return read_union(l);

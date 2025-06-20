@@ -321,11 +321,16 @@ Reprog *regcomp1(char *s, int literal, int dot_type) {
 
 	/* Start with a low priority operator to prime parser */
 	pushator(START-1);
-	while((token = lex(literal, dot_type)) != END){
-		if((token&0300) == OPERATOR)
+	while (true) {
+		token = lex(literal, dot_type);
+		if (token == END) {
+			break;
+		}
+		if ((token & 0300) == OPERATOR) {
 			operator(token);
-		else
+		} else {
 			operand(token);
+		}
 	}
 
 	/* Close with a low priority operator */
@@ -346,7 +351,7 @@ Reprog *regcomp1(char *s, int literal, int dot_type) {
 	}
 	pp = optimize(pp);
 	if (DEBUG) {
-		printf("start: %ld\n", andp->first-pp->firstinst);
+		printf("start: %ld\n", andp->first - (Reinst *)pp->firstinst);
 		dump(pp);
 	}
 
@@ -542,7 +547,7 @@ void evaluntil(int pri) {
 	}
 }
 
-Reprog* optimize(Reprog *pp) {
+Reprog *optimize(Reprog *pp) {
 	Reinst *inst = NULL;
 	Reinst *target = NULL;
 	Reclass *cl = NULL;
@@ -562,7 +567,8 @@ Reprog* optimize(Reprog *pp) {
 	 *  necessary.  Reallocate to the actual space used
 	 *  and then relocate the code.
 	 */
-	int size = sizeof(Reprog) + (freep - pp->firstinst)*sizeof(Reinst);
+	size_t tmp = freep - (Reinst *)pp->firstinst;
+	int size = sizeof(Reprog) + tmp * sizeof(Reinst);
 	ptrdiff_t pp_pos = (char *)pp - (char *)NULL;
 	Reprog *npp = realloc(pp, size);
 	if (npp == NULL) {
@@ -610,7 +616,7 @@ void dump(Reprog *pp)
 
 	l = pp->firstinst;
 	while (true) {
-		printf("%ld:\t0%o\t%ld\t%ld", l-pp->firstinst, l->type,
+		printf("%ld:\t0%o\t%ld\t%ld", l- (Reinst *)pp->firstinst, l->type,
 			l->u2.left-pp->firstinst, l->u1.right-pp->firstinst);
 		if(l->type == RUNE)
 			printf("\t%d\n", l->u1.r);
@@ -645,9 +651,9 @@ int nextc(utf.Rune *rp) {
 		*rp = 0;
 		return 1;
 	}
-	exprp += utf.chartorune(rp, exprp);
+	exprp += utf.get_rune(rp, exprp);
 	if(*rp == '\\'){
-		exprp += utf.chartorune(rp, exprp);
+		exprp += utf.get_rune(rp, exprp);
 		return 1;
 	}
 	if(*rp == 0)
@@ -657,7 +663,7 @@ int nextc(utf.Rune *rp) {
 
 int lex(int literal, int dot_type) {
 	int quoted = nextc(&yyrune);
-	if (literal || quoted) {
+	if (literal != 0 || quoted != 0) {
 		if (yyrune == 0) {
 			return END;
 		}
@@ -799,8 +805,9 @@ _renewmatch(Resub *mp, int ms, Resublist *sp)
 {
 	int i = 0;
 
-	if(mp==0 || ms<=0)
+	if (mp == NULL || ms<=0) {
 		return;
+	}
 	if(mp[0].s.sp==0 || sp->m[0].s.sp<mp[0].s.sp ||
 	   (sp->m[0].s.sp==mp[0].s.sp && sp->m[0].e.ep>mp[0].e.ep)){
 		for(i=0; i<ms && i<NSUBEXP; i++)
@@ -962,7 +969,7 @@ regexec1(Reprog *progp,
 			switch(j->starttype) {
 				case RUNE: {
 					p = utf.utfrune(s, j->startchar);
-					if(p == 0 || s == j->eol)
+					if (p == NULL || s == j->eol)
 						return match;
 					s = p;
 				}
@@ -970,8 +977,9 @@ regexec1(Reprog *progp,
 					if(s == bol)
 						break;
 					p = utf.utfrune(s, '\n');
-					if(p == 0 || s == j->eol)
+					if (p == NULL || s == j->eol) {
 						return match;
+					}
 					s = p+1;
 				}
 			}
@@ -980,7 +988,7 @@ regexec1(Reprog *progp,
 		if(r < utf.Runeself)
 			n = 1;
 		else
-			n = utf.chartorune(&r, s);
+			n = utf.get_rune(&r, s);
 
 		/* switch run lists */
 		tl = j->relist[flag];
@@ -1058,15 +1066,16 @@ regexec1(Reprog *progp,
 					/* Match! */
 					match = 1;
 					tlp->se.m[0].e.ep = s;
-					if(mp != 0)
+					if (mp != NULL) {
 						_renewmatch(mp, ms, &tlp->se);
+					}
 				}}
 				break;
 			}
 		}
 		if (s == j->eol)
 			break;
-		checkstart = j->starttype && nl->inst==0;
+		checkstart = j->starttype && nl->inst == NULL;
 		s += n;
 		if (!r) {
 			break;
@@ -1171,7 +1180,7 @@ pub void regsub(char *sp, *dp, int dlen, Resub *mp, int ms) {
 			switch(*++sp) {
 			case '0', '1', '2', '3', '4', '5', '6', '7', '8', '9': {
 				i = *sp-'0';
-				if(mp!=0 && mp[i].s.sp != 0 && ms>i)
+				if (mp != NULL && mp[i].s.sp != 0 && ms>i)
 					for(ssp = mp[i].s.sp;
 					     ssp < mp[i].e.ep;
 					     ssp++)
@@ -1190,7 +1199,7 @@ pub void regsub(char *sp, *dp, int dlen, Resub *mp, int ms) {
 					*dp++ = *sp;
 			}}
 		} else if(*sp == '&') {
-			if(mp!=0 && mp[0].s.sp != 0 && ms>0)
+			if (mp != NULL && mp[0].s.sp != 0 && ms>0)
 				for(ssp = mp[0].s.sp;
 				     ssp < mp[0].e.ep; ssp++)
 					if(dp < ep)
@@ -1346,15 +1355,16 @@ int rregexec1(Reprog *progp,
 					/* Match! */
 					match = 1;
 					tlp->se.m[0].e.rep = s;
-					if(mp != 0)
+					if (mp != NULL) {
 						_renewmatch(mp, ms, &tlp->se);
+					}
 				}}
 				break;
 			}
 		}
 		if (s == j->reol)
 			break;
-		checkstart = j->startchar && nl->inst==0;
+		checkstart = j->startchar != 0 && nl->inst == NULL;
 		s++;
 		if (!r) {
 			break;
@@ -1448,7 +1458,7 @@ pub void rregsub(utf.Rune *sp, utf.Rune *dp, int dlen, Resub *mp, int ms) {
 			switch(*++sp){
 			case '0', '1', '2', '3', '4', '5', '6', '7', '8', '9': {
 				i = *sp-'0';
-				if(mp!=0 && mp[i].s.rsp != 0 && ms>i)
+				if( mp != NULL && mp[i].s.rsp != 0 && ms>i)
 					for(ssp = mp[i].s.rsp;
 					     ssp < mp[i].e.rep;
 					     ssp++)
@@ -1468,7 +1478,7 @@ pub void rregsub(utf.Rune *sp, utf.Rune *dp, int dlen, Resub *mp, int ms) {
 			}
 			}
 		} else if (*sp == '&') {
-			if (mp!=0 && mp[0].s.rsp != 0 && ms>0)
+			if (mp != NULL && mp[0].s.rsp != 0 && ms>0)
 				for(ssp = mp[0].s.rsp;
 				     ssp < mp[0].e.rep; ssp++)
 					if (dp < ep) {

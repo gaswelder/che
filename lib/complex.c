@@ -24,6 +24,14 @@ pub t mul(t a, b) {
 	return r;	
 }
 
+pub double abs(t z) {
+	return sqrt(z.re * z.re + z.im * z.im);
+}
+
+pub double abs2(t z) {
+	return z.re * z.re + z.im * z.im;
+}
+
 pub void print(FILE *f, t x) {
     fprintf(f, "(%f + %fi)", x.re, x.im);
 }

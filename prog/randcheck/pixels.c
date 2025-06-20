@@ -5,7 +5,7 @@
 // Here we treat the generated numbers as pixel coordinates on an image.
 // Every time a pixel is selected, we make it darker.
 
-pub int main() {
+pub int run() {
 	image.image_t *img = image.new(1040, 1040);
 	image.fill(img, image.white());
 	image.rgba_t color = {};

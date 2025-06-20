@@ -1,16 +1,10 @@
 #import tokenizer
 
 pub typedef {
-	// One of the "T_" constance below.
-	int type;
-	// Token payload, for tokens of type T_ERR, T_STR and T_NUM.
-	char *str;
+	int type; // One of the "T_" constants below.
+	char *str; // Token payload, for tokens of type T_ERR, T_STR and T_NUM.
 } json_token_t;
 
-/*
- * These values are above 255 so that they couldn't be
- * confused with byte values in the parsed string.
- */
 pub enum {
 	T_ERR = 257,
 	T_TRUE,

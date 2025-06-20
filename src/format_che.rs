@@ -2,17 +2,19 @@ use crate::nodes;
 use crate::nodes::*;
 use crate::parser;
 
+pub fn fmt_field_access(x: &FieldAccess) -> String {
+    format!("{}{}{}", fmt_expr(&x.target), &x.op, &x.field_name)
+}
+
 pub fn fmt_expr(expr: &Expr) -> String {
     match expr {
-        Expr::FieldAccess(x) => {
-            format!("{}{}{}", fmt_expr(&x.target), &x.op, &x.field_name)
-        }
+        Expr::FieldAccess(x) => fmt_field_access(x),
         Expr::Cast(x) => {
-            let type_name = &x.type_name;
+            let type_name = &x.typeform;
             let operand = &x.operand;
             return format!(
                 "({})({})",
-                fmt_anonymous_typeform(&type_name),
+                fmt_base_typeform(&type_name),
                 fmt_expr(&operand)
             );
         }
@@ -65,7 +67,7 @@ pub fn fmt_expr(expr: &Expr) -> String {
             return s;
         }
         Expr::Sizeof(x) => {
-            let argument = &x.argument;
+            let argument = &x.arg;
             let arg = match &**argument {
                 SizeofArg::Typename(x) => fmt_typename(&x),
                 SizeofArg::Expr(x) => fmt_expr(&x),
@@ -91,14 +93,14 @@ pub fn fmt_expr(expr: &Expr) -> String {
                     format!("{}({})", operator, fmt_binop(&x))
                 }
                 Expr::Cast(x) => {
-                    let type_name = &x.type_name;
+                    let type_name = &x.typeform;
                     let operand = &x.operand;
                     format!(
                         "{}{}",
                         operator,
                         format!(
                             "({})({})",
-                            fmt_anonymous_typeform(&type_name),
+                            fmt_base_typeform(&type_name),
                             fmt_expr(&operand)
                         )
                     )
@@ -126,30 +128,22 @@ pub fn fmt_typename(t: &Typename) -> String {
     return format!("{}{}", if t.is_const { "const " } else { "" }, name);
 }
 
-pub fn fmt_form(node: &Form) -> String {
-    let mut s = String::new();
-    for _ in 0..node.hops {
-        s += "*";
-    }
-    s += &node.name;
-    for expr in &node.indexes {
+pub fn fmt_form(x: &Form) -> String {
+    let mut s = "*".repeat(x.hops) + &x.name;
+    for expr in &x.indexes {
         match expr {
             Some(e) => s += &format!("[{}]", fmt_expr(&e)),
             None => s += "[]",
         }
     }
-    return s;
+    s
 }
 
-fn fmt_anonymous_typeform(node: &AnonymousTypeform) -> String {
-    let mut s = fmt_typename(&node.type_name);
-    for op in &node.ops {
-        s += &op;
-    }
-    return s;
+fn fmt_base_typeform(x: &BareTypeform) -> String {
+    format!("{}{}", fmt_typename(&x.typename), "*".repeat(x.hops))
 }
 
-fn fmt_binop(x: &nodes::BinaryOp) -> String {
+pub fn fmt_binop(x: &nodes::BinaryOp) -> String {
     let op = &x.op;
     let a = &x.a;
     let b = &x.b;

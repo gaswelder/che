@@ -1,4 +1,3 @@
-// #define _X_OPEN_SOURCE 700
 #include <unistd.h>
 #include <sys/stat.h>
 #include <dirent.h>
@@ -148,7 +147,7 @@ int fsize(FILE *f, size_t *s)
 		return 0;
 	}
 
-	long size = ftell(f);
+	int32_t size = ftell(f);
 	if(size < 0) {
 		return 0;
 	}
@@ -231,7 +230,7 @@ pub bool file_exists(const char *path) {
 	return true;
 }
 
-// Return ptr to start of file extension within filepath.
+// Returns ptr to the start of file extension within filepath.
 // Ex. "path/to/index.html" returns "html"
 pub const char *fileext(const char *filepath) {
     int filepath_len = strlen(filepath);
@@ -260,7 +259,7 @@ pub const char *basename(const char *path) {
 	return last;
 }
 
-// Puts the directory part the path into buf and return true.
+// Puts the directory part the path into buf and returns true.
 // Returns false if buf is too small.
 pub bool dirname(const char *path, char *buf, size_t bufsize) {
     if (strlen(path) >= bufsize) {

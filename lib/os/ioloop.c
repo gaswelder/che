@@ -211,7 +211,7 @@ pub void set_timer(voidfunc_t *f, int seconds) {
 
     timeouts[slot].on = true;
     timeouts[slot].f = f;
-    timeouts[slot].t = time(NULL) + seconds;
+    timeouts[slot].t = (int32_t) time(NULL) + seconds;
 }
 
 

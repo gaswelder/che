@@ -36,7 +36,7 @@ pub char *newsubstr(const char *s, int p1, p2) {
 // Trims spaces at both sides of s.
 pub char *trim(char *s) {
 	char *left = s;
-	while (*left && isspace(*left)) left++;
+	while (*left != '\0' && isspace(*left)) left++;
 	if (left > s) {
 		memmove(s, left, strlen(left));
 	}
@@ -92,10 +92,12 @@ pub size_t split(const char *separator, const char *str, char **result, size_t r
 	return count;
 }
 
+// Compares ASCII strings a and b ignoring case.
+// Returns true if the strings are equal.
 pub bool casecmp(const char *a, *b) {
 	const char *x = a;
 	const char *y = b;
-	while (*x && *y) {
+	while (*x != '\0' && *y != '\0') {
 		if (tolower(*x) != tolower(*y)) {
 			return false;
 		}
@@ -108,7 +110,7 @@ pub bool casecmp(const char *a, *b) {
 pub bool starts_with(const char *string, *prefix) {
 	const char *x = string;
 	const char *y = prefix;
-	while (*x && *y) {
+	while (*x != '\0' && *y != '\0') {
 		if (*x != *y) {
 			return false;
 		}
@@ -121,7 +123,7 @@ pub bool starts_with(const char *string, *prefix) {
 pub bool starts_with_i(const char *string, *prefix) {
 	const char *x = string;
     const char *y = prefix;
-    while (*x && *y) {
+    while (*x != '\0' && *y != '\0') {
         if (tolower(*x) != tolower(*y)) {
             return false;
         }
@@ -134,8 +136,8 @@ pub bool starts_with_i(const char *string, *prefix) {
 pub bool ends_with(const char *string, *suffix) {
 	const char *x = string;
 	const char *y = suffix;
-	while (*x) x++;
-	while (*y) y++;
+	while (*x != '\0') x++;
+	while (*y != '\0') y++;
 	while (x > string && y > suffix) {
 		if (*x != *y) {
 			return false;
@@ -160,12 +162,16 @@ pub bool allupper(char *s) {
 }
 
 pub void fmt_bytes(size_t bytes, char *buf, size_t bufsize) {
-    if (bytes > 1024 * 1024 * 1024) {
-        snprintf(buf, bufsize, "%.2f GB", (double) bytes / 1024 / 1024 / 1024);
-    } else if (bytes > 1024 * 1024) {
-        snprintf(buf, bufsize, "%.2f MB", (double) bytes / 1024 / 1024);
-    } else if (bytes > 1024) {
-        snprintf(buf, bufsize, "%.2f KB", (double) bytes / 1024);
+	double k = 1024;
+	double m = 1024 * k;
+	double g = 1024 * m;
+	double b = (double) bytes;
+    if (b > g) {
+        snprintf(buf, bufsize, "%.2f GB", b / g);
+    } else if (b > 1024 * 1024) {
+        snprintf(buf, bufsize, "%.2f MB", b / m);
+    } else if (b > 1024) {
+        snprintf(buf, bufsize, "%.2f KB", b / k);
     } else {
         snprintf(buf, bufsize, "%zu B", bytes);
     }

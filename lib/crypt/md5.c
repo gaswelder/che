@@ -23,7 +23,7 @@ typedef {
 	int zeros; // how many zeros left to put out
 
 	uint8_t lenbuf[8]; // buffer with the message length representation
-	int lenpos; // current position in lenbuf
+	size_t lenpos; // current position in lenbuf
 
 	bool more;
 } src_t;
@@ -120,12 +120,11 @@ uint8_t next_byte(src_t *s)
 		return 0;
 	}
 
-	assert((size_t) s->lenpos < sizeof(s->lenbuf));
+	assert(s->lenpos < sizeof(s->lenbuf));
 	uint8_t b = s->lenbuf[s->lenpos++];
-	/*
-	 * Put a flag after the stream is finished.
-	 */
-	if(s->lenpos == sizeof(s->lenbuf)) {
+
+	// Put a flag after the stream is finished.
+	if (s->lenpos == sizeof(s->lenbuf)) {
 		s->more = false;
 	}
 	return b;

@@ -34,11 +34,11 @@ pub uint32_t intn(uint32_t n) {
 
 pub double gauss() {
     // Brute-force approach until something better comes.
-    double v = (double)rand() / RAND_MAX;
+    double v = (double) rand() / (double) RAND_MAX;
     for (int j = 0; j < n; j++) {
-        v += (double)rand() / RAND_MAX;
+        v += (double) rand() / (double) RAND_MAX;
     }
-    return v / (n+1) - 0.5;
+    return v / (double) (n+1) - 0.5;
 }
 
 pub double uniform(double low, high) {

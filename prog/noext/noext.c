@@ -8,7 +8,7 @@ int main(int argc, char **argv) {
 			continue;
 		}
 		char *c = s;
-		while (*c && c != d) {
+		while (*c != '\0' && c != d) {
 			putchar(*c++);
 		}
 		putchar('\n');
@@ -19,7 +19,7 @@ int main(int argc, char **argv) {
 
 char *dot(char *s) {
 	char *c = s;
-	while (*c) c++;
+	while (*c != '\0') c++;
 	while (c != s && *c != '.') c--;
 	return c;
 }

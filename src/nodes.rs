@@ -11,7 +11,7 @@ pub struct Exports {
     pub consts: Vec<EnumEntry>,
     pub fns: Vec<FuncDecl>,
     pub types: Vec<String>,
-    // pub structs: Vec<StructTypedef>,
+    pub structs: Vec<StructTypedef>,
 }
 
 pub fn exports_has(e: &Exports, name: &str) -> bool {
@@ -66,7 +66,6 @@ pub enum Expr {
 // Compatibility hatch to expose an existing struct as a type.
 #[derive(Debug, Clone)]
 pub struct StructAlias {
-    pub pos: Pos,
     pub ispub: bool,
     pub structname: String,
     pub typename: String,
@@ -107,8 +106,7 @@ pub struct FuncDecl {
 
 #[derive(Debug, Clone)]
 pub struct Typedef {
-    pub pos: Pos,
-    pub is_pub: bool,
+    pub ispub: bool,
     pub alias: String,
     pub type_name: Typename,
     pub dereference_count: usize,
@@ -119,7 +117,6 @@ pub struct Typedef {
 // typedef { int x, y; double *f; } foo_t
 #[derive(Debug, Clone)]
 pub struct StructTypedef {
-    pub pos: Pos,
     pub ispub: bool,
     pub entries: Vec<StructEntry>,
     pub name: String,
@@ -154,12 +151,6 @@ pub struct NsName {
 }
 
 #[derive(Debug, Clone)]
-pub struct AnonymousTypeform {
-    pub type_name: Typename,
-    pub ops: Vec<String>,
-}
-
-#[derive(Debug, Clone)]
 pub struct CompLiteral {
     pub entries: Vec<CompositeLiteralEntry>,
 }
@@ -181,6 +172,7 @@ pub struct ArrayIndex {
 // ...(...)
 #[derive(Debug, Clone)]
 pub struct Call {
+    pub pos: Pos,
     pub func: Box<Expr>,
     pub args: Vec<Expr>,
 }
@@ -188,6 +180,7 @@ pub struct Call {
 // a <op> b
 #[derive(Debug, Clone)]
 pub struct BinaryOp {
+    pub pos: Pos,
     pub op: String,
     pub a: Box<Expr>,
     pub b: Box<Expr>,
@@ -203,7 +196,7 @@ pub struct FieldAccess {
 
 #[derive(Debug, Clone)]
 pub struct Cast {
-    pub type_name: AnonymousTypeform,
+    pub typeform: BareTypeform,
     pub operand: Box<Expr>,
 }
 
@@ -215,13 +208,14 @@ pub struct PostfixOp {
 
 #[derive(Debug, Clone)]
 pub struct PrefixOp {
+    pub pos: Pos,
     pub operator: String,
     pub operand: Box<Expr>,
 }
 
 #[derive(Debug, Clone)]
 pub struct Sizeof {
-    pub argument: Box<SizeofArg>,
+    pub arg: Box<SizeofArg>,
 }
 
 #[derive(Debug, Clone)]
@@ -289,6 +283,12 @@ pub struct Form {
 }
 
 #[derive(Debug, Clone)]
+pub struct BareTypeform {
+    pub typename: Typename,
+    pub hops: usize,
+}
+
+#[derive(Debug, Clone)]
 pub enum ForInit {
     Expr(Expr),
     DeclLoopCounter {
@@ -346,7 +346,7 @@ pub struct UnionField {
 #[derive(Debug, Clone)]
 pub struct AnonymousParameters {
     pub ellipsis: bool,
-    pub forms: Vec<AnonymousTypeform>,
+    pub forms: Vec<BareTypeform>,
 }
 
 pub fn is_op(e: &Expr) -> Option<String> {

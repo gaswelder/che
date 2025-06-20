@@ -65,10 +65,10 @@ pub fn parse_module(l: &mut Lexer, ctx: &ParseCtx) -> Result<Module, Vec<Error>>
         return Err(errors);
     }
     let exports = get_exports(&module_objects);
-    return Ok(Module {
+    Ok(Module {
         elements: module_objects,
         exports,
-    });
+    })
 }
 
 fn get_exports(elems: &Vec<ModElem>) -> Exports {
@@ -76,7 +76,7 @@ fn get_exports(elems: &Vec<ModElem>) -> Exports {
         consts: Vec::new(),
         fns: Vec::new(),
         types: Vec::new(),
-        // structs: Vec::new(),
+        structs: Vec::new(),
     };
     for e in elems {
         match e {
@@ -88,13 +88,14 @@ fn get_exports(elems: &Vec<ModElem>) -> Exports {
                 }
             }
             ModElem::Typedef(x) => {
-                if x.is_pub {
+                if x.ispub {
                     exports.types.push(x.alias.clone());
                 }
             }
             ModElem::StructTypedef(x) => {
                 if x.ispub {
                     exports.types.push(x.name.clone());
+                    exports.structs.push(x.clone());
                 }
             }
             // ModuleObject::StructAliasTypedef {
@@ -211,9 +212,11 @@ fn parse_seq_expr(l: &mut Lexer, strength: usize, ctx: &ParseCtx) -> Result<Expr
         if !is_op(&next) || operator_strength(&next) != strength {
             break;
         }
-        let op = l.get().unwrap().kind;
+        let tok = l.get().unwrap();
+        let op = tok.kind;
         let r2 = parse_expr(l, strength + 1, ctx)?;
         r = Expr::BinaryOp(nodes::BinaryOp {
+            pos: tok.pos,
             op,
             a: Box::new(r),
             b: Box::new(r2),
@@ -229,6 +232,7 @@ fn parse_prefix_expr(l: &mut Lexer, ctx: &ParseCtx) -> Result<Expr, Error> {
     if is_prefix_op(&token.kind) {
         let r = parse_prefix_expr(l, ctx)?;
         return Ok(Expr::PrefixOperator(nodes::PrefixOp {
+            pos: token.pos,
             operator: token.kind,
             operand: Box::new(r),
         }));
@@ -241,10 +245,10 @@ fn parse_prefix_expr(l: &mut Lexer, ctx: &ParseCtx) -> Result<Expr, Error> {
         && l.peek().unwrap().kind == "word"
         && is_type(l.peek().unwrap().content.as_str(), &ctx.thismod.typedefs)
     {
-        let typeform = parse_anonymous_typeform(l, ctx)?;
+        let typeform = parse_bare_typeform(l, ctx)?;
         expect(l, ")", Some("typecast"))?;
         return Ok(Expr::Cast(nodes::Cast {
-            type_name: typeform,
+            typeform,
             operand: Box::new(parse_prefix_expr(l, ctx)?),
         }));
     }
@@ -265,7 +269,7 @@ fn base(l: &mut Lexer, ctx: &ParseCtx) -> Result<Expr, Error> {
         let next = l.peek().unwrap();
         // call
         if next.kind == "(" {
-            r = parse_function_call(l, ctx, r)?;
+            r = parse_call(l, ctx, r)?;
             continue;
         }
 
@@ -477,17 +481,10 @@ fn is_prefix_op(op: &str) -> bool {
 }
 
 fn is_type(name: &str, typenames: &Vec<String>) -> bool {
-    let keywords = [
-        "struct", "enum", "union",
-        // "fd_set",
-        // "socklen_t",
-        // "ssize_t",
-    ];
-
-    return cspec::CTYPES.contains(&name)
+    let keywords = ["struct", "enum", "union"];
+    cspec::has_type(name)
         || keywords.to_vec().contains(&name)
-        || typenames.to_vec().contains(&String::from(name));
-    // || name.ends_with("_t");
+        || typenames.to_vec().contains(&String::from(name))
 }
 
 fn with_comment(comment: Option<&str>, message: String) -> String {
@@ -523,13 +520,17 @@ fn parse_typename(l: &mut Lexer, ctx: &ParseCtx) -> Result<Typename, Error> {
     return Ok(Typename { is_const, name });
 }
 
-fn parse_anonymous_typeform(lexer: &mut Lexer, ctx: &ParseCtx) -> Result<AnonymousTypeform, Error> {
-    let type_name = parse_typename(lexer, ctx)?;
-    let mut ops: Vec<String> = Vec::new();
-    while lexer.follows("*") {
-        ops.push(lexer.get().unwrap().kind);
+fn parse_bare_typeform(l: &mut Lexer, ctx: &ParseCtx) -> Result<BareTypeform, Error> {
+    let type_name = parse_typename(l, ctx)?;
+    let mut hops = 0;
+    while l.follows("*") {
+        hops += 1;
+        l.get();
     }
-    return Ok(AnonymousTypeform { type_name, ops });
+    return Ok(BareTypeform {
+        typename: type_name,
+        hops,
+    });
 }
 
 fn parse_anonymous_parameters(l: &mut Lexer, ctx: &ParseCtx) -> Result<AnonymousParameters, Error> {
@@ -539,7 +540,7 @@ fn parse_anonymous_parameters(l: &mut Lexer, ctx: &ParseCtx) -> Result<Anonymous
     };
     expect(l, "(", Some("anonymous function parameters"))?;
     if !l.follows(")") {
-        params.forms.push(parse_anonymous_typeform(l, ctx)?);
+        params.forms.push(parse_bare_typeform(l, ctx)?);
         while l.follows(",") {
             l.get();
             if l.follows("...") {
@@ -547,7 +548,7 @@ fn parse_anonymous_parameters(l: &mut Lexer, ctx: &ParseCtx) -> Result<Anonymous
                 params.ellipsis = true;
                 break;
             }
-            params.forms.push(parse_anonymous_typeform(l, ctx)?);
+            params.forms.push(parse_bare_typeform(l, ctx)?);
         }
     }
     expect(l, ")", Some("anonymous function parameters"))?;
@@ -678,24 +679,25 @@ fn parse_sizeof(l: &mut Lexer, ctx: &ParseCtx) -> Result<Expr, Error> {
     };
     expect(l, ")", None)?;
     return Ok(Expr::Sizeof(nodes::Sizeof {
-        argument: Box::new(argument),
+        arg: Box::new(argument),
     }));
 }
 
-fn parse_function_call(l: &mut Lexer, ctx: &ParseCtx, function_name: Expr) -> Result<Expr, Error> {
-    let mut arguments: Vec<Expr> = Vec::new();
-    expect(l, "(", None)?;
+fn parse_call(l: &mut Lexer, ctx: &ParseCtx, func: Expr) -> Result<Expr, Error> {
+    let mut args = Vec::new();
+    let tok = expect(l, "(", None)?;
     if l.more() && l.peek().unwrap().kind != ")" {
-        arguments.push(parse_expr(l, 0, ctx)?);
+        args.push(parse_expr(l, 0, ctx)?);
         while l.follows(",") {
             l.get();
-            arguments.push(parse_expr(l, 0, ctx)?);
+            args.push(parse_expr(l, 0, ctx)?);
         }
     }
     expect(l, ")", None)?;
     return Ok(Expr::Call(nodes::Call {
-        func: Box::new(function_name),
-        args: arguments,
+        pos: tok.pos,
+        func: Box::new(func),
+        args,
     }));
 }
 
@@ -1118,7 +1120,6 @@ fn parse_union(l: &mut Lexer, ctx: &ParseCtx) -> Result<Union, Error> {
 }
 
 fn parse_typedef(is_pub: bool, l: &mut Lexer, ctx: &ParseCtx) -> Result<ModElem, Error> {
-    let pos = l.peek().unwrap().pos.clone();
     expect(l, "typedef", None)?;
 
     // typedef {int hour, minute, second} time_t;
@@ -1139,7 +1140,6 @@ fn parse_typedef(is_pub: bool, l: &mut Lexer, ctx: &ParseCtx) -> Result<ModElem,
         let tok = expect(l, "word", Some("typedef typename - identifier"))?;
         expect(l, ";", Some("typedef"))?;
         return Ok(ModElem::StructTypedef(StructTypedef {
-            pos,
             ispub: is_pub,
             entries: fields,
             name: tok.content,
@@ -1152,7 +1152,6 @@ fn parse_typedef(is_pub: bool, l: &mut Lexer, ctx: &ParseCtx) -> Result<ModElem,
         let type_alias = expect(l, "word", Some("struct type alias"))?.content;
         expect(l, ";", Some("typedef"))?;
         return Ok(ModElem::StructAlias(nodes::StructAlias {
-            pos,
             ispub: is_pub,
             structname: struct_name,
             typename: type_alias,
@@ -1183,8 +1182,7 @@ fn parse_typedef(is_pub: bool, l: &mut Lexer, ctx: &ParseCtx) -> Result<ModElem,
     }
     expect(l, ";", Some("typedef"))?;
     return Ok(ModElem::Typedef(Typedef {
-        pos,
-        is_pub,
+        ispub: is_pub,
         type_name: typename,
         dereference_count: stars,
         function_parameters: params,

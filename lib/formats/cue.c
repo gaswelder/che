@@ -3,6 +3,7 @@
  * http://wiki.hydrogenaud.io/index.php?title=Cue_sheet
  */
 #import tokenizer
+#import strings
 
 /*
  * Track info: title and position in microseconds
@@ -170,32 +171,23 @@ bool read_track(context_t *c, cuetrack_t *track, char **err)
 		}
 		val[i] = '\0';
 
-		if(strcmp(c->cmd, "TITLE") == 0) {
-			/*
-			 * Cut off double quotes
-			 */
-			if(val[0] != '"') {
+		if (strcmp(c->cmd, "TITLE") == 0) {
+			// Trim double quotes.
+			if (val[0] != '"') {
 				*err = makeerr("double quotes expected in %s", val);
 				return false;
 			}
-			char *p = val + strlen(val);
-			while(p > val) {
-				if(*p == '"') {
-					*p = '\0';
-					break;
-				}
-				p--;
-			}
+			strings.rtrim(val, "\"");
 			strcpy(track->title, val + 1);
 			continue;
 		}
 
 		if(strcmp(c->cmd, "INDEX") == 0) {
-			unsigned num = 0;
-			unsigned min = 0;
-			unsigned sec = 0;
-			unsigned frames = 0;
-			int n = sscanf(val, "%u %u:%u:%u", &num, &min, &sec, &frames);
+			size_t num = 0;
+			size_t min = 0;
+			size_t sec = 0;
+			size_t frames = 0;
+			int n = sscanf(val, "%lu %lu:%lu:%lu", &num, &min, &sec, &frames);
 			if(n != 4) {
 				*err = makeerr("couldn't parse index: %s", val);
 				return false;

@@ -153,9 +153,10 @@ image.rgba_t colormap(double val, int iterations) {
 	if (top >= map_len) {
 		top = 1;
 	}
-	color.red = red[base] + (red[top] - red[base]) * perc;
-	color.green = green[base] + (green[top] - green[base]) * perc;
-	color.blue = blue[base] + (blue[top] - blue[base]) * perc;
+
+	color.red = (int)((double)red[base] + (double)(red[top] - red[base]) * perc);
+	color.green = (int)( (double)green[base] + (double)(green[top] - green[base]) * perc );
+	color.blue = (int)( (double)blue[base] + (double)(blue[top] - blue[base]) * perc);
 
 // #endif
 	return color;

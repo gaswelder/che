@@ -237,7 +237,7 @@ void draw_array(image.image_t *img, int *array, int N, bool circle) {
 			int x = 100 + (S-200)*(float)i/(float)N;
 			int maxlen = (int) (array[i] * lenscale);
 			for (int l = 0; l < maxlen; l++) {
-				image.set(img, x, S/2+180 - l, color);
+				image.set(img, x, (int)(S/2+180) - l, color);
 			}
 		}
 	}
@@ -378,9 +378,9 @@ void draw_dot(image.image_t *img, float x, y, image.rgba_t color) {
     int maxx = ceilf(x + R1 + 1);
 
     for (int py = miny; py <= maxy; py++) {
-        float dy = py - y;
+        float dy = (float) py - y;
         for (int px = minx; px <= maxx; px++) {
-            float dx = px - x;
+            float dx = (float) px - x;
             float d = sqrtf(dy * dy + dx * dx);
             float alpha = smoothstep(R1, R0, d);
 			image.blend(img, px, py, color, alpha);
@@ -394,7 +394,7 @@ float smoothstep(float lower, float upper, float x) {
 }
 
 void draw_string(image.image_t *img, font.t f, const char *message) {
-    image.rgba_t fontcolor = {255, 255, 255};
+    image.rgba_t fontcolor = {255, 255, 255, 0};
     for (int c = 0; message[c]; c++) {
         int x = c * f.w + MESSAGE_PADDING;
         int y = MESSAGE_PADDING;

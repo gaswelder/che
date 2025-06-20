@@ -40,7 +40,7 @@ pub typedef {
 	 */
 	size_t framepos;
 
-	long nextpos;
+	int nextpos;
 
 	header_t h;
 } mp3file;
@@ -48,7 +48,7 @@ pub typedef {
 pub typedef {
 	int min;
 	int sec;
-	uint64_t usec;
+	int usec;
 } mp3time_t;
 
 /*
@@ -198,7 +198,7 @@ bool read_header(mp3file *f)
 	/*
 	 * Remember next frame position.
 	 */
-	f->nextpos = ftell(f->file) + (long)len - 4;
+	f->nextpos = ftell(f->file) + (int)len - 4;
 
 	return r;
 }

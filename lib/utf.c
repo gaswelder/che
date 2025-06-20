@@ -75,21 +75,6 @@
  */
 pub typedef uint32_t Rune;
 
-void *nih_memcpy (void *dest, *src, int c, size_t n) {
-	uint8_t *from = (uint8_t *) src;
-	uint8_t *to = (uint8_t *) dest;
-	while (n > 0) {
-		*to = *from;
-		if ((int)*to == c) {
-			return (void *) (to + 1);
-		}
-		n--;
-	}
-	return NULL;
-}
-
-
-
 pub enum {
 	UTFmax		= 4,		/* maximum bytes per rune */
 	Runesync	= 0x80,		/* cannot represent part of a UTF sequence (<) */
@@ -107,7 +92,7 @@ pub Rune* runestrchr(Rune *s, Rune c) {
 	Rune c0 = c;
 	Rune c1 = 0;
 
-	if(c == 0) {
+	if ((int) c == 0) {
 		while(*s++) {}
 		return s-1;
 	}
@@ -119,8 +104,9 @@ pub Rune* runestrchr(Rune *s, Rune c) {
 }
 
 pub Rune* runestrecpy(Rune *s1, Rune *es1, Rune *s2) {
-	if(s1 >= es1)
+	if (s1 >= es1) {
 		return s1;
+	}
 
 	while(*s1++ = *s2++){
 		if(s1 == es1){
@@ -131,7 +117,7 @@ pub Rune* runestrecpy(Rune *s1, Rune *es1, Rune *s2) {
 	return s1;
 }
 
-long runestrlen(Rune *s) {
+int runestrlen(Rune *s) {
 	return runestrchr(s, 0) - s;
 }
 
@@ -175,8 +161,7 @@ runestrdup(Rune *s)
 }
 
 pub Rune*
-runestrncat(Rune *s1, *s2, long n)
-{
+runestrncat(Rune *s1, *s2, int32_t n) {
 	Rune *os1 = NULL;
 
 	os1 = s1;
@@ -190,7 +175,7 @@ runestrncat(Rune *s1, *s2, long n)
 }
 
 
-pub int runestrncmp(Rune *s1, *s2, long n) {
+pub int runestrncmp(Rune *s1, *s2, int32_t n) {
 	Rune c1 = 0;
 	Rune c2 = 0;
 
@@ -232,15 +217,17 @@ pub Rune *runestrcpy(Rune *s1, *s2) {
 	return os1;
 }
 
-pub Rune* runestrncpy(Rune *s1, *s2, long n) {
+pub Rune* runestrncpy(Rune *s1, *s2, int32_t n) {
 	Rune *os1 = s1;
-	for (int i = 0; i < n; i++)
-		if((*s1++ = *s2++) == 0) {
+	for (int i = 0; i < n; i++) {
+		*s1++ = *s2++;
+		if(*s2 == 0) {
 			while (++i < n) {
 				*s1++ = 0;
 			}
 			return os1;
 		}
+	}
 	return os1;
 }
 
@@ -284,7 +271,7 @@ enum {
 pub int get_rune(Rune *rune, const char *str) {
 	int c2 = 0;
 	int c3 = 0;
-	long l = 0;
+	int32_t l = 0;
 
 	/*
 	 * one character sequence
@@ -1461,7 +1448,7 @@ pub Rune totitlerune(Rune c) {
 	return c;
 }
 
-pub int islowerrune(Rune c) {
+pub bool islowerrune(Rune c) {
 	Rune *p = rune_bsearch(c, __toupper2, nelem(__toupper2)/3, 3);
 	if(p && c >= p[0] && c <= p[1])
 		return 1;
@@ -1471,18 +1458,16 @@ pub int islowerrune(Rune c) {
 	return 0;
 }
 
-int
-isupperrune(Rune c)
-{
-	Rune *p = NULL;
-
-	p = rune_bsearch(c, __tolower2, nelem(__tolower2)/3, 3);
-	if(p && c >= p[0] && c <= p[1])
-		return 1;
+bool isupperrune(Rune c) {
+	Rune *p = rune_bsearch(c, __tolower2, nelem(__tolower2)/3, 3);
+	if (p && c >= p[0] && c <= p[1]) {
+		return true;
+	}
 	p = rune_bsearch(c, __tolower1, nelem(__tolower1)/2, 2);
-	if(p && c == p[0])
-		return 1;
-	return 0;
+	if (p && c == p[0]) {
+		return true;
+	}
+	return false;
 }
 
 pub bool isalpharune(Rune c) {
@@ -1514,12 +1499,10 @@ pub bool isspacerune(Rune c) {
 // Copies the rune to at most UTFmax bytes starting at str and returns
 // the number of bytes copied.
 pub int runetochar(char *str, Rune *rune) {
-	/*
-	 * one character sequence
-	 *	00000-0007F => 00-7F
-	 */
-	long c = *rune;
-	if(c <= Rune1) {
+	int32_t c = *rune;
+
+	// one-character mapping: 00000-0007F => 00-7F
+	if (c <= Rune1) {
 		str[0] = c;
 		return 1;
 	}
@@ -1558,23 +1541,14 @@ pub int runetochar(char *str, Rune *rune) {
 	return 4;
 }
 
-// returns the number of bytes required to convert r into UTF.
-pub int runelen(long c) {
+// Returns the number of bytes required to convert r into UTF.
+pub int runelen(int32_t c) {
 	Rune rune = c;
 	char str[10] = {};
 	return runetochar(str, &rune);
 }
 
 // Unicode character classes and cases
-
-// int isalpharune(Rune c)
-// int islowerrune(Rune c)
-// int isspacerune(Rune c)
-// int istitlerune(Rune c)
-// int isupperrune(Rune c)
-// Rune tolowerrune(Rune c)
-// Rune totitlerune(Rune c)
-// Rune toupperrune(Rune c)
 
 // These routines examine and operate on Unicode characters,
 // in particular a subset of their properties as defined in the Unicode standard.
@@ -1613,8 +1587,7 @@ pub size_t runecount(const char *s) {
 // is terminated by a null sequence, and a pointer to that sequence is returned.
 // Otherwise, the original s1
 // is returned.
-pub char* utfecpy(char *to, char *e, char *from)
-{
+pub char *utfecpy(char *to, char *e, char *from) {
 	char *end = NULL;
 
 	if(to >= e)
@@ -1630,16 +1603,28 @@ pub char* utfecpy(char *to, char *e, char *from)
 	return end;
 }
 
+void *nih_memcpy(void *dest, *src, int c, size_t n) {
+	uint8_t *from = (uint8_t *) src;
+	uint8_t *to = (uint8_t *) dest;
+	while (n > 0) {
+		*to = *from;
+		if ((int)*to == c) {
+			return (void *) (to + 1);
+		}
+		n--;
+	}
+	return NULL;
+}
+
 /*
  * Returns the number of complete runes that are represented by the first n
  * bytes of UTF string s. If the last few bytes of the string contain an
  * incompletely coded rune, utfnlen will not count them; in this way, it differs
  * from runecount, which includes every byte of the string.
  */
-pub int utfnlen(char *s, long n)
-{
+pub int utfnlen(char *s, int32_t n) {
 	int c = 0;
-	long count = 0;
+	int32_t count = 0;
 	Rune rune = 0;
 
 	char *es = s + n;
@@ -1658,18 +1643,16 @@ pub int utfnlen(char *s, long n)
 	return count;
 }
 
-/*
- * Returns a pointer to the first occurrence of rune c in the UTF8 string s, or
- * NULL if c does not occur in the string.
- * The NUL byte terminating a string is considered to be part of the string s.
- */
-pub char *utfrune(char *s, long c) {
-	long c1 = 0;
+// Returns a pointer to the first occurrence of rune c in the UTF-8 string s.
+// Returns NULL if c does not occur in the string.
+pub char *utfrune(char *s, Rune c) {
+	if (c < Runesync) {
+		return strchr(s, c);
+	}
+
+	Rune c1 = 0;
 	Rune r = 0;
 	int n = 0;
-
-	if(c < Runesync)		/* not part of utf sequence */
-		return strchr(s, c);
 
 	while (true) {
 		c1 = *(uint8_t*)s;
@@ -1682,24 +1665,21 @@ pub char *utfrune(char *s, long c) {
 			continue;
 		}
 		n = get_rune(&r, s);
-		if(r == c)
+		if (r == c)
 			return s;
 		s += n;
 	}
 }
 
-/*
- * Same as utfrune, but finds the last occurrence instead of first.
- */
+// Same as utfrune, but finds the last occurrence instead of first.
 pub char *utfrrune(char *s, Rune c) {
-	long c1 = 0;
+	if (c < Runesync) {
+		return strrchr(s, c);
+	}
+
+	Rune c1 = 0;
 	Rune r = 0;
 	char *s1 = NULL;
-
-	if(c < Runesync)		/* not part of utf sequence */
-		return strrchr(s, c);
-
-	s1 = 0;
 	while (true) {
 		c1 = *(uint8_t*)s;
 		if(c1 < Runeself) {	/* one byte rune */
@@ -1724,11 +1704,11 @@ pub char *utfrrune(char *s, Rune c) {
  */
 pub char *utfutf(char *s1, char *s2) {
 	char *p = NULL;
-	long f = 0;
-	long n2 = 0;
+	int f = 0;
+	int n2 = 0;
 	Rune r = 0;
 
-	long n1 = get_rune(&r, s2);
+	int n1 = get_rune(&r, s2);
 	f = r;
 	if(f <= Runesync)		/* represents self */
 		return strstr(s1, s2);

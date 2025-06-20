@@ -30,11 +30,9 @@ pub void memrewind(mem_t *m) {
 	m->pos = 0;
 }
 
-/*
- * Returns current position in the stream
- */
-pub long memtell(mem_t *m) {
-	return (long) m->pos;
+// Returns current position in the stream
+pub size_t memtell(mem_t *m) {
+	return m->pos;
 }
 
 /*

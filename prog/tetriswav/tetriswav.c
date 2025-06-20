@@ -17,7 +17,7 @@ note_t notes[] = {
     {523.25, 0.5}, {440.00, 0.5},  {440.00, 0.5},  {0, 0.5},
 };
 
-const int RATE = 44100;
+const float RATE = 44100;
 
 int main() {
 	wav.writer_t *w = wav.open_writer2(writer.stdout());
@@ -31,10 +31,10 @@ int main() {
 }
 
 void note(wav.writer_t *w, float freq, dur) {
-	int nsamples = (int) ((float)RATE * dur);
+	int nsamples = (int) (RATE * dur);
 	wav.sample_t s = {};
-	for (int j = 0; j < nsamples; j++) {
-		float v = sinf(j * 2.0f * M_PI / RATE * freq);
+	for (int i = 0; i < nsamples; i++) {
+		float v = sinf((float) i * 2.0 * M_PI / RATE * freq);
 		s.left = s.right = v * 32768;
 		wav.write_sample(w, s);
 	}

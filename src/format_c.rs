@@ -6,9 +6,9 @@ pub fn format_module(cm: &CModule) -> String {
     let mut s = String::new();
     for e in &cm.elements {
         s += &match e {
-            ModElem::DeclVar(x) => format!(
+            ModElem::VarDecl(x) => format!(
                 "static {} {} = {};\n",
-                format_type(&x.type_name),
+                format_type(&x.typename),
                 format_form(&x.form),
                 fmt_expr(&x.value)
             ),
@@ -17,7 +17,7 @@ pub fn format_module(cm: &CModule) -> String {
             ModElem::Include(x) => format!("#include {}\n", x),
             ModElem::DefEnum(x) => fmt_enumdef(x),
             ModElem::ForwardStruct(x) => format!("struct {};\n", x),
-            ModElem::DefStruct(x) => format_compat_struct_definition(&x),
+            ModElem::StuctDef(x) => format_compat_struct_definition(&x),
             ModElem::ForwardFunc(x) => fmt_function_forward_declaration(&x),
             ModElem::FuncDef(x) => fmt_func_def(&x),
         }
@@ -91,7 +91,7 @@ pub fn fmt_expr(expr: &Expr) -> String {
         Expr::Cast { type_name, operand } => {
             return format!(
                 "({})({})",
-                format_anonymous_typeform(&type_name),
+                fmt_bare_typeform(&type_name),
                 fmt_expr(&operand)
             );
         }
@@ -181,7 +181,7 @@ pub fn fmt_expr(expr: &Expr) -> String {
                     operator,
                     format!(
                         "({})({})",
-                        format_anonymous_typeform(&type_name),
+                        fmt_bare_typeform(&type_name),
                         fmt_expr(&operand)
                     )
                 ),
@@ -197,12 +197,8 @@ pub fn fmt_expr(expr: &Expr) -> String {
     }
 }
 
-fn format_anonymous_typeform(node: &CAnonymousTypeform) -> String {
-    let mut s = format_type(&node.type_name);
-    for op in &node.ops {
-        s += &op;
-    }
-    return s;
+fn fmt_bare_typeform(node: &BareTypeform) -> String {
+    format_type(&node.typename) + &"*".repeat(node.hops)
 }
 
 fn format_anonymous_parameters(params: &CAnonymousParameters) -> String {
@@ -211,7 +207,7 @@ fn format_anonymous_parameters(params: &CAnonymousParameters) -> String {
         if i > 0 {
             s += ", ";
         }
-        s += &format_anonymous_typeform(form);
+        s += &fmt_bare_typeform(form);
     }
     if params.ellipsis {
         s += ", ...";
@@ -360,10 +356,10 @@ fn format_for(
     );
 }
 
-fn fmt_vardecl(x: &c::DeclVar) -> String {
+fn fmt_vardecl(x: &c::VarDecl) -> String {
     format!(
         "{} {} = {}",
-        format_type(&x.type_name),
+        format_type(&x.typename),
         format_form(&x.form),
         fmt_expr(&x.value)
     )

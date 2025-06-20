@@ -10,12 +10,12 @@
 // 1000000 easily fails the current rnd.intn.
 const int MAX = 1000000;
 
-pub int main() {
+pub int run() {
     double desired = 0.01;
 	double factor = sqrt(-2.0*log(desired));
     double rng_range = 1.0 + MAX;
     size_t sample_size = ceil(factor * sqrt(rng_range));
-    double expected = sample_size - rng_range * (- OS.expm1(sample_size*OS.log1p(-1/rng_range)));
+    double expected = (double) sample_size - rng_range * (-expm1(sample_size * log1p(-1/rng_range)));
     float p_zero = exp(-expected);
 
     uint32_t *values = calloc(sample_size, sizeof(uint32_t));
@@ -29,7 +29,7 @@ pub int main() {
 
     double p_value = 0;
     for (size_t k = 0; k <= repeats; ++k) {
-        double pdf_value = exp(log(expected)*k - expected - OS.lgamma(1.0+k));
+        double pdf_value = exp(log(expected)*k - expected - lgamma(1.0+k));
         p_value += pdf_value;
         if (p_value > 0.5) {
 			p_value = p_value - 1;

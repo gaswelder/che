@@ -3,6 +3,8 @@
 int main() {
     // Can use an imported type in a variable declaration.
     lib.foo_t val = {};
+    printf("val.a = %d\n", val.a);
+	printf("val.b.b = %d\n", val.b.b);
     printf("size = %zu\n", sizeof(val));
 
     // Can use an imported constant.

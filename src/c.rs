@@ -29,15 +29,15 @@ pub struct EnumEntry {
 // typedef const char *foo_t;
 #[derive(Debug, Clone)]
 pub struct Typedef {
-    pub is_pub: bool,
+    pub ispub: bool,
     pub typename: Typename,
     pub form: TypedefForm,
 }
 
 // int foo = 1
 #[derive(Debug, Clone)]
-pub struct DeclVar {
-    pub type_name: Typename,
+pub struct VarDecl {
+    pub typename: Typename,
     pub form: Form,
     pub value: Expr,
 }
@@ -76,8 +76,8 @@ pub enum ModElem {
     ForwardFunc(ForwardFunc),
     DefEnum(EnumDef),
     Typedef(Typedef),
-    DefStruct(StructDef),
-    DeclVar(DeclVar),
+    StuctDef(StructDef),
+    VarDecl(VarDecl),
     FuncDef(FuncDef),
 }
 
@@ -132,7 +132,7 @@ pub enum Expr {
         operand: Box<Expr>,
     },
     Cast {
-        type_name: CAnonymousTypeform,
+        type_name: BareTypeform,
         operand: Box<Expr>,
     },
     Call {
@@ -151,7 +151,7 @@ pub enum Expr {
 #[derive(Debug, Clone)]
 pub enum ForInit {
     Expr(Expr),
-    DeclLoopCounter(DeclVar),
+    DeclLoopCounter(VarDecl),
 }
 
 #[derive(Debug, Clone)]
@@ -226,13 +226,13 @@ pub struct TypedefForm {
 #[derive(Debug, Clone)]
 pub struct CAnonymousParameters {
     pub ellipsis: bool,
-    pub forms: Vec<CAnonymousTypeform>,
+    pub forms: Vec<BareTypeform>,
 }
 
 #[derive(Debug, Clone)]
-pub struct CAnonymousTypeform {
-    pub type_name: Typename,
-    pub ops: Vec<String>,
+pub struct BareTypeform {
+    pub typename: Typename,
+    pub hops: usize,
 }
 
 #[derive(Debug, Clone)]

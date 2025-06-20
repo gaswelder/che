@@ -83,28 +83,11 @@ pub int readconn(net_t *c, char *buf, size_t size) {
 	return OS.recv(c->fd, buf, size, 0);
 }
 
-/*
- * Writes 'n' bytes from 'buf' to connection 'c'.
- * Returns 'n' on success or -1 on failure.
- */
+// Writes n bytes from buf to connection c.
+// Returns the number of bytes sent, or -1 on failure.
 pub int net_write(net_t *c, const char *buf, size_t n) {
-	/*
-	 * MSG_NOSIGNAL prevents SIGPIPE signals
-	 */
-	int r = OS.send(c->fd, buf, n, OS.MSG_NOSIGNAL);
-	if (r < 0) {
-		printf("error %d: %s\n", errno, strerror(errno));
-		return r;
-	}
-	/*
-	 * The send call in blocking mode is supposed to make
-	 * a full transmission.
-	 */
-	if ((size_t) r < n) {
-		panic("incomplete net_write: %d of %zu (errno=%d, %s)\n",
-			r, n, errno, strerror(errno));
-	}
-	return n;
+	// MSG_NOSIGNAL prevents SIGPIPE signals
+	return OS.send(c->fd, buf, n, OS.MSG_NOSIGNAL);
 }
 
 // Creates a connection over the protocol proto ("tcp") to the destination
@@ -264,7 +247,7 @@ net_t *newconn(const char *proto, const char *addr) {
 int parseaddr(net_t *c, const char *addr) {
 	int i = 0;
 	const char *p = addr;
-	while (*p && *p != ':') {
+	while (*p != '\0' && *p != ':') {
 		if (i >= 255) {
 			error = "hostname too long";
 			return 0;
@@ -280,8 +263,8 @@ int parseaddr(net_t *c, const char *addr) {
 
 	p++;
 	i = 0;
-	while(*p) {
-		if(i >= 15) {
+	while (*p != '\0') {
+		if (i >= 15) {
 			error = "portname too long";
 			return 0;
 		}

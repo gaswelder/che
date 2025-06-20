@@ -65,15 +65,21 @@ pub void fill(image_t *img, rgba_t color) {
 
 // Blends color with the current color at pixel (x, y).
 pub void blend(image_t *img, int x, y, rgba_t color, float opacity) {
-    rgba_t newcolor = get(img, x, y);
-    newcolor.red = opacity * color.red + (opacity - 1) * newcolor.red;
-    newcolor.green = opacity * color.green + (opacity - 1) * newcolor.green;
-    newcolor.blue = opacity * color.blue + (opacity - 1) * newcolor.blue;
-    set(img, x, y, newcolor);
+    rgba_t newcol = get(img, x, y);
+    newcol.red = blendcolor(newcol.red, color.red, opacity);
+	newcol.green = blendcolor(newcol.green, color.green, opacity);
+	newcol.blue = blendcolor(newcol.blue, color.blue, opacity);
+    set(img, x, y, newcol);
+}
+
+int blendcolor(int old, new, float opacity) {
+	float oldpart = (opacity-1) * (float) old;
+	float newpart = opacity * (float) new;
+	return oldpart + newpart;
 }
 
 // Applies f to every pixel of the image.
-pub void apply(image_t *img, pixelfunc_t *f) {
+pub void apply(image_t *img, pixelfunc_t f) {
 	for (int y = 0; y < img->height; y++) {
 		for (int x = 0; x < img->width; x++) {
 			rgba_t color = get(img, x, y);

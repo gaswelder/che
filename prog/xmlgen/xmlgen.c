@@ -160,7 +160,9 @@ void Tree(FILE *out, schema.Element *element) {
 
         case schema.TYPE: {
             fprintf(out, "%s", GenContents_auction_type[rnd.intn(2)]);
-            if (GenContents_quantity>1 && rnd.intn(2)) fprintf(out,", Dutch");
+            if (GenContents_quantity > 1 && rnd.intn(2) > 0) {
+				fprintf(out,", Dutch");
+			}
         }
         case schema.LOCATION, schema.COUNTRY: {
             if (rnd.uniform(0, 1) < 0.75) {
@@ -377,7 +379,7 @@ void ClosingTag(schema.Element *element) {
 
 void PrintANY(FILE *out) {
     int sen=1+(int)rnd.exponential(20);
-    int stptr=0;
+    int stptr = 0;
     for (int i=0; i < sen; i++) {
         if (rnd.uniform(0, 1) < 0.1 && stptr < 2) {
             while (true) {
@@ -390,7 +392,7 @@ void PrintANY(FILE *out) {
             fprintf(out,"<%s> ", markup[PrintANY_st[stptr]]);
             stptr++;
         }
-        else if (rnd.uniform(0, 1) < 0.8 && stptr) {
+        else if (rnd.uniform(0, 1) < 0.8 && stptr != 0) {
             --stptr;
             fprintf(out,"</%s> ",markup[PrintANY_st[stptr]]);
             tick[PrintANY_st[stptr]] = 0;

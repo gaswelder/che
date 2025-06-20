@@ -109,7 +109,7 @@ void _prefetch(t *b, size_t n) {
 }
 
 pub void buf_skip_set(t *b, const char *set) {
-	while (more(b) && strchr(set, peek(b))) {
+	while (more(b) && strchr(set, peek(b)) != NULL) {
 		get(b);
 	}
 }
@@ -128,7 +128,7 @@ pub bool buf_skip(t *b, char c) {
 pub char *buf_read_set(t *b, const char *set) {
 	char *s = calloc(10000, 1);
 	char *p = s;
-	while (more(b) && strchr(set, peek(b))) {
+	while (more(b) && strchr(set, peek(b)) != NULL) {
 		*p = get(b);
 		p++;
 	}

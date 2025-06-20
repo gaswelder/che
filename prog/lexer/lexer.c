@@ -81,18 +81,15 @@ typedef {
 } tok_t;
 
 
-/*
- * Creates a new token object.
- * Undo: tok_free(t);
- */
-tok_t *tok_make(char *name, char *content, char *pos) {
+// Creates a new token object.
+tok_t *tok_make(char *name, char *content, const char *pos) {
 	tok_t *t = calloc(1, sizeof(tok_t));
 	if (!t) {
 		return NULL;
 	}
 	t->name = name;
 	t->content = content;
-	t->pos = pos;
+	t->pos = strings.newstr("%s", pos);
 	return t;
 }
 
@@ -147,8 +144,7 @@ tok_t *lexer_read(lexer_t *l) {
 		return read_line_comment(b);
 	}
 
-	
-	char *pos = tokenizer.posstr(b);
+	const char *pos = tokenizer.posstr(b);
 	for (size_t i = 0; i < nelem(keywords); i++) {
 		const char *keyword = keywords[i];
 		if (tokenizer.buf_skip_literal(b, keyword)) {
@@ -163,7 +159,6 @@ tok_t *lexer_read(lexer_t *l) {
 			return tok_make(strings.newstr("%s", symbol), NULL, pos);
 		}
 	}
-	free(pos);
 
 	if (isalpha(peek) || peek == '_') {
 		// puts("ident");
@@ -183,7 +178,7 @@ tok_t *read_number(tokenizer.t *b) {
 		return read_hex_number(b);
 	}
 
-	char *pos = tokenizer.posstr(b);
+	const char *pos = tokenizer.posstr(b);
 	char *num = tokenizer.buf_read_set(b, "0123456789");
 	if (tokenizer.peek(b) == '.') {
 		tokenizer.get(b);
@@ -221,7 +216,7 @@ tok_t *read_hex_number(tokenizer.t *b) {
 // // TODO: clip/str: str_new() -> str_new(template, args...)
 
 tok_t *read_string(tokenizer.t *b) {
-	char *pos = tokenizer.posstr(b);
+	const char *pos = tokenizer.posstr(b);
 
 	// Skip the opening quote
 	tokenizer.get(b);
@@ -266,7 +261,7 @@ tok_t *read_string(tokenizer.t *b) {
 tok_t *read_char(tokenizer.t *b) {
 	char *s = calloc(3, 1);
 	char *p = s;
-	char *pos = tokenizer.posstr(b);
+	const char *pos = tokenizer.posstr(b);
 	
 	tokenizer.get(b);
 
@@ -285,7 +280,7 @@ tok_t *read_char(tokenizer.t *b) {
 
 
 tok_t *read_multiline_comment(tokenizer.t *b) {
-	char *pos = tokenizer.posstr(b);
+	const char *pos = tokenizer.posstr(b);
 	tokenizer.buf_skip_literal(b, "/*");
 	char *comment = tokenizer.buf_skip_until(b, "*/");
 	if (!tokenizer.buf_skip_literal(b, "*/")) {
@@ -296,14 +291,14 @@ tok_t *read_multiline_comment(tokenizer.t *b) {
 }
 
 tok_t *read_line_comment(tokenizer.t *b) {
-	char *pos = tokenizer.posstr(b);
+	const char *pos = tokenizer.posstr(b);
 	tokenizer.buf_skip_literal(b, "//");
 	return tok_make("comment", tokenizer.buf_skip_until(b, "\n"), pos);
 }
 
 tok_t *read_identifier(tokenizer.t *b) {
 	strbuilder.str *s = strbuilder.str_new();
-	char *pos = tokenizer.posstr(b);
+	const char *pos = tokenizer.posstr(b);
 
 	while (tokenizer.more(b)) {
 		char c = tokenizer.peek(b);

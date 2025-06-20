@@ -70,11 +70,15 @@ pub size_t totalsize(info_t *tf) {
 	return total;
 }
 
-// Returns the number of pieces in the torrent.
-// It's simply ceil(total size / piece size).
+// Returns the number of pieces in the torrent,
+// which is ceil(total size / piece size).
 pub size_t npieces(info_t *tf) {
 	size_t t = totalsize(tf);
-	return t/tf->piece_length + (t % tf->piece_length != 0);
+	size_t n = t / tf->piece_length;
+	if (t % tf->piece_length != 0) {
+		n++;
+	}
+	return n;
 }
 
 // Returns the size of the last piece in bytes.

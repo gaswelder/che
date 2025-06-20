@@ -4,7 +4,7 @@ pub bool streq(const char *a, *b) {
     if (!a && !b) {
         return true;
     }
-    if ((!a || !b) || strcmp(a, b)) {
+    if ((!a || !b) || strcmp(a, b) != 0) {
         printf("FAIL: %s != %s\n", a, b);
         _fails++;
         return false;

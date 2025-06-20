@@ -331,9 +331,10 @@ pub double json_getdbl(val_t *obj, const char *k) {
 	return v->val.num;
 }
 
-pub bool json_bool(val_t *n)
-{
-	if(n && n->type == JSON_BOOL) {
+// Returns the value of the boolean node n.
+// If n is not a boolean node, returns false.
+pub bool json_bool(val_t *n) {
+	if (n != NULL && n->type == JSON_BOOL) {
 		return n->val.boolval;
 	}
 	return false;
@@ -341,24 +342,21 @@ pub bool json_bool(val_t *n)
 
 // Returns the string from the given string value.
 pub const char *json_str(val_t *n) {
-	if (n && n->type == JSON_STR) {
+	if (n != NULL && n->type == JSON_STR) {
 		return n->val.str;
 	}
 	return "";
 }
 
-pub double json_dbl(val_t *n)
-{
-	if(n && n->type == JSON_NUM) {
+pub double json_dbl(val_t *n) {
+	if (n != NULL && n->type == JSON_NUM) {
 		return n->val.num;
 	}
 	return 0.0;
 }
 
-
-pub bool json_put( val_t *n, const char *k, val_t *val )
-{
-	if(!n || n->type != JSON_OBJ) {
+pub bool json_put( val_t *n, const char *k, val_t *val ) {
+	if (n == NULL || n->type != JSON_OBJ) {
 		return false;
 	}
 
@@ -397,18 +395,16 @@ pub bool json_put( val_t *n, const char *k, val_t *val )
  * Pushes given value to the end of the given array node.
  * Returns false if the given node is not an array and in case of error.
  */
-pub bool json_push( val_t *n, val_t *val )
-{
-	if( !n || n->type != JSON_ARR ) {
+pub bool json_push( val_t *n, val_t *val ) {
+	if (n == NULL || n->type != JSON_ARR) {
 		return false;
 	}
-
 	return arr.arr_push(n->val.arr, val);
 }
 
 void *mcopy( const void *src, size_t size ) {
 	void *copy = calloc(size, 1);
-	if (!copy) {
+	if (copy == NULL) {
 		return NULL;
 	}
 	memcpy(copy, src, size);

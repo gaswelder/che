@@ -36,19 +36,22 @@ pub double *gen(int width, height, double xmin, xmax, ymin, ymax, int it) {
 // * If c is held constant and the initial value of z is varied instead,
 // we get a Julia set instead.
 
-double get_val (complex.t c, int it) {
+double get_val(complex.t c, int it) {
 	complex.t z = { 0, 0 };
 
 	int count = 0;
-	while ((z.re * z.re + z.im * z.im < 2 * 2) && count < it) {
+	while (complex.abs2(z) < 4 && count < it) {
 		/* Z = Z^2 + C */
 		z = complex.sum( complex.mul(z, z), c );
 		count++;
 	}
-	if (z.re * z.re + z.im * z.im < 2 * 2)
+	if (complex.abs2(z) < 4) {
 		return 0;
+	}
+	return smooth(count, complex.abs(z));
+}
 
-	/* Smooth coloration */
-	double out = (double) (count + 1 - log (log (sqrt (z.re * z.re + z.im * z.im))) / logtwo);
-	return out;
+double smooth(int count, double amp) {
+	double off = (double) count + 1;
+	return off - log(log(amp)) / logtwo;
 }

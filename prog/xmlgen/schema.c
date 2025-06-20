@@ -834,10 +834,10 @@ void FixSetSize(Element *element, float global_scale_factor) {
     while (*child_id) {
         Element *child_element = GetSchemaNode(*child_id);
         ProbDesc pd = probDescForChild(element, *child_id);
-        if (pd.min > 1 && (hasID(child_element) || (child_element->type&0x04))) {
+        if (pd.min > 1 && (hasID(child_element) || ((child_element->type & 0x04) != 0))) {
             int size=(int)(GenRandomNum(&pd) + 0.5);
-            if (size*global_scale_factor > 1) {
-                size = (int)(size*global_scale_factor);
+            if ((float)size * global_scale_factor > 1) {
+                size = (int)((float)size*global_scale_factor);
             } else {
                 size = 1;
             }
@@ -869,10 +869,10 @@ void FixReferenceSets(Element *element) {
             if (!maxref) {
                 break;
             }
-            local_factor = maxref / pd.max;
+            local_factor = (double) maxref / pd.max;
             int size=(int)(GenRandomNum(&pd) + 0.5);
-            if (size*local_factor > 1) {
-                size = (int)(size*local_factor);
+            if ((float) size*local_factor > 1) {
+                size = (int)((float) size*local_factor);
             } else {
                 size = 1;
             }

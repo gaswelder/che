@@ -69,22 +69,18 @@ pub xml *xml_open(const char *path)
 	x->col = 1;
 	x->nextchar = EOF;
 
-	/*
-	 * Discard the xml header
-	 */
+	// Discard the XML header.
 	discard_spaces(x);
 	expect(x, '<');
 	expect(x, '?');
-	while(peek(x) != EOF && peek(x) != '>') {
+	while (peek(x) != EOF && peek(x) != '>') {
 		get(x);
 	}
 	expect(x, '>');
 
-	/*
-	 * Go to the first element
-	 */
+	// Go to the first element
 	__tag *n = next_tag(x);
-	if(!n) {
+	if (!n) {
 		error(x, "Unexpected end of file");
 		return x;
 	}
@@ -252,7 +248,7 @@ pub void xml_leave(xml *x)
 	 */
 	__tag *t = next_tag(x);
 	const char *pname = x->path[x->pathlen-1];
-	if(!t || t->type != T_CLOSE || strcmp(t->name, pname) != 0) {
+	if (!t || t->type != T_CLOSE || strcmp(t->name, pname) != 0) {
 		error(x, "Missing closing tag for %s", pname);
 		return;
 	}
@@ -267,7 +263,7 @@ pub void xml_leave(xml *x)
 	 * Go to the next sibling of the ex-parent.
 	 */
 	t = next_tag(x);
-	if(t && (t->type == T_OPEN || t->type == T_MONO)) {
+	if (t != NULL && (t->type == T_OPEN || t->type == T_MONO)) {
 		shift(x);
 	}
 	else {
@@ -275,11 +271,8 @@ pub void xml_leave(xml *x)
 	}
 }
 
-/*
- * Returns current position in the file
- */
-pub long xml_filepos(xml *x)
-{
+// Returns the reader's current position in the file.
+pub int32_t xml_filepos(xml *x) {
 	return ftell(x->f);
 }
 

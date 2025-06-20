@@ -207,7 +207,7 @@ bool parse_query(request_t *r) {
     // Read full path
     char *pathp = r->path;
     const char *p = r->uri;
-    while (*p && *p != '?') {
+    while (*p != '\0' && *p != '?') {
         *pathp++ = *p++;
     }
     // Read query string
