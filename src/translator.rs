@@ -850,8 +850,13 @@ fn tr_cast(x: &nodes::Cast, ctx: &mut TrCtx) -> Result<Typed<c::Expr>, BuildErro
 fn tr_arr_index(x: &nodes::ArrayIndex, ctx: &mut TrCtx) -> Result<Typed<c::Expr>, BuildError> {
     let arr = tr_expr(&x.array, ctx)?;
     let ind = tr_expr(&x.index, ctx)?;
+    let typ = types::typeof_index(&arr.typ, &ind.typ).map_err(|e| BuildError {
+        message: e,
+        path: ctx.this_mod_head.filepath.clone(),
+        pos: "?".to_string(),
+    })?;
     Ok(Typed {
-        typ: types::typeof_index(&arr.typ, &ind.typ),
+        typ,
         val: c::Expr::ArrayIndex {
             array: Box::new(arr.val),
             index: Box::new(ind.val),
@@ -898,7 +903,7 @@ fn tr_field_access(x: &nodes::FieldAccess, ctx: &mut TrCtx) -> Result<Typed<c::E
 // }
 
 fn typeof_struct_field(ctx: &TrCtx, struct_type: &types::Type, field: &str) -> types::Type {
-    if types::is_unknown(struct_type) {
+    if types::is_todo(struct_type) {
         return types::unk();
     }
     let ns = &struct_type.base.ns;
@@ -1564,7 +1569,7 @@ fn is_numeric(s: &str) -> bool {
 }
 
 fn typeof_call(t: &types::Type, ctx: &TrCtx) -> Result<types::Type, String> {
-    if types::is_unknown(t) {
+    if types::is_todo(t) {
         return Ok(types::unk());
     }
     if matches!(t.ops.first(), Some(types::TypeOp::Call)) {

@@ -18,6 +18,122 @@ pub enum TypeOp {
     Call,
 }
 
+pub fn typeof_arith(a: &Type, b: &Type) -> Result<Type, String> {
+    match (classify(a), classify(b)) {
+        // T with T gives T
+        (Class::CONSTNUM, Class::CONSTNUM) => Ok(a.clone()),
+        (Class::FLT, Class::FLT) => Ok(widest_type(a, b)),
+        (Class::SINT, Class::SINT) => Ok(widest_type(a, b)),
+        (Class::UINT, Class::UINT) => Ok(widest_type(a, b)),
+
+        // const with T gives T
+        (Class::CONSTNUM, Class::FLT | Class::SINT | Class::UINT) => Ok(b.clone()),
+        (Class::FLT | Class::SINT | Class::UINT, Class::CONSTNUM) => Ok(b.clone()),
+
+        // todo with x gives todo
+        (_, Class::UNK) => Ok(b.clone()),
+        (Class::UNK, _) => Ok(a.clone()),
+
+        // sloppy
+        (Class::UINT, Class::SINT) => Ok(widest_type(a, b)),
+        (Class::SINT, Class::UINT) => Ok(widest_type(a, b)),
+        (Class::SINT | Class::UINT, Class::FLT) => Ok(b.clone()),
+        (Class::FLT, Class::SINT | Class::UINT) => Ok(a.clone()),
+        (_, _) => Err(format!("arith on {}, {}", a.fmt(), b.fmt())),
+    }
+}
+
+pub fn typeof_plusminus(op: &str, a: &Type, b: &Type) -> Result<Type, String> {
+    match (op, classify(a), classify(b)) {
+        // T + T = T
+        (_, Class::CONSTNUM, Class::CONSTNUM) => Ok(a.clone()),
+        (_, Class::SINT, Class::SINT) => Ok(widest_type(a, b)),
+        (_, Class::UINT, Class::UINT) => Ok(widest_type(a, b)),
+        (_, Class::FLT, Class::FLT) => Ok(widest_type(a, b)),
+
+        // const + T = T
+        (_, Class::CONSTNUM, Class::SINT | Class::UINT | Class::FLT) => Ok(b.clone()),
+        (_, Class::SINT | Class::UINT | Class::FLT, Class::CONSTNUM) => Ok(b.clone()),
+
+        // todo + T = todo
+        (_, Class::UNK, _) => Ok(a.clone()),
+        (_, _, Class::UNK) => Ok(b.clone()),
+
+        // ptr - ptr = ptrdiff
+        ("-", Class::PTR, Class::PTR) => Ok(just("ptrdiff_t")),
+
+        // ptr + any int = ptr
+        (_, Class::PTR | Class::ARR, Class::CONSTNUM | Class::SINT | Class::UINT) => Ok(a.clone()),
+        (_, Class::CONSTNUM | Class::SINT | Class::UINT, Class::PTR | Class::ARR) => Ok(a.clone()),
+
+        _ => Err(format!(
+            "'{}' operation between {} and {}",
+            op,
+            a.fmt(),
+            b.fmt()
+        )),
+    }
+}
+
+// Returns the type of numeric comparison between types a and b.
+pub fn typeof_cmp(a: &Type, b: &Type) -> Result<Type, String> {
+    match (classify(a), classify(b)) {
+        // T < T
+        (Class::FLT, Class::FLT) => Ok(just("bool")),
+        (Class::SINT, Class::SINT) => Ok(just("bool")),
+        (Class::UINT, Class::UINT) => Ok(just("bool")),
+
+        // num < const
+        (Class::FLT | Class::SINT | Class::UINT, Class::CONSTNUM) => Ok(just("bool")),
+        (Class::CONSTNUM, Class::FLT | Class::SINT | Class::UINT) => Ok(just("bool")),
+
+        // todo < T
+        (Class::UNK, _) => Ok(just("bool")),
+        (_, Class::UNK) => Ok(just("bool")),
+
+        // ptr < ptr
+        (Class::PTR, Class::PTR) => Ok(just("bool")),
+
+        // hmm
+        (Class::CONSTNUM, Class::CONSTNUM) => Ok(just("bool")),
+
+        _ => Err(format!("comparison between {} and {}", a.fmt(), b.fmt())),
+    }
+}
+
+pub fn typeof_boolcomp(a: &Type, b: &Type) -> Result<Type, String> {
+    if is_booly(a) && is_booly(b) {
+        Ok(just("bool"))
+    } else {
+        Err(format!("boolean comparison of {} and {}", a.fmt(), b.fmt()))
+    }
+}
+
+pub fn typeof_index(arr: &Type, ind: &Type) -> Result<Type, String> {
+    if is_todo(arr) {
+        return Ok(arr.clone());
+    }
+    // sloppy
+    if arr.ops.len() == 0 {
+        return Ok(unk());
+    }
+    match arr.ops[0] {
+        TypeOp::Index => {
+            return Ok(Type {
+                base: arr.base.clone(),
+                ops: arr.ops[1..].to_vec(),
+            });
+        }
+        TypeOp::Deref => {
+            return Ok(Type {
+                base: arr.base.clone(),
+                ops: arr.ops[1..].to_vec(),
+            });
+        }
+        _ => return Err(format!("index: ({})[{}]", arr.fmt(), ind.fmt())),
+    };
+}
+
 enum Class {
     CONSTNUM,
     PTR,
@@ -26,6 +142,7 @@ enum Class {
     ARR,
     UNK,
     FLT,
+    BOOL,
     NONE,
 }
 
@@ -33,17 +150,17 @@ fn classify(x: &Type) -> Class {
     match () {
         _ if isconstnum(x) => Class::CONSTNUM,
         _ if is_pointer(x) => Class::PTR,
-        _ if isint(x) => Class::SINT,
-        _ if isuint(x) => Class::UINT,
+        _ if is_sint(x) => Class::SINT,
+        _ if is_uint(x) => Class::UINT,
         _ if is_arr(x) => Class::ARR,
-        _ if is_unknown(x) => Class::UNK,
+        _ if is_todo(x) => Class::UNK,
         _ if isfloat(x) => Class::FLT,
+        _ if x.fmt() == "bool" => Class::BOOL,
         _ => Class::NONE,
     }
 }
 
-// Checks if the given type is an integer type.
-pub fn isint(x: &Type) -> bool {
+fn is_sint(x: &Type) -> bool {
     matches!(
         x.fmt().as_str(),
         "int" | "int16_t" | "int32_t" | "int64_t" | "int8_t"
@@ -52,18 +169,14 @@ pub fn isint(x: &Type) -> bool {
     )
 }
 
-fn isuint(x: &Type) -> bool {
+fn is_uint(x: &Type) -> bool {
     matches!(x.fmt().as_str(), |"size_t"| "uint16_t"
         | "uint32_t"
         | "uint64_t"
         | "uint8_t")
 }
 
-fn isanyint(x: &Type) -> bool {
-    isint(x) || isuint(x)
-}
-
-fn intsize(x: &Type) -> usize {
+fn typesize(x: &Type) -> usize {
     match x.fmt().as_str() {
         "size_t" => 64,
         "uint64_t" => 64,
@@ -76,12 +189,17 @@ fn intsize(x: &Type) -> usize {
         "int8_t" => 8,
         "int" => 32,
         "char" => 8,
-        _ => todo!("intsize {:?}", x),
+        "double" => 64,
+        "float" => 32,
+        // sloppy
+        "time_t" => 32,
+        "ptrdiff_t" => 64,
+        _ => todo!("typesize {}", x.fmt()),
     }
 }
 
-fn widest_integer(x: &Type, y: &Type) -> Type {
-    if intsize(x) > intsize(y) {
+fn widest_type(x: &Type, y: &Type) -> Type {
+    if typesize(x) > typesize(y) {
         x.clone()
     } else {
         y.clone()
@@ -89,28 +207,19 @@ fn widest_integer(x: &Type, y: &Type) -> Type {
 }
 
 // Checks if the given type is a number literal.
-pub fn isconstnum(b: &Type) -> bool {
+fn isconstnum(b: &Type) -> bool {
     b.fmt() == "number"
 }
 
-pub fn isfloat(x: &Type) -> bool {
+fn isfloat(x: &Type) -> bool {
     x.fmt() == "float" || x.fmt() == "double"
 }
 
-pub fn widest_float(a: &Type, b: &Type) -> Type {
-    if a.fmt() == "double" {
-        a.clone()
-    } else {
-        b.clone()
-    }
-}
-
-// Checks if the given type is unknown.
-pub fn is_unknown(x: &Type) -> bool {
+pub fn is_todo(x: &Type) -> bool {
     x.fmt() == "*** UNKNOWN *** "
 }
 
-pub fn is_pointer(x: &Type) -> bool {
+fn is_pointer(x: &Type) -> bool {
     x.ops.len() > 0 && matches!(x.ops[0], TypeOp::Deref)
 }
 
@@ -195,7 +304,7 @@ pub fn addr(t: Type) -> Type {
 }
 
 pub fn deref(t: &Type) -> Result<Type, String> {
-    if is_unknown(t) {
+    if is_todo(t) {
         return Ok(t.clone());
     }
     if !matches!(t.ops.first(), Some(TypeOp::Deref)) {
@@ -207,154 +316,16 @@ pub fn deref(t: &Type) -> Result<Type, String> {
     })
 }
 
-// Returns the type of numeric comparison between types a and b.
-pub fn typeof_cmp(a: &Type, b: &Type) -> Result<Type, String> {
-    if (a.fmt() == b.fmt())
-        || (isanyint(a) && isconstnum(b))
-        || (isint(a) && isint(b))
-        || (isuint(a) && isuint(b))
-        || (isfloat(a) && isconstnum(b))
-        || is_unknown(a)
-        || is_unknown(b)
-        || (is_pointer(a) && is_pointer(b))
-    {
-        Ok(just("bool"))
-    } else {
-        Err(format!("comparison between {} and {}", a.fmt(), b.fmt()))
+fn is_booly(a: &Type) -> bool {
+    match classify(a) {
+        Class::CONSTNUM => true,
+        Class::PTR => true,
+        Class::SINT => true,
+        Class::UINT => true,
+        Class::ARR => false,
+        Class::UNK => true,
+        Class::FLT => false,
+        Class::NONE => false,
+        Class::BOOL => true,
     }
-}
-
-pub fn typeof_plusminus(op: &str, a: &Type, b: &Type) -> Result<Type, String> {
-    match (op, classify(a), classify(b)) {
-        (_, Class::CONSTNUM, Class::CONSTNUM) => Ok(a.clone()),
-        (_, Class::CONSTNUM, Class::SINT | Class::UINT | Class::FLT) => Ok(b.clone()),
-        (_, Class::PTR | Class::ARR, Class::CONSTNUM | Class::SINT | Class::UINT) => Ok(a.clone()),
-        ("-", Class::PTR, Class::PTR) => Ok(just("ptrdiff_t")),
-        (_, Class::SINT | Class::UINT | Class::FLT, Class::CONSTNUM) => Ok(a.clone()),
-        (_, Class::SINT, Class::SINT) => Ok(a.clone()),
-        (_, Class::UINT, Class::UINT) => Ok(a.clone()),
-        (_, Class::FLT, Class::FLT) => Ok(a.clone()),
-        (_, Class::UNK, _) => Ok(a.clone()),
-        (_, _, Class::UNK) => Ok(b.clone()),
-        _ => Err(format!(
-            "'{}' operation between {} and {}",
-            op,
-            a.fmt(),
-            b.fmt()
-        )),
-    }
-}
-
-pub fn typeof_boolcomp(a: &Type, b: &Type) -> Result<Type, String> {
-    let af = a.fmt();
-    let bf = b.fmt();
-    let aunk = is_unknown(a);
-    let bunk = is_unknown(b);
-    let abool = af == "bool";
-    let bbool = bf == "bool";
-    if (abool && bbool)
-        || (aunk && bbool)
-        || (bunk && abool)
-        || (aunk && bunk)
-		// sloppy mode
-		|| (is_pointer(a) && bbool)
-		|| (is_pointer(b) && abool)
-		|| (isanyint(a) && bunk)
-		|| (abool && isanyint(b))
-		|| (bbool && isanyint(a))
-    {
-        Ok(just("bool"))
-    } else {
-        Err(format!("boolean comparison of {} and {}", af, bf))
-    }
-}
-
-pub fn typeof_index(arr: &Type, ind: &Type) -> Type {
-    if is_unknown(arr) {
-        return arr.clone();
-    }
-    if !isconstnum(&ind) && !isanyint(&ind) {
-        return unk();
-    }
-    if arr.ops.len() == 0 {
-        return unk();
-    }
-    match arr.ops[0] {
-        TypeOp::Index => Type {
-            base: arr.base.clone(),
-            ops: arr.ops[1..].to_vec(),
-        },
-        TypeOp::Deref => Type {
-            base: arr.base.clone(),
-            ops: arr.ops[1..].to_vec(),
-        },
-        _ => {
-            println!("index: ({})[{}]", arr.fmt(), ind.fmt());
-            todo!()
-        }
-    }
-}
-
-fn isarr(a: &Type) -> bool {
-    if a.ops.len() == 0 {
-        return false;
-    }
-    match a.ops[0] {
-        TypeOp::Deref | TypeOp::Index => true,
-        TypeOp::Call => false,
-    }
-}
-
-pub fn typeof_arith(a: &Type, b: &Type) -> Result<Type, String> {
-    if a.fmt() == b.fmt() {
-        return Ok(a.clone());
-    }
-    if isarr(a) && isconstnum(b) {
-        return Ok(a.clone());
-    }
-    if isarr(a) && isanyint(b) {
-        return Ok(a.clone());
-    }
-    if isanyint(a) && isconstnum(b) {
-        return Ok(a.clone());
-    }
-    if isconstnum(a) && isanyint(b) {
-        return Ok(b.clone());
-    }
-    if isanyint(a) && isanyint(b) {
-        return Ok(widest_integer(a, b));
-    }
-    if isfloat(a) && isconstnum(b) {
-        return Ok(a.clone());
-    }
-    if isfloat(b) && isconstnum(a) {
-        return Ok(b.clone());
-    }
-    if isconstnum(a) && isfloat(b) {
-        return Ok(b.clone());
-    }
-    // '0' + offset
-    if a.fmt() == "char" && isanyint(b) {
-        return Ok(a.clone());
-    }
-    if isanyint(a) && is_unknown(b) {
-        return Ok(a.clone());
-    }
-    if isconstnum(a) && is_unknown(b) {
-        return Ok(unk());
-    }
-    // sloppy mode
-    if isfloat(a) && isfloat(b) {
-        return Ok(widest_float(a, b));
-    }
-    if isfloat(a) && isanyint(b) {
-        return Ok(a.clone());
-    }
-    if isanyint(a) && isfloat(b) {
-        return Ok(b.clone());
-    }
-    if is_unknown(a) || is_unknown(b) {
-        return Ok(unk());
-    }
-    Err(format!("arith on {}, {}", a.fmt(), b.fmt()))
 }
