@@ -34,22 +34,24 @@ pub uint32_t intn(uint32_t n) {
 
 pub double gauss() {
     // Brute-force approach until something better comes.
-    double v = (double) rand() / (double) RAND_MAX;
+    double v = u();
     for (int j = 0; j < n; j++) {
-        v += (double) rand() / (double) RAND_MAX;
+        v += u();
     }
     return v / (double) (n+1) - 0.5;
 }
 
-pub double uniform(double low, high) {
-    return low + (high-low) * u();
-}
 
 pub double exponential(double mean) {
     return mean * -log(u());
 }
 
-double u() {
+// Returns a random double uniformly distributed in [0, 1).
+pub double u() {
     return (double) pcg32() / 0xffffffff;
 }
 
+// Returns a random double uniformly distributed in [low, high).
+pub double urange(double low, high) {
+    return low + (high-low) * u();
+}

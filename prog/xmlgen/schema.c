@@ -944,7 +944,7 @@ double GenRandomNum(ProbDesc *pd) {
     }
 
     if (pd->type == 1) {
-        return rnd.uniform(pd->min, pd->max);
+        return rnd.urange(pd->min, pd->max);
     }
 
     if (pd->type == 2) {

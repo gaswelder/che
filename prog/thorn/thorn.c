@@ -1,6 +1,7 @@
 #import formats/png
 #import image
 #import opt
+#import rnd
 
 int main(int argc, char *argv[]) {
 	char *size = "1000x1000";
@@ -24,9 +25,8 @@ int main(int argc, char *argv[]) {
 
 // Draws thorn in the given image.
 void thorn(image.image_t *img) {
-	srand(time(NULL));
-	double cr = (rand() % 10000) / 500.0 - 10; // -10 -> 10;
-    double ci = (rand() % 10000) / 500.0 - 10;
+	double cr = (rnd.intn(10000)) / 500.0 - 10; // -10 -> 10;
+    double ci = (rnd.intn(10000)) / 500.0 - 10;
     double xmin = -M_PI;
     double xmax =  M_PI;
     double ymin = -M_PI;

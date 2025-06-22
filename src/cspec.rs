@@ -151,7 +151,6 @@ fn buildmap() -> HashMap<&'static str, CSymbol> {
         f("tolower", vec![just("int")], just("int")),
         f("toupper", vec![just("int")], just("int")),
         // stdlib
-        c("RAND_MAX", just("int")),             // depr
         f("abort", vec![todo()], just("void")), // depr
         f("atof", vec![todo()], todo()),
         f("atoi", vec![todo()], todo()),
@@ -163,9 +162,7 @@ fn buildmap() -> HashMap<&'static str, CSymbol> {
         f("exit", vec![todo()], just("void")),
         f("free", vec![todo()], just("void")),
         f("qsort", vec![todo()], todo()),
-        f("rand", vec![], just("int")), // depr
         f("realloc", vec![todo()], todo()),
-        f("srand", vec![todo()], todo()), // depr
         f("strtod", vec![todo()], todo()),
         f("strtof", vec![todo()], todo()),
         f("strtold", vec![todo()], todo()),

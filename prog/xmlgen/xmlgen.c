@@ -165,7 +165,7 @@ void Tree(FILE *out, schema.Element *element) {
 			}
         }
         case schema.LOCATION, schema.COUNTRY: {
-            if (rnd.uniform(0, 1) < 0.75) {
+            if (rnd.urange(0, 1) < 0.75) {
                 GenContents_country = COUNTRIES_USA;
             } else {
                 GenContents_country = rnd.intn(words.dictlen("countries"));
@@ -247,7 +247,7 @@ void Tree(FILE *out, schema.Element *element) {
 
     if (element->type & 0x02) {
         schema.Element *root;
-        double alt = rnd.uniform(0, 1);
+        double alt = rnd.urange(0, 1);
         double sum = 0;
         int *child_id = element->elm;            
         while (*child_id) {
@@ -336,7 +336,7 @@ void OpeningTag(FILE *out, schema.Element *element) {
                 fprintf(out," %s=\"%s%d\"", attname, schema.GetSchemaNode(att->ref)->name, ref);
             }
             case schema.ATTR_TYPE_3: {
-                if (rnd.uniform(0, 1) < att->prcnt) {
+                if (rnd.urange(0, 1) < att->prcnt) {
                     if (!strcmp(attname,"income")) {
                         double d = 40000 + 30000 * rnd.gauss();
                         if (d < 9876) {
@@ -381,7 +381,7 @@ void PrintANY(FILE *out) {
     int sen=1+(int)rnd.exponential(20);
     int stptr = 0;
     for (int i=0; i < sen; i++) {
-        if (rnd.uniform(0, 1) < 0.1 && stptr < 2) {
+        if (rnd.urange(0, 1) < 0.1 && stptr < 2) {
             while (true) {
                 PrintANY_st[stptr] = rnd.intn(3);
                 if (!tick[PrintANY_st[stptr]]) {
@@ -392,7 +392,7 @@ void PrintANY(FILE *out) {
             fprintf(out,"<%s> ", markup[PrintANY_st[stptr]]);
             stptr++;
         }
-        else if (rnd.uniform(0, 1) < 0.8 && stptr != 0) {
+        else if (rnd.urange(0, 1) < 0.8 && stptr != 0) {
             --stptr;
             fprintf(out,"</%s> ",markup[PrintANY_st[stptr]]);
             tick[PrintANY_st[stptr]] = 0;
@@ -471,7 +471,7 @@ double GenRandomNum(schema.ProbDesc *pd) {
     }
 
     if (pd->type == 1) {
-        return rnd.uniform(pd->min, pd->max);
+        return rnd.urange(pd->min, pd->max);
     }
 
     if (pd->type == 2) {

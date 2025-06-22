@@ -3,12 +3,12 @@
 
 pub void fprovince(FILE *out) {
     int n = words.dictlen("provinces");
-    fprintf(out, "%s", words.dictentry("provinces", rand() % n));
+    fprintf(out, "%s", words.dictentry("provinces", rnd.intn(n)));
 }
 
 pub void fcity(FILE *out) {
     int n = words.dictlen("cities");
-    fprintf(out, "%s", words.dictentry("cities", rand() % n));
+    fprintf(out, "%s", words.dictentry("cities", rnd.intn(n)));
 }
 
 pub void fzipcode(FILE *out) {
@@ -79,11 +79,11 @@ pub void ftime(FILE *out) {
 
 const char *lastname() {
     int n = words.dictlen("lastnames");
-    return words.dictentry("lastnames", rand() % n);
+    return words.dictentry("lastnames", rnd.intn(n));
 }
 
 int randr(int min, max) {
-    return min + rand() % (max-min + 1);
+    return min + (int) rnd.intn(max-min + 1);
 }
 
 pub void fint(FILE *out, int min, max) {
