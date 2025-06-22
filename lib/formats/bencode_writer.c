@@ -1,3 +1,5 @@
+#import strings
+
 enum {
 	FSTREAM = 'f',
 	BUF = 'b'
@@ -109,7 +111,7 @@ bool _writenum(t *w, int n) {
 		int digit = N / m;
 		N = n % m;
 		m /= 10;
-		if (!byte(w, '0' + digit)) return false;
+		if (!byte(w, strings.ascii_digit(digit))) return false;
 	}
 	return true;
 }

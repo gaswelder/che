@@ -139,12 +139,14 @@ void draw_score(game.state_t *g) {
 	OS.mvprintw(1, (COLWIDTH - j) / 2, "%s: %d     Computer: %d", name, pwins, cwins);
 }
 
+const char *LETTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+
 void draw_field(const char *title, int x0) {
 	const char *numbers = "   0  1  2  3  4  5  6  7  8  9";
 	OS.mvaddstr(BOARD_Y - 2, x0 + 5, title);
 	OS.mvaddstr(BOARD_Y - 1, x0 - 3, numbers);
 	for (int i = 0; i < BDEPTH; ++i) {
-		OS.mvaddch(BOARD_Y + i, x0 - 3, (i + 'A'));
+		OS.mvaddch(BOARD_Y + i, x0 - 3, LETTERS[i]);
 		if (OS.has_colors()) {
 			OS.attron(OS.COLOR_PAIR(OS.COLOR_BLUE));
 		}
@@ -154,7 +156,7 @@ void draw_field(const char *title, int x0) {
 		}
 		OS.attrset(0);
 		OS.addch(' ');
-		OS.addch((i + 'A'));
+		OS.addch(LETTERS[i]);
 	}
 	OS.mvaddstr(BOARD_Y + BDEPTH, x0 - 3, numbers);
 }

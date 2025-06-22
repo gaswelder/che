@@ -1,3 +1,4 @@
+#import strings
 
 pub typedef {
 	const char *data;
@@ -203,9 +204,11 @@ int num(reader_t *r) {
     }
     while (isdigit(peek(r))) {
         n *= 10;
-        n += pop(r) - '0';
+		n += strings.num_from_ascii(pop(r));
     }
-    if (neg) n *= -1;
+    if (neg) {
+		n *= -1;
+	}
     return n;
 }
 

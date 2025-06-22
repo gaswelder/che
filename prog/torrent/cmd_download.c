@@ -1,4 +1,5 @@
 #import formats/torrent
+#import lib.c
 #import opt
 #import os/ioloop
 #import peer.c
@@ -16,11 +17,8 @@ pub int run(int argc, char **argv) {
         return 1;
     }
 
-    // Generate a peer ID.
     uint8_t peer_id[20];
-    for (int i = 0; i < 20; i++) {
-		peer_id[i] = '0' + (rand() % ('z'-'0'));
-	}
+	lib.gen_id(peer_id);
 
     peer.init(tf, peer_id);
 	tracker.init(tf, peer_id);

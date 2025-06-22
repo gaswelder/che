@@ -55,7 +55,7 @@ pub typedef {
 	int hits;          /* how many times has this ship been hit? */
 	char symbol;       /* symbol for game purposes */
 	int length;        /* length of ship */
-	char x, y;         /* coordinates of ship start point */
+	int x, y;         /* coordinates of ship start point */
 	uint8_t dir; /* direction of `bow' */
 	bool placed;       /* has it been placed on the board? */
 } ship_t;

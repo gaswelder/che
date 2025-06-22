@@ -1,4 +1,5 @@
 #import formats/mp3
+#import strings
 
 /*
  * mp3spl <mp3> <time>,<time>,...
@@ -59,79 +60,85 @@ int main(int argc, char *argv[]) {
 	return 0;
 }
 
-bool parse_times(mp3.mp3time_t *a, const char *spec, size_t maxsize)
-{
+bool parse_time(const char **spec, mp3.mp3time_t *t) {
+	int min = 0;
+	int sec = 0;
+	int usec = 0;
+	const char *p = *spec;
+
+	// min
+	if (!readint(&p, &min)) {
+		return false;
+	}
+	// :
+	if (*p++ != ':') {
+		fprintf(stderr, "':' expected");
+		return false;
+	}
+	// sec
+	if (!readint(&p, &sec)) {
+		return false;
+	}
+	// .usec
+	if (*p == '.') {
+		p++;
+		if (!isdigit(*p)) {
+			fprintf(stderr, "Digits expected after point: %s", p);
+			return false;
+		}
+		int pow = 100000;
+		while (isdigit(*p)) {
+			usec += strings.num_from_ascii(*p) * pow;
+			pow /= 10;
+			p++;
+		}
+	}
+	if(min >= 60 || sec >= 60) {
+		fprintf(stderr, "Incorrect time: %d:%d", min, sec);
+		return false;
+	}
+	*spec = p;
+	t->min = min;
+	t->sec = sec;
+	t->usec = usec;
+	return true;
+}
+
+bool readint(const char **spec, int *r) {
+	const char *p = *spec;
+	if (!isdigit(*p)) {
+		fprintf(stderr, "Unexpected character: %c in %s\n", *p, p);
+		return false;
+	}
+	int val = 0;
+	while (isdigit(*p)) {
+		val *= 10;
+		val += strings.num_from_ascii(*p);
+		p++;
+	}
+	*r = val;
+	*spec = p;
+	return true;
+}
+
+// <m:s.sss...>
+bool parse_times(mp3.mp3time_t *a, const char *spec, size_t maxsize) {
 	if (maxsize == 0) {
 		panic("zero maxsize");
 	}
 
 	size_t i = 0;
-	while(*spec) {
+	while (*spec) {
 		if(i + 1 >= maxsize) {
 			fprintf(stderr, "maxsize reached");
 			return false;
 		}
-
-		int min = 0;
-		int sec = 0;
-		int usec = 0;
-
-		if(!isdigit(*spec)) {
-			fprintf(stderr, "Unexpected char: %c in %s\n", *spec, spec);
+		if (!parse_time(&spec, &a[i])) {
 			return false;
 		}
-
-		// min
-		while(isdigit(*spec)) {
-			min *= 10;
-			min += (*spec - '0');
+		if (*spec == ',') {
 			spec++;
 		}
-
-		// :
-		if(*spec != ':') {
-			fprintf(stderr, "':' expected");
-			return false;
-		}
-		spec++;
-
-		// sec
-		if(!isdigit(*spec)) {
-			fprintf(stderr, "Unexpected char: %c in %s", *spec, spec);
-			return false;
-		}
-		while(isdigit(*spec)) {
-			sec *= 10;
-			sec += (*spec - '0');
-			spec++;
-		}
-		if(*spec == '.') {
-			spec++;
-			if(!isdigit(*spec)) {
-				fprintf(stderr, "Digits expected after point: %s", spec);
-				return false;
-			}
-			int pow = 100000;
-			while(isdigit(*spec)) {
-				usec += (*spec - '0') * pow;
-				pow /= 10;
-				spec++;
-			}
-		}
-
-		if(*spec == ',') {
-			spec++;
-		}
-
-		if(min >= 60 || sec >= 60) {
-			fprintf(stderr, "Incorrect time: %d:%d", min, sec);
-			return false;
-		}
-
-		a[i].min = min;
-		a[i].sec = sec;
-		a[i].usec = usec;
-
 		i++;
 	}
 

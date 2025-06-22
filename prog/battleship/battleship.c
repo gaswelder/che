@@ -36,6 +36,8 @@ ai.state_t AI = {};
 
 const int SHIPTYPES = 5;
 
+const char *LETTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+
 enum {
 	PLAYER = 0,
 	COMPUTER = 1,
@@ -153,15 +155,15 @@ int turn() {
 		switch (result) {
 			case game.S_SUNK: {
 				game.ship_t *ss = gamestate.sunk_by_ai;
-				game.log(&gamestate, "computer: %c%d - hit", y + 'A', x);
+				game.log(&gamestate, "computer: %c%d - hit", LETTERS[y], x);
 				game.log(&gamestate, "computer has sunk your %s", game.shipname(ss->kind));
 				game.mark_sunk(&gamestate, gamestate.turn, ss);
 			}
 			case game.S_HIT: {
-				game.log(&gamestate, "computer: %c%d - hit", y + 'A', x);
+				game.log(&gamestate, "computer: %c%d - hit", LETTERS[y], x);
 			}
 			case game.S_MISS: {
-				game.log(&gamestate, "computer: %c%d - miss", y + 'A', x);
+				game.log(&gamestate, "computer: %c%d - miss", LETTERS[y], x);
 			}
 		}
 		render.refresh(&gamestate);
@@ -176,7 +178,7 @@ int turn() {
 		int y = xy.y;
 		if (result == game.S_SUNK) {
 			game.ship_t *ss = game.getshipat(&gamestate, COMPUTER, x, y);
-			game.log(&gamestate, "player: %c%d - hit", y + 'A', x);
+			game.log(&gamestate, "player: %c%d - hit", LETTERS[y], x);
 			game.log(&gamestate, "player has sunk computer's %s", game.shipname(ss->kind));
 			gamestate.player_hit = true;
 			gamestate.sunk_by_player = ss;
@@ -184,12 +186,12 @@ int turn() {
 			return game.winner(&gamestate) == -1;
 		}
 		if (result == game.S_HIT) {
-			game.log(&gamestate, "player: %c%d - hit", y + 'A', x);
+			game.log(&gamestate, "player: %c%d - hit", LETTERS[y], x);
 			gamestate.player_hit = true;
 			gamestate.sunk_by_player = NULL;
 			return true;
 		}
-		game.log(&gamestate, "player: %c%d - miss", y + 'A', x);
+		game.log(&gamestate, "player: %c%d - miss", LETTERS[y], x);
 		gamestate.player_hit = false;
 		gamestate.sunk_by_player = NULL;
 		return false;
@@ -331,19 +333,19 @@ int input_keychoice(const char *s) {
 	OS.refresh();
 	for (;;) {
 		int ch = OS.getch();
-		if (OS.islower(ch)) {
+		if (islower(ch)) {
 			ch = toupper(ch);
 		}
 		if (ch == CTRLC) {
 			closegame(0);
 		}
-		for (s1 = s; *s1 && ch != *s1; ++s1) {
+		for (s1 = s; *s1 != '\0' && ch != *s1; s1++) {
 			continue;
 		}
 		if (*s1) {
 			OS.addch(ch);
 			OS.refresh();
-			return (ch);
+			return ch;
 		}
 	}
 	panic("return");

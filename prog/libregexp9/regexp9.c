@@ -1165,6 +1165,13 @@ pub int regexec(Reprog *progp, char *bol, Resub *mp, int ms) {
 	return -1;
 }
 
+int get_ascii_num(int c) {
+	if (!isdigit(c)) {
+		panic("not a digit");
+	}
+	return c - (int)'0';
+}
+
 /* substitute into one string using the matches from the last regexec() */
 /* sp is source string */
 /* dp is destination string */
@@ -1179,7 +1186,7 @@ pub void regsub(char *sp, *dp, int dlen, Resub *mp, int ms) {
 		if (*sp == '\\') {
 			switch(*++sp) {
 			case '0', '1', '2', '3', '4', '5', '6', '7', '8', '9': {
-				i = *sp-'0';
+				i = get_ascii_num(*sp);
 				if (mp != NULL && mp[i].s.sp != 0 && ms>i)
 					for(ssp = mp[i].s.sp;
 					     ssp < mp[i].e.ep;
@@ -1455,15 +1462,15 @@ pub void rregsub(utf.Rune *sp, utf.Rune *dp, int dlen, Resub *mp, int ms) {
 	ep = dp+(dlen/sizeof(utf.Rune))-1;
 	while(*sp != '\0'){
 		if(*sp == '\\'){
-			switch(*++sp){
+			switch(*++sp) {
 			case '0', '1', '2', '3', '4', '5', '6', '7', '8', '9': {
-				i = *sp-'0';
-				if( mp != NULL && mp[i].s.rsp != 0 && ms>i)
-					for(ssp = mp[i].s.rsp;
-					     ssp < mp[i].e.rep;
-					     ssp++)
-						if(dp < ep)
+				i = get_ascii_num(*sp);
+				if (mp != NULL && mp[i].s.rsp != 0 && ms>i)
+					for (ssp = mp[i].s.rsp; ssp < mp[i].e.rep; ssp++) {
+						if (dp < ep) {
 							*dp++ = *ssp;
+						}
+					}
 			}
 			case '\\': {
 				if(dp < ep)

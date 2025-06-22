@@ -301,9 +301,10 @@ bool read_status_line(tokenizer.t *b, response_t *r) {
 	r->status = 0;
 	for (int i = 0; i < 3; i++) {
 		char c = tokenizer.get(b);
-		if (!isdigit(c)) return false;
+		int n = strings.num_from_ascii(c);
+		if (n < 0) return false;
 		r->status *= 10;
-		r->status += c - '0';
+		r->status += n;
 	}
 
 	// space

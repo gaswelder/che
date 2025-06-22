@@ -176,3 +176,23 @@ pub void fmt_bytes(size_t bytes, char *buf, size_t bufsize) {
         snprintf(buf, bufsize, "%zu B", bytes);
     }
 }
+
+// Returns the character that corresponds to the ASCII
+// digit n, where n is from [0, 9].
+// Panics if n is not from the allowed range.
+pub char ascii_digit(int n) {
+	if (n < 0 || n > 9) {
+		panic("invalid argument: %d", n);
+	}
+	return (int)'0' + n;
+}
+
+// Returns the number that corresponds to the ASCII
+// digit character c: 0 for '0', 1 for '1' and so on.
+// Returns -1 if c is not a digit character.
+pub int num_from_ascii(int c) {
+	if (!isdigit(c)) {
+		return -1;
+	}
+	return c - (int)'0';
+}

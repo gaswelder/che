@@ -31,11 +31,11 @@ typedef {
 	uint8_t ST;
 
 	// Video screen with 64x32 monochrome pixels.
-	char video[64 * 32];
+	uint8_t video[64 * 32];
 
 	// 16 general purpose registers, usually referred to as V0 to VF.
 	// VF is also used for carry and collide flags.
-	char registers[16];
+	uint8_t registers[16];
 
 	// Key buffer, an array of 16 key states (pressed/not pressed).
 	// The keypad looks like this:
@@ -46,7 +46,7 @@ typedef {
 	bool keyBuffer[16];
 } chip8_t;
 
-int keycode(char c) {
+int keycode(int c) {
 	// 1 2 3 C   ->   1 2 3 4
 	// 4 5 6 D   ->   q w e r
 	// 7 8 9 E   ->   a s d f
@@ -212,7 +212,9 @@ void step(chip8_t *c8, chip8instr.instr_t instr) {
 
 			bool collision = false;
 			for (int i = 0; i < instr.d4; i++) {
-				collision = xor_sprite(c8, c8->registers[instr.x], c8->registers[instr.y] + i, *p) || collision;
+				int x = c8->registers[instr.x];
+				int y = c8->registers[instr.y] + (uint8_t) i;
+				collision = xor_sprite(c8, x, y, *p) || collision;
 				p++;
 			}
 			if (collision) {
@@ -424,8 +426,8 @@ bool xor_sprite(chip8_t *c8, int x, y, uint8_t sprite) {
 
 bool xor_pixel(chip8_t *c8, int x, y, value) {
 	int pos = y * VID_WIDTH + x;
-	char oldval = c8->video[pos];
-	char newval = oldval ^ value;
+	uint8_t oldval = c8->video[pos];
+	uint8_t newval = oldval ^ value;
 	c8->video[pos] = newval;
 	return oldval && !newval;
 }
@@ -498,7 +500,9 @@ bool contains(size_t *xs, size_t n, size_t x) {
 }
 
 int _prevsum = -1;
-void draw(char *buf, int width, height) {
+
+// Renders video buffer buf.
+void draw(uint8_t *buf, int width, height) {
 	int n = width * height;
 
 	int sum = 0;

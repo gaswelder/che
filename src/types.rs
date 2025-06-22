@@ -26,6 +26,10 @@ pub fn typeof_arith(a: &Type, b: &Type) -> Result<Type, String> {
         (Class::SINT, Class::SINT) => Ok(widest_type(a, b)),
         (Class::UINT, Class::UINT) => Ok(widest_type(a, b)),
 
+        // char with const gives int (sloppy)
+        (Class::CHAR, Class::CONSTNUM) => Ok(just("int")),
+        (Class::CONSTNUM, Class::CHAR) => Ok(just("int")),
+
         // const with T gives T
         (Class::CONSTNUM, Class::FLT | Class::SINT | Class::UINT) => Ok(b.clone()),
         (Class::FLT | Class::SINT | Class::UINT, Class::CONSTNUM) => Ok(b.clone()),
@@ -78,14 +82,23 @@ pub fn typeof_plusminus(op: &str, a: &Type, b: &Type) -> Result<Type, String> {
 // Returns the type of numeric comparison between types a and b.
 pub fn typeof_cmp(a: &Type, b: &Type) -> Result<Type, String> {
     match (classify(a), classify(b)) {
-        // T < T
+        // T == T
         (Class::FLT, Class::FLT) => Ok(just("bool")),
         (Class::SINT, Class::SINT) => Ok(just("bool")),
         (Class::UINT, Class::UINT) => Ok(just("bool")),
+        (Class::CHAR, Class::CHAR) => Ok(just("bool")),
 
-        // num < const
+        // num == const
         (Class::FLT | Class::SINT | Class::UINT, Class::CONSTNUM) => Ok(just("bool")),
         (Class::CONSTNUM, Class::FLT | Class::SINT | Class::UINT) => Ok(just("bool")),
+
+        // char == const
+        (Class::CHAR, Class::CONSTNUM) => Ok(just("bool")),
+        (Class::CONSTNUM, Class::CHAR) => Ok(just("bool")),
+
+        // ints with chars
+        (Class::CHAR, Class::SINT) => Ok(just("bool")),
+        (Class::SINT, Class::CHAR) => Ok(just("bool")),
 
         // todo < T
         (Class::UNK, _) => Ok(just("bool")),
@@ -139,6 +152,7 @@ enum Class {
     PTR,
     SINT,
     UINT,
+    CHAR,
     ARR,
     UNK,
     FLT,
@@ -148,6 +162,7 @@ enum Class {
 
 fn classify(x: &Type) -> Class {
     match () {
+        _ if x.fmt() == "char" => Class::CHAR,
         _ if isconstnum(x) => Class::CONSTNUM,
         _ if is_pointer(x) => Class::PTR,
         _ if is_sint(x) => Class::SINT,
@@ -326,6 +341,7 @@ fn is_booly(a: &Type) -> bool {
         Class::UNK => true,
         Class::FLT => false,
         Class::NONE => false,
+        Class::CHAR => false,
         Class::BOOL => true,
     }
 }
