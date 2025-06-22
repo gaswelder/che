@@ -21,6 +21,13 @@ pub t *stdin() {
 	return b;
 }
 
+// Returns a new instance reading from the file f.
+pub t *file(FILE *f) {
+	t *b = new(reader.file(f));
+	b->reader_own = true;
+	return b;
+}
+
 // Returns a new instance reading from the given string.
 // The string must not be deallocated before the buffer.
 pub t *from_str(const char *s) {
