@@ -249,7 +249,7 @@ pub fn translate(m: &nodes::Module, params: &TrParams) -> Result<c::CModule, Bui
                     let typ = if is_numeric(&val) {
                         types::number()
                     } else {
-                        types::unk()
+                        types::todo()
                     };
                     add_binding(&mut ctx, &id, x.pos.clone(), false, typ);
                 }
@@ -264,7 +264,7 @@ pub fn translate(m: &nodes::Module, params: &TrParams) -> Result<c::CModule, Bui
                     x.typename.clone(),
                     TI {
                         is_pub: x.ispub,
-                        t: types::unk(),
+                        t: types::todo(),
                     },
                 );
             }
@@ -718,7 +718,7 @@ fn tr_union(x: &nodes::Union, ctx: &mut TrCtx) -> Result<c::CUnion, BuildError> 
 
 fn root_type(t: &types::Type, ctx: &TrCtx) -> types::Type {
     if t.base.ns != "" {
-        return types::unk();
+        return types::todo();
     }
     if cspec::has_type(&t.base.name) {
         return t.clone();
@@ -903,7 +903,7 @@ fn tr_field_access(x: &nodes::FieldAccess, ctx: &mut TrCtx) -> Result<Typed<c::E
 
 fn typeof_struct_field(ctx: &TrCtx, struct_type: &types::Type, field: &str) -> types::Type {
     if types::is_todo(struct_type) {
-        return types::unk();
+        return types::todo();
     }
     let ns = &struct_type.base.ns;
     let name = &struct_type.base.name;
@@ -912,7 +912,7 @@ fn typeof_struct_field(ctx: &TrCtx, struct_type: &types::Type, field: &str) -> t
         // The struct must be defined in the current module.
         let def = ctx.struct_typedefs.get(name).map(|x| x.clone());
         if def.is_none() {
-            return types::unk();
+            return types::todo();
         }
         for e in &def.unwrap().entries {
             match e {
@@ -923,13 +923,13 @@ fn typeof_struct_field(ctx: &TrCtx, struct_type: &types::Type, field: &str) -> t
                         }
                     }
                 }
-                nodes::StructEntry::Union(_) => return types::unk(),
+                nodes::StructEntry::Union(_) => return types::todo(),
             }
         }
         todo!();
     } else {
         // todo
-        return types::unk();
+        return types::todo();
     }
 }
 
@@ -1162,7 +1162,7 @@ fn tr_nsid_in_expr(x: &nodes::NsName, ctx: &mut TrCtx) -> Result<Typed<String>, 
 
     if x.ns == "OS" {
         return Ok(Typed {
-            typ: types::unk(),
+            typ: types::todo(),
             val,
         });
     }
@@ -1584,7 +1584,7 @@ fn is_numeric(s: &str) -> bool {
 
 fn typeof_call(t: &types::Type, ctx: &TrCtx) -> Result<types::Type, String> {
     if types::is_todo(t) {
-        return Ok(types::unk());
+        return Ok(types::todo());
     }
     if matches!(t.ops.first(), Some(types::TypeOp::Call(_))) {
         return Ok(types::Type {

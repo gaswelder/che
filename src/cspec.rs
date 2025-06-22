@@ -1,6 +1,10 @@
 use std::{collections::HashMap, sync::OnceLock};
 
-use crate::{buf::Pos, nodes, types};
+use crate::{
+    buf::Pos,
+    nodes,
+    types::{just, justp, todo, Type, TypeOp},
+};
 
 #[derive(Debug)]
 pub enum Kind {
@@ -12,7 +16,7 @@ pub enum Kind {
 pub struct CSymbol {
     pub kind: Kind,
     pub name: &'static str,
-    pub t: types::Type,
+    pub t: Type,
 }
 
 static SYMS: OnceLock<HashMap<&str, CSymbol>> = OnceLock::new();
@@ -35,7 +39,7 @@ fn t(name: &'static str) -> CSymbol {
     CSymbol {
         kind: Kind::TYPE,
         name,
-        t: types::Type {
+        t: Type {
             base: nodes::NsName {
                 ns: "".to_string(),
                 name: name.to_string(),
@@ -47,7 +51,7 @@ fn t(name: &'static str) -> CSymbol {
 }
 
 // A wrapper to declare a built-in constant.
-fn c(name: &'static str, t: types::Type) -> CSymbol {
+fn c(name: &'static str, t: Type) -> CSymbol {
     CSymbol {
         kind: Kind::SYM,
         name,
@@ -56,33 +60,12 @@ fn c(name: &'static str, t: types::Type) -> CSymbol {
 }
 
 // A wrapper to declare a built-in function.
-fn f(name: &'static str, t: types::Type) -> CSymbol {
+fn f(name: &'static str, args: Vec<Type>, mut rettype: Type) -> CSymbol {
+    rettype.ops.insert(0, TypeOp::Call(args));
     CSymbol {
         kind: Kind::SYM,
         name,
-        t,
-    }
-}
-
-fn ret(args: Vec<types::Type>, rettypename: &str) -> types::Type {
-    types::Type {
-        base: nodes::NsName {
-            ns: "".to_string(),
-            name: rettypename.to_string(),
-            pos: Pos { line: 0, col: 0 },
-        },
-        ops: vec![types::TypeOp::Call(args)],
-    }
-}
-
-fn retp(args: Vec<types::Type>, rettypename: &str) -> types::Type {
-    types::Type {
-        base: nodes::NsName {
-            ns: "".to_string(),
-            name: rettypename.to_string(),
-            pos: Pos { line: 0, col: 0 },
-        },
-        ops: vec![types::TypeOp::Call(args), types::TypeOp::Deref],
+        t: rettype,
     }
 }
 
@@ -95,7 +78,7 @@ fn buildmap() -> HashMap<&'static str, CSymbol> {
         t("int"),
         t("void"),
         // stddef
-        c("NULL", types::justp("void")),
+        c("NULL", justp("void")),
         t("ptrdiff_t"),
         t("size_t"),
         // stdint
@@ -109,156 +92,153 @@ fn buildmap() -> HashMap<&'static str, CSymbol> {
         t("uint8_t"),
         // stdbool
         t("bool"),
-        c("false", types::just("bool")),
-        c("true", types::just("bool")),
+        c("false", just("bool")),
+        c("true", just("bool")),
         // limits
-        c("INT_MAX", types::just("int")),
-        c("SIZE_MAX", types::just("size_t")),
+        c("INT_MAX", just("int")),
+        c("SIZE_MAX", just("size_t")),
         // stdio
-        c("BUFSIZ", types::just("size_t")),
-        c("SEEK_END", types::just("int")),
-        c("SEEK_SET", types::just("int")),
-        c("SEEK_CUR", types::just("int")),
-        c("EOF", types::just("int")),
-        c("stderr", types::unk()),
-        c("stdin", types::unk()),
-        c("stdout", types::unk()),
-        f("fclose", ret(vec![types::justp("FILE")], "int")),
-        f("feof", ret(vec![types::justp("FILE")], "bool")),
-        f("ferror", ret(vec![types::justp("FILE")], "bool")),
-        f("fflush", ret(vec![types::justp("FILE")], "int")),
-        f("fgetc", ret(vec![types::justp("FILE")], "int")),
-        f("fgets", retp(vec![types::justp("FILE")], "char")),
-        f(
-            "fopen",
-            retp(vec![types::justp("char"), types::justp("char")], "FILE"),
-        ),
-        f("fprintf", ret(vec![types::unk()], "void")),
-        f("fputc", ret(vec![types::unk()], "int")),
-        f("fputs", ret(vec![types::unk()], "int")),
-        f("fread", ret(vec![types::unk()], "size_t")),
-        f("fseek", ret(vec![types::unk()], "int")),
-        f("ftell", ret(vec![types::unk()], "int32_t")),
-        f("fwrite", ret(vec![types::unk()], "size_t")),
-        f("getc", ret(vec![types::unk()], "int")),
-        f("getchar", ret(vec![types::unk()], "int")),
-        f("printf", ret(vec![types::unk()], "int")),
-        f("putc", types::unk()),
-        f("putchar", types::unk()),
-        f("puts", ret(vec![types::unk()], "int")),
-        f("remove", types::unk()),                   // depr
-        f("rename", ret(vec![types::unk()], "int")), // depr
-        f("rewind", types::unk()),
-        f("scanf", types::unk()),
-        f("setvbuf", types::unk()),
-        f("snprintf", types::unk()),
-        f("sprintf", types::unk()),
-        f("sscanf", types::unk()),
-        f("tmpfile", retp(vec![types::unk()], "FILE")),
-        f("ungetc", ret(vec![types::unk()], "int")),
-        f("vfprintf", ret(vec![types::unk()], "int")),
-        f("vprintf", ret(vec![types::unk()], "int")),
-        f("vsnprintf", ret(vec![types::unk()], "int")),
-        f("vsprintf", ret(vec![types::unk()], "int")),
+        c("BUFSIZ", just("size_t")),
+        c("SEEK_END", just("int")),
+        c("SEEK_SET", just("int")),
+        c("SEEK_CUR", just("int")),
+        c("EOF", just("int")),
+        c("stderr", todo()),
+        c("stdin", todo()),
+        c("stdout", todo()),
+        f("fclose", vec![justp("FILE")], just("int")),
+        f("feof", vec![justp("FILE")], just("bool")),
+        f("ferror", vec![justp("FILE")], just("bool")),
+        f("fflush", vec![justp("FILE")], just("int")),
+        f("fgetc", vec![justp("FILE")], just("int")),
+        f("fgets", vec![justp("FILE")], justp("char")),
+        f("fopen", vec![justp("char"), justp("char")], just("FILE")),
+        f("fprintf", vec![todo()], just("void")),
+        f("fputc", vec![todo()], just("int")),
+        f("fputs", vec![todo()], just("int")),
+        f("fread", vec![todo()], just("size_t")),
+        f("fseek", vec![todo()], just("int")),
+        f("ftell", vec![todo()], just("int32_t")),
+        f("fwrite", vec![todo()], just("size_t")),
+        f("getc", vec![todo()], just("int")),
+        f("getchar", vec![todo()], just("int")),
+        f("printf", vec![todo()], just("int")),
+        f("putc", vec![todo()], todo()),
+        f("putchar", vec![todo()], todo()),
+        f("puts", vec![todo()], just("int")),
+        f("remove", vec![todo()], todo()),      // depr
+        f("rename", vec![todo()], just("int")), // depr
+        f("rewind", vec![todo()], todo()),
+        f("scanf", vec![todo()], todo()),
+        f("setvbuf", vec![todo()], todo()),
+        f("snprintf", vec![todo()], todo()),
+        f("sprintf", vec![todo()], todo()),
+        f("sscanf", vec![todo()], todo()),
+        f("tmpfile", vec![todo()], justp("FILE")),
+        f("ungetc", vec![todo()], just("int")),
+        f("vfprintf", vec![todo()], just("int")),
+        f("vprintf", vec![todo()], just("int")),
+        f("vsnprintf", vec![todo()], just("int")),
+        f("vsprintf", vec![todo()], just("int")),
         t("FILE"),
         // ctype
-        f("isalpha", ret(vec![types::just("int")], "bool")),
-        f("isdigit", ret(vec![types::just("int")], "bool")),
-        f("isgraph", ret(vec![types::just("int")], "bool")),
-        f("islower", ret(vec![types::just("int")], "bool")),
-        f("isprint", ret(vec![types::just("int")], "bool")),
-        f("isspace", ret(vec![types::just("int")], "bool")),
-        f("tolower", ret(vec![types::just("int")], "int")),
-        f("toupper", ret(vec![types::just("int")], "int")),
+        f("isalpha", vec![just("int")], just("bool")),
+        f("isdigit", vec![just("int")], just("bool")),
+        f("isgraph", vec![just("int")], just("bool")),
+        f("islower", vec![just("int")], just("bool")),
+        f("isprint", vec![just("int")], just("bool")),
+        f("isspace", vec![just("int")], just("bool")),
+        f("tolower", vec![just("int")], just("int")),
+        f("toupper", vec![just("int")], just("int")),
         // stdlib
-        c("RAND_MAX", types::just("int")),           // depr
-        f("abort", ret(vec![types::unk()], "void")), // depr
-        f("atof", types::unk()),
-        f("atoi", types::unk()),
-        f("atol_l", types::unk()),
-        f("atol", types::unk()),
-        f("atoll_l", types::unk()),
-        f("atoll", types::unk()),
-        f("calloc", retp(vec![types::unk()], "void")),
-        f("exit", ret(vec![types::unk()], "void")),
-        f("free", ret(vec![types::unk()], "void")),
-        f("qsort", types::unk()),
-        f("rand", ret(vec![], "int")), // depr
-        f("realloc", types::unk()),
-        f("srand", types::unk()), // depr
-        f("strtod", types::unk()),
-        f("strtof", types::unk()),
-        f("strtold", types::unk()),
-        f("strtoull", types::unk()),
+        c("RAND_MAX", just("int")),             // depr
+        f("abort", vec![todo()], just("void")), // depr
+        f("atof", vec![todo()], todo()),
+        f("atoi", vec![todo()], todo()),
+        f("atol_l", vec![todo()], todo()),
+        f("atol", vec![todo()], todo()),
+        f("atoll_l", vec![todo()], todo()),
+        f("atoll", vec![todo()], todo()),
+        f("calloc", vec![todo()], justp("void")),
+        f("exit", vec![todo()], just("void")),
+        f("free", vec![todo()], just("void")),
+        f("qsort", vec![todo()], todo()),
+        f("rand", vec![], just("int")), // depr
+        f("realloc", vec![todo()], todo()),
+        f("srand", vec![todo()], todo()), // depr
+        f("strtod", vec![todo()], todo()),
+        f("strtof", vec![todo()], todo()),
+        f("strtold", vec![todo()], todo()),
+        f("strtoull", vec![todo()], todo()),
         // math
-        c("M_PI", types::unk()),
-        f("acos", ret(vec![types::just("double")], "double")),
-        f("ceil", ret(vec![types::just("double")], "double")),
-        f("ceilf", ret(vec![types::just("float")], "float")),
-        f("cos", ret(vec![types::just("double")], "double")),
-        f("cosf", ret(vec![types::just("float")], "float")),
-        f("exp", ret(vec![types::just("double")], "double")),
-        f("expm1", ret(vec![types::just("double")], "double")),
-        f("fabs", ret(vec![types::just("double")], "double")),
-        f("floor", ret(vec![types::just("double")], "double")),
-        f("floorf", ret(vec![types::just("float")], "float")),
-        f("fmod", ret(vec![types::just("double")], "double")),
-        f("lgamma", ret(vec![types::just("double")], "double")),
-        f("log", ret(vec![types::just("double")], "double")),
-        f("log1p", ret(vec![types::just("double")], "double")),
-        f("round", types::unk()),
-        f("roundf", types::unk()),
-        f("sin", types::unk()),
-        f("sinf", types::unk()),
-        f("sqrt", ret(vec![types::just("double")], "double")),
-        f("sqrtf", ret(vec![types::just("float")], "float")),
+        c("M_PI", todo()),
+        f("acos", vec![just("double")], just("double")),
+        f("ceil", vec![just("double")], just("double")),
+        f("ceilf", vec![just("float")], just("float")),
+        f("cos", vec![just("double")], just("double")),
+        f("cosf", vec![just("float")], just("float")),
+        f("exp", vec![just("double")], just("double")),
+        f("expm1", vec![just("double")], just("double")),
+        f("fabs", vec![just("double")], just("double")),
+        f("floor", vec![just("double")], just("double")),
+        f("floorf", vec![just("float")], just("float")),
+        f("fmod", vec![just("double")], just("double")),
+        f("lgamma", vec![just("double")], just("double")),
+        f("log", vec![just("double")], just("double")),
+        f("log1p", vec![just("double")], just("double")),
+        f("round", vec![todo()], todo()),
+        f("roundf", vec![todo()], todo()),
+        f("sin", vec![todo()], todo()),
+        f("sinf", vec![todo()], todo()),
+        f("sqrt", vec![just("double")], just("double")),
+        f("sqrtf", vec![just("float")], just("float")),
         // string
-        f("memcmp", types::unk()),
-        f("memcpy", types::unk()),
-        f("memmove", types::unk()),
-        f("memset", types::unk()),
-        f("strcat", types::unk()),
-        f("strchr", types::unk()),
-        f("strcmp", types::unk()),
-        f("strcpy", types::unk()),
-        f("strerror", types::unk()),
-        f("strlen", ret(vec![types::justp("char")], "size_t")),
-        f("strncat", retp(vec![types::unk()], "char")),
-        f("strncmp", types::unk()),
-        f("strncpy", retp(vec![types::unk()], "char")),
-        f("strrchr", types::unk()),
-        f("strstr", types::unk()),
+        f("memcmp", vec![todo()], todo()),
+        f("memcpy", vec![todo()], todo()),
+        f("memmove", vec![todo()], todo()),
+        f("memset", vec![todo()], todo()),
+        f("strcat", vec![todo()], todo()),
+        f("strchr", vec![todo()], todo()),
+        f("strcmp", vec![todo()], todo()),
+        f("strcpy", vec![todo()], todo()),
+        f("strerror", vec![todo()], todo()),
+        f("strlen", vec![justp("char")], just("size_t")),
+        f("strncat", vec![todo()], justp("char")),
+        f("strncmp", vec![todo()], todo()),
+        f("strncpy", vec![todo()], justp("char")),
+        f("strrchr", vec![todo()], todo()),
+        f("strstr", vec![todo()], todo()),
         // time
         t("time_t"),
-        f("strftime", types::unk()),
-        f("localtime", types::unk()),                 // struct tm, depr
-        f("time", ret(vec![types::unk()], "time_t")), // depr
+        f("strftime", vec![todo()], todo()),
+        f("localtime", vec![todo()], todo()), // struct tm, depr
+        f("time", vec![todo()], just("time_t")), // depr
         // setjmp
         t("jmp_buf"),
-        f("longjmp", types::unk()),
-        f("setjmp", types::unk()),
+        f("longjmp", vec![todo()], todo()),
+        f("setjmp", vec![todo()], todo()),
         // stdarg
         t("va_list"),
-        f("va_end", ret(vec![types::unk()], "void")),
-        f("va_start", ret(vec![types::unk()], "void")),
+        f("va_end", vec![todo()], just("void")),
+        f("va_start", vec![todo()], just("void")),
         // signal
-        c("SIGABRT", types::just("int")),
-        c("SIGFPE", types::just("int")),
-        c("SIGILL", types::just("int")),
-        c("SIGINT", types::just("int")),
-        c("SIGSEGV", types::just("int")),
-        c("SIGTERM", types::just("int")),
-        c("SIG_DFL", types::just("int")),
-        c("SIG_IGN", types::just("int")),
-        f("signal", ret(vec![types::unk()], "int")), // depr
+        c("SIGABRT", just("int")),
+        c("SIGFPE", just("int")),
+        c("SIGILL", just("int")),
+        c("SIGINT", just("int")),
+        c("SIGSEGV", just("int")),
+        c("SIGTERM", just("int")),
+        c("SIG_DFL", just("int")),
+        c("SIG_IGN", just("int")),
+        f("signal", vec![todo()], just("int")), // depr
         // assert
-        f("assert", ret(vec![types::unk()], "void")), // depr
+        f("assert", vec![todo()], just("void")), // depr
         // errno
-        c("errno", types::just("int")),
+        c("errno", just("int")),
         //
         // extensions
         //
-        f("nelem", ret(vec![types::unk()], "size_t")),
+        f("nelem", vec![todo()], just("size_t")),
     ];
     let mut m = HashMap::new();
     for x in list {

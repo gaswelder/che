@@ -115,7 +115,7 @@ pub fn typeof_index(arr: &Type, ind: &Type) -> Result<Type, String> {
     }
     // sloppy
     if arr.ops.len() == 0 {
-        return Ok(unk());
+        return Ok(todo());
     }
     match arr.ops[0] {
         TypeOp::Index => {
@@ -216,7 +216,7 @@ fn isfloat(x: &Type) -> bool {
 }
 
 pub fn is_todo(x: &Type) -> bool {
-    x.fmt() == "*** UNKNOWN *** "
+    x.fmt() == "*** TODO *** "
 }
 
 fn is_pointer(x: &Type) -> bool {
@@ -271,8 +271,8 @@ pub fn justp(name: &str) -> Type {
     }
 }
 
-pub fn unk() -> Type {
-    just("*** UNKNOWN *** ")
+pub fn todo() -> Type {
+    just("*** TODO *** ")
 }
 
 impl Type {
