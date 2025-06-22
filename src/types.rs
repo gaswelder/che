@@ -15,7 +15,7 @@ pub struct Type {
 pub enum TypeOp {
     Deref,
     Index,
-    Call,
+    Call(Vec<Type>),
 }
 
 pub fn typeof_arith(a: &Type, b: &Type) -> Result<Type, String> {
@@ -282,7 +282,14 @@ impl Type {
             match o {
                 TypeOp::Deref => s.push_str("pointer to "),
                 TypeOp::Index => s.push_str("array of "),
-                TypeOp::Call => s.push_str("func to "),
+                TypeOp::Call(args) => {
+                    let argss = args
+                        .iter()
+                        .map(|x| x.fmt())
+                        .collect::<Vec<String>>()
+                        .join(", ");
+                    s.push_str(&format!("func ({}) to ", argss))
+                }
             }
         }
         if self.base.ns != "" {

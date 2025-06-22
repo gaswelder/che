@@ -291,8 +291,7 @@ pub fn translate(m: &nodes::Module, params: &TrParams) -> Result<c::CModule, Bui
             }
             nodes::ModElem::FuncDecl(x) => {
                 let ispub = x.ispub || x.form.name == "main";
-                let mut typ = fromtn(&x.typename, &x.form);
-                typ.ops.insert(0, types::TypeOp::Call);
+                let typ = from_funcdecl(&x);
                 add_binding(&mut ctx, &x.form.name, x.pos.clone(), ispub, typ);
             }
         }
@@ -1180,17 +1179,14 @@ fn tr_nsid_in_expr(x: &nodes::NsName, ctx: &mut TrCtx) -> Result<Typed<String>, 
         return Ok(Typed { typ, val });
     }
 
-    let mut typ: types::Type;
+    let typ: types::Type;
     let pos = getnspos(ctx, &x.ns);
     let exports = &ctx.mods[pos].exports;
     if exports.consts.iter().any(|c| c.name == x.name) {
         typ = types::number();
     } else {
         match exports.fns.iter().find(|f| f.form.name == x.name) {
-            Some(f) => {
-                typ = fromtn(&f.typename, &f.form);
-                typ.ops.insert(0, types::TypeOp::Call);
-            }
+            Some(f) => typ = from_funcdecl(&f),
             None => {
                 todo!();
             }
@@ -1198,6 +1194,18 @@ fn tr_nsid_in_expr(x: &nodes::NsName, ctx: &mut TrCtx) -> Result<Typed<String>, 
     }
 
     Ok(Typed { typ, val })
+}
+
+fn from_funcdecl(f: &nodes::FuncDecl) -> types::Type {
+    let mut typ = fromtn(&f.typename, &f.form);
+    let mut args = Vec::new();
+    for p in &f.params.list {
+        for f in &p.forms {
+            args.push(fromtn(&p.typename, &f));
+        }
+    }
+    typ.ops.insert(0, types::TypeOp::Call(args));
+    typ
 }
 
 // foo.bar() -> _foo_123__bar()
@@ -1542,7 +1550,13 @@ fn frombaretf(x: &nodes::BareTypeform) -> types::Type {
 fn from_typedef(x: &nodes::Typedef) -> types::Type {
     let mut ops = Vec::new();
     if x.function_parameters.is_some() {
-        ops.push(types::TypeOp::Call);
+        let mut args = Vec::new();
+        if let Some(p) = &x.function_parameters {
+            for f in &p.forms {
+                args.push(frombaretf(&f))
+            }
+        }
+        ops.push(types::TypeOp::Call(Vec::new()));
     }
     if x.array_size > 0 {
         ops.push(types::TypeOp::Index);
@@ -1572,7 +1586,7 @@ fn typeof_call(t: &types::Type, ctx: &TrCtx) -> Result<types::Type, String> {
     if types::is_todo(t) {
         return Ok(types::unk());
     }
-    if matches!(t.ops.first(), Some(types::TypeOp::Call)) {
+    if matches!(t.ops.first(), Some(types::TypeOp::Call(_))) {
         return Ok(types::Type {
             ops: t.ops[1..].to_vec(),
             base: t.base.clone(),
