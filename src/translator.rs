@@ -462,7 +462,7 @@ fn tr_mod_elem(element: &nodes::ModElem, ctx: &mut TrCtx) -> Result<Vec<c::ModEl
 fn typeof_literal(x: &nodes::Literal) -> types::Type {
     match x {
         nodes::Literal::Char(_) => types::just("char"),
-        nodes::Literal::String(_) => types::constcharp(),
+        nodes::Literal::String(_) => types::justp("char"),
         nodes::Literal::Number(_) => types::number(),
         nodes::Literal::Null => types::just("null"),
     }

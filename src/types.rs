@@ -227,13 +227,6 @@ fn is_arr(x: &Type) -> bool {
     x.ops.len() > 0 && matches!(x.ops[0], TypeOp::Index)
 }
 
-pub fn constcharp() -> Type {
-    Type {
-        ops: vec![TypeOp::Deref],
-        base: nsname("", "char"),
-    }
-}
-
 pub fn number() -> Type {
     just("number")
 }
