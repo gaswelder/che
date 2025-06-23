@@ -926,7 +926,7 @@ fn typeof_struct_field(ctx: &TrCtx, struct_type: &types::Type, field: &str) -> t
                 nodes::StructEntry::Union(_) => return types::todo(),
             }
         }
-        todo!();
+        return types::todo();
     } else {
         // todo
         return types::todo();
