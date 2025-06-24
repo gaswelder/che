@@ -19,10 +19,7 @@ int main() {
 			fprintf(stderr, "accept error: %s\n", net.net_error());
 			continue;
 		}
-		threads.thr_t *t = threads.thr_new(process_client, s);
-		if (!t) {
-			panic("failed to create a thread");
-		}
+		threads.thr_t *t = threads.start(process_client, s);
 		threads.thr_detach(t);
 	}
 

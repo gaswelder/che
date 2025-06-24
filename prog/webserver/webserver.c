@@ -44,7 +44,7 @@ int main(int argc, char *argv[]) {
 		ctx->s = &SERVER;
 		ctx->conn = conn;
 		if (!ctx) panic("calloc failed");
-		threads.thr_new(client_routine, ctx);
+		threads.start(client_routine, ctx);
 	}
     panic("unreachable");
 }

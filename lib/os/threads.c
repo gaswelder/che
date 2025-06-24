@@ -10,29 +10,32 @@ pub typedef {
 	pthread_t t;
 } thr_t;
 
-/*
- * Creates and starts a new thread running function 'f'.
- */
-pub thr_t *thr_new(thr_func *f, void *arg) {
+pub typedef {
+	pthread_mutex_t m;
+} mtx_t;
+
+pub typedef {
+	pthread_cond_t c;
+} cnd_t;
+
+// Creates and starts a new thread running function 'f'.
+pub thr_t *start(thr_func *f, void *arg) {
 	thr_t *t = calloc(1, sizeof(thr_t));
 	if (!t) {
-		return NULL;
+		panic("calloc failed");
 	}
 	if (OS.pthread_create(&t->t, NULL, f, arg) != 0) {
-		free(t);
-		return NULL;
+		panic("thread creation failed: %s", strerror(errno));
 	}
 	return t;
 }
 
-/*
- * Joins the given thread waiting for its finishing.
- * If res is not null, it will be assigned the thread's exit value.
- */
-pub bool thr_join(thr_t *t, void **res) {
-	int r = OS.pthread_join(t->t, res);
+// Waits for thread t to finish, puts the exit value into res.
+// Return an error code, zero meaning no error.
+pub int wait(thr_t *t, void **res) {
+	int err = OS.pthread_join(t->t, res);
 	free(t);
-	return r == 0;
+	return err;
 }
 
 /*
@@ -44,26 +47,18 @@ pub bool thr_detach(thr_t *t) {
 	return r == 0;
 }
 
-pub typedef {
-	pthread_mutex_t m;
-} mtx_t;
 
-pub typedef {
-	pthread_cond_t c;
-} cnd_t;
 
 /*
  * Creates and returns a new mutex
  */
-pub mtx_t *mtx_new()
-{
+pub mtx_t *mtx_new() {
 	mtx_t *m = calloc(1, sizeof(mtx_t));
 	if (!m) {
-		return NULL;
+		panic("calloc failed");
 	}
 	if (OS.pthread_mutex_init(&m->m, NULL) != 0) {
-		free(m);
-		return NULL;
+		panic("mutex_init failed");
 	}
 	return m;
 }
@@ -73,18 +68,14 @@ pub void mtx_free(mtx_t *m) {
 	free(m);
 }
 
-/*
- * Locks the mutex.
- */
-pub bool mtx_lock(mtx_t *mtx) {
-	return OS.pthread_mutex_lock(&mtx->m) == 0;
+// Locks mutex m.
+pub bool lock(mtx_t *m) {
+	return OS.pthread_mutex_lock(&m->m) == 0;
 }
 
-/*
- * Unlocks the mutex.
- */
-pub bool mtx_unlock(mtx_t *mtx) {
-	return OS.pthread_mutex_unlock( &mtx->m ) == 0;
+// Unlocks mutex m.
+pub bool unlock(mtx_t *m) {
+	return OS.pthread_mutex_unlock(&m->m) == 0;
 }
 
 /*

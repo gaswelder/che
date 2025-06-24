@@ -9,7 +9,7 @@ int main() {
 	threads.thr_t *t[N] = {0};
 	for (int i = 0; i < N; i++) {
 		int arg = i + 1;
-		t[i] = threads.thr_new(threadmain, box(&arg, sizeof(arg)));
+		t[i] = threads.start(threadmain, box(&arg, sizeof(arg)));
 		assert(t[i]);
 	}
 
@@ -19,7 +19,10 @@ int main() {
 	 */
 	for (int i = 0; i < N; i++) {
 		void *r = NULL;
-		threads.thr_join(t[i], &r);
+		int err = threads.wait(t[i], &r);
+		if (err) {
+			panic("thread wait failed: %d (%s)", errno, strerror(errno));
+		}
 		int result = 0;
 		unbox(r, &result, sizeof(result));
 		printf("result from %d = %d\n", i, result);
