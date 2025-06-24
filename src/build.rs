@@ -12,6 +12,7 @@ use crate::translator;
 use md5;
 use std::collections::HashMap;
 use std::collections::HashSet;
+use std::env;
 use std::fs;
 use std::io::BufRead;
 use std::process::{Command, Stdio};
@@ -54,16 +55,21 @@ pub fn build_prog(source_path: &String, output_name: &String) -> Result<(), Vec<
     }
 
     let mut cmd = Command::new("c99");
-    cmd.args(&[
-        "-Wall",
-        "-Wextra",
-        "-Werror",
-        "-pedantic",
-        "-pedantic-errors",
-        "-fmax-errors=1",
-        "-Wno-parentheses",
-        "-g",
-    ]);
+    let args: &[&str] = if env::consts::OS == "macos" {
+        &["-g"]
+    } else {
+        &[
+            "-Wall",
+            "-Wextra",
+            "-Werror",
+            "-pedantic",
+            "-pedantic-errors",
+            "-fmax-errors=1",
+            "-Wno-parentheses",
+            "-g",
+        ]
+    };
+    cmd.args(args);
     for p in &pathsmap {
         cmd.arg(p.path.clone());
     }
