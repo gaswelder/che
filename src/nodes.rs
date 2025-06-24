@@ -189,6 +189,7 @@ pub struct BinaryOp {
 // a->b, a.b
 #[derive(Debug, Clone)]
 pub struct FieldAccess {
+    pub pos: Pos,
     pub op: String,
     pub target: Box<Expr>,
     pub field_name: String,

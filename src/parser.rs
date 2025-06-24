@@ -294,10 +294,11 @@ fn base(l: &mut Lexer, ctx: &ParseCtx) -> Result<Expr, Error> {
         }
 
         if next.kind == "->" || next.kind == "." {
-            let op = l.get().unwrap().kind;
+            let optok = l.get().unwrap();
             let tok = expect(l, "word", Some("field access field name - identifier"))?;
             r = Expr::FieldAccess(nodes::FieldAccess {
-                op,
+                pos: optok.pos,
+                op: optok.kind,
                 target: Box::new(r),
                 field_name: tok.content,
             });

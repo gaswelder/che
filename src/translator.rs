@@ -863,11 +863,19 @@ fn tr_arr_index(x: &nodes::ArrayIndex, ctx: &mut TrCtx) -> Result<Typed<c::Expr>
     })
 }
 
+fn pos_todo() -> Pos {
+    Pos { col: 0, line: 0 }
+}
+
 // <..> -> field
 // <..> . field
 fn tr_field_access(x: &nodes::FieldAccess, ctx: &mut TrCtx) -> Result<Typed<c::Expr>, BuildError> {
     let target = tr_expr(&x.target, ctx)?;
-    let typ = typeof_struct_field(ctx, &target.typ, &x.field_name);
+    let typ = typeof_struct_field(ctx, &target.typ, &x.field_name).map_err(|e| BuildError {
+        message: e,
+        path: ctx.this_mod_head.filepath.clone(),
+        pos: x.pos.fmt(),
+    })?;
     if DEBUG_TYPES {
         println!(
             "{}: {} :: {}",
@@ -884,53 +892,6 @@ fn tr_field_access(x: &nodes::FieldAccess, ctx: &mut TrCtx) -> Result<Typed<c::E
             field_name: x.field_name.clone(),
         },
     })
-}
-
-// fn find_struct_def(ctx: &TrCtx, ns: &str, name: &str) -> Option<nodes::StructTypedef> {
-//     println!(
-//         "{} -- find struct def {}.{}",
-//         ctx.this_mod_head.filepath, ns, name
-//     );
-
-//     let pos = getnspos(ctx, ns);
-//     let exports = &ctx.mods[pos].exports;
-//     return exports
-//         .structs
-//         .iter()
-//         .find(|x| x.name == *name)
-//         .map(|x| x.clone());
-// }
-
-fn typeof_struct_field(ctx: &TrCtx, struct_type: &types::Type, field: &str) -> types::Type {
-    if types::is_todo(struct_type) {
-        return types::todo();
-    }
-    let ns = &struct_type.base.ns;
-    let name = &struct_type.base.name;
-
-    if ns == "" {
-        // The struct must be defined in the current module.
-        let def = ctx.struct_typedefs.get(name).map(|x| x.clone());
-        if def.is_none() {
-            return types::todo();
-        }
-        for e in &def.unwrap().entries {
-            match e {
-                nodes::StructEntry::Plain(type_and_forms) => {
-                    for f in &type_and_forms.forms {
-                        if f.name == field {
-                            return fromtn(&type_and_forms.typename, f);
-                        }
-                    }
-                }
-                nodes::StructEntry::Union(_) => return types::todo(),
-            }
-        }
-        return types::todo();
-    } else {
-        // todo
-        return types::todo();
-    }
 }
 
 // { .field = <...>, .field = <...>, ... }
@@ -1570,7 +1531,7 @@ fn from_typedef(x: &nodes::Typedef) -> types::Type {
         base: nodes::NsName {
             ns: String::from(&x.type_name.name.ns),
             name: String::from(&x.type_name.name.name),
-            pos: Pos { col: 0, line: 0 },
+            pos: pos_todo(),
         },
     };
     if DEBUG_TYPES {
@@ -1581,6 +1542,58 @@ fn from_typedef(x: &nodes::Typedef) -> types::Type {
 
 fn is_numeric(s: &str) -> bool {
     s.parse::<f64>().is_ok() // Use f64 for floating-point, or i32/u32 for integers
+}
+
+// fn find_struct_def(ctx: &TrCtx, ns: &str, name: &str) -> Option<nodes::StructTypedef> {
+//     println!(
+//         "{} -- find struct def {}.{}",
+//         ctx.this_mod_head.filepath, ns, name
+//     );
+
+//     let pos = getnspos(ctx, ns);
+//     let exports = &ctx.mods[pos].exports;
+//     return exports
+//         .structs
+//         .iter()
+//         .find(|x| x.name == *name)
+//         .map(|x| x.clone());
+// }
+
+fn typeof_struct_field(
+    ctx: &TrCtx,
+    struct_type: &types::Type,
+    field: &str,
+) -> Result<types::Type, String> {
+    if types::is_todo(struct_type) {
+        return Ok(types::todo());
+    }
+    let ns = &struct_type.base.ns;
+    let name = &struct_type.base.name;
+
+    if ns == "" {
+        if let Some(x) = ctx.struct_typedefs.get(name) {
+            for e in &x.entries {
+                match e {
+                    nodes::StructEntry::Plain(type_and_forms) => {
+                        for f in &type_and_forms.forms {
+                            if f.name == field {
+                                return Ok(fromtn(&type_and_forms.typename, f));
+                            }
+                        }
+                    }
+                    nodes::StructEntry::Union(_) => return Ok(types::todo()),
+                }
+            }
+        }
+        if let Some(x) = ctx.other_typedefs.get(name) {
+            if types::is_todo(&x.t) {
+                return Ok(types::todo());
+            }
+            // todo!();
+        }
+        // return Err(format!("not a struct: {}", struct_type.fmt()));
+    }
+    return Ok(types::todo());
 }
 
 fn typeof_call(t: &types::Type, ctx: &TrCtx) -> Result<types::Type, String> {
