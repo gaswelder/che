@@ -1,7 +1,8 @@
 #import dbg
-#import protocols/http
 #import opt
-#import os/ioloop
+#import os/net
+#import os/threads
+#import protocols/http
 #import reader
 #import strings
 #import time
@@ -10,161 +11,200 @@
 
 const char *DBG_TAG = "exab";
 
-typedef {
-    time.t time_started;
-    time.t time_finished_writing;
-    time.t time_finished_reading;
-	int status;
-	size_t total_received;
-	size_t total_sent;
-	int error;
-
-	char response[1000];
-	size_t responselen;
-} request_t;
-
-request_t *requests = NULL;
-size_t requests_done = 0;
-size_t requests_to_do = 1;
-
 char *addr = NULL;
 uint8_t REQUEST[1000] = {};
 size_t REQUESTLEN = 0;
 
+typedef {
+	size_t n;
+	size_t id;
+} task_t;
+
+threads.mtx_t *stdout_lock = NULL;
 
 int main(int argc, char *argv[]) {
+	stdout_lock = threads.mtx_new();
+
 	size_t concurrency = 1;
+	size_t requests_to_do = 1;
 
 	opt.nargs(1, "<url>");
-    opt.opt_summary("makes a series of HTTP requests to <url> and prints statistics");
-    opt.size("n", "number of requests to perform", &requests_to_do);
-    opt.size("c", "number of requests running concurrently", &concurrency);
+	opt.opt_summary("makes a series of HTTP requests to <url> and prints statistics");
+	opt.size("n", "number of requests to perform", &requests_to_do);
+	opt.size("c", "number of requests running concurrently", &concurrency);
 
-    char **args = opt.parse(argc, argv);
+	char **args = opt.parse(argc, argv);
 	char *urlstr = *args;
-	init_request(urlstr);
-	requests = calloc(requests_to_do, sizeof(request_t));
-	if (!requests) panic("calloc failed");
-	for (size_t i = 0; i < concurrency; i++) {
-		next();
-    }
-	while (ioloop.process()) {
-		//
-	}
-    return 0;
-}
 
-void init_request(const char *urlstr) {
+	//
+	// Parse and check the URL.
+	//
 	url.t *u = url.parse(urlstr);
 	if (!u) {
-        fprintf(stderr, "failed to parse URL: %s\n", urlstr);
-        exit(1);
-    }
-    if (!strcmp(u->schema, "https")) {
-        fprintf(stderr, "no https support\n");
-        exit(1);
-    }
-    if (u->port[0] == '\0') {
-        strcpy(u->port, "80");
-    }
-    addr = strings.newstr("%s:%s", u->hostname, u->port);
-
-	http.request_t req = {};
-    if (!http.init_request(&req, http.GET, u->path)) {
-		fprintf(stderr, "failed to init request: %s\n", http.errstr(req.err));
-		exit(1);
+		fprintf(stderr, "failed to parse URL: %s\n", urlstr);
+		return 1;
 	}
-    http.set_header(&req, "Host", u->hostname);
-	http.set_header(&req, "User-Agent", "exab");
+	if (!strcmp(u->schema, "https")) {
+		fprintf(stderr, "no https support\n");
+		return 1;
+	}
+	if (u->port[0] == '\0') {
+		strcpy(u->port, "80");
+	}
+	addr = strings.newstr("%s:%s", u->hostname, u->port);
 
+	//
+	// Create and format the HTTP request as a bytes buffer.
+	//
+	http.request_t req = {};
+	if (!http.init_request(&req, http.GET, u->path)) {
+		fprintf(stderr, "failed to init request: %s\n", http.errstr(req.err));
+		return 1;
+	}
+	http.set_header(&req, "Host", u->hostname);
+	http.set_header(&req, "User-Agent", "exab");
 	writer.t *w = writer.static_buffer(REQUEST, sizeof(REQUEST));
-    if (!http.write_request(w, &req)) {
-        panic("failed to write the request");
-    }
+	if (!http.write_request(w, &req)) {
+		panic("failed to write the request");
+	}
 	REQUESTLEN = w->nwritten;
 	writer.free(w);
+
+
+	// Adjust the workers number if there is not enough work for all.
+	if (concurrency > requests_to_do) {
+		concurrency = requests_to_do;
+	}
+
+	//
+	// Distribute work across the workers.
+	//
+	task_t *tasks = calloc(concurrency, sizeof(task_t));
+	if (!tasks) panic("calloc failed");
+	size_t slice_size = requests_to_do / concurrency;
+	if (requests_to_do % concurrency != 0) {
+		slice_size++;
+	}
+	size_t cur = 0;
+	for (size_t i = 0; i < concurrency; i++) {
+		size_t grab = requests_to_do - cur;
+		if (grab > slice_size) {
+			grab = slice_size;
+		}
+		tasks[i].id = i;
+		tasks[i].n = grab;
+		cur += grab;
+	}
+
+	// Print the header in advance.
+	// The workers will start printing results soon.
+	print_result_header();
+
+	//
+	// Spawn the workers.
+	//
+	threads.thr_t **tt = calloc(concurrency, sizeof(threads.thr_t));
+	if (!tt) {
+		panic("calloc failed");
+	}
+	for (size_t i = 0; i < concurrency; i++) {
+		tt[i] = threads.start(thrmain, &tasks[i]);
+	}
+
+	//
+	// Wait for all to finish.
+	//
+	for (size_t i = 0; i < concurrency; i++) {
+		int err = threads.wait(tt[i], NULL);
+		if (err) {
+			panic("thread wait failed: %d (%s)", err, strerror(err));
+		}
+	}
+	return 0;
 }
 
-void next() {
-	if (requests_done >= requests_to_do) {
-		dbg.m(DBG_TAG, "no more requests");
-		return;
+void *thrmain(void *arg) {
+	dbg.m(DBG_TAG, "thread started");
+	char resbytes[4096] = {};
+	task_t *task = arg;
+
+	result_t _res = {};
+	result_t *res = &_res;
+	res->worker_id = task->id;
+
+	for (size_t i = 0; i < task->n; i++) {
+		res->number = i;
+		res->time_started = time.now();
+
+		net.net_t *conn = net.connect("tcp", addr);
+		if (!conn) {
+			panic("failed to connect to %s: %s", addr, strerror(errno));
+		}
+
+		res->time_connected = time.now();
+
+		if ((size_t) net.write(conn, (char *)REQUEST, REQUESTLEN) != REQUESTLEN) {
+			panic("failed to write request: %s", strerror(errno));
+		}
+
+		res->total_sent = REQUESTLEN;
+		res->time_finished_writing = time.now();
+
+		int read = net.read(conn, resbytes, sizeof(resbytes));
+		if (read < 0) {
+			panic("read failed");
+		}
+		if ((size_t) read == sizeof(resbytes)) {
+			panic("read buffer too small");
+		}
+		resbytes[read] = '\0';
+
+		res->time_finished_reading = time.now();
+		res->total_received = read;
+
+		net.close(conn);
+
+		http.response_t r = {};
+		reader.t *re = reader.string(resbytes);
+		if (!http.parse_response(re, &r)) {
+			panic("failed to parse http response");
+		}
+		reader.free(re);
+		res->status = r.status;
+		print_result(res);
 	}
-	dbg.m(DBG_TAG, "getting next request: %zu", requests_done);
-	request_t *req = &requests[requests_done];
-	requests_done++;
-	ioloop.connect(addr, handler, req);
+	return NULL;
 }
 
-void handler(void *ctx, int event, void *data) {
-	switch (event) {
-		case ioloop.CONNECTED: {
-			request_t *req = data;
-			ioloop.set_stash(ctx, data);
-            req->time_started = time.now();
-			if (!ioloop.write(ctx, (char *)REQUEST, REQUESTLEN)) {
-				panic("write failed");
-			}
-			req->total_sent = REQUESTLEN;
-		}
-		case ioloop.DATA_IN: {
-			request_t *req = ioloop.get_stash(ctx);
+typedef {
+	size_t worker_id;
+	size_t number;
+	time.t time_started;
+	time.t time_connected;
+	time.t time_finished_writing;
+	time.t time_finished_reading;
+	int status;
+	size_t total_received;
+	size_t total_sent;
+} result_t;
 
-			// Append the data to the buffer.
-			ioloop.buff_t *buf = data;
-			for (size_t i = 0; i < buf->len; i++) {
-				if (req->responselen == 1000) {
-					panic("response buffer too small");
-				}
-				req->response[req->responselen++] = buf->data[i];
-			}
-
-			// Try to parse the response.
-			http.response_t r = {};
-			reader.t *re = reader.string(req->response);
-            if (!http.parse_response(re, &r)) {
-                // Assume not enough data was received.
-                dbg.m(DBG_TAG, "waiting for more data");
-				reader.free(re);
-				return;
-            }
-			reader.free(re);
-			req->status = r.status;
-			req->total_received = req->responselen;
-			req->time_finished_reading = time.now();
-			dbg.m(DBG_TAG, "finished reading response, done=%zu, todo=%zu", requests_done, requests_to_do);
-			done(req);
-		}
-		case ioloop.WRITE_FINISHED: {
-			request_t *req = ioloop.get_stash(ctx);
-			req->time_finished_writing = time.now();
-		}
-		case ioloop.EXIT: {
-			next();
-		}
-		default: {
-			panic("got event %d", event);
-		}
-	}
+void print_result_header() {
+	printf("#\tstatus\ttconnecting\ttsending\ttreceiving\ttotaltime\tsent\treceived\n");
 }
 
-int output_lines = 0;
-void done(request_t *s) {
-	if (!output_lines) {
-		printf("#\tstatus\ttsending\ttreceiving\ttotaltime\tsent\treceived\n");
-	}
-	int64_t write = time.sub(s->time_finished_writing, s->time_started);
-	int64_t read = time.sub(s->time_finished_reading, s->time_finished_writing);
-	int64_t total = time.sub(s->time_finished_reading, s->time_started);
-	printf("%d\t", output_lines++);
-	if (s->error) {
-		printf("error: %d (%s)\n", s->error, strerror(s->error));
-		return;
-	}
-	printf("%d\t", s->status);
+void print_result(result_t *res) {
+	threads.lock(stdout_lock);
+	int64_t conn = time.sub(res->time_connected, res->time_started);
+	int64_t write = time.sub(res->time_finished_writing, res->time_started);
+	int64_t read = time.sub(res->time_finished_reading, res->time_finished_writing);
+	int64_t total = time.sub(res->time_finished_reading, res->time_started);
+	printf("%zu/%zu\t", res->worker_id, res->number);
+	printf("%d\t", res->status);
+	printf("%f\t", (double) conn / time.MS);
 	printf("%f\t", (double) write / time.MS);
 	printf("%f\t", (double) read / time.MS);
 	printf("%f\t", (double) total / time.MS);
-	printf("%zu\t", s->total_sent);
-	printf("%zu\n", s->total_received);
+	printf("%zu\t", res->total_sent);
+	printf("%zu\n", res->total_received);
+	threads.unlock(stdout_lock);
 }
