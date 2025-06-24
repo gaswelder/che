@@ -1484,6 +1484,7 @@ fn mk_panic(
     for arg in arguments {
         args.push(tr_expr(arg, ctx)?.val);
     }
+    let panic_pos = format!("{}:{}", &ctx.this_mod_head.filepath, pos.clone());
     Ok(c::Statement::Block {
         statements: vec![
             mk_call(
@@ -1491,7 +1492,7 @@ fn mk_panic(
                 vec![
                     c::Expr::Ident(String::from("stderr")),
                     c::Expr::Literal(c::CLiteral::String(String::from("*** panic at %s ***\\n"))),
-                    c::Expr::Literal(c::CLiteral::String(pos.clone())),
+                    c::Expr::Literal(c::CLiteral::String(panic_pos)),
                 ],
             ),
             mk_call("fprintf", args),
