@@ -75,7 +75,7 @@ void *client_routine(void *arg) {
 		}
 	}
 	reader.free(re);
-	net.net_close(conn);
+	net.close(conn);
 	return NULL;
 }
 

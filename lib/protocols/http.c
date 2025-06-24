@@ -390,9 +390,9 @@ pub void write_404(request_t *req, net.net_t *conn) {
         strlen(msg),
         msg
     );
-    int r = net.net_write(conn, buf, strlen(buf));
+    int r = net.write(conn, buf, strlen(buf));
 	if (r < 0) {
-		panic("net_write failed");
+		panic("net write failed");
 	}
 }
 
@@ -410,9 +410,9 @@ pub void write_405(request_t *req, net.net_t *conn) {
         strlen(msg),
         msg
     );
-    int r = net.net_write(conn, buf, strlen(buf));
+    int r = net.write(conn, buf, strlen(buf));
 	if (r < 0) {
-		panic("net_write failed");
+		panic("net write failed");
 	}
 }
 
@@ -430,9 +430,9 @@ pub void write_501(request_t *req, net.net_t *conn) {
         strlen(msg),
         msg
     );
-    int r = net.net_write(conn, buf, strlen(buf));
+    int r = net.write(conn, buf, strlen(buf));
 	if (r < 0) {
-		panic("net_write failed");
+		panic("net write failed");
 	}
 }
 
@@ -454,7 +454,9 @@ pub void servefile(request_t *req, net.net_t *conn, const char *filepath) {
 		req->version,
 		filesize,
 		content_type);
-	net.net_write(conn, buf, strlen(buf));
+	if (net.write(conn, buf, strlen(buf)) < 0) {
+		panic("net write failed");
+	}
 
 	FILE *f = fopen(filepath, "rb");
 	if (!f) {
@@ -465,8 +467,8 @@ pub void servefile(request_t *req, net.net_t *conn, const char *filepath) {
 		char tmp[4096];
 		size_t n = fread(tmp, 1, 4096, f);
 		if (n == 0) break;
-		int r = net.net_write(conn, tmp, n);
-		if (r < 0) panic("write failed");
+		int r = net.write(conn, tmp, n);
+		if (r < 0) panic("net write failed");
 	}
 	fclose(f);
 }

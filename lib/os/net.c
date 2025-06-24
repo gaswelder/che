@@ -1,7 +1,5 @@
 #import reader
 
-// #define _XOPEN_SOURCE 700
-
 #include <arpa/inet.h>
 #include <netdb.h>
 #include <sys/select.h>
@@ -74,25 +72,22 @@ pub const char *net_addr(net_t *c) {
 	return c->addrstr;
 }
 
-/**
- * Reads at most size bytes into the buffer buf.
- * Blocks if there is no data ready for reading.
- * Returns the number of bytes read or -1 on error.
- */
-pub int readconn(net_t *c, char *buf, size_t size) {
+// Reads at most size bytes into the buffer buf.
+// Blocks if there is no data ready for reading.
+// Returns the number of bytes read or -1 on error.
+pub int read(net_t *c, char *buf, size_t size) {
 	return OS.recv(c->fd, buf, size, 0);
 }
 
 // Writes n bytes from buf to connection c.
 // Returns the number of bytes sent, or -1 on failure.
-pub int net_write(net_t *c, const char *buf, size_t n) {
+pub int write(net_t *c, const char *buf, size_t n) {
 	// MSG_NOSIGNAL prevents SIGPIPE signals
 	return OS.send(c->fd, buf, n, OS.MSG_NOSIGNAL);
 }
 
-// Creates a connection over the protocol proto ("tcp") to the destination
-// address addr.
-// On failure return NULL, check errno.
+// Connects to addr over protocol proto ("tcp")
+// On failure returns NULL, sets errno.
 pub net_t *connect(const char *proto, const char *addr) {
 	net_t *c = newconn(proto, addr);
 	if (!c) return NULL;
@@ -179,7 +174,8 @@ pub net_t *net_accept(net_t *l) {
 	return newconn;
 }
 
-pub void net_close(net_t *c) {
+// Closes connection c.
+pub void close(net_t *c) {
 	OS.close(c->fd);
 	free(c);
 }
@@ -295,7 +291,7 @@ bool format_address(sockaddr_t *a, char *buf, size_t n) {
  */
 int net_puts(const char *s, net_t *c) {
 	size_t len = strlen(s);
-	int r = net_write(c, s, len);
+	int r = write(c, s, len);
 
 	// return EOF if a write error occurs
 	if (r < 0 || (size_t) r < len) {

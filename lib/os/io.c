@@ -231,7 +231,7 @@ pub bool close(handle_t *h) {
         return true;
     }
     if (h->type == TYPE_NET) {
-        net.net_close(h->conn);
+        net.close(h->conn);
         free(h);
         return true;
     }

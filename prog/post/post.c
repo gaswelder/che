@@ -19,7 +19,7 @@ int main(int argc, char **argv) {
 		exit(1);
 	}
 	sendm(n, from, to, subj);
-	net.net_close(n);
+	net.close(n);
 	return 0;
 }
 
@@ -67,15 +67,14 @@ int senderror() {
 	return _error;
 }
 
-void expect(net.net_t *n, int code)
-{
+void expect(net.net_t *n, int code) {
 	(void) code;
-	if(_error) return;
+	if (_error) return;
 
 	char buf[256] = {};
-	int len = net.readconn(n, buf, 255);
+	int len = net.read(n, buf, 255);
 	if (len < 0) {
-		fprintf(stderr, "net.readconn error: %s\n", strerror(errno));
+		fprintf(stderr, "net.read error: %s\n", strerror(errno));
 		_error = 1;
 		return;
 	}

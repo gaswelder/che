@@ -40,7 +40,7 @@ int main() {
 		c->out.conn = s;
 		process_client(c);
 	}
-	net.net_close(l);
+	net.close(l);
 	return 0;
 }
 
@@ -48,7 +48,7 @@ void *process_client(client_t *c) {
 	net.net_t *conn = c->out.conn;
 	char buf[256] = {};
 	while (1) {
-		if (net.readconn(conn, buf, sizeof(buf)) == 0) {
+		if (net.read(conn, buf, sizeof(buf)) == 0) {
 			break;
 		}
 		if (!send_line(c)) {
@@ -57,7 +57,7 @@ void *process_client(client_t *c) {
 		}
 	}
 	log.logmsg("%s disconnected", net.net_addr(conn));
-	net.net_close(conn);
+	net.close(conn);
 	free(c);
 	return NULL;
 }
@@ -75,7 +75,7 @@ bool writech(client_t *c, char ch) {
 	nbuf_t *b = &(c->out);
 	b->data[b->len++] = ch;
 	if (b->len == sizeof(b->data)) {
-		int r = net.net_write(b->conn, b->data, b->len);
+		int r = net.write(b->conn, b->data, b->len);
 		if (r < 0 || (size_t) r < b->len) {
 			return false;
 		}

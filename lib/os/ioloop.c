@@ -333,7 +333,7 @@ void dispatch_updates(fd_set *rset, *wset) {
 
         if (c->close) {
             dbg.m(DBG_TAG, "#%d: closed or we closed", i);
-            net.net_close(c->conn);
+            net.close(c->conn);
             removeclient(c);
         }
 	}

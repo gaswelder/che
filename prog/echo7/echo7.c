@@ -26,7 +26,7 @@ int main() {
 		threads.thr_detach(t);
 	}
 
-	net.net_close(l);
+	net.close(l);
 	return 0;
 }
 
@@ -46,13 +46,13 @@ void *process_client(void *arg) {
 			break;
 		}
 
-		if(net.net_write(c, (char *)buf, len) < len) {
+		if (net.write(c, (char *)buf, len) < len) {
 			fprintf(stderr, "write error: %s\n", strerror(errno));
 			break;
 		}
 	}
 	log.logmsg("%s disconnected", net.net_addr(c));
 	reader.free(r);
-	net.net_close(c);
+	net.close(c);
 	return NULL;
 }

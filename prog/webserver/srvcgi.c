@@ -47,7 +47,7 @@ pub void cgi(char *path, http.request_t *req, net.net_t *conn) {
 	}
 	net.net_printf(conn, "Content-Length: %zu\r\n", output_size - headsize);
 	net.net_printf(conn, "\r\n", 1);
-	net.net_write(conn, output + headsize, output_size - headsize);
+	net.write(conn, output + headsize, output_size - headsize);
 }
 
 exec.proc_t *start(char *path, http.request_t *req) {
