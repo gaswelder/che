@@ -3,7 +3,7 @@ use std::{collections::HashMap, sync::OnceLock};
 use crate::{
     buf::Pos,
     nodes,
-    types::{ellipsis, just, justp, Type, TypeOp},
+    types::{ellipsis, just, justp, todo, Type, TypeOp},
 };
 
 #[derive(Debug)]
@@ -81,7 +81,7 @@ fn buildmap() -> HashMap<&'static str, CSymbol> {
     let filep = &justp("FILE");
     let int = &just("int");
     let size = &just("size_t");
-    let __todo = &just("todo");
+    let __todo = &todo();
     let void = &just("void");
     let voidp = &justp("void");
     let dbl = &just("double");
