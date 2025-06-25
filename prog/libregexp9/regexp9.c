@@ -364,9 +364,7 @@ Reprog *regcomp1(char *s, int literal, int dot_type) {
 
 
 
-void
-rcerror(char *s)
-{
+void rcerror(char *s) {
 	errors++;
 	regerror(s);
 	longjmp(regkaboom, 1);

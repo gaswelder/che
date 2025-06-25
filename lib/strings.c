@@ -1,24 +1,23 @@
-/*
- * Creates a new formatted string in memory.
- */
-pub char *newstr(const char *format, ... )
-{
+// Allocates a formatted string.
+// The caller must call free on the string when done.
+pub char *newstr(const char *format, ...) {
+	// Find out the length.
 	va_list args = {};
-
 	va_start(args, format);
 	int len = vsnprintf(NULL, 0, format, args);
 	va_end(args);
+	if (len < 0) {
+		panic("failed to format the string");
+	}
 
-	if (len < 0) return NULL;
-	
-	char *buf = calloc(len + 1, 1);
-	if (!buf) return NULL;
-
+	// Actually allocate and format.
+	char *s = calloc(len + 1, 1);
+	if (!s) panic("calloc failed");
 	va_start(args, format);
-	vsnprintf(buf, len + 1, format, args);
+	vsnprintf(s, len + 1, format, args);
 	va_end(args);
 
-	return buf;
+	return s;
 }
 
 pub char *newsubstr(const char *s, int p1, p2) {

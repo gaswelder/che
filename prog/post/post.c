@@ -49,7 +49,7 @@ int sendm(net.net_t *n, const char *from, const char *to, const char *subj)
 	net.net_printf(n, "\r\n");
 
 	char buf[4096] = {};
-	while( fgets(buf, 4096, stdin) ) {
+	while (fgets(buf, 4096, stdin)) {
 		net.net_printf(n, "%s", buf);
 	}
 	net.net_printf(n, ".\r\n");
