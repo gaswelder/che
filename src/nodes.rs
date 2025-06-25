@@ -108,10 +108,10 @@ pub struct FuncDecl {
 pub struct Typedef {
     pub ispub: bool,
     pub alias: String,
-    pub type_name: Typename,
-    pub dereference_count: usize,
+    pub typename: Typename,
+    pub derefs: usize,
     pub array_size: usize,
-    pub function_parameters: Option<AnonymousParameters>,
+    pub func_params: Option<AnonymousParameters>,
 }
 
 // typedef { int x, y; double *f; } foo_t
@@ -322,7 +322,7 @@ pub struct SwitchCase {
 #[derive(Debug, Clone)]
 pub struct FuncParams {
     pub list: Vec<TypeAndForms>,
-    pub variadic: bool,
+    pub ellipsis: bool,
 }
 
 #[derive(Debug, Clone)]

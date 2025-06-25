@@ -273,7 +273,7 @@ pub fn translate(m: &nodes::Module, params: &TrParams) -> Result<c::CModule, Bui
                     x.alias.clone(),
                     TI {
                         is_pub: x.ispub,
-                        t: from_typedef(&x),
+                        t: typefrom_typedef(&x),
                     },
                 );
             }
@@ -286,12 +286,12 @@ pub fn translate(m: &nodes::Module, params: &TrParams) -> Result<c::CModule, Bui
                     &x.form.name,
                     x.pos.clone(),
                     false,
-                    fromtn(&x.typename, &x.form),
+                    typefrom_typename(&x.typename, &x.form),
                 );
             }
             nodes::ModElem::FuncDecl(x) => {
                 let ispub = x.ispub || x.form.name == "main";
-                let typ = from_funcdecl(&x);
+                let typ = typefrom_funcdecl(&x);
                 add_binding(&mut ctx, &x.form.name, x.pos.clone(), ispub, typ);
             }
         }
@@ -459,15 +459,6 @@ fn tr_mod_elem(element: &nodes::ModElem, ctx: &mut TrCtx) -> Result<Vec<c::ModEl
     }
 }
 
-fn typeof_literal(x: &nodes::Literal) -> types::Type {
-    match x {
-        nodes::Literal::Char(_) => types::just("char"),
-        nodes::Literal::String(_) => types::justp("char"),
-        nodes::Literal::Number(_) => types::number(),
-        nodes::Literal::Null => types::just("null"),
-    }
-}
-
 fn tr_expr(e: &nodes::Expr, ctx: &mut TrCtx) -> Result<Typed<c::Expr>, BuildError> {
     return match e {
         nodes::Expr::Literal(x) => Ok(Typed {
@@ -547,7 +538,7 @@ fn tr_struct_alias(x: &nodes::StructAlias, ctx: &TrCtx) -> Vec<c::ModElem> {
 }
 
 fn tr_typedef(x: &nodes::Typedef, ctx: &mut TrCtx) -> Result<Vec<c::ModElem>, BuildError> {
-    let params = match &x.function_parameters {
+    let params = match &x.func_params {
         Some(x) => {
             let mut forms = Vec::new();
             for f in &x.forms {
@@ -569,9 +560,9 @@ fn tr_typedef(x: &nodes::Typedef, ctx: &mut TrCtx) -> Result<Vec<c::ModElem>, Bu
 
     Ok(vec![c::ModElem::Typedef(c::Typedef {
         ispub: x.ispub,
-        typename: tr_typename(&x.type_name, ctx)?,
+        typename: tr_typename(&x.typename, ctx)?,
         form: c::TypedefForm {
-            stars: "*".repeat(x.dereference_count),
+            stars: "*".repeat(x.derefs),
             params,
             size: x.array_size,
             alias,
@@ -760,7 +751,7 @@ fn tr_binary_op(x: &nodes::BinaryOp, ctx: &mut TrCtx) -> Result<Typed<c::Expr>, 
     })?;
     if DEBUG_TYPES {
         println!(
-            "{}: {}: {}",
+            "{}: {} :: {}",
             ctx.this_mod_head.uniqid,
             format_che::fmt_expr(&nodes::Expr::BinaryOp(x.clone())),
             typ.fmt()
@@ -828,7 +819,7 @@ fn tr_postop(x: &nodes::PostfixOp, ctx: &mut TrCtx) -> Result<Typed<c::Expr>, Bu
 // (typename) <...>
 fn tr_cast(x: &nodes::Cast, ctx: &mut TrCtx) -> Result<Typed<c::Expr>, BuildError> {
     let operand = tr_expr(&x.operand, ctx)?;
-    let typ = frombaretf(&x.typeform);
+    let typ = typefrom_baretypeform(&x.typeform);
     if DEBUG_TYPES {
         println!(
             "cast {}: {}",
@@ -944,6 +935,18 @@ fn tr_sizeof(x: &nodes::Sizeof, ctx: &mut TrCtx) -> Result<Typed<c::Expr>, Build
     })
 }
 
+fn trace_type(ctx: &TrCtx, expr: &nodes::Expr, typ: &types::Type) {
+    if !DEBUG_TYPES {
+        return;
+    }
+    println!(
+        "{}: {} :: {}",
+        ctx.this_mod_head.uniqid,
+        format_che::fmt_expr(expr),
+        typ.fmt()
+    );
+}
+
 // f(args)
 fn tr_call(x: &nodes::Call, ctx: &mut TrCtx) -> Result<Typed<c::Expr>, BuildError> {
     let mut typedargs = Vec::new();
@@ -952,36 +955,18 @@ fn tr_call(x: &nodes::Call, ctx: &mut TrCtx) -> Result<Typed<c::Expr>, BuildErro
     }
     let func = tr_expr(&x.func, ctx)?;
 
-    if DEBUG_TYPES {
-        println!(
-            "{}: {} :: {}",
-            ctx.this_mod_head.uniqid,
-            format_che::fmt_expr(x.func.as_ref()),
-            func.typ.fmt()
-        );
-        for (i, a) in x.args.iter().enumerate() {
-            println!(
-                "{}: {} :: {}",
-                ctx.this_mod_head.uniqid,
-                format_che::fmt_expr(&a),
-                typedargs[i].typ.fmt()
-            );
-        }
+    trace_type(ctx, x.func.as_ref(), &func.typ);
+    for (i, a) in x.args.iter().enumerate() {
+        trace_type(ctx, &a, &typedargs[i].typ);
     }
 
-    let typ = typeof_call(&func.typ, ctx).map_err(|e| BuildError {
+    let aat = typedargs.iter().map(|x| &x.typ).collect();
+    let typ = typeof_call(ctx, &func.typ, aat).map_err(|e| BuildError {
         message: e,
         path: ctx.this_mod_head.filepath.clone(),
         pos: x.pos.fmt(),
     })?;
-    if DEBUG_TYPES {
-        println!(
-            "{}: {} :: {}",
-            ctx.this_mod_head.uniqid,
-            format_che::fmt_expr(&nodes::Expr::Call(x.clone())),
-            typ.fmt()
-        );
-    }
+    trace_type(ctx, &nodes::Expr::Call(x.clone()), &typ);
     Ok(Typed {
         typ,
         val: c::Expr::Call {
@@ -1016,7 +1001,7 @@ fn tr_func_params(x: &nodes::FuncParams, ctx: &mut TrCtx) -> Result<c::FuncParam
     }
     Ok(c::FuncParams {
         list: parameters,
-        variadic: x.variadic,
+        variadic: x.ellipsis,
     })
 }
 
@@ -1026,7 +1011,13 @@ fn tr_func_decl(x: &nodes::FuncDecl, ctx: &mut TrCtx) -> Result<Vec<c::ModElem>,
 
     for p in &x.params.list {
         for f in &p.forms {
-            add_binding(ctx, &f.name, f.pos.clone(), false, fromtn(&p.typename, &f));
+            add_binding(
+                ctx,
+                &f.name,
+                f.pos.clone(),
+                false,
+                typefrom_typename(&p.typename, &f),
+            );
         }
     }
 
@@ -1147,7 +1138,7 @@ fn tr_nsid_in_expr(x: &nodes::NsName, ctx: &mut TrCtx) -> Result<Typed<String>, 
         typ = types::number();
     } else {
         match exports.fns.iter().find(|f| f.form.name == x.name) {
-            Some(f) => typ = from_funcdecl(&f),
+            Some(f) => typ = typefrom_funcdecl(&f),
             None => {
                 todo!();
             }
@@ -1157,13 +1148,16 @@ fn tr_nsid_in_expr(x: &nodes::NsName, ctx: &mut TrCtx) -> Result<Typed<String>, 
     Ok(Typed { typ, val })
 }
 
-fn from_funcdecl(f: &nodes::FuncDecl) -> types::Type {
-    let mut typ = fromtn(&f.typename, &f.form);
+fn typefrom_funcdecl(f: &nodes::FuncDecl) -> types::Type {
+    let mut typ = typefrom_typename(&f.typename, &f.form);
     let mut args = Vec::new();
     for p in &f.params.list {
         for f in &p.forms {
-            args.push(fromtn(&p.typename, &f));
+            args.push(typefrom_typename(&p.typename, &f));
         }
+    }
+    if f.params.ellipsis {
+        args.push(types::ellipsis());
     }
     typ.ops.insert(0, types::TypeOp::Call(args));
     typ
@@ -1227,7 +1221,7 @@ fn tr_for(x: &nodes::For, ctx: &mut TrCtx) -> Result<c::Statement, BuildError> {
                         &form.name,
                         form.pos.clone(),
                         false,
-                        fromtn(&type_name, &form),
+                        typefrom_typename(&type_name, &form),
                     );
                     c::ForInit::DeclLoopCounter(c::VarDecl {
                         typename: tr_typename(type_name, ctx)?,
@@ -1395,7 +1389,7 @@ fn tr_vardecl(x: &nodes::VarDecl, ctx: &mut TrCtx) -> Result<c::Statement, Build
         &x.form.name,
         x.form.pos.clone(),
         false,
-        fromtn(&x.typename, &x.form),
+        typefrom_typename(&x.typename, &x.form),
     );
     Ok(c::Statement::VarDecl {
         type_name: tr_typename(&x.typename, ctx)?,
@@ -1490,7 +1484,7 @@ fn mk_or(a: c::Expr, b: c::Expr) -> c::Expr {
 
 ////////////////////////
 
-fn fromtn(x: &nodes::Typename, y: &nodes::Form) -> types::Type {
+fn typefrom_typename(x: &nodes::Typename, y: &nodes::Form) -> types::Type {
     let mut ops = Vec::new();
     for _ in &y.indexes {
         ops.push(types::TypeOp::Index);
@@ -1501,7 +1495,7 @@ fn fromtn(x: &nodes::Typename, y: &nodes::Form) -> types::Type {
     types::mk(ops, &x.name.ns, &x.name.name)
 }
 
-fn frombaretf(x: &nodes::BareTypeform) -> types::Type {
+fn typefrom_baretypeform(x: &nodes::BareTypeform) -> types::Type {
     let mut ops = Vec::new();
     for _ in 0..x.hops {
         ops.push(types::TypeOp::Deref);
@@ -1509,35 +1503,34 @@ fn frombaretf(x: &nodes::BareTypeform) -> types::Type {
     types::mk(ops, &x.typename.name.ns, &x.typename.name.name)
 }
 
-fn from_typedef(x: &nodes::Typedef) -> types::Type {
+fn typefrom_typedef(x: &nodes::Typedef) -> types::Type {
     let mut ops = Vec::new();
-    if x.function_parameters.is_some() {
+    if x.func_params.is_some() {
         let mut args = Vec::new();
-        if let Some(p) = &x.function_parameters {
+        if let Some(p) = &x.func_params {
             for f in &p.forms {
-                args.push(frombaretf(&f))
+                args.push(typefrom_baretypeform(&f))
+            }
+            if p.ellipsis {
+                args.push(types::ellipsis());
             }
         }
-        ops.push(types::TypeOp::Call(Vec::new()));
+        ops.push(types::TypeOp::Call(args));
     }
     if x.array_size > 0 {
         ops.push(types::TypeOp::Index);
     }
-    for _ in 0..x.dereference_count {
+    for _ in 0..x.derefs {
         ops.push(types::TypeOp::Deref);
     }
-    let t = types::Type {
+    types::Type {
         ops,
         base: nodes::NsName {
-            ns: String::from(&x.type_name.name.ns),
-            name: String::from(&x.type_name.name.name),
+            ns: String::from(&x.typename.name.ns),
+            name: String::from(&x.typename.name.name),
             pos: pos_todo(),
         },
-    };
-    if DEBUG_TYPES {
-        println!("typedef {:?} ----> {}", x, t.fmt());
     }
-    t
 }
 
 fn is_numeric(s: &str) -> bool {
@@ -1559,6 +1552,15 @@ fn is_numeric(s: &str) -> bool {
 //         .map(|x| x.clone());
 // }
 
+fn typeof_literal(x: &nodes::Literal) -> types::Type {
+    match x {
+        nodes::Literal::Char(_) => types::just("char"),
+        nodes::Literal::String(_) => types::justp("char"),
+        nodes::Literal::Number(_) => types::number(),
+        nodes::Literal::Null => types::just("null"),
+    }
+}
+
 fn typeof_struct_field(
     ctx: &TrCtx,
     struct_type: &types::Type,
@@ -1577,7 +1579,7 @@ fn typeof_struct_field(
                     nodes::StructEntry::Plain(type_and_forms) => {
                         for f in &type_and_forms.forms {
                             if f.name == field {
-                                return Ok(fromtn(&type_and_forms.typename, f));
+                                return Ok(typefrom_typename(&type_and_forms.typename, f));
                             }
                         }
                     }
@@ -1596,11 +1598,31 @@ fn typeof_struct_field(
     return Ok(types::todo());
 }
 
-fn typeof_call(t: &types::Type, ctx: &TrCtx) -> Result<types::Type, String> {
+// Validates a call of t with args aa and returns the resulting type.
+fn typeof_call(ctx: &TrCtx, t: &types::Type, aa: Vec<&types::Type>) -> Result<types::Type, String> {
     if types::is_todo(t) {
         return Ok(types::todo());
     }
-    if matches!(t.ops.first(), Some(types::TypeOp::Call(_))) {
+
+    if let Some(types::TypeOp::Call(args)) = t.ops.first() {
+        if args.last().map_or(false, |x| types::is_ellipsis(x)) {
+            if aa.len() < args.len() - 1 {
+                return Err(format!(
+                    "expected at least {} arguments, got {}",
+                    args.len() - 1,
+                    aa.len()
+                ));
+            }
+        } else {
+            if aa.len() != args.len() {
+                return Err(format!(
+                    "expected {} arguments, got {}",
+                    args.len(),
+                    aa.len()
+                ));
+            }
+        }
+
         return Ok(types::Type {
             ops: t.ops[1..].to_vec(),
             base: t.base.clone(),
@@ -1611,7 +1633,7 @@ fn typeof_call(t: &types::Type, ctx: &TrCtx) -> Result<types::Type, String> {
     if t.ops.len() == 0 && t.base.ns == "" {
         let def = ctx.other_typedefs.get(t.base.name.as_str());
         if def.is_some() {
-            return typeof_call(&def.unwrap().t, ctx);
+            return typeof_call(ctx, &def.unwrap().t, aa);
         }
     }
 
@@ -1620,7 +1642,7 @@ fn typeof_call(t: &types::Type, ctx: &TrCtx) -> Result<types::Type, String> {
             types::TypeOp::Deref => {
                 let x = ctx.other_typedefs.get(&t.base.name);
                 if x.is_some() {
-                    return typeof_call(&x.unwrap().t, ctx);
+                    return typeof_call(ctx, &x.unwrap().t, aa);
                 }
             }
             _ => {}

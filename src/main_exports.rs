@@ -54,7 +54,7 @@ fn print_exports(exports: Exports) {
                     params += &format_che::fmt_form(&form);
                 }
             }
-            if c.params.variadic {
+            if c.params.ellipsis {
                 params += ", ...";
             }
             params += ")";

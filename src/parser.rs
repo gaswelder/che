@@ -1030,7 +1030,7 @@ fn parse_function_declaration(
             form,
             params: FuncParams {
                 list: parameters,
-                variadic,
+                ellipsis: variadic,
             },
             body: body.obj,
             pos,
@@ -1184,9 +1184,9 @@ fn parse_typedef(is_pub: bool, l: &mut Lexer, ctx: &ParseCtx) -> Result<ModElem,
     expect(l, ";", Some("typedef"))?;
     return Ok(ModElem::Typedef(Typedef {
         ispub: is_pub,
-        type_name: typename,
-        dereference_count: stars,
-        function_parameters: params,
+        typename,
+        derefs: stars,
+        func_params: params,
         array_size: size,
         alias: tok.content,
     }));

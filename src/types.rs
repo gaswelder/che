@@ -11,6 +11,14 @@ pub struct Type {
     pub ops: Vec<TypeOp>,
 }
 
+pub fn ellipsis() -> Type {
+    just("...")
+}
+
+pub fn is_ellipsis(t: &Type) -> bool {
+    t.fmt() == "..."
+}
+
 #[derive(Clone, Debug)]
 pub enum TypeOp {
     Deref,

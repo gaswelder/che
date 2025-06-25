@@ -3,7 +3,7 @@ use std::{collections::HashMap, sync::OnceLock};
 use crate::{
     buf::Pos,
     nodes,
-    types::{just, justp, todo, Type, TypeOp},
+    types::{ellipsis, just, justp, Type, TypeOp},
 };
 
 #[derive(Debug)]
@@ -51,25 +51,42 @@ fn t(name: &'static str) -> CSymbol {
 }
 
 // A wrapper to declare a built-in constant.
-fn c(name: &'static str, t: Type) -> CSymbol {
+fn c(name: &'static str, t: &Type) -> CSymbol {
     CSymbol {
         kind: Kind::SYM,
         name,
-        t,
+        t: t.clone(),
     }
 }
 
 // A wrapper to declare a built-in function.
-fn f(name: &'static str, args: Vec<Type>, mut rettype: Type) -> CSymbol {
-    rettype.ops.insert(0, TypeOp::Call(args));
+fn f(name: &'static str, args: Vec<&Type>, rettype: &Type) -> CSymbol {
+    let mut argsc = Vec::new();
+    for t in args {
+        argsc.push(t.clone())
+    }
+    let mut retc = rettype.clone();
+    retc.ops.insert(0, TypeOp::Call(argsc));
     CSymbol {
         kind: Kind::SYM,
         name,
-        t: rettype,
+        t: retc,
     }
 }
 
 fn buildmap() -> HashMap<&'static str, CSymbol> {
+    let bool = &just("bool");
+    let charp = &justp("char");
+    let chr = &just("char");
+    let filep = &justp("FILE");
+    let int = &just("int");
+    let size = &just("size_t");
+    let __todo = &just("todo");
+    let void = &just("void");
+    let voidp = &justp("void");
+    let dbl = &just("double");
+    let flt = &just("float");
+
     let list = vec![
         // native
         t("char"),
@@ -78,7 +95,7 @@ fn buildmap() -> HashMap<&'static str, CSymbol> {
         t("int"),
         t("void"),
         // stddef
-        c("NULL", justp("void")),
+        c("NULL", voidp),
         t("ptrdiff_t"),
         t("size_t"),
         // stdint
@@ -92,150 +109,150 @@ fn buildmap() -> HashMap<&'static str, CSymbol> {
         t("uint8_t"),
         // stdbool
         t("bool"),
-        c("false", just("bool")),
-        c("true", just("bool")),
+        c("false", bool),
+        c("true", bool),
         // limits
-        c("INT_MAX", just("int")),
-        c("SIZE_MAX", just("size_t")),
+        c("INT_MAX", int),
+        c("SIZE_MAX", size),
         // stdio
-        c("BUFSIZ", just("size_t")),
-        c("SEEK_END", just("int")),
-        c("SEEK_SET", just("int")),
-        c("SEEK_CUR", just("int")),
-        c("EOF", just("int")),
-        c("stderr", todo()),
-        c("stdin", todo()),
-        c("stdout", todo()),
-        f("fclose", vec![justp("FILE")], just("int")),
-        f("feof", vec![justp("FILE")], just("bool")),
-        f("ferror", vec![justp("FILE")], just("bool")),
-        f("fflush", vec![justp("FILE")], just("int")),
-        f("fgetc", vec![justp("FILE")], just("int")),
-        f("fgets", vec![justp("FILE")], justp("char")),
-        f("fopen", vec![justp("char"), justp("char")], just("FILE")),
-        f("fprintf", vec![todo()], just("void")),
-        f("fputc", vec![todo()], just("int")),
-        f("fputs", vec![todo()], just("int")),
-        f("fread", vec![todo()], just("size_t")),
-        f("fseek", vec![todo()], just("int")),
-        f("ftell", vec![todo()], just("int32_t")),
-        f("fwrite", vec![todo()], just("size_t")),
-        f("getc", vec![todo()], just("int")),
-        f("getchar", vec![todo()], just("int")),
-        f("printf", vec![todo()], just("int")),
-        f("putc", vec![todo()], todo()),
-        f("putchar", vec![todo()], todo()),
-        f("puts", vec![todo()], just("int")),
-        f("remove", vec![todo()], todo()),      // depr
-        f("rename", vec![todo()], just("int")), // depr
-        f("rewind", vec![todo()], todo()),
-        f("scanf", vec![todo()], todo()),
-        f("setvbuf", vec![todo()], todo()),
-        f("snprintf", vec![todo()], todo()),
-        f("sprintf", vec![todo()], todo()),
-        f("sscanf", vec![todo()], todo()),
-        f("tmpfile", vec![todo()], justp("FILE")),
-        f("ungetc", vec![todo()], just("int")),
-        f("vfprintf", vec![todo()], just("int")),
-        f("vprintf", vec![todo()], just("int")),
-        f("vsnprintf", vec![todo()], just("int")),
-        f("vsprintf", vec![todo()], just("int")),
+        c("BUFSIZ", size),
+        c("SEEK_END", int),
+        c("SEEK_SET", int),
+        c("SEEK_CUR", int),
+        c("EOF", int),
+        c("stderr", filep),
+        c("stdin", filep),
+        c("stdout", filep),
+        f("fclose", vec![filep], int),
+        f("feof", vec![filep], bool),
+        f("ferror", vec![filep], bool),
+        f("fflush", vec![filep], int),
+        f("fgetc", vec![filep], int),
+        f("fgets", vec![voidp, size, filep], charp),
+        f("fopen", vec![charp, charp], filep),
+        f("fprintf", vec![filep, charp, &ellipsis()], void),
+        f("fputc", vec![int, filep], int),
+        f("fputs", vec![charp, filep], int),
+        f("fread", vec![voidp, size, size, filep], size),
+        f("fseek", vec![filep, &just("int32_t"), int], int),
+        f("ftell", vec![filep], &just("int32_t")),
+        f("fwrite", vec![voidp, size, size, filep], size),
+        f("getc", vec![filep], int),
+        f("getchar", vec![], int),
+        f("printf", vec![charp, &ellipsis()], int),
+        f("putc", vec![int, filep], int),
+        f("putchar", vec![int], int),
+        f("puts", vec![charp], int),
+        f("remove", vec![charp], int),        // depr
+        f("rename", vec![charp, charp], int), // depr
+        f("rewind", vec![filep], void),
+        f("scanf", vec![charp, &ellipsis()], int),
+        f("setvbuf", vec![__todo], __todo),
+        f("snprintf", vec![voidp, size, charp, &ellipsis()], __todo),
+        f("sprintf", vec![charp, charp, &ellipsis()], __todo),
+        f("sscanf", vec![voidp, charp, &ellipsis()], int),
+        f("tmpfile", vec![], filep),
+        f("ungetc", vec![int, filep], int),
+        f("vfprintf", vec![filep, charp, __todo], int),
+        f("vprintf", vec![charp, __todo], int),
+        f("vsnprintf", vec![voidp, size, charp, __todo], int),
+        f("vsprintf", vec![voidp, charp, __todo], int),
         t("FILE"),
         // ctype
-        f("isalpha", vec![just("int")], just("bool")),
-        f("isdigit", vec![just("int")], just("bool")),
-        f("isgraph", vec![just("int")], just("bool")),
-        f("islower", vec![just("int")], just("bool")),
-        f("isprint", vec![just("int")], just("bool")),
-        f("isspace", vec![just("int")], just("bool")),
-        f("tolower", vec![just("int")], just("int")),
-        f("toupper", vec![just("int")], just("int")),
+        f("isalpha", vec![int], bool),
+        f("isdigit", vec![int], bool),
+        f("isgraph", vec![int], bool),
+        f("islower", vec![int], bool),
+        f("isprint", vec![int], bool),
+        f("isspace", vec![int], bool),
+        f("tolower", vec![int], int),
+        f("toupper", vec![int], int),
         // stdlib
-        f("abort", vec![todo()], just("void")), // depr
-        f("atof", vec![todo()], todo()),
-        f("atoi", vec![todo()], todo()),
-        f("atol_l", vec![todo()], todo()),
-        f("atol", vec![todo()], todo()),
-        f("atoll_l", vec![todo()], todo()),
-        f("atoll", vec![todo()], todo()),
-        f("calloc", vec![todo()], justp("void")),
-        f("exit", vec![todo()], just("void")),
-        f("free", vec![todo()], just("void")),
-        f("qsort", vec![todo()], todo()),
-        f("realloc", vec![todo()], todo()),
-        f("strtod", vec![todo()], todo()),
-        f("strtof", vec![todo()], todo()),
-        f("strtold", vec![todo()], todo()),
-        f("strtoull", vec![todo()], todo()),
+        f("abort", vec![__todo], void), // depr
+        f("atof", vec![__todo], __todo),
+        f("atoi", vec![__todo], __todo),
+        f("atol_l", vec![__todo], __todo),
+        f("atol", vec![__todo], __todo),
+        f("atoll_l", vec![__todo], __todo),
+        f("atoll", vec![__todo], __todo),
+        f("calloc", vec![size, size], voidp),
+        f("exit", vec![int], void),
+        f("free", vec![voidp], void),
+        f("qsort", vec![voidp, size, size, __todo], void),
+        f("realloc", vec![voidp, size], voidp),
+        f("strtod", vec![__todo, __todo], __todo),
+        f("strtof", vec![__todo], __todo),
+        f("strtold", vec![__todo], __todo),
+        f("strtoull", vec![__todo, __todo, __todo], __todo),
         // math
-        c("M_PI", todo()),
-        f("acos", vec![just("double")], just("double")),
-        f("ceil", vec![just("double")], just("double")),
-        f("ceilf", vec![just("float")], just("float")),
-        f("cos", vec![just("double")], just("double")),
-        f("cosf", vec![just("float")], just("float")),
-        f("exp", vec![just("double")], just("double")),
-        f("expm1", vec![just("double")], just("double")),
-        f("fabs", vec![just("double")], just("double")),
-        f("floor", vec![just("double")], just("double")),
-        f("floorf", vec![just("float")], just("float")),
-        f("fmod", vec![just("double")], just("double")),
-        f("lgamma", vec![just("double")], just("double")),
-        f("log", vec![just("double")], just("double")),
-        f("log1p", vec![just("double")], just("double")),
-        f("round", vec![todo()], todo()),
-        f("roundf", vec![todo()], todo()),
-        f("sin", vec![todo()], todo()),
-        f("sinf", vec![todo()], todo()),
-        f("sqrt", vec![just("double")], just("double")),
-        f("sqrtf", vec![just("float")], just("float")),
+        c("M_PI", dbl),
+        f("acos", vec![dbl], dbl),
+        f("ceil", vec![dbl], dbl),
+        f("ceilf", vec![flt], flt),
+        f("cos", vec![dbl], dbl),
+        f("cosf", vec![flt], flt),
+        f("exp", vec![dbl], dbl),
+        f("expm1", vec![dbl], dbl),
+        f("fabs", vec![dbl], dbl),
+        f("floor", vec![dbl], dbl),
+        f("floorf", vec![flt], flt),
+        f("fmod", vec![dbl, dbl], dbl),
+        f("lgamma", vec![dbl], dbl),
+        f("log", vec![dbl], dbl),
+        f("log1p", vec![dbl], dbl),
+        f("round", vec![dbl], dbl),
+        f("roundf", vec![flt], flt),
+        f("sin", vec![dbl], dbl),
+        f("sinf", vec![flt], flt),
+        f("sqrt", vec![dbl], dbl),
+        f("sqrtf", vec![flt], flt),
         // string
-        f("memcmp", vec![todo()], todo()),
-        f("memcpy", vec![todo()], todo()),
-        f("memmove", vec![todo()], todo()),
-        f("memset", vec![todo()], todo()),
-        f("strcat", vec![todo()], todo()),
-        f("strchr", vec![todo()], todo()),
-        f("strcmp", vec![todo()], todo()),
-        f("strcpy", vec![todo()], todo()),
-        f("strerror", vec![todo()], todo()),
-        f("strlen", vec![justp("char")], just("size_t")),
-        f("strncat", vec![todo()], justp("char")),
-        f("strncmp", vec![todo()], todo()),
-        f("strncpy", vec![todo()], justp("char")),
-        f("strrchr", vec![todo()], todo()),
-        f("strstr", vec![todo()], todo()),
+        f("memcmp", vec![voidp, voidp, size], int),
+        f("memcpy", vec![voidp, voidp, size], void),
+        f("memmove", vec![voidp, voidp, size], void),
+        f("memset", vec![voidp, int, size], void),
+        f("strcat", vec![charp, charp], charp),
+        f("strchr", vec![charp, int], charp),
+        f("strcmp", vec![charp, charp], int),
+        f("strcpy", vec![charp, charp], charp),
+        f("strerror", vec![int], charp),
+        f("strlen", vec![charp], size),
+        f("strncat", vec![charp, charp, size], chr),
+        f("strncmp", vec![charp, charp, size], int),
+        f("strncpy", vec![charp, charp, size], chr),
+        f("strrchr", vec![charp, int], charp),
+        f("strstr", vec![charp, charp], charp),
         // time
         t("time_t"),
-        f("strftime", vec![todo()], todo()),
-        f("localtime", vec![todo()], todo()), // struct tm, depr
-        f("time", vec![todo()], just("time_t")), // depr
+        f("strftime", vec![__todo, __todo, __todo, __todo], __todo), // depr
+        f("localtime", vec![__todo], __todo),                        // struct tm, depr
+        f("time", vec![__todo], &just("time_t")),                    // depr
         // setjmp
         t("jmp_buf"),
-        f("longjmp", vec![todo()], todo()),
-        f("setjmp", vec![todo()], todo()),
+        f("longjmp", vec![__todo, __todo], __todo),
+        f("setjmp", vec![__todo], __todo),
         // stdarg
         t("va_list"),
-        f("va_end", vec![todo()], just("void")),
-        f("va_start", vec![todo()], just("void")),
+        f("va_end", vec![__todo], void),
+        f("va_start", vec![__todo, __todo], void),
         // signal
-        c("SIGABRT", just("int")),
-        c("SIGFPE", just("int")),
-        c("SIGILL", just("int")),
-        c("SIGINT", just("int")),
-        c("SIGSEGV", just("int")),
-        c("SIGTERM", just("int")),
-        c("SIG_DFL", just("int")),
-        c("SIG_IGN", just("int")),
-        f("signal", vec![todo()], just("int")), // depr
+        c("SIGABRT", int),
+        c("SIGFPE", int),
+        c("SIGILL", int),
+        c("SIGINT", int),
+        c("SIGSEGV", int),
+        c("SIGTERM", int),
+        c("SIG_DFL", int),
+        c("SIG_IGN", int),
+        f("signal", vec![__todo, __todo], int), // depr
         // assert
-        f("assert", vec![todo()], just("void")), // depr
+        f("assert", vec![__todo], void), // depr
         // errno
-        c("errno", just("int")),
+        c("errno", int),
         //
         // extensions
         //
-        f("nelem", vec![todo()], just("size_t")),
+        f("nelem", vec![__todo], size),
     ];
     let mut m = HashMap::new();
     for x in list {
