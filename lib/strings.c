@@ -151,8 +151,9 @@ pub bool eq(char *a, char *b) {
 	return strcmp(a, b) == 0;
 }
 
+// Returns true if ASCII string s is all uppercase.
 pub bool allupper(char *s) {
-    for (char *c = s; *c; c++) {
+    for (char *c = s; *c != '\0'; c++) {
         if (islower(*c)) {
             return false;
         }

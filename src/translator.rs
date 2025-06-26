@@ -1204,38 +1204,53 @@ fn tr_nsid(nsid: &nodes::NsName, ctx: &mut TrCtx) -> Result<String, BuildError> 
 // for (...) { ... }
 fn tr_for(x: &nodes::For, ctx: &mut TrCtx) -> Result<c::Statement, BuildError> {
     begin_scope(ctx);
-    let r = c::Statement::For {
-        init: match &x.init {
-            Some(init) => Some(match &init {
-                // i = 0
-                nodes::ForInit::Expr(x) => c::ForInit::Expr(tr_expr(x, ctx)?.val),
 
-                // int i = 0
-                nodes::ForInit::DeclLoopCounter {
-                    type_name,
-                    form,
-                    value,
-                } => {
-                    add_binding(
-                        ctx,
-                        &form.name,
-                        form.pos.clone(),
-                        false,
-                        typefrom_typename(&type_name, &form),
-                    );
-                    c::ForInit::DeclLoopCounter(c::VarDecl {
-                        typename: tr_typename(type_name, ctx)?,
-                        form: tr_form(form, ctx, false)?,
-                        value: tr_expr(value, ctx)?.val,
-                    })
-                }
-            }),
-            None => None,
-        },
-        condition: match &x.condition {
-            Some(x) => Some(tr_expr(&x, ctx)?.val),
-            None => None,
-        },
+    let init = match &x.init {
+        Some(init) => Some(match &init {
+            // i = 0
+            nodes::ForInit::Expr(x) => c::ForInit::Expr(tr_expr(x, ctx)?.val),
+
+            // int i = 0
+            nodes::ForInit::DeclLoopCounter {
+                type_name,
+                form,
+                value,
+            } => {
+                add_binding(
+                    ctx,
+                    &form.name,
+                    form.pos.clone(),
+                    false,
+                    typefrom_typename(&type_name, &form),
+                );
+                c::ForInit::DeclLoopCounter(c::VarDecl {
+                    typename: tr_typename(type_name, ctx)?,
+                    form: tr_form(form, ctx, false)?,
+                    value: tr_expr(value, ctx)?.val,
+                })
+            }
+        }),
+        None => None,
+    };
+
+    let condition = match &x.condition {
+        Some(x) => {
+            let c = tr_expr(&x, ctx)?;
+            if !types::is_booly(&c.typ) {
+                return Err(BuildError {
+                    message: format!("{} used as condition", &c.typ.fmt()),
+                    path: ctx.this_mod_head.filepath.clone(),
+                    pos: expression_pos(x).fmt(),
+                });
+            }
+            Some(c.val)
+        }
+        None => None,
+    };
+
+    let r = c::Statement::For {
+        init,
+        condition,
         action: match &x.action {
             Some(x) => Some(tr_expr(&x, ctx)?.val),
             None => None,

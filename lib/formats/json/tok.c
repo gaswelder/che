@@ -100,11 +100,9 @@ pub const char *currstr(json_tokenizer_t *l) {
 	return l->next.str;
 }
 
-/*
- * number = [ minus ] int [ frac ] [ exp ]
- */
-void readnum(json_tokenizer_t *l)
-{
+// Reads a number:
+// number = [ minus ] int [ frac ] [ exp ]
+void readnum(json_tokenizer_t *l) {
 	tokenizer.t *b = l->buf;
 	json_token_t *t = &l->next;
 
@@ -115,7 +113,7 @@ void readnum(json_tokenizer_t *l)
 	}
 
 	resetstr(l);
-	for (char *p = buf; *p; p++) {
+	for (char *p = buf; *p != '\0'; p++) {
 		if (!addchar(l, *p)) {
 			seterror(l, "out of memory");
 			return;

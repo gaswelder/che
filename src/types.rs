@@ -127,8 +127,9 @@ fn widest_type(x: &Type, y: &Type) -> Type {
     }
 }
 
-fn is_booly(a: &Type) -> bool {
-    match classify(a) {
+// Returns true if type t can be used in conditions.
+pub fn is_booly(t: &Type) -> bool {
+    match classify(t) {
         Class::PTR | Class::SINT | Class::UINT | Class::BOOL => true,
         Class::UNK => true,
         _ => false,

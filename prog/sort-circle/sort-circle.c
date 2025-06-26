@@ -395,7 +395,7 @@ float smoothstep(float lower, float upper, float x) {
 
 void draw_string(image.image_t *img, font.t f, const char *message) {
     image.rgba_t fontcolor = {255, 255, 255, 0};
-    for (int c = 0; message[c]; c++) {
+    for (int c = 0; message[c] != '\0'; c++) {
         int x = c * f.w + MESSAGE_PADDING;
         int y = MESSAGE_PADDING;
         for (int dy = 0; dy < f.h; dy++) {

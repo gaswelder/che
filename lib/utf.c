@@ -1697,25 +1697,26 @@ pub char *utfrrune(char *s, Rune c) {
 	}
 }
 
-/*
- * Returns a pointer to the first occurrence of the UTF string s2 as a UTF
- * substring of s1, or NULL if there is none. If s2 is the null string, returns
- * s1.
- */
+// Returns a pointer to the first occurrence of s2 in s1.
+// Returns NULL if s2 is null or does not contain s1.
 pub char *utfutf(char *s1, char *s2) {
-	char *p = NULL;
-	int f = 0;
-	int n2 = 0;
 	Rune r = 0;
-
 	int n1 = get_rune(&r, s2);
-	f = r;
-	if(f <= Runesync)		/* represents self */
+	if (r <= Runesync) {
+		// represents self
 		return strstr(s1, s2);
+	}
 
-	n2 = strlen(s2);
-	for(p=s1; p=utfrune(p, f); p+=n1)
-		if(strncmp(p, s2, n2) == 0)
+	int f = r;
+	int n2 = strlen(s2);
+	char *p = s1;
+	for (;;) {
+		p = utfrune(p, f);
+		if (!p) break;
+		if (strncmp(p, s2, n2) == 0) {
 			return p;
+		}
+		p += n1;
+	}
 	return NULL;
 }

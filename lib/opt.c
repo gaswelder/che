@@ -156,7 +156,7 @@ char **readarg(char **arg) {
 }
 
 void boolrun(char *arg) {
-	for (char *c = arg; *c; c++) {
+	for (char *c = arg; *c != '\0'; c++) {
 		optspec_t *flag = find(*c);
 		if (!flag && *c == 'h') {
 			usage();
