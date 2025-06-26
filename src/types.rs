@@ -68,7 +68,7 @@ fn classify(x: &Type) -> Class {
         x.fmt().as_str(),
         "int" | "int16_t" | "int32_t" | "int64_t" | "int8_t"
 		// sloppy
-		| "char" | "ptrdiff_t"
+		| "ptrdiff_t"
     ) {
         return Class::SINT;
     }
