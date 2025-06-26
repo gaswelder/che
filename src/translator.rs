@@ -775,8 +775,8 @@ fn tr_prefop(x: &nodes::PrefixOp, ctx: &mut TrCtx) -> Result<Typed<c::Expr>, Bui
         "++" | "--" => Ok(operand.typ),
         "!" => Ok(types::just("bool")),
         "-" | "~" => Ok(operand.typ),
-        "&" => Ok(types::addr(operand.typ)),
-        "*" => types::deref(&operand.typ),
+        "&" => Ok(types::typeof_addr(operand.typ)),
+        "*" => types::typeof_deref(&operand.typ),
         _ => {
             println!("op type = {}", operand.typ.fmt());
             dbg!(x);
