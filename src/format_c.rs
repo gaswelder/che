@@ -18,7 +18,7 @@ pub fn format_module(cm: &CModule) -> String {
             ModElem::DefEnum(x) => fmt_enumdef(x),
             ModElem::ForwardStruct(x) => format!("struct {};\n", x),
             ModElem::StuctDef(x) => format_compat_struct_definition(&x),
-            ModElem::ForwardFunc(x) => fmt_function_forward_declaration(&x),
+            ModElem::ForwardFunc(x) => fmt_forward_func(&x),
             ModElem::FuncDef(x) => fmt_func_def(&x),
         }
     }
@@ -47,10 +47,45 @@ fn fmt_func_def(x: &c::FuncDef) -> String {
         "{} {} {} {}",
         format_type(&x.type_name),
         form,
-        format_compat_function_parameters(&x.parameters),
+        fmt_func_params(&x.parameters),
         format_body(&x.body)
     );
     s
+}
+
+fn fmt_forward_func(x: &c::ForwardFunc) -> String {
+    let mut s = String::new();
+    let form = format_form(&x.form);
+    if x.is_static && form != "main" {
+        s += "static ";
+    }
+    s += &format!(
+        "{} {} {};\n",
+        format_type(&x.type_name),
+        form,
+        fmt_func_params(&x.parameters)
+    );
+    return s;
+}
+
+fn fmt_func_params(parameters: &FuncParams) -> String {
+    let mut s = String::from("(");
+    for (i, parameter) in parameters.list.iter().enumerate() {
+        if i > 0 {
+            s += ", ";
+        }
+        s += &format_type(&parameter.type_name);
+        s += " ";
+        s += &format_form(&parameter.form);
+    }
+    if parameters.variadic {
+        s += ", ...";
+    }
+    if parameters.list.len() == 0 {
+        s += "void";
+    }
+    s += ")";
+    return s;
 }
 
 fn format_union(node: &CUnion) -> String {
@@ -201,21 +236,6 @@ fn fmt_bare_typeform(node: &BareTypeform) -> String {
     format_type(&node.typename) + &"*".repeat(node.hops)
 }
 
-fn format_anonymous_parameters(params: &CAnonymousParameters) -> String {
-    let mut s = String::from("(");
-    for (i, form) in params.forms.iter().enumerate() {
-        if i > 0 {
-            s += ", ";
-        }
-        s += &fmt_bare_typeform(form);
-    }
-    if params.ellipsis {
-        s += ", ...";
-    }
-    s += ")";
-    return s;
-}
-
 fn is_binary_op(a: &Expr) -> Option<&String> {
     match a {
         Expr::BinaryOp(x) => Some(&x.op),
@@ -266,21 +286,6 @@ fn format_body(node: &CBody) -> String {
         s += "\n";
     }
     return format!("{{\n{}}}\n", indent(&s));
-}
-
-fn fmt_function_forward_declaration(x: &c::ForwardFunc) -> String {
-    let mut s = String::new();
-    let form = format_form(&x.form);
-    if x.is_static && form != "main" {
-        s += "static ";
-    }
-    s += &format!(
-        "{} {} {};\n",
-        format_type(&x.type_name),
-        form,
-        format_compat_function_parameters(&x.parameters)
-    );
-    return s;
 }
 
 fn format_typeform(x: &CTypeForm) -> String {
@@ -354,26 +359,6 @@ fn fmt_vardecl(x: &c::VarDecl) -> String {
         format_form(&x.form),
         fmt_expr(&x.value)
     )
-}
-
-fn format_compat_function_parameters(parameters: &FuncParams) -> String {
-    let mut s = String::from("(");
-    for (i, parameter) in parameters.list.iter().enumerate() {
-        if i > 0 {
-            s += ", ";
-        }
-        s += &format_type(&parameter.type_name);
-        s += " ";
-        s += &format_form(&parameter.form);
-    }
-    if parameters.variadic {
-        s += ", ...";
-    }
-    if parameters.list.len() == 0 {
-        s += "void";
-    }
-    s += ")";
-    return s;
 }
 
 fn format_literal(node: &CLiteral) -> String {
@@ -495,11 +480,30 @@ pub fn format_typedef(x: &c::Typedef) -> String {
     let t = &x.typename;
     let mut formstr = form.stars.clone() + &form.alias;
     if form.params.is_some() {
-        formstr += &format_anonymous_parameters(&form.params.as_ref().unwrap());
+        formstr += &fmt_anon_params(&form.params.as_ref().unwrap());
     }
     if form.size > 0 {
         formstr += &format!("[{}]", form.size);
     }
     let t = format_type(t);
     return format!("typedef {} {};\n", t, formstr);
+}
+
+fn fmt_anon_params(params: &CAnonymousParameters) -> String {
+    if params.forms.len() == 0 {
+        return String::from("(void)");
+    }
+
+    let mut s = String::from("(");
+    for (i, form) in params.forms.iter().enumerate() {
+        if i > 0 {
+            s += ", ";
+        }
+        s += &fmt_bare_typeform(form);
+    }
+    if params.ellipsis {
+        s += ", ...";
+    }
+    s += ")";
+    return s;
 }
