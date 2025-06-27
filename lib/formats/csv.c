@@ -78,7 +78,7 @@ pub void writeval(writer_t *w, const char *x) {
 	}
 	w->col++;
 	fputc('"', w->f);
-	while (*x) {
+	while (*x != '\0') {
 		if (*x == '"') fputc('\\', w->f);
 		fputc(*x, w->f);
 		x++;

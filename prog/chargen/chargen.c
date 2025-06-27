@@ -29,7 +29,7 @@ int main() {
 	}
 	log.logmsg("listening at %s", address);
 
-	while(1) {
+	while (true) {
 		net.net_t *s = net.net_accept(l);
 		if (!s) {
 			fprintf(stderr, "accept failed: %s\n", strerror(errno));
@@ -47,7 +47,7 @@ int main() {
 void *process_client(client_t *c) {
 	net.net_t *conn = c->out.conn;
 	char buf[256] = {};
-	while (1) {
+	while (true) {
 		if (net.read(conn, buf, sizeof(buf)) == 0) {
 			break;
 		}

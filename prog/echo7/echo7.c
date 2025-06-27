@@ -8,12 +8,13 @@
 int main() {
 	const char *addr = "0.0.0.0:7000";
 	net.net_t *l = net.net_listen("tcp", addr);
-	if(!l) {
-		panic("listen failed: %s", net.net_error());
+	if (!l) {
+		fprintf(stderr, "listen failed: %s\n", net.net_error());
+		return 1;
 	}
 	log.logmsg("listening at %s", addr);
 
-	while(1) {
+	while (true) {
 		net.net_t *s = net.net_accept(l);
 		if(!s) {
 			fprintf(stderr, "accept error: %s\n", net.net_error());
@@ -33,7 +34,7 @@ void *process_client(void *arg) {
 	uint8_t buf[256] = {0};
 	reader.t *r = net.getreader(c);
 
-	while(1) {
+	while (true) {
 		int len = reader.read(r, buf, sizeof(buf));
 		if (len < 0) {
 			fprintf(stderr, "read error: %s\n", strerror(errno));

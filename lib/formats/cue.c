@@ -97,12 +97,10 @@ pub cue_t *cue_parse(const char *s, char **err)
 		}
 	}
 
-	/*
-	 * Skip headers
-	 */
-	while(1) {
+	// Skip headers
+	while (true) {
 		read_command(&c);
-		if(!is_in(c.cmd, head_props)) {
+		if (!is_in(c.cmd, head_props)) {
 			break;
 		}
 		skip_line(c.buf);
@@ -157,7 +155,7 @@ bool read_track(context_t *c, cuetrack_t *track, char **err)
 
 	char val[500] = "";
 
-	while(1) {
+	while (true) {
 		read_command(c);
 		if(!is_in(c->cmd, track_props)) {
 			break;
@@ -207,15 +205,12 @@ bool read_track(context_t *c, cuetrack_t *track, char **err)
 	return true;
 }
 
-/*
- * Discards rest of the current line
- */
-void skip_line(tokenizer.t *b)
-{
-	while(tokenizer.more(b) && tokenizer.peek(b) != '\n') {
+// Discards rest of the current line
+void skip_line(tokenizer.t *b) {
+	while (tokenizer.more(b) && tokenizer.peek(b) != '\n') {
 		tokenizer.get(b);
 	}
-	if(tokenizer.peek(b) == '\n') {
+	if (tokenizer.peek(b) == '\n') {
 		tokenizer.get(b);
 	}
 }
@@ -239,14 +234,11 @@ void read_command(context_t *c)
 	}
 }
 
-/*
- * Returns true if 'cmd' is in the NULL-terminated list
- * of strings 'list'.
- */
-bool is_in(const char *cmd, const char **list)
-{
+// Returns true if 'cmd' is in the NULL-terminated list
+// of strings 'list'.
+bool is_in(const char *cmd, const char **list) {
 	const char **p = list;
-	while(*p) {
+	while (*p != NULL) {
 		if(strcmp(*p, cmd) == 0) {
 			return true;
 		}

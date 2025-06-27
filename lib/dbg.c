@@ -55,7 +55,7 @@ void parse_env() {
 	strcpy(copy, val);
 	char *p = copy;
 	list[n++] = p;
-	while (*p) {
+	while (*p != '\0') {
 		if (*p == ',') {
 			*p = '\0';
 			if (n == 9) break;

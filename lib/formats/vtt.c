@@ -59,7 +59,7 @@ pub bool read(reader_t *r) {
 void printnotags(char *dest, const char *s) {
 	const char *p = s;
 	bool tag = false;
-	while (*p) {
+	while (*p != '\0') {
 		if (tag) {
 			if (*p == '>') {
 				tag = false;

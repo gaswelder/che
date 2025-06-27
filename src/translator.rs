@@ -1418,8 +1418,16 @@ fn tr_vardecl(x: &nodes::VarDecl, ctx: &mut TrCtx) -> Result<c::Statement, Build
 
 // while (...) { ... }
 fn tr_while(x: &nodes::While, ctx: &mut TrCtx) -> Result<c::Statement, BuildError> {
+    let cond = tr_expr(&x.cond, ctx)?;
+    if !types::is_booly(&cond.typ) {
+        return Err(BuildError {
+            message: format!("{} used as condition", &cond.typ.fmt()),
+            path: ctx.this_mod_head.filepath.clone(),
+            pos: expression_pos(&x.cond).fmt(),
+        });
+    }
     Ok(c::Statement::While {
-        cond: tr_expr(&x.cond, ctx)?.val,
+        cond: cond.val,
         body: tr_body(&x.body, ctx)?,
     })
 }

@@ -36,7 +36,7 @@ int main( int argc, char *argv[]) {
 		}
 	}
 
-	while (*path) {
+	while (*path != NULL) {
 		if (fs.is_dir(*path)) {
 			path++;
 			continue;
@@ -94,11 +94,10 @@ bool ftrim(FILE *in, mem.mem_t *out, const char *fpath)
 	linebuf_t buf = {0};
 
 	bool changed = false;
-	while(1) {
-		/*
-		 * Read line from the input
-		 */
-		if(!read_line(in, &buf, fpath)) break;
+	while (true) {
+		if (!read_line(in, &buf, fpath)) {
+			break;
+		}
 
 		/*
 		 * If the line needs trimming, we just move eol_pos to
@@ -141,7 +140,7 @@ bool read_line(FILE *in, linebuf_t *buf, const char *fpath)
 
 	int len = 0;
 
-	while(1) {
+	while (true) {
 		int c = getc(in);
 		if(c == EOF) {
 			break;
@@ -224,7 +223,7 @@ int save(mem.mem_t *mem, const char *path )
 
 	mem.memrewind( mem );
 	int ok = 1;
-	while( 1 ) {
+	while (true) {
 		int ch = mem.memgetc( mem );
 		if(ch == EOF) {
 			break;

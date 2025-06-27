@@ -417,21 +417,18 @@ operator(int t)
 		lastwasand = true;	/* these look like operands */
 }
 
-void
-regerr2(char *s, int c)
-{
+void regerr2(char *s, int c) {
 	char buf[100] = {};
 	char *cp = buf;
-	while(*s)
+	while (*s != '\0') {
 		*cp++ = *s++;
+	}
 	*cp++ = c;
 	*cp = '\0';
 	rcerror(buf);
 }
 
-void
-cant(char *s)
-{
+void cant(char *s) {
 	char buf[100] = {};
 	strcpy(buf, "can't happen: ");
 	strcat(buf, s);

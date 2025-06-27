@@ -23,7 +23,7 @@ pub regex_t *init(const char *pattern) {
         return NULL;
     }
     const char *p = pattern;
-    while (*p) {
+    while (*p != '\0') {
         const char *q = parsetok(p, &r->pat[r->patlen]);
         if (q == p) {
             break;
@@ -58,7 +58,7 @@ const char *parsetok(const char *p, token_t *t) {
 
 pub size_t consume(regex_t *r, const char *s) {
     const char *p = s;
-    while (*p) {
+    while (*p != '\0') {
         if (!consumechar(r, *p)) {
             break;
         }

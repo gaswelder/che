@@ -284,7 +284,7 @@ pub int usage() {
 bool is_numeric(const char *s) {
 	const char *p = s;
 	if (*p == '-') p++;
-	while (*p) {
+	while (*p != '\0') {
 		if (!isdigit(*p)) return false;
 		p++;
 	}

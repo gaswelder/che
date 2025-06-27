@@ -109,7 +109,7 @@ void print_level(json.val_t *entry) {
 
 	// Print the level in lower case.
 	const char *p = level;
-	while (*p) {
+	while (*p != '\0') {
 		putchar(tolower(*p));
 		p++;
 	}

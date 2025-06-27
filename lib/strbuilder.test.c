@@ -6,7 +6,7 @@ int main() {
 
 	char *s = "0123456789";
 	char *p = s;
-	while (*p) {
+	while (*p != '\0') {
 		test.truth("addc", strbuilder.str_addc(sb, *p));
 		p++;
 	}

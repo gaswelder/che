@@ -89,17 +89,13 @@ pub Rune *runestrcat(Rune *s1, *s2) {
 }
 
 pub Rune* runestrchr(Rune *s, Rune c) {
-	Rune c0 = c;
-	Rune c1 = 0;
-
 	if ((int) c == 0) {
-		while(*s++) {}
-		return s-1;
+		while (*s != 0) s++;
+		return s;
 	}
-
-	while(c1 = *s++)
-		if(c1 == c0)
-			return s-1;
+	while (*s != 0) {
+		if (*s == c) return s;
+	}
 	return 0;
 }
 
@@ -107,18 +103,17 @@ pub Rune* runestrecpy(Rune *s1, Rune *es1, Rune *s2) {
 	if (s1 >= es1) {
 		return s1;
 	}
-
-	while(*s1++ = *s2++){
-		if(s1 == es1){
+	while (true) {
+		*s1 = *s2;
+		s1++;
+		s2++;
+		if (!*s2) break;
+		if (s1 == es1) {
 			*--s1 = '\0';
 			break;
 		}
 	}
 	return s1;
-}
-
-int runestrlen(Rune *s) {
-	return runestrchr(s, 0) - s;
 }
 
 /*
@@ -150,27 +145,31 @@ pub Rune* runestrstr(Rune *s1, *s2) {
 	return NULL;
 }
 
-pub Rune*
-runestrdup(Rune *s)
-{
-	Rune *ns = calloc(runestrlen(s) + 1, sizeof(Rune));
+// Allocates and returns a copy of the string s.
+pub Rune *runestrdup(Rune *s) {
+	int len = runestrchr(s, 0) - s;
+	Rune *ns = calloc(len + 1, sizeof(Rune));
 	if (!ns) {
-		return 0;
+		panic("calloc failed");
 	}
 	return runestrcpy(ns, s);
 }
 
-pub Rune*
-runestrncat(Rune *s1, *s2, int32_t n) {
+pub Rune* runestrncat(Rune *s1, *s2, int32_t n) {
 	Rune *os1 = NULL;
 
 	os1 = s1;
 	s1 = runestrchr(s1, 0);
-	while(*s1++ = *s2++)
-		if(--n < 0) {
+	while (true) {
+		*s1 = *s2;
+		s1++;
+		s2++;
+		if (!*s2) break;
+		if (--n < 0) {
 			s1[-1] = 0;
 			break;
 		}
+	}
 	return os1;
 }
 
@@ -213,7 +212,12 @@ pub int runestrcmp(Rune *s1, *s2) {
 
 pub Rune *runestrcpy(Rune *s1, *s2) {
 	Rune *os1 = s1;
-	while (*s1++ = *s2++) {}
+	while (true) {
+		*s1 = *s2;
+		s1++;
+		s2++;
+		if (!*s2) break;
+	}
 	return os1;
 }
 
@@ -221,7 +225,7 @@ pub Rune* runestrncpy(Rune *s1, *s2, int32_t n) {
 	Rune *os1 = s1;
 	for (int i = 0; i < n; i++) {
 		*s1++ = *s2++;
-		if(*s2 == 0) {
+		if (*s2 == 0) {
 			while (++i < n) {
 				*s1++ = 0;
 			}
@@ -231,14 +235,18 @@ pub Rune* runestrncpy(Rune *s1, *s2, int32_t n) {
 	return os1;
 }
 
+// Returns a pointer to the last occurence of c in string s.
 pub Rune* runestrrchr(Rune *s, Rune c) {
 	if (c == 0) {
 		return runestrchr(s, 0);
 	}
-
 	Rune *r = NULL;
-	while(s = runestrchr(s, c))
-		r = s++;
+	while (true) {
+		s = runestrchr(s, c);
+		if (!s) break;
+		r = s;
+		s++;
+	}
 	return r;
 }
 

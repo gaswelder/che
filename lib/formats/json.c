@@ -758,7 +758,7 @@ bool writebool(val_t *n, strbuilder.str *s) {
 // write an escaped quoted string s to f.
 pub void write_string(FILE *f, char *s) {
 	fputc('"', f);
-	while (*s) {
+	while (*s != '\0') {
 		switch (*s) {
 			case '\n': { fputc('\\', f); fputc('n', f); }
 			case '\t': { fputc('\\', f); fputc('t', f); }

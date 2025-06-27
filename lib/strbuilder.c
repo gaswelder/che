@@ -43,7 +43,7 @@ pub bool str_addc(str *s, int ch) {
  */
 pub bool adds(str *b, const char *s) {
 	const char *p = s;
-	while (*p) {
+	while (*p != '\0') {
 		if (!str_addc(b, *p)) {
 			return false;
 		}

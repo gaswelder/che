@@ -128,7 +128,7 @@ bool parse_times(mp3.mp3time_t *a, const char *spec, size_t maxsize) {
 	}
 
 	size_t i = 0;
-	while (*spec) {
+	while (*spec != '\0') {
 		if(i + 1 >= maxsize) {
 			fprintf(stderr, "maxsize reached");
 			return false;

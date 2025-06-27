@@ -351,7 +351,7 @@ void read_tag(xml *x)
 	}
 
 	t->nattrs = 0;
-	while(1) {
+	while(true) {
 		discard_spaces(x);
 		if(!isalpha(peek(x))) {
 			break;
@@ -429,9 +429,8 @@ int get(xml *x)
 	return c;
 }
 
-void discard_spaces(xml *x)
-{
-	while(isspace(peek(x))) {
+void discard_spaces(xml *x) {
+	while (isspace(peek(x))) {
 		get(x);
 	}
 }

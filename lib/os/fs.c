@@ -93,34 +93,45 @@ pub bool is_dir(const char *path) {
 	return OS.S_ISDIR(s.st_mode);
 }
 
-/*
- * Reads the file at 'path' and returns a pointer to the file's
- * contents in memory. The contents size is put into 'size'.
- */
+// Reads the file at path and returns a pointer to the
+// contents of the file in memory.
+// The size of the contents is put into 'size'.
+// Returns NULL if the file could not be read (check errno).
 pub char *readfile(const char *path, size_t *size) {
 	FILE *f = fopen(path, "rb");
 	if (!f) {
 		return NULL;
 	}
 
+	// Get the file's size so we know how much to allocate.
 	size_t len = 0;
 	if (!fsize(f, &len)) {
 		fclose(f);
 		return NULL;
 	}
 
+	// Allocate.
 	char *data = calloc(len, 1);
 	if (!data) {
 		fclose(f);
 		return NULL;
 	}
-	if (!readf(f, data, len)) {
-		fclose(f);
-		free( data );
-		return NULL;
+
+	// Read the file's bytes into memory.
+	char *p = data;
+	for (size_t i = 0; i < len; i++) {
+		int c = fgetc(f);
+		if (c == EOF) {
+			panic("unexpected end of file");
+		}
+		*p = c;
+		p++;
 	}
 	fclose(f);
+
+	// Put the size if requested.
 	if (size) *size = len;
+
 	return data;
 }
 
@@ -160,21 +171,6 @@ int fsize(FILE *f, size_t *s)
 	return 1;
 }
 
-int readf( FILE *f, char *data, size_t size)
-{
-	int c = 0;
-	while( size > 0 ) {
-		c = fgetc(f);
-		if( feof(f) ) {
-			return 0;
-		}
-		*data = c;
-		data++;
-		size--;
-	}
-	return 1;
-}
-
 pub bool writefile(const char *path, const char *data, size_t n) {
 	FILE *f = fopen(path, "wb");
 	if (!f) {
@@ -188,37 +184,6 @@ pub bool writefile(const char *path, const char *data, size_t n) {
 		return false;
 	}
 	return true;
-}
-
-
-pub int append_file( const char *path_to, const char *path_from )
-{
-	FILE *from = fopen( path_from, "rb" );
-	if( !from ) {
-		return 0;
-	}
-
-	FILE *to = fopen( path_to, "ab" );
-	if( !to ) {
-		fclose( from );
-		return 0;
-	}
-
-	char buf[BUFSIZ] = {};
-	int ok = 1;
-	while( 1 ) {
-		size_t len = fread( buf, 1, sizeof(buf), from );
-		if( !len ) {
-			break;
-		}
-		if( fwrite( buf, 1, len, to ) < len ) {
-			ok = 0;
-			break;
-		}
-	}
-	fclose( from );
-	fclose( to );
-	return ok;
 }
 
 pub bool file_exists(const char *path) {
@@ -249,10 +214,11 @@ pub const char *fileext(const char *filepath) {
     return filepath;
 }
 
+// Returns "base name" of a file path.
 pub const char *basename(const char *path) {
 	const char *last = path;
 	const char *p = path;
-	while (*p) {
+	while (*p != '\0') {
 		if (*p == '/') last = p+1;
 		p++;
 	}
@@ -268,7 +234,7 @@ pub bool dirname(const char *path, char *buf, size_t bufsize) {
     strcpy(buf, path);
     char *p = buf;
     char *last_slash = NULL;
-    while (*p) {
+    while (*p != '\0') {
         if (*p == '/') last_slash = p;
         p++;
     }

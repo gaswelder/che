@@ -210,16 +210,15 @@ bool parse_query(request_t *r) {
     while (*p != '\0' && *p != '?') {
         *pathp++ = *p++;
     }
+
     // Read query string
     if (*p == '?') {
         p++;
         char *qsp = r->query;
-        while (*p) {
+        while (*p != '\0') {
             *qsp++ = *p++;
         }
     }
-
-    // strings.rtrim(r->path, "/");
 
     // Extract filename from path. "/path/blog/file1.html" ==> "file1.html"
     const char *filename = strrchr(r->path, '/');

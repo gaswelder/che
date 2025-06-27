@@ -253,7 +253,7 @@ void swap(int *a, int i, j) {
 
 void sort_bubble(image.image_t *img, int *array) {
     int c = 0;
-    while (1) {
+    while (true) {
         c = 0;
         for (int i = 1; i < global_N; i++) {
             if (array[i - 1] > array[i]) {
@@ -268,7 +268,7 @@ void sort_bubble(image.image_t *img, int *array) {
 
 void sort_odd_even(image.image_t *img, int *array) {
     int c = 0;
-    while (1) {
+    while (true) {
         c = 0;
         for(int i = 1; i < global_N - 1; i += 2) {
             if (array[i] > array[i + 1]) {
@@ -346,7 +346,7 @@ void sort_radix_lsd(image.image_t *img, int *array, int b) {
     for (int d = 0; total; d++) {
         total = -1;
         /* Odd-even sort on the current digit */
-        while (1) {
+        while (true) {
             total++;
             c = 0;
             for(int i = 1; i < global_N - 1; i += 2) {
