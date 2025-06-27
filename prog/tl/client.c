@@ -1,7 +1,7 @@
 #import os/exec
 #import tokenizer
 #import strings
-#import os/io
+#import os/net
 
 typedef {
     FILE *out;
@@ -24,9 +24,9 @@ client_t tl_exec(char **args) {
 
     char **env = {NULL};
     exec.proc_t *child = exec.spawn(argv, env);
-    io.close(child->stdin);
+    close_(child->stdin);
     client_t r = {
-        .out = io.asfile(child->stdout, "rb"),
+        .out = asfile(child->stdout, "rb"),
         .child = child
     };
     return r;
@@ -152,7 +152,7 @@ torr_t parseline(char *line)
         strcpy(t.status, "Up & Down");
     }
     else word(b, t.status, sizeof(t.status));
-    
+
     // "Name": the remainder
     rest(b, t.name, sizeof(t.name));
     return t;
@@ -193,4 +193,49 @@ void rest(tokenizer.t *b, char *p, size_t n) {
         n--;
         *p++ = tokenizer.get(b);
     }
+}
+
+enum {
+    TYPE_FD,
+    TYPE_NET,
+    TYPE_FILE
+}
+
+typedef {
+    char data[4096];
+    size_t size;
+} buf_t;
+
+typedef {
+    int type;
+    int fd;
+    net.net_t *conn;
+    FILE *file;
+} handle_t;
+
+FILE *asfile(handle_t *h, const char *mode) {
+    if (h->type == TYPE_FD) {
+        return OS.fdopen(h->fd, mode);
+    }
+    panic("unhandled handle type: %d", h->type);
+}
+
+bool close_(handle_t *h) {
+    if (h->type == TYPE_FILE) {
+        if (fclose(h->file) != 0) {
+            return false;
+        }
+        free(h);
+        return true;
+    }
+    if (h->type == TYPE_NET) {
+        net.close(h->conn);
+        free(h);
+        return true;
+    }
+    if (h->type == TYPE_FD) {
+        OS.close(h->fd);
+        return true;
+    }
+    panic("unhandled type");
 }
