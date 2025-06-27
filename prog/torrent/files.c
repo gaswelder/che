@@ -50,7 +50,7 @@ vec.t *map(torrent.info_t *tf, range_t s) {
         size_t af = lib.maxsz(f1, a);
         size_t bf = lib.minsz(f2, b);
 
-        file_slice_t *x = vec.push(l);
+        file_slice_t *x = vec.alloc(l);
         strcpy(x->path, f->path);
         x->begin = af - f1;
         x->length = bf - af;
@@ -67,7 +67,7 @@ pub vec.t *get_file_list(torrent.info_t *tf) {
 
     if (tf->length > 0) {
         // single file
-        file_t *f = vec.push(l);
+        file_t *f = vec.alloc(l);
         strcpy(f->path, tf->name);
         f->endpos = tf->length;
         return l;
@@ -75,7 +75,7 @@ pub vec.t *get_file_list(torrent.info_t *tf) {
 
     size_t pos = 0;
     for (size_t i = 0; i < tf->nfiles; i++) {
-        file_t *f = vec.push(l);
+        file_t *f = vec.alloc(l);
         strcpy(f->path, tf->name);
         strcat(f->path, "/");
         strcat(f->path, tf->files[i].path);

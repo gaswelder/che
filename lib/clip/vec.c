@@ -23,9 +23,15 @@ pub void free(t *l) {
     OS.free(l);
 }
 
-// Appends a new entry to the end of the vec and returns
-// a pointer to the entry. Panics if memory allocation fails.
-pub void *push(t *l) {
+// Creates a new entry at the end of the list and copies data from x.
+pub void push(t *l, void *x) {
+	void *pos = alloc(l);
+    memcpy(pos, x, l->itemsize);
+}
+
+// Creates a new entry at the end and returns its address.
+pub void *alloc(t *l) {
+	// Grow as needed.
     if (l->len == l->cap) {
         size_t newcap = l->cap * 2;
         if (newcap == 0) newcap = 16;
@@ -37,7 +43,7 @@ pub void *push(t *l) {
         l->data = newdata;
         memset(index(l, l->len), 0, l->itemsize * (l->cap - l->len));
     }
-    return index(l, l->len++);
+	return index(l, l->len++);
 }
 
 // Returns a pointer to i-th item in the vec.

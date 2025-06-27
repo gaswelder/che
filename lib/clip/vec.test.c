@@ -4,11 +4,10 @@
 int main() {
     vec.t *l = vec.new(sizeof(int));
     for (int i = 0; i < 10000; i++) {
-        int *x = vec.push(l);
-        *x = i;
+		vec.push(l, &i);
     }
     for (int i = 0; i < 10000; i++) {
-        int *x = vec.index(l, i);
+		int *x = vec.index(l, i);
         test.truth("eq", i == *x);
     }
     vec.free(l);
