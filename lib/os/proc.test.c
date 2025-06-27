@@ -1,4 +1,4 @@
-#import os/exec
+#import os/proc
 #import test
 #import reader
 #import writer
@@ -12,7 +12,7 @@ int main() {
 void testcat() {
 	char *argv[] = {"/bin/cat", NULL};
     char *env[] = {NULL};
-    exec.proc_t *p = exec.spawn(argv, env);
+    proc.proc_t *p = proc.spawn(argv, env);
     if (!p) {
         fprintf(stderr, "spawn failed: %s\n", strerror(errno));
         exit(1);
@@ -31,7 +31,7 @@ void testecho() {
 	// Spawn the process.
 	char *argv[] = {"/bin/echo", "this is a test from /bin/echo", NULL};
     char *env[] = {NULL};
-    exec.proc_t *p = exec.spawn(argv, env);
+    proc.proc_t *p = proc.spawn(argv, env);
     if (!p) {
         fprintf(stderr, "spawn failed: %s\n", strerror(errno));
         exit(1);
@@ -53,7 +53,7 @@ void testecho() {
 	test.streq((char *)buf, "this is a test from /bin/echo\n");
 
     int status = 0;
-    if (!exec.wait(p, &status)) {
+    if (!proc.wait(p, &status)) {
         fprintf(stderr, "wait failed: %s\n", strerror(errno));
         exit(1);
     }

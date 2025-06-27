@@ -1,11 +1,11 @@
-#import os/exec
+#import os/proc
 #import tokenizer
 #import strings
 #import os/net
 
 typedef {
     FILE *out;
-    exec.proc_t *child;
+    proc.proc_t *child;
 } client_t;
 
 client_t tl_exec(char **args) {
@@ -23,7 +23,7 @@ client_t tl_exec(char **args) {
     argv[i++] = NULL;
 
     char **env = {NULL};
-    exec.proc_t *child = exec.spawn(argv, env);
+    proc.proc_t *child = proc.spawn(argv, env);
     close_(child->stdin);
     client_t r = {
         .out = asfile(child->stdout, "rb"),
@@ -34,7 +34,7 @@ client_t tl_exec(char **args) {
 
 void tl_close(client_t c) {
     int status = 0;
-    if (!exec.wait(c.child, &status)) {
+    if (!proc.wait(c.child, &status)) {
         fprintf(stderr, "wait failed: %s\n", strerror(errno));
     }
 }

@@ -1,13 +1,13 @@
-#import protocols/http
-#import os/exec
 #import os/net
+#import os/proc
 #import os/self
 #import protocols/cgi
+#import protocols/http
 #import reader
 #import strings
 
 pub void cgi(char *path, http.request_t *req, net.net_t *conn) {
-	exec.proc_t *proc = start(path, req);
+	proc.proc_t *proc = start(path, req);
 
 	// Read the script's output.
 	char output[4096] = {};
@@ -18,7 +18,7 @@ pub void cgi(char *path, http.request_t *req, net.net_t *conn) {
 	size_t output_size = (size_t)r;
 
 	int status = 0;
-	exec.wait(proc, &status);
+	proc.wait(proc, &status);
 	if (status != 0) {
 		panic("process exited with %d\n", status);
 	}
@@ -50,7 +50,7 @@ pub void cgi(char *path, http.request_t *req, net.net_t *conn) {
 	net.write(conn, output + headsize, output_size - headsize);
 }
 
-exec.proc_t *start(char *path, http.request_t *req) {
+proc.proc_t *start(char *path, http.request_t *req) {
 	char hostname[1024] = {0};
 	if (!self.gethostname(hostname, sizeof(hostname))) {
 		panic("failed to get hostname: %s", strerror(errno));
@@ -76,7 +76,7 @@ exec.proc_t *start(char *path, http.request_t *req) {
 	*p++ = strings.newstr("REMOTE_PORT=%s", "todo");
 
 	char *args[] = {path, NULL};
-	exec.proc_t *proc = exec.spawn(args, env);
+	proc.proc_t *proc = proc.spawn(args, env);
 	if (!proc) {
 		panic("spawn failed");
 	}
