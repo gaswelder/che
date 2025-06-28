@@ -1,6 +1,6 @@
 #import formats/bencode
 #import formats/torrent
-#import os/ioloop
+#import ioloop.c
 #import protocols/http
 #import reader
 #import writer

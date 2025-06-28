@@ -1,7 +1,7 @@
 #import dbg
 #import files.c
 #import formats/torrent
-#import os/ioloop
+#import ioloop.c
 #import peerproto.c
 #import reader
 #import writer

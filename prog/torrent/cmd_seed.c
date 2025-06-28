@@ -2,7 +2,7 @@
 #import formats/torrent
 #import lib.c
 #import opt
-#import os/ioloop
+#import ioloop.c
 #import peer.c
 #import tracker.c
 
