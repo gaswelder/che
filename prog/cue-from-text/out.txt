@@ -1,0 +1,25 @@
+FILE "A Mind Confused - A Mind Confused (1995).mp3" MP3
+TRACK 01 AUDIO
+  TITLE "Eternal Sleep"
+  PERFORMER "A Mind Confused"
+  INDEX 01 00:00:00
+TRACK 02 AUDIO
+  TITLE "Dreams of an Erotic Salvation"
+  PERFORMER "A Mind Confused"
+  INDEX 01 04:27:00
+TRACK 03 AUDIO
+  TITLE "A Mind Confused"
+  PERFORMER "A Mind Confused"
+  INDEX 01 08:57:00
+TRACK 04 AUDIO
+  TITLE "Poems of a Darker Soul"
+  PERFORMER "A Mind Confused"
+  INDEX 01 14:07:00
+TRACK 05 AUDIO
+  TITLE "Morningstar in Zenith"
+  PERFORMER "A Mind Confused"
+  INDEX 01 16:26:00
+TRACK 06 AUDIO
+  TITLE "Forever Autumn"
+  PERFORMER "A Mind Confused"
+  INDEX 01 21:33:00
