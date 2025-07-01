@@ -111,7 +111,8 @@ bool ishidden(FILE *f, char *name) {
     bool r = false;
     char buf[1000] = {};
     while (fgets(buf, sizeof(buf), f)) {
-        if (!strcmp(strings.trim(buf), name)) {
+		strings.trim(buf);
+        if (!strcmp(buf, name)) {
             r = true;
             break;
         }
@@ -200,7 +201,9 @@ int cmd_unhide(int argc, char **argv) {
 void show(client.torr_t *tt, size_t len, FILE *f, *tmp, char **ids) {
     char buf[1000] = {};
     while (fgets(buf, sizeof(buf), f)) {
-        char *name = strings.trim(buf);
+        strings.trim(buf);
+		char *name = buf;
+
         /*
          * Find the torrent with this name
          */

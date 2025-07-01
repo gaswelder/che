@@ -5,7 +5,7 @@ int main() {
     char *sample = strings.newstr("%s", "   123 \r\n ");
 
     // trim
-    sample = strings.trim(sample);
+    strings.trim(sample);
     test.streq(sample, "123");
 
     // casecmp

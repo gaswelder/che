@@ -33,14 +33,15 @@ pub char *newsubstr(const char *s, int p1, p2) {
 }
 
 // Trims spaces at both sides of s.
-pub char *trim(char *s) {
+pub void trim(char *s) {
 	char *left = s;
-	while (*left != '\0' && isspace(*left)) left++;
+	while (*left != '\0' && isspace(*left)) {
+		left++;
+	}
 	if (left > s) {
 		memmove(s, left, strlen(left));
 	}
 	rtrim(s, " \t\r\n");
-	return s;
 }
 
 // Trims all characters from the set at the end of string s by inserting zeros.
