@@ -297,17 +297,13 @@ If it returns a non-zero exit status, the runner will display the test as failed
 
 ## OS interoperability
 
-Some libraries (for example, [net](lib/os/net.c)) depend on POSIX, so not
-everything can be compiled on Windows or Mac. There was multi-platform support
-initially, but that's not a goal just yet.
-
-If a module needs to call an os function, it will have to include the C headers,
-and add hints for types and functions. To avoid name conflicts with the OS
-functions, the special OS namespace can be used:
+If a module needs to call an OS function, it will have to include the C headers and add hints for types.
+Also, the special `OS` namespace is used for all functions and constants that are not declared in source code
+but visible to the underlying C compiler because they come from OS headers:
 
 ```c
 // this is a wrapper around the OS's unlink.
-pub bool unlink(const char *path) {
+pub bool delete_file(const char *path) {
     return OS.unlink(path) == 0;
 }
 ```
