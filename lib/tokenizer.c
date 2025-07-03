@@ -142,17 +142,6 @@ pub char *buf_read_set(t *b, const char *set) {
 	return s;
 }
 
-pub bool buf_skip_literal(t *b, const char *literal) {
-	if (!buf_literal_follows(b, literal)) {
-		return false;
-	}
-	size_t n = strlen(literal);
-	for (size_t i = 0; i < n; i++) {
-		get(b);
-	}
-	return true;
-}
-
 pub bool spaces(t *b) {
 	int n = 0;
 	while (isspace(peek(b))) {
@@ -236,10 +225,21 @@ pub bool num(t *b, char *buf, size_t n) {
 	return true;
 }
 
-/*
- * Returns true if the given literal is next in the buffer.
- */
-pub bool buf_literal_follows(t *b, const char *literal) {
+// Skips a literal string and returns true.
+// Returns false if the literal does not follow.
+pub bool skip_literal(t *b, const char *literal) {
+	if (!literal_follows(b, literal)) {
+		return false;
+	}
+	size_t n = strlen(literal);
+	for (size_t i = 0; i < n; i++) {
+		get(b);
+	}
+	return true;
+}
+
+// Returns true if the given literal is next in the buffer.
+pub bool literal_follows(t *b, const char *literal) {
 	_prefetch(b, strlen(literal));
 	if (b->cachesize < strlen(literal)) {
 		return false;
@@ -269,7 +269,7 @@ pub char *buf_skip_until(t *b, const char *literal) {
 	char *p = s;
 
 	while (more(b)) {
-		if (buf_literal_follows(b, literal)) {
+		if (literal_follows(b, literal)) {
 			break;
 		}
 		*p = get(b);

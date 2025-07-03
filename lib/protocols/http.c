@@ -240,7 +240,7 @@ pub bool parse_response(reader.t *re, response_t *r) {
 		return false;
 	}
 	while (tokenizer.more(b)) {
-		if (tokenizer.buf_skip_literal(b, "\r\n")) {
+		if (tokenizer.skip_literal(b, "\r\n")) {
 			break;
 		}
 		header_t *h = &r->headers[r->nheaders++];
@@ -315,7 +315,7 @@ bool read_status_line(tokenizer.t *b, response_t *r) {
 	}
 
 	// eol
-	if (!tokenizer.buf_skip_literal(b, "\r\n")) {
+	if (!tokenizer.skip_literal(b, "\r\n")) {
 		return false;
 	}
 	return true;
@@ -327,7 +327,7 @@ bool read_header(tokenizer.t *b, header_t *h) {
 		*tmp++ = tokenizer.get(b);
 	}
 	// : space
-	if (!tokenizer.buf_skip_literal(b, ": ")) {
+	if (!tokenizer.skip_literal(b, ": ")) {
 		return false;
 	}
 	// value
@@ -336,7 +336,7 @@ bool read_header(tokenizer.t *b, header_t *h) {
 		*tmp++ = tokenizer.get(b);
 	}
 	// eol
-	if (!tokenizer.buf_skip_literal(b, "\r\n")) {
+	if (!tokenizer.skip_literal(b, "\r\n")) {
 		return false;
 	}
 	return true;
@@ -355,20 +355,20 @@ pub bool read_request(reader.t *br, request_t *r) {
 		&& tokenizer.read_until(b, ' ', r->uri, sizeof(r->uri))
 		&& tokenizer.buf_skip(b, ' ')
 		&& tokenizer.read_until(b, '\r', r->version, sizeof(r->version))
-		&& tokenizer.buf_skip_literal(b, "\r\n");
+		&& tokenizer.skip_literal(b, "\r\n");
 	ok = ok && parse_query(r);
 
 	// Header: Value\r\n ...
 	while (ok) {
 		// Empty line terminates the headers list.
-		if (tokenizer.buf_skip_literal(b, "\r\n")) break;
+		if (tokenizer.skip_literal(b, "\r\n")) break;
 
 		header_t *h = &r->headers[r->nheaders];
 		ok = true
 			&& tokenizer.read_until(b, ':', h->name, sizeof(h->name))
-			&& tokenizer.buf_skip_literal(b, ": ")
+			&& tokenizer.skip_literal(b, ": ")
 			&& tokenizer.read_until(b, '\r', h->value, sizeof(h->value))
-			&& tokenizer.buf_skip_literal(b, "\r\n");
+			&& tokenizer.skip_literal(b, "\r\n");
 		if (ok) r->nheaders++;
 	}
 	tokenizer.free(b);

@@ -150,7 +150,7 @@ torr_t parseline(char *line)
     word(b, t.down, sizeof(t.down));
     word(b, t.ratio, sizeof(t.ratio));
     // "Status": Idle | Stopped | Up & Down
-    if (tokenizer.buf_skip_literal(b, "Up & Down")) {
+    if (tokenizer.skip_literal(b, "Up & Down")) {
         strcpy(t.status, "Up & Down");
     }
     else word(b, t.status, sizeof(t.status));

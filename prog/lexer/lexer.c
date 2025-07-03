@@ -135,11 +135,11 @@ tok_t *lexer_read(lexer_t *l) {
 		// puts("char");
 		return read_char(b);
 	}
-	if (tokenizer.buf_literal_follows(b, "/*")) {
+	if (tokenizer.literal_follows(b, "/*")) {
 		// puts("mcomm");
 		return read_multiline_comment(b);
 	}
-	if (tokenizer.buf_literal_follows(b, "//")) {
+	if (tokenizer.literal_follows(b, "//")) {
 		// puts("comm");
 		return read_line_comment(b);
 	}
@@ -147,14 +147,14 @@ tok_t *lexer_read(lexer_t *l) {
 	const char *pos = tokenizer.posstr(b);
 	for (size_t i = 0; i < nelem(keywords); i++) {
 		const char *keyword = keywords[i];
-		if (tokenizer.buf_skip_literal(b, keyword)) {
+		if (tokenizer.skip_literal(b, keyword)) {
 			// puts("keyword");
 			return tok_make(strings.newstr("%s", keyword), NULL, pos);
 		}
 	}
 	for (size_t i = 0; i < nelem(symbols); i++) {
 		const char *symbol = symbols[i];
-		if (tokenizer.buf_skip_literal(b, symbol)) {
+		if (tokenizer.skip_literal(b, symbol)) {
 			// puts("symbol");
 			return tok_make(strings.newstr("%s", symbol), NULL, pos);
 		}
@@ -174,7 +174,7 @@ tok_t *read_macro(tokenizer.t *b) {
 
 tok_t *read_number(tokenizer.t *b) {
 	// If "0x" follows, read a hexademical constant.
-	if (tokenizer.buf_skip_literal(b, "0x")) {
+	if (tokenizer.skip_literal(b, "0x")) {
 		return read_hex_number(b);
 	}
 
@@ -281,9 +281,9 @@ tok_t *read_char(tokenizer.t *b) {
 
 tok_t *read_multiline_comment(tokenizer.t *b) {
 	const char *pos = tokenizer.posstr(b);
-	tokenizer.buf_skip_literal(b, "/*");
+	tokenizer.skip_literal(b, "/*");
 	char *comment = tokenizer.buf_skip_until(b, "*/");
-	if (!tokenizer.buf_skip_literal(b, "*/")) {
+	if (!tokenizer.skip_literal(b, "*/")) {
 		free(comment);
 		return tok_make("error", strings.newstr("'*/' expected"), pos);
 	}
@@ -292,7 +292,7 @@ tok_t *read_multiline_comment(tokenizer.t *b) {
 
 tok_t *read_line_comment(tokenizer.t *b) {
 	const char *pos = tokenizer.posstr(b);
-	tokenizer.buf_skip_literal(b, "//");
+	tokenizer.skip_literal(b, "//");
 	return tok_make("comment", tokenizer.buf_skip_until(b, "\n"), pos);
 }
 
