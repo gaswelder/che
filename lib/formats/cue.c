@@ -3,210 +3,116 @@
  * http://wiki.hydrogenaud.io/index.php?title=Cue_sheet
  */
 #import tokenizer
-#import strings
+#import time
 
-/*
- * Track info: title and position in microseconds
- */
+#define MAXTRACKS 100
+
 pub typedef {
 	char title[300];
-	uint64_t pos_usec;
-} cuetrack_t;
-
-/*
- * Sheet structure, the topmost element
- * with preallocated array of track info structures.
- */
-const int MAXTRACKS = 100;
+	time.duration_t pos;
+} track_t;
 
 pub typedef {
-	cuetrack_t tracks[100];
+	track_t tracks[100];
 	int ntracks;
 } cue_t;
 
-/*
- * Parsing context.
- * 'cmd' is the following CUE command (like "TRACK" or "TITLE")
- */
-typedef {
-	char cmd[40];
-	tokenizer.t *buf;
-} context_t;
-
-/*
- * Recognized header commands
- */
-const char *head_props[] = {
-	"REM",
-	"PERFORMER",
-	"DISCID",
-	"TITLE",
-	NULL
-};
-
-pub void cue_free(cue_t *c)
-{
+pub void cue_free(cue_t *c) {
 	free(c);
 }
 
-char __error[1000] = {};
+// Parses cue sheet in the string s.
+// Returns a cue_t instance.
+// The caller must check cur->error for errors.
+pub cue_t *cue_parse(const char *s) {
+	cue_t *c = calloc(1, sizeof(cue_t));
+	if (!c) panic("calloc failed");
 
-/**
- * Returns a pointer to a static buffer with the given formatted message.
- * If the message is too long, it's truncated.
- */
-char *makeerr(const char *fmt, ...) {
-	va_list l = {0};
-	va_start(l, fmt);
-	vsnprintf(__error, sizeof(__error)-1, fmt, l);
-	va_end(l);
-	return __error;
+	tokenizer.t *b = tokenizer.from_str(s);
+
+	if (!skip_utf_bom(b)) {
+		panic("Unknown byte-order mark");
+	}
+
+	char buf[500] = {};
+
+	tok(b, "FILE");
+	title(b, buf, sizeof(buf));
+	tok(b, "MP3");
+	line(b);
+
+	while (tokenizer.more(b)) {
+		if (c->ntracks == MAXTRACKS) {
+			panic("too many tracks (limit = %d)", MAXTRACKS);
+		}
+
+		track_t *t = &c->tracks[c->ntracks++];
+
+		// TRACK 01 AUDIO
+		tok(b, "TRACK");
+		num(b);
+		tok(b, "AUDIO");
+		line(b);
+
+		// TITLE "..."
+		tok(b, "TITLE");
+		title(b, t->title, sizeof(t->title));
+		line(b);
+
+		// PERFORMER "..."
+		tok(b, "PERFORMER");
+		title(b, buf, sizeof(buf));
+		line(b);
+
+		// INDEX 01 01:12:00
+		tok(b, "INDEX");
+		index_t r = {};
+		index(b, &r);
+		t->pos = index_pos(&r);
+	}
+
+	tokenizer.free(b);
+	return c;
 }
 
-/*
- * Parses the given string, returns a 'cue_t' pointer.
- * Returns NULL on error and sets `err` to point to an error message.
- */
-pub cue_t *cue_parse(const char *s, char **err)
-{
-	context_t c = {};
-
-	c.buf = tokenizer.from_str(s);
-	if (!c.buf) {
-		*err = strerror(errno);
-		return NULL;
+// Skips a specific token or panics.
+void tok(tokenizer.t *b, const char *s) {
+	tokenizer.hspaces(b);
+	if (!tokenizer.skip_literal(b, s)) {
+		panic("expected %s", s);
 	}
-
-	cue_t *cue = calloc(1, sizeof(cue_t));
-	if (!cue) {
-		tokenizer.free(c.buf);
-		*err = strerror(errno);
-		return NULL;
-	}
-
-	/*
-	 * Skip the UTF-8 mark
-	 */
-	if((uint8_t) tokenizer.peek(c.buf) == 0xEF) {
-		tokenizer.get(c.buf);
-		if((uint8_t) tokenizer.get(c.buf) != 0xBB || (uint8_t) tokenizer.get(c.buf) != 0xBF) {
-			free(cue);
-			tokenizer.free(c.buf);
-			*err = "Unknown byte-order mark";
-			return NULL;
-		}
-	}
-
-	// Skip headers
-	while (true) {
-		read_command(&c);
-		if (!is_in(c.cmd, head_props)) {
-			break;
-		}
-		skip_line(c.buf);
-	}
-
-	/*
-	 * Read file->track trees
-	 */
-	while(strcmp(c.cmd, "FILE") == 0) {
-		skip_line(c.buf);
-		read_command(&c);
-		while(strcmp(c.cmd, "TRACK") == 0) {
-			if(cue->ntracks == MAXTRACKS) {
-				free(cue);
-				tokenizer.free(c.buf);
-				*err = makeerr("too many tracks (limit = %d)", MAXTRACKS);
-				return NULL;
-			}
-			if (!read_track(&c, &cue->tracks[cue->ntracks], err)) {
-				free(cue);
-				tokenizer.free(c.buf);
-				return NULL;
-			}
-			cue->ntracks++;
-		}
-	}
-
-	if(tokenizer.more(c.buf)) {
-		free(cue);
-		tokenizer.free(c.buf);
-		*err = makeerr("unexpected command: '%s'", c.cmd);
-		return NULL;
-	}
-
-	tokenizer.free(c.buf);
-	return cue;
+	tokenizer.hspaces(b);
 }
 
-/*
- * Recognized title commands
- */
-const char *track_props[] = {
-	"TITLE",
-	"PERFORMER",
-	"INDEX",
-	NULL
-};
-
-bool read_track(context_t *c, cuetrack_t *track, char **err)
-{
-	skip_line(c->buf);
-
-	char val[500] = "";
-
-	while (true) {
-		read_command(c);
-		if(!is_in(c->cmd, track_props)) {
-			break;
-		}
-
-		int i = 0;
-		while(tokenizer.more(c->buf)) {
-			int ch = tokenizer.get(c->buf);
-			val[i++] = ch;
-			if(ch == '\n') break;
-		}
-		val[i] = '\0';
-
-		if (strcmp(c->cmd, "TITLE") == 0) {
-			// Trim double quotes.
-			if (val[0] != '"') {
-				*err = makeerr("double quotes expected in %s", val);
-				return false;
-			}
-			strings.rtrim(val, "\"");
-			strcpy(track->title, val + 1);
-			continue;
-		}
-
-		if(strcmp(c->cmd, "INDEX") == 0) {
-			size_t num = 0;
-			size_t min = 0;
-			size_t sec = 0;
-			size_t frames = 0;
-			int n = sscanf(val, "%lu %lu:%lu:%lu", &num, &min, &sec, &frames);
-			if(n != 4) {
-				*err = makeerr("couldn't parse index: %s", val);
-				return false;
-			}
-			if(num == 0) {
-				continue;
-			}
-			if(num != 1) {
-				*err = makeerr("unexpected index number in %s", val);
-				return false;
-			}
-			const int us = 1000000;
-			track->pos_usec = frames * us / 75 + sec * us + 60 * min * us;
-			continue;
-		}
+// Reads a number.
+int num(tokenizer.t *b) {
+	int n = 0;
+	bool ok = false;
+	while (tokenizer.more(b) && isdigit(tokenizer.peek(b))) {
+		n *= 10;
+		n += tokenizer.get(b) - (int)'0';
+		ok = true;
 	}
-	return true;
+	if (!ok) {
+		panic("expected a number");
+	}
+	return n;
 }
 
-// Discards rest of the current line
-void skip_line(tokenizer.t *b) {
+// Reads a title into buf.
+void title(tokenizer.t *b, char *buf, size_t n) {
+	if (tokenizer.get(b) != '"') {
+		panic("double quotes expected");
+	}
+	if (!tokenizer.read_until(b, '"', buf, n)) {
+		panic("failed to read title");
+	}
+	if (tokenizer.get(b) != '"') {
+		panic("double quotes expected");
+	}
+}
+
+void line(tokenizer.t *b) {
 	while (tokenizer.more(b) && tokenizer.peek(b) != '\n') {
 		tokenizer.get(b);
 	}
@@ -215,39 +121,59 @@ void skip_line(tokenizer.t *b) {
 	}
 }
 
-/*
- * Reads the following CUE command into the 'cmd' field.
- */
-void read_command(context_t *c)
-{
-	while(tokenizer.peek(c->buf) == ' ' || tokenizer.peek(c->buf) == '\t') {
-		tokenizer.get(c->buf);
-	}
+typedef {
+	int num;
+	int min;
+	int sec;
+	int frames;
+} index_t;
+
+void index(tokenizer.t *b, index_t *r) {
+	// 01 01:12:00
+
+	char val[300] = {};
 	int i = 0;
-	while(isalpha(tokenizer.peek(c->buf))) {
-		c->cmd[i] = tokenizer.get(c->buf);
-		i++;
+	while (tokenizer.more(b)) {
+		int ch = tokenizer.get(b);
+		val[i++] = ch;
+		if(ch == '\n') break;
 	}
-	c->cmd[i] = '\0';
-	while(isspace(tokenizer.peek(c->buf))) {
-		tokenizer.get(c->buf);
+	val[i] = '\0';
+
+	int n = sscanf(val, "%d %d:%d:%d", &r->num, &r->min, &r->sec, &r->frames);
+	if (n != 4) {
+		panic("couldn't parse index: %s", val);
+	}
+	if (r->num == 0) {
+		return;
+	}
+	if (r->num != 1) {
+		panic("unexpected index number: %s", val);
 	}
 }
 
-// Returns true if 'cmd' is in the NULL-terminated list
-// of strings 'list'.
-bool is_in(const char *cmd, const char **list) {
-	const char **p = list;
-	while (*p != NULL) {
-		if(strcmp(*p, cmd) == 0) {
-			return true;
-		}
-		p++;
-	}
-	return false;
+time.duration_t index_pos(index_t *r) {
+	int sec = (r->frames / 75) + (r->sec ) + (60 * r->min);
+	time.duration_t p = {};
+	time.dur_set(&p, sec, time.SECONDS);
+	return p;
 }
 
-pub cuetrack_t *cue_track(cue_t *c, int i)
+// Skips the sequence EF BB BF, if it follows.
+// Returns true on success or when there is no mark.
+// Returns false on an unexpected EF.. sequence.
+bool skip_utf_bom(tokenizer.t *b) {
+	if ((uint8_t) tokenizer.peek(b) != 0xEF) {
+		return true;
+	}
+	tokenizer.get(b);
+	return (
+		(uint8_t) tokenizer.get(b) == 0xBB
+		&& (uint8_t) tokenizer.get(b) == 0xBF
+	);
+}
+
+pub track_t *cue_track(cue_t *c, int i)
 {
 	if(i < 0 || i >= c->ntracks) {
 		return NULL;
@@ -258,4 +184,9 @@ pub cuetrack_t *cue_track(cue_t *c, int i)
 pub int cue_ntracks(cue_t *c)
 {
 	return c->ntracks;
+}
+
+// Returns the absolute position of track t as microseconds.
+pub int pos_us(track_t *t) {
+	return time.dur_us(&t->pos);
 }

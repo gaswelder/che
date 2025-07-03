@@ -29,6 +29,10 @@ pub void dur_set(duration_t *d, int val, int unit) {
 	d->us = val * unit;
 }
 
+pub int dur_us(duration_t *d) {
+	return d->us;
+}
+
 /*
  * Formats a duration putting its display string into a given buffer
  * Returns false if the buffer is too small.

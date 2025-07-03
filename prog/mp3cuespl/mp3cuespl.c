@@ -17,7 +17,7 @@ int main(int argc, char *argv[]) {
 	}
 
 	char *err = NULL;
-	cue.cue_t *c = cue.cue_parse(s, &err);
+	cue.cue_t *c = cue.cue_parse(s);
 	free(s);
 	if (!c) {
 		fprintf(stderr, "Couldn't parse the cue file: %s\n", err);
@@ -37,17 +37,19 @@ int main(int argc, char *argv[]) {
 void cuespl(cue.cue_t *c, mp3.mp3file *m) {
 	int n = cue.cue_ntracks(c);
 	for(int i = 0; i < n; i++) {
-		cue.cuetrack_t *track = cue.cue_track(c, i);
+		cue.track_t *track = cue.cue_track(c, i);
 
+		// Format the track's file name.
 		char fname[1000] = {};
 		snprintf(fname, sizeof(fname), "%02d. %s.mp3", i+1, track->title);
 
+		// Find the current track's end position in the source file.
 		mp3.mp3time_t pos = {0};
-		if(i+1 < n) {
-			cue.cuetrack_t *next = cue.cue_track(c, i+1);
-			pos.usec = next->pos_usec;
-		}
-		else {
+		if (i+1 < n) {
+			// Go up to the start of the next track.
+			pos.usec = cue.pos_us(cue.cue_track(c, i+1));
+		} else {
+			// If this is the last track, set the position to the end.
 			pos.min = -1;
 			pos.usec = 0;
 		}

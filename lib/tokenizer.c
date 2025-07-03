@@ -142,6 +142,8 @@ pub char *buf_read_set(t *b, const char *set) {
 	return s;
 }
 
+// Skips ASCII spaces.
+// Returns true if at least one character was skipped.
 pub bool spaces(t *b) {
 	int n = 0;
 	while (isspace(peek(b))) {
@@ -149,6 +151,13 @@ pub bool spaces(t *b) {
 		get(b);
 	}
 	return n > 0;
+}
+
+// Skips space and tab characters.
+pub void hspaces(t *b) {
+	while (peek(b) == ' ' || peek(b) == '\t') {
+		get(b);
+	}
 }
 
 /**
