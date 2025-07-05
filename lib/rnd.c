@@ -1,3 +1,5 @@
+#include <unistd.h>
+
 const int n = 10;
 
 bool _seeded = false;
@@ -7,7 +9,9 @@ uint64_t pcg32_a = 0xd737232eeccdf7ed;
 
 uint32_t pcg32() {
 	if (!_seeded) {
-		seed(time(NULL));
+		uint64_t x = time(NULL);
+		x += (uint64_t) OS.getpid();
+		seed(x);
 	}
     pcg32_value = pcg32_value * pcg32_m + pcg32_a;
     int shift = 29 - (pcg32_value >> 61);
