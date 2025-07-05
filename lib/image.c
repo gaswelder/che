@@ -44,6 +44,9 @@ pub rgba_t get(image_t *img, int x, y) {
 }
 
 void checkcoords(image_t *img, int x, y) {
+	if (x < 0 || y < 0) {
+		panic("invalid pixel coordinates: %d, %d", x, y);
+	}
 	if (x >= img->width || y >= img->height) {
 		panic("invalid pixel coordinates: %d, %d (should be less than %d, %d)", x, y, img->width, img->height);
 	}
@@ -89,8 +92,35 @@ pub void apply(image_t *img, pixelfunc_t f) {
 	}
 }
 
+// Creates a copy of img enlarged n times by duplicating the original pixels.
+pub image_t *explode(image_t *img, int n) {
+	image_t *big = new(img->width * n, img->height * n);
+	int bigy = 0;
+	for (int y = 0; y < img->height; y++) {
+		// repeat row n times
+		for (int i = 0; i < n; i++) {
+			int bigx = 0;
+			for (int x = 0; x < img->width; x++) {
+				// repeat pixel n times
+				rgba_t c = get(img, x, y);
+				for (int j = 0; j < n; j++) {
+					set(big, bigx, bigy, c);
+					bigx++;
+				}
+			}
+			bigy++;
+		}
+	}
+	return big;
+}
+
 pub rgba_t white() {
 	rgba_t c = {255, 255, 255, 0};
+	return c;
+}
+
+pub rgba_t gray(int val) {
+	rgba_t c = {val, val, val, 0};
 	return c;
 }
 
