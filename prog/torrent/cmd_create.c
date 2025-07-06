@@ -6,8 +6,8 @@
 const size_t PIECE_LENGTH = 256 * 1024;
 
 pub int run(int argc, char *argv[]) {
-    opt.opt_summary("creates a torrent file");
-    opt.nargs(2, "<file-to-share> <outfile>");
+	opt.nargs(2, "<file-to-share> <outfile>");
+    opt.summary("Creates a torrent file.");
     char **args = opt.parse(argc, argv);
     const char *filepath = args[0];
     const char *outpath = args[1];

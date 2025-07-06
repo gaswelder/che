@@ -6,8 +6,8 @@
 #import tracker.c
 
 pub int run(int argc, char **argv) {
-    opt.opt_summary("downloads a torrent");
     opt.nargs(1, "<torrentfile>");
+	opt.summary("Downloads a torrent.");
     char **args = opt.parse(argc, argv);
     const char *path = args[0];
 

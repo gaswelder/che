@@ -11,6 +11,7 @@ int main(int argc, char **argv) {
 	size_t seed = (size_t) time(NULL);
 	char *a = "an";
 	opt.nargs(0, "");
+	opt.opt_summary("Generates random strings.");
 	opt.size("n", "number of values to generate", &n);
 	opt.size("l", "string length", &len);
 	opt.size("s", "seed value", &seed);

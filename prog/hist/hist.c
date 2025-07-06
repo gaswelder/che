@@ -11,7 +11,7 @@ int main(int argc, char *argv[]) {
 	size_t maxline = 30;
 	bool raw = false;
 	opt.nargs(0, "");
-	opt.opt_summary("reads numeric values from stdin and prints their histogram");
+	opt.summary("Reads numeric values from stdin and prints their histogram.");
 	opt.size("n", "number of bins (excluding two padding bins); if zero, will be set to sqrt(n_values)", &nbins);
 	opt.size("w", "max line width", &maxline);
 	opt.flag("r", "print raw numbers, no fancy ASCII art", &raw);

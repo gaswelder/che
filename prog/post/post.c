@@ -5,8 +5,8 @@ int main(int argc, char **argv) {
 	char *addr = "127.0.0.1:25";
 	char *subj = "no subject";
 
-	opt.opt_summary("sends a mail to an SMTP server");
 	opt.nargs(2, "<from> <to>");
+	opt.summary("Sends a mail to an SMTP server.");
 	opt.str("a", "SMTP server address", &addr);
 	opt.str("s", "Mail subject", &subj);
 	argv = opt.parse(argc, argv);

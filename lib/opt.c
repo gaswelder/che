@@ -23,11 +23,16 @@ optspec_t specs[32] = {};
 size_t flags_num = 0;
 
 const char *progname = "progname";
-const char *summary = NULL;
 
+const char *_summary = NULL;
 const char *args_summary = "";
 size_t expect_nargs = 0;
 bool expect_nargs_set = false;
+
+// Sets the program's one-line description for the info (-h) message.
+pub void summary(const char *s) {
+	_summary = s;
+}
 
 // Sets the expected number of positional arguments and their summary
 // string for the -h output.
@@ -231,29 +236,19 @@ optspec_t *find(char c) {
 	return NULL;
 }
 
-pub void opt_summary(const char *s) {
-	summary = s;
-}
+
 
 /*
  * Prints a usage string generated from the flags to stderr.
  * Returns 1 so it can be used as a return status for main.
  */
 pub int usage() {
-	fprintf(stderr, "%s", progname);
-	if (flags_num > 0) {
-		fprintf(stderr, " [options]");
+	if (_summary) {
+		fprintf(stderr, "%s\n", _summary);
 	}
-	if (expect_nargs_set) {
-		fprintf(stderr, " %s", args_summary);
-	} else {
-		fprintf(stderr, " <arguments>");
+	if (args_summary[0] != '\0') {
+		fprintf(stderr, "Arguments: %s\n", args_summary);
 	}
-	if (summary) {
-		fprintf(stderr, " - %s", summary);
-	}
-	fprintf(stderr, "\n");
-
 	if (flags_num > 0) {
 		fprintf(stderr, "Options:\n");
 	}

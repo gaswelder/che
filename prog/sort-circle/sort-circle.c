@@ -72,7 +72,7 @@ int main(int argc, char **argv) {
 	char *seed_str = NULL;
 
 	opt.nargs(0, "");
-	opt.opt_summary("animated sorting demo - pipe the output to mpv");
+	opt.summary("Animated sorting demo - pipe the output to mpv.");
     opt.flag("h", "print the help message", &help);
 	opt.str("a", "name of audio output (WAV)", &audio_output);
 	opt.flag("c", "use the original circle rendering", &global_flag_circle);
