@@ -1,3 +1,4 @@
 #!/bin/sh
-
-che build "$1" /tmp/chebuild && /tmp/chebuild
+src=$1
+shift
+che build "$src" /tmp/chebuild && /tmp/chebuild "$@"
