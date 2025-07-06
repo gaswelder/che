@@ -107,6 +107,7 @@ pub bool casecmp(const char *a, *b) {
 	return *x == '\0' && *y == '\0';
 }
 
+// Returns true if string starts with prefix.
 pub bool starts_with(const char *string, *prefix) {
 	const char *x = string;
 	const char *y = prefix;

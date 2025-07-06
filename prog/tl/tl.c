@@ -8,21 +8,13 @@ int main(int argc, char **argv) {
         return 1;
     }
     char *cmd = argv[1];
-    if (strstr("add", cmd)) {
-        return cmd_add(argc - 1, argv + 1);
-    }
-    if (strstr("list", cmd)) {
-        return cmd_list(argc - 1, argv + 1);
-    }
-    if (strstr("rm", cmd)) {
-        return cmd_rm(argc - 1, argv + 1);
-    }
-    if (strstr("hide", cmd)) {
-        return cmd_hide(argc - 1, argv + 1);
-    }
-    if (strstr("unhide", cmd)) {
-        return cmd_unhide(argc - 1, argv + 1);
-    }
+	switch str (cmd) {
+		case "add": { return cmd_add(argc - 1, argv + 1); }
+		case "list": { return cmd_list(argc - 1, argv + 1); }
+		case "rm": { return cmd_rm(argc - 1, argv + 1); }
+		case "hide": { return cmd_hide(argc - 1, argv + 1); }
+		case "unhide": { return cmd_unhide(argc - 1, argv + 1); }
+	}
     fprintf(stderr, "unknown command: %s\n", cmd);
     return 1;
 }
