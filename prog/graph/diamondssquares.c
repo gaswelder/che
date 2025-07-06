@@ -3,7 +3,7 @@
 #import rnd
 #import opt
 
-int main(int argc, char *argv[]) {
+pub int run(int argc, char *argv[]) {
 	opt.nargs(1, "<outpath.png>");
 	char **args = opt.parse(argc, argv);
 

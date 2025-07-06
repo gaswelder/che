@@ -3,7 +3,7 @@
 #import opt
 #import rnd
 
-int main(int argc, char *argv[]) {
+pub int run(int argc, char *argv[]) {
 	char *size = "1000x1000";
 	opt.nargs(0, "");
 	opt.str("s", "image size", &size);
@@ -33,7 +33,6 @@ void thorn(image.image_t *img) {
     double ymax =  M_PI;
 	int width = img->width;
 	int height = img->height;
-	image.rgba_t rgb;
     for (int i = 0; i < width; i++) {
         // map i=[0..width] to zr=[xmin..xmax]
         double zr = xmin + i * (xmax - xmin) / width;
@@ -41,10 +40,8 @@ void thorn(image.image_t *img) {
             // map j=[0..height] to zi=[ymin..ymax]
             double zi = ymin + j * (ymax - ymin) / height;
 			double val = get_sample(ci, cr, zi, zr);
-			rgb.red = (int) val;
-			rgb.green = (int) val;
-			rgb.blue = (int) val;
-			image.set(img, i, j, rgb);
+			int px = (int) (val * 100);
+			image.set(img, i, j, image.gray(px));
         }
     }
 }

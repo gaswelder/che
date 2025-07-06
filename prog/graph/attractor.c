@@ -5,7 +5,7 @@
 #import image
 #import opt
 
-int main(int argc, char *argv[]) {
+pub int run(int argc, char *argv[]) {
     char *size = "1000x1000";
 	opt.nargs(0, "");
 	opt.str("s", "image size", &size);
