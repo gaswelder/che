@@ -220,7 +220,7 @@ fn buildmap() -> HashMap<&'static str, CSymbol> {
         f("strlen", vec![charp], size),
         f("strncat", vec![charp, charp, size], chr),
         f("strncmp", vec![charp, charp, size], int),
-        f("strncpy", vec![charp, charp, size], chr),
+        // f("strncpy", vec![charp, charp, size], chr), // depr, weird
         f("strrchr", vec![charp, int], charp),
         f("strstr", vec![charp, charp], charp),
         // time

@@ -60,6 +60,8 @@ pub void tl_rm(char *id) {
     tl_close(c);
 }
 
+// Puts the value for the parameter param of torrent id
+// into the buffer (out, n).
 pub bool tl_getval(char *id, char *param, char *out, size_t n) {
     char *args[] = {"-t", id, "-i", NULL};
     client_t c = tl_exec(args);
@@ -68,11 +70,16 @@ pub bool tl_getval(char *id, char *param, char *out, size_t n) {
     bool ok = false;
     while (fgets(buf, sizeof(buf), c.out)) {
         strings.trim(buf);
+		puts(buf);
+
 		char *line = buf;
-        puts(line);
         if (strstr(line, param) == line) {
-            char *from = line + strlen(param) + strlen(": ");
-            strncpy(out, from, n);
+            char *val = line + strlen(param) + strlen(": ");
+			size_t val_len = strlen(val);
+			if (val_len >= n) {
+				panic("value of '%s' is too long for the buffer", param);
+			}
+			strcpy(out, val);
             ok = true;
             break;
         }
