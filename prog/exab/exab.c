@@ -29,7 +29,7 @@ int main(int argc, char *argv[]) {
 	size_t requests_to_do = 1;
 
 	opt.nargs(1, "<url>");
-	opt.opt_summary("makes a series of HTTP requests to <url> and prints statistics");
+	opt.summary("makes a series of HTTP requests to <url> and prints statistics");
 	opt.size("n", "number of requests to perform", &requests_to_do);
 	opt.size("c", "number of requests running concurrently", &concurrency);
 
