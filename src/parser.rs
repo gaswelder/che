@@ -674,7 +674,7 @@ fn parse_sizeof(l: &mut Lexer, ctx: &ParseCtx) -> Result<Expr, Error> {
     expect(l, "sizeof", None)?;
     expect(l, "(", None)?;
     let argument = if type_follows(l, ctx) {
-        SizeofArg::Typename(parse_typename(l, ctx)?)
+        SizeofArg::Typename(parse_bare_typeform(l, ctx)?)
     } else {
         SizeofArg::Expr(parse_expr(l, 0, ctx)?)
     };

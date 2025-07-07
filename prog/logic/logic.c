@@ -11,9 +11,6 @@ typedef {
     int args_length;
 } term_t;
 
-// A hack until sizeof is fixed.
-const size_t POINTERSIZE = 8;
-
 int main() {
     run("a", "b");
     run("a", "X");
@@ -28,7 +25,7 @@ int main() {
 }
 
 void run(const char *t1, *t2) {
-	map.map_t *subst = map.new(POINTERSIZE);
+	map.map_t *subst = map.new(sizeof(void *));
     map.map_t *s = unify(parse_term(t1), parse_term(t2), subst);
     if (s) {
         print_map(s);

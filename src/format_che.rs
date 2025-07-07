@@ -14,7 +14,7 @@ pub fn fmt_expr(expr: &Expr) -> String {
             let operand = &x.operand;
             return format!(
                 "({})({})",
-                fmt_base_typeform(&type_name),
+                fmt_bare_typeform(&type_name),
                 fmt_expr(&operand)
             );
         }
@@ -69,7 +69,7 @@ pub fn fmt_expr(expr: &Expr) -> String {
         Expr::Sizeof(x) => {
             let argument = &x.arg;
             let arg = match &**argument {
-                SizeofArg::Typename(x) => fmt_typename(&x),
+                SizeofArg::Typename(x) => fmt_bare_typeform(&x),
                 SizeofArg::Expr(x) => fmt_expr(&x),
             };
             return format!("sizeof({})", arg);
@@ -100,7 +100,7 @@ pub fn fmt_expr(expr: &Expr) -> String {
                         operator,
                         format!(
                             "({})({})",
-                            fmt_base_typeform(&type_name),
+                            fmt_bare_typeform(&type_name),
                             fmt_expr(&operand)
                         )
                     )
@@ -139,7 +139,7 @@ pub fn fmt_form(x: &Form) -> String {
     s
 }
 
-fn fmt_base_typeform(x: &BareTypeform) -> String {
+fn fmt_bare_typeform(x: &BareTypeform) -> String {
     format!("{}{}", fmt_typename(&x.typename), "*".repeat(x.hops))
 }
 

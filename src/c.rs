@@ -163,7 +163,7 @@ pub struct Form {
 
 #[derive(Debug, Clone)]
 pub enum SizeofArg {
-    Typename(Typename),
+    Typename(BareTypeform),
     Expression(Expr),
 }
 

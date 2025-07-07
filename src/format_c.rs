@@ -175,7 +175,7 @@ pub fn fmt_expr(expr: &Expr) -> String {
         }
         Expr::Sizeof { arg: argument } => {
             let arg = match &**argument {
-                SizeofArg::Typename(x) => format_type(&x),
+                SizeofArg::Typename(x) => fmt_bare_typeform(&x),
                 SizeofArg::Expression(x) => fmt_expr(&x),
             };
             return format!("sizeof({})", arg);

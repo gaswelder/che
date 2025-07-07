@@ -25,12 +25,10 @@ int main() {
     return 0;
 }
 
-const size_t HACK = 8; // sizeof(void *)
-
 model_t *new() {
 	model_t *m = calloc(1, sizeof(model_t));
 	if (!m) panic("calloc failed");
-	m->counts = map.new(HACK);
+	m->counts = map.new(sizeof(void *));
 	return m;
 }
 

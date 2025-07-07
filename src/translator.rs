@@ -927,7 +927,7 @@ fn tr_comp_literal(x: &nodes::CompLiteral, ctx: &mut TrCtx) -> Result<Typed<c::E
 fn tr_sizeof(x: &nodes::Sizeof, ctx: &mut TrCtx) -> Result<Typed<c::Expr>, BuildError> {
     let arg = match x.arg.as_ref() {
         nodes::SizeofArg::Expr(x) => c::SizeofArg::Expression(tr_expr(&x, ctx)?.val),
-        nodes::SizeofArg::Typename(x) => c::SizeofArg::Typename(tr_typename(&x, ctx)?),
+        nodes::SizeofArg::Typename(x) => c::SizeofArg::Typename(tr_bare_typeform(&x, ctx)?),
     };
     Ok(Typed {
         typ: types::just("size_t"),
