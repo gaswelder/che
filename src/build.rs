@@ -99,39 +99,31 @@ pub fn build_prog(source_path: &String, output_name: &String) -> Result<(), Vec<
     }]);
 }
 
-fn load_tree(mainpath: &String) -> Result<Vec<ModuleInfo>, String> {
-    // Cache of loaded module heads by path.
-    let mut heads = HashMap::new();
-
-    let mut i = 0;
-    let mut paths: Vec<String> = vec![mainpath.clone()];
-    while i < paths.len() {
-        // Load this module's meta, if not loaded yet.
-        let p = &paths[i];
-        if !heads.contains_key(p) {
-            heads.insert(p.clone(), preparser::preparse(p)?);
-        }
-
-        //
-        let m = heads.get(p).unwrap();
-        for imp in &m.imports {
-            paths.push(imp.path.clone());
-        }
-        i += 1;
+fn load_tree(path: &str, mut crumbs: Vec<String>) -> Result<Vec<String>, String> {
+    if crumbs.contains(&path.to_string()) {
+        return Err(format!("import loop: {} -> {}", crumbs.join(" -> "), path));
     }
-    paths.reverse();
+    crumbs.push(path.to_string());
+    let mut result = vec![path.to_string()];
+    let head = preparser::preparse(path)?;
+    for imp in &head.imports {
+        let mut r = load_tree(&imp.path, crumbs.clone())?;
+        result.append(&mut r);
+    }
+    Ok(result)
+}
 
-    let mut result: Vec<ModuleInfo> = Vec::new();
+fn uniq(ss: Vec<String>) -> Vec<String> {
     let mut seen = HashSet::new();
-    for p in paths {
+    let mut result = Vec::new();
+    for p in ss {
         if seen.contains(&p) {
             continue;
         }
         seen.insert(p.clone());
-        let m = heads.get(&p).unwrap();
-        result.push((*m).clone());
+        result.push(p);
     }
-    return Ok(result);
+    result
 }
 
 fn parse_mods(modheads: &Vec<ModuleInfo>) -> Result<Vec<Module>, Vec<BuildError>> {
@@ -161,17 +153,28 @@ fn parse_mods(modheads: &Vec<ModuleInfo>) -> Result<Vec<Module>, Vec<BuildError>
 // Parses the full project starting with the file at mainpath
 // and including and parsing all its dependencies.
 pub fn parse_project(mainpath: &String) -> Result<Project, Vec<BuildError>> {
-    //
-    // // todo check for loops
-    //
-
-    let mut modheads = load_tree(mainpath).map_err(|err| {
+    let mut paths = load_tree(mainpath, vec![]).map_err(|err| {
         vec![BuildError {
             message: err,
             path: String::new(),
             pos: String::new(),
         }]
     })?;
+
+    paths.reverse();
+    paths = uniq(paths);
+
+    let mut modheads = Vec::new();
+    for p in paths {
+        let h = preparser::preparse(&p).map_err(|err| {
+            vec![BuildError {
+                message: err,
+                path: String::new(),
+                pos: String::new(),
+            }]
+        })?;
+        modheads.push(h)
+    }
 
     // Every modhead already has a unique key based on path, but we'll give
     // them nicer ones here to make outputs easier for debugging.

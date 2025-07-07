@@ -16,7 +16,7 @@ pub struct ModuleInfo {
     pub uniqid: String,
 }
 
-pub fn preparse(path: &String) -> Result<ModuleInfo, String> {
+pub fn preparse(path: &str) -> Result<ModuleInfo, String> {
     let mut typenames: Vec<String> = vec![];
     let mut imports: Vec<ModuleRef> = Vec::new();
     let mut l = lexer::for_file(path)?;
@@ -50,7 +50,7 @@ pub fn preparse(path: &String) -> Result<ModuleInfo, String> {
     return Ok(ModuleInfo {
         imports,
         typedefs: typenames,
-        filepath: path.clone(),
+        filepath: String::from(path),
         uniqid: format!(
             "ns_{}",
             path.replace("/", "_").replace(".", "_").replace("-", "_")

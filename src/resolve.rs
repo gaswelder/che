@@ -17,7 +17,7 @@ pub fn homepath() -> String {
     return env::var("CHELANG_HOME").unwrap_or(String::from("."));
 }
 
-pub fn resolve_import(base_path: &String, name: &String) -> Result<ModuleRef, String> {
+pub fn resolve_import(base_path: &str, name: &str) -> Result<ModuleRef, String> {
     // If requested module name ends with ".c", we look for it relative to
     // base_path (importing module's location). If ".c" is omitted, we look for
     // it inside the lib directory.
