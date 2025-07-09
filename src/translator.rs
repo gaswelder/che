@@ -1022,28 +1022,11 @@ fn tr_func_decl(x: &nodes::FuncDecl, ctx: &mut TrCtx) -> Result<Vec<c::ModElem>,
         }
     }
 
-    let tbody = tr_body(&x.body, ctx)?;
-    let mut rbody = c::CBody {
-        statements: Vec::new(),
-    };
-
+    let mut rbody = tr_body(&x.body, ctx)?;
     if TRACE {
-        let loc = format!(
-            "{}:{}",
-            ctx.this_mod_head.filepath,
-            format_che::fmt_form(&x.form),
-        );
-        let locstring = c::Expr::Literal(c::CLiteral::String(loc));
-        let putscall = c::Expr::Call {
-            func: Box::new(c::Expr::Ident(String::from("puts"))),
-            args: vec![locstring],
-        };
-        rbody.statements.push(c::Statement::Expression(putscall));
+        rbody.statements.insert(0, mk_call_trace(ctx, x))
     }
 
-    for s in tbody.statements {
-        rbody.statements.push(s);
-    }
     let mut r = vec![c::ModElem::FuncDef(c::FuncDef {
         is_static: !x.ispub,
         type_name: tr_typename(&x.typename, ctx)?,
@@ -1070,6 +1053,19 @@ fn tr_func_decl(x: &nodes::FuncDecl, ctx: &mut TrCtx) -> Result<Vec<c::ModElem>,
     }
 
     Ok(r)
+}
+
+fn mk_call_trace(ctx: &TrCtx, x: &nodes::FuncDecl) -> c::Statement {
+    let loc = format!(
+        "{}:{}",
+        ctx.this_mod_head.filepath,
+        format_che::fmt_form(&x.form),
+    );
+    mk_call("puts", vec![mk_str(loc)])
+}
+
+fn mk_str(s: String) -> c::Expr {
+    c::Expr::Literal(c::CLiteral::String(s))
 }
 
 // mod.foo_t
@@ -1462,11 +1458,12 @@ fn mk_call(func: &str, args: Vec<c::Expr>) -> c::Statement {
 fn mk_panic(
     ctx: &mut TrCtx,
     pos: &String,
-    arguments: &Vec<nodes::Expr>,
+    args: &Vec<nodes::Expr>,
 ) -> Result<c::Statement, BuildError> {
-    let mut args = vec![c::Expr::Ident(String::from("stderr"))];
-    for arg in arguments {
-        args.push(tr_expr(arg, ctx)?.val);
+    let stderr = c::Expr::Ident(String::from("stderr"));
+    let mut outargs = vec![stderr.clone()];
+    for arg in args {
+        outargs.push(tr_expr(arg, ctx)?.val);
     }
     let panic_pos = format!("{}:{}", &ctx.this_mod_head.filepath, pos.clone());
     Ok(c::Statement::Block {
@@ -1474,19 +1471,13 @@ fn mk_panic(
             mk_call(
                 "fprintf",
                 vec![
-                    c::Expr::Ident(String::from("stderr")),
-                    c::Expr::Literal(c::CLiteral::String(String::from("*** panic at %s ***\\n"))),
-                    c::Expr::Literal(c::CLiteral::String(panic_pos)),
+                    stderr.clone(),
+                    mk_str(String::from("*** panic at %s ***\\n")),
+                    mk_str(panic_pos),
                 ],
             ),
-            mk_call("fprintf", args),
-            mk_call(
-                "fprintf",
-                vec![
-                    c::Expr::Ident(String::from("stderr")),
-                    c::Expr::Literal(c::CLiteral::String(String::from("\\n"))),
-                ],
-            ),
+            mk_call("fprintf", outargs),
+            mk_call("fprintf", vec![stderr.clone(), mk_str("\\n".to_string())]),
             mk_call(
                 "exit",
                 vec![c::Expr::Literal(c::CLiteral::Number(String::from("1")))],
