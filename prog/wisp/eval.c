@@ -136,8 +136,8 @@ mp.mpz_t *OINT(object_t *o) {
 	return o->uval.val;
 }
 mp.mpf_t *OFLOAT(object_t *o) { return ((o)->uval.val); }
-mp.mpz_t DINT(object_t *o) {	mp.mpz_t *x = (o)->uval.val; return *x; }
-mp.mpf_t DFLOAT(object_t *o) { mp.mpf_t *x = (o)->uval.val; return *x; }
+mp.mpz_t *DINT(object_t *o) {	mp.mpz_t *x = (o)->uval.val; return x; }
+mp.mpf_t *DFLOAT(object_t *o) { mp.mpf_t *x = (o)->uval.val; return x; }
 int VLENGTH(object_t *o) { vector_t *x = o->uval.val; return x->len; }
 char **SYMNAME(object_t *so) { symbol_t *x = (so)->uval.val; return &x->name; }
 int *SYMPROPS(object_t *o) { symbol_t *x = ((o)->uval.val); return &x->props; }
@@ -551,8 +551,8 @@ object_t *obj_create (int type) {
 	o->type = type;
 	o->refs++;
 	switch (type) {
-		case INT: { ((o)->uval.val) = util.xmalloc (sizeof (mp.mpz_t)); }
-		case FLOAT: { ((o)->uval.val) = util.xmalloc (sizeof (mp.mpf_t)); }
+		case INT: { ((o)->uval.val) = util.xmalloc(sizeof(mp.mpz_t *)); }
+		case FLOAT: { ((o)->uval.val) = util.xmalloc(sizeof(mp.mpf_t *)); }
 		case CONS: { ((o)->uval.val) = cons_create (); }
 		case SYMBOL: { ((o)->uval.val) = symbol_create (); }
 		case STRING: { ((o)->uval.val) = str_create (); }
@@ -598,13 +598,13 @@ void obj_destroy(object_t *o) {
 			return;
 		}
 		case FLOAT: {
-			// mp.mpf_t *f = OFLOAT (o);
-			// mp.mpf_clear (*f);
+			mp.mpf_t *f = OFLOAT(o);
+			mp.mpf_clear(f);
 			free (((o)->uval.val));
 		}
 		case INT: {
-			// mp.mpz_t *z = OINT(o);
-			// mp.mpz_clear (*z);
+			mp.mpz_t *z = OINT(o);
+			mp.mpz_clear(z);
 			free (((o)->uval.val));
 		}
 		case STRING: {
@@ -647,8 +647,8 @@ void obj_print(object_t *o, int newline) {
 				}
 						printf (")");
 		}
-		case INT: { mp.gmp_printf ("%Zd", OINT (o)); }
-		case FLOAT: { mp.gmp_printf ("%.Ff", OFLOAT (o)); }
+		case INT: { mp.print("%Zd", OINT (o)); }
+		case FLOAT: { mp.print("%.Ff", OFLOAT (o)); }
 		case STRING: { printf ("%s", OSTRP (o)); }
 		case SYMBOL: {
 			symbol_t *x = ((o)->uval.val);
@@ -668,14 +668,14 @@ uint32_t str_hash (object_t * o) {
 }
 
 uint32_t int_hash (object_t * o) {
-	char *str = mp.mpz_get_str (NULL, 16, DINT (o));
+	char *str = mp.mpz_get_str(NULL, 16, DINT(o));
 	uint32_t h = hash (str, strlen (str));
 	free (str);
 	return h;
 }
 
 uint32_t float_hash (object_t * o) {
-	char *str = mp.mpf_get_str (NULL, NULL, 16, 0, DFLOAT (o));
+	char *str = mp.mpf_get_str(NULL, NULL, 16, 0, DFLOAT (o));
 	uint32_t h = hash(str, strlen (str));
 	free (str);
 	return h;
@@ -1077,41 +1077,35 @@ pub object_t *c_strs (char *str) {
 object_t *c_ints(char *nstr) {
 	object_t *o = obj_create(INT);
 	mp.mpz_t *z = o->uval.val;
-	mp.mpz_init(*z);
-	mp.mpz_set_str(*z, nstr, 10);
+	mp.mpz_set_str(z, nstr);
 	return o;
 }
 
-object_t *c_int (int n) {
+object_t *c_int(int n) {
 	object_t *o = obj_create (INT);
-	mp.mpz_t *z = ((o)->uval.val);
-	mp.mpz_init (*z);
-	mp.mpz_set_ui (*z, n);
+	mp.mpz_set_ui(o->uval.val, n);
 	return o;
 }
 
-object_t *c_floats (char *fstr) {
+object_t *c_floats(char *fstr) {
 	object_t *o = obj_create (FLOAT);
-	mp.mpf_t *f = ((o)->uval.val);
-	mp.mpf_init2 (*f, 256);
-	mp.mpf_set_str (*f, fstr, 10);
+	mp.mpf_t *f = o->uval.val;
+	mp.mpf_set_str(f, fstr);
 	return o;
 }
 
-object_t *c_float (double d) {
+object_t *c_float(double d) {
 	object_t *o = obj_create (FLOAT);
-	mp.mpf_t *f = ((o)->uval.val);
-	mp.mpf_init2 (*f, 64);
-	mp.mpf_set_d (*f, d);
+	mp.mpf_set_d(o->uval.val, d);
 	return o;
 }
 
 int into2int(object_t *into) {
-	return mp.mpz_get_si(DINT (into));
+	return mp.mpz_get_si(DINT(into));
 }
 
 double floato2float(object_t *floato) {
-	return mp.mpf_get_d (DFLOAT (floato));
+	return mp.mpf_get_d(DFLOAT(floato));
 }
 
 object_t *parent_detach = NULL;
@@ -2526,40 +2520,32 @@ object_t *arith(int op, object_t * lst) {
 			accumf = c_float (1);
 		}
 		}
-	if (op == SUB || op == DIV)
-		{
-			object_t *num = CAR (lst);
-			if (FLOATP (num))
-	{
-		intmode = 0;
-		mp.mpf_set (DFLOAT (accumf), DFLOAT (num));
-	}
-			else if (INTP (num))
-	{
-		mp.mpf_set_z (DFLOAT (accumf), DINT (num));
-		mp.mpz_set (DINT (accumz), DINT (num));
-	}
-			else
-	{
-		obj_destroy (accumz);
-		obj_destroy (accumf);
-		obj_destroy (convf);
-		THROW (wrong_type, UPREF (num));
-	}
-			if (op == SUB && CDR (lst) == NIL)
-	{
-		if (intmode)
-			{
+	if (op == SUB || op == DIV) {
+		object_t *num = CAR (lst);
+		if (FLOATP (num)) {
+			intmode = 0;
+			mp.mpf_set(DFLOAT (accumf), DFLOAT (num));
+		} else if (INTP (num)) {
+			mp.mpf_set_z(DFLOAT (accumf), DINT (num));
+			mp.mpz_set(DINT(accumz), DINT(num));
+		} else {
+			obj_destroy (accumz);
+			obj_destroy (accumf);
+			obj_destroy (convf);
+			return THROW (wrong_type, UPREF (num));
+		}
+		if (op == SUB && CDR (lst) == NIL) {
+			if (intmode) {
 				obj_destroy (accumf);
 				obj_destroy (convf);
-				mp.mpz_neg (DINT (accumz), DINT (accumz));
+				mp.mpz_neg(DINT (accumz), DINT (accumz));
 				return accumz;
 			}
 		else
 			{
 				obj_destroy (accumz);
 				obj_destroy (convf);
-				mp.mpf_neg (DFLOAT (accumf), DFLOAT (accumf));
+				mp.mpf_neg(DFLOAT (accumf), DFLOAT (accumf));
 				return accumf;
 			}
 	}
@@ -2596,42 +2582,42 @@ object_t *arith(int op, object_t * lst) {
 			if (intmode)
 	{
 		if (FLOATP (num))
-			{
-				intmode = 0;
-				mp.mpf_set_z (DFLOAT (accumf), DINT (accumz));
-				/* Fall through to !intmode */
-			}
+		{
+			intmode = 0;
+			mp.mpf_set_z(DFLOAT (accumf), DINT (accumz));
+			/* Fall through to !intmode */
+		}
 		else if (INTP (num))
-			{
-				switch (op) {
-					case ADD: { mp.mpz_add (DINT (accumz), DINT (accumz), DINT (CAR (lst))); }
-					case MUL: { mp.mpz_mul (DINT (accumz), DINT (accumz), DINT (CAR (lst))); }
-					case SUB: { mp.mpz_sub (DINT (accumz), DINT (accumz), DINT (CAR (lst))); }
-					case DIV: { mp.mpz_div (DINT (accumz), DINT (accumz), DINT (CAR (lst))); }
-				}
+		{
+			switch (op) {
+				case ADD: { mp.mpz_add(DINT (accumz), DINT (accumz), DINT (CAR (lst))); }
+				case MUL: { mp.mpz_mul(DINT (accumz), DINT (accumz), DINT (CAR (lst))); }
+				case SUB: { mp.mpz_sub(DINT (accumz), DINT (accumz), DINT (CAR (lst))); }
+				case DIV: { mp.mpz_div(DINT (accumz), DINT (accumz), DINT (CAR (lst))); }
 			}
+		}
 	}
 			if (!intmode)
 	{
 		if (FLOATP (num))
 			switch (op) {
-				case ADD: { mp.mpf_add (DFLOAT (accumf), DFLOAT (accumf), DFLOAT (num)); }
-				case MUL: { mp.mpf_mul (DFLOAT (accumf), DFLOAT (accumf), DFLOAT (num)); }
-				case SUB: { mp.mpf_sub (DFLOAT (accumf), DFLOAT (accumf), DFLOAT (num)); }
-				case DIV: { mp.mpf_div (DFLOAT (accumf), DFLOAT (accumf), DFLOAT (num)); }
+				case ADD: { mp.mpf_add(DFLOAT (accumf), DFLOAT (accumf), DFLOAT (num)); }
+				case MUL: { mp.mpf_mul(DFLOAT (accumf), DFLOAT (accumf), DFLOAT (num)); }
+				case SUB: { mp.mpf_sub(DFLOAT (accumf), DFLOAT (accumf), DFLOAT (num)); }
+				case DIV: { mp.mpf_div(DFLOAT (accumf), DFLOAT (accumf), DFLOAT (num)); }
 			}
 		else if (INTP (num))
-			{
-				/* Convert to float and add. */
-				mp.mpf_set_z (DFLOAT (convf), DINT (num));
-				switch (op) {
-					case ADD: { mp.mpf_add (DFLOAT (accumf), DFLOAT (accumf), DFLOAT (convf)); }
-					case MUL: { mp.mpf_mul (DFLOAT (accumf), DFLOAT (accumf), DFLOAT (convf)); }
-					case SUB: { mp.mpf_sub (DFLOAT (accumf), DFLOAT (accumf), DFLOAT (convf)); }
-					case DIV: { mp.mpf_div (DFLOAT (accumf), DFLOAT (accumf), DFLOAT (convf)); }
-				}
+		{
+			/* Convert to float and add. */
+			mp.mpf_set_z(DFLOAT (convf), DINT (num));
+			switch (op) {
+				case ADD: { mp.mpf_add(DFLOAT (accumf), DFLOAT (accumf), DFLOAT (convf)); }
+				case MUL: { mp.mpf_mul(DFLOAT (accumf), DFLOAT (accumf), DFLOAT (convf)); }
+				case SUB: { mp.mpf_sub(DFLOAT (accumf), DFLOAT (accumf), DFLOAT (convf)); }
+				case DIV: { mp.mpf_div(DFLOAT (accumf), DFLOAT (accumf), DFLOAT (convf)); }
 			}
-	}
+		}
+}
 			lst = CDR (lst);
 		}
 	obj_destroy (convf);
@@ -2679,25 +2665,24 @@ object_t *num_cmp(int cmp, object_t * lst) {
 	int r = 0;
 	int invr = 1;
 	if (INTP (a) && INTP (b))
-		r = mp.mpz_cmp (DINT (a), DINT (b));
+		r = mp.mpz_cmp(DINT (a), DINT (b));
 	else if (FLOATP (a) && FLOATP (b))
-		r = mp.mpf_cmp (DFLOAT (a), DFLOAT (b));
+		r = mp.mpf_cmp(DFLOAT (a), DFLOAT (b));
 	else if (INTP (a) && FLOATP (b))
-		{
-			/* Swap and handle below. */
-			object_t *c = b;
-			b = a;
-			a = c;
-			invr = -1;
-		}
-	if (FLOATP (a) && INTP (b))
-		{
-			/* Convert down. */
-			object_t *convf = c_float (0);
-			mp.mpf_set_z (DFLOAT (convf), DINT (b));
-			r = mp.mpf_cmp (DFLOAT (a), DFLOAT (convf));
-			obj_destroy (convf);
-		}
+	{
+		/* Swap and handle below. */
+		object_t *c = b;
+		b = a;
+		a = c;
+		invr = -1;
+	}
+	if (FLOATP (a) && INTP (b)) {
+		/* Convert down. */
+		object_t *convf = c_float (0);
+		mp.mpf_set_z(DFLOAT(convf), DINT(b));
+		r = mp.mpf_cmp(DFLOAT (a), DFLOAT (convf));
+		obj_destroy (convf);
+	}
 	r *= invr;
 	switch (cmp) {
 		case EQ: { r = (0 == r); }
@@ -2752,7 +2737,7 @@ object_t *modulus (object_t * lst)
 	if (!INTP (b))
 		return THROW (wrong_type, UPREF (b));
 	object_t *m = c_int (0);
-	mp.mpz_mod (DINT (m), DINT (a), DINT (b));
+	mp.mpz_mod(DINT (m), DINT (a), DINT (b));
 	return m;
 }
 
