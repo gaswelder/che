@@ -13,6 +13,7 @@ use std::collections::HashMap;
 use std::collections::HashSet;
 
 static DEBUG_TYPES: bool = false;
+static TRACE: bool = false;
 
 struct Typed<T> {
     typ: types::Type,
@@ -1025,16 +1026,21 @@ fn tr_func_decl(x: &nodes::FuncDecl, ctx: &mut TrCtx) -> Result<Vec<c::ModElem>,
     let mut rbody = c::CBody {
         statements: Vec::new(),
     };
-    // rbody
-    //     .statements
-    //     .push(nodes_c::CStatement::nodes::Expression(nodes_c::CExpression::FunctionCall {
-    //         function: Box::new(nodes_c::CExpression::Identifier(String::from("puts"))),
-    //         arguments: vec![nodes_c::CExpression::Literal(nodes_c::CLiteral::String(format!(
-    //             "{}:{}",
-    //             ctx.path,
-    //             format_che::format_form(&form)
-    //         )))],
-    //     }));
+
+    if TRACE {
+        let loc = format!(
+            "{}:{}",
+            ctx.this_mod_head.filepath,
+            format_che::fmt_form(&x.form),
+        );
+        let locstring = c::Expr::Literal(c::CLiteral::String(loc));
+        let putscall = c::Expr::Call {
+            func: Box::new(c::Expr::Ident(String::from("puts"))),
+            args: vec![locstring],
+        };
+        rbody.statements.push(c::Statement::Expression(putscall));
+    }
+
     for s in tbody.statements {
         rbody.statements.push(s);
     }
