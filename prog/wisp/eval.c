@@ -62,11 +62,8 @@ mem.mmanager_t *mm_cons = NULL;
 mem.mmanager_t *mm_str = NULL;
 mem.mmanager_t *mm_vec = NULL;
 
-
-str_t *str_create() { return mem.mm_alloc(mm_str); }
-cons_t *cons_create() { return mem.mm_alloc(mm_cons); }
 void cons_destroy (cons_t * o) { mem.mm_free (mm_cons, o); }
-vector_t *vector_create () { return mem.mm_alloc(mm_vec); }
+
 
 object_t *out_of_bounds = NULL;
 object_t *NIL = NULL;
@@ -544,20 +541,18 @@ void object_clear (void *o) {
 	((obj)->uval.val) = NIL;
 }
 
-
-
-object_t *obj_create (int type) {
+object_t *obj_create(int type) {
 	object_t *o = mem.mm_alloc(mm_obj);
 	o->type = type;
 	o->refs++;
 	switch (type) {
-		case INT: { ((o)->uval.val) = util.xmalloc(sizeof(mp.mpz_t *)); }
-		case FLOAT: { ((o)->uval.val) = util.xmalloc(sizeof(mp.mpf_t *)); }
-		case CONS: { ((o)->uval.val) = cons_create (); }
-		case SYMBOL: { ((o)->uval.val) = symbol_create (); }
-		case STRING: { ((o)->uval.val) = str_create (); }
-		case VECTOR: { ((o)->uval.val) = vector_create (); }
-		case DETACH: { ((o)->uval.val) = detach_create (); }
+		case INT: { o->uval.val = util.xmalloc(sizeof(mp.mpz_t *)); }
+		case FLOAT: { o->uval.val = util.xmalloc(sizeof(mp.mpf_t *)); }
+		case CONS: { o->uval.val = mem.mm_alloc(mm_cons); }
+		case SYMBOL: { o->uval.val = symbol_create (); }
+		case STRING: { o->uval.val = mem.mm_alloc(mm_str); }
+		case VECTOR: { o->uval.val = mem.mm_alloc(mm_vec); }
+		case DETACH: { o->uval.val = util.xmalloc (sizeof (detach_t)); }
 		case CFUNC, SPECIAL: {}
 	}
 	return o;
@@ -752,13 +747,113 @@ void handle_iterrupt (int sig)
 		}
 }
 
-/* Must be called before calling any other functions. */
-void eval_init ()
-{
-	/* install interrupt handler */
-	signal (SIGINT, &handle_iterrupt);
+pub void wisp_init () {
+	mm_obj = mem.mm_create (sizeof (object_t), &object_clear);
+	mm_cons = mem.mm_create (sizeof (cons_t), &cons_clear);
+	mm_str = mem.mm_create (sizeof (str_t), &str_clear);
+	mm_vec = mem.mm_create (sizeof (vector_t), &vector_clear);
 
-	/* regular evaluation symbols */
+
+	// symtab_init
+	symbol_table = hashtab.ht_init(2048, NULL);
+	/* Set up t and nil constants. The SET macro won't work until NIL is set. */
+	NIL = c_sym ("nil");
+	symbol_t *x = NIL->uval.val;
+	*x->vals = NIL;
+	*SYMPROPS (NIL) |= SYM_CONSTANT;
+	T = c_sym ("t");
+	*SYMPROPS (T) |= SYM_CONSTANT;
+	SET (T, T);
+	
+	// Math
+	SSET (c_sym ("+"), c_cfunc (&addition));
+	SSET (c_sym ("*"), c_cfunc (&multiplication));
+	SSET (c_sym ("-"), c_cfunc (&subtraction));
+	SSET (c_sym ("/"), c_cfunc (&division));
+	SSET (c_sym ("="), c_cfunc (&num_eq));
+	SSET (c_sym ("<"), c_cfunc (&num_lt));
+	SSET (c_sym ("<="), c_cfunc (&num_lte));
+	SSET (c_sym (">"), c_cfunc (&num_gt));
+	SSET (c_sym (">="), c_cfunc (&num_gte));
+	SSET (c_sym ("%"), c_cfunc (&modulus));
+
+	SSET (c_sym ("cdoc-string"), c_cfunc (&cdoc_string));
+	SSET (c_sym ("apply"), c_cfunc (&lisp_apply));
+	SSET (c_sym ("and"), c_special (&lisp_and));
+	SSET (c_sym ("or"), c_special (&lisp_or));
+	SSET (c_sym ("quote"), c_special (&lisp_quote));
+	SSET (c_sym ("lambda"), c_special (&lambda_f));
+	SSET (c_sym ("defun"), c_special (&defun));
+	SSET (c_sym ("defmacro"), c_special (&defmacro));
+	SSET (c_sym ("car"), c_cfunc (&lisp_car));
+	SSET (c_sym ("cdr"), c_cfunc (&lisp_cdr));
+	SSET (c_sym ("list"), c_cfunc (&lisp_list));
+	SSET (c_sym ("if"), c_special (&lisp_if));
+	SSET (c_sym ("not"), c_cfunc (&nullp));
+	SSET (c_sym ("progn"), c_special (&progn));
+	SSET (c_sym ("let"), c_special (&let));
+	SSET (c_sym ("while"), c_special (&lisp_while));
+	SSET (c_sym ("eval"), c_cfunc (&eval_body));
+	SSET (c_sym ("print"), c_cfunc (&lisp_print));
+	SSET (c_sym ("cons"), c_cfunc (&lisp_cons));
+	SSET (c_sym ("cond"), c_special (&lisp_cond));
+
+	/* Symbol table */
+	SSET (c_sym ("set"), c_cfunc (&lisp_set));
+	SSET (c_sym ("value"), c_cfunc (&lisp_value));
+	SSET (c_sym ("symbol-name"), c_cfunc (&symbol_name));
+
+	/* Strings */
+	SSET (c_sym ("concat2"), c_cfunc (&lisp_concat));
+
+	/* Equality */
+	SSET (c_sym ("eq"), c_cfunc (&eq));
+	SSET (c_sym ("eql"), c_cfunc (&eql));
+	SSET (c_sym ("hash"), c_cfunc (&lisp_hash));
+
+	/* Predicates */
+	SSET (c_sym ("nullp"), c_cfunc (&nullp));
+	SSET (c_sym ("funcp"), c_cfunc (&funcp));
+	SSET (c_sym ("listp"), c_cfunc (&listp));
+	SSET (c_sym ("symbolp"), c_cfunc (&symbolp));
+	SSET (c_sym ("stringp"), c_cfunc (&stringp));
+	SSET (c_sym ("numberp"), c_cfunc (&numberp));
+	SSET (c_sym ("integerp"), c_cfunc (&integerp));
+	SSET (c_sym ("floatp"), c_cfunc (&floatp));
+	SSET (c_sym ("vectorp"), c_cfunc (&vectorp));
+
+	/* Input/Output */
+	SSET (c_sym ("load"), c_cfunc (&lisp_load));
+	SSET (c_sym ("read-string"), c_cfunc (&lisp_read_string));
+
+	/* Error handling */
+	SSET (c_sym ("throw"), c_cfunc (&throw));
+	SSET (c_sym ("catch"), c_special (&catch));
+
+	/* Vectors */
+	SSET (c_sym ("vset"), c_cfunc (&lisp_vset));
+	SSET (c_sym ("vget"), c_cfunc (&lisp_vget));
+	SSET (c_sym ("vlength"), c_cfunc (&lisp_vlength));
+	SSET (c_sym ("make-vector"), c_cfunc (&make_vector));
+	SSET (c_sym ("vconcat2"), c_cfunc (&lisp_vconcat));
+	SSET (c_sym ("vsub"), c_cfunc (&lisp_vsub));
+
+	/* Internals */
+	SSET (c_sym ("refcount"), c_cfunc (&lisp_refcount));
+	SSET (c_sym ("eval-depth"), c_cfunc (&lisp_eval_depth));
+	SSET (c_sym ("max-eval-depth"), c_cfunc (&lisp_max_eval_depth));
+
+	/* System */
+	SSET (c_sym ("exit"), c_cfunc (&lisp_exit));
+
+	/* Detachments */
+	SSET (c_sym ("detach"), c_cfunc (&lisp_detach));
+	SSET (c_sym ("receive"), c_cfunc (&lisp_receive));
+	SSET (c_sym ("send"), c_cfunc (&lisp_send));
+
+	signal (SIGINT, &handle_iterrupt);
+	
+	out_of_bounds = c_sym ("index-out-of-bounds");
 	lambda = c_sym ("lambda");
 	macro = c_sym ("macro");
 	quote = c_sym ("quote");
@@ -783,43 +878,45 @@ void eval_init ()
 	SET (c_sym ("wisproot"), c_strs (util.xstrdup (wisproot)));
 
 	/* Load core lisp code. */
-	if (strlen (wisproot) != 0)
+	if (strlen (wisproot) != 0) {
 		core_file = util.pathcat (wisproot, core_file);
+	}
 	int r = load_file (NULL, core_file, 0);
-	if (!r)
-		{
-			fprintf (stderr, "error: could not load core lisp \"%s\": %s\n", core_file, strerror (errno));
-			if (strlen (wisproot) == 1) fprintf (stderr, "warning: perhaps you should set WISPROOT\n");
-			exit(1);
+	if (!r) {
+		fprintf (stderr, "error: could not load core lisp \"%s\": %s\n", core_file, strerror (errno));
+		if (strlen (wisproot) == 1) {
+			fprintf (stderr, "warning: perhaps you should set WISPROOT\n");
 		}
+		exit(1);
+	}
 }
 
-pub void wisp_init () {
-	mm_obj = mem.mm_create (sizeof (object_t), &object_clear);
-	mm_cons = mem.mm_create (sizeof (cons_t), &cons_clear);
-	mm_str = mem.mm_create (sizeof (str_t), &str_clear);
-	mm_vec = mem.mm_create (sizeof (vector_t), &vector_clear);
+/* Convenience function for creating a REPL. */
+pub void repl () {
+	interactive_mode = 1;
+	load_file (stdin, "<stdin>", 1);
+}
 
-
-	//
-	// symtab_init
-	//
-	symbol_table = hashtab.ht_init(2048, NULL);
-	/* Set up t and nil constants. The SET macro won't work until NIL is set. */
-	NIL = c_sym ("nil");
-	symbol_t *x = NIL->uval.val;
-	*x->vals = NIL;
-	*SYMPROPS (NIL) |= SYM_CONSTANT;
-	T = c_sym ("t");
-	*SYMPROPS (T) |= SYM_CONSTANT;
-	SET (T, T);
-	
-	lisp_init ();
-	
-	out_of_bounds = c_sym ("index-out-of-bounds");
-
-
-	eval_init ();
+/* Use the core functions above to eval each sexp in a file. */
+pub int load_file (FILE * fid, char *filename, int interactive) {
+	if (fid == NULL)
+		{
+			fid = fopen (filename, "r");
+			if (fid == NULL)
+	return 0;
+		}
+	reader_t *r = reader_create (fid, NULL, filename, interactive);
+	while (!r->eof) {
+		object_t *sexp = read_sexp (r);
+		if (sexp != err_symbol) {
+			object_t *ret = top_eval (sexp);
+			if (r->interactive && ret != err_symbol) obj_print (ret, 1);
+			obj_destroy (sexp);
+			obj_destroy (ret);
+		}
+	}
+	reader_destroy (r);
+	return 1;
 }
 
 object_t *eval_list (object_t * lst)
@@ -1153,10 +1250,6 @@ object_t *c_detach (object_t * o) {
 	OS.close (pipeb[0]);
 	d->read = reader_create (OS.fdopen (d->in, "r"), NULL, "detach", 0);
 	return dob;
-}
-
-detach_t *detach_create () {
-	return util.xmalloc (sizeof (detach_t));
 }
 
 void detach_destroy (object_t * o)
@@ -1672,33 +1765,7 @@ object_t *read_sexp (reader_t * r)
 	return sexp;
 }
 
-/* Use the core functions above to eval each sexp in a file. */
-pub int load_file (FILE * fid, char *filename, int interactive) {
-	if (fid == NULL)
-		{
-			fid = fopen (filename, "r");
-			if (fid == NULL)
-	return 0;
-		}
-	reader_t *r = reader_create (fid, NULL, filename, interactive);
-	while (!r->eof) {
-		object_t *sexp = read_sexp (r);
-		if (sexp != err_symbol) {
-			object_t *ret = top_eval (sexp);
-			if (r->interactive && ret != err_symbol) obj_print (ret, 1);
-			obj_destroy (sexp);
-			obj_destroy (ret);
-		}
-	}
-	reader_destroy (r);
-	return 1;
-}
 
-/* Convenience function for creating a REPL. */
-pub void repl () {
-	interactive_mode = 1;
-	load_file (stdin, "<stdin>", 1);
-}
 
 object_t *cdoc_string(object_t *lst) {
 	if (lst == doc_string) {
@@ -1721,8 +1788,7 @@ object_t *cdoc_string(object_t *lst) {
 	return str;
 }
 
-object_t *lisp_apply (object_t * lst)
-{
+object_t *lisp_apply (object_t * lst) {
 	if (lst == doc_string) {
 		return c_strs(util.xstrdup("Apply function to a list."));
 	}
@@ -1734,8 +1800,7 @@ object_t *lisp_apply (object_t * lst)
 	return apply (f, args);
 }
 
-object_t *lisp_and (object_t * lst)
-{
+object_t *lisp_and (object_t * lst) {
 	if (lst == doc_string) {
 		return c_strs(util.xstrdup("Evaluate each argument until one returns nil."));
 	}
@@ -1753,8 +1818,7 @@ object_t *lisp_and (object_t * lst)
 	return UPREF (r);
 }
 
-object_t *lisp_or (object_t * lst)
-{
+object_t *lisp_or (object_t * lst) {
 	if (lst == doc_string) {
 		return c_strs(util.xstrdup("Evaluate each argument until one doesn't return nil."));
 	}
@@ -1772,8 +1836,7 @@ object_t *lisp_or (object_t * lst)
 	return NIL;
 }
 
-object_t *lisp_cons (object_t * lst)
-{
+object_t *lisp_cons (object_t * lst) {
 	if (lst == doc_string) {
 		return c_strs(util.xstrdup("Construct a new cons cell, given car and cdr."));
 	}
@@ -1781,8 +1844,7 @@ object_t *lisp_cons (object_t * lst)
 	return c_cons (UPREF (CAR (lst)), UPREF (CAR (CDR (lst))));
 }
 
-object_t *lisp_quote (object_t * lst)
-{
+object_t *lisp_quote (object_t * lst) {
 	if (lst == doc_string) {
 		return c_strs(util.xstrdup("Return argument unevaluated."));
 	}
@@ -1790,8 +1852,7 @@ object_t *lisp_quote (object_t * lst)
 	return UPREF (CAR (lst));
 }
 
-object_t *lambda_f (object_t * lst)
-{
+object_t *lambda_f (object_t * lst) {
 	if (lst == doc_string) {
 		return c_strs(util.xstrdup("Create an anonymous function."));
 	}
@@ -1800,8 +1861,7 @@ object_t *lambda_f (object_t * lst)
 	return c_cons (lambda, UPREF (lst));
 }
 
-object_t *defun (object_t * lst)
-{
+object_t *defun (object_t * lst) {
 	if (lst == doc_string) {
 		return c_strs(util.xstrdup("Define a new function."));
 	}
@@ -1813,13 +1873,10 @@ object_t *defun (object_t * lst)
 	return UPREF (CAR (lst));
 }
 
-/*
-(defmacro setq (var val) (list 'set (list 'quote var) val))
-It is treated exactly like a function, except that arguments are
-never evaluated and its return value is directly evaluated.
-*/
-object_t *defmacro (object_t * lst)
-{
+object_t *defmacro (object_t * lst) {
+	// (defmacro setq (var val) (list 'set (list 'quote var) val))
+	// It is treated exactly like a function, except that arguments are
+	// never evaluated and its return value is directly evaluated.
 	if (lst == doc_string) {
 		return c_strs(util.xstrdup("Define a new macro."));
 	}
@@ -1831,8 +1888,7 @@ object_t *defmacro (object_t * lst)
 	return UPREF (CAR (lst));
 }
 
-object_t *lisp_cdr (object_t * lst)
-{
+object_t *lisp_cdr (object_t * lst) {
 	if (lst == doc_string) {
 		return c_strs(util.xstrdup("Return cdr element of cons cell."));
 	}
@@ -1852,16 +1908,14 @@ object_t *lisp_car (object_t * lst) {
 	return UPREF (CAR (CAR (lst)));
 }
 
-object_t *lisp_list (object_t * lst)
-{
+object_t *lisp_list (object_t * lst) {
 	if (lst == doc_string) {
 		return c_strs(util.xstrdup("Return arguments as a list."));
 	}
 	return UPREF (lst);
 }
 
-object_t *lisp_if (object_t * lst)
-{
+object_t *lisp_if (object_t * lst) {
 	if (lst == doc_string) {
 		return c_strs(util.xstrdup("If conditional special form."));
 	}
@@ -1972,8 +2026,6 @@ object_t *lisp_while(object_t * lst) {
 	return r;
 }
 
-/* Equality */
-
 object_t *eq (object_t * lst) {
 	if (lst == doc_string) {
 		return c_strs(util.xstrdup("Return t if both arguments are the same lisp "));
@@ -1986,8 +2038,7 @@ object_t *eq (object_t * lst) {
 	return NIL;
 }
 
-object_t *eql (object_t * lst)
-{
+object_t *eql (object_t * lst) {
 	if (lst == doc_string) {
 		return c_strs(util.xstrdup("Return t if both arguments are similar."));
 	}
@@ -2014,8 +2065,7 @@ object_t *eql (object_t * lst)
 	return NIL;
 }
 
-object_t *lisp_hash (object_t * lst)
-{
+object_t *lisp_hash (object_t * lst) {
 	if (lst == doc_string) {
 		return c_strs(util.xstrdup("Return integer hash of "));
 	}
@@ -2032,10 +2082,7 @@ object_t *lisp_print (object_t * lst) {
 	return NIL;
 }
 
-/* Symbol table */
-
-object_t *lisp_set (object_t * lst)
-{
+object_t *lisp_set (object_t * lst) {
 	if (lst == doc_string) {
 		return c_strs(util.xstrdup("Store object in symbol."));
 	}
@@ -2050,8 +2097,7 @@ object_t *lisp_set (object_t * lst)
 	return UPREF (CAR (CDR (lst)));
 }
 
-object_t *lisp_value (object_t * lst)
-{
+object_t *lisp_value (object_t * lst) {
 	if (lst == doc_string) {
 		return c_strs(util.xstrdup("Get value stored in symbol."));
 	}
@@ -2093,8 +2139,7 @@ object_t *nullp (object_t * lst) {
 	return NIL;
 }
 
-object_t *funcp (object_t * lst)
-{
+object_t *funcp (object_t * lst) {
 	if (lst == doc_string) {
 		return c_strs(util.xstrdup("Return t if object is a function."));
 	}
@@ -2104,8 +2149,7 @@ object_t *funcp (object_t * lst)
 	return NIL;
 }
 
-object_t *listp (object_t * lst)
-{
+object_t *listp (object_t * lst) {
 	if (lst == doc_string) {
 		return c_strs(util.xstrdup("Return t if object is a list."));
 	}
@@ -2126,8 +2170,7 @@ object_t *symbolp (object_t * lst) {
 	return NIL;
 }
 
-object_t *numberp (object_t * lst)
-{
+object_t *numberp (object_t * lst) {
 	if (lst == doc_string) {
 		return c_strs(util.xstrdup("Return t if object is a number."));
 	}
@@ -2146,8 +2189,7 @@ object_t *stringp (object_t * lst) {
 	return NIL;
 }
 
-object_t *integerp (object_t * lst)
-{
+object_t *integerp (object_t * lst) {
 	if (lst == doc_string) {
 		return c_strs(util.xstrdup("Return t if object is an integer."));
 	}
@@ -2157,8 +2199,7 @@ object_t *integerp (object_t * lst)
 	return NIL;
 }
 
-object_t *floatp (object_t * lst)
-{
+object_t *floatp (object_t * lst) {
 	if (lst == doc_string) {
 		return c_strs(util.xstrdup("Return t if object is a floating-point number."));
 	}
@@ -2168,8 +2209,7 @@ object_t *floatp (object_t * lst)
 	return NIL;
 }
 
-object_t *vectorp (object_t * lst)
-{
+object_t *vectorp (object_t * lst) {
 	if (lst == doc_string) {
 		return c_strs(util.xstrdup("Return t if object is a vector."));
 	}
@@ -2213,18 +2253,14 @@ object_t *lisp_read_string (object_t * lst) {
 	return sexp;
 }
 
-/* Error handling */
-
-object_t *throw (object_t * lst)
-{
+object_t *throw (object_t * lst) {
 	if (lst == doc_string) {
 		return c_strs(util.xstrdup("Throw an object, and attachment, as an exception."));
 	}
 	return THROW (UPREF (CAR (lst)), UPREF (CAR (CDR (lst))));
 }
 
-object_t *catch (object_t * lst)
-{
+object_t *catch (object_t * lst) {
 	if (lst == doc_string) {
 		return c_strs(util.xstrdup("Catch an exception and return attachment."));
 	}
@@ -2232,24 +2268,18 @@ object_t *catch (object_t * lst)
 	if (iserr(csym)) return csym;
 	object_t *body = CDR (lst);
 	object_t *r = eval_body (body);
-	if (r == err_symbol)
-		{
-			if (csym == err_thrown)
-	{
-		obj_destroy (csym);
-		obj_destroy (err_thrown);
-		return err_attach;
-	}
-			else
-	return err_symbol;
+	if (r == err_symbol) {
+		if (csym == err_thrown) {
+			obj_destroy (csym);
+			obj_destroy (err_thrown);
+			return err_attach;
 		}
+		return err_symbol;
+	}
 	return r;
 }
 
-/* Vectors */
-
-object_t *lisp_vset (object_t * lst)
-{
+object_t *lisp_vset (object_t * lst) {
 	if (lst == doc_string) {
 		return c_strs(util.xstrdup("Set slot in a vector to "));
 	}
@@ -2264,8 +2294,7 @@ object_t *lisp_vset (object_t * lst)
 	return vset_check (vec, ind, val);
 }
 
-object_t *lisp_vget (object_t * lst)
-{
+object_t *lisp_vget (object_t * lst) {
 	if (lst == doc_string) {
 		return c_strs(util.xstrdup("Get object stored in vector slot."));
 	}
@@ -2279,8 +2308,7 @@ object_t *lisp_vget (object_t * lst)
 	return vget_check (vec, ind);
 }
 
-object_t *lisp_vlength (object_t * lst)
-{
+object_t *lisp_vlength (object_t * lst) {
 	if (lst == doc_string) {
 		return c_strs(util.xstrdup("Return length of the vector."));
 	}
@@ -2291,8 +2319,7 @@ object_t *lisp_vlength (object_t * lst)
 	return c_int (VLENGTH (vec));
 }
 
-object_t *make_vector (object_t * lst)
-{
+object_t *make_vector (object_t * lst) {
 	if (lst == doc_string) {
 		return c_strs(util.xstrdup("Make a new vector of given length, initialized to given "));
 	}
@@ -2304,8 +2331,7 @@ object_t *make_vector (object_t * lst)
 	return c_vec (into2int (len), o);
 }
 
-object_t *lisp_vconcat (object_t * lst)
-{
+object_t *lisp_vconcat (object_t * lst) {
 	if (lst == doc_string) {
 		return c_strs(util.xstrdup("Concatenate two vectors."));
 	}
@@ -2313,14 +2339,13 @@ object_t *lisp_vconcat (object_t * lst)
 	object_t *a = CAR (lst);
 	object_t *b = CAR (CDR (lst));
 	if (!VECTORP (a))
-		THROW (wrong_type, UPREF (a));
+		return THROW (wrong_type, UPREF (a));
 	if (!VECTORP (b))
-		THROW (wrong_type, UPREF (b));
+		return THROW (wrong_type, UPREF (b));
 	return vector_concat (a, b);
 }
 
-object_t *lisp_vsub (object_t * lst)
-{
+object_t *lisp_vsub (object_t * lst) {
 	if (lst == doc_string) {
 		return c_strs(util.xstrdup("Return subsection of vector."));
 	}
@@ -2352,10 +2377,7 @@ object_t *lisp_vsub (object_t * lst)
 	return vector_sub (v, start, end);
 }
 
-/* Internals */
-
-object_t *lisp_refcount (object_t * lst)
-{
+object_t *lisp_refcount (object_t * lst) {
 	if (lst == doc_string) {
 		return c_strs(util.xstrdup("Return number of reference counts to "));
 	}
@@ -2363,8 +2385,7 @@ object_t *lisp_refcount (object_t * lst)
 	return c_int (CAR (lst)->refs);
 }
 
-object_t *lisp_eval_depth (object_t * lst)
-{
+object_t *lisp_eval_depth (object_t * lst) {
 	if (lst == doc_string) {
 		return c_strs(util.xstrdup("Return the current evaluation depth."));
 	}
@@ -2372,8 +2393,7 @@ object_t *lisp_eval_depth (object_t * lst)
 	return c_int (stack_depth);
 }
 
-object_t *lisp_max_eval_depth (object_t * lst)
-{
+object_t *lisp_max_eval_depth (object_t * lst) {
 	if (lst == doc_string) {
 		return c_strs(util.xstrdup("Return or set the maximum evaluation depth."));
 	}
@@ -2390,10 +2410,7 @@ object_t *lisp_max_eval_depth (object_t * lst)
 	return UPREF (arg);
 }
 
-/* System */
-
-object_t *lisp_exit (object_t * lst)
-{
+object_t *lisp_exit (object_t * lst) {
 	if (lst == doc_string) {
 		return c_strs(util.xstrdup("Halt the interpreter and return given integer."));
 	}
@@ -2406,90 +2423,64 @@ object_t *lisp_exit (object_t * lst)
 	return NULL;
 }
 
-/* Installs all of the above functions. */
-pub void lisp_init ()
-{
-	/* Maths */
-	lisp_math_init ();
-
-	/* Various */
-	SSET (c_sym ("cdoc-string"), c_cfunc (&cdoc_string));
-	SSET (c_sym ("apply"), c_cfunc (&lisp_apply));
-	SSET (c_sym ("and"), c_special (&lisp_and));
-	SSET (c_sym ("or"), c_special (&lisp_or));
-	SSET (c_sym ("quote"), c_special (&lisp_quote));
-	SSET (c_sym ("lambda"), c_special (&lambda_f));
-	SSET (c_sym ("defun"), c_special (&defun));
-	SSET (c_sym ("defmacro"), c_special (&defmacro));
-	SSET (c_sym ("car"), c_cfunc (&lisp_car));
-	SSET (c_sym ("cdr"), c_cfunc (&lisp_cdr));
-	SSET (c_sym ("list"), c_cfunc (&lisp_list));
-	SSET (c_sym ("if"), c_special (&lisp_if));
-	SSET (c_sym ("not"), c_cfunc (&nullp));
-	SSET (c_sym ("progn"), c_special (&progn));
-	SSET (c_sym ("let"), c_special (&let));
-	SSET (c_sym ("while"), c_special (&lisp_while));
-	SSET (c_sym ("eval"), c_cfunc (&eval_body));
-	SSET (c_sym ("print"), c_cfunc (&lisp_print));
-	SSET (c_sym ("cons"), c_cfunc (&lisp_cons));
-	SSET (c_sym ("cond"), c_special (&lisp_cond));
-
-	/* Symbol table */
-	SSET (c_sym ("set"), c_cfunc (&lisp_set));
-	SSET (c_sym ("value"), c_cfunc (&lisp_value));
-	SSET (c_sym ("symbol-name"), c_cfunc (&symbol_name));
-
-	/* Strings */
-	SSET (c_sym ("concat2"), c_cfunc (&lisp_concat));
-
-	/* Equality */
-	SSET (c_sym ("eq"), c_cfunc (&eq));
-	SSET (c_sym ("eql"), c_cfunc (&eql));
-	SSET (c_sym ("hash"), c_cfunc (&lisp_hash));
-
-	/* Predicates */
-	SSET (c_sym ("nullp"), c_cfunc (&nullp));
-	SSET (c_sym ("funcp"), c_cfunc (&funcp));
-	SSET (c_sym ("listp"), c_cfunc (&listp));
-	SSET (c_sym ("symbolp"), c_cfunc (&symbolp));
-	SSET (c_sym ("stringp"), c_cfunc (&stringp));
-	SSET (c_sym ("numberp"), c_cfunc (&numberp));
-	SSET (c_sym ("integerp"), c_cfunc (&integerp));
-	SSET (c_sym ("floatp"), c_cfunc (&floatp));
-	SSET (c_sym ("vectorp"), c_cfunc (&vectorp));
-
-	/* Input/Output */
-	SSET (c_sym ("load"), c_cfunc (&lisp_load));
-	SSET (c_sym ("read-string"), c_cfunc (&lisp_read_string));
-
-	/* Error handling */
-	SSET (c_sym ("throw"), c_cfunc (&throw));
-	SSET (c_sym ("catch"), c_special (&catch));
-
-	/* Vectors */
-	SSET (c_sym ("vset"), c_cfunc (&lisp_vset));
-	SSET (c_sym ("vget"), c_cfunc (&lisp_vget));
-	SSET (c_sym ("vlength"), c_cfunc (&lisp_vlength));
-	SSET (c_sym ("make-vector"), c_cfunc (&make_vector));
-	SSET (c_sym ("vconcat2"), c_cfunc (&lisp_vconcat));
-	SSET (c_sym ("vsub"), c_cfunc (&lisp_vsub));
-
-	/* Internals */
-	SSET (c_sym ("refcount"), c_cfunc (&lisp_refcount));
-	SSET (c_sym ("eval-depth"), c_cfunc (&lisp_eval_depth));
-	SSET (c_sym ("max-eval-depth"), c_cfunc (&lisp_max_eval_depth));
-
-	/* System */
-	SSET (c_sym ("exit"), c_cfunc (&lisp_exit));
-
-	/* Detachments */
-	SSET (c_sym ("detach"), c_cfunc (&lisp_detach));
-	SSET (c_sym ("receive"), c_cfunc (&lisp_receive));
-	SSET (c_sym ("send"), c_cfunc (&lisp_send));
+object_t *addition (object_t * lst) {
+	DOC ("Perform addition operation.");
+	return arith (ADD, lst);
 }
 
+object_t *multiplication (object_t * lst) {
+	DOC ("Perform multiplication operation.");
+	return arith (MUL, lst);
+}
 
+object_t *subtraction (object_t * lst) {
+	DOC ("Perform subtraction operation.");
+	return arith (SUB, lst);
+}
 
+object_t *division (object_t * lst) {
+	DOC ("Perform division operation.");
+	return arith (DIV, lst);
+}
+
+object_t *num_eq (object_t * lst) {
+	DOC ("Compare two numbers by =.");
+	return num_cmp (EQ, lst);
+}
+
+object_t *num_lt (object_t * lst) {
+	DOC ("Compare two numbers by <.");
+	return num_cmp (LT, lst);
+}
+
+object_t *num_lte (object_t * lst) {
+	DOC ("Compare two numbers by <=.");
+	return num_cmp (LTE, lst);
+}
+
+object_t *num_gt (object_t * lst) {
+	DOC ("Compare two numbers by >.");
+	return num_cmp (GT, lst);
+}
+
+object_t *num_gte (object_t * lst) {
+	DOC ("Compare two numbers by >=.");
+	return num_cmp (GTE, lst);
+}
+
+object_t *modulus (object_t * lst) {
+	DOC ("Return modulo of arguments.");
+	// REQ (lst, 2, c_sym ("%"));
+	object_t *a = CAR (lst);
+	object_t *b = CAR (CDR (lst));
+	if (!INTP (a))
+		return THROW (wrong_type, UPREF (a));
+	if (!INTP (b))
+		return THROW (wrong_type, UPREF (b));
+	object_t *m = c_int (0);
+	mp.mpz_mod(DINT (m), DINT (a), DINT (b));
+	return m;
+}
 
 /* Maths */
 object_t *arith(int op, object_t * lst) {
@@ -2621,29 +2612,7 @@ object_t *arith(int op, object_t * lst) {
 	return accumf;
 }
 
-object_t *addition (object_t * lst)
-{
-	DOC ("Perform addition operation.");
-	return arith (ADD, lst);
-}
 
-object_t *multiplication (object_t * lst)
-{
-	DOC ("Perform multiplication operation.");
-	return arith (MUL, lst);
-}
-
-object_t *subtraction (object_t * lst)
-{
-	DOC ("Perform subtraction operation.");
-	return arith (SUB, lst);
-}
-
-object_t *division (object_t * lst)
-{
-	DOC ("Perform division operation.");
-	return arith (DIV, lst);
-}
 
 object_t *num_cmp(int cmp, object_t * lst) {
 	if (reqm_length (lst,c_sym("compare-func"),2) == err_symbol)	return err_symbol;
@@ -2681,64 +2650,4 @@ object_t *num_cmp(int cmp, object_t * lst) {
 	}
 	if (r) return T;
 	return NIL;
-}
-
-object_t *num_eq (object_t * lst)
-{
-	DOC ("Compare two numbers by =.");
-	return num_cmp (EQ, lst);
-}
-
-object_t *num_lt (object_t * lst)
-{
-	DOC ("Compare two numbers by <.");
-	return num_cmp (LT, lst);
-}
-
-object_t *num_lte (object_t * lst)
-{
-	DOC ("Compare two numbers by <=.");
-	return num_cmp (LTE, lst);
-}
-
-object_t *num_gt (object_t * lst)
-{
-	DOC ("Compare two numbers by >.");
-	return num_cmp (GT, lst);
-}
-
-object_t *num_gte (object_t * lst)
-{
-	DOC ("Compare two numbers by >=.");
-	return num_cmp (GTE, lst);
-}
-
-object_t *modulus (object_t * lst)
-{
-	DOC ("Return modulo of arguments.");
-	// REQ (lst, 2, c_sym ("%"));
-	object_t *a = CAR (lst);
-	object_t *b = CAR (CDR (lst));
-	if (!INTP (a))
-		return THROW (wrong_type, UPREF (a));
-	if (!INTP (b))
-		return THROW (wrong_type, UPREF (b));
-	object_t *m = c_int (0);
-	mp.mpz_mod(DINT (m), DINT (a), DINT (b));
-	return m;
-}
-
-/* Install all the math functions */
-void lisp_math_init ()
-{
-	SSET (c_sym ("+"), c_cfunc (&addition));
-	SSET (c_sym ("*"), c_cfunc (&multiplication));
-	SSET (c_sym ("-"), c_cfunc (&subtraction));
-	SSET (c_sym ("/"), c_cfunc (&division));
-	SSET (c_sym ("="), c_cfunc (&num_eq));
-	SSET (c_sym ("<"), c_cfunc (&num_lt));
-	SSET (c_sym ("<="), c_cfunc (&num_lte));
-	SSET (c_sym (">"), c_cfunc (&num_gt));
-	SSET (c_sym (">="), c_cfunc (&num_gte));
-	SSET (c_sym ("%"), c_cfunc (&modulus));
 }
