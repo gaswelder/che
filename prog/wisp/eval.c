@@ -584,28 +584,19 @@ object_t *c_special (cfunc_t f)
 }
 
 void obj_destroy(object_t *o) {
-	return;
 	if (o == NULL) return;
 	if (o->type == SYMBOL) return;
 
 	o->refs--;
-	if (o->refs > 0)
-		return;
+	if (o->refs > 0) return;
 
 	switch (o->type) {
 		case SYMBOL: {
 			/* Symbol objects are never destroyed. */
 			return;
 		}
-		case FLOAT: {
-			mp.mpf_t *f = OFLOAT(o);
-			mp.mpf_clear(f);
-			free (((o)->uval.val));
-		}
-		case INT: {
-			mp.mpz_t *z = OINT(o);
-			mp.mpz_clear(z);
-			free (((o)->uval.val));
+		case FLOAT, INT: {
+			free(o->uval.val);
 		}
 		case STRING: {
 			str_destroy (((o)->uval.val));
@@ -623,7 +614,7 @@ void obj_destroy(object_t *o) {
 			free (((o)->uval.val));
 		}
 		case CFUNC, SPECIAL: {}
-		}
+	}
 	mem.mm_free(mm_obj, o);
 }
 
@@ -667,18 +658,16 @@ uint32_t str_hash (object_t * o) {
 	return hash (OSTR (o), OSTRLEN (o));
 }
 
-uint32_t int_hash (object_t * o) {
-	char *str = mp.mpz_get_str(NULL, 16, DINT(o));
-	uint32_t h = hash (str, strlen (str));
-	free (str);
-	return h;
+uint32_t int_hash(object_t * o) {
+	char str[100] = {};
+	mp.mpz_sprint(str, DINT(o));
+	return hash(str, strlen(str));
 }
 
 uint32_t float_hash (object_t * o) {
-	char *str = mp.mpf_get_str(NULL, NULL, 16, 0, DFLOAT (o));
-	uint32_t h = hash(str, strlen (str));
-	free (str);
-	return h;
+	char str[100] = {};
+	mp.mpf_sprint(str, DFLOAT(o));
+	return hash(str, strlen(str));
 }
 
 uint32_t vector_hash (object_t * o)
@@ -2664,12 +2653,11 @@ object_t *num_cmp(int cmp, object_t * lst) {
 	if (!NUMP (b)) return THROW (wrong_type, UPREF (b));
 	int r = 0;
 	int invr = 1;
-	if (INTP (a) && INTP (b))
+	if (INTP(a) && INTP(b)) {
 		r = mp.mpz_cmp(DINT (a), DINT (b));
-	else if (FLOATP (a) && FLOATP (b))
+	} else if (FLOATP(a) && FLOATP(b)) {
 		r = mp.mpf_cmp(DFLOAT (a), DFLOAT (b));
-	else if (INTP (a) && FLOATP (b))
-	{
+	} else if (INTP (a) && FLOATP (b)) {
 		/* Swap and handle below. */
 		object_t *c = b;
 		b = a;
@@ -2678,7 +2666,7 @@ object_t *num_cmp(int cmp, object_t * lst) {
 	}
 	if (FLOATP (a) && INTP (b)) {
 		/* Convert down. */
-		object_t *convf = c_float (0);
+		object_t *convf = c_float(0);
 		mp.mpf_set_z(DFLOAT(convf), DINT(b));
 		r = mp.mpf_cmp(DFLOAT (a), DFLOAT (convf));
 		obj_destroy (convf);
@@ -2691,8 +2679,7 @@ object_t *num_cmp(int cmp, object_t * lst) {
 		case GT: { r = (r > 0); }
 		case GTE: { r = (r >= 0); }
 	}
-	if (r)
-		return T;
+	if (r) return T;
 	return NIL;
 }
 
