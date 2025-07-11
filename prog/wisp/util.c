@@ -10,15 +10,6 @@ pub void *xrealloc (void *p, size_t size) {
   return np;
 }
 
-pub char *pathcat (const char *prefix, char *path)
-{
-  char *str = xmalloc (strlen (prefix) + strlen (path) + 2);
-  strcpy (str, prefix);
-  str[strlen (prefix)] = '/';	/* Extra / don't hurt. */
-  strcpy (str + strlen (prefix) + 1, path);
-  return str;
-}
-
 pub char *process_str(char *rawstr) {
 	const char *tmp = rawstr + 1; /* trim leading quote */
   char *str = xmalloc (strlen (tmp) + 1);

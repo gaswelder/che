@@ -49,8 +49,6 @@ typedef {
 	reader_t *read;
 } detach_t;
 
-const char *wisproot = NULL;
-
 // #define REQ(lst, n, so) if (req_length (lst, so, n) == err_symbol)	return err_symbol;
 // #define REQX(lst, n, so) if (reqx_length (lst, so, n) == err_symbol)	return err_symbol;
 // #define REQPROP(lst) if (properlistp(lst) == NIL) return THROW(improper_list, lst);
@@ -729,8 +727,6 @@ pub object_t *getsym_improper_list() {
 uint32_t stack_depth = 0;
 uint32_t max_stack_depth = 20000;
 
-char *core_file = "core.wisp";
-
 int interrupt = 0;
 int interactive_mode = 0;
 void handle_iterrupt (int sig)
@@ -874,20 +870,19 @@ pub void wisp_init () {
 	err_interrupt = c_sym ("caught-interrupt");
 
 	/* set up wisproot */
-	wisproot = self.getenv("WISPROOT");
-	if (wisproot == NULL) wisproot = ".";
+	const char *wisproot = self.getenv("WISPROOT");
+	if (wisproot == NULL || strlen(wisproot) == 0) {
+		wisproot = ".";
+	}
 	SET (c_sym ("wisproot"), c_strs (strings.newstr("%s", wisproot)));
 
 	/* Load core lisp code. */
-	if (strlen (wisproot) != 0) {
-		core_file = util.pathcat (wisproot, core_file);
-	}
+	char core_file[400] = {};
+	sprintf(core_file, "%s/core.wisp", wisproot);
 	int r = load_file (NULL, core_file, 0);
 	if (!r) {
-		fprintf (stderr, "error: could not load core lisp \"%s\": %s\n", core_file, strerror (errno));
-		if (strlen (wisproot) == 1) {
-			fprintf (stderr, "warning: perhaps you should set WISPROOT\n");
-		}
+		fprintf(stderr, "could not load core lisp at \"%s\": %s\n", core_file, strerror(errno));
+		fprintf(stderr, "(WISPROOT=%s)\n", wisproot);
 		exit(1);
 	}
 }

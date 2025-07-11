@@ -13,6 +13,8 @@ pub bool getcwd(char *buf, size_t n) {
     return OS.getcwd(buf, n) != NULL;
 }
 
+// Returns the pointer to env variable with the specified name
+// or NULL if there is no match.
 pub const char *getenv(const char *name) {
 	return OS.getenv(name);
 }
