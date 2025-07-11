@@ -43,12 +43,8 @@ void assert (int b, char *msg)
     }
 }
 
-void string_tests ()
-{
-  assert (strcmp (common.process_str ("\"Hello\\\" there!\""), "Hello\" there!") ==
-	  0, "process_str()");
-  assert (strcmp (common.unprocess_str ("Hello\" there!"), "\"Hello\\\" there!\"") ==
-	  0, "unprocess_str()");
+void string_tests () {
+  assert (strcmp (eval.addslashes("Hello\" there!"), "\"Hello\\\" there!\"") == 0, "addslashes()");
 }
 
 void symbol_tests ()

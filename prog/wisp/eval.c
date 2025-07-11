@@ -147,9 +147,11 @@ int OSTRLEN(object_t *o) {
 	return x->len;
 }
 char *OSTRP(object_t *o) {
-	str_genp (o);
-	str_t *x = ((o)->uval.val);
-	return x->print;
+	str_t *str = o->uval.val;
+	if (str->print == NULL) {
+		str->print = addslashes(str->raw);
+	}
+	return str->print;
 }
 
 void setcar(object_t *o, *car) {
@@ -1123,13 +1125,6 @@ void str_destroy (str_t * str) {
 		free(str->print);
 	}
 	mem.mm_free(mm_str, str);
-}
-
-void str_genp (object_t * o)
-{
-	str_t *str = (str_t *) ((o)->uval.val);
-	if (str->print == NULL)
-		str->print = util.unprocess_str (str->raw);
 }
 
 object_t *str_cat (object_t * ao, object_t * bo)
@@ -2646,4 +2641,41 @@ object_t *num_cmp(int cmp, object_t * lst) {
 	}
 	if (r) return T;
 	return NIL;
+}
+
+pub char *addslashes(char *cleanstr) {
+  /* Count the quotes and backquotes. */
+  char *p = cleanstr;
+  int cnt = 0;
+  while (*p != '\0')
+    {
+      if (*p == '\\' || *p == '"')
+	cnt++;
+      p++;
+    }
+
+  /* Two extra for quotes and one for each character that needs
+     escaping. */
+  char *str = util.xmalloc (strlen (cleanstr) + (size_t)cnt + 2 + 1);
+  strcpy (str + 1, cleanstr);
+
+  /* Place backquotes. */
+  char *c = str + 1;
+  while (*c != '\0')
+    {
+      if (*c == '\\' || *c == '"')
+	{
+	  memmove (c + 1, c, strlen (c) + 1);
+	  *c = '\\';
+	  c++;
+	}
+      c++;
+    }
+
+  /* Surrounding quotes. */
+  str[0] = '"';
+  str[strlen (str) + 1] = '\0';
+  str[strlen (str)] = '"';
+
+  return str;
 }
