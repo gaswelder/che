@@ -1,37 +1,64 @@
 #import formats/csv
 #import formats/json
+#import opt
 #import strings
 
-int main() {
-	char val[4096];	
-	char *header[100] = {};
-	size_t headersize = 0;
-	bool first_line = true;
+int main(int argc, char *argv[]) {
+	bool noheader = false;
+	opt.flag("n", "the first line is not header", &noheader);
+	opt.parse(argc, argv);
 
-	csv.reader_t *r = csv.new_reader();
-	while (csv.read_line(r)) {
-		if (first_line) {
-			first_line = false;
-			while (csv.read_val(r, val, sizeof(val))) {
-				header[headersize++] = strings.newstr("%s", val);
-			}
-			continue;
-		}
-
-		putc('{', stdout);
-		size_t i = 0;
-		while (csv.read_val(r, val, sizeof(val))) {
-			if (i > 0) putc(',', stdout);
-			write_kv(header[i++], val);
-		}
-		printf("}\n");
+	char *colnames[100] = {};
+	for (size_t i = 0; i < 100; i++) {
+		colnames[i] = strings.newstr("col%d", i);
 	}
 
-	csv.free_reader(r);
+	csv.reader_t *r = csv.newreader();
+
+	if (!noheader) {
+		size_t i = 0;
+		while (csv.readval(r)) {
+			strcpy(colnames[i], csv.val(r));
+			i++;
+		}
+		csv.nextline(r);
+	}
+
+	while (true) {
+		size_t i = 0;
+		while (csv.readval(r)) {
+			val(colnames[i], csv.val(r));
+			i++;
+		}
+		end();
+		if (!csv.nextline(r)) {
+			break;
+		}
+	}
+
+	csv.freereader(r);
 	return 0;
 }
 
-void write_kv(char *k, *v) {
+bool line_started = false;
+
+void val(const char *field, *val) {
+	if (!line_started) {
+		printf("{");
+		write_kv(field, val);
+		line_started = true;
+	} else {
+		printf(",");
+		write_kv(field, val);
+	}
+}
+void end() {
+	if (!line_started) return;
+	printf("}\n");
+	line_started = false;
+}
+
+void write_kv(const char *k, *v) {
 	json.write_string(stdout, k);
 	printf(":");
 	json.write_string(stdout, v);

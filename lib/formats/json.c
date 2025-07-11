@@ -756,7 +756,7 @@ bool writebool(val_t *n, strbuilder.str *s) {
 
 // ad-hoc function
 // write an escaped quoted string s to f.
-pub void write_string(FILE *f, char *s) {
+pub void write_string(FILE *f, const char *s) {
 	fputc('"', f);
 	while (*s != '\0') {
 		switch (*s) {
