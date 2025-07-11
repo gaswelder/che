@@ -10,13 +10,6 @@ pub void *xrealloc (void *p, size_t size) {
   return np;
 }
 
-pub char *xstrdup (const char *str)
-{
-  char *newstr = xmalloc (strlen (str) + 1);
-  strcpy (newstr, str);
-  return newstr;
-}
-
 pub char *pathcat (const char *prefix, char *path)
 {
   char *str = xmalloc (strlen (prefix) + strlen (path) + 2);
@@ -27,7 +20,9 @@ pub char *pathcat (const char *prefix, char *path)
 }
 
 pub char *process_str(char *rawstr) {
-  char *str = xstrdup (rawstr + 1);	/* trim leading quote */
+	const char *tmp = rawstr + 1; /* trim leading quote */
+  char *str = xmalloc (strlen (tmp) + 1);
+  strcpy (str, tmp);
 
   /* Remove backquotes. */
   char *p = str;
