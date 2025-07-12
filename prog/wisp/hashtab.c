@@ -1,5 +1,3 @@
-#import util.c
-
 pub typedef {
   void *key;			/* key for the node */
   size_t keylen;		/* length of the key */
@@ -42,9 +40,8 @@ pub typedef {
  * function is used. A NULL pointer returned if the creation of the
  * hashtable failed due to a failed malloc(). */
 pub hashtab_t *ht_init (size_t size, hash_func_t *hash_func) {
-  hashtab_t *new_ht = (hashtab_t *) util.xmalloc (sizeof (hashtab_t));
-  new_ht->arr =
-    (hashtab_node_t **) util.xmalloc (sizeof (hashtab_node_t *) * size);
+  hashtab_t *new_ht = calloc!(1, sizeof (hashtab_t));
+  new_ht->arr = calloc!(size, sizeof (hashtab_node_t *));
   new_ht->size = size;
   new_ht->count = 0;
 
@@ -106,8 +103,7 @@ pub void *ht_insert (hashtab_t * hashtable, void *key, size_t keylen, void *valu
     }
 
   /* create a new node */
-  hashtab_node_t *new_node;
-  new_node = (hashtab_node_t *) util.xmalloc (sizeof (hashtab_node_t));
+  hashtab_node_t *new_node = calloc!(1, sizeof (hashtab_node_t));
   new_node->key = key;
   new_node->value = value;
   new_node->keylen = keylen;

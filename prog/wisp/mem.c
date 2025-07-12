@@ -13,7 +13,7 @@ pub typedef {
 
 
 void mm_fill_stack (mmanager_t * mm) {
-  uint8_t *p = util.xmalloc((mm->size - (size_t)(mm->stack - mm->base)) * mm->osize);
+  uint8_t *p = calloc!((mm->size - (size_t)(mm->stack - mm->base)), mm->osize);
   while (mm->stack < mm->base + mm->size) {
       mm->clearf (p);
       *(mm->stack) = (void *) p;
@@ -34,11 +34,12 @@ void mm_resize_stack (mmanager_t * mm)
 
 /* Creates a new memory manager. */
 pub mmanager_t *mm_create(size_t osize, clearf_t *clear_func) {
-  mmanager_t *mm = util.xmalloc (sizeof (mmanager_t));
+  mmanager_t *mm = calloc!(1, sizeof (mmanager_t));
   mm->osize = osize;
   mm->clearf = clear_func;
   mm->size = 1024;
-  mm->stack = mm->base = util.xmalloc (sizeof (void *) * mm->size);
+  mm->base = calloc!(mm->size, sizeof (void *));
+  mm->stack = mm->base;
   mm_fill_stack (mm);
   return mm;
 }

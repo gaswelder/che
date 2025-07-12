@@ -189,17 +189,17 @@ void vector_destroy (vector_t * v) {
 	mem.mm_free(mm_vec, v);
 }
 
-object_t *c_vec (size_t len, object_t * init)
-{
-	object_t *o = obj_create (VECTOR);
-	vector_t *v = ((o)->uval.val);
+object_t *c_vec (size_t len, object_t * init) {
+	object_t *o = obj_create(VECTOR);
+	vector_t *v = o->uval.val;
 	v->len = len;
-	if (len == 0)
+	if (len == 0) {
 		len = 1;
-	v->v = util.xmalloc (sizeof (object_t **) * len);
-	size_t i;
-	for (i = 0; i < v->len; i++)
+	}
+	v->v = calloc!(len, sizeof (object_t **));
+	for (size_t i = 0; i < v->len; i++) {
 		v->v[i] = UPREF (init);
+	}
 	return o;
 }
 
@@ -428,10 +428,10 @@ void SSET(object_t *so, *o) {
 }
 
 symbol_t *symbol_create() {
-	symbol_t *s = util.xmalloc (sizeof (symbol_t));
-	s->props = 0;
-	s->cnt = 8;
-	void *x = util.xmalloc (sizeof (object_t *) * s->cnt);
+	size_t cnt = 8;
+	void *x = calloc!(cnt, sizeof(object_t *));
+	symbol_t *s = calloc!(1, sizeof (symbol_t));
+	s->cnt = cnt;
 	s->vals = x;
 	s->stack = x;
 	return s;
@@ -547,13 +547,13 @@ object_t *obj_create(int type) {
 	o->type = type;
 	o->refs++;
 	switch (type) {
-		case INT: { o->uval.val = util.xmalloc(sizeof(mp.mpz_t *)); }
-		case FLOAT: { o->uval.val = util.xmalloc(sizeof(mp.mpf_t *)); }
+		case INT: { o->uval.val = calloc!(1, sizeof(mp.mpz_t *)); }
+		case FLOAT: { o->uval.val = calloc!(1, sizeof(mp.mpf_t *)); }
 		case CONS: { o->uval.val = mem.mm_alloc(mm_cons); }
 		case SYMBOL: { o->uval.val = symbol_create (); }
 		case STRING: { o->uval.val = mem.mm_alloc(mm_str); }
 		case VECTOR: { o->uval.val = mem.mm_alloc(mm_vec); }
-		case DETACH: { o->uval.val = util.xmalloc (sizeof (detach_t)); }
+		case DETACH: { o->uval.val = calloc!(1, sizeof (detach_t)); }
 		case CFUNC, SPECIAL: {}
 	}
 	return o;
@@ -1127,18 +1127,6 @@ void str_destroy (str_t * str) {
 	mem.mm_free(mm_str, str);
 }
 
-object_t *str_cat (object_t * ao, object_t * bo)
-{
-	str_t *a = (str_t *) ((ao)->uval.val);
-	str_t *b = (str_t *) ((bo)->uval.val);
-	size_t nlen = a->len + b->len;
-	char *nraw = util.xmalloc (nlen + 1);
-	memcpy (nraw, a->raw, a->len);
-	memcpy (nraw + a->len, b->raw, b->len);
-	nraw[nlen] = '\0';
-	return c_str (nraw, nlen);
-}
-
 object_t *c_str (char *str, size_t len) {
 	object_t *o = obj_create(STRING);
 	str_t *x = o->uval.val;
@@ -1333,7 +1321,7 @@ char *prompt = "wisp> ";
 /* Create a new reader object, passing either a string or file handle
  * for parsing. */
 reader_t *reader_create (FILE * fid, char *str, char *name, int interactive) {
-	reader_t *r = util.xmalloc (sizeof (reader_t));
+	reader_t *r = calloc!(1, sizeof (reader_t));
 	r->fid = fid;
 	r->strp = r->str = str;
 	r->name = name;
@@ -1348,13 +1336,16 @@ reader_t *reader_create (FILE * fid, char *str, char *name, int interactive) {
 
 	/* read buffers */
 	r->buflen = 1024;
-	r->bufp = r->buf = util.xmalloc (r->buflen + 1);
+	r->buf = calloc!(r->buflen + 1, 1);
+	r->bufp = r->buf;
 	r->readbuflen = 8;
-	r->readbufp = r->readbuf = util.xmalloc (r->readbuflen * sizeof (int));
+	r->readbuf = calloc!(r->readbuflen, sizeof (int));
+	r->readbufp = r->readbuf;
 
 	/* state stack */
 	r->ssize = 32;
-	r->base = r->state = util.xmalloc (r->ssize * sizeof (rstate_t));
+	r->state = calloc!(r->ssize, sizeof (rstate_t));
+	r->base = r->state;
 	return r;
 }
 
@@ -2117,7 +2108,15 @@ object_t *lisp_concat(object_t *lst) {
 	object_t *b = CAR (CDR (lst));
 	if (a->type != STRING) return THROW (wrong_type, UPREF (a));
 	if (b->type != STRING) return THROW (wrong_type, UPREF (b));
-	return str_cat (a, b);
+
+	str_t *str1 = a->uval.val;
+	str_t *str2 = b->uval.val;
+	size_t nlen = str1->len + str2->len;
+	char *nraw = calloc!(nlen + 1, 1);
+	memcpy(nraw, str1->raw, str1->len);
+	memcpy(nraw + str1->len, str2->raw, str2->len);
+	nraw[nlen] = '\0';
+	return c_str(nraw, nlen);
 }
 
 object_t *nullp (object_t * lst) {
@@ -2656,7 +2655,7 @@ pub char *addslashes(char *cleanstr) {
 
   /* Two extra for quotes and one for each character that needs
      escaping. */
-  char *str = util.xmalloc (strlen (cleanstr) + (size_t)cnt + 2 + 1);
+  char *str = calloc!(strlen (cleanstr) + (size_t)cnt + 2 + 1, 1);
   strcpy (str + 1, cleanstr);
 
   /* Place backquotes. */
