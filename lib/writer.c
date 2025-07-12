@@ -47,8 +47,7 @@ pub t *stdout() {
 
 // Returns a writer to a file.
 pub t *file(FILE *f) {
-	t *w = calloc(1, sizeof(t));
-	if (!w) panic("calloc failed");
+	t *w = calloc!(1, sizeof(t));
 	w->data = f;
 	w->write = file_write;
 	return w;
@@ -66,9 +65,8 @@ typedef { uint8_t *data; size_t pos, size; } membuf_t;
 // Returns a writer to a static buffer.
 // When the buffer's place runs out, write will return EOF.
 pub t *static_buffer(uint8_t *data, size_t size) {
-	t *w = calloc(1, sizeof(t));
-	membuf_t *s = calloc(1, sizeof(membuf_t));
-	if (!w || !s) panic("calloc failed");
+	t *w = calloc!(1, sizeof(t));
+	membuf_t *s = calloc!(1, sizeof(membuf_t));
 
 	s->data = data;
 	s->size = size;
@@ -100,9 +98,8 @@ typedef {
 } fd_t;
 
 pub t *fd(int f) {
-	t *w = calloc(1, sizeof(t));
-	fd_t *state = calloc(1, sizeof(fd_t));
-	if (!w || !state) panic("calloc failed");
+	t *w = calloc!(1, sizeof(t));
+	fd_t *state = calloc!(1, sizeof(fd_t));
 
 	state->fd = f;
 	w->write = fd_write;

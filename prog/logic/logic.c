@@ -137,7 +137,7 @@ bool eq(term_t *x, *y) {
 }
 
 term_t *parse_term1(tokenizer.t *b) {
-    term_t *t = calloc(1, sizeof(term_t));
+    term_t *t = calloc!(1, sizeof(term_t));
 
     int n = 0;
     while (isalpha(tokenizer.peek(b))) {

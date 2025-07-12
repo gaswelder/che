@@ -45,10 +45,7 @@ pub const char *json_err(val_t *n)
 }
 
 val_t *newnode(int valtype) {
-	val_t *n = calloc(1, sizeof(val_t));
-	if (!n) {
-		panic("failed to allocate memory");
-	}
+	val_t *n = calloc!(1, sizeof(val_t));
 	n->type = valtype;
 	return n;
 }
@@ -382,7 +379,7 @@ pub bool json_put( val_t *n, const char *k, val_t *val ) {
 		json_free(kv->val);
 	}
 	else {
-		kv = calloc(1, sizeof(*kv));
+		kv = calloc!(1, sizeof(*kv));
 		kv->key = strings.newstr("%s", k);
 		arr.arr_push(a, kv);
 	}
@@ -402,11 +399,8 @@ pub bool json_push( val_t *n, val_t *val ) {
 	return arr.arr_push(n->val.arr, val);
 }
 
-void *mcopy( const void *src, size_t size ) {
-	void *copy = calloc(size, 1);
-	if (copy == NULL) {
-		return NULL;
-	}
+void *mcopy(const void *src, size_t size) {
+	void *copy = calloc!(size, 1);
 	memcpy(copy, src, size);
 	return copy;
 }

@@ -63,7 +63,7 @@ pub xml *xml_open(const char *path)
 		panic("fopen(%s) failed", path);
 	}
 
-	xml *x = calloc(1, sizeof(xml));
+	xml *x = calloc!(1, sizeof(xml));
 	x->f = f;
 	x->line = 1;
 	x->col = 1;

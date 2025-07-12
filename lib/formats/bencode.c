@@ -14,8 +14,7 @@ pub typedef {
  * Allocates a new reader for the given data.
  */
 pub reader_t *newreader(const char *data, size_t size) {
-	reader_t *r = calloc(1, sizeof(reader_t));
-	if (!r) panic("calloc failed");
+	reader_t *r = calloc!(1, sizeof(reader_t));
 	r->data = data;
 	r->size = size;
 	return r;

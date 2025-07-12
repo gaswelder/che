@@ -36,7 +36,7 @@ int main() {
 			continue;
 		}
 		log.logmsg("%s connected", net.net_addr(s));
-		client_t *c = calloc(1, sizeof(client_t));
+		client_t *c = calloc!(1, sizeof(client_t));
 		c->out.conn = s;
 		process_client(c);
 	}

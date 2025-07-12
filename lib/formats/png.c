@@ -16,10 +16,10 @@ typedef {
 } writer_t;
 
 pub bool write(image.image_t *img, const char *path, int mode) {
-	writer_t *tmp = calloc(sizeof(writer_t), 1);
+	writer_t *tmp = calloc!(sizeof(writer_t), 1);
 	tmp->f = fopen(path, "wb");
 	if (!tmp->f) {
-		panic("!");
+		panic("failed to open output file '%s'", path);
 	}
 
 	size_t width = img->width;

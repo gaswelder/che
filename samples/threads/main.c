@@ -41,10 +41,7 @@ void *threadmain(void *arg) {
  * Allocates a copy of data on the head and returns the pointer.
  */
 void *box(void *data, size_t datasize) {
-	char *packagebytes = calloc(datasize, 1);
-	if (!packagebytes) {
-		return NULL;
-	}
+	char *packagebytes = calloc!(datasize, 1);
 	char *databytes = (char *) data;
 	for (size_t i = 0; i < datasize; i++) {
 		packagebytes[i] = databytes[i];

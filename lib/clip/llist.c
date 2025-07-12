@@ -5,7 +5,7 @@ pub typedef {
 } t;
 
 pub t *new() {
-    t *i = calloc(1, sizeof(t));
+    t *i = calloc!(1, sizeof(t));
     return i;
 }
 
@@ -13,10 +13,7 @@ pub void append(t *l, void *data) {
     if (!data) {
         return;
     }
-    t *i = calloc(1, sizeof(t));
-    if (!i) {
-        panic("calloc");
-    }
+    t *i = calloc!(1, sizeof(t));
     i->data = data;
 
     t *p = l;

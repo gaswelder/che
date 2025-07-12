@@ -291,11 +291,7 @@ jmp_buf regkaboom = {};
 Reprog *regcomp1(char *s, int literal, int dot_type) {
 	int token = 0;
 
-	Reprog *pp = calloc(sizeof(Reprog) + 6*sizeof(Reinst)*strlen(s), 1);
-	if (!pp){
-		regerror("out of memory");
-		return 0;
-	}
+	Reprog *pp = calloc!(sizeof(Reprog) + 6*sizeof(Reinst)*strlen(s), 1);
 	freep = pp->firstinst;
 	classp = pp->class;
 	errors = 0;
@@ -1083,22 +1079,15 @@ regexec1(Reprog *progp,
 /* bol is string to run machine on */
 /* mp is subexpression elements */
 /* ms is number of elements at mp */
-int
-regexec2(Reprog *progp,
-	char *bol,
-	Resub *mp,
-	int ms,
-	Reljunk *j
-)
-{
+int regexec2(Reprog *progp, char *bol, Resub *mp, int ms, Reljunk *j) {
 	int rv;
 
 	/* mark space */
-	Relist *relist0 = calloc(BIGLISTSIZE, sizeof(Relist));
+	Relist *relist0 = calloc!(BIGLISTSIZE, sizeof(Relist));
 	if (relist0 == NULL) {
 		return -1;
 	}
-	Relist *relist1 = calloc(BIGLISTSIZE, sizeof(Relist));
+	Relist *relist1 = calloc!(BIGLISTSIZE, sizeof(Relist));
 	if (relist1 == NULL) {
 		free(relist0);
 		return -1;

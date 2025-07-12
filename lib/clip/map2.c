@@ -9,8 +9,7 @@ bool slice_eq(slice_t a, b) {
 }
 
 uint8_t *clone(uint8_t *b, size_t n) {
-    uint8_t *c = calloc(n, 1);
-    if (!c) panic("calloc failed");
+    uint8_t *c = calloc!(n, 1);
     memcpy(c, b, n);
     return c;
 }
@@ -21,8 +20,7 @@ pub typedef { void *m; } map_t;
 
 // Creates a new map.
 pub void *new() {
-    map_t *r = calloc(1, sizeof(map_t));
-    if (!r) panic("calloc failed");
+    map_t *r = calloc!(1, sizeof(map_t));
     // Start with 1 bucket, equivalent to a linear search array.
     r->m = innermap(1, 32);
     return r;
@@ -76,12 +74,10 @@ size_t cap(innermap_t *m) {
 }
 
 innermap_t *innermap(size_t nbuckets, bucketsize) {
-    innermap_t *m = calloc(1, sizeof(innermap_t));
-    if (!m) panic("calloc failed");
+    innermap_t *m = calloc!(1, sizeof(innermap_t));
     m->nbuckets = nbuckets;
     m->bucketsize = bucketsize;
-    m->slots = calloc(nbuckets * bucketsize, sizeof(slot_t));
-    if (!m->slots) panic("calloc failed");
+    m->slots = calloc!(nbuckets * bucketsize, sizeof(slot_t));
     return m;
 }
 

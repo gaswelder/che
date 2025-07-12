@@ -114,6 +114,7 @@ struct TrCtx {
     mods: Vec<nodes::Module>,
     scopes: Vec<Vec<Binding>>,
     used_ns: HashSet<String>,
+    used_customs: HashSet<String>,
     struct_typedefs: HashMap<String, nodes::StructTypedef>,
     other_typedefs: HashMap<String, TI>,
 }
@@ -228,15 +229,13 @@ pub fn translate(m: &nodes::Module, params: &TrParams) -> Result<c::CModule, Bui
         scopes: Vec::new(),
         this_mod_head: params.this_mod_head.clone(),
         used_ns: HashSet::new(),
+        used_customs: HashSet::new(),
         struct_typedefs: HashMap::new(),
         other_typedefs: HashMap::new(),
     };
-    begin_scope(&mut ctx);
 
-    // Add module-level identifiers to the scope: enums, modvars, functions.
-    // We do that beforehand so there is no need to worry about writing C
-    // in compiler-friendly order.
-    // Note that in function scopes we do follow the ordering.
+    // Add module-level identifiers to the top scope: enums, modvars, functions.
+    begin_scope(&mut ctx);
     for x in &m.elements {
         match x {
             nodes::ModElem::Macro(x) => {
@@ -298,42 +297,16 @@ pub fn translate(m: &nodes::Module, params: &TrParams) -> Result<c::CModule, Bui
         }
     }
 
-    let mut elements: Vec<c::ModElem> = Vec::new();
-
-    // Enable POSIX.
-    elements.push(c::ModElem::Macro(c::Macro {
-        name: "define".to_string(),
-        value: "_XOPEN_SOURCE 700".to_string(),
-    }));
-
-    // Include all standard C library.
-    let clibs: &[&str] = &[
-        "assert", "ctype", "errno", "limits", "math", "stdarg", "stdbool", "stddef", "stdint",
-        "stdio", "stdlib", "string", "time", "setjmp", "signal",
-    ];
-    for n in clibs {
-        elements.push(c::ModElem::Include(format!("<{}.h>", n)));
-    }
-    // Include custom utils.
-    elements.push(c::ModElem::Macro(c::Macro {
-        name: "define".to_string(),
-        value: "nelem(x) (sizeof (x)/sizeof (x)[0])".to_string(),
-    }));
-
-    // Inject headers corresponding to the imports.
-    for x in expand_imports(&ctx) {
-        elements.push(x);
-    }
-
-    // Translate module nodes.
-    for element in &m.elements {
-        for node in tr_mod_elem(element, &mut ctx)? {
-            elements.push(node)
+    // Translate the module elements.
+    let mut body: Vec<c::ModElem> = Vec::new();
+    for e in &m.elements {
+        for node in tr_mod_elem(e, &mut ctx)? {
+            body.push(node)
         }
     }
-
     end_scope(&mut ctx)?;
 
+    // Check for unused imports.
     for imp in &ctx.this_mod_head.imports {
         if !ctx.used_ns.contains(&imp.ns) {
             return Err(BuildError {
@@ -344,8 +317,47 @@ pub fn translate(m: &nodes::Module, params: &TrParams) -> Result<c::CModule, Bui
         }
     }
 
+    //
+    // Compose the top of the C module.
+    //
+
+    let mut head: Vec<c::ModElem> = Vec::new();
+
+    // Enable POSIX.
+    head.push(c::ModElem::Macro(c::Macro {
+        name: "define".to_string(),
+        value: "_XOPEN_SOURCE 700".to_string(),
+    }));
+
+    // Include all standard C library.
+    let clibs: &[&str] = &[
+        "assert", "ctype", "errno", "limits", "math", "stdarg", "stdbool", "stddef", "stdint",
+        "stdio", "stdlib", "string", "time", "setjmp", "signal",
+    ];
+    for n in clibs {
+        head.push(c::ModElem::Include(format!("<{}.h>", n)));
+    }
+    // Include custom utils.
+    if ctx.used_customs.contains("calloc_or_panic") {
+        head.push(mk_calloc_or_panic())
+    }
+
+    head.push(c::ModElem::Macro(c::Macro {
+        name: "define".to_string(),
+        value: "nelem(x) (sizeof (x)/sizeof (x)[0])".to_string(),
+    }));
+
+    // Inject headers corresponding to the imports.
+    for x in expand_imports(&ctx) {
+        head.push(x);
+    }
+
+    let mut result = Vec::new();
+    result.append(&mut head);
+    result.append(&mut body);
+
     Ok(c::CModule {
-        elements: reorder_elems(elements),
+        elements: reorder_elems(result),
         link,
     })
 }
@@ -950,6 +962,20 @@ fn trace_type(ctx: &TrCtx, expr: &nodes::Expr, typ: &types::Type) {
 
 // f(args)
 fn tr_call(x: &nodes::Call, ctx: &mut TrCtx) -> Result<Typed<c::Expr>, BuildError> {
+    if nodes::is_ident(&x.func, "calloc!") {
+        ctx.used_customs.insert("calloc_or_panic".to_string());
+        let y = nodes::Call {
+            func: Box::new(nodes::Expr::NsName(nodes::NsName {
+                ns: "".to_string(),
+                name: "calloc_or_panic".to_string(),
+                pos: x.pos.clone(),
+            })),
+            args: x.args.clone(),
+            pos: x.pos.clone(),
+        };
+        return tr_call(&y, ctx);
+    }
+
     let mut typedargs = Vec::new();
     for a in &x.args {
         typedargs.push(tr_expr(a, ctx)?);
@@ -1061,7 +1087,7 @@ fn mk_call_trace(ctx: &TrCtx, x: &nodes::FuncDecl) -> c::Statement {
         ctx.this_mod_head.filepath,
         format_che::fmt_form(&x.form),
     );
-    mk_call("puts", vec![mk_str(loc)])
+    mk_call_st("puts", vec![mk_str(loc)])
 }
 
 fn mk_str(s: String) -> c::Expr {
@@ -1195,7 +1221,7 @@ fn tr_nsid(nsid: &nodes::NsName, ctx: &mut TrCtx) -> Result<String, BuildError> 
     };
     if !mark_binding_use(ctx, &nsid.name) {
         return Err(BuildError {
-            message: format!("{} is undefined", &nsid.name),
+            message: format!("nsid: {} is undefined", &nsid.name),
             pos: nsid.pos.fmt(),
             path: ctx.this_mod_head.filepath.clone(),
         });
@@ -1358,7 +1384,7 @@ fn mk_switchstr_cond(
         nodes::SwitchCaseValue::Literal(literal) => c::Expr::Literal(tr_literal(&literal)),
     });
     args.push(switchval.clone());
-    let mut root = mk_neg(mk_call0("strcmp", args));
+    let mut root = mk_neg(mk_call_expr("strcmp", args));
     let n = sw.values.len();
     for i in 1..n {
         let mut args: Vec<c::Expr> = Vec::new();
@@ -1369,7 +1395,7 @@ fn mk_switchstr_cond(
             nodes::SwitchCaseValue::Literal(literal) => c::Expr::Literal(tr_literal(&literal)),
         });
         args.push(switchval.clone());
-        root = mk_or(root, mk_neg(mk_call0("strcmp", args)));
+        root = mk_or(root, mk_neg(mk_call_expr("strcmp", args)));
     }
     Ok(root)
 }
@@ -1444,15 +1470,15 @@ fn tr_literal(x: &nodes::Literal) -> c::CLiteral {
     }
 }
 
-fn mk_call0(func: &str, args: Vec<c::Expr>) -> c::Expr {
+fn mk_call_expr(func: &str, args: Vec<c::Expr>) -> c::Expr {
     c::Expr::Call {
         func: Box::new(c::Expr::Ident(String::from(func))),
         args,
     }
 }
 
-fn mk_call(func: &str, args: Vec<c::Expr>) -> c::Statement {
-    c::Statement::Expression(mk_call0(func, args))
+fn mk_call_st(func: &str, args: Vec<c::Expr>) -> c::Statement {
+    c::Statement::Expression(mk_call_expr(func, args))
 }
 
 fn mk_panic(
@@ -1468,7 +1494,7 @@ fn mk_panic(
     let panic_pos = format!("{}:{}", &ctx.this_mod_head.filepath, pos.clone());
     Ok(c::Statement::Block {
         statements: vec![
-            mk_call(
+            mk_call_st(
                 "fprintf",
                 vec![
                     stderr.clone(),
@@ -1476,14 +1502,104 @@ fn mk_panic(
                     mk_str(panic_pos),
                 ],
             ),
-            mk_call("fprintf", outargs),
-            mk_call("fprintf", vec![stderr.clone(), mk_str("\\n".to_string())]),
-            mk_call(
-                "exit",
-                vec![c::Expr::Literal(c::CLiteral::Number(String::from("1")))],
-            ),
+            mk_call_st("fprintf", outargs),
+            mk_call_st("fprintf", vec![stderr.clone(), mk_str("\\n".to_string())]),
+            mk_exit1(),
         ],
     })
+}
+
+fn mk_calloc_or_panic() -> c::ModElem {
+    let arg1 = c::CTypeForm {
+        type_name: c::Typename {
+            is_const: false,
+            name: "size_t".to_string(),
+        },
+        form: c::Form {
+            indexes: vec![],
+            name: "count".to_string(),
+            stars: "".to_string(),
+        },
+    };
+    let arg2 = c::CTypeForm {
+        type_name: c::Typename {
+            is_const: false,
+            name: "size_t".to_string(),
+        },
+        form: c::Form {
+            indexes: vec![],
+            name: "size".to_string(),
+            stars: "".to_string(),
+        },
+    };
+
+    // void *x = calloc(count, size)
+    let xdecl = c::Statement::VarDecl {
+        type_name: c::Typename {
+            is_const: false,
+            name: "void".to_string(),
+        },
+        forms: vec![c::Form {
+            indexes: vec![],
+            name: "x".to_string(),
+            stars: "*".to_string(),
+        }],
+        values: vec![Some(mk_call_expr(
+            "calloc",
+            vec![mk_id("count"), mk_id("size")],
+        ))],
+    };
+
+    let printerror = c::Statement::Expression(mk_call_expr(
+        "fprintf",
+        vec![
+            mk_id("stderr"),
+            c::Expr::Literal(c::CLiteral::String("calloc failed".to_string())),
+        ],
+    ));
+
+    let check = c::Statement::If {
+        condition: mk_neg(mk_id("x")),
+        body: c::CBody {
+            statements: vec![printerror, mk_exit1()],
+        },
+        else_body: None,
+    };
+
+    c::ModElem::FuncDef(c::FuncDef {
+        is_static: true,
+        type_name: c::Typename {
+            is_const: false,
+            name: "void".to_string(),
+        },
+        form: c::Form {
+            stars: "*".to_string(),
+            name: "calloc_or_panic".to_string(),
+            indexes: Vec::new(),
+        },
+        parameters: c::FuncParams {
+            list: vec![arg1, arg2],
+            variadic: false,
+        },
+        body: c::CBody {
+            statements: vec![
+                xdecl,
+                check,
+                c::Statement::Return {
+                    expression: Some(mk_id("x")),
+                },
+            ],
+        },
+    })
+}
+
+fn mk_id(n: &str) -> c::Expr {
+    c::Expr::Ident(n.to_string())
+}
+
+fn mk_exit1() -> c::Statement {
+    let one = c::Expr::Literal(c::CLiteral::Number("1".to_string()));
+    c::Statement::Expression(mk_call_expr("exit", vec![one]))
 }
 
 // Makes a negation of the given expression.

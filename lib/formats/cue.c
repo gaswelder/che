@@ -25,9 +25,7 @@ pub void cue_free(cue_t *c) {
 // Returns a cue_t instance.
 // The caller must check cur->error for errors.
 pub cue_t *cue_parse(const char *s) {
-	cue_t *c = calloc(1, sizeof(cue_t));
-	if (!c) panic("calloc failed");
-
+	cue_t *c = calloc!(1, sizeof(cue_t));
 	tokenizer.t *b = tokenizer.from_str(s);
 
 	if (!skip_utf_bom(b)) {

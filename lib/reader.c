@@ -19,9 +19,8 @@ typedef {
 } membuf_t;
 
 pub t *static_buffer(const uint8_t *data, size_t n) {
-	t *r = calloc(1, sizeof(t));
-	membuf_t *s = calloc(1, sizeof(membuf_t));
-	if (!r || !s) panic("calloc failed");
+	t *r = calloc!(1, sizeof(t));
+	membuf_t *s = calloc!(1, sizeof(membuf_t));
 	r->data = s;
 	r->free = OS.free;
 	r->more = mem_more;
@@ -32,8 +31,7 @@ pub t *static_buffer(const uint8_t *data, size_t n) {
 }
 
 pub t *file(FILE *f) {
-	t *r = calloc(1, sizeof(t));
-	if (!r) return NULL;
+	t *r = calloc!(1, sizeof(t));
 	r->data = f;
 	r->more = file_more;
 	r->read = file_read;
@@ -110,9 +108,8 @@ typedef {
 } fd_t;
 
 pub t *fd(int f) {
-	t *r = calloc(1, sizeof(t));
-	fd_t *state = calloc(1, sizeof(fd_t));
-	if (!r || !state) panic("calloc failed");
+	t *r = calloc!(1, sizeof(t));
+	fd_t *state = calloc!(1, sizeof(fd_t));
 	state->fd = f;
 	r->data = state;
 	r->free = OS.free;

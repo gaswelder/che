@@ -26,7 +26,7 @@ nodes.node_t *read_typedef(lexer_t *l) {
 			tok_t *tok = expect(l, TOK_ID);
 
 			size_t n = tdef->nargs++;
-			tdef->args[n] = calloc(1, 100);
+			tdef->args[n] = calloc!(1, 100);
 			strcpy(tdef->args[n], tok->payload);
 
 			if (!lex_get(l, ',')) {
@@ -171,7 +171,7 @@ void lex_pop(lexer_t *l) {
 tok_t *lex_read(lexer_t *l) {
 	tokenizer.t *b = l->b;
 	tokenizer.spaces(b);
-	tok_t *t = calloc(1, sizeof(tok_t));
+	tok_t *t = calloc!(1, sizeof(tok_t));
 	int c = tokenizer.peek(b);
 
 	if (isdigit(c)) {

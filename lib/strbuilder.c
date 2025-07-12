@@ -5,9 +5,8 @@ pub typedef {
 	size_t max;
 } str;
 
-pub str *str_new()
-{
-	str *s = calloc(1, sizeof(str));
+pub str *str_new() {
+	str *s = calloc!(1, sizeof(str));
 	return s;
 }
 

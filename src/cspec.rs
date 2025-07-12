@@ -254,6 +254,7 @@ fn buildmap() -> HashMap<&'static str, CSymbol> {
         // extensions
         //
         f("nelem", vec![__todo], size),
+        f("calloc_or_panic", vec![size, size], voidp),
     ];
     let mut m = HashMap::new();
     for x in list {

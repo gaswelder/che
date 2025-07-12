@@ -173,6 +173,11 @@ _The `panic` statement_.
 `panic` is basically `fprintf(stderr, <panic arguments>); exit(1)`, but it also
 generates a message with the panic's position in the source code.
 
+_The `calloc!` form_.
+`calloc!` is the same as the standard `calloc`, but it panics if memory allocation fails.
+Handling out of memory situations is a very special use case not relevant for most programs.
+However, the standard `calloc` is still available if needed.
+
 ## Modules
 
 A single C source file is called a "module". It's compiled independently and

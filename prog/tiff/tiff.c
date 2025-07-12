@@ -113,7 +113,7 @@ int dump( tiff.TIFFFile *tiff )
 						exit( 2 );
 					}
 				}
-				strip_offsets = calloc(entry->count, sizeof(size_t));
+				strip_offsets = calloc!(entry->count, sizeof(size_t));
 				fseek( tiff->file, entry->value, SEEK_SET );
 				for( size_t j = 0; j < entry->count; j++ ){
 					strip_offsets[j] = tiff.tiff_read_bytes( tiff, 4 );
@@ -128,7 +128,7 @@ int dump( tiff.TIFFFile *tiff )
 						exit( 2 );
 					}
 				}
-				strip_byte_counts = calloc(entry->count, sizeof(size_t));
+				strip_byte_counts = calloc!(entry->count, sizeof(size_t));
 				fseek( tiff->file, entry->value, SEEK_SET );
 				for( size_t j = 0; j < entry->count; j++ ){
 					strip_byte_counts[j] = tiff.tiff_read_bytes( tiff, 4 );

@@ -101,7 +101,7 @@ pub void read_message(reader.t *r, uint32_t msglen, msg_t *m) {
             endian.read4be(r, &piece->index);
             endian.read4be(r, &piece->begin);
             piece->length = msglen-9;
-            piece->data = calloc(piece->length, 1);
+            piece->data = calloc!(piece->length, 1);
             reader.read(r, piece->data, piece->length);
         }
         // msglen-1: bytes

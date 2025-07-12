@@ -148,10 +148,7 @@ pub Rune* runestrstr(Rune *s1, *s2) {
 // Allocates and returns a copy of the string s.
 pub Rune *runestrdup(Rune *s) {
 	int len = runestrchr(s, 0) - s;
-	Rune *ns = calloc(len + 1, sizeof(Rune));
-	if (!ns) {
-		panic("calloc failed");
-	}
+	Rune *ns = calloc!(len + 1, sizeof(Rune));
 	return runestrcpy(ns, s);
 }
 

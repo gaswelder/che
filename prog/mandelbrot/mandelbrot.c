@@ -58,8 +58,7 @@ int main (int argc, char **argv) {
 	//
 	double hw = (config.xmax - config.xmin) / 2;
 	double hh = (config.ymax - config.ymin) / 2;
-	job_t *jobs = calloc(config.zoom_frames, sizeof(job_t));
-	if (!jobs) panic("calloc failed");
+	job_t *jobs = calloc!(config.zoom_frames, sizeof(job_t));
 	for (int frame = 0; frame < config.zoom_frames; frame++) {
 		// The first frame spans [center-hwidth, center+hwidth]
 		// The next frame space [center-hwidth/(1+zoom_rate), center+hwidth/(1+zoom_rate)]
@@ -73,7 +72,7 @@ int main (int argc, char **argv) {
 		// iterations *= (1 + zoom_rate * 0.25 * frame);
 	}
 
-	void **clip = calloc(config.zoom_frames + 1, sizeof(&jobs[0]));
+	void **clip = calloc!(config.zoom_frames + 1, sizeof(&jobs[0]));
 	for (int i = 0; i < config.zoom_frames; i++) {
 		clip[i] = &jobs[i];
 	}

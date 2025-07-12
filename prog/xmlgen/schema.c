@@ -777,7 +777,7 @@ pub void InitializeSchema(float global_scale_factor) {
 
     // Reorder the schema so that a node with id "x"
     // is at the same index "x" in the array.
-    Element *newobjs = calloc(nobj, sizeof(Element));
+    Element *newobjs = calloc!(nobj, sizeof(Element));
     for (int i = 0; i < nobj; i++) {
         void *src = &objs[i];
         void *dest = &newobjs[objs[i].id];

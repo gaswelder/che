@@ -7,11 +7,7 @@ pub reader_t *newreader(const char *path) {
     if (!f) {
         return NULL;
     }
-    reader_t *r = calloc(1, sizeof(reader_t));
-    if (!r) {
-        fclose(f);
-        return NULL;
-    }
+    reader_t *r = calloc!(1, sizeof(reader_t));
     r->f = f;
     return r;
 }

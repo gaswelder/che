@@ -25,22 +25,10 @@ pub typedef {
  * Returns a new lexer for the given string.
  */
 pub json_tokenizer_t *new(const char *s) {
-    json_tokenizer_t *t = calloc(1, sizeof(json_tokenizer_t));
-    if (!t) {
-        return t;
-    }
+    json_tokenizer_t *t = calloc!(1, sizeof(json_tokenizer_t));
     t->buf = tokenizer.from_str(s);
-    if (!t->buf) {
-        free(t);
-        return NULL;
-    }
-	t->strcap = 4096;
-	t->next.str = calloc(1, 4096);
-	if (!t->next.str) {
-		tokenizer.free(t->buf);
-		free(t);
-		return NULL;
-	}
+    t->strcap = 4096;
+	t->next.str = calloc!(1, 4096);
     return t;
 }
 

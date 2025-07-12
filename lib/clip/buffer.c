@@ -27,7 +27,7 @@ pub typedef {
 } clip_t;
 
 pub t *new() {
-    t *b = calloc(1, sizeof(t));
+    t *b = calloc!(1, sizeof(t));
     return b;
 }
 
@@ -57,13 +57,8 @@ pub size_t size(t *b) {
  */
 pub bool write(t *b, char *buf, size_t len) {
     if (len == 0) return false;
-    clip_t *c = calloc(1, sizeof(clip_t));
-    if (!c) return false;
-    c->data = calloc(len, 1);
-    if (!c->data) {
-        OS.free(c);
-        return false;
-    }
+    clip_t *c = calloc!(1, sizeof(clip_t));
+    c->data = calloc!(len, 1);
     memcpy(c->data, buf, len);
     c->size = len;
 

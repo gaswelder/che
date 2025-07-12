@@ -71,9 +71,8 @@ pub const char *tiff_typename(int type)
 	return "UNKNOWN";
 }
 
-TIFFEntry *TIFFEntry_Create( int tag, int type, uint32_t count, uint32_t value, TIFFFile *file )
-{
-	TIFFEntry *entry = calloc( 1, sizeof( TIFFEntry ) );
+TIFFEntry *TIFFEntry_Create( int tag, int type, uint32_t count, uint32_t value, TIFFFile *file ) {
+	TIFFEntry *entry = calloc!(1, sizeof( TIFFEntry ));
 	entry->tag = tag;
 	entry->type = type;
 	entry->count = count;
@@ -82,10 +81,9 @@ TIFFEntry *TIFFEntry_Create( int tag, int type, uint32_t count, uint32_t value, 
 	return entry;
 }
 
-TIFFDirectory *TIFFDirectory_Create( size_t entries_number )
-{
-	TIFFDirectory *dir = calloc( 1, sizeof( TIFFDirectory ) );
-	dir->entries = calloc( entries_number, sizeof( dir->entries[0] ) );
+TIFFDirectory *TIFFDirectory_Create( size_t entries_number ) {
+	TIFFDirectory *dir = calloc!(1, sizeof( TIFFDirectory ));
+	dir->entries = calloc!(entries_number, sizeof( dir->entries[0] ));
 	dir->entries_count = entries_number;
 	return dir;
 }
@@ -122,17 +120,9 @@ void TIFFFile_AddDirectory( TIFFFile *tiff, TIFFDirectory *dir )
 // Opens a file with given name
 // and reads its contents into a new TIFF object.
 //
-pub TIFFFile *tiff_open( const char *filepath )
-{
-	//
-	// Create a TIFF object
-	//
-	TIFFFile *tiff = calloc( 1, sizeof( TIFFFile ) );
-	
-	//
-	// Open the file and store its descriptor
-	// in the TIFF object
-	//
+pub TIFFFile *tiff_open(const char *filepath) {
+	TIFFFile *tiff = calloc!(1, sizeof(TIFFFile));
+
 	tiff->file = fopen( filepath, "rb" );
 	if( !tiff->file ){
 		fprintf( stderr, "Could not open file '%s'\n", filepath );
@@ -268,12 +258,8 @@ pub void tiff_close( TIFFFile *tiff )
  * Returns the string from an ASCII entry.
  * The string must be freed by the caller.
  */
-pub char *tiff_get_string(TIFFEntry *entry)
-{
-	char *buffer = calloc(entry->count, 1);
-	if (!buffer) {
-		return NULL;
-	}
+pub char *tiff_get_string(TIFFEntry *entry) {
+	char *buffer = calloc!(entry->count, 1);
 
 	TIFFFile *tiff = entry->file;
 

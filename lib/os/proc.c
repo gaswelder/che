@@ -50,15 +50,7 @@ pub proc_t *spawn(char *argv[], *env[]) {
 
     if (pid > 0) {
         // Parent
-        proc_t *p = calloc(1, sizeof(proc_t));
-        if (!p) {
-            // oopsie
-            OS.close(in[0]); OS.close(in[1]);
-            OS.close(out[0]); OS.close(out[1]);
-            OS.close(err[0]); OS.close(err[1]);
-            OS.kill(pid, OS.SIGKILL);
-            return NULL;
-        }
+        proc_t *p = calloc!(1, sizeof(proc_t));
         p->pid = pid;
         p->stdin = writer.fd(in[1]);
         p->stdout = reader.fd(out[0]);

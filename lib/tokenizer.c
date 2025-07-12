@@ -39,8 +39,7 @@ pub t *from_str(const char *s) {
 // Returns a tokenizer instance reading from the given reader.
 pub t *new(reader.t *r) {
 	if (!r) panic("got null reader");
-	t *b = calloc(1, sizeof(t));
-	if (!b) panic("calloc failed");
+	t *b = calloc!(1, sizeof(t));
 	b->reader = r;
 	return b;
 }
@@ -133,7 +132,7 @@ pub bool buf_skip(t *b, char c) {
 }
 
 pub char *buf_read_set(t *b, const char *set) {
-	char *s = calloc(10000, 1);
+	char *s = calloc!(10000, 1);
 	char *p = s;
 	while (more(b) && strchr(set, peek(b)) != NULL) {
 		*p = get(b);
@@ -274,7 +273,7 @@ pub const char *posstr(t *b) {
 }
 
 pub char *buf_skip_until(t *b, const char *literal) {
-	char *s = calloc(10000, 1);
+	char *s = calloc!(10000, 1);
 	char *p = s;
 
 	while (more(b)) {

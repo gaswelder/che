@@ -26,8 +26,7 @@ int main() {
 }
 
 model_t *new() {
-	model_t *m = calloc(1, sizeof(model_t));
-	if (!m) panic("calloc failed");
+	model_t *m = calloc!(1, sizeof(model_t));
 	m->counts = map.new(sizeof(void *));
 	return m;
 }
@@ -35,8 +34,7 @@ model_t *new() {
 void learnword(model_t *m, const char *word) {
 	// Split the word into chars.
 	size_t n = utf.runecount(word);
-	utf.Rune *chars = calloc(n, sizeof(utf.Rune));
-	if (!chars) panic("calloc failed");
+	utf.Rune *chars = calloc!(n, sizeof(utf.Rune));
 	const char *s = word;
 	for (size_t i = 0; i < n; i++) {
 		utf.Rune c = 0;
@@ -94,8 +92,8 @@ utf.Rune nextchar(model_t *m, utf.Rune c) {
 		panic("failed to get submap");
 	}
 	size_t size = map.size(m2);
-	utf.Rune *keys = calloc(size, sizeof(utf.Rune));
-	size_t *freqs = calloc(size, sizeof(size_t));
+	utf.Rune *keys = calloc!(size, sizeof(utf.Rune));
+	size_t *freqs = calloc!(size, sizeof(size_t));
 	map.iter_t *it = map.iter(m2);
 	int pos = 0;
 	while (map.next(it)) {

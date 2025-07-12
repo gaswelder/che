@@ -37,11 +37,7 @@ typedef {
 } lexer_t;
 
 int main() {
-	lexer_t *lexer = calloc(1, sizeof(lexer_t));
-	if (!lexer) {
-		fprintf(stderr, "failed to get lexer: %s\n", strerror(errno));
-		return 1;
-	}
+	lexer_t *lexer = calloc!(1, sizeof(lexer_t));
 	lexer->buf = tokenizer.stdin();
 	if (!lexer->buf) {
 		fprintf(stderr, "failed to get tokenizer: %s\n", strerror(errno));
@@ -83,10 +79,7 @@ typedef {
 
 // Creates a new token object.
 tok_t *tok_make(char *name, char *content, const char *pos) {
-	tok_t *t = calloc(1, sizeof(tok_t));
-	if (!t) {
-		return NULL;
-	}
+	tok_t *t = calloc!(1, sizeof(tok_t));
 	t->name = name;
 	t->content = content;
 	t->pos = strings.newstr("%s", pos);
@@ -259,7 +252,7 @@ tok_t *read_string(tokenizer.t *b) {
 }
 
 tok_t *read_char(tokenizer.t *b) {
-	char *s = calloc(3, 1);
+	char *s = calloc!(3, 1);
 	char *p = s;
 	const char *pos = tokenizer.posstr(b);
 	

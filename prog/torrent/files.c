@@ -157,7 +157,7 @@ pub bool check_piece(const char *prefix, torrent.info_t *tf, size_t piece_index)
     //
     // read the piece
     //
-    uint8_t *piece = calloc(tf->piece_length, 1);
+    uint8_t *piece = calloc!(tf->piece_length, 1);
     size_t piecelen = get_piece_length(tf, piece_index);
     range_t bs = {
         .index = piece_index,

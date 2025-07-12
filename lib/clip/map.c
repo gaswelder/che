@@ -23,13 +23,11 @@ pub map_t *new(size_t valsize) {
 	if (valsize > sizeof(uint64_t)) {
 		panic("value sizes > 8 bytes are not supported");
 	}
-	map_t *m = calloc(1, sizeof(map_t));
-	if (!m) panic("calloc failed");
+	map_t *m = calloc!(1, sizeof(map_t));
 	m->valsize = valsize;
 
 	m->cap = 16;
-	m->entries = calloc(m->cap, sizeof(entry_t));
-	if (!m->entries) panic("calloc failed");
+	m->entries = calloc!(m->cap, sizeof(entry_t));
 
 	return m;
 }
@@ -115,8 +113,7 @@ entry_t *create(map_t *m) {
 pub typedef { map_t *map; size_t pos; } iter_t;
 
 pub iter_t *iter(map_t *m) {
-	iter_t *it = calloc(1, sizeof(iter_t));
-	if (!it) panic("calloc failed");
+	iter_t *it = calloc!(1, sizeof(iter_t));
 	it->map = m;
 	it->pos = -1;
 	return it;

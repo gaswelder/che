@@ -18,10 +18,7 @@ pub typedef {
 } regex_t;
 
 pub regex_t *init(const char *pattern) {
-    regex_t *r = calloc(1, sizeof(regex_t));
-    if (!r) {
-        return NULL;
-    }
+    regex_t *r = calloc!(1, sizeof(regex_t));
     const char *p = pattern;
     while (*p != '\0') {
         const char *q = parsetok(p, &r->pat[r->patlen]);

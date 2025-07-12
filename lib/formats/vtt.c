@@ -9,11 +9,9 @@ pub typedef {
 } reader_t;
 
 pub reader_t *reader(FILE *f) {
-	reader_t *r = calloc(1, sizeof(reader_t));
-	if (!r) panic("calloc failed");
+	reader_t *r = calloc!(1, sizeof(reader_t));
 	r->textcap = 100;
-	r->text = calloc(100, 1);
-	if (!r->text) panic("calloc failed");
+	r->text = calloc!(100, 1);
 	r->f = f;
 	return r;
 }

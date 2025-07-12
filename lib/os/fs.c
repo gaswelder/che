@@ -15,10 +15,7 @@ pub typedef {
  * Returns NULL on failure.
  */
 pub dir_t *dir_open(const char *path) {
-	dir_t *d = calloc(1, sizeof(dir_t));
-	if (!d) {
-		return NULL;
-	}
+	dir_t *d = calloc!(1, sizeof(dir_t));
 	d->d = OS.opendir(path);
 	if (!d->d) {
 		free(d);
@@ -93,8 +90,7 @@ pub bool is_dir(const char *path) {
 	return OS.S_ISDIR(s.st_mode);
 }
 
-// Reads the file at path and returns a pointer to the
-// contents of the file in memory.
+// Reads the file at path and returns a pointer to its contents in memory.
 // The size of the contents is put into 'size'.
 // Returns NULL if the file could not be read (check errno).
 pub char *readfile(const char *path, size_t *size) {
@@ -110,12 +106,7 @@ pub char *readfile(const char *path, size_t *size) {
 		return NULL;
 	}
 
-	// Allocate.
-	char *data = calloc(len, 1);
-	if (!data) {
-		fclose(f);
-		return NULL;
-	}
+	char *data = calloc!(len, 1);
 
 	// Read the file's bytes into memory.
 	char *p = data;

@@ -12,7 +12,7 @@ pub typedef {
 } series_t;
 
 pub series_t *newseries() {
-    return calloc(1, sizeof(series_t));
+    return calloc!(1, sizeof(series_t));
 }
 
 pub void freeseries(series_t *s) {
@@ -93,7 +93,7 @@ pub double percentile(series_t *s, int p) {
         return 0;
     }
     if (!s->sorted_values) {
-        double *tmp = calloc(s->len, sizeof(double));
+        double *tmp = calloc!(s->len, sizeof(double));
         for (size_t i = 0; i < s->len; i++) {
             tmp[i] = s->values[i];
         }

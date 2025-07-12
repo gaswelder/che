@@ -23,10 +23,8 @@ pub typedef {
 /*
  * Returns new bitreader for file 'f'.
  */
-pub bits_t *bits_new(FILE *f)
-{
-	bits_t *b = calloc(1, sizeof(bits_t));
-	if(!b) return NULL;
+pub bits_t *bits_new(FILE *f) {
+	bits_t *b = calloc!(1, sizeof(bits_t));
 	b->f = f;
 	b->bytepos = -1;
 	return b;

@@ -51,7 +51,7 @@ void parse_env() {
 	if (!val) val = default_filter;
 	if (!val) return;
 
-	char *copy = calloc(strlen(val)+1, 1);
+	char *copy = calloc!(strlen(val)+1, 1);
 	strcpy(copy, val);
 	char *p = copy;
 	list[n++] = p;

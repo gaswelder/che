@@ -8,11 +8,7 @@ pub typedef {
 } t;
 
 pub t *parse(const char *s) {
-	t *r = calloc(1, sizeof(t));
-	if (!r) {
-		panic("calloc failed");
-	}
-
+	t *r = calloc!(1, sizeof(t));
     tokenizer.t *buf = tokenizer.from_str(s);
 
     // http

@@ -77,8 +77,7 @@ pub const char *errstr(int err) {
 }
 
 pub request_t *newreq(int method, const char *path) {
-	request_t *r = calloc(1, sizeof(request_t));
-	if (!r) return NULL;
+	request_t *r = calloc!(1, sizeof(request_t));
 	if (!init_request(r, method, path)) {
 		panic("init_request failed");
 	}

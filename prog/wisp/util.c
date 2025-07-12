@@ -1,7 +1,5 @@
 pub void *xmalloc (size_t size) {
-  void *p = calloc (size, 1);
-  if (!p) panic("calloc failed");
-  return p;
+  return calloc!(size, 1);
 }
 
 pub void *xrealloc (void *p, size_t size) {

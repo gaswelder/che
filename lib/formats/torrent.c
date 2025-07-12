@@ -98,8 +98,7 @@ pub void free(info_t *tf) {
 }
 
 pub info_t *parse(const char *data, size_t size) {
-	info_t *tf = calloc(1, sizeof(info_t));
-	if (!tf) return NULL;
+	info_t *tf = calloc!(1, sizeof(info_t));
 
 	size_t info_begin = 0;
 	size_t info_end = 0;
@@ -155,10 +154,7 @@ void parse_info(bencode.reader_t *r, info_t *tf) {
 			tf->length = bencode.readnum(r);
 		} else if (strcmp(k, "pieces") == 0) {
 			size_t n = bencode.strsize(r);
-			tf->pieces = calloc(n, 1);
-			if (!tf->pieces) {
-				panic("failed to allocate %zu bytes", n);
-			}
+			tf->pieces = calloc!(n, 1);
 			bencode.readbuf(r, tf->pieces, n);
 		} else if (strcmp(k, "files") == 0) {
 			bencode.enter(r);

@@ -19,8 +19,7 @@ int peek(FILE *f) {
  * Allocates a new conf reader for the given file stream.
  */
 pub reader_t *new(FILE *f) {
-    reader_t *p = calloc(1, sizeof(reader_t));
-    if (!p) return NULL;
+    reader_t *p = calloc!(1, sizeof(reader_t));
     p->f = f;
     p->line = 1;
     return p;

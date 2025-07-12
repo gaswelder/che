@@ -116,14 +116,10 @@ client_t *addclient(net.net_t *conn, handler_t *h) {
     //
     // Create and setup an instance.
     //
-    client_t *c = calloc(1, sizeof(client_t));
-    if (!c) return false;
+    client_t *c = calloc!(1, sizeof(client_t));
     c->conn = conn;
     c->handler = h;
     c->outgoing = buffer.new();
-    if (!c->outgoing) {
-        panic("failed to allocate buffers");
-    }
 
     //
     // Store and return the instance.

@@ -54,19 +54,13 @@ pub typedef {
 /*
  * Opens an MP3 file and finds the beginning of the stream.
  */
-pub mp3file *mp3open(const char *path)
-{
+pub mp3file *mp3open(const char *path) {
 	FILE *f = fopen(path, "rb");
 	if (!f) {
 		return NULL;
 	}
 
-	mp3file *m = calloc(1, sizeof(mp3file));
-	if(!m) {
-		fclose(f);
-		return NULL;
-	}
-
+	mp3file *m = calloc!(1, sizeof(mp3file));
 	m->file = f;
 
 	/*

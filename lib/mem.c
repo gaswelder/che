@@ -9,7 +9,7 @@ pub typedef {
  * Creates a memory buffer.
  */
 pub mem_t *memopen() {
-	mem_t *m = calloc(1, sizeof(mem_t));
+	mem_t *m = calloc!(1, sizeof(mem_t));
 	return m;
 }
 

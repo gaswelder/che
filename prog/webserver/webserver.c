@@ -40,10 +40,9 @@ int main(int argc, char *argv[]) {
 		net.net_t *conn = net.net_accept(ln);
 		if (!conn) panic("accept failed");
 		printf("%s connected\n", net.net_addr(conn));
-		ctx_t *ctx = calloc(1, sizeof(ctx));
+		ctx_t *ctx = calloc!(1, sizeof(ctx));
 		ctx->s = &SERVER;
 		ctx->conn = conn;
-		if (!ctx) panic("calloc failed");
 		threads.start(client_routine, ctx);
 	}
     panic("unreachable");

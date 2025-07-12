@@ -20,10 +20,7 @@ pub typedef {
 
 // Creates and starts a new thread running function 'f'.
 pub thr_t *start(thr_func *f, void *arg) {
-	thr_t *t = calloc(1, sizeof(thr_t));
-	if (!t) {
-		panic("calloc failed");
-	}
+	thr_t *t = calloc!(1, sizeof(thr_t));
 	if (OS.pthread_create(&t->t, NULL, f, arg) != 0) {
 		panic("thread creation failed: %s", strerror(errno));
 	}
@@ -53,10 +50,7 @@ pub bool thr_detach(thr_t *t) {
  * Creates and returns a new mutex
  */
 pub mtx_t *mtx_new() {
-	mtx_t *m = calloc(1, sizeof(mtx_t));
-	if (!m) {
-		panic("calloc failed");
-	}
+	mtx_t *m = calloc!(1, sizeof(mtx_t));
 	if (OS.pthread_mutex_init(&m->m, NULL) != 0) {
 		panic("mutex_init failed");
 	}
@@ -82,10 +76,7 @@ pub bool unlock(mtx_t *m) {
  * Creates and return a new condition variable
  */
 pub cnd_t *cnd_new() {
-	cnd_t *c = calloc(1, sizeof(cnd_t));
-	if (!c) {
-		return NULL;
-	}
+	cnd_t *c = calloc!(1, sizeof(cnd_t));
 	if (OS.pthread_cond_init(&c->c, NULL) != 0) {
 		free(c);
 		return NULL;

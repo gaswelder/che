@@ -12,10 +12,10 @@ pub typedef {
 } t;
 
 pub t *new() {
-    t *st = calloc(1, sizeof(t));
+    t *st = calloc!(1, sizeof(t));
     st->cap = 8;
     st->len = 0;
-    st->items = calloc(st->cap, sizeof(entry_t));
+    st->items = calloc!(st->cap, sizeof(entry_t));
     return st;
 }
 

@@ -92,8 +92,8 @@ int main(int argc, char **argv) {
         exit(0);
     }
 
-	array = calloc(global_N, sizeof(int));
-	swaps = calloc(global_N, sizeof(int));
+	array = calloc!(global_N, sizeof(int));
+	swaps = calloc!(global_N, sizeof(int));
 
     if (seed_str) {
         rnd.seed(strtoull(seed_str, NULL, 16));

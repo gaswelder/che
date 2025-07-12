@@ -9,10 +9,7 @@ pub typedef {
 // itemsize specifies the size of a single item in bytes.
 // Panics if memory allocation fails.
 pub t *new(size_t itemsize) {
-    t *l = calloc(1, sizeof(t));
-    if (!l) {
-        panic("failed to allocate memory");
-    }
+    t *l = calloc!(1, sizeof(t));
     l->itemsize = itemsize;
     return l;
 }

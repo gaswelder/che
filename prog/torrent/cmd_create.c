@@ -26,9 +26,7 @@ pub int run(int argc, char *argv[]) {
 }
 
 torrent.info_t *newtorrent() {
-    torrent.info_t *info = calloc(1, sizeof(torrent.info_t));
-    if (!info) panic("failed to allocate memory");
-
+    torrent.info_t *info = calloc!(1, sizeof(torrent.info_t));
     strcpy(info->announce, "http://localhost:8000/announce");
     strcpy(info->created_by, "");
     strcpy(info->comment, "");

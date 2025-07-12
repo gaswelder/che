@@ -73,7 +73,7 @@ void printval(bencode.reader_t *r) {
         }
         case 's': {
             int len = bencode.strsize(r);
-            uint8_t *buf = calloc(len+1, 1);
+            uint8_t *buf = calloc!(len+1, 1);
             bencode.readbuf(r, buf, len+1);
             printbuf(buf, (size_t) len);
             free(buf);

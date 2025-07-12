@@ -27,8 +27,7 @@ pub typedef {
 } sample_t;
 
 pub writer_t *open_writer2(writer.t *wr) {
-	writer_t *w = calloc(1, sizeof(writer_t));
-	if (!w) panic("calloc failed");
+	writer_t *w = calloc!(1, sizeof(writer_t));
 	w->writer = wr;
 	write_headers(w);
 	return w;
@@ -98,8 +97,7 @@ pub reader_t *open_reader(const char *path) {
 		return false;
 	}
 
-	reader_t *wr = calloc(1, sizeof(reader_t));
-	if (!wr) panic("calloc failed");
+	reader_t *wr = calloc!(1, sizeof(reader_t));
 	wr->reader = r;
 	wr->wav = w;
 	wr->file = f;

@@ -12,7 +12,7 @@ pub typedef {
  */
 pub arr_t *arr_new()
 {
-	return calloc(1, sizeof(arr_t));
+	return calloc!(1, sizeof(arr_t));
 }
 
 /*
@@ -37,17 +37,9 @@ pub size_t arr_len(arr_t *a)
 /*
  * Returns a new copy of the array
  */
-pub arr_t *arr_copy(arr_t *a)
-{
-	arr_t *c = calloc(1, sizeof(arr_t));
-	if (!c) {
-		return NULL;
-	}
-	c->vals = calloc(a->maxlen, sizeof(*c->vals));
-	if (!c->vals) {
-		free(c);
-		return NULL;
-	}
+pub arr_t *arr_copy(arr_t *a) {
+	arr_t *c = calloc!(1, sizeof(arr_t));
+	c->vals = calloc!(a->maxlen, sizeof(*c->vals));
 	c->maxlen = a->maxlen;
 	memcpy(c->vals, a->vals, a->len * sizeof(*a->vals));
 	c->len = a->len;

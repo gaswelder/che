@@ -31,9 +31,9 @@ int main(int argc, char *argv[]) {
 	/*
 	 * The original name without the extension.
 	 */
-	char *namebase = calloc(len + 1, sizeof(char));
+	char *namebase = calloc!(len + 1, sizeof(char));
 	strcpy(namebase, path);
-	if(len > 4 && strcmp(namebase + len - 4, ".mp3") == 0) {
+	if (len > 4 && strcmp(namebase + len - 4, ".mp3") == 0) {
 		namebase[len - 4] = '\0';
 	}
 
@@ -43,7 +43,7 @@ int main(int argc, char *argv[]) {
 	 * +4 for ".mp3" in case the original name doesn't have it.
 	 */
 	size_t namesize = len + 1 + 3 + 4;
-	char *newname = calloc(namesize, sizeof(char));
+	char *newname = calloc!(namesize, sizeof(char));
 
 	for(int i = 0; i < 20; i++) {
 		snprintf(newname, namesize, "%s-%02d.mp3", namebase, i+1);

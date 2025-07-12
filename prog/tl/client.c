@@ -107,7 +107,7 @@ pub void torrents(torr_t **items, size_t *size) {
 	 */
 	size_t len = 0;
 	size_t cap = 1;
-	torr_t *list = calloc(cap, sizeof(torr_t));
+	torr_t *list = calloc!(cap, sizeof(torr_t));
 	char buf[1000] = {};
 	while (fgets(buf, sizeof(buf), client.out)) {
 		strings.trim(buf);

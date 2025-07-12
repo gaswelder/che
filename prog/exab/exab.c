@@ -79,8 +79,7 @@ int main(int argc, char *argv[]) {
 	//
 	// Distribute work across the workers.
 	//
-	task_t *tasks = calloc(concurrency, sizeof(task_t));
-	if (!tasks) panic("calloc failed");
+	task_t *tasks = calloc!(concurrency, sizeof(task_t));
 	size_t slice_size = requests_to_do / concurrency;
 	if (requests_to_do % concurrency != 0) {
 		slice_size++;
@@ -103,10 +102,7 @@ int main(int argc, char *argv[]) {
 	//
 	// Spawn the workers.
 	//
-	threads.thr_t **tt = calloc(concurrency, sizeof(threads.thr_t));
-	if (!tt) {
-		panic("calloc failed");
-	}
+	threads.thr_t **tt = calloc!(concurrency, sizeof(threads.thr_t));
 	for (size_t i = 0; i < concurrency; i++) {
 		tt[i] = threads.start(thrmain, &tasks[i]);
 	}

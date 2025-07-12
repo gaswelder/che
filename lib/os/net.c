@@ -152,11 +152,7 @@ pub net_t *net_listen(const char *proto, const char *addr) {
 }
 
 pub net_t *net_accept(net_t *l) {
-	net_t *newconn = calloc(1, sizeof(net_t));
-	if (!newconn) {
-		error = "no memory for new socket";
-		return NULL;
-	}
+	net_t *newconn = calloc!(1, sizeof(net_t));
 	socklen_t size = sizeof(sockaddr_t);
 	int s = OS.accept(l->fd, &(newconn->ai_addr), &size);
 	if (s == -1) {
@@ -192,11 +188,7 @@ net_t *newconn(const char *proto, const char *addr) {
 		error = "address string too long";
 		return NULL;
 	}
-	net_t *c = calloc(1, sizeof(net_t));
-	if (!c) {
-		error = "malloc failed";
-		return NULL;
-	}
+	net_t *c = calloc!(1, sizeof(net_t));
 	strcpy(c->addrstr, addr);
 	// Split the address into a hostname and a portname.
 	if (!parseaddr(c, addr)) {
@@ -312,7 +304,7 @@ pub void net_printf(net_t *c, const char *fmt, ...) {
 	int len = vsnprintf(NULL, 0, fmt, args);
 	va_end(args);
 
-	char *buf = calloc(len + 1, sizeof(char));
+	char *buf = calloc!(len + 1, sizeof(char));
 	va_start(args, fmt);
 	len = vsnprintf(buf, len+1, fmt, args);
 	va_end(args);
@@ -324,8 +316,7 @@ pub void net_printf(net_t *c, const char *fmt, ...) {
 // Returns a reader interface for the given connection.
 // Freeing the reader will not close the connection, the caller will still own it.
 pub reader.t *getreader(net_t *conn) {
-	reader.t *r = calloc(1, sizeof(reader.t));
-	if (!r) panic("calloc failed");
+	reader.t *r = calloc!(1, sizeof(reader.t));
 	r->data = conn;
 	r->read = reader_read;
 	return r;

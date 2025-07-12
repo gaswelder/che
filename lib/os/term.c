@@ -19,7 +19,7 @@ pub typedef {
 } term_t;
 
 pub term_t *term_get_stdin() {
-    term_t *t = calloc(1, sizeof(term_t));
+    term_t *t = calloc!(1, sizeof(term_t));
     t->fileno = OS.STDIN_FILENO;
     OS.tcgetattr(OS.STDIN_FILENO, &t->original_state);
     t->current_state = t->original_state;

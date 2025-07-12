@@ -12,12 +12,10 @@ pub typedef void pixelfunc_t(rgba_t *);
 
 // Creates a new image with the given dimensions.
 pub image_t *new(int width, height) {
-	image_t *img = calloc(1, sizeof(image_t));
-	if (!img) panic("calloc failed");
+	image_t *img = calloc!(1, sizeof(image_t));
 	img->width = width;
 	img->height = height;
-	img->data = calloc(width * height, sizeof(rgba_t));
-	if (!img->data) panic("calloc failed");
+	img->data = calloc!(width * height, sizeof(rgba_t));
 	return img;
 }
 

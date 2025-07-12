@@ -51,13 +51,10 @@ enum {
 }
 
 dlog_t *dlog_init(const char *path_tpl) {
-	dlog_t *log = calloc(1, sizeof(dlog_t));
-	if (!log) panic("calloc failed");
+	dlog_t *log = calloc!(1, sizeof(dlog_t));
+	log->current_path = calloc!(1, MAXPATH+1);
+	log->new_path = calloc!(1, MAXPATH+1);
 	log->path_tpl = path_tpl;
-	log->current_path = calloc(1, MAXPATH+1);
-	if (!log->current_path) panic("calloc failed");
-	log->new_path = calloc(1, MAXPATH+1);
-	if (!log->new_path) panic("calloc failed");
 	return log;
 }
 

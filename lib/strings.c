@@ -11,8 +11,7 @@ pub char *newstr(const char *format, ...) {
 	}
 
 	// Actually allocate and format.
-	char *s = calloc(len + 1, 1);
-	if (!s) panic("calloc failed");
+	char *s = calloc!(len + 1, 1);
 	va_start(args, format);
 	vsnprintf(s, len + 1, format, args);
 	va_end(args);
@@ -21,10 +20,7 @@ pub char *newstr(const char *format, ...) {
 }
 
 pub char *newsubstr(const char *s, int p1, p2) {
-	char *buf = calloc(p2-p1 + 1, 1);
-    if (!buf) {
-        return NULL;
-    }
+	char *buf = calloc!(p2-p1 + 1, 1);
     int p = 0;
     for (int i = p1; i < p2; i++) {
         buf[p++] = s[i];

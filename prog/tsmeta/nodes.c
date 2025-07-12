@@ -40,12 +40,12 @@ pub typedef {
 } tcall_t;
 
 pub node_t *new(int kind) {
-	node_t *e = calloc(1, sizeof(node_t));
+	node_t *e = calloc!(1, sizeof(node_t));
 	e->kind = kind;
 	switch (kind) {
-		case TYPEDEF: { e->payload = calloc(1, sizeof(tdef_t)); }
-		case TYPECALL: { e-> payload = calloc(1, sizeof(tcall_t)); }
-		default: { e->payload = calloc(100, 1); }
+		case TYPEDEF: { e->payload = calloc!(1, sizeof(tdef_t)); }
+		case TYPECALL: { e-> payload = calloc!(1, sizeof(tcall_t)); }
+		default: { e->payload = calloc!(100, 1); }
 	}
 	return e;
 }

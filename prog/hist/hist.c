@@ -44,10 +44,7 @@ int main(int argc, char *argv[]) {
 	//
 	// Group into bins.
 	//
-	bin_t *bins = calloc(nbins+2, sizeof(bin_t));
-	if (!bins) {
-		panic("failed to get memory");
-	}
+	bin_t *bins = calloc!(nbins+2, sizeof(bin_t));
 	double _min = stats.min(s);
 	double _max = stats.max(s);
 	double step = (_max - _min) / (nbins-1);
@@ -107,7 +104,7 @@ void printbins_ascii(bin_t *bins, size_t nbins, size_t maxline) {
 	// Print the labels to a buffer in advance so that we know
 	// label sizes.
 	//
-	label_t *labels = calloc(nbins, sizeof(label_t));
+	label_t *labels = calloc!(nbins, sizeof(label_t));
 	size_t maxlabel = 0;
 	for (size_t i = 0; i < nbins; i++) {
 		bin_t *b = &bins[i];

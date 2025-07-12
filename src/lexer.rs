@@ -196,6 +196,13 @@ fn read_word(buf: &mut Buf) -> Token {
     let mut word = String::new();
     while buf.more() {
         let ch = buf.peek().unwrap();
+
+        // Special form "calloc!"
+        if word == "calloc" && ch == '!' {
+            word.push(buf.get().unwrap());
+            break;
+        }
+
         if !ch.is_alphanumeric() && ch != '_' {
             break;
         }

@@ -79,7 +79,7 @@ pub void handle(void *ctx, int event, void *edata) {
 			printf("connect failed, err=%s\n", strerror(errno));
 		}
         case ioloop.CONNECTED: {
-            peer_t *p = calloc(1, sizeof(peer_t));
+            peer_t *p = calloc!(1, sizeof(peer_t));
             ioloop.set_stash(ctx, p);
 
             init_t *cfg = edata;

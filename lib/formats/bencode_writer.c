@@ -20,8 +20,7 @@ pub typedef {
 } t;
 
 pub t *tobuf(uint8_t *buff, size_t bufsize) {
-	t *w = calloc(1, sizeof(t));
-	if (!w) panic("calloc failed");
+	t *w = calloc!(1, sizeof(t));
 	w->type = BUF;
 	w->buf_buf = buff;
 	w->buf_size = bufsize;
@@ -29,8 +28,7 @@ pub t *tobuf(uint8_t *buff, size_t bufsize) {
 }
 
 pub t *tofile(FILE *f) {
-	t *w = calloc(1, sizeof(t));
-	if (!w) panic("calloc failed");	
+	t *w = calloc!(1, sizeof(t));
 	w->type = FSTREAM;
 	w->file_f = f;
 	return w;
