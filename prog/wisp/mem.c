@@ -1,5 +1,3 @@
-#import util.c
-
 /* mem.h - generic obstack library */
 
 pub typedef void clearf_t(void *);
@@ -28,7 +26,10 @@ void mm_resize_stack (mmanager_t * mm)
 {
   mm->size *= 2;
   size_t count = mm->stack - mm->base;
-  mm->base = util.xrealloc (mm->base, mm->size * sizeof (void *));
+  mm->base = realloc(mm->base, mm->size * sizeof (void *));
+  if (!mm->base) {
+	panic("realloc failed");
+  }
   mm->stack = mm->base + count;
 }
 

@@ -3,7 +3,6 @@
 #import mp.c
 #import os/self
 #import strings
-#import util.c
 
 enum { INT, FLOAT, STRING, SYMBOL, CONS, VECTOR, CFUNC, SPECIAL, DETACH }
 enum { ADD, SUB, MUL, DIV };
@@ -444,7 +443,7 @@ void sympush(object_t *so, object_t *o) {
 	// if (s->vals == s->cnt + s->stack) {
 	//		 size_t n = s->vals - s->stack;
 	//		 s->cnt *= 2;
-	//		 s->stack = util.xrealloc (s->stack, s->cnt * sizeof (object_t *));
+	//		 s->stack = xrealloc (s->stack, s->cnt * sizeof (object_t *));
 	//		 s->vals = s->stack + n;
 	//	 }
 	*s->vals = o;
@@ -1385,7 +1384,7 @@ void reader_putc (reader_t * r, int c) {
 	if (r->readbufp == r->readbuf + r->readbuflen)
 		{
 			r->readbuflen *= 2;
-			r->readbuf = util.xrealloc (r->readbuf, sizeof (int) * r->readbuflen);
+			r->readbuf = xrealloc (r->readbuf, sizeof (int) * r->readbuflen);
 			r->readbufp = r->readbuf + r->readbuflen / 2;
 		}
 	*(r->readbufp) = c;
@@ -1420,7 +1419,7 @@ void push (reader_t * r) {
 	if (r->state == r->base + r->ssize)
 		{
 			r->ssize *= 2;
-			r->base = util.xrealloc (r->base, sizeof (rstate_t *) * r->ssize);
+			r->base = xrealloc (r->base, sizeof (rstate_t *) * r->ssize);
 			r->state = r->base + r->ssize / 2;
 		}
 	/* clear the state */
@@ -1518,7 +1517,7 @@ void addpop (reader_t * r) {
 void buf_append (reader_t * r, char c) {
 	if (r->bufp == r->buf + r->buflen) {
 		r->buflen *= 2;
-		r->buf = util.xrealloc (r->buf, r->buflen + 1);
+		r->buf = xrealloc (r->buf, r->buflen + 1);
 		r->bufp = r->buf + r->buflen / 2;
 	}
 	*(r->bufp) = c;
@@ -2677,4 +2676,10 @@ pub char *addslashes(char *cleanstr) {
   str[strlen (str)] = '"';
 
   return str;
+}
+
+void *xrealloc (void *p, size_t size) {
+  void *np = realloc (p, size);
+  if (np == NULL) panic("realloc failed");
+  return np;
 }
