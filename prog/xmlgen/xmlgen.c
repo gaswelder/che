@@ -46,7 +46,6 @@ int main(int argc, char **argv) {
     opt.opt_float("f", "global_scale_factor", &global_scale_factor);
     opt.str("o", "global_outputname", &global_outputname);
     opt.opt_int("s", "global_split", &global_split);
-    if (argc == 1) return opt.usage();
     opt.parse(argc, argv);
 
     if (dumpdtd) {
