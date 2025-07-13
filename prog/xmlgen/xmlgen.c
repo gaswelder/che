@@ -33,39 +33,15 @@ schema.Element *stack[64] = {};
 
 
 int main(int argc, char **argv) {
-    bool doctype_is_2 = false;
     float global_scale_factor = 1;
-
-    opt.flag("d", "document_type=2", &doctype_is_2);    
     opt.opt_float("f", "global_scale_factor", &global_scale_factor);
     opt.parse(argc, argv);
 
-    int document_type=1;
-    if (doctype_is_2) {
-        document_type=2;
-    }
-
     schema.InitializeSchema(global_scale_factor);
-
-    Preamble(stdout, document_type);
+    fprintf(stdout, "<?xml version=\"1.0\" standalone=\"yes\"?>\n");
     Tree(stdout, schema.GetSchemaNode(1));
     fclose(stdout);
     return 0;
-}
-
-void Preamble(FILE *out, int document_type) {
-    switch (document_type) {
-        case 1: {
-            fprintf(out, "<?xml version=\"1.0\" standalone=\"yes\"?>\n");
-        }
-        case 2: {
-            fprintf(out, "<?xml version=\"1.0\"?>\n");
-            fprintf(out, "<!DOCTYPE %s SYSTEM \"auction.dtd\">\n", schema.GetSchemaNode(1)->name);
-        }
-        default: { 
-            panic("unknown document type: %d", document_type);
-        }
-    }
 }
 
 void Tree(FILE *out, schema.Element *element) {
