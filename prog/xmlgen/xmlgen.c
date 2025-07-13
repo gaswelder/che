@@ -38,7 +38,7 @@ int main(int argc, char **argv) {
 
     schema.InitializeSchema(global_scale_factor);
     fprintf(stdout, "<?xml version=\"1.0\" standalone=\"yes\"?>\n");
-    Tree(stdout, schema.GetSchemaNode(1));
+    Tree(stdout, schema.GetSchemaNode(schema.nameid("site")));
     return 0;
 }
 

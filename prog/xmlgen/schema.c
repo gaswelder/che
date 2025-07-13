@@ -109,7 +109,7 @@ name_id_t names[] = {
     { ZIPCODE, "zipcode" },
 };
 
-int nameid(char *name) {
+pub int nameid(char *name) {
 	for (size_t i = 0; i < nelem(names); i++) {
 		if (strcmp(names[i].name, name) == 0) {
 			return names[i].id;
@@ -271,6 +271,8 @@ pub void InitializeSchema(float global_scale_factor) {
 
 	puts("parsed dtd");
 
+	
+
 	// Some tweaks to the schema.
 	objs[nameid("catgraph")].type = 0x20;
 	objs[nameid("item")].type = 0x40;
@@ -285,6 +287,10 @@ pub void InitializeSchema(float global_scale_factor) {
 
 
 	int nobj = nelem(objs);
+
+	for (int i = 0; i < nobj; i++) {
+		printf("%d\t%s (%d)\n", i, objs[i].name, objs[i].id);
+	}
 
     Element *root = GetSchemaNode(1);
     FixSetSize(root, global_scale_factor);
