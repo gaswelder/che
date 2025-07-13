@@ -429,8 +429,19 @@ pub void InitializeSchema(float global_scale_factor) {
     int closed = items - open;
     InitRepro(&idr[0], open, closed);
     InitRepro(&idr[1], closed, open);
-    FixSetByEdge("closed_auctions","closed_auction",closed);
-
+	
+	
+	// "fix set by edge"
+	Element *closed_auctions = &objs[nameid("closed_auctions")];
+	int *child_id = closed_auctions->elm;
+	while (*child_id) {
+		Element *son = GetSchemaNode(*child_id);
+		if (!strcmp("closed_auction", son->name)) {
+			ProbDesc pd = probDescForChild(closed_auctions, *child_id);
+			FixDist(&pd, closed);
+		}
+		child_id++;
+	}
 }
 
 
@@ -556,26 +567,6 @@ void FixDist(ProbDesc *pd, double val)
 {
     pd->min=pd->max=val;
     pd->type=0;
-}
-
-void FixSetByEdge(char *father_name, char *son_name, int size)
-{
-    int nobj=nelem(objs);
-    for (int i=0; i<nobj; i++) {
-        if (strcmp(father_name,objs[i].name)) {
-            continue;
-        }
-        Element *element = GetSchemaNode(i);
-        int *child_id = element->elm;
-        while (*child_id) {
-            Element *son = GetSchemaNode(*child_id);
-            if (!strcmp(son_name, son->name)) {
-                ProbDesc pd = probDescForChild(element, *child_id);
-                FixDist(&pd, size);
-            }
-            child_id++;
-        }
-    }
 }
 
 bool hasID(Element *element) {
