@@ -37,25 +37,14 @@ schema.Element *stack[64] = {};
 
 
 int main(int argc, char **argv) {
-    bool dumpdtd = false;
     bool doctype_is_2 = false;
     float global_scale_factor = 1;
 
-    opt.flag("e", "dumpdtd", &dumpdtd);
     opt.flag("d", "document_type=2", &doctype_is_2);    
     opt.opt_float("f", "global_scale_factor", &global_scale_factor);
     opt.str("o", "global_outputname", &global_outputname);
     opt.opt_int("s", "global_split", &global_split);
     opt.parse(argc, argv);
-
-    if (dumpdtd) {
-        char **line = schema.getdtd();
-        while (*line) {
-            fprintf(stdout, "%s\n", *line);
-            line++;
-        }
-        return 0;
-    }
 
     int document_type=1;
     if (doctype_is_2) {
