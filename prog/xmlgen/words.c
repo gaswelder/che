@@ -5723,6 +5723,15 @@ char *firstnames[]={
     "Mehrdad"
 };
 
+char *SHIPPING[] = {
+    "Will ship only within country",
+    "Will ship internationally",
+    "Buyer pays fixed shipping charges",
+    "See description for charges"
+};
+
+char *GenContents_auction_type[]={"Regular","Featured"};
+
 dict_t dicts[] = {
     {"emails", nelem(emails), emails},
     {"lastnames", nelem(lastnames), lastnames},
@@ -5731,4 +5740,6 @@ dict_t dicts[] = {
     {"firstnames", nelem(firstnames), firstnames},
     {"provinces", nelem(provinces), provinces},
     {"words", nelem(words), words},
+	{"shipping", nelem(SHIPPING), SHIPPING },
+	{"auction_type", nelem(GenContents_auction_type), GenContents_auction_type },
 };

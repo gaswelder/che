@@ -11,13 +11,13 @@ typedef {
 generator_state_t GLOBAL_STATE = {};
 
 int stackdepth=0;
-int GenContents_lstname = 0;
+
 int GenContents_country = -1;
-int GenContents_email = 0;
+
 int GenContents_quantity = 0;
 double GenContents_initial = 0;
 double GenContents_increases = 0;
-char *GenContents_auction_type[]={"Regular","Featured"};
+
 char *GenContents_education[]={"High School","College", "Graduate School","Other"};
 char *GenContents_money[]={"Money order","Creditcard", "Personal Check","Cash"};
 char *GenContents_yesno[]={"Yes","No"};
@@ -53,23 +53,45 @@ void Tree(FILE *out, schema.Element *element) {
     int r;
     bool has_content = true;
     switch(element->id) {
-        case schema.CITY: { ipsum.fcity(out); }
-        case schema.STATUS,
-            schema.HAPPINESS: { ipsum.fint(out, 1, 10); }
-        case schema.STREET: { ipsum.fstreet(out); }
-        case schema.PHONE: { ipsum.fphone(out); }
-        case schema.CREDITCARD: { ipsum.fcreditcard(out); }
-        case schema.SHIPPING: { ipsum.fshipping(out); }
-        case schema.TIME: { ipsum.ftime(out); }
-        case schema.AGE: { ipsum.fage(out); }
-        case schema.ZIPCODE: { ipsum.fzipcode(out); }
-        case schema.XDATE, schema.START, schema.END: { ipsum.fdate(out); }
-        case schema.GENDER: { ipsum.fgender(out); }
-        case schema.AMOUNT,
-            schema.PRICE: { ipsum.fprice(out); }
+        case schema.CITY: {
+			ipsum.emit("dict(cities)");
+		}
+        case schema.STATUS, schema.HAPPINESS: {
+			ipsum.emit("int(1, 10)");
+		}
+        case schema.STREET: {
+			ipsum.emit("street");
+		}
+        case schema.PHONE: {
+			ipsum.emit("phone");
+		}
+        case schema.CREDITCARD: {
+			ipsum.emit("cc");
+		}
+        case schema.SHIPPING: {
+			ipsum.emit("dict(shipping)");
+		}
+        case schema.TIME: {
+			ipsum.emit("time");
+		}
+        case schema.AGE: {
+			ipsum.emit("max(18, gauss(30, 15))");
+		}
+        case schema.ZIPCODE: {
+			ipsum.emit("zip");
+		}
+        case schema.XDATE, schema.START, schema.END: {
+			ipsum.emit("date");
+		}
+        case schema.GENDER: {
+			ipsum.emit("gender");
+		}
+        case schema.AMOUNT, schema.PRICE: {
+			ipsum.emit("price");
+		}
 
         case schema.TYPE: {
-            fprintf(out, "%s", GenContents_auction_type[rnd.intn(2)]);
+			ipsum.emit("dict(auction_type)");
             if (GenContents_quantity > 1 && rnd.intn(2) > 0) {
 				fprintf(out,", Dutch");
 			}
@@ -84,18 +106,16 @@ void Tree(FILE *out, schema.Element *element) {
         }
         case schema.PROVINCE: {
             if (GenContents_country == COUNTRIES_USA) {
-                ipsum.fprovince(out);
+                ipsum.emit("dict(provinces)");
             } else {
-                ipsum.flastname(out);
+                ipsum.emit("dict(lastnames)");
             }
         }
         case schema.EDUCATION: {
             fprintf(out, "%s", GenContents_education[rnd.intn(4)]);
         }
         case schema.HOMEPAGE: {
-            fprintf(out, "http://www.%s/~%s",
-                words.dictentry("emails", GenContents_email),
-                words.dictentry("lastnames", GenContents_lstname));
+            ipsum.emit("webpage");
         }
         case schema.PAYMENT: {
             r=0;
@@ -113,18 +133,17 @@ void Tree(FILE *out, schema.Element *element) {
             fprintf(out, "%s", GenContents_yesno[rnd.intn(2)]);
         }
         case schema.CATNAME, schema.ITEMNAME: {
-            ipsum.fsentence(out, 1 + rnd.intn(4));
+			ipsum.emit("sentence1");
         }
-        case schema.NAME: { PrintName(); }
+        case schema.NAME: {
+			ipsum.emit("name");
+		}
         case schema.FROM, schema.TO: {
-            PrintName();
+            ipsum.emit("name");
             fprintf(out," ");
         }
         case schema.EMAIL: {
-            GenContents_email = rnd.intn(words.dictlen("emails"));
-            fprintf(out, "mailto:%s@%s",
-                words.dictentry("lastnames", GenContents_lstname),
-                words.dictentry("emails", GenContents_email));
+			ipsum.emit("email");
         }
         case schema.QUANTITY: {
             GenContents_quantity=1+(int)rnd.exponential(0.4);
@@ -292,7 +311,7 @@ void PrintANY(FILE *out) {
             fprintf(out,"</%s> ",markup[PrintANY_st[stptr]]);
             tick[PrintANY_st[stptr]] = 0;
         }
-        ipsum.fsentence(out, 1 + (int)rnd.exponential(4));
+		ipsum.emit("sentence2");
     }
     while (stptr) {
         --stptr;
@@ -334,23 +353,6 @@ int GenItemIdRef(schema.idrepro *rep, int *idref) {
     }
     *idref = rep->cur++;
     return 1;
-}
-
-void PrintName() {
-    int flen = words.dictlen("firstnames");
-    int fst = (int)rnd.exponential(flen/3);
-    if (fst >= flen-1) {
-        fst = flen-1;
-    }
-
-    int llen = words.dictlen("lastnames");
-    int lst = (int)rnd.exponential(llen/3);
-    if (lst >= llen-1) {
-        lst = llen-1;
-    }
-    fprintf(stdout, "%s %s", words.dictentry("firstnames", fst), words.dictentry("lastnames", lst));
-
-    GenContents_lstname = lst;
 }
 
 double GenRandomNum(schema.ProbDesc *pd) {
