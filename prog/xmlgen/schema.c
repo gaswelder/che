@@ -267,19 +267,9 @@ pub void InitializeSchema(float global_scale_factor) {
 
 	puts("parsed dtd");
 
-	
-
 	// Some tweaks to the schema.
-	objs[nameid("catgraph")].type = 0x20;
-	objs[nameid("item")].type = 0x40;
 	objs[nameid("item")].att[1].prcnt = 0.1;
-	objs[nameid("description")].type = 0x02;
-	objs[nameid("text")].type = 0x01;
-	objs[nameid("listitem")].type = 0x02;
-	objs[nameid("person")].type = 0x40;
 	objs[nameid("profile")].att[0].prcnt = 1;
-	objs[nameid("open_auction")].type = 0x04|0x40;
-	objs[nameid("closed_auction")].type = 0x04|0x40;
 
 
 	int nobj = nelem(objs);
@@ -290,10 +280,20 @@ pub void InitializeSchema(float global_scale_factor) {
 
 	Element *root = GetSchemaNode(1);
 	FixSetSize(root, global_scale_factor);
+
+	//
+	// Reset flag in all objects.
+	//
 	for (int i = 0; i < nobj; i++) {
 		objs[i].flag = 0;
 	}
+
+
 	FixReferenceSets(root);
+
+	//
+	// Reset flag in all objects.
+	//
 	for (int i = 0; i < nobj; i++) {
 		objs[i].flag = 0;
 	}
@@ -312,19 +312,6 @@ pub void InitializeSchema(float global_scale_factor) {
 	int closed = items - open;
 	InitRepro(&idr[0], open, closed);
 	InitRepro(&idr[1], closed, open);
-	
-	
-	// "fix set by edge"
-	Element *closed_auctions = &objs[nameid("closed_auctions")];
-	int *child_id = closed_auctions->elm;
-	while (*child_id) {
-		Element *son = GetSchemaNode(*child_id);
-		if (!strcmp("closed_auction", son->name)) {
-			ProbDesc pd = probDescForChild(closed_auctions, *child_id);
-			FixDist(&pd, closed);
-		}
-		child_id++;
-	}
 }
 
 void import_attlist(dtd.attlist_t *attlist) {
@@ -379,38 +366,68 @@ void InitRepro(idrepro *rep, int max, int brosmax) {
 }
 
 void FixSetSize(Element *element, float global_scale_factor) {
+	//
+	// If flag was set, skip
+	//
 	if (element->flag++) {
 		return;
 	}
 
+	//
+	// Loop through children
+	//
 	int *child_id = element->elm;
 	while (*child_id) {
 		Element *child_element = GetSchemaNode(*child_id);
 		ProbDesc pd = probDescForChild(element, *child_id);
-		if (pd.min > 1 && (hasID(child_element) || ((child_element->type & 0x04) != 0))) {
-			int size=(int)(GenRandomNum(&pd) + 0.5);
-			if ((float)size * global_scale_factor > 1) {
-				size = (int)((float)size*global_scale_factor);
-			} else {
+
+		//
+		//
+		//
+		bool cond1 = pd.min > 1 && (
+			hasID(child_element)
+			|| *child_id == nameid("open_auction")
+			|| *child_id == nameid("closed_auction")
+		);
+
+		if (cond1) {
+			//
+			//
+			//
+			double size = 0.5 + GenRandomNum(&pd);
+			size *= global_scale_factor;
+			if (size < 1) {
 				size = 1;
 			}
-			child_element->set.size += size;
-			FixDist(&pd, size);
+
+			child_element->set.size += (int) size;
 		}
+
+		//
+		//
+		//
 		FixSetSize(child_element, global_scale_factor);
 		child_id++;
 	}
 }
 
 void FixReferenceSets(Element *element) {
+	//
+	// If flag was set, skip
+	//
 	if (element->flag++) {
 		return;
 	}
 	int maxref = 0;
+
+	//
+	// Loop over children
+	//
 	int *child_id = element->elm;
 	while (*child_id) {
 		Element *son = GetSchemaNode(*child_id);
 		ProbDesc pd = probDescForChild(element, *child_id);
+
 		if (pd.min > 1 && !hasID(son)) {
 			double local_factor = 1;
 			for (int j=0; j<5; j++) {
@@ -430,17 +447,13 @@ void FixReferenceSets(Element *element) {
 				size = 1;
 			}
 			son->set.size += size;
-			FixDist(&pd, size);
+			pd.min = size;
+			pd.max = size;
+			pd.type = 0;
 		}
 		FixReferenceSets(son);
 		child_id++;
 	}
-}
-
-void FixDist(ProbDesc *pd, double val)
-{
-	pd->min=pd->max=val;
-	pd->type=0;
 }
 
 bool hasID(Element *element) {
@@ -459,6 +472,17 @@ pub idrepro *getidr(int i) {
 	return &idr[i];
 }
 
+enum {
+	UNIF = 1,
+	GAUSS = 2,
+	EXP = 3,
+}
+
+double clamp(double x, min, max) {
+	if (x < min) x = min;
+	if (x > max) x = max;
+	return x;
+}
 
 double GenRandomNum(ProbDesc *pd) {
 	if (pd->max <= 0) {
@@ -472,25 +496,20 @@ double GenRandomNum(ProbDesc *pd) {
 		}
 	}
 
-	if (pd->type == 1) {
-		return rnd.urange(pd->min, pd->max);
-	}
-
-	if (pd->type == 2) {
-		double res = pd->mean + pd->dev * rnd.gauss();
-		if (res > pd->max) res = pd->max;
-		if (res < pd->min) res = pd->min;
-		return res;
-	}
-
-	if (pd->type == 3) {
-		double res = pd->min + rnd.exponential(pd->mean);
-		if (res > pd->max) {
-			res = pd->max;
+	switch (pd->type) {
+		case UNIF: {
+			return rnd.urange(pd->min, pd->max);
 		}
-		return res;
+		case GAUSS: {
+			double res = pd->mean + pd->dev * rnd.gauss();
+			return clamp(res, pd->min, pd->max);
+		}
+		case EXP: {
+			double res = pd->min + rnd.exponential(pd->mean);
+			return clamp(res, pd->min, pd->max);
+		}
 	}
-	panic("woops! undefined distribution.\n");
+	panic("undefined distribution: %d", pd->type);
 }
 
 typedef {
@@ -499,40 +518,67 @@ typedef {
 	ProbDesc p;
 } prob_desc_map_item_t;
 
+typedef {
+	int element_id;
+	char *attr_name;
+	ProbDesc p;
+} attr_pd_item_t;
+
+
+// { elem, child, { type, mean, dev, min, max} }
 prob_desc_map_item_t prob_desc_map[] = {
-	{ CATEGORY_LIST, CATEGORY, {1, 0, 0, 1000, 1000} },
-	{ EUROPE, ITEM, {1, 0, 0, 6000, 6000} },
-	{ AUSTRALIA, ITEM, {1, 0, 0, 2200, 2200} },
-	{ AFRICA, ITEM, {1, 0, 0, 550, 550} },
-	{ NAMERICA, ITEM, {1, 0, 0, 10000, 10000} },
-	{ SAMERICA, ITEM, {1, 0, 0, 1000, 1000} },
-	{ ASIA, ITEM, {1, 0, 0, 2000, 2000} },
-	{ CATGRAPH, EDGE, {1, 0, 0, 3800, 3800} },
-	{ ITEM, INCATEGORY, {3,3,0,1,10} },
-	{ DESCRIPTION, TEXT, {1, 0.7, 0, 0, 0} },
-	{ DESCRIPTION, PARLIST, {1, 0.3, 0, 0, 0} },
-	{ PARLIST, LISTITEM, {3,1,0,2,5} },
-	{ LISTITEM, TEXT, {1,0.8, 0,0,0} },
-	{ LISTITEM, PARLIST, {1,0.2, 0,0,0} },
-	{ ADDRESS, PROVINCE, {1,0,0,0,1} },
-	{ PROFILE, INTEREST,   {3,3,0,0,25} },
-	{ PROFILE, EDUCATION,  {1,0,0,0,1}  },
-	{ PROFILE, GENDER,	 {1,0,0,0,1}  },
-	{ PROFILE, AGE,		{1,0,0,0,1}  },
-	{ WATCHES, WATCH,	  {3,4,0,0,100} },
-	{ OPEN_TRANS_LIST, OPEN_TRANS, {1,0,0,12000, 12000} },
-	{ OPEN_TRANS, RESERVE,  {1,0,0,0,1} },
-	{ OPEN_TRANS, BIDDER,   {3,5,0,0,200} },
-	{ OPEN_TRANS, PRIVACY,  {1,0,0,0,1} },
-	{ CLOSED_TRANS_LIST, CLOSED_TRANS, {1,0,0,3000,3000}},
-	{ MAILBOX, MAIL, {3,1,0,0,250}},
-	{ PERSON_LIST, PERSON, {1,0,0,25500, 25500}},
-	{PERSON, PHONE, {1,0,0,0,1}},
-	{PERSON, ADDRESS, {1,0,0,0,1}},
-	{PERSON, HOMEPAGE, {1,0,0,0,1}},
-	{PERSON, CREDITCARD, {1,0,0,0,1}},
-	{PERSON, PROFILE, {1,0,0,0,1}},
-	{PERSON, WATCHES, {1,0,0,0,1}}
+	{ CATEGORY_LIST, CATEGORY,			{ UNIF, 0, 0, 1000, 1000} },
+	{ EUROPE, ITEM, 					{ UNIF, 0, 0, 6000, 6000} },
+	{ AUSTRALIA, ITEM,					{ UNIF, 0, 0, 2200, 2200} },
+	{ AFRICA, ITEM,						{ UNIF, 0, 0, 550, 550} },
+	{ NAMERICA, ITEM,					{ UNIF, 0, 0, 10000, 10000} },
+	{ SAMERICA, ITEM,					{ UNIF, 0, 0, 1000, 1000} },
+	{ ASIA, ITEM,						{ UNIF, 0, 0, 2000, 2000} },
+	{ CATGRAPH, EDGE,					{ UNIF, 0, 0, 3800, 3800} },
+	{ ITEM, INCATEGORY,					{ EXP,  3, 0,1,10} },
+	{ DESCRIPTION, TEXT,				{ UNIF, 0.7, 0, 0, 0} },
+	{ DESCRIPTION, PARLIST,				{ UNIF, 0.3, 0, 0, 0} },
+	{ PARLIST, LISTITEM,				{ EXP,  1,0,2,5} },
+	{ LISTITEM, TEXT,					{ UNIF, 0.8, 0,0,0} },
+	{ LISTITEM, PARLIST,				{ UNIF, 0.2, 0,0,0} },
+	{ ADDRESS, PROVINCE,				{ UNIF, 0,0,0,1} },
+	{ PROFILE, INTEREST,  				{ EXP,  3,0,0,25} },
+	{ PROFILE, EDUCATION, 				{ UNIF, 0,0,0,1}  },
+	{ PROFILE, GENDER,					{ UNIF, 0,0,0,1}  },
+	{ PROFILE, AGE,						{ UNIF, 0,0,0,1}  },
+	{ WATCHES, WATCH,	 				{ EXP,  4,0,0,100} },
+	{ OPEN_TRANS_LIST, OPEN_TRANS,		{ UNIF, 0,0,12000, 12000} },
+	{ OPEN_TRANS, RESERVE, 				{ UNIF, 0,0,0,1} },
+	{ OPEN_TRANS, BIDDER,  				{ EXP,  5,0,0,200} },
+	{ OPEN_TRANS, PRIVACY, 				{ UNIF, 0,0,0,1} },
+	{ CLOSED_TRANS_LIST, CLOSED_TRANS,	{ UNIF, 0,0,3000,3000}},
+	{ MAILBOX, MAIL,					{ EXP,  1,0,0,250}},
+	{ PERSON_LIST, PERSON,				{ UNIF, 0,0,25500, 25500}},
+	{PERSON, PHONE,						{ UNIF, 0,0,0,1}},
+	{PERSON, ADDRESS,					{ UNIF, 0,0,0,1}},
+	{PERSON, HOMEPAGE,					{ UNIF, 0,0,0,1}},
+	{PERSON, CREDITCARD,				{ UNIF, 0,0,0,1}},
+	{PERSON, PROFILE,					{ UNIF, 0,0,0,1}},
+	{PERSON, WATCHES, 					{ UNIF, 0,0,0,1}}
+};
+
+attr_pd_item_t attr_desc_map[] = {
+	{ EDGE, "from",			{ UNIF,0,0,0,0} },
+	{ EDGE, "to",			{ UNIF,0,0,0,0} },
+	{ CATEGORY, "id",		{ 0,0,0,0,0} },
+	{ ITEM, "id",			{ 0,0,0,0,0} },
+	{ ITEM, "featured",	  	{ 0,0,0,0,0} },
+	{ INCATEGORY, "\1",	  	{ UNIF,0,0,0,0} },
+	{ PERSON, "id",		  	{ 0,0,0,0,0} },
+	{ PROFILE, "income",	{ 0,0,0,0,0} },
+	{ INTEREST, "\1",		{ UNIF,0,0,0,0} },
+	{ WATCH, "\1",		   	{ UNIF,0,0,0,0} },
+	{ OPEN_TRANS, "id",	  	{ 0,0,0,0,0} },
+	{ ITEMREF, "\1",		{ UNIF,0,0,0,0} },
+	{ PERSONREF, "\1",	   	{ UNIF,0,0,0,0} },
+	{ SELLER, "\1",		  	{ GAUSS, 0.5, 0.1, 0, 0} },
+	{ BUYER, "\1",		   	{ GAUSS, 0.5, 0.1, 0, 0} },
+	{ AUTHOR, "\1",		  	{ UNIF,0,0,1,1} }
 };
 
 pub ProbDesc probDescForChild(Element *e, int child_id) {
@@ -550,31 +596,6 @@ pub ProbDesc probDescForChild(Element *e, int child_id) {
 	ProbDesc r = {1, 0, 0, 1, 1};
 	return r;
 }
-
-typedef {
-	int element_id;
-	char *attr_name;
-	ProbDesc p;
-} attr_pd_item_t;
-
-attr_pd_item_t attr_desc_map[] = {
-	{ EDGE, "from",		  {1,0,0,0,0} },
-	{ EDGE, "to",			{1,0,0,0,0} },
-	{ CATEGORY, "id",		{0,0,0,0,0} },
-	{ ITEM, "id",			{0,0,0,0,0} },
-	{ ITEM, "featured",	  {0,0,0,0,0} },
-	{ INCATEGORY, "\1",	  {1,0,0,0,0} },
-	{ PERSON, "id",		  {0,0,0,0,0} },
-	{ PROFILE, "income",	 {0,0,0,0,0} },
-	{ INTEREST, "\1",		{1,0,0,0,0} },
-	{ WATCH, "\1",		   {1,0,0,0,0} },
-	{ OPEN_TRANS, "id",	  {0,0,0,0,0} },
-	{ ITEMREF, "\1",		 {1,0,0,0,0} },
-	{ PERSONREF, "\1",	   {1,0,0,0,0} },
-	{ SELLER, "\1",		  {2, 0.5, 0.1, 0, 0} },
-	{ BUYER, "\1",		   {2, 0.5, 0.1, 0, 0} },
-	{ AUTHOR, "\1",		  {1,0,0,1,1} }
-};
 
 pub ProbDesc probDescForAttr(int element_id, char *attr_name) {
 	for (size_t i = 0; i < nelem(attr_desc_map); i++) {

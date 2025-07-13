@@ -75,7 +75,7 @@ void Tree(FILE *out, schema.Element *element) {
     	}
 	}
 
-    if (element->type & 0x02) {
+    if (element->id == schema.nameid("description") || element->id == schema.nameid("listitem")) {
         schema.Element *root;
         double alt = rnd.urange(0, 1);
         double sum = 0;
@@ -173,7 +173,7 @@ void OpeningTag(FILE *out, schema.Element *element) {
         fprintf(out,"/>\n");
     } else {
         fprintf(out,">");
-        if (element->elm[0] != 0 || element->type & 0x01) {
+        if (element->elm[0] != 0 || element->id == schema.nameid("text")) {
             fprintf(out,"\n");
         }
     }
@@ -181,7 +181,7 @@ void OpeningTag(FILE *out, schema.Element *element) {
 
 void ClosingTag(schema.Element *element) {
     stackdepth--;
-    if (element->type & 0x01) {
+    if (element->id == schema.nameid("text")) {
         fprintf(stdout, "\n");
     }
     if ((element->att[0].name[0]) && element->elm[0] == 0) {
