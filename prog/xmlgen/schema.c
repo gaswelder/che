@@ -1,5 +1,6 @@
 #import rnd
 #import strings
+#import dtd.c
 
 char *dtd[] = {
     "<!ELEMENT site    (regions, categories, catgraph, people, open_auctions, closed_auctions)>",
@@ -379,6 +380,8 @@ pub void InitializeSchema(float global_scale_factor) {
 		line(buf);
 	}
 
+	puts("parsed dtd");
+
 	// Some tweaks to the schema.
 	objs[nameid("catgraph")].type = 0x20;
 	objs[nameid("item")].type = 0x40;
@@ -446,83 +449,67 @@ void line(char *s) {
 	}
 }
 
-// "<!ATTLIST author          person IDREF #REQUIRED>"
-// "<!ATTLIST person          id ID #REQUIRED>",
-// "<!ATTLIST profile income CDATA #IMPLIED>",
-// "<!ATTLIST edge from IDREF #REQUIRED to IDREF #REQUIRED>"
+
 void read_attlist(char *s) {
-	char *p = skiplit(s, "<!ATTLIST ");
-	while (isspace(*p)) p++;
+	dtd.attlist_t attlist = {};
+	dtd.read_attlist(s, &attlist);
 
-	char *host = readname(&p);
-	int pos = nameid(host);
-	while (isspace(*p)) p++;
+	int pos = nameid(attlist.host);
+	Element *obj = &objs[pos];
 
-	int natt = 0;
-	while (*p != '\0' && *p != '>') {
-		char *child = readname(&p);
-		while (isspace(*p)) p++;
-
-		if (strings.starts_with(p, "IDREF #REQUIRED")) {
-			p = skiplit(p, "IDREF #REQUIRED");
-			objs[pos].att[natt].name[0] = '\1';
-			objs[pos].att[natt].type = ATTR_TYPE_2;
-			objs[pos].att[natt].ref = nameid(child);
-			natt++;
-			while (isspace(*p)) p++;
-			continue;
+	for (int i = 0; i < attlist.size; i++) {
+		dtd.att_t *att = &attlist.items[i];
+		AttDesc *objatt = &obj->att[i];
+		if (att->type == dtd.IDREF && att->flag == dtd.REQUIRED) {
+			objatt->name[0] = '\1';
+			objatt->type = ATTR_TYPE_2;
+			objatt->ref = nameid(att->name);
+		} else if (att->type == dtd.ID && att->flag == dtd.REQUIRED) {
+			strcpy(objatt->name, att->name);
+			objatt->type = ATTR_TYPE_1;
+		} else if (att->type == dtd.CDATA && att->flag == dtd.IMPLIED) {
+			strcpy(objatt->name, att->name);
+			objatt->type = ATTR_TYPE_3;
+		} else {
+			panic("unhandled combination");
 		}
-
-		if (strings.starts_with(p, "ID #REQUIRED")) {
-			p = skiplit(p, "ID #REQUIRED");
-			strcpy(objs[pos].att[natt].name, child);
-			objs[pos].att[natt].type = ATTR_TYPE_1;
-			natt++;
-			while (isspace(*p)) p++;
-			continue;
-		}
-
-		if (strings.starts_with(p, "CDATA #IMPLIED")) {
-			p = skiplit(p, "CDATA #IMPLIED");
-			strcpy(objs[pos].att[0].name, child);
-			objs[pos].att[natt].type = ATTR_TYPE_3;
-			natt++;
-			while (isspace(*p)) p++;
-			continue;
-		}
-
-		break;
-	}
-
-	p = skiplit(p, ">");
-	if (*p != '\0') {
-		panic("unexpected trailing data: %s", p);
-	}
+	}	
 }
 
-// "<!ELEMENT time    (#PCDATA)>",
-// "<!ELEMENT author EMPTY>",
-// "<!ELEMENT annotation      (author, description?, happiness)>",
+typedef {
+	char name[100];
+} element_t;
+
+typedef {
+	char name[100];
+	char quantifier; // '', '*', '?', '+'
+} child_t;
+
+
+// <!ELEMENT author EMPTY>
+// <!ELEMENT to (#PCDATA)>
+// <!ELEMENT note (message)>
+// <!ELEMENT note (message*)>
+// <!ELEMENT note (message?)>
+// <!ELEMENT note (message+)>
+// <!ELEMENT note (to,from,heading,body)>
+// <!ELEMENT note (#PCDATA|to|from|header|message)*> 
+// <!ELEMENT note (to,from,header,(message|body))> 
+// <!ELEMENT annotation (author, description?, happiness)>
 void read_element(char *s) {
+	element_t element = {};
+
 	// <!ELEMENT + spaces
 	char *p = skiplit(s, "<!ELEMENT ");
 	while (isspace(*p)) p++;
 
 	// name + spaces
-	char *name = readname(&p);
+	strcpy(element.name, readname(&p));
 	while (isspace(*p)) p++;
-	int pos = nameid(name);
-	objs[pos].id = pos;
-	objs[pos].name = name;
 
-	// ? (#PCDATA)>
-	if (strings.starts_with(p, "(#PCDATA)>")) {
-		p = skiplit(p, "(#PCDATA)>");
-		if (*p != '\0') {
-			panic("unexpected trailing data: %s", p);
-		}
-		return;
-	}
+	int pos = nameid(element.name);
+	objs[pos].id = pos;
+	objs[pos].name = strings.newstr("%s", element.name);
 
 	// ? EMPTY>
 	if (strings.starts_with(p, "EMPTY>")) {
@@ -533,16 +520,31 @@ void read_element(char *s) {
 		return;
 	}
 
+	// ? (#PCDATA)>
+	if (strings.starts_with(p, "(#PCDATA)>")) {
+		p = skiplit(p, "(#PCDATA)>");
+		if (*p != '\0') {
+			panic("unexpected trailing data: %s", p);
+		}
+		return;
+	}
+
 	if (*p == '(') {
 		p = skiplit(p, "(");
 		int i = 0;
 		while (*p != ')') {
-			char *name = readname(&p);
-			objs[pos].elm[i++] = nameid(name);
+
+			child_t child = {};
+			strcpy(child.name, readname(&p));
 			while (isspace(*p)) p++;
-			if (*p == '?') p++;
-			if (*p == '*') p++;
-			if (*p == '+') p++;
+			switch (*p) {
+				case '?', '*', '+': {
+					child.quantifier = *p++;
+				}
+			}
+
+			objs[pos].elm[i++] = nameid(child.name);
+
 			if (*p == ',' || *p == '|') {
 				p++;
 				while (isspace(*p)) p++;
