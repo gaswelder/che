@@ -1,4 +1,5 @@
 #import rnd
+#import strings
 
 char *dtd[] = {
     "<!ELEMENT site    (regions, categories, catgraph, people, open_auctions, closed_auctions)>",
@@ -120,6 +121,102 @@ pub enum {
     HAPPINESS, AUTHOR
 }
 
+typedef {
+	int id;
+	char *name;
+} name_id_t;
+
+name_id_t names[] = {
+	{ ADDRESS, "address" },
+	{ AFRICA, "africa" },
+	{ ANNOTATION, "annotation" },
+	{ ASIA, "asia" },
+	{ AUCTION_SITE, "site" },
+	{ AUSTRALIA, "australia" },
+	{ AUTHOR, "author" },
+	{ BIDDER, "bidder" },
+	{ BUYER, "buyer" },
+	{ CATEGORY_LIST, "categories" },
+	{ CATEGORY, "category" },
+	{ CATGRAPH, "catgraph" },
+	{ CLOSED_TRANS_LIST, "closed_auctions" },
+	{ CLOSED_TRANS, "closed_auction" },
+	{ DESCRIPTION, "description"},
+	{ END, "end" },	
+	{ EUROPE, "europe" },
+	{ HAPPINESS, "happiness" },
+	{ INCATEGORY, "incategory"},
+	{ INIT_PRICE, "initial" },
+	{ INTEREST, "interest" },
+	{ INTERVAL, "interval" },
+	{ ITEM, "item" },
+	{ ITEMREF, "itemref" },
+	{ LISTITEM, "listitem" },
+	{ LOCATION, "location" },
+	{ MAIL, "mail" },
+	{ MAILBOX, "mailbox" },
+	{ NAMERICA, "namerica" },
+	{ OPEN_TRANS_LIST, "open_auctions" },
+	{ OPEN_TRANS, "open_auction" },
+	{ PARLIST, "parlist" },
+	{ PERSON_LIST, "people" },
+	{ PERSON, "person" },
+	{ PERSON, "person" },
+	{ PERSONREF, "personref" },
+	{ PRICE, "price" },
+	{ PRIVACY, "privacy" },
+	{ PROFILE, "profile" },
+	{ REGION, "regions" },
+	{ SAMERICA, "samerica" },
+	{ SELLER, "seller" },
+	{ START, "start" },
+	{ STATUS, "status" },
+	{ TEXT, "text" },
+	{ TEXT, "text" },
+	{ TIME, "time" },
+	{ WATCH, "watch" },
+	{ WATCHES, "watches" },
+	{ XDATE, "date" },
+    { AGE, "age" },
+    { AMOUNT, "amount" },
+    { BUSINESS, "business" },
+    { CATNAME, "name" },
+    { CITY, "city" },
+    { COUNTRY, "country" },
+    { CREDITCARD, "creditcard" },
+    { CURRENT, "current" },
+    { EDUCATION, "education" },
+    { EMAIL, "emailaddress" },
+    { FROM, "from" },
+    { GENDER, "gender" },
+    { HOMEPAGE, "homepage" },
+    { INCOME, "income" },
+    { INCREASE, "increase" },
+    { ITEMNAME, "name" },
+    { NAME, "name" },
+	{ EDGE, "edge" },
+    { PAYMENT, "payment" },
+    { PHONE, "phone" },
+    { PROVINCE, "province" },
+    { QUANTITY, "quantity" },
+    { RESERVE, "reserve" },
+    { SHIPPING, "shipping" },
+    { STREET, "street" },
+    { TO, "to" },
+    { TYPE, "type" },
+    { XDATE, "date" },
+    { ZIPCODE, "zipcode" },
+};
+
+int nameid(char *name) {
+	for (size_t i = 0; i < nelem(names); i++) {
+		if (strcmp(names[i].name, name) == 0) {
+			return names[i].id;
+		}
+	}
+	panic("missing name: %s", name);
+}
+
 pub typedef {
     int type;
     double mean, dev, min, max;
@@ -166,625 +263,136 @@ pub typedef {
     int flag;
 } Element;
 
-Element objs[]={
-    { .id = 0, .name = "*error*" },
-
-    //
-    // missing
-    //
-    // "<!ELEMENT bold		  (#PCDATA | bold | keyword | emph)*>",
-    // "<!ELEMENT keyword	  (#PCDATA | bold | keyword | emph)*>",
-    // "<!ELEMENT emph		  (#PCDATA | bold | keyword | emph)*>",
-    //
-
-    // "<!ELEMENT site (regions, categories, catgraph, people, open_auctions, closed_auctions)>",
-    {
-        .id = AUCTION_SITE,
-        .name = "site",
-        .elm = {
-            REGION,
-            CATEGORY_LIST,
-            CATGRAPH,
-            PERSON_LIST,
-            OPEN_TRANS_LIST,
-            CLOSED_TRANS_LIST,
-        }
-    },
-
-    // "<!ELEMENT categories (category+)>",
-    {
-        .id = CATEGORY_LIST,
-        .name = "categories",
-        .elm = { CATEGORY }
-    },
-
-    // "<!ELEMENT regions (africa, asia, australia, europe, namerica, samerica)>",
-    {
-        .id = REGION,
-        .name = "regions",
-        .elm = {
-            AFRICA,
-            ASIA,
-            AUSTRALIA,
-            EUROPE,
-            NAMERICA,
-            SAMERICA
-        }
-    },
-
-    // "<!ELEMENT europe  (item*)>",
-    {
-        .id = EUROPE,
-        .name = "europe",
-        .elm = {
-            ITEM
-        }
-    },
-
-    // "<!ELEMENT australia       (item*)>",
-    {
-        .id = AUSTRALIA,
-        .name = "australia",
-        .elm = {
-            ITEM
-        }
-    },
-
-    // "<!ELEMENT africa  (item*)>",
-    {
-        .id = AFRICA,
-        .name = "africa",
-        .elm = {
-            ITEM
-        }
-    },
-
-    // "<!ELEMENT namerica        (item*)>",
-    {
-        .id = NAMERICA,
-        .name = "namerica",
-        .elm = {
-            ITEM
-        }
-    },
-
-    // "<!ELEMENT samerica        (item*)>",
-    {
-        .id = SAMERICA,
-        .name = "samerica",
-        .elm = {
-            ITEM
-        }
-    },
-
-    // "<!ELEMENT asia    (item*)>",
-    {
-        .id = ASIA,
-        .name = "asia",
-        .elm = {
-            ITEM
-        }
-    },
-
-    // "<!ELEMENT catgraph        (edge*)>",
-    {
-        .id = CATGRAPH,
-        .name = "catgraph",
-        .elm = { EDGE },
-        .type = 0x20
-    },
-
-    // "<!ELEMENT edge EMPTY>",
-    // "<!ATTLIST edge from IDREF #REQUIRED to IDREF #REQUIRED>",
-    {
-        .id = EDGE,
-        .name = "edge",
-        .att = {
-            {
-                .name = "from",
-                .type = ATTR_TYPE_2,
-                .ref = CATEGORY,
-            },
-            {
-                .name = "to",
-                .type = ATTR_TYPE_2,
-                .ref = CATEGORY,
-            }
-        }
-    },
-
-    // "<!ELEMENT category (name, description)>",
-    // "<!ATTLIST category        id ID #REQUIRED>",
-    {
-        .id = CATEGORY,
-        .name = "category",
-        .elm = {
-            CATNAME,
-            DESCRIPTION
-        },
-        .att = {
-            {
-                .name = "id",
-                .type = ATTR_TYPE_1,
-            }
-        }
-    },
-
-    // "<!ELEMENT item (location, quantity, name, payment, description, shipping, incategory+, mailbox)>",
-    // "<!ATTLIST item            id ID #REQUIRED",
-    {
-        .id = ITEM,
-        .name = "item",
-        .elm = {
-            LOCATION,
-            QUANTITY,
-            ITEMNAME,
-            PAYMENT,
-            DESCRIPTION,
-            SHIPPING,
-            INCATEGORY,
-            MAILBOX
-        },
-        .att = {
-            {
-                .name = "id",
-                .type = ATTR_TYPE_1,
-                },
-            {
-                .name = "featured",
-                .type = ATTR_TYPE_3,
-                .prcnt = 0.1}
-        },
-        .type = 0x40
-    },
-
-    // "<!ELEMENT location        (#PCDATA)>",
-    // "<!ELEMENT quantity        (#PCDATA)>",
-    // "<!ELEMENT payment (#PCDATA)>",
-    // "<!ELEMENT name    (#PCDATA)>",
-    { .id = LOCATION, .name = "location" },
-    { .id = QUANTITY, .name = "quantity" },
-    { .id = PAYMENT, .name = "payment" },
-    { .id = NAME, .name = "name" },
-
-
-    { .id = ITEMNAME, .name = "name" },
-    { .id = CATNAME, .name = "name" },
-
-    // "<!ELEMENT description     (text | parlist)>",
-    {
-        .id = DESCRIPTION,
-        .name = "description",
-        .elm = {
-            TEXT,
-            PARLIST
-        },
-        .type = 0x02
-    },
-
-    // "<!ELEMENT parlist	  (listitem)*>",
-    {
-        .id = PARLIST,
-        .name = "parlist",
-        .elm = {
-            LISTITEM
-        }
-    },
-
-    // "<!ELEMENT text    (#PCDATA | bold | keyword | emph)*>",
-    {
-        .id = TEXT,
-        .name = "text",
-        .type = 0x01
-    },
-
-    // "<!ELEMENT listitem        (text | parlist)*>",
-    {
-        .id = LISTITEM,
-        .name = "listitem",
-        .elm = {
-            TEXT,
-            PARLIST
-        },
-        .type = 0x02
-    },
-
-    // "<!ELEMENT shipping        (#PCDATA)>",
-    // "<!ELEMENT reserve (#PCDATA)>",
-    { .id = SHIPPING, .name = "shipping" },
-    { .id = RESERVE, .name = "reserve" },
-
-    // "<!ELEMENT incategory      EMPTY>",
-    // "<!ATTLIST incategory      category IDREF #REQUIRED>",
-    {
-        .id = INCATEGORY,
-        .name = "incategory",
-        .att = {
-            {
-                .name = "\1",
-                .type = ATTR_TYPE_2,
-                .ref = CATEGORY,
-            }
-        }
-    },
-
-    // "<!ELEMENT mailbox (mail*)>",
-    {
-        .id = MAILBOX,
-        .name = "mailbox",
-        .elm = {
-            MAIL
-        }
-    },
-
-    // "<!ELEMENT mail (from, to, date, text)>",
-    {
-        .id = MAIL,
-        .name = "mail",
-        .elm = {
-            FROM,
-            TO,
-            XDATE,
-            TEXT
-        }
-    },
-
-    // "<!ELEMENT from    (#PCDATA)>",
-    // "<!ELEMENT to      (#PCDATA)>",
-    // "<!ELEMENT date    (#PCDATA)>",
-    { .id = FROM, .name = "from" },
-    { .id = TO, .name = "to" },
-    { .id = XDATE, .name = "date" },
-
-
-    // "<!ELEMENT people  (person*)>",
-    {
-        .id = PERSON_LIST,
-        .name = "people",
-        .elm = {
-            PERSON
-        }
-    },
-
-    // "<!ELEMENT person  (name, emailaddress, phone?, address?, homepage?, creditcard?, profile?, watches?)>",
-    // "<!ATTLIST person          id ID #REQUIRED>",
-    {
-        .id = PERSON,
-        .name = "person",
-        .elm = {
-            NAME,
-            EMAIL,
-            PHONE,
-            ADDRESS,
-            HOMEPAGE,
-            CREDITCARD,
-            PROFILE,
-            WATCHES
-        },
-        .att = {
-            {
-                .name = "id",
-                .type = ATTR_TYPE_1,
-            }
-        },
-        .type = 0x40
-    },
-
-    // "<!ELEMENT emailaddress    (#PCDATA)>",
-    // "<!ELEMENT phone   (#PCDATA)>",
-    // "<!ELEMENT homepage        (#PCDATA)>",
-    // "<!ELEMENT creditcard      (#PCDATA)>",
-    { .id = EMAIL, .name = "emailaddress" },
-    { .id = PHONE, .name = "phone" },
-    { .id = HOMEPAGE, .name = "homepage" },
-    { .id = CREDITCARD, .name = "creditcard" },
-
-    // "<!ELEMENT address (street, city, country, province?, zipcode)>",
-    {
-        .id = ADDRESS,
-        .name = "address",
-        .elm = {
-            STREET,
-            CITY,
-            COUNTRY,
-            PROVINCE,
-            ZIPCODE
-        }
-    },
-
-    // "<!ELEMENT street  (#PCDATA)>",
-    // "<!ELEMENT city    (#PCDATA)>",
-    // "<!ELEMENT province        (#PCDATA)>",
-    // "<!ELEMENT zipcode (#PCDATA)>",
-    // "<!ELEMENT country (#PCDATA)>",
-    { .id = STREET, .name = "street" },
-    { .id = CITY, .name = "city" },
-    { .id = PROVINCE, .name = "province" },
-    { .id = ZIPCODE, .name = "zipcode" },
-    { .id = COUNTRY, .name = "country" },
-
-    // "<!ELEMENT profile (interest*, education?, gender?, business, age?)>",
-    // "<!ATTLIST profile income CDATA #IMPLIED>",
-    {
-        .id = PROFILE,
-        .name = "profile",
-        .elm = {
-            INTEREST,
-            EDUCATION,
-            GENDER,
-            BUSINESS,
-            AGE
-        },
-        .att = {
-            {
-                .name = "income",
-                .type = ATTR_TYPE_3,
-                .prcnt = 1
-            }
-        }
-    },
-
-    // "<!ELEMENT education       (#PCDATA)>",
-    // "<!ELEMENT income  (#PCDATA)>",
-    // "<!ELEMENT gender  (#PCDATA)>",
-    // "<!ELEMENT business        (#PCDATA)>",
-    // "<!ELEMENT age     (#PCDATA)>",
-    { .id = EDUCATION, .name = "education" },
-    { .id = INCOME, .name = "income" },
-    { .id = GENDER, .name = "gender" },
-    { .id = BUSINESS, .name = "business" },
-    { .id = AGE, .name = "age" },
-
-
-    // "<!ELEMENT interest        EMPTY>",
-    // "<!ATTLIST interest        category IDREF #REQUIRED>",
-    {
-        .id = INTEREST,
-        .name = "interest",
-        .att = {
-            {
-                .name = "\1",
-                .type = ATTR_TYPE_2,
-                .ref = CATEGORY,
-            }
-        }
-    },
-
-    // "<!ELEMENT watches (watch*)>",
-    {
-        .id = WATCHES,
-        .name = "watches",
-        .elm = {
-            WATCH
-        }
-    },
-
-    // "<!ELEMENT watch           EMPTY>",
-    // "<!ATTLIST watch           open_auction IDREF #REQUIRED>",
-    {
-        .id = WATCH,
-        .name = "watch",
-        .att = {
-            {
-                .name = "\1",
-                .type = ATTR_TYPE_2,
-                .ref = OPEN_TRANS,
-            }
-        }
-    },
-
-    // "<!ELEMENT open_auctions   (open_auction*)>",
-    {
-        .id = OPEN_TRANS_LIST,
-        .name = "open_auctions",
-        .elm = {
-            OPEN_TRANS
-        }
-    },
-
-    // "<!ELEMENT open_auction    (initial, reserve?, bidder*, current, privacy?, itemref, seller, annotation, quantity, type, interval)>",
-    // "<!ATTLIST open_auction    id ID #REQUIRED>",
-    {
-        .id = OPEN_TRANS,
-        .name = "open_auction",
-        .elm = {
-            INIT_PRICE,
-            RESERVE,
-            BIDDER,
-            CURRENT,
-            PRIVACY,
-            ITEMREF,
-            SELLER,
-            ANNOTATION,
-            QUANTITY,
-            TYPE,
-            INTERVAL
-        },
-        .att = {
-            {
-                .name = "id",
-                .type = ATTR_TYPE_1,
-            }
-        },
-        .type = 0x04|0x40
-    },
-
-    // "<!ELEMENT privacy (#PCDATA)>",
-    // "<!ELEMENT amount  (#PCDATA)>",
-    // "<!ELEMENT current (#PCDATA)>",
-    // "<!ELEMENT increase        (#PCDATA)>",
-    // "<!ELEMENT type    (#PCDATA)>",
-    { .id = PRIVACY, .name = "privacy" },
-    { .id = AMOUNT, .name = "amount" },
-    { .id = CURRENT, .name = "current" },
-    { .id = INCREASE, .name = "increase" },
-    { .id = TYPE, .name = "type" },
-
-
-    // "<!ELEMENT itemref         EMPTY>",
-    // "<!ATTLIST itemref         item IDREF #REQUIRED>",
-    {
-        .id = ITEMREF,
-        .name = "itemref",
-        .att = {
-            {
-                .name = "\1",
-                .type = ATTR_TYPE_2,
-                .ref = ITEM,
-            }
-        }
-    },
-
-    // "<!ELEMENT bidder (date, time, personref, increase)>",
-    {
-        .id = BIDDER,
-        .name = "bidder",
-        .elm = {
-            XDATE,
-            TIME,
-            PERSONREF,
-            INCREASE
-        }
-    },
-
-    // "<!ELEMENT time    (#PCDATA)>",
-    // "<!ELEMENT status (#PCDATA)>",
-    // "<!ELEMENT initial (#PCDATA)>",
-    { .id = TIME, .name = "time" },
-    { .id = STATUS, .name = "status" },
-    { .id = INIT_PRICE, .name = "initial" },
-
-    // "<!ELEMENT personref       EMPTY>",
-    // "<!ATTLIST personref       person IDREF #REQUIRED>",
-    {
-        .id = PERSONREF,
-        .name = "personref",
-        .att = {
-            {
-                .name = "\1",
-                .type = ATTR_TYPE_2,
-                .ref = PERSON,
-            }
-        }
-    },
-
-    // "<!ELEMENT seller          EMPTY>",
-    // "<!ATTLIST seller          person IDREF #REQUIRED>",
-    {
-        .id = SELLER,
-        .name = "seller",
-        .att = {
-            {
-                .name = "\1",
-                .type = ATTR_TYPE_2,
-                .ref = PERSON,
-            }
-        }
-    },
-
-    // "<!ELEMENT interval        (start, end)>",
-    {
-        .id = INTERVAL,
-        .name = "interval",
-        .elm = {
-            START,
-            END
-        }
-    },
-
-    // "<!ELEMENT start   (#PCDATA)>",
-    // "<!ELEMENT end     (#PCDATA)>",
-    { .id = START, .name = "start" },
-    { .id = END, .name = "end" },
-
-
-    // "<!ELEMENT closed_auctions (closed_auction*)>",
-    {
-        .id = CLOSED_TRANS_LIST,
-        .name = "closed_auctions",
-        .elm = {
-            CLOSED_TRANS
-        }
-    },
-
-    // "<!ELEMENT closed_auction  (seller, buyer, itemref, price, date, quantity, type, annotation?)>",
-    {
-        .id = CLOSED_TRANS,
-        .name = "closed_auction",
-        .elm = {
-            SELLER,
-            BUYER,
-            ITEMREF,
-            PRICE,
-            XDATE,
-            QUANTITY,
-            TYPE,
-            ANNOTATION
-        },
-        .type = 0x04|0x40
-    },
-
-    // "<!ELEMENT price   (#PCDATA)>",
-    { .id = PRICE, .name = "price" },
-
-    // "<!ELEMENT buyer           EMPTY>",
-    // "<!ATTLIST buyer           person IDREF #REQUIRED>",
-    {
-        .id = BUYER,
-        .name = "buyer",
-        .att = {
-            {
-                .name = "\1",
-                .type = ATTR_TYPE_2,
-                .ref = PERSON,
-            }
-        }
-    },
-
-    // "<!ELEMENT annotation      (author, description?, happiness)>",
-    {
-        .id = ANNOTATION,
-        .name = "annotation",
-        .elm = {
-            AUTHOR,
-            DESCRIPTION,
-            HAPPINESS
-        }
-    },
-
-    // "<!ELEMENT happiness       (#PCDATA)>",
-    { .id = HAPPINESS, .name = "happiness" },
-
-    // "<!ELEMENT author EMPTY>",
-    // "<!ATTLIST author          person IDREF #REQUIRED>",
-    {
-        .id = AUTHOR,
-        .name = "author",
-        .att = {
-            {
-                .name = "\1",
-                .type = ATTR_TYPE_2,
-                .ref = PERSON
-            }
-        }
-    }
-};
+Element objs[77] = {};
 
 idrepro idr[2] = {};
 
-pub void InitializeSchema(float global_scale_factor) {
-    int nobj = nelem(objs);
+const char *real_dtd = "
+	<!ELEMENT site (regions, categories, catgraph, people, open_auctions, closed_auctions)>
+	<!ELEMENT categories (category+)>
+	<!ELEMENT regions (africa, asia, australia, europe, namerica, samerica)>
+	<!ELEMENT europe  (item*)>
+	<!ELEMENT australia       (item*)>
+	<!ELEMENT africa  (item*)>
+	<!ELEMENT namerica        (item*)>
+	<!ELEMENT samerica        (item*)>
+	<!ELEMENT asia    (item*)>
+	<!ELEMENT catgraph        (edge*)>
+	<!ELEMENT edge EMPTY>
+	<!ATTLIST edge from IDREF #REQUIRED to IDREF #REQUIRED>
+	<!ELEMENT category (name, description)>
+	<!ATTLIST category        id ID #REQUIRED>
+	<!ELEMENT item (location, quantity, name, payment, description, shipping, incategory+, mailbox)>
+	<!ATTLIST item            id ID #REQUIRED featured CDATA #IMPLIED>
+	<!ELEMENT location        (#PCDATA)>
+	<!ELEMENT quantity        (#PCDATA)>
+	<!ELEMENT payment (#PCDATA)>
+	<!ELEMENT name    (#PCDATA)>
+	<!ELEMENT name    (#PCDATA)>
+	<!ELEMENT name    (#PCDATA)>
+	<!ELEMENT description     (text | parlist)>
+	<!ELEMENT parlist	  (listitem*)>
+	<!ELEMENT text    (#PCDATA)>
+	<!ELEMENT listitem        (text | parlist)*>
+	<!ELEMENT shipping        (#PCDATA)>
+	<!ELEMENT reserve (#PCDATA)>
+	<!ELEMENT incategory      EMPTY>
+	<!ATTLIST incategory      category IDREF #REQUIRED>
+	<!ELEMENT mailbox (mail*)>
+	<!ELEMENT mail (from, to, date, text)>
+	<!ELEMENT from    (#PCDATA)>
+	<!ELEMENT to      (#PCDATA)>
+	<!ELEMENT date    (#PCDATA)>
+	<!ELEMENT people  (person*)>
+	<!ELEMENT person  (name, emailaddress, phone?, address?, homepage?, creditcard?, profile?, watches?)>
+	<!ATTLIST person          id ID #REQUIRED>
+	<!ELEMENT emailaddress    (#PCDATA)>
+	<!ELEMENT phone   (#PCDATA)>
+	<!ELEMENT homepage        (#PCDATA)>
+	<!ELEMENT creditcard      (#PCDATA)>
+	<!ELEMENT address (street, city, country, province?, zipcode)>
+	<!ELEMENT street  (#PCDATA)>
+	<!ELEMENT city    (#PCDATA)>
+	<!ELEMENT province        (#PCDATA)>
+	<!ELEMENT zipcode (#PCDATA)>
+	<!ELEMENT country (#PCDATA)>
+	<!ELEMENT profile (interest*, education?, gender?, business, age?)>
+	<!ATTLIST profile income CDATA #IMPLIED>
+	<!ELEMENT education       (#PCDATA)>
+	<!ELEMENT income  (#PCDATA)>
+	<!ELEMENT gender  (#PCDATA)>
+	<!ELEMENT business        (#PCDATA)>
+	<!ELEMENT age     (#PCDATA)>
+	<!ELEMENT interest        EMPTY>
+	<!ATTLIST interest        category IDREF #REQUIRED>
+	<!ELEMENT watches (watch*)>
+	<!ELEMENT watch           EMPTY>
+	<!ATTLIST watch           open_auction IDREF #REQUIRED>
+	<!ELEMENT open_auctions   (open_auction*)>
+	<!ELEMENT open_auction    (initial, reserve?, bidder*, current, privacy?, itemref, seller, annotation, quantity,type, interval)>
+	<!ATTLIST open_auction    id ID #REQUIRED>
+	<!ELEMENT privacy (#PCDATA)>
+	<!ELEMENT amount  (#PCDATA)>
+	<!ELEMENT current (#PCDATA)>
+	<!ELEMENT increase        (#PCDATA)>
+	<!ELEMENT type    (#PCDATA)>
+	<!ELEMENT itemref         EMPTY>
+	<!ATTLIST itemref         item IDREF #REQUIRED>
+	<!ELEMENT bidder (date, time, personref, increase)>
+	<!ELEMENT time    (#PCDATA)>
+	<!ELEMENT status (#PCDATA)>
+	<!ELEMENT initial (#PCDATA)>
+	<!ELEMENT personref       EMPTY>
+	<!ATTLIST personref       person IDREF #REQUIRED>
+	<!ELEMENT seller          EMPTY>
+	<!ATTLIST seller          person IDREF #REQUIRED>
+	<!ELEMENT interval        (start, end)>
+	<!ELEMENT start   (#PCDATA)>
+	<!ELEMENT end     (#PCDATA)>
+	<!ELEMENT closed_auctions (closed_auction*)>
+	<!ELEMENT closed_auction  (seller, buyer, itemref, price, date, quantity, type, annotation?)>
+	<!ELEMENT price   (#PCDATA)>
+	<!ELEMENT buyer           EMPTY>
+	<!ATTLIST buyer           person IDREF #REQUIRED>
+	<!ELEMENT annotation      (author, description?, happiness)>
+	<!ELEMENT happiness       (#PCDATA)>
+	<!ELEMENT author EMPTY>
+	<!ATTLIST author          person IDREF #REQUIRED>";
 
-    // Reorder the schema so that a node with id "x"
-    // is at the same index "x" in the array.
-    Element *newobjs = calloc!(nobj, sizeof(Element));
-    for (int i = 0; i < nobj; i++) {
-        void *src = &objs[i];
-        void *dest = &newobjs[objs[i].id];
-        memcpy(dest, src, sizeof(Element));
-    }
-    memcpy(objs,newobjs,sizeof(Element)*nobj);
-    free(newobjs);
+const char *loadline(const char *p, char *buf) {
+	while (isspace(*p)) p++;
+	char *b = buf;
+	while (*p != '\0' && *p != '\n') {
+		*b++ = *p++;
+	}
+	*b = '\0';
+	return p;
+}
+
+pub void InitializeSchema(float global_scale_factor) {
+    // Parse the DTD into the local schema.
+	char buf[200] = {};
+	const char *p = real_dtd;
+	while (true) {
+		p = loadline(p, buf);
+		if (buf[0] == '\0') break;
+		line(buf);
+	}
+
+	// Some tweaks to the schema.
+	objs[nameid("catgraph")].type = 0x20;
+	objs[nameid("item")].type = 0x40;
+	objs[nameid("item")].att[1].prcnt = 0.1;
+	objs[nameid("description")].type = 0x02;
+	objs[nameid("text")].type = 0x01;
+	objs[nameid("listitem")].type = 0x02;
+	objs[nameid("person")].type = 0x40;
+	objs[nameid("profile")].att[0].prcnt = 1;
+	objs[nameid("open_auction")].type = 0x04|0x40;
+	objs[nameid("closed_auction")].type = 0x04|0x40;
+
+
+	int nobj = nelem(objs);
 
     Element *root = GetSchemaNode(1);
     FixSetSize(root, global_scale_factor);
@@ -812,6 +420,146 @@ pub void InitializeSchema(float global_scale_factor) {
     InitRepro(&idr[1], closed, open);
     FixSetByEdge("closed_auctions","closed_auction",closed);
 
+}
+
+char *skiplit(char *line, *lit) {
+	if (!strings.starts_with(line, lit)) {
+		panic("expected %s, got %s", lit, line);
+	}
+	return line + strlen(lit);
+}
+
+char *readname(char **s) {
+	char *name = calloc!(100, 1);
+	char *p = *s;
+	char *n = name;
+	while (isalpha(*p) || *p == '_') *n++ = *p++;
+	*s = p;
+	return name;
+}
+
+void line(char *s) {
+	if (strings.starts_with(s, "<!ATTLIST ")) {
+		read_attlist(s);
+	} else {
+		read_element(s);
+	}
+}
+
+// "<!ATTLIST author          person IDREF #REQUIRED>"
+// "<!ATTLIST person          id ID #REQUIRED>",
+// "<!ATTLIST profile income CDATA #IMPLIED>",
+// "<!ATTLIST edge from IDREF #REQUIRED to IDREF #REQUIRED>"
+void read_attlist(char *s) {
+	char *p = skiplit(s, "<!ATTLIST ");
+	while (isspace(*p)) p++;
+
+	char *host = readname(&p);
+	int pos = nameid(host);
+	while (isspace(*p)) p++;
+
+	int natt = 0;
+	while (*p != '\0' && *p != '>') {
+		char *child = readname(&p);
+		while (isspace(*p)) p++;
+
+		if (strings.starts_with(p, "IDREF #REQUIRED")) {
+			p = skiplit(p, "IDREF #REQUIRED");
+			objs[pos].att[natt].name[0] = '\1';
+			objs[pos].att[natt].type = ATTR_TYPE_2;
+			objs[pos].att[natt].ref = nameid(child);
+			natt++;
+			while (isspace(*p)) p++;
+			continue;
+		}
+
+		if (strings.starts_with(p, "ID #REQUIRED")) {
+			p = skiplit(p, "ID #REQUIRED");
+			strcpy(objs[pos].att[natt].name, child);
+			objs[pos].att[natt].type = ATTR_TYPE_1;
+			natt++;
+			while (isspace(*p)) p++;
+			continue;
+		}
+
+		if (strings.starts_with(p, "CDATA #IMPLIED")) {
+			p = skiplit(p, "CDATA #IMPLIED");
+			strcpy(objs[pos].att[0].name, child);
+			objs[pos].att[natt].type = ATTR_TYPE_3;
+			natt++;
+			while (isspace(*p)) p++;
+			continue;
+		}
+
+		break;
+	}
+
+	p = skiplit(p, ">");
+	if (*p != '\0') {
+		panic("unexpected trailing data: %s", p);
+	}
+}
+
+// "<!ELEMENT time    (#PCDATA)>",
+// "<!ELEMENT author EMPTY>",
+// "<!ELEMENT annotation      (author, description?, happiness)>",
+void read_element(char *s) {
+	// <!ELEMENT + spaces
+	char *p = skiplit(s, "<!ELEMENT ");
+	while (isspace(*p)) p++;
+
+	// name + spaces
+	char *name = readname(&p);
+	while (isspace(*p)) p++;
+	int pos = nameid(name);
+	objs[pos].id = pos;
+	objs[pos].name = name;
+
+	// ? (#PCDATA)>
+	if (strings.starts_with(p, "(#PCDATA)>")) {
+		p = skiplit(p, "(#PCDATA)>");
+		if (*p != '\0') {
+			panic("unexpected trailing data: %s", p);
+		}
+		return;
+	}
+
+	// ? EMPTY>
+	if (strings.starts_with(p, "EMPTY>")) {
+		p = skiplit(p, "EMPTY>");
+		if (*p != '\0') {
+			panic("unexpected trailing data: %s", p);
+		}
+		return;
+	}
+
+	if (*p == '(') {
+		p = skiplit(p, "(");
+		int i = 0;
+		while (*p != ')') {
+			char *name = readname(&p);
+			objs[pos].elm[i++] = nameid(name);
+			while (isspace(*p)) p++;
+			if (*p == '?') p++;
+			if (*p == '*') p++;
+			if (*p == '+') p++;
+			if (*p == ',' || *p == '|') {
+				p++;
+				while (isspace(*p)) p++;
+			} else {
+				break;
+			}
+		}
+		p = skiplit(p, ")");
+		if (*p == '*') p++;
+		p = skiplit(p, ">");
+		if (*p != '\0') {
+			panic("unexpected trailing data: %s", p);
+		}
+		return;
+	}
+
+	panic("unexpected: %s", p);
 }
 
 int InitRepro_direction=0;
