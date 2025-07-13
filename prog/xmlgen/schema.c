@@ -563,19 +563,6 @@ prob_desc_map_item_t prob_desc_map[] = {
 };
 
 attr_pd_item_t attr_desc_map[] = {
-	{ EDGE, "from",			{ UNIF,0,0,0,0} },
-	{ EDGE, "to",			{ UNIF,0,0,0,0} },
-	{ CATEGORY, "id",		{ 0,0,0,0,0} },
-	{ ITEM, "id",			{ 0,0,0,0,0} },
-	{ ITEM, "featured",	  	{ 0,0,0,0,0} },
-	{ INCATEGORY, "\1",	  	{ UNIF,0,0,0,0} },
-	{ PERSON, "id",		  	{ 0,0,0,0,0} },
-	{ PROFILE, "income",	{ 0,0,0,0,0} },
-	{ INTEREST, "\1",		{ UNIF,0,0,0,0} },
-	{ WATCH, "\1",		   	{ UNIF,0,0,0,0} },
-	{ OPEN_TRANS, "id",	  	{ 0,0,0,0,0} },
-	{ ITEMREF, "\1",		{ UNIF,0,0,0,0} },
-	{ PERSONREF, "\1",	   	{ UNIF,0,0,0,0} },
 	{ SELLER, "\1",		  	{ GAUSS, 0.5, 0.1, 0, 0} },
 	{ BUYER, "\1",		   	{ GAUSS, 0.5, 0.1, 0, 0} },
 	{ AUTHOR, "\1",		  	{ UNIF,0,0,1,1} }
@@ -604,7 +591,8 @@ pub ProbDesc probDescForAttr(int element_id, char *attr_name) {
 			return item->p;
 		}
 	}
-	panic("failed to find prob desc for attr '%s'", attr_name);
+	ProbDesc def = { UNIF,0,0,0,0 };
+	return def;
 }
 
 

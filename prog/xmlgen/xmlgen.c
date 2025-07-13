@@ -3,12 +3,6 @@
 #import ipsum.c
 #import schema.c
 
-typedef {
-    schema.ProbDesc genref_pdnew;
-} generator_state_t;
-
-generator_state_t GLOBAL_STATE = {};
-
 int stackdepth=0;
 schema.Element *stack[64] = {};
 
@@ -131,22 +125,21 @@ void OpeningTag(FILE *out, schema.Element *element) {
             case schema.ATTR_TYPE_1: {
                 fprintf(out, " %s=\"%s%d\"", attname, element->name, element->set.id++);
             }
+
+			// IDREF #REQUIRED
             case schema.ATTR_TYPE_2: {
-                int ref=0;
+                int ref = 0;
                 if (!ItemIdRef(element, &ref)) {
                     schema.ProbDesc pd = schema.probDescForAttr(element->id, att->name);
                     int element_id = att->ref;
                     schema.Element* element = schema.GetSchemaNode(element_id);
-                    if (pd.type != 0) {
-                        GLOBAL_STATE.genref_pdnew.type = pd.type;
-                        GLOBAL_STATE.genref_pdnew.min = 0;
-                        GLOBAL_STATE.genref_pdnew.max = element->set.size - 1;
-                        if (pd.type != 1) {
-                            GLOBAL_STATE.genref_pdnew.mean = pd.mean * GLOBAL_STATE.genref_pdnew.max;
-                            GLOBAL_STATE.genref_pdnew.dev = pd.dev * GLOBAL_STATE.genref_pdnew.max;
-                        }
-                    }
-                    ref = (int) GenRandomNum(&GLOBAL_STATE.genref_pdnew);
+
+					// pd is a copy, so we can tweak it.
+					pd.min = 0;
+					pd.max = element->set.size - 1;
+					pd.mean = pd.mean * pd.max;
+					pd.dev = pd.dev * pd.max;
+                    ref = (int) GenRandomNum(&pd);
                 }
                 fprintf(out," %s=\"%s%d\"", attname, schema.GetSchemaNode(att->ref)->name, ref);
             }
