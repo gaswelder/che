@@ -12,7 +12,6 @@ generator_state_t GLOBAL_STATE = {};
 
 FILE *xmlout=0;
 int stackdepth=0;
-int global_split=0;
 int splitcnt=0;
 int GenContents_lstname = 0;
 int GenContents_country = -1;
@@ -40,7 +39,6 @@ int main(int argc, char **argv) {
 
     opt.flag("d", "document_type=2", &doctype_is_2);    
     opt.opt_float("f", "global_scale_factor", &global_scale_factor);
-    opt.opt_int("s", "global_split", &global_split);
     opt.parse(argc, argv);
 
     int document_type=1;
@@ -237,11 +235,6 @@ void Tree(FILE *out, schema.Element *element) {
         }
     }
     ClosingTag(element);
-    if (global_split) {
-        if (element->type & 0x20 || (element->type & 0x40 && splitcnt++>global_split)) {
-            GenSubtree_splitnow = true;
-        }
-    }
     element->flag--;
 }
 
