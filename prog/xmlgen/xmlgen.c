@@ -10,7 +10,6 @@ typedef {
 
 generator_state_t GLOBAL_STATE = {};
 
-FILE *xmlout=0;
 int stackdepth=0;
 int splitcnt=0;
 int GenContents_lstname = 0;
@@ -45,14 +44,12 @@ int main(int argc, char **argv) {
     if (doctype_is_2) {
         document_type=2;
     }
-    
-    xmlout=stdout;
 
     schema.InitializeSchema(global_scale_factor);
 
-    Preamble(xmlout, document_type);
-    Tree(xmlout, schema.GetSchemaNode(1));
-    fclose(xmlout);
+    Preamble(stdout, document_type);
+    Tree(stdout, schema.GetSchemaNode(1));
+    fclose(stdout);
     return 0;
 }
 
@@ -81,17 +78,11 @@ void Tree(FILE *out, schema.Element *element) {
         int oldstackdepth = stackdepth;
         for (int i = oldstackdepth-1; i>=0; i--) {
             ClosingTag(stack[i]);
-        }
-
-        if (xmlout!=stdout) {
-            fclose(xmlout);
-        }
-        
+        }        
         for (int i=0; i < oldstackdepth; i++) {
             OpeningTag(out, stack[i]);
         }
         splitcnt=0;
-
         GenSubtree_splitnow = false;
     }
 
@@ -311,12 +302,12 @@ void OpeningTag(FILE *out, schema.Element *element) {
 void ClosingTag(schema.Element *element) {
     stackdepth--;
     if (element->type & 0x01) {
-        fprintf(xmlout,"\n");
+        fprintf(stdout, "\n");
     }
     if ((element->att[0].name[0]) && element->elm[0] == 0) {
         return;
     }
-    fprintf(xmlout,"</%s>\n",element->name);
+    fprintf(stdout, "</%s>\n",element->name);
 }
 
 
@@ -397,7 +388,7 @@ void PrintName() {
     if (lst >= llen-1) {
         lst = llen-1;
     }
-    fprintf(xmlout,"%s %s", words.dictentry("firstnames", fst), words.dictentry("lastnames", lst));
+    fprintf(stdout, "%s %s", words.dictentry("firstnames", fst), words.dictentry("lastnames", lst));
 
     GenContents_lstname = lst;
 }
