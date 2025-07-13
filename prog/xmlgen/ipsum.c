@@ -3,6 +3,17 @@
 
 int GenContents_lstname = 0;
 int GenContents_email = 0;
+char *GenContents_education[]={"High School","College", "Graduate School","Other"};
+char *GenContents_money[]={"Money order","Creditcard", "Personal Check","Cash"};
+char *GenContents_yesno[]={"Yes","No"};
+int GenContents_country = -1;
+int GenContents_quantity = 0;
+double GenContents_initial = 0;
+double GenContents_increases = 0;
+const int COUNTRIES_USA = 0;
+char *markup[3]={"emph","keyword","bold"};
+int PrintANY_st[3] = {};
+char tick[3] = "";
 
 pub void emit(const char *s) {
 	FILE *out = stdout;
@@ -79,6 +90,10 @@ pub void emit(const char *s) {
 			fprintf(stdout, "%s %s", words.dictentry("firstnames", fst), words.dictentry("lastnames", lst));
 			GenContents_lstname = lst;
 		}
+		case "name ": {
+			emit("name");
+            fprintf(out," ");
+		}
 		case "email": {
 			GenContents_email = rnd.intn(words.dictlen("emails"));
             fprintf(out, "mailto:%s@%s",
@@ -89,6 +104,68 @@ pub void emit(const char *s) {
 			fprintf(out, "http://www.%s/~%s",
                 words.dictentry("emails", GenContents_email),
                 words.dictentry("lastnames", GenContents_lstname));
+		}
+		case "payment": {
+			int r=0;
+            for (int i=0; i<4; i++) {
+                if (rnd.intn(2)) {
+                    char *x = "";
+                    if (r++) {
+                        x = ", ";
+                    }
+                    fprintf(out, "%s%s", x, GenContents_money[i % 4]);
+                }
+            }
+		}
+		case "education": {
+			fprintf(out, "%s", GenContents_education[rnd.intn(4)]);
+		}
+		case "location": {
+			if (rnd.urange(0, 1) < 0.75) {
+                GenContents_country = COUNTRIES_USA;
+            } else {
+                GenContents_country = rnd.intn(words.dictlen("countries"));
+            }
+            fprintf(out, "%s", words.dictentry("countries", GenContents_country));
+		}
+		case "type": {
+			emit("dict(auction_type)");
+            if (GenContents_quantity > 1 && rnd.intn(2) > 0) {
+				fprintf(out,", Dutch");
+			}
+		}
+		case "province": {
+			if (GenContents_country == COUNTRIES_USA) {
+                emit("dict(provinces)");
+            } else {
+                emit("dict(lastnames)");
+            }
+		}
+		case "yesno": {
+			fprintf(out, "%s", GenContents_yesno[rnd.intn(2)]);
+		}
+		case "quantity": {
+			GenContents_quantity=1+(int)rnd.exponential(0.4);
+            fprintf(out,"%d",GenContents_quantity);
+		}
+		case "increase": {
+			double d=1.5 *(1+(int)rnd.exponential(10));
+            fprintf(out,"%.2f",d);
+            GenContents_increases+=d;
+		}
+		case "current": {
+			fprintf(out,"%.2f",GenContents_initial+GenContents_increases);
+		}
+		case "init_price": {
+			GenContents_initial=rnd.exponential(100);
+            GenContents_increases=0;
+            fprintf(out,"%.2f",GenContents_initial);
+		}
+		case "reserve": {
+			fprintf(out,"%.2f",GenContents_initial*(1.2+rnd.exponential(2.5)));
+		}
+		case "any": {
+			PrintANY(out);
 		}
 		default: {
 			panic("unknown spec: %s", s);
@@ -114,5 +191,34 @@ void fsentence(FILE *out, int nwords) {
         }
         fprintf(out, "%s", words.dictentry("words", index));
         fprintf(out, " ");
+    }
+}
+
+void PrintANY(FILE *out) {
+    int sen=1+(int)rnd.exponential(20);
+    int stptr = 0;
+    for (int i=0; i < sen; i++) {
+        if (rnd.urange(0, 1) < 0.1 && stptr < 2) {
+            while (true) {
+                PrintANY_st[stptr] = rnd.intn(3);
+                if (!tick[PrintANY_st[stptr]]) {
+                    break;
+                }
+            }
+            tick[PrintANY_st[stptr]] = 1;
+            fprintf(out,"<%s> ", markup[PrintANY_st[stptr]]);
+            stptr++;
+        }
+        else if (rnd.urange(0, 1) < 0.8 && stptr != 0) {
+            --stptr;
+            fprintf(out,"</%s> ",markup[PrintANY_st[stptr]]);
+            tick[PrintANY_st[stptr]] = 0;
+        }
+		emit("sentence2");
+    }
+    while (stptr) {
+        --stptr;
+        fprintf(out,"</%s> ",markup[PrintANY_st[stptr]]);
+        tick[PrintANY_st[stptr]]=0;
     }
 }

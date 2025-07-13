@@ -1,5 +1,4 @@
 #import opt
-#import words.c
 #import rnd
 #import ipsum.c
 #import schema.c
@@ -11,25 +10,42 @@ typedef {
 generator_state_t GLOBAL_STATE = {};
 
 int stackdepth=0;
-
-int GenContents_country = -1;
-
-int GenContents_quantity = 0;
-double GenContents_initial = 0;
-double GenContents_increases = 0;
-
-char *GenContents_education[]={"High School","College", "Graduate School","Other"};
-char *GenContents_money[]={"Money order","Creditcard", "Personal Check","Cash"};
-char *GenContents_yesno[]={"Yes","No"};
-
-char *markup[3]={"emph","keyword","bold"};
-char tick[3] = "";
-int PrintANY_st[3] = {};
-
-const int COUNTRIES_USA = 0;
 schema.Element *stack[64] = {};
 
-
+const char *mapgen(int elem_id) {
+	switch (elem_id) {
+        case schema.CITY: { return "dict(cities)"; }
+        case schema.STATUS, schema.HAPPINESS: { return "int(1, 10)"; }
+        case schema.STREET: { return "street"; }
+        case schema.PHONE: { return "phone"; }
+        case schema.CREDITCARD: { return "cc"; }
+        case schema.SHIPPING: { return "dict(shipping)"; }
+        case schema.TIME: { return "time"; }
+        case schema.AGE: { return "max(18, gauss(30, 15))"; }
+        case schema.ZIPCODE: { return "zip"; }
+        case schema.XDATE, schema.START, schema.END: { return "date"; }
+        case schema.GENDER: { return "gender"; }
+        case schema.AMOUNT, schema.PRICE: { return "price"; }
+        case schema.TYPE: { return "type"; }
+        case schema.LOCATION, schema.COUNTRY: { return "location"; }
+        case schema.PROVINCE: { return "province"; }
+        case schema.EDUCATION: { return "education"; }
+        case schema.HOMEPAGE: { return "webpage"; }
+        case schema.PAYMENT: { return "payment"; }
+        case schema.BUSINESS, schema.PRIVACY: { return "yesno"; }
+        case schema.CATNAME, schema.ITEMNAME: { return "sentence1"; }
+        case schema.NAME: { return "name"; }
+        case schema.FROM, schema.TO: { return "name "; }
+        case schema.EMAIL: { return "email"; }
+        case schema.QUANTITY: { return "quantity"; }
+        case schema.INCREASE: { return "increase"; }
+        case schema.CURRENT: { return "current"; }
+        case schema.INIT_PRICE: { return "init_price"; }
+        case schema.RESERVE: { return "reserve"; }
+        case schema.TEXT: { return "any"; }
+    }
+	return NULL;
+}
 
 int main(int argc, char **argv) {
     float global_scale_factor = 1;
@@ -50,129 +66,13 @@ void Tree(FILE *out, schema.Element *element) {
     
     element->flag++;
 
-    int r;
-    bool has_content = true;
-    switch(element->id) {
-        case schema.CITY: {
-			ipsum.emit("dict(cities)");
-		}
-        case schema.STATUS, schema.HAPPINESS: {
-			ipsum.emit("int(1, 10)");
-		}
-        case schema.STREET: {
-			ipsum.emit("street");
-		}
-        case schema.PHONE: {
-			ipsum.emit("phone");
-		}
-        case schema.CREDITCARD: {
-			ipsum.emit("cc");
-		}
-        case schema.SHIPPING: {
-			ipsum.emit("dict(shipping)");
-		}
-        case schema.TIME: {
-			ipsum.emit("time");
-		}
-        case schema.AGE: {
-			ipsum.emit("max(18, gauss(30, 15))");
-		}
-        case schema.ZIPCODE: {
-			ipsum.emit("zip");
-		}
-        case schema.XDATE, schema.START, schema.END: {
-			ipsum.emit("date");
-		}
-        case schema.GENDER: {
-			ipsum.emit("gender");
-		}
-        case schema.AMOUNT, schema.PRICE: {
-			ipsum.emit("price");
-		}
-
-        case schema.TYPE: {
-			ipsum.emit("dict(auction_type)");
-            if (GenContents_quantity > 1 && rnd.intn(2) > 0) {
-				fprintf(out,", Dutch");
-			}
-        }
-        case schema.LOCATION, schema.COUNTRY: {
-            if (rnd.urange(0, 1) < 0.75) {
-                GenContents_country = COUNTRIES_USA;
-            } else {
-                GenContents_country = rnd.intn(words.dictlen("countries"));
-            }
-            fprintf(out, "%s", words.dictentry("countries", GenContents_country));
-        }
-        case schema.PROVINCE: {
-            if (GenContents_country == COUNTRIES_USA) {
-                ipsum.emit("dict(provinces)");
-            } else {
-                ipsum.emit("dict(lastnames)");
-            }
-        }
-        case schema.EDUCATION: {
-            fprintf(out, "%s", GenContents_education[rnd.intn(4)]);
-        }
-        case schema.HOMEPAGE: {
-            ipsum.emit("webpage");
-        }
-        case schema.PAYMENT: {
-            r=0;
-            for (int i=0; i<4; i++) {
-                if (rnd.intn(2)) {
-                    char *x = "";
-                    if (r++) {
-                        x = ", ";
-                    }
-                    fprintf(out, "%s%s", x, GenContents_money[i % 4]);
-                }
-            }
-        }
-        case schema.BUSINESS, schema.PRIVACY: {
-            fprintf(out, "%s", GenContents_yesno[rnd.intn(2)]);
-        }
-        case schema.CATNAME, schema.ITEMNAME: {
-			ipsum.emit("sentence1");
-        }
-        case schema.NAME: {
-			ipsum.emit("name");
-		}
-        case schema.FROM, schema.TO: {
-            ipsum.emit("name");
-            fprintf(out," ");
-        }
-        case schema.EMAIL: {
-			ipsum.emit("email");
-        }
-        case schema.QUANTITY: {
-            GenContents_quantity=1+(int)rnd.exponential(0.4);
-            fprintf(out,"%d",GenContents_quantity);
-        }
-        case schema.INCREASE: {
-            double d=1.5 *(1+(int)rnd.exponential(10));
-            fprintf(out,"%.2f",d);
-            GenContents_increases+=d;
-        }
-        case schema.CURRENT: {
-            fprintf(out,"%.2f",GenContents_initial+GenContents_increases);
-        }
-        case schema.INIT_PRICE: {
-            GenContents_initial=rnd.exponential(100);
-            GenContents_increases=0;
-            fprintf(out,"%.2f",GenContents_initial);
-        }
-        case schema.RESERVE: {
-            fprintf(out,"%.2f",GenContents_initial*(1.2+rnd.exponential(2.5)));
-        }
-        case schema.TEXT: { PrintANY(out); }
-        default: {
-            has_content = false;
-        }
-    }
-    if (has_content && element->elm[0] != 0) {
-        fprintf(out,"\n");
-    }
+	const char *spec = mapgen(element->id);
+	if (spec != NULL) {
+		ipsum.emit(spec);
+		if (element->elm[0] != 0) {
+        	fprintf(out,"\n");
+    	}
+	}
 
     if (element->type & 0x02) {
         schema.Element *root;
@@ -287,37 +187,6 @@ void ClosingTag(schema.Element *element) {
         return;
     }
     fprintf(stdout, "</%s>\n",element->name);
-}
-
-
-
-void PrintANY(FILE *out) {
-    int sen=1+(int)rnd.exponential(20);
-    int stptr = 0;
-    for (int i=0; i < sen; i++) {
-        if (rnd.urange(0, 1) < 0.1 && stptr < 2) {
-            while (true) {
-                PrintANY_st[stptr] = rnd.intn(3);
-                if (!tick[PrintANY_st[stptr]]) {
-                    break;
-                }
-            }
-            tick[PrintANY_st[stptr]] = 1;
-            fprintf(out,"<%s> ", markup[PrintANY_st[stptr]]);
-            stptr++;
-        }
-        else if (rnd.urange(0, 1) < 0.8 && stptr != 0) {
-            --stptr;
-            fprintf(out,"</%s> ",markup[PrintANY_st[stptr]]);
-            tick[PrintANY_st[stptr]] = 0;
-        }
-		ipsum.emit("sentence2");
-    }
-    while (stptr) {
-        --stptr;
-        fprintf(out,"</%s> ",markup[PrintANY_st[stptr]]);
-        tick[PrintANY_st[stptr]]=0;
-    }
 }
 
 int ItemIdRef(schema.Element *child, int *iRef) {
