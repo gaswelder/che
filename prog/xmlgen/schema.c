@@ -1,6 +1,6 @@
 #import rnd
 #import strings
-#import dtd.c
+#import formats/dtd
 
 pub enum {
     ERROR_OBJ,
@@ -260,30 +260,13 @@ const char *real_dtd = "
 	<!ELEMENT author EMPTY>
 	<!ATTLIST author          person IDREF #REQUIRED>";
 
-const char *loadline(const char *p, char *buf) {
-	while (isspace(*p)) p++;
-	char *b = buf;
-	while (*p != '\0' && *p != '\n') {
-		*b++ = *p++;
-	}
-	*b = '\0';
-	return p;
-}
-
 pub void InitializeSchema(float global_scale_factor) {
-    // Parse the DTD into the local schema.
-	char buf[200] = {};
-	const char *p = real_dtd;
-	while (true) {
-		p = loadline(p, buf);
-		if (buf[0] == '\0') {
-			break;
-		}
-		if (strings.starts_with(buf, "<!ATTLIST ")) {
-			read_attlist(buf);
-		} else {
-			read_element(buf);
-		}
+	dtd.schema_t schema = dtd.parse(real_dtd);
+	for (int i = 0; i < schema.elemnum; i++) {
+		import_element(&schema.elements[i]);
+	}
+	for (int i = 0; i < schema.attrnum; i++) {
+		import_attlist(&schema.attlists[i]);
 	}
 
 	puts("parsed dtd");
@@ -342,18 +325,13 @@ pub void InitializeSchema(float global_scale_factor) {
 	}
 }
 
-
-
-
-void read_attlist(char *s) {
-	dtd.attlist_t attlist = {};
-	dtd.read_attlist(s, &attlist);
-
-	int pos = nameid(attlist.host);
+void import_attlist(dtd.attlist_t *attlist) {
+	printf("\timport attlist %s\n", attlist->host);
+	int pos = nameid(attlist->host);
 	Element *obj = &objs[pos];
 
-	for (int i = 0; i < attlist.size; i++) {
-		dtd.att_t *att = &attlist.items[i];
+	for (int i = 0; i < attlist->size; i++) {
+		dtd.att_t *att = &attlist->items[i];
 		AttDesc *objatt = &obj->att[i];
 		if (att->type == dtd.IDREF && att->flag == dtd.REQUIRED) {
 			objatt->name[0] = '\1';
@@ -371,16 +349,12 @@ void read_attlist(char *s) {
 	}	
 }
 
-void read_element(char *s) {
-	dtd.element_t element = {};
-	dtd.read_element(&s, &element);
-	dtd.print_element(&element);
-
-
-	int pos = nameid(element.name);
+void import_element(dtd.element_t *element) {
+	printf("import %s\n", element->name);
+	int pos = nameid(element->name);
 	objs[pos].id = pos;
-	objs[pos].name = strings.newstr("%s", element.name);
-	dtd.child_list_t *l = element.children;
+	objs[pos].name = strings.newstr("%s", element->name);
+	dtd.child_list_t *l = element->children;
 	for (int i = 0; i < l->size; i++) {
 		if (l->items[i].islist) {
 			panic("nested lists not implemented");

@@ -11,7 +11,6 @@ typedef {
 generator_state_t GLOBAL_STATE = {};
 
 int stackdepth=0;
-int splitcnt=0;
 int GenContents_lstname = 0;
 int GenContents_country = -1;
 int GenContents_email = 0;
@@ -22,7 +21,7 @@ char *GenContents_auction_type[]={"Regular","Featured"};
 char *GenContents_education[]={"High School","College", "Graduate School","Other"};
 char *GenContents_money[]={"Money order","Creditcard", "Personal Check","Cash"};
 char *GenContents_yesno[]={"Yes","No"};
-bool GenSubtree_splitnow = false;
+
 char *markup[3]={"emph","keyword","bold"};
 char tick[3] = "";
 int PrintANY_st[3] = {};
@@ -40,7 +39,6 @@ int main(int argc, char **argv) {
     schema.InitializeSchema(global_scale_factor);
     fprintf(stdout, "<?xml version=\"1.0\" standalone=\"yes\"?>\n");
     Tree(stdout, schema.GetSchemaNode(1));
-    fclose(stdout);
     return 0;
 }
 
@@ -48,20 +46,6 @@ void Tree(FILE *out, schema.Element *element) {
     if (element->type&0x10) {
         return;
     }
-    
-    if (GenSubtree_splitnow) {
-        // split doc
-        int oldstackdepth = stackdepth;
-        for (int i = oldstackdepth-1; i>=0; i--) {
-            ClosingTag(stack[i]);
-        }        
-        for (int i=0; i < oldstackdepth; i++) {
-            OpeningTag(out, stack[i]);
-        }
-        splitcnt=0;
-        GenSubtree_splitnow = false;
-    }
-
     OpeningTag(out, element);
     
     element->flag++;

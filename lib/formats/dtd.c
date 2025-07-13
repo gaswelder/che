@@ -1,3 +1,5 @@
+// Sloppy XML DTD parser.
+
 #import strings
 
 pub enum { REQUIRED, IMPLIED }
@@ -39,11 +41,39 @@ pub typedef {
 	att_t items[10];
 } attlist_t;
 
+pub typedef {
+	element_t elements[100];
+	int elemnum;
+	attlist_t attlists[100];
+	int attrnum;
+} schema_t;
+
+pub schema_t parse(const char *real_dtd) {
+	schema_t schema = {};
+	char buf[200] = {};
+	const char *p = real_dtd;
+	while (true) {
+		p = loadline(p, buf);
+		if (buf[0] == '\0') {
+			break;
+		}
+		if (strings.starts_with(buf, "<!ATTLIST ")) {
+			attlist_t *attlist = &schema.attlists[schema.attrnum++];
+			read_attlist(buf, attlist);
+		} else {
+			element_t *element = &schema.elements[schema.elemnum++];
+			char *p = buf;
+			read_element(&p, element);
+		}
+	}
+	return schema;
+}
+
 // "<!ATTLIST author          person IDREF #REQUIRED>"
 // "<!ATTLIST person          id ID #REQUIRED>",
 // "<!ATTLIST profile income CDATA #IMPLIED>",
 // "<!ATTLIST edge from IDREF #REQUIRED to IDREF #REQUIRED>"
-pub void read_attlist(char *p, attlist_t *attlist) {
+void read_attlist(char *p, attlist_t *attlist) {
 	p = skiplit(p, "<!ATTLIST ");
 	while (isspace(*p)) p++;
 
@@ -91,7 +121,7 @@ pub void read_attlist(char *p, attlist_t *attlist) {
 	}
 }
 
-pub void read_element(char **s, element_t *element) {
+void read_element(char **s, element_t *element) {
 	char *p = *s;
 
 	// <!ELEMENT + spaces
@@ -127,7 +157,7 @@ pub void print_element(element_t *element) {
 	}
 }
 
-pub child_list_t *read_child_list(char **s) {
+child_list_t *read_child_list(char **s) {
 	child_list_t *list = calloc!(1, sizeof(child_list_t));
 
 	char *p = *s;
@@ -215,4 +245,14 @@ char *readname(char **s) {
 	while (isalpha(*p) || *p == '_') *n++ = *p++;
 	*s = p;
 	return name;
+}
+
+const char *loadline(const char *p, char *buf) {
+	while (isspace(*p)) p++;
+	char *b = buf;
+	while (*p != '\0' && *p != '\n') {
+		*b++ = *p++;
+	}
+	*b = '\0';
+	return p;
 }
