@@ -1,4 +1,3 @@
-#import strings
 #import opt
 #import words.c
 #import rnd
@@ -12,7 +11,6 @@ typedef {
 generator_state_t GLOBAL_STATE = {};
 
 FILE *xmlout=0;
-char *global_outputname=0;
 int stackdepth=0;
 int global_split=0;
 int splitcnt=0;
@@ -30,7 +28,7 @@ bool GenSubtree_splitnow = false;
 char *markup[3]={"emph","keyword","bold"};
 char tick[3] = "";
 int PrintANY_st[3] = {};
-int global_split_fileno = 0;
+
 const int COUNTRIES_USA = 0;
 schema.Element *stack[64] = {};
 
@@ -42,7 +40,6 @@ int main(int argc, char **argv) {
 
     opt.flag("d", "document_type=2", &doctype_is_2);    
     opt.opt_float("f", "global_scale_factor", &global_scale_factor);
-    opt.str("o", "global_outputname", &global_outputname);
     opt.opt_int("s", "global_split", &global_split);
     opt.parse(argc, argv);
 
@@ -52,17 +49,6 @@ int main(int argc, char **argv) {
     }
     
     xmlout=stdout;
-    if (global_outputname) {
-        if (global_split) {
-            xmlout = OpenOutput_split(global_outputname, global_split_fileno++);
-        } else {
-            xmlout = fopen(global_outputname, "w");
-        }
-        if (!xmlout) {
-            fprintf(stderr, "Can't open file %s\n", global_outputname);
-            exit(1);
-        }
-    }
 
     schema.InitializeSchema(global_scale_factor);
 
@@ -102,14 +88,7 @@ void Tree(FILE *out, schema.Element *element) {
         if (xmlout!=stdout) {
             fclose(xmlout);
         }
-        if (global_outputname) {
-            xmlout = OpenOutput_split(global_outputname, global_split_fileno++);
-            if (!xmlout) {
-                fflush(stdout);
-                fprintf(stderr, "Can't open file %s\n", global_outputname);
-                exit(1);
-            }
-        }
+        
         for (int i=0; i < oldstackdepth; i++) {
             OpeningTag(out, stack[i]);
         }
@@ -264,16 +243,6 @@ void Tree(FILE *out, schema.Element *element) {
         }
     }
     element->flag--;
-}
-
-FILE *OpenOutput_split(const char *global_outputname, int fileno) {
-    if (fileno > 99999) {
-        fprintf(stderr,"Warning: More than %d files.\n", 99999);
-    }
-    char *newname = strings.newstr("%s%0*d", global_outputname, 5, fileno);
-    FILE *f = fopen(newname,"w");
-    free(newname);
-    return f;
 }
 
 void OpeningTag(FILE *out, schema.Element *element) {
