@@ -106,6 +106,7 @@ char *dtd[] = {
 
 pub enum {
     ERROR_OBJ,
+	PCDATA,
     AUCTION_SITE,
     CATGRAPH, EDGE, CATEGORY_LIST, CATEGORY, CATNAME,
     PERSON_LIST, PERSON, EMAIL, ADDRESS, PHONE, STREET, CITY, COUNTRY, ZIPCODE,
@@ -128,6 +129,7 @@ typedef {
 } name_id_t;
 
 name_id_t names[] = {
+	{ PCDATA, "#PCDATA"},
 	{ ADDRESS, "address" },
 	{ AFRICA, "africa" },
 	{ ANNOTATION, "annotation" },
@@ -376,8 +378,14 @@ pub void InitializeSchema(float global_scale_factor) {
 	const char *p = real_dtd;
 	while (true) {
 		p = loadline(p, buf);
-		if (buf[0] == '\0') break;
-		line(buf);
+		if (buf[0] == '\0') {
+			break;
+		}
+		if (strings.starts_with(buf, "<!ATTLIST ")) {
+			read_attlist(buf);
+		} else {
+			read_element(buf);
+		}
 	}
 
 	puts("parsed dtd");
@@ -425,29 +433,7 @@ pub void InitializeSchema(float global_scale_factor) {
 
 }
 
-char *skiplit(char *line, *lit) {
-	if (!strings.starts_with(line, lit)) {
-		panic("expected %s, got %s", lit, line);
-	}
-	return line + strlen(lit);
-}
 
-char *readname(char **s) {
-	char *name = calloc!(100, 1);
-	char *p = *s;
-	char *n = name;
-	while (isalpha(*p) || *p == '_') *n++ = *p++;
-	*s = p;
-	return name;
-}
-
-void line(char *s) {
-	if (strings.starts_with(s, "<!ATTLIST ")) {
-		read_attlist(s);
-	} else {
-		read_element(s);
-	}
-}
 
 
 void read_attlist(char *s) {
@@ -476,92 +462,24 @@ void read_attlist(char *s) {
 	}	
 }
 
-typedef {
-	char name[100];
-} element_t;
-
-typedef {
-	char name[100];
-	char quantifier; // '', '*', '?', '+'
-} child_t;
-
-
-// <!ELEMENT author EMPTY>
-// <!ELEMENT to (#PCDATA)>
-// <!ELEMENT note (message)>
-// <!ELEMENT note (message*)>
-// <!ELEMENT note (message?)>
-// <!ELEMENT note (message+)>
-// <!ELEMENT note (to,from,heading,body)>
-// <!ELEMENT note (#PCDATA|to|from|header|message)*> 
-// <!ELEMENT note (to,from,header,(message|body))> 
-// <!ELEMENT annotation (author, description?, happiness)>
 void read_element(char *s) {
-	element_t element = {};
+	dtd.element_t element = {};
+	dtd.read_element(&s, &element);
+	dtd.print_element(&element);
 
-	// <!ELEMENT + spaces
-	char *p = skiplit(s, "<!ELEMENT ");
-	while (isspace(*p)) p++;
-
-	// name + spaces
-	strcpy(element.name, readname(&p));
-	while (isspace(*p)) p++;
 
 	int pos = nameid(element.name);
 	objs[pos].id = pos;
 	objs[pos].name = strings.newstr("%s", element.name);
-
-	// ? EMPTY>
-	if (strings.starts_with(p, "EMPTY>")) {
-		p = skiplit(p, "EMPTY>");
-		if (*p != '\0') {
-			panic("unexpected trailing data: %s", p);
+	dtd.child_list_t *l = element.children;
+	for (int i = 0; i < l->size; i++) {
+		if (l->items[i].islist) {
+			panic("nested lists not implemented");
+		} else {
+			dtd.child_t *e = l->items[i].data;
+			objs[pos].elm[i] = nameid(e->name);
 		}
-		return;
 	}
-
-	// ? (#PCDATA)>
-	if (strings.starts_with(p, "(#PCDATA)>")) {
-		p = skiplit(p, "(#PCDATA)>");
-		if (*p != '\0') {
-			panic("unexpected trailing data: %s", p);
-		}
-		return;
-	}
-
-	if (*p == '(') {
-		p = skiplit(p, "(");
-		int i = 0;
-		while (*p != ')') {
-
-			child_t child = {};
-			strcpy(child.name, readname(&p));
-			while (isspace(*p)) p++;
-			switch (*p) {
-				case '?', '*', '+': {
-					child.quantifier = *p++;
-				}
-			}
-
-			objs[pos].elm[i++] = nameid(child.name);
-
-			if (*p == ',' || *p == '|') {
-				p++;
-				while (isspace(*p)) p++;
-			} else {
-				break;
-			}
-		}
-		p = skiplit(p, ")");
-		if (*p == '*') p++;
-		p = skiplit(p, ">");
-		if (*p != '\0') {
-			panic("unexpected trailing data: %s", p);
-		}
-		return;
-	}
-
-	panic("unexpected: %s", p);
 }
 
 int InitRepro_direction=0;

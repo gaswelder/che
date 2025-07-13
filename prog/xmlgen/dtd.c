@@ -5,6 +5,28 @@ pub enum { REQUIRED, IMPLIED }
 pub enum { IDREF, ID, CDATA }
 
 pub typedef {
+	char name[100];
+	child_list_t *children;
+} element_t;
+
+pub typedef {
+	bool islist;
+	void *data;
+} child_entry_t;
+
+pub typedef {
+	char name[100];
+	char quantifier; // '', '*', '?', '+'
+} child_t;
+
+pub typedef {
+	char quantifier;
+	char jointype; // '|', ','
+	int size;
+	child_entry_t items[100];
+} child_list_t;
+
+pub typedef {
 	int type, flag;
 	char name[100];
 	char defval[100];
@@ -67,6 +89,116 @@ pub void read_attlist(char *p, attlist_t *attlist) {
 	if (*p != '\0') {
 		panic("unexpected trailing data: %s", p);
 	}
+}
+
+pub void read_element(char **s, element_t *element) {
+	char *p = *s;
+
+	// <!ELEMENT + spaces
+	p = skiplit(p, "<!ELEMENT ");
+	while (isspace(*p)) p++;
+
+	// name + spaces
+	strcpy(element->name, readname(&p));
+	while (isspace(*p)) p++;
+
+	// child list
+	element->children = read_child_list(&p);
+
+	p = skiplit(p, ">");
+
+	if (*p != '\0') {
+		panic("unexpected trailing data: %s", p);
+	}
+	*s = p;
+}
+
+pub void print_element(element_t *element) {
+	printf("element %s:\n", element->name);
+	child_list_t *l = element->children;
+	for (int i = 0; i < l->size; i++) {
+		printf("- child %d: ", i);
+		if (l->items[i].islist) {
+			printf("list\n");
+		} else {
+			child_t *e = l->items[i].data;
+			printf("elem %s\n", e->name);
+		}
+	}
+}
+
+pub child_list_t *read_child_list(char **s) {
+	child_list_t *list = calloc!(1, sizeof(child_list_t));
+
+	char *p = *s;
+
+	if (strings.starts_with(p, "EMPTY")) {
+		p = skiplit(p, "EMPTY");
+		while (isspace(*p)) p++;
+		*s = p;
+		return list;
+	}
+
+	p = skiplit(p, "(");
+	while (*p != '\0') {
+		child_entry_t *it = &list->items[list->size++];
+		item(&p, it);
+		while (isspace(*p)) p++;
+
+		// If the list kind is not known yet, see if a join symbol follows.
+		char peek = *p;
+		if (list->jointype == '\0') {
+			if (peek == ',' || peek == '|') {
+				list->jointype = *p++;
+				while (isspace(*p)) p++;
+				continue;
+			}
+			break;
+		}
+
+		// If we already know the join symbol, accept only it.
+		if (peek == list->jointype) {
+			p++;
+			while (isspace(*p)) p++;
+			continue;
+		}
+		break;
+	}
+
+	p = skiplit(p, ")");
+	list->quantifier = mb_quant(&p);
+	*s = p;
+	return list;
+}
+
+void item(char **s, child_entry_t *item) {
+	char *p = *s;
+	if (*p == '(') {
+		item->islist = true;
+		item->data = read_child_list(s);
+		return;
+	}
+
+	child_t *elem = calloc!(1, sizeof(child_t));
+	if (strings.starts_with(p, "#PCDATA")) {
+		p = skiplit(p, "#PCDATA");
+		strcpy(elem->name, "#PCDATA");
+	} else {
+		strcpy(elem->name, readname(&p));
+		elem->quantifier = mb_quant(&p);
+	}
+	*s = p;
+	item->data = elem;
+}
+
+char mb_quant(char **s) {
+	char *p = *s;
+	char q = '\0';
+	switch (*p) {
+		case '?', '*', '+': { q = *p++; }
+	}
+	*s = p;
+	return q;
 }
 
 char *skiplit(char *line, *lit) {
