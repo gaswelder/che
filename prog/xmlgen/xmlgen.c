@@ -12,37 +12,38 @@ generator_state_t GLOBAL_STATE = {};
 int stackdepth=0;
 schema.Element *stack[64] = {};
 
-const char *mapgen(int elem_id) {
-	switch (elem_id) {
-        case schema.CITY: { return "dict(cities)"; }
-        case schema.STATUS, schema.HAPPINESS: { return "int(1, 10)"; }
-        case schema.STREET: { return "street"; }
-        case schema.PHONE: { return "phone"; }
-        case schema.CREDITCARD: { return "cc"; }
-        case schema.SHIPPING: { return "dict(shipping)"; }
-        case schema.TIME: { return "time"; }
-        case schema.AGE: { return "max(18, gauss(30, 15))"; }
-        case schema.ZIPCODE: { return "zip"; }
-        case schema.XDATE, schema.START, schema.END: { return "date"; }
-        case schema.GENDER: { return "gender"; }
-        case schema.AMOUNT, schema.PRICE: { return "price"; }
-        case schema.TYPE: { return "type"; }
-        case schema.LOCATION, schema.COUNTRY: { return "location"; }
-        case schema.PROVINCE: { return "province"; }
-        case schema.EDUCATION: { return "education"; }
-        case schema.HOMEPAGE: { return "webpage"; }
-        case schema.PAYMENT: { return "payment"; }
-        case schema.BUSINESS, schema.PRIVACY: { return "yesno"; }
-        case schema.CATNAME, schema.ITEMNAME: { return "sentence1"; }
-        case schema.NAME: { return "name"; }
-        case schema.FROM, schema.TO: { return "name "; }
-        case schema.EMAIL: { return "email"; }
-        case schema.QUANTITY: { return "quantity"; }
-        case schema.INCREASE: { return "increase"; }
-        case schema.CURRENT: { return "current"; }
-        case schema.INIT_PRICE: { return "init_price"; }
-        case schema.RESERVE: { return "reserve"; }
-        case schema.TEXT: { return "any"; }
+const char *mapgen(const char *elemname) {
+	if (!elemname) return NULL;
+	switch str (elemname) {
+        case "city": { return "dict(cities)"; }
+        case "status", "happiness": { return "int(1, 10)"; }
+        case "age": { return "max(18, gauss(30, 15))"; }
+        case "amount", "price": { return "price"; }
+        case "business", "privacy": { return "yesno"; }
+        case "name": { return "sentence1"; }
+        case "creditcard": { return "cc"; }
+        case "current": { return "current"; }
+        case "education": { return "education"; }
+        case "email": { return "email"; }
+        case "from", "to": { return "name "; }
+        case "gender": { return "gender"; }
+        case "homepage": { return "webpage"; }
+        case "increase": { return "increase"; }
+        case "initial": { return "init_price"; }
+        case "location", "country": { return "location"; }
+        case "name": { return "name"; }
+        case "payment": { return "payment"; }
+        case "phone": { return "phone"; }
+        case "province": { return "province"; }
+        case "quantity": { return "quantity"; }
+        case "reserve": { return "reserve"; }
+        case "shipping": { return "dict(shipping)"; }
+        case "street": { return "street"; }
+        case "text": { return "any"; }
+        case "time": { return "time"; }
+        case "type": { return "type"; }
+        case "date", "start", "end": { return "date"; }
+        case "zipcode": { return "zip"; }
     }
 	return NULL;
 }
@@ -66,7 +67,7 @@ void Tree(FILE *out, schema.Element *element) {
     
     element->flag++;
 
-	const char *spec = mapgen(element->id);
+	const char *spec = mapgen(element->name);
 	if (spec != NULL) {
 		ipsum.emit(spec);
 		if (element->elm[0] != 0) {
@@ -190,14 +191,14 @@ void ClosingTag(schema.Element *element) {
 }
 
 int ItemIdRef(schema.Element *child, int *iRef) {
-    if (child->id != schema.ITEMREF || stackdepth < 2) {
+	if (child->id != schema.nameid("itemref") || stackdepth < 2) {
         return 0;
     }
     schema.Element *element = stack[stackdepth-2];
-    if (element->id == schema.OPEN_TRANS) {
+    if (element->id == schema.nameid("open_auction")) {
         return GenItemIdRef(schema.getidr(0), iRef);
     }
-    if (element->id == schema.CLOSED_TRANS) {
+    if (element->id == schema.nameid("closed_auction")) {
         return GenItemIdRef(schema.getidr(1), iRef);
     }
     return 0;
