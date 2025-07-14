@@ -434,6 +434,23 @@ pub void write_501(request_t *req, net.net_t *conn) {
 	}
 }
 
+pub void serve_text(request_t *req, net.net_t *conn, const char *s, *content_type) {
+	char buf[1000] = {};
+	sprintf(buf, "%s 200 OK\n"
+		"Content-Length: %ld\n"
+		"Content-Type: %s\n"
+		"\n",
+		req->version,
+		strlen(s),
+		content_type);
+	if (net.write(conn, buf, strlen(buf)) < 0) {
+		panic("net write failed");
+	}
+	if (net.write(conn, s, strlen(s)) < 0) {
+		panic("net write failed");
+	}
+}
+
 pub void servefile(request_t *req, net.net_t *conn, const char *filepath) {
 	const char *ext = fs.fileext(filepath);
 	const char *content_type = mime.lookup(ext);

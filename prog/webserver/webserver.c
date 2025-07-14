@@ -1,3 +1,4 @@
+#import formats/json
 #import opt
 #import os/fs
 #import os/net
@@ -6,8 +7,8 @@
 #import protocols/http
 #import reader
 #import srvcgi.c
+#import strbuilder
 #import strings
-#import formats/json
 
 typedef {
     char homedir[1000];
@@ -64,6 +65,21 @@ void *client_routine(void *arg) {
 		}
 		log_info("%s %s", req.method, req.path);
 
+		if (strcmp(req.path, "/") == 0) {
+			strbuilder.str *b = strbuilder.str_new();
+			strbuilder.addf(b, "<a href=/>home</a><br><br>");
+			fs.dir_t *d = fs.dir_open(".");
+			while (true) {
+				const char *name = fs.dir_next(d);
+				if (!name) break;
+				strbuilder.addf(b, "<a href=\"%s\">%s</a><br>", name, name);
+			}
+			fs.dir_close(d);
+			http.serve_text(&req, conn, strbuilder.str_raw(b), "text/html");
+			strbuilder.str_free(b);
+			continue;
+		}
+
 		char *filepath = resolve_path(s->homedir, req.path);
 		if (!filepath) {
 			log_info("404 \"%s\" was not found", req.path);
@@ -85,30 +101,11 @@ void *client_routine(void *arg) {
 
 void handle_sigint(int sig) {
     printf("SIGINT received: %d\n", sig);
+	fflush(stdout);
     exit(0);
 }
 
-const char *index_files[] = {
-    "index.html",
-    "index.htm",
-    "default.html",
-    "default.htm"
-};
-
 char *resolve_path(const char *homedir, *reqpath) {
-    if (strcmp(reqpath, "/") == 0) {
-        for (size_t i = 0; i < nelem(index_files); i++) {
-            char *p = resolve_inner(homedir, index_files[i]);
-            if (p) {
-                return p;
-            }
-        }
-        return NULL;
-    }
-    return resolve_inner(homedir, reqpath);
-}
-
-char *resolve_inner(const char *homedir, *reqpath) {
     char naive_path[4096] = {};
     if (strlen(homedir) + strlen(reqpath) + 1 >= sizeof(naive_path)) {
 		log_error("path is too long: %s", reqpath);
