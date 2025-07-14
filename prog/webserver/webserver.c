@@ -7,6 +7,7 @@
 #import reader
 #import srvcgi.c
 #import strings
+#import formats/json
 
 typedef {
     char homedir[1000];
@@ -31,15 +32,17 @@ int main(int argc, char *argv[]) {
 	}
 	net.net_t *ln = net.net_listen("tcp", addr);
     if (!ln) {
-        fprintf(stderr, "Failed to listen at %s: %s\n", addr, strerror(errno));
+		log_error("Failed to listen at %s: %s", addr, strerror(errno));
         return 1;
     }
-    printf("Serving %s at http://%s\n", SERVER.homedir, addr);
+    log_info("Serving %s at http://%s", SERVER.homedir, addr);
 
 	while (true) {
 		net.net_t *conn = net.net_accept(ln);
 		if (!conn) panic("accept failed");
-		printf("%s connected\n", net.net_addr(conn));
+
+		log_info("%s connected", net.net_addr(conn));
+
 		ctx_t *ctx = calloc!(1, sizeof(ctx));
 		ctx->s = &SERVER;
 		ctx->conn = conn;
@@ -57,16 +60,18 @@ void *client_routine(void *arg) {
 	http.request_t req = {};
 	while (true) {
 		if (!http.read_request(re, &req)) {
-			panic("failed to read request");
+			panic("failed to read request: %s", strerror(errno));
 		}
-		printf("resolving %s %s\n", req.method, req.path);
+		log_info("%s %s", req.method, req.path);
+
 		char *filepath = resolve_path(s->homedir, req.path);
 		if (!filepath) {
-			printf("file \"%s\" not found\n", req.path);
+			log_info("404 \"%s\" was not found", req.path);
 			http.write_404(&req, conn);
 			continue;
 		}
-		printf("resolved %s as %s\n", req.path, filepath);
+		log_info("%s is %s", req.path, filepath);
+
 		if (strings.starts_with(req.path, "/cgi-bin/")) {
 			srvcgi.cgi(filepath, &req, conn);
 		} else {
@@ -78,23 +83,8 @@ void *client_routine(void *arg) {
 	return NULL;
 }
 
-
-// bool resolve_request(server_t *server, server.ctx_t *ctx) {
-
-//     // Replace path with any matching alias.
-//     char *match = stringtable.lk_stringtable_get(hc->aliases, req->path);
-//     if (match != NULL) {
-//         panic("todo");
-//         if (strlen(match) + 1 > sizeof(req->path)) {
-//             abort();
-//         }
-//         strcpy(req->path, match);
-//     }
-// }
-
 void handle_sigint(int sig) {
     printf("SIGINT received: %d\n", sig);
-    fflush(stdout);
     exit(0);
 }
 
@@ -106,7 +96,7 @@ const char *index_files[] = {
 };
 
 char *resolve_path(const char *homedir, *reqpath) {
-    if (!strcmp(reqpath, "/")) {
+    if (strcmp(reqpath, "/") == 0) {
         for (size_t i = 0; i < nelem(index_files); i++) {
             char *p = resolve_inner(homedir, index_files[i]);
             if (p) {
@@ -119,13 +109,12 @@ char *resolve_path(const char *homedir, *reqpath) {
 }
 
 char *resolve_inner(const char *homedir, *reqpath) {
-    char naive_path[4096] = {0};
+    char naive_path[4096] = {};
     if (strlen(homedir) + strlen(reqpath) + 1 >= sizeof(naive_path)) {
-        printf("ERROR: requested path is too long: %s\n", reqpath);
+		log_error("path is too long: %s", reqpath);
         return NULL;
     }
     sprintf(naive_path, "%s/%s", homedir, reqpath);
-
     char realpath[4096] = {0};
     if (!fs.realpath(naive_path, realpath, sizeof(realpath))) {
         return NULL;
@@ -135,4 +124,32 @@ char *resolve_inner(const char *homedir, *reqpath) {
         return NULL;
     }
     return strings.newstr("%s", realpath);
+}
+
+void log_info(const char *f, ...) {
+	char buf[4096] = {};
+
+	va_list args = {};
+	va_start(args, f);
+	vsnprintf(buf, sizeof(buf)-1, f, args);
+	va_end(args);
+
+	printf("{\"level\":\"info\",\"msg\":");
+	json.write_string(stdout, buf);
+	printf("}\n");
+	fflush(stdout);
+}
+
+void log_error(const char *f, ...) {
+	char buf[4096] = {};
+
+	va_list args = {};
+	va_start(args, f);
+	vsnprintf(buf, sizeof(buf)-1, f, args);
+	va_end(args);
+
+	printf("{\"level\":\"error\",\"msg\":");
+	json.write_string(stdout, buf);
+	printf("}\n");
+	fflush(stdout);
 }
