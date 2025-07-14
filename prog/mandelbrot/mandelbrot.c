@@ -90,12 +90,17 @@ int workerfunc(void *arg) {
 	snprintf (basename, 20, "out-%010d", job->frame);
 
 	image.dim_t image_size = { config.image_width, config.image_height };
+	image.image_t *img = image.new(image_size.w, image_size.h);
+	draw(img, image_size, data);
 
 	char filename[100] = {};
 	snprintf(filename, sizeof(filename), "dump/%s.bmp", basename);
-	save_image(filename, data, image_size);
+	if (!bmp.write(img, filename)) {
+		panic("failed to write bmp: %s", strerror(errno));
+	}
 	fprintf(stderr, "written %s\n", filename);
 
+	image.free(img);
 	free (data);
 	return 0;
 }
@@ -140,16 +145,11 @@ void write_colormap(const char *filename) {
 	image.free(img);
 }
 
-void save_image(const char *filename, double *data, image.dim_t size) {
-	image.image_t *img = image.new(size.w, size.h);
+void draw(image.image_t *img, image.dim_t size, double *data) {
 	for (int j = 0; j < size.h; j++) {
 		for (int i = 0; i < size.w; i++) {
 			image.rgba_t c = colormap(data[i + j * size.w]);
 			*image.getpixel(img, i, j) = c;
 		}
 	}
-	if (!bmp.write(img, filename)) {
-		panic("failed to write bmp: %s", strerror(errno));
-	}
-	image.free(img);
 }
