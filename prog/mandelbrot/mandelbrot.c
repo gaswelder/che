@@ -17,9 +17,7 @@ int _prered[] = { 0, 0,	 0,	 0,	 128, 255, 255, 255 };
 int _pregreen[] = { 0, 0,	 128, 255, 128, 128, 255, 255 };
 int _preblue[] = { 0, 255, 255, 128, 0,	 0,	 128, 255 };
 
-int write_text = 0;
 int CMAP_LEN = 8;
-
 
 /* The colormap */
 int *red = _prered;
@@ -93,51 +91,19 @@ int workerfunc(void *arg) {
 
 	image.dim_t image_size = { config.image_width, config.image_height };
 
-	if (write_text) {
-		save_values(basename, data, image_size);
-	}
-	
 	char filename[100] = {};
 	snprintf(filename, sizeof(filename), "dump/%s.bmp", basename);
-	save_image(filename, data, config.iterations, image_size);
+	save_image(filename, data, image_size);
 	fprintf(stderr, "written %s\n", filename);
 
 	free (data);
 	return 0;
 }
 
-image.rgba_t colormap(double val, int iterations) {
+image.rgba_t colormap(double val) {
 	image.rgba_t color;
 
-	/* Colormap size */
 	int map_len = CMAP_LEN;
-
-// #if FLAT_CMAP
-//	 map_len--;
-//	 int trans = map_len - 1;
-
-//	 /* Base transition */
-//	 int base = val / iterations * trans;
-//	 if (base >= map_len)
-//		 {
-//			 base = map_len - 1;
-//			 val = iterations;
-//		 }
-
-//	 /* Interpolate */
-//	 color.red = red[base]
-//		 + (val - (iterations / trans) * base) / (iterations / trans)
-//		 * (red[base + 1] - red[base]);
-
-//	 color.green = green[base]
-//		 + (val - (iterations / trans) * base) / (iterations / trans)
-//		 * (green[base + 1] - green[base]);
-
-//	 color.blue = blue[base]
-//		 + (val - (iterations / trans) * base) / (iterations / trans)
-//		 * (blue[base + 1] - blue[base]);
-// #else
-	(void) iterations;
 	if (val < config.color_width) {
 		color.red = red[1] - (red[1] - red[0]) * (config.color_width - val) / config.color_width;
 		color.green = green[1] - (green[1] - green[0]) * (config.color_width - val) / config.color_width;
@@ -157,14 +123,13 @@ image.rgba_t colormap(double val, int iterations) {
 	color.green = (int)( (double)green[base] + (double)(green[top] - green[base]) * perc );
 	color.blue = (int)( (double)blue[base] + (double)(blue[top] - blue[base]) * perc);
 
-// #endif
 	return color;
 }
 
 void write_colormap(const char *filename) {
 	image.image_t *img = image.new(config.color_width * CMAP_LEN * 1.5, 20);
 	for (int x = 0; x < img->width; x++) {
-		image.rgba_t c = colormap(x, img->width);
+		image.rgba_t c = colormap(x);
 		for (int y = 0; y < img->height; y++) {
 			*image.getpixel(img, x, y) = c;
 		}
@@ -175,23 +140,11 @@ void write_colormap(const char *filename) {
 	image.free(img);
 }
 
-void save_values(char *basename, double *data, image.dim_t size) {
-	char filename[100] = {};
-	snprintf (filename, sizeof(filename), "%s.txt", basename);
-	FILE *fout = fopen (filename, "w");
-	for (int j = 0; j < size.h; j++) {
-		for (int i = 0; i < size.w; i++)
-			fprintf (fout, "%f", data[i + j * size.w]);
-		fprintf (fout, "\n");
-	}
-	fclose (fout);
-}
-
-void save_image(const char *filename, double *data, int iterations, image.dim_t size) {
+void save_image(const char *filename, double *data, image.dim_t size) {
 	image.image_t *img = image.new(size.w, size.h);
 	for (int j = 0; j < size.h; j++) {
 		for (int i = 0; i < size.w; i++) {
-			image.rgba_t c = colormap(data[i + j * size.w], iterations);
+			image.rgba_t c = colormap(data[i + j * size.w]);
 			*image.getpixel(img, i, j) = c;
 		}
 	}
