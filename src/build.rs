@@ -99,15 +99,30 @@ pub fn build_prog(source_path: &String, output_name: &String) -> Result<(), Vec<
     }]);
 }
 
-fn load_tree(path: &str, mut crumbs: Vec<String>) -> Result<Vec<String>, String> {
+fn preparse<'a>(
+    cache: &'a mut HashMap<String, ModuleInfo>,
+    path: &str,
+) -> Result<&'a ModuleInfo, String> {
+    if !cache.contains_key(path) {
+        cache.insert(path.to_string(), preparser::preparse(path)?);
+    }
+    Ok(cache.get(path).unwrap())
+}
+
+fn load_tree(
+    mut cache: &mut HashMap<String, ModuleInfo>,
+    path: &str,
+    mut crumbs: Vec<String>,
+) -> Result<Vec<String>, String> {
     if crumbs.contains(&path.to_string()) {
         return Err(format!("import loop: {} -> {}", crumbs.join(" -> "), path));
     }
     crumbs.push(path.to_string());
     let mut result = vec![path.to_string()];
-    let head = preparser::preparse(path)?;
-    for imp in &head.imports {
-        let mut r = load_tree(&imp.path, crumbs.clone())?;
+    let head = preparse(&mut cache, path)?;
+    let ii = head.imports.clone();
+    for imp in ii {
+        let mut r = load_tree(&mut cache, &imp.path, crumbs.clone())?;
         result.append(&mut r);
     }
     Ok(result)
@@ -153,7 +168,8 @@ fn parse_mods(modheads: &Vec<ModuleInfo>) -> Result<Vec<Module>, Vec<BuildError>
 // Parses the full project starting with the file at mainpath
 // and including and parsing all its dependencies.
 pub fn parse_project(mainpath: &String) -> Result<Project, Vec<BuildError>> {
-    let mut paths = load_tree(mainpath, vec![]).map_err(|err| {
+    let mut cache = HashMap::new();
+    let mut paths = load_tree(&mut cache, mainpath, vec![]).map_err(|err| {
         vec![BuildError {
             message: err,
             path: String::new(),
@@ -166,14 +182,7 @@ pub fn parse_project(mainpath: &String) -> Result<Project, Vec<BuildError>> {
 
     let mut modheads = Vec::new();
     for p in paths {
-        let h = preparser::preparse(&p).map_err(|err| {
-            vec![BuildError {
-                message: err,
-                path: String::new(),
-                pos: String::new(),
-            }]
-        })?;
-        modheads.push(h)
+        modheads.push(cache.get(&p).unwrap().clone())
     }
 
     // Every modhead already has a unique key based on path, but we'll give
