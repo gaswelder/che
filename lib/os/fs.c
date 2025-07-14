@@ -24,13 +24,17 @@ pub dir_t *dir_open(const char *path) {
 	return d;
 }
 
-/*
- * Moves to next file in the directory and returns
- * its name.
- */
+// Reads one entry from the directory iterator and returns the file name.
 pub const char *dir_next(dir_t *d) {
 	dirent_t *e = OS.readdir(d->d);
-	if (!e) {
+	// Skip "." and "..".
+	if (e != NULL && strcmp(e->d_name, ".") == 0) {
+		e = OS.readdir(d->d);
+	}
+	if (e != NULL && strcmp(e->d_name, "..") == 0) {
+		e = OS.readdir(d->d);
+	}
+	if (e == NULL) {
 		return NULL;
 	}
 	return e->d_name;
