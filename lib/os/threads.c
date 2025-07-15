@@ -35,6 +35,25 @@ pub int wait(thr_t *t, void **res) {
 	return err;
 }
 
+// Runs n threads in parallel, each executing thmain with args[i].
+pub void parallel(thr_func *thrmain, void **args, size_t n) {
+	// Spawn the workers.
+	thr_t **tt = calloc!(n, sizeof(thr_t));
+	for (size_t i = 0; i < n; i++) {
+		tt[i] = start(thrmain, args[i]);
+	}
+
+	// Wait for all to finish.
+	for (size_t i = 0; i < n; i++) {
+		int err = wait(tt[i], NULL);
+		if (err) {
+			panic("thread wait failed: %d (%s)", err, strerror(err));
+		}
+	}
+
+	free(tt);
+}
+
 /*
  * Detaches the thread. Returns false on error.
  */

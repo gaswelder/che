@@ -70,7 +70,6 @@ int main(int argc, char *argv[]) {
 	REQUESTLEN = w->nwritten;
 	writer.free(w);
 
-
 	// Adjust the workers number if there is not enough work for all.
 	if (concurrency > requests_to_do) {
 		concurrency = requests_to_do;
@@ -80,6 +79,7 @@ int main(int argc, char *argv[]) {
 	// Distribute work across the workers.
 	//
 	task_t *tasks = calloc!(concurrency, sizeof(task_t));
+	void **thr_args = calloc!(concurrency, sizeof(void *));
 	size_t slice_size = requests_to_do / concurrency;
 	if (requests_to_do % concurrency != 0) {
 		slice_size++;
@@ -93,29 +93,11 @@ int main(int argc, char *argv[]) {
 		tasks[i].id = i;
 		tasks[i].n = grab;
 		cur += grab;
+		thr_args[i] = &tasks[i];
 	}
 
-	// Print the header in advance.
-	// The workers will start printing results soon.
 	print_result_header();
-
-	//
-	// Spawn the workers.
-	//
-	threads.thr_t **tt = calloc!(concurrency, sizeof(threads.thr_t));
-	for (size_t i = 0; i < concurrency; i++) {
-		tt[i] = threads.start(thrmain, &tasks[i]);
-	}
-
-	//
-	// Wait for all to finish.
-	//
-	for (size_t i = 0; i < concurrency; i++) {
-		int err = threads.wait(tt[i], NULL);
-		if (err) {
-			panic("thread wait failed: %d (%s)", err, strerror(err));
-		}
-	}
+	threads.parallel(thrmain, thr_args, concurrency);
 	return 0;
 }
 
