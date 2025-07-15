@@ -35,16 +35,44 @@ pub int wait(thr_t *t, void **res) {
 	return err;
 }
 
-// Runs n threads in parallel, each executing thmain with args[i].
+typedef {
+	size_t n;
+	void **args;
+	thr_func *f;
+} tasklist_t;
+
+void *seqworker(void *arg) {
+	tasklist_t *l = arg;
+	for (size_t i = 0; i < l->n; i++) {
+		l->f(l->args[i]);
+	}
+	return NULL;
+}
+
+// Runs 8 threads in parallel, each executing thrmain with args[i].
 pub void parallel(thr_func *thrmain, void **args, size_t n) {
+	int per_worker = (n + (8 - 1)) / 8;
+
+	tasklist_t *lists = calloc!(8, sizeof(tasklist_t));
+	for (int i = 0; i < 8; i++) {
+		lists[i].f = thrmain;
+		lists[i].args = calloc!(per_worker, sizeof(void *));
+	}
+
+	for (size_t i = 0; i < n; i++) {
+		size_t w = i % 8;
+		tasklist_t *l = &lists[w];
+		l->args[l->n++] = args[i];
+	}
+
 	// Spawn the workers.
 	thr_t **tt = calloc!(n, sizeof(thr_t));
-	for (size_t i = 0; i < n; i++) {
-		tt[i] = start(thrmain, args[i]);
+	for (size_t i = 0; i < 8; i++) {
+		tt[i] = start(&seqworker, &lists[i]);
 	}
 
 	// Wait for all to finish.
-	for (size_t i = 0; i < n; i++) {
+	for (size_t i = 0; i < 8; i++) {
 		int err = wait(tt[i], NULL);
 		if (err) {
 			panic("thread wait failed: %d (%s)", err, strerror(err));
@@ -52,6 +80,10 @@ pub void parallel(thr_func *thrmain, void **args, size_t n) {
 	}
 
 	free(tt);
+	for (int i = 0; i < 8; i++) {
+		free(lists[i].args);
+	}
+	free(lists);
 }
 
 /*

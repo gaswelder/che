@@ -5,7 +5,7 @@
 #import mandel.c
 #import mconfig.c
 #import opt
-#import os/proc
+#import os/threads
 
 typedef { double xmin, xmax, ymin, ymax; } area_t;
 typedef { area_t area; int frame; } job_t;
@@ -74,12 +74,12 @@ int main (int argc, char **argv) {
 	for (int i = 0; i < config.zoom_frames; i++) {
 		clip[i] = &jobs[i];
 	}
-	proc.parallel(&workerfunc, clip);
+	threads.parallel(&workerfunc, clip, config.zoom_frames);
 	free(clip);
 	return 0;
 }
 
-int workerfunc(void *arg) {
+void *workerfunc(void *arg) {
 	job_t *job = arg;
 	area_t a = job->area;
 	verbprint("frame %d/%d, ", job->frame, config.zoom_frames);
@@ -101,8 +101,8 @@ int workerfunc(void *arg) {
 	fprintf(stderr, "written %s\n", filename);
 
 	image.free(img);
-	free (data);
-	return 0;
+	free(data);
+	return NULL;
 }
 
 image.rgba_t colormap(double val) {
