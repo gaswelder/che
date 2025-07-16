@@ -2,10 +2,13 @@
 
 #import formats/bmp
 #import image
-#import mandel.c
 #import mconfig.c
 #import opt
 #import os/threads
+#import complex
+
+// log(2)
+const double logtwo = 0.693147180559945;
 
 typedef { double xmin, xmax, ymin, ymax; } area_t;
 typedef { area_t area; int frame; } job_t;
@@ -51,25 +54,6 @@ int main (int argc, char **argv) {
 		return 0;
 	}
 
-	//
-	// Create the jobs table.
-	//
-	double hw = (config.xmax - config.xmin) / 2;
-	double hh = (config.ymax - config.ymin) / 2;
-	job_t *jobs = calloc!(config.zoom_frames, sizeof(job_t));
-	for (int frame = 0; frame < config.zoom_frames; frame++) {
-		// The first frame spans [center-hwidth, center+hwidth]
-		// The next frame space [center-hwidth/(1+zoom_rate), center+hwidth/(1+zoom_rate)]
-		jobs[frame].frame = frame;
-		jobs[frame].area.xmin = config.zoomx - hw;
-		jobs[frame].area.xmax = config.zoomx + hw;
-		jobs[frame].area.ymin = config.zoomy - hh;
-		jobs[frame].area.ymax = config.zoomy + hh;
-		hw /= (1 + config.zoom_rate);
-		hh /= (1 + config.zoom_rate);
-		// iterations *= (1 + zoom_rate * 0.25 * frame);
-	}
-
 	threads.pipe_t *c = threads.newpipe();
 
 	// Spawn 8 workers consuming the queue.
@@ -78,9 +62,26 @@ int main (int argc, char **argv) {
 		tt[i] = threads.start(workerfunc, c);
 	}
 
-	// Send the jobs to the queue.
+	//
+	// Send jobs to the queue.
+	//
+	double hw = (config.xmax - config.xmin) / 2;
+	double hh = (config.ymax - config.ymin) / 2;
+	job_t *jobs = calloc!(config.zoom_frames, sizeof(job_t));
 	for (int i = 0; i < config.zoom_frames; i++) {
-		threads.pwrite(c, &jobs[i]);
+		job_t *job = &jobs[i];
+		// The first frame spans [center-hwidth, center+hwidth]
+		// The next frame space [center-hwidth/(1+zoom_rate), center+hwidth/(1+zoom_rate)]
+		job->frame = i;
+		job->area.xmin = config.zoomx - hw;
+		job->area.xmax = config.zoomx + hw;
+		job->area.ymin = config.zoomy - hh;
+		job->area.ymax = config.zoomy + hh;
+		hw /= (1 + config.zoom_rate);
+		hh /= (1 + config.zoom_rate);
+		// iterations *= (1 + zoom_rate * 0.25 * frame);
+
+		threads.pwrite(c, job);
 	}
 	threads.pclose(c);
 
@@ -89,6 +90,7 @@ int main (int argc, char **argv) {
 		threads.wait(tt[i], NULL);
 	}
 
+	free(jobs);
 	free(tt);
 	threads.freepipe(c);
 	return 0;
@@ -97,6 +99,9 @@ int main (int argc, char **argv) {
 void *workerfunc(void *arg) {
 	threads.pipe_t *c = arg;
 	void *buf[1] = {};
+	image.image_t *img = image.new(config.image_width, config.image_height);
+	char filename[100] = {};
+
 	while (true) {
 		if (!threads.pread(c, buf)) {
 			break;
@@ -106,25 +111,69 @@ void *workerfunc(void *arg) {
 		verbprint("frame %d/%d, ", job->frame, config.zoom_frames);
 		verbprint("x[%f, %f], y[%f, %f]\n", a.xmin, a.xmax, a.ymin, a.ymax);
 
-		double *data = mandel.gen(config.image_width, config.image_height, a.xmin, a.xmax, a.ymin, a.ymax, config.iterations);
-		char basename[20];
-		snprintf (basename, 20, "out-%010d", job->frame);
+		draw(img, a.xmin, a.xmax, a.ymin, a.ymax, config.iterations);
 
-		image.dim_t image_size = { config.image_width, config.image_height };
-		image.image_t *img = image.new(image_size.w, image_size.h);
-		draw(img, image_size, data);
-
-		char filename[100] = {};
-		snprintf(filename, sizeof(filename), "dump/%s.bmp", basename);
+		snprintf(filename, sizeof(filename), "dump/%03d.bmp", job->frame);
 		if (!bmp.write(img, filename)) {
 			panic("failed to write bmp: %s", strerror(errno));
 		}
-		fprintf(stderr, "written %s\n", filename);
-
-		image.free(img);
-		free(data);
+		fprintf(stderr, "%s\n", filename);
 	}
+	image.free(img);
 	return NULL;
+}
+
+void draw(image.image_t *img, double xmin, xmax, ymin, ymax, int it) {
+	int width = img->width;
+	int height = img->height;
+	double xres = (xmax - xmin) / width;
+	double yres = (ymax - ymin) / height;
+	for (int j = 0; j < height; j++) {
+		for (int i = 0; i < width; i++) {
+			complex.t c = {
+				.re = xmin + i * xres,
+				.im = ymin + j * yres
+			};
+			double v = get_val(c, it);
+			*image.getpixel(img, i, j) = colormap(v);
+		}
+	}
+}
+
+// The Mandelbrot set is based on the function
+//
+//      f(z, c) = z^2 + c.
+//
+// The variable c is reinterpreted as a pixel coordinate: x=Re(c), y=Im(c).
+// For each sample point c we're looking how quickly the sequence
+//
+//      |f(0, c)|, |f(0, f(0, c))|, ...
+//
+// goes to infinity. Pixels may be colored then according to how soon the
+// sequence crosses a chosen threshold. The threshold should be higher than 2
+// (which is max(abs(f(any, any)))).
+
+// * If c is held constant and the initial value of z is varied instead,
+// we get a Julia set instead.
+
+double get_val(complex.t c, int it) {
+	complex.t z = { 0, 0 };
+
+	int count = 0;
+	while (complex.abs2(z) < 4 && count < it) {
+		/* Z = Z^2 + C */
+		z = complex.sum( complex.mul(z, z), c );
+		count++;
+	}
+	if (complex.abs2(z) < 4) {
+		return 0;
+	}
+	return smooth(count, complex.abs(z));
+}
+
+double smooth(int count, double amp) {
+	double off = (double) count + 1;
+	return off - log(log(amp)) / logtwo;
 }
 
 image.rgba_t colormap(double val) {
@@ -165,13 +214,4 @@ void write_colormap(const char *filename) {
 		panic("failed to write bmp: %s", strerror(errno));
 	}
 	image.free(img);
-}
-
-void draw(image.image_t *img, image.dim_t size, double *data) {
-	for (int j = 0; j < size.h; j++) {
-		for (int i = 0; i < size.w; i++) {
-			image.rgba_t c = colormap(data[i + j * size.w]);
-			*image.getpixel(img, i, j) = c;
-		}
-	}
 }
