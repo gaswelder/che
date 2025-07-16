@@ -70,38 +70,60 @@ int main (int argc, char **argv) {
 		// iterations *= (1 + zoom_rate * 0.25 * frame);
 	}
 
-	void **clip = calloc!(config.zoom_frames + 1, sizeof(&jobs[0]));
-	for (int i = 0; i < config.zoom_frames; i++) {
-		clip[i] = &jobs[i];
+	threads.pipe_t *c = threads.newpipe();
+
+	// Spawn 8 workers consuming the queue.
+	threads.thr_t **tt = calloc!(8, sizeof(threads.thr_t *));
+	for (int i = 0; i < 8; i++) {
+		tt[i] = threads.start(workerfunc, c);
 	}
-	threads.parallel(&workerfunc, clip, config.zoom_frames);
-	free(clip);
+
+	// Send the jobs to the queue.
+	for (int i = 0; i < config.zoom_frames; i++) {
+		threads.pwrite(c, &jobs[i]);
+	}
+	threads.pclose(c);
+
+	// Wait for all to finish.
+	for (int i = 0; i < 8; i++) {
+		threads.wait(tt[i], NULL);
+	}
+
+	free(tt);
+	threads.freepipe(c);
 	return 0;
 }
 
 void *workerfunc(void *arg) {
-	job_t *job = arg;
-	area_t a = job->area;
-	verbprint("frame %d/%d, ", job->frame, config.zoom_frames);
-	verbprint("x[%f, %f], y[%f, %f]\n", a.xmin, a.xmax, a.ymin, a.ymax);
+	threads.pipe_t *c = arg;
+	void *buf[1] = {};
+	while (true) {
+		if (!threads.pread(c, buf)) {
+			break;
+		}
+		job_t *job = buf[0];
+		area_t a = job->area;
+		verbprint("frame %d/%d, ", job->frame, config.zoom_frames);
+		verbprint("x[%f, %f], y[%f, %f]\n", a.xmin, a.xmax, a.ymin, a.ymax);
 
-	double *data = mandel.gen(config.image_width, config.image_height, a.xmin, a.xmax, a.ymin, a.ymax, config.iterations);
-	char basename[20];
-	snprintf (basename, 20, "out-%010d", job->frame);
+		double *data = mandel.gen(config.image_width, config.image_height, a.xmin, a.xmax, a.ymin, a.ymax, config.iterations);
+		char basename[20];
+		snprintf (basename, 20, "out-%010d", job->frame);
 
-	image.dim_t image_size = { config.image_width, config.image_height };
-	image.image_t *img = image.new(image_size.w, image_size.h);
-	draw(img, image_size, data);
+		image.dim_t image_size = { config.image_width, config.image_height };
+		image.image_t *img = image.new(image_size.w, image_size.h);
+		draw(img, image_size, data);
 
-	char filename[100] = {};
-	snprintf(filename, sizeof(filename), "dump/%s.bmp", basename);
-	if (!bmp.write(img, filename)) {
-		panic("failed to write bmp: %s", strerror(errno));
+		char filename[100] = {};
+		snprintf(filename, sizeof(filename), "dump/%s.bmp", basename);
+		if (!bmp.write(img, filename)) {
+			panic("failed to write bmp: %s", strerror(errno));
+		}
+		fprintf(stderr, "written %s\n", filename);
+
+		image.free(img);
+		free(data);
 	}
-	fprintf(stderr, "written %s\n", filename);
-
-	image.free(img);
-	free(data);
 	return NULL;
 }
 
