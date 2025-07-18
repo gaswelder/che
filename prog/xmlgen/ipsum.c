@@ -11,9 +11,6 @@ int GenContents_quantity = 0;
 double GenContents_initial = 0;
 double GenContents_increases = 0;
 const int COUNTRIES_USA = 0;
-char *markup[3]={"emph","keyword","bold"};
-int PrintANY_st[3] = {};
-char tick[3] = "";
 
 pub void emit(const char *s) {
 	FILE *out = stdout;
@@ -165,7 +162,7 @@ pub void emit(const char *s) {
 			fprintf(out,"%.2f",GenContents_initial*(1.2+rnd.exponential(2.5)));
 		}
 		case "any": {
-			PrintANY(out);
+			PrintANY();
 		}
 		default: {
 			panic("unknown spec: %s", s);
@@ -194,31 +191,9 @@ void fsentence(FILE *out, int nwords) {
     }
 }
 
-void PrintANY(FILE *out) {
-    int sen=1+(int)rnd.exponential(20);
-    int stptr = 0;
-    for (int i=0; i < sen; i++) {
-        if (rnd.urange(0, 1) < 0.1 && stptr < 2) {
-            while (true) {
-                PrintANY_st[stptr] = rnd.intn(3);
-                if (!tick[PrintANY_st[stptr]]) {
-                    break;
-                }
-            }
-            tick[PrintANY_st[stptr]] = 1;
-            fprintf(out,"<%s> ", markup[PrintANY_st[stptr]]);
-            stptr++;
-        }
-        else if (rnd.urange(0, 1) < 0.8 && stptr != 0) {
-            --stptr;
-            fprintf(out,"</%s> ",markup[PrintANY_st[stptr]]);
-            tick[PrintANY_st[stptr]] = 0;
-        }
+void PrintANY() {
+    int n = 1+ (int)rnd.exponential(2);
+    for (int i=0; i < n; i++) {
 		emit("sentence2");
-    }
-    while (stptr) {
-        --stptr;
-        fprintf(out,"</%s> ",markup[PrintANY_st[stptr]]);
-        tick[PrintANY_st[stptr]]=0;
     }
 }

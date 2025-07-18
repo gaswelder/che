@@ -2,9 +2,17 @@
 
 #import strings
 
-pub enum { REQUIRED, IMPLIED }
+pub enum {
+	REQUIRED = 1,
+	IMPLIED = 2,
+}
 
-pub enum { IDREF, ID, CDATA }
+// Attribute types
+pub enum {
+	ID = 1, // ID attribute (such as <order id="order123">)
+	IDREF = 2, // Same as ID, but refers to another element's ID
+	CDATA = 3, // Character data ("foo bar")
+}
 
 pub typedef {
 	char name[100];
@@ -12,7 +20,7 @@ pub typedef {
 } element_t;
 
 pub typedef {
-	bool islist;
+	bool islist; // if true, data is a child_list_t; if false, data is a child_t.
 	void *data;
 } child_entry_t;
 
@@ -36,17 +44,37 @@ pub typedef {
 
 pub typedef {
 	char host[100];
-
 	int size;
 	att_t items[10];
 } attlist_t;
 
+// Represents the entire parsed definition.
 pub typedef {
 	element_t elements[100];
 	int elemnum;
 	attlist_t attlists[100];
 	int attrnum;
 } schema_t;
+
+pub element_t *get_element(schema_t *s, const char *name) {
+	for (int i = 0; i < s->elemnum; i++) {
+		element_t *e = &s->elements[i];
+		if (strcmp(e->name, name) == 0) {
+			return e;
+		}
+	}
+	return NULL;
+}
+
+pub attlist_t *get_attributes(schema_t *s, const char *name) {
+	for (int i = 0; i < s->attrnum; i++) {
+		attlist_t *a = &s->attlists[i];
+		if (strcmp(a->host, name) == 0) {
+			return a;
+		}
+	}
+	return NULL;
+}
 
 pub schema_t parse(const char *real_dtd) {
 	schema_t schema = {};

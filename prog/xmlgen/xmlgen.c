@@ -1,10 +1,99 @@
+#import formats/dtd
+#import ipsum.c
 #import opt
 #import rnd
-#import ipsum.c
-#import schema.c
 
-int stackdepth=0;
-schema.Element *stack[64] = {};
+const char *real_dtd = "
+	<!ELEMENT site (regions, categories, catgraph, people, open_auctions, closed_auctions)>
+	<!ELEMENT categories (category+)>
+	<!ELEMENT regions (africa, asia, australia, europe, namerica, samerica)>
+	<!ELEMENT europe  (item*)>
+	<!ELEMENT australia	   (item*)>
+	<!ELEMENT africa  (item*)>
+	<!ELEMENT namerica		(item*)>
+	<!ELEMENT samerica		(item*)>
+	<!ELEMENT asia	(item*)>
+	<!ELEMENT catgraph		(edge*)>
+	<!ELEMENT edge EMPTY>
+	<!ATTLIST edge from IDREF #REQUIRED to IDREF #REQUIRED>
+	<!ELEMENT category (name, description)>
+	<!ATTLIST category		id ID #REQUIRED>
+	<!ELEMENT item (location, quantity, name, payment, description, shipping, incategory+, mailbox)>
+	<!ATTLIST item			id ID #REQUIRED featured CDATA #IMPLIED>
+	<!ELEMENT location		(#PCDATA)>
+	<!ELEMENT quantity		(#PCDATA)>
+	<!ELEMENT payment (#PCDATA)>
+	<!ELEMENT name	(#PCDATA)>
+	<!ELEMENT name	(#PCDATA)>
+	<!ELEMENT name	(#PCDATA)>
+	<!ELEMENT description	 (text | parlist)>
+	<!ELEMENT parlist	  (listitem*)>
+	<!ELEMENT text	(#PCDATA)>
+	<!ELEMENT listitem		(text | parlist)*>
+	<!ELEMENT shipping		(#PCDATA)>
+	<!ELEMENT reserve (#PCDATA)>
+	<!ELEMENT incategory	  EMPTY>
+	<!ATTLIST incategory	  category IDREF #REQUIRED>
+	<!ELEMENT mailbox (mail*)>
+	<!ELEMENT mail (from, to, date, text)>
+	<!ELEMENT from	(#PCDATA)>
+	<!ELEMENT to	  (#PCDATA)>
+	<!ELEMENT date	(#PCDATA)>
+	<!ELEMENT people  (person*)>
+	<!ELEMENT person  (name, emailaddress, phone?, address?, homepage?, creditcard?, profile?, watches?)>
+	<!ATTLIST person		  id ID #REQUIRED>
+	<!ELEMENT emailaddress	(#PCDATA)>
+	<!ELEMENT phone   (#PCDATA)>
+	<!ELEMENT homepage		(#PCDATA)>
+	<!ELEMENT creditcard	  (#PCDATA)>
+	<!ELEMENT address (street, city, country, province?, zipcode)>
+	<!ELEMENT street  (#PCDATA)>
+	<!ELEMENT city	(#PCDATA)>
+	<!ELEMENT province		(#PCDATA)>
+	<!ELEMENT zipcode (#PCDATA)>
+	<!ELEMENT country (#PCDATA)>
+	<!ELEMENT profile (interest*, education?, gender?, business, age?)>
+	<!ATTLIST profile income CDATA #IMPLIED>
+	<!ELEMENT education	   (#PCDATA)>
+	<!ELEMENT income  (#PCDATA)>
+	<!ELEMENT gender  (#PCDATA)>
+	<!ELEMENT business		(#PCDATA)>
+	<!ELEMENT age	 (#PCDATA)>
+	<!ELEMENT interest		EMPTY>
+	<!ATTLIST interest		category IDREF #REQUIRED>
+	<!ELEMENT watches (watch*)>
+	<!ELEMENT watch		   EMPTY>
+	<!ATTLIST watch		   open_auction IDREF #REQUIRED>
+	<!ELEMENT open_auctions   (open_auction*)>
+	<!ELEMENT open_auction	(initial, reserve?, bidder*, current, privacy?, itemref, seller, annotation, quantity,type, interval)>
+	<!ATTLIST open_auction	id ID #REQUIRED>
+	<!ELEMENT privacy (#PCDATA)>
+	<!ELEMENT amount  (#PCDATA)>
+	<!ELEMENT current (#PCDATA)>
+	<!ELEMENT increase		(#PCDATA)>
+	<!ELEMENT type	(#PCDATA)>
+	<!ELEMENT itemref		 EMPTY>
+	<!ATTLIST itemref		 item IDREF #REQUIRED>
+	<!ELEMENT bidder (date, time, personref, increase)>
+	<!ELEMENT time	(#PCDATA)>
+	<!ELEMENT status (#PCDATA)>
+	<!ELEMENT initial (#PCDATA)>
+	<!ELEMENT personref	   EMPTY>
+	<!ATTLIST personref	   person IDREF #REQUIRED>
+	<!ELEMENT seller		  EMPTY>
+	<!ATTLIST seller		  person IDREF #REQUIRED>
+	<!ELEMENT interval		(start, end)>
+	<!ELEMENT start   (#PCDATA)>
+	<!ELEMENT end	 (#PCDATA)>
+	<!ELEMENT closed_auctions (closed_auction*)>
+	<!ELEMENT closed_auction  (seller, buyer, itemref, price, date, quantity, type, annotation?)>
+	<!ELEMENT price   (#PCDATA)>
+	<!ELEMENT buyer		   EMPTY>
+	<!ATTLIST buyer		   person IDREF #REQUIRED>
+	<!ELEMENT annotation	  (author, description?, happiness)>
+	<!ELEMENT happiness	   (#PCDATA)>
+	<!ELEMENT author EMPTY>
+	<!ATTLIST author		  person IDREF #REQUIRED>";
 
 const char *mapgen(const char *elemname) {
 	if (!elemname) return NULL;
@@ -39,214 +128,102 @@ const char *mapgen(const char *elemname) {
         case "date", "start", "end": { return "date"; }
         case "zipcode": { return "zip"; }
     }
-	return NULL;
+	return "any";
 }
 
 int main(int argc, char **argv) {
-    float global_scale_factor = 1;
-    opt.opt_float("f", "global_scale_factor", &global_scale_factor);
     opt.parse(argc, argv);
 
-    schema.InitializeSchema(global_scale_factor);
+    dtd.schema_t schema = dtd.parse(real_dtd);
     fprintf(stdout, "<?xml version=\"1.0\" standalone=\"yes\"?>\n");
-    Tree(stdout, schema.GetSchemaNode(schema.nameid("site")));
+	emit_element(&schema, "site", 0);
     return 0;
 }
 
-void Tree(FILE *out, schema.Element *element) {
-    if (element->type&0x10) {
-        return;
-    }
-    OpeningTag(out, element);
-    
-    element->flag++;
+void emit_element(dtd.schema_t *s, const char *name, int level) {
+	if (level > 10) return;
+	indent(level);
 
-	const char *spec = mapgen(element->name);
-	if (spec != NULL) {
-		ipsum.emit(spec);
-		if (element->elm[0] != 0) {
-        	fprintf(out,"\n");
-    	}
+	dtd.element_t *e = dtd.get_element(s, name);
+	if (!e) panic("element not found: %s", name);
+
+	printf("<%s", name);
+	dtd.attlist_t *a = dtd.get_attributes(s, name);
+	if (a) {
+		for (int i = 0; i < a->size; i++) {
+			printf(" %s", "attr");
+		}
 	}
-
-    if (element->id == schema.nameid("description") || element->id == schema.nameid("listitem")) {
-        schema.Element *root;
-        double alt = rnd.urange(0, 1);
-        double sum = 0;
-        int *child_id = element->elm;            
-        while (*child_id) {
-            schema.ProbDesc pd = schema.probDescForChild(element, *child_id);
-            sum += pd.mean;
-            if (sum >= alt) {
-                root = schema.GetSchemaNode(*child_id);
-                break;
-            }
-            child_id++;
-        }
-        if (!root) {
-            panic("failed to determine root");
-        }
-        Tree(out, root);
-    }
-    else {
-        int *child_id = element->elm;
-        while (*child_id) {
-            schema.ProbDesc pd = schema.probDescForChild(element, *child_id);
-            int num = (int)(GenRandomNum(&pd) + 0.5);
-            for (int i = 0; i < num; i++) {
-                Tree(out, schema.GetSchemaNode(*child_id));
-            }
-            child_id++;
-        }
-    }
-    ClosingTag(element);
-    element->flag--;
+	printf(">\n");
+	emit_child_list(s, e->children, level + 1);
+	indent(level);
+	printf("</%s>\n", name);
 }
 
-void OpeningTag(FILE *out, schema.Element *element) {
-    fprintf(out, "<%s", element->name);
-
-    stack[stackdepth++] = element;
-
-    for (int i=0; i<5; i++) {
-        schema.AttDesc *att = &element->att[i];
-        if (att->name[0] == '\0') {
-            break;
-        }
-
-        char *attname;
-        if (att->name[0] == '\1') {
-            attname = schema.GetSchemaNode(att->ref)->name;
-        } else {
-            attname = att->name;
-        }
-
-        switch (att->type) {
-            case schema.ATTR_TYPE_1: {
-                fprintf(out, " %s=\"%s%d\"", attname, element->name, element->set.id++);
-            }
-
-			// IDREF #REQUIRED
-            case schema.ATTR_TYPE_2: {
-                int ref = 0;
-                if (!ItemIdRef(element, &ref)) {
-                    schema.ProbDesc pd = schema.probDescForAttr(element->id, att->name);
-                    int element_id = att->ref;
-                    schema.Element* element = schema.GetSchemaNode(element_id);
-
-					// pd is a copy, so we can tweak it.
-					pd.min = 0;
-					pd.max = element->set.size - 1;
-					pd.mean = pd.mean * pd.max;
-					pd.dev = pd.dev * pd.max;
-                    ref = (int) GenRandomNum(&pd);
-                }
-                fprintf(out," %s=\"%s%d\"", attname, schema.GetSchemaNode(att->ref)->name, ref);
-            }
-            case schema.ATTR_TYPE_3: {
-                if (rnd.urange(0, 1) < att->prcnt) {
-                    if (!strcmp(attname,"income")) {
-                        double d = 40000 + 30000 * rnd.gauss();
-                        if (d < 9876) {
-                            d = 9876;
-                        }
-                        fprintf(out," %s=\"%.2f\"",attname, d);
-                    } else {
-                        fprintf(out," %s=\"yes\"",attname);
-                    }
-                }
-            }
-            default: {
-                fflush(out);
-                panic("unknown ATT type %s\n", attname);
-            }
-        }
-    }
-    if (element->elm[0] == 0 && (element->att[0].name[0])) {
-        fprintf(out,"/>\n");
-    } else {
-        fprintf(out,">");
-        if (element->elm[0] != 0 || element->id == schema.nameid("text")) {
-            fprintf(out,"\n");
-        }
-    }
+void emit_child_list(dtd.schema_t *s, dtd.child_list_t *l, int level) {
+	int n = 1;
+	switch (l->quantifier) {
+		case '\0': {}
+		case '*': {
+			n = rnd.intn(3);
+		}
+		default: {
+			panic("unimplemented quantifier: %c", l->quantifier);
+		}
+	}
+	for (int j = 0; j < n; j++) {
+		switch (l->jointype) {
+			// \0 means the list has only one element.
+			case '\0', ',': {
+				// (a, b, c) -> emit all in sequence
+				for (int i = 0; i < l->size; i++) {
+					emit_child_entry(s, &l->items[i], level);
+				}
+			}
+			case '|': {
+				// (a | b | c) -> emit random one
+				int i = rnd.intn(l->size);
+				emit_child_entry(s, &l->items[i], level);
+			}
+			default: {
+				panic("unimplemented jointype: %c", l->jointype);
+			}
+		}
+	}
 }
 
-void ClosingTag(schema.Element *element) {
-    stackdepth--;
-    if (element->id == schema.nameid("text")) {
-        fprintf(stdout, "\n");
-    }
-    if ((element->att[0].name[0]) && element->elm[0] == 0) {
-        return;
-    }
-    fprintf(stdout, "</%s>\n",element->name);
+void emit_child_entry(dtd.schema_t *s, dtd.child_entry_t *ce, int level) {
+	if (ce->islist) {
+		panic("sublist");
+	} else {
+		emit_child(s, ce->data, level);
+	}
 }
 
-int ItemIdRef(schema.Element *child, int *iRef) {
-	if (child->id != schema.nameid("itemref") || stackdepth < 2) {
-        return 0;
-    }
-    schema.Element *element = stack[stackdepth-2];
-    if (element->id == schema.nameid("open_auction")) {
-        return GenItemIdRef(schema.getidr(0), iRef);
-    }
-    if (element->id == schema.nameid("closed_auction")) {
-        return GenItemIdRef(schema.getidr(1), iRef);
-    }
-    return 0;
+void emit_child(dtd.schema_t *s, dtd.child_t *c, int level) {
+	int n = 1;
+	switch (c->quantifier) {
+		case '\0': {}
+		case '*': { n = rnd.intn(3); }
+		case '+': { n = 1 + rnd.intn(2); }
+		case '?': { n = rnd.intn(2); }
+		default: {
+			panic("q = %c", c->quantifier);
+		}
+	}
+	for (int i = 0; i < n; i++) {
+		if (strcmp(c->name, "#PCDATA") == 0) {
+			ipsum.emit(mapgen(c->name));
+			printf("\n");
+		} else {
+			emit_element(s, c->name, level);
+		}
+	}
 }
 
-int GenItemIdRef(schema.idrepro *rep, int *idref) {
-    if (rep->out >= rep->max) {
-        return 0;
+void indent(int level) {
+    for (int i = 0; i < level; i++) {
+        putchar(' ');
+		putchar(' ');
     }
-
-    rep->out++;
-    if (rep->brosout >= rep->brosmax) {
-        *idref = rep->cur++;
-        return 2;
-    }
-
-    rep->dir = rnd.intn(2);
-    while (rep->dir != rep->mydir && rep->brosout < rep->brosmax) {
-        rep->brosout++;
-        rep->cur++;
-        rep->dir = rnd.intn(2);
-    }
-    *idref = rep->cur++;
-    return 1;
-}
-
-double GenRandomNum(schema.ProbDesc *pd) {
-    if (pd->max <= 0) {
-        return 0;
-    }
-
-    if (pd->type == 0) {
-        if (pd->min == pd->max && pd->min > 0) {
-            return pd->min;
-            panic("undefined probdesc");
-        }
-    }
-
-    if (pd->type == 1) {
-        return rnd.urange(pd->min, pd->max);
-    }
-
-    if (pd->type == 2) {
-        double res = pd->mean + pd->dev * rnd.gauss();
-        if (res > pd->max) res = pd->max;
-        if (res < pd->min) res = pd->min;
-        return res;
-    }
-
-    if (pd->type == 3) {
-        double res = pd->min + rnd.exponential(pd->mean);
-        if (res > pd->max) {
-            res = pd->max;
-        }
-        return res;
-    }
-    panic("woops! undefined distribution.\n");
 }
