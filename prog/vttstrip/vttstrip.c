@@ -9,6 +9,12 @@ int main() {
 	}
 	strcpy(buffer, "\n");
 	output(buffer);
+
+	if (vtt.err(r)) {
+		fprintf(stderr, "%s\n", vtt.err(r));
+		vtt.freereader(r);
+		return 1;
+	}
 	vtt.freereader(r);
 	return 0;
 }
@@ -27,13 +33,24 @@ void output(char *buf) {
 	}
 }
 
+// Copies the first complete line in buf into line and shifts
+// the bytes in buf. Returns false if there is no \n character in buf.
 bool popline(char *buf, char *line) {
+	// Find where the first line ends.
 	char *np = strchr(buf, '\n');
-	if (!np) return false;
+	if (!np) {
+		return false;
+	}
+
+	// The first line length and the total buf length.
 	size_t n = np - buf;
 	size_t total = strlen(buf);
+
+	// Copy the first line out.
 	buf[n] = '\0';
 	strcpy(line, buf);
+
+	// Shift the buffer.
 	memmove(buf, np + 1, total - n);
 	return true;
 }

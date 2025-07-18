@@ -3,46 +3,84 @@
 pub typedef {
 	char line[4096];
 	FILE *f;
-	bool init;
 	char *text;
 	size_t textcap;
+	char *error;
 } reader_t;
 
+// Creates a VTT reader for file f.
 pub reader_t *reader(FILE *f) {
 	reader_t *r = calloc!(1, sizeof(reader_t));
 	r->textcap = 100;
 	r->text = calloc!(100, 1);
 	r->f = f;
+	if (!init(r)) {
+		seterror(r, "failed to initialize");
+	}
 	return r;
 }
 
+// Frees the reader.
 pub void freereader(reader_t *r) {
+	if (r->error) {
+		free(r->error);
+	}
 	free(r->text);
 	free(r);
 }
 
-bool nextline(reader_t *r) {
-	if (!fgets(r->line, sizeof(r->line), r->f)) {
+// Returns the error encountered by the reader.
+pub char *err(reader_t *r) {
+	return r->error;
+}
+
+bool init(reader_t *r) {
+	// WEBVTT
+	if (!loadline(r)) return false;
+	if (strcmp(r->line, "WEBVTT") != 0) {
+		seterror(r, "expected WEBVTT at line 1");
 		return false;
 	}
-	strings.rtrim(r->line, "\r\n");
+
+	// A sequence of "k: v" headers.
+	while (true) {
+		if (!loadline(r)) return false;
+
+		// Stop at an empty line.
+		if (r->line[0] == '\0') break;
+
+		char *delim = strstr(r->line, ": ");
+		if (!delim) {
+			seterror(r, "failed to parse header: %s", r->line);
+			return false;
+		}
+		*delim = '\0';
+	}
 	return true;
 }
 
 // Reads the next subtitle.
 pub bool read(reader_t *r) {
-	if (!r->init) {
-		r->init = true;
-		if (!init(r)) return false;
+	// Skip empty lines
+	while (true) {
+		if (!loadline(r)) return false;
+		if (r->line[0] != '\0') break;
 	}
 
-	if (!nextline(r) || !cue(r->line)) return false;
+	// 00:09:53.000 --> 00:09:55.910 align:start position:0%
+	if (!cue(r->line)) {
+		seterror(r, "failed to parse cue line: %s", r->line);
+		return false;
+	}
 
-	// text
+	// Text lines
 	if (r->text) r->text[0] = '\0';
 	while (true) {
-		if (!nextline(r)) return false;
+		if (!loadline(r)) return false;
+
+		// Stop at an empty line.
 		if (r->line[0] == '\0') break;
+
 		if (strlen(r->text) + strlen(r->line) + 2 > r->textcap) {
 			r->textcap *= 2;
 			r->text = realloc(r->text, r->textcap);
@@ -51,6 +89,15 @@ pub bool read(reader_t *r) {
 		if (r->text[0]) strcat(r->text, "\n");
 		printnotags(r->text + strlen(r->text), r->line);
 	}
+	return true;
+}
+
+bool loadline(reader_t *r) {
+	if (!fgets(r->line, sizeof(r->line), r->f)) {
+		return false;
+	}
+	strings.rtrim(r->line, "\r\n");
+	// printf("line: [%s]\n", r->line);
 	return true;
 }
 
@@ -74,35 +121,16 @@ void printnotags(char *dest, const char *s) {
 	*dest = '\0';
 }
 
-bool init(reader_t *r) {
-	if (!fgets(r->line, sizeof(r->line), r->f)) {
-		return false;
+void seterror(reader_t *r, char *msg, ...) {
+	if (r->error) {
+		return;
 	}
-	strings.trim(r->line);
-	if (strcmp(r->line, "WEBVTT")) {
-		return false;
-	}
-	while (true) {
-		if (!fgets(r->line, sizeof(r->line), r->f)) {
-			return false;
-		}
-		strings.rtrim(r->line, "\r\n");
-		if (r->line[0] == '\0') break;
-		if (!header(r->line)) {
-			// printf("failed to read a header: '%s'\n", r->line);
-			return false;
-		}
-	}
-	return true;
-}
-
-// Kind: captions
-bool header(char *line) {
-	char *delim = strstr(line, ": ");
-	if (!delim) return false;
-	*delim = '\0';
-	// printf("header: %s = %s\n", line, delim + 2);
-	return true;
+	char buf[1000] = {};
+	va_list args = {};
+	va_start(args, msg);
+	vsnprintf(buf, sizeof(buf)-1, msg, args);
+	va_end(args);
+	r->error = strings.newstr("%s", buf);
 }
 
 // 00:00:00.120 --> 00:00:02.270 align:start position:0%
@@ -140,6 +168,5 @@ char *timestamp(char *s) {
 	if (!isdigit(*p)) return NULL; *r++ = *p++;
 	if (!isdigit(*p)) return NULL; *r++ = *p++;
 	if (!isdigit(*p)) return NULL; *r++ = *p++;
-	// printf("timestamp: %s\n", ts);
 	return p;
 }
