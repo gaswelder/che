@@ -130,6 +130,8 @@ const char *mapgen(const char *elemname) {
 	return "any";
 }
 
+const int MAX_CHILDREN = 3;
+
 int main(int argc, char **argv) {
     opt.parse(argc, argv);
 
@@ -191,14 +193,7 @@ bool children_only_cdata(dtd.element_t *e) {
 
 void emit_child_list(dtd.schema_t *s, dtd.element_t *e, int level) {
 	dtd.child_list_t *l = e->children;
-	int n = 1;
-	switch (l->quantifier) {
-		case '\0': {}
-		case '*': { n = rnd.intn(3); }
-		default: {
-			panic("unimplemented quantifier: %c", l->quantifier);
-		}
-	}
+	int n = quant(l->quantifier);
 	for (int j = 0; j < n; j++) {
 		switch (l->jointype) {
 			// \0 means the list has only one element.
@@ -224,23 +219,25 @@ void emit_child_entry(dtd.schema_t *s, const char *parent_name, dtd.child_entry_
 	if (ce->islist) {
 		panic("sublist not implemented");
 	}
-
 	dtd.child_t *c = ce->data;
-	int n = 1;
-	switch (c->quantifier) {
-		case '\0': {}
-		case '*': { n = rnd.intn(3); }
-		case '+': { n = 1 + rnd.intn(2); }
-		case '?': { n = rnd.intn(2); }
-		default: {
-			panic("q = %c", c->quantifier);
-		}
-	}
+	int n = quant(c->quantifier);
 	for (int i = 0; i < n; i++) {
 		if (strcmp(c->name, "#PCDATA") == 0) {
 			ipsum.emit(mapgen(parent_name));
 		} else {
 			emit_element(s, c->name, level);
+		}
+	}
+}
+
+int quant(char q) {
+	switch (q) {
+		case '\0': { return 1; }
+		case '*': { return rnd.intn(MAX_CHILDREN+1); }
+		case '+': { return 1 + rnd.intn(MAX_CHILDREN); }
+		case '?': { return rnd.intn(2); }
+		default: {
+			panic("unknown quantifier: %c", q);
 		}
 	}
 }
