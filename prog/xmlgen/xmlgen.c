@@ -108,13 +108,12 @@ const char *mapgen(const char *elemname) {
         case "current": { return "current"; }
         case "education": { return "education"; }
         case "email": { return "email"; }
-        case "from", "to": { return "name "; }
+        case "from", "to", "name": { return "name"; }
         case "gender": { return "gender"; }
         case "homepage": { return "webpage"; }
         case "increase": { return "increase"; }
         case "initial": { return "init_price"; }
         case "location", "country": { return "location"; }
-        case "name": { return "name"; }
         case "payment": { return "payment"; }
         case "phone": { return "phone"; }
         case "province": { return "province"; }
@@ -140,8 +139,9 @@ int main(int argc, char **argv) {
     return 0;
 }
 
+// Emits a tree for element with the specified name.
 void emit_element(dtd.schema_t *s, const char *name, int level) {
-	if (level > 10) return;
+	if (level > 20) return;
 	indent(level);
 
 	dtd.element_t *e = dtd.get_element(s, name);
@@ -151,22 +151,50 @@ void emit_element(dtd.schema_t *s, const char *name, int level) {
 	dtd.attlist_t *a = dtd.get_attributes(s, name);
 	if (a) {
 		for (int i = 0; i < a->size; i++) {
-			printf(" %s", "attr");
+			emit_attr(&a->items[i]);
 		}
 	}
+
+	// If this element contains only text, format it in one line.
+	if (children_only_cdata(e)) {
+		printf(">");
+		emit_child_list(s, e, level+1);
+		printf("</%s>\n", name);
+		return;
+	}
+
+	// If no children, format as void tag.
+	if (e->children->size == 0) {
+		printf(" />\n");
+		return;
+	}
+
 	printf(">\n");
-	emit_child_list(s, e->children, level + 1);
+	emit_child_list(s, e, level + 1);
 	indent(level);
 	printf("</%s>\n", name);
 }
 
-void emit_child_list(dtd.schema_t *s, dtd.child_list_t *l, int level) {
+void emit_attr(dtd.att_t *a) {
+	printf(" %s=\"%d\"", a->name, rnd.intn(1000000));
+}
+
+// Returns true if element e's children are just pcdata.
+bool children_only_cdata(dtd.element_t *e) {
+	dtd.child_list_t *cl = e->children;
+	if (cl->size != 1) return false;
+	dtd.child_entry_t *ce = &e->children->items[0];
+	if (ce->islist) return false;
+	dtd.child_t *c = ce->data;
+	return strcmp(c->name, "#PCDATA") == 0;
+}
+
+void emit_child_list(dtd.schema_t *s, dtd.element_t *e, int level) {
+	dtd.child_list_t *l = e->children;
 	int n = 1;
 	switch (l->quantifier) {
 		case '\0': {}
-		case '*': {
-			n = rnd.intn(3);
-		}
+		case '*': { n = rnd.intn(3); }
 		default: {
 			panic("unimplemented quantifier: %c", l->quantifier);
 		}
@@ -177,13 +205,13 @@ void emit_child_list(dtd.schema_t *s, dtd.child_list_t *l, int level) {
 			case '\0', ',': {
 				// (a, b, c) -> emit all in sequence
 				for (int i = 0; i < l->size; i++) {
-					emit_child_entry(s, &l->items[i], level);
+					emit_child_entry(s, e->name, &l->items[i], level);
 				}
 			}
 			case '|': {
 				// (a | b | c) -> emit random one
 				int i = rnd.intn(l->size);
-				emit_child_entry(s, &l->items[i], level);
+				emit_child_entry(s, e->name, &l->items[i], level);
 			}
 			default: {
 				panic("unimplemented jointype: %c", l->jointype);
@@ -192,15 +220,12 @@ void emit_child_list(dtd.schema_t *s, dtd.child_list_t *l, int level) {
 	}
 }
 
-void emit_child_entry(dtd.schema_t *s, dtd.child_entry_t *ce, int level) {
+void emit_child_entry(dtd.schema_t *s, const char *parent_name, dtd.child_entry_t *ce, int level) {
 	if (ce->islist) {
-		panic("sublist");
-	} else {
-		emit_child(s, ce->data, level);
+		panic("sublist not implemented");
 	}
-}
 
-void emit_child(dtd.schema_t *s, dtd.child_t *c, int level) {
+	dtd.child_t *c = ce->data;
 	int n = 1;
 	switch (c->quantifier) {
 		case '\0': {}
@@ -213,8 +238,7 @@ void emit_child(dtd.schema_t *s, dtd.child_t *c, int level) {
 	}
 	for (int i = 0; i < n; i++) {
 		if (strcmp(c->name, "#PCDATA") == 0) {
-			ipsum.emit(mapgen(c->name));
-			printf("\n");
+			ipsum.emit(mapgen(parent_name));
 		} else {
 			emit_element(s, c->name, level);
 		}
