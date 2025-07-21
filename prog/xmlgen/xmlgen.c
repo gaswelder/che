@@ -99,12 +99,12 @@ const char *mapgen(const char *elemname) {
 	if (!elemname) return NULL;
 	switch str (elemname) {
         case "city": { return "dict(cities)"; }
-        case "status", "happiness": { return "int(1, 10)"; }
-        case "age": { return "max(18, gauss(30, 15))"; }
+        case "status", "happiness": { return "irand[1..10]"; }
+        case "age": { return "irand[18..45]"; }
         case "amount", "price": { return "price"; }
         case "business", "privacy": { return "yesno"; }
         case "name": { return "sentence1"; }
-        case "creditcard": { return "cc"; }
+        case "creditcard": { return "irand[1000..9999] irand[1000..9999] irand[1000..9999] irand[1000..9999]"; }
         case "current": { return "current"; }
         case "education": { return "education"; }
         case "email": { return "email"; }

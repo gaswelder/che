@@ -2,7 +2,6 @@
 #import rnd
 
 int GenContents_lstname = 0;
-int GenContents_email = 0;
 char *GenContents_education[]={"High School","College", "Graduate School","Other"};
 char *GenContents_money[]={"Money order","Creditcard", "Personal Check","Cash"};
 char *GenContents_yesno[]={"Yes","No"};
@@ -16,26 +15,26 @@ pub void emit(const char *s) {
 	FILE *out = stdout;
 
 	switch str (s) {
-		case "max(18, gauss(30, 15))": {
-			int r = (int)(30 + 15 * rnd.gauss());
-			if (r < 18) r = 18;
-			printf("%d", r);
-		}
-		case "int(1, 10)": { printf("%d", randr(1, 10)); }
-		case "cc": {
-			for (int i=0; i<4; i++) {
-				char *s = "";
-				if (i < 3) { s = " "; }
-				fprintf(out, "%d%s", randr(1000,9999), s);
-			}
-		}
-		case "sentence1": { fsentence(stdout, 1 + rnd.intn(4)); }
-		case "sentence2": { fsentence(stdout, 1 + (int)rnd.exponential(4)); }
 		case "dict(shipping)": { fromdict("shipping"); }
 		case "dict(provinces)": { fromdict("provinces"); }
 		case "dict(cities)": { fromdict("cities"); }
 		case "dict(lastnames)": { fromdict("lastnames"); }
 		case "dict(auction_type)": { fromdict("auction_type"); }
+
+		case "irand[1..10]": { printf("%d", randr(1, 10)); }
+		case "irand[18..45]": { printf("%d", 18 + rnd.intn(28)); }
+
+		case "irand[1000..9999] irand[1000..9999] irand[1000..9999] irand[1000..9999]": {
+			printf("%d ", randr(1000,9999));
+			printf("%d ", randr(1000,9999));
+			printf("%d ", randr(1000,9999));
+			printf("%d", randr(1000,9999));
+		}
+
+		case "sentence1": { fsentence(stdout, 1 + rnd.intn(4)); }
+		case "sentence2": { fsentence(stdout, 1 + (int)rnd.exponential(4)); }
+
+		
 		case "zip": {
 			int r = randr(3,4);
 			int cd = 10;
@@ -59,15 +58,18 @@ pub void emit(const char *s) {
     		else fprintf(out, "%s", "female");
 		}
 		case "price": {
+			// "%.2f rndexp(100)"
 			fprintf(out,"%.2f", rnd.exponential(100));
 		}
 		case "date": {
+			// %02d/%02d/%4d irand[1..12] irand[1..28] irand[1998..2001]
 			int month = randr(1,12);
 			int day = randr(1,28);
 			int year = randr(1998,2001);
 			fprintf(out,"%02d/%02d/%4d",month,day,year);
 		}
 		case "time": {
+			// %02d:%02d:%02d irand[0..23] irand[0..59] irand[0..59]
 			int hrs = randr(0, 23);
 			int min = randr(0, 59);
 			int sec = randr(0, 59);
@@ -87,22 +89,19 @@ pub void emit(const char *s) {
 			fprintf(stdout, "%s %s", words.dictentry("firstnames", fst), words.dictentry("lastnames", lst));
 			GenContents_lstname = lst;
 		}
-		case "name ": {
-			emit("name");
-            fprintf(out," ");
-		}
 		case "email": {
-			GenContents_email = rnd.intn(words.dictlen("emails"));
-            fprintf(out, "mailto:%s@%s",
-                words.dictentry("lastnames", GenContents_lstname),
-                words.dictentry("emails", GenContents_email));
+			// mailto:%s@%s -- dict(names) domain()
+            fprintf(out, "mailto:%s@%s.%s", getfromdict("lastnames"), getfromdict("words"), getfromdict("domains"));
 		}
 		case "webpage": {
-			fprintf(out, "http://www.%s/~%s",
-                words.dictentry("emails", GenContents_email),
-                words.dictentry("lastnames", GenContents_lstname));
+			// https://%s -- domain()
+			printf("https://");
+			fromdict("words");
+			printf(".");
+			fromdict("domains");
 		}
 		case "payment": {
+			// %s -- dict(payment)
 			int r=0;
             for (int i=0; i<4; i++) {
                 if (rnd.intn(2)) {
@@ -115,6 +114,7 @@ pub void emit(const char *s) {
             }
 		}
 		case "education": {
+			// %s -- dict(education)
 			fprintf(out, "%s", GenContents_education[rnd.intn(4)]);
 		}
 		case "location": {
@@ -126,6 +126,7 @@ pub void emit(const char *s) {
             fprintf(out, "%s", words.dictentry("countries", GenContents_country));
 		}
 		case "type": {
+			// %s -- dict(auction_type)
 			emit("dict(auction_type)");
             if (GenContents_quantity > 1 && rnd.intn(2) > 0) {
 				fprintf(out,", Dutch");
@@ -139,9 +140,11 @@ pub void emit(const char *s) {
             }
 		}
 		case "yesno": {
+			// %s -- dict(yesno)
 			fprintf(out, "%s", GenContents_yesno[rnd.intn(2)]);
 		}
 		case "quantity": {
+			// %d -- 1 + rndexp(0.4)
 			GenContents_quantity=1+(int)rnd.exponential(0.4);
             fprintf(out,"%d",GenContents_quantity);
 		}
@@ -154,6 +157,7 @@ pub void emit(const char *s) {
 			fprintf(out,"%.2f",GenContents_initial+GenContents_increases);
 		}
 		case "init_price": {
+			// price()
 			GenContents_initial=rnd.exponential(100);
             GenContents_increases=0;
             fprintf(out,"%.2f",GenContents_initial);
@@ -168,6 +172,11 @@ pub void emit(const char *s) {
 			panic("unknown spec: %s", s);
 		}
 	}
+}
+
+const char *getfromdict(char *name) {
+	int n = words.dictlen(name);
+    return words.dictentry(name, rnd.intn(n));
 }
 
 void fromdict(char *name) {
