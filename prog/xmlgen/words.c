@@ -5698,7 +5698,11 @@ char *SHIPPING[] = {
     "See description for charges"
 };
 
-char *GenContents_auction_type[]={"Regular","Featured"};
+char *auction_types[]={"Regular","Featured"};
+char *genders[] = {"male", "female"};
+char *yesno[] = {"yes", "no"};
+char *educations[]={"High School","College", "Graduate School","Other"};
+char *payment_types[]={"Money order","Creditcard", "Personal Check","Cash"};
 
 dict_t dicts[] = {
     {"domains", nelem(domains), domains},
@@ -5709,5 +5713,9 @@ dict_t dicts[] = {
     {"provinces", nelem(provinces), provinces},
     {"words", nelem(words), words},
 	{"shipping", nelem(SHIPPING), SHIPPING },
-	{"auction_type", nelem(GenContents_auction_type), GenContents_auction_type },
+	{"auction_types", nelem(auction_types), auction_types },
+    {"genders", nelem(genders), genders},
+    {"yesno", nelem(yesno), yesno},
+    {"educations", nelem(educations), educations},
+    {"payment_types", nelem(payment_types), payment_types},
 };

@@ -28,8 +28,8 @@ pub t *file(FILE *f) {
 	return b;
 }
 
-// Returns a new instance reading from the given string.
-// The string must not be deallocated before the buffer.
+// Returns a new tokenizer reading from string s.
+// The string must not be deallocated while the tokenizer is in use.
 pub t *from_str(const char *s) {
 	t *b = new(reader.string(s));
 	b->reader_own = true;
@@ -65,17 +65,24 @@ pub bool more(t *b) {
 	return b->cachesize > 0 || reader.more(b->reader);
 }
 
-pub void buf_fcontext(t *b, char *buf, size_t len) {
+// Puts up to len following characters into buf without removing them.
+pub void tail(t *b, char *buf, size_t len) {
 	_prefetch(b, len);
 
 	size_t n = len-1;
-	if (b->cachesize < n) {
+	if (n > b->cachesize) {
 		n = b->cachesize;
 	}
 	for (size_t i = 0; i < n; i++) {
 		buf[i] = b->cache[i];
 	}
 	buf[len-1] = '\0';
+}
+
+pub void dbg(t *b) {
+	char buf[100] = {};
+	tail(b, buf, sizeof(buf));
+	printf("[%s...\n", buf);
 }
 
 // Returns next character in the buffer and removes it from the stream.
@@ -183,6 +190,8 @@ pub bool id(t *b, char *buf, size_t n) {
 	return true;
 }
 
+// Reads a C-style floating-point number into buf.
+// Returns false on parse error.
 pub bool num(t *b, char *buf, size_t n) {
 	(void) n;
 	char *p = buf;

@@ -99,35 +99,33 @@ const char *mapgen(const char *elemname) {
 	if (!elemname) return NULL;
 	switch str (elemname) {
         case "city": { return "dict(cities)"; }
+		case "business", "privacy": { return "dict(yesno)"; }
         case "status", "happiness": { return "irand[1..10]"; }
         case "age": { return "irand[18..45]"; }
-        case "amount", "price": { return "price"; }
-        case "business", "privacy": { return "yesno"; }
-        case "name": { return "sentence1"; }
-        case "creditcard": { return "irand[1000..9999] irand[1000..9999] irand[1000..9999] irand[1000..9999]"; }
-        case "current": { return "current"; }
-        case "education": { return "education"; }
-        case "email": { return "email"; }
-        case "from", "to", "name": { return "name"; }
-        case "gender": { return "gender"; }
-        case "homepage": { return "webpage"; }
-        case "increase": { return "increase"; }
-        case "initial": { return "init_price"; }
-        case "location", "country": { return "location"; }
-        case "payment": { return "payment"; }
-        case "phone": { return "phone"; }
-        case "province": { return "province"; }
-        case "quantity": { return "quantity"; }
-        case "reserve": { return "reserve"; }
+        case "amount", "price": { return "f2[10,100]"; }
+        case "name": { return "text[1..1]"; }
+        case "creditcard": { return "irand[1000..9999] ' ' irand[1000..9999] ' ' irand[1000..9999] ' ' irand[1000..9999]"; }
+        case "current": { return "f2[1.5,115]"; }
+        case "education": { return "dict(educations)"; }
+        case "from", "to", "name": { return "dict(firstnames) ' ' dict(lastnames)"; }
+        case "gender": { return "dict(genders)"; }
+        case "homepage": { return "'https://' dict(words) '.' dict(domains)"; }
+        case "increase": { return "f2[1.5,15]"; }
+        case "initial": { return "f2[0,100]"; }
+        case "location", "country": { return "dict(countries)"; }
+        case "payment": { return "dict(payment_types)"; }
+        case "phone": { return "'+' irand[1..99] ' (' irand[10..999] ') ' irand[123456..98765432]"; }
+        case "province": { return "dict(provinces)"; }
+        case "quantity": { return "irand[1..10]"; }
+        case "reserve": { return "f2[50,250]"; }
         case "shipping": { return "dict(shipping)"; }
-        case "street": { return "street"; }
-        case "text": { return "any"; }
-        case "time": { return "time"; }
-        case "type": { return "type"; }
-        case "date", "start", "end": { return "date"; }
-        case "zipcode": { return "zip"; }
+        case "street": { return "irand[1..100] ' ' dict(lastnames) ' st.'"; }
+        case "time": { return "irand[0..23] ':' irand[0..59] ':' irand[0..59]"; }
+        case "type": { return "dict(auction_types)"; }
+        case "date", "start", "end": { return "irand[1..12] '/' irand[1..28] '/' irand[1998..2001]"; }
+        case "zipcode": { return "irand[1000..9999]"; }
     }
-	return "any";
+	return "text[1..4]";
 }
 
 const int MAX_CHILDREN = 3;
