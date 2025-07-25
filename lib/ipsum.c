@@ -1,6 +1,30 @@
-#import words.c
 #import rnd
 #import tokenizer
+
+typedef {
+    char *name;
+    size_t length;
+    char **entries;
+} dict_t;
+
+dict_t dicts[100] = {};
+size_t ndicts = 0;
+
+dict_t *find_dict(const char *name) {
+    for (size_t i = 0; i < ndicts; i++) {
+        if (!strcmp(name, dicts[i].name)) {
+            return &dicts[i];
+        }
+    }
+    return NULL;
+}
+
+pub void add_dict(char *name, size_t length, char **entries) {
+    dict_t *d = &dicts[ndicts++];
+    d->name = name;
+    d->entries = entries;
+    d->length = length;
+}
 
 pub void emit(const char *s) {
 	tokenizer.t *b = tokenizer.from_str(s);
@@ -26,7 +50,11 @@ bool parse(tokenizer.t *b) {
 		if (!tokenizer.skip_literal(b, ")")) {
 			return false;
 		}
-		fromdict(name);
+		dict_t *d = find_dict(name);
+		if (!d) {
+			panic("unknown dict: %s", name);
+		}
+    	printf("%s", d->entries[rnd.intn(d->length)]);
 		return true;
 	}
 
@@ -110,11 +138,6 @@ bool readfloat(tokenizer.t *b, double *r) {
 	char buf[10] = {};
 	if (!tokenizer.num(b, buf, sizeof(buf))) return false;
 	return sscanf(buf, "%lf", r) == 1;
-}
-
-void fromdict(char *name) {
-	int n = words.dictlen(name);
-    printf("%s", words.dictentry(name, rnd.intn(n)));
 }
 
 char *prefixes[] = { "a", "en", "de", "un", "pro", "pre",  };

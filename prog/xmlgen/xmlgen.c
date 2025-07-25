@@ -1,7 +1,8 @@
 #import formats/dtd
-#import ipsum.c
+#import ipsum
 #import opt
 #import rnd
+#import words.c
 
 const char *real_dtd = "
 	<!ELEMENT site (regions, categories, catgraph, people, open_auctions, closed_auctions)>
@@ -132,8 +133,8 @@ const int MAX_CHILDREN = 3;
 
 int main(int argc, char **argv) {
     opt.parse(argc, argv);
-
-    dtd.schema_t schema = dtd.parse(real_dtd);
+	dtd.schema_t schema = dtd.parse(real_dtd);
+	words.init();
     fprintf(stdout, "<?xml version=\"1.0\" standalone=\"yes\"?>\n");
 	emit_element(&schema, "site", 0);
     return 0;

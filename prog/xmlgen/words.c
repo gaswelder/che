@@ -1,24 +1,27 @@
-typedef {
-    const char *name;
-    int length;
-    char **entries;
-} dict_t;
+#import ipsum
 
-dict_t *find(const char *name) {
-    for (size_t i = 0; i < nelem(dicts); i++) {
-        if (!strcmp(name, dicts[i].name)) {
-            return &dicts[i];
-        }
-    }
-    return NULL;
+pub void init() {
+	ipsum.add_dict("shipping", nelem(SHIPPING), SHIPPING);
+    ipsum.add_dict("auction_types", nelem(auction_types), auction_types);
+    ipsum.add_dict("cities", nelem(cities), cities);
+    ipsum.add_dict("countries", nelem(countries), countries);
+    ipsum.add_dict("domains", nelem(domains), domains);
+    ipsum.add_dict("educations", nelem(educations), educations);
+    ipsum.add_dict("firstnames", nelem(firstnames), firstnames);
+    ipsum.add_dict("genders", nelem(genders), genders);
+    ipsum.add_dict("lastnames", nelem(lastnames), lastnames);
+    ipsum.add_dict("payment_types", nelem(payment_types), payment_types);
+    ipsum.add_dict("provinces", nelem(provinces), provinces);
+    ipsum.add_dict("words", nelem(words), words);
+    ipsum.add_dict("yesno", nelem(yesno), yesno);
 }
 
-pub const char *dictentry(char *dict, int index) {
-    return find(dict)->entries[index];
-}
-pub int dictlen(char *dict) {
-    return find(dict)->length;
-}
+char *auction_types[]={"Regular","Featured"};
+char *genders[] = {"male", "female"};
+char *yesno[] = {"yes", "no"};
+char *educations[]={"High School","College", "Graduate School","Other"};
+char *payment_types[]={"Money order","Creditcard", "Personal Check","Cash"};
+char *SHIPPING[] = { "only within country", "internationally", "Buyer pays fixed shipping charges" };
 
 char *domains[] = {
     "at", "au", "be", "bell-com", "ca", "ch", "cn", "com", "cz", "de", "dk", "edu",
@@ -5689,33 +5692,4 @@ char *firstnames[]={
     "Padmanabhan","Sangiv","Guru","Mosur","Yingfei","Zahava","Mimmo",
     "Dorian","Reihard","Cornell","Its'hak","Kenichi","Ziming","Ganesan",
     "Mehrdad"
-};
-
-char *SHIPPING[] = {
-    "Will ship only within country",
-    "Will ship internationally",
-    "Buyer pays fixed shipping charges",
-    "See description for charges"
-};
-
-char *auction_types[]={"Regular","Featured"};
-char *genders[] = {"male", "female"};
-char *yesno[] = {"yes", "no"};
-char *educations[]={"High School","College", "Graduate School","Other"};
-char *payment_types[]={"Money order","Creditcard", "Personal Check","Cash"};
-
-dict_t dicts[] = {
-    {"domains", nelem(domains), domains},
-    {"lastnames", nelem(lastnames), lastnames},
-    {"cities", nelem(cities), cities},
-    {"countries", nelem(countries), countries},
-    {"firstnames", nelem(firstnames), firstnames},
-    {"provinces", nelem(provinces), provinces},
-    {"words", nelem(words), words},
-	{"shipping", nelem(SHIPPING), SHIPPING },
-	{"auction_types", nelem(auction_types), auction_types },
-    {"genders", nelem(genders), genders},
-    {"yesno", nelem(yesno), yesno},
-    {"educations", nelem(educations), educations},
-    {"payment_types", nelem(payment_types), payment_types},
 };
