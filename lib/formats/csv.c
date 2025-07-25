@@ -39,7 +39,7 @@ pub bool readval(reader_t *r) {
 	if (!tokenizer.more(r->b)) return false;
 
 	if (next == '"') {
-		read_quote(r);
+		read_quoted_value(r);
 		return true;
 	}
 
@@ -62,7 +62,11 @@ bool peekany(tokenizer.t *b, const char *chars) {
 	return false;
 }
 
+// Moves the reader to the next line.
 pub bool nextline(reader_t *r) {
+	// Discard the remaining columns if the caller hasn't consumed them.
+	while (true) if (!readval(r)) break;
+
 	bool ok = false;
 	while (tokenizer.peek(r->b) == '\r' || tokenizer.peek(r->b) == '\n') {
 		ok = true;
@@ -72,23 +76,37 @@ pub bool nextline(reader_t *r) {
 	return ok;
 }
 
+// Returns a pointer to the current value's content.
 pub const char *val(reader_t *r) {
 	return r->valbuf;
 }
 
-void read_quote(reader_t *r) {
+void read_quoted_value(reader_t *r) {
 	tokenizer.t *b = r->b;
 
+	// Opening quote
 	if (!tokenizer.buf_skip(b, '"')) {
 		panic("expected '\"', got '%c'", tokenizer.peek(b));
 	}
+
+	// Content + closing quote
 	char *p = r->valbuf;
-	while (tokenizer.more(b) && tokenizer.peek(b) != '\"') {
-		*p++ = tokenizer.get(b);
-	}
-	*p = '\0';
-	if (!tokenizer.buf_skip(b, '"')) {
-		panic("expected '\"', got %c", tokenizer.peek(b));
+	while (true) {
+		int c = tokenizer.get(b);
+		if (c == EOF) {
+			panic("unterminated quoted value");
+		}
+
+		if (c == '\"') {
+			// Two quotes in a row is an escaped quote.
+			if (tokenizer.peek(b) == '\"') {
+				tokenizer.get(b);
+			} else {
+				*p = '\0';
+				break;
+			}
+		}
+		*p++ = c;
 	}
 }
 
