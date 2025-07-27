@@ -15,24 +15,21 @@ char *addr = NULL;
 uint8_t REQUEST[1000] = {};
 size_t REQUESTLEN = 0;
 
-typedef {
-	size_t n;
-	size_t id;
-} task_t;
-
 threads.mtx_t *stdout_lock = NULL;
+
+typedef {
+	size_t id;
+	threads.pipe_t *pipe;
+} worker_arg_t;
 
 int main(int argc, char *argv[]) {
 	stdout_lock = threads.mtx_new();
-
 	size_t concurrency = 1;
 	size_t requests_to_do = 1;
-
 	opt.nargs(1, "<url>");
 	opt.summary("makes a series of HTTP requests to <url> and prints statistics");
 	opt.size("n", "number of requests to perform", &requests_to_do);
 	opt.size("c", "number of requests running concurrently", &concurrency);
-
 	char **args = opt.parse(argc, argv);
 	char *urlstr = *args;
 
@@ -75,59 +72,61 @@ int main(int argc, char *argv[]) {
 		concurrency = requests_to_do;
 	}
 
-	//
-	// Distribute work across the workers.
-	//
-	task_t *tasks = calloc!(concurrency, sizeof(task_t));
-	void **thr_args = calloc!(concurrency, sizeof(void *));
-	size_t slice_size = requests_to_do / concurrency;
-	if (requests_to_do % concurrency != 0) {
-		slice_size++;
-	}
-	size_t cur = 0;
-	for (size_t i = 0; i < concurrency; i++) {
-		size_t grab = requests_to_do - cur;
-		if (grab > slice_size) {
-			grab = slice_size;
-		}
-		tasks[i].id = i;
-		tasks[i].n = grab;
-		cur += grab;
-		thr_args[i] = &tasks[i];
-	}
+	threads.pipe_t *pipe = threads.newpipe();
+	threads.thr_t **tt = calloc!(concurrency, sizeof(threads.thr_t *));
+	worker_arg_t *aa = calloc!(concurrency, sizeof(worker_arg_t));
 
 	print_result_header();
-	threads.parallel(thrmain, thr_args, concurrency);
+	for (size_t i = 0; i < concurrency; i++) {
+		aa[i].id = i;
+		aa[i].pipe = pipe;
+		tt[i] = threads.start(&worker, &aa[i]);
+	}
+
+	for (size_t i = 0; i < requests_to_do; i++) {
+		// Sending NULL because there is nothing to send, we only
+		// need to nudge a worker to make another request.
+		threads.pwrite(pipe, NULL);
+	}
+	threads.pclose(pipe);
+
+	for (size_t i = 0; i < concurrency; i++) {
+		threads.wait(tt[i], NULL);
+	}
+	free(aa);
+	free(tt);
+	threads.freepipe(pipe);
 	return 0;
 }
 
-void *thrmain(void *arg) {
+void *worker(void *arg) {
 	dbg.m(DBG_TAG, "thread started");
+	worker_arg_t *a = arg;
+	threads.pipe_t *pipe = a->pipe;
+
 	char resbytes[4096] = {};
-	task_t *task = arg;
 
 	result_t _res = {};
 	result_t *res = &_res;
-	res->worker_id = task->id;
+	res->worker_id = a->id;
 
-	for (size_t i = 0; i < task->n; i++) {
+	size_t i = 0;
+	while (true) {
+		if (!threads.pread(pipe, NULL)) {
+			break;
+		}
 		res->number = i;
 		res->time_started = time.now();
-
 		net.net_t *conn = net.connect("tcp", addr);
 		if (!conn) {
 			panic("failed to connect to %s: %s", addr, strerror(errno));
 		}
-
 		res->time_connected = time.now();
-
 		if ((size_t) net.write(conn, (char *)REQUEST, REQUESTLEN) != REQUESTLEN) {
 			panic("failed to write request: %s", strerror(errno));
 		}
-
 		res->total_sent = REQUESTLEN;
 		res->time_finished_writing = time.now();
-
 		int read = net.read(conn, resbytes, sizeof(resbytes));
 		if (read < 0) {
 			panic("read failed");
@@ -136,12 +135,9 @@ void *thrmain(void *arg) {
 			panic("read buffer too small");
 		}
 		resbytes[read] = '\0';
-
 		res->time_finished_reading = time.now();
 		res->total_received = read;
-
 		net.close(conn);
-
 		http.response_t r = {};
 		reader.t *re = reader.string(resbytes);
 		if (!http.parse_response(re, &r)) {
@@ -150,6 +146,8 @@ void *thrmain(void *arg) {
 		reader.free(re);
 		res->status = r.status;
 		print_result(res);
+
+		i++;
 	}
 	return NULL;
 }

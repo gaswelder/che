@@ -28,62 +28,11 @@ pub thr_t *start(thr_func *f, void *arg) {
 }
 
 // Waits for thread t to finish, puts the exit value into res.
-// Return an error code, zero meaning no error.
+// Returns an error code, zero meaning no error.
 pub int wait(thr_t *t, void **res) {
 	int err = OS.pthread_join(t->t, res);
 	free(t);
 	return err;
-}
-
-typedef {
-	size_t n;
-	void **args;
-	thr_func *f;
-} tasklist_t;
-
-void *seqworker(void *arg) {
-	tasklist_t *l = arg;
-	for (size_t i = 0; i < l->n; i++) {
-		l->f(l->args[i]);
-	}
-	return NULL;
-}
-
-// Runs 8 threads in parallel, each executing thrmain with args[i].
-pub void parallel(thr_func *thrmain, void **args, size_t n) {
-	int per_worker = (n + (8 - 1)) / 8;
-
-	tasklist_t *lists = calloc!(8, sizeof(tasklist_t));
-	for (int i = 0; i < 8; i++) {
-		lists[i].f = thrmain;
-		lists[i].args = calloc!(per_worker, sizeof(void *));
-	}
-
-	for (size_t i = 0; i < n; i++) {
-		size_t w = i % 8;
-		tasklist_t *l = &lists[w];
-		l->args[l->n++] = args[i];
-	}
-
-	// Spawn the workers.
-	thr_t **tt = calloc!(n, sizeof(thr_t));
-	for (size_t i = 0; i < 8; i++) {
-		tt[i] = start(&seqworker, &lists[i]);
-	}
-
-	// Wait for all to finish.
-	for (size_t i = 0; i < 8; i++) {
-		int err = wait(tt[i], NULL);
-		if (err) {
-			panic("thread wait failed: %d (%s)", err, strerror(err));
-		}
-	}
-
-	free(tt);
-	for (int i = 0; i < 8; i++) {
-		free(lists[i].args);
-	}
-	free(lists);
 }
 
 /*
@@ -187,13 +136,16 @@ pub void freepipe(pipe_t *p) {
 }
 
 // Reads one entry from the pipe into out.
-// Returns true on success or false if the pipe has been closed
-// and there is no buffered data.
+// The pointer out can be null, in which case the read value is discarded.
+// Returns true on success or false if there is no data to read and the pipe
+// has been closed
 pub bool pread(pipe_t *p, void **out) {
 	lock(p->lock);
 	while (true) {
 		if (p->len > 0) {
-			*out = p->items[p->start];
+			if (out != NULL) {
+				*out = p->items[p->start];
+			}
 			p->start = (p->start + 1) % THPIPESIZE;
 			p->len--;
 			unlock(p->lock);
