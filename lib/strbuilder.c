@@ -3,9 +3,11 @@ pub typedef {
 	char *data;
 	size_t len;
 	size_t max;
+	bool err;
 } str;
 
-pub str *str_new() {
+// Creates a new instance of builder.
+pub str *new() {
 	str *s = calloc!(1, sizeof(str));
 	return s;
 }
@@ -28,8 +30,10 @@ pub void clear(str *s) {
 }
 
 pub bool str_addc(str *s, int ch) {
+	if (s->err) return false;
 	if (s->len + 1 >= s->max) {
 		if (!grow(s)) {
+			s->err = true;
 			return false;
 		}
 	}
@@ -41,6 +45,7 @@ pub bool str_addc(str *s, int ch) {
  * Appends string s to the builder's buffer.
  */
 pub bool adds(str *b, const char *s) {
+	if (b->err) return false;
 	const char *p = s;
 	while (*p != '\0') {
 		if (!str_addc(b, *p)) {
@@ -52,6 +57,7 @@ pub bool adds(str *b, const char *s) {
 }
 
 pub bool addf(str *b, const char *format, ...) {
+	if (b->err) return false;
 	char buf[1000] = {};
 	va_list l = {0};
 	va_start(l, format);

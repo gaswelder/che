@@ -2,7 +2,7 @@
 #import test
 
 int main() {
-	strbuilder.str *sb = strbuilder.str_new();
+	strbuilder.str *sb = strbuilder.new();
 
 	char *s = "0123456789";
 	char *p = s;

@@ -206,14 +206,14 @@ tok_t *read_hex_number(tokenizer.t *b) {
 	return tok_make("num", strings.newstr("0x%s%s", num, modifiers), tokenizer.posstr(b));
 }
 
-// // TODO: clip/str: str_new() -> str_new(template, args...)
+// // TODO: clip/str: new() -> new(template, args...)
 
 tok_t *read_string(tokenizer.t *b) {
 	const char *pos = tokenizer.posstr(b);
 
 	// Skip the opening quote
 	tokenizer.get(b);
-	strbuilder.str *s = strbuilder.str_new();
+	strbuilder.str *s = strbuilder.new();
 
 	while (tokenizer.more(b)) {
 		char c = tokenizer.get(b);
@@ -290,7 +290,7 @@ tok_t *read_line_comment(tokenizer.t *b) {
 }
 
 tok_t *read_identifier(tokenizer.t *b) {
-	strbuilder.str *s = strbuilder.str_new();
+	strbuilder.str *s = strbuilder.new();
 	const char *pos = tokenizer.posstr(b);
 
 	while (tokenizer.more(b)) {

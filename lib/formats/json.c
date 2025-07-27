@@ -649,10 +649,7 @@ void *error(parser_t *p, const char *fmt, ...) {
 
 
 pub char *format(val_t *n) {
-	strbuilder.str *s = strbuilder.str_new();
-	if (!s) {
-		return NULL;
-	}
+	strbuilder.str *s = strbuilder.new();
 	if (!writenode(n, s)) {
 		strbuilder.str_free(s);
 		return NULL;

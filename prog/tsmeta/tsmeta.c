@@ -31,7 +31,7 @@ void test(const char *in) {
 	nodes.node_t *e = read.read_statement(l);
 
 	// Print the input.
-	strbuilder.str *s = strbuilder.str_new();
+	strbuilder.str *s = strbuilder.new();
 	format.format_expr(e, s);
 	printf("> %s\n", strbuilder.str_raw(s));
 

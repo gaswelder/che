@@ -66,8 +66,8 @@ void *client_routine(void *arg) {
 		log_info("%s %s", req.method, req.path);
 
 		if (strcmp(req.path, "/") == 0) {
-			strbuilder.str *b = strbuilder.str_new();
-			strbuilder.addf(b, "<a href=/>home</a><br><br>");
+			strbuilder.str *b = strbuilder.new();
+			strbuilder.adds(b, "<a href=/>home</a><br><br>");
 			fs.dir_t *d = fs.dir_open(".");
 			while (true) {
 				const char *name = fs.dir_next(d);

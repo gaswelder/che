@@ -125,15 +125,12 @@ pub bool set_header(request_t *r, const char *name, *value) {
 }
 
 // Writes the request to the writer w.
-// Return the number of bytes written or -1 on error.
+// Returns the number of bytes written or -1 on error.
 pub int write_request(writer.t *w, request_t *r) {
-    strbuilder.str *sb = strbuilder.str_new();
-    bool ok = sb != NULL;
+    strbuilder.str *sb = strbuilder.new();
 
-	// Request line.
-    ok = ok && strbuilder.adds(sb, r->method)
-		&& strbuilder.adds(sb, " ")
-		&& strbuilder.adds(sb, r->uri);
+	// GET /foo
+	strbuilder.addf(sb, "%s %s", r->method, r->uri);
 
 	// Query params.
 	for (size_t i = 0; i < r->nparams; i++) {
@@ -152,26 +149,24 @@ pub int write_request(writer.t *w, request_t *r) {
 		strbuilder.adds(sb, (char *)tmp);
 	}
 
-	ok = ok
-        && strbuilder.adds(sb, " ")
-        && strbuilder.adds(sb, r->version)
-        && strbuilder.adds(sb, "\r\n");
+	strbuilder.adds(sb, " ");
+    strbuilder.adds(sb, r->version);
+    strbuilder.adds(sb, "\r\n");
 
 	// Headers.
     for (size_t i = 0; i < r->nheaders; i++) {
         header_t *h = &r->headers[i];
-        ok = ok
-            && strbuilder.adds(sb, h->name)
-            && strbuilder.adds(sb, ": ")
-            && strbuilder.adds(sb, h->value)
-            && strbuilder.adds(sb, "\r\n");
+        strbuilder.adds(sb, h->name);
+        strbuilder.adds(sb, ": ");
+        strbuilder.adds(sb, h->value);
+        strbuilder.adds(sb, "\r\n");
     }
 
-    ok = ok && strbuilder.adds(sb, "\r\n");
+    strbuilder.adds(sb, "\r\n");
 
 	const char *s = strbuilder.str_raw(sb);
 	int len = writer.write(w, (uint8_t *)s, strlen(s));
-	ok = ok && len == (int)strlen(s);
+	bool ok = (len == (int)strlen(s));
     strbuilder.str_free(sb);
     if (!ok) return -1;
 	return len;
