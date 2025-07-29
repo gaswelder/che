@@ -13,8 +13,6 @@ const double logtwo = 0.693147180559945;
 typedef { double xmin, xmax, ymin, ymax; } area_t;
 typedef { area_t area; int frame; } job_t;
 
-bool verbose = false;
-
 mconfig.config_t config = {};
 int _prered[] = { 0, 0,	 0,	 0,	 128, 255, 255, 255 };
 int _pregreen[] = { 0, 0,	 128, 255, 128, 128, 255, 255 };
@@ -27,21 +25,12 @@ int *red = _prered;
 int *green = _pregreen;
 int *blue = _preblue;
 
-void verbprint(const char *format, ...) {
-	if (!verbose) return;
-	va_list args = {};
-	va_start(args, format);
-	vfprintf(stderr, format, args);
-	va_end(args);
-}
-
 int main (int argc, char **argv) {
 	bool flag_colormap = false;
 	char *confpath = "example.conf";
 	opt.nargs(0, "");
 	opt.str("c", "config file", &confpath);
 	opt.flag("m", "create a colormap image", &flag_colormap);
-	opt.flag("v", "verbose mode", &verbose);
 	opt.parse(argc, argv);
 
 	if (!mconfig.load(&config, confpath)) {
@@ -49,7 +38,6 @@ int main (int argc, char **argv) {
 		return 1;
 	}
 	if (flag_colormap) {
-		verbprint("written colormap to cmap.bmp\n");
 		write_colormap("cmap.bmp");
 		return 0;
 	}
@@ -108,8 +96,6 @@ void *workerfunc(void *arg) {
 		}
 		job_t *job = buf[0];
 		area_t a = job->area;
-		verbprint("frame %d/%d, ", job->frame, config.zoom_frames);
-		verbprint("x[%f, %f], y[%f, %f]\n", a.xmin, a.xmax, a.ymin, a.ymax);
 
 		draw(img, a.xmin, a.xmax, a.ymin, a.ymax, config.iterations);
 
