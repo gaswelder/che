@@ -1,11 +1,11 @@
 // The original is at https://github.com/skeeto/mandelbrot
 
+#import complex
 #import formats/bmp
+#import formats/conf
 #import image
-#import mconfig.c
 #import opt
 #import os/threads
-#import complex
 
 // log(2)
 const double logtwo = 0.693147180559945;
@@ -13,7 +13,31 @@ const double logtwo = 0.693147180559945;
 typedef { double xmin, xmax, ymin, ymax; } area_t;
 typedef { area_t area; int frame; } job_t;
 
-mconfig.config_t config = {};
+typedef {
+	int image_width, image_height;
+	double xmin, xmax;
+	double ymin, ymax;
+	int iterations;
+	int zoom_frames;
+	double zoom_rate;
+	double zoomx, zoomy;
+	int *prered, *pregreen, *preblue;
+} config_t;
+
+config_t config = {
+	.image_width = 800,
+	.image_height = 600,
+	.xmin = -2.5,
+	.xmax = 1.5,
+	.ymin = -1.5,
+	.ymax = 1.5,
+	.iterations = 256,
+	.zoom_frames = 1,
+	.zoom_rate = 0.1,
+	.zoomx = -1.268794803623,
+	.zoomy = 0.353676833206,
+};
+
 image.colormap_t *GLOBAL_CM = NULL;
 
 int main(int argc, char **argv) {
@@ -24,7 +48,7 @@ int main(int argc, char **argv) {
 	opt.flag("m", "create a colormap image", &flag_colormap);
 	opt.parse(argc, argv);
 
-	if (!mconfig.load(&config, confpath)) {
+	if (!loadconfig(&config, confpath)) {
 		fprintf(stderr, "failed to load config from %s: %s\n", confpath, strerror(errno));
 		return 1;
 	}
@@ -75,7 +99,7 @@ int main(int argc, char **argv) {
 	for (int i = 0; i < config.zoom_frames; i++) {
 		job_t *job = &jobs[i];
 		// The first frame spans [center-hwidth, center+hwidth]
-		// The next frame space [center-hwidth/(1+zoom_rate), center+hwidth/(1+zoom_rate)]
+		// The next frame spans [center-hwidth/(1+zoom_rate), center+hwidth/(1+zoom_rate)]
 		job->frame = i;
 		job->area.xmin = config.zoomx - hw;
 		job->area.xmax = config.zoomx + hw;
@@ -212,4 +236,37 @@ void write_colormap(image.colormap_t *cm, const char *filename) {
 		panic("failed to write bmp: %s", strerror(errno));
 	}
 	image.free(img);
+}
+
+
+bool loadconfig(config_t *c, const char *path) {
+	FILE *f = fopen(path, "r");
+	if (!f) {
+		return false;
+	}
+	conf.reader_t *p = conf.new(f);
+	while (conf.next(p)) {
+		char *base = p->key;
+		char *val = p->val;
+		switch str (base) {
+			case "xmin": { c->xmin = strtod(val, NULL); }
+			case "xmax": { c->xmax = strtod(val, NULL); }
+			case "ymin": { c->ymin = strtod(val, NULL); }
+			case "ymax": { c->ymax = strtod(val, NULL); }
+			case "zoomx": { c->zoomx = strtod(val, NULL); }
+			case "zoomy": { c->zoomy = strtod(val, NULL); }
+			case "iterations": { c->iterations = atoi(val); }
+			case "image_width": { c->image_width = atoi(val); }
+			case "image_height": { c->image_height = atoi(val); }
+			case "zoom_frames": { c->zoom_frames = atoi(val); }
+			case "zoom_rate": { c->zoom_rate = strtod(val, NULL); }
+			default: {
+				fprintf(stderr, "invalid config value: %s=%s\n", p->key, p->val);
+				exit(1);
+			}
+		}
+	}
+	conf.free(p);
+	fclose(f);
+	return true;
 }
