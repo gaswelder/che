@@ -190,24 +190,27 @@ double smooth(int count, double amp) {
 	return off - log(log(amp)) / logtwo;
 }
 
-image.rgba_t colormap(double val) {
+image.rgba_t colormap(int val) {
+	int W = config.color_width;
+
+	// Looks like the first color is special, reserved for low values.
 	if (val < config.color_width) {
 		image.rgba_t a = { .red = red[0], .green = green[0], .blue = blue[0] };
 		image.rgba_t b = { .red = red[1], .green = green[1], .blue = blue[1] };
-		double W = config.color_width;
-		return image.mix(a, b, val/W);
+		return image.mix(a, b, (double)val/(double)W);
 	}
 
-	int W = config.color_width;
+	// This infuriating trickery ignores the first color and loops
+	// through the rest of the palette.
 	val -= W;
-
-	int base = ((int) val / W % (CMAP_LEN - 1)) + 1;
+	int base = (val / W % (CMAP_LEN - 1)) + 1;
 	int top = base + 1;
 	if (top >= CMAP_LEN) {
 		top = 1;
 	}
 
-	double perc = (val - (W * (double) (int) (val / (double) W))) / W;
+	double r = (double) val / (double) W;
+	double perc = r - floor(r);
 
 	image.rgba_t a = { .red = red[base], .green = green[base], .blue = blue[base] };
 	image.rgba_t b = { .red = red[top], .green = green[top], .blue = blue[top] };
