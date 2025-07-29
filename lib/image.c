@@ -122,6 +122,18 @@ pub rgba_t gray(int val) {
 	return c;
 }
 
+// Mixes colors a and b in the given proportion.
+// Proportion 0 gives a, 1 gives b, values in between give a linear mix.
+pub rgba_t mix(rgba_t a, b, double proportion_b) {
+	double proportion_a = 1 - proportion_b;
+	rgba_t c = {
+		.red = (int) ( (double) a.red * proportion_a + (double) b.red * proportion_b ),
+		.green = (int) ( (double) a.green * proportion_a + (double) b.green * proportion_b ),
+		.blue = (int) ( (double) a.blue * proportion_a + (double) b.blue * proportion_b ),
+	};
+	return c;
+}
+
 pub rgba_t from_hsl(float h, s, l) {
 	float c = (1 - fabs(2*l-1)) * s;
 	float h1 = h / 60;

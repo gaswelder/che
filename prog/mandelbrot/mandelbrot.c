@@ -191,29 +191,27 @@ double smooth(int count, double amp) {
 }
 
 image.rgba_t colormap(double val) {
-	image.rgba_t color;
-
-	int map_len = CMAP_LEN;
 	if (val < config.color_width) {
-		color.red = red[1] - (red[1] - red[0]) * (config.color_width - val) / config.color_width;
-		color.green = green[1] - (green[1] - green[0]) * (config.color_width - val) / config.color_width;
-		color.blue = blue[1] - (blue[1] - blue[0]) * (config.color_width - val) / config.color_width;
-		return color;
+		image.rgba_t a = { .red = red[0], .green = green[0], .blue = blue[0] };
+		image.rgba_t b = { .red = red[1], .green = green[1], .blue = blue[1] };
+		double W = config.color_width;
+		return image.mix(a, b, val/W);
 	}
 
-	val -= config.color_width;
-	int base = ((int) val / config.color_width % (map_len - 1)) + 1;
-	double perc = (val - (config.color_width * (int) (val / config.color_width))) / config.color_width;
+	int W = config.color_width;
+	val -= W;
+
+	int base = ((int) val / W % (CMAP_LEN - 1)) + 1;
 	int top = base + 1;
-	if (top >= map_len) {
+	if (top >= CMAP_LEN) {
 		top = 1;
 	}
 
-	color.red = (int)((double)red[base] + (double)(red[top] - red[base]) * perc);
-	color.green = (int)( (double)green[base] + (double)(green[top] - green[base]) * perc );
-	color.blue = (int)( (double)blue[base] + (double)(blue[top] - blue[base]) * perc);
+	double perc = (val - (W * (double) (int) (val / (double) W))) / W;
 
-	return color;
+	image.rgba_t a = { .red = red[base], .green = green[base], .blue = blue[base] };
+	image.rgba_t b = { .red = red[top], .green = green[top], .blue = blue[top] };
+	return image.mix(a, b, perc);
 }
 
 void write_colormap(const char *filename) {
