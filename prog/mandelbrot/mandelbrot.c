@@ -42,12 +42,18 @@ int main (int argc, char **argv) {
 		return 0;
 	}
 
-	threads.pipe_t *c = threads.newpipe();
+	// 1 worker will read and render images.
+	threads.pipe_t *render_in = threads.newpipe();
+	threads.thr_t *render = threads.start(renderfunc, render_in);
 
-	// Spawn 8 workers consuming the queue.
+	// 8 workers will consume parameters and write to the renderer.
+	threads.pipe_t *worker_in = threads.newpipe();
 	threads.thr_t **tt = calloc!(8, sizeof(threads.thr_t *));
+	worker_arg_t *aa = calloc!(8, sizeof(worker_arg_t));
 	for (int i = 0; i < 8; i++) {
-		tt[i] = threads.start(workerfunc, c);
+		aa[i].in = worker_in;
+		aa[i].out = render_in;
+		tt[i] = threads.start(workerfunc, &aa[i]);
 	}
 
 	//
@@ -69,43 +75,65 @@ int main (int argc, char **argv) {
 		hh /= (1 + config.zoom_rate);
 		// iterations *= (1 + zoom_rate * 0.25 * frame);
 
-		threads.pwrite(c, job);
+		threads.pwrite(worker_in, job);
 	}
-	threads.pclose(c);
 
-	// Wait for all to finish.
+	// Wait for the workers to finish.
+	threads.pclose(worker_in);
 	for (int i = 0; i < 8; i++) {
 		threads.wait(tt[i], NULL);
 	}
+	threads.freepipe(worker_in);
+
+	// Wait for the render to finish.
+	threads.pclose(render_in);
+	threads.wait(render, NULL);
+	threads.freepipe(render_in);
 
 	free(jobs);
 	free(tt);
-	threads.freepipe(c);
 	return 0;
 }
 
-void *workerfunc(void *arg) {
-	threads.pipe_t *c = arg;
-	void *buf[1] = {};
-	image.image_t *img = image.new(config.image_width, config.image_height);
-	char filename[100] = {};
+typedef { threads.pipe_t *in, *out; } worker_arg_t;
 
-	while (true) {
-		if (!threads.pread(c, buf)) {
-			break;
-		}
+void *workerfunc(void *arg0) {
+	worker_arg_t *arg = arg0;
+	threads.pipe_t *in = arg->in;
+	threads.pipe_t *out = arg->out;
+	void *buf[1] = {};
+	while (threads.pread(in, buf)) {
 		job_t *job = buf[0];
 		area_t a = job->area;
-
+		image.image_t *img = image.new(config.image_width, config.image_height);
 		draw(img, a.xmin, a.xmax, a.ymin, a.ymax, config.iterations);
+		render_val_t *v = calloc!(1, sizeof(render_val_t));
+		v->img = img;
+		v->frame = job->frame;
+		threads.pwrite(out, v);
+	}
+	return NULL;
+}
 
-		snprintf(filename, sizeof(filename), "dump/%03d.bmp", job->frame);
-		if (!bmp.write(img, filename)) {
+typedef {
+	image.image_t *img;
+	int frame;
+} render_val_t;
+
+void *renderfunc(void *arg) {
+	threads.pipe_t *in = arg;
+	char filename[100] = {};
+	void *buf[1] = {};
+	while (threads.pread(in, buf)) {
+		render_val_t *val = buf[0];
+		snprintf(filename, sizeof(filename), "dump/%03d.bmp", val->frame);
+		if (!bmp.write(val->img, filename)) {
 			panic("failed to write bmp: %s", strerror(errno));
 		}
 		fprintf(stderr, "%s\n", filename);
+		image.free(val->img);
+		free(val);
 	}
-	image.free(img);
 	return NULL;
 }
 
