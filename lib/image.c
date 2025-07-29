@@ -174,3 +174,26 @@ pub rgba_t from_hsl(float h, s, l) {
 	};
 	return color;
 }
+
+pub typedef {
+	int color_width;
+	size_t size;
+	rgba_t colors[20];
+} colormap_t;
+
+pub rgba_t mapcolor(colormap_t *c, int val) {
+	int w = c->color_width;
+	// The first color is special, reserved for low values (think background).
+	if (val <= w) {
+		return mix(c->colors[0], c->colors[1], (double)val/(double)w);
+	}
+	// For larger values we exlude the first color and map to the rest.
+	return mapcolor_(c->colors+1, c->size-1, w, val-w);
+}
+
+rgba_t mapcolor_(rgba_t *colors, size_t ncolors, int color_width, int val) {
+	int index1 = (val / color_width) % ncolors;
+	int index2 = (index1 + 1) % ncolors;
+	double rate = (double) (val % color_width) / (double) color_width;
+	return mix(colors[index1], colors[index2], rate);
+}

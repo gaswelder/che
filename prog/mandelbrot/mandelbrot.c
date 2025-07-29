@@ -14,18 +14,9 @@ typedef { double xmin, xmax, ymin, ymax; } area_t;
 typedef { area_t area; int frame; } job_t;
 
 mconfig.config_t config = {};
-int _prered[] = { 0, 0,	 0,	 0,	 128, 255, 255, 255 };
-int _pregreen[] = { 0, 0,	 128, 255, 128, 128, 255, 255 };
-int _preblue[] = { 0, 255, 255, 128, 0,	 0,	 128, 255 };
+image.colormap_t *GLOBAL_CM = NULL;
 
-int CMAP_LEN = 8;
-
-/* The colormap */
-int *red = _prered;
-int *green = _pregreen;
-int *blue = _preblue;
-
-int main (int argc, char **argv) {
+int main(int argc, char **argv) {
 	bool flag_colormap = false;
 	char *confpath = "example.conf";
 	opt.nargs(0, "");
@@ -37,8 +28,27 @@ int main (int argc, char **argv) {
 		fprintf(stderr, "failed to load config from %s: %s\n", confpath, strerror(errno));
 		return 1;
 	}
+
+	image.rgba_t colors[] = {
+		{ 0, 0, 0, 0},
+		{ 0, 0, 255, 0},
+		{ 0, 128, 255, 0},
+		{ 0, 255, 128, 0},
+		{ 128, 128, 0, 0},
+		{ 255, 128, 0, 0},
+		{ 255, 255, 128, 0},
+		{ 255, 255, 255, 0}
+	};
+	image.colormap_t *cm = calloc!(1, sizeof(image.colormap_t));
+	cm->size = nelem(colors);
+	cm->color_width = 50;
+	for (size_t i = 0; i < nelem(colors); i++) {
+		cm->colors[i] = colors[i];
+	}
+	GLOBAL_CM = cm;
+
 	if (flag_colormap) {
-		write_colormap("cmap.bmp");
+		write_colormap(cm, "cmap.bmp");
 		return 0;
 	}
 
@@ -106,7 +116,7 @@ void *workerfunc(void *arg0) {
 		job_t *job = buf[0];
 		area_t a = job->area;
 		image.image_t *img = image.new(config.image_width, config.image_height);
-		draw(img, a.xmin, a.xmax, a.ymin, a.ymax, config.iterations);
+		draw(img, GLOBAL_CM, a, config.iterations);
 		render_val_t *v = calloc!(1, sizeof(render_val_t));
 		v->img = img;
 		v->frame = job->frame;
@@ -137,19 +147,19 @@ void *renderfunc(void *arg) {
 	return NULL;
 }
 
-void draw(image.image_t *img, double xmin, xmax, ymin, ymax, int it) {
+void draw(image.image_t *img, image.colormap_t *cm, area_t area, int it) {
 	int width = img->width;
 	int height = img->height;
-	double xres = (xmax - xmin) / width;
-	double yres = (ymax - ymin) / height;
+	double xres = (area.xmax - area.xmin) / width;
+	double yres = (area.ymax - area.ymin) / height;
 	for (int j = 0; j < height; j++) {
 		for (int i = 0; i < width; i++) {
 			complex.t c = {
-				.re = xmin + i * xres,
-				.im = ymin + j * yres
+				.re = area.xmin + i * xres,
+				.im = area.ymin + j * yres
 			};
 			double v = get_val(c, it);
-			*image.getpixel(img, i, j) = colormap(v);
+			*image.getpixel(img, i, j) = image.mapcolor(cm, v);
 		}
 	}
 }
@@ -190,37 +200,10 @@ double smooth(int count, double amp) {
 	return off - log(log(amp)) / logtwo;
 }
 
-image.rgba_t colormap(int val) {
-	int W = config.color_width;
-
-	// Looks like the first color is special, reserved for low values.
-	if (val < config.color_width) {
-		image.rgba_t a = { .red = red[0], .green = green[0], .blue = blue[0] };
-		image.rgba_t b = { .red = red[1], .green = green[1], .blue = blue[1] };
-		return image.mix(a, b, (double)val/(double)W);
-	}
-
-	// This infuriating trickery ignores the first color and loops
-	// through the rest of the palette.
-	val -= W;
-	int base = (val / W % (CMAP_LEN - 1)) + 1;
-	int top = base + 1;
-	if (top >= CMAP_LEN) {
-		top = 1;
-	}
-
-	double r = (double) val / (double) W;
-	double perc = r - floor(r);
-
-	image.rgba_t a = { .red = red[base], .green = green[base], .blue = blue[base] };
-	image.rgba_t b = { .red = red[top], .green = green[top], .blue = blue[top] };
-	return image.mix(a, b, perc);
-}
-
-void write_colormap(const char *filename) {
-	image.image_t *img = image.new(config.color_width * CMAP_LEN * 1.5, 20);
+void write_colormap(image.colormap_t *cm, const char *filename) {
+	image.image_t *img = image.new(cm->color_width * cm->size * 1.5, 20);
 	for (int x = 0; x < img->width; x++) {
-		image.rgba_t c = colormap(x);
+		image.rgba_t c = image.mapcolor(cm, x);
 		for (int y = 0; y < img->height; y++) {
 			*image.getpixel(img, x, y) = c;
 		}
