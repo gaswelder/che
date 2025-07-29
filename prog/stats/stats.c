@@ -1,43 +1,85 @@
 #import stats
 
 int main() {
-	stats.series_t *s = stats.newseries();
+	double vals[10] = {};
 
-	double val = 0;
+	// Find out the number of columns.
+	size_t nseries = readvals(vals);
+	if (nseries == 0) {
+		panic("no values on the first line");
+	}
+
+	// Initialize the series from the already read values.
+	stats.series_t *series[10] = {};
+	for (size_t i = 0; i < nseries; i++) {
+		series[i] = stats.newseries();
+		stats.add(series[i], vals[i]);
+	}
+
 	while (true) {
-		int r = scanf("%lf\n", &val);
-		if (r == EOF) {
+		size_t n = readvals(vals);
+		if (n == 0 && feof(stdin)) {
 			break;
 		}
-		if (r != 1) {
-			fprintf(stderr, "failed to parse a number\n");
-			return 1;
+		if (n != nseries) {
+			panic("expected %zu values, got %zu", nseries, n);
 		}
-		stats.add(s, val);
-	}
-
-	printf("intr %7.2f ± %.2f\n", stats.avg(s), stats.sd(s));
-	printf(
-		"n\t%zu\n"
-		"sum\t%f\n"
-		"min\t%f\n"
-		"avg\t%f\n"
-		"max\t%f\n",
-		stats.count(s),
-		stats.sum(s),
-		stats.min(s),
-		stats.avg(s),
-		stats.max(s)
-	);
-
-	int percs[] = {50, 66, 75, 80, 90, 95, 98, 99, 100};
-	for (size_t i = 0; i < nelem(percs); i++) {
-		int p = percs[i];
-		if (p == 100) {
-			printf("p100\t%.1f\n", stats.max(s));
-		} else {
-			printf("p%d\t%.1f\n", p, stats.percentile(s, p));
+		for (size_t i = 0; i < n; i++) {
+			stats.add(series[i], vals[i]);
 		}
 	}
+
+	print_results(series, nseries);
 	return 0;
+}
+
+size_t readvals(double *vals) {
+	char line[4096] = {};
+	if (!fgets(line, sizeof(line), stdin)) {
+		return 0;
+	}
+	char *p = line;
+	char *q = NULL;
+	size_t n = 0;
+	while (true) {
+		double x = strtod(p, &q);
+		if (q == p) {
+			break;
+		}
+		vals[n++] = x;
+		p = q;
+	}
+	return n;
+}
+
+void print_results(stats.series_t *series[], size_t nseries) {
+	printf("avg:");
+	for (size_t i = 0; i < nseries; i++) {
+		printf("\t%7.2f ± %.2f", stats.avg(series[i]), stats.sd(series[i]));
+	}
+	putchar('\n');
+	printf("min:");
+	for (size_t i = 0; i < nseries; i++) {
+		printf("\t%.2f", stats.min(series[i]));
+	}
+	putchar('\n');
+	printf("max:");
+	for (size_t i = 0; i < nseries; i++) {
+		printf("\t%.2f", stats.max(series[i]));
+	}
+	putchar('\n');
+	printf("N:");
+	for (size_t i = 0; i < nseries; i++) {
+		printf("\t%zu", stats.count(series[i]));
+	}
+	putchar('\n');
+	int percentiles[] = {5, 25, 33, 50, 66, 75, 95, 99};
+	for (size_t i = 0; i < nelem(percentiles); i++) {
+		int p = percentiles[i];
+		printf("p%d", p);
+		for (size_t j = 0; j < nseries; j++) {
+			printf("\t%.1f", stats.percentile(series[j], p));
+		}
+		putchar('\n');
+	}
 }
