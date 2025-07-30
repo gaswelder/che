@@ -41,10 +41,10 @@ config_t config = {
 
 image.colormap_t *GLOBAL_CM = NULL;
 
-int main(int argc, char **argv) {
+pub int run(int argc, char **argv) {
 	bool flag_colormap = false;
 	bool render_out = false;
-	char *confpath = "example.conf";
+	char *confpath = "mandelbrot.conf";
 	opt.nargs(0, "");
 	opt.str("c", "config file", &confpath);
 	opt.flag("m", "create a colormap image", &flag_colormap);
