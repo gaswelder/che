@@ -3,6 +3,7 @@
 #import complex
 #import formats/bmp
 #import formats/conf
+#import formats/ppm
 #import image
 #import opt
 #import os/threads
@@ -42,10 +43,12 @@ image.colormap_t *GLOBAL_CM = NULL;
 
 int main(int argc, char **argv) {
 	bool flag_colormap = false;
+	bool render_out = false;
 	char *confpath = "example.conf";
 	opt.nargs(0, "");
 	opt.str("c", "config file", &confpath);
 	opt.flag("m", "create a colormap image", &flag_colormap);
+	opt.flag("o", "render as ppm to stdout", &render_out);
 	opt.parse(argc, argv);
 
 	if (!loadconfig(&config, confpath)) {
@@ -78,7 +81,12 @@ int main(int argc, char **argv) {
 
 	// 1 worker will read and render images.
 	threads.pipe_t *render_in = threads.newpipe();
-	threads.thr_t *render = threads.start(renderfunc, render_in);
+	threads.thr_t *render = NULL;
+	if (render_out) {
+		render = threads.start(renderfunc_stdout, render_in);
+	} else {
+		render = threads.start(renderfunc, render_in);
+	}
 
 	// 8 workers will consume parameters and write to the renderer.
 	threads.pipe_t *worker_in = threads.newpipe();
@@ -165,6 +173,18 @@ void *renderfunc(void *arg) {
 			panic("failed to write bmp: %s", strerror(errno));
 		}
 		fprintf(stderr, "%s\n", filename);
+		image.free(val->img);
+		free(val);
+	}
+	return NULL;
+}
+
+void *renderfunc_stdout(void *arg) {
+	threads.pipe_t *in = arg;
+	void *buf[1] = {};
+	while (threads.pread(in, buf)) {
+		render_val_t *val = buf[0];
+		ppm.writeimg(val->img, stdout);
 		image.free(val->img);
 		free(val);
 	}
