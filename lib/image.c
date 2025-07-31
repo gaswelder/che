@@ -197,3 +197,24 @@ rgba_t mapcolor_(rgba_t *colors, size_t ncolors, int color_width, int val) {
 	double rate = (double) (val % color_width) / (double) color_width;
 	return mix(colors[index1], colors[index2], rate);
 }
+
+// Draws a tv-style test pattern into img.
+pub void testimage(image_t *img) {
+	rgba_t seq[] = {
+		{128, 128, 128, 0}, // Gray
+		{192, 192, 192, 0}, // Lightgray
+		{255, 255, 0, 0}, // Yellow
+		{0, 255, 255, 0}, // Cyan
+		{0, 255, 0, 0}, // Green
+		{255, 0, 255, 0}, // Magenta
+		{255, 0, 0, 0}, // Red
+		{0, 0, 255, 0}, // Blue
+	};
+	int w = img->width / nelem(seq);
+	for (int y = 0; y < img->height; y++) {
+		for (int x = 0; x < img->width; x++) {
+			int i = (x / w) % nelem(seq);
+			set(img, x, y, seq[i]);
+		}
+	}
+}

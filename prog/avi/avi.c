@@ -1,3 +1,5 @@
+#import image
+
 void write_u32(FILE *f, uint32_t v) { fwrite(&v, 4, 1, f); }
 
 typedef {
@@ -100,14 +102,33 @@ AviWriter *avi_open(FILE *f, int width, int height, int fps) {
     return avi;
 }
 
-void avi_add_frame(AviWriter *avi, const uint8_t *data) {
+void avi_add_frame(AviWriter *avi, image.image_t *img) {
+	if (img->width != avi->width || img->height != avi->height) {
+		panic("frame image size mismatch");
+	}
+	int width = avi->width;
+	int height = avi->height;
+
+	uint8_t *frame = calloc!(1, width * height * 3);
+	for (int y = 0; y < height; y++) {
+		for (int x = 0; x < width; x++) {
+			int pos = y * (width*3) + (x*3);
+			image.rgba_t c = image.get(img, x, y);
+			// fprintf(stderr, "%d %d %d\n", c.red, c.green, c.blue);
+			frame[pos++] = c.red;
+			frame[pos++] = c.green;
+			frame[pos++] = c.blue;
+		}
+	}
+
     FILE *f = avi->f;
     fwrite("00db", 1, 4, f);
     uint32_t frame_size = avi->width * avi->height * 3;
     write_u32(f, frame_size);
-    fwrite(data, 1, frame_size, f);
+    fwrite(frame, 1, frame_size, f);
     if (frame_size & 1) fputc(0, f);
     avi->frame_count++;
+	free(frame);
 }
 
 // void avi_close(AviWriter *avi) {
@@ -150,15 +171,19 @@ void avi_add_frame(AviWriter *avi, const uint8_t *data) {
 
 int main() {
 	// FILE *f = fopen("streamable.avi", "wb");
-    AviWriter *avi = avi_open(stdout, 320, 240, 10);
+	int width = 320;
+	int height = 240;
+	int fps = 10;
 
-    uint8_t *frame = calloc!(1, 320 * 240 * 3);
+	image.image_t *img = image.new(width, height);
+	image.testimage(img);
+
+    AviWriter *avi = avi_open(stdout, width, height, fps);
     for (int i = 0; i < 100; i++) {
-        memset(frame, i * 25, 320 * 240 * 3);
-        avi_add_frame(avi, frame);
+        avi_add_frame(avi, img);
     }
-
     // avi_close(avi);
-    free(frame);
+
+	image.free(img);
     return 0;
 }
