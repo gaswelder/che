@@ -53,30 +53,32 @@ size_t readvals(double *vals) {
 }
 
 void print_results(stats.series_t *series[], size_t nseries) {
-	printf("avg:");
+	printf("avg");
 	for (size_t i = 0; i < nseries; i++) {
 		printf("\t%7.2f ± %.2f", stats.avg(series[i]), stats.sd(series[i]));
 	}
 	putchar('\n');
-	printf("min:");
+	printf("min");
 	for (size_t i = 0; i < nseries; i++) {
 		printf("\t%.2f", stats.min(series[i]));
 	}
 	putchar('\n');
-	printf("max:");
+	printf("max");
 	for (size_t i = 0; i < nseries; i++) {
 		printf("\t%.2f", stats.max(series[i]));
 	}
 	putchar('\n');
-	printf("N:");
+
+	printf("N");
 	for (size_t i = 0; i < nseries; i++) {
 		printf("\t%zu", stats.count(series[i]));
 	}
 	putchar('\n');
+
 	int percentiles[] = {5, 25, 33, 50, 66, 75, 95, 99};
 	for (size_t i = 0; i < nelem(percentiles); i++) {
 		int p = percentiles[i];
-		printf("p%d", p);
+		printf("0.%02d", p);
 		for (size_t j = 0; j < nseries; j++) {
 			printf("\t%.1f", stats.percentile(series[j], p));
 		}
