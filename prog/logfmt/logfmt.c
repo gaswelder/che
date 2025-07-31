@@ -4,24 +4,28 @@
 #import tty
 
 char *reqfields[100] = {};
+char *excludefields[100] = {};
 int nreqfields = 0;
+int nexclude = 0;
 
 int main(int argc, char **argv) {
     char buf[4096];
 
-    char *fields_string = NULL;
+    char *fields_string = "msg|message";
+    char *exclude_string = "";
 	opt.nargs(0, "");
-    opt.str("f", "comma-separated list of fields to print as columns after the timestamp", &fields_string);
+    opt.str("f", "comma-separated list of fields to print as columns after the level and timestamp", &fields_string);
+    opt.str("x", "comma-separated list of fields to exclude", &exclude_string);
     opt.parse(argc, argv);
 
     nreqfields = strings.split(",", fields_string, reqfields, sizeof(reqfields));
+    nexclude = strings.split(",", exclude_string, excludefields, sizeof(excludefields));
 
     // This assumes that stdin has the default "line discipline" - that is,
-    // fgets will end up delivering whole lines, one line at a time, - and that
-    // all lines fit into the buffer.
-    while (fgets(buf, 4096, stdin)) {
+    // fgets will deliver complete lines, one at a time, and that all lines fit into the buffer.
+    while (fgets(buf, sizeof(buf), stdin)) {
         json.val_t *entry = json.parse(buf);
-        // If line couldn't be parsed as json - print it as is.
+        // If line couldn't be parsed as json, print as is.
         if (!entry) {
             printf("%s", buf);
             continue;
@@ -33,63 +37,60 @@ int main(int argc, char **argv) {
 }
 
 void print_entry(json.val_t *entry) {
+    char printed[10][100] = {
+        "level",
+    };
+    size_t nprinted = 1;
+
     print_level(entry);
-
-    // Print the timestamp or a placeholder.
-    const char *ts = json.getstr(entry, "t");
-    if (!ts) {
-        ts = json.getstr(entry, "timestamp");
+    putchar('\t');
+    if (print_req_val(entry, "t|timestamp", printed[nprinted])) {
+        nprinted++;
     }
-    if (!ts) {
-        printf("\t(?time)");
-    } else {
-        printf("\t%s", ts);
-    }
+    putchar('\t');
 
-    // Print the requested fields.
     for (int i = 0; i < nreqfields; i++) {
-        json.val_t *v = json.get(entry, reqfields[i]);
-		printf("\t");
-        if (v != NULL) {
-            print_node(reqfields[i], entry, v);
+        if (print_req_val(entry, reqfields[i], printed[nprinted])) {
+            nprinted++;
         }
-    }
-
-    // Print the message.
-    const char *msg = json.getstr(entry, "msg");
-    if (!msg) {
-        msg = json.getstr(entry, "message");
-    }
-    if (msg != NULL) {
-        printf("\t%s", msg);
-    } else {
-        printf("\t");
+        putchar('\t');
     }
 
     // Print the remaining fields as k=v
     size_t n = json.nkeys(entry);
     for (size_t i = 0; i < n; i++) {
         const char *key = json.key(entry, i);
-
-        // Skip if we have already printed this field.
-        if (!strcmp(key, "t") || !strcmp(key, "msg") || !strcmp(key, "level")) {
+        if (contains(printed, key)) {
             continue;
         }
-        bool isreq = false;
-        for (int j = 0; j < nreqfields; j++) {
-            if (!strcmp(reqfields[j], key)) {
-                isreq = true;
+        bool excluded = false;
+        for (int j = 0; j < nexclude; j++) {
+            if (strcmp(excludefields[j], key) == 0) {
+                excluded = true;
                 break;
             }
         }
-        if (isreq) {
-            continue;
-        }
-        json.val_t *val = json.json_val(entry, i);
+        if (excluded) continue;
         printf(" %s=", key);
-        print_node(key, entry, val);
+        printval(json.json_val(entry, i));
     }
     puts("");
+}
+
+bool print_req_val(json.val_t *entry, const char *key, char printed[100]) {
+    if (strcmp(key, "msg|message") == 0) {
+        return print_req_val(entry, "msg", printed) || print_req_val(entry, "message", printed);
+    }
+    if (strcmp(key, "t|timestamp") == 0) {
+        return print_req_val(entry, "t", printed) || print_req_val(entry, "timestamp", printed);
+    }
+    json.val_t *v = json.get(entry, key);
+    if (v == NULL) {
+        return false;
+    }
+    strcpy(printed, key);
+    printval(v);
+    return true;
 }
 
 // Prints the level in color.
@@ -116,34 +117,30 @@ void print_level(json.val_t *entry) {
     tty.ttycolor(tty.RESET_ALL);
 }
 
-bool isint(double x) {
-	int a = (int) x;
-	return (double) a == x;
-}
-
-void print_node(const char *key, json.val_t *e, *val) {
-    switch (json.type(val)) {
-        case json.JSON_STR:  { printf("%s", json.getstr(e, key)); }
-        case json.JSON_OBJ:  { printf("(object)"); }
+void printval(json.val_t *val) {
+    switch (val->type) {
+        case json.JSON_STR: { printf("%s", val->val.str); }
+        case json.JSON_OBJ: { printf("(object)"); }
         case json.JSON_NULL: { printf("null"); }
-        case json.JSON_ARR:  { printf("(array)"); }
-        case json.JSON_NUM: {
-            double val = json.json_getdbl(e, key);
-            if (isint(val)) {
-                printf("%d", (int) val);
-            } else {
-                printf("%f", val);
-            }
-        }
-	    case json.JSON_BOOL: {
+        case json.JSON_ARR: { printf("(array)"); }
+        case json.JSON_NUM: { printf("%g", val->val.num); }
+        case json.JSON_BOOL: {
             if (val->val.boolval) {
                 printf("true");
             } else {
                 printf("false");
             }
         }
-        default: {
-            printf("(unknown type %d)", json.type(val));
-        }
+        default: { printf("(unimplemented type %d)", val->type); }
     }
+}
+
+bool contains(const char ids[][100], *id) {
+    size_t i = 0;
+    for (;;) {
+        if (ids[i][0] == '\0') break;
+        if (strcmp(ids[i], id) == 0) return true;
+        i++;
+    }
+    return false;
 }
