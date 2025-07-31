@@ -1,8 +1,9 @@
+// This used to be xmlgen by Florian Waas (flw@mx4.org).
+
 #import formats/dtd
 #import ipsum
 #import opt
 #import rnd
-#import words.c
 
 const char *real_dtd = "
 	<!ELEMENT site (regions, categories, catgraph, people, open_auctions, closed_auctions)>
@@ -110,7 +111,7 @@ const char *mapgen(const char *elemname) {
         case "education": { return "dict(educations)"; }
         case "from", "to", "name": { return "dict(firstnames) ' ' dict(lastnames)"; }
         case "gender": { return "dict(genders)"; }
-        case "homepage": { return "'https://' dict(words) '.' dict(domains)"; }
+        case "homepage": { return "'https://' word '.' dict(domains)"; }
         case "increase": { return "f2[1.5,15]"; }
         case "initial": { return "f2[0,100]"; }
         case "location", "country": { return "dict(countries)"; }
@@ -131,10 +132,149 @@ const char *mapgen(const char *elemname) {
 
 const int MAX_CHILDREN = 3;
 
+char *auction_types[]={"Regular","Featured"};
+char *genders[] = {"male", "female"};
+char *yesno[] = {"yes", "no"};
+char *educations[]={"High School","College", "Graduate School","Other"};
+char *payment_types[]={"Money order","Creditcard", "Personal Check","Cash"};
+char *SHIPPING[] = { "only within country", "internationally", "Buyer pays fixed shipping charges" };
+char *domains[] = {
+    "at", "au", "be", "bell-com", "ca", "ch", "cn", "com", "cz", "de", "dk", "edu",
+    "fr", "gov", "gr", "hk", "ie", "in", "it", "jp", "kr", "net", "nl", "no", "org",
+    "pl", "pt", "se", "uk",
+};
+char *provinces[]={
+    "Alabama","Alaska","Arizona","Arkansas","California","Colorado",
+    "Connecticut","Delaware","District Of Columbia","Florida","Georgia",
+    "Hawaii","Idaho","Illinois","Indiana","Iowa","Kansas","Kentucky",
+    "Louisiana","Maine","Maryland","Massachusetts","Michigan","Minnesota",
+    "Mississipi","Missouri","Montana","Nebraska","Nevada","New Hampshire",
+    "New Jersey","New Mexico","New York","North Carolina","North Dakota",
+    "Ohio","Oklahoma","Oregon","Pennsylvania","Rhode Island",
+    "South Carolina","South Dakota","Tennessee","Texas","Utah","Vermont",
+    "Virginia","Washington","West Virginia","Wisconsin","Wyoming"
+};
+char *cities[]={
+    "Abidjan","Abu","Acapulco","Aguascalientes","Akron","Albany",
+    "Albuquerque","Alexandria","Allentown","Amarillo","Amsterdam",
+    "Anchorage","Appleton","Aruba","Asheville","Athens","Atlanta",
+    "Augusta","Austin","Baltimore","Bamako","Bangor","Barbados",
+    "Barcelona","Basel","Baton","Beaumont","Berlin","Bermuda","Billings",
+    "Birmingham","Boise","Bologna","Boston","Bozeman","Brasilia",
+    "Brunswick","Brussels","Bucharest","Budapest","Buffalo","Butte",
+    "Cairo","Calgary","Cancun","Cape","Caracas","Casper","Cedar",
+    "Charleston","Charlotte","Charlottesville","Chattanooga","Chicago",
+    "Chihuahua","Cincinnati","Ciudad","Cleveland","Cody","Colorado",
+    "Columbia","Columbus","Conakry","Copenhagen","Corpus","Cozumel",
+    "Dakar","Dallas","Dayton","Daytona","Denver","Des","Detroit","Dothan",
+    "Dubai","Dublin","Durango","Durban","Dusseldorf","East","El","Elko",
+    "Evansville","Fairbanks","Fayetteville","Florence","Fort","Fortaleza",
+    "Frankfurt","Fresno","Gainesville","Geneva","George","Glasgow",
+    "Gothenburg","Grand","Great","Green","Greensboro","Greenville",
+    "Grenada","Guadalajara","Guangzhou","Guatemala","Guaymas","Gulfport",
+    "Gunnison","Hamburg","Harrisburg","Hartford","Helena","Hermosillo",
+    "Honolulu","Houston","Huntington","Huntsville","Idaho","Indianapolis",
+    "Istanbul","Jackson","Jacksonville","Johannesburg","Kahului",
+    "Kalamazoo","Kalispell","Kansas","Key","Kiev","Killeen","Knoxville",
+    "La","Lafayette","Lansing","Las","Lawton","Leon","Lexington","Lima",
+    "Lisbon","Little","Lome","London","Long","Lorient","Los","Louisville",
+    "Lubbock","Lynchburg","Lyon","Macon","Madison","Madrid","Manchester",
+    "Mazatlan","Melbourne","Memphis","Merida","Meridian","Mexico","Miami",
+    "Milan","Milwaukee","Minneapolis","Missoula","Mobile","Monroe",
+    "Monterrey","Montgomery","Montreal","Moscow","Mulhouse","Mumbai",
+    "Munich","Myrtle","Nagoya","Nashville","Nassau","New","Newark",
+    "Newburgh","Newcastle","Nice","Norfolk","Oakland","Oklahoma","Omaha",
+    "Ontario","Orange","Orlando","Ouagadougou","Palm","Panama","Paris",
+    "Pasco","Pensacola","Philadelphia","Phoenix","Pittsburgh","Pocatello",
+    "Port","Portland","Porto","Prague","Providence","Providenciales",
+    "Puebla","Puerto","Raleigh","Rapid","Reno","Richmond","Rio","Roanoke",
+    "Rochester","Rome","Sacramento","Salt","Salvador","San","Santiago",
+    "Sao","Sarasota","Savannah","Seattle","Shannon","Shreveport","South",
+    "Spokane","St","Stockholm","Stuttgart","Sun","Syracuse","Tallahassee",
+    "Tampa","Tapachula","Texarkana","Tokyo","Toledo","Toronto","Torreon",
+    "Toulouse","Tri","Tucson","Tulsa","Turin","Twin","Vail","Valdosta",
+    "Vancouver","Venice","Veracruz","Vienna","Villahermosa","Warsaw",
+    "Washington","West","White","Wichita","Wilkes","Wilmington",
+    "Windhoek","Worcester","Zihuatenejo","Zurich"
+};
+char *countries[]={
+    "United States","Afghanistan","Albania","Algeria","American Samoa",
+    "Andorra","Angola","Anguilla","Antarctica","Antigua","Argentina",
+    "Armenia","Aruba","Australia","Austria","Azerbaijan","Bahamas",
+    "Bahrain","Bangladesh","Barbados","Belarus","Belgium","Belize",
+    "Benin","Bermuda","Bhutan","Bolivia","Botswana","Brazil",
+    "British Indian Ocean Territory","British Virgin Islands",
+    "Brunei Darussalam","Bulgaria","Burkina Faso","Burundi",
+    "Cacos Islands","Cambodia","Cameroon","Canada","Cape Verde",
+    "Cayman Islands","Central African Republic","Chad","Chile","China",
+    "Christmas Island","Colombia","Comoros","Congo","Cook Islands",
+    "Costa Rica","Croatia","Cuba","Cyprus","Czech Republic","Denmark",
+    "Djibouti","Dominica","Dominican Republic","East Timor","Ecuador",
+    "Egypt","El Salvador","Equatorial Guinea","Eritrea","Estonia",
+    "Ethiopia","Falkland Islands","Faroe Islands","Fiji","Finland",
+    "France","French Guiana","French Polynesia",
+    "French Southern Territory","Futuna Islands","Gabon","Gambia",
+    "Georgia","Germany","Ghana","Gibraltar","Greece","Greenland",
+    "Grenada","Guadeloupe","Guam","Guatemala","Guinea","Guyana","Haiti",
+    "Heard and Mcdonald Island","Honduras","Hong Kong","Hungary",
+    "Iceland","India","Indonesia","Iran","Iraq","Ireland","Israel",
+    "Italy","Ivory Coast","Jamaica","Japan","Jordan","Kazakhstan","Kenya",
+    "Kiribati","Korea, Democratic People's Rep","Korea, Republic Of",
+    "Kuwait","Kyrgyzstan","Lao People's Democratic Republ","Latvia",
+    "Lebanon","Lesotho","Liberia","Libyan Arab Jamahiriya","Lithuania",
+    "Luxembourg","Macau","Macedonia","Madagascar","Malawi","Malaysia",
+    "Maldives","Mali","Malta","Marshall Islands","Martinique",
+    "Mauritania","Mauritius","Mayotte","Mexico","Micronesia",
+    "Moldova, Republic Of","Monaco","Mongolia","Montserrat","Morocco",
+    "Mozambique","Myanmar","Namibia","Nauru","Nepal","Netherlands",
+    "Netherlands Antilles","New Caledonia","New Zealand","Nicaragua",
+    "Niger","Nigeria","Niue","Norfolk Island","Northern Mariana Islands",
+    "Norway","Oman","Pakistan","Palau","Panama","Papua New Guinea",
+    "Paraguay","Peru","Philippines","Poland","Portugal","Puerto Rico",
+    "Qatar","Reunion","Romania","Russian Federation","Rwanda",
+    "Saint Kitts","Samoa","San Marino","Sao Tome","Saudi Arabia",
+    "Senegal","Seychelles","Sierra Leone","Singapore","Slovakia",
+    "Slovenia","Solomon Islands","Somalia","South Africa","South Georgia",
+    "Spain","Sri Lanka","St. Helena","St. Lucia","St. Pierre",
+    "St. Vincent and Grenadines","Sudan","Suriname",
+    "Svalbard and Jan Mayen Island","Swaziland","Sweden","Switzerland",
+    "Syrian Arab Republic","Taiwan","Tajikistan","Tanzania","Thailand",
+    "Togo","Tokelau","Tonga","Trinidad","Tunisia","Turkey","Turkmenistan",
+    "Turks Islands","Tuvalu","Uganda","Ukraine","United Arab Emirates",
+    "United Kingdom","Uruguay","Us Minor Islands","Us Virgin Islands",
+    "Uzbekistan","Vanuatu","Vatican City State","Venezuela","Viet Nam",
+    "Western Sahara","Yemen","Zaire","Zambia","Zimbabwe"
+};
+char *firstnames[] = {
+	"Alice", "Barb", "Chris", "Drew", "Emily", "Flo", "Geoff", "Hugh", "Ilsa", "Jack",
+    "Ken", "Laura", "Mark", "Nick", "Ophelia", "Peter", "Queen", "Richard", "Saul",
+    "Terry", "Uncle", "Vito", "William", "Xenia", "Zohan",
+};
+char *lastnames[] = {
+	"Apple", "Banana", "Chicken", "Dumpling", "Edible", "Fruit", "Granola", "Hummus",
+    "Ice-Cream", "Jam", "Ketchup", "Lemon", "Mellon", "Noodle", "Orange", "Paprika",
+    "Quesadilla", "Rice", "Spaghetti", "Toast", "Utkǎ", "Vinegar", "Waffle", "Yoghurt",
+    "Zucchini",
+};
+
+
 int main(int argc, char **argv) {
     opt.parse(argc, argv);
 	dtd.schema_t schema = dtd.parse(real_dtd);
-	words.init();
+
+	ipsum.add_dict("shipping", nelem(SHIPPING), SHIPPING);
+    ipsum.add_dict("auction_types", nelem(auction_types), auction_types);
+    ipsum.add_dict("cities", nelem(cities), cities);
+    ipsum.add_dict("countries", nelem(countries), countries);
+    ipsum.add_dict("domains", nelem(domains), domains);
+    ipsum.add_dict("educations", nelem(educations), educations);
+    ipsum.add_dict("firstnames", nelem(firstnames), firstnames);
+    ipsum.add_dict("genders", nelem(genders), genders);
+    ipsum.add_dict("lastnames", nelem(lastnames), lastnames);
+    ipsum.add_dict("payment_types", nelem(payment_types), payment_types);
+    ipsum.add_dict("provinces", nelem(provinces), provinces);
+    ipsum.add_dict("yesno", nelem(yesno), yesno);
+
     fprintf(stdout, "<?xml version=\"1.0\" standalone=\"yes\"?>\n");
 	emit_element(&schema, "site", 0);
     return 0;

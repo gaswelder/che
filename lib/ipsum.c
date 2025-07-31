@@ -70,6 +70,12 @@ bool parse(tokenizer.t *b) {
 		return true;
 	}
 
+	// word
+	if (tokenizer.skip_literal(b, "word")) {
+		genword();
+		return true;
+	}
+
 	// text[1..10]
 	if (tokenizer.skip_literal(b, "text[")) {
 		int n1 = 0;
