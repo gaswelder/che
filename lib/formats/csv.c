@@ -11,7 +11,7 @@ pub typedef {
 // Creates a new CSV reader for stdin.
 pub reader_t *newreader() {
 	reader_t *r = calloc!(1, sizeof(reader_t));
-	r->b = tokenizer.stdin();
+	r->b = tokenizer.file(stdin);
 	r->firstval = true;
 	return r;
 }

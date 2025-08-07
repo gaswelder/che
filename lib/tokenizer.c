@@ -14,14 +14,7 @@ pub typedef {
 	char posstrbuf[10];
 } t;
 
-// Returns a new instance reading from stdin.
-pub t *stdin() {
-	t *b = new(reader.stdin());
-	b->reader_own = true;
-	return b;
-}
-
-// Returns a new instance reading from the file f.
+// Returns a new instance reading from file f.
 pub t *file(FILE *f) {
 	t *b = new(reader.file(f));
 	b->reader_own = true;
@@ -36,7 +29,7 @@ pub t *from_str(const char *s) {
 	return b;
 }
 
-// Returns a tokenizer instance reading from the given reader.
+// Returns a tokenizer instance reading from reader r.
 pub t *new(reader.t *r) {
 	if (!r) panic("got null reader");
 	t *b = calloc!(1, sizeof(t));

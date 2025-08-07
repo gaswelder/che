@@ -38,7 +38,7 @@ typedef {
 
 int main() {
 	lexer_t *lexer = calloc!(1, sizeof(lexer_t));
-	lexer->buf = tokenizer.stdin();
+	lexer->buf = tokenizer.file(stdin);
 	if (!lexer->buf) {
 		fprintf(stderr, "failed to get tokenizer: %s\n", strerror(errno));
 		return 1;
