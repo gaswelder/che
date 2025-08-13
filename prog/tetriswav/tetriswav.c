@@ -1,6 +1,5 @@
 // Writes the tetris song wav to stdout. Pipe it to mpv or aplay.
 #import formats/wav
-#import writer
 
 typedef {
 	float freq;
@@ -20,7 +19,7 @@ note_t notes[] = {
 const float RATE = 44100;
 
 int main() {
-	wav.writer_t *w = wav.open_writer2(writer.stdout());
+	wav.writer_t *w = wav.open_writer(stdout);
 	for (size_t i = 0; i < nelem(notes); i++) {
 		float freq = notes[i].freq;
 		float dur = notes[i].dur;

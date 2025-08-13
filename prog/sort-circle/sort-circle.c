@@ -67,6 +67,7 @@ int main(int argc, char **argv) {
 	bool hide_shuffle = false;
 	bool slow_shuffle = false;
 	char *audio_output = NULL;
+	FILE *audio_output_file = NULL;
 	int sort_number = 0;
 	int delay = 0;
 	char *seed_str = NULL;
@@ -74,7 +75,7 @@ int main(int argc, char **argv) {
 	opt.nargs(0, "");
 	opt.summary("Animated sorting demo - pipe the output to mpv.");
     opt.flag("h", "print the help message", &help);
-	opt.str("a", "name of audio output (WAV)", &audio_output);
+	opt.str("a", "audio output file path (wav)", &audio_output);
 	opt.flag("c", "use the original circle rendering", &global_flag_circle);
     opt.flag("q", "don't draw the shuffle", &hide_shuffle);
     opt.flag("y", "slow down shuffle animation", &slow_shuffle);
@@ -100,11 +101,12 @@ int main(int argc, char **argv) {
     }
 
     if (audio_output) {
-		wavout = wav.open_writer(audio_output);
-		if (!wavout) {
-            fprintf(stderr, "failed out create wav output %s: %s\n", audio_output, strerror(errno));
-            exit(0);
-        }
+		audio_output_file = fopen(audio_output, "wb");
+		if (!audio_output_file) {
+			fprintf(stderr, "failed to open '%s': %s\n", audio_output, strerror(errno));
+			return 1;
+		}
+		wavout = wav.open_writer(audio_output_file);
     }
 
 	image.image_t *img = image.new(800, 800);
@@ -124,6 +126,10 @@ int main(int argc, char **argv) {
         run_sort(img, i);
         pause_1s(img);
     }
+	if (audio_output_file) {
+		wav.close_writer(wavout);
+		fclose(audio_output_file);
+	}
     return 0;
 }
 

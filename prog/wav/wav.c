@@ -9,8 +9,9 @@ int main() {
     printf("freq = %u Hz\n", wr->wav.frequency);
     printf("bits per sample = %u\n", wr->wav.bits_per_sample);
 
-	wav.writer_t *ww = wav.open_writer("out2.wav");
-	if (!ww) panic("open_writer failed");
+	FILE *out = fopen("out2.wav", "wb");
+	if (!out) panic("fopen failed");
+	wav.writer_t *ww = wav.open_writer(out);
 
     double t = 0;
     double dt = 1.0 / wr->wav.frequency;
@@ -26,6 +27,8 @@ int main() {
     }
 
 	wav.close_writer(ww);
+	fclose(out);
+
 	wav.close_reader(wr);
 	return 0;
 }

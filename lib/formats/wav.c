@@ -19,35 +19,23 @@ pub typedef {
 
 pub typedef {
 	writer.t *writer;
-	FILE *file; // file pointer if we own it.
 } writer_t;
 
 pub typedef {
 	int left, right;
 } sample_t;
 
-pub writer_t *open_writer2(writer.t *wr) {
+// Starts a wave stream writing to file f.
+pub writer_t *open_writer(FILE *f) {
+	writer.t *wr = writer.file(f);
 	writer_t *w = calloc!(1, sizeof(writer_t));
 	w->writer = wr;
 	write_headers(w);
 	return w;
 }
 
-pub writer_t *open_writer(const char *path) {
-	FILE *f = fopen(path, "wb");
-	if (!f) panic("failed to open %s for writing", path);
-
-	writer.t *wr = writer.file(f);
-	writer_t *w = open_writer2(wr);
-	w->file = f;
-	return w;
-}
-
 pub void close_writer(writer_t *w) {
 	writer.free(w->writer);
-	if (w->file) {
-		fclose(w->file);
-	}
 	OS.free(w);
 }
 
