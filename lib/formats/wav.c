@@ -41,6 +41,9 @@ pub void close_writer(writer_t *w) {
 
 pub reader_t *open_reader(const char *path) {
     FILE *f = fopen(path, "rb");
+	if (!f) {
+		panic("failed to open the file");
+	}
     reader.t *r = reader.file(f);
 
 	reader_t *wr = calloc!(1, sizeof(reader_t));
@@ -81,8 +84,7 @@ bool read_headers(reader.t *r, wav_t *wp, uint32_t *datalen) {
 	wav_t w = read_fmt(buf);
 
     if (w.format != 1) panic("expected format 1, got %u", w.format);
-    if (w.channels != 2) panic("expected 2 channels, got %u", w.channels);
-	if (w.frequency != 44100) panic("expected frequency 44100, got %d", w.frequency);
+    if (w.channels != 2 && w.channels != 1) panic("expected 1 or 2 channels, got %u", w.channels);
 	if (w.bits_per_sample != 16) panic("expected 16 bits per sample, got %d", w.bits_per_sample);
 	*wp = w;
 
@@ -174,25 +176,29 @@ pub bool more(reader_t *r) {
 }
 
 pub sample_t read_sample(reader_t *r) {
+	int bps = r->wav.bits_per_sample / 8;
 	sample_t sa = {};
-
 	uint16_t u = 0;
+
 	endian.read2le(r->reader, &u);
+	r->done += bps;
 	int s = (int) u;
 	if (s >= 32768) {
 		s -= 65536;
 	}
 	sa.left = s;
 
-	endian.read2le(r->reader, &u);
-	s = (int) u;
-	if (s >= 32768) {
-		s -= 65536;
+	if (r->wav.channels == 2) {
+		endian.read2le(r->reader, &u);
+		r->done += bps;
+		s = (int) u;
+		if (s >= 32768) {
+			s -= 65536;
+		}
+		sa.right = s;
+	} else {
+		sa.right = s;
 	}
-	sa.right = s;
-
-	int bps = r->wav.bits_per_sample / 8;
-	r->done += bps * 2;
     return sa;
 }
 
