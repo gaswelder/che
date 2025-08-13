@@ -31,10 +31,9 @@ int main() {
 
 void note(wav.writer_t *w, float freq, dur) {
 	int nsamples = (int) (RATE * dur);
-	wav.sample_t s = {};
 	for (int i = 0; i < nsamples; i++) {
 		float v = sinf((float) i * 2.0 * M_PI / RATE * freq);
-		s.left = s.right = v * 32768;
-		wav.write_sample(w, s);
+		int s = v * 32768;
+		wav.write_sample(w, s, s);
 	}
 }

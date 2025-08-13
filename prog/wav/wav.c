@@ -23,7 +23,7 @@ int main() {
 		if (t <= 1) {
 			printf("%f\t%d\t%d\n", t, s.left, s.right);
 		}
-		wav.write_sample(ww, s);
+		wav.write_sample(ww, s.left, s.right);
     }
 
 	wav.close_writer(ww);

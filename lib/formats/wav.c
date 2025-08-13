@@ -152,12 +152,12 @@ void write_headers(writer_t *w) {
     endian.write4le(w->writer, datalen);
 }
 
-pub void write_sample(writer_t *w, sample_t sa) {
-	int s = sa.left;
+pub void write_sample(writer_t *w, int left, right) {
+	int s = left;
 	if (s < 0) s += 65536;
 	endian.write2le(w->writer, (uint16_t) s);
 
-	s = sa.right;
+	s = right;
 	if (s < 0) s += 65536;
 	endian.write2le(w->writer, (uint16_t) s);
 }

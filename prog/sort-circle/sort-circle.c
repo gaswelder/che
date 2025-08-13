@@ -213,11 +213,8 @@ void audio() {
 	}
 
 	for (int i = 0; i < nsamples; i++) {
-		wav.sample_t s = {
-			.left = samples[i] * 32768,
-			.right = samples[i] * 32768
-		};
-		wav.write_sample(wavout, s);
+		int v = samples[i] * 32768;
+		wav.write_sample(wavout, v, v);
 	}
 }
 
