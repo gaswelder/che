@@ -1,34 +1,43 @@
 #import formats/wav
 
-int main() {
-	wav.reader_t *wr = wav.open_reader("out.wav");
-	if (!wr) panic("open_reader failed");
+// mixes two waves together
 
-	printf("format = %u\n", wr->wav.format);
-    printf("channels = %u\n", wr->wav.channels);
-    printf("freq = %u Hz\n", wr->wav.frequency);
-    printf("bits per sample = %u\n", wr->wav.bits_per_sample);
+int main(int argc, char *argv[]) {
+	if (argc != 3) {
+		fprintf(stderr, "arguments: wav-file1 wav-file2\n");
+		return 1;
+	}
+	wav.reader_t *wr1 = wav.open_reader(argv[1]);
+	if (!wr1) panic("open_reader failed");
 
-	FILE *out = fopen("out2.wav", "wb");
-	if (!out) panic("fopen failed");
+	wav.reader_t *wr2 = wav.open_reader(argv[2]);
+	if (!wr2) panic("open_reader failed");
+
+	// FILE *out = fopen("out2.wav", "wb");
+	// if (!out) panic("fopen failed");
+	FILE *out = stdout;
 	wav.writer_t *ww = wav.open_writer(out);
 
-    double t = 0;
-    double dt = 1.0 / wr->wav.frequency;
-    int i = 0;
-	while (wav.more(wr)) {
-		i++;
-        t = dt * i;
-		wav.sample_t s = wav.read_sample(wr);
-		if (t <= 1) {
-			printf("%f\t%d\t%d\n", t, s.left, s.right);
+	while (true) {
+		bool ok = false;
+		wav.sample_t s1 = {};
+		wav.sample_t s2 = {};
+		if (wav.more(wr1)) {
+			ok = true;
+			s1 = wav.read_sample(wr1);
 		}
-		wav.write_sample(ww, s.left, s.right);
-    }
+		if (wav.more(wr2)) {
+			ok = true;
+			s2 = wav.read_sample(wr2);
+		}
+		if (!ok) break;
+		wav.write_sample(ww, s1.left + s2.left, s1.right + s2.right);
+	}
 
 	wav.close_writer(ww);
 	fclose(out);
 
-	wav.close_reader(wr);
+	wav.close_reader(wr1);
+	wav.close_reader(wr2);
 	return 0;
 }

@@ -40,67 +40,133 @@ pub void close_writer(writer_t *w) {
 }
 
 pub reader_t *open_reader(const char *path) {
-	uint32_t tmp4u;
-    uint16_t tmp2u;
-
     FILE *f = fopen(path, "rb");
     reader.t *r = reader.file(f);
 
-    //
-    // RIFF header
-    //
-    if (!readtag(r, "RIFF")) {
+	reader_t *wr = calloc!(1, sizeof(reader_t));
+	wr->reader = r;
+
+	wav_t w = {};
+    if (!read_headers(r, &w, &wr->datalen)) {
 		fclose(f);
 		reader.free(r);
-		return false;
 	}
+	wr->wav = w;
+	wr->file = f;
+
+	return wr;
+}
+
+bool read_headers(reader.t *r, wav_t *wp, uint32_t *datalen) {
+	//
+    // Begin RIFF
+    //
+    if (!expect_tag(r, "RIFF")) return false;
+	uint32_t tmp4u;
     endian.read4le(r, &tmp4u); // riff chunk length
 
     //
-    // Wave header
+    // Begin WAVE
     //
-    if (!readtag(r, "WAVE") || !readtag(r, "fmt ")) {
-		fclose(f);
-		reader.free(r);
-		return false;
-	}
+    if (!expect_tag(r, "WAVE")) return false;
+
+	//
+	// wav fmt struct
+	//
+	if (!expect_tag(r, "fmt ")) return false;
     endian.read4le(r, &tmp4u); // fmt chunk size, 16 bytes
-    wav_t w = {};
+	if (tmp4u != 16) panic("expected 16 bytes fmt chunk, got %u", tmp4u);
+	uint8_t buf[16] = {};
+	reader.read(r, buf, 16);
+	wav_t w = read_fmt(buf);
+
+    if (w.format != 1) panic("expected format 1, got %u", w.format);
+    if (w.channels != 2) panic("expected 2 channels, got %u", w.channels);
+	if (w.frequency != 44100) panic("expected frequency 44100, got %d", w.frequency);
+	if (w.bits_per_sample != 16) panic("expected 16 bits per sample, got %d", w.bits_per_sample);
+	*wp = w;
+
+	//
+    // Optional INFO block
+    //
+	char tag[5] = {};
+    reader.read(r, (uint8_t*) tag, 4);
+	if (strcmp(tag, "LIST") == 0) {
+		if (!readinfo(r)) {
+			return false;
+		}
+		reader.read(r, (uint8_t*) tag, 4);
+	}
+
+	//
+    // PCM data
+    //
+	if (strcmp(tag, "data") != 0) {
+		panic("expected data, got %s", tag);
+	}
+    endian.read4le(r, datalen);
+	return true;
+}
+
+void write_headers(writer_t *w) {
+	//
+	// Start RIFF
+	//
+	uint32_t riff_length = -1;
+	writetag(w->writer, "RIFF");
+	endian.write4le(w->writer, riff_length);
+
+	//
+	// Start WAVE
+	//
+    writetag(w->writer, "WAVE");
+
+	//
+	// Wave fmt struct
+	//
+	writetag(w->writer, "fmt ");
+	endian.write4le(w->writer, 16); // fmt chunk size, 16 bytes
+	wav_t fmt = {
+		.format = 1,
+		.channels = 2,
+		.frequency = 44100,
+		.bits_per_sample = 16
+	};
+	write_fmt(w->writer, fmt);
+
+	//
+	// Start an infinite data chunk
+	//
+	writetag(w->writer, "data");
+	uint32_t datalen = -1;
+    endian.write4le(w->writer, datalen);
+}
+
+wav_t read_fmt(uint8_t *buf) {
+	uint32_t tmp4u;
+    uint16_t tmp2u;
+	reader.t *r = reader.static_buffer(buf, 16);
+	wav_t w = {};
     endian.read2le(r, &w.format);
     endian.read2le(r, &w.channels);
     endian.read4le(r, &w.frequency);
     endian.read4le(r, &tmp4u); // bytes per second, same as freq * bytes per block (176400)
     endian.read2le(r, &tmp2u); // bytes per block, same as channels * bytes per sample (4)
     endian.read2le(r, &w.bits_per_sample);
-    
-    if (w.format != 1) panic("expected format 1, got %u", w.format);
-    if (w.channels != 2) panic("expected 2 channels, got %u", w.channels);
+	reader.free(r);
+	return w;
+}
 
-    //
-    // INFO block
-    //
-    if (!readinfo(r)) {
-		fclose(f);
-		reader.free(r);
-		return false;
-	}
-
-	reader_t *wr = calloc!(1, sizeof(reader_t));
-	wr->reader = r;
-	wr->wav = w;
-	wr->file = f;
-
-    //
-    // PCM data
-    //
-    if (!readtag(r, "data")) {
-		fclose(f);
-		reader.free(r);
-		OS.free(wr);
-		return false;
-	}
-    endian.read4le(r, &wr->datalen);
-	return wr;
+void write_fmt(writer.t *bw, wav_t fmt) {
+	uint16_t channels = fmt.channels;
+	uint16_t bytes_per_sample = fmt.bits_per_sample / 8;
+	uint16_t bytes_per_block = channels * bytes_per_sample;
+    endian.write2le(bw, fmt.format);
+    endian.write2le(bw, fmt.channels);
+    endian.write4le(bw, fmt.frequency);
+    endian.write4le(bw, fmt.frequency * bytes_per_block); // bytes per second
+    endian.write2le(bw, bytes_per_block);
+    endian.write2le(bw, fmt.bits_per_sample); // bits per sample
 }
 
 pub bool more(reader_t *r) {
@@ -126,30 +192,8 @@ pub sample_t read_sample(reader_t *r) {
 	sa.right = s;
 
 	int bps = r->wav.bits_per_sample / 8;
-	r->done += bps;
+	r->done += bps * 2;
     return sa;
-}
-
-void write_headers(writer_t *w) {
-	uint32_t riff_length = -1;
-	uint32_t datalen = -1;
-	writetag(w->writer, "RIFF");
-    endian.write4le(w->writer, riff_length);
-    writetag(w->writer, "WAVE");
-	writetag(w->writer, "fmt ");
-
-    endian.write4le(w->writer, 16); // fmt chunk size, 16 bytes
-	uint16_t channels = 2;
-	uint16_t bytes_per_sample = 2;
-	uint16_t bytes_per_block = channels * bytes_per_sample;
-    endian.write2le(w->writer, 1); // format
-    endian.write2le(w->writer, 2); // channels
-    endian.write4le(w->writer, 44100); // frequency
-    endian.write4le(w->writer, 44100 * bytes_per_block); // bytes per second
-    endian.write2le(w->writer, bytes_per_block);
-    endian.write2le(w->writer, bytes_per_sample * 8); // bits per sample
-	writetag(w->writer, "data");
-    endian.write4le(w->writer, datalen);
 }
 
 pub void write_sample(writer_t *w, int left, right) {
@@ -170,10 +214,9 @@ pub void close_reader(reader_t *r) {
 
 bool readinfo(reader.t *r) {
 	char tmp[1000];
-    if (!readtag(r, "LIST")) return false;
     uint32_t listlen = 0;
     endian.read4le(r, &listlen);
-    if (!readtag(r, "INFO")) return false;
+    if (!expect_tag(r, "INFO")) return false;
     listlen -= 4;
     while (listlen > 0) {
         char key[5] = {};
@@ -190,7 +233,7 @@ bool readinfo(reader.t *r) {
     return true;
 }
 
-bool readtag(reader.t *r, const char *tag) {
+bool expect_tag(reader.t *r, const char *tag) {
     char tmp[5] = {};
     reader.read(r, (uint8_t*) tmp, 4);
     if (strcmp(tmp, tag)) panic("wanted %s, got %s", tag, tmp);
