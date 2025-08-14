@@ -101,6 +101,21 @@ bool read_headers(reader.t *r, wav_t *wp, uint32_t *datalen) {
 	}
 
 	//
+	// Optional padding
+	//
+	if (strcmp(tag, "PAD ") == 0) {
+		endian.read4le(r, &tmp4u);
+		uint8_t buf[4096] = {};
+		while (tmp4u > 0) {
+			size_t n = tmp4u;
+			if (n > 4096) n = 4096;
+			reader.read(r, buf, n);
+			tmp4u -= n;
+		}
+		reader.read(r, (uint8_t*) tag, 4);
+	}
+
+	//
     // PCM data
     //
 	if (strcmp(tag, "data") != 0) {
