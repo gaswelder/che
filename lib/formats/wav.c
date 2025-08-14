@@ -25,6 +25,8 @@ pub typedef {
 	int left, right;
 } sample_t;
 
+pub typedef { double left, right; } samplef_t;
+
 // Starts a wave stream writing to file f.
 pub writer_t *open_writer(FILE *f) {
 	writer.t *wr = writer.file(f);
@@ -223,6 +225,16 @@ int read_sample0(reader_t *r) {
 		}
 	}
 	return 0;
+}
+
+pub samplef_t read_samplef(reader_t *r) {
+	sample_t s = read_sample(r);
+	double scale = 1 << r->wav.bits_per_sample;
+	samplef_t sa = {
+		.left = (double) s.left / scale,
+		.right = (double) s.right / scale
+	};
+	return sa;
 }
 
 pub sample_t read_sample(reader_t *r) {

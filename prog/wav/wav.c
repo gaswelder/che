@@ -2,12 +2,13 @@
 
 int main(int argc, char *argv[]) {
 	if (argc < 2) {
-		fprintf(stderr, "specify a subcommand: info, mix\n");
+		fprintf(stderr, "specify a subcommand: info, mix, dump\n");
 		return 1;
 	}
 	switch str(argv[1]) {
 		case "mix": { return main_mix(argc-2, argv+2); }
 		case "info": { return main_info(argc-2, argv+2); }
+		case "dump": { return main_dump(argc-2, argv+2); }
 	}
 	fprintf(stderr, "unknown subcommand\n");
 	return 1;
@@ -72,6 +73,23 @@ int main_info(int argc, char *argv[]) {
 		printf("frequency: %d\n", r->wav.frequency);
 		printf("bits_per_sample: %d\n", r->wav.bits_per_sample);
 		wav.close_reader(r);
+	}
+	return 0;
+}
+
+int main_dump(int argc, char *argv[]) {
+	if (argc != 1) {
+		fprintf(stderr, "arguments: wav-file\n");
+		return 1;
+	}
+	wav.reader_t *r = wav.open_reader(argv[0]);
+	if (!r) {
+		fprintf(stderr, "failed to open '%s': %s\n", argv[0], strerror(errno));
+		return 1;
+	}
+	while (wav.more(r)) {
+		wav.samplef_t s = wav.read_samplef(r);
+		printf("%f\t%f\n", s.left, s.right);
 	}
 	return 0;
 }
