@@ -42,7 +42,7 @@ pub void close_writer(writer_t *w) {
 pub reader_t *open_reader(const char *path) {
     FILE *f = fopen(path, "rb");
 	if (!f) {
-		panic("failed to open the file");
+		return NULL;
 	}
     reader.t *r = reader.file(f);
 
@@ -83,9 +83,15 @@ bool read_headers(reader.t *r, wav_t *wp, uint32_t *datalen) {
 	reader.read(r, buf, 16);
 	wav_t w = read_fmt(buf);
 
-    if (w.format != 1) panic("expected format 1, got %u", w.format);
-    if (w.channels != 2 && w.channels != 1) panic("expected 1 or 2 channels, got %u", w.channels);
-	if (w.bits_per_sample != 16) panic("expected 16 bits per sample, got %d", w.bits_per_sample);
+    if (w.format != 1) {
+		panic("expected format 1 (PCM), got %u", w.format);
+	}
+    if (w.channels != 2 && w.channels != 1) {
+		panic("expected 1 or 2 channels, got %u", w.channels);
+	}
+	if (w.bits_per_sample != 16 && w.bits_per_sample != 24) {
+		panic("expected 16 or 24 bits per sample, got %d", w.bits_per_sample);
+	}
 	*wp = w;
 
 	//
@@ -119,7 +125,7 @@ bool read_headers(reader.t *r, wav_t *wp, uint32_t *datalen) {
     // PCM data
     //
 	if (strcmp(tag, "data") != 0) {
-		panic("expected data, got %s", tag);
+		panic("expected \"data\" chunk, got \"%s\"", tag);
 	}
     endian.read4le(r, datalen);
 	return true;
@@ -190,31 +196,48 @@ pub bool more(reader_t *r) {
 	return r->done < r->datalen;
 }
 
-pub sample_t read_sample(reader_t *r) {
+int read_sample0(reader_t *r) {
 	int bps = r->wav.bits_per_sample / 8;
-	sample_t sa = {};
-	uint16_t u = 0;
-
-	endian.read2le(r->reader, &u);
-	r->done += bps;
-	int s = (int) u;
-	if (s >= 32768) {
-		s -= 65536;
-	}
-	sa.left = s;
-
-	if (r->wav.channels == 2) {
-		endian.read2le(r->reader, &u);
-		r->done += bps;
-		s = (int) u;
-		if (s >= 32768) {
-			s -= 65536;
+	switch (r->wav.bits_per_sample) {
+		// 8 bit - [0, 255], zero at 128
+		// 16-bit - [-32768, +32767], zero at 0
+		case 16: {
+			uint16_t u = 0;
+			endian.read2le(r->reader, &u);
+			r->done += bps;
+			int s = (int) u;
+			if (s >= 32768) s -= 65536;
+			return s;
 		}
-		sa.right = s;
-	} else {
-		sa.right = s;
+		// 24-bit - [−8,388,608, +8,388,607], zero at 0.
+		case 24: {
+			uint32_t u = 0;
+			endian.read3le(r->reader, &u);
+			r->done += bps;
+			int s = (int) u;
+			if (s >= 8388608) s -= 2 * 8388608;
+			return s;
+		}
+		default: {
+			panic("unimplemented sample size: %d", r->wav.bits_per_sample);
+		}
 	}
-    return sa;
+	return 0;
+}
+
+pub sample_t read_sample(reader_t *r) {
+	sample_t sa = {};
+	if (r->wav.channels == 2) {
+		sa.left = read_sample0(r);
+		sa.right = read_sample0(r);
+		return sa;
+	}
+	if (r->wav.channels == 1) {
+		sa.left = read_sample0(r);
+		sa.right = sa.left;
+		return sa;
+	}
+	panic("unimplemented channels number: %d", r->wav.channels);
 }
 
 pub void write_sample(writer_t *w, int left, right) {
@@ -248,7 +271,7 @@ bool readinfo(reader.t *r) {
 
         reader.read(r, (uint8_t*)tmp, infolen);
         tmp[infolen] = '\0';
-        printf("# %s = %s\n", key, tmp);
+        // printf("# %s = %s\n", key, tmp);
         listlen -= infolen;
     }
     return true;
