@@ -21,10 +21,6 @@ pub typedef {
 	writer.t *writer;
 } writer_t;
 
-pub typedef {
-	int left, right;
-} sample_t;
-
 pub typedef { double left, right; } samplef_t;
 
 // Starts a wave stream writing to file f.
@@ -227,37 +223,37 @@ int read_sample0(reader_t *r) {
 	return 0;
 }
 
+// Reads the next sample frame.
 pub samplef_t read_samplef(reader_t *r) {
-	sample_t s = read_sample(r);
+	samplef_t s = {};
 	double scale = 1 << (r->wav.bits_per_sample-1);
-	samplef_t sa = {
-		.left = (double) s.left / scale,
-		.right = (double) s.right / scale
-	};
-	return sa;
+
+	switch (r->wav.channels) {
+		case 1: {
+			s.left = (double) read_sample0(r) / scale;
+			s.right = s.left;
+		}
+		case 2: {
+			s.left = (double) read_sample0(r) / scale;
+			s.right = (double) read_sample0(r) / scale;
+		}
+		default: {
+			panic("unimplemented channels number: %d", r->wav.channels);
+		}
+	}
+	return s;
 }
 
-pub sample_t read_sample(reader_t *r) {
-	sample_t sa = {};
-	if (r->wav.channels == 2) {
-		sa.left = read_sample0(r);
-		sa.right = read_sample0(r);
-		return sa;
-	}
-	if (r->wav.channels == 1) {
-		sa.left = read_sample0(r);
-		sa.right = sa.left;
-		return sa;
-	}
-	panic("unimplemented channels number: %d", r->wav.channels);
-}
+// Writes the next sample frame.
+pub void write_sample(writer_t *w, double left, right) {
+	// Assuming 16-bit stereo.
+	double scale = 1 << 15;
 
-pub void write_sample(writer_t *w, int left, right) {
-	int s = left;
+	int s = (int) (left * scale);
 	if (s < 0) s += 65536;
 	endian.write2le(w->writer, (uint16_t) s);
 
-	s = right;
+	s = (int) (right * scale);
 	if (s < 0) s += 65536;
 	endian.write2le(w->writer, (uint16_t) s);
 }

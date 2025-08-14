@@ -35,7 +35,6 @@ int main_mix(int argc, char *argv[]) {
 
 	wav.writer_t *ww = wav.open_writer(stdout);
 
-	double scale = 1 << 15;
 	while (true) {
 		bool ok = false;
 		double left = 0;
@@ -51,7 +50,7 @@ int main_mix(int argc, char *argv[]) {
 			}
 		}
 		if (!ok) break;
-		wav.write_sample(ww, (int) (scale * left), (int) (scale * right));
+		wav.write_sample(ww, left, right);
 	}
 
 	wav.close_writer(ww);
