@@ -229,7 +229,7 @@ int read_sample0(reader_t *r) {
 
 pub samplef_t read_samplef(reader_t *r) {
 	sample_t s = read_sample(r);
-	double scale = 1 << r->wav.bits_per_sample;
+	double scale = 1 << (r->wav.bits_per_sample-1);
 	samplef_t sa = {
 		.left = (double) s.left / scale,
 		.right = (double) s.right / scale

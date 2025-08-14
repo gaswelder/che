@@ -15,45 +15,50 @@ int main(int argc, char *argv[]) {
 }
 
 int main_mix(int argc, char *argv[]) {
-	if (argc != 2) {
-		fprintf(stderr, "arguments: wav-file1 wav-file2\n");
+	if (argc < 1) {
+		fprintf(stderr, "arguments: wav-files\n");
 		return 1;
 	}
-	wav.reader_t *wr1 = wav.open_reader(argv[0]);
-	if (!wr1) panic("open_reader failed");
 
-	wav.reader_t *wr2 = wav.open_reader(argv[1]);
-	if (!wr2) panic("open_reader failed");
+	wav.reader_t **readers = calloc!(argc, sizeof(wav.reader_t *));
+	for (int i = 0; i < argc; i++) {
+		wav.reader_t *wr = wav.open_reader(argv[i]);
+		if (!wr) {
+			fprintf(stderr, "failed to open '%s': %s\n", argv[i], strerror(errno));
+			return 1;
+		}
+		if (wr->wav.frequency != 44100) {
+			panic("%s: expected frequency 44100, got %d", argv[i], wr->wav.frequency);
+		}
+		readers[i] = wr;
+	}
 
-	if (wr1->wav.frequency != 44100) panic("expected frequency 44100, got %d", wr1->wav.frequency);
-	if (wr2->wav.frequency != 44100) panic("expected frequency 44100, got %d", wr2->wav.frequency);
+	wav.writer_t *ww = wav.open_writer(stdout);
 
-	// FILE *out = fopen("out2.wav", "wb");
-	// if (!out) panic("fopen failed");
-	FILE *out = stdout;
-	wav.writer_t *ww = wav.open_writer(out);
-
+	double scale = 1 << 15;
 	while (true) {
 		bool ok = false;
-		wav.sample_t s1 = {};
-		wav.sample_t s2 = {};
-		if (wav.more(wr1)) {
-			ok = true;
-			s1 = wav.read_sample(wr1);
-		}
-		if (wav.more(wr2)) {
-			ok = true;
-			s2 = wav.read_sample(wr2);
+		double left = 0;
+		double right = 0;
+		wav.samplef_t s = {};
+		for (int i = 0; i < argc; i++) {
+			wav.reader_t *wr = readers[i];
+			if (wav.more(wr)) {
+				ok = true;
+				s = wav.read_samplef(wr);
+				left += s.left;
+				right += s.right;
+			}
 		}
 		if (!ok) break;
-		wav.write_sample(ww, s1.left + s2.left, s1.right + s2.right);
+		wav.write_sample(ww, (int) (scale * left), (int) (scale * right));
 	}
 
 	wav.close_writer(ww);
-	fclose(out);
-
-	wav.close_reader(wr1);
-	wav.close_reader(wr2);
+	for (int i = 0; i < argc; i++) {
+		wav.close_reader(readers[i]);
+	}
+	free(readers);
 	return 0;
 }
 
