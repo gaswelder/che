@@ -33,6 +33,12 @@ pub int dur_us(duration_t *d) {
 	return d->us;
 }
 
+pub duration_t newdur(int val, int unit) {
+	duration_t d = {};
+	dur_set(&d, val, unit);
+	return d;
+}
+
 /*
  * Formats a duration putting its display string into a given buffer
  * Returns false if the buffer is too small.
@@ -41,19 +47,26 @@ pub bool dur_fmt(duration_t *d, char *buf, size_t bufsize, const char *fmt) {
 	int us = d->us;
 	int min = us / MINUTES;
 	us -= min * MINUTES;
-	double sec = (double) us / SECONDS;
+	double fsec = (double) us / (double) SECONDS;
+	int sec = us / SECONDS;
+	us -= sec * SECONDS;
+	int ms = us / MS;
+	us -= ms * MS;
 	int len = 0;
 
 	switch str (fmt) {
 		case "logfile": {
 			if (min > 0) {
-				len = snprintf(buf, bufsize, "%dm %f s", min, sec);
+				len = snprintf(buf, bufsize, "%dm %f s", min, fsec);
 			} else {
-				len = snprintf(buf, bufsize, "%f s", sec);
+				len = snprintf(buf, bufsize, "%f s", fsec);
 			}
 		}
 		case "mm:ss": {
-			len = snprintf(buf, bufsize, "%02d:%02d", min, (int) sec);
+			len = snprintf(buf, bufsize, "%02d:%02d", min, sec);
+		}
+		case "mm:ss.ms": {
+			len = snprintf(buf, bufsize, "%02d:%02d.%03d", min, sec, ms);
 		}
 		default: {
 			panic("unknown format: %s", fmt);
