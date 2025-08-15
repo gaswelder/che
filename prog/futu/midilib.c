@@ -1,5 +1,5 @@
 #import bytereader
-#import time
+#import clip/vec
 
 // http://midi.teragonaudio.com/
 // https://www.recordingblogs.com
@@ -18,19 +18,18 @@ void todo(char *format, ...) {
 	va_end(args);
 }
 
-enum {
-    FORMAT_ONE_MULTI_CHANNEL_TRACK = 0,
-    FORMAT_MANY_SIMULTANEOUS_TRACKS = 1,
-    FORMAT_MANY_INDEPENDENT_TRACKS = 2
-}
+// enum {
+//     FORMAT_ONE_MULTI_CHANNEL_TRACK = 0,
+//     FORMAT_MANY_SIMULTANEOUS_TRACKS = 1,
+//     FORMAT_MANY_INDEPENDENT_TRACKS = 2
+// }
 
 pub typedef {
     bytereader.reader_t *r;
 	uint16_t format; // one of the format constants.
 	uint16_t ntracks;
-	uint16_t beat_size; // How many ticks in a quarter note.
-	uint32_t beat_duration; // How many microseconds in a quarter note.
-
+	uint16_t start_beat_size; // How many ticks in a quarter note.
+	uint32_t start_beat_duration; // How many microseconds in a quarter note.
 
 	/*
 	 * The MIDI spec allows to omit the status byte (event type)
@@ -38,13 +37,6 @@ pub typedef {
 	 * This is referred to as running status.
 	 */
 	int running_status;
-
-	/*
-	 * Current time position.
-	 */
-	time.duration_t time;
-
-	
 } midi_t;
 
 pub midi_t *open(const char *path) {
@@ -54,7 +46,7 @@ pub midi_t *open(const char *path) {
     }
     midi_t *m = calloc!(1, sizeof(midi_t));
     m->r = r;
-	m->beat_duration = 500000; // us
+	m->start_beat_duration = 500000; // us
 
     chunk_head_t h = {};
 
@@ -72,66 +64,169 @@ pub midi_t *open(const char *path) {
     }
     m->format = bytereader.read16(m->r);
     m->ntracks = bytereader.read16(m->r);
-	m->beat_size = bytereader.read16(m->r);
-    printf("format: %s, tracks: %u, ticks per beat: %d\n", formatname(m->format), m->ntracks, m->beat_size );
+	m->start_beat_size = bytereader.read16(m->r);
+    // printf("format: %s, tracks: %u, ticks per beat: %d\n", formatname(m->format), m->ntracks, m->start_beat_size );
     return m;
 }
 
+enum {
+	END = 1,
+	TEMPO,
+	NOTE_ON,
+	NOTE_OFF,
+	TRACK_NAME,
+}
+
+typedef {
+	int type;
+	size_t t; // absolute time in ticks
+	uint8_t track;
+	uint32_t val;
+
+	uint8_t channel;
+	uint8_t key, velocity; // for note on/off events
+	char str[20];
+} event_t;
+
 pub void read_file(midi_t *m) {
-	while (true) {
-		// track_chunk = "MTrk" + <length> + <track_event> [+ <track_event> ...]
-		chunk_head_t h = {};
-		if (!midibin_read_chunk_head(m, &h)) {
-			panic("failed to read head: %s\n", strerror(errno));
-		}
-		time.dur_set(&m->time, 0, time.US);
-		if (strcmp("MTrk", h.name)) {
-			panic("expected MTrk, got %s", h.name);
-		}
-		while (!bytereader.ended(m->r)) {
-        	bool more = read_track_event(m);
-			if (!more) {
-				break;
-			}
-    	}
+	// A MIDI file has global events bucketed into tracks for human editor
+	// convenience, but the events are still global. For example, a tempo change
+	// event will be in one of the tracks, but it affects the entire playback.
+	// So here we take a brute-force approach: read all events into one array
+	// and sort them by absolute time (which is measured in ticks).
+	vec.t *events = vec.new(sizeof(event_t));
+	uint8_t track = 0;
+	for (uint8_t i = 0; i < m->ntracks; i++) {
+		read_track(m, track++, events);
     }
+
+	// Unload the events into a local array.
+	size_t n = vec.len(events);
+	event_t *ee = calloc!(n, sizeof(event_t));
+	for (size_t i = 0; i < n; i++) {
+		event_t *e = vec.index(events, i);
+		ee[i] = *e;
+	}
+	vec.free(events);
+
+	// Sort.
+	qsort(ee, n, sizeof(event_t), bytime);
+
+	uint16_t beat_size = m->start_beat_size;
+	uint32_t beat_duration = m->start_beat_duration;
+
+	size_t t = 0; // microseconds
+	size_t last_tick = 0;
+
+	// Process.
+	for (size_t i = 0; i < n; i++) {
+		event_t *e = &ee[i];
+
+		// How many ticks since last event
+		size_t dt = e->t - last_tick;
+		last_tick = e->t;
+
+		t += (dt * beat_duration) / beat_size;
+
+		printf("%f s\ttrack=%d\t", (double)t/1e6, e->track);
+		switch (e->type) {
+			case END: { printf("end of track\n"); }
+			case NOTE_OFF: {
+				printf("note off\tchannel=%d\tnote=%d\tvelocity=%d\n", e->channel, e->key, e->velocity);
+			}
+			case NOTE_ON: {
+				printf("note on \tchannel=%d\tnote=%d\tvelocity=%d\n", e->channel, e->key, e->velocity);
+			}
+			case TEMPO: {
+				beat_duration = e->val;
+				printf("set tempo\t%u us per quarter note\n", e->val);
+			}
+			case TRACK_NAME: {
+				printf("track name: \"%s\"\n", e->str);
+			}
+			default: {
+				panic("?");
+			}
+		}
+	}
+
+	free(ee);
 }
 
-void read_time(midi_t *m) {
-	int delta_ticks = midibin_variable_length_value(m->r);
-	if (delta_ticks > 0) {
-		double beats = delta_ticks / (double) m->beat_size;
-		double us = beats * (double) m->beat_duration;
-		printf("+ %d ticks (%f beats, %f s)\n", delta_ticks, beats, us/1e6);
+
+
+void read_track(midi_t *m, uint8_t track, vec.t *events) {
+	// track_chunk = "MTrk" + <length> + <track_event> [+ <track_event> ...]
+	chunk_head_t h = {};
+	if (!midibin_read_chunk_head(m, &h)) {
+		panic("failed to read head: %s\n", strerror(errno));
+	}
+	if (strcmp("MTrk", h.name)) {
+		panic("expected MTrk, got %s", h.name);
+	}
+
+
+
+	// Current time in ticks.
+	size_t ticks = 0;
+
+	while (!bytereader.ended(m->r)) {
+		//
+		// Time since last event.
+		//
+		uint32_t dt = midibin_variable_length_value(m->r);
+		if (dt > 0) {
+			ticks += dt;
+			// printf("%zu (+%d) ticks\n", ticks, dt);
+		}
+
+		// Read type
+		if (m->running_status == 0 || get_status_type(bytereader.peekc(m->r)) != STATUS_UNKNOWN) {
+			m->running_status = bytereader.readc(m->r);
+		}
+
+		int event_type = m->running_status;
+		bool more = false;
+		event_t e = {};
+		switch (get_status_type(m->running_status)) {
+			case STATUS_META: {
+				e = read_meta_message(m);
+				e.t = ticks;
+				e.track = track;
+				bool ended = e.type == END;
+				more = !ended;
+				if (e.type != 0) {
+					vec.push(events, &e);
+				}
+			}
+			case STATUS_CHANNEL: {
+				e = read_channel_message(m);
+				e.t = ticks;
+				e.track = track;
+				more = true;
+				if (e.type != 0) {
+					vec.push(events, &e);
+				}
+			}
+			default: {
+				panic("(?) message 0x%X\n", event_type);
+			}
+		}
+		if (!more) {
+			break;
+		}
 	}
 }
 
-bool read_track_event(midi_t *m) {
-	read_time(m);
-
-	// Read type
-	if (m->running_status == 0 || get_status_type(bytereader.peekc(m->r)) != STATUS_UNKNOWN) {
-		m->running_status = bytereader.readc(m->r);
-	}
-
-	int event_type = m->running_status;
-	switch (get_status_type(m->running_status)) {
-		case STATUS_META: {
-			bool ended = read_meta_message(m);
-			return !ended;
-		}
-		case STATUS_CHANNEL: {
-			read_channel_message(m);
-			return true;
-		}
-		default: {
-			panic("(?) message 0x%X\n", event_type);
-		}
-	}
-	return true;
+int bytime(const void *a, *b) {
+	const event_t *e1 = a;
+	const event_t *e2 = b;
+	if (e1->t < e2->t) return -1;
+	if (e2->t < e1->t) return 1;
+	return 0;
 }
 
-bool read_meta_message(midi_t *m) {
+event_t read_meta_message(midi_t *m) {
 	int type = bytereader.readc(m->r);
 	uint32_t len = midibin_variable_length_value(m->r);
 
@@ -145,24 +240,26 @@ bool read_meta_message(midi_t *m) {
 		}
 	}
 
+	event_t e = {};
+
 	switch (type) {
-		case META_TEMPO: { cmd_meta_tempo(m, data, len); }
-		case META_SEQ_NAME: { todo("Track name = \"%s\"\n", (char *) data); }
-		case META_END_OF_TRACK: { printf("---------- end of track -----------\n\n"); }
+		case META_TEMPO: {
+			if (len != 3) panic("expected tempo len of 3, got %d", len);
+			e.val = (data[0] << 16) + (data[1] << 8) + data[2];
+			e.type = TEMPO;
+		}
+		case META_SEQ_NAME: {
+			e.type = TRACK_NAME;
+			strcpy(e.str, (char *) data);
+		}
+		case META_END_OF_TRACK: { e.type = END; }
 		case META_TIME_SIGNATURE: { cmd_meta_time_signature(data); }
-		case META_MARKER_TEXT: { printf("label: %s\n", (char *) data); }
+		case META_MARKER_TEXT: { todo("label: %s\n", (char *) data); }
 		default: {
 			panic("META\t%s \t(%d bytes)\t\"%s\"\n", meta_name(type), len, (char*)data);
 		}
 	}
-	return type == META_END_OF_TRACK;
-}
-
-void cmd_meta_tempo(midi_t *m, uint8_t *data, int len) {
-	if (len != 3) panic("expected tempo len of 3, got %d", len);
-	uint32_t r = (data[0] << 16) + (data[1] << 8) + data[2];
-	printf("# Tempo = %u us per quarter note\n", r);
-	m->beat_duration = r;
+	return e;
 }
 
 // If one is not specified 4/4, 24, 8 should be assumed.
@@ -184,46 +281,48 @@ void cmd_meta_time_signature(uint8_t idata[]) {
 		numerator, power, ticks_per_click, n32th_per_beat);
 }
 
-void read_channel_message(midi_t *m) {
+event_t read_channel_message(midi_t *m) {
+	event_t e = {};
+
 	int event_type = m->running_status;
+
 	// The second four bits specify which channel the message affects.
 	int type = (event_type >> 4) & 0xF;
-	int channel = event_type & 0xF;
+	e.channel = event_type & 0xF;
 
 	// printf("type = %x (%s), channel = %x\n", type, cmdname(type), channel);
 	switch (type) {
 		// 0x80-0x8F - stop a note (note, velocity)
 		case 0x8: {
-			int key = bytereader.readc(m->r); // which key to release
-			int velocity = bytereader.readc(m->r); // how fast/hard the key was released (0..127)
-			printf("note off\tchannel=%d\tnote=%d\tvelocity=%d\n", channel, key, velocity);
+			e.type = NOTE_OFF;
+			e.key = bytereader.readc(m->r); // which key to release
+			e.velocity = bytereader.readc(m->r); // how fast/hard the key was released (0..127)
 		}
 		// 0x90-0x9F - start a note (note, velocity)
 		case 0x9: {
-			int key = bytereader.readc(m->r); // which of the 128 MIDI keys is being played (0..127)
-			int velocity = bytereader.readc(m->r); // volume and intensity (0..127)
-			printf("note on \tchannel=%d\tnote=%d\tvelocity=%d\n", channel, key, velocity);
+			e.type = NOTE_ON;
+			e.key = bytereader.readc(m->r); // which of the 128 MIDI keys is being played (0..127)
+			e.velocity = bytereader.readc(m->r); // volume and intensity (0..127)
 		}
+		// 0xB0-0xBF knob setting (knob, value)
+		case 0xB: {
+			int knob = bytereader.readc(m->r);
+			int value = bytereader.readc(m->r);
+			todo("knob value\tchannel=%d\tknob=%s\tval=%d\n", e.channel, controller_name(knob), value);
+		}
+		// 0xC0-0xCF set instrument (id)
+		case 0xC: {
+			int arg1 = bytereader.readc(m->r);
+			todo("set instr\tchannel=%d arg=%d\n", e.channel, arg1);
+		}
+
+
 		// case 0xA: {
 		// 	// 0xA0-0xAF 	Key Pressure 	2 (note, key pressure)
 		// 	int arg1 = bytereader.readc(m->r);
 		// 	int arg2 = bytereader.readc(m->r);
 		// 	printf("key pressure, channel=%d note,pressure=%d,%d\n", channel, arg1, arg2);
 		// }
-
-		// 0xB0-0xBF knob setting (knob, value)
-		case 0xB: {
-			int knob = bytereader.readc(m->r);
-			int value = bytereader.readc(m->r);
-			todo("knob value\tchannel=%d\tknob=%s\tval=%d\n", channel, controller_name(knob), value);
-		}
-
-		// 0xC0-0xCF set instrument (id)
-		case 0xC: {
-			int arg1 = bytereader.readc(m->r);
-			printf("set instr\tchannel=%d arg=%d\n", channel, arg1);
-		}
-
 		// case 0xD: {
 		// 	// 0xD0-0xDF 	Channel Pressure 	1 (pressure)
 		// 	int arg1 = bytereader.readc(m->r);
@@ -238,12 +337,13 @@ void read_channel_message(midi_t *m) {
 			int bend = arg2 * 256 + arg1;
 			// 0 = 2 semitones down
 			// 16383 = 2 semitones up
-			todo("pitch bend\tchannel=%d bend=%d\n", channel, bend);
+			todo("pitch bend\tchannel=%d bend=%d\n", e.channel, bend);
 		}
 		default: {
 			panic("unhandled type %X", type);
 		}
 	}
+	return e;
 }
 
 // -------------- midi binary packaging ------------
@@ -291,13 +391,6 @@ uint32_t midibin_variable_length_value(bytereader.reader_t *r) {
 
 
 // --------------- tables -------------------
-
-pub enum {
-	TICKS_PER_BEAT,
-	FRAMES_PER_SECOND
-};
-
-
 
 /*
  * Message types
@@ -356,14 +449,14 @@ char *meta_name(int meta) {
     }
 }
 
-const char *formatname(int format) {
-    switch (format) {
-        case FORMAT_ONE_MULTI_CHANNEL_TRACK: { return "0, single track"; }
-        case FORMAT_MANY_SIMULTANEOUS_TRACKS: { return "1, multiple tracks"; }
-        case FORMAT_MANY_INDEPENDENT_TRACKS: { return "2, multiple songs"; }
-        default: { return "unknown format"; }
-    }
-}
+// const char *formatname(int format) {
+//     switch (format) {
+//         case FORMAT_ONE_MULTI_CHANNEL_TRACK: { return "0, single track"; }
+//         case FORMAT_MANY_SIMULTANEOUS_TRACKS: { return "1, multiple tracks"; }
+//         case FORMAT_MANY_INDEPENDENT_TRACKS: { return "2, multiple songs"; }
+//         default: { return "unknown format"; }
+//     }
+// }
 
 
 const char *CONTROLLER_NAMES[] = {
