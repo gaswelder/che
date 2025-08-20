@@ -1,4 +1,5 @@
 #import formats/wav
+#import opt
 
 enum {
     HARD,
@@ -7,37 +8,33 @@ enum {
 }
 
 int main(int argc, char** argv) {
-    if (argc < 2) {
-        fprintf(stderr, "arguments: input.wav hard|soft|asymmetric\n");
-        return 1;
-    }
+	float gain = 20;
+	char *typestr = "soft";
 
-	double gain = 20;
+	opt.opt_float("g", "gain", &gain);
+	opt.str("t", "type (hard / soft / asymmetric)", &typestr);
+	opt.nargs(1, "input.wav");
+
+	char **args = opt.parse(argc, argv);
+
 	int type = ASYMMETRIC;
-    const char* in_path = argv[1];
+    const char *in_path = args[0];
 
-	if (argc == 3) {
-		const char* type_str = argv[2];
-		if (strcmp(type_str, "hard") == 0) type = HARD;
-		else if (strcmp(type_str, "soft") == 0) type = SOFT;
-		else if (strcmp(type_str, "asymmetric") == 0) type = ASYMMETRIC;
-		else { fprintf(stderr, "Unknown distortion type\n"); return 1; }
-	}
+	if (strcmp(typestr, "hard") == 0) type = HARD;
+	else if (strcmp(typestr, "soft") == 0) type = SOFT;
+	else if (strcmp(typestr, "asymmetric") == 0) type = ASYMMETRIC;
 
     wav.reader_t *in = wav.open_reader(in_path);
 	if (!in) panic("!");
 	wav.writer_t *out = wav.open_writer(stdout);
 
+	double dgain = gain;
 	while (wav.more(in)) {
 		wav.samplef_t s = wav.read_samplef(in);
-		double left = dist(type, s.left * gain);
-		double right = dist(type, s.right * gain);
-		if (left > 1) {
-			left = 1;
-		}
-		if (right > 1) {
-			right = 1;
-		}
+		double left = dist(type, s.left * dgain);
+		double right = dist(type, s.right * dgain);
+		left /= 2;
+		right /= 2;
 		wav.write_sample(out, left, right);
 	}
 
@@ -67,7 +64,7 @@ double soft_clip(double x, double threshold) {
         return (2.0/3.0) * threshold + (threshold*threshold*threshold)/(3.0*x*x);
 	}
     if (x < -threshold) {
-        return -(2.0/3.0) * threshold + (threshold*threshold*threshold)/(3.0*x*x);
+        return -( (2.0/3.0) * threshold + (threshold*threshold*threshold)/(3.0*x*x) );
 	}
     return x - (x*x*x)/3.0;
 }
