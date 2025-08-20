@@ -9,20 +9,22 @@ int main(int argc, char *argv[]) {
 }
 
 int main_mix(int argc, char *argv[]) {
-	if (argc < 1) {
+	if (argc < 2) {
 		fprintf(stderr, "arguments: wav-files\n");
 		return 1;
 	}
+	int nfiles = argc - 1;
 
 	wav.reader_t **readers = calloc!(argc, sizeof(wav.reader_t *));
-	for (int i = 0; i < argc; i++) {
-		wav.reader_t *wr = wav.open_reader(argv[i]);
+	for (int i = 0; i < nfiles; i++) {
+		const char *path = argv[i+1];
+		wav.reader_t *wr = wav.open_reader(path);
 		if (!wr) {
-			fprintf(stderr, "failed to open '%s': %s\n", argv[i], strerror(errno));
+			fprintf(stderr, "failed to open '%s': %s\n", path, strerror(errno));
 			return 1;
 		}
 		if (wr->wav.frequency != 44100) {
-			panic("%s: expected frequency 44100, got %d", argv[i], wr->wav.frequency);
+			panic("%s: expected frequency 44100, got %d", path, wr->wav.frequency);
 		}
 		readers[i] = wr;
 	}
@@ -34,7 +36,7 @@ int main_mix(int argc, char *argv[]) {
 		double left = 0;
 		double right = 0;
 		wav.samplef_t s = {};
-		for (int i = 0; i < argc; i++) {
+		for (int i = 0; i < nfiles; i++) {
 			wav.reader_t *wr = readers[i];
 			if (wav.more(wr)) {
 				ok = true;
@@ -48,7 +50,7 @@ int main_mix(int argc, char *argv[]) {
 	}
 
 	wav.close_writer(ww);
-	for (int i = 0; i < argc; i++) {
+	for (int i = 0; i < nfiles; i++) {
 		wav.close_reader(readers[i]);
 	}
 	free(readers);
@@ -56,11 +58,11 @@ int main_mix(int argc, char *argv[]) {
 }
 
 int main_info(int argc, char *argv[]) {
-	if (argc == 0) {
+	if (argc == 1) {
 		fprintf(stderr, "arguments: wav-file\n");
 		return 1;
 	}
-	for (int i = 0; i < argc; i++) {
+	for (int i = 1; i < argc; i++) {
 		wav.reader_t *r = wav.open_reader(argv[i]);
 		if (!r) {
 			fprintf(stderr, "failed to open '%s': %s\n", argv[i], strerror(errno));
@@ -76,13 +78,13 @@ int main_info(int argc, char *argv[]) {
 }
 
 int main_dump(int argc, char *argv[]) {
-	if (argc != 1) {
+	if (argc != 2) {
 		fprintf(stderr, "arguments: wav-file\n");
 		return 1;
 	}
-	wav.reader_t *r = wav.open_reader(argv[0]);
+	wav.reader_t *r = wav.open_reader(argv[1]);
 	if (!r) {
-		fprintf(stderr, "failed to open '%s': %s\n", argv[0], strerror(errno));
+		fprintf(stderr, "failed to open '%s': %s\n", argv[1], strerror(errno));
 		return 1;
 	}
 	while (wav.more(r)) {
