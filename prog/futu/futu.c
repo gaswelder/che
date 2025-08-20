@@ -61,27 +61,90 @@ int main_render(int argc, char *argv[]) {
 		return 1;
 	}
 
-	wav.samplef_t *s36 = NULL;
-	size_t ns36 = 0;
-	load_clip("kick-01-mid-1.wav", &s36, &ns36);
-	fprintf(stderr, "36: %zu\n", ns36);
+	range_t *ranges = NULL;
+	size_t nranges = 0;
+	compose(argv[1], &ranges, &nranges);
+	writeout(ranges, nranges);
+	free(ranges);
+	return 0;
+}
+
+typedef {
+	uint8_t key;
+	wav.samplef_t *samples;
+	size_t nsamples;
+} clip_t;
+
+clip_t clips[100] = {};
+size_t nclips = 0;
+
+void load_clip(uint8_t key, char *path) {
+	if (nclips == nelem(clips)) {
+		panic("reached clips limit");
+	}
+	wav.reader_t *r = wav.open_reader(path);
+	if (!r) {
+		panic("failed to open %s: %s", path, strerror(errno));
+	}
+	if (r->wav.frequency != 44100) {
+		panic("%s: expected frequency %u, got %u", path, 44100, r->wav.frequency);
+	}
+	clip_t *c = &clips[nclips++];
+
+	size_t cap = 65536;
+	c->samples = calloc!(cap, sizeof(wav.samplef_t));
+	size_t n = 0;
+	while (wav.more(r)) {
+		if (n + 1 > cap) {
+			cap *= 2;
+			c->samples = realloc(c->samples, cap * sizeof(wav.samplef_t));
+			if (!c->samples) {
+				panic("realloc failed");
+			}
+		}
+		c->samples[n++] = wav.read_samplef(r);
+	}
+	c->nsamples = n;
+	c->key = key;
+	fprintf(stderr, "loaded %u: %zu from %s\n", key, n, path);
+}
+
+clip_t *get_clip(uint8_t key) {
+	for (size_t i = 0; i < nclips; i++) {
+		if (clips[i].key == key) {
+			return &clips[i];
+		}
+	}
+	return NULL;
+}
+
+void compose(const char *path, range_t **rranges, size_t *rnranges) {
+	load_clip(36, "kick-01-mid-1.wav");
 
 	size_t n = 0;
 	midilib.event_t *ee = NULL;
-	midilib.read_file(argv[1], &ee, &n);
+	midilib.read_file(path, &ee, &n);
 
-	range_t ranges[1000] = {};
+	range_t *ranges = calloc!(1000, sizeof(range_t));
 	size_t nranges = 0;
 
 	for (size_t i = 0; i < n; i++) {
 		midilib.event_t *e = &ee[i];
 		switch (e->type) {
 			case midilib.NOTE_ON: {
+				if (nranges == 1000) {
+					panic("reached 1000 ranges");
+				}
 				range_t *r = &ranges[nranges++];
 				r->t1 = e->t_us * 44100 / 1000000;
 				r->key = e->key;
-				r->samples = s36;
-				r->nsamples = ns36;
+				clip_t *c = get_clip(e->key);
+				if (!c) {
+					fprintf(stderr, "no clip for key %u\n", e->key);
+				} else {
+					r->samples = c->samples;
+					r->nsamples = c->nsamples;
+				}
 			}
 			case midilib.NOTE_OFF: {
 				// Find the first unclosed matching range.
@@ -102,7 +165,11 @@ int main_render(int argc, char *argv[]) {
 	}
 
 	free(ee);
+	*rranges = ranges;
+	*rnranges = nranges;
+}
 
+void writeout(range_t *ranges, size_t nranges) {
 	size_t tmax = 0;
 	for (size_t i = 0; i < nranges; i++) {
 		range_t *r = &ranges[i];
@@ -129,29 +196,4 @@ int main_render(int argc, char *argv[]) {
 		wav.write_sample(out, left, right);
 	}
 	wav.close_writer(out);
-
-	return 0;
-}
-
-void load_clip(char *path, wav.samplef_t **rss, size_t *rn) {
-	wav.reader_t *r = wav.open_reader(path);
-	if (!r) panic("!");
-
-	size_t cap = 65536;
-	wav.samplef_t *samples = calloc!(cap, sizeof(wav.samplef_t));
-	size_t n = 0;
-
-	while (wav.more(r)) {
-		if (n + 1 > cap) {
-			cap *= 2;
-			samples = realloc(samples, cap * sizeof(wav.samplef_t));
-			if (!samples) {
-				panic("realloc failed");
-			}
-		}
-		samples[n++] = wav.read_samplef(r);
-	}
-
-	*rss = samples;
-	*rn = n;
 }
