@@ -1,6 +1,7 @@
 #import bytereader
 #import clip/vec
 
+// https://g200kg.github.io/midi-dump/
 // http://midi.teragonaudio.com/
 // https://www.recordingblogs.com
 // https://www.recordingblogs.com/wiki/time-division-of-a-midi-file
@@ -69,7 +70,7 @@ pub midi_t *open(const char *path) {
     return m;
 }
 
-enum {
+pub enum {
 	END = 1,
 	TEMPO,
 	NOTE_ON,
@@ -77,9 +78,10 @@ enum {
 	TRACK_NAME,
 }
 
-typedef {
+pub typedef {
 	int type;
 	size_t t; // absolute time in ticks
+	size_t t_us; // absolute time in microseconds
 	uint8_t track;
 	uint32_t val;
 
@@ -88,7 +90,7 @@ typedef {
 	char str[20];
 } event_t;
 
-pub void read_file(midi_t *m) {
+pub void read_file(midi_t *m, event_t **ree, size_t *rn) {
 	// A MIDI file has global events bucketed into tracks for human editor
 	// convenience, but the events are still global. For example, a tempo change
 	// event will be in one of the tracks, but it affects the entire playback.
@@ -109,51 +111,33 @@ pub void read_file(midi_t *m) {
 	}
 	vec.free(events);
 
-	// Sort.
+	// Sort events by time in ticks.
 	qsort(ee, n, sizeof(event_t), bytime);
 
+	// Calculate absolute time in microseconds for each event.
 	uint16_t beat_size = m->start_beat_size;
 	uint32_t beat_duration = m->start_beat_duration;
-
-	size_t t = 0; // microseconds
+	size_t t_us = 0;
 	size_t last_tick = 0;
-
-	// Process.
 	for (size_t i = 0; i < n; i++) {
 		event_t *e = &ee[i];
 
-		// How many ticks since last event
-		size_t dt = e->t - last_tick;
+		// Ticks since last event.
+		size_t dticks = e->t - last_tick;
 		last_tick = e->t;
 
-		t += (dt * beat_duration) / beat_size;
+		// Absolute time in microseconds.
+		t_us += (dticks * beat_duration) / beat_size;
+		e->t_us = t_us;
 
-		printf("%f s\ttrack=%d\t", (double)t/1e6, e->track);
 		switch (e->type) {
-			case END: { printf("end of track\n"); }
-			case NOTE_OFF: {
-				printf("note off\tchannel=%d\tnote=%d\tvelocity=%d\n", e->channel, e->key, e->velocity);
-			}
-			case NOTE_ON: {
-				printf("note on \tchannel=%d\tnote=%d\tvelocity=%d\n", e->channel, e->key, e->velocity);
-			}
-			case TEMPO: {
-				beat_duration = e->val;
-				printf("set tempo\t%u us per quarter note\n", e->val);
-			}
-			case TRACK_NAME: {
-				printf("track name: \"%s\"\n", e->str);
-			}
-			default: {
-				panic("?");
-			}
+			case TEMPO: { beat_duration = e->val; }
 		}
 	}
 
-	free(ee);
+	*ree = ee;
+	*rn = n;
 }
-
-
 
 void read_track(midi_t *m, uint8_t track, vec.t *events) {
 	// track_chunk = "MTrk" + <length> + <track_event> [+ <track_event> ...]
