@@ -268,6 +268,10 @@ pub int usage() {
 			case OPT_SIZE: {
 				fprintf( stderr, "\t%s (%zu)\n", s->desc, *((size_t *)s->value_pointer));
 			}
+			case OPT_FLOAT: {
+				float *def = s->value_pointer;
+				fprintf( stderr, "\t%s (=%f)\n", s->desc, *def);
+			}
 			default: {
 				fprintf( stderr, "\t%s\n", s->desc );
 			}
