@@ -14,14 +14,9 @@ int main_ls(int argc, char *argv[]) {
 		return 1;
 	}
 
-	midilib.midi_t *m = midilib.open(argv[1]);
-	if (!m) {
-		fprintf(stderr, "failed to open %s: %s\n", argv[1], strerror(errno));
-		return 1;
-	}
 	size_t n = 0;
 	midilib.event_t *ee = NULL;
-	midilib.read_file(m, &ee, &n);
+	midilib.read_file(argv[1], &ee, &n);
 
 	for (size_t i = 0; i < n; i++) {
 		midilib.event_t *e = &ee[i];
@@ -71,14 +66,9 @@ int main_render(int argc, char *argv[]) {
 	load_clip("kick-01-mid-1.wav", &s36, &ns36);
 	fprintf(stderr, "36: %zu\n", ns36);
 
-	midilib.midi_t *m = midilib.open(argv[1]);
-	if (!m) {
-		fprintf(stderr, "failed to open %s: %s\n", argv[1], strerror(errno));
-		return 1;
-	}
 	size_t n = 0;
 	midilib.event_t *ee = NULL;
-	midilib.read_file(m, &ee, &n);
+	midilib.read_file(argv[1], &ee, &n);
 
 	range_t ranges[1000] = {};
 	size_t nranges = 0;

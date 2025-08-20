@@ -25,7 +25,7 @@ void todo(char *format, ...) {
 //     FORMAT_MANY_INDEPENDENT_TRACKS = 2
 // }
 
-pub typedef {
+typedef {
     bytereader.reader_t *r;
 	uint16_t format; // one of the format constants.
 	uint16_t ntracks;
@@ -39,36 +39,6 @@ pub typedef {
 	 */
 	int running_status;
 } midi_t;
-
-pub midi_t *open(const char *path) {
-    bytereader.reader_t *r = bytereader.newreader(path);
-    if (!r) {
-        return NULL;
-    }
-    midi_t *m = calloc!(1, sizeof(midi_t));
-    m->r = r;
-	m->start_beat_duration = 500000; // us
-
-    chunk_head_t h = {};
-
-	//
-	// MThd
-	//
-    if (!midibin_read_chunk_head(m, &h)) {
-        panic("failed to read head: %s\n", strerror(errno));
-    }
-    if (strcmp("MThd", h.name)) {
-		panic("expected MThd, got %s\n", h.name);
-    }
-    if (h.length != 6) {
-        panic("expected length 6, got %u\n", h.length);
-    }
-    m->format = bytereader.read16(m->r);
-    m->ntracks = bytereader.read16(m->r);
-	m->start_beat_size = bytereader.read16(m->r);
-    // printf("format: %s, tracks: %u, ticks per beat: %d\n", formatname(m->format), m->ntracks, m->start_beat_size );
-    return m;
-}
 
 pub enum {
 	END = 1,
@@ -90,7 +60,12 @@ pub typedef {
 	char str[20];
 } event_t;
 
-pub void read_file(midi_t *m, event_t **ree, size_t *rn) {
+pub void read_file(const char *path, event_t **ree, size_t *rn) {
+	midi_t *m = openfile(path);
+	if (!m) {
+		panic("failed to open %s: %s\n", path, strerror(errno));
+	}
+
 	// A MIDI file has global events bucketed into tracks for human editor
 	// convenience, but the events are still global. For example, a tempo change
 	// event will be in one of the tracks, but it affects the entire playback.
@@ -139,6 +114,36 @@ pub void read_file(midi_t *m, event_t **ree, size_t *rn) {
 	*rn = n;
 }
 
+midi_t *openfile(const char *path) {
+    bytereader.reader_t *r = bytereader.newreader(path);
+    if (!r) {
+        return NULL;
+    }
+    midi_t *m = calloc!(1, sizeof(midi_t));
+    m->r = r;
+	m->start_beat_duration = 500000; // us
+
+    chunk_head_t h = {};
+
+	//
+	// MThd
+	//
+    if (!midibin_read_chunk_head(m, &h)) {
+        panic("failed to read head: %s\n", strerror(errno));
+    }
+    if (strcmp("MThd", h.name)) {
+		panic("expected MThd, got %s\n", h.name);
+    }
+    if (h.length != 6) {
+        panic("expected length 6, got %u\n", h.length);
+    }
+    m->format = bytereader.read16(m->r);
+    m->ntracks = bytereader.read16(m->r);
+	m->start_beat_size = bytereader.read16(m->r);
+    // printf("format: %s, tracks: %u, ticks per beat: %d\n", formatname(m->format), m->ntracks, m->start_beat_size );
+    return m;
+}
+
 void read_track(midi_t *m, uint8_t track, vec.t *events) {
 	// track_chunk = "MTrk" + <length> + <track_event> [+ <track_event> ...]
 	chunk_head_t h = {};
@@ -148,8 +153,6 @@ void read_track(midi_t *m, uint8_t track, vec.t *events) {
 	if (strcmp("MTrk", h.name)) {
 		panic("expected MTrk, got %s", h.name);
 	}
-
-
 
 	// Current time in ticks.
 	size_t ticks = 0;
