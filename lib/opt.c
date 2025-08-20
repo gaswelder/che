@@ -285,3 +285,39 @@ bool is_numeric(const char *s) {
 	}
 	return true;
 }
+
+pub typedef int mainfunc_t(int, char **);
+
+typedef {
+	mainfunc_t *f;
+	const char *name;
+} cmd_t;
+
+cmd_t cmds[10] = {};
+size_t ncmds = 0;
+
+// Defines a subcommand.
+pub void addcmd(const char *name, mainfunc_t *f) {
+	cmds[ncmds].name = name;
+	cmds[ncmds].f = f;
+	ncmds++;
+}
+
+// Dispatches the arguments into the corresponding subcommand.
+pub int dispatch(int argc, char *argv[]) {
+	if (argc < 2) {
+		fprintf(stderr, "available subcommands:\n");
+		for (size_t i = 0; i < ncmds; i++) {
+			fprintf(stderr, "\t%s\n", cmds[i].name);
+		}
+		return 1;
+	}
+	const char *name = argv[1];
+	for (size_t i = 0; i < ncmds; i++) {
+		if (strcmp(cmds[i].name, name) == 0) {
+			return cmds[i].f(argc - 1, argv + 1);
+		}
+	}
+	fprintf(stderr, "unknown subcommand: %s\n", name);
+	return 1;
+}

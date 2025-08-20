@@ -1,22 +1,14 @@
-#import strings
-#import opt
 #import client.c
+#import opt
+#import strings
 
 int main(int argc, char **argv) {
-    if (argc < 2) {
-        fprintf(stderr, "usage: %s add | list | rm | hide | unhide\n", argv[0]);
-        return 1;
-    }
-    char *cmd = argv[1];
-	switch str (cmd) {
-		case "add": { return cmd_add(argc - 1, argv + 1); }
-		case "list": { return cmd_list(argc - 1, argv + 1); }
-		case "rm": { return cmd_rm(argc - 1, argv + 1); }
-		case "hide": { return cmd_hide(argc - 1, argv + 1); }
-		case "unhide": { return cmd_unhide(argc - 1, argv + 1); }
-	}
-    fprintf(stderr, "unknown command: %s\n", cmd);
-    return 1;
+	opt.addcmd("add", cmd_add);
+	opt.addcmd("list", cmd_list);
+	opt.addcmd("rm", cmd_rm);
+	opt.addcmd("hide", cmd_hide);
+	opt.addcmd("unhide", cmd_unhide);
+	return opt.dispatch(argc, argv);
 }
 
 int cmd_add(int argc, char **argv) {

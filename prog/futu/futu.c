@@ -1,30 +1,24 @@
-#import midilib.c
 #import formats/wav
+#import midilib.c
+#import opt
 
 int main(int argc, char *argv[]) {
-	if (argc < 2) {
-		fprintf(stderr, "subcommands: ls, render\n");
-		return 1;
-	}
-    switch str(argv[1]) {
-		case "ls": { return main_ls(argc-1, argv+1); }
-		case "render": { return main_render(argc-1, argv+1); }
-	}
-	fprintf(stderr, "subcommands: ls, render\n");
-	return 1;
+	opt.addcmd("ls", main_ls);
+	opt.addcmd("render", main_render);
+	return opt.dispatch(argc, argv);
 }
 
 int main_ls(int argc, char *argv[]) {
 	if (argc != 2) {
-        fprintf(stderr, "usage: %s midi-file\n", argv[0]);
-        return 1;
-    }
+		fprintf(stderr, "usage: %s midi-file\n", argv[0]);
+		return 1;
+	}
 
-    midilib.midi_t *m = midilib.open(argv[1]);
-    if (!m) {
-        fprintf(stderr, "failed to open %s: %s\n", argv[1], strerror(errno));
-        return 1;
-    }
+	midilib.midi_t *m = midilib.open(argv[1]);
+	if (!m) {
+		fprintf(stderr, "failed to open %s: %s\n", argv[1], strerror(errno));
+		return 1;
+	}
 	size_t n = 0;
 	midilib.event_t *ee = NULL;
 	midilib.read_file(m, &ee, &n);
@@ -56,7 +50,7 @@ int main_ls(int argc, char *argv[]) {
 	}
 
 	free(ee);
-    return 0;
+	return 0;
 }
 
 typedef {
@@ -68,9 +62,9 @@ typedef {
 
 int main_render(int argc, char *argv[]) {
 	if (argc != 2) {
-        fprintf(stderr, "usage: %s midi-file\n", argv[0]);
-        return 1;
-    }
+		fprintf(stderr, "usage: %s midi-file\n", argv[0]);
+		return 1;
+	}
 
 	wav.samplef_t *s36 = NULL;
 	size_t ns36 = 0;
@@ -78,10 +72,10 @@ int main_render(int argc, char *argv[]) {
 	fprintf(stderr, "36: %zu\n", ns36);
 
 	midilib.midi_t *m = midilib.open(argv[1]);
-    if (!m) {
-        fprintf(stderr, "failed to open %s: %s\n", argv[1], strerror(errno));
-        return 1;
-    }
+	if (!m) {
+		fprintf(stderr, "failed to open %s: %s\n", argv[1], strerror(errno));
+		return 1;
+	}
 	size_t n = 0;
 	midilib.event_t *ee = NULL;
 	midilib.read_file(m, &ee, &n);

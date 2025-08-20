@@ -1,17 +1,11 @@
 #import formats/wav
+#import opt
 
 int main(int argc, char *argv[]) {
-	if (argc < 2) {
-		fprintf(stderr, "specify a subcommand: info, mix, dump\n");
-		return 1;
-	}
-	switch str(argv[1]) {
-		case "mix": { return main_mix(argc-2, argv+2); }
-		case "info": { return main_info(argc-2, argv+2); }
-		case "dump": { return main_dump(argc-2, argv+2); }
-	}
-	fprintf(stderr, "unknown subcommand\n");
-	return 1;
+	opt.addcmd("mix", main_mix);
+	opt.addcmd("info", main_info);
+	opt.addcmd("dump", main_dump);
+	return opt.dispatch(argc, argv);
 }
 
 int main_mix(int argc, char *argv[]) {
