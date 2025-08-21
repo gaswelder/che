@@ -33,8 +33,6 @@ int main(int argc, char** argv) {
 		wav.samplef_t s = wav.read_samplef(in);
 		double left = dist(type, s.left * dgain);
 		double right = dist(type, s.right * dgain);
-		left /= 2;
-		right /= 2;
 		wav.write_sample(out, left, right);
 	}
 
@@ -43,12 +41,15 @@ int main(int argc, char** argv) {
     return 0;
 }
 
-
 double dist(int type, double x) {
 	switch (type) {
 		case HARD: { return hard_clip(x, 0.5); }
-		case SOFT: { return soft_clip(x, 0.5f); }
-		case ASYMMETRIC: { return asymmetric_clip(x, 0.6f, 0.4f); }
+		case SOFT: {
+			// soft clip doesn't guarantee the signal stays within the limit,
+			// hence the hard clip on top.
+			return hard_clip(soft_clip(x, 0.5), 1.0);
+		}
+		case ASYMMETRIC: { return asymmetric_clip(x, 0.6, 0.4); }
 		default: { panic("!"); }
 	}
 }
@@ -60,7 +61,8 @@ double hard_clip(double x, double threshold) {
 }
 
 double soft_clip(double x, double threshold) {
-    if (x > threshold) {
+	// return (exp(2 * x) - 1) / (exp(2 * x) + 1);
+	if (x > threshold) {
         return (2.0/3.0) * threshold + (threshold*threshold*threshold)/(3.0*x*x);
 	}
     if (x < -threshold) {

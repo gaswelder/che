@@ -247,7 +247,7 @@ pub samplef_t read_samplef(reader_t *r) {
 // Writes the next sample frame.
 pub void write_sample(writer_t *w, double left, right) {
 	// Assuming 16-bit stereo.
-	double scale = 1 << 15;
+	double scale = (1 << 15) - 1;
 
 	int s = (int) (left * scale);
 	if (s < 0) s += 65536;
