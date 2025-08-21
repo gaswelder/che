@@ -1,6 +1,7 @@
 #import formats/wav
 #import midilib.c
 #import opt
+#import clip/vec
 
 int main(int argc, char *argv[]) {
 	opt.addcmd("ls", main_ls);
@@ -60,11 +61,8 @@ int main_render(int argc, char *argv[]) {
 		fprintf(stderr, "usage: %s midi-file\n", argv[0]);
 		return 1;
 	}
-
-	range_t *ranges = NULL;
-	size_t nranges = 0;
-	compose(argv[1], &ranges, &nranges);
-	writeout(ranges, nranges);
+	vec.t *ranges = compose(argv[1], 5);
+	writeout(ranges);
 	free(ranges);
 	return 0;
 }
@@ -118,24 +116,37 @@ clip_t *get_clip(uint8_t key) {
 	return NULL;
 }
 
-void compose(const char *path, range_t **rranges, size_t *rnranges) {
-	load_clip(36, "kick-01-mid-1.wav");
+vec.t *compose(const char *path, uint8_t track) {
+	load_clip(36, "0-36.wav");
+	load_clip(40, "0-40.wav");
+	load_clip(41, "0-41.wav");
+	load_clip(42, "0-42.wav");
+	load_clip(43, "0-43.wav");
+	load_clip(44, "0-44.wav");
+	load_clip(45, "0-45.wav");
+	load_clip(46, "0-46.wav");
+	load_clip(47, "0-47.wav");
+	load_clip(48, "0-48.wav");
+	load_clip(49, "0-49.wav");
+	load_clip(50, "0-50.wav");
+	load_clip(51, "0-51.wav");
+	load_clip(53, "0-53.wav");
+	load_clip(55, "0-55.wav");
+	load_clip(57, "0-57.wav");
+	load_clip(59, "0-59.wav");
 
 	size_t n = 0;
 	midilib.event_t *ee = NULL;
 	midilib.read_file(path, &ee, &n);
 
-	range_t *ranges = calloc!(1000, sizeof(range_t));
-	size_t nranges = 0;
+	vec.t *ranges = vec.new(sizeof(range_t));
 
 	for (size_t i = 0; i < n; i++) {
 		midilib.event_t *e = &ee[i];
+		if (e->track != track) continue;
 		switch (e->type) {
 			case midilib.NOTE_ON: {
-				if (nranges == 1000) {
-					panic("reached 1000 ranges");
-				}
-				range_t *r = &ranges[nranges++];
+				range_t *r = vec.alloc(ranges);
 				r->t1 = e->t_us * 44100 / 1000000;
 				r->key = e->key;
 				clip_t *c = get_clip(e->key);
@@ -149,8 +160,9 @@ void compose(const char *path, range_t **rranges, size_t *rnranges) {
 			case midilib.NOTE_OFF: {
 				// Find the first unclosed matching range.
 				range_t *r = NULL;
+				size_t nranges = vec.len(ranges);
 				for (size_t i = 0; i < nranges; i++) {
-					range_t *x = &ranges[i];
+					range_t *x = vec.index(ranges, i);
 					if (x->key == e->key && x->t2 == 0) {
 						r = x;
 						break;
@@ -160,20 +172,25 @@ void compose(const char *path, range_t **rranges, size_t *rnranges) {
 					panic("failed to find the open range to close");
 				}
 				r->t2 = e->t_us * 44100 / 1000000;
+				size_t tlen = r->t2 - r->t1;
+				if (r->nsamples > tlen) {
+					r->t2 = r->t1 + r->nsamples;
+					// fprintf(stderr, "trimmed sample %u: %zu vs %zu\n", r->key, tlen, r->nsamples);
+				}
 			}
 		}
 	}
 
 	free(ee);
-	*rranges = ranges;
-	*rnranges = nranges;
+	return ranges;
 }
 
-void writeout(range_t *ranges, size_t nranges) {
+void writeout(vec.t *ranges) {
+	size_t nranges = vec.len(ranges);
 	size_t tmax = 0;
 	for (size_t i = 0; i < nranges; i++) {
-		range_t *r = &ranges[i];
-		fprintf(stderr, "%zu: %zu..%zu: %u\n", i, r->t1, r->t2, r->key);
+		range_t *r = vec.index(ranges, i);
+		// fprintf(stderr, "%zu: %zu..%zu: %u\n", i, r->t1, r->t2, r->key);
 		if (r->t2 > tmax) {
 			tmax = r->t2;
 		}
@@ -186,7 +203,7 @@ void writeout(range_t *ranges, size_t nranges) {
 		double left = 0;
 		double right = 0;
 		for (size_t j = 0; j < nranges; j++) {
-			range_t *r = &ranges[j];
+			range_t *r = vec.index(ranges, j);
 			if (i < r->t1 || i >= r->t2) continue;
 			size_t pos = i - r->t1;
 			if (pos >= r->nsamples) continue;
