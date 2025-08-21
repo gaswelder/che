@@ -226,7 +226,7 @@ int read_sample0(reader_t *r) {
 // Reads the next sample frame.
 pub samplef_t read_samplef(reader_t *r) {
 	samplef_t s = {};
-	double scale = 1 << (r->wav.bits_per_sample-1);
+	double scale = (1 << (r->wav.bits_per_sample-1)) - 1;
 
 	switch (r->wav.channels) {
 		case 1: {
