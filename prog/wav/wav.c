@@ -45,6 +45,8 @@ int main_mix(int argc, char *argv[]) {
 				right += s.right;
 			}
 		}
+		left /= nfiles;
+		right /= nfiles;
 		if (!ok) break;
 		wav.write_sample(ww, left, right);
 	}
