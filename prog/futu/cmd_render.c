@@ -58,7 +58,7 @@ void load_clip(uint8_t key, char *path) {
 	}
 	c->nsamples = n;
 	c->key = key;
-	fprintf(stderr, "loaded %u: %zu from %s\n", key, n, path);
+	normalize(c, 1.0/10);
 }
 
 clip_t *get_clip(uint8_t key) {
@@ -68,6 +68,21 @@ clip_t *get_clip(uint8_t key) {
 		}
 	}
 	return NULL;
+}
+
+void normalize(clip_t *c, double level) {
+	double max = 0;
+	for (size_t i = 0; i < c->nsamples; i++) {
+		wav.samplef_t *s = &c->samples[i];
+		if (s->left > max) max = s->left;
+		if (s->right > max) max = s->right;
+	}
+	double k = level / max;
+	for (size_t i = 0; i < c->nsamples; i++) {
+		wav.samplef_t *s = &c->samples[i];
+		s->left *= k;
+		s->right *= k;
+	}
 }
 
 vec.t *compose(const char *path, uint8_t track) {
