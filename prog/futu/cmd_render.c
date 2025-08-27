@@ -1,6 +1,7 @@
 #import clip/vec
 #import formats/wav
 #import midilib.c
+#import strings
 
 pub int run(int argc, char *argv[]) {
 	if (argc != 3) {
@@ -27,7 +28,7 @@ typedef {
 	size_t nsamples;
 } clip_t;
 
-clip_t clips[100] = {};
+clip_t clips[200] = {};
 size_t nclips = 0;
 
 void load_clip(uint8_t key, char *path) {
@@ -59,6 +60,7 @@ void load_clip(uint8_t key, char *path) {
 	c->nsamples = n;
 	c->key = key;
 	normalize(c, 1.0/10);
+	fprintf(stderr, "loaded %s\n", path);
 }
 
 clip_t *get_clip(uint8_t key) {
@@ -85,24 +87,28 @@ void normalize(clip_t *c, double level) {
 	}
 }
 
+void load_clips(char *path) {
+	FILE *f = fopen(path, "rb");
+	if (!f) {
+		panic("failed to open clips list file\n");
+	}
+	char line[4096] = {};
+	while (fgets(line, 4096, f)) {
+		char *p = line;
+		int key = 0;
+		while (isdigit(*p)) {
+			key *= 10;
+			key += strings.num_from_ascii(*p++);
+		}
+		while (isspace(*p)) p++;
+		strings.trim(p);
+		load_clip(key, p);
+	}
+	fclose(f);
+}
+
 vec.t *compose(const char *path, uint8_t track) {
-	load_clip(36, "0-36.wav");
-	load_clip(40, "0-40.wav");
-	load_clip(41, "0-41.wav");
-	load_clip(42, "0-42.wav");
-	load_clip(43, "0-43.wav");
-	load_clip(44, "0-44.wav");
-	load_clip(45, "0-45.wav");
-	load_clip(46, "0-46.wav");
-	load_clip(47, "0-47.wav");
-	load_clip(48, "0-48.wav");
-	load_clip(49, "0-49.wav");
-	load_clip(50, "0-50.wav");
-	load_clip(51, "0-51.wav");
-	load_clip(53, "0-53.wav");
-	load_clip(55, "0-55.wav");
-	load_clip(57, "0-57.wav");
-	load_clip(59, "0-59.wav");
+	load_clips("list");
 
 	size_t n = 0;
 	midilib.event_t *ee = NULL;
