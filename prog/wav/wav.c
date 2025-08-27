@@ -1,5 +1,6 @@
 #import formats/wav
 #import opt
+#import sound
 
 int main(int argc, char *argv[]) {
 	opt.addcmd("mix", main_mix);
@@ -35,7 +36,7 @@ int main_mix(int argc, char *argv[]) {
 		bool ok = false;
 		double left = 0;
 		double right = 0;
-		wav.samplef_t s = {};
+		sound.samplef_t s = {};
 		for (int i = 0; i < nfiles; i++) {
 			wav.reader_t *wr = readers[i];
 			if (wav.more(wr)) {
@@ -90,7 +91,7 @@ int main_dump(int argc, char *argv[]) {
 		return 1;
 	}
 	while (wav.more(r)) {
-		wav.samplef_t s = wav.read_samplef(r);
+		sound.samplef_t s = wav.read_samplef(r);
 		printf("%f\t%f\n", s.left, s.right);
 	}
 	return 0;

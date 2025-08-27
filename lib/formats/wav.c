@@ -1,5 +1,6 @@
-#import reader
 #import enc/endian
+#import reader
+#import sound
 #import writer
 
 pub typedef {
@@ -20,8 +21,6 @@ pub typedef {
 pub typedef {
 	writer.t *writer;
 } writer_t;
-
-pub typedef { double left, right; } samplef_t;
 
 // Starts a wave stream writing to file f.
 pub writer_t *open_writer(FILE *f) {
@@ -224,8 +223,8 @@ int read_sample0(reader_t *r) {
 }
 
 // Reads the next sample frame.
-pub samplef_t read_samplef(reader_t *r) {
-	samplef_t s = {};
+pub sound.samplef_t read_samplef(reader_t *r) {
+	sound.samplef_t s = {};
 	double scale = (1 << (r->wav.bits_per_sample-1)) - 1;
 
 	switch (r->wav.channels) {

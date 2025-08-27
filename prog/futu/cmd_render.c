@@ -1,6 +1,7 @@
 #import clip/vec
 #import formats/wav
 #import midilib.c
+#import sound
 #import strings
 
 pub int run(int argc, char *argv[]) {
@@ -18,23 +19,19 @@ pub int run(int argc, char *argv[]) {
 typedef {
 	uint8_t key;
 	size_t t1, t2; // begin and end time in pcm ticks (1/44100 s)
-	wav.samplef_t *samples;
+	sound.samplef_t *samples;
 	size_t nsamples;
 } range_t;
 
 typedef {
 	uint8_t key;
-	wav.samplef_t *samples;
-	size_t nsamples;
+	sound.clip_t *clip;
 } clip_t;
 
 clip_t clips[200] = {};
 size_t nclips = 0;
 
-void load_clip(uint8_t key, char *path) {
-	if (nclips == nelem(clips)) {
-		panic("reached clips limit");
-	}
+sound.clip_t *loadclip(char *path) {
 	wav.reader_t *r = wav.open_reader(path);
 	if (!r) {
 		panic("failed to open %s: %s", path, strerror(errno));
@@ -42,25 +39,13 @@ void load_clip(uint8_t key, char *path) {
 	if (r->wav.frequency != 44100) {
 		panic("%s: expected frequency %u, got %u", path, 44100, r->wav.frequency);
 	}
-	clip_t *c = &clips[nclips++];
-
-	size_t cap = 65536;
-	c->samples = calloc!(cap, sizeof(wav.samplef_t));
-	size_t n = 0;
+	sound.clip_t *c = sound.newclip();
 	while (wav.more(r)) {
-		if (n + 1 > cap) {
-			cap *= 2;
-			c->samples = realloc(c->samples, cap * sizeof(wav.samplef_t));
-			if (!c->samples) {
-				panic("realloc failed");
-			}
-		}
-		c->samples[n++] = wav.read_samplef(r);
+		sound.push_sample(c, wav.read_samplef(r));
 	}
-	c->nsamples = n;
-	c->key = key;
-	normalize(c, 1.0/10);
-	fprintf(stderr, "loaded %s\n", path);
+	wav.close_reader(r);
+	sound.normalize(c, 1.0/10);
+	return c;
 }
 
 clip_t *get_clip(uint8_t key) {
@@ -70,21 +55,6 @@ clip_t *get_clip(uint8_t key) {
 		}
 	}
 	return NULL;
-}
-
-void normalize(clip_t *c, double level) {
-	double max = 0;
-	for (size_t i = 0; i < c->nsamples; i++) {
-		wav.samplef_t *s = &c->samples[i];
-		if (s->left > max) max = s->left;
-		if (s->right > max) max = s->right;
-	}
-	double k = level / max;
-	for (size_t i = 0; i < c->nsamples; i++) {
-		wav.samplef_t *s = &c->samples[i];
-		s->left *= k;
-		s->right *= k;
-	}
 }
 
 void load_clips(char *path) {
@@ -102,7 +72,17 @@ void load_clips(char *path) {
 		}
 		while (isspace(*p)) p++;
 		strings.trim(p);
-		load_clip(key, p);
+
+		//
+		// Load the clip
+		//
+		if (nclips == nelem(clips)) {
+			panic("reached clips limit");
+		}
+		clip_t *c = &clips[nclips++];
+		c->key = key;
+		c->clip = loadclip(p);
+		fprintf(stderr, "loaded %s\n", p);
 	}
 	fclose(f);
 }
@@ -128,8 +108,8 @@ vec.t *compose(const char *path, uint8_t track) {
 				if (!c) {
 					fprintf(stderr, "no clip for key %u\n", e->key);
 				} else {
-					r->samples = c->samples;
-					r->nsamples = c->nsamples;
+					r->samples = c->clip->samples;
+					r->nsamples = c->clip->nsamples;
 				}
 			}
 			case midilib.NOTE_OFF: {

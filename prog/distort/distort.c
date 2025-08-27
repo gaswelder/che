@@ -1,5 +1,6 @@
 #import formats/wav
 #import opt
+#import sound
 
 enum {
     HARD,
@@ -30,7 +31,7 @@ int main(int argc, char** argv) {
 
 	double dgain = gain;
 	while (wav.more(in)) {
-		wav.samplef_t s = wav.read_samplef(in);
+		sound.samplef_t s = wav.read_samplef(in);
 		double left = dist(type, s.left * dgain);
 		double right = dist(type, s.right * dgain);
 		wav.write_sample(out, left, right);
