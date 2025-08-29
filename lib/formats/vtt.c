@@ -3,6 +3,7 @@
 pub typedef {
 	char line[4096];
 	FILE *f;
+	char timerange[100];
 	char *text;
 	size_t textcap;
 	char *error;
@@ -68,7 +69,7 @@ pub bool read(reader_t *r) {
 	}
 
 	// 00:09:53.000 --> 00:09:55.910 align:start position:0%
-	if (!cue(r->line)) {
+	if (!cue(r->line, r->timerange)) {
 		seterror(r, "failed to parse cue line: %s", r->line);
 		return false;
 	}
@@ -89,6 +90,7 @@ pub bool read(reader_t *r) {
 		if (r->text[0]) strcat(r->text, "\n");
 		printnotags(r->text + strlen(r->text), r->line);
 	}
+	strings.trim(r->text);
 	return true;
 }
 
@@ -134,7 +136,7 @@ void seterror(reader_t *r, char *msg, ...) {
 }
 
 // 00:00:00.120 --> 00:00:02.270 align:start position:0%
-bool cue(char *line) {
+bool cue(char *line, char *out) {
 	char *p = line;
 	p = timestamp(p);
 	if (!p) return false;
@@ -147,6 +149,11 @@ bool cue(char *line) {
 		p++;
 		// printf("style: %s\n", p);
 	}
+	size_t n = p - line;
+	for (size_t i = 0; i < n; i++) {
+		out[i] = line[i];
+	}
+	out[n] = '\0';
 	return true;
 }
 
