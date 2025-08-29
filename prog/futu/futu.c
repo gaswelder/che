@@ -1,8 +1,10 @@
+#import cmd_ir.c
 #import cmd_render.c
 #import midilib.c
 #import opt
 
 int main(int argc, char *argv[]) {
+	opt.addcmd("ir", cmd_ir.run);
 	opt.addcmd("ls", main_ls);
 	opt.addcmd("render", cmd_render.run);
 	return opt.dispatch(argc, argv);
