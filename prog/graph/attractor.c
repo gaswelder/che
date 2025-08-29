@@ -1,12 +1,9 @@
-/*
- * Watch with  ./attractor | mpv --no-correct-pts --fps=30 -
- */
-#import formats/ppm
 #import image
 #import opt
+#import render.c
 
 pub int run(int argc, char *argv[]) {
-    char *size = "1000x1000";
+    char *size = "200x200";
 	opt.nargs(0, "");
 	opt.str("s", "image size", &size);
 	opt.parse(argc, argv);
@@ -24,8 +21,9 @@ pub int run(int argc, char *argv[]) {
     for (int i = 0; i < FRAMES; i++) {
 		image.apply(img, fade);
 		draw(img, i, FRAMES);
-		ppm.writeimg(img, stdout);
+		render.push(img);
     }
+	render.end();
     return 0;
 }
 

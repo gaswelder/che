@@ -1,10 +1,10 @@
-#import formats/png
+#import render.c
 #import image
 #import opt
 #import rnd
 
 pub int run(int argc, char *argv[]) {
-	char *size = "1000x1000";
+	char *size = "400x400";
 	opt.nargs(0, "");
 	opt.str("s", "image size", &size);
 	opt.parse(argc, argv);
@@ -17,16 +17,23 @@ pub int run(int argc, char *argv[]) {
 	}
 
 	image.image_t *img = image.new(width, height);
-	thorn(img);
-	png.write(img, "thorn.png", png.PNG_GRAYSCALE);
+
+	double cr = (rnd.intn(10000)) / 500.0 - 10; // -10 -> 10;
+    double ci = (rnd.intn(10000)) / 500.0 - 10;
+
+	for (int i = 0; i < 100; i++) {
+		ci += 0.1;
+		cr += 0.1;
+		thorn(img, cr, ci);
+		render.push(img);
+	}
+	render.end();
 	image.free(img);
 	return 0;
 }
 
 // Draws thorn in the given image.
-void thorn(image.image_t *img) {
-	double cr = (rnd.intn(10000)) / 500.0 - 10; // -10 -> 10;
-    double ci = (rnd.intn(10000)) / 500.0 - 10;
+void thorn(image.image_t *img, double cr, ci) {
     double xmin = -M_PI;
     double xmax =  M_PI;
     double ymin = -M_PI;
