@@ -114,10 +114,6 @@ pub typedef {
     complex.t *tmpbuf; // buffer holding entire input
 } kiss_fftnd_state_t;
 
-double S_MUL(double a, b) {
-    return a * b;
-}
-
 // /* for real ffts, we need an even size */
 // int kiss_fftr_next_fast_size_real(int n) {
 //     return kiss_fft_next_fast_size( ((n)+1)>>1)<<1;
@@ -245,19 +241,19 @@ void kf_bfly5(complex.t *Fout, size_t fstride, kiss_fft_state_t *st, int m) {
         Fout0->re += scratch[7].re + scratch[8].re;
         Fout0->im += scratch[7].im + scratch[8].im;
 
-        scratch[5].re = scratch[0].re + S_MUL(scratch[7].re, ya.re) + S_MUL(scratch[8].re, yb.re);
-        scratch[5].im = scratch[0].im + S_MUL(scratch[7].im, ya.re) + S_MUL(scratch[8].im, yb.re);
+        scratch[5].re = scratch[0].re + (scratch[7].re * ya.re) + (scratch[8].re * yb.re);
+        scratch[5].im = scratch[0].im + (scratch[7].im * ya.re) + (scratch[8].im * yb.re);
 
-        scratch[6].re =  S_MUL(scratch[10].im, ya.im) + S_MUL(scratch[9].im, yb.im);
-        scratch[6].im = -S_MUL(scratch[10].re, ya.im) - S_MUL(scratch[9].re, yb.im);
+        scratch[6].re =  (scratch[10].im * ya.im) + (scratch[9].im * yb.im);
+        scratch[6].im = -(scratch[10].re * ya.im) - (scratch[9].re * yb.im);
 
         *Fout1 = complex.diff(scratch[5], scratch[6]);
         *Fout4 = complex.sum(scratch[5], scratch[6]);
 
-        scratch[11].re = scratch[0].re + S_MUL(scratch[7].re, yb.re) + S_MUL(scratch[8].re, ya.re);
-        scratch[11].im = scratch[0].im + S_MUL(scratch[7].im, yb.re) + S_MUL(scratch[8].im, ya.re);
-        scratch[12].re = - S_MUL(scratch[10].im, yb.im) + S_MUL(scratch[9].im, ya.im);
-        scratch[12].im = S_MUL(scratch[10].re, yb.im) - S_MUL(scratch[9].re, ya.im);
+        scratch[11].re = scratch[0].re + (scratch[7].re * yb.re) + (scratch[8].re * ya.re);
+        scratch[11].im = scratch[0].im + (scratch[7].im * yb.re) + (scratch[8].im * ya.re);
+        scratch[12].re = - (scratch[10].im * yb.im) + (scratch[9].im * ya.im);
+        scratch[12].im = (scratch[10].re * yb.im) - (scratch[9].re * ya.im);
 
         *Fout2 = complex.sum(scratch[11], scratch[12]);
         *Fout3 = complex.diff(scratch[11], scratch[12]);
