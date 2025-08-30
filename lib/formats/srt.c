@@ -1,4 +1,5 @@
 #import strings
+#import time
 
 pub typedef {
 	char linebuf[4096];
@@ -9,6 +10,7 @@ pub typedef {
 	int index;
 	char range[40];
 	char text[1000];
+	time.duration_t begin, end;
 } block_t;
 
 pub bool block(reader_t *r, block_t *b) {
@@ -37,7 +39,35 @@ pub bool block(reader_t *r, block_t *b) {
 	}
 	strings.trim(b->range);
 	strings.trim(b->text);
+
+
+	//
+	// Parse the range into two time positions
+	//
+	int h1;
+	int m1;
+	int s1;
+	int ms1;
+	int h2;
+	int m2;
+	int s2;
+	int ms2;
+	// 00:01:32,320 --> 00:01:33,160
+	sscanf(b->range, "%d:%d:%d,%d --> %d:%d:%d,%d", &h1, &m1, &s1, &ms1, &h2, &m2, &s2, &ms2);
+	b->begin = mkpos(h1, m1, s1, ms1);
+	b->end = mkpos(h2, m2, s2, ms2);
 	return true;
+}
+
+time.duration_t mkpos(int h, m, s, ms) {
+	int val = h;
+	val *= 60; // m
+	val += m;
+	val *= 60; // s
+	val += s;
+	val *= 1000; // ms
+	val += ms;
+	return time.newdur(val, time.MS);
 }
 
 bool loadline(reader_t *r) {

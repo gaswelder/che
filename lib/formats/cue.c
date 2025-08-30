@@ -185,6 +185,6 @@ pub int cue_ntracks(cue_t *c)
 }
 
 // Returns the absolute position of track t as microseconds.
-pub int pos_us(track_t *t) {
+pub int64_t pos_us(track_t *t) {
 	return time.dur_us(&t->pos);
 }

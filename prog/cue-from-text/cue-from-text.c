@@ -22,7 +22,7 @@ int main(int argc, char *argv[]) {
 		parse_line(line, &t);
 		i++;
         emit(i, t.title, band, &pos);
-		time.dur_add(&pos, &t.dur);
+		pos = time.dur_add(pos, t.dur);
 	}
 
     return 0;

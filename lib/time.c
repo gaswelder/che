@@ -17,56 +17,73 @@ pub typedef {
 } t;
 
 pub typedef {
-	int us;
+	int64_t us;
 } duration_t;
 
-// Adds duration a to d.
-pub void dur_add(duration_t *d, *a) {
-	d->us += a->us;
+// Returns the sum of durations a and b.
+pub duration_t dur_add(duration_t a, b) {
+	duration_t r = { .us = a.us + b.us };
+	return r;
 }
 
-pub void dur_set(duration_t *d, int val, int unit) {
+pub void dur_set(duration_t *d, int64_t val, int unit) {
 	d->us = val * unit;
 }
 
-pub int dur_us(duration_t *d) {
+pub int64_t dur_us(duration_t *d) {
 	return d->us;
 }
 
-pub duration_t newdur(int val, int unit) {
-	duration_t d = {};
-	dur_set(&d, val, unit);
+pub duration_t newdur(int64_t val, int unit) {
+	duration_t d = { .us = unit * val };
 	return d;
 }
 
-/*
- * Formats a duration putting its display string into a given buffer
- * Returns false if the buffer is too small.
- */
+// Splits absolute duration in microseconds into components.
+void split(int64_t val, int *parts) {
+	parts[0] = val % 1000; // us
+	val /= 1000; // val is sum_ms now
+
+	parts[1] = val % 1000; // ms
+	val /= 1000; // val is sum_s now
+
+	parts[2] = val % 60; // s
+	val /= 60; // val is sum_min now
+
+	parts[3] = val % 60; // min
+	val /= 60; // val is sum_h now
+
+	parts[4] = val; // sum_h
+}
+
+// Formats duration d into the given buffer.
+// Returns false if the buffer is too small.
 pub bool dur_fmt(duration_t *d, char *buf, size_t bufsize, const char *fmt) {
-	int us = d->us;
-	int min = us / MINUTES;
-	us -= min * MINUTES;
-	double fsec = (double) us / (double) SECONDS;
-	int sec = us / SECONDS;
-	us -= sec * SECONDS;
-	int ms = us / MS;
-	us -= ms * MS;
-	int len = 0;
+	int parts[5];
+	split(d->us, parts);
+	int len;
 
 	switch str (fmt) {
 		case "logfile": {
-			if (min > 0) {
-				len = snprintf(buf, bufsize, "%dm %f s", min, fsec);
+			int ms = parts[1] + 1000 * parts[2];
+			double fsec = (double) ms / 1000.0;
+			int mm = parts[3] + 60 * parts[4];
+			if (mm > 0) {
+				len = snprintf(buf, bufsize, "%dm %f s", mm, fsec);
 			} else {
 				len = snprintf(buf, bufsize, "%f s", fsec);
 			}
 		}
 		case "mm:ss": {
-			len = snprintf(buf, bufsize, "%02d:%02d", min, sec);
+			int ss = parts[2];
+			int mm = parts[3] + 60 * parts[4];
+			len = snprintf(buf, bufsize, "%02d:%02d", mm, ss);
 		}
 		case "mm:ss.ms": {
-			len = snprintf(buf, bufsize, "%02d:%02d.%03d", min, sec, ms);
+			int ms = parts[1];
+			int ss = parts[2];
+			int mm = parts[3] + 60 * parts[4];
+			len = snprintf(buf, bufsize, "%02d:%02d.%03d", mm, ss, ms);
 		}
 		default: {
 			panic("unknown format: %s", fmt);
