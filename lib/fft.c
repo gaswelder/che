@@ -44,25 +44,6 @@ OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-
-// The basic usage for 1-d complex FFT is:
-
-// ```c
-//     kiss_fft_cfg cfg = kiss_fft_alloc( nfft ,is_inverse_fft ,0,0 );
-//     while ...
-    
-//         ... // put kth sample in cx_in[k].r and cx_in[k].i
-        
-//         kiss_fft( cfg , cx_in , cx_out );
-        
-//         ... // transformed. DC is in cx_out[0].r and cx_out[0].i 
-        
-//     free(cfg);
-// ```
-// NOTE: frequency-domain data is stored from dc up to 2pi.
-//     so cx_out[0] is the dc bin of the FFT
-//     and cx_out[nfft/2] is the Nyquist bin (if exists)
-//
 // Kiss FFT uses a time decimation, mixed-radix, out-of-place FFT.
 // If you give it an input buffer and output buffer that are the same,
 // a temporary buffer will be created to hold the data.
@@ -83,7 +64,7 @@ USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 // know what you find.
 
 
-
+#import complex
 
 /* e.g. an fft of length 128 has 4 factors
  as far as kissfft is concerned
@@ -93,45 +74,15 @@ USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 const double PI = 3.141592653589793238462643383279502884197169399375105820974944;
 
-pub typedef { float r, i; } kiss_fft_cpx;
-
-void kf_cexp(kiss_fft_cpx *x, float phase) {
-    (x)->r = cos(phase);
-    (x)->i = sin(phase);
-}
-
-// C_MUL(m,a,b)         : m = a*b
-void C_MUL(kiss_fft_cpx *m, a, b) {
-    m->r = a.r*b.r - a.i*b.i;
-    m->i = a.r*b.i + a.i*b.r;
-}
-
-void C_ADD(kiss_fft_cpx *res, a,b) {
-    res->r = a.r + b.r;
-    res->i = a.i + b.i;
-}
-
-// C_SUB( res, a,b)     : res = a - b
-void C_SUB(kiss_fft_cpx *res, a,b) {
-    res->r = a.r - b.r;
-    res->i = a.i - b.i;
-}
-
-// C_ADDTO( res , a)    : res += a
-void C_ADDTO(kiss_fft_cpx *res, a) {
-    res->r += a.r;
-    res->i += a.i;
-}
-
-void C_MULBYSCALAR(kiss_fft_cpx *c, float s) {
-    c->r *= s;
-    c->i *= s;
+void kf_cexp(complex.t *x, double phase) {
+    (x)->re = cos(phase);
+    (x)->im = sin(phase);
 }
 
 pub typedef {
     kiss_fft_state_t *substate;
-    kiss_fft_cpx * tmpbuf;
-    kiss_fft_cpx * super_twiddles;
+    complex.t *tmpbuf;
+    complex.t *super_twiddles;
 } kiss_fftr_state_t;
 
 
@@ -144,7 +95,7 @@ pub typedef {
     int nfft;
     int inverse;
     int factors[2*MAXFACTORS];
-    kiss_fft_cpx twiddles[1];
+    complex.t twiddles[1];
 } kiss_fft_state_t;
 
 pub typedef {
@@ -160,10 +111,10 @@ pub typedef {
     int ndims;
     int *dims;
     kiss_fft_state_t **states; /* cfg states for each dimension */
-    kiss_fft_cpx * tmpbuf; /*buffer capable of hold the entire input */
+    complex.t *tmpbuf; // buffer holding entire input
 } kiss_fftnd_state_t;
 
-float S_MUL(float a, b) {
+double S_MUL(double a, b) {
     return a * b;
 }
 
@@ -172,15 +123,15 @@ float S_MUL(float a, b) {
 //     return kiss_fft_next_fast_size( ((n)+1)>>1)<<1;
 // }
 
-void kf_bfly2(kiss_fft_cpx *Fout, size_t fstride, kiss_fft_state_t *st, int m) {
-    kiss_fft_cpx *tw1 = st->twiddles;
-    kiss_fft_cpx *Fout2 = Fout + m;
-    kiss_fft_cpx t = {};
+void kf_bfly2(complex.t *Fout, size_t fstride, kiss_fft_state_t *st, int m) {
+    complex.t *tw1 = st->twiddles;
+    complex.t *Fout2 = Fout + m;
+    complex.t t;
     while (true) {
-        C_MUL(&t, *Fout2, *tw1);
+        t = complex.mul(*Fout2, *tw1);
         tw1 += fstride;
-        C_SUB(Fout2, *Fout, t);
-        C_ADDTO(Fout, t);
+        *Fout2 = complex.diff(*Fout, t);
+		*Fout = complex.sum(*Fout, t);
         ++Fout2;
         ++Fout;
         m--;
@@ -188,41 +139,41 @@ void kf_bfly2(kiss_fft_cpx *Fout, size_t fstride, kiss_fft_state_t *st, int m) {
     }
 }
 
-void kf_bfly4(kiss_fft_cpx *Fout, size_t fstride, kiss_fft_state_t *st, size_t m) {
+void kf_bfly4(complex.t *Fout, size_t fstride, kiss_fft_state_t *st, size_t m) {
     size_t k = m;
     size_t m2 = 2*m;
     size_t m3 = 3*m;
 
-    kiss_fft_cpx *tw1 = st->twiddles;
-    kiss_fft_cpx *tw2 = st->twiddles;
-    kiss_fft_cpx *tw3 = st->twiddles;
-    kiss_fft_cpx scratch[6];
+    complex.t *tw1 = st->twiddles;
+    complex.t *tw2 = st->twiddles;
+    complex.t *tw3 = st->twiddles;
+    complex.t scratch[6];
 
     while (true) {
-        C_MUL(&scratch[0], Fout[m], *tw1 );
-        C_MUL(&scratch[1], Fout[m2], *tw2 );
-        C_MUL(&scratch[2], Fout[m3], *tw3 );
+        scratch[0] = complex.mul(Fout[m], *tw1);
+        scratch[1] = complex.mul(Fout[m2], *tw2);
+        scratch[2] = complex.mul(Fout[m3], *tw3);
 
-        C_SUB(&scratch[5] , *Fout, scratch[1] );
-        C_ADDTO(Fout, scratch[1]);
-        C_ADD(&scratch[3] , scratch[0] , scratch[2] );
-        C_SUB(&scratch[4] , scratch[0] , scratch[2] );
-        C_SUB(&Fout[m2], *Fout, scratch[3] );
+        scratch[5] = complex.diff(*Fout, scratch[1]);
+		*Fout = complex.sum(*Fout, scratch[1]);
+        scratch[3] = complex.sum(scratch[0], scratch[2]);
+        scratch[4] = complex.diff(scratch[0], scratch[2]);
+        Fout[m2] = complex.diff(*Fout, scratch[3]);
         tw1 += fstride;
         tw2 += fstride*2;
         tw3 += fstride*3;
-        C_ADDTO(Fout, scratch[3] );
+		*Fout = complex.sum(*Fout, scratch[3]);
 
         if(st->inverse) {
-            Fout[m].r = scratch[5].r - scratch[4].i;
-            Fout[m].i = scratch[5].i + scratch[4].r;
-            Fout[m3].r = scratch[5].r + scratch[4].i;
-            Fout[m3].i = scratch[5].i - scratch[4].r;
+            Fout[m].re = scratch[5].re - scratch[4].im;
+            Fout[m].im = scratch[5].im + scratch[4].re;
+            Fout[m3].re = scratch[5].re + scratch[4].im;
+            Fout[m3].im = scratch[5].im - scratch[4].re;
         }else{
-            Fout[m].r = scratch[5].r + scratch[4].i;
-            Fout[m].i = scratch[5].i - scratch[4].r;
-            Fout[m3].r = scratch[5].r - scratch[4].i;
-            Fout[m3].i = scratch[5].i + scratch[4].r;
+            Fout[m].re = scratch[5].re + scratch[4].im;
+            Fout[m].im = scratch[5].im - scratch[4].re;
+            Fout[m3].re = scratch[5].re - scratch[4].im;
+            Fout[m3].im = scratch[5].im + scratch[4].re;
         }
         ++Fout;
         k--;
@@ -230,35 +181,33 @@ void kf_bfly4(kiss_fft_cpx *Fout, size_t fstride, kiss_fft_state_t *st, size_t m
     }
 }
 
-void kf_bfly3(kiss_fft_cpx * Fout, size_t fstride, kiss_fft_state_t *st, size_t m) {
+void kf_bfly3(complex.t *Fout, size_t fstride, kiss_fft_state_t *st, size_t m) {
      size_t k = m;
      size_t m2 = 2*m;
-     kiss_fft_cpx scratch[5];
-     kiss_fft_cpx epi3 = st->twiddles[fstride*m];
-     kiss_fft_cpx *tw1 = st->twiddles;
-     kiss_fft_cpx *tw2 = st->twiddles;
+     complex.t scratch[5];
+     complex.t epi3 = st->twiddles[fstride*m];
+     complex.t *tw1 = st->twiddles;
+     complex.t *tw2 = st->twiddles;
 
      while (true) {
-         C_MUL(&scratch[1],Fout[m] , *tw1);
-         C_MUL(&scratch[2],Fout[m2] , *tw2);
+		scratch[1] = complex.mul(Fout[m], *tw1);
+		scratch[2] = complex.mul(Fout[m2], *tw2);
+		scratch[3] = complex.sum(scratch[1], scratch[2]);
+		scratch[0] = complex.diff(scratch[1], scratch[2]);
+		tw1 += fstride;
+		tw2 += fstride*2;
 
-         C_ADD(&scratch[3],scratch[1],scratch[2]);
-         C_SUB(&scratch[0],scratch[1],scratch[2]);
-         tw1 += fstride;
-         tw2 += fstride*2;
+		Fout[m].re = Fout->re - 0.5 * (scratch[3].re);
+		Fout[m].im = Fout->im - 0.5 * (scratch[3].im);
 
-         Fout[m].r = Fout->r - 0.5 * (scratch[3].r);
-         Fout[m].i = Fout->i - 0.5 * (scratch[3].i);
+		scratch[0] = complex.scale(scratch[0], epi3.im);
+		*Fout = complex.sum(*Fout, scratch[3]);
 
-         C_MULBYSCALAR(&scratch[0] , epi3.i);
+		Fout[m2].re = Fout[m].re + scratch[0].im;
+		Fout[m2].im = Fout[m].im - scratch[0].re;
 
-         C_ADDTO(Fout, scratch[3]);
-
-         Fout[m2].r = Fout[m].r + scratch[0].i;
-         Fout[m2].i = Fout[m].i - scratch[0].r;
-
-         Fout[m].r -= scratch[0].i;
-         Fout[m].i += scratch[0].r;
+		Fout[m].re -= scratch[0].im;
+		Fout[m].im += scratch[0].re;
 
          ++Fout;
          k--;
@@ -266,66 +215,52 @@ void kf_bfly3(kiss_fft_cpx * Fout, size_t fstride, kiss_fft_state_t *st, size_t 
      }
 }
 
-void kf_bfly5(
-        kiss_fft_cpx * Fout,
-        size_t fstride,
-        kiss_fft_state_t *st,
-        int m
-        )
-{
-    kiss_fft_cpx *Fout0;
-    kiss_fft_cpx *Fout1;
-    kiss_fft_cpx *Fout2;
-    kiss_fft_cpx *Fout3;
-    kiss_fft_cpx *Fout4;
-    int u;
-    kiss_fft_cpx scratch[13];
-    kiss_fft_cpx * twiddles = st->twiddles;
-    kiss_fft_cpx *tw;
-    kiss_fft_cpx ya;
-    kiss_fft_cpx yb;
-    ya = twiddles[fstride*m];
-    yb = twiddles[fstride*2*m];
+void kf_bfly5(complex.t *Fout, size_t fstride, kiss_fft_state_t *st, int m) {
+    complex.t scratch[13];
+    complex.t *twiddles = st->twiddles;
+    complex.t ya = twiddles[fstride*m];
+    complex.t yb = twiddles[fstride*2*m];
 
-    Fout0=Fout;
-    Fout1=Fout0+m;
-    Fout2=Fout0+2*m;
-    Fout3=Fout0+3*m;
-    Fout4=Fout0+4*m;
+    complex.t *Fout0 = Fout;
+    complex.t *Fout1 = Fout0+m;
+    complex.t *Fout2 = Fout0+2*m;
+    complex.t *Fout3 = Fout0+3*m;
+    complex.t *Fout4 = Fout0+4*m;
 
-    tw=st->twiddles;
-    for ( u=0; u<m; ++u ) {
+    complex.t *tw = st->twiddles;
+
+    for (int u=0; u<m; ++u) {
         scratch[0] = *Fout0;
 
-        C_MUL(&scratch[1] ,*Fout1, tw[u*fstride]);
-        C_MUL(&scratch[2] ,*Fout2, tw[2*u*fstride]);
-        C_MUL(&scratch[3] ,*Fout3, tw[3*u*fstride]);
-        C_MUL(&scratch[4] ,*Fout4, tw[4*u*fstride]);
+        scratch[1] = complex.mul(*Fout1, tw[u*fstride]);
+        scratch[2] = complex.mul(*Fout2, tw[2*u*fstride]);
+        scratch[3] = complex.mul(*Fout3, tw[3*u*fstride]);
+        scratch[4] = complex.mul(*Fout4, tw[4*u*fstride]);
 
-        C_ADD(&scratch[7],scratch[1],scratch[4]);
-        C_SUB(&scratch[10],scratch[1],scratch[4]);
-        C_ADD(&scratch[8],scratch[2],scratch[3]);
-        C_SUB(&scratch[9],scratch[2],scratch[3]);
+        scratch[7] = complex.sum(scratch[1], scratch[4]);
+        scratch[10] = complex.diff(scratch[1], scratch[4]);
+        scratch[8] = complex.sum(scratch[2], scratch[3]);
+        scratch[9] = complex.diff(scratch[2], scratch[3]);
 
-        Fout0->r += scratch[7].r + scratch[8].r;
-        Fout0->i += scratch[7].i + scratch[8].i;
+        Fout0->re += scratch[7].re + scratch[8].re;
+        Fout0->im += scratch[7].im + scratch[8].im;
 
-        scratch[5].r = scratch[0].r + S_MUL(scratch[7].r,ya.r) + S_MUL(scratch[8].r,yb.r);
-        scratch[5].i = scratch[0].i + S_MUL(scratch[7].i,ya.r) + S_MUL(scratch[8].i,yb.r);
+        scratch[5].re = scratch[0].re + S_MUL(scratch[7].re, ya.re) + S_MUL(scratch[8].re, yb.re);
+        scratch[5].im = scratch[0].im + S_MUL(scratch[7].im, ya.re) + S_MUL(scratch[8].im, yb.re);
 
-        scratch[6].r =  S_MUL(scratch[10].i,ya.i) + S_MUL(scratch[9].i,yb.i);
-        scratch[6].i = -S_MUL(scratch[10].r,ya.i) - S_MUL(scratch[9].r,yb.i);
+        scratch[6].re =  S_MUL(scratch[10].im, ya.im) + S_MUL(scratch[9].im, yb.im);
+        scratch[6].im = -S_MUL(scratch[10].re, ya.im) - S_MUL(scratch[9].re, yb.im);
 
-        C_SUB(Fout1, scratch[5],scratch[6]);
-        C_ADD(Fout4, scratch[5],scratch[6]);
+        *Fout1 = complex.diff(scratch[5], scratch[6]);
+        *Fout4 = complex.sum(scratch[5], scratch[6]);
 
-        scratch[11].r = scratch[0].r + S_MUL(scratch[7].r,yb.r) + S_MUL(scratch[8].r,ya.r);
-        scratch[11].i = scratch[0].i + S_MUL(scratch[7].i,yb.r) + S_MUL(scratch[8].i,ya.r);
-        scratch[12].r = - S_MUL(scratch[10].i,yb.i) + S_MUL(scratch[9].i,ya.i);
-        scratch[12].i = S_MUL(scratch[10].r,yb.i) - S_MUL(scratch[9].r,ya.i);
+        scratch[11].re = scratch[0].re + S_MUL(scratch[7].re, yb.re) + S_MUL(scratch[8].re, ya.re);
+        scratch[11].im = scratch[0].im + S_MUL(scratch[7].im, yb.re) + S_MUL(scratch[8].im, ya.re);
+        scratch[12].re = - S_MUL(scratch[10].im, yb.im) + S_MUL(scratch[9].im, ya.im);
+        scratch[12].im = S_MUL(scratch[10].re, yb.im) - S_MUL(scratch[9].re, ya.im);
 
-        C_ADD(Fout2, scratch[11],scratch[12]);
-        C_SUB(Fout3, scratch[11],scratch[12]);
+        *Fout2 = complex.sum(scratch[11], scratch[12]);
+        *Fout3 = complex.diff(scratch[11], scratch[12]);
 
         ++Fout0;
         ++Fout1;
@@ -336,23 +271,16 @@ void kf_bfly5(
 }
 
 /* perform the butterfly for one stage of a mixed radix FFT */
-void kf_bfly_generic(
-        kiss_fft_cpx * Fout,
-        size_t fstride,
-        kiss_fft_state_t *st,
-        int m,
-        int p
-        )
-{
+void kf_bfly_generic(complex.t *Fout, size_t fstride, kiss_fft_state_t *st, int m, int p) {
     int u;
     int k;
     int q1;
     int q;
-    kiss_fft_cpx * twiddles = st->twiddles;
-    kiss_fft_cpx t;
+    complex.t *twiddles = st->twiddles;
+    complex.t t;
     int Norig = st->nfft;
 
-    kiss_fft_cpx *scratch = calloc!(1, sizeof(kiss_fft_cpx)*p);
+    complex.t *scratch = calloc!(p, sizeof(complex.t));
 
     for ( u=0; u<m; ++u ) {
         k=u;
@@ -368,8 +296,8 @@ void kf_bfly_generic(
             for (q=1;q<p;++q ) {
                 twidx += fstride * k;
                 if (twidx>=Norig) twidx-=Norig;
-                C_MUL(&t, scratch[q] , twiddles[twidx] );
-                C_ADDTO(&Fout[k], t);
+                t = complex.mul(scratch[q], twiddles[twidx]);
+				Fout[k] = complex.sum(Fout[k], t);
             }
             k += m;
         }
@@ -377,19 +305,11 @@ void kf_bfly_generic(
     free(scratch);
 }
 
-void kf_work(
-        kiss_fft_cpx * Fout,
-        kiss_fft_cpx * f,
-        size_t fstride,
-        int in_stride,
-        int * factors,
-        kiss_fft_state_t *st)
-{
-    kiss_fft_cpx * Fout_beg=Fout;
-    int p=*factors++; /* the radix  */
-    int m=*factors++; /* stage's fft length/p */
-    kiss_fft_cpx *Fout_end = Fout + p*m;
-
+void kf_work(complex.t *Fout, *f, size_t fstride, int in_stride, int *factors, kiss_fft_state_t *st) {
+    complex.t *Fout_beg = Fout;
+    int p = *factors++; /* the radix  */
+    int m = *factors++; /* stage's fft length/p */
+    complex.t *Fout_end = Fout + p*m;
 
     if (m==1) {
         while (true) {
@@ -477,7 +397,7 @@ void kf_factor(int n,int * facbuf) {
  * */
 pub kiss_fft_state_t *kiss_fft_alloc(int nfft,int inverse_fft,void * mem,size_t * lenmem ) {
     kiss_fft_state_t *st=NULL;
-    size_t memneeded = (sizeof(kiss_fft_state_t) + sizeof(kiss_fft_cpx)*(nfft-1)); /* twiddle factors*/
+    size_t memneeded = (sizeof(kiss_fft_state_t) + sizeof(complex.t)*(nfft-1)); /* twiddle factors*/
 
     if (lenmem == NULL) {
         st = calloc!(memneeded, 1);
@@ -503,11 +423,7 @@ pub kiss_fft_state_t *kiss_fft_alloc(int nfft,int inverse_fft,void * mem,size_t 
     return st;
 }
 
-/*
- A more generic version of the above function. It reads its input from every Nth sample.
- * */
-void kiss_fft_stride(kiss_fft_state_t *st, kiss_fft_cpx *fin,kiss_fft_cpx *fout,int in_stride)
-{
+void kiss_fft_stride(kiss_fft_state_t *st, complex.t *fin, *fout, int in_stride) {
     if (fin == fout) {
         //NOTE: this is not really an in-place FFT algorithm.
         //It just performs an out-of-place FFT into a temp buffer
@@ -515,27 +431,26 @@ void kiss_fft_stride(kiss_fft_state_t *st, kiss_fft_cpx *fin,kiss_fft_cpx *fout,
             panic("fout buffer NULL.");
         }
 
-        kiss_fft_cpx *tmpbuf = calloc!(1, sizeof(kiss_fft_cpx)*st->nfft);
+        complex.t *tmpbuf = calloc!(1, sizeof(complex.t)*st->nfft);
         kf_work(tmpbuf,fin,1,in_stride, st->factors,st);
-        memcpy(fout,tmpbuf,sizeof(kiss_fft_cpx)*st->nfft);
+        memcpy(fout,tmpbuf,sizeof(complex.t)*st->nfft);
         free(tmpbuf);
     }else{
         kf_work( fout, fin, 1,in_stride, st->factors,st );
     }
 }
 
-/*
- * kiss_fft(cfg,in_out_buf)
- *
- * Perform an FFT on a complex input buffer.
- * for a forward FFT,
- * fin should be  f[0] , f[1] , ... ,f[nfft-1]
- * fout will be   F[0] , F[1] , ... ,F[nfft-1]
- * Note that each element is complex and can be accessed like
-    f[k].r and f[k].i
- * */
-pub void kiss_fft(kiss_fft_state_t *cfg, kiss_fft_cpx *fin, kiss_fft_cpx *fout) {
-    kiss_fft_stride(cfg,fin,fout,1);
+// Performs an FFT on an input buffer.
+//  * for a forward FFT,
+//  * fin should be  f[0] , f[1] , ... ,f[nfft-1]
+//  * fout will be   F[0] , F[1] , ... ,F[nfft-1]
+// transformed. DC is in fout[0].re and fout[0].im 
+// NOTE: frequency-domain data is stored from dc up to 2pi.
+//     so fout[0] is the dc bin of the FFT
+//     and fout[nfft/2] is the Nyquist bin (if exists)
+//
+pub void kiss_fft(kiss_fft_state_t *cfg, complex.t *fin, *fout) {
+    kiss_fft_stride(cfg, fin, fout,1);
 }
 
 // /*
@@ -573,7 +488,7 @@ kiss_fftr_state_t *kiss_fftr_alloc(int nfft,int inverse_fft,void * mem,size_t * 
     nfft = nfft >> 1;
 
     kiss_fft_alloc (nfft, inverse_fft, NULL, &subsize);
-    size_t memneeded = sizeof(kiss_fftr_state_t) + subsize + sizeof(kiss_fft_cpx) * ( nfft * 3 / 2);
+    size_t memneeded = sizeof(kiss_fftr_state_t) + subsize + sizeof(complex.t) * ( nfft * 3 / 2);
 
     if (lenmem == NULL) {
         st = calloc!(memneeded, 1);
@@ -587,7 +502,7 @@ kiss_fftr_state_t *kiss_fftr_alloc(int nfft,int inverse_fft,void * mem,size_t * 
         return NULL;
 
     st->substate = (kiss_fft_state_t *) (st + 1); /*just beyond kiss_fftr_state_t */
-    st->tmpbuf = (kiss_fft_cpx *) (((char *) st->substate) + subsize);
+    st->tmpbuf = (void *) (((char *) st->substate) + subsize);
     st->super_twiddles = st->tmpbuf + nfft;
     kiss_fft_alloc(nfft, inverse_fft, st->substate, &subsize);
 
@@ -603,17 +518,16 @@ kiss_fftr_state_t *kiss_fftr_alloc(int nfft,int inverse_fft,void * mem,size_t * 
  input timedata has nfft scalar points
  output freqdata has nfft/2+1 complex points
 */
-void kiss_fftr(kiss_fftr_state_t *st, kiss_fft_cpx *timedata, kiss_fft_cpx *freqdata)
-{
+void kiss_fftr(kiss_fftr_state_t *st, complex.t *timedata, *freqdata) {
     /* input buffer timedata is stored row-wise */
     int k;
     int ncfft;
-    kiss_fft_cpx fpnk;
-    kiss_fft_cpx fpk;
-    kiss_fft_cpx f1k;
-    kiss_fft_cpx f2k;
-    kiss_fft_cpx tw;
-    kiss_fft_cpx tdc;
+    complex.t fpnk;
+    complex.t fpk;
+    complex.t f1k;
+    complex.t f2k;
+    complex.t tw;
+    complex.t tdc;
 
     if ( st->substate->inverse) {
         panic("kiss fft usage error: improper alloc");
@@ -623,36 +537,36 @@ void kiss_fftr(kiss_fftr_state_t *st, kiss_fft_cpx *timedata, kiss_fft_cpx *freq
     ncfft = st->substate->nfft;
 
     /*perform the parallel fft of two real signals packed in real,imag*/
-    kiss_fft(st->substate, timedata, st->tmpbuf );
+    kiss_fft(st->substate, timedata, freqdata);
     /* The real part of the DC element of the frequency spectrum in st->tmpbuf
      * contains the sum of the even-numbered elements of the input time sequence
      * The imag part is the sum of the odd-numbered elements
      *
-     * The sum of tdc.r and tdc.i is the sum of the input time sequence.
+     * The sum of tdc.re and tdc.im is the sum of the input time sequence.
      *      yielding DC of input time sequence
-     * The difference of tdc.r - tdc.i is the sum of the input (dot product) [1,-1,1,-1...
+     * The difference of tdc.re - tdc.im is the sum of the input (dot product) [1,-1,1,-1...
      *      yielding Nyquist bin of input time sequence
      */
 
-    tdc.r = st->tmpbuf[0].r;
-    tdc.i = st->tmpbuf[0].i;
-    freqdata[0].r = tdc.r + tdc.i;
-    freqdata[ncfft].r = tdc.r - tdc.i;
-    freqdata[ncfft].i = freqdata[0].i = 0;
+    tdc.re = st->tmpbuf[0].re;
+    tdc.im = st->tmpbuf[0].im;
+    freqdata[0].re = tdc.re + tdc.im;
+    freqdata[ncfft].re = tdc.re - tdc.im;
+    freqdata[ncfft].im = freqdata[0].im = 0;
 
     for ( k=1;k <= ncfft/2 ; ++k ) {
         fpk    = st->tmpbuf[k];
-        fpnk.r =   st->tmpbuf[ncfft-k].r;
-        fpnk.i = - st->tmpbuf[ncfft-k].i;
+        fpnk.re =   st->tmpbuf[ncfft-k].re;
+        fpnk.im = - st->tmpbuf[ncfft-k].im;
 
-        C_ADD(&f1k, fpk , fpnk );
-        C_SUB(&f2k, fpk , fpnk );
-        C_MUL(&tw , f2k , st->super_twiddles[k-1]);
+        f1k = complex.sum(fpk, fpnk);
+        f2k = complex.diff(fpk, fpnk);
+		tw = complex.mul(f2k, st->super_twiddles[k-1]);
 
-        freqdata[k].r = 0.5 * (f1k.r + tw.r);
-        freqdata[k].i = 0.5 * (f1k.i + tw.i);
-        freqdata[ncfft-k].r = 0.5 * (f1k.r - tw.r);
-        freqdata[ncfft-k].i = 0.5 * (tw.i - f1k.i);
+        freqdata[k].re = 0.5 * (f1k.re + tw.re);
+        freqdata[k].im = 0.5 * (f1k.im + tw.im);
+        freqdata[ncfft-k].re = 0.5 * (f1k.re - tw.re);
+        freqdata[ncfft-k].im = 0.5 * (tw.im - f1k.im);
     }
 }
 
@@ -660,8 +574,7 @@ void kiss_fftr(kiss_fftr_state_t *st, kiss_fft_cpx *timedata, kiss_fft_cpx *freq
  input freqdata has  nfft/2+1 complex points
  output timedata has nfft scalar points
 */
-void kiss_fftri(kiss_fftr_state_t *st, kiss_fft_cpx *freqdata, float *timedata)
-{
+void kiss_fftri(kiss_fftr_state_t *st, complex.t *freqdata, float *timedata) {
     if (st->substate->inverse == 0) {
         /* The caller did not call the correct function */
         panic("kiss fft usage error: improper alloc");
@@ -670,35 +583,25 @@ void kiss_fftri(kiss_fftr_state_t *st, kiss_fft_cpx *freqdata, float *timedata)
     /* input buffer timedata is stored row-wise */
     int ncfft = st->substate->nfft;
 
-    st->tmpbuf[0].r = freqdata[0].r + freqdata[ncfft].r;
-    st->tmpbuf[0].i = freqdata[0].r - freqdata[ncfft].r;
+    st->tmpbuf[0].re = freqdata[0].re + freqdata[ncfft].re;
+    st->tmpbuf[0].im = freqdata[0].re - freqdata[ncfft].re;
 
-    int k;
-    for (k = 1; k <= ncfft / 2; ++k) {
-        kiss_fft_cpx fk;
-        kiss_fft_cpx fnkc;
-        kiss_fft_cpx fek;
-        kiss_fft_cpx fok;
-        kiss_fft_cpx tmp;
-        fk = freqdata[k];
-        fnkc.r = freqdata[ncfft - k].r;
-        fnkc.i = -freqdata[ncfft - k].i;
+    for (int k = 1; k <= ncfft / 2; ++k) {
+        complex.t fok;
+        complex.t fk = freqdata[k];
+		complex.t fnkc;
+        fnkc.re = freqdata[ncfft - k].re;
+        fnkc.im = -freqdata[ncfft - k].im;
 
-        C_ADD(&fek, fk, fnkc);
-        C_SUB(&tmp, fk, fnkc);
-        C_MUL(&fok, tmp, st->super_twiddles[k-1]);
-        C_ADD(&st->tmpbuf[k],     fek, fok);
-        C_SUB(&st->tmpbuf[ncfft - k], fek, fok);
-        st->tmpbuf[ncfft - k].i *= -1;
+		complex.t fek = complex.sum(fk, fnkc);
+        complex.t tmp = complex.diff(fk, fnkc);
+		fok = complex.mul(tmp, st->super_twiddles[k-1]);
+        st->tmpbuf[k] = complex.sum(fek, fok);
+		st->tmpbuf[ncfft - k] = complex.diff(fek, fok);
+        st->tmpbuf[ncfft - k].im *= -1;
     }
-    kiss_fft (st->substate, st->tmpbuf, (kiss_fft_cpx *) timedata);
+    kiss_fft(st->substate, st->tmpbuf, (void *) timedata);
 }
-
-
-
-
-
-
 
 int prod(int *dims, int n) {
     int x = 1;
@@ -758,16 +661,15 @@ pub kiss_fftndr_state_t *kiss_fftndr_alloc(int *dims, int ndims, int inverse_fft
  input timedata has dims[0] X dims[1] X ... X  dims[ndims-1] scalar points
  output freqdata has dims[0] X dims[1] X ... X  dims[ndims-1]/2+1 complex points
 */
-pub void kiss_fftndr(kiss_fftndr_state_t * st, kiss_fft_cpx *timedata, kiss_fft_cpx *freqdata)
-{
+pub void kiss_fftndr(kiss_fftndr_state_t * st, complex.t *timedata, *freqdata) {
     int k1;
     int k2;
     int dimReal = st->dimReal;
     int dimOther = st->dimOther;
     int nrbins = dimReal/2+1;
 
-    kiss_fft_cpx * tmp1 = (kiss_fft_cpx*)st->tmpbuf;
-    kiss_fft_cpx * tmp2 = tmp1 + MAX(nrbins,dimOther);
+    complex.t *tmp1 = (void *) st->tmpbuf;
+    complex.t *tmp2 = tmp1 + MAX(nrbins,dimOther);
 
     // timedata is N0 x N1 x ... x Nk real
 
@@ -788,15 +690,14 @@ pub void kiss_fftndr(kiss_fftndr_state_t * st, kiss_fft_cpx *timedata, kiss_fft_
 /*
  input and output dimensions are the exact opposite of kiss_fftndr
 */
-pub void kiss_fftndri(kiss_fftndr_state_t * st, kiss_fft_cpx *freqdata,float *timedata)
-{
+pub void kiss_fftndri(kiss_fftndr_state_t * st, complex.t *freqdata, float *timedata) {
     int k1;
     int k2;
     int dimReal = st->dimReal;
     int dimOther = st->dimOther;
     int nrbins = dimReal/2+1;
-    kiss_fft_cpx * tmp1 = (kiss_fft_cpx*)st->tmpbuf;
-    kiss_fft_cpx * tmp2 = tmp1 + MAX(nrbins,dimOther);
+    complex.t * tmp1 = (void *) st->tmpbuf;
+    complex.t * tmp2 = tmp1 + MAX(nrbins,dimOther);
 
     for (k2=0;k2<nrbins;++k2) {
         for (k1=0;k1<dimOther;++k1)
@@ -826,7 +727,7 @@ kiss_fftnd_state_t *kiss_fftnd_alloc(int *dims, int ndims, int inverse_fft, void
     }
     memneeded += (sizeof(int) * ndims);/*  st->dims */
     memneeded += (sizeof(void*) * ndims);/* st->states  */
-    memneeded += (sizeof(kiss_fft_cpx) * dimprod); /* st->tmpbuf */
+    memneeded += (sizeof(complex.t) * dimprod); /* st->tmpbuf */
 
     if (lenmem == NULL) {/* allocate for the caller*/
         ptr = calloc!(memneeded, 1);
@@ -849,8 +750,8 @@ kiss_fftnd_state_t *kiss_fftnd_alloc(int *dims, int ndims, int inverse_fft, void
     st->dims = (void *) ptr;
     ptr += sizeof(int) * ndims;
 
-    st->tmpbuf = (kiss_fft_cpx*)ptr;
-    ptr += sizeof(kiss_fft_cpx) * dimprod;
+    st->tmpbuf = (void *) ptr;
+    ptr += sizeof(complex.t) * dimprod;
 
     for (i=0;i<ndims;++i) {
         size_t len;
@@ -943,18 +844,17 @@ Stage 2 ( D=4) treats this buffer as a 4*6 matrix,
    sum( [ sum(ap) sum(bp) sum(cp) sum(dp) ] )
    , i.e. the summation of all 24 input elements.
 */
-void kiss_fftnd(kiss_fftnd_state_t *st, kiss_fft_cpx *fin,kiss_fft_cpx *fout)
-{
+void kiss_fftnd(kiss_fftnd_state_t *st, complex.t *fin, *fout) {
     int i;
     int k;
-    kiss_fft_cpx *bufin = fin;
-    kiss_fft_cpx *bufout;
+    complex.t *bufin = fin;
+    complex.t *bufout;
 
     /*arrange it so the last bufout == fout*/
     if ( st->ndims & 1 ) {
         bufout = fout;
         if (fin==fout) {
-            memcpy( st->tmpbuf, fin, sizeof(kiss_fft_cpx) * st->dimprod );
+            memcpy( st->tmpbuf, fin, sizeof(complex.t) * st->dimprod );
             bufin = st->tmpbuf;
         }
     } else {

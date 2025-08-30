@@ -1,4 +1,5 @@
 #import fft
+#import complex
 
 pub int run(int argc, char** argv) {
     if (argc != 4) {
@@ -75,6 +76,7 @@ float* load_wav(const char* filename, WAVHeader* header, size_t* num_samples) {
     }
     fclose(f);
     *num_samples = samples;
+	printf("loaded %s\n", filename);
     return data;
 }
 
@@ -110,38 +112,43 @@ float* fft_convolve(float* x, size_t Nx, float* h, size_t Nh, size_t* Ny) {
     *Ny = Nx + Nh - 1;
     size_t Nfft = next_pow2(*Ny);
 
+	printf("starting fft\n");
     fft.kiss_fft_state_t *cfg = fft.kiss_fft_alloc(Nfft, 0, NULL, NULL);
     fft.kiss_fft_state_t *icfg = fft.kiss_fft_alloc(Nfft, 1, NULL, NULL);
 
-    fft.kiss_fft_cpx *X = calloc!(Nfft, sizeof(fft.kiss_fft_cpx));
-    fft.kiss_fft_cpx *H = calloc!(Nfft, sizeof(fft.kiss_fft_cpx));
-    fft.kiss_fft_cpx *Y = calloc!(Nfft, sizeof(fft.kiss_fft_cpx));
-
+    complex.t *X = calloc!(Nfft, sizeof(complex.t));
+    complex.t *H = calloc!(Nfft, sizeof(complex.t));
+    complex.t *Y = calloc!(Nfft, sizeof(complex.t));
+	printf("copying\n");
     // Copy input to complex buffer
-    for (size_t i = 0; i < Nx; i++) X[i].r = x[i];
-    for (size_t i = 0; i < Nh; i++) H[i].r = h[i];
+    for (size_t i = 0; i < Nx; i++) X[i].re = x[i];
+    for (size_t i = 0; i < Nh; i++) H[i].re = h[i];
 
     // FFT both signals
+	printf("fft1...\n");
     fft.kiss_fft(cfg, X, X);
+	printf("fft2...\n");
     fft.kiss_fft(cfg, H, H);
 
+	printf("%zu\n", Nfft);
     // Multiply in frequency domain
     for (size_t i = 0; i < Nfft; i++) {
-        float ar = X[i].r;
-        float ai = X[i].i;
-        float br = H[i].r;
-        float bi = H[i].i;
-        Y[i].r = ar * br - ai * bi;
-        Y[i].i = ar * bi + ai * br;
+        float ar = X[i].re;
+        float ai = X[i].im;
+        float br = H[i].re;
+        float bi = H[i].im;
+        Y[i].re = ar * br - ai * bi;
+        Y[i].im = ar * bi + ai * br;
     }
 
     // Inverse FFT
+	printf("inverse fft...\n");
     fft.kiss_fft(icfg, Y, Y);
 
     // Extract real part, scale by Nfft
     float* y = calloc!(*Ny, sizeof(float));
     for (size_t i = 0; i < *Ny; i++) {
-        y[i] = Y[i].r / Nfft;
+        y[i] = Y[i].re / Nfft;
     }
 
     free(cfg);
