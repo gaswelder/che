@@ -101,18 +101,13 @@ clip_t clips[200] = {};
 size_t nclips = 0;
 
 sound.clip_t *loadclip(char *path) {
-	wav.reader_t *r = wav.open_reader(path);
-	if (!r) {
-		panic("failed to open %s: %s", path, strerror(errno));
+	sound.clip_t *c = wav.loadfile(path);
+	if (!c) {
+		panic("failed to load %s: %s", path, strerror(errno));
 	}
-	if (r->wav.frequency != 44100) {
-		panic("%s: expected frequency %u, got %u", path, 44100, r->wav.frequency);
+	if (c->freq != 44100) {
+		panic("%s: expected frequency %u, got %u", path, 44100, c->freq);
 	}
-	sound.clip_t *c = sound.newclip();
-	while (wav.more(r)) {
-		sound.push_sample(c, wav.read_samplef(r));
-	}
-	wav.close_reader(r);
 	sound.normalize(c, 1.0/10);
 	return c;
 }

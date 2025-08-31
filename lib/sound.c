@@ -2,14 +2,16 @@
 pub typedef { double left, right; } samplef_t;
 
 pub typedef {
+	uint32_t freq; // 44100
 	samplef_t *samples;
 	size_t nsamples;
 	size_t cap;
 } clip_t;
 
 // Creates a new empty clip.
-pub clip_t *newclip() {
+pub clip_t *newclip(size_t freq) {
 	clip_t *c = calloc!(1, sizeof(clip_t));
+	c->freq = freq;
 	c->cap = 65536;
 	c->samples = calloc!(c->cap, sizeof(samplef_t));
 	return c;

@@ -2,6 +2,7 @@
 #import reader
 #import sound
 #import writer
+#import sound
 
 pub typedef {
     uint16_t format; // 1=PCM
@@ -21,6 +22,20 @@ pub typedef {
 pub typedef {
 	writer.t *writer;
 } writer_t;
+
+// Loads wav file at given path and returns it as a clip.
+pub sound.clip_t *loadfile(const char *path) {
+	reader_t *r = open_reader(path);
+	if (!r) {
+		return NULL;
+	}
+	sound.clip_t *c = sound.newclip(r->wav.frequency);
+	while (more(r)) {
+		sound.push_sample(c, read_samplef(r));
+	}
+	close_reader(r);
+	return c;
+}
 
 // Starts a wave stream writing to file f.
 pub writer_t *open_writer(FILE *f) {
