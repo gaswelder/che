@@ -17,6 +17,11 @@ pub clip_t *newclip(size_t freq) {
 	return c;
 }
 
+pub void freeclip(clip_t *c) {
+	free(c->samples);
+	free(c);
+}
+
 // Adds a sample to clip c.
 pub void push_sample(clip_t *c, samplef_t s) {
 	if (c->nsamples + 1 > c->cap) {
@@ -34,8 +39,8 @@ pub void normalize(clip_t *c, double level) {
 	double max = 0;
 	for (size_t i = 0; i < c->nsamples; i++) {
 		samplef_t *s = &c->samples[i];
-		if (s->left > max) max = s->left;
-		if (s->right > max) max = s->right;
+		if (fabs(s->left) > max) max = fabs(s->left);
+		if (fabs(s->right) > max) max = fabs(s->right);
 	}
 	double k = level / max;
 	for (size_t i = 0; i < c->nsamples; i++) {
