@@ -4,13 +4,82 @@
 #import sound
 #import strings
 
+typedef {
+	size_t i, n;
+	midilib.event_t *ee;
+} midireader_t;
+
+midilib.event_t *next(midireader_t *r) {
+	if (r->i >= r->n) return NULL;
+	return &r->ee[r->i++];
+}
+
+void initreader(midireader_t *r, const char *path) {
+	r->i = 0;
+	midilib.read_file(path, &r->ee, &r->n);
+}
+
+void freereader(midireader_t *r) {
+	free(r->ee);
+}
+
 pub int run(int argc, char *argv[]) {
 	if (argc != 3) {
 		fprintf(stderr, "usage: %s midi-file track-number\n", argv[0]);
 		return 1;
 	}
 	uint8_t track = atoi(argv[2]);
-	vec.t *ranges = compose(argv[1], track);
+	const char *path = argv[1];
+	load_clips("list");
+
+	midireader_t r = {};
+	initreader(&r, path);
+
+	vec.t *ranges = vec.new(sizeof(range_t));
+
+	while (true) {
+		midilib.event_t *e = next(&r);
+		if (!e) break;
+		if (e->track != track) continue;
+
+		switch (e->type) {
+			case midilib.NOTE_ON: {
+				range_t *r = vec.alloc(ranges);
+				r->t1 = e->t_us * 44100 / 1000000;
+				r->key = e->key;
+				clip_t *c = get_clip(e->key);
+				if (!c) {
+					fprintf(stderr, "no clip for key %u\n", e->key);
+				} else {
+					r->samples = c->clip->samples;
+					r->nsamples = c->clip->nsamples;
+				}
+			}
+			case midilib.NOTE_OFF: {
+				// Find the first unclosed matching range.
+				range_t *r = NULL;
+				size_t nranges = vec.len(ranges);
+				for (size_t i = 0; i < nranges; i++) {
+					range_t *x = vec.index(ranges, i);
+					if (x->key == e->key && x->t2 == 0) {
+						r = x;
+						break;
+					}
+				}
+				if (!r) {
+					panic("failed to find the open range to close");
+				}
+				r->t2 = e->t_us * 44100 / 1000000;
+				size_t tlen = r->t2 - r->t1;
+				if (r->nsamples > tlen) {
+					r->t2 = r->t1 + r->nsamples;
+					// fprintf(stderr, "trimmed sample %u: %zu vs %zu\n", r->key, tlen, r->nsamples);
+				}
+			}
+		}
+	}
+
+	freereader(&r);
 	writeout(ranges);
 	free(ranges);
 	return 0;
@@ -85,59 +154,6 @@ void load_clips(char *path) {
 		fprintf(stderr, "loaded %s\n", p);
 	}
 	fclose(f);
-}
-
-vec.t *compose(const char *path, uint8_t track) {
-	load_clips("list");
-
-	size_t n = 0;
-	midilib.event_t *ee = NULL;
-	midilib.read_file(path, &ee, &n);
-
-	vec.t *ranges = vec.new(sizeof(range_t));
-
-	for (size_t i = 0; i < n; i++) {
-		midilib.event_t *e = &ee[i];
-		if (e->track != track) continue;
-		switch (e->type) {
-			case midilib.NOTE_ON: {
-				range_t *r = vec.alloc(ranges);
-				r->t1 = e->t_us * 44100 / 1000000;
-				r->key = e->key;
-				clip_t *c = get_clip(e->key);
-				if (!c) {
-					fprintf(stderr, "no clip for key %u\n", e->key);
-				} else {
-					r->samples = c->clip->samples;
-					r->nsamples = c->clip->nsamples;
-				}
-			}
-			case midilib.NOTE_OFF: {
-				// Find the first unclosed matching range.
-				range_t *r = NULL;
-				size_t nranges = vec.len(ranges);
-				for (size_t i = 0; i < nranges; i++) {
-					range_t *x = vec.index(ranges, i);
-					if (x->key == e->key && x->t2 == 0) {
-						r = x;
-						break;
-					}
-				}
-				if (!r) {
-					panic("failed to find the open range to close");
-				}
-				r->t2 = e->t_us * 44100 / 1000000;
-				size_t tlen = r->t2 - r->t1;
-				if (r->nsamples > tlen) {
-					r->t2 = r->t1 + r->nsamples;
-					// fprintf(stderr, "trimmed sample %u: %zu vs %zu\n", r->key, tlen, r->nsamples);
-				}
-			}
-		}
-	}
-
-	free(ee);
-	return ranges;
 }
 
 void writeout(vec.t *ranges) {
