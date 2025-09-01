@@ -24,14 +24,15 @@ void freereader(midireader_t *r) {
 }
 
 pub int run(int argc, char *argv[]) {
-	if (argc != 3) {
-		fprintf(stderr, "usage: %s midi-file track-name\n", argv[0]);
+	if (argc != 4) {
+		fprintf(stderr, "usage: %s midi-file track-name font-path\n", argv[0]);
 		return 1;
 	}
 	const char *path = argv[1];
 	const char *trackname = argv[2];
+	char *fontpath = argv[3];
 
-	load_clips("list");
+	load_clips(fontpath);
 
 	composer_t c = {};
 	cmpinit(&c, path, trackname);
