@@ -25,15 +25,16 @@ void freereader(midireader_t *r) {
 
 pub int run(int argc, char *argv[]) {
 	if (argc != 3) {
-		fprintf(stderr, "usage: %s midi-file track-number\n", argv[0]);
+		fprintf(stderr, "usage: %s midi-file track-name\n", argv[0]);
 		return 1;
 	}
-	uint8_t track = atoi(argv[2]);
 	const char *path = argv[1];
+	const char *trackname = argv[2];
+
 	load_clips("list");
 
 	composer_t c = {};
-	cmpinit(&c, track, path);
+	cmpinit(&c, path, trackname);
 
 	wav.writer_t *out = wav.open_writer(stdout);
 	sound.samplef_t s = {};
@@ -119,9 +120,26 @@ typedef {
 	vec.t *ranges;
 } composer_t;
 
-void cmpinit(composer_t *c, uint8_t track, const char *path) {
+void cmpinit(composer_t *c, const char *path, *trackname) {
 	midireader_t r = {};
 	initreader(&r, path);
+
+	//
+	// Find the track number.
+	//
+	uint8_t track = 127;
+	for (size_t i = 0; i < r.n; i++) {
+		midilib.event_t *e = &r.ee[i];
+		if (e->type == midilib.TRACK_NAME) {
+			if (strcmp(e->str, trackname) == 0) {
+				track = e->track;
+				break;
+			}
+		}
+	}
+	if (track == 127) {
+		panic("couldn't find track named '%s'", trackname);
+	}
 
 	c->ranges = vec.new(sizeof(range_t));
 
