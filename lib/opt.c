@@ -126,7 +126,10 @@ pub char **parse(int argc, char **argv) {
 			exit(1);
 		}
 		if (count != expect_nargs) {
-			fprintf(stderr, "Expected %zu arguments, got %zu.\n", expect_nargs, count);
+			fprintf(stderr, "Expected %zu arguments, got %zu\n", expect_nargs, count);
+			if (args_summary[0] != '\0') {
+				fprintf(stderr, "\twant: %s\n", args_summary);
+			}
 			exit(1);
 		}
 	}
