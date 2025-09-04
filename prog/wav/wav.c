@@ -6,6 +6,7 @@ int main(int argc, char *argv[]) {
 	opt.addcmd("mix", main_mix);
 	opt.addcmd("info", main_info);
 	opt.addcmd("dump", main_dump);
+	opt.addcmd("trans", main_trans);
 	return opt.dispatch(argc, argv);
 }
 
@@ -94,5 +95,22 @@ int main_dump(int argc, char *argv[]) {
 		sound.samplef_t s = wav.read_samplef(r);
 		printf("%f\t%f\n", s.left, s.right);
 	}
+	return 0;
+}
+
+int main_trans(int argc, char *argv[]) {
+	opt.nargs(2, "1.0 input.wav");
+	char **args = opt.parse(argc, argv);
+	float r = atof(args[0]);
+	char *path = args[1];
+
+	sound.clip_t *c = wav.loadfile(path);
+	sound.clip_t *c2 = sound.transpose(c, r);
+
+	wav.writer_t *ww = wav.open_writer(stdout);
+	for (size_t i = 0; i < c2->nsamples; i++) {
+		wav.write_sample(ww, c2->samples[i].left, c2->samples[i].right);
+	}
+	wav.close_writer(ww);
 	return 0;
 }

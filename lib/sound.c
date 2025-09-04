@@ -49,3 +49,41 @@ pub void normalize(clip_t *c, double level) {
 		s->right *= k;
 	}
 }
+
+// Returns a copy of clip c stretched by factor of r.
+// r > 1 results in lower sound, r < 1 in higher.
+pub clip_t *transpose(clip_t *c, float r) {
+	clip_t *c2 = newclip(c->freq);
+
+	// How many samples the new clip will have.
+	size_t n2 = (size_t) ((float) c->nsamples * r);
+
+	for (size_t t = 0; t < n2; t++) {
+		// The "time" in the original sample flows r times slower.
+		float t0 = (float) t / r;
+
+		// Split the fractional time into an integer and a remainder.
+		// t0 = 13.156 means 0.156 between samples 13 and 14.
+		size_t t0_int = (size_t) t0;
+		float b = t0 - (float) t0_int;
+		float a = 1 - b;
+
+		if (t0_int >= c->nsamples) {
+			panic("oopsie, %zu >= %zu (at t=%zu)\n", t0_int, c->nsamples, t);
+		}
+
+		// Mix two original samples in the proportion according
+		// to the remainder in t.
+		samplef_t *s = &c->samples[t0_int];
+		double left = s->left * a;
+		double right = s->right * a;
+		if (b > 0) {
+			s = &c->samples[t0_int+1];
+			left += s->left * b;
+			right += s->right * b;
+		}
+		samplef_t t = {left, right};
+		push_sample(c2, t);
+	}
+	return c2;
+}
