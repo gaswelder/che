@@ -3,6 +3,7 @@
 #import midilib.c
 #import sound
 #import strings
+#import rnd
 
 typedef {
 	size_t i, n;
@@ -81,7 +82,15 @@ clip_t *get_clip(uint8_t key) {
 			return &clips[i];
 		}
 	}
-	return NULL;
+
+	// If we don't have one, choose a random sample to transpose.
+	clip_t *c = &clips[rnd.intn(nclips)];
+	fprintf(stderr, "getting %u from %u\n", key, c->key);
+
+	// Physical frequency of a midi note is k * 2^(note/12).
+	// The ratio between the two is then:
+	float r = pow(2, 1.0/12 * (c->key - key));
+	return addclip(sound.transpose(c->clip, r), key);
 }
 
 void load_clips(char *path) {
@@ -100,18 +109,21 @@ void load_clips(char *path) {
 		while (isspace(*p)) p++;
 		strings.trim(p);
 
-		//
 		// Load the clip
-		//
-		if (nclips == nelem(clips)) {
-			panic("reached clips limit");
-		}
-		clip_t *c = &clips[nclips++];
-		c->key = key;
-		c->clip = loadclip(p);
+		addclip(loadclip(p), key);
 		fprintf(stderr, "loaded %s\n", p);
 	}
 	fclose(f);
+}
+
+clip_t *addclip(sound.clip_t *sc, uint8_t key) {
+	if (nclips == nelem(clips)) {
+		panic("reached clips limit");
+	}
+	clip_t *c = &clips[nclips++];
+	c->key = key;
+	c->clip = sc;
+	return c;
 }
 
 typedef {
