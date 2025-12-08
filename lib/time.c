@@ -126,14 +126,42 @@ const char *readint(const char *p, int *r) {
 }
 
 
-/**
- * Returns current system time as an opaque object.
- */
+// Returns current time.
 pub t now() {
     t time = {};
     // timeval, timezone. timezone is obsolete, pass NULL.
     OS.gettimeofday(&time.timeval, NULL);
     return time;
+}
+
+pub t parse_iso_ts(const char *p) {
+	// 2025-12-08T20:31:06+02:00
+	int Y = 0;
+	int M = 0;
+	int D = 0;
+	int h = 0;
+	int m = 0;
+	int s = 0;
+	int zh = 0;
+	int zm = 0;
+	int r = sscanf(p, "%d-%d-%dT%d:%d:%d+%d:%d", &Y, &M, &D, &h, &m, &s, &zh, &zm);
+	if (r != 8) {
+		panic("failed to parse iso timestamp: %s", p);
+	}
+	tm_t x = {
+		.tm_sec = s, //0-60*
+		.tm_min = m, // 0-59
+		.tm_hour = h, // 0-23
+		.tm_mday = D, // 1-31
+		.tm_mon = M-1, // 0-11
+		.tm_year = Y - 1900, // years since 1900
+		.tm_wday = -1, // 0-6, sunday=0
+		.tm_isdst = -1, // -1 = don't know
+	};
+	int64_t ts = OS.mktime(&x);
+	ts -= zh * 3600;
+	ts -= zm * 60;
+	return from_unix(ts);
 }
 
 /**
@@ -151,12 +179,14 @@ pub int64_t sub(t a, b) {
 }
 
 pub enum {
-    FMT_FOO
+    FMT_FOO,
+	FMT_ISO,
 }
 
 pub const char *knownformat(int fmtid) {
     switch (fmtid) {
         case FMT_FOO: { return "%Y-%m-%d-%H-%M-%S"; }
+		case FMT_ISO: { return "%Y-%m-%dT%H:%M:%SZ"; }
         default: { return "(unknown time format)"; }
     }
 }
