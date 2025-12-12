@@ -745,6 +745,25 @@ bool writebool(val_t *n, strbuilder.str *s) {
     }
 }
 
+// Writes a string representation of val into str.
+pub int sprintval(val_t *val, char *str) {
+    switch (val->type) {
+        case JSON_STR: { return sprintf(str, "%s", val->val.str); }
+        case JSON_OBJ: { return sprintf(str, "%s", "(object)"); }
+        case JSON_NULL: { return sprintf(str, "%s", "null"); }
+        case JSON_ARR: { return sprintf(str, "%s", "(array)"); }
+        case JSON_NUM: { return sprintf(str, "%g", val->val.num); }
+        case JSON_BOOL: {
+            if (val->val.boolval) {
+                return sprintf(str, "%s", "true");
+            } else {
+                return sprintf(str, "%s", "false");
+            }
+        }
+        default: { return sprintf(str, "(unimplemented type %d)", val->type); }
+    }
+}
+
 // ad-hoc function
 // write an escaped quoted string s to f.
 pub void write_string(FILE *f, const char *s) {
