@@ -102,10 +102,7 @@ void readnum(json_tokenizer_t *l) {
 
 	resetstr(l);
 	for (char *p = buf; *p != '\0'; p++) {
-		if (!addchar(l, *p)) {
-			seterror(l, "out of memory");
-			return;
-		}
+		addchar(l, *p);
 	}
 	t->type = T_NUM;
 }
@@ -131,8 +128,7 @@ void readkw(json_tokenizer_t *l)
 	}
 }
 
-void readstr(json_tokenizer_t *l)
-{
+void readstr(json_tokenizer_t *l) {
 	tokenizer.t *b = l->buf;
 	json_token_t *t = &l->next;
 
@@ -146,6 +142,7 @@ void readstr(json_tokenizer_t *l)
 	while (tokenizer.more(b) && tokenizer.peek(b) != '"') {
 		// Get next string character
 		int ch = tokenizer.get(b);
+		// If it's a backslash, replace it with the next character.
 		if (ch == '\\') {
 			ch = tokenizer.get(b);
 			if (ch == EOF) {
@@ -153,12 +150,7 @@ void readstr(json_tokenizer_t *l)
 				return;
 			}
 		}
-
-		// Append it to the string
-		if (!addchar(l, ch)) {
-			seterror(l, "Out of memory");
-			return;
-		}
+		addchar(l, ch);
 	}
 
 	g = tokenizer.get(b);
@@ -174,18 +166,16 @@ void seterror(json_tokenizer_t *l, const char *s) {
 	putstring(l, "%s", s);
 }
 
-bool addchar(json_tokenizer_t *l, int c) {
-	// if no space, resize
+void addchar(json_tokenizer_t *l, int c) {
 	if (l->strlen >= l->strcap) {
 		l->strcap *= 2;
 		l->next.str = realloc(l->next.str, l->strcap);
 		if (!l->next.str) {
-			return false;
+			panic("realloc failed");
 		}
 	}
 	l->next.str[l->strlen++] = c;
 	l->next.str[l->strlen] = '\0';
-	return true;
 }
 
 void resetstr(json_tokenizer_t *l) {
