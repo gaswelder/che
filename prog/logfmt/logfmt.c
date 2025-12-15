@@ -1,4 +1,5 @@
 #import formats/json
+#import linereader
 #import opt
 #import strings
 #import tty
@@ -9,8 +10,6 @@ int nreqfields = 0;
 int nexclude = 0;
 
 int main(int argc, char **argv) {
-    char buf[4096];
-
     char *fields_string = "msg|message";
     char *exclude_string = "";
 	opt.nargs(0, "");
@@ -21,18 +20,19 @@ int main(int argc, char **argv) {
     nreqfields = strings.split(",", fields_string, reqfields, sizeof(reqfields));
     nexclude = strings.split(",", exclude_string, excludefields, sizeof(excludefields));
 
-    // This assumes that stdin has the default "line discipline" - that is,
-    // fgets will deliver complete lines, one at a time, and that all lines fit into the buffer.
-    while (fgets(buf, sizeof(buf), stdin)) {
-        json.val_t *entry = json.parse(buf);
+    linereader.t *lr = linereader.new(stdin);
+    while (linereader.read(lr)) {
+		char *line = linereader.line(lr);
+        json.val_t *entry = json.parse(line);
         // If line couldn't be parsed as json, print as is.
         if (!entry) {
-            printf("%s", buf);
+            printf("%s", line);
             continue;
         }
         print_entry(entry);
         json.json_free(entry);
     }
+	linereader.free(lr);
     return 0;
 }
 

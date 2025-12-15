@@ -1,10 +1,11 @@
 // Strips log embelishments from docker-compose output.
 
+#import linereader
+
 int main() {
-    char line[4096];
-    while (!feof(stdin)) {
-        fgets(line, sizeof(line), stdin);
-        char *p = line;
+	linereader.t *lr = linereader.new(stdin);
+    while (linereader.read(lr)) {
+        char *p = linereader.line(lr);
 
         // color, container name, spaces, "|", ESC[0m
 		p = termcolor(p);
@@ -16,6 +17,7 @@ int main() {
 		// message
         printf("%s", p);
     }
+	linereader.free(lr);
     return 0;
 }
 
