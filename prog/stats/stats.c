@@ -75,6 +75,12 @@ void print_results(stats.series_t *series[], size_t nseries) {
 	}
 	putchar('\n');
 
+	printf("sum");
+	for (size_t i = 0; i < nseries; i++) {
+		printf("\t%f", stats.sum(series[i]));
+	}
+	putchar('\n');
+
 	int percentiles[] = {5, 25, 33, 50, 66, 75, 95, 99};
 	for (size_t i = 0; i < nelem(percentiles); i++) {
 		int p = percentiles[i];
