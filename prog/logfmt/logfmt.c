@@ -37,32 +37,30 @@ int main(int argc, char **argv) {
 }
 
 void print_entry(json.val_t *entry) {
-    char printed[10][100] = {
-        "level",
-    };
-    size_t nprinted = 1;
+    printlevel(entry);
+	putchar('\t');
 
-    print_level(entry);
-    putchar('\t');
-    if (print_req_val(entry, "t|timestamp", printed[nprinted])) {
-        nprinted++;
-    }
+    if (!printfield(entry, "t")) {
+		printfield(entry, "timestamp");
+	}
     putchar('\t');
 
-    for (int i = 0; i < nreqfields; i++) {
-        if (print_req_val(entry, reqfields[i], printed[nprinted])) {
-            nprinted++;
-        }
-        putchar('\t');
-    }
+	if (!printfield(entry, "msg")) {
+		printfield(entry, "message");
+	}
+	putchar('\t');
 
     // Print the remaining fields as k=v
     size_t n = json.nkeys(entry);
     for (size_t i = 0; i < n; i++) {
         const char *key = json.key(entry, i);
-        if (contains(printed, key)) {
-            continue;
-        }
+		if (strcmp(key, "level") == 0
+			|| strcmp(key, "t") == 0
+			|| strcmp(key, "timestamp") == 0
+			|| strcmp(key, "msg") == 0
+			|| strcmp(key, "message") == 0) {
+			continue;
+		}
         bool excluded = false;
         for (int j = 0; j < nexclude; j++) {
             if (strcmp(excludefields[j], key) == 0) {
@@ -77,31 +75,23 @@ void print_entry(json.val_t *entry) {
     puts("");
 }
 
-bool print_req_val(json.val_t *entry, const char *key, char printed[100]) {
-    if (strcmp(key, "msg|message") == 0) {
-        return print_req_val(entry, "msg", printed) || print_req_val(entry, "message", printed);
-    }
-    if (strcmp(key, "t|timestamp") == 0) {
-        return print_req_val(entry, "t", printed) || print_req_val(entry, "timestamp", printed);
-    }
+bool printfield(json.val_t *entry, const char *key) {
     json.val_t *v = json.get(entry, key);
     if (v == NULL) {
         return false;
     }
-    strcpy(printed, key);
     printval(v);
     return true;
 }
 
 // Prints the level in color.
 // If the level field is missing, prints a placeholder ("none").
-void print_level(json.val_t *entry) {
+void printlevel(json.val_t *entry) {
 	const char *level = json.getstr(entry, "level");
     if (level == NULL) {
 		printf("%s", "none");
 		return;
     }
-
 	switch str (level) {
 		case "error", "ERROR": { tty.ttycolor(tty.RED); }
 		case "info", "INFO": { tty.ttycolor(tty.BLUE); }
@@ -133,14 +123,4 @@ void printval(json.val_t *val) {
         }
         default: { printf("(unimplemented type %d)", val->type); }
     }
-}
-
-bool contains(const char ids[][100], *id) {
-    size_t i = 0;
-    for (;;) {
-        if (ids[i][0] == '\0') break;
-        if (strcmp(ids[i], id) == 0) return true;
-        i++;
-    }
-    return false;
 }
