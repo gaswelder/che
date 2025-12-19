@@ -124,7 +124,7 @@ pub bool set_header(request_t *r, const char *name, *value) {
     return true;
 }
 
-// Writes the request to the writer w.
+// Writes request r to writer w.
 // Returns the number of bytes written or -1 on error.
 pub int write_request(writer.t *w, request_t *r) {
     strbuilder.str *sb = strbuilder.new();
@@ -132,11 +132,13 @@ pub int write_request(writer.t *w, request_t *r) {
 	// GET /foo
 	strbuilder.addf(sb, "%s %s", r->method, r->uri);
 
-	// Query params.
+	// Query params
 	for (size_t i = 0; i < r->nparams; i++) {
-		if (i == 0) strbuilder.adds(sb, "?");
-		else strbuilder.adds(sb, "&");
-
+		if (i == 0) {
+			strbuilder.adds(sb, "?");
+		} else {
+			strbuilder.adds(sb, "&");
+		}
 		kv_t *param = &r->params[i];
 		strbuilder.adds(sb, param->name);
 		strbuilder.adds(sb, "=");

@@ -1,6 +1,6 @@
-#import writer
 #import enc/endian
 #import image
+#import writer
 
 pub typedef {
 	writer.t *out;
@@ -160,6 +160,6 @@ pub void stop(writer_t *avi) {
     // fseek(f, 140, SEEK_SET); // dwLength in strh
     // endian.write4le(w, avi->frame_count);
 
-	writer.close(w);
+	writer.free(w);
     free(avi);
 }

@@ -20,7 +20,7 @@ void testcat() {
 
 	int r = writer.write(p->stdin, (uint8_t*)"foo\n", 4);
 	test.truth("nwrite == 4", r == 4);
-	writer.close(p->stdin);
+	writer.free(p->stdin);
 
 	uint8_t buf[4096] = {};
 	reader.read(p->stdout, buf, sizeof(buf));
@@ -38,7 +38,7 @@ void testecho() {
     }
 
 	// Close its input.
-    writer.close(p->stdin);
+    writer.free(p->stdin);
 
 	// Read its stdout.
 	uint8_t buf[4096] = {};

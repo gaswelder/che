@@ -60,6 +60,7 @@ int main(int argc, char *argv[]) {
 	}
 	http.set_header(&req, "Host", u->hostname);
 	http.set_header(&req, "User-Agent", "exab");
+
 	writer.t *w = writer.static_buffer(REQUEST, sizeof(REQUEST));
 	if (!http.write_request(w, &req)) {
 		panic("failed to write the request");

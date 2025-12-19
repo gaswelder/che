@@ -2,55 +2,49 @@
 
 pub typedef int writefunc_t(void *, const uint8_t *, size_t); // ctx, data, len
 pub typedef void freefunc_t(void *);
-pub typedef int closefunc_t(void *);
 
 pub typedef {
-	size_t nwritten;
+	size_t nwritten; // How many bytes have been written.
 	void *data;
 	writefunc_t *write;
 	freefunc_t *free;
-	closefunc_t *close;
 } t;
 
 // Writes n bytes from data to w.
-// Returns the number of bytes written.
+// Returns the number of bytes written or -1 on error.
 pub int write(t *w, const uint8_t *data, size_t n) {
 	int r = w->write(w->data, data, n);
 	if (r > 0) w->nwritten += r;
 	return r;
 }
 
-pub int close(t *w) {
-	if (w->close) return w->close(w->data);
-	return -1;
-}
-
+// Frees memory used by the writer w.
 pub void free(t *w) {
-	if (w->free) w->free(w->data);
+	if (w->free) {
+		w->free(w->data);
+	}
+	OS.free(w);
 }
 
 pub int writebyte(t *w, uint8_t b) {
 	return write(w, &b, 1);
 }
 
-
-t *_stdout = NULL;
-
-// Returns a global instance of a stdout writer.
-// This function is not thread safe.
-pub t *stdout() {
-	if (!_stdout) {
-		_stdout = file(OS.stdout);
-	}
-	return _stdout;
+t *new(void *data, writefunc_t *write, freefunc_t *free) {
+	t *w = calloc!(1, sizeof(t));
+	w->data = data;
+	w->write = write;
+	w->free = free;
+	return w;
 }
 
-// Returns a writer to a file.
+//
+// file writer
+//
+
+// Allocates and returns a writer to file f.
 pub t *file(FILE *f) {
-	t *w = calloc!(1, sizeof(t));
-	w->data = f;
-	w->write = file_write;
-	return w;
+	return new(f, file_write, NULL);
 }
 
 int file_write(void *ctx, const uint8_t *data, size_t n) {
@@ -59,22 +53,31 @@ int file_write(void *ctx, const uint8_t *data, size_t n) {
 	return (int) r;
 }
 
+t *_stdout = NULL;
+
+// Returns a global instance of an stdout writer.
+// This function is not thread safe.
+pub t *stdout() {
+	if (!_stdout) {
+		_stdout = file(OS.stdout);
+	}
+	return _stdout;
+}
+
+
+//
+// memory writer
+//
 
 typedef { uint8_t *data; size_t pos, size; } membuf_t;
 
 // Returns a writer to a static buffer.
-// When the buffer's place runs out, write will return EOF.
+// When the buffer's space runs out, write will return EOF.
 pub t *static_buffer(uint8_t *data, size_t size) {
-	t *w = calloc!(1, sizeof(t));
 	membuf_t *s = calloc!(1, sizeof(membuf_t));
-
 	s->data = data;
 	s->size = size;
-
-	w->write = mem_write;
-	w->free = OS.free;
-	w->data = s;
-	return w;
+	return new(s, mem_write, OS.free);
 }
 
 int mem_write(void *ctx, const uint8_t *data, size_t n) {
@@ -93,28 +96,21 @@ int mem_write(void *ctx, const uint8_t *data, size_t n) {
 	return r;
 }
 
-typedef {
-	int fd;
-} fd_t;
 
+//
+// fd writer
+//
+
+typedef { int fd; } fd_t;
+
+// Returns a writer writing to the file descriptor f.
 pub t *fd(int f) {
-	t *w = calloc!(1, sizeof(t));
 	fd_t *state = calloc!(1, sizeof(fd_t));
-
 	state->fd = f;
-	w->write = fd_write;
-	w->free = OS.free;
-	w->close = fd_close;
-	w->data = state;
-	return w;
+	return new(state, fd_write, OS.free);
 }
 
 int fd_write(void *ctx, const uint8_t *data, size_t n) {
 	fd_t *state = ctx;
 	return OS.write(state->fd, data, n);
-}
-
-int fd_close(void *ctx) {
-	fd_t *state = ctx;
-	return OS.close(state->fd);
 }
