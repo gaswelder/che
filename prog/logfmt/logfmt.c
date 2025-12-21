@@ -107,13 +107,24 @@ void printlevel(json.val_t *entry) {
     tty.ttycolor(tty.RESET_ALL);
 }
 
+bool isint(double x) {
+	return fabs(x) <= 9007199254740991.0 && fabs(x - round(x)) == 0.0;
+}
+
 void printval(json.val_t *val) {
     switch (val->type) {
         case json.JSON_STR: { printf("%s", val->val.str); }
         case json.JSON_OBJ: { printf("(object)"); }
         case json.JSON_NULL: { printf("null"); }
         case json.JSON_ARR: { printf("(array)"); }
-        case json.JSON_NUM: { printf("%g", val->val.num); }
+        case json.JSON_NUM: {
+			double x = val->val.num;
+			if (isint(x)) {
+				printf("%.0f", x);
+			} else {
+				printf("%.17g", x);
+			}
+		}
         case json.JSON_BOOL: {
             if (val->val.boolval) {
                 printf("true");
