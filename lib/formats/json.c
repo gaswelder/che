@@ -11,7 +11,7 @@ pub typedef {
 pub typedef {
 	char err[256]; // First error reported during parsing.
 	tokenizer.t *buf;
-    json_token_t next;
+	json_token_t next;
 	size_t strlen;
 	size_t strcap;
 } parser_t;
@@ -357,8 +357,8 @@ void *mcopy(const void *src, size_t size) {
 // The `json_free` function must be called only on root nodes.
 pub val_t *parse(const char *s) {
 	parser_t p = {};
-    p.buf = tokenizer.from_str(s);
-    p.strcap = 4096;
+	p.buf = tokenizer.from_str(s);
+	p.strcap = 4096;
 	p.next.str = calloc!(1, 4096);
 
 	if (!tok_read(&p)) {
@@ -589,29 +589,29 @@ void *error(parser_t *p, const char *fmt, ...) {
  */
 bool tok_read(parser_t *t) {
 	tokenizer.spaces(t->buf);
-    int c = tokenizer.peek(t->buf);
-    if (c == EOF) {
-        t->next.type = EOF;
-    }
-    else if (c == '"') {
-        readstr(t);
-    }
-    else if (c == ':' || c == ',' || c == '{' || c == '}' || c == '[' || c == ']') {
-        t->next.type = tokenizer.get(t->buf);
-    }
-    else if (c == '-' || isdigit(c)) {
+	int c = tokenizer.peek(t->buf);
+	if (c == EOF) {
+		t->next.type = EOF;
+	}
+	else if (c == '"') {
+		readstr(t);
+	}
+	else if (c == ':' || c == ',' || c == '{' || c == '}' || c == '[' || c == ']') {
+		t->next.type = tokenizer.get(t->buf);
+	}
+	else if (c == '-' || isdigit(c)) {
 		readnum(t);
 	}
-    else if (isalpha(c)) {
+	else if (isalpha(c)) {
 		readkw(t);
 	}
-    else {
+	else {
 		seterror(t, "Unexpected character");
-    }
+	}
 	if (t->next.type == tok_T_ERR) {
-        return false;
-    }
-    return true;
+		return false;
+	}
+	return true;
 }
 
 /*
@@ -780,13 +780,13 @@ pub char *format(val_t *n) {
 
 bool writenode(val_t *n, strbuilder.str *s) {
 	switch(type(n)) {
-        case TOBJ: { return writeobj(n, s); }
-        case TARR: { return writearr(n, s); }
-        case TSTR: { return writestr(n, s); }
-        case TNUM: { return writenum(n, s); }
-        case TBOOL: { return writebool(n, s); }
-        case TNULL: { return strbuilder.adds(s, "null"); }
-    }
+		case TOBJ: { return writeobj(n, s); }
+		case TARR: { return writearr(n, s); }
+		case TSTR: { return writestr(n, s); }
+		case TNUM: { return writenum(n, s); }
+		case TBOOL: { return writebool(n, s); }
+		case TNULL: { return strbuilder.adds(s, "null"); }
+	}
 	panic("unhandled json node type: %d", type(n));
 }
 
@@ -795,10 +795,10 @@ bool writeobj(val_t *n, strbuilder.str *s) {
 	bool ok = strbuilder.adds(s, "{");
 	for (size_t i = 0; i < len; i++) {
 		ok = ok
-            && strbuilder.adds(s, "\"")
-            && strbuilder.adds(s, key(n, i))
-            && strbuilder.adds(s, "\":")
-            && writenode(json_val(n, i), s);
+			&& strbuilder.adds(s, "\"")
+			&& strbuilder.adds(s, key(n, i))
+			&& strbuilder.adds(s, "\":")
+			&& writenode(json_val(n, i), s);
 		if (i + 1 < len) {
 			ok = ok && strbuilder.adds(s, ",");
 		}
@@ -808,34 +808,34 @@ bool writeobj(val_t *n, strbuilder.str *s) {
 }
 
 bool writearr(val_t *n, strbuilder.str *s) {
-    size_t len = json_len(n);
-    bool ok = strbuilder.adds(s, "[");
-    for (size_t i = 0; i < len; i++) {
-        ok = ok && writenode(json_at(n, i), s);
-        if (i + 1 < len) {
+	size_t len = json_len(n);
+	bool ok = strbuilder.adds(s, "[");
+	for (size_t i = 0; i < len; i++) {
+		ok = ok && writenode(json_at(n, i), s);
+		if (i + 1 < len) {
 			ok = ok && strbuilder.adds(s, ",");
 		}
-    }
-    ok = ok && strbuilder.adds(s, "]");
+	}
+	ok = ok && strbuilder.adds(s, "]");
 	return ok;
 }
 
 bool writestr(val_t *n, strbuilder.str *s) {
 	const char *content = json_str(n);
 	size_t len = strlen(content);
-    bool ok = strbuilder.adds(s, "\"");
+	bool ok = strbuilder.adds(s, "\"");
 	for (size_t i = 0; i < len; i++) {
 		const char c = content[i];
 		if (c == '\n') {
 			ok = ok
-                && strbuilder.str_addc(s, '\\')
-                && strbuilder.str_addc(s, 'n');
+				&& strbuilder.str_addc(s, '\\')
+				&& strbuilder.str_addc(s, 'n');
 			continue;
 		}
 		if (c == '\t') {
 			ok = ok
-                && strbuilder.str_addc(s, '\\')
-                && strbuilder.str_addc(s, 't');
+				&& strbuilder.str_addc(s, '\\')
+				&& strbuilder.str_addc(s, 't');
 			continue;
 		}
 		if (c == '\\' || c == '\"' || c == '/') {
@@ -844,26 +844,26 @@ bool writestr(val_t *n, strbuilder.str *s) {
 		ok = ok && strbuilder.str_addc(s, c);
 	}
 	ok = ok && strbuilder.str_addc(s, '"');
-    return ok;
+	return ok;
 }
 
 bool writenum(val_t *n, strbuilder.str *s) {
-    char buf[100] = {0};
+	char buf[100] = {0};
 	double v = json_dbl(n);
 	if (v == round(v)) {
 		sprintf(buf, "%.0f", json_dbl(n));
 	} else {
 		sprintf(buf, "%f", json_dbl(n));
 	}
-    return strbuilder.adds(s, buf);
+	return strbuilder.adds(s, buf);
 }
 
 bool writebool(val_t *n, strbuilder.str *s) {
-    if (json_bool(n)) {
-        return strbuilder.adds(s, "true");
-    } else {
-        return strbuilder.adds(s, "false");
-    }
+	if (json_bool(n)) {
+		return strbuilder.adds(s, "true");
+	} else {
+		return strbuilder.adds(s, "false");
+	}
 }
 
 //
@@ -872,21 +872,21 @@ bool writebool(val_t *n, strbuilder.str *s) {
 
 // Writes a string representation of val into str.
 pub int sprintval(val_t *val, char *str) {
-    switch (val->type) {
-        case TSTR: { return sprintf(str, "%s", val->val.str); }
-        case TOBJ: { return sprintf(str, "%s", "(object)"); }
-        case TNULL: { return sprintf(str, "%s", "null"); }
-        case TARR: { return sprintf(str, "%s", "(array)"); }
-        case TNUM: { return sprintf(str, "%g", val->val.num); }
-        case TBOOL: {
-            if (val->val.boolval) {
-                return sprintf(str, "%s", "true");
-            } else {
-                return sprintf(str, "%s", "false");
-            }
-        }
-        default: { return sprintf(str, "(unimplemented type %d)", val->type); }
-    }
+	switch (val->type) {
+		case TSTR: { return sprintf(str, "%s", val->val.str); }
+		case TOBJ: { return sprintf(str, "%s", "(object)"); }
+		case TNULL: { return sprintf(str, "%s", "null"); }
+		case TARR: { return sprintf(str, "%s", "(array)"); }
+		case TNUM: { return sprintf(str, "%g", val->val.num); }
+		case TBOOL: {
+			if (val->val.boolval) {
+				return sprintf(str, "%s", "true");
+			} else {
+				return sprintf(str, "%s", "false");
+			}
+		}
+		default: { return sprintf(str, "(unimplemented type %d)", val->type); }
+	}
 }
 
 // ad-hoc function
