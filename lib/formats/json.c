@@ -1,7 +1,29 @@
 #import arr
-#import formats/json/tok
 #import strbuilder
 #import strings
+#import tokenizer
+
+pub typedef {
+	int type; // One of the "T_" constants below.
+	char *str; // Token payload, for tokens of type T_ERR, T_STR and T_NUM.
+} json_token_t;
+
+pub typedef {
+	char err[256]; // First error reported during parsing.
+	tokenizer.t *buf;
+    json_token_t next;
+	size_t strlen;
+	size_t strcap;
+} parser_t;
+
+enum {
+	tok_T_ERR = 257,
+	tok_T_TRUE,
+	tok_T_FALSE,
+	tok_T_NULL,
+	tok_T_STR,
+	tok_T_NUM
+}
 
 // JSON data is represented as a tree where each node is an object of type `val_t`.
 // A node can be of one of the following types:
@@ -67,88 +89,6 @@ const char *typename(int valtype) {
 		case JSON_NULL: { return "null"; }
 	}
 	return "?";
-}
-
-// val_t *json_newerror(const char *s) {
-// 	val_t *n = newnode(JSON_ERR);
-// 	if(!n) return NULL;
-// 	n->val.str = strings.newstr("%s", s);
-// 	if(!n->val.str) {
-// 		free(n);
-// 		return NULL;
-// 	}
-// 	return n;
-// }
-
-/*
- * Returns a new node of type "object".
- */
-pub val_t *json_newobj()
-{
-	val_t *n = newnode(JSON_OBJ);
-	n->val.obj = arr.arr_new();
-	if(!n->val.obj) {
-		free(n);
-		return NULL;
-	}
-	return n;
-}
-
-/*
- * Returns a new node of type "array".
- */
-pub val_t *json_newarr()
-{
-	val_t *n = newnode(JSON_ARR);
-	n->val.obj = arr.arr_new();
-	if(!n->val.obj) {
-		free(n);
-		return NULL;
-	}
-	return n;
-}
-
-/*
- * Returns a new node of type "string" with a copy of
- * the given string as the contents.
- */
-pub val_t *json_newstr(const char *s)
-{
-	if (s == NULL) {
-		return json_newnull();
-	}
-	val_t *obj = newnode(JSON_STR);
-
-	char *copy = mcopy( s, strlen(s) + 1 );
-	if(!copy) {
-		free(obj);
-		return NULL;
-	}
-
-	obj->val.str = copy;
-	return obj;
-}
-
-/*
- * Returns a new node of type "number" with the given value
- * as the content.
- */
-pub val_t *json_newnum(double val) {
-	val_t *obj = newnode(JSON_NUM);
-	obj->val.num = val;
-	return obj;
-}
-
-// Returns a new node of type "null".
-pub val_t *json_newnull() {
-	return newnode(JSON_NULL);
-}
-
-// Returns a new node of type "bool" with the given value.
-pub val_t *json_newbool(bool val) {
-	val_t *n = newnode(JSON_BOOL);
-	n->val.boolval = val;
-	return n;
 }
 
 // Returns the type of the given node.
@@ -405,60 +345,44 @@ void *mcopy(const void *src, size_t size) {
 	return copy;
 }
 
-/*
- * Parsing context.
- */
-typedef {
-	/*
-	 * First error reported during parsing.
-	 */
-	char err[256];
-	tok.json_tokenizer_t *lexer;
-} parser_t;
 
-/**
- * Parses a given JSON string and returns a pointer to a val_t object.
- *
- * If the parsing succeeds, the node will be a valid one.
- * In the case of error, a special error node is returned.
- * The user should check the returned node using the `json_error` function.
- * The returned node has to be freed using the `json_free` in both cases.
- * The `json_free` function must be called only on root nodes.
- *
- * There is no need to check the returned value for equality to `NULL`
- * because `json_error` will do that and return the "not enough memory" message
- * (which is the sole cause for the `NULL` return value).
- */
+
+// Parses JSON string s and returns a pointer to the root val_t object.
+//
+// In the case of error, a special error node is returned.
+// The user should check the returned node using the `json_error` function.
+// The returned node has to be freed using the `json_free` in both cases.
+// The `json_free` function must be called only on root nodes.
 pub val_t *parse(const char *s) {
 	parser_t p = {};
-	p.lexer = tok.new(s);
-	if (!p.lexer) {
+    p.buf = tokenizer.from_str(s);
+    p.strcap = 4096;
+	p.next.str = calloc!(1, 4096);
+
+	if (!tok_read(&p)) {
+		error(&p, "%s", p.next.str);
+		tokenizer.free(p.buf);
 		return NULL;
 	}
-	if (!tok.read(p.lexer)) {
-		error(&p, "%s", p.lexer->next.str);
-		tok.free(p.lexer);
-		return NULL;
-	}
-	if (p.lexer->next.type == EOF) {
-		tok.free(p.lexer);
+	if (p.next.type == EOF) {
+		tokenizer.free(p.buf);
 		return NULL;
 	}
 
 	val_t *result = read_node(&p);
 	if (!result) {
-		tok.free(p.lexer);
+		tokenizer.free(p.buf);
 		return NULL;
 	}
 
 	// Expect end of file at this point.
-	if (p.lexer->next.type != EOF) {
+	if (p.next.type != EOF) {
 		json_free(result);
-		tok.free(p.lexer);
+		tokenizer.free(p.buf);
 		return NULL;
 	}
-	
-	tok.free(p.lexer);
+
+	tokenizer.free(p.buf);
 	return result;
 }
 
@@ -466,125 +390,135 @@ pub val_t *parse(const char *s) {
  * Reads one node and returns it.
  * Returns NULL in case of error.
  */
-val_t *read_node(parser_t *p)
-{
-	switch (tok.currtype(p->lexer)) {
+val_t *read_node(parser_t *p) {
+	switch (tok_currtype(p)) {
 		case EOF: { return error(p, "Unexpected end of file"); }
 		case '[': { return read_array(p); }
 		case '{': { return read_dict(p); }
-		case tok.T_STR: {
-			val_t *n = json_newstr(tok.currstr(p->lexer));
-			tok.read(p->lexer);
-			if (tok.currtype(p->lexer) == tok.T_ERR) {
-				error(p, "%s", tok.currstr(p->lexer));
+		case tok_T_STR: {
+			const char *s = tok_currstr(p);
+			val_t *n = newnode(JSON_STR);
+			char *copy = mcopy(s, strlen(s) + 1);
+			n->val.str = copy;
+			tok_read(p);
+			if (tok_currtype(p) == tok_T_ERR) {
+				error(p, "%s", s);
 			}
 			return n;
 		}
-		case tok.T_NUM: {
-			const char *val = tok.currstr(p->lexer);
+		case tok_T_NUM: {
+			const char *val = tok_currstr(p);
 			double n = 0;
 			if (sscanf(val, "%lf", &n) < 1) {
 				error(p, "failed to parser number: %s", val);
 			}
-			tok.read(p->lexer);
-			if (tok.currtype(p->lexer) == tok.T_ERR) {
-				error(p, "%s", tok.currstr(p->lexer));
+			tok_read(p);
+			if (tok_currtype(p) == tok_T_ERR) {
+				error(p, "%s", tok_currstr(p));
 			}
-			return json_newnum(n);
+			val_t *obj = newnode(JSON_NUM);
+			obj->val.num = n;
+			return obj;
 		}
-		case tok.T_TRUE: {
-			tok.read(p->lexer);
-			return json_newbool(true);
+		case tok_T_TRUE: {
+			tok_read(p);
+			val_t *n = newnode(JSON_BOOL);
+			n->val.boolval = true;
+			return n;
 		}
-		case tok.T_FALSE: {
-			tok.read(p->lexer);
-			return json_newbool(false);
+		case tok_T_FALSE: {
+			tok_read(p);
+			val_t *n = newnode(JSON_BOOL);
+			n->val.boolval = false;
+			return n;
 		}
-		case tok.T_NULL: {
-			tok.read(p->lexer);
-			return json_newnull();
+		case tok_T_NULL: {
+			tok_read(p);
+			return newnode(JSON_NULL);
 		}
 	}
 	return NULL;
 }
 
-val_t *read_array(parser_t *p)
-{
+val_t *read_array(parser_t *p) {
 	if(!expect(p, '[')) {
 		return NULL;
 	}
-
-	val_t *a = json_newarr();
-	if (tok.currtype(p->lexer) == ']') {
-		tok.read(p->lexer);
-		if (tok.currtype(p->lexer) == tok.T_ERR) {
-			error(p, "%s", tok.currstr(p->lexer));
+	val_t *a = newnode(JSON_ARR);
+	a->val.obj = arr.arr_new();
+	if (!a->val.obj) {
+		panic("alloc failed");
+	}
+	if (tok_currtype(p) == ']') {
+		tok_read(p);
+		if (tok_currtype(p) == tok_T_ERR) {
+			error(p, "%s", tok_currstr(p));
 		}
 		return a;
 	}
 
-	while (tok.currtype(p->lexer) != EOF) {
+	while (tok_currtype(p) != EOF) {
 		val_t *v = read_node(p);
 		if (!v) {
 			json_free(a);
 			return NULL;
 		}
 		json_push(a, v);
-		if(tok.currtype(p->lexer) != ',') {
+		if(tok_currtype(p) != ',') {
 			break;
 		}
-		tok.read(p->lexer);
-		if (tok.currtype(p->lexer) == tok.T_ERR) {
-			error(p, "%s", tok.currstr(p->lexer));
+		tok_read(p);
+		if (tok_currtype(p) == tok_T_ERR) {
+			error(p, "%s", tok_currstr(p));
 		}
 	}
-	if (tok.currtype(p->lexer) != ']') {
+	if (tok_currtype(p) != ']') {
 		json_free(a);
 		return NULL;
 	}
-	tok.read(p->lexer);
-	if (tok.currtype(p->lexer) == tok.T_ERR) {
-		error(p, "%s", tok.currstr(p->lexer));
+	tok_read(p);
+	if (tok_currtype(p) == tok_T_ERR) {
+		error(p, "%s", tok_currstr(p));
 	}
 	return a;
 }
 
 bool consume(parser_t *p, int toktype) {
-	if (tok.currtype(p->lexer) != toktype) {
+	if (tok_currtype(p) != toktype) {
 		return false;
 	}
-	tok.read(p->lexer);
-	if (tok.currtype(p->lexer) == tok.T_ERR) {
-		error(p, "%s", tok.currstr(p->lexer));
+	tok_read(p);
+	if (tok_currtype(p) == tok_T_ERR) {
+		error(p, "%s", tok_currstr(p));
 	}
 	return true;
 }
 
-val_t *read_dict(parser_t *p)
-{
+val_t *read_dict(parser_t *p) {
 	if (!expect(p, '{')) {
 		return NULL;
 	}
-	val_t *o = json_newobj();
-	if (!o) {
-		return NULL;
+	val_t *o = newnode(JSON_OBJ);
+	o->val.obj = arr.arr_new();
+	if (!o->val.obj) {
+		panic("alloc failed");
 	}
 	if (consume(p, '}')) {
 		return o;
 	}
 
-	while (tok.currtype(p->lexer) != EOF) {
+	while (tok_currtype(p) != EOF) {
 		// Get the field name str.
-		if (tok.currtype(p->lexer) != tok.T_STR) {
+		if (tok_currtype(p) != tok_T_STR) {
 			json_free(o);
 			return error(p, "Key expected");
 		}
-		char *key = strings.newstr("%s", tok.currstr(p->lexer));
+		char *key = strings.newstr("%s", tok_currstr(p));
 		if (!key) {
 			json_free(o);
 			return error(p, "No memory");
 		}
-		tok.read(p->lexer);
+		tok_read(p);
 
 		// Get the ":"
 		if (!expect(p, ':')) {
@@ -607,12 +541,12 @@ val_t *read_dict(parser_t *p)
 			return NULL;
 		}
 
-		if (tok.currtype(p->lexer) != ',') {
+		if (tok_currtype(p) != ',') {
 			break;
 		}
-		tok.read(p->lexer);
-		if (tok.currtype(p->lexer) == tok.T_ERR) {
-			error(p, "%s", tok.currstr(p->lexer));
+		tok_read(p);
+		if (tok_currtype(p) == tok_T_ERR) {
+			error(p, "%s", tok_currstr(p));
 		}
 	}
 	if (!expect(p, '}')) {
@@ -624,13 +558,13 @@ val_t *read_dict(parser_t *p)
 
 bool expect(parser_t *p, int toktype)
 {
-	if (tok.currtype(p->lexer) != toktype) {
-		error(p, "'%c' expected, got '%c'", toktype, tok.currtype(p->lexer));
+	if (tok_currtype(p) != toktype) {
+		error(p, "'%c' expected, got '%c'", toktype, tok_currtype(p));
 		return false;
 	}
-	tok.read(p->lexer);
-	if (tok.currtype(p->lexer) == tok.T_ERR) {
-		error(p, "%s", tok.currstr(p->lexer));
+	tok_read(p);
+	if (tok_currtype(p) == tok_T_ERR) {
+		error(p, "%s", tok_currstr(p));
 	}
 	return true;
 }
@@ -647,6 +581,191 @@ void *error(parser_t *p, const char *fmt, ...) {
 	return NULL;
 }
 
+/**
+ * Reads next token into the local buffer.
+ * Returns false if there was an error.
+ */
+bool tok_read(parser_t *t) {
+	tokenizer.spaces(t->buf);
+    int c = tokenizer.peek(t->buf);
+    if (c == EOF) {
+        t->next.type = EOF;
+    }
+    else if (c == '"') {
+        readstr(t);
+    }
+    else if (c == ':' || c == ',' || c == '{' || c == '}' || c == '[' || c == ']') {
+        t->next.type = tokenizer.get(t->buf);
+    }
+    else if (c == '-' || isdigit(c)) {
+		readnum(t);
+	}
+    else if (isalpha(c)) {
+		readkw(t);
+	}
+    else {
+		seterror(t, "Unexpected character");
+    }
+	if (t->next.type == tok_T_ERR) {
+        return false;
+    }
+    return true;
+}
+
+/*
+ * Returns the type of the current token.
+ */
+int tok_currtype(parser_t *l) {
+	return l->next.type;
+}
+
+/*
+ * Returns current token's string value.
+ */
+const char *tok_currstr(parser_t *l) {
+	if (l->next.type != tok_T_STR && l->next.type != tok_T_ERR && l->next.type != tok_T_NUM) {
+		return NULL;
+	}
+	return l->next.str;
+}
+
+// Reads a number:
+// number = [ minus ] int [ frac ] [ exp ]
+void readnum(parser_t *l) {
+	tokenizer.t *b = l->buf;
+	json_token_t *t = &l->next;
+
+	char buf[100] = {};
+	if (!tokenizer.num(b, buf, 100)) {
+		seterror(l, "failed to parse a number");
+		return;
+	}
+
+	resetstr(l);
+	for (char *p = buf; *p != '\0'; p++) {
+		addchar(l, *p);
+	}
+	t->type = tok_T_NUM;
+}
+
+void readkw(parser_t *l)
+{
+	tokenizer.t *b = l->buf;
+	json_token_t *t = &l->next;
+	char kw[8] = {};
+	int i = 0;
+
+	while (isalpha(tokenizer.peek(b)) && i < 7) {
+		kw[i] = tokenizer.get(b);
+		i++;
+	}
+	kw[i] = '\0';
+
+	switch str (kw) {
+		case "true": { t->type = tok_T_TRUE; }
+		case "false": { t->type = tok_T_FALSE; }
+		case "null": { t->type = tok_T_NULL; }
+		default: { seterror(l, "Unknown keyword"); }
+	}
+}
+
+void readstr(parser_t *l) {
+	tokenizer.t *b = l->buf;
+	json_token_t *t = &l->next;
+
+	char g = tokenizer.get(b);
+	if (g != '"') {
+		seterror(l, "'\"' expected");
+		return;
+	}
+	resetstr(l);
+
+	while (tokenizer.more(b) && tokenizer.peek(b) != '"') {
+		// Get next string character
+		int ch = tokenizer.get(b);
+		// If it's a backslash, replace it with the next character.
+		if (ch == '\\') {
+			ch = tokenizer.get(b);
+			if (ch == EOF) {
+				seterror(l, "Unexpected end of input");
+				return;
+			}
+		}
+		addchar(l, ch);
+	}
+
+	g = tokenizer.get(b);
+	if (g != '"') {
+		seterror(l, "'\"' expected");
+		return;
+	}
+	t->type = tok_T_STR;
+}
+
+void seterror(parser_t *l, const char *s) {
+	l->next.type = tok_T_ERR;
+	putstring(l, "%s", s);
+}
+
+void addchar(parser_t *l, int c) {
+	if (l->strlen >= l->strcap) {
+		l->strcap *= 2;
+		l->next.str = realloc(l->next.str, l->strcap);
+		if (!l->next.str) {
+			panic("realloc failed");
+		}
+	}
+	l->next.str[l->strlen++] = c;
+	l->next.str[l->strlen] = '\0';
+}
+
+void resetstr(parser_t *l) {
+	l->strlen = 0;
+}
+
+// Puts a formatted string into the local buffer.
+// Returns false in case of error.
+bool putstring(parser_t *l, const char *format, ...) {
+	va_list args = {};
+
+	// get the total length
+	va_start(args, format);
+	int len = vsnprintf(NULL, 0, format, args);
+	va_end(args);
+	if (len < 0) {
+		return false;
+	}
+
+	// if buffer is smaller, resize the buffer
+	if (l->strlen < (size_t)len + 1) {
+		size_t newsize = findsize(len + 1);
+		l->next.str = realloc(l->next.str, newsize);
+		l->strlen = newsize;
+		if (l->next.str == NULL) {
+			return false;
+		}
+	}
+
+	// put the string
+	va_start(args, format);
+	vsnprintf(l->next.str, l->strlen, format, args);
+	va_end(args);
+	return true;
+}
+
+size_t findsize(int len) {
+	size_t r = 1;
+	size_t n = (size_t) len;
+	while (r < n) {
+		r *= 2;
+	}
+	return r;
+}
+
+
+//
+// Writers
+//
 
 pub char *format(val_t *n) {
 	strbuilder.str *s = strbuilder.new();
@@ -744,6 +863,10 @@ bool writebool(val_t *n, strbuilder.str *s) {
         return strbuilder.adds(s, "false");
     }
 }
+
+//
+// Ac-hoc write utils
+//
 
 // Writes a string representation of val into str.
 pub int sprintval(val_t *val, char *str) {
