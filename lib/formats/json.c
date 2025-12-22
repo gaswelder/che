@@ -28,14 +28,28 @@ enum {
 // JSON data is represented as a tree where each node is an object of type `val_t`.
 // A node can be of one of the following types:
 pub enum {
-	JSON_UND = 0,
-	JSON_ERR = 1,
-	JSON_ARR = 2, // array
-	JSON_OBJ = 3, // object
-	JSON_STR = 4, // string
-	JSON_NUM = 5, // number
-	JSON_BOOL = 6, // true or false
-	JSON_NULL = 7 // null value
+	TUND = 0,
+	TERR = 1,
+	TARR = 2, // array
+	TOBJ = 3, // object
+	TSTR = 4, // string
+	TNUM = 5, // number
+	TBOOL = 6, // true or false
+	TNULL = 7 // null value
+}
+
+const char *typename(int valtype) {
+	switch(valtype) {
+		case TUND: { return "und"; }
+		case TERR: { return "err"; }
+		case TARR: { return "arr"; }
+		case TOBJ: { return "obj"; }
+		case TSTR: { return "str"; }
+		case TNUM: { return "num"; }
+		case TBOOL: { return "bool"; }
+		case TNULL: { return "null"; }
+	}
+	return "?";
 }
 
 // An opaque object representing any value representable in JSON.
@@ -60,7 +74,7 @@ pub const char *json_err(val_t *n)
 	if(n == NULL) {
 		return "No memory";
 	}
-	if(n->type == JSON_ERR) {
+	if(n->type == TERR) {
 		return n->val.str;
 	}
 	return NULL;
@@ -77,29 +91,17 @@ pub const char *json_typename(val_t *n)
 	return typename(n->type);
 }
 
-const char *typename(int valtype) {
-	switch(valtype) {
-		case JSON_UND: { return "und"; }
-		case JSON_ERR: { return "err"; }
-		case JSON_ARR: { return "arr"; }
-		case JSON_OBJ: { return "obj"; }
-		case JSON_STR: { return "str"; }
-		case JSON_NUM: { return "num"; }
-		case JSON_BOOL: { return "bool"; }
-		case JSON_NULL: { return "null"; }
-	}
-	return "?";
-}
+
 
 // Returns the type of the given node.
 pub int type(val_t *obj) {
-	if (!obj) return JSON_NULL;
+	if (!obj) return TNULL;
 	return obj->type;
 }
 
 // Returns the number of keys in an object node.
 pub size_t nkeys(val_t *n) {
-	if (!n || n->type != JSON_OBJ) {
+	if (!n || n->type != TOBJ) {
 		return 0;
 	}
 	return arr.arr_len(n->val.obj);
@@ -107,7 +109,7 @@ pub size_t nkeys(val_t *n) {
 
 // Returns the i-th key in the object node n.
 pub const char *key(val_t *n, size_t i) {
-	if (!n || n->type != JSON_OBJ) {
+	if (!n || n->type != TOBJ) {
 		return NULL;
 	}
 	arr.arr_t *a = n->val.obj;
@@ -119,7 +121,7 @@ pub const char *key(val_t *n, size_t i) {
 
 // Returns the value stored under the i-th key in the object node n.
 pub val_t *json_val(val_t *n, size_t i) {
-	if (!n || n->type != JSON_OBJ) {
+	if (!n || n->type != TOBJ) {
 		return NULL;
 	}
 	arr.arr_t *a = n->val.obj;
@@ -134,7 +136,7 @@ pub val_t *json_val(val_t *n, size_t i) {
 // Returns the value stored under the given key of the given object.
 // Returns NULL if the node is not an object or there is no such key in it.
 pub val_t *get(val_t *n, const char *k) {
-	if (!n || n->type != JSON_OBJ) {
+	if (!n || n->type != TOBJ) {
 		return NULL;
 	}
 	arr.arr_t *a = n->val.obj;
@@ -151,7 +153,7 @@ pub val_t *get(val_t *n, const char *k) {
 // Returns the value stored at the given index of the given array.
 // Returns NULL if the node is not an array or the given index is out of bounds.
 pub val_t *json_at(val_t *n, int index) {
-	if (!n || n->type != JSON_ARR) {
+	if (!n || n->type != TARR) {
 		return NULL;
 	}
 	arr.arr_t *a = n->val.arr;
@@ -164,7 +166,7 @@ pub val_t *json_at(val_t *n, int index) {
 // Returns the length of the array object.
 // Returns 0 if the object is not an array.
 pub int json_len( val_t *obj ) {
-	if (!obj || obj->type != JSON_ARR) {
+	if (!obj || obj->type != TARR) {
 		return 0;
 	}
 	return arr.arr_len(obj->val.arr);
@@ -174,7 +176,7 @@ pub int json_len( val_t *obj ) {
 pub void json_free(val_t *node) {
 	if (!node) return;
 
-	if (node->type == JSON_OBJ) {
+	if (node->type == TOBJ) {
 		arr.arr_t *a = node->val.obj;
 		size_t n = arr.arr_len(a);
 		for(size_t i = 0; i < n; i++) {
@@ -184,7 +186,7 @@ pub void json_free(val_t *node) {
 			free(kv);
 		}
 		arr.arr_free(a);
-	} else if (node->type == JSON_ARR) {
+	} else if (node->type == TARR) {
 		arr.arr_t *a = node->val.obj;
 		size_t n = arr.arr_len(a);
 		for(size_t i = 0; i < n; i++) {
@@ -192,7 +194,7 @@ pub void json_free(val_t *node) {
 		}
 		arr.arr_free(a);
 	}
-	else if( node->type == JSON_STR || node->type == JSON_ERR ) {
+	else if( node->type == TSTR || node->type == TERR ) {
 		free(node->val.str);
 	}
 
@@ -209,7 +211,7 @@ pub val_t *json_copy( val_t *obj )
 		return NULL;
 	}
 
-	if( obj->type == JSON_OBJ )
+	if( obj->type == TOBJ )
 	{
 		size_t n = nkeys(obj);
 		for(size_t i = 0; i < n; i++) {
@@ -223,7 +225,7 @@ pub val_t *json_copy( val_t *obj )
 			}
 		}
 	}
-	else if( obj->type == JSON_ARR )
+	else if( obj->type == TARR )
 	{
 		size_t n = json_len(obj);
 		for(size_t i = 0; i < n; i++) {
@@ -235,7 +237,7 @@ pub val_t *json_copy( val_t *obj )
 			}
 		}
 	}
-	else if( obj->type == JSON_STR )
+	else if( obj->type == TSTR )
 	{
 		copy->val.str = strings.newstr("%s", obj->val.str);
 		if(!copy->val.str) {
@@ -251,7 +253,7 @@ pub val_t *json_copy( val_t *obj )
 // If the key doesn't exist or the value is not a string, returns NULL.
 pub const char *getstr(val_t *obj, const char *k) {
 	val_t *v = get(obj, k);
-	if (!v || v->type != JSON_STR) {
+	if (!v || v->type != TSTR) {
 		return NULL;
 	}
 	return v->val.str;
@@ -262,7 +264,7 @@ pub const char *getstr(val_t *obj, const char *k) {
  */
 pub double json_getdbl(val_t *obj, const char *k) {
 	val_t *v = get(obj, k);
-	if (!v || v->type != JSON_NUM) {
+	if (!v || v->type != TNUM) {
 		return 0.0;
 	}
 	return v->val.num;
@@ -271,7 +273,7 @@ pub double json_getdbl(val_t *obj, const char *k) {
 // Returns the value of the boolean node n.
 // If n is not a boolean node, returns false.
 pub bool json_bool(val_t *n) {
-	if (n != NULL && n->type == JSON_BOOL) {
+	if (n != NULL && n->type == TBOOL) {
 		return n->val.boolval;
 	}
 	return false;
@@ -279,21 +281,21 @@ pub bool json_bool(val_t *n) {
 
 // Returns the string from the given string value.
 pub const char *json_str(val_t *n) {
-	if (n != NULL && n->type == JSON_STR) {
+	if (n != NULL && n->type == TSTR) {
 		return n->val.str;
 	}
 	return "";
 }
 
 pub double json_dbl(val_t *n) {
-	if (n != NULL && n->type == JSON_NUM) {
+	if (n != NULL && n->type == TNUM) {
 		return n->val.num;
 	}
 	return 0.0;
 }
 
 pub bool json_put( val_t *n, const char *k, val_t *val ) {
-	if (n == NULL || n->type != JSON_OBJ) {
+	if (n == NULL || n->type != TOBJ) {
 		return false;
 	}
 
@@ -333,7 +335,7 @@ pub bool json_put( val_t *n, const char *k, val_t *val ) {
  * Returns false if the given node is not an array and in case of error.
  */
 pub bool json_push( val_t *n, val_t *val ) {
-	if (n == NULL || n->type != JSON_ARR) {
+	if (n == NULL || n->type != TARR) {
 		return false;
 	}
 	return arr.arr_push(n->val.arr, val);
@@ -397,7 +399,7 @@ val_t *read_node(parser_t *p) {
 		case '{': { return read_dict(p); }
 		case tok_T_STR: {
 			const char *s = tok_currstr(p);
-			val_t *n = newnode(JSON_STR);
+			val_t *n = newnode(TSTR);
 			char *copy = mcopy(s, strlen(s) + 1);
 			n->val.str = copy;
 			tok_read(p);
@@ -416,25 +418,25 @@ val_t *read_node(parser_t *p) {
 			if (tok_currtype(p) == tok_T_ERR) {
 				error(p, "%s", tok_currstr(p));
 			}
-			val_t *obj = newnode(JSON_NUM);
+			val_t *obj = newnode(TNUM);
 			obj->val.num = n;
 			return obj;
 		}
 		case tok_T_TRUE: {
 			tok_read(p);
-			val_t *n = newnode(JSON_BOOL);
+			val_t *n = newnode(TBOOL);
 			n->val.boolval = true;
 			return n;
 		}
 		case tok_T_FALSE: {
 			tok_read(p);
-			val_t *n = newnode(JSON_BOOL);
+			val_t *n = newnode(TBOOL);
 			n->val.boolval = false;
 			return n;
 		}
 		case tok_T_NULL: {
 			tok_read(p);
-			return newnode(JSON_NULL);
+			return newnode(TNULL);
 		}
 	}
 	return NULL;
@@ -444,7 +446,7 @@ val_t *read_array(parser_t *p) {
 	if(!expect(p, '[')) {
 		return NULL;
 	}
-	val_t *a = newnode(JSON_ARR);
+	val_t *a = newnode(TARR);
 	a->val.obj = arr.arr_new();
 	if (!a->val.obj) {
 		panic("alloc failed");
@@ -498,7 +500,7 @@ val_t *read_dict(parser_t *p) {
 	if (!expect(p, '{')) {
 		return NULL;
 	}
-	val_t *o = newnode(JSON_OBJ);
+	val_t *o = newnode(TOBJ);
 	o->val.obj = arr.arr_new();
 	if (!o->val.obj) {
 		panic("alloc failed");
@@ -778,12 +780,12 @@ pub char *format(val_t *n) {
 
 bool writenode(val_t *n, strbuilder.str *s) {
 	switch(type(n)) {
-        case JSON_OBJ: { return writeobj(n, s); }
-        case JSON_ARR: { return writearr(n, s); }
-        case JSON_STR: { return writestr(n, s); }
-        case JSON_NUM: { return writenum(n, s); }
-        case JSON_BOOL: { return writebool(n, s); }
-        case JSON_NULL: { return strbuilder.adds(s, "null"); }
+        case TOBJ: { return writeobj(n, s); }
+        case TARR: { return writearr(n, s); }
+        case TSTR: { return writestr(n, s); }
+        case TNUM: { return writenum(n, s); }
+        case TBOOL: { return writebool(n, s); }
+        case TNULL: { return strbuilder.adds(s, "null"); }
     }
 	panic("unhandled json node type: %d", type(n));
 }
@@ -871,12 +873,12 @@ bool writebool(val_t *n, strbuilder.str *s) {
 // Writes a string representation of val into str.
 pub int sprintval(val_t *val, char *str) {
     switch (val->type) {
-        case JSON_STR: { return sprintf(str, "%s", val->val.str); }
-        case JSON_OBJ: { return sprintf(str, "%s", "(object)"); }
-        case JSON_NULL: { return sprintf(str, "%s", "null"); }
-        case JSON_ARR: { return sprintf(str, "%s", "(array)"); }
-        case JSON_NUM: { return sprintf(str, "%g", val->val.num); }
-        case JSON_BOOL: {
+        case TSTR: { return sprintf(str, "%s", val->val.str); }
+        case TOBJ: { return sprintf(str, "%s", "(object)"); }
+        case TNULL: { return sprintf(str, "%s", "null"); }
+        case TARR: { return sprintf(str, "%s", "(array)"); }
+        case TNUM: { return sprintf(str, "%g", val->val.num); }
+        case TBOOL: {
             if (val->val.boolval) {
                 return sprintf(str, "%s", "true");
             } else {

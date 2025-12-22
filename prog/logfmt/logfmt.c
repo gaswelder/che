@@ -113,11 +113,11 @@ bool isint(double x) {
 
 void printval(json.val_t *val) {
     switch (val->type) {
-        case json.JSON_STR: { printf("%s", val->val.str); }
-        case json.JSON_OBJ: { printf("(object)"); }
-        case json.JSON_NULL: { printf("null"); }
-        case json.JSON_ARR: { printf("(array)"); }
-        case json.JSON_NUM: {
+        case json.TSTR: { printf("%s", val->val.str); }
+        case json.TOBJ: { printf("(object)"); }
+        case json.TNULL: { printf("null"); }
+        case json.TARR: { printf("(array)"); }
+        case json.TNUM: {
 			double x = val->val.num;
 			if (isint(x)) {
 				printf("%.0f", x);
@@ -125,7 +125,7 @@ void printval(json.val_t *val) {
 				printf("%.17g", x);
 			}
 		}
-        case json.JSON_BOOL: {
+        case json.TBOOL: {
             if (val->val.boolval) {
                 printf("true");
             } else {

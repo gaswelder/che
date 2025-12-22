@@ -45,8 +45,8 @@ void printobj(json.val_t *obj) {
     for (size_t i = 0; i < nheader; i++) {
         json.val_t *v = json.get(obj, header[i]);
 		switch (json.type(v)) {
-			case json.JSON_NULL: { csv.writeval(&w, ""); }
-			case json.JSON_STR: { csv.writeval(&w, json.json_str(v)); }
+			case json.TNULL: { csv.writeval(&w, ""); }
+			case json.TSTR: { csv.writeval(&w, json.json_str(v)); }
 			default: {
 				char *s = json.format(v);
 				csv.writeval(&w, s);
