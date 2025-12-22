@@ -6,20 +6,7 @@
 pub typedef {
 	char err[256]; // First error reported during parsing.
 	tokenizer.t *buf;
-	int nexttype; // One of the "tok_T_" constants below.
-	char *nextstr; // Token payload, for tokens of type T_ERR, T_STR and T_NUM.
-	size_t strlen;
-	size_t strcap;
 } parser_t;
-
-enum {
-	tok_T_ERR = 257,
-	tok_T_TRUE,
-	tok_T_FALSE,
-	tok_T_NULL,
-	tok_T_STR,
-	tok_T_NUM
-}
 
 // JSON data is represented as a tree where each node is an object of type `val_t`.
 // A node can be of one of the following types:
@@ -197,15 +184,13 @@ pub void json_free(val_t *node) {
 	free(node);
 }
 
-// Creates a copy of the value.
-pub val_t *json_copy( val_t *obj )
-{
-	if( !obj ) return NULL;
-
-	val_t *copy = mcopy( obj, sizeof(val_t) );
-	if( !copy ) {
+// Creates a deep copy of the value.
+pub val_t *json_copy(val_t *obj) {
+	if (!obj) {
 		return NULL;
 	}
+	val_t *copy = calloc!(1, sizeof(val_t));
+	memcpy(copy, obj, sizeof(val_t));
 
 	if( obj->type == TOBJ )
 	{
@@ -337,13 +322,9 @@ pub bool json_push( val_t *n, val_t *val ) {
 	return arr.arr_push(n->val.arr, val);
 }
 
-void *mcopy(const void *src, size_t size) {
-	void *copy = calloc!(size, 1);
-	memcpy(copy, src, size);
-	return copy;
-}
-
-
+//
+// Readers
+//
 
 // Parses JSON string s and returns a pointer to the root val_t object.
 //
@@ -354,18 +335,6 @@ void *mcopy(const void *src, size_t size) {
 pub val_t *parse(const char *s) {
 	parser_t p = {};
 	p.buf = tokenizer.from_str(s);
-	p.strcap = 4096;
-	p.nextstr = calloc!(1, 4096);
-
-	if (!tok_read(&p)) {
-		error(&p, "%s", p.nextstr);
-		tokenizer.free(p.buf);
-		return NULL;
-	}
-	if (p.nexttype == EOF) {
-		tokenizer.free(p.buf);
-		return NULL;
-	}
 
 	val_t *result = read_node(&p);
 	if (!result) {
@@ -374,9 +343,10 @@ pub val_t *parse(const char *s) {
 	}
 
 	// Expect end of file at this point.
-	if (p.nexttype != EOF) {
-		json_free(result);
-		tokenizer.free(p.buf);
+	if (tok_more(&p)) {
+		// char buf[100];
+		// tokenizer.tail(p.buf, buf, 100);
+		// panic("trailing input: %s", buf);
 		return NULL;
 	}
 
@@ -384,109 +354,52 @@ pub val_t *parse(const char *s) {
 	return result;
 }
 
-/*
- * Reads one node and returns it.
- * Returns NULL in case of error.
- */
+// Reads one node and returns it.
+// Returns null in case of error.
 val_t *read_node(parser_t *p) {
-	switch (p->nexttype) {
-		case EOF: { return error(p, "Unexpected end of file"); }
-		case '[': { return read_array(p); }
-		case '{': { return read_dict(p); }
-		case tok_T_STR: {
-			const char *s = p->nextstr;
-			val_t *n = newnode(TSTR);
-			char *copy = mcopy(s, strlen(s) + 1);
-			n->val.str = copy;
-			tok_read(p);
-			if (p->nexttype == tok_T_ERR) {
-				error(p, "%s", s);
-			}
-			return n;
-		}
-		case tok_T_NUM: {
-			const char *val = p->nextstr;
-			double n = 0;
-			if (sscanf(val, "%lf", &n) < 1) {
-				error(p, "failed to parser number: %s", val);
-			}
-			tok_read(p);
-			if (p->nexttype == tok_T_ERR) {
-				error(p, "%s", p->nextstr);
-			}
-			val_t *obj = newnode(TNUM);
-			obj->val.num = n;
-			return obj;
-		}
-		case tok_T_TRUE: {
-			tok_read(p);
-			val_t *n = newnode(TBOOL);
-			n->val.boolval = true;
-			return n;
-		}
-		case tok_T_FALSE: {
-			tok_read(p);
-			val_t *n = newnode(TBOOL);
-			n->val.boolval = false;
-			return n;
-		}
-		case tok_T_NULL: {
-			tok_read(p);
-			return newnode(TNULL);
-		}
+	if (haserr(p)) return NULL;
+	if (!tok_more(p)) {
+		seterror(p, "no more input");
+		return NULL;
 	}
-	return NULL;
+	if (tok_peek(p) == '[') {
+		return read_array(p);
+	}
+	if (tok_peek(p) == '{') {
+		return read_dict(p);
+	}
+	if (tok_peek(p) == '"') {
+		return read_str(p);
+	}
+	if (isdigit(tok_peek(p)) || tok_peek(p) == '-') {
+		return read_num(p);
+	}
+	return read_kw(p);
 }
 
 val_t *read_array(parser_t *p) {
-	if(!expect(p, '[')) {
+	if (!expect(p, '[')) {
 		return NULL;
 	}
 	val_t *a = newnode(TARR);
 	a->val.obj = arr.arr_new();
-	if (p->nexttype == ']') {
-		tok_read(p);
-		if (p->nexttype == tok_T_ERR) {
-			error(p, "%s", p->nextstr);
-		}
+	if (eat(p, ']')) {
 		return a;
 	}
-
-	while (p->nexttype != EOF) {
-		val_t *v = read_node(p);
-		if (!v) {
-			json_free(a);
+	while (tok_more(p)) {
+		val_t *x = read_node(p);
+		if (!x) {
 			return NULL;
 		}
-		json_push(a, v);
-		if(p->nexttype != ',') {
+		json_push(a, x);
+		if (!eat(p, ',')) {
 			break;
 		}
-		tok_read(p);
-		if (p->nexttype == tok_T_ERR) {
-			error(p, "%s", p->nextstr);
-		}
 	}
-	if (p->nexttype != ']') {
-		json_free(a);
+	if (!expect(p, ']')) {
 		return NULL;
 	}
-	tok_read(p);
-	if (p->nexttype == tok_T_ERR) {
-		error(p, "%s", p->nextstr);
-	}
 	return a;
-}
-
-bool consume(parser_t *p, int toktype) {
-	if (p->nexttype != toktype) {
-		return false;
-	}
-	tok_read(p);
-	if (p->nexttype == tok_T_ERR) {
-		error(p, "%s", p->nextstr);
-	}
-	return true;
 }
 
 val_t *read_dict(parser_t *p) {
@@ -495,197 +408,149 @@ val_t *read_dict(parser_t *p) {
 	}
 	val_t *o = newnode(TOBJ);
 	o->val.obj = arr.arr_new();
-	if (consume(p, '}')) {
+	if (eat(p, '}')) {
 		return o;
 	}
-
-	while (p->nexttype != EOF) {
-		// Get the field name str.
-		if (p->nexttype != tok_T_STR) {
-			json_free(o);
-			return error(p, "Key expected");
-		}
-		char *key = strings.newstr("%s", p->nextstr);
-		tok_read(p);
-
-		// Get the ":"
-		if (!expect(p, ':')) {
-			free(key);
-			json_free(o);
+	while (tok_more(p)) {
+		char *key = readstr(p);
+		if (!key) {
 			return NULL;
 		}
-
+		if (!expect(p, ':')) {
+			return NULL;
+		}
 		val_t *val = read_node(p);
 		if (!val) {
-			free(key);
-			json_free(o);
 			return NULL;
 		}
-
-		if (!json_put(o, key, val)) {
-			free(key);
-			json_free(o);
-			json_free(val);
-			return NULL;
-		}
-
-		if (p->nexttype != ',') {
+		json_put(o, key, val);
+		if (!eat(p, ',')) {
 			break;
-		}
-		tok_read(p);
-		if (p->nexttype == tok_T_ERR) {
-			error(p, "%s", p->nextstr);
 		}
 	}
 	if (!expect(p, '}')) {
-		json_free(o);
 		return NULL;
 	}
 	return o;
 }
 
-bool expect(parser_t *p, int toktype)
-{
-	if (p->nexttype != toktype) {
-		error(p, "'%c' expected, got '%c'", toktype, p->nexttype);
-		return false;
+val_t *read_str(parser_t *p) {
+	char *s = readstr(p);
+	if (!s) {
+		return NULL;
 	}
-	tok_read(p);
-	if (p->nexttype == tok_T_ERR) {
-		error(p, "%s", p->nextstr);
+	val_t *n = newnode(TSTR);
+	n->val.str = s;
+	return n;
+}
+
+val_t *read_num(parser_t *p) {
+	char buf[100] = {};
+	if (!tokenizer.num(p->buf, buf, sizeof(buf))) {
+		seterror(p, "failed to read number");
+		return NULL;
+	}
+	double n = 0;
+	if (sscanf(buf, "%lf", &n) < 1) {
+		seterror(p, "failed to parse number: %s", buf);
+		return NULL;
+	}
+	val_t *v = newnode(TNUM);
+	v->val.num = n;
+	return v;
+}
+
+val_t *read_kw(parser_t *p) {
+	tokenizer.t *b = p->buf;
+	if (tokenizer.skip_literal(b, "true")) {
+		val_t *n = newnode(TBOOL);
+		n->val.boolval = true;
+		return n;
+	}
+	if (tokenizer.skip_literal(b, "false")) {
+		val_t *n = newnode(TBOOL);
+		n->val.boolval = false;
+		return n;
+	}
+	if (tokenizer.skip_literal(b, "null")) {
+		return newnode(TNULL);
+	}
+	seterror(p, "unexpected character: %c", tok_peek(p));
+	return NULL;
+}
+
+char *readstr(parser_t *p) {
+	size_t cap = 64;
+	size_t len = 0;
+	char *s = calloc!(cap, 1);
+	if (!expect(p, '"')) {
+		free(s);
+	}
+	tokenizer.t *b = p->buf;
+	while (tokenizer.more(p->buf) && tokenizer.peek(p->buf) != '"') {
+		int c = tokenizer.get(b);
+		if (c == '\\') {
+			c = tokenizer.get(b);
+			if (c == EOF) {
+				seterror(p, "Unexpected end of input");
+				free(s);
+			}
+		}
+		if (len + 1 == cap) {
+			cap *= 2;
+			s = realloc(s, cap);
+			if (!s) {
+				panic("realloc failed");
+			}
+		}
+		s[len++] = c;
+		s[len] = '\0';
+	}
+	if (!expect(p, '"')) {
+		free(s);
+	}
+	return s;
+}
+
+// Returns true if there are more characters to read.
+bool tok_more(parser_t *p) {
+	tokenizer.spaces(p->buf);
+	return tokenizer.more(p->buf);
+}
+
+// Returns next character without removing it.
+int tok_peek(parser_t *p) {
+	tokenizer.spaces(p->buf);
+	return tokenizer.peek(p->buf);
+}
+
+// Reads character c and returns true.
+// Returns false and does nothing if the next character is not c.
+bool eat(parser_t *p, int c) {
+	if (tok_peek(p) == c) {
+		tokenizer.get(p->buf);
+		return true;
+	}
+	return false;
+}
+
+bool expect(parser_t *p, int c) {
+	if (!eat(p, c)) {
+		seterror(p, "expected '%c', got '%c' (%d)", c, tok_peek(p), tok_peek(p));
+		return false;
 	}
 	return true;
 }
 
-/*
- * Puts a formatted error message to the parser's
- * context and returns NULL.
- */
-void *error(parser_t *p, const char *fmt, ...) {
+bool haserr(parser_t *p) {
+	return p->err[0] != '\0';
+}
+
+void seterror(parser_t *p, const char *fmt, ...) {
 	va_list args = {};
 	va_start(args, fmt);
 	vsnprintf(p->err, sizeof(p->err), fmt, args);
 	va_end(args);
-	return NULL;
-}
-
-/**
- * Reads next token into the local buffer.
- * Returns false if there was an error.
- */
-bool tok_read(parser_t *t) {
-	tokenizer.spaces(t->buf);
-	int c = tokenizer.peek(t->buf);
-	if (c == EOF) {
-		t->nexttype = EOF;
-		return true;
-	}
-	if (c == '"') {
-		if (!readstr(t)) {
-			return false;
-		}
-		t->nexttype = tok_T_STR;
-		return true;
-	}
-	if (c == ':' || c == ',' || c == '{' || c == '}' || c == '[' || c == ']') {
-		t->nexttype = tokenizer.get(t->buf);
-		return true;
-	}
-	if (c == '-' || isdigit(c)) {
-		char buf[100] = {};
-		if (!tokenizer.num(t->buf, buf, 100)) {
-			seterror(t, "failed to parse a number");
-			return false;
-		}
-		t->strlen = 0;
-		for (char *p = buf; *p != '\0'; p++) {
-			addchar(t, *p);
-		}
-		t->nexttype = tok_T_NUM;
-		return true;
-	}
-	tokenizer.t *b = t->buf;
-	if (tokenizer.skip_literal(b, "true")) {
-		t->nexttype = tok_T_TRUE;
-		return true;
-	}
-	if (tokenizer.skip_literal(b, "false")) {
-		t->nexttype = tok_T_FALSE;
-		return true;
-	}
-	if (tokenizer.skip_literal(b, "null")) {
-		t->nexttype = tok_T_NULL;
-		return true;
-	}
-	seterror(t, "Unexpected character");
-	return false;
-}
-
-// Reads a string into a temporary buffer.
-bool readstr(parser_t *l) {
-	tokenizer.t *b = l->buf;
-	char g = tokenizer.get(b);
-	if (g != '"') {
-		seterror(l, "'\"' expected");
-		return false;
-	}
-	l->strlen = 0;
-
-	while (tokenizer.more(b) && tokenizer.peek(b) != '"') {
-		// Get next string character
-		int ch = tokenizer.get(b);
-		// If it's a backslash, replace it with the next character.
-		if (ch == '\\') {
-			ch = tokenizer.get(b);
-			if (ch == EOF) {
-				seterror(l, "Unexpected end of input");
-				return false;
-			}
-		}
-		addchar(l, ch);
-	}
-
-	g = tokenizer.get(b);
-	if (g != '"') {
-		seterror(l, "'\"' expected");
-		return false;
-	}
-	return true;
-}
-
-void seterror(parser_t *l, const char *s) {
-	size_t req = strlen(s);
-	if (l->strlen < req + 1) {
-		size_t newsize = findsize(req + 1);
-		l->nextstr = realloc(l->nextstr, newsize);
-		l->strlen = newsize;
-		if (l->nextstr == NULL) {
-			panic("realloc failed");
-		}
-	}
-	strcpy(l->nextstr, s);
-	l->nexttype = tok_T_ERR;
-}
-
-void addchar(parser_t *l, int c) {
-	if (l->strlen >= l->strcap) {
-		l->strcap *= 2;
-		l->nextstr = realloc(l->nextstr, l->strcap);
-		if (!l->nextstr) {
-			panic("realloc failed");
-		}
-	}
-	l->nextstr[l->strlen++] = c;
-	l->nextstr[l->strlen] = '\0';
-}
-
-size_t findsize(size_t len) {
-	size_t r = 1;
-	size_t n = len;
-	while (r < n) {
-		r *= 2;
-	}
-	return r;
 }
 
 
