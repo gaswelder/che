@@ -4,14 +4,10 @@
 #import tokenizer
 
 pub typedef {
-	int type; // One of the "T_" constants below.
-	char *str; // Token payload, for tokens of type T_ERR, T_STR and T_NUM.
-} json_token_t;
-
-pub typedef {
 	char err[256]; // First error reported during parsing.
 	tokenizer.t *buf;
-	json_token_t next;
+	int nexttype; // One of the "tok_T_" constants below.
+	char *nextstr; // Token payload, for tokens of type T_ERR, T_STR and T_NUM.
 	size_t strlen;
 	size_t strcap;
 } parser_t;
@@ -359,14 +355,14 @@ pub val_t *parse(const char *s) {
 	parser_t p = {};
 	p.buf = tokenizer.from_str(s);
 	p.strcap = 4096;
-	p.next.str = calloc!(1, 4096);
+	p.nextstr = calloc!(1, 4096);
 
 	if (!tok_read(&p)) {
-		error(&p, "%s", p.next.str);
+		error(&p, "%s", p.nextstr);
 		tokenizer.free(p.buf);
 		return NULL;
 	}
-	if (p.next.type == EOF) {
+	if (p.nexttype == EOF) {
 		tokenizer.free(p.buf);
 		return NULL;
 	}
@@ -378,7 +374,7 @@ pub val_t *parse(const char *s) {
 	}
 
 	// Expect end of file at this point.
-	if (p.next.type != EOF) {
+	if (p.nexttype != EOF) {
 		json_free(result);
 		tokenizer.free(p.buf);
 		return NULL;
@@ -393,30 +389,30 @@ pub val_t *parse(const char *s) {
  * Returns NULL in case of error.
  */
 val_t *read_node(parser_t *p) {
-	switch (tok_currtype(p)) {
+	switch (p->nexttype) {
 		case EOF: { return error(p, "Unexpected end of file"); }
 		case '[': { return read_array(p); }
 		case '{': { return read_dict(p); }
 		case tok_T_STR: {
-			const char *s = tok_currstr(p);
+			const char *s = p->nextstr;
 			val_t *n = newnode(TSTR);
 			char *copy = mcopy(s, strlen(s) + 1);
 			n->val.str = copy;
 			tok_read(p);
-			if (tok_currtype(p) == tok_T_ERR) {
+			if (p->nexttype == tok_T_ERR) {
 				error(p, "%s", s);
 			}
 			return n;
 		}
 		case tok_T_NUM: {
-			const char *val = tok_currstr(p);
+			const char *val = p->nextstr;
 			double n = 0;
 			if (sscanf(val, "%lf", &n) < 1) {
 				error(p, "failed to parser number: %s", val);
 			}
 			tok_read(p);
-			if (tok_currtype(p) == tok_T_ERR) {
-				error(p, "%s", tok_currstr(p));
+			if (p->nexttype == tok_T_ERR) {
+				error(p, "%s", p->nextstr);
 			}
 			val_t *obj = newnode(TNUM);
 			obj->val.num = n;
@@ -448,50 +444,47 @@ val_t *read_array(parser_t *p) {
 	}
 	val_t *a = newnode(TARR);
 	a->val.obj = arr.arr_new();
-	if (!a->val.obj) {
-		panic("alloc failed");
-	}
-	if (tok_currtype(p) == ']') {
+	if (p->nexttype == ']') {
 		tok_read(p);
-		if (tok_currtype(p) == tok_T_ERR) {
-			error(p, "%s", tok_currstr(p));
+		if (p->nexttype == tok_T_ERR) {
+			error(p, "%s", p->nextstr);
 		}
 		return a;
 	}
 
-	while (tok_currtype(p) != EOF) {
+	while (p->nexttype != EOF) {
 		val_t *v = read_node(p);
 		if (!v) {
 			json_free(a);
 			return NULL;
 		}
 		json_push(a, v);
-		if(tok_currtype(p) != ',') {
+		if(p->nexttype != ',') {
 			break;
 		}
 		tok_read(p);
-		if (tok_currtype(p) == tok_T_ERR) {
-			error(p, "%s", tok_currstr(p));
+		if (p->nexttype == tok_T_ERR) {
+			error(p, "%s", p->nextstr);
 		}
 	}
-	if (tok_currtype(p) != ']') {
+	if (p->nexttype != ']') {
 		json_free(a);
 		return NULL;
 	}
 	tok_read(p);
-	if (tok_currtype(p) == tok_T_ERR) {
-		error(p, "%s", tok_currstr(p));
+	if (p->nexttype == tok_T_ERR) {
+		error(p, "%s", p->nextstr);
 	}
 	return a;
 }
 
 bool consume(parser_t *p, int toktype) {
-	if (tok_currtype(p) != toktype) {
+	if (p->nexttype != toktype) {
 		return false;
 	}
 	tok_read(p);
-	if (tok_currtype(p) == tok_T_ERR) {
-		error(p, "%s", tok_currstr(p));
+	if (p->nexttype == tok_T_ERR) {
+		error(p, "%s", p->nextstr);
 	}
 	return true;
 }
@@ -502,24 +495,17 @@ val_t *read_dict(parser_t *p) {
 	}
 	val_t *o = newnode(TOBJ);
 	o->val.obj = arr.arr_new();
-	if (!o->val.obj) {
-		panic("alloc failed");
-	}
 	if (consume(p, '}')) {
 		return o;
 	}
 
-	while (tok_currtype(p) != EOF) {
+	while (p->nexttype != EOF) {
 		// Get the field name str.
-		if (tok_currtype(p) != tok_T_STR) {
+		if (p->nexttype != tok_T_STR) {
 			json_free(o);
 			return error(p, "Key expected");
 		}
-		char *key = strings.newstr("%s", tok_currstr(p));
-		if (!key) {
-			json_free(o);
-			return error(p, "No memory");
-		}
+		char *key = strings.newstr("%s", p->nextstr);
 		tok_read(p);
 
 		// Get the ":"
@@ -543,12 +529,12 @@ val_t *read_dict(parser_t *p) {
 			return NULL;
 		}
 
-		if (tok_currtype(p) != ',') {
+		if (p->nexttype != ',') {
 			break;
 		}
 		tok_read(p);
-		if (tok_currtype(p) == tok_T_ERR) {
-			error(p, "%s", tok_currstr(p));
+		if (p->nexttype == tok_T_ERR) {
+			error(p, "%s", p->nextstr);
 		}
 	}
 	if (!expect(p, '}')) {
@@ -560,13 +546,13 @@ val_t *read_dict(parser_t *p) {
 
 bool expect(parser_t *p, int toktype)
 {
-	if (tok_currtype(p) != toktype) {
-		error(p, "'%c' expected, got '%c'", toktype, tok_currtype(p));
+	if (p->nexttype != toktype) {
+		error(p, "'%c' expected, got '%c'", toktype, p->nexttype);
 		return false;
 	}
 	tok_read(p);
-	if (tok_currtype(p) == tok_T_ERR) {
-		error(p, "%s", tok_currstr(p));
+	if (p->nexttype == tok_T_ERR) {
+		error(p, "%s", p->nextstr);
 	}
 	return true;
 }
@@ -591,96 +577,59 @@ bool tok_read(parser_t *t) {
 	tokenizer.spaces(t->buf);
 	int c = tokenizer.peek(t->buf);
 	if (c == EOF) {
-		t->next.type = EOF;
+		t->nexttype = EOF;
+		return true;
 	}
-	else if (c == '"') {
-		readstr(t);
+	if (c == '"') {
+		if (!readstr(t)) {
+			return false;
+		}
+		t->nexttype = tok_T_STR;
+		return true;
 	}
-	else if (c == ':' || c == ',' || c == '{' || c == '}' || c == '[' || c == ']') {
-		t->next.type = tokenizer.get(t->buf);
+	if (c == ':' || c == ',' || c == '{' || c == '}' || c == '[' || c == ']') {
+		t->nexttype = tokenizer.get(t->buf);
+		return true;
 	}
-	else if (c == '-' || isdigit(c)) {
-		readnum(t);
+	if (c == '-' || isdigit(c)) {
+		char buf[100] = {};
+		if (!tokenizer.num(t->buf, buf, 100)) {
+			seterror(t, "failed to parse a number");
+			return false;
+		}
+		t->strlen = 0;
+		for (char *p = buf; *p != '\0'; p++) {
+			addchar(t, *p);
+		}
+		t->nexttype = tok_T_NUM;
+		return true;
 	}
-	else if (isalpha(c)) {
-		readkw(t);
+	tokenizer.t *b = t->buf;
+	if (tokenizer.skip_literal(b, "true")) {
+		t->nexttype = tok_T_TRUE;
+		return true;
 	}
-	else {
-		seterror(t, "Unexpected character");
+	if (tokenizer.skip_literal(b, "false")) {
+		t->nexttype = tok_T_FALSE;
+		return true;
 	}
-	if (t->next.type == tok_T_ERR) {
-		return false;
+	if (tokenizer.skip_literal(b, "null")) {
+		t->nexttype = tok_T_NULL;
+		return true;
 	}
-	return true;
+	seterror(t, "Unexpected character");
+	return false;
 }
 
-/*
- * Returns the type of the current token.
- */
-int tok_currtype(parser_t *l) {
-	return l->next.type;
-}
-
-/*
- * Returns current token's string value.
- */
-const char *tok_currstr(parser_t *l) {
-	if (l->next.type != tok_T_STR && l->next.type != tok_T_ERR && l->next.type != tok_T_NUM) {
-		return NULL;
-	}
-	return l->next.str;
-}
-
-// Reads a number:
-// number = [ minus ] int [ frac ] [ exp ]
-void readnum(parser_t *l) {
+// Reads a string into a temporary buffer.
+bool readstr(parser_t *l) {
 	tokenizer.t *b = l->buf;
-	json_token_t *t = &l->next;
-
-	char buf[100] = {};
-	if (!tokenizer.num(b, buf, 100)) {
-		seterror(l, "failed to parse a number");
-		return;
-	}
-
-	resetstr(l);
-	for (char *p = buf; *p != '\0'; p++) {
-		addchar(l, *p);
-	}
-	t->type = tok_T_NUM;
-}
-
-void readkw(parser_t *l)
-{
-	tokenizer.t *b = l->buf;
-	json_token_t *t = &l->next;
-	char kw[8] = {};
-	int i = 0;
-
-	while (isalpha(tokenizer.peek(b)) && i < 7) {
-		kw[i] = tokenizer.get(b);
-		i++;
-	}
-	kw[i] = '\0';
-
-	switch str (kw) {
-		case "true": { t->type = tok_T_TRUE; }
-		case "false": { t->type = tok_T_FALSE; }
-		case "null": { t->type = tok_T_NULL; }
-		default: { seterror(l, "Unknown keyword"); }
-	}
-}
-
-void readstr(parser_t *l) {
-	tokenizer.t *b = l->buf;
-	json_token_t *t = &l->next;
-
 	char g = tokenizer.get(b);
 	if (g != '"') {
 		seterror(l, "'\"' expected");
-		return;
+		return false;
 	}
-	resetstr(l);
+	l->strlen = 0;
 
 	while (tokenizer.more(b) && tokenizer.peek(b) != '"') {
 		// Get next string character
@@ -690,7 +639,7 @@ void readstr(parser_t *l) {
 			ch = tokenizer.get(b);
 			if (ch == EOF) {
 				seterror(l, "Unexpected end of input");
-				return;
+				return false;
 			}
 		}
 		addchar(l, ch);
@@ -699,65 +648,40 @@ void readstr(parser_t *l) {
 	g = tokenizer.get(b);
 	if (g != '"') {
 		seterror(l, "'\"' expected");
-		return;
+		return false;
 	}
-	t->type = tok_T_STR;
+	return true;
 }
 
 void seterror(parser_t *l, const char *s) {
-	l->next.type = tok_T_ERR;
-	putstring(l, "%s", s);
+	size_t req = strlen(s);
+	if (l->strlen < req + 1) {
+		size_t newsize = findsize(req + 1);
+		l->nextstr = realloc(l->nextstr, newsize);
+		l->strlen = newsize;
+		if (l->nextstr == NULL) {
+			panic("realloc failed");
+		}
+	}
+	strcpy(l->nextstr, s);
+	l->nexttype = tok_T_ERR;
 }
 
 void addchar(parser_t *l, int c) {
 	if (l->strlen >= l->strcap) {
 		l->strcap *= 2;
-		l->next.str = realloc(l->next.str, l->strcap);
-		if (!l->next.str) {
+		l->nextstr = realloc(l->nextstr, l->strcap);
+		if (!l->nextstr) {
 			panic("realloc failed");
 		}
 	}
-	l->next.str[l->strlen++] = c;
-	l->next.str[l->strlen] = '\0';
+	l->nextstr[l->strlen++] = c;
+	l->nextstr[l->strlen] = '\0';
 }
 
-void resetstr(parser_t *l) {
-	l->strlen = 0;
-}
-
-// Puts a formatted string into the local buffer.
-// Returns false in case of error.
-bool putstring(parser_t *l, const char *format, ...) {
-	va_list args = {};
-
-	// get the total length
-	va_start(args, format);
-	int len = vsnprintf(NULL, 0, format, args);
-	va_end(args);
-	if (len < 0) {
-		return false;
-	}
-
-	// if buffer is smaller, resize the buffer
-	if (l->strlen < (size_t)len + 1) {
-		size_t newsize = findsize(len + 1);
-		l->next.str = realloc(l->next.str, newsize);
-		l->strlen = newsize;
-		if (l->next.str == NULL) {
-			return false;
-		}
-	}
-
-	// put the string
-	va_start(args, format);
-	vsnprintf(l->next.str, l->strlen, format, args);
-	va_end(args);
-	return true;
-}
-
-size_t findsize(int len) {
+size_t findsize(size_t len) {
 	size_t r = 1;
-	size_t n = (size_t) len;
+	size_t n = len;
 	while (r < n) {
 		r *= 2;
 	}
