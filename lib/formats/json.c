@@ -1,4 +1,3 @@
-#import arr
 #import strbuilder
 #import strings
 #import tokenizer
@@ -41,16 +40,13 @@ pub typedef {
 	union {
 		char *str;
 		double num;
-		arr.arr_t *arr;
-		arr.arr_t *obj;
 		bool boolval;
 	} val;
+	size_t size; // Number of entries, for arrays and objects.
+	size_t cap; // Max. number of entries.
+	char **keys; // Entry keys, for objects.
+	val_t **vals; // Values, for objects and arrays.
 } val_t;
-
-typedef {
-	char *key;
-	val_t *val;
-} kv_t;
 
 pub const char *json_err(val_t *n)
 {
@@ -82,38 +78,25 @@ pub int type(val_t *obj) {
 	return obj->type;
 }
 
-// Returns the number of keys in an object node.
+// Returns the number of keys in object value n.
 pub size_t nkeys(val_t *n) {
-	if (!n || n->type != TOBJ) {
-		return 0;
-	}
-	return arr.arr_len(n->val.obj);
+	return n->size;
 }
 
-// Returns the i-th key in the object node n.
+// Returns the i-th key in object value n.
 pub const char *key(val_t *n, size_t i) {
-	if (!n || n->type != TOBJ) {
+	if (!n || n->type != TOBJ || i >= n->size) {
 		return NULL;
 	}
-	arr.arr_t *a = n->val.obj;
-	size_t len = arr.arr_len(a);
-	if (i >= len) return NULL;
-	kv_t *kv = arr.arr_get(a, i);
-	return kv->key;
+	return n->keys[i];
 }
 
-// Returns the value stored under the i-th key in the object node n.
+// Returns the value stored under the i-th key in object value n.
 pub val_t *json_val(val_t *n, size_t i) {
-	if (!n || n->type != TOBJ) {
+	if (!n || n->type != TOBJ || i >= n->size) {
 		return NULL;
 	}
-	arr.arr_t *a = n->val.obj;
-	size_t len = arr.arr_len(a);
-	if (i >= len) {
-		return NULL;
-	}
-	kv_t *kv = arr.arr_get(a, i);
-	return kv->val;
+	return n->vals[i];
 }
 
 // Returns the value stored under the given key of the given object.
@@ -122,37 +105,20 @@ pub val_t *get(val_t *n, const char *k) {
 	if (!n || n->type != TOBJ) {
 		return NULL;
 	}
-	arr.arr_t *a = n->val.obj;
-	size_t len = arr.arr_len(a);
-	for (size_t i = 0; i < len; i++) {
-		kv_t *kv = arr.arr_get(a, i);
-		if (strcmp(kv->key, k) == 0) {
-			return kv->val;
+	for (size_t i = 0; i < n->size; i++) {
+		if (strcmp(n->keys[i], k) == 0) {
+			return n->vals[i];
 		}
 	}
 	return NULL;
 }
 
-// Returns the value stored at the given index of the given array.
-// Returns NULL if the node is not an array or the given index is out of bounds.
-pub val_t *json_at(val_t *n, int index) {
-	if (!n || n->type != TARR) {
+// Returns i-th value stored in array value n.
+val_t *json_at(val_t *n, size_t i) {
+	if (!n || n->type != TARR || i >= n->size) {
 		return NULL;
 	}
-	arr.arr_t *a = n->val.arr;
-	if (index < 0 || (size_t) index >= arr.arr_len(a)) {
-		return NULL;
-	}
-	return arr.arr_get(a, index);
-}
-
-// Returns the length of the array object.
-// Returns 0 if the object is not an array.
-pub int json_len( val_t *obj ) {
-	if (!obj || obj->type != TARR) {
-		return 0;
-	}
-	return arr.arr_len(obj->val.arr);
+	return n->vals[i];
 }
 
 // Frees the value.
@@ -160,22 +126,17 @@ pub void json_free(val_t *node) {
 	if (!node) return;
 
 	if (node->type == TOBJ) {
-		arr.arr_t *a = node->val.obj;
-		size_t n = arr.arr_len(a);
-		for(size_t i = 0; i < n; i++) {
-			kv_t *kv = arr.arr_get(a, i);
-			free(kv->key);
-			json_free(kv->val);
-			free(kv);
+		for (size_t i = 0; i < node->size; i++) {
+			free(node->keys[i]);
+			json_free(node->vals[i]);
 		}
-		arr.arr_free(a);
+		free(node->keys);
+		free(node->vals);
 	} else if (node->type == TARR) {
-		arr.arr_t *a = node->val.obj;
-		size_t n = arr.arr_len(a);
-		for(size_t i = 0; i < n; i++) {
-			json_free(arr.arr_get(a, i));
+		for (size_t i = 0; i < node->size; i++) {
+			json_free(node->vals[i]);
 		}
-		arr.arr_free(a);
+		free(node->vals);
 	}
 	else if( node->type == TSTR || node->type == TERR ) {
 		free(node->val.str);
@@ -208,7 +169,7 @@ pub val_t *json_copy(val_t *obj) {
 	}
 	else if( obj->type == TARR )
 	{
-		size_t n = json_len(obj);
+		size_t n = obj->size;
 		for(size_t i = 0; i < n; i++) {
 			val_t *v = json_copy(json_at(obj, i));
 			if(!v || !json_push(copy, v)) {
@@ -280,46 +241,54 @@ pub bool json_put( val_t *n, const char *k, val_t *val ) {
 		return false;
 	}
 
-	/*
-	 * Find if the given key already exists.
-	 */
-	kv_t *kv = NULL;
-	arr.arr_t *a = n->val.obj;
-	size_t len = arr.arr_len(a);
-	for(size_t i = 0; i < len; i++) {
-		kv = arr.arr_get(a, i);
-		if(strcmp(kv->key, k) == 0) {
+	// Find if the given key already exists.
+	size_t pos = 0;
+	for (pos = 0; pos < n->size; pos++) {
+		if (strcmp(n->keys[pos], k) == 0) {
 			break;
 		}
-		kv = NULL;
 	}
 
-	/*
-	 * If such key already exists, delete its value.
-	 * If not, create the key.
-	 */
-	if(kv) {
-		json_free(kv->val);
+	// If key already exists, delete the old value and put the new one.
+	if (pos < n->size) {
+		json_free(n->vals[pos]);
+		n->vals[pos] = val;
+	} else {
+		grow_if_needed(n);
+		n->vals[n->size] = val;
+		n->keys[n->size] = strings.newstr("%s", k);
+		n->size++;
 	}
-	else {
-		kv = calloc!(1, sizeof(*kv));
-		kv->key = strings.newstr("%s", k);
-		arr.arr_push(a, kv);
-	}
-
-	kv->val = val;
 	return true;
 }
 
-/*
- * Pushes given value to the end of the given array node.
- * Returns false if the given node is not an array and in case of error.
- */
-pub bool json_push( val_t *n, val_t *val ) {
+// Pushes value val to the array value n.
+bool json_push(val_t *n, val_t *val) {
 	if (n == NULL || n->type != TARR) {
 		return false;
 	}
-	return arr.arr_push(n->val.arr, val);
+	grow_if_needed(n);
+	n->vals[n->size] = val;
+	n->size++;
+	return true;
+}
+
+void grow_if_needed(val_t *n) {
+	if (n->size < n->cap) {
+		return;
+	}
+	n->cap *= 2;
+	if (n->cap == 0) n->cap = 16;
+	n->vals = realloc(n->vals, n->cap * sizeof(val_t *));
+	if (!n->vals) {
+		panic("realloc failed");
+	}
+	if (n->type == TOBJ) {
+		n->keys = realloc(n->keys, n->cap * sizeof(char *));
+		if (!n->keys) {
+			panic("realloc failed");
+		}
+	}
 }
 
 //
@@ -382,7 +351,6 @@ val_t *read_array(parser_t *p) {
 		return NULL;
 	}
 	val_t *a = newnode(TARR);
-	a->val.obj = arr.arr_new();
 	if (eat(p, ']')) {
 		return a;
 	}
@@ -407,7 +375,6 @@ val_t *read_dict(parser_t *p) {
 		return NULL;
 	}
 	val_t *o = newnode(TOBJ);
-	o->val.obj = arr.arr_new();
 	if (eat(p, '}')) {
 		return o;
 	}
@@ -597,7 +564,7 @@ bool writeobj(val_t *n, strbuilder.str *s) {
 }
 
 bool writearr(val_t *n, strbuilder.str *s) {
-	size_t len = json_len(n);
+	size_t len = n->size;
 	bool ok = strbuilder.adds(s, "[");
 	for (size_t i = 0; i < len; i++) {
 		ok = ok && writenode(json_at(n, i), s);
