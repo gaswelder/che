@@ -1,6 +1,7 @@
 #import strbuilder
 #import strings
 #import tokenizer
+#import writer
 
 pub typedef {
 	char err[256]; // First error reported during parsing.
@@ -524,6 +525,20 @@ void seterror(parser_t *p, const char *fmt, ...) {
 //
 // Writers
 //
+
+pub void formatwr(writer.t *w, val_t *v) {
+	char *s = format(v);
+	if (!s) panic("format failed");
+	size_t n = strlen(s);
+	uint8_t *buf = (uint8_t *) s;
+	while (n > 0) {
+		int r = writer.write(w, buf, n);
+		if (r <= 0) {
+			panic("write failed");
+		}
+		n -= (size_t) r;
+	}
+}
 
 pub char *format(val_t *n) {
 	strbuilder.str *s = strbuilder.new();

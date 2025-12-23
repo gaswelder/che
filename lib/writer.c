@@ -30,7 +30,7 @@ pub int writebyte(t *w, uint8_t b) {
 	return write(w, &b, 1);
 }
 
-t *new(void *data, writefunc_t *write, freefunc_t *free) {
+pub t *new(void *data, writefunc_t *write, freefunc_t *free) {
 	t *w = calloc!(1, sizeof(t));
 	w->data = data;
 	w->write = write;

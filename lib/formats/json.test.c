@@ -1,5 +1,7 @@
 #import json.c
+#import mem
 #import test
+#import writer
 
 typedef {
 	const char *in, *out;
@@ -21,13 +23,28 @@ case_t cases[] = {
 };
 
 int main() {
+	mem.mem_t *m = mem.memopen();
+	writer.t *w = mem.newwriter(m);
+
 	for (size_t i = 0; i < nelem(cases); i++) {
 		case_t c = cases[i];
+
+		// Parse the string
 		json.val_t *v = json.parse(c.in);
-		char *s = json.format(v);
-		test.streq(s, c.out);
-		free(s);
+
+		// Format again
+		char buf[100] = {};
+		json.formatwr(w, v);
+		mem.rewind(m);
+		mem.memread(m, buf, 100);
+		mem.reset(m);
+
+		// Compare
+		test.streq(buf, c.out);
 		json.json_free(v);
 	}
+
+	writer.free(w);
+	mem.memclose(m);
 	return test.fails();
 }

@@ -221,7 +221,7 @@ int save(mem.mem_t *mem, const char *path )
 		return 0;
 	}
 
-	mem.memrewind( mem );
+	mem.rewind(mem);
 	int ok = 1;
 	while (true) {
 		int ch = mem.memgetc( mem );

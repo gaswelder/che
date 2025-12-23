@@ -197,7 +197,7 @@ pub bool md5_buf(const char *buf, size_t len, uint32_t md[4])
 {
 	mem.mem_t *z = mem.memopen();
 	int n = mem.memwrite(z, buf, len);
-	mem.memrewind(z);
+	mem.rewind(z);
 	assert((size_t) n == len);
 	md5(z, md);
 	mem.memclose(z);

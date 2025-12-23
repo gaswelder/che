@@ -1,3 +1,5 @@
+#import writer
+
 pub typedef {
 	char *data;
 	size_t pos; // current position, <= datalen
@@ -23,11 +25,15 @@ pub void memclose(mem_t *mem) {
 	free( mem );
 }
 
-/*
- * Resets the position to zero.
- */
-pub void memrewind(mem_t *m) {
+// Resets the read position to zero.
+pub void rewind(mem_t *m) {
 	m->pos = 0;
+}
+
+// Resets the data and the read position.
+pub void reset(mem_t *m) {
+	m->pos = 0;
+	m->datalen = 0;
 }
 
 // Returns current position in the stream
@@ -161,4 +167,12 @@ bool makespace(mem_t *mem, size_t size)
 	mem->data = tmp;
 	mem->size = next;
 	return true;
+}
+
+pub writer.t *newwriter(mem_t *m) {
+	return writer.new(m, wr_write, NULL);
+}
+
+int wr_write(void *this, const uint8_t *data, size_t n) {
+	return (int) memwrite(this, (char *) data, n);
 }

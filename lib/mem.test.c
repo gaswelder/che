@@ -17,7 +17,7 @@ int main() {
 
 	// Rewind the buffer and check the contents.
 	const char *p = sample;
-	mem.memrewind(m);
+	mem.rewind(m);
 	while (true) {
 		int c = mem.memgetc(m);
 		if (c == EOF) {
