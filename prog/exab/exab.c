@@ -120,7 +120,8 @@ void *worker(void *arg) {
 		res->time_started = time.now();
 		net.net_t *conn = net.connect("tcp", addr);
 		if (!conn) {
-			panic("failed to connect to %s: %s", addr, strerror(errno));
+			fprintf(stderr, "failed to connect to %s: %s\n", addr, strerror(errno));
+			break;
 		}
 		res->time_connected = time.now();
 		if ((size_t) net.write(conn, (char *)REQUEST, REQUESTLEN) != REQUESTLEN) {
