@@ -199,6 +199,7 @@ fn buildmap() -> HashMap<&'static str, CSymbol> {
         f("fmod", vec![dbl, dbl], dbl),
         f("lgamma", vec![dbl], dbl),
         f("log", vec![dbl], dbl),
+        f("log10", vec![dbl], dbl),
         f("log1p", vec![dbl], dbl),
         f("pow", vec![dbl, dbl], dbl),
         f("round", vec![dbl], dbl),
