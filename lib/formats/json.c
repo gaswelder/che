@@ -3,11 +3,6 @@
 #import tokenizer
 #import writer
 
-pub typedef {
-	char err[256]; // First error reported during parsing.
-	tokenizer.t *buf;
-} parser_t;
-
 // JSON data is represented as a tree where each node is an object of type `val_t`.
 // A node can be of one of the following types:
 pub enum {
@@ -19,20 +14,6 @@ pub enum {
 	TNUM = 5, // number
 	TBOOL = 6, // true or false
 	TNULL = 7 // null value
-}
-
-const char *typename(int valtype) {
-	switch(valtype) {
-		case TUND: { return "und"; }
-		case TERR: { return "err"; }
-		case TARR: { return "arr"; }
-		case TOBJ: { return "obj"; }
-		case TSTR: { return "str"; }
-		case TNUM: { return "num"; }
-		case TBOOL: { return "bool"; }
-		case TNULL: { return "null"; }
-	}
-	return "?";
 }
 
 // An opaque object representing any value representable in JSON.
@@ -64,62 +45,6 @@ val_t *newnode(int valtype) {
 	val_t *n = calloc!(1, sizeof(val_t));
 	n->type = valtype;
 	return n;
-}
-
-pub const char *json_typename(val_t *n)
-{
-	return typename(n->type);
-}
-
-
-
-// Returns the type of the given node.
-pub int type(val_t *obj) {
-	if (!obj) return TNULL;
-	return obj->type;
-}
-
-// Returns the number of keys in object value n.
-pub size_t nkeys(val_t *n) {
-	return n->size;
-}
-
-// Returns the i-th key in object value n.
-pub const char *key(val_t *n, size_t i) {
-	if (!n || n->type != TOBJ || i >= n->size) {
-		return NULL;
-	}
-	return n->keys[i];
-}
-
-// Returns the value stored under the i-th key in object value n.
-pub val_t *json_val(val_t *n, size_t i) {
-	if (!n || n->type != TOBJ || i >= n->size) {
-		return NULL;
-	}
-	return n->vals[i];
-}
-
-// Returns the value stored under the given key of the given object.
-// Returns NULL if the node is not an object or there is no such key in it.
-pub val_t *get(val_t *n, const char *k) {
-	if (!n || n->type != TOBJ) {
-		return NULL;
-	}
-	for (size_t i = 0; i < n->size; i++) {
-		if (strcmp(n->keys[i], k) == 0) {
-			return n->vals[i];
-		}
-	}
-	return NULL;
-}
-
-// Returns i-th value stored in array value n.
-val_t *json_at(val_t *n, size_t i) {
-	if (!n || n->type != TARR || i >= n->size) {
-		return NULL;
-	}
-	return n->vals[i];
 }
 
 // Frees the value.
@@ -156,11 +81,11 @@ pub val_t *json_copy(val_t *obj) {
 
 	if( obj->type == TOBJ )
 	{
-		size_t n = nkeys(obj);
+		size_t n = obj->size;
 		for(size_t i = 0; i < n; i++) {
 			char *k = strings.newstr("%s", key(obj, i));
-			val_t *v = json_copy(json_val(obj, i));
-			if(!k || !v || !json_put(copy, k, v)) {
+			val_t *v = json_copy(val(obj, i));
+			if (!k || !v || !json_put(copy, k, v)) {
 				free(k);
 				json_free(v);
 				json_free(copy);
@@ -171,8 +96,8 @@ pub val_t *json_copy(val_t *obj) {
 	else if( obj->type == TARR )
 	{
 		size_t n = obj->size;
-		for(size_t i = 0; i < n; i++) {
-			val_t *v = json_copy(json_at(obj, i));
+		for (size_t i = 0; i < n; i++) {
+			val_t *v = json_copy(obj->vals[i]);
 			if(!v || !json_push(copy, v)) {
 				json_free(v);
 				json_free(copy);
@@ -190,51 +115,6 @@ pub val_t *json_copy(val_t *obj) {
 	}
 
 	return copy;
-}
-
-// Returns a pointer to the string under the given key.
-// If the key doesn't exist or the value is not a string, returns NULL.
-pub const char *getstr(val_t *obj, const char *k) {
-	val_t *v = get(obj, k);
-	if (!v || v->type != TSTR) {
-		return NULL;
-	}
-	return v->val.str;
-}
-
-/**
- * Returns the node's value assuming it's a number.
- */
-pub double json_getdbl(val_t *obj, const char *k) {
-	val_t *v = get(obj, k);
-	if (!v || v->type != TNUM) {
-		return 0.0;
-	}
-	return v->val.num;
-}
-
-// Returns the value of the boolean node n.
-// If n is not a boolean node, returns false.
-pub bool json_bool(val_t *n) {
-	if (n != NULL && n->type == TBOOL) {
-		return n->val.boolval;
-	}
-	return false;
-}
-
-// Returns the string from the given string value.
-pub const char *json_str(val_t *n) {
-	if (n != NULL && n->type == TSTR) {
-		return n->val.str;
-	}
-	return "";
-}
-
-pub double json_dbl(val_t *n) {
-	if (n != NULL && n->type == TNUM) {
-		return n->val.num;
-	}
-	return 0.0;
 }
 
 pub bool json_put( val_t *n, const char *k, val_t *val ) {
@@ -293,8 +173,67 @@ void grow_if_needed(val_t *n) {
 }
 
 //
-// Readers
+// Value getters
 //
+
+// Returns the type of the value v.
+pub int type(val_t *v) {
+	if (!v) return TNULL;
+	return v->type;
+}
+
+// Returns the number of entries in the array or object value v.
+pub size_t len(val_t *v) {
+	return v->size;
+}
+
+// Returns the i-th key in object value v.
+pub const char *key(val_t *v, size_t i) {
+	if (!v || v->type != TOBJ || i >= v->size) {
+		return NULL;
+	}
+	return v->keys[i];
+}
+
+// Returns the i-th value in object or array value v.
+pub val_t *val(val_t *v, size_t i) {
+	if (!v || v->type != TOBJ || i >= v->size) {
+		return NULL;
+	}
+	return v->vals[i];
+}
+
+// Returns the value stored under key k in object v.
+// Returns NULL if v is not an object or there is no value at key k.
+pub val_t *get(val_t *v, const char *k) {
+	if (!v || v->type != TOBJ) {
+		return NULL;
+	}
+	for (size_t i = 0; i < v->size; i++) {
+		if (strcmp(v->keys[i], k) == 0) {
+			return v->vals[i];
+		}
+	}
+	return NULL;
+}
+
+// Returns a pointer to the string of the string value v.
+// Returns null if v is not a string value.
+pub const char *strval(val_t *v) {
+	if (!v || v->type != TSTR) {
+		return NULL;
+	}
+	return v->val.str;
+}
+
+//
+// Parser
+//
+
+pub typedef {
+	char err[256]; // First error reported during parsing.
+	tokenizer.t *buf;
+} parser_t;
 
 // Parses JSON string s and returns a pointer to the root val_t object.
 //
@@ -541,8 +480,9 @@ pub void formatwr(writer.t *w, val_t *v) {
 	}
 }
 
+// Returns a string with the value n formatted as json.
+// The caller must free the string after use.
 pub char *format(val_t *n) {
-	if (!n) panic("n is null");
 	strbuilder.str *s = strbuilder.new();
 	if (!writenode(n, s)) {
 		strbuilder.str_free(s);
@@ -564,14 +504,14 @@ bool writenode(val_t *n, strbuilder.str *s) {
 }
 
 bool writeobj(val_t *n, strbuilder.str *s) {
-	size_t len = nkeys(n);
+	size_t len = n->size;
 	bool ok = strbuilder.adds(s, "{");
 	for (size_t i = 0; i < len; i++) {
 		ok = ok
 			&& strbuilder.adds(s, "\"")
 			&& strbuilder.adds(s, key(n, i))
 			&& strbuilder.adds(s, "\":")
-			&& writenode(json_val(n, i), s);
+			&& writenode(val(n, i), s);
 		if (i + 1 < len) {
 			ok = ok && strbuilder.adds(s, ",");
 		}
@@ -584,7 +524,7 @@ bool writearr(val_t *n, strbuilder.str *s) {
 	size_t len = n->size;
 	bool ok = strbuilder.adds(s, "[");
 	for (size_t i = 0; i < len; i++) {
-		ok = ok && writenode(json_at(n, i), s);
+		ok = ok && writenode(n->vals[i], s);
 		if (i + 1 < len) {
 			ok = ok && strbuilder.adds(s, ",");
 		}
@@ -594,7 +534,7 @@ bool writearr(val_t *n, strbuilder.str *s) {
 }
 
 bool writestr(val_t *n, strbuilder.str *s) {
-	const char *content = json_str(n);
+	const char *content = n->val.str;
 	size_t len = strlen(content);
 	bool ok = strbuilder.adds(s, "\"");
 	for (size_t i = 0; i < len; i++) {
@@ -622,17 +562,17 @@ bool writestr(val_t *n, strbuilder.str *s) {
 
 bool writenum(val_t *n, strbuilder.str *s) {
 	char buf[100] = {0};
-	double v = json_dbl(n);
+	double v = n->val.num;
 	if (v == round(v)) {
-		sprintf(buf, "%.0f", json_dbl(n));
+		sprintf(buf, "%.0f", n->val.num);
 	} else {
-		sprintf(buf, "%f", json_dbl(n));
+		sprintf(buf, "%f", n->val.num);
 	}
 	return strbuilder.adds(s, buf);
 }
 
 bool writebool(val_t *n, strbuilder.str *s) {
-	if (json_bool(n)) {
+	if (n->val.boolval) {
 		return strbuilder.adds(s, "true");
 	} else {
 		return strbuilder.adds(s, "false");

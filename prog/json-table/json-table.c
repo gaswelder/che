@@ -20,7 +20,7 @@ int main() {
 	// Define the header and calculate the widths.
 	//
 	const char *keys[100];
-	size_t nkeys = json.nkeys(rows[0]);
+	size_t nkeys = json.len(rows[0]);
 	for (size_t i = 0; i < nkeys; i++) {
 		keys[i] = json.key(rows[0], i);
 	}
@@ -97,19 +97,17 @@ int sprintval(json.val_t *val, char *str) {
 		str[0] = '\0';
 		return 0;
 	}
-	switch (val->type) {
-		case json.TSTR: { return sprintf(str, "%s", val->val.str); }
-		case json.TOBJ: { return sprintf(str, "%s", "(object)"); }
-		case json.TNULL: { return sprintf(str, "%s", "null"); }
-		case json.TARR: { return sprintf(str, "%s", "(array)"); }
-		case json.TNUM: { return sprintf(str, "%g", val->val.num); }
-		case json.TBOOL: {
-			if (val->val.boolval) {
-				return sprintf(str, "%s", "true");
-			} else {
-				return sprintf(str, "%s", "false");
-			}
-		}
-		default: { return sprintf(str, "(unimplemented type %d)", val->type); }
+	// Print the raw string to avoid quoting and escaping.
+	if (json.type(val) == json.TSTR) {
+		const char *s = json.strval(val);
+		int r = strlen(s);
+		strcpy(str, s);
+		return r;
 	}
+	// Print other types as serialized JSON.
+	char *s = json.format(val);
+	int r = strlen(s);
+	strcpy(str, s);
+	free(s);
+	return r;
 }

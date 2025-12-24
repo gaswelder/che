@@ -12,7 +12,7 @@ int main() {
         return 1;
     }
 
-	size_t n = json.nkeys(obj);
+	size_t n = json.len(obj);
 	for (size_t i = 0; i < n; i++) {
         if (nheader == 100) {
             fprintf(stderr, "reached max header size (100)\n");
@@ -46,7 +46,7 @@ void printobj(json.val_t *obj) {
         json.val_t *v = json.get(obj, header[i]);
 		switch (json.type(v)) {
 			case json.TNULL: { csv.writeval(&w, ""); }
-			case json.TSTR: { csv.writeval(&w, json.json_str(v)); }
+			case json.TSTR: { csv.writeval(&w, json.strval(v)); }
 			default: {
 				char *s = json.format(v);
 				csv.writeval(&w, s);

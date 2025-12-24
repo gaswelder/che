@@ -51,7 +51,7 @@ void print_entry(json.val_t *entry) {
 	putchar('\t');
 
     // Print the remaining fields as k=v
-    size_t n = json.nkeys(entry);
+    size_t n = json.len(entry);
     for (size_t i = 0; i < n; i++) {
         const char *key = json.key(entry, i);
 		if (strcmp(key, "level") == 0
@@ -70,7 +70,7 @@ void print_entry(json.val_t *entry) {
         }
         if (excluded) continue;
         printf(" %s=", key);
-        printval(json.json_val(entry, i));
+        printval(json.val(entry, i));
     }
     puts("");
 }
@@ -87,7 +87,7 @@ bool printfield(json.val_t *entry, const char *key) {
 // Prints the level in color.
 // If the level field is missing, prints a placeholder ("none").
 void printlevel(json.val_t *entry) {
-	const char *level = json.getstr(entry, "level");
+	const char *level = json.strval(json.get(entry, "level"));
     if (level == NULL) {
 		printf("%s", "none");
 		return;
