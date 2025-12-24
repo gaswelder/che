@@ -81,23 +81,20 @@ struct TypeInfo {
     // Struct(nodes::StructTypedef),
 }
 
-fn find_type(ctx: &TrCtx, name: &str) -> TypeInfo {
+fn find_type(ctx: &TrCtx, name: &str) -> Result<TypeInfo, String> {
     if cspec::has_type(name) {
-        return TypeInfo { ispub: false };
+        return Ok(TypeInfo { ispub: false });
     }
     if let Some(t) = ctx.struct_typedefs.get(name) {
-        return TypeInfo { ispub: t.ispub };
+        return Ok(TypeInfo { ispub: t.ispub });
     }
     if let Some(t) = ctx.other_typedefs.get(name) {
-        return TypeInfo { ispub: t.is_pub };
+        return Ok(TypeInfo { ispub: t.is_pub });
     }
     if ctx.this_mod_head.typedefs.contains(&name.to_string()) {
-        return TypeInfo { ispub: false };
+        return Ok(TypeInfo { ispub: false });
     }
-    for x in &ctx.this_mod_head.typedefs {
-        println!("- {}", x);
-    }
-    todo!("{}: typeinfo {}", ctx.this_mod_head.uniqid, name)
+    return Err(format!("unknown type: {}", name));
 }
 
 pub struct TrParams {
@@ -1106,7 +1103,11 @@ fn tr_typename(x: &nodes::Typename, ctx: &mut TrCtx) -> Result<c::Typename, Buil
     }
 
     if nsid.ns == "" {
-        let t = find_type(ctx, &nsid.name);
+        let t = find_type(ctx, &nsid.name).map_err(|s| BuildError {
+            message: s,
+            path: ctx.this_mod_head.filepath.clone(),
+            pos: nsid.pos.fmt(),
+        })?;
         let name = if t.ispub {
             nsprefix(&ctx.this_mod_head.uniqid, &nsid.name)
         } else {
