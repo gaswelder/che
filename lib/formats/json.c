@@ -527,6 +527,7 @@ void seterror(parser_t *p, const char *fmt, ...) {
 //
 
 pub void formatwr(writer.t *w, val_t *v) {
+	if (!v) panic("v is null");
 	char *s = format(v);
 	if (!s) panic("format failed");
 	size_t n = strlen(s);
@@ -541,6 +542,7 @@ pub void formatwr(writer.t *w, val_t *v) {
 }
 
 pub char *format(val_t *n) {
+	if (!n) panic("n is null");
 	strbuilder.str *s = strbuilder.new();
 	if (!writenode(n, s)) {
 		strbuilder.str_free(s);
@@ -640,25 +642,6 @@ bool writebool(val_t *n, strbuilder.str *s) {
 //
 // Ac-hoc write utils
 //
-
-// Writes a string representation of val into str.
-pub int sprintval(val_t *val, char *str) {
-	switch (val->type) {
-		case TSTR: { return sprintf(str, "%s", val->val.str); }
-		case TOBJ: { return sprintf(str, "%s", "(object)"); }
-		case TNULL: { return sprintf(str, "%s", "null"); }
-		case TARR: { return sprintf(str, "%s", "(array)"); }
-		case TNUM: { return sprintf(str, "%g", val->val.num); }
-		case TBOOL: {
-			if (val->val.boolval) {
-				return sprintf(str, "%s", "true");
-			} else {
-				return sprintf(str, "%s", "false");
-			}
-		}
-		default: { return sprintf(str, "(unimplemented type %d)", val->type); }
-	}
-}
 
 // ad-hoc function
 // write an escaped quoted string s to f.

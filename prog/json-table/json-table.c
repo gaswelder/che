@@ -29,9 +29,11 @@ int main() {
 		colwidth[colid] = strlen(keys[colid]);
 	}
 	for (size_t rowid = 0; rowid < nrows; rowid++) {
+		json.val_t *row = rows[rowid];
 		for (size_t colid = 0; colid < nkeys; colid++) {
 			const char *key = keys[colid];
-			size_t l = json.sprintval(json.get(rows[rowid], key), buf);
+			json.val_t *col = json.get(row, key);
+			size_t l = sprintval(col, buf);
 			if (l > colwidth[colid]) {
 				colwidth[colid] = l;
 			}
@@ -44,6 +46,7 @@ int main() {
 			w += 3;
 		}
 	}
+
 
 	// Print the header.
 	line(w);
@@ -60,7 +63,7 @@ int main() {
 	for (size_t rowid = 0; rowid < nrows; rowid++) {
 		for (size_t colid = 0; colid < nkeys; colid++) {
 			const char *key = keys[colid];
-			json.sprintval(json.get(rows[rowid], key), buf);
+			sprintval(json.get(rows[rowid], key), buf);
 			printw(buf, colwidth[colid]);
 			if (colid < nkeys-1) {
 				printf(" | ");
@@ -86,4 +89,27 @@ void line(size_t w) {
 		putchar('-');
 	}
 	putchar('\n');
+}
+
+// Writes a string representation of val into str.
+int sprintval(json.val_t *val, char *str) {
+	if (!val) {
+		str[0] = '\0';
+		return 0;
+	}
+	switch (val->type) {
+		case json.TSTR: { return sprintf(str, "%s", val->val.str); }
+		case json.TOBJ: { return sprintf(str, "%s", "(object)"); }
+		case json.TNULL: { return sprintf(str, "%s", "null"); }
+		case json.TARR: { return sprintf(str, "%s", "(array)"); }
+		case json.TNUM: { return sprintf(str, "%g", val->val.num); }
+		case json.TBOOL: {
+			if (val->val.boolval) {
+				return sprintf(str, "%s", "true");
+			} else {
+				return sprintf(str, "%s", "false");
+			}
+		}
+		default: { return sprintf(str, "(unimplemented type %d)", val->type); }
+	}
 }
