@@ -3,6 +3,7 @@
 #import mp.c
 #import os/self
 #import strings
+#import eater.c
 
 enum { INT, FLOAT, STRING, SYMBOL, CONS, VECTOR, CFUNC, SPECIAL, DETACH }
 enum { ADD, SUB, MUL, DIV }
@@ -814,7 +815,7 @@ pub void wisp_init() {
 	bind("send", newfunc(&lisp_send));
 
 	signal (SIGINT, &handle_iterrupt);
-	
+
 	out_of_bounds = symbol("index-out-of-bounds");
 	lambda = symbol("lambda");
 	macro = symbol("macro");
@@ -858,12 +859,12 @@ pub void repl () {
 }
 
 /* Use the core functions above to eval each sexp in a file. */
-pub bool load_file(FILE *fid, char *filename, int interactive) {
-	if (fid == NULL) {
-		fid = fopen(filename, "r");
-		if (fid == NULL) return false;
+pub bool load_file(FILE *f, char *filename, int interactive) {
+	if (f == NULL) {
+		f = fopen(filename, "r");
+		if (f == NULL) return false;
 	}
-	reader_t *r = reader_create (fid, NULL, filename, interactive);
+	reader_t *r = reader_create(f, NULL, filename, interactive);
 	while (!r->eof) {
 		object_t *sexp = read_sexp(r);
 		if (sexp == err_symbol) {
@@ -1220,28 +1221,14 @@ typedef {
 	int quote_mode, dotpair_mode, vector_mode;
 } rstate_t;
 
-/* the reader object */
 typedef {
-	/* source */
-	FILE *fid;
-	char *str;
+	eater.t eater;
 
-	/* meta */
 	char *name;
 	int interactive;
 	char *prompt;
 
-	/** reader state **/
 	uint32_t linecnt;
-	char *strp;
-
-	/* atom read buffer */
-	char *buf, *bufp;
-	size_t buflen;
-
-	/* read buffer */
-	int *readbuf, *readbufp;
-	size_t readbuflen;
 
 	/* indicators */
 	int eof, error, shebang, done;
@@ -1260,10 +1247,10 @@ char *prompt = "wisp> ";
 
 /* Create a new reader object, passing either a string or file handle
  * for parsing. */
-reader_t *reader_create (FILE * fid, char *str, char *name, int interactive) {
+reader_t *reader_create (FILE *f, char *str, char *name, int interactive) {
 	reader_t *r = calloc!(1, sizeof (reader_t));
-	r->fid = fid;
-	r->strp = r->str = str;
+	r->eater.fid = f;
+	r->eater.strp = str;
 	r->name = name;
 	if (!r->name) name = "<unknown>";
 	r->interactive = interactive;
@@ -1275,12 +1262,13 @@ reader_t *reader_create (FILE * fid, char *str, char *name, int interactive) {
 	r->done = 0;
 
 	/* read buffers */
-	r->buflen = 1024;
-	r->buf = calloc!(r->buflen + 1, 1);
-	r->bufp = r->buf;
-	r->readbuflen = 8;
-	r->readbuf = calloc!(r->readbuflen, sizeof (int));
-	r->readbufp = r->readbuf;
+	r->eater.buflen = 1024;
+	r->eater.buf = calloc!(r->eater.buflen + 1, 1);
+	r->eater.bufp = r->eater.buf;
+
+	r->eater.readbuflen = 8;
+	r->eater.readbuf = calloc!(r->eater.readbuflen, sizeof (int));
+	r->eater.readbufp = r->eater.readbuf;
 
 	/* state stack */
 	r->ssize = 32;
@@ -1291,62 +1279,10 @@ reader_t *reader_create (FILE * fid, char *str, char *name, int interactive) {
 
 void reader_destroy (reader_t * r) {
 	reset (r);
-	free(r->buf);
-	free(r->readbuf);
+	free(r->eater.buf);
+	free(r->eater.readbuf);
 	free(r->base);
 	free(r);
-}
-
-/* Read next character in the stream. */
-int reader_getc (reader_t * r) {
-	int c;
-	if (r->readbufp > r->readbuf)
-		{
-			c = *(r->readbufp);
-			r->readbufp--;
-			return c;
-		}
-	if (r->str != NULL)
-		{
-			c = *(r->strp);
-			if (c != '\0')
-	r->strp++;
-			else
-	return EOF;
-		}
-	else
-		c = fgetc (r->fid);
-	return c;
-}
-
-/* Unread a byte. */
-void reader_putc (reader_t * r, int c) {
-	r->readbufp++;
-	if (r->readbufp == r->readbuf + r->readbuflen)
-		{
-			r->readbuflen *= 2;
-			r->readbuf = xrealloc (r->readbuf, sizeof (int) * r->readbuflen);
-			r->readbufp = r->readbuf + r->readbuflen / 2;
-		}
-	*(r->readbufp) = c;
-}
-
-/* Consume remaining whitespace on line, including linefeed. */
-void consume_whitespace (reader_t * r) {
-	int c = reader_getc (r);
-	while (strchr (" \t\r", c) != NULL)
-		c = reader_getc (r);
-	if (c != '\n')
-		reader_putc (r, c);
-}
-
-/* Consume remaining characters on line, including linefeed. */
-void consume_line (reader_t * r) {
-	int c = reader_getc (r);
-	while (c != '\n' && c != EOF)
-		c = reader_getc (r);
-	if (c != '\n')
-		reader_putc (r, c);
 }
 
 /* Return height of sexp stack. */
@@ -1394,8 +1330,8 @@ object_t *pop(reader_t * r) {
 }
 
 void reset_buf (reader_t * r) {
-	r->bufp = r->buf;
-	*(r->bufp) = '\0';
+	r->eater.bufp = r->eater.buf;
+	*(r->eater.bufp) = '\0';
 }
 
 /* Remove top object from the sexp stack. */
@@ -1405,7 +1341,7 @@ void reset (reader_t * r) {
 		obj_release(pop (r));
 	}
 	reset_buf (r);
-	r->readbufp = r->readbuf;
+	r->eater.readbufp = r->eater.readbuf;
 	r->done = 0;
 }
 
@@ -1413,7 +1349,8 @@ void reset (reader_t * r) {
 void read_error (reader_t * r, char *str)
 {
 	fprintf (stderr, "%s:%d: %s\n", r->name, r->linecnt, str);
-	consume_line (r);
+	eater.t *e = &r->eater;
+	eater.consume_line(e);
 	reset (r);
 	r->error = 1;
 }
@@ -1455,44 +1392,11 @@ void addpop (reader_t * r) {
 	if (!r->error) add (r, o);
 }
 
-/* Append character to buffer. */
-void buf_append (reader_t * r, char c) {
-	if (r->bufp == r->buf + r->buflen) {
-		r->buflen *= 2;
-		r->buf = xrealloc (r->buf, r->buflen + 1);
-		r->bufp = r->buf + r->buflen / 2;
-	}
-	*(r->bufp) = c;
-	*(r->bufp + 1) = '\0';
-	r->bufp++;
-}
-
-/* Load into buffer until character, ignoring escaped ones. */
-int buf_read (reader_t * r, char *halt) {
-	int c = reader_getc(r);
-	int esc = 0;
-	if (c == '\\') {
-		c = reader_getc (r);
-		esc = 1;
-	}
-	while ((esc || strchr (halt, c) == NULL) && (c != EOF)) {
-		buf_append (r, c);
-		c = reader_getc (r);
-		esc = 0;
-		if (c == '\\') {
-			c = reader_getc (r);
-			esc = 1;
-		}
-	}
-	reader_putc (r, c);
-	return !esc;
-}
-
 /* Turn string in buffer into string	*/
 object_t *parse_str (reader_t * r)
 {
-	size_t size = r->bufp - r->buf;
-	char *str = strings.newstr("%s", r->buf);
+	size_t size = r->eater.bufp - r->eater.buf;
+	char *str = strings.newstr("%s", r->eater.buf);
 	reset_buf (r);
 	return c_str (str, size);
 }
@@ -1500,7 +1404,7 @@ object_t *parse_str (reader_t * r)
 /* Turn string in buffer into atom	*/
 object_t *parse_atom (reader_t * r)
 {
-	char *str = r->buf;
+	char *str = r->eater.buf;
 	char *end;
 
 	/* Detect integer */
@@ -1524,8 +1428,8 @@ object_t *parse_atom (reader_t * r)
 		}
 
 	/* Might be a symbol then */
-	char *p = r->buf;
-	while (p <= r->bufp) {
+	char *p = r->eater.buf;
+	while (p <= r->eater.bufp) {
 		if (strchr (atom_chars, *p) == NULL) {
 			char *errstr = strings.newstr("%s", "invalid symbol character: X");
 			errstr[strlen (errstr) - 1] = *p;
@@ -1535,7 +1439,7 @@ object_t *parse_atom (reader_t * r)
 		}
 		p++;
 	}
-	object_t *o = symbol(r->buf);
+	object_t *o = symbol(r->eater.buf);
 	reset_buf (r);
 	return o;
 }
@@ -1544,125 +1448,128 @@ object_t *parse_atom (reader_t * r)
 object_t *read_sexp (reader_t * r)
 {
 	/* Check for a shebang line. */
-	if (r->shebang == -1)
-		{
-			char str[2];
-			str[0] = reader_getc (r);
-			str[1] = reader_getc (r);
-			if (str[0] == '#' && str[1] == '!')
-	{
-		/* Looks like a she-bang line. */
-		r->shebang = 1;
-		consume_line (r);
-	}
-			else
-	{
-		r->shebang = 0;
-		reader_putc (r, str[1]);
-		reader_putc (r, str[0]);
-	}
-		}
+	if (r->shebang == -1) {
+		char str[2];
 
+		eater.t *e = &r->eater;
+		str[0] = eater.getc(e);
+		str[1] = eater.getc(e);
+
+		if (str[0] == '#' && str[1] == '!') {
+			r->shebang = 1;
+			eater.consume_line(e);
+		} else {
+			r->shebang = 0;
+			eater.putc(e, str[1]);
+			eater.putc(e, str[0]);
+		}
+	}
 	r->done = 0;
 	r->error = 0;
 	push (r);
 	print_prompt (r);
-	while (!r->eof && !r->error && (list_empty (r) || stack_height (r) > 1))
-		{
-			int nc;
-			int c = reader_getc (r);
-			switch (c)
-	{
-	case EOF: { r->eof = 1; }
+	while (!r->eof && !r->error && (list_empty (r) || stack_height (r) > 1)) {
+		int nc;
 
-		/* Comments */
-	case ';': { consume_line (r); }
+		eater.t *e = &r->eater;
+		int c = eater.getc(e);
 
-		/* Dotted pair */
-	case '.': {
-		nc = reader_getc (r);
-		if (strchr (" \t\r\n()", nc) != NULL)
-			{
-				if (r->state->dotpair_mode > 0)
-		read_error (r, "invalid dotted pair syntax");
-				else if (r->state->vector_mode > 0)
-		read_error (r, "dotted pair not allowed in vector");
-				else
-		{
-			r->state->dotpair_mode = 1;
-			reader_putc (r, nc);
-		}
+		switch (c) {
+			case EOF: { r->eof = 1; }
+			case ';': {
+				/* Comments */
+				eater.consume_line(e);
 			}
-		else {
-			/* Turn it into a decimal point. */
-			reader_putc (r, nc);
-			reader_putc (r, '.');
-			reader_putc (r, '0');
+			case '.': {
+				/* Dotted pair */
+				nc = eater.getc(e);
+
+				if (strchr (" \t\r\n()", nc) != NULL) {
+					if (r->state->dotpair_mode > 0) {
+						read_error (r, "invalid dotted pair syntax");
+					}
+					else if (r->state->vector_mode > 0) {
+						read_error (r, "dotted pair not allowed in vector");
+					}
+					else {
+						r->state->dotpair_mode = 1;
+						eater.t *e = &r->eater;
+						eater.putc(e, nc);
+
+					}
+				} else {
+					/* Turn it into a decimal point. */
+					eater.t *e = &r->eater;
+					eater.putc(e, nc);
+					eater.putc(e, '.');
+					eater.putc(e, '0');
+
+				}
+			}
+			case '\n': {
+				/* Whitespace */
+				r->linecnt++;
+				print_prompt (r);
+			}
+			case ' ', '\t', '\r': {}
+			case '(': {
+				push (r);
+			}
+			case ')': {
+				if (r->state->quote_mode)
+					read_error (r, "unbalanced parenthesis");
+				else if (r->state->vector_mode)
+					read_error (r, "unbalanced brackets");
+				else
+					addpop (r);
+			}
+			case '[': {
+				/* Vectors */
+				push (r);
+				r->state->vector_mode = 1;
+			}
+			case ']': {
+				if (r->state->quote_mode)
+					read_error (r, "unbalanced parenthesis");
+				else if (!r->state->vector_mode)
+					read_error (r, "unbalanced brackets");
+				else
+					addpop (r);
+			}
+			case '\'': {
+				push (r);
+				add (r, quote);
+				if (!r->error) {
+					r->state->quote_mode = 1;
+				}
+			}
+			case '"': {
+				eater.t *e = &r->eater;
+				eater.buf_read(e, "\"");
+
+				add (r, parse_str (r));
+
+				/* Throw away other quote. */
+				eater.getc(e);
+
+			}
+			default: {
+				/* numbers and symbols */
+				eater.t *e = &r->eater;
+				eater.buf_append(e, c);
+				eater.buf_read(e, " \t\r\n()[];");
+
+				object_t *o = parse_atom (r);
+				if (!r->error) {
+					add (r, o);
+				}
+			}
 		}
 	}
-
-		/* Whitespace */
-	case '\n': {
-		r->linecnt++;
-		print_prompt (r);
+	if (!r->eof && !r->error) {
+		eater.t *e = &r->eater;
+		eater.consume_whitespace(e);
 	}
-	case ' ', '\t', '\r': {}
-	
-
-		/* Parenthesis */
-	case '(': {
-		push (r);
-	}
-	case ')': {
-		if (r->state->quote_mode)
-			read_error (r, "unbalanced parenthesis");
-		else if (r->state->vector_mode)
-			read_error (r, "unbalanced brackets");
-		else
-			addpop (r);
-	}
-
-		/* Vectors */
-	case '[': {
-		push (r);
-		r->state->vector_mode = 1;
-	}
-	case ']': {
-		if (r->state->quote_mode)
-			read_error (r, "unbalanced parenthesis");
-		else if (!r->state->vector_mode)
-			read_error (r, "unbalanced brackets");
-		else
-			addpop (r);
-	}
-
-		/* Quoting */
-	case '\'': {
-		push (r);
-		add (r, quote);
-		if (!r->error)
-			r->state->quote_mode = 1;
-	}
-
-		/* strings */
-	case '"': {
-		buf_read (r, "\"");
-		add (r, parse_str (r));
-		reader_getc (r);	/* Throw away other quote. */
-	}
-
-		/* numbers and symbols */
-	default: {
-		buf_append (r, c);
-		buf_read (r, " \t\r\n()[];");
-		object_t *o = parse_atom (r);
-		if (!r->error)
-			add (r, o);
-	}
-	}
-		}
-	if (!r->eof && !r->error)
-		consume_whitespace (r);
 	if (r->error)
 		return err_symbol;
 
@@ -1682,8 +1589,6 @@ object_t *read_sexp (reader_t * r)
 	obj_release(wrap);
 	return sexp;
 }
-
-
 
 object_t *cdoc_string(object_t *lst) {
 	if (lst == doc_string) {
