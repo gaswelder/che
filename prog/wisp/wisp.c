@@ -1,6 +1,5 @@
 #import eval.c
 #import opt
-#import strings
 
 bool force_interaction = false;
 
@@ -26,7 +25,7 @@ int main (int argc, char **argv) {
 	eval.object_t *args = eval.nil();
 	paths++;
 	while (paths[0] != NULL) {
-		args = eval.newcons(eval.c_strs(strings.newstr("%s", paths[0])), args);
+		args = eval.newcons(eval.newstring(paths[0]), args);
 		paths++;
 	}
 	eval.SET(eval.symbol("ARGS"), args);

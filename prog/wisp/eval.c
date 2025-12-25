@@ -50,7 +50,6 @@ typedef {
 // #define REQ(lst, n, so) if (req_length (lst, so, n) == err_symbol)	return err_symbol;
 // #define REQX(lst, n, so) if (reqx_length (lst, so, n) == err_symbol)	return err_symbol;
 // #define REQPROP(lst) if (properlistp(lst) == NIL) return THROW(err_improper_list, lst);
-// #define DOC(str) if (lst == doc_string) return c_strs (strings.newstr("%s", str));
 
 hashtab.hashtab_t *symbol_table = NULL;
 
@@ -226,16 +225,17 @@ object_t *vget_check (object_t * vo, object_t * io)
 	return increfs(vget (vo, i));
 }
 
-object_t *vector_concat (object_t * a, object_t * b)
-{
+object_t *vector_concat(object_t *a, *b) {
 	size_t al = VLENGTH (a);
 	size_t bl = VLENGTH (b);
 	object_t *c = c_vec (al + bl, NIL);
 	size_t i;
-	for (i = 0; i < al; i++)
+	for (i = 0; i < al; i++) {
 		vset (c, i, increfs(vget (a, i)));
-	for (i = 0; i < bl; i++)
+	}
+	for (i = 0; i < bl; i++) {
 		vset (c, i + al, increfs(vget (b, i)));
+	}
 	return c;
 }
 
@@ -370,7 +370,7 @@ pub void SET(object_t *so, *o) {
 	*x->vals = o;
 }
 
-// Binds val to sym.
+// Binds val to name.
 void bind(char *name, object_t *val) {
 	object_t *sym = symbol(name);
 	symbol_t *x = sym->uval.val;
@@ -405,7 +405,7 @@ void sympush(object_t *so, object_t *o) {
 /* Dynamic scoping */
 void sympop (object_t * so) {
 	obj_release(GET (so));
-	symbol_t *s = (symbol_t *) ((so)->uval.val);
+	symbol_t *s = so->uval.val;
 	s->vals--;
 }
 
@@ -839,7 +839,7 @@ pub void wisp_init() {
 	if (wisproot == NULL || strlen(wisproot) == 0) {
 		wisproot = ".";
 	}
-	SET (symbol("wisproot"), c_strs (strings.newstr("%s", wisproot)));
+	SET (symbol("wisproot"), newstring(wisproot));
 
 	/* Load core lisp code. */
 	char *corepath = strings.newstr("%s/core.wisp", wisproot);
@@ -942,12 +942,11 @@ object_t *assign_args (object_t * vars, object_t * vals)
 		}
 			else if (!optional_mode && vals == NIL)
 	{
-		while (cnt > 0)
-			{
-				sympop (CAR (orig_vars));
-				orig_vars = CDR (orig_vars);
-				cnt--;
-			}
+		while (cnt > 0) {
+			sympop (CAR (orig_vars));
+			orig_vars = CDR (orig_vars);
+			cnt--;
+		}
 		return THROW (err_wrong_number_of_arguments, NIL);
 	}
 			else if (optional_mode && vals == NIL)
@@ -971,13 +970,12 @@ object_t *assign_args (object_t * vars, object_t * vals)
 	return T;
 }
 
-void unassign_args (object_t * vars)
-{
-	if (vars == NIL)
-		return;
+void unassign_args(object_t *vars) {
+	if (vars == NIL) return;
 	object_t *var = CAR (vars);
-	if (var != rest && var != optional)
+	if (var != rest && var != optional) {
 		sympop (var);
+	}
 	unassign_args (CDR (vars));
 }
 
@@ -985,7 +983,7 @@ object_t *eval(object_t * o) {
 	/* Check for interrupts. */
 	if (interrupt) {
 		interrupt = 0;
-		return THROW (err_interrupt, c_strs (strings.newstr("%s", "interrupted")));
+		return THROW (err_interrupt, newstring("interrupted"));
 	}
 	if (o->type != CONS && o->type != SYMBOL) {
 		return increfs(o);
@@ -1085,8 +1083,8 @@ object_t *c_str (char *str, size_t len) {
 	return o;
 }
 
-pub object_t *c_strs (char *str) {
-	return c_str (str, strlen (str));
+pub object_t *newstring(const char *str) {
+	return c_str(strings.newstr("%s", str), strlen(str));
 }
 
 object_t *c_ints(char *nstr) {
@@ -1144,9 +1142,9 @@ object_t *c_detach (object_t * o) {
 	int pipea[2];
 	int pipeb[2];
 	if (OS.pipe (pipea) != 0)
-		THROW (symbol("detach-pipe-error"), c_strs (strings.newstr("%s", strerror (errno))));
+		THROW (symbol("detach-pipe-error"), newstring(strerror(errno)));
 	if (OS.pipe (pipeb) != 0)
-		THROW (symbol("detach-pipe-error"), c_strs (strings.newstr("%s", strerror (errno))));
+		THROW (symbol("detach-pipe-error"), newstring(strerror(errno)));
 	d->proc = OS.fork ();
 	if (d->proc == 0)
 		{
@@ -1183,7 +1181,7 @@ object_t *c_detach (object_t * o) {
 
 object_t *lisp_detach(object_t * lst) {
 	if (lst == doc_string) {
-		return c_strs(strings.newstr("%s", "Create process detachment."));
+		return newstring("Create process detachment.");
 	}
 	if (req_length(lst, symbol("detach"), 1) == err_symbol) {
 		return err_symbol;
@@ -1193,7 +1191,7 @@ object_t *lisp_detach(object_t * lst) {
 
 object_t *lisp_receive (object_t * lst) {
 	if (lst == doc_string) {
-		return c_strs(strings.newstr("%s", "Get an object from the detached process."));
+		return newstring("Get an object from the detached process.");
 	}
 	if (req_length (lst,symbol("receive"),1) == err_symbol)	return err_symbol;
 	object_t *d = CAR (lst);
@@ -1204,7 +1202,7 @@ object_t *lisp_receive (object_t * lst) {
 
 object_t *lisp_send (object_t * lst) {
 	if (lst == doc_string) {
-		return c_strs(strings.newstr("%s", "Send an object to the parent process."));
+		return newstring("Send an object to the parent process.");
 	}
 	if (req_length (lst,symbol("send"),1) == err_symbol)	return err_symbol;
 	object_t *o = CAR (lst);
@@ -1527,18 +1525,16 @@ object_t *parse_atom (reader_t * r)
 
 	/* Might be a symbol then */
 	char *p = r->buf;
-	while (p <= r->bufp)
-		{
-			if (strchr (atom_chars, *p) == NULL)
-	{
-		char *errstr = strings.newstr("%s", "invalid symbol character: X");
-		errstr[strlen (errstr) - 1] = *p;
-		read_error (r, errstr);
-		free (errstr);
-		return NIL;
-	}
-			p++;
+	while (p <= r->bufp) {
+		if (strchr (atom_chars, *p) == NULL) {
+			char *errstr = strings.newstr("%s", "invalid symbol character: X");
+			errstr[strlen (errstr) - 1] = *p;
+			read_error (r, errstr);
+			free (errstr);
+			return NIL;
 		}
+		p++;
+	}
 	object_t *o = symbol(r->buf);
 	reset_buf (r);
 	return o;
@@ -1691,9 +1687,11 @@ object_t *read_sexp (reader_t * r)
 
 object_t *cdoc_string(object_t *lst) {
 	if (lst == doc_string) {
-		return c_strs(strings.newstr("%s", "Return doc-string for CFUNC or SPECIAL."));
+		return newstring("Return doc-string for CFUNC or SPECIAL.");
 	}
-	if (req_length (lst,symbol("cdoc-string"),1) == err_symbol)	return err_symbol;
+	if (req_length (lst,symbol("cdoc-string"),1) == err_symbol)	{
+		return err_symbol;
+	}
 	object_t *fo = CAR (lst);
 	int evaled = 0;
 	if (fo->type == SYMBOL) {
@@ -1712,7 +1710,7 @@ object_t *cdoc_string(object_t *lst) {
 
 object_t *lisp_apply (object_t * lst) {
 	if (lst == doc_string) {
-		return c_strs(strings.newstr("%s", "Apply function to a list."));
+		return newstring("Apply function to a list.");
 	}
 	if (req_length (lst,symbol("apply"),2) == err_symbol)	return err_symbol;
 	object_t *f = CAR (lst);
@@ -1724,7 +1722,7 @@ object_t *lisp_apply (object_t * lst) {
 
 object_t *lisp_and (object_t * lst) {
 	if (lst == doc_string) {
-		return c_strs(strings.newstr("%s", "Evaluate each argument until one returns nil."));
+		return newstring("Evaluate each argument until one returns nil.");
 	}
 	object_t *r = T;
 	object_t *p = lst;
@@ -1744,7 +1742,7 @@ object_t *lisp_and (object_t * lst) {
 
 object_t *lisp_or (object_t * lst) {
 	if (lst == doc_string) {
-		return c_strs(strings.newstr("%s", "Evaluate each argument until one doesn't return nil."));
+		return newstring("Evaluate each argument until one doesn't return nil.");
 	}
 	object_t *r = NIL;
 	object_t *p = lst;
@@ -1766,7 +1764,7 @@ object_t *lisp_or (object_t * lst) {
 
 object_t *lisp_cons (object_t * lst) {
 	if (lst == doc_string) {
-		return c_strs(strings.newstr("%s", "Construct a new cons cell, given car and cdr."));
+		return newstring("Construct a new cons cell, given car and cdr.");
 	}
 	if (req_length (lst,symbol("cons"),2) == err_symbol)	return err_symbol;
 	return newcons (increfs(CAR (lst)), increfs(CAR (CDR (lst))));
@@ -1774,7 +1772,7 @@ object_t *lisp_cons (object_t * lst) {
 
 object_t *lisp_quote (object_t * lst) {
 	if (lst == doc_string) {
-		return c_strs(strings.newstr("%s", "Return argument unevaluated."));
+		return newstring("Return argument unevaluated.");
 	}
 	if (req_length (lst,symbol("quote"),1) == err_symbol)	return err_symbol;
 	return increfs(CAR (lst));
@@ -1782,16 +1780,16 @@ object_t *lisp_quote (object_t * lst) {
 
 object_t *lambda_f (object_t * lst) {
 	if (lst == doc_string) {
-		return c_strs(strings.newstr("%s", "Create an anonymous function."));
+		return newstring("Create an anonymous function.");
 	}
 	if (!is_func_form (lst))
-		THROW (symbol("bad-function-form"), increfs(lst));
+		return THROW (symbol("bad-function-form"), increfs(lst));
 	return newcons (lambda, increfs(lst));
 }
 
 object_t *defun (object_t * lst) {
 	if (lst == doc_string) {
-		return c_strs(strings.newstr("%s", "Define a new function."));
+		return newstring("Define a new function.");
 	}
 	if (CAR(lst)->type != SYMBOL || !is_func_form (CDR (lst))) {
 		return THROW (symbol("bad-function-form"), increfs(lst));
@@ -1806,7 +1804,7 @@ object_t *defmacro (object_t * lst) {
 	// It is treated exactly like a function, except that arguments are
 	// never evaluated and its return value is directly evaluated.
 	if (lst == doc_string) {
-		return c_strs(strings.newstr("%s", "Define a new macro."));
+		return newstring("Define a new macro.");
 	}
 	if (CAR (lst)->type != SYMBOL || !is_func_form (CDR (lst))) {
 		return THROW (symbol("bad-function-form"), increfs(lst));
@@ -1818,7 +1816,7 @@ object_t *defmacro (object_t * lst) {
 
 object_t *lisp_cdr (object_t * lst) {
 	if (lst == doc_string) {
-		return c_strs(strings.newstr("%s", "Return cdr element of cons cell."));
+		return newstring("Return cdr element of cons cell.");
 	}
 	if (req_length (lst,symbol("cdr"),1) == err_symbol)	return err_symbol;
 	if (CAR (lst) == NIL) return NIL;
@@ -1828,7 +1826,7 @@ object_t *lisp_cdr (object_t * lst) {
 
 object_t *lisp_car (object_t * lst) {
 	if (lst == doc_string) {
-		return c_strs(strings.newstr("%s", "Return car element of cons cell."));
+		return newstring("Return car element of cons cell.");
 	}
 	if (req_length (lst,symbol("car"),1) == err_symbol)	return err_symbol;
 	if (CAR (lst) == NIL) return NIL;
@@ -1838,14 +1836,14 @@ object_t *lisp_car (object_t * lst) {
 
 object_t *lisp_list (object_t * lst) {
 	if (lst == doc_string) {
-		return c_strs(strings.newstr("%s", "Return arguments as a list."));
+		return newstring("Return arguments as a list.");
 	}
 	return increfs(lst);
 }
 
 object_t *lisp_if (object_t * lst) {
 	if (lst == doc_string) {
-		return c_strs(strings.newstr("%s", "If conditional special form."));
+		return newstring("If conditional special form.");
 	}
 	if (reqm_length (lst,err_wrong_number_of_arguments,2) == err_symbol)	return err_symbol;
 	object_t *r = eval (CAR (lst));
@@ -1861,7 +1859,7 @@ object_t *lisp_if (object_t * lst) {
 
 object_t *lisp_cond (object_t * lst) {
 	if (lst == doc_string) {
-		return c_strs(strings.newstr("%s", "Eval car of each argument until one is true. Then eval cdr of that argument.\n"));
+		return newstring("Eval car of each argument until one is true. Then eval cdr of that argument.\n");
 	}
 	object_t *p = lst;
 	while (p != NIL) {
@@ -1883,14 +1881,14 @@ object_t *lisp_cond (object_t * lst) {
 
 object_t *progn (object_t * lst) {
 	if (lst == doc_string) {
-		return c_strs(strings.newstr("%s", "Eval each argument and return the eval of the last."));
+		return newstring("Eval each argument and return the eval of the last.");
 	}
 	return eval_body (lst);
 }
 
 object_t *let (object_t * lst) {
 	if (lst == doc_string) {
-		return c_strs(strings.newstr("%s", "Create variable bindings in a new scope, and eval body in that scope."));
+		return newstring("Create variable bindings in a new scope, and eval body in that scope.");
 	}
 	/* verify structure */
 	if (!islist (CAR (lst))) return THROW (symbol("bad-let-form"), increfs(lst));
@@ -1938,7 +1936,7 @@ object_t *let (object_t * lst) {
 
 object_t *lisp_while(object_t * lst) {
 	if (lst == doc_string) {
-		return c_strs(strings.newstr("%s", "Continually evaluate body until first argument evals nil."));
+		return newstring("Continually evaluate body until first argument evals nil.");
 	}
 	if (reqm_length (lst,symbol("while"),1) == err_symbol)	return err_symbol;
 	object_t *r = NIL;
@@ -1960,7 +1958,7 @@ object_t *lisp_while(object_t * lst) {
 
 object_t *eq (object_t * lst) {
 	if (lst == doc_string) {
-		return c_strs(strings.newstr("%s", "Return t if both arguments are the same lisp "));
+		return newstring("Return t if both arguments are the same lisp ");
 	}
 	if (req_length (lst,symbol("eq"),2) == err_symbol)	return err_symbol;
 	object_t *a = CAR (lst);
@@ -1972,7 +1970,7 @@ object_t *eq (object_t * lst) {
 
 object_t *eql (object_t * lst) {
 	if (lst == doc_string) {
-		return c_strs(strings.newstr("%s", "Return t if both arguments are similar."));
+		return newstring("Return t if both arguments are similar.");
 	}
 	if (req_length (lst,symbol("eql"),2) == err_symbol)	return err_symbol;
 	object_t *a = CAR (lst);
@@ -1999,7 +1997,7 @@ object_t *eql (object_t * lst) {
 
 object_t *lisp_hash (object_t * lst) {
 	if (lst == doc_string) {
-		return c_strs(strings.newstr("%s", "Return integer hash of "));
+		return newstring("Return integer hash of ");
 	}
 	if (req_length (lst,symbol("hash"),1) == err_symbol)	return err_symbol;
 	return c_int (obj_hash (CAR (lst)));
@@ -2007,7 +2005,7 @@ object_t *lisp_hash (object_t * lst) {
 
 object_t *lisp_print (object_t * lst) {
 	if (lst == doc_string) {
-		return c_strs(strings.newstr("%s", "Print object or sexp in parse-able form."));
+		return newstring("Print object or sexp in parse-able form.");
 	}
 	if (req_length (lst,symbol("print"),1) == err_symbol)	return err_symbol;
 	obj_print(CAR (lst), 1);
@@ -2016,7 +2014,7 @@ object_t *lisp_print (object_t * lst) {
 
 object_t *lisp_set (object_t * lst) {
 	if (lst == doc_string) {
-		return c_strs(strings.newstr("%s", "Store object in symbol."));
+		return newstring("Store object in symbol.");
 	}
 	if (req_length (lst,symbol("set"),2) == err_symbol)	return err_symbol;
 	if ((CAR (lst))->type != SYMBOL) {
@@ -2031,7 +2029,7 @@ object_t *lisp_set (object_t * lst) {
 
 object_t *lisp_value (object_t * lst) {
 	if (lst == doc_string) {
-		return c_strs(strings.newstr("%s", "Get value stored in symbol."));
+		return newstring("Get value stored in symbol.");
 	}
 	if (req_length (lst,symbol("value"),1) == err_symbol)	return err_symbol;
 	if (!issymbol(CAR (lst)))
@@ -2042,16 +2040,16 @@ object_t *lisp_value (object_t * lst) {
 
 object_t *symbol_name(object_t * lst) {
 	if (lst == doc_string) {
-		return c_strs(strings.newstr("%s", "Return symbol name as string."));
+		return newstring("Return symbol name as string.");
 	}
 	if (req_length (lst,symbol("symbol-name"),1) == err_symbol)	return err_symbol;
 	if (!issymbol(CAR (lst))) return THROW (err_wrong_type, increfs(CAR (lst)));
-	return c_strs(strings.newstr("%s", *SYMNAME(CAR (lst))));
+	return newstring(*SYMNAME(CAR (lst)));
 }
 
 object_t *lisp_concat(object_t *lst) {
 	if (lst == doc_string) {
-		return c_strs(strings.newstr("%s", "Concatenate two strings."));
+		return newstring("Concatenate two strings.");
 	}
 	if (req_length (lst,symbol("concat"),2) == err_symbol)	return err_symbol;
 	object_t *a = CAR (lst);
@@ -2071,7 +2069,7 @@ object_t *lisp_concat(object_t *lst) {
 
 object_t *nullp (object_t * lst) {
 	if (lst == doc_string) {
-		return c_strs(strings.newstr("%s", "Return t if object is nil."));
+		return newstring("Return t if object is nil.");
 	}
 	if (req_length (lst,symbol("nullp"),1) == err_symbol)	return err_symbol;
 	if (CAR (lst) == NIL)
@@ -2081,7 +2079,7 @@ object_t *nullp (object_t * lst) {
 
 object_t *funcp (object_t * lst) {
 	if (lst == doc_string) {
-		return c_strs(strings.newstr("%s", "Return t if object is a function."));
+		return newstring("Return t if object is a function.");
 	}
 	if (req_length (lst,symbol("funcp"),1) == err_symbol)	return err_symbol;
 	if (isfunc (CAR (lst)))
@@ -2091,7 +2089,7 @@ object_t *funcp (object_t * lst) {
 
 object_t *listp (object_t * lst) {
 	if (lst == doc_string) {
-		return c_strs(strings.newstr("%s", "Return t if object is a list."));
+		return newstring("Return t if object is a list.");
 	}
 	if (req_length (lst,symbol("listp"),1) == err_symbol)	return err_symbol;
 	if (islist (CAR (lst)))
@@ -2101,7 +2099,7 @@ object_t *listp (object_t * lst) {
 
 object_t *symbolp (object_t * lst) {
 	if (lst == doc_string) {
-		return c_strs(strings.newstr("%s", "Return t if object is a symbol."));
+		return newstring("Return t if object is a symbol.");
 	}
 	if (req_length (lst,symbol("symbolp"),1) == err_symbol)	return err_symbol;
 	if (issymbol(CAR (lst))) {
@@ -2112,7 +2110,7 @@ object_t *symbolp (object_t * lst) {
 
 object_t *numberp (object_t * lst) {
 	if (lst == doc_string) {
-		return c_strs(strings.newstr("%s", "Return t if object is a number."));
+		return newstring("Return t if object is a number.");
 	}
 	if (req_length (lst,symbol("numberp"),1) == err_symbol)	return err_symbol;
 	if (isnumber (CAR (lst)))
@@ -2122,7 +2120,7 @@ object_t *numberp (object_t * lst) {
 
 object_t *stringp (object_t * lst) {
 	if (lst == doc_string) {
-		return c_strs(strings.newstr("%s", "Return t if object is a string."));
+		return newstring("Return t if object is a string.");
 	}
 	if (req_length (lst,symbol("stringp"),1) == err_symbol)	return err_symbol;
 	if (CAR(lst)->type == STRING) return T;
@@ -2131,7 +2129,7 @@ object_t *stringp (object_t * lst) {
 
 object_t *integerp (object_t * lst) {
 	if (lst == doc_string) {
-		return c_strs(strings.newstr("%s", "Return t if object is an integer."));
+		return newstring("Return t if object is an integer.");
 	}
 	if (req_length (lst,symbol("integerp"),1) == err_symbol)	return err_symbol;
 	if (isint (CAR (lst)))
@@ -2141,7 +2139,7 @@ object_t *integerp (object_t * lst) {
 
 object_t *floatp (object_t * lst) {
 	if (lst == doc_string) {
-		return c_strs(strings.newstr("%s", "Return t if object is a floating-point number."));
+		return newstring("Return t if object is a floating-point number.");
 	}
 	if (req_length (lst,symbol("floatp"),1) == err_symbol)	return err_symbol;
 	if (isfloat (CAR (lst)))
@@ -2151,7 +2149,7 @@ object_t *floatp (object_t * lst) {
 
 object_t *vectorp (object_t * lst) {
 	if (lst == doc_string) {
-		return c_strs(strings.newstr("%s", "Return t if object is a vector."));
+		return newstring("Return t if object is a vector.");
 	}
 	if (req_length (lst,symbol("vectorp"),1) == err_symbol)	return err_symbol;
 	if (isvector (CAR (lst)))
@@ -2161,7 +2159,7 @@ object_t *vectorp (object_t * lst) {
 
 object_t *lisp_load (object_t * lst) {
 	if (lst == doc_string) {
-		return c_strs(strings.newstr("%s", "Evaluate contents of a file."));
+		return newstring("Evaluate contents of a file.");
 	}
 	if (req_length (lst,symbol("load"),1) == err_symbol)	return err_symbol;
 	object_t *str = CAR (lst);
@@ -2177,7 +2175,7 @@ object_t *lisp_load (object_t * lst) {
 
 object_t *lisp_read_string (object_t * lst) {
 	if (lst == doc_string) {
-		return c_strs(strings.newstr("%s", "Parse a string into a sexp or list "));
+		return newstring("Parse a string into a sexp or list ");
 	}
 	if (req_length (lst,symbol("eval-string"),1) == err_symbol)	return err_symbol;
 	object_t *stro = CAR (lst);
@@ -2195,14 +2193,14 @@ object_t *lisp_read_string (object_t * lst) {
 
 object_t *throw (object_t * lst) {
 	if (lst == doc_string) {
-		return c_strs(strings.newstr("%s", "Throw an object, and attachment, as an exception."));
+		return newstring("Throw an object, and attachment, as an exception.");
 	}
 	return THROW (increfs(CAR (lst)), increfs(CAR (CDR (lst))));
 }
 
 object_t *catch (object_t * lst) {
 	if (lst == doc_string) {
-		return c_strs(strings.newstr("%s", "Catch an exception and return attachment."));
+		return newstring("Catch an exception and return attachment.");
 	}
 	object_t *csym = eval (CAR (lst));
 	if (csym == err_symbol) {
@@ -2223,7 +2221,7 @@ object_t *catch (object_t * lst) {
 
 object_t *lisp_vset (object_t * lst) {
 	if (lst == doc_string) {
-		return c_strs(strings.newstr("%s", "Set slot in a vector to "));
+		return newstring("Set slot in a vector to ");
 	}
 	if (req_length (lst,symbol("vset"),3) == err_symbol)	return err_symbol;
 	object_t *vec = CAR (lst);
@@ -2238,7 +2236,7 @@ object_t *lisp_vset (object_t * lst) {
 
 object_t *lisp_vget (object_t * lst) {
 	if (lst == doc_string) {
-		return c_strs(strings.newstr("%s", "Get object stored in vector slot."));
+		return newstring("Get object stored in vector slot.");
 	}
 	if (req_length (lst,symbol("vget"),2) == err_symbol)	return err_symbol;
 	object_t *vec = CAR (lst);
@@ -2252,7 +2250,7 @@ object_t *lisp_vget (object_t * lst) {
 
 object_t *lisp_vlength (object_t * lst) {
 	if (lst == doc_string) {
-		return c_strs(strings.newstr("%s", "Return length of the vector."));
+		return newstring("Return length of the vector.");
 	}
 	if (req_length (lst,symbol("vlength"),1) == err_symbol)	return err_symbol;
 	object_t *vec = CAR (lst);
@@ -2263,7 +2261,7 @@ object_t *lisp_vlength (object_t * lst) {
 
 object_t *make_vector (object_t * lst) {
 	if (lst == doc_string) {
-		return c_strs(strings.newstr("%s", "Make a new vector of given length, initialized to given "));
+		return newstring("Make a new vector of given length, initialized to given ");
 	}
 	if (req_length (lst,symbol("make-vector"),2) == err_symbol)	return err_symbol;
 	object_t *len = CAR (lst);
@@ -2275,7 +2273,7 @@ object_t *make_vector (object_t * lst) {
 
 object_t *lisp_vconcat (object_t * lst) {
 	if (lst == doc_string) {
-		return c_strs(strings.newstr("%s", "Concatenate two vectors."));
+		return newstring("Concatenate two vectors.");
 	}
 	if (req_length (lst,symbol("vconcat2"),2) == err_symbol)	return err_symbol;
 	object_t *a = CAR (lst);
@@ -2289,7 +2287,7 @@ object_t *lisp_vconcat (object_t * lst) {
 
 object_t *lisp_vsub (object_t * lst) {
 	if (lst == doc_string) {
-		return c_strs(strings.newstr("%s", "Return subsection of vector."));
+		return newstring("Return subsection of vector.");
 	}
 	if (reqm_length (lst,symbol("subv"),2) == err_symbol)	return err_symbol;
 	object_t *v = CAR (lst);
@@ -2321,7 +2319,7 @@ object_t *lisp_vsub (object_t * lst) {
 
 object_t *lisp_refcount (object_t * lst) {
 	if (lst == doc_string) {
-		return c_strs(strings.newstr("%s", "Return number of reference counts to "));
+		return newstring("Return number of reference counts to ");
 	}
 	if (req_length (lst,symbol("refcount"),1) == err_symbol)	return err_symbol;
 	return c_int (CAR (lst)->refs);
@@ -2329,7 +2327,7 @@ object_t *lisp_refcount (object_t * lst) {
 
 object_t *lisp_eval_depth (object_t * lst) {
 	if (lst == doc_string) {
-		return c_strs(strings.newstr("%s", "Return the current evaluation depth."));
+		return newstring("Return the current evaluation depth.");
 	}
 	if (req_length (lst,symbol("eval-depth"),0) == err_symbol)	return err_symbol;
 	return c_int (stack_depth);
@@ -2337,7 +2335,7 @@ object_t *lisp_eval_depth (object_t * lst) {
 
 object_t *lisp_max_eval_depth (object_t * lst) {
 	if (lst == doc_string) {
-		return c_strs(strings.newstr("%s", "Return or set the maximum evaluation depth."));
+		return newstring("Return or set the maximum evaluation depth.");
 	}
 	if (reqx_length (lst,symbol("max-eval-depth"),1) == err_symbol)	return err_symbol;
 	if (lst == NIL)
@@ -2354,7 +2352,7 @@ object_t *lisp_max_eval_depth (object_t * lst) {
 
 object_t *lisp_exit (object_t * lst) {
 	if (lst == doc_string) {
-		return c_strs(strings.newstr("%s", "Halt the interpreter and return given integer."));
+		return newstring("Halt the interpreter and return given integer.");
 	}
 	if (reqx_length (lst,symbol("exit"),1) == err_symbol)	return err_symbol;
 	if (lst == NIL)
