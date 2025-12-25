@@ -15,8 +15,39 @@ pub typedef {
 	cfunc_t *fval; // function pointer, for function value.
 } val_t;
 
+// Increments refcount of the value and returns the value.
+val_t *increfs(val_t *o) {
+	o->refs++;
+	return o;
+}
+
+bool issymbol(val_t *o) { return o->type == SYMBOL; }
+bool iscons(val_t *o) { return o->type == CONS; }
+bool isint(val_t *o) { return o->type == INT; }
+bool isfloat(val_t *o) { return (o->type == FLOAT); }
+bool isvector(val_t *o) { return o->type == VECTOR; }
+bool isdetach(val_t *o) { return (o->type == DETACH); }
+bool isnumber(val_t *o) { return (isint (o) || isfloat (o)); }
+bool islist(val_t *o) { return (o->type == CONS || o == NIL); }
+
+bool isfunc(val_t *o) {
+	return (o->type == CONS && CAR(o)->type == SYMBOL && ((CAR(o) == lambda) || (CAR(o) == macro)))
+		|| (o->type == CFUNC)
+		|| (o->type == SPECIAL);
+}
+
 enum { ADD, SUB, MUL, DIV }
 enum { EQ, LT, LTE, GT, GTE }
+
+typedef { val_t *car, *cdr; } cons_t;
+typedef { val_t **v; size_t len; } vector_t;
+pub typedef val_t *cfunc_t(val_t *);
+
+pub typedef {
+	char *raw; // normal string value, chars
+	char *print; // version of raw with escape slashes
+	size_t len; // cached strlen of raw
+} str_t;
 
 ////////
 
@@ -27,29 +58,30 @@ pub typedef {
 	uint32_t cnt;
 } symbol_t;
 
-pub typedef { val_t *car, *cdr; } cons_t;
-pub typedef val_t *cfunc_t(val_t *);
-
-typedef {
-	val_t **v;
-	size_t len;
-} vector_t;
-
-pub typedef {
-	char *raw;
-	char *print;
-	size_t len;
-} str_t;
+val_t *doc_string = NULL;
+val_t *err_attach = NULL;
+val_t *err_improper_list = NULL;
+val_t *err_improper_list_ending = NULL;
+val_t *err_interrupt = NULL;
+val_t *err_out_of_bounds = NULL;
+val_t *err_symbol = NULL;
+val_t *err_thrown = NULL;
+val_t *err_void_function = NULL;
+val_t *err_wrong_number_of_arguments = NULL;
+val_t *err_wrong_type = NULL;
+val_t *lambda = NULL;
+val_t *macro = NULL;
+val_t *NIL = NULL;
+val_t *optional = NULL;
+val_t *quote = NULL;
+val_t *rest = NULL;
+val_t *T = NULL;
 
 typedef {
 	int in, out;
 	int proc;
 	reader_t *read;
 } detach_t;
-
-// #define REQ(lst, n, so) if (req_length (lst, so, n) == err_symbol)	return err_symbol;
-// #define REQX(lst, n, so) if (reqx_length (lst, so, n) == err_symbol)	return err_symbol;
-// #define REQPROP(lst) if (properlistp(lst) == NIL) return THROW(err_improper_list, lst);
 
 hashtab.hashtab_t *symbol_table = NULL;
 
@@ -58,63 +90,18 @@ mem.mmanager_t *mm_cons = NULL;
 mem.mmanager_t *mm_str = NULL;
 mem.mmanager_t *mm_vec = NULL;
 
-val_t *out_of_bounds = NULL;
-val_t *NIL = NULL;
-val_t *T = NULL;
-val_t *lambda = NULL;
-val_t *macro = NULL;
-val_t *quote = NULL;
-val_t *err_symbol = NULL;
-val_t *err_thrown = NULL;
-val_t *err_attach = NULL;
-val_t *rest = NULL;
-val_t *optional = NULL;
-val_t *doc_string = NULL;
-val_t *err_void_function = NULL;
-val_t *err_wrong_number_of_arguments = NULL;
-val_t *err_wrong_type = NULL;
-val_t *err_improper_list = NULL;
-val_t *err_improper_list_ending = NULL;
-val_t *err_interrupt = NULL;
+
 
 pub val_t *nil() {
 	return NIL;
 }
 
-void DOC (const char *s) {
-	(void) s;
-}
 
-bool issymbol(val_t *o) { return o->type == SYMBOL; }
-bool iscons(val_t *o) { return o->type == CONS; }
-bool isint(val_t *o) { return o->type == INT; }
-bool isfloat(val_t *o) { return (o->type == FLOAT); }
-bool isvector(val_t *o) { return o->type == VECTOR; }
-bool isdetach(val_t *o) { return (o->type == DETACH); }
-
-bool isnumber(val_t *o) { return (isint (o) || isfloat (o)); }
-bool islist(val_t *o) { return (o->type == CONS || o == NIL); }
-
-bool isfunc(val_t *o) {
-	return (o->type == CONS && CAR(o)->type == SYMBOL && ((CAR(o) == lambda) || (CAR(o) == macro)))
-		|| (o->type == CFUNC)
-		|| (o->type == SPECIAL);
-}
-
-// Increments refcount of the value and returns the value.
-val_t *increfs(val_t *o) {
-	o->refs++;
-	return o;
-}
 
 val_t *CAR(val_t *o) { cons_t *x = o->val; return x->car; }
 val_t *CDR(val_t *o) { cons_t *x = o->val; return x->cdr; }
-int OPROC(val_t *o) { detach_t *x = o->val; return x->proc; }
 void *OREAD(val_t *o) { detach_t *x = o->val; return x->read; }
-mp.mpz_t *OINT(val_t *o) {
-	return o->val;
-}
-mp.mpf_t *OFLOAT(val_t *o) { return (o->val); }
+
 mp.mpz_t *DINT(val_t *o) {	mp.mpz_t *x = o->val; return x; }
 mp.mpf_t *DFLOAT(val_t *o) { mp.mpf_t *x = o->val; return x; }
 int VLENGTH(val_t *o) { vector_t *x = o->val; return x->len; }
@@ -129,13 +116,6 @@ int OSTRLEN(val_t *o) {
 	str_t *x = o->val;
 	return x->len;
 }
-char *OSTRP(val_t *o) {
-	str_t *str = o->val;
-	if (str->print == NULL) {
-		str->print = util.addslashes(str->raw);
-	}
-	return str->print;
-}
 
 void setcar(val_t *o, *car) {
 	cons_t *x = o->val;
@@ -146,10 +126,6 @@ void setcdr(val_t *o, *cdr) {
 	x->cdr = cdr;
 }
 
-// void *PAIRP(void *o) {
-//	 return (o->type == CONS && !islist(CDR(o)));
-// }
-
 val_t *THROW(val_t *to, *ao) {
 	err_thrown = to;
 	err_attach = ao;
@@ -157,7 +133,7 @@ val_t *THROW(val_t *to, *ao) {
 }
 
 val_t *c_vec (size_t len, val_t * init) {
-	val_t *o = obj_create(VECTOR);
+	val_t *o = obj_createx(VECTOR, mem.mm_alloc(mm_vec));
 	vector_t *v = o->val;
 	v->len = len;
 	if (len == 0) {
@@ -199,7 +175,7 @@ val_t *vset_check(val_t *vo, *io, *val) {
 	int i = into2int (io);
 	vector_t *v = vo->val;
 	if (i < 0 || i >= (int) v->len) {
-		return THROW (out_of_bounds, increfs(io));
+		return THROW (err_out_of_bounds, increfs(io));
 	}
 	vset (vo, i, increfs(val));
 	return increfs(val);
@@ -216,7 +192,7 @@ val_t *vget_check (val_t * vo, val_t * io)
 	int i = into2int (io);
 	vector_t *v = vo->val;
 	if (i < 0 || i >= (int) v->len) {
-		return THROW (out_of_bounds, increfs(io));
+		return THROW (err_out_of_bounds, increfs(io));
 	}
 	return increfs(vget (vo, i));
 }
@@ -414,7 +390,7 @@ pub val_t *symbol(char *name) {
 	if (o) {
 		return o;
 	}
-	o = obj_create(SYMBOL);
+	o = obj_createx(SYMBOL, symbol_create());
 	*SYMNAME(o) = strings.newstr("%s", name);
 	symbol_t *x = o->val;
 	*x->vals = NIL;
@@ -430,20 +406,30 @@ pub val_t *symbol(char *name) {
 //	 printf(str); obj_print(o,1);
 // }
 
-val_t *obj_create(int type) {
+val_t *obj_createx(int type, void *payload) {
 	val_t *o = mem.mm_alloc(mm_obj);
 	o->type = type;
 	o->refs++;
-	switch (type) {
-		case INT: { o->val = calloc!(1, sizeof(mp.mpz_t *)); }
-		case FLOAT: { o->val = calloc!(1, sizeof(mp.mpf_t *)); }
-		case CONS: { o->val = mem.mm_alloc(mm_cons); }
-		case SYMBOL: { o->val = symbol_create (); }
-		case STRING: { o->val = mem.mm_alloc(mm_str); }
-		case VECTOR: { o->val = mem.mm_alloc(mm_vec); }
-		case DETACH: { o->val = calloc!(1, sizeof (detach_t)); }
-		case CFUNC, SPECIAL: {}
-	}
+	o->val = payload;
+	return o;
+}
+
+pub val_t *newcons(val_t *car, *cdr) {
+	val_t *o = obj_createx(CONS, mem.mm_alloc(mm_cons));
+	setcar(o, car);
+	setcdr(o, cdr);
+	return o;
+}
+
+val_t *newfunc(cfunc_t f) {
+	val_t *o = obj_createx(CFUNC, NULL);
+	o->fval = f;
+	return o;
+}
+
+val_t *c_special(cfunc_t f) {
+	val_t *o = obj_createx(SPECIAL, NULL);
+	o->fval = f;
 	return o;
 }
 
@@ -482,34 +468,15 @@ void obj_release(val_t *o) {
 			mem.mm_free(mm_vec, v);
 		}
 		case DETACH: {
-			detach_t *d = (o->val);
+			detach_t *d = o->val;
 			reader_destroy (d->read);
 			OS.close (d->in);
 			OS.close (d->out);
-			free ((o->val));
+			free (o->val);
 		}
 		case CFUNC, SPECIAL: {}
 	}
 	mem.mm_free(mm_obj, o);
-}
-
-pub val_t *newcons(val_t *car, *cdr) {
-	val_t *o = obj_create (CONS);
-	setcar(o, car);
-	setcdr(o, cdr);
-	return o;
-}
-
-val_t *newfunc(cfunc_t f) {
-	val_t *o = obj_create(CFUNC);
-	o->fval = f;
-	return o;
-}
-
-val_t *c_special(cfunc_t f) {
-	val_t *o = obj_create(SPECIAL);
-	o->fval = f;
-	return o;
 }
 
 // Prints object o to stdout.
@@ -518,49 +485,53 @@ void obj_print(val_t *o, bool newline) {
 		case CONS: {
 			printf("(");
 			val_t *p = o;
-			while (p->type == CONS)
-				{
-					obj_print (CAR (p), 0);
-					p = CDR (p);
-					if (p->type == CONS)
-						printf (" ");
-				}
-						if (p != NIL)
-				{
-					printf (" . ");
-					obj_print (p, 0);
-				}
-						printf (")");
+			while (p->type == CONS) {
+				obj_print (CAR (p), 0);
+				p = CDR (p);
+				if (p->type == CONS) printf (" ");
+			}
+			if (p != NIL) {
+				printf (" . ");
+				obj_print (p, 0);
+			}
+			printf (")");
 		}
-		case INT: { mp.print("%Zd", OINT (o)); }
-		case FLOAT: { mp.print("%.Ff", OFLOAT (o)); }
-		case STRING: { printf ("%s", OSTRP (o)); }
+		case INT: {
+			mp.print("%Zd", o->val);
+		}
+		case FLOAT: {
+			mp.print("%.Ff", o->val);
+		}
+		case STRING: {
+			str_t *str = o->val;
+			if (str->print == NULL) {
+				str->print = util.addslashes(str->raw);
+			}
+			printf ("%s", str->print);
+		}
 		case SYMBOL: {
 			symbol_t *x = (o->val);
 			printf("%s", x->name);
 		}
-		case VECTOR: { vec_print (o); }
-		case DETACH: { detach_print (o); }
+		case VECTOR: {
+			vector_t *v = o->val;
+			printf ("[");
+			for (size_t i = 0; i < v->len; i++) {
+				if (i > 0) printf(" ");
+				obj_print (v->v[i], 0);
+			}
+			printf ("]");
+		}
+		case DETACH: {
+			detach_t *x = o->val;
+			int proc = x->proc;
+			printf ("<detach %d>", proc);
+		}
 		case CFUNC: { printf ("<cfunc>"); }
 		case SPECIAL: { printf ("<special form>"); }
 		default: { printf ("ERROR"); }
 	}
 	if (newline) printf ("\n");
-}
-
-void vec_print(val_t * vo) {
-	vector_t *v = vo->val;
-	if (v->len == 0) {
-		printf ("[]");
-		return;
-	}
-	printf ("[");
-	for (size_t i = 0; i < v->len - 1; i++) {
-		obj_print (v->v[i], 0);
-		printf (" ");
-	}
-	obj_print (v->v[v->len - 1], 0);
-	printf ("]");
 }
 
 uint32_t str_hash (val_t * o) {
@@ -607,7 +578,11 @@ uint32_t obj_hash (val_t * o) {
 		case STRING: { return str_hash (o); }
 		case SYMBOL: { return symbol_hash (o); }
 		case VECTOR: { return vector_hash (o); }
-		case DETACH: { return detach_hash (o); }
+		case DETACH: {
+			detach_t *x = o->val;
+			int proc = x->proc;
+			return hash (&proc, sizeof (int));
+		}
 		case CFUNC, SPECIAL: {
 			/* Imprecise, but close enough */
 			return hash ((o->val), sizeof (void *));
@@ -774,7 +749,7 @@ pub void wisp_init() {
 
 	signal (SIGINT, &handle_iterrupt);
 
-	out_of_bounds = symbol("index-out-of-bounds");
+	err_out_of_bounds = symbol("index-out-of-bounds");
 	lambda = symbol("lambda");
 	macro = symbol("macro");
 	quote = symbol("quote");
@@ -1032,14 +1007,11 @@ void str_clear (void *s) {
 	str->len = 0;
 }
 
-
-
 val_t *c_str (char *str, size_t len) {
-	val_t *o = obj_create(STRING);
-	str_t *x = o->val;
+	str_t *x = mem.mm_alloc(mm_str);
 	x->raw = str;
 	x->len = len;
-	return o;
+	return obj_createx(STRING, x);
 }
 
 pub val_t *newstring(const char *str) {
@@ -1047,27 +1019,27 @@ pub val_t *newstring(const char *str) {
 }
 
 val_t *c_ints(char *nstr) {
-	val_t *o = obj_create(INT);
+	val_t *o = obj_createx(INT, calloc!(1, sizeof(mp.mpz_t *)));
 	mp.mpz_t *z = o->val;
 	mp.mpz_set_str(z, nstr);
 	return o;
 }
 
 val_t *c_int(int n) {
-	val_t *o = obj_create (INT);
+	val_t *o = obj_createx(INT, calloc!(1, sizeof(mp.mpz_t *)));
 	mp.mpz_set_ui(o->val, n);
 	return o;
 }
 
 val_t *c_floats(char *fstr) {
-	val_t *o = obj_create (FLOAT);
+	val_t *o = obj_createx(FLOAT, calloc!(1, sizeof(mp.mpf_t *)));
 	mp.mpf_t *f = o->val;
 	mp.mpf_set_str(f, fstr);
 	return o;
 }
 
 val_t *c_float(double d) {
-	val_t *o = obj_create (FLOAT);
+	val_t *o = obj_createx(FLOAT, calloc!(1, sizeof(mp.mpf_t *)));
 	mp.mpf_set_d(o->val, d);
 	return o;
 }
@@ -1082,53 +1054,42 @@ double floato2float(val_t *floato) {
 
 val_t *parent_detach = NULL;
 
-uint8_t detach_hash (val_t * o)
-{
-	int proc = OPROC (o);
-	return hash (&proc, sizeof (int));
-}
-
-void detach_print (val_t * o)
-{
-	int proc = OPROC (o);
-	printf ("<detach %d>", proc);
-}
-
 val_t *c_detach (val_t * o) {
-	if (o->type == SYMBOL) o = GET (o);
-	val_t *dob = obj_create (DETACH);
-	detach_t *d = ((dob)->val);
+	if (o->type == SYMBOL) {
+		o = GET (o);
+	}
+	detach_t *d = calloc!(1, sizeof (detach_t));
+	val_t *dob = obj_createx(DETACH, d);
 	int pipea[2];
 	int pipeb[2];
 	if (OS.pipe (pipea) != 0)
-		THROW (symbol("detach-pipe-error"), newstring(strerror(errno)));
+		return THROW (symbol("detach-pipe-error"), newstring(strerror(errno)));
 	if (OS.pipe (pipeb) != 0)
-		THROW (symbol("detach-pipe-error"), newstring(strerror(errno)));
+		return THROW (symbol("detach-pipe-error"), newstring(strerror(errno)));
 	d->proc = OS.fork ();
-	if (d->proc == 0)
-		{
-			/* Child process */
+	if (d->proc == 0) {
+		/* Child process */
 
-			/* Set up pipes */
-			d->in = pipeb[0];
-			d->out = pipea[1];
-			OS.close (pipeb[1]);
-			OS.close (pipea[0]);
+		/* Set up pipes */
+		d->in = pipeb[0];
+		d->out = pipea[1];
+		OS.close (pipeb[1]);
+		OS.close (pipea[0]);
 
-			/* Change stdin and stdout. */
-			fclose (stdin);
-			int stdout_no = OS.fileno (stdout);
-			OS.close (stdout_no);
-			OS.dup2 (d->out, stdout_no);
-			d->read = reader_create (OS.fdopen (d->in, "r"), NULL, "parent", 0);
-			parent_detach = dob;
+		/* Change stdin and stdout. */
+		fclose (stdin);
+		int stdout_no = OS.fileno (stdout);
+		OS.close (stdout_no);
+		OS.dup2 (d->out, stdout_no);
+		d->read = reader_create (OS.fdopen (d->in, "r"), NULL, "parent", 0);
+		parent_detach = dob;
 
-			/* Execute given function. */
-			val_t *f = newcons (o, NIL);
-			eval (f);
-			exit (0);
-			return THROW (symbol("exit-failed"), dob);
-		}
+		/* Execute given function. */
+		val_t *f = newcons (o, NIL);
+		eval (f);
+		exit (0);
+		return THROW (symbol("exit-failed"), dob);
+	}
 	/* Parent process */
 	d->in = pipea[0];
 	d->out = pipeb[1];
@@ -1567,7 +1528,7 @@ val_t *lisp_apply (val_t * lst) {
 	return apply (f, args);
 }
 
-val_t *lisp_and (val_t * lst) {
+val_t *lisp_and(val_t *lst) {
 	if (lst == doc_string) {
 		return newstring("Evaluate each argument until one returns nil.");
 	}
@@ -2208,59 +2169,77 @@ val_t *lisp_exit (val_t * lst) {
 }
 
 val_t *addition (val_t * lst) {
-	DOC ("Perform addition operation.");
+	if (lst == doc_string) {
+		return newstring("Perform addition operation.");
+	}
 	return arith (ADD, lst);
 }
 
 val_t *multiplication (val_t * lst) {
-	DOC ("Perform multiplication operation.");
+	if (lst == doc_string) {
+		return newstring("Perform multiplication operation.");
+	}
 	return arith (MUL, lst);
 }
 
 val_t *subtraction (val_t * lst) {
-	DOC ("Perform subtraction operation.");
+	if (lst == doc_string) {
+		return newstring("Perform subtraction operation.");
+	}
 	return arith (SUB, lst);
 }
 
 val_t *division (val_t * lst) {
-	DOC ("Perform division operation.");
+	if (lst == doc_string) {
+		return newstring("Perform division operation.");
+	}
 	return arith (DIV, lst);
 }
 
 val_t *num_eq (val_t * lst) {
-	DOC ("Compare two numbers by =.");
+	if (lst == doc_string) {
+		return newstring("Compare two numbers by =.");
+	}
 	return num_cmp (EQ, lst);
 }
 
 val_t *num_lt (val_t * lst) {
-	DOC ("Compare two numbers by <.");
+	if (lst == doc_string) {
+		return newstring("Compare two numbers by <.");
+	}
 	return num_cmp (LT, lst);
 }
 
 val_t *num_lte (val_t * lst) {
-	DOC ("Compare two numbers by <=.");
+	if (lst == doc_string) {
+		return newstring("Compare two numbers by <=.");
+	}
 	return num_cmp (LTE, lst);
 }
 
 val_t *num_gt (val_t * lst) {
-	DOC ("Compare two numbers by >.");
+	if (lst == doc_string) {
+		return newstring("Compare two numbers by >.");
+	}
 	return num_cmp (GT, lst);
 }
 
 val_t *num_gte (val_t * lst) {
-	DOC ("Compare two numbers by >=.");
+	if (lst == doc_string) {
+		return newstring("Compare two numbers by >=.");
+	}
 	return num_cmp (GTE, lst);
 }
 
 val_t *modulus (val_t * lst) {
-	DOC ("Return modulo of arguments.");
+	if (lst == doc_string) {
+		return newstring("Return modulo of arguments.");
+	}
 	// REQ (lst, 2, symbol("%"));
 	val_t *a = CAR (lst);
 	val_t *b = CAR (CDR (lst));
-	if (!isint (a))
-		return THROW (err_wrong_type, increfs(a));
-	if (!isint (b))
-		return THROW (err_wrong_type, increfs(b));
+	if (!isint (a)) return THROW (err_wrong_type, increfs(a));
+	if (!isint (b)) return THROW (err_wrong_type, increfs(b));
 	val_t *m = c_int (0);
 	mp.mpz_mod(DINT (m), DINT (a), DINT (b));
 	return m;
