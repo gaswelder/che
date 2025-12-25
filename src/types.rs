@@ -31,7 +31,7 @@ impl Type {
                         .map(|x| x.fmt())
                         .collect::<Vec<String>>()
                         .join(", ");
-                    s.push_str(&format!("func ({}) to ", argss))
+                    s.push_str(&format!("func ({}) -> ", argss))
                 }
             }
         }
