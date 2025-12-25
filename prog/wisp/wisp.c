@@ -22,7 +22,7 @@ int main (int argc, char **argv) {
 	}
 
 	/* expose argv to wisp program */
-	eval.object_t *args = eval.nil();
+	eval.val_t *args = eval.nil();
 	paths++;
 	while (paths[0] != NULL) {
 		args = eval.newcons(eval.newstring(paths[0]), args);

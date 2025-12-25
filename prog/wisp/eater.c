@@ -14,27 +14,41 @@ pub typedef {
 
 	int *readbuf, *readbufp;
 	size_t readbuflen;
+
+	uint32_t linenum;
 } t;
+
+pub void init(t *r, FILE *f, char *str) {
+	r->fid = f;
+	r->strp = str;
+	r->linenum = 1;
+	r->buflen = 1024;
+	r->buf = calloc!(r->buflen + 1, 1);
+	r->bufp = r->buf;
+	r->readbuflen = 8;
+	r->readbuf = calloc!(r->readbuflen, sizeof (int));
+	r->readbufp = r->readbuf;
+}
 
 /* Read next character in the stream. */
 pub int getc(t *r) {
 	int c;
-	if (r->readbufp > r->readbuf)
-		{
-			c = *(r->readbufp);
-			r->readbufp--;
-			return c;
-		}
-	if (r->str != NULL)
-		{
-			c = *(r->strp);
-			if (c != '\0')
-	r->strp++;
-			else
-	return EOF;
-		}
-	else
+	if (r->readbufp > r->readbuf) {
+		c = *(r->readbufp);
+		r->readbufp--;
+		return c;
+	}
+	if (r->str != NULL) {
+		c = *(r->strp);
+		if (c != '\0') r->strp++;
+		else return EOF;
+	}
+	else {
 		c = fgetc (r->fid);
+		if (c == '\n') {
+			r->linenum++;
+		}
+	}
 	return c;
 }
 
