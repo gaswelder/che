@@ -34,6 +34,10 @@ pub typedef {
   hashtab_internal_t internal;
 } hashtab_iter_t;
 
+pub hashtab_t *new() {
+	return ht_init(2048, NULL);
+}
+
 /* Initialize a new hashtable (set bookingkeeping data) and return a
  * pointer to the hashtable. A hash function may be provided. If no
  * function pointer is given (a NULL pointer), then the built in hash
