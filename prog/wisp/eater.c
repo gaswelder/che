@@ -20,6 +20,7 @@ pub typedef {
 
 pub void init(t *r, FILE *f, char *str) {
 	r->fid = f;
+	r->str = str;
 	r->strp = str;
 	r->linenum = 1;
 	r->buflen = 1024;
