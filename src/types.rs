@@ -235,6 +235,7 @@ pub fn typeof_cmp(a: &Type, b: &Type) -> Result<Type, String> {
         (Class::SINT, Class::SINT) => Ok(just("bool")),
         (Class::UINT, Class::UINT) => Ok(just("bool")),
         (Class::CHAR, Class::CHAR) => Ok(just("bool")),
+        (Class::BOOL, Class::BOOL) => Ok(just("boo")),
 
         // num == const
         (Class::FLT | Class::SINT | Class::UINT, Class::CONSTNUM) => Ok(just("bool")),
