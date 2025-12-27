@@ -173,9 +173,9 @@ pub void write_frame(mp3file *f, FILE *out)
 
 
 bool read_header(mp3file *f) {
-	bits.bits_t *s = bits.bits_new(f->file);
+	bits.reader_t *s = bits.newreader(f->file);
 	bool r = _read_header(s, &f->h);
-	bits.bits_free(s);
+	bits.closereader(s);
 
 	if (!r) {
 		return false;
@@ -196,7 +196,7 @@ bool read_header(mp3file *f) {
 	return r;
 }
 
-bool _read_header(bits.bits_t *s, header_t *h) {
+bool _read_header(bits.reader_t *s, header_t *h) {
 	// 8 bits: FF
 	if (bits.bits_getn(s, 8) != 0xFF) {
 		return false;

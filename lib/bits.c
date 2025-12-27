@@ -18,32 +18,24 @@ pub typedef {
 	FILE *f;
 	uint8_t byte;
 	int bytepos;
-} bits_t;
+} reader_t;
 
-/*
- * Returns new bitreader for file 'f'.
- */
-pub bits_t *bits_new(FILE *f) {
-	bits_t *b = calloc!(1, sizeof(bits_t));
+// Returns new bitreader for file f.
+pub reader_t *newreader(FILE *f) {
+	reader_t *b = calloc!(1, sizeof(reader_t));
 	b->f = f;
 	b->bytepos = -1;
 	return b;
 }
 
-/*
- * Frees memory used by the reader.
- */
-pub void bits_free(bits_t *b)
-{
-	free(b);
+// Frees memory used by reader r.
+pub void closereader(reader_t *r) {
+	free(r);
 }
 
-/*
- * Returns value of the next bit.
- * Returns -1 if there is no next bit.
- */
-pub int bits_get(bits_t *s)
-{
+// Returns value of the next bit.
+// Returns -1 if there is no next bit.
+pub int bits_get(reader_t *s) {
 	if(s->bytepos < 0) {
 		int c = fgetc(s->f);
 		if(c == EOF) return -1;
@@ -55,16 +47,13 @@ pub int bits_get(bits_t *s)
 	return b;
 }
 
-/*
- * Returns value of next 'n' bits.
- * Returns -1 if there is not enough bits in the stream.
- */
-pub int bits_getn(bits_t *s, int n)
-{
+// Returns value of next n bits.
+// Returns -1 if there is not enough bits in the stream.
+pub int bits_getn(reader_t *s, int n) {
 	int r = 0;
-	for(int i = 0; i < n; i++) {
+	for (int i = 0; i < n; i++) {
 		int c = bits_get(s);
-		if(c < 0) {
+		if (c < 0) {
 			return -1;
 		}
 		r *= 2;
