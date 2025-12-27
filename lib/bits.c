@@ -72,3 +72,55 @@ pub int bits_getn(bits_t *s, int n)
 	}
 	return r;
 }
+
+pub typedef {
+	FILE *f;
+	bool err;
+	uint8_t buf;
+	uint8_t pos;
+} writer_t;
+
+pub writer_t *newwriter(FILE *f) {
+	writer_t *w = calloc!(1, sizeof(writer_t));
+	w->f = f;
+	return w;
+}
+
+pub bool closewriter(writer_t *w) {
+	bool err = w->err;
+	if (w->pos > 0 && !err) {
+		if (fputc(w->buf, w->f) < 0) {
+			err = true;
+		}
+	}
+	free(w);
+	return !err;
+}
+
+int bitvals[] = {
+	1 << 7,
+	1 << 6,
+	1 << 5,
+	1 << 4,
+	1 << 3,
+	1 << 2,
+	1 << 1,
+	1 << 0,
+};
+
+pub bool writebit(writer_t *w, int bit) {
+	if (w->err) return false;
+	if (bit) {
+		w->buf |= bitvals[w->pos];
+	}
+	w->pos++;
+	if (w->pos == 8) {
+		if (fputc(w->buf, w->f) < 0) {
+			w->err = true;
+			return false;
+		}
+		w->pos = 0;
+		w->buf = 0;
+	}
+	return true;
+}
