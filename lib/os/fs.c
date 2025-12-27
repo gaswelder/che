@@ -130,40 +130,42 @@ pub char *readfile(const char *path, size_t *size) {
 	return data;
 }
 
-/*
- * Reads file 'path' and returns its contents as string.
- */
+// Reads the file at given path and returns its contents as a string.
 pub char *readfile_str(const char *path) {
-	size_t len = 0;
-	char *data = (char *) readfile(path, &len);
-	if (!data) return NULL;
+	FILE *f = fopen(path, "rb");
+	if (!f) {
+		return NULL;
+	}
 
-	char *new = realloc(data, len+1);
-	if (!new) {
+	size_t len = 0;
+	if (!fsize(f, &len)) {
+		fclose(f);
+		return NULL;
+	}
+
+	char *data = calloc!(len + 1, 1);
+	if (fread(data, 1, len, f) != len) {
+		fclose(f);
 		free(data);
 		return NULL;
 	}
-	new[len] = '\0';
-	return new;
+	fclose(f);
+	return data;
 }
 
-int fsize(FILE *f, size_t *s)
-{
-	if(fseek(f, 0, SEEK_END) != 0) {
-		return 0;
+bool fsize(FILE *f, size_t *s) {
+	if (fseek(f, 0, SEEK_END) != 0) {
+		return false;
 	}
-
 	int32_t size = ftell(f);
-	if(size < 0) {
-		return 0;
+	if (size < 0) {
+		return false;
 	}
-
-	if(fseek(f, 0, SEEK_SET) != 0) {
-		return 0;
+	if (fseek(f, 0, SEEK_SET) != 0) {
+		return false;
 	}
-
 	*s = (size_t) size;
-	return 1;
+	return true;
 }
 
 pub bool writefile(const char *path, const char *data, size_t n) {
