@@ -1,4 +1,4 @@
-#import bitreader
+#import bits
 #import table
 
 // prints bits of float64 numbers.
@@ -66,7 +66,7 @@ parsed_double_t parse_double(double x) {
 	// Unpack the bits.
 	uint8_t bits8[8] = {};
 	for (int i = 0; i < 8; i++) {
-		bitreader.getbits_lsfirst(bytes[i], bits8);
+		bits.getbits_lsfirst(bytes[i], bits8);
 		for (int j = 0; j < 8; j++) {
 			parsed.bits[8*i + j] = bits8[j];
 		}

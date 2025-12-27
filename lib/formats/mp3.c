@@ -7,7 +7,7 @@
  * http://mpgedit.org/mpgedit/mpeg_format/mpeghdr.htm
  */
 
-#import bitreader
+#import bits
 
 const int L3 = 1;
 
@@ -172,11 +172,10 @@ pub void write_frame(mp3file *f, FILE *out)
 }
 
 
-bool read_header(mp3file *f)
-{
-	bitreader.bits_t *s = bitreader.bits_new(f->file);
+bool read_header(mp3file *f) {
+	bits.bits_t *s = bits.bits_new(f->file);
 	bool r = _read_header(s, &f->h);
-	bitreader.bits_free(s);
+	bits.bits_free(s);
 
 	if (!r) {
 		return false;
@@ -197,41 +196,35 @@ bool read_header(mp3file *f)
 	return r;
 }
 
-bool _read_header(bitreader.bits_t *s, header_t *h)
-{
+bool _read_header(bits.bits_t *s, header_t *h) {
 	// 8 bits: FF
-	if(bitreader.bits_getn(s, 8) != 0xFF) {
+	if (bits.bits_getn(s, 8) != 0xFF) {
 		return false;
 	}
-
 	// 4 bits: F
-	if(bitreader.bits_getn(s, 4) != 0xF) {
+	if (bits.bits_getn(s, 4) != 0xF) {
 		return false;
 	}
-
-	// 1 bit: version
-	// '1' for MPEG1
-	if(bitreader.bits_getn(s, 1) != 1) {
+	// 1 bit: version, '1' for MPEG1
+	if (bits.bits_getn(s, 1) != 1) {
 		return false;
 	}
-
 	// 2 bits: layer
-	if(bitreader.bits_getn(s, 2) != L3) {
+	if (bits.bits_getn(s, 2) != L3) {
 		return false;
 	}
-
 	// 1 bit: error protection
-	if(bitreader.bits_getn(s, 1) == 0) {
+	if (bits.bits_getn(s, 1) == 0) {
 		// 16-bit CRC will be somewhere
 		panic("+CRC");
 	}
 
 	// 4 bits: bitrate
-	int index = bitreader.bits_getn(s, 4);
+	int index = bits.bits_getn(s, 4);
 	h->bitrate = bitrates[index];
 
 	// 2: freq
-	index = bitreader.bits_getn(s, 2);
+	index = bits.bits_getn(s, 2);
 	if(index < 0 || (size_t)index >= nelem(frequencies)) {
 		return false;
 	}
@@ -250,22 +243,24 @@ bool _read_header(bitreader.bits_t *s, header_t *h)
 	 */
 
 	// 1: padding?
-	h->padded = (bool) bitreader.bits_getn(s, 1);
+	int tmp = bits.bits_getn(s, 1);
+	if (tmp < 0) panic("!");
+	h->padded = tmp == 1;
 
 	// 1: private
-	bitreader.bits_getn(s, 1);
+	bits.bits_getn(s, 1);
 
 	// 2: mode
-	h->mode = bitreader.bits_getn(s, 2);
+	h->mode = bits.bits_getn(s, 2);
 
 	// 2: ext
-	bitreader.bits_getn(s, 2);
+	bits.bits_getn(s, 2);
 	// 1: copyright?
-	bitreader.bits_getn(s, 1);
+	bits.bits_getn(s, 1);
 	// 1: original?
-	bitreader.bits_getn(s, 1);
+	bits.bits_getn(s, 1);
 	// 2: emphasis
-	bitreader.bits_getn(s, 2);
+	bits.bits_getn(s, 2);
 
 	return true;
 }
