@@ -113,3 +113,10 @@ pub bool writebit(writer_t *w, int bit) {
 	}
 	return true;
 }
+
+pub bool write(writer_t *w, uint8_t *bits, size_t nbits) {
+	for (size_t i = 0; i < nbits; i++) {
+		if (!writebit(w, bits[i])) return false;
+	}
+	return true;
+}
