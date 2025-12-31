@@ -6,13 +6,21 @@ pub int read1(reader.t *r, uint8_t *v) {
 }
 
 pub int read2le(reader.t *r, uint16_t *v) {
-	uint8_t buf[4];
-	int n = reader.read(r, buf, 2);
-	uint16_t x = 0;
-	x = x * 256 + buf[1];
-	x = x * 256 + buf[0];
-	*v = x;
-	return n;
+	uint8_t buf[2];
+	if (reader.read(r, buf, 2) != 2) {
+		return -1;
+	}
+	*v = buf[0] + 256 * buf[1];
+	return 2;
+}
+
+pub int read2be(reader.t *r, uint16_t *v) {
+	uint8_t buf[2];
+	if (reader.read(r, buf, 2) != 2) {
+		return -1;
+	}
+	*v = buf[0] * 256 + buf[1];
+	return 1;
 }
 
 // Reads a little-endian 24-bit value from the reader r.
