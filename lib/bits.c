@@ -51,7 +51,7 @@ pub int read1(reader_t *s) {
 
 // Returns value of next n bits.
 // Returns -1 if there is not enough bits in the stream.
-pub int bits_getn(reader_t *s, int n) {
+pub int readn(reader_t *s, int n) {
 	int r = 0;
 	for (int i = 0; i < n; i++) {
 		int c = read1(s);

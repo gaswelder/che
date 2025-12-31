@@ -195,33 +195,33 @@ bool read_header(mp3file *f) {
 
 bool _read_header(bits.reader_t *s, header_t *h) {
 	// 8 bits: FF
-	if (bits.bits_getn(s, 8) != 0xFF) {
+	if (bits.readn(s, 8) != 0xFF) {
 		return false;
 	}
 	// 4 bits: F
-	if (bits.bits_getn(s, 4) != 0xF) {
+	if (bits.readn(s, 4) != 0xF) {
 		return false;
 	}
 	// 1 bit: version, '1' for MPEG1
-	if (bits.bits_getn(s, 1) != 1) {
+	if (bits.readn(s, 1) != 1) {
 		return false;
 	}
 	// 2 bits: layer
-	if (bits.bits_getn(s, 2) != L3) {
+	if (bits.readn(s, 2) != L3) {
 		return false;
 	}
 	// 1 bit: error protection
-	if (bits.bits_getn(s, 1) == 0) {
+	if (bits.readn(s, 1) == 0) {
 		// 16-bit CRC will be somewhere
 		panic("+CRC");
 	}
 
 	// 4 bits: bitrate
-	int index = bits.bits_getn(s, 4);
+	int index = bits.readn(s, 4);
 	h->bitrate = bitrates[index];
 
 	// 2: freq
-	index = bits.bits_getn(s, 2);
+	index = bits.readn(s, 2);
 	if(index < 0 || (size_t)index >= nelem(frequencies)) {
 		return false;
 	}
@@ -239,26 +239,17 @@ bool _read_header(bits.reader_t *s, header_t *h) {
 	 * current position in some normalized time units.
 	 */
 
-	// 1: padding?
-	int tmp = bits.bits_getn(s, 1);
+	
+	int tmp = bits.readn(s, 1); // 1: padding?
 	if (tmp < 0) panic("!");
 	h->padded = tmp == 1;
-
-	// 1: private
-	bits.bits_getn(s, 1);
-
-	// 2: mode
-	h->mode = bits.bits_getn(s, 2);
-
-	// 2: ext
-	bits.bits_getn(s, 2);
-	// 1: copyright?
-	bits.bits_getn(s, 1);
-	// 1: original?
-	bits.bits_getn(s, 1);
-	// 2: emphasis
-	bits.bits_getn(s, 2);
-
+	
+	bits.readn(s, 1); // 1: private
+	h->mode = bits.readn(s, 2); // 2: mode
+	bits.readn(s, 2); // 2: ext
+	bits.readn(s, 1); // 1: copyright?
+	bits.readn(s, 1); // 1: original?
+	bits.readn(s, 2); // 2: emphasis
 	return true;
 }
 

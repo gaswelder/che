@@ -17,10 +17,10 @@ void testreader() {
 	bits.reader_t *b = bits.newreader(fr);
 	int r = 0;
 	for (int i = 0; i < 8; i++) {
-		r = r * 2 + bits.bits_getn(b, 1);
+		r = r * 2 + bits.read1(b);
 	}
 	test.truth("r == 128", r == 128);
-	test.truth("EOF", bits.bits_getn(b, 1) == EOF);
+	test.truth("EOF", bits.read1(b) == EOF);
 
 	bits.closereader(b);
 	reader.free(fr);
