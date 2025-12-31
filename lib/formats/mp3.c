@@ -8,6 +8,7 @@
  */
 
 #import bits
+#import reader
 
 const int L3 = 1;
 
@@ -173,26 +174,22 @@ pub void write_frame(mp3file *f, FILE *out)
 
 
 bool read_header(mp3file *f) {
-	bits.reader_t *s = bits.newreader(f->file);
+	reader.t *fr = reader.file(f->file);
+	bits.reader_t *s = bits.newreader(fr);
 	bool r = _read_header(s, &f->h);
 	bits.closereader(s);
-
+	reader.free(fr);
 	if (!r) {
 		return false;
 	}
 
-	/*
-	 * Calculate the length of the frame.
-	 */
+	// Calculate the length of the frame.
 	header_t *h = &f->h;
 	size_t len = 144 * (h->bitrate*1000) / h->freq;
-	if(h->padded) len++;
+	if (h->padded) len++;
 
-	/*
-	 * Remember next frame position.
-	 */
+	// Remember next frame position.
 	f->nextpos = ftell(f->file) + (int)len - 4;
-
 	return r;
 }
 

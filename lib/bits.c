@@ -1,3 +1,5 @@
+#import reader
+
 // Unpacks bits from a byte into a given array, least significant bit first.
 pub void getbits_lsfirst(uint8_t byte, uint8_t *bits) {
 	for (int i = 0; i < 8; i++) {
@@ -15,15 +17,15 @@ pub void getbits_msfirst(uint8_t byte, uint8_t *bits) {
 }
 
 pub typedef {
-	FILE *f;
+	reader.t *in;
 	uint8_t byte;
 	int bytepos;
 } reader_t;
 
-// Returns new bitreader for file f.
-pub reader_t *newreader(FILE *f) {
+// Returns new bitreader reading from r.
+pub reader_t *newreader(reader.t *r) {
 	reader_t *b = calloc!(1, sizeof(reader_t));
-	b->f = f;
+	b->in = r;
 	b->bytepos = -1;
 	return b;
 }
@@ -33,13 +35,13 @@ pub void closereader(reader_t *r) {
 	free(r);
 }
 
-// Returns value of the next bit.
+// Returns the next bit and returns 1 or 0.
 // Returns -1 if there is no next bit.
-pub int bits_get(reader_t *s) {
-	if(s->bytepos < 0) {
-		int c = fgetc(s->f);
-		if(c == EOF) return -1;
-		s->byte = (uint8_t) c;
+pub int read1(reader_t *s) {
+	if (s->bytepos < 0) {
+		if (reader.read(s->in, &s->byte, 1) < 0) {
+			return -1;
+		}
 		s->bytepos = 7;
 	}
 	int b = (s->byte >> s->bytepos) & 1;
@@ -52,7 +54,7 @@ pub int bits_get(reader_t *s) {
 pub int bits_getn(reader_t *s, int n) {
 	int r = 0;
 	for (int i = 0; i < n; i++) {
-		int c = bits_get(s);
+		int c = read1(s);
 		if (c < 0) {
 			return -1;
 		}

@@ -1,4 +1,5 @@
 #import bits
+#import reader
 
 pub typedef {
 	bool ischar; // true if this node is a value node, false if a tree.
@@ -147,7 +148,9 @@ pub typedef {
 // Returns a new reader to decompress from file f.
 pub reader_t *newreader(tree_t *tree, FILE *f) {
 	reader_t *r = calloc!(1, sizeof(reader_t));
-	r->br = bits.newreader(f);
+	reader.t *fr = reader.file(f);
+	// reader.free(fr);
+	r->br = bits.newreader(fr);
 	r->root = tree->root;
 	r->curr = tree->root;
 	return r;
@@ -162,7 +165,7 @@ pub void closereader(reader_t *r) {
 // Reads next character from reader r.
 pub int read(reader_t *r) {
 	while (true) {
-		int bit = bits.bits_get(r->br);
+		int bit = bits.read1(r->br);
 		if (bit == EOF) {
 			if (r->curr != r->root) {
 				panic("unexpected end of input");
