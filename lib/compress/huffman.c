@@ -145,12 +145,10 @@ pub typedef {
 	node_t *curr;
 } reader_t;
 
-// Returns a new reader to decompress from file f.
-pub reader_t *newreader(tree_t *tree, FILE *f) {
+// Returns a new reader to read from in.
+pub reader_t *newreader(tree_t *tree, reader.t *in) {
 	reader_t *r = calloc!(1, sizeof(reader_t));
-	reader.t *fr = reader.file(f);
-	// reader.free(fr);
-	r->br = bits.newreader(fr);
+	r->br = bits.newreader(in);
 	r->root = tree->root;
 	r->curr = tree->root;
 	return r;

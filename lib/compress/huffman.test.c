@@ -1,38 +1,32 @@
-#import compress/huffman
-#import test
 #import bits
+#import compress/huffman
+#import reader
+#import test
 
 pub int main() {
+	testreadwrite();
+	testcanonical();
+	return test.fails();
+}
+
+void testreadwrite() {
 	const char *s = "The quick brown fox jumps over the lazy dog.";
 	huffman.tree_t *t = huffman.buildtree(s);
 
 	// Write the message
 	FILE *f = tmpfile();
-	huffman.writer_t *w = huffman.newwriter(t, f);
-	const char *p;
-	for (p = s; *p != '\0'; p++) {
-		uint8_t x = *p;
-		huffman.write(w, x);
-	}
-	huffman.closewriter(w);
+	writemsg(f, t, s);
 
 	// Read the message back
-	fseek(f, 0, SEEK_SET);
-	huffman.reader_t *d = huffman.newreader(t, f);
+	rewind(f);
 	size_t len = strlen(s);
 	char *q = calloc!(len+1, 1);
-	for (size_t i = 0; i < len; i++) {
-		q[i] = huffman.read(d);
-	}
+	readmsg(f, t, q, len);
 	test.streq(s, q);
-	huffman.closereader(d);
+	free(q);
 	fclose(f);
 
 	huffman.freetree(t);
-
-	testcanonical();
-
-	return test.fails();
 }
 
 void testcanonical() {
@@ -54,14 +48,30 @@ void testcanonical() {
 	huffman.tree_t *t = huffman.treefrom(lencounts, nelem(lencounts), (uint8_t *) characters);
 
 	// Read the message back
-	char out[13] = {};
 	rewind(f);
-	huffman.reader_t *r = huffman.newreader(t, f);
-	for (int i = 0; i < 12; i++) {
-		out[i] = huffman.read(r);
-	}
-	huffman.closereader(r);
+	char out[13] = {};
+	readmsg(f, t, out, 12);
 	fclose(f);
 
 	test.streq(msg, out);
+}
+
+void writemsg(FILE *f, huffman.tree_t *t, const char *s) {
+	huffman.writer_t *w = huffman.newwriter(t, f);
+	const char *p;
+	for (p = s; *p != '\0'; p++) {
+		uint8_t x = *p;
+		huffman.write(w, x);
+	}
+	huffman.closewriter(w);
+}
+
+void readmsg(FILE *f, huffman.tree_t *t, char *q, size_t len) {
+	reader.t *fr = reader.file(f);
+	huffman.reader_t *d = huffman.newreader(t, fr);
+	for (size_t i = 0; i < len; i++) {
+		q[i] = huffman.read(d);
+	}
+	huffman.closereader(d);
+	reader.free(fr);
 }
