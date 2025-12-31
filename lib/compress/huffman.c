@@ -32,6 +32,7 @@ pub void freetree(tree_t *t) {
 	free(t);
 }
 
+// Builds a canonical tree from the given length counts and values.
 pub tree_t *treefrom(uint8_t *lencounts, size_t lencountslen, uint8_t *vals) {
 	tree_t *t = newtree();
 	t->root = newnode(t);
@@ -244,19 +245,22 @@ typedef {
 
 pub void printtree(tree_t *t) {
 	if (!t) panic("t is null");
-	printf("root: ");
 	printnode(t->root, 0);
 }
 
 void printnode(node_t *n, int indent) {
 	if (!n) panic("n is null");
 	for (int i = 0; i < indent; i++) {
-		putchar(' ');
+		printf(" . ");
 	}
 	if (n->ischar) {
-		printf("charnode(%c)\n", n->val);
+		if (isprint(n->val)) {
+			printf("val('%c')\n", n->val);
+		} else {
+			printf("val(0x%x)\n", n->val);
+		}
 	} else {
-		printf("subtree:\n");
+		printf("tree:\n");
 		if (n->left) printnode(n->left, indent+1);
 		if (n->right) printnode(n->right, indent+1);
 	}
@@ -272,26 +276,49 @@ pub void printcodes(tree_t *t) {
 	print_t out[100] = {};
 	print_t *x = outputnode(t->root, "", out);
 	size_t n = x - (print_t *)out;
+	if (n > 100) {
+		panic("too many print nodes");
+	}
 	qsort(out, n, sizeof(print_t), cmp218);
 	for (size_t i = 0; i < n; i++) {
 		print_t *a = &out[i];
-		printf("%d (%c)\t%s\n", a->val, a->val, a->code);
+		int val = a->val;
+		if (isprint(val)) {
+			printf("'%c'", val);
+		} else {
+			printf("0x%x", val);
+		}
+		printf("\t%s\n", a->code);
+
 	}
 }
 
 print_t *outputnode(node_t *n, const char *prefix, print_t *out) {
+	if (!n->left && !n->right) {
+		strcpy(out->code, prefix);
+		out->val = n->val;
+		out++;
+		return out;
+	}
 	if (n->left) {
 		char buf[20] = {};
 		size_t len = strlen(prefix);
+		if (len >= 20) {
+			panic("prefix too long");
+		}
 		strcpy(buf, prefix);
 		buf[len] = '0';
 		out = outputnode(n->left, buf, out);
+	}
+	if (n->right) {
+		char buf[20] = {};
+		size_t len = strlen(prefix);
+		if (len >= 20) {
+			panic("prefix too long");
+		}
+		strcpy(buf, prefix);
 		buf[len] = '1';
 		out = outputnode(n->right, buf, out);
-		return out;
 	}
-	strcpy(out->code, prefix);
-	out->val = n->val;
-	out++;
 	return out;
 }
