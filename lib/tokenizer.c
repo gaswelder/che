@@ -55,7 +55,7 @@ pub int peek(t *b) {
 
 // Returns true if there is at least one more character to be read.
 pub bool more(t *b) {
-	return b->cachesize > 0 || reader.more(b->reader);
+	return b->cachesize > 0 || peek(b) != EOF;
 }
 
 // Puts up to len following characters into buf without removing them.

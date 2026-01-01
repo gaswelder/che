@@ -1,49 +1,21 @@
 #include <unistd.h>
 
 pub typedef void freefunc_t(void *);
-pub typedef bool morefunc_t(void *);
 pub typedef int readfunc_t(void *, uint8_t *, size_t);
 
 pub typedef {
 	void *data;
 	size_t pos;
 	freefunc_t *free;
-	morefunc_t *more;
 	readfunc_t *read;
 } t;
 
-typedef {
-	const uint8_t *s;
-	size_t pos;
-	size_t len;
-} membuf_t;
-
-pub t *static_buffer(const uint8_t *data, size_t n) {
-	t *r = calloc!(1, sizeof(t));
-	membuf_t *s = calloc!(1, sizeof(membuf_t));
-	r->data = s;
-	r->free = OS.free;
-	r->more = mem_more;
-	r->read = mem_read;
-	s->s = data;
-	s->len = n;
+pub t *new(void *data, readfunc_t *read, freefunc_t *free) {
+	t *r = calloc(1, sizeof(t));
+	r->data = data;
+	r->free = free;
+	r->read = read;
 	return r;
-}
-
-pub t *file(FILE *f) {
-	t *r = calloc!(1, sizeof(t));
-	r->data = f;
-	r->more = file_more;
-	r->read = file_read;
-	return r;
-}
-
-pub t *stdin() {
-	return file(OS.stdin);
-}
-
-pub t *string(const char *s) {
-	return static_buffer((uint8_t *)s, strlen(s));
 }
 
 // Reads up to n bytes from r to buf.
@@ -55,23 +27,43 @@ pub int read(t *reader, uint8_t *buf, size_t n) {
 	return r;
 }
 
-// Returns true if the reader hasn't been closed.
-// It does not guarantee that a read will return a byte.
-pub bool more(t *reader) {
-	if (!reader->more) return true;
-	return reader->more(reader->data);
-}
-
 // Frees the reader.
 pub void free(t *reader) {
 	if (reader->free) reader->free(reader->data);
 	OS.free(reader);
 }
 
-bool mem_more(void *ctx) {
-	membuf_t *data = ctx;
-	return data->pos < data->len;
+//
+// File
+//
+
+int file_read(void *ctx, uint8_t *buf, size_t n) {
+	FILE *f = ctx;
+	size_t r = fread(buf, 1, n, f);
+	if (r == 0) {
+		if (feof(f) || ferror(f)) return EOF;
+	}
+	return (int) r;
 }
+
+// Returns a reader for file f.
+pub t *file(FILE *f) {
+	return new(f, file_read, NULL);
+}
+
+pub t *stdin() {
+	return file(OS.stdin);
+}
+
+//
+// Memory
+//
+
+typedef {
+	const uint8_t *s;
+	size_t pos;
+	size_t len;
+} membuf_t;
 
 int mem_read(void *ctx, uint8_t *buf, size_t n) {
 	membuf_t *s = ctx;
@@ -88,44 +80,35 @@ int mem_read(void *ctx, uint8_t *buf, size_t n) {
 	return r;
 }
 
-int file_read(void *ctx, uint8_t *buf, size_t n) {
-	FILE *f = ctx;
-	size_t r = fread(buf, 1, n, f);
-	if (r == 0) {
-		if (feof(f) || ferror(f)) return EOF;
-	}
-	return (int) r;
+// Returns a reader for a bytes buffer buf of length n.
+pub t *static_buffer(const uint8_t *buf, size_t n) {
+	membuf_t *s = calloc!(1, sizeof(membuf_t));
+	s->s = buf;
+	s->len = n;
+	return new(s, mem_read, OS.free);
 }
 
-bool file_more(void *ctx) {
-	FILE *f = ctx;
-	return !feof(f) && !ferror(f);
+// Return a reader for string s.
+pub t *string(const char *s) {
+	return static_buffer((uint8_t *)s, strlen(s));
 }
+
+//
+// File descriptor
+//
 
 typedef {
 	int fd;
-	bool more;
 } fd_t;
-
-pub t *fd(int f) {
-	t *r = calloc!(1, sizeof(t));
-	fd_t *state = calloc!(1, sizeof(fd_t));
-	state->fd = f;
-	r->data = state;
-	r->free = OS.free;
-	r->more = fd_more;
-	r->read = fd_read;
-	return r;
-}
-
-bool fd_more(void *ctx) {
-	fd_t *state = ctx;
-	return state->more;
-}
 
 int fd_read(void *ctx, uint8_t *buf, size_t n) {
 	fd_t *state = ctx;
-	int r = OS.read(state->fd, buf, n);
-	if (r <= 0) state->more = false;
-	return r;
+	return OS.read(state->fd, buf, n);
+}
+
+// Returns a reader for file descriptor f.
+pub t *fd(int f) {
+	fd_t *state = calloc!(1, sizeof(fd_t));
+	state->fd = f;
+	return new(state, fd_read, OS.free);
 }
