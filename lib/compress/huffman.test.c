@@ -68,10 +68,12 @@ void writemsg(FILE *f, huffman.tree_t *t, const char *s) {
 
 void readmsg(FILE *f, huffman.tree_t *t, char *q, size_t len) {
 	reader.t *fr = reader.file(f);
-	huffman.reader_t *d = huffman.newreader(t, fr);
+	bits.reader_t *br = bits.newreader(fr);
+	huffman.reader_t *d = huffman.newreader(t, br);
 	for (size_t i = 0; i < len; i++) {
 		q[i] = huffman.read(d);
 	}
 	huffman.closereader(d);
+	bits.closereader(br);
 	reader.free(fr);
 }

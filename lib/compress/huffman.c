@@ -1,5 +1,4 @@
 #import bits
-#import reader
 
 pub typedef {
 	bool ischar; // true if this node is a value node, false if a tree.
@@ -145,10 +144,10 @@ pub typedef {
 	node_t *curr;
 } reader_t;
 
-// Returns a new reader to read from in.
-pub reader_t *newreader(tree_t *tree, reader.t *in) {
+// Returns a new reader to read from br.
+pub reader_t *newreader(tree_t *tree, bits.reader_t *br) {
 	reader_t *r = calloc!(1, sizeof(reader_t));
-	r->br = bits.newreader(in);
+	r->br = br;
 	r->root = tree->root;
 	r->curr = tree->root;
 	return r;
@@ -156,7 +155,6 @@ pub reader_t *newreader(tree_t *tree, reader.t *in) {
 
 // Closes and frees reader r.
 pub void closereader(reader_t *r) {
-	bits.closereader(r->br);
 	free(r);
 }
 
