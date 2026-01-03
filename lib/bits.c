@@ -1,5 +1,16 @@
 #import reader
 
+int bitvals[] = {
+	1 << 7,
+	1 << 6,
+	1 << 5,
+	1 << 4,
+	1 << 3,
+	1 << 2,
+	1 << 1,
+	1 << 0,
+};
+
 // Unpacks bits from a byte into a given array, least significant bit first.
 pub void getbits_lsfirst(uint8_t byte, uint8_t *bits) {
 	for (int i = 0; i < 8; i++) {
@@ -18,15 +29,14 @@ pub void getbits_msfirst(uint8_t byte, uint8_t *bits) {
 
 pub typedef {
 	reader.t *in;
-	uint8_t byte;
-	int bytepos;
+	uint8_t byte; // currently loaded byte
+	uint8_t rem; // how many bits remain of the byte
 } reader_t;
 
 // Returns new bitreader reading from r.
 pub reader_t *newreader(reader.t *r) {
 	reader_t *b = calloc!(1, sizeof(reader_t));
 	b->in = r;
-	b->bytepos = -1;
 	return b;
 }
 
@@ -38,14 +48,15 @@ pub void closereader(reader_t *r) {
 // Returns the next bit and returns 1 or 0.
 // Returns -1 if there is no next bit.
 pub int read1(reader_t *s) {
-	if (s->bytepos < 0) {
+	if (s->rem == 0) {
 		if (reader.read(s->in, &s->byte, 1) < 0) {
 			return -1;
 		}
-		s->bytepos = 7;
+		s->rem = 8;
 	}
-	int b = (s->byte >> s->bytepos) & 1;
-	s->bytepos--;
+	s->rem--;
+	int b = s->byte & bitvals[7-s->rem];
+	if (b > 0) b = 1;
 	return b;
 }
 
@@ -87,17 +98,6 @@ pub bool closewriter(writer_t *w) {
 	free(w);
 	return !err;
 }
-
-int bitvals[] = {
-	1 << 7,
-	1 << 6,
-	1 << 5,
-	1 << 4,
-	1 << 3,
-	1 << 2,
-	1 << 1,
-	1 << 0,
-};
 
 pub bool writebit(writer_t *w, int bit) {
 	if (w->err) return false;
