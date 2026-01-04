@@ -2,6 +2,9 @@
 #import formats/png
 #import image
 #import os/fs
+#import compress/huffman
+#import reader
+#import bits
 
 int main() {
     if (true) {
@@ -89,34 +92,6 @@ void append(slice_t *s, uint8_t b) {
 	s->data[s->len++] = b;
 }
 
-// ---------------------------------------
-
-typedef {
-	uint8_t *bytes;
-	int pos;
-} stream_t;
-
-stream_t *Stream(uint8_t *bytes) {
-	stream_t *self = calloc!(1, sizeof(stream_t));
-	self->bytes = bytes;
-	return self;
-}
-
-int GetBit(stream_t *self) {
-	uint8_t b = self->bytes[self->pos >> 3];
-	int s = 7-(self->pos & 0x7);
-	self->pos+=1;
-	return (b >> s) & 1;
-}
-
-int GetBitN(stream_t *self, int l) {
-	int val = 0;
-	for (int i = 0; i < l; i++) {
-		val = val*2 + GetBit(self);
-	}
-	return val;
-}
-
 // -----------------------------
 
 typedef {
@@ -184,11 +159,11 @@ void GetHuffmanBits(HuffmanTable_t *self, uint8_t *lengths, slice_t *elements) {
 	}
 }
 
-int Find(HuffmanTable_t *self, stream_t *st) {
+int Find(HuffmanTable_t *self, bits.reader_t *br) {
 	hnode_t *r = self->root;
 	if (!r) panic("!");
 	while (r->isnode) {
-		int b = GetBit(st);
+		int b = bits.read1(br);
 		if (b == 0) {
 			r = r->left;
 		} else {
@@ -198,9 +173,9 @@ int Find(HuffmanTable_t *self, stream_t *st) {
 	return r->val;
 }
 
-int GetCode(HuffmanTable_t *self, stream_t *st) {
+int GetCode(HuffmanTable_t *self, bits.reader_t *br) {
 	while (true) {
-		int res = Find(self, st);
+		int res = Find(self, br);
 		if (res == 0) {
 			return 0;
 		}
@@ -316,6 +291,7 @@ typedef {
 	int width, height;
 	image.rgba_t *image;
 	HuffmanTable_t *tables[100];
+	huffman.tree_t *htables[100];
 	uint8_t *quant[100];
 	int quantMapping[100];
 } jpeg_t;
@@ -333,17 +309,19 @@ idct_t *IDCT() {
 	return self;
 }
 
-idct_t *BuildMatrix(jpeg_t *self, stream_t *st, int idx, uint8_t *quant, int *_olddccoeff) {
+idct_t *BuildMatrix(jpeg_t *self, bits.reader_t *br, int idx, uint8_t *quant, int *_olddccoeff) {
 	int olddccoeff = *_olddccoeff;
 	idct_t *i = IDCT();
-	int code = GetCode(self->tables[0+idx], st);
-	int bits = GetBitN(st, code);
-	int dccoeff = DecodeNumber(code, bits)  + olddccoeff;
+	int code = GetCode(self->tables[0+idx], br);
+	// huffman.tree_t *t = self->htables[0+idx];
+	// printf("code = %d\n", code);
+	int bval = bits.readn(br, code);
+	int dccoeff = DecodeNumber(code, bval)  + olddccoeff;
 
 	AddZigZag(i, 0,(dccoeff) * quant[0]);
 	int l = 1;
 	while (l<64) {
-		code = GetCode(self->tables[16+idx], st);
+		code = GetCode(self->tables[16+idx], br);
 		if (code == 0) {
 			break;
 		}
@@ -351,9 +329,9 @@ idct_t *BuildMatrix(jpeg_t *self, stream_t *st, int idx, uint8_t *quant, int *_o
 			l+= (code>>4);
 			code = code & 0xf;
 		}
-		bits = GetBitN(st, code );
+		bval = bits.readn(br, code);
 		if (l<64) {
-			int coeff = DecodeNumber(code, bits);
+			int coeff = DecodeNumber(code, bval);
 			AddZigZag(i, l,coeff * quant[l]);
 			l+=1;
 		}
@@ -376,7 +354,7 @@ int StartOfScan(jpeg_t *self, slice_t *data0, int hdrlen) {
 	slice_t *data = newslice();
 	int lenchunk = RemoveFF00(slice(data0, hdrlen, EOF), data);
 
-	stream_t *st = Stream(data->data);
+	bits.reader_t *br = bits.newreader(reader.static_buffer(data->data, data->len));
 
 	int oldlumdccoeff = 0;
 	int oldCbdccoeff = 0;
@@ -384,9 +362,9 @@ int StartOfScan(jpeg_t *self, slice_t *data0, int hdrlen) {
 
 	for (int y = 0; y < self->height /8; y++) {
 		for (int x = 0; x < self->width /8; x++) {
-			idct_t *matL = BuildMatrix(self, st,0, self->quant[self->quantMapping[0]], &oldlumdccoeff);
-			idct_t *matCr = BuildMatrix(self, st,1, self->quant[self->quantMapping[1]], &oldCrdccoeff);
-			idct_t *matCb = BuildMatrix(self, st,1, self->quant[self->quantMapping[2]], &oldCbdccoeff);
+			idct_t *matL = BuildMatrix(self, br, 0, self->quant[self->quantMapping[0]], &oldlumdccoeff);
+			idct_t *matCr = BuildMatrix(self, br, 1, self->quant[self->quantMapping[1]], &oldCrdccoeff);
+			idct_t *matCb = BuildMatrix(self, br, 1, self->quant[self->quantMapping[2]], &oldCbdccoeff);
 
 			// store it as RGB
 			for (int yy = 0; yy < 8; yy++) {
@@ -464,6 +442,7 @@ void DefineHuffmanTables(jpeg_t *self, slice_t *data) {
 		HuffmanTable_t *hf = HuffmanTable();
 		GetHuffmanBits(hf, lengths, elements);
 		self->tables[hdr] = hf;
+		self->htables[hdr] = huffman.treefrom(lengths, 16, elements->data);
 		data = slice(data, off, EOF);
 	}
 }
