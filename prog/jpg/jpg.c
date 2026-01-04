@@ -13,17 +13,47 @@ int main() {
 }
 
 void testrun() {
-	size_t len;
-	uint8_t *raw = (uint8_t *) fs.readfile("0tmp.jpg", &len);
-	slice_t *s = newslice();
-	s->data = raw;
-	s->len = (int) len;
-	jpeg_t *j = jpeg();
-	decode(j, s);
-	image.image_t *img = image.new(j->width, j->height);
-	for (int x = 0; x < j->width; x++) {
-		for (int y = 0; y < j->height; y++) {
-			image.rgba_t c = j->image[y*j->width + x];
+	size_t fsize;
+	uint8_t *raw = (uint8_t *) fs.readfile("0tmp.jpg", &fsize);
+
+	slice_t *data = newslice();
+	data->data = raw;
+	data->len = (int) fsize;
+	jpeg_t *self = jpeg();
+	while (true) {
+		uint16_t hdr = word(data->data[0], data->data[1]);
+		printf("hdr = %x\n", hdr);
+		uint16_t lenchunk = 0;
+		if (hdr == 0xffd8) {
+			lenchunk = 2;
+		} else if (hdr == 0xffd9) {
+			break;
+		} else {
+			lenchunk = word(data->data[2], data->data[3]);
+			lenchunk+=2;
+			printf("lenchunnk = %d\n", lenchunk);
+			slice_t *chunk = slice(data, 4, lenchunk);
+			if (hdr == 0xffdb) {
+				DefineQuantizationTables(self, chunk->data, chunk->len);
+			}
+			else if (hdr == 0xffc0) {
+				BaselineDCT(self, chunk);
+			}
+			else if (hdr == 0xffc4) {
+				DefineHuffmanTables(self, chunk);
+			}
+			else if (hdr == 0xffda) {
+				lenchunk = StartOfScan(self, data, lenchunk);
+			}
+		}
+		data = slice(data, lenchunk, EOF);
+		if (data->len == 0) break;
+	}
+
+	image.image_t *img = image.new(self->width, self->height);
+	for (int x = 0; x < self->width; x++) {
+		for (int y = 0; y < self->height; y++) {
+			image.rgba_t c = self->image[y*self->width + x];
 			printf("%d %d %d\n", c.red, c.green, c.blue);
 			image.set(img, x, y, c);
 		}
@@ -38,10 +68,6 @@ typedef {
 	int len;
 } slice_t;
 
-int len(slice_t *s) {
-	return s->len;
-}
-
 slice_t *newslice() {
 	slice_t *s = calloc!(1, sizeof(slice_t));
 	s->data = calloc!(100000, 1);
@@ -51,7 +77,7 @@ slice_t *newslice() {
 slice_t *slice(slice_t *s, int start, int end) {
 	slice_t *r = newslice();
 	if (end == EOF) {
-		end = len(s);
+		end = s->len;
 	}
 	for (int i = start; i < end; i++) {
 		append(r, s->data[i]);
@@ -358,7 +384,6 @@ int StartOfScan(jpeg_t *self, slice_t *data0, int hdrlen) {
 
 	for (int y = 0; y < self->height /8; y++) {
 		for (int x = 0; x < self->width /8; x++) {
-			// decode 8x8 block
 			idct_t *matL = BuildMatrix(self, st,0, self->quant[self->quantMapping[0]], &oldlumdccoeff);
 			idct_t *matCr = BuildMatrix(self, st,1, self->quant[self->quantMapping[1]], &oldCrdccoeff);
 			idct_t *matCb = BuildMatrix(self, st,1, self->quant[self->quantMapping[2]], &oldCbdccoeff);
@@ -380,11 +405,15 @@ int StartOfScan(jpeg_t *self, slice_t *data0, int hdrlen) {
 	return lenchunk + hdrlen;
 }
 
-void DefineQuantizationTables(jpeg_t *self, slice_t *data) {
-	while (len(data)>0) {
-		uint8_t hdr = data->data[0];
-		self->quant[hdr & 0xf] = GetArray(data, 1, 64);
-		data = slice(data, 65, EOF);
+void DefineQuantizationTables(jpeg_t *self, uint8_t *data, size_t len) {
+	size_t off = 0;
+	while (off < len) {
+		uint8_t hdr = data[off++];
+		uint8_t *qt = calloc!(64, 1);
+		for (int i = 0; i < 64; i++) {
+			qt[i] = data[off++];
+		}
+		self->quant[hdr & 0xf] = qt;
 	}
 }
 
@@ -408,7 +437,7 @@ void BaselineDCT(jpeg_t *self, slice_t *data) {
 }
 
 void DefineHuffmanTables(jpeg_t *self, slice_t *data) {
-	while (len(data)>0) {
+	while (data->len > 0) {
 		int off = 0;
 		uint8_t hdr = data->data[off];
 		off += 1;
@@ -435,40 +464,6 @@ void scat(slice_t *to, uint8_t *what, int len) {
 		append(to, what[i]);
 	}
 }
-
-void decode(jpeg_t *self, slice_t *data) {
-	while (true) {
-		uint16_t hdr = word(data->data[0], data->data[1]);
-		printf("hdr = %x\n", hdr);
-		uint16_t lenchunk = 0;
-		if (hdr == 0xffd8) {
-			lenchunk = 2;
-		} else if (hdr == 0xffd9) {
-			break;
-		} else {
-			lenchunk = word(data->data[2], data->data[3]);
-			lenchunk+=2;
-			printf("lenchunnk = %d\n", lenchunk);
-			slice_t *chunk = slice(data, 4, lenchunk);
-			if (hdr == 0xffdb) {
-				DefineQuantizationTables(self, chunk);
-			}
-			else if (hdr == 0xffc0) {
-				BaselineDCT(self, chunk);
-			}
-			else if (hdr == 0xffc4) {
-				DefineHuffmanTables(self, chunk);
-			}
-			else if (hdr == 0xffda) {
-				lenchunk = StartOfScan(self, data, lenchunk);
-			}
-		}
-		data = slice(data, lenchunk, EOF);
-		if (len(data)==0) break;
-	}
-}
-
-
 
 uint8_t *GetArray(slice_t *data0, int off, length) {
 	uint8_t *r = calloc!(length, 1);
