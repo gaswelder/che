@@ -5,6 +5,7 @@
 #import compress/huffman
 #import reader
 #import bits
+#import enc/endian
 
 int main() {
     if (true) {
@@ -40,10 +41,14 @@ void testrun() {
 				DefineQuantizationTables(self, chunk->data, chunk->len);
 			}
 			else if (hdr == 0xffc0) {
-				BaselineDCT(self, chunk);
+				reader.t *r = reader.static_buffer(chunk->data, chunk->len);
+				read_baseline_dct(self, r);
+				reader.free(r);
 			}
 			else if (hdr == 0xffc4) {
-				DefineHuffmanTables(self, chunk);
+				reader.t *r = sreader(chunk);
+				read_define_huffman_table(self, r);
+				reader.free(r);
 			}
 			else if (hdr == 0xffda) {
 				lenchunk = StartOfScan(self, data, lenchunk);
@@ -307,52 +312,62 @@ void DefineQuantizationTables(jpeg_t *self, uint8_t *data, size_t len) {
 	}
 }
 
-void BaselineDCT(jpeg_t *self, slice_t *data) {
-	uint8_t hdr = data->data[0];
+void read_baseline_dct(jpeg_t *self, reader.t *r) {
+	uint8_t hdr;
+	uint16_t h;
+	uint16_t w;
+	uint8_t components;
+
+	reader.read(r, &hdr, 1);
+	endian.read2be(r, &h);
+	endian.read2be(r, &w);
+	reader.read(r, &components, 1);
+
 	printf("hdr=%u\n", hdr);
-	self->height = word(data->data[1], data->data[2]);
-	self->width = word(data->data[3], data->data[4]);
-	uint8_t components = data->data[5];
+	self->height = h;
+	self->width = w;
 	printf("size %dx%d, %u components\n", self->width,  self->height, components);
 	self->image = calloc!(1000000, 4);
 
 	for (uint8_t i = 0; i < components; i++) {
-		int pos = 6+i*3;
-		uint8_t id = data->data[pos++];
-		uint8_t samp = data->data[pos++];
-		uint8_t QtbId = data->data[pos++];
+		uint8_t id;
+		uint8_t samp;
+		uint8_t QtbId;
+		reader.read(r, &id, 1);
+		reader.read(r, &samp, 1);
+		reader.read(r, &QtbId, 1);
 		printf("id=%u samp=%u QtbId=%u\n", id, samp, QtbId);
 		self->quantMapping[i] = QtbId;
 	}
 }
 
-void DefineHuffmanTables(jpeg_t *self, slice_t *data) {
+reader.t *sreader(slice_t *s) {
+	return reader.static_buffer(s->data, s->len);
+}
+
+void read_define_huffman_table(jpeg_t *self, reader.t *r) {
 	printf("huffman\n");
-	while (data->len > 0) {
-		int off = 0;
-		uint8_t hdr = data->data[off++];
+	uint8_t hdr;
+	uint8_t lengths[16] = {};
 
-		uint8_t *lengths = calloc!(16, 1);
-		for (int i = 0; i < 16; i++) {
-			lengths[i] = data->data[off++];
+	reader.read(r, &hdr, 1);
+	reader.read(r, lengths, 16);
+
+	size_t sum = 0;
+	for (int i = 0; i < 16; i++) sum += lengths[i];
+
+	uint8_t *elements = calloc!(sum, 1);
+	int epos = 0;
+	for (int a = 0; a < 16; a++) {
+		uint8_t len = lengths[a];
+		for (uint8_t i = 0; i < len; i++) {
+			uint8_t x;
+			reader.read(r, &x, 1);
+			elements[epos++] = x;
 		}
-
-		slice_t *elements = newslice();
-		for (int a = 0; a < 16; a++) {
-			uint8_t i = lengths[a];
-
-			uint8_t *arr = calloc!(i, 1);
-			for (uint8_t qq = 0; qq < i; qq++) {
-				arr[qq] = data->data[off + (int) qq];
-			}
-			for (uint8_t qq = 0; qq < i; qq++) {
-				append(elements, arr[qq]);
-			}
-			off += (int) i;
-		}
-		self->htables[hdr] = huffman.treefrom(lengths, 16, elements->data);
-		data = slice(data, off, EOF);
 	}
+	self->htables[hdr] = huffman.treefrom(lengths, 16, elements);
+	free(elements);
 }
 
 
