@@ -54,7 +54,7 @@ void testrun() {
 	for (int x = 0; x < self->width; x++) {
 		for (int y = 0; y < self->height; y++) {
 			image.rgba_t c = self->image[y*self->width + x];
-			printf("%d %d %d\n", c.red, c.green, c.blue);
+			// printf("%d %d %d\n", c.red, c.green, c.blue);
 			image.set(img, x, y, c);
 		}
 	}
@@ -437,19 +437,28 @@ void BaselineDCT(jpeg_t *self, slice_t *data) {
 }
 
 void DefineHuffmanTables(jpeg_t *self, slice_t *data) {
+	printf("huffman\n");
 	while (data->len > 0) {
 		int off = 0;
-		uint8_t hdr = data->data[off];
-		off += 1;
+		uint8_t hdr = data->data[off++];
 
-		uint8_t *lengths = GetArray(data, off, 16);
-		off += 16;
+		uint8_t *lengths = calloc!(16, 1);
+		for (int i = 0; i < 16; i++) {
+			lengths[i] = data->data[off++];
+		}
 
 		slice_t *elements = newslice();
 		for (int a = 0; a < 16; a++) {
 			uint8_t i = lengths[a];
-			scat(elements, GetArray(data, off, i), i);
-			off = off + (int) i;
+
+			uint8_t *arr = calloc!(i, 1);
+			for (uint8_t qq = 0; qq < i; qq++) {
+				arr[qq] = data->data[off + (int) qq];
+			}
+			for (uint8_t qq = 0; qq < i; qq++) {
+				append(elements, arr[qq]);
+			}
+			off += (int) i;
 		}
 
 		HuffmanTable_t *hf = HuffmanTable();
@@ -458,21 +467,6 @@ void DefineHuffmanTables(jpeg_t *self, slice_t *data) {
 		data = slice(data, off, EOF);
 	}
 }
-
-void scat(slice_t *to, uint8_t *what, int len) {
-	for (int i = 0; i < len; i++) {
-		append(to, what[i]);
-	}
-}
-
-uint8_t *GetArray(slice_t *data0, int off, length) {
-	uint8_t *r = calloc!(length, 1);
-	for (int i = 0; i < length; i++) {
-		r[i] = data0->data[off + i];
-	}
-	return r;
-}
-
 
 
 // -------------------------------
