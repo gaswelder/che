@@ -92,99 +92,6 @@ void append(slice_t *s, uint8_t b) {
 	s->data[s->len++] = b;
 }
 
-// -----------------------------
-
-typedef {
-	bool isnode;
-	int val;
-	hnode_t *left, *right;
-} hnode_t;
-
-hnode_t *newvalnode(int val) {
-	hnode_t *n = calloc!(1, sizeof(hnode_t));
-	n->val = val;
-	return n;
-}
-
-hnode_t *newnode() {
-	hnode_t *n = calloc!(1, sizeof(hnode_t));
-	n->isnode = true;
-	return n;
-}
-
-typedef {
-	hnode_t *root;
-	slice_t *elements;
-} HuffmanTable_t;
-
-HuffmanTable_t *HuffmanTable() {
-	HuffmanTable_t *self = calloc!(1, sizeof(HuffmanTable_t));
-	self->elements = calloc!(1000, sizeof(int));
-	self->root = newnode();
-	return self;
-}
-
-bool BitsFromLengths(HuffmanTable_t *self, hnode_t *root, uint8_t element, pos) {
-	if (!root->isnode) return false;
-	if (pos==0) {
-		if (!root->left) {
-			root->left = newvalnode(element);
-			return true;
-		}
-		if (!root->right) {
-			root->right = newvalnode(element);
-			return true;
-		}
-		return false;
-	}
-	if (!root->left) root->left = newnode();
-	if (BitsFromLengths(self, root->left, element, pos-1) == true) {
-		return true;
-	}
-	if (!root->right) root->right = newnode();
-	if (BitsFromLengths(self, root->right, element, pos-1) == true) {
-		return true;
-	}
-	return false;
-}
-
-void GetHuffmanBits(HuffmanTable_t *self, uint8_t *lengths, slice_t *elements) {
-	self->elements = elements;
-	int ii = 0;
-	for (int i = 0; i < 16; i++) {
-		for (uint8_t j = 0; j < lengths[i]; j++) {
-			BitsFromLengths(self, self->root, elements->data[ii], i);
-			ii+=1;
-		}
-	}
-}
-
-int Find(HuffmanTable_t *self, bits.reader_t *br) {
-	hnode_t *r = self->root;
-	if (!r) panic("!");
-	while (r->isnode) {
-		int b = bits.read1(br);
-		if (b == 0) {
-			r = r->left;
-		} else {
-			r = r->right;
-		}
-	}
-	return r->val;
-}
-
-int GetCode(HuffmanTable_t *self, bits.reader_t *br) {
-	while (true) {
-		int res = Find(self, br);
-		if (res == 0) {
-			return 0;
-		}
-		if ( res != -1) {
-			return res;
-		}
-	}
-}
-
 // -----------------------------------------
 
 const double pi = 3.14157;
@@ -290,7 +197,6 @@ uint16_t word(int a, b) {
 typedef {
 	int width, height;
 	image.rgba_t *image;
-	HuffmanTable_t *tables[100];
 	huffman.tree_t *htables[100];
 	uint8_t *quant[100];
 	int quantMapping[100];
@@ -312,16 +218,22 @@ idct_t *IDCT() {
 idct_t *BuildMatrix(jpeg_t *self, bits.reader_t *br, int idx, uint8_t *quant, int *_olddccoeff) {
 	int olddccoeff = *_olddccoeff;
 	idct_t *i = IDCT();
-	int code = GetCode(self->tables[0+idx], br);
-	// huffman.tree_t *t = self->htables[0+idx];
-	// printf("code = %d\n", code);
+
+	huffman.tree_t *t = self->htables[0+idx];
+	huffman.reader_t *hr = huffman.newreader(t, br);
+	int code = huffman.read(hr);
+	huffman.closereader(hr);
+
 	int bval = bits.readn(br, code);
 	int dccoeff = DecodeNumber(code, bval)  + olddccoeff;
 
 	AddZigZag(i, 0,(dccoeff) * quant[0]);
 	int l = 1;
 	while (l<64) {
-		code = GetCode(self->tables[16+idx], br);
+		huffman.tree_t *t = self->htables[16+idx];
+		huffman.reader_t *hr = huffman.newreader(t, br);
+		code = huffman.read(hr);
+		huffman.closereader(hr);
 		if (code == 0) {
 			break;
 		}
@@ -438,10 +350,6 @@ void DefineHuffmanTables(jpeg_t *self, slice_t *data) {
 			}
 			off += (int) i;
 		}
-
-		HuffmanTable_t *hf = HuffmanTable();
-		GetHuffmanBits(hf, lengths, elements);
-		self->tables[hdr] = hf;
 		self->htables[hdr] = huffman.treefrom(lengths, 16, elements->data);
 		data = slice(data, off, EOF);
 	}
