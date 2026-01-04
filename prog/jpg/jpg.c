@@ -1,9 +1,489 @@
-#import image
-#import formats/png
 #import formats/jpg
+#import formats/png
+#import image
+#import os/fs
 
 int main() {
-    image.image_t *img = image.new(64 + 9, 64 + 9);
+    if (true) {
+		testrun();
+	} else {
+		drawbasis();
+	}
+	return 0;
+}
+
+void testrun() {
+	size_t len;
+	uint8_t *raw = (uint8_t *) fs.readfile("0tmp.jpg", &len);
+	slice_t *s = newslice();
+	s->data = raw;
+	s->len = (int) len;
+	jpeg_t *j = jpeg();
+	decode(j, s);
+	image.image_t *img = image.new(j->width, j->height);
+	for (int x = 0; x < j->width; x++) {
+		for (int y = 0; y < j->height; y++) {
+			image.rgba_t c = j->image[y*j->width + x];
+			printf("%d %d %d\n", c.red, c.green, c.blue);
+			image.set(img, x, y, c);
+		}
+	}
+	png.write(img, "1.png", png.PNG_RGB);
+}
+
+// ---------------------------------------
+
+typedef {
+	uint8_t *data;
+	int len;
+} slice_t;
+
+int len(slice_t *s) {
+	return s->len;
+}
+
+slice_t *newslice() {
+	slice_t *s = calloc!(1, sizeof(slice_t));
+	s->data = calloc!(100000, 1);
+	return s;
+}
+
+slice_t *slice(slice_t *s, int start, int end) {
+	slice_t *r = newslice();
+	if (end == EOF) {
+		end = len(s);
+	}
+	for (int i = start; i < end; i++) {
+		append(r, s->data[i]);
+	}
+	return r;
+}
+
+void append(slice_t *s, uint8_t b) {
+	s->data[s->len++] = b;
+}
+
+// ---------------------------------------
+
+typedef {
+	uint8_t *bytes;
+	int pos;
+} stream_t;
+
+stream_t *Stream(uint8_t *bytes) {
+	stream_t *self = calloc!(1, sizeof(stream_t));
+	self->bytes = bytes;
+	return self;
+}
+
+int GetBit(stream_t *self) {
+	uint8_t b = self->bytes[self->pos >> 3];
+	int s = 7-(self->pos & 0x7);
+	self->pos+=1;
+	return (b >> s) & 1;
+}
+
+int GetBitN(stream_t *self, int l) {
+	int val = 0;
+	for (int i = 0; i < l; i++) {
+		val = val*2 + GetBit(self);
+	}
+	return val;
+}
+
+// -----------------------------
+
+typedef {
+	bool isnode;
+	int val;
+	hnode_t *left, *right;
+} hnode_t;
+
+hnode_t *newvalnode(int val) {
+	hnode_t *n = calloc!(1, sizeof(hnode_t));
+	n->val = val;
+	return n;
+}
+
+hnode_t *newnode() {
+	hnode_t *n = calloc!(1, sizeof(hnode_t));
+	n->isnode = true;
+	return n;
+}
+
+typedef {
+	hnode_t *root;
+	slice_t *elements;
+} HuffmanTable_t;
+
+HuffmanTable_t *HuffmanTable() {
+	HuffmanTable_t *self = calloc!(1, sizeof(HuffmanTable_t));
+	self->elements = calloc!(1000, sizeof(int));
+	self->root = newnode();
+	return self;
+}
+
+bool BitsFromLengths(HuffmanTable_t *self, hnode_t *root, uint8_t element, pos) {
+	if (!root->isnode) return false;
+	if (pos==0) {
+		if (!root->left) {
+			root->left = newvalnode(element);
+			return true;
+		}
+		if (!root->right) {
+			root->right = newvalnode(element);
+			return true;
+		}
+		return false;
+	}
+	if (!root->left) root->left = newnode();
+	if (BitsFromLengths(self, root->left, element, pos-1) == true) {
+		return true;
+	}
+	if (!root->right) root->right = newnode();
+	if (BitsFromLengths(self, root->right, element, pos-1) == true) {
+		return true;
+	}
+	return false;
+}
+
+void GetHuffmanBits(HuffmanTable_t *self, uint8_t *lengths, slice_t *elements) {
+	self->elements = elements;
+	int ii = 0;
+	for (int i = 0; i < 16; i++) {
+		for (uint8_t j = 0; j < lengths[i]; j++) {
+			BitsFromLengths(self, self->root, elements->data[ii], i);
+			ii+=1;
+		}
+	}
+}
+
+int Find(HuffmanTable_t *self, stream_t *st) {
+	hnode_t *r = self->root;
+	if (!r) panic("!");
+	while (r->isnode) {
+		int b = GetBit(st);
+		if (b == 0) {
+			r = r->left;
+		} else {
+			r = r->right;
+		}
+	}
+	return r->val;
+}
+
+int GetCode(HuffmanTable_t *self, stream_t *st) {
+	while (true) {
+		int res = Find(self, st);
+		if (res == 0) {
+			return 0;
+		}
+		if ( res != -1) {
+			return res;
+		}
+	}
+}
+
+// -----------------------------------------
+
+const double pi = 3.14157;
+
+const uint8_t zigzag[] = {
+	0,  1,  8, 16,  9,  2,  3, 10,
+	17, 24, 32, 25, 18, 11,  4,  5,
+	12, 19,	26, 33, 40, 48, 41, 34,
+	27, 20, 13,  6,  7, 14, 21, 28,
+	35, 42, 49, 56, 57, 50, 43, 36,
+	29, 22, 15, 23, 30, 37, 44, 51,
+	58, 59, 52, 45, 38, 31, 39, 46,
+	53, 60, 61, 54, 47, 55, 62, 63};
+
+uint8_t Clamp(double col) {
+	if (col > 255) col = 255;
+	if (col < 0) col = 0;
+	return (uint8_t) col;
+}
+
+image.rgba_t ColorConversion(double Y, Cr, Cb) {
+	image.rgba_t c = {};
+	double R = Cr * (2 - 2 * 0.299) + Y;
+	double B = Cb * (2 -2 * 0.114) + Y;
+	double G = (Y - 0.114 * B - 0.299*R) / 0.587;
+	c.red = Clamp(R+128);
+	c.green = Clamp(G+128);
+	c.blue = Clamp(B+128);
+	return c;
+}
+
+// -----------------------------------------------
+
+int DecodeNumber(int code, bits) {
+	int l = 1 << (code-1);
+	if (bits>=l) {
+		return bits;
+	}
+	return bits-(2*l-1);
+}
+
+int XYtoLin(int x,y) { return x+y*8; }
+
+
+
+int RemoveFF00(slice_t *data, *datapro) {
+	if (!data || !datapro) panic("!");
+	int i = 0;
+	while (true) {
+		uint8_t b = data->data[i];
+		uint8_t bnext = data->data[i+1];
+		if (b == 0xff) {
+			if (bnext != 0) break;
+			append(datapro, data->data[i]);
+			i+=2;
+		} else {
+			append(datapro, data->data[i]);
+			i+=1;
+		}
+	}
+	return i;
+}
+
+
+double NormCoeff(int n) {
+	if (n == 0) return sqrt( 1.0/8.0);
+	return sqrt( 2.0/8.0);
+}
+
+typedef {
+	int base[64];
+} idct_t;
+
+void AddIDC(idct_t *self, int n,m, double coeff) {
+	double an = NormCoeff(n);
+	double am = NormCoeff(m);
+	for (int y = 0; y < 8; y++) {
+		for (int x = 0; x < 8; x++) {
+			double nn = an * cos( n* pi * (x + 0.5) / 8.0 );
+			double mm = am * cos( m* pi * (y + 0.5) / 8.0 );
+			self->base[ XYtoLin(x, y) ] += nn*mm*coeff;
+		}
+	}
+}
+
+void AddZigZag(idct_t *self, int zi, double coeff) {
+	uint8_t i = zigzag[zi];
+	int n = i & 0x7;
+	int m = i >> 3;
+	AddIDC(self, n,m, coeff);
+}
+
+uint16_t word(int a, b) {
+	return a * 256 + b;
+}
+
+
+
+
+
+
+
+typedef {
+	int width, height;
+	image.rgba_t *image;
+	HuffmanTable_t *tables[100];
+	uint8_t *quant[100];
+	int quantMapping[100];
+} jpeg_t;
+
+jpeg_t *jpeg() {
+	jpeg_t *self = calloc!(1, sizeof(jpeg_t));
+	// self->quant = {}
+	// self->quantMapping = []
+	self->image = calloc!(100000, sizeof(image.rgba_t));
+	return self;
+}
+
+idct_t *IDCT() {
+	idct_t *self = calloc!(1, sizeof(idct_t));
+	return self;
+}
+
+idct_t *BuildMatrix(jpeg_t *self, stream_t *st, int idx, uint8_t *quant, int *_olddccoeff) {
+	int olddccoeff = *_olddccoeff;
+	idct_t *i = IDCT();
+	int code = GetCode(self->tables[0+idx], st);
+	int bits = GetBitN(st, code);
+	int dccoeff = DecodeNumber(code, bits)  + olddccoeff;
+
+	AddZigZag(i, 0,(dccoeff) * quant[0]);
+	int l = 1;
+	while (l<64) {
+		code = GetCode(self->tables[16+idx], st);
+		if (code == 0) {
+			break;
+		}
+		if (code >15) {
+			l+= (code>>4);
+			code = code & 0xf;
+		}
+		bits = GetBitN(st, code );
+		if (l<64) {
+			int coeff = DecodeNumber(code, bits);
+			AddZigZag(i, l,coeff * quant[l]);
+			l+=1;
+		}
+	}
+	*_olddccoeff = dccoeff;
+	return i;
+}
+
+void dumpslice(slice_t *s) {
+	printf("slice -------------\n");
+	for (int i = 0; i < s->len; i++) {
+		printf(" %2x", s->data[i]);
+		if ((i + 1) % 16 == 0) printf("\n");
+	}
+	printf("-----------------\n");
+}
+
+int StartOfScan(jpeg_t *self, slice_t *data0, int hdrlen) {
+	(void) dumpslice;
+	slice_t *data = newslice();
+	int lenchunk = RemoveFF00(slice(data0, hdrlen, EOF), data);
+
+	stream_t *st = Stream(data->data);
+
+	int oldlumdccoeff = 0;
+	int oldCbdccoeff = 0;
+	int oldCrdccoeff = 0;
+
+	for (int y = 0; y < self->height /8; y++) {
+		for (int x = 0; x < self->width /8; x++) {
+			// decode 8x8 block
+			idct_t *matL = BuildMatrix(self, st,0, self->quant[self->quantMapping[0]], &oldlumdccoeff);
+			idct_t *matCr = BuildMatrix(self, st,1, self->quant[self->quantMapping[1]], &oldCrdccoeff);
+			idct_t *matCb = BuildMatrix(self, st,1, self->quant[self->quantMapping[2]], &oldCbdccoeff);
+
+			// store it as RGB
+			for (int yy = 0; yy < 8; yy++) {
+				for (int xx = 0; xx < 8; xx++) {
+					image.rgba_t val = ColorConversion(
+						matL->base[XYtoLin(xx,yy)],
+						matCb->base[XYtoLin(xx,yy)],
+						matCr->base[XYtoLin(xx,yy)]
+					);
+					int pos = (x*8+xx) + ((y*8+yy) * self->width);
+					self->image[pos] = val;
+				}
+			}
+		}
+	}
+	return lenchunk + hdrlen;
+}
+
+void DefineQuantizationTables(jpeg_t *self, slice_t *data) {
+	while (len(data)>0) {
+		uint8_t hdr = data->data[0];
+		self->quant[hdr & 0xf] = GetArray(data, 1, 64);
+		data = slice(data, 65, EOF);
+	}
+}
+
+void BaselineDCT(jpeg_t *self, slice_t *data) {
+	uint8_t hdr = data->data[0];
+	printf("hdr=%u\n", hdr);
+	self->height = word(data->data[1], data->data[2]);
+	self->width = word(data->data[3], data->data[4]);
+	uint8_t components = data->data[5];
+	printf("size %dx%d, %u components\n", self->width,  self->height, components);
+	self->image = calloc!(1000000, 4);
+
+	for (uint8_t i = 0; i < components; i++) {
+		int pos = 6+i*3;
+		uint8_t id = data->data[pos++];
+		uint8_t samp = data->data[pos++];
+		uint8_t QtbId = data->data[pos++];
+		printf("id=%u samp=%u QtbId=%u\n", id, samp, QtbId);
+		self->quantMapping[i] = QtbId;
+	}
+}
+
+void DefineHuffmanTables(jpeg_t *self, slice_t *data) {
+	while (len(data)>0) {
+		int off = 0;
+		uint8_t hdr = data->data[off];
+		off += 1;
+
+		uint8_t *lengths = GetArray(data, off, 16);
+		off += 16;
+
+		slice_t *elements = newslice();
+		for (int a = 0; a < 16; a++) {
+			uint8_t i = lengths[a];
+			scat(elements, GetArray(data, off, i), i);
+			off = off + (int) i;
+		}
+
+		HuffmanTable_t *hf = HuffmanTable();
+		GetHuffmanBits(hf, lengths, elements);
+		self->tables[hdr] = hf;
+		data = slice(data, off, EOF);
+	}
+}
+
+void scat(slice_t *to, uint8_t *what, int len) {
+	for (int i = 0; i < len; i++) {
+		append(to, what[i]);
+	}
+}
+
+void decode(jpeg_t *self, slice_t *data) {
+	while (true) {
+		uint16_t hdr = word(data->data[0], data->data[1]);
+		printf("hdr = %x\n", hdr);
+		uint16_t lenchunk = 0;
+		if (hdr == 0xffd8) {
+			lenchunk = 2;
+		} else if (hdr == 0xffd9) {
+			break;
+		} else {
+			lenchunk = word(data->data[2], data->data[3]);
+			lenchunk+=2;
+			printf("lenchunnk = %d\n", lenchunk);
+			slice_t *chunk = slice(data, 4, lenchunk);
+			if (hdr == 0xffdb) {
+				DefineQuantizationTables(self, chunk);
+			}
+			else if (hdr == 0xffc0) {
+				BaselineDCT(self, chunk);
+			}
+			else if (hdr == 0xffc4) {
+				DefineHuffmanTables(self, chunk);
+			}
+			else if (hdr == 0xffda) {
+				lenchunk = StartOfScan(self, data, lenchunk);
+			}
+		}
+		data = slice(data, lenchunk, EOF);
+		if (len(data)==0) break;
+	}
+}
+
+
+
+uint8_t *GetArray(slice_t *data0, int off, length) {
+	uint8_t *r = calloc!(length, 1);
+	for (int i = 0; i < length; i++) {
+		r[i] = data0->data[off + i];
+	}
+	return r;
+}
+
+
+
+// -------------------------------
+
+void drawbasis() {
+	image.image_t *img = image.new(64 + 9, 64 + 9);
     image.rgba_t red = {255, 0, 0, 0};
     image.fill(img, red);
     for (int u = 0; u < 8; u++) {
@@ -16,7 +496,6 @@ int main() {
 
     png.write(img2, "1.png", png.PNG_RGB);
     image.free(img2);
-	return 0;
 }
 
 void square(image.image_t *img, int u, v) {
