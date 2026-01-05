@@ -160,7 +160,7 @@ void read_scan_data(jpeg_t *self, reader.t *r) {
 			int vals2[64] = {};
 			int vals3[64] = {};
 
-			uint8_t *quant1 = self->quant[self->quantMapping[0]];
+
 			int idx = 0;
 			huffman.reader_t *hrdc = huffman.newreader(self->htables[0+idx], br);
 			huffman.reader_t *hrac = huffman.newreader(self->htables[16+idx], br);
@@ -169,7 +169,6 @@ void read_scan_data(jpeg_t *self, reader.t *r) {
 			huffman.closereader(hrdc);
 			huffman.closereader(hrac);
 
-			uint8_t *quant2 = self->quant[self->quantMapping[1]];
 			idx = 1;
 			hrdc = huffman.newreader(self->htables[0+idx], br);
 			hrac = huffman.newreader(self->htables[16+idx], br);
@@ -178,7 +177,7 @@ void read_scan_data(jpeg_t *self, reader.t *r) {
 			huffman.closereader(hrdc);
 			huffman.closereader(hrac);
 
-			uint8_t *quant3 = self->quant[self->quantMapping[2]];
+
 			idx = 1;
 			hrdc = huffman.newreader(self->htables[0+idx], br);
 			hrac = huffman.newreader(self->htables[16+idx], br);
@@ -188,22 +187,34 @@ void read_scan_data(jpeg_t *self, reader.t *r) {
 			huffman.closereader(hrac);
 
 			//
+			// Undo quantization
+			//
+			uint8_t *quant1 = self->quant[self->quantMapping[0]];
+			uint8_t *quant2 = self->quant[self->quantMapping[1]];
+			uint8_t *quant3 = self->quant[self->quantMapping[2]];
+			for (int i = 0; i < 64; i++) {
+				vals1[i] *= quant1[i];
+				vals2[i] *= quant2[i];
+				vals3[i] *= quant3[i];
+			}
+
+			//
 			// Rebuild the components
 			//
 			int L[64] = {};
 			for (int i = 0; i < 64; i++) {
 				if (vals1[i] == 0) continue;
-				AddZigZag(L, i, vals1[i] * quant1[i]);
+				AddZigZag(L, i, vals1[i]);
 			}
 			int Cr[64] = {};
 			for (int i = 0; i < 64; i++) {
 				if (vals2[i] == 0) continue;
-				AddZigZag(Cr, i, vals2[i] * quant2[i]);
+				AddZigZag(Cr, i, vals2[i]);
 			}
 			int Cb[64] = {};
 			for (int i = 0; i < 64; i++) {
 				if (vals3[i] == 0) continue;
-				AddZigZag(Cb, i, vals3[i] * quant3[i]);
+				AddZigZag(Cb, i, vals3[i]);
 			}
 
 			// store it as RGB
@@ -218,25 +229,49 @@ void read_scan_data(jpeg_t *self, reader.t *r) {
 	}
 }
 
+void AddZigZag(int *base, int zi, double coeff) {
+	uint8_t i = zigzag[zi];
+	int n = i & 0x7;
+	int m = i >> 3;
+	double shape[64];
+	getshape(shape, n, m);
+	mmulk(shape, coeff);
+	for (int y = 0; y < 8; y++) {
+		for (int x = 0; x < 8; x++) {
+			base[x + 8*y] += shape[x + 8*y];
+		}
+	}
+}
+
+void mmulk(double *m, double k) {
+	for (int i = 0; i < 64; i++) {
+		m[i] *= k;
+	}
+}
+
+// void madd(double *s, double *m) {
+// 	for (int i = 0; i < 64; i++) {
+// 		s[i] += m[i];
+// 	}
+// }
 
 // Puts the standard basis shape (u, v) into res.
 // u and v are indexes [0..63].
 // res is a 8x8 array.
-pub void getshape(int u, v, double *res) {
-	int pos = 0;
-    for (int x = 0; x < 8; x++) {
-		double xd = (double) x;
-        for (int y = 0; y < 8; y++) {
-			double yd = (double) y;
-            res[pos++] = basisfunc(u, xd) * basisfunc(v, yd) / 4;
-        }
-    }
-}
-
-double basisfunc(int u, double x) {
-    double val = cos((2.0*x + 1.0) * u * PI / 16.0);
-    if (u == 0) val /= sqrt(2);
-    return val;
+pub void getshape(double *shape, int n, m) {
+	double a = 1;
+	double b = 1;
+	if (n == 0) a = sqrt(0.5);
+	if (m == 0) b = sqrt(0.5);
+	double ka = n * PI / 16.0;
+	double kb = m * PI / 16.0;
+	for (int y = 0; y < 8; y++) {
+		for (int x = 0; x < 8; x++) {
+			double nn = a * cos(ka * (2*x + 1.0));
+			double mm = b * cos(kb * (2*y + 1.0));
+			shape[x + 8*y] = 0.25 * nn*mm;
+		}
+	}
 }
 
 uint8_t Clamp(double col) {
@@ -254,32 +289,6 @@ image.rgba_t ColorConversion(double Y, Cr, Cb) {
 	c.green = Clamp(G+128);
 	c.blue = Clamp(B+128);
 	return c;
-}
-
-int XYtoLin(int x,y) { return x+y*8; }
-
-
-
-double NormCoeff(int n) {
-	if (n == 0) return sqrt( 1.0/8.0);
-	return sqrt( 2.0/8.0);
-}
-
-void AddZigZag(int *base, int zi, double coeff) {
-	uint8_t i = zigzag[zi];
-	int n = i & 0x7;
-	int m = i >> 3;
-	
-	
-	double an = NormCoeff(n);
-	double am = NormCoeff(m);
-	for (int y = 0; y < 8; y++) {
-		for (int x = 0; x < 8; x++) {
-			double nn = an * cos( n* PI * (x + 0.5) / 8.0 );
-			double mm = am * cos( m* PI * (y + 0.5) / 8.0 );
-			base[ XYtoLin(x, y) ] += nn*mm*coeff;
-		}
-	}
 }
 
 void readblock(bits.reader_t *br, huffman.reader_t *hrdc, *hrac, int prevdc, int *vals) {
