@@ -27,6 +27,13 @@ pub int read(t *reader, uint8_t *buf, size_t n) {
 	return r;
 }
 
+pub void skip(t *reader, size_t n) {
+	uint8_t tmp;
+	for (size_t i = 0; i < n; i++) {
+		read(reader, &tmp, 1);
+	}
+}
+
 // Frees the reader.
 pub void free(t *reader) {
 	if (reader->free) reader->free(reader->data);
