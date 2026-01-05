@@ -6,16 +6,6 @@
 
 const double PI = 3.141592653589793238462643383279502884197169399375105820974944;
 
-const uint8_t zigzag[] = {
-	0,   1,  8, 16,  9,  2,  3, 10,
-	17, 24, 32, 25, 18, 11,  4,  5,
-	12, 19,	26, 33, 40, 48, 41, 34,
-	27, 20, 13,  6,  7, 14, 21, 28,
-	35, 42, 49, 56, 57, 50, 43, 36,
-	29, 22, 15, 23, 30, 37, 44, 51,
-	58, 59, 52, 45, 38, 31, 39, 46,
-	53, 60, 61, 54, 47, 55, 62, 63};
-
 pub typedef {
 	image.image_t *img;
 	huffman.tree_t *htables[100];
@@ -36,6 +26,9 @@ pub jpeg_t *read(const char *path) {
 			break;
 		}
 		switch (hdr) {
+			case 0xffe1: { read_app1(self, R); }
+			case 0xffe2: { read_app2(self, R); }
+			case 0xffe4: { read_app4(self, R); }
 			case 0xffe0: { read_appdef(self, R); }
 			case 0xffdb: { read_quant_table(self, R); }
 			case 0xffc0: { read_baseline_dct(self, R); }
@@ -50,6 +43,41 @@ pub jpeg_t *read(const char *path) {
 	return self;
 }
 
+pub void free(jpeg_t *j) {
+	OS.free(j);
+}
+
+void read_app1(jpeg_t *self, reader.t *r) {
+	(void) self;
+	uint16_t len;
+	endian.read2be(r, &len);
+	printf("App1 (len=%u)\n", len);
+
+	// E  x  i  f \0 \0
+	// ...
+	reader.skip(r, len-2);
+}
+
+void read_app2(jpeg_t *self, reader.t *r) {
+	(void) self;
+	uint16_t len;
+	endian.read2be(r, &len);
+	printf("App2 (len=%u)\n", len);
+
+	// ICC profiles
+	// ...
+	reader.skip(r, len-2);
+}
+
+void read_app4(jpeg_t *self, reader.t *r) {
+	(void) self;
+	uint16_t len;
+	endian.read2be(r, &len);
+	printf("App4 (len=%u)\n", len);
+	// ?
+	reader.skip(r, len-2);
+}
+
 void read_appdef(jpeg_t *self, reader.t *r) {
 	(void) self;
 	uint16_t len;
@@ -60,52 +88,71 @@ void read_appdef(jpeg_t *self, reader.t *r) {
 
 void read_quant_table(jpeg_t *self, reader.t *r) {
 	uint16_t len;
+	uint8_t params;
 	endian.read2be(r, &len);
-	printf("quant table lenchunnk = %d\n", len);
-	uint8_t hdr;
+	reader.read(r, &params, 1);
+	int precision = (params >> 4) & 0xf;
+    int num = params & 0xf; // 0 = luma, 1 = chroma
+
+    printf("Quantization Table (num=%d, prec=%d)\n", num, precision);
+
+	// QT values, n = 64*(precision+1)
+	if (precision != 0) {
+        // the precision of QT, 0 = 8 bit, otherwise 16 bit
+        panic("Quantization table presision %d not implemented", precision);
+    }
 	uint8_t *qt = calloc!(64, 1);
-	reader.read(r, &hdr, 1);
 	reader.read(r, qt, 64);
-	self->quant[hdr & 0xf] = qt;
+	self->quant[num] = qt;
 }
+
+const char *ids[] = {
+    "invalid (zero)",
+    "Y", "Cb", "Cr",
+    "I", "Q"
+};
 
 void read_baseline_dct(jpeg_t *self, reader.t *r) {
 	uint16_t len = 0;
 	endian.read2be(r, &len);
 	printf("dct len = %d\n", len);
 
-	uint8_t hdr;
+	uint8_t precision;
 	uint16_t h;
 	uint16_t w;
 	uint8_t components;
-	reader.read(r, &hdr, 1);
+	reader.read(r, &precision, 1);
 	endian.read2be(r, &h);
 	endian.read2be(r, &w);
 	reader.read(r, &components, 1);
 
-	printf("hdr=%u\n", hdr);
-	printf("size %ux%u, %u components\n", w,  h, components);
+	printf("\tprecision = %u bits\n", precision);
+	printf("\tsize = %u x %u\n", w,  h);
+	if (components != 3) {
+		panic("ncomponents = %u not implemented", components);
+	}
 	self->img = image.new(w, h);
 	for (uint8_t i = 0; i < components; i++) {
-		uint8_t id;
-		uint8_t samp;
-		uint8_t QtbId;
+		uint8_t id; // 1 = Y, 2 = Cb, 3 = Cr, 4 = I, 5 = Q
+		uint8_t sampling_factors; // horizontal | vertical
+		uint8_t qtable_num;
 		reader.read(r, &id, 1);
-		reader.read(r, &samp, 1);
-		reader.read(r, &QtbId, 1);
-		printf("id=%u samp=%u QtbId=%u\n", id, samp, QtbId);
-		self->quantMapping[i] = QtbId;
+		reader.read(r, &sampling_factors, 1);
+		reader.read(r, &qtable_num, 1);
+		int fac1 = sampling_factors & 0xf;
+        int fac2 = sampling_factors >> 4;
+		printf("\tcomponent %u: id=%u (%s) sampling_factors=%d,%d qtable_num=%u\n", i, id, ids[id], fac1, fac2, qtable_num);
+		self->quantMapping[i] = qtable_num;
 	}
 }
 
 void read_huffman_table(jpeg_t *self, reader.t *r) {
 	uint16_t len = 0;
-	endian.read2be(r, &len);
-	printf("huffman len = %d\n", len);
-
-	uint8_t hdr;
+	uint8_t id;
 	uint8_t lengths[16] = {};
-	reader.read(r, &hdr, 1);
+
+	endian.read2be(r, &len);
+	reader.read(r, &id, 1);
 	reader.read(r, lengths, 16);
 
 	size_t sum = 0;
@@ -123,19 +170,48 @@ void read_huffman_table(jpeg_t *self, reader.t *r) {
 			elements[epos++] = x;
 		}
 	}
-	self->htables[hdr] = huffman.treefrom(lengths, 16, elements);
-	free(elements);
+	self->htables[id] = huffman.treefrom(lengths, 16, elements);
+
+	int tid = id & 0xf; // th, id
+    int tclass = id >> 4; // class (0=dc, 1=ac)
+    printf("Huffman Table id=%d class=%d\n", tid, tclass);
+	// switch (tclass) {
+    //     case 0: { info->dc_huff_trees[tid] = t; }
+    //     case 1: { info->ac_huff_trees[tid] = t; }
+    // }
+	OS.free(elements);
 }
 
 void read_scan(jpeg_t *self, reader.t *r) {
 	uint16_t len = 0;
 	endian.read2be(r, &len);
-	printf("lenchunnk = %d\n", len);
+	if (len != 12) {
+		panic("expected scan header length 12, got %u", len);
+	}
 
 	//
 	// read scan header
 	//
-	reader.skip(r, len-2);
+	printf("scan header\n");
+	uint8_t ncomp;
+	reader.read(r, &ncomp, 1);
+	for (uint8_t i = 0; i < ncomp; i++) {
+        uint8_t id;
+		uint8_t wtf;
+        reader.read(r, &id, 1);
+        reader.read(r, &wtf, 1);
+        int dc_table_id = wtf >> 4;
+        int ac_table_id = wtf & 0xf;
+		printf("\tcomponent %u: dctable=%d actable=%d\n", i, dc_table_id, ac_table_id);
+	}
+
+	uint8_t ss;
+	uint8_t se;
+	uint8_t ahal;
+    reader.read(r, &ss, 1);
+	reader.read(r, &se, 1);
+	reader.read(r, &ahal, 1);
+    printf("ss=%u se=%u ah/al=%u\n", ss, se, ahal);
 
 	reader.t *e = escreader(r);
 	read_scan_data(self, e);
@@ -145,9 +221,11 @@ void read_scan(jpeg_t *self, reader.t *r) {
 void read_scan_data(jpeg_t *self, reader.t *r) {
 	bits.reader_t *br = bits.newreader(r);
 
-	int oldlumdccoeff = 0;
-	int oldCbdccoeff = 0;
-	int oldCrdccoeff = 0;
+	// First values ("DC") are diff-encoded across all blocks.
+	// These will contain the current values.
+	int dcY = 0;
+	int dcB = 0;
+	int dcR = 0;
 
 	int w = self->img->width;
 	int h = self->img->height;
@@ -160,31 +238,29 @@ void read_scan_data(jpeg_t *self, reader.t *r) {
 			int vals2[64] = {};
 			int vals3[64] = {};
 
-
-			int idx = 0;
-			huffman.reader_t *hrdc = huffman.newreader(self->htables[0+idx], br);
-			huffman.reader_t *hrac = huffman.newreader(self->htables[16+idx], br);
-			readblock(br, hrdc, hrac, oldlumdccoeff, vals1);
-			oldlumdccoeff = vals1[0];
+			// Y
+			huffman.reader_t *hrdc = huffman.newreader(self->htables[0], br);
+			huffman.reader_t *hrac = huffman.newreader(self->htables[16], br);
+			readblock(br, hrdc, hrac, dcY, vals1);
 			huffman.closereader(hrdc);
 			huffman.closereader(hrac);
+			dcY = vals1[0];
 
-			idx = 1;
-			hrdc = huffman.newreader(self->htables[0+idx], br);
-			hrac = huffman.newreader(self->htables[16+idx], br);
-			readblock(br, hrdc, hrac, oldCrdccoeff, vals2);
-			oldCrdccoeff = vals2[0];
+			// B
+			hrdc = huffman.newreader(self->htables[1], br);
+			hrac = huffman.newreader(self->htables[17], br);
+			readblock(br, hrdc, hrac, dcB, vals2);
 			huffman.closereader(hrdc);
 			huffman.closereader(hrac);
+			dcB = vals2[0];
 
-
-			idx = 1;
-			hrdc = huffman.newreader(self->htables[0+idx], br);
-			hrac = huffman.newreader(self->htables[16+idx], br);
-			readblock(br, hrdc, hrac, oldCbdccoeff, vals3);
-			oldCbdccoeff = vals3[0];
+			// R
+			hrdc = huffman.newreader(self->htables[1], br);
+			hrac = huffman.newreader(self->htables[17], br);
+			readblock(br, hrdc, hrac, dcR, vals3);
 			huffman.closereader(hrdc);
 			huffman.closereader(hrac);
+			dcR = vals3[0];
 
 			//
 			// Undo quantization
@@ -199,29 +275,37 @@ void read_scan_data(jpeg_t *self, reader.t *r) {
 			}
 
 			//
+			// Undo zigzag
+			//
+			undozz(vals1);
+			undozz(vals2);
+			undozz(vals3);
+
+			//
 			// Rebuild the components
 			//
-			int L[64] = {};
+			double Y[64] = {};
+			double Cb[64] = {};
+			double Cr[64] = {};
+			rebuild(vals1, Y);
+			rebuild(vals2, Cb);
+			rebuild(vals3, Cr);
+
+			//
+			// Compose RGB
+			//
+			image.rgba_t vv[64];
 			for (int i = 0; i < 64; i++) {
-				if (vals1[i] == 0) continue;
-				AddZigZag(L, i, vals1[i]);
-			}
-			int Cr[64] = {};
-			for (int i = 0; i < 64; i++) {
-				if (vals2[i] == 0) continue;
-				AddZigZag(Cr, i, vals2[i]);
-			}
-			int Cb[64] = {};
-			for (int i = 0; i < 64; i++) {
-				if (vals3[i] == 0) continue;
-				AddZigZag(Cb, i, vals3[i]);
+				vv[i] = toRGB(Y[i], Cr[i], Cb[i]);
 			}
 
-			// store it as RGB
+			//
+			// Merge the block into the full image
+			//
 			for (int y = 0; y < 8; y++) {
 				for (int x = 0; x < 8; x++) {
 					int bpos = x + 8*y;
-					image.rgba_t val = ColorConversion(L[bpos], Cb[bpos], Cr[bpos]);
+					image.rgba_t val = vv[bpos];
 					image.set(self->img, col*8 + x, row*8 + y, val);
 				}
 			}
@@ -229,17 +313,36 @@ void read_scan_data(jpeg_t *self, reader.t *r) {
 	}
 }
 
-void AddZigZag(int *base, int zi, double coeff) {
-	uint8_t i = zigzag[zi];
-	int n = i & 0x7;
-	int m = i >> 3;
+void rebuild(int *weights, double *out) {
 	double shape[64];
-	getshape(shape, n, m);
-	mmulk(shape, coeff);
-	for (int y = 0; y < 8; y++) {
-		for (int x = 0; x < 8; x++) {
-			base[x + 8*y] += shape[x + 8*y];
-		}
+	for (int i = 0; i < 64; i++) {
+		int w = weights[i];
+		if (w == 0) continue;
+		int n = i & 0x7;
+		int m = i >> 3;
+		getshape(shape, n, m);
+		mmulk(shape, (double) w);
+		madd(out, shape);
+	}
+}
+
+const uint8_t zigzag[] = {
+	0,   1,  8, 16,  9,  2,  3, 10,
+	17, 24, 32, 25, 18, 11,  4,  5,
+	12, 19,	26, 33, 40, 48, 41, 34,
+	27, 20, 13,  6,  7, 14, 21, 28,
+	35, 42, 49, 56, 57, 50, 43, 36,
+	29, 22, 15, 23, 30, 37, 44, 51,
+	58, 59, 52, 45, 38, 31, 39, 46,
+	53, 60, 61, 54, 47, 55, 62, 63};
+
+void undozz(int *vals) {
+	int tmp[64] = {};
+	for (int i = 0; i < 64; i++) {
+		tmp[zigzag[i]] = vals[i];
+	}
+	for (int i = 0; i < 64; i++) {
+		vals[i] = tmp[i];
 	}
 }
 
@@ -249,11 +352,11 @@ void mmulk(double *m, double k) {
 	}
 }
 
-// void madd(double *s, double *m) {
-// 	for (int i = 0; i < 64; i++) {
-// 		s[i] += m[i];
-// 	}
-// }
+void madd(double *s, double *m) {
+	for (int i = 0; i < 64; i++) {
+		s[i] += m[i];
+	}
+}
 
 // Puts the standard basis shape (u, v) into res.
 // u and v are indexes [0..63].
@@ -274,21 +377,21 @@ pub void getshape(double *shape, int n, m) {
 	}
 }
 
-uint8_t Clamp(double col) {
-	if (col > 255) col = 255;
-	if (col < 0) col = 0;
-	return (uint8_t) col;
-}
-
-image.rgba_t ColorConversion(double Y, Cr, Cb) {
+image.rgba_t toRGB(double Y, Cr, Cb) {
 	image.rgba_t c = {};
 	double R = Cr * (2 - 2 * 0.299) + Y;
 	double B = Cb * (2 -2 * 0.114) + Y;
 	double G = (Y - 0.114 * B - 0.299*R) / 0.587;
-	c.red = Clamp(R+128);
-	c.green = Clamp(G+128);
-	c.blue = Clamp(B+128);
+	c.red = clamp(R+128);
+	c.green = clamp(G+128);
+	c.blue = clamp(B+128);
 	return c;
+}
+
+uint8_t clamp(double x) {
+	if (x > 255) return 255;
+	if (x < 0) return 0;
+	return (uint8_t) x;
 }
 
 void readblock(bits.reader_t *br, huffman.reader_t *hrdc, *hrac, int prevdc, int *vals) {
@@ -327,10 +430,11 @@ void readblock(bits.reader_t *br, huffman.reader_t *hrdc, *hrac, int prevdc, int
 int weirdonum(bits.reader_t *br, int code) {
 	int bval = bits.readn(br, code);
 	int l = 1 << (code-1);
-	if (bval>=l) {
+	if (bval >= l) {
 		return bval;
 	}
-	return bval-(2*l-1);
+	int z = 2*l-1;
+	return bval - z;
 }
 
 typedef {
@@ -341,7 +445,7 @@ typedef {
 reader.t *escreader(reader.t *in) {
 	escaper_t *e = calloc!(1, sizeof(escaper_t));
 	e->in = in;
-	return reader.new(e, escreadn, free);
+	return reader.new(e, escreadn, OS.free);
 }
 
 int escreadn(void *ctx, uint8_t *buf, size_t n) {

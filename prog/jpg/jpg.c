@@ -2,13 +2,15 @@
 #import formats/png
 #import image
 
-int main() {
-    if (true) {
-		jpg.jpeg_t *j = jpg.read("0tmp.jpg");
-		png.write(j->img, "1.png", png.PNG_RGB);
-	} else {
+int main(int argc, char *argv[]) {
+	if (argc == 1) {
+		puts("drawn basis to 1.png");
 		drawbasis();
+		return 0;
 	}
+    jpg.jpeg_t *j = jpg.read(argv[1]);
+	png.write(j->img, "1.png", png.PNG_RGB);
+	jpg.free(j);
 	return 0;
 }
 
