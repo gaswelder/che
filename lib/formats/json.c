@@ -590,6 +590,7 @@ pub void write_string(FILE *f, const char *s) {
 	while (*s != '\0') {
 		switch (*s) {
 			case '\n': { fputc('\\', f); fputc('n', f); }
+			case '\r': { fputc('\\', f); fputc('r', f); }
 			case '\t': { fputc('\\', f); fputc('t', f); }
 			case '\\': { fputc('\\', f); fputc('\\', f); }
 			case '\"': { fputc('\\', f); fputc('"', f); }
