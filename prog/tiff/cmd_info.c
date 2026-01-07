@@ -1,4 +1,5 @@
 #import formats/tiff
+#import formats/json
 
 pub int run(int argc, char *argv[]) {
 	if (argc != 2) {
@@ -6,48 +7,63 @@ pub int run(int argc, char *argv[]) {
 		return 1;
 	}
 	char *filepath = argv[1];
-	tiff.TIFFFile *tiff = tiff.tiff_open( filepath );
-	if (!tiff) {
+	tiff.file_t *tf = tiff.readfile(filepath);
+	if (!tf) {
 		fprintf(stderr, "Could not open %s: %s\n", filepath, strerror(errno));
 		return 1;
 	}
-	for (int dir_index = 0; dir_index < tiff->directories_count; dir_index++) {
-		printf( "-- Directory #%d --\n", dir_index);
-		tiff.TIFFDirectory *dir = tiff_dir(tiff, dir_index);
-
-		for (size_t entry_index = 0; entry_index < tiff_entrycount(dir); entry_index++) {
-			tiff.TIFFEntry *entry = tiff_entry(dir, entry_index);
-			printf("%-10s\t(x%lu)\t%-24s\t%u\n",
-				tiff.tiff_typename(entry->type),
-				entry->count,
-				tiff.tiff_tagname(entry->tag),
-				entry->value
-			);
-
-			// If the entry is a string, also print the contents.
-			if (entry->type == tiff.ASCII) {
-				char *str = tiff.tiff_get_string(entry);
-				if (!str) {
-					fprintf(stderr, "failed to get ASCII value\n");
-					continue;
-				}
-				printf("\t%s\n\n", str);
-				free(str);
-			}
-		}
-	}
-	tiff.tiff_close( tiff );
+	printfile(tf);
+	tiff.freefile(tf);
 	return 0;
 }
 
-tiff.TIFFDirectory *tiff_dir(tiff.TIFFFile *tiff, size_t index) {
-	return tiff->directories[index];
+void printfile(tiff.file_t *f) {
+	for (size_t i = 0; i < f->ndirs; i++) {
+		printdir(f->dirs[i]);
+		printf("\n");
+	}
 }
 
-size_t tiff_entrycount(tiff.TIFFDirectory *dir) {
-	return dir->entries_count;
+void printdir(tiff.dir_t *dir) {
+	printf("{");
+	json.write_string(stdout, "entries");
+	printf(":[");
+	for (size_t i = 0; i < dir->nentries; i++) {
+		if (i > 0) printf(",");
+		printentry(dir->entries[i]);
+	}
+	printf("]}");
 }
 
-tiff.TIFFEntry *tiff_entry(tiff.TIFFDirectory *dir, size_t index) {
-	return dir->entries[index];
+void printentry(tiff.entry_t *entry) {
+	printf("{");
+	json.write_string(stdout, "type");
+	printf(":");
+	json.write_string(stdout, tiff.typename(entry->type));
+	printf(",");
+
+	json.write_string(stdout, "tag");
+	printf(":");
+	json.write_string(stdout, tiff.tagname(entry->tag));
+	printf(",");
+	
+	json.write_string(stdout, "value");
+	printf(":");
+	switch (entry->type) {
+		case tiff.BYTE, tiff.SHORT, tiff.LONG: {
+			printf("%u", entry->value);
+		}
+		case tiff.RATIONAL: {
+			printf("%u", entry->value);
+		}
+		case tiff.ASCII: {
+			char *str = tiff.getstring(entry);
+			if (!str) {
+				panic("failed to get ASCIII");
+			}
+			json.write_string(stdout, str);
+			free(str);
+		}
+	}
+	printf("}");
 }
