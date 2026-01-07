@@ -25,7 +25,7 @@ pub int run(int argc, char *argv[]) {
 			);
 
 			// If the entry is a string, also print the contents.
-			if (entry->type == tiff.TIFF_ASCII) {
+			if (entry->type == tiff.ASCII) {
 				char *str = tiff.tiff_get_string(entry);
 				if (!str) {
 					fprintf(stderr, "failed to get ASCII value\n");

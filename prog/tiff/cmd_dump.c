@@ -25,19 +25,19 @@ pub int run(int argc, char *argv[]) {
 	{
 		tiff.TIFFEntry *entry = dir->entries[i];
 		switch (entry->tag) {
-			case tiff.TIFF_ImageWidth: {
+			case tiff.ImageWidth: {
 				width = entry->value;
 			}
-			case tiff.TIFF_ImageLength: {
+			case tiff.ImageLength: {
 				// height = entry->value;
 			}
-			case tiff.TIFF_BitsPerSample: {
+			case tiff.BitsPerSample: {
 				bits_per_sample = entry->value;
 			}
-			case tiff.TIFF_RowsPerStrip: {
+			case tiff.RowsPerStrip: {
 				rows_per_strip = entry->value;
 			}
-			case tiff.TIFF_StripOffsets: {
+			case tiff.StripOffsets: {
 				if( strips_per_image == 0 ){
 					strips_per_image = entry->count;
 				} else {
@@ -52,7 +52,7 @@ pub int run(int argc, char *argv[]) {
 					strip_offsets[j] = tiff.tiff_read_bytes( tiff, 4 );
 				}
 			}
-			case tiff.TIFF_StripByteCounts: {
+			case tiff.StripByteCounts: {
 				if( strips_per_image == 0 ){
 					strips_per_image = entry->count;
 				} else {

@@ -1,11 +1,11 @@
 
 // TIFF data types
 pub enum {
-	TIFF_BYTE = 1,
-	TIFF_ASCII = 2,
-	TIFF_SHORT = 3,
-	TIFF_LONG = 4,
-	TIFF_RATIONAL = 5
+	BYTE = 1,
+	ASCII = 2,
+	SHORT = 3,
+	LONG = 4,
+	RATIONAL = 5
 }
 
 // endiannes
@@ -15,16 +15,16 @@ enum {
 }
 
 pub enum {
-	TIFF_ImageWidth = 256,
-	TIFF_ImageLength = 257,
-	TIFF_BitsPerSample = 258,
-	TIFF_Compression = 259,
-	TIFF_Uncompressed = 1,
-	TIFF_LZW = 5,
-	TIFF_ImageDescription = 270,
-	TIFF_StripOffsets = 273,
-	TIFF_RowsPerStrip = 278,
-	TIFF_StripByteCounts = 279
+	ImageWidth = 256,
+	ImageLength = 257,
+	BitsPerSample = 258,
+	Compression = 259,
+	Uncompressed = 1,
+	LZW = 5,
+	ImageDescription = 270,
+	StripOffsets = 273,
+	RowsPerStrip = 278,
+	StripByteCounts = 279
 }
 
 pub typedef {
@@ -53,11 +53,11 @@ typedef {
 } kv;
 
 kv typenames[] = {
-	{TIFF_BYTE, "BYTE"},
-	{TIFF_ASCII, "ASCII"},
-	{TIFF_SHORT, "SHORT"},
-	{TIFF_LONG, "LONG"},
-	{TIFF_RATIONAL, "RATIONAL"}		
+	{BYTE, "BYTE"},
+	{ASCII, "ASCII"},
+	{SHORT, "SHORT"},
+	{LONG, "LONG"},
+	{RATIONAL, "RATIONAL"}
 };
 
 pub const char *tiff_typename(int type)
@@ -147,7 +147,7 @@ pub TIFFFile *tiff_open(const char *filepath) {
 		}
 	}
 
-	
+
 	//
 	// Bytes 2-3 are TIFF magic number (42)
 	//
@@ -176,7 +176,7 @@ pub TIFFFile *tiff_open(const char *filepath) {
 			tiff_close( tiff );
 			return NULL;
 		}
-		
+
 		//
 		// Read the directory and read
 		// the next offset after the directory
