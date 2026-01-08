@@ -1,8 +1,13 @@
+#import os/fs
+
 pub typedef {
 	int endiannes;
-	FILE *file;
 	size_t ndirs;
 	dir_t **dirs;
+
+	uint8_t *data;
+	size_t datalen;
+	size_t pos;
 } file_t;
 
 pub typedef {
@@ -58,41 +63,45 @@ pub const char *typename(int type) {
 	return "invalid type";
 }
 
-// Reads a TIFF file at the given path.
-pub file_t *readfile(const char *filepath) {
-	FILE *f = fopen(filepath, "rb");
-	if (!f) {
-		return NULL;
-	}
-	file_t *tf = calloc!(1, sizeof(file_t));
-	tf->file = f;
-
+// Parses data as a TIFF file.
+pub file_t *parse(uint8_t *data, size_t n) {
+	file_t *f = calloc!(1, sizeof(file_t));
+	f->data = data;
+	f->datalen = n;
 	// Byte-order mark
-	switch (readbytes(tf, 2)) {
-		case 0x4949: { tf->endiannes = LITTLE; }
-		case 0x4D4D: { tf->endiannes = BIG; }
-		default: {
-			panic("wrong endiannes marker");
-		}
+	switch (readbytes(f, 2)) {
+		case 0x4949: { f->endiannes = LITTLE; }
+		case 0x4D4D: { f->endiannes = BIG; }
+		default: { panic("wrong endiannes marker"); }
 	}
-
 	// Bytes 2-3 are TIFF magic number (42)
-	if (readbytes(tf, 2) != 42) {
+	if (readbytes(f, 2) != 0x2a) {
 		panic("wrong magic number");
 	}
-
 	while (true) {
 		// File offset. Zero means no more entries.
-		uint32_t ifd_offset = readbytes(tf, 4);
-		if (!ifd_offset) {
+		uint32_t pos = readbytes(f, 4);
+		if (!pos) {
 			break;
 		}
-		if (fseek(tf->file, ifd_offset, SEEK_SET) != 0) {
-			panic("fseek %u failed", ifd_offset);
-		}
-		read_dir(tf);
+		f->pos = pos;
+		read_dir(f);
 	}
-	return tf;
+	return f;
+}
+
+// Reads a TIFF file at the given path.
+pub file_t *readfile(const char *filepath) {
+	size_t flen;
+	char *data = fs.readfile(filepath, &flen);
+	if (!data) {
+		return NULL;
+	}
+	return parse((uint8_t *) data, flen);
+}
+
+pub void setpos(file_t *f, uint32_t pos) {
+	f->pos = pos;
 }
 
 // Reads a directory at current file position
@@ -126,52 +135,54 @@ void read_dir(file_t *tiff) {
 }
 
 // Frees all memory taken by the file and closes all handles.
-pub void freefile(file_t *tiff) {
-	for (size_t i = 0; i < tiff->ndirs; i++) {
-		dir_t *dir = tiff->dirs[i];
+pub void freefile(file_t *tf) {
+	for (size_t i = 0; i < tf->ndirs; i++) {
+		dir_t *dir = tf->dirs[i];
 		for (size_t j = 0; j < dir->nentries; j++) {
 			free(dir->entries[j]);
 		}
 		free(dir->entries);
 		free(dir);
 	}
-	free( tiff->dirs );
-	fclose( tiff->file );
-	free( tiff );
+	free(tf->dirs);
+	free(tf->data);
+	free(tf);
 }
 
 // Returns the string from the entry.
 // The string must be freed by the caller.
-pub char *getstring(entry_t *entry) {
-	file_t *tiff = entry->file;
-	char *buffer = calloc!(entry->count, 1);
-	fseek(tiff->file, entry->value, SEEK_SET);
-	for (size_t i = 0; i < entry->count; i++) {
-		buffer[i] = readbytes(tiff, 1);
+pub char *getstring(entry_t *e) {
+	file_t *tf = e->file;
+	char *buffer = calloc!(e->count + 1, 1);
+	tf->pos = e->value;
+	for (size_t i = 0; i < e->count; i++) {
+		buffer[i] = (char) tf->data[tf->pos++];
 	}
 	return buffer;
 }
 
-pub uint32_t readbytes(file_t *tiff, size_t bytes_number)
-{
-	uint32_t value = 0;
-	uint8_t byte = 0;
-
-	switch (tiff->endiannes) {
+// Reads n bytes at the current position.
+pub uint32_t readbytes(file_t *tf, size_t n) {
+	uint32_t val = 0;
+	switch (tf->endiannes) {
 		case BIG: {
-			for (size_t i = 0; i < bytes_number; i++) {
-				fread( &byte, 1, 1, tiff->file );
-				value = (value << 8) + byte;
+			for (size_t i = 0; i < n; i++) {
+				val *= 256;
+				val += tf->data[tf->pos++];
 			}
 		}
 		case LITTLE: {
-			for (size_t i = 0; i < bytes_number; i++){
-				fread( &byte, 1, 1, tiff->file );
-				value += byte << 8*i;
+			uint32_t scale = 1;
+			for (size_t i = 0; i < n; i++){
+				val += tf->data[tf->pos++] * scale;
+				scale *= 256;
 			}
 		}
+		default: {
+			panic("invalid endiannes");
+		}
 	}
-	return value;
+	return val;
 }
 
 pub const char *tagname(int tag) {

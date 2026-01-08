@@ -40,14 +40,13 @@ pub int run(int argc, char *argv[]) {
 				if( strips_per_image == 0 ){
 					strips_per_image = entry->count;
 				} else {
-					if( entry->count != (size_t) strips_per_image ){
-						fputs( "Inconsistent StripsPerImage value", stderr );
-						exit( 2 );
+					if (entry->count != (size_t) strips_per_image) {
+						panic("Inconsistent StripsPerImage value");
 					}
 				}
 				strip_offsets = calloc!(entry->count, sizeof(size_t));
-				fseek(tf->file, entry->value, SEEK_SET );
-				for( size_t j = 0; j < entry->count; j++ ){
+				tiff.setpos(tf, entry->value);
+				for (size_t j = 0; j < entry->count; j++) {
 					strip_offsets[j] = tiff.readbytes(tf, 4);
 				}
 			}
@@ -55,13 +54,12 @@ pub int run(int argc, char *argv[]) {
 				if( strips_per_image == 0 ){
 					strips_per_image = entry->count;
 				} else {
-					if( entry->count != (size_t) strips_per_image ){
-						fputs( "Inconsistent StripsPerImage value", stderr );
-						exit( 2 );
+					if (entry->count != (size_t) strips_per_image) {
+						panic("Inconsistent StripsPerImage value");
 					}
 				}
 				strip_byte_counts = calloc!(entry->count, sizeof(size_t));
-				fseek(tf->file, entry->value, SEEK_SET );
+				tiff.setpos(tf, entry->value);
 				for( size_t j = 0; j < entry->count; j++ ){
 					strip_byte_counts[j] = tiff.readbytes(tf, 4);
 				}
@@ -74,19 +72,13 @@ pub int run(int argc, char *argv[]) {
 		return 2;
 	}
 
-	for (int i = 0; i < strips_per_image; i++)
-	{
-		// go to the next strip
-		if (fseek(tf->file, strip_offsets[i], SEEK_SET )) {
-			fprintf( stderr, "Could not SEEK_SET position %lu\n", strip_offsets[i] );
-			return 2;
-		}
-
-		for( int row = 0; row < rows_per_strip; row++ ) {
+	for (int i = 0; i < strips_per_image; i++) {
+		tiff.setpos(tf, strip_offsets[i]);
+		for (int row = 0; row < rows_per_strip; row++) {
 			for (int col = 0; col < width; col++) {
-				printf("%u ", tiff.readbytes(tf, bits_per_sample / 8 ) );
+				printf("%u ", tiff.readbytes(tf, bits_per_sample / 8));
 			}
-			printf( "\n" );
+			printf("\n");
 		}
 	}
 
