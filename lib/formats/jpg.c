@@ -3,6 +3,8 @@
 #import enc/endian
 #import image
 #import reader
+#import dbg
+#import formats/tiff
 
 const double PI = 3.141592653589793238462643383279502884197169399375105820974944;
 
@@ -53,9 +55,44 @@ void read_app1(jpeg_t *self, reader.t *r) {
 	endian.read2be(r, &len);
 	printf("App1 (len=%u)\n", len);
 
+	uint8_t *buf = calloc!(len-2, 1);
+	reader.read(r, buf, len-2);
+
+	if (strcmp((char *) buf, "Exif") == 0 && buf[4] == 0 && buf[5] == 0) {
+		puts("exif");
+		// reader.t *r = reader.static_buffer(buf, len-2);
+		// reader.skip(r, 6);
+		tiff.file_t *tf = tiff.parse(buf + 6, len-2-6);
+		for (size_t i = 0; i < tf->ndirs; i++) {
+			tiff.dir_t *d = tf->dirs[i];
+			printf("dir %zu - %zu entries\n", i, d->nentries);
+			for (size_t ei = 0; ei < d->nentries; ei++) {
+				tiff.entry_t *e = d->entries[ei];
+				printf("\t%zu: type=%d(%s) tag=%d(%s) count=%zu ", ei, e->type, tiff.typename(e->type), e->tag, tiff.tagname(e->tag), e->count);
+				if (e->type == tiff.ASCII) {
+					char *s = tiff.getstring(e);
+					printf("value=%s", s);
+					OS.free(s);
+				} else {
+					printf("value=%u", e->value);
+				}
+				printf("\n");
+			}
+		}
+		// tiff.freefile(tf);
+		// uint8_t tmp[100];
+		// reader.read(t)
+		// reader.free(r);
+	}
+
+	dbg.print_bytes(buf, len-2);
+	OS.free(buf);
+
+
+
 	// E  x  i  f \0 \0
 	// ...
-	reader.skip(r, len-2);
+	// reader.skip(r, len-2);
 }
 
 void read_app2(jpeg_t *self, reader.t *r) {

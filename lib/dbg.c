@@ -68,11 +68,15 @@ void parse_env() {
 // Debug utility to print bytes.
 pub void print_bytes(uint8_t *data, size_t n) {
     printf("--------- %zu bytes ---------------------------\n", n);
+	printf("0\t");
 	for (size_t i = 0; i < n; i++) {
 		if (i > 0 && i % 20 == 0) {
-			putchar('\n');
+			printf("\n%zu\t", i);
 		}
 		printf(" %02x", data[i]);
+		// if (isprint((char) data[i])) {
+		// 	printf(" %c", data[i]);
+		// }
 	}
 	printf("\n--------- end data ----------------------------\n");
 }

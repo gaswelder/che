@@ -16,8 +16,8 @@ pub typedef {
 } dir_t;
 
 pub typedef {
-	int tag;
-	int type;
+	int type; // value type (byte, ascii, ...)
+	int tag; // parameter id (width, height, ...)
 	size_t count;
 	uint32_t value;
 	file_t *file;
@@ -203,6 +203,8 @@ pub const char *tagname(int tag) {
 		case 273: { return "StripOffsets"; }
 		case 274: { return "Orientation"; }
 
+		case 271: { return "Make"; } // camera maker
+		case 272: { return "Model"; } // camera model
 		case 277: { return "SamplesPerPixel"; }
 		case 278: { return "RowsPerStrip"; }
 		case 279: { return "StripByteCounts"; }
@@ -219,6 +221,11 @@ pub const char *tagname(int tag) {
 		case 315: { return "Artist"; }
 
 		case 320: { return "ColorMap"; }
+		case 513: { return "JPEGInterchangeFormat"; } // JPEG thumbnail address
+		case 514: { return "JPEGInterchangeFormatLength"; } // JPEG thumbnail size
+		case 531: { return "YCbCrPositioning"; }
+		case 34665: { return "ExifIFDPointer"; } // EXIF dir address
+		case 34853: { return "GPSInfoIFDPointer"; } // GPS dir address
 		default: {
 			//printf( "Unknown tag: %d\n", tag );
 			return "Unknown";
