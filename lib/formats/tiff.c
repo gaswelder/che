@@ -105,19 +105,19 @@ pub void setpos(file_t *f, uint32_t pos) {
 }
 
 // Reads a directory at current file position
-void read_dir(file_t *tiff) {
+pub void read_dir(file_t *tiff) {
 	// Number of entries in the directory.
-	int entries_number = readbytes(tiff, 2);
+	int n = readbytes(tiff, 2);
 
 	dir_t *dir = calloc!(1, sizeof(dir_t));
-	dir->entries = calloc!(entries_number, sizeof( dir->entries[0] ));
-	dir->nentries = entries_number;
+	dir->entries = calloc!(n, sizeof( dir->entries[0] ));
+	dir->nentries = n;
 
-	for (int entry_index = 0; entry_index < entries_number; entry_index++) {
-		int tag = readbytes(tiff, 2); // bytes 0-1: the field tag
-		int type = readbytes(tiff, 2); // 2-3: field type
-		uint32_t count = readbytes(tiff, 4); // 4-7: number of values of the field
-		uint32_t value = readbytes(tiff, 4); // 8-11: value offset (position of this field's value)
+	for (int i = 0; i < n; i++) {
+		int tag = readbytes(tiff, 2); // bytes 0-1: field tag
+		int type = readbytes(tiff, 2); // 2-3: value type
+		uint32_t count = readbytes(tiff, 4); // 4-7: number of values
+		uint32_t value = readbytes(tiff, 4); // 8-11: value or value address
 		
 		entry_t *entry = calloc!(1, sizeof( entry_t ));
 		entry->tag = tag;
@@ -125,7 +125,7 @@ void read_dir(file_t *tiff) {
 		entry->count = count;
 		entry->value = value;
 		entry->file = tiff;
-		dir->entries[entry_index] = entry;
+		dir->entries[i] = entry;
 	}
 
 	// Add the directory to the TIFF object.
@@ -161,6 +161,13 @@ pub char *getstring(entry_t *e) {
 	return buffer;
 }
 
+// Reads a rational value at the current position.
+pub double read_rational(file_t *tf) {
+	uint32_t num = readbytes(tf, 4);
+	uint32_t den = readbytes(tf, 4);
+	return (double) num / (double) den;
+}
+
 // Reads n bytes at the current position.
 pub uint32_t readbytes(file_t *tf, size_t n) {
 	uint32_t val = 0;
@@ -187,6 +194,12 @@ pub uint32_t readbytes(file_t *tf, size_t n) {
 
 pub const char *tagname(int tag) {
 	switch (tag) {
+		case 1: { return "GPSLatitudeRef"; } // 'N' or 'S'
+		case 2: { return "GPSLatitude"; } // Latitude (deg, min, sec)
+		case 3: { return "GPSLongitudeRef"; } // 'E' or 'W'
+		case 4: { return "GPSLongitude"; } // Longitude (deg, min, sec)
+		case 5: { return "GPSAltitudeRef"; } // 0 = above sea level, 1 = below
+		case 6: { return "GPSAltitude"; } // Altitude
 		case 254: { return "NewSubfileType"; }
 		case 255: { return "SubfileType"; }
 		case 256: { return "ImageWidth"; }
@@ -226,9 +239,6 @@ pub const char *tagname(int tag) {
 		case 531: { return "YCbCrPositioning"; }
 		case 34665: { return "ExifIFDPointer"; } // EXIF dir address
 		case 34853: { return "GPSInfoIFDPointer"; } // GPS dir address
-		default: {
-			//printf( "Unknown tag: %d\n", tag );
-			return "Unknown";
-		}
+		default: { return NULL; }
 	}
 }

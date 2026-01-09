@@ -59,40 +59,63 @@ void read_app1(jpeg_t *self, reader.t *r) {
 	reader.read(r, buf, len-2);
 
 	if (strcmp((char *) buf, "Exif") == 0 && buf[4] == 0 && buf[5] == 0) {
-		puts("exif");
-		// reader.t *r = reader.static_buffer(buf, len-2);
-		// reader.skip(r, 6);
 		tiff.file_t *tf = tiff.parse(buf + 6, len-2-6);
+		uint32_t gpspos = 0;
 		for (size_t i = 0; i < tf->ndirs; i++) {
 			tiff.dir_t *d = tf->dirs[i];
-			printf("dir %zu - %zu entries\n", i, d->nentries);
-			for (size_t ei = 0; ei < d->nentries; ei++) {
-				tiff.entry_t *e = d->entries[ei];
-				printf("\t%zu: type=%d(%s) tag=%d(%s) count=%zu ", ei, e->type, tiff.typename(e->type), e->tag, tiff.tagname(e->tag), e->count);
-				if (e->type == tiff.ASCII) {
-					char *s = tiff.getstring(e);
-					printf("value=%s", s);
-					OS.free(s);
-				} else {
-					printf("value=%u", e->value);
+			for (size_t j = 0; j < d->nentries; j++) {
+				if (d->entries[j]->tag == 34853) {
+					gpspos = d->entries[j]->value;
+					break;
 				}
-				printf("\n");
 			}
 		}
-		// tiff.freefile(tf);
-		// uint8_t tmp[100];
-		// reader.read(t)
-		// reader.free(r);
+		if (gpspos != 0) {
+			tiff.setpos(tf, gpspos);
+			tiff.read_dir(tf);
+		}
+		for (size_t i = 0; i < tf->ndirs; i++) {
+			tiff.dir_t *d = tf->dirs[i];
+			dumpdir(d);
+		}
 	}
-
 	dbg.print_bytes(buf, len-2);
 	OS.free(buf);
-
-
 
 	// E  x  i  f \0 \0
 	// ...
 	// reader.skip(r, len-2);
+}
+
+void dumpdir(tiff.dir_t *d) {
+	printf("%zu entries\n", d->nentries);
+	for (size_t ei = 0; ei < d->nentries; ei++) {
+		tiff.entry_t *e = d->entries[ei];
+		const char *k = tiff.tagname(e->tag);
+		if (!k) {
+			printf("unknown tag %d\n", e->tag);
+			continue;
+		}
+		printf("\t%s\t", k);
+		switch (e->type) {
+			case tiff.ASCII: {
+				char *s = tiff.getstring(e);
+				printf("\"%s\"", s);
+				OS.free(s);
+			}
+			case tiff.RATIONAL: {
+				tiff.setpos(e->file, e->value);
+				for (size_t i = 0; i < e->count; i++) {
+					double r = tiff.read_rational(e->file);
+					printf("%g ", r);
+				}
+			}
+			default: {
+				printf("%u (%zu)", e->value, e->count);
+			}
+		}
+		printf("\n");
+	}
 }
 
 void read_app2(jpeg_t *self, reader.t *r) {
