@@ -13,6 +13,7 @@ pub typedef {
 	huffman.tree_t *htables[100];
 	uint8_t *quant[100];
 	int quantMapping[100];
+	uint16_t restart_interval; // how often to reset the decoder, in MCUs.
 } jpeg_t;
 
 pub jpeg_t *read(const char *path) {
@@ -23,7 +24,6 @@ pub jpeg_t *read(const char *path) {
 		uint16_t hdr = 0;
 		endian.read2be(R, &hdr);
 		if (hdr == 0) break;
-		printf("hdr = %x\n", hdr);
 		if (hdr == 0xffd9) {
 			break;
 		}
@@ -33,6 +33,7 @@ pub jpeg_t *read(const char *path) {
 			case 0xffe4: { read_app4(self, R); }
 			case 0xffe0: { read_appdef(self, R); }
 			case 0xffdb: { read_quant_table(self, R); }
+			case 0xffdd: { read_restart_interval(self, R); }
 			case 0xffc0: { read_baseline_dct(self, R); }
 			case 0xffc4: { read_huffman_table(self, R); }
 			case 0xffda: { read_scan(self, R); }
@@ -144,6 +145,16 @@ void read_appdef(jpeg_t *self, reader.t *r) {
 	endian.read2be(r, &len);
 	printf("Application Default Header (len=%u)\n", len);
 	reader.skip(r, len-2);
+}
+
+void read_restart_interval(jpeg_t *self, reader.t *r) {
+	uint16_t len;
+	endian.read2be(r, &len);
+	if (len != 4) {
+		panic("expected len=4, got %u", len);
+	}
+	endian.read2be(r, &self->restart_interval);
+	printf("restart interval len=%u, val=%u\n", len, self->restart_interval);
 }
 
 void read_quant_table(jpeg_t *self, reader.t *r) {
@@ -519,23 +530,27 @@ int escreadn(void *ctx, uint8_t *buf, size_t n) {
 }
 
 int escread1(escaper_t *r) {
-    if (r->ended) panic("reading from closed escaper");
+    if (r->ended) {
+		panic("reading from closed escaper");
+	}
     uint8_t x;
-    reader.read(r->in, &x, 1);
+    if (reader.read(r->in, &x, 1) != 1) {
+		panic("read failed");
+	}
     if (x == 0xff) {
-        reader.read(r->in, &x, 1);
+        if (reader.read(r->in, &x, 1) != 1) {
+			panic("read failed");
+		}
         // 0xff 0x00 means just 0xff as data.
         if (x == 0) {
-            // printf("[0xff as data]");
             return 0xff;
         }
         // 0xff 0xd9 means end of data.
         if (x == 0xd9) {
-            puts("end of data");
             r->ended = true;
-            return -1;
+            return EOF;
         }
-        panic("unexpected 0xff");
+        panic("unexpected 0xff 0x%x", x);
     }
     return x;
 }
