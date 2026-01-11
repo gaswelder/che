@@ -3,6 +3,22 @@
 #import test
 #import writer
 
+int main() {
+	testfail("q", "unexpected character: q");
+	testfail("[", "unexpected end of input");
+	testfail("[1 2", "expected ']', got '2'");
+	testok();
+	return test.fails();
+}
+
+void testfail(const char *in, *out) {
+	json.err_t err = {};
+	json.val_t *v = json.parse(in, &err);
+	test.truth("v == NULL", v == NULL);
+	test.truth("err.set", err.set);
+	test.streq(err.msg, out);
+}
+
 typedef {
 	const char *in, *out;
 } case_t;
@@ -22,15 +38,19 @@ case_t cases[] = {
 	{ "{\"msg\": \"1 2 3\"}", "{\"msg\":\"1 2 3\"}"}
 };
 
-int main() {
+void testok() {
 	mem.mem_t *m = mem.memopen();
 	writer.t *w = mem.newwriter(m);
+	json.err_t err = {};
 
 	for (size_t i = 0; i < nelem(cases); i++) {
 		case_t c = cases[i];
 
 		// Parse the string
-		json.val_t *v = json.parse(c.in);
+		json.val_t *v = json.parse(c.in, &err);
+		if (err.set) {
+			panic("parse failed: %s", err.msg);
+		}
 
 		// Format again
 		char buf[100] = {};
@@ -46,5 +66,4 @@ int main() {
 
 	writer.free(w);
 	mem.memclose(m);
-	return test.fails();
 }

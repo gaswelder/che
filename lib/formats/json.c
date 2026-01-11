@@ -231,9 +231,17 @@ pub const char *strval(val_t *v) {
 //
 
 pub typedef {
-	char err[256]; // First error reported during parsing.
-	tokenizer.t *buf;
-} parser_t;
+	bool set;
+	char msg[100];
+} err_t;
+
+void seterror(err_t *err, const char *fmt, ...) {
+	va_list args = {};
+	va_start(args, fmt);
+	vsnprintf(err->msg, sizeof(err->msg), fmt, args);
+	va_end(args);
+	err->set = true;
+}
 
 // Parses JSON string s and returns a pointer to the root val_t object.
 //
@@ -241,53 +249,37 @@ pub typedef {
 // The user should check the returned node using the `json_error` function.
 // The returned node has to be freed using the `json_free` in both cases.
 // The `json_free` function must be called only on root nodes.
-pub val_t *parse(const char *s) {
-	parser_t p = {};
-	p.buf = tokenizer.from_str(s);
-
-	val_t *result = read_node(&p);
-	if (!result) {
-		tokenizer.free(p.buf);
-		return NULL;
-	}
-
-	// Expect end of file at this point.
-	if (tok_more(&p)) {
-		// char buf[100];
-		// tokenizer.tail(p.buf, buf, 100);
-		// panic("trailing input: %s", buf);
-		return NULL;
-	}
-
-	tokenizer.free(p.buf);
+pub val_t *parse(const char *s, err_t *err) {
+	tokenizer.t *p = tokenizer.from_str(s);
+	val_t *result = read_node(p, err);
+	tokenizer.free(p);
 	return result;
 }
 
 // Reads one node and returns it.
 // Returns null in case of error.
-val_t *read_node(parser_t *p) {
-	if (haserr(p)) return NULL;
+val_t *read_node(tokenizer.t *p, err_t *err) {
 	if (!tok_more(p)) {
-		seterror(p, "no more input");
+		seterror(err, "no more input");
 		return NULL;
 	}
 	if (tok_peek(p) == '[') {
-		return read_array(p);
+		return read_array(p, err);
 	}
 	if (tok_peek(p) == '{') {
-		return read_dict(p);
+		return read_dict(p, err);
 	}
 	if (tok_peek(p) == '"') {
-		return read_str(p);
+		return read_str(p, err);
 	}
 	if (isdigit(tok_peek(p)) || tok_peek(p) == '-') {
-		return read_num(p);
+		return read_num(p, err);
 	}
-	return read_kw(p);
+	return read_kw(p, err);
 }
 
-val_t *read_array(parser_t *p) {
-	if (!expect(p, '[')) {
+val_t *read_array(tokenizer.t *p, err_t *err) {
+	if (!expect(p, '[', err)) {
 		return NULL;
 	}
 	val_t *a = newnode(TARR);
@@ -295,8 +287,9 @@ val_t *read_array(parser_t *p) {
 		return a;
 	}
 	while (tok_more(p)) {
-		val_t *x = read_node(p);
+		val_t *x = read_node(p, err);
 		if (!x) {
+			json_free(a);
 			return NULL;
 		}
 		json_push(a, x);
@@ -304,14 +297,15 @@ val_t *read_array(parser_t *p) {
 			break;
 		}
 	}
-	if (!expect(p, ']')) {
+	if (!expect(p, ']', err)) {
+		json_free(a);
 		return NULL;
 	}
 	return a;
 }
 
-val_t *read_dict(parser_t *p) {
-	if (!expect(p, '{')) {
+val_t *read_dict(tokenizer.t *p, err_t *err) {
+	if (!expect(p, '{', err)) {
 		return NULL;
 	}
 	val_t *o = newnode(TOBJ);
@@ -319,15 +313,18 @@ val_t *read_dict(parser_t *p) {
 		return o;
 	}
 	while (tok_more(p)) {
-		char *key = readstr(p);
+		char *key = readstr(p, err);
 		if (!key) {
+			json_free(o);
 			return NULL;
 		}
-		if (!expect(p, ':')) {
+		if (!expect(p, ':', err)) {
+			json_free(o);
 			return NULL;
 		}
-		val_t *val = read_node(p);
+		val_t *val = read_node(p, err);
 		if (!val) {
+			json_free(o);
 			return NULL;
 		}
 		json_put(o, key, val);
@@ -335,14 +332,15 @@ val_t *read_dict(parser_t *p) {
 			break;
 		}
 	}
-	if (!expect(p, '}')) {
+	if (!expect(p, '}', err)) {
+		json_free(o);
 		return NULL;
 	}
 	return o;
 }
 
-val_t *read_str(parser_t *p) {
-	char *s = readstr(p);
+val_t *read_str(tokenizer.t *p, err_t *err) {
+	char *s = readstr(p, err);
 	if (!s) {
 		return NULL;
 	}
@@ -351,15 +349,15 @@ val_t *read_str(parser_t *p) {
 	return n;
 }
 
-val_t *read_num(parser_t *p) {
+val_t *read_num(tokenizer.t *p, err_t *err) {
 	char buf[100] = {};
-	if (!tokenizer.num(p->buf, buf, sizeof(buf))) {
-		seterror(p, "failed to read number");
+	if (!tokenizer.num(p, buf, sizeof(buf))) {
+		seterror(err, "failed to read number");
 		return NULL;
 	}
 	double n = 0;
 	if (sscanf(buf, "%lf", &n) < 1) {
-		seterror(p, "failed to parse number: %s", buf);
+		seterror(err, "failed to parse number: %s", buf);
 		return NULL;
 	}
 	val_t *v = newnode(TNUM);
@@ -367,40 +365,39 @@ val_t *read_num(parser_t *p) {
 	return v;
 }
 
-val_t *read_kw(parser_t *p) {
-	tokenizer.t *b = p->buf;
-	if (tokenizer.skip_literal(b, "true")) {
+val_t *read_kw(tokenizer.t *p, err_t *err) {
+	if (tokenizer.skip_literal(p, "true")) {
 		val_t *n = newnode(TBOOL);
 		n->val.boolval = true;
 		return n;
 	}
-	if (tokenizer.skip_literal(b, "false")) {
+	if (tokenizer.skip_literal(p, "false")) {
 		val_t *n = newnode(TBOOL);
 		n->val.boolval = false;
 		return n;
 	}
-	if (tokenizer.skip_literal(b, "null")) {
+	if (tokenizer.skip_literal(p, "null")) {
 		return newnode(TNULL);
 	}
-	seterror(p, "unexpected character: %c", tok_peek(p));
+	seterror(err, "unexpected character: %c", tok_peek(p));
 	return NULL;
 }
 
-char *readstr(parser_t *p) {
+char *readstr(tokenizer.t *p, err_t *err) {
+	if (!expect(p, '"', err)) {
+		return NULL;
+	}
 	size_t cap = 64;
 	size_t len = 0;
 	char *s = calloc!(cap, 1);
-	if (!expect(p, '"')) {
-		free(s);
-	}
-	tokenizer.t *b = p->buf;
-	while (tokenizer.more(p->buf) && tokenizer.peek(p->buf) != '"') {
-		int c = tokenizer.get(b);
+	while (tokenizer.more(p) && tokenizer.peek(p) != '"') {
+		int c = tokenizer.get(p);
 		if (c == '\\') {
-			c = tokenizer.get(b);
+			c = tokenizer.get(p);
 			if (c == EOF) {
-				seterror(p, "Unexpected end of input");
+				seterror(err, "Unexpected end of input");
 				free(s);
+				return NULL;
 			}
 		}
 		if (len + 1 == cap) {
@@ -413,53 +410,46 @@ char *readstr(parser_t *p) {
 		s[len++] = c;
 		s[len] = '\0';
 	}
-	if (!expect(p, '"')) {
+	if (!expect(p, '"', err)) {
 		free(s);
+		return NULL;
 	}
 	return s;
 }
 
 // Returns true if there are more characters to read.
-bool tok_more(parser_t *p) {
-	tokenizer.spaces(p->buf);
-	return tokenizer.more(p->buf);
+bool tok_more(tokenizer.t *p) {
+	tokenizer.spaces(p);
+	return tokenizer.more(p);
 }
 
 // Returns next character without removing it.
-int tok_peek(parser_t *p) {
-	tokenizer.spaces(p->buf);
-	return tokenizer.peek(p->buf);
+int tok_peek(tokenizer.t *p) {
+	tokenizer.spaces(p);
+	return tokenizer.peek(p);
 }
 
 // Reads character c and returns true.
 // Returns false and does nothing if the next character is not c.
-bool eat(parser_t *p, int c) {
+bool eat(tokenizer.t *p, int c) {
 	if (tok_peek(p) == c) {
-		tokenizer.get(p->buf);
+		tokenizer.get(p);
 		return true;
 	}
 	return false;
 }
 
-bool expect(parser_t *p, int c) {
+bool expect(tokenizer.t *p, int c, err_t *err) {
+	if (!tokenizer.more(p)) {
+		seterror(err, "unexpected end of input");
+		return false;
+	}
 	if (!eat(p, c)) {
-		seterror(p, "expected '%c', got '%c' (%d)", c, tok_peek(p), tok_peek(p));
+		seterror(err, "expected '%c', got '%c'", c, tok_peek(p), tok_peek(p));
 		return false;
 	}
 	return true;
 }
-
-bool haserr(parser_t *p) {
-	return p->err[0] != '\0';
-}
-
-void seterror(parser_t *p, const char *fmt, ...) {
-	va_list args = {};
-	va_start(args, fmt);
-	vsnprintf(p->err, sizeof(p->err), fmt, args);
-	va_end(args);
-}
-
 
 //
 // Writers

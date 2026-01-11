@@ -5,7 +5,7 @@ pub bool streq(const char *a, *b) {
         return true;
     }
     if ((!a || !b) || strcmp(a, b) != 0) {
-        printf("FAIL: %s != %s\n", a, b);
+        printf("FAIL: string(%s) != string(%s)\n", a, b);
         _fails++;
         return false;
     }

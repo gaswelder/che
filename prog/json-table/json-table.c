@@ -13,7 +13,11 @@ int main() {
 			fprintf(stderr, "reached max rows limit (%zu)\n", maxrows);
 			return 1;
 		}
-		rows[nrows++] = json.parse(buf);
+		json.err_t err = {};
+		rows[nrows++] = json.parse(buf, &err);
+		if (err.set) {
+			panic("failed to parse json: %s", err.msg);
+		}
 	}
 
 	//

@@ -21,14 +21,16 @@ int main(int argc, char **argv) {
     nexclude = strings.split(",", exclude_string, excludefields, sizeof(excludefields));
 
     linereader.t *lr = linereader.new(stdin);
+	json.err_t err = {};
     while (linereader.read(lr)) {
 		char *line = linereader.line(lr);
-        json.val_t *entry = json.parse(line);
-        // If line couldn't be parsed as json, print as is.
-        if (!entry) {
-            printf("%s", line);
+        json.val_t *entry = json.parse(line, &err);
+		// If line couldn't be parsed as json, print as is.
+		if (err.set) {
+			err.set = false;
+			printf("%s", line);
             continue;
-        }
+		}
         print_entry(entry);
         json.json_free(entry);
     }

@@ -30,10 +30,15 @@ int main() {
 
 json.val_t *readobj() {
     char line[4096] = {};
+	json.err_t err = {};
     while (fgets(line, sizeof(line), stdin)) {
-        json.val_t *obj = json.parse(line);
-        if (obj) return obj;
-        fprintf(stderr, "failed to parse line as json: \"%s\"\n", line);
+        json.val_t *obj = json.parse(line, &err);
+		if (err.set) {
+			fprintf(stderr, "failed to parse line as json: \"%s\"\n", line);
+			err.set = false;
+			continue;
+		}
+        return obj;
     }
     return NULL;
 }
