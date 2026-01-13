@@ -46,7 +46,7 @@ void checkcoords(image_t *img, int x, y) {
 		panic("invalid pixel coordinates: %d, %d", x, y);
 	}
 	if (x >= img->width || y >= img->height) {
-		panic("invalid pixel coordinates: %d, %d (should be less than %d, %d)", x, y, img->width, img->height);
+		panic("invalid pixel coordinates: (%d, %d) (should be within [0..%d], [0..%d])", x, y, img->width-1, img->height-1);
 	}
 }
 
@@ -110,6 +110,26 @@ pub image_t *explode(image_t *img, int n) {
 		}
 	}
 	return big;
+}
+
+// Pastes image p into image img at (x, y).
+pub void paste(image_t *img, *p, int x, y) {
+	if (p == img) {
+		panic("pasting into itself not implemented");
+	}
+	for (int yp = 0; yp < p->height; yp++) {
+		int yi = y + yp;
+		if (yi >= img->height) {
+			break;
+		}
+		for (int xp = 0; xp < p->width; xp++) {
+			int xi = x + xp;
+			if (xi >= img->width) {
+				break;
+			}
+			set(img, xi, yi, get(p, xp, yp));
+		}
+	}
 }
 
 pub rgba_t white() {
