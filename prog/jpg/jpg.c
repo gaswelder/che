@@ -8,7 +8,12 @@ int main(int argc, char *argv[]) {
 		drawbasis();
 		return 0;
 	}
-    jpg.jpeg_t *j = jpg.read(argv[1]);
+	jpg.err_t err = {};
+    jpg.jpeg_t *j = jpg.read(argv[1], &err);
+	if (err.set) {
+		fprintf(stderr, "failed to parse image: %s\n", err.msg);
+		return 1;
+	}
 	png.write(j->img, "1.png", png.PNG_RGB);
 	jpg.free(j);
 	return 0;

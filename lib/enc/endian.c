@@ -14,13 +14,15 @@ pub int read2le(reader.t *r, uint16_t *v) {
 	return 2;
 }
 
-pub int read2be(reader.t *r, uint16_t *v) {
+// Reads a 2-byte unsigned from r into v, most significant byte first.
+// Returns false on error.
+pub bool read2be(reader.t *r, uint16_t *v) {
 	uint8_t buf[2];
 	if (reader.read(r, buf, 2) != 2) {
-		return -1;
+		return false;
 	}
 	*v = buf[0] * 256 + buf[1];
-	return 1;
+	return true;
 }
 
 // Reads a little-endian 24-bit value from the reader r.

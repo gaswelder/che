@@ -3,8 +3,21 @@
 #import enc/endian
 #import image
 #import reader
-#import dbg
+// #import dbg
 #import formats/tiff
+
+pub typedef {
+	bool set;
+	char msg[100];
+} err_t;
+
+void seterr(err_t *err, const char *fmt, ...) {
+	va_list args = {};
+	va_start(args, fmt);
+	vsnprintf(err->msg, sizeof(err->msg), fmt, args);
+	va_end(args);
+	err->set = true;
+}
 
 const double PI = 3.141592653589793238462643383279502884197169399375105820974944;
 
@@ -16,7 +29,7 @@ pub typedef {
 	uint16_t restart_interval; // how often to reset the decoder, in MCUs.
 } jpeg_t;
 
-pub jpeg_t *read(const char *path) {
+pub jpeg_t *read(const char *path, err_t *err) {
 	FILE *f = fopen(path, "rb");
 	reader.t *R = reader.file(f);
 	jpeg_t *self = calloc!(1, sizeof(jpeg_t));
@@ -33,12 +46,18 @@ pub jpeg_t *read(const char *path) {
 			case 0xffe4: { read_app4(self, R); }
 			case 0xffe0: { read_appdef(self, R); }
 			case 0xffdb: { read_quant_table(self, R); }
-			case 0xffdd: { read_restart_interval(self, R); }
-			case 0xffc0: { read_baseline_dct(self, R); }
+			case 0xffdd: { read_restart_interval(self, R, err); }
+			case 0xffc0: { read_baseline_dct(self, R, err); }
 			case 0xffc4: { read_huffman_table(self, R); }
 			case 0xffda: { read_scan(self, R); }
 			case 0xffd8: {}
 			default: { panic("unknown header %x", hdr); }
+		}
+		if (err->set) {
+			OS.free(self);
+			reader.free(R);
+			fclose(f);
+			return NULL;
 		}
 	}
 	reader.free(R);
@@ -80,7 +99,7 @@ void read_app1(jpeg_t *self, reader.t *r) {
 			dumpdir(d);
 		}
 	}
-	dbg.print_bytes(buf, len-2);
+	// dbg.print_bytes(buf, len-2);
 	OS.free(buf);
 
 	// E  x  i  f \0 \0
@@ -147,13 +166,20 @@ void read_appdef(jpeg_t *self, reader.t *r) {
 	reader.skip(r, len-2);
 }
 
-void read_restart_interval(jpeg_t *self, reader.t *r) {
+void read_restart_interval(jpeg_t *self, reader.t *r, err_t *err) {
 	uint16_t len;
-	endian.read2be(r, &len);
-	if (len != 4) {
-		panic("expected len=4, got %u", len);
+	if (!endian.read2be(r, &len)) {
+		seterr(err, "failed to read section length");
+		return;
 	}
-	endian.read2be(r, &self->restart_interval);
+	if (len != 4) {
+		seterr(err, "restart interval: expected len=4, got %u", len);
+		return;
+	}
+	if (!endian.read2be(r, &self->restart_interval)) {
+		seterr(err, "failed to read restart interval");
+		return;
+	}
 	printf("restart interval len=%u, val=%u\n", len, self->restart_interval);
 }
 
@@ -183,7 +209,7 @@ const char *ids[] = {
     "I", "Q"
 };
 
-void read_baseline_dct(jpeg_t *self, reader.t *r) {
+void read_baseline_dct(jpeg_t *self, reader.t *r, err_t *err) {
 	uint16_t len = 0;
 	endian.read2be(r, &len);
 	printf("dct len = %d\n", len);
@@ -212,6 +238,10 @@ void read_baseline_dct(jpeg_t *self, reader.t *r) {
 		reader.read(r, &qtable_num, 1);
 		int fac1 = sampling_factors & 0xf;
         int fac2 = sampling_factors >> 4;
+		if (fac1 != 1 || fac2 != 1) {
+			seterr(err, "sampling factors != 1 not implemented");
+			return;
+		}
 		printf("\tcomponent %u: id=%u (%s) sampling_factors=%d,%d qtable_num=%u\n", i, id, ids[id], fac1, fac2, qtable_num);
 		self->quantMapping[i] = qtable_num;
 	}
@@ -298,8 +328,11 @@ void read_scan_data(jpeg_t *self, reader.t *r) {
 
 	int w = self->img->width;
 	int h = self->img->height;
+	int ri = self->restart_interval;
 	for (int row = 0; row < h / 8; row++) {
 		for (int col = 0; col < w / 8; col++) {
+			ri--;
+			printf("ri=%d\n", ri);
 			readunit(self, dc, br, row, col);
 		}
 	}
