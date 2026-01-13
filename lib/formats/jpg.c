@@ -294,92 +294,82 @@ void read_scan_data(jpeg_t *self, reader.t *r) {
 
 	// First values ("DC") are diff-encoded across all blocks.
 	// These will contain the current values.
-	int dcY = 0;
-	int dcB = 0;
-	int dcR = 0;
+	int dc[3] = {0,0,0};
 
 	int w = self->img->width;
 	int h = self->img->height;
 	for (int row = 0; row < h / 8; row++) {
 		for (int col = 0; col < w / 8; col++) {
-			//
-			// Read 3 component blocks
-			//
-			int vals1[64] = {};
-			int vals2[64] = {};
-			int vals3[64] = {};
+			readunit(self, dc, br, row, col);
+		}
+	}
+}
 
-			// Y
-			huffman.reader_t *hrdc = huffman.newreader(self->htables[0], br);
-			huffman.reader_t *hrac = huffman.newreader(self->htables[16], br);
-			readblock(br, hrdc, hrac, dcY, vals1);
-			huffman.closereader(hrdc);
-			huffman.closereader(hrac);
-			dcY = vals1[0];
+void readunit(jpeg_t *self, int *dc, bits.reader_t *br, int row, col) {
+	// Read 3 component blocks
+	int vals1[64] = {};
+	int vals2[64] = {};
+	int vals3[64] = {};
 
-			// B
-			hrdc = huffman.newreader(self->htables[1], br);
-			hrac = huffman.newreader(self->htables[17], br);
-			readblock(br, hrdc, hrac, dcB, vals2);
-			huffman.closereader(hrdc);
-			huffman.closereader(hrac);
-			dcB = vals2[0];
+	// Y
+	huffman.reader_t *hrdc = huffman.newreader(self->htables[0], br);
+	huffman.reader_t *hrac = huffman.newreader(self->htables[16], br);
+	readblock(br, hrdc, hrac, dc[0], vals1);
+	huffman.closereader(hrdc);
+	huffman.closereader(hrac);
+	dc[0] = vals1[0];
 
-			// R
-			hrdc = huffman.newreader(self->htables[1], br);
-			hrac = huffman.newreader(self->htables[17], br);
-			readblock(br, hrdc, hrac, dcR, vals3);
-			huffman.closereader(hrdc);
-			huffman.closereader(hrac);
-			dcR = vals3[0];
+	// B
+	hrdc = huffman.newreader(self->htables[1], br);
+	hrac = huffman.newreader(self->htables[17], br);
+	readblock(br, hrdc, hrac, dc[1], vals2);
+	huffman.closereader(hrdc);
+	huffman.closereader(hrac);
+	dc[1] = vals2[0];
 
-			//
-			// Undo quantization
-			//
-			uint8_t *quant1 = self->quant[self->quantMapping[0]];
-			uint8_t *quant2 = self->quant[self->quantMapping[1]];
-			uint8_t *quant3 = self->quant[self->quantMapping[2]];
-			for (int i = 0; i < 64; i++) {
-				vals1[i] *= quant1[i];
-				vals2[i] *= quant2[i];
-				vals3[i] *= quant3[i];
-			}
+	// R
+	hrdc = huffman.newreader(self->htables[1], br);
+	hrac = huffman.newreader(self->htables[17], br);
+	readblock(br, hrdc, hrac, dc[2], vals3);
+	huffman.closereader(hrdc);
+	huffman.closereader(hrac);
+	dc[2] = vals3[0];
 
-			//
-			// Undo zigzag
-			//
-			undozz(vals1);
-			undozz(vals2);
-			undozz(vals3);
+	// Undo quantization
+	uint8_t *quant1 = self->quant[self->quantMapping[0]];
+	uint8_t *quant2 = self->quant[self->quantMapping[1]];
+	uint8_t *quant3 = self->quant[self->quantMapping[2]];
+	for (int i = 0; i < 64; i++) {
+		vals1[i] *= quant1[i];
+		vals2[i] *= quant2[i];
+		vals3[i] *= quant3[i];
+	}
 
-			//
-			// Rebuild the components
-			//
-			double Y[64] = {};
-			double Cb[64] = {};
-			double Cr[64] = {};
-			rebuild(vals1, Y);
-			rebuild(vals2, Cb);
-			rebuild(vals3, Cr);
+	// Undo zigzag
+	undozz(vals1);
+	undozz(vals2);
+	undozz(vals3);
 
-			//
-			// Compose RGB
-			//
-			image.rgba_t vv[64];
-			for (int i = 0; i < 64; i++) {
-				vv[i] = toRGB(Y[i], Cr[i], Cb[i]);
-			}
+	// Rebuild the components
+	double Y[64] = {};
+	double Cb[64] = {};
+	double Cr[64] = {};
+	rebuild(vals1, Y);
+	rebuild(vals2, Cb);
+	rebuild(vals3, Cr);
 
-			//
-			// Merge the block into the full image
-			//
-			for (int y = 0; y < 8; y++) {
-				for (int x = 0; x < 8; x++) {
-					int bpos = x + 8*y;
-					image.rgba_t val = vv[bpos];
-					image.set(self->img, col*8 + x, row*8 + y, val);
-				}
-			}
+	// Compose RGB
+	image.rgba_t vv[64];
+	for (int i = 0; i < 64; i++) {
+		vv[i] = toRGB(Y[i], Cr[i], Cb[i]);
+	}
+
+	// Append the block to the image
+	for (int y = 0; y < 8; y++) {
+		for (int x = 0; x < 8; x++) {
+			int bpos = x + 8*y;
+			image.rgba_t val = vv[bpos];
+			image.set(self->img, col*8 + x, row*8 + y, val);
 		}
 	}
 }
