@@ -326,19 +326,29 @@ void read_scan_data(jpeg_t *self, reader.t *r) {
 	// These will contain the current values.
 	int dc[3] = {0,0,0};
 
+	// Read n blocks and tile them into the main image left to right.
 	int w = self->img->width;
 	int h = self->img->height;
 	int ri = self->restart_interval;
-	for (int row = 0; row < h / 8; row++) {
-		for (int col = 0; col < w / 8; col++) {
-			ri--;
-			printf("ri=%d\n", ri);
-			readunit(self, dc, br, row, col);
+	image.image_t *block = image.new(8, 8);
+	int x = 0;
+	int y = 0;
+	int n = (h/8) * (w/8);
+	for (int i = 0; i < n; i++) {
+		ri--;
+		// printf("ri=%d\n", ri);
+		readunit(self, dc, br, block);
+		image.paste(self->img, block, x, y);
+		x += 8;
+		if (x >= w) {
+			x = 0;
+			y += 8;
 		}
 	}
+	image.free(block);
 }
 
-void readunit(jpeg_t *self, int *dc, bits.reader_t *br, int row, col) {
+void readunit(jpeg_t *self, int *dc, bits.reader_t *br, image.image_t *block) {
 	// Read 3 component blocks
 	int vals1[64] = {};
 	int vals2[64] = {};
@@ -397,12 +407,12 @@ void readunit(jpeg_t *self, int *dc, bits.reader_t *br, int row, col) {
 		vv[i] = toRGB(Y[i], Cr[i], Cb[i]);
 	}
 
-	// Append the block to the image
+	// Draw the block
+	int pos = 0;
 	for (int y = 0; y < 8; y++) {
 		for (int x = 0; x < 8; x++) {
-			int bpos = x + 8*y;
-			image.rgba_t val = vv[bpos];
-			image.set(self->img, col*8 + x, row*8 + y, val);
+			image.rgba_t val = vv[pos++];
+			image.set(block, x, y, val);
 		}
 	}
 }
