@@ -226,6 +226,13 @@ pub const char *strval(val_t *v) {
 	return v->val.str;
 }
 
+pub double numval(val_t *v) {
+	if (!v || v->type != TNUM) {
+		return 0;
+	}
+	return v->val.num;
+}
+
 //
 // Parser
 //

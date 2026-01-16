@@ -109,10 +109,42 @@ int sprintval(json.val_t *val, char *str) {
 		strcpy(str, s);
 		return r;
 	}
+	if (json.type(val) == json.TNUM) {
+		double x = json.numval(val);
+		if (isint(x) && x > 10000) {
+			char tmp[20] = {};
+			thousands((int) x, tmp, sizeof(tmp));
+			strcpy(str, tmp);
+			return strlen(tmp);
+		}
+	}
 	// Print other types as serialized JSON.
 	char *s = json.format(val);
 	int r = strlen(s);
 	strcpy(str, s);
 	free(s);
 	return r;
+}
+
+int thousands(int x, char *out, size_t n) {
+	char tmp[20];
+	int l = sprintf(tmp, "%d", x);
+
+	int extra = l % 3;
+	size_t z = 0;
+	for (int i = 0; i < l; i++) {
+		if (i > 0 && (i-extra) % 3 == 0) {
+			if (z == n) return -1;
+			out[z++] = '`';
+		}
+		if (z == n) return -1;
+		out[z++] = tmp[i];
+	}
+	if (z == n) return -1;
+	out[z] = '\0';
+	return (int) z;
+}
+
+bool isint(double x) {
+	return x == round(x);
 }
