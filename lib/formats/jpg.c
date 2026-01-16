@@ -21,12 +21,22 @@ void seterr(err_t *err, const char *fmt, ...) {
 
 const double PI = 3.141592653589793238462643383279502884197169399375105820974944;
 
+const char *ids[] = { "invalid (0)", "Y", "Cb", "Cr", "I", "Q" };
+
+pub typedef {
+	uint8_t id; // 1 = Y, 2 = Cb, 3 = Cr, 4 = I, 5 = Q
+	uint8_t hsize; // how many 8x8 blocks per unit horizontally
+	uint8_t vsize; // how many 8x8 blocks per unit vertically
+	uint8_t qtable_index; // which quantization table to use
+} component_t;
+
 pub typedef {
 	image.image_t *img;
 	huffman.tree_t *htables[100];
 	uint8_t *quant[100];
-	int quantMapping[100];
 	uint16_t restart_interval; // how often to reset the decoder, in MCUs.
+	uint8_t ncomponents;
+	component_t components[3];
 } jpeg_t;
 
 pub jpeg_t *read(const char *path, err_t *err) {
@@ -203,11 +213,7 @@ void read_quant_table(jpeg_t *self, reader.t *r) {
 	self->quant[num] = qt;
 }
 
-const char *ids[] = {
-    "invalid (zero)",
-    "Y", "Cb", "Cr",
-    "I", "Q"
-};
+
 
 void read_baseline_dct(jpeg_t *self, reader.t *r, err_t *err) {
 	uint16_t len = 0;
@@ -228,23 +234,42 @@ void read_baseline_dct(jpeg_t *self, reader.t *r, err_t *err) {
 	if (components != 3) {
 		panic("ncomponents = %u not implemented", components);
 	}
-	self->img = image.new(w, h);
+	self->ncomponents = components;
 	for (uint8_t i = 0; i < components; i++) {
-		uint8_t id; // 1 = Y, 2 = Cb, 3 = Cr, 4 = I, 5 = Q
-		uint8_t sampling_factors; // horizontal | vertical
-		uint8_t qtable_num;
-		reader.read(r, &id, 1);
+		component_t *c = &self->components[i];
+		reader.read(r, &c->id, 1);
+
+		uint8_t sampling_factors; // horizontal | vertical: (h << 4) | v
 		reader.read(r, &sampling_factors, 1);
-		reader.read(r, &qtable_num, 1);
-		int fac1 = sampling_factors & 0xf;
-        int fac2 = sampling_factors >> 4;
-		if (fac1 != 1 || fac2 != 1) {
-			seterr(err, "sampling factors != 1 not implemented");
-			return;
-		}
-		printf("\tcomponent %u: id=%u (%s) sampling_factors=%d,%d qtable_num=%u\n", i, id, ids[id], fac1, fac2, qtable_num);
-		self->quantMapping[i] = qtable_num;
+		c->hsize = sampling_factors >> 4;
+		c->vsize = sampling_factors & 0xf;
+
+		reader.read(r, &c->qtable_index, 1);
 	}
+
+	for (uint8_t i = 0; i < self->ncomponents; i++) {
+		component_t *c = &self->components[i];
+		uint8_t id = c->id;
+		printf("\tcomponent %u: id=%u (%s)", i, id, ids[id]);
+		printf(" sampling_factors=%d,%d qtable_num=%u\n", c->hsize, c->vsize, c->qtable_index);
+		if (c->vsize != 1 || c->hsize != 1) {
+			seterr(err, "sampling factors != 1 not implemented");
+			// return;
+		}
+		if (i == 0 && id != 1) {
+			panic("expected component %d, got %u", 1, id);
+		}
+		if (i == 1 && id != 2) {
+			panic("expected component %d, got %u", 2, id);
+		}
+		if (i == 2 && id != 3) {
+			panic("expected component %d, got %u", 3, id);
+		}
+	}
+	if (err->set) {
+		return;
+	}
+	self->img = image.new(w, h);
 }
 
 void read_huffman_table(jpeg_t *self, reader.t *r) {
@@ -379,9 +404,9 @@ void readunit(jpeg_t *self, int *dc, bits.reader_t *br, image.image_t *block) {
 	dc[2] = vals3[0];
 
 	// Undo quantization
-	uint8_t *quant1 = self->quant[self->quantMapping[0]];
-	uint8_t *quant2 = self->quant[self->quantMapping[1]];
-	uint8_t *quant3 = self->quant[self->quantMapping[2]];
+	uint8_t *quant1 = self->quant[self->components[0].qtable_index];
+	uint8_t *quant2 = self->quant[self->components[1].qtable_index];
+	uint8_t *quant3 = self->quant[self->components[2].qtable_index];
 	for (int i = 0; i < 64; i++) {
 		vals1[i] *= quant1[i];
 		vals2[i] *= quant2[i];
