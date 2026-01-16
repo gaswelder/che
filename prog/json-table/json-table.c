@@ -51,6 +51,7 @@ int main() {
 		}
 	}
 
+	printf("%zu rows\n", nrows);
 
 	// Print the header.
 	line(w);
