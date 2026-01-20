@@ -136,17 +136,44 @@ pub t now() {
 
 pub t parse_iso_ts(const char *p) {
 	// 2025-12-08T20:31:06+02:00
+	// 2026-01-16T20:01:17.278Z
+	const char *q = p;
 	int Y = 0;
+	q = readint(q, &Y);
+	if (*q++ != '-') panic("- expected");
+
 	int M = 0;
+	q = readint(q, &M);
+	if (*q++ != '-') panic("- expected");
+
 	int D = 0;
+	q = readint(q, &D);
+	if (*q++ != 'T') panic("T expected");
+
 	int h = 0;
+	q = readint(q, &h);
+	if (*q++ != ':') panic(": expected");
+
 	int m = 0;
+	q = readint(q, &m);
+	if (*q++ != ':') panic(": expected");
+
 	int s = 0;
-	int zh = 0;
-	int zm = 0;
-	int r = sscanf(p, "%d-%d-%dT%d:%d:%d+%d:%d", &Y, &M, &D, &h, &m, &s, &zh, &zm);
-	if (r != 8) {
-		panic("failed to parse iso timestamp: %s", p);
+	q = readint(q, &s);
+	if (*q == '.') {
+		q++;
+		int ms = 0;
+		q = readint(q, &ms);
+	}
+	int zh = 0; // zone hours
+	int zm = 0; // zone minutes
+	if (*q == 'Z') {
+		q++;
+	} else if (*q == '+') {
+		q++;
+		q = readint(q, &zh);
+		if (*q++ != ':') panic(": expected");
+		q = readint(q, &zm);
 	}
 	tm_t x = {
 		.tm_sec = s, //0-60*

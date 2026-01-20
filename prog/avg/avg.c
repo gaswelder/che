@@ -59,17 +59,10 @@ line_t parse_line(char *line) {
 	*p = '\0';
 	p++;
 
-	// Parse the first column
+	// Parse as (time, int)
 	time.t x = time.parse_iso_ts(ts);
-
-	// Parse the second column
 	int val = 0;
-	sscanf(p, "%d bytes/s", &val);
-
-	// Return both
-	line_t r = {
-		.ts = x,
-		.bps = val
-	};
+	sscanf(p, "%d", &val);
+	line_t r = { .ts = x, .bps = val };
 	return r;
 }
