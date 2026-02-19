@@ -8,6 +8,19 @@
 #define MAXTRACKS 100
 
 pub typedef {
+	bool set;
+	char msg[100];
+} err_t;
+
+void seterr(err_t *err, const char *fmt, ...) {
+	va_list args = {};
+	va_start(args, fmt);
+	vsnprintf(err->msg, sizeof(err->msg), fmt, args);
+	va_end(args);
+	err->set = true;
+}
+
+pub typedef {
 	char title[300];
 	time.duration_t pos;
 } track_t;
@@ -21,65 +34,101 @@ pub void cue_free(cue_t *c) {
 	free(c);
 }
 
-// Parses cue sheet in the string s.
+// Parses cue sheet string s.
 // Returns a cue_t instance.
-// The caller must check cur->error for errors.
-pub cue_t *cue_parse(const char *s) {
+pub cue_t *parse(const char *s, err_t *err) {
 	cue_t *c = calloc!(1, sizeof(cue_t));
 	tokenizer.t *b = tokenizer.from_str(s);
+	readbuf(c, b, err);
+	tokenizer.free(b);
+	if (err->set) {
+		OS.free(c);
+		return NULL;
+	}
+	return c;
+}
 
+void readbuf(cue_t *c, tokenizer.t *b, err_t *err) {
 	if (!skip_utf_bom(b)) {
-		panic("Unknown byte-order mark");
+		seterr(err, "Unknown byte-order mark");
+		return;
+	}
+	while (tokenizer.skip_literal(b, "REM ")) {
+		line(b);
+	}
+	if (tokenizer.skip_literal(b, "PERFORMER ")) {
+		line(b);
+	}
+	if (tokenizer.skip_literal(b, "TITLE ")) {
+		line(b);
 	}
 
-	char buf[500] = {};
-
-	tok(b, "FILE");
-	title(b, buf, sizeof(buf));
-	tok(b, "MP3");
-	line(b);
+	// FILE "..." WAVE
+	readfile(b, err);
+	if (err->set) {
+		return;
+	}
 
 	while (tokenizer.more(b)) {
 		if (c->ntracks == MAXTRACKS) {
 			panic("too many tracks (limit = %d)", MAXTRACKS);
 		}
-
 		track_t *t = &c->tracks[c->ntracks++];
-
-		// TRACK 01 AUDIO
-		tok(b, "TRACK");
-		num(b);
-		tok(b, "AUDIO");
-		line(b);
-
-		// TITLE "..."
-		tok(b, "TITLE");
-		title(b, t->title, sizeof(t->title));
-		line(b);
-
-		// PERFORMER "..."
-		tok(b, "PERFORMER");
-		title(b, buf, sizeof(buf));
-		line(b);
-
-		// INDEX 01 01:12:00
-		tok(b, "INDEX");
-		index_t r = {};
-		index(b, &r);
-		t->pos = index_pos(&r);
+		readtrack(t, b, err);
+		if (err->set) return;
 	}
-
-	tokenizer.free(b);
-	return c;
 }
 
-// Skips a specific token or panics.
-void tok(tokenizer.t *b, const char *s) {
+// FILE "..." WAVE
+void readfile(tokenizer.t *b, err_t *err) {
+	char buf[500] = {};
+	if (!tok(b, "FILE", err)) return;
+	title(b, buf, sizeof(buf));
+	if (!tokenizer.skip_literal(b, " MP3") && !tokenizer.skip_literal(b, " WAVE")) {
+		seterr(err, "expected MP3 or WAVE at the file entry");
+		return;
+	}
+	line(b);
+}
+
+void readtrack(track_t *t, tokenizer.t *b, err_t *err) {
+	char buf[500] = {};
+
+	// TRACK 01 AUDIO
+	if (!tok(b, "TRACK", err)) return;
+	num(b);
+	if (!tok(b, "AUDIO", err)) return;
+	line(b);
+
+	// TITLE "..."
+	if (!tok(b, "TITLE", err)) return;
+	title(b, t->title, sizeof(t->title));
+	line(b);
+
+	// PERFORMER "..."
+	if (!tok(b, "PERFORMER", err)) return;
+	title(b, buf, sizeof(buf));
+	line(b);
+
+	// INDEX 01 01:12:00
+	if (!tok(b, "INDEX", err)) return;
+	index_t r = {};
+	index(b, &r);
+	t->pos = index_pos(&r);
+}
+
+// Skips a specific token or panics and returns true.
+// If the token doesn't follow, sets the error and returns false.
+bool tok(tokenizer.t *b, const char *s, err_t *err) {
 	tokenizer.hspaces(b);
 	if (!tokenizer.skip_literal(b, s)) {
-		panic("expected %s", s);
+		char buf[10] = {};
+		tokenizer.tail(b, buf, 9);
+		seterr(err, "expected %s, got %s...", s, buf);
+		return false;
 	}
 	tokenizer.hspaces(b);
+	return true;
 }
 
 // Reads a number.
@@ -110,6 +159,7 @@ void title(tokenizer.t *b, char *buf, size_t n) {
 	}
 }
 
+// Reads from b until the next line starts.
 void line(tokenizer.t *b) {
 	while (tokenizer.more(b) && tokenizer.peek(b) != '\n') {
 		tokenizer.get(b);

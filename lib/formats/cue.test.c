@@ -2,7 +2,13 @@
 #import time
 #import test
 
-const char *s = "FILE \"A Mind Confused - A Mind Confused (1995).mp3\" MP3
+const char *s = "REM GENRE \"Avant-garde Metal\"
+REM DATE 2006
+REM DISCID A911310C
+REM COMMENT \"ExactAudioCopy v0.95b4\"
+PERFORMER \"Celtic Frost\"
+TITLE \"Monotheist (Century Media, USA, 8282-2, Limited edition)\"
+FILE \"A Mind Confused - A Mind Confused (1995).mp3\" MP3
 TRACK 01 AUDIO
   TITLE \"Eternal Sleep\"
   PERFORMER \"A Mind Confused\"
@@ -18,7 +24,11 @@ TRACK 03 AUDIO
 ";
 
 int main() {
-    cue.cue_t *c = cue.cue_parse(s);
+	cue.err_t err = {};
+    cue.cue_t *c = cue.parse(s, &err);
+	if (err.set) {
+		panic("failed to parse: %s", err.msg);
+	}
 
     int n = cue.cue_ntracks(c);
     test.truth("ntracks", n == 3);

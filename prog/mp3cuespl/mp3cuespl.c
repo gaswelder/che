@@ -16,11 +16,10 @@ int main(int argc, char *argv[]) {
 		panic("Couldn't read %s", cuepath);
 	}
 
-	char *err = NULL;
-	cue.cue_t *c = cue.cue_parse(s);
-	free(s);
-	if (!c) {
-		fprintf(stderr, "Couldn't parse the cue file: %s\n", err);
+	cue.err_t err = {};
+	cue.cue_t *c = cue.parse(s, &err);
+	if (err.set) {
+		fprintf(stderr, "Couldn't parse the cue file: %s\n", err.msg);
 		return 1;
 	}
 
