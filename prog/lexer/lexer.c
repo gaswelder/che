@@ -220,9 +220,9 @@ tok_t *read_string(tokenizer.t *b) {
 		if (c == '"') {
 			return tok_make("string", strbuilder.str_unpack(s), pos);
 		}
-		strbuilder.str_addc(s, c);
+		strbuilder.addc(s, c);
 		if (c == '\\') {
-			strbuilder.str_addc(s, tokenizer.get(b));
+			strbuilder.addc(s, tokenizer.get(b));
 		}
 	}
 	return tok_make("error", strings.newstr("double quote expected"), pos);
@@ -298,7 +298,7 @@ tok_t *read_identifier(tokenizer.t *b) {
 		if (!isalpha(c) && !isdigit(c) && c != '_') {
 			break;
 		}
-		strbuilder.str_addc(s, tokenizer.get(b));
+		strbuilder.addc(s, tokenizer.get(b));
 	}
 	return tok_make("word", strbuilder.str_unpack(s), pos);
 }

@@ -482,7 +482,7 @@ pub void formatwr(writer.t *w, val_t *v) {
 pub char *format(val_t *n) {
 	strbuilder.str *s = strbuilder.new();
 	if (!writenode(n, s)) {
-		strbuilder.str_free(s);
+		strbuilder.free(s);
 		return NULL;
 	}
 	return strbuilder.str_unpack(s);
@@ -538,22 +538,22 @@ bool writestr(val_t *n, strbuilder.str *s) {
 		const char c = content[i];
 		if (c == '\n') {
 			ok = ok
-				&& strbuilder.str_addc(s, '\\')
-				&& strbuilder.str_addc(s, 'n');
+				&& strbuilder.addc(s, '\\')
+				&& strbuilder.addc(s, 'n');
 			continue;
 		}
 		if (c == '\t') {
 			ok = ok
-				&& strbuilder.str_addc(s, '\\')
-				&& strbuilder.str_addc(s, 't');
+				&& strbuilder.addc(s, '\\')
+				&& strbuilder.addc(s, 't');
 			continue;
 		}
 		if (c == '\\' || c == '\"' || c == '/') {
-			ok = ok && strbuilder.str_addc(s, '\\');
+			ok = ok && strbuilder.addc(s, '\\');
 		}
-		ok = ok && strbuilder.str_addc(s, c);
+		ok = ok && strbuilder.addc(s, c);
 	}
-	ok = ok && strbuilder.str_addc(s, '"');
+	ok = ok && strbuilder.addc(s, '"');
 	return ok;
 }
 

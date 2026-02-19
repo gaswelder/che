@@ -169,7 +169,7 @@ pub int write_request(writer.t *w, request_t *r) {
 	const char *s = strbuilder.str_raw(sb);
 	int len = writer.write(w, (uint8_t *)s, strlen(s));
 	bool ok = (len == (int)strlen(s));
-    strbuilder.str_free(sb);
+    strbuilder.free(sb);
     if (!ok) return -1;
 	return len;
 }

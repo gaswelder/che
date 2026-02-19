@@ -76,7 +76,7 @@ void *client_routine(void *arg) {
 			}
 			fs.dir_close(d);
 			http.serve_text(&req, conn, strbuilder.str_raw(b), "text/html");
-			strbuilder.str_free(b);
+			strbuilder.free(b);
 			continue;
 		}
 

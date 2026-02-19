@@ -12,10 +12,10 @@ pub str *new() {
 	return s;
 }
 
-pub void str_free(str *s)
-{
-	free(s->data);
-	free(s);
+// Frees the builder and its buffer.
+pub void free(str *s) {
+	OS.free(s->data);
+	OS.free(s);
 }
 
 /**
@@ -29,7 +29,8 @@ pub void clear(str *s) {
 	s->len = 0;
 }
 
-pub bool str_addc(str *s, int ch) {
+// Appends a single character to the buider's buffer.
+pub bool addc(str *s, int ch) {
 	if (s->err) return false;
 	if (s->len + 1 >= s->max) {
 		if (!grow(s)) {
@@ -41,14 +42,12 @@ pub bool str_addc(str *s, int ch) {
 	return true;
 }
 
-/*
- * Appends string s to the builder's buffer.
- */
+// Appends string s to the builder's buffer.
 pub bool adds(str *b, const char *s) {
 	if (b->err) return false;
 	const char *p = s;
 	while (*p != '\0') {
-		if (!str_addc(b, *p)) {
+		if (!addc(b, *p)) {
 			return false;
 		}
 		p++;
@@ -82,7 +81,7 @@ pub size_t str_len(str *s)
  */
 pub char *str_unpack(str *s) {
 	char *c = s->data;
-	free(s);
+	OS.free(s);
 	return c;
 }
 
