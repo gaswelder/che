@@ -10,12 +10,13 @@
 #import bits
 #import reader
 
-const int L3 = 1;
-
+// Bitrates table for MP3, kbps.
 int bitrates[] = {
 	0, 32, 40, 48, 56, 64, 80, 96, 112,
 	128, 160, 192, 224, 256, 320
 };
+
+// Sampling frequencies table for MP3, Hz.
 int frequencies[] = {44100, 48000, 32000};
 
 /*
@@ -44,31 +45,23 @@ pub typedef {
 	int nextpos;
 
 	header_t h;
-} mp3file;
+} reader_t;
 
-pub typedef {
-	int min;
-	int sec;
-	int usec;
-} mp3time_t;
-
-/*
- * Opens an MP3 file and finds the beginning of the stream.
- */
-pub mp3file *mp3open(const char *path) {
+// Creates a reader for mp3 file at given path.
+pub reader_t *open_reader(const char *path) {
 	FILE *f = fopen(path, "rb");
 	if (!f) {
 		return NULL;
 	}
 
-	mp3file *m = calloc!(1, sizeof(mp3file));
+	reader_t *m = calloc!(1, sizeof(reader_t));
 	m->file = f;
 
 	/*
 	 * Sync: find first valid header
 	 */
 	while(fpeek(m->file) != EOF) {
-		if(read_header(m)) {
+		if(readframe(m)) {
 			break;
 		}
 	}
@@ -79,11 +72,8 @@ pub mp3file *mp3open(const char *path) {
 	return m;
 }
 
-/*
- * Closes the MP3 file.
- */
-pub void mp3close(mp3file *f)
-{
+// Closes the reader.
+pub void close_reader(reader_t *f) {
 	fclose(f->file);
 	free(f);
 }
@@ -91,7 +81,7 @@ pub void mp3close(mp3file *f)
 /*
  * Returns last error string for the file.
  */
-pub const char *mp3err(mp3file *f)
+pub const char *mp3err(reader_t *f)
 {
 	return f->err;
 }
@@ -99,7 +89,7 @@ pub const char *mp3err(mp3file *f)
 /*
  * Reads next frame. Returns false on error.
  */
-bool nextframe(mp3file *f)
+bool nextframe(reader_t *f)
 {
 	if(f->err) {
 		panic("can't nextframe: %s", f->err);
@@ -109,7 +99,7 @@ bool nextframe(mp3file *f)
 		panic("fseek failed");
 	}
 
-	if(!read_header(f)) {
+	if(!readframe(f)) {
 		if(!feof(f->file) && !f->err) {
 			f->err = "Stream error";
 		}
@@ -120,47 +110,15 @@ bool nextframe(mp3file *f)
 	return true;
 }
 
-// Writes out the data from f to out starting at current position in f
-// until the position pos.
-pub void mp3out(mp3file *f, FILE *out, size_t usec) {
-	if(f->err) return;
+// Reads a single frame.
+// Each frame is a complete, independent unit, with its owh header and data.
+bool readframe(reader_t *f) {
+	header_t *h = &f->h;
 
-	// Calculate how many frames are fully below the specified position:
-	// nframes * samples_per_frame / 44100 <= pos.
-	// Next frame must not go over the specified position.
-	while (f->framepos * frame_samples * 1000000 <= 44100 * usec) {
-		write_frame(f, out);
-		if (!nextframe(f)) {
-			break;
-		}
-	}
-}
-
-/*
- * Writes current frame to the given file.
- */
-pub void write_frame(mp3file *f, FILE *out)
-{
-	/*
-	 * Go back 4 bytes to the header
-	 */
-	if(fseek(f->file, -4, SEEK_CUR) < 0) {
-		panic("fseek(-4) failed");
-	}
-
-	size_t len = f->nextpos - ftell(f->file);
-	while(len > 0) {
-		len--;
-		int c = fgetc(f->file);
-		fputc(c, out);
-	}
-}
-
-
-bool read_header(mp3file *f) {
+	// Read the header (32 bits).
 	reader.t *fr = reader.file(f->file);
 	bits.reader_t *s = bits.newreader(fr);
-	bool r = _read_header(s, &f->h);
+	bool r = readheader(s, h);
 	bits.closereader(s);
 	reader.free(fr);
 	if (!r) {
@@ -168,30 +126,29 @@ bool read_header(mp3file *f) {
 	}
 
 	// Calculate the length of the frame.
-	header_t *h = &f->h;
 	size_t len = 144 * (h->bitrate*1000) / h->freq;
 	if (h->padded) len++;
 
-	// Remember next frame position.
+	// Instead of reading data just remember the next frame position.
 	f->nextpos = ftell(f->file) + (int)len - 4;
 	return r;
 }
 
-bool _read_header(bits.reader_t *s, header_t *h) {
-	// 8 bits: FF
+bool readheader(bits.reader_t *s, header_t *h) {
+	// Frame sync: FF, F
 	if (bits.readn(s, 8) != 0xFF) {
 		return false;
 	}
-	// 4 bits: F
 	if (bits.readn(s, 4) != 0xF) {
 		return false;
 	}
+
 	// 1 bit: version, '1' for MPEG1
 	if (bits.readn(s, 1) != 1) {
 		return false;
 	}
-	// 2 bits: layer
-	if (bits.readn(s, 2) != L3) {
+	// 2 bits: "layer", 1 for MP3
+	if (bits.readn(s, 2) != 1) {
 		return false;
 	}
 	// 1 bit: error protection
@@ -210,20 +167,10 @@ bool _read_header(bits.reader_t *s, header_t *h) {
 		return false;
 	}
 	h->freq = frequencies[index];
-	/*
-	 * To make first draft simpler, stick only to
-	 * the regular 44100 Hz format.
-	 */
-	if(h->freq != 44100) {
+	if (h->freq != 44100) {
 		panic("Unsupported sampling frequency: %d", h->freq);
 	}
-	/*
-	 * General support will have to assume variable frequency
-	 * (since there are such files) and some tricks in calculating
-	 * current position in some normalized time units.
-	 */
 
-	
 	int tmp = bits.readn(s, 1); // 1: padding?
 	if (tmp < 0) panic("!");
 	h->padded = tmp == 1;
@@ -234,7 +181,44 @@ bool _read_header(bits.reader_t *s, header_t *h) {
 	bits.readn(s, 1); // 1: copyright?
 	bits.readn(s, 1); // 1: original?
 	bits.readn(s, 2); // 2: emphasis
+
+	// (32 bits total)
 	return true;
+}
+
+// Writes out the data from f to out starting at current position in f
+// until the position pos.
+pub void writeout(reader_t *f, FILE *out, size_t usec) {
+	if(f->err) return;
+
+	// Calculate how many frames are fully below the specified position:
+	// nframes * samples_per_frame / 44100 <= pos.
+	// Next frame must not go over the specified position.
+	while (f->framepos * frame_samples * 1000000 <= 44100 * usec) {
+		write_frame(f, out);
+		if (!nextframe(f)) {
+			break;
+		}
+	}
+}
+
+/*
+ * Writes current frame to the given file.
+ */
+void write_frame(reader_t *f, FILE *out) {
+	/*
+	 * Go back 4 bytes to the header
+	 */
+	if(fseek(f->file, -4, SEEK_CUR) < 0) {
+		panic("fseek(-4) failed");
+	}
+
+	size_t len = f->nextpos - ftell(f->file);
+	while(len > 0) {
+		len--;
+		int c = fgetc(f->file);
+		fputc(c, out);
+	}
 }
 
 int fpeek(FILE *f) {

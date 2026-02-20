@@ -10,12 +10,12 @@
 
 int main(int argc, char *argv[]) {
 	if (argc != 3) {
-		fprintf(stderr, "Usage: mp3spl <mp3file> <m:s.sss...>,<m:s.sss...>,...\n");
+		fprintf(stderr, "Arguments: <mp3file> <m:s.sss...>,<m:s.sss...>,...\n");
 		return 1;
 	}
 
 	const char *path = argv[1];
-	mp3.mp3file *f = mp3.mp3open(path);
+	mp3.reader_t *f = mp3.open_reader(path);
 	if (mp3.mp3err(f)) {
 		fprintf(stderr, "%s\n", mp3.mp3err(f));
 		return 1;
@@ -55,7 +55,7 @@ int main(int argc, char *argv[]) {
 		if (!out) {
 			panic("fopen(%s) failed", newname);
 		}
-		mp3.mp3out(f, out, points[i]);
+		mp3.writeout(f, out, points[i]);
 		fclose(out);
 		if (points[i] == SIZE_MAX) {
 			break;
@@ -64,7 +64,7 @@ int main(int argc, char *argv[]) {
 
 	free(namebase);
 	free(newname);
-	mp3.mp3close(f);
+	mp3.close_reader(f);
 	return 0;
 }
 
@@ -128,7 +128,7 @@ bool readint(const char **spec, int *r) {
 }
 
 // <m:s.sss...>
-bool parse_times(mp3.mp3time_t *a, const char *spec, size_t maxsize) {
+bool parse_times(size_t *a, const char *spec, size_t maxsize) {
 	if (maxsize == 0) {
 		panic("zero maxsize");
 	}

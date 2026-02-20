@@ -5,7 +5,7 @@
 
 int main(int argc, char *argv[]) {
 	if (argc != 3) {
-		fprintf(stderr, "Usage: mp3cuespl <cuefile> <mp3.mp3file>\n");
+		fprintf(stderr, "Arguments: <cuefile> <mp3file>\n");
 		return 1;
 	}
 
@@ -24,20 +24,20 @@ int main(int argc, char *argv[]) {
 		return 1;
 	}
 
-	mp3.mp3file *m = mp3.mp3open(mp3path);
+	mp3.reader_t *m = mp3.open_reader(mp3path);
 	if (!m) {
 		fprintf(stderr, "Couldn't open '%s': %s\n", mp3path, strerror(errno));
 		return 1;
 	}
 	cuespl(c, m);
 	cue.cue_free(c);
-	mp3.mp3close(m);
+	mp3.close_reader(m);
 	return 0;
 }
 
 char fname[1000] = {};
 
-void cuespl(cue.cue_t *c, mp3.mp3file *m) {
+void cuespl(cue.cue_t *c, mp3.reader_t *m) {
 	int n = cue.cue_ntracks(c);
 	for (int i = 0; i < n; i++) {
 		// Find the current track's end position in the source file.
@@ -55,7 +55,7 @@ void cuespl(cue.cue_t *c, mp3.mp3file *m) {
 		if (!out) {
 			panic("Couldn't create %s", fname);
 		}
-		mp3.mp3out(m, out, pos_us);
+		mp3.writeout(m, out, pos_us);
 		fclose(out);
 	}
 }
