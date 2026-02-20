@@ -39,7 +39,7 @@ pub void cue_free(cue_t *c) {
 pub cue_t *parse(const char *s, err_t *err) {
 	cue_t *c = calloc!(1, sizeof(cue_t));
 	tokenizer.t *b = tokenizer.from_str(s);
-	readbuf(c, b, err);
+	readcue(c, b, err);
 	tokenizer.free(b);
 	if (err->set) {
 		OS.free(c);
@@ -48,88 +48,113 @@ pub cue_t *parse(const char *s, err_t *err) {
 	return c;
 }
 
-void readbuf(cue_t *c, tokenizer.t *b, err_t *err) {
-	if (!skip_utf_bom(b)) {
-		seterr(err, "Unknown byte-order mark");
-		return;
-	}
-	while (tokenizer.skip_literal(b, "REM ")) {
-		line(b);
-	}
-	if (tokenizer.skip_literal(b, "PERFORMER ")) {
-		line(b);
-	}
-	if (tokenizer.skip_literal(b, "TITLE ")) {
-		line(b);
-	}
-
-	// FILE "..." WAVE
-	readfile(b, err);
-	if (err->set) {
-		return;
-	}
-
-	while (tokenizer.more(b)) {
-		if (c->ntracks == MAXTRACKS) {
-			panic("too many tracks (limit = %d)", MAXTRACKS);
+void readcue(cue_t *c, tokenizer.t *b, err_t *err) {
+	track_t *t = NULL;
+	entry_t e = {};
+	while (readentry(b, &e)) {
+		switch str (e.type) {
+			case "REM": {} // ignore
+			case "PERFORMER": {} // ignore
+			case "FILE": {} // ignore
+			case "TITLE": {
+				// if t is null, this is the release title, ignore.
+				// if t is not null, this is the track's title.
+				if (t) {
+					strcpy(t->title, e.data.title);
+				}
+			}
+			case "TRACK": {
+				if (c->ntracks == MAXTRACKS) {
+					seterr(err, "tracks limit reached (%d)", MAXTRACKS);
+					return;
+				}
+				t = &c->tracks[c->ntracks++];
+			}
+			case "INDEX": {
+				if (!t) {
+					seterr(err, "unexpected index entry");
+					return;
+				}
+				t->pos = index_pos(&e.data.index);
+			}
+			default: {
+				panic("unknown entry type: %s", e.type);
+			}
 		}
-		track_t *t = &c->tracks[c->ntracks++];
-		readtrack(t, b, err);
-		if (err->set) return;
 	}
 }
 
-// FILE "..." WAVE
-void readfile(tokenizer.t *b, err_t *err) {
-	char buf[500] = {};
-	if (!tok(b, "FILE", err)) return;
-	title(b, buf, sizeof(buf));
-	if (!tokenizer.skip_literal(b, " MP3") && !tokenizer.skip_literal(b, " WAVE")) {
-		seterr(err, "expected MP3 or WAVE at the file entry");
-		return;
-	}
-	line(b);
-}
+typedef {
+	int n;
+	char kind[20];
+} trackentry_t;
 
-void readtrack(track_t *t, tokenizer.t *b, err_t *err) {
-	char buf[500] = {};
+typedef {
+	char path[100];
+	char kind[20];
+} file_t;
 
-	// TRACK 01 AUDIO
-	if (!tok(b, "TRACK", err)) return;
-	num(b);
-	if (!tok(b, "AUDIO", err)) return;
-	line(b);
+typedef {
+	int num;
+	int min;
+	int sec;
+	int frames;
+} index_t;
 
-	// TITLE "..."
-	if (!tok(b, "TITLE", err)) return;
-	title(b, t->title, sizeof(t->title));
-	line(b);
+typedef {
+	char type[100];
+	union {
+		char rem[1000];
+		char title[100];
+		char performer[100];
+		file_t file;
+		trackentry_t track;
+		index_t index;
+	} data;
+} entry_t;
 
-	// PERFORMER "..."
-	if (tokenizer.literal_follows(b, "PERFORMER ")) {
-		if (!tok(b, "PERFORMER", err)) return;
-		title(b, buf, sizeof(buf));
-		line(b);
-	}
 
-	// INDEX 01 01:12:00
-	if (!tok(b, "INDEX", err)) return;
-	index_t r = {};
-	index(b, &r);
-	t->pos = index_pos(&r);
-}
-
-// Skips a specific token or panics and returns true.
-// If the token doesn't follow, sets the error and returns false.
-bool tok(tokenizer.t *b, const char *s, err_t *err) {
-	tokenizer.hspaces(b);
-	if (!tokenizer.skip_literal(b, s)) {
-		char buf[10] = {};
-		tokenizer.tail(b, buf, 9);
-		seterr(err, "expected %s, got %s...", s, buf);
+bool readentry(tokenizer.t *b, entry_t *e) {
+	if (!tokenizer.more(b)) {
 		return false;
 	}
 	tokenizer.hspaces(b);
+	tokenizer.read_until(b, ' ', e->type, sizeof(e->type));
+	tokenizer.hspaces(b);
+
+	switch str (e->type) {
+		case "REM": {
+			tokenizer.read_until(b, '\n', e->data.rem, sizeof(e->data.rem));
+		}
+		case "PERFORMER": {
+			title(b, e->data.performer, sizeof(e->data.performer));
+		}
+		case "TITLE": {
+			title(b, e->data.title, sizeof(e->data.title));
+		}
+		case "TRACK": {
+			e->data.track.n = num(b);
+			tokenizer.hspaces(b);
+			tokenizer.read_until(b, '\n', e->data.track.kind, sizeof(e->data.track.kind));
+		}
+		case "INDEX": {
+			index(b, &e->data.index);
+		}
+		case "FILE": {
+			title(b, e->data.file.path, sizeof(e->data.file.path));
+			tokenizer.hspaces(b);
+			tokenizer.read_until(b, '\n', e->data.file.kind, sizeof(e->data.file.kind));
+		}
+		default: {
+			panic("unknown entry type: %s", e->type);
+		}
+	}
+	if (tokenizer.peek(b) == '\r') {
+		tokenizer.get(b);
+	}
+	if (tokenizer.peek(b) == '\n') {
+		tokenizer.get(b);
+	}
 	return true;
 }
 
@@ -161,23 +186,6 @@ void title(tokenizer.t *b, char *buf, size_t n) {
 	}
 }
 
-// Reads from b until the next line starts.
-void line(tokenizer.t *b) {
-	while (tokenizer.more(b) && tokenizer.peek(b) != '\n') {
-		tokenizer.get(b);
-	}
-	if (tokenizer.peek(b) == '\n') {
-		tokenizer.get(b);
-	}
-}
-
-typedef {
-	int num;
-	int min;
-	int sec;
-	int frames;
-} index_t;
-
 void index(tokenizer.t *b, index_t *r) {
 	// 01 01:12:00
 
@@ -207,20 +215,6 @@ time.duration_t index_pos(index_t *r) {
 	time.duration_t p = {};
 	time.dur_set(&p, sec, time.SECONDS);
 	return p;
-}
-
-// Skips the sequence EF BB BF, if it follows.
-// Returns true on success or when there is no mark.
-// Returns false on an unexpected EF.. sequence.
-bool skip_utf_bom(tokenizer.t *b) {
-	if ((uint8_t) tokenizer.peek(b) != 0xEF) {
-		return true;
-	}
-	tokenizer.get(b);
-	return (
-		(uint8_t) tokenizer.get(b) == 0xBB
-		&& (uint8_t) tokenizer.get(b) == 0xBF
-	);
 }
 
 pub track_t *cue_track(cue_t *c, int i)

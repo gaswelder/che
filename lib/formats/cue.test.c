@@ -29,6 +29,7 @@ int main() {
 	if (err.set) {
 		panic("failed to parse: %s", err.msg);
 	}
+	if (!c) panic("null return");
 
     int n = cue.cue_ntracks(c);
     test.truth("ntracks", n == 3);
