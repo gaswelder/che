@@ -26,7 +26,8 @@ int main(int argc, char *argv[]) {
 
 	mp3.mp3file *m = mp3.mp3open(mp3path);
 	if (!m) {
-		fprintf(stderr, "Couldn't open '%s': %s", mp3path, strerror(errno));
+		fprintf(stderr, "Couldn't open '%s': %s\n", mp3path, strerror(errno));
+		return 1;
 	}
 	cuespl(c, m);
 	cue.cue_free(c);
