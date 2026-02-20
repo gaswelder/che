@@ -39,28 +39,22 @@ char fname[1000] = {};
 void cuespl(cue.cue_t *c, mp3.mp3file *m) {
 	int n = cue.cue_ntracks(c);
 	for (int i = 0; i < n; i++) {
-		cue.track_t *track = cue.cue_track(c, i);
-
-		// Format the file name.
-		fmtname(fname, sizeof(fname), i, track->title);
-
 		// Find the current track's end position in the source file.
-		mp3.mp3time_t pos = {0};
+		int64_t pos_us = SIZE_MAX;
 		if (i+1 < n) {
-			// Go up to the start of the next track.
-			pos.usec = cue.pos_us(cue.cue_track(c, i+1));
-		} else {
-			// If this is the last track, set the position to the end.
-			pos.min = -1;
-			pos.usec = 0;
+			pos_us = cue.pos_us(cue.cue_track(c, i+1));
 		}
 
+		// Format the file name.
+		cue.track_t *track = cue.cue_track(c, i);
+		fmtname(fname, sizeof(fname), i, track->title);
 		printf("%s\n", fname);
+
 		FILE *out = fopen(fname, "wb");
 		if (!out) {
 			panic("Couldn't create %s", fname);
 		}
-		mp3.mp3out(m, out, pos);
+		mp3.mp3out(m, out, pos_us);
 		fclose(out);
 	}
 }

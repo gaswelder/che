@@ -21,7 +21,7 @@ int main(int argc, char *argv[]) {
 		return 1;
 	}
 
-	mp3.mp3time_t points[20] = {};
+	int64_t points[20] = {};
 	if (!parse_times(points, argv[2], 20)) {
 		fprintf(stderr, "Couldn't parse time positions\n");
 		return 1;
@@ -45,11 +45,19 @@ int main(int argc, char *argv[]) {
 	size_t namesize = len + 1 + 3 + 4;
 	char *newname = calloc!(namesize, sizeof(char));
 
-	for(int i = 0; i < 20; i++) {
+	for (int i = 0; i < 20; i++) {
 		snprintf(newname, namesize, "%s-%02d.mp3", namebase, i+1);
 		puts(newname);
-		out(f, newname, points[i]);
-		if(points[i].min == -1) {
+		if (mp3.mp3err(f)) {
+			panic("%s", mp3.mp3err(f));
+		}
+		FILE *out = fopen(newname, "wb");
+		if (!out) {
+			panic("fopen(%s) failed", newname);
+		}
+		mp3.mp3out(f, out, points[i]);
+		fclose(out);
+		if (points[i] == SIZE_MAX) {
 			break;
 		}
 	}
@@ -60,7 +68,7 @@ int main(int argc, char *argv[]) {
 	return 0;
 }
 
-bool parse_time(const char **spec, mp3.mp3time_t *t) {
+bool parse_time(const char **spec, int64_t *t) {
 	int min = 0;
 	int sec = 0;
 	int usec = 0;
@@ -98,9 +106,7 @@ bool parse_time(const char **spec, mp3.mp3time_t *t) {
 		return false;
 	}
 	*spec = p;
-	t->min = min;
-	t->sec = sec;
-	t->usec = usec;
+	*t = usec + 1000000 * (sec + 60*min);
 	return true;
 }
 
@@ -142,20 +148,6 @@ bool parse_times(mp3.mp3time_t *a, const char *spec, size_t maxsize) {
 		i++;
 	}
 
-	a[i].min = -1;
-	a[i].sec = -1;
+	a[i] = SIZE_MAX;
 	return true;
-}
-
-void out(mp3.mp3file *f, const char *path, mp3.mp3time_t t)
-{
-	if (mp3.mp3err(f)) {
-		panic("%s", mp3.mp3err(f));
-	}
-	FILE *out = fopen(path, "wb");
-	if (!out) {
-		panic("fopen(%s) failed", path);
-	}
-	mp3.mp3out(f, out, t);
-	fclose(out);
 }

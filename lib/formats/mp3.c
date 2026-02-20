@@ -120,33 +120,17 @@ bool nextframe(mp3file *f)
 	return true;
 }
 
-/*
- * Writes data from 'f' to 'out' until the specified time position.
- */
-pub void mp3out(mp3file *f, FILE *out, mp3time_t pos)
-{
+// Writes out the data from f to out starting at current position in f
+// until the position pos.
+pub void mp3out(mp3file *f, FILE *out, size_t usec) {
 	if(f->err) return;
-	/*
-	 * How many frames are completely below the specified
-	 * time:
-	 * nframes * samples_per_frame / 44100 <= time_sec
-	 */
-	size_t usec = 0;
-	if (pos.min == -1) {
-		usec = SIZE_MAX;
-	} else {
-		usec = pos.usec + 1000000 * (pos.sec + 60*pos.min);
-	}
 
-	/*
-	 * Next frame must not go over the specified position.
-	 */
-	while(f->framepos * frame_samples * 1000000 <= 44100 * usec) {
-		/*
-		 * Write the current frame and go to the next one.
-		 */
+	// Calculate how many frames are fully below the specified position:
+	// nframes * samples_per_frame / 44100 <= pos.
+	// Next frame must not go over the specified position.
+	while (f->framepos * frame_samples * 1000000 <= 44100 * usec) {
 		write_frame(f, out);
-		if(!nextframe(f)) {
+		if (!nextframe(f)) {
 			break;
 		}
 	}
