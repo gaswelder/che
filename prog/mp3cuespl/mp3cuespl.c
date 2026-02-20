@@ -24,9 +24,10 @@ int main(int argc, char *argv[]) {
 		return 1;
 	}
 
-	mp3.reader_t *m = mp3.open_reader(mp3path);
-	if (!m) {
-		fprintf(stderr, "Couldn't open '%s': %s\n", mp3path, strerror(errno));
+	mp3.err_t err1 = {};
+	mp3.reader_t *m = mp3.open_reader(mp3path, &err1);
+	if (err1.set) {
+		fprintf(stderr, "failed to create mp3 reader: %s\n", err1.msg);
 		return 1;
 	}
 	cuespl(c, m);

@@ -15,9 +15,10 @@ int main(int argc, char *argv[]) {
 	}
 
 	const char *path = argv[1];
-	mp3.reader_t *f = mp3.open_reader(path);
-	if (mp3.mp3err(f)) {
-		fprintf(stderr, "%s\n", mp3.mp3err(f));
+	mp3.err_t err = {};
+	mp3.reader_t *f = mp3.open_reader(path, &err);
+	if (err.set) {
+		fprintf(stderr, "failed to create mp3 reader: %s\n", err.msg);
 		return 1;
 	}
 

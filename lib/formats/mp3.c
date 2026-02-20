@@ -1,14 +1,11 @@
-/*
- * This recognizes only MPEG 1 Layer III.
- */
+#import bits
+#import reader
 
 /*
+ * This recognizes only MPEG 1 Layer III.
  * http://mpgedit.org/mpgedit/mpeg_format/MP3Format.html
  * http://mpgedit.org/mpgedit/mpeg_format/mpeghdr.htm
  */
-
-#import bits
-#import reader
 
 // Bitrates table for MP3, kbps.
 int bitrates[] = {
@@ -19,9 +16,8 @@ int bitrates[] = {
 // Sampling frequencies table for MP3, Hz.
 int frequencies[] = {44100, 48000, 32000};
 
-/*
- * Number of samples in a frame
- */
+// Number of samples in a frame.
+// For mp3 it's always 1152.
 const int frame_samples = 1152;
 
 
@@ -33,8 +29,8 @@ pub typedef {
 } header_t;
 
 pub typedef {
-	FILE *file;
-	const char *err;
+	FILE *file; // The file being read from.
+	header_t h; // Currently loaded frame header.
 
 	/*
 	 * Current position in frames, assuming 44100 Hz
@@ -42,15 +38,27 @@ pub typedef {
 	 */
 	size_t framepos;
 
-	int nextpos;
-
-	header_t h;
+	int nextpos;	
 } reader_t;
 
+pub typedef {
+	bool set;
+	char msg[100];
+} err_t;
+
+void seterr(err_t *err, const char *fmt, ...) {
+	va_list args = {};
+	va_start(args, fmt);
+	vsnprintf(err->msg, sizeof(err->msg), fmt, args);
+	va_end(args);
+	err->set = true;
+}
+
 // Creates a reader for mp3 file at given path.
-pub reader_t *open_reader(const char *path) {
+pub reader_t *open_reader(const char *path, err_t *err) {
 	FILE *f = fopen(path, "rb");
 	if (!f) {
+		seterr(err, "failed to open '%s': %s", path, strerror(errno));
 		return NULL;
 	}
 
@@ -65,11 +73,17 @@ pub reader_t *open_reader(const char *path) {
 			break;
 		}
 	}
-	if(feof(m->file)) {
-		m->err = "Format not recognized";
+	if (feof(m->file)) {
+		seterr(err, "format not recognized");
+		OS.free(m);
+		return NULL;
 	}
-
 	return m;
+}
+
+// Returns bitrate of the reader's current frame, in kbps.
+pub int bitrate(reader_t *r) {
+	return r->h.bitrate;
 }
 
 // Closes the reader.
@@ -78,30 +92,15 @@ pub void close_reader(reader_t *f) {
 	free(f);
 }
 
-/*
- * Returns last error string for the file.
- */
-pub const char *mp3err(reader_t *f)
-{
-	return f->err;
-}
-
-/*
- * Reads next frame. Returns false on error.
- */
-bool nextframe(reader_t *f)
-{
-	if(f->err) {
-		panic("can't nextframe: %s", f->err);
-	}
-
+// Reads next frame. Returns false on error.
+pub bool nextframe(reader_t *f) {
 	if(fseek(f->file, f->nextpos, SEEK_SET) < 0) {
 		panic("fseek failed");
 	}
 
 	if(!readframe(f)) {
-		if(!feof(f->file) && !f->err) {
-			f->err = "Stream error";
+		if(!feof(f->file)) {
+			panic("stream error");
 		}
 		return false;
 	}
@@ -126,7 +125,13 @@ bool readframe(reader_t *f) {
 	}
 
 	// Calculate the length of the frame.
+	// 144 is 1152/8 - number of bytes required for 1152 samples.
+	// Note that this is integer division that truncates the remainder.
 	size_t len = 144 * (h->bitrate*1000) / h->freq;
+
+	// The encoder inserts padding bits from time to time to compensate for
+	// the truncation from integer division, somewhat similar to leap year
+	// seconds.
 	if (h->padded) len++;
 
 	// Instead of reading data just remember the next frame position.
@@ -189,8 +194,6 @@ bool readheader(bits.reader_t *s, header_t *h) {
 // Writes out the data from f to out starting at current position in f
 // until the position pos.
 pub void writeout(reader_t *f, FILE *out, size_t usec) {
-	if(f->err) return;
-
 	// Calculate how many frames are fully below the specified position:
 	// nframes * samples_per_frame / 44100 <= pos.
 	// Next frame must not go over the specified position.
