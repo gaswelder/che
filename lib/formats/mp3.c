@@ -31,14 +31,14 @@ pub typedef {
 pub typedef {
 	FILE *file; // The file being read from.
 	header_t h; // Currently loaded frame header.
+	size_t time; // Current time position in microseconds.
 
 	/*
 	 * Current position in frames, assuming 44100 Hz
 	 * and 1152 samples per frame.
 	 */
 	size_t framepos;
-
-	int nextpos;	
+	int nextpos;
 } reader_t;
 
 pub typedef {
@@ -136,6 +136,8 @@ bool readframe(reader_t *f) {
 
 	// Instead of reading data just remember the next frame position.
 	f->nextpos = ftell(f->file) + (int)len - 4;
+
+	f->time += frame_samples * 1000000 / 44100;
 	return r;
 }
 
@@ -179,7 +181,7 @@ bool readheader(bits.reader_t *s, header_t *h) {
 	int tmp = bits.readn(s, 1); // 1: padding?
 	if (tmp < 0) panic("!");
 	h->padded = tmp == 1;
-	
+
 	bits.readn(s, 1); // 1: private
 	h->mode = bits.readn(s, 2); // 2: mode
 	bits.readn(s, 2); // 2: ext
