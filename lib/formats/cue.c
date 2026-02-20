@@ -106,9 +106,11 @@ void readtrack(track_t *t, tokenizer.t *b, err_t *err) {
 	line(b);
 
 	// PERFORMER "..."
-	if (!tok(b, "PERFORMER", err)) return;
-	title(b, buf, sizeof(buf));
-	line(b);
+	if (tokenizer.literal_follows(b, "PERFORMER ")) {
+		if (!tok(b, "PERFORMER", err)) return;
+		title(b, buf, sizeof(buf));
+		line(b);
+	}
 
 	// INDEX 01 01:12:00
 	if (!tok(b, "INDEX", err)) return;
