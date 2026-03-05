@@ -13,7 +13,8 @@ pub typedef {
 	time.duration_t begin, end;
 } block_t;
 
-pub bool block(reader_t *r, block_t *b) {
+// Reads a subtitle block from r into b.
+pub bool readblock(reader_t *r, block_t *b) {
 	if (feof(stdin)) {
 		return false;
 	}
@@ -44,22 +45,25 @@ pub bool block(reader_t *r, block_t *b) {
 	//
 	// Parse the range into two time positions
 	//
-	int h1;
-	int m1;
-	int s1;
-	int ms1;
-	int h2;
-	int m2;
-	int s2;
-	int ms2;
 	// 00:01:32,320 --> 00:01:33,160
-	sscanf(b->range, "%d:%d:%d,%d --> %d:%d:%d,%d", &h1, &m1, &s1, &ms1, &h2, &m2, &s2, &ms2);
-	b->begin = mkpos(h1, m1, s1, ms1);
-	b->end = mkpos(h2, m2, s2, ms2);
+	char sbegin[20] = {};
+	char send[20] = {};
+	sscanf(b->range, "%s --> %s", sbegin, send);	
+	b->begin = parsepos(sbegin);
+	b->end = parsepos(send);
 	return true;
 }
 
-time.duration_t mkpos(int h, m, s, ms) {
+// Parses a timestamp in srt format: 00:01:33,160.
+pub time.duration_t parsepos(const char *buf) {
+	int h;
+	int m;
+	int s;
+	int ms;
+	if (sscanf(buf, "%d:%d:%d,%d", &h, &m, &s, &ms) != 4) {
+		panic("failed to parse timestamp");
+	}
+
 	int val = h;
 	val *= 60; // m
 	val += m;
@@ -68,6 +72,17 @@ time.duration_t mkpos(int h, m, s, ms) {
 	val *= 1000; // ms
 	val += ms;
 	return time.newdur(val, time.MS);
+}
+
+pub void printblock(block_t *b) {
+	char t1[20] = {};
+	char t2[20] = {};
+	time.dur_fmt(&b->begin, t1, 20, "hh:mm:ss,ms");
+	time.dur_fmt(&b->end, t2, 20, "hh:mm:ss,ms");
+	printf("%d\n", b->index);
+	printf("%s --> %s\n", t1, t2);
+	printf("%s\n", b->text);
+	printf("\n");
 }
 
 bool loadline(reader_t *r) {

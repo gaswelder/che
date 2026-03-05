@@ -85,6 +85,9 @@ pub bool dur_fmt(duration_t *d, char *buf, size_t bufsize, const char *fmt) {
 			int mm = parts[3] + 60 * parts[4];
 			len = snprintf(buf, bufsize, "%02d:%02d.%03d", mm, ss, ms);
 		}
+		case "hh:mm:ss,ms": {
+			len = snprintf(buf, bufsize, "%02d:%02d:%02d,%d", parts[4], parts[3], parts[2], parts[1]);
+		}
 		default: {
 			panic("unknown format: %s", fmt);
 		}

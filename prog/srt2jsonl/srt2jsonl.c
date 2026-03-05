@@ -4,7 +4,7 @@
 int main() {
 	srt.reader_t r = {};
 	srt.block_t b = {};
-	while (srt.block(&r, &b)) {
+	while (srt.readblock(&r, &b)) {
 		print_block(&b);
 	}
 	return 0;
