@@ -24,25 +24,43 @@ use std::process::exit;
 use std::string::String;
 mod errors;
 
+type SubcommandFn = fn(&[String]) -> i32;
+
+static SUBCOMMANDS: &[(&str, &str, SubcommandFn)] = &[
+    (
+        "build",
+        "Build executable from a source file",
+        main_build::run,
+    ),
+    ("run", "Build from a source file and run", main_run::run),
+    ("deptree", "Print dependency tree", main_deptree::run),
+    ("exports", "Print module exports", main_exports::run),
+    ("genc", "Generate C code", main_genc::run),
+    (
+        "install",
+        "Build and install executable in $CHELANG_HOME/bin",
+        main_install::run,
+    ),
+    ("test", "Run tests", main_test::run),
+];
+
 fn main() {
     let args: Vec<String> = env::args().collect();
     if args.len() == 1 {
         usage();
         exit(1);
     }
-    exit(match args[1].as_str() {
-        "build" => main_build::run(&args[2..]),
-        "deptree" => main_deptree::run(&args[2..]),
-        "exports" => main_exports::run(&args[2..]),
-        "genc" => main_genc::run(&args[2..]),
-        "install" => main_install::run(&args[2..]),
-        "run" => main_run::run(&args[2..]),
-        "test" => main_test::run(&args[2..]),
-        _ => usage(),
-    });
+    let cmd = args[1].as_str();
+    match SUBCOMMANDS.iter().find(|(name, _, _)| *name == cmd) {
+        Some((_, _, func)) => exit(func(&args[2..])),
+        None => usage(),
+    };
 }
 
-fn usage() -> i32 {
-    eprintln!("usage: che <build|deptree|exports|genc|install|run|test>");
-    return 1;
+fn usage() {
+    eprintln!("Usage: che <command>\n");
+    eprintln!("Commands:");
+    for (name, desc, _) in SUBCOMMANDS {
+        eprintln!("\t{}\t{}", name, desc);
+    }
 }
