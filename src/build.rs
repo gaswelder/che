@@ -29,7 +29,7 @@ pub struct PathId {
     id: String,
 }
 
-pub fn build_prog(source_path: &String, output_name: &String) -> Result<(), Vec<BuildError>> {
+pub fn build_prog(source_path: &String, output_name: &str) -> Result<(), Vec<BuildError>> {
     // Decide where we'll stash all generated C code.
     let tmp_dir_path = format!("{}/tmp", resolve::homepath());
     if fs::metadata(&tmp_dir_path).is_err() {

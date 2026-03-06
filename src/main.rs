@@ -10,6 +10,7 @@ mod main_deptree;
 mod main_exports;
 mod main_genc;
 mod main_install;
+mod main_run;
 mod main_test;
 mod node_queries;
 mod nodes;
@@ -35,12 +36,13 @@ fn main() {
         "exports" => main_exports::run(&args[2..]),
         "genc" => main_genc::run(&args[2..]),
         "install" => main_install::run(&args[2..]),
+        "run" => main_run::run(&args[2..]),
         "test" => main_test::run(&args[2..]),
         _ => usage(),
     });
 }
 
 fn usage() -> i32 {
-    eprintln!("usage: che <build|deptree|exports|genc|install|test>");
+    eprintln!("usage: che <build|deptree|exports|genc|install|run|test>");
     return 1;
 }
