@@ -1,16 +1,7 @@
 #import strings
 #import time
 
-int main(int argc, char *argv[]) {
-	if (argc != 3) {
-		fprintf(stderr, "arguments: <band> <file>");
-		return 1;
-	}
-	const char *band = argv[1];
-    const char *file = argv[2];
-
-    printf("FILE \"%s\" MP3\n", file);
-
+int main() {
 	time.duration_t pos = {};
 	int i = 0;
 
@@ -21,25 +12,23 @@ int main(int argc, char *argv[]) {
 		strings.trim(line);
 		parse_line(line, &t);
 		i++;
-        emit(i, t.title, band, &pos);
+        emit(i, t.title, &pos);
 		pos = time.dur_add(pos, t.dur);
 	}
 
     return 0;
 }
 
-void emit(int num, const char *title, *band, time.duration_t *pos) {
+void emit(int num, const char *title, time.duration_t *pos) {
 	char buf[10] = {};
     printf("TRACK %02d AUDIO\n", num);
     printf("  TITLE \"%s\"\n", title);
-    printf("  PERFORMER \"%s\"\n", band);
     printf("  INDEX 01 ");
 	if (!time.dur_fmt(pos, buf, sizeof(buf), "mm:ss")) {
 		panic("failed to format track position");
 	}
     printf("%s:00\n", buf);
 }
-
 
 typedef {
     char num[10];
