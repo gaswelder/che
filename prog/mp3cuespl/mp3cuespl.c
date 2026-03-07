@@ -7,7 +7,7 @@
 
 int main(int argc, char *argv[]) {
 	if (argc != 3) {
-		fprintf(stderr, "Arguments: <.cue file or .txt tracklist> <mp3 file>\n");
+		fprintf(stderr, "Arguments: <cue-file or txt-tracklist> <mp3-file>\n");
 		return 1;
 	}
 	const char *cuepath = argv[1];
@@ -23,7 +23,7 @@ int main(int argc, char *argv[]) {
 	} else if (strings.ends_with(cuepath, ".txt")) {
 		tracks = loadtxt(cuepath, &n);
 	} else {
-		fprintf(stderr, "expected a .cue file path\n");
+		fprintf(stderr, "expected a .cue or .txt file path as first argument\n");
 		return 1;
 	}
 
@@ -106,28 +106,29 @@ char fname[1000] = {};
 
 void cuespl(track_t *tracks, int n, mp3.reader_t *m) {
 	for (int i = 0; i < n; i++) {
-		// Find the current track's end position in the source file.
 		size_t pos_us = SIZE_MAX;
 		if (i+1 < n) {
 			pos_us = tracks[i+1].pos_us;
 		}
-
-		// Format the file name.
+		// Format the file name
 		fmtname(fname, sizeof(fname), i, tracks[i].title);
 		printf("%s\n", fname);
-
-		FILE *out = fopen(fname, "wb");
-		if (!out) {
-			panic("Couldn't create %s", fname);
-		}
-		while (m->time < pos_us) {
-			mp3.write_frame(m, out);
-			if (!mp3.nextframe(m)) {
-				break;
-			}
-		}
-		fclose(out);
+		write_track(m, fname, pos_us);
 	}
+}
+
+void write_track(mp3.reader_t *m, const char *fname, size_t pos_us) {
+	FILE *out = fopen(fname, "wb");
+	if (!out) {
+		panic("Couldn't create %s", fname);
+	}
+	while (m->time < pos_us) {
+		mp3.write_frame(m, out);
+		if (!mp3.nextframe(m)) {
+			break;
+		}
+	}
+	fclose(out);
 }
 
 void fmtname(char *buf, size_t bufsize, int i, const char *title) {
