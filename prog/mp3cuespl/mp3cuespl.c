@@ -107,7 +107,7 @@ char fname[1000] = {};
 void cuespl(track_t *tracks, int n, mp3.reader_t *m) {
 	for (int i = 0; i < n; i++) {
 		// Find the current track's end position in the source file.
-		int64_t pos_us = SIZE_MAX;
+		size_t pos_us = SIZE_MAX;
 		if (i+1 < n) {
 			pos_us = tracks[i+1].pos_us;
 		}
@@ -120,7 +120,12 @@ void cuespl(track_t *tracks, int n, mp3.reader_t *m) {
 		if (!out) {
 			panic("Couldn't create %s", fname);
 		}
-		mp3.writeout(m, out, pos_us);
+		while (m->time < pos_us) {
+			mp3.write_frame(m, out);
+			if (!mp3.nextframe(m)) {
+				break;
+			}
+		}
 		fclose(out);
 	}
 }

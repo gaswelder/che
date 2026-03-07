@@ -30,15 +30,10 @@ pub typedef {
 
 pub typedef {
 	FILE *file; // The file being read from.
-	header_t h; // Currently loaded frame header.
 	size_t time; // Current time position in microseconds.
-
-	/*
-	 * Current position in frames, assuming 44100 Hz
-	 * and 1152 samples per frame.
-	 */
-	size_t framepos;
-	int nextpos;
+	header_t h; // Currently loaded frame header.
+	size_t framelen; // Length of the loaded frame in bytes, including the header.
+	uint8_t frame[1100]; // The loaded frame with the header.	
 } reader_t;
 
 pub typedef {
@@ -65,11 +60,9 @@ pub reader_t *open_reader(const char *path, err_t *err) {
 	reader_t *m = calloc!(1, sizeof(reader_t));
 	m->file = f;
 
-	/*
-	 * Sync: find first valid header
-	 */
-	while(fpeek(m->file) != EOF) {
-		if(readframe(m)) {
+	// Sync: find first frame.
+	while (fpeek(m->file) != EOF) {
+		if (readframe(m)) {
 			break;
 		}
 	}
@@ -94,28 +87,28 @@ pub void close_reader(reader_t *f) {
 
 // Reads next frame. Returns false on error.
 pub bool nextframe(reader_t *f) {
-	if(fseek(f->file, f->nextpos, SEEK_SET) < 0) {
-		panic("fseek failed");
-	}
-
-	if(!readframe(f)) {
-		if(!feof(f->file)) {
+	if (!readframe(f)) {
+		if (!feof(f->file)) {
 			panic("stream error");
 		}
 		return false;
 	}
-
-	f->framepos++;
 	return true;
 }
 
 // Reads a single frame.
 // Each frame is a complete, independent unit, with its owh header and data.
 bool readframe(reader_t *f) {
+	// Read 4 bytes and parse the header.
+	for (int i = 0; i < 4; i++) {
+		int c = fgetc(f->file);
+		if (c == EOF) {
+			return false;
+		}
+		f->frame[i] = (uint8_t) c;
+	}
 	header_t *h = &f->h;
-
-	// Read the header (32 bits).
-	reader.t *fr = reader.file(f->file);
+	reader.t *fr = reader.static_buffer(f->frame, 4);
 	bits.reader_t *s = bits.newreader(fr);
 	bool r = readheader(s, h);
 	bits.closereader(s);
@@ -127,18 +120,25 @@ bool readframe(reader_t *f) {
 	// Calculate the length of the frame.
 	// 144 is 1152/8 - number of bytes required for 1152 samples.
 	// Note that this is integer division that truncates the remainder.
-	size_t len = 144 * (h->bitrate*1000) / h->freq;
-
 	// The encoder inserts padding bits from time to time to compensate for
 	// the truncation from integer division, somewhat similar to leap year
 	// seconds.
-	if (h->padded) len++;
+	size_t len = 144 * (h->bitrate*1000) / 44100;
+	if (h->padded) {
+		len++;
+	}
 
-	// Instead of reading data just remember the next frame position.
-	f->nextpos = ftell(f->file) + (int)len - 4;
-
-	f->time += frame_samples * 1000000 / 44100;
-	return r;
+	// Read the rest of the frame.
+	for (size_t i = 4; i < len; i++) {
+		int c = fgetc(f->file);
+		if (c == EOF) {
+			return false;
+		}
+		f->frame[i] = (uint8_t) c;
+	}
+	f->framelen = len;
+	f->time += frame_samples * 1000000 / h->freq;
+	return true;
 }
 
 bool readheader(bits.reader_t *s, header_t *h) {
@@ -193,36 +193,10 @@ bool readheader(bits.reader_t *s, header_t *h) {
 	return true;
 }
 
-// Writes out the data from f to out starting at current position in f
-// until the position pos.
-pub void writeout(reader_t *f, FILE *out, size_t usec) {
-	// Calculate how many frames are fully below the specified position:
-	// nframes * samples_per_frame / 44100 <= pos.
-	// Next frame must not go over the specified position.
-	while (f->framepos * frame_samples * 1000000 <= 44100 * usec) {
-		write_frame(f, out);
-		if (!nextframe(f)) {
-			break;
-		}
-	}
-}
-
-/*
- * Writes current frame to the given file.
- */
-void write_frame(reader_t *f, FILE *out) {
-	/*
-	 * Go back 4 bytes to the header
-	 */
-	if(fseek(f->file, -4, SEEK_CUR) < 0) {
-		panic("fseek(-4) failed");
-	}
-
-	size_t len = f->nextpos - ftell(f->file);
-	while(len > 0) {
-		len--;
-		int c = fgetc(f->file);
-		fputc(c, out);
+// Writes current frame to the given file.
+pub void write_frame(reader_t *f, FILE *out) {
+	for (size_t i = 0; i < f->framelen; i++) {
+		fputc(f->frame[i], out);
 	}
 }
 
