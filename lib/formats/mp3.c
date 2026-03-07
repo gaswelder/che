@@ -1,4 +1,5 @@
 #import bits
+#import enc/endian
 #import reader
 
 /*
@@ -19,7 +20,6 @@ int frequencies[] = {44100, 48000, 32000};
 // Number of samples in a frame.
 // For mp3 it's always 1152.
 const int frame_samples = 1152;
-
 
 pub typedef {
 	int bitrate;
@@ -60,18 +60,51 @@ pub reader_t *open_reader(const char *path, err_t *err) {
 	reader_t *m = calloc!(1, sizeof(reader_t));
 	m->file = f;
 
-	// Sync: find first frame.
+	// Sync: find the first frame.
 	while (fpeek(m->file) != EOF) {
 		if (readframe(m)) {
 			break;
 		}
 	}
+	// Skip the first frame if it's an info frame.
+	if (info_frame(m)) {
+		readframe(m);
+	}
+
 	if (feof(m->file)) {
 		seterr(err, "format not recognized");
 		OS.free(m);
 		return NULL;
 	}
 	return m;
+}
+
+bool info_frame(reader_t *r) {
+	// Info frame is:
+	// 32: normal header
+	// xx: normal sideinfo
+	// ??: xing metadata
+	// ??: padding
+
+	int sideinfo_size = 32;
+	if (r->h.mode == 3) {
+		sideinfo_size = 17;
+	}
+
+	uint8_t *p = r->frame + 4 + sideinfo_size;
+	reader.t *br = reader.static_buffer(p, 123123);
+
+	xing_header_t xing = {};
+	bool ok = read_xing(br, &xing);
+	if (ok) {
+		printf("Xing header found\n");
+		printf("Flags: 0x%08x\n", xing.flags);
+		printf("Frames: %u\n", xing.frames);
+		printf("Bytes: %u\n", xing.bytes);
+		printf("Quality: %u\n", xing.quality);
+	}
+	reader.free(br);
+	return ok;
 }
 
 // Returns bitrate of the reader's current frame, in kbps.
@@ -150,6 +183,21 @@ bool readheader(bits.reader_t *s, header_t *h) {
 		return false;
 	}
 
+	// 8: FF
+	// 4: F
+	// 1: version, 1 for MPEG1
+	// 2: layer, 1 for MP3
+	// 1: CRC present
+	// 4: bitrate
+	// 2: frequency
+	// 1: padding present
+	// 1: private
+	// 2: mode
+	// 2: ext
+	// 1: copyright?
+	// 1: original?
+	// 2: emphasis
+
 	// 1 bit: version, '1' for MPEG1
 	if (bits.readn(s, 1) != 1) {
 		return false;
@@ -170,7 +218,7 @@ bool readheader(bits.reader_t *s, header_t *h) {
 
 	// 2: freq
 	index = bits.readn(s, 2);
-	if(index < 0 || (size_t)index >= nelem(frequencies)) {
+	if (index < 0 || (size_t)index >= nelem(frequencies)) {
 		return false;
 	}
 	h->freq = frequencies[index];
@@ -178,8 +226,7 @@ bool readheader(bits.reader_t *s, header_t *h) {
 		panic("Unsupported sampling frequency: %d", h->freq);
 	}
 
-	int tmp = bits.readn(s, 1); // 1: padding?
-	if (tmp < 0) panic("!");
+	int tmp = bits.readn(s, 1); // 1 if padding present
 	h->padded = tmp == 1;
 
 	bits.readn(s, 1); // 1: private
@@ -205,4 +252,38 @@ int fpeek(FILE *f) {
 	if(c == EOF) return EOF;
 	assert(ungetc(c, f) == c);
 	return c;
+}
+
+// The first of a VBR file may contain info instead of audio data.
+// Among that info could be this xing header.
+typedef {
+    uint32_t flags; // which of the fields below are set.
+    uint32_t frames; // audio length in frames.
+    uint32_t bytes; // audio length in bytes.
+    uint8_t toc[100]; // toc[i] is approximate file position for i% audio position.
+    uint32_t quality; // LAME metadata.
+} xing_header_t;
+
+bool read_xing(reader.t *r, xing_header_t *x) {
+    uint8_t magic[4];
+    reader.read(r, magic, 4);
+
+    if (memcmp(magic, "Xing", 4) != 0 && memcmp(magic, "Info", 4) != 0) {
+        return false;
+    }
+
+    endian.read4be(r, &x->flags);
+    if (x->flags & 0x1) {
+        endian.read4be(r, &x->frames);
+    }
+    if (x->flags & 0x2) {
+        endian.read4be(r, &x->bytes);
+    }
+    if (x->flags & 0x4) {
+        reader.read(r, x->toc, 100);
+    }
+    if (x->flags & 0x8) {
+        endian.read4be(r, &x->quality);
+    }
+    return true;
 }
