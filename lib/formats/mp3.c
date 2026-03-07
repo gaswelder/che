@@ -1,6 +1,7 @@
 #import bits
 #import enc/endian
 #import reader
+#import writer
 
 /*
  * This recognizes only MPEG 1 Layer III.
@@ -33,7 +34,10 @@ pub typedef {
 	size_t time; // Current time position in microseconds.
 	header_t h; // Currently loaded frame header.
 	size_t framelen; // Length of the loaded frame in bytes, including the header.
-	uint8_t frame[1100]; // The loaded frame with the header.	
+	uint8_t frame[1100]; // The loaded frame with the header.
+
+	size_t infoframelen;
+	uint8_t infoframe[1100];
 } reader_t;
 
 pub typedef {
@@ -69,6 +73,8 @@ pub reader_t *open_reader(const char *path, err_t *err) {
 	// Skip the first frame if it's an info frame.
 	if (info_frame(m)) {
 		m->time = 0;
+		m->infoframelen = m->framelen;
+		memcpy(m->infoframe, m->frame, m->framelen);
 		readframe(m);
 	}
 
@@ -97,13 +103,13 @@ bool info_frame(reader_t *r) {
 
 	xing_header_t xing = {};
 	bool ok = read_xing(br, &xing);
-	if (ok) {
-		printf("Xing header found\n");
-		printf("Flags: 0x%08x\n", xing.flags);
-		printf("Frames: %u\n", xing.frames);
-		printf("Bytes: %u\n", xing.bytes);
-		printf("Quality: %u\n", xing.quality);
-	}
+	// if (ok) {
+	// 	printf("Xing header found\n");
+	// 	printf("Flags: 0x%08x\n", xing.flags);
+	// 	printf("Frames: %u\n", xing.frames);
+	// 	printf("Bytes: %u\n", xing.bytes);
+	// 	printf("Quality: %u\n", xing.quality);
+	// }
 	reader.free(br);
 	return ok;
 }
@@ -288,4 +294,16 @@ bool read_xing(reader.t *r, xing_header_t *x) {
         endian.read4be(r, &x->quality);
     }
     return true;
+}
+
+pub void write_xing(writer.t *w, uint32_t frames, bytes) {
+	xing_header_t x = {
+		.flags = 0x1 | 0x2,
+		.frames = frames,
+		.bytes = bytes,
+	};
+	writer.write(w, (uint8_t *)"Xing", 4);
+	endian.write4be(w, x.flags);
+	endian.write4be(w, x.frames);
+	endian.write4be(w, x.bytes);
 }

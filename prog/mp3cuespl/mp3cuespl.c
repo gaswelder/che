@@ -3,7 +3,9 @@
 #import os/fs
 #import strbuilder
 #import strings
+#import time
 #import tracklist.c
+#import writer
 
 int main(int argc, char *argv[]) {
 	if (argc != 3) {
@@ -42,7 +44,7 @@ int main(int argc, char *argv[]) {
 	//
 	cuespl(tracks, n, m);
 
-	free(tracks);	
+	free(tracks);
 	mp3.close_reader(m);
 	return 0;
 }
@@ -110,9 +112,7 @@ void cuespl(track_t *tracks, int n, mp3.reader_t *m) {
 		if (i+1 < n) {
 			pos_us = tracks[i+1].pos_us;
 		}
-		// Format the file name
 		fmtname(fname, sizeof(fname), i, tracks[i].title);
-		printf("%s\n", fname);
 		write_track(m, fname, pos_us);
 	}
 }
@@ -122,12 +122,42 @@ void write_track(mp3.reader_t *m, const char *fname, size_t pos_us) {
 	if (!out) {
 		panic("Couldn't create %s", fname);
 	}
+
+	uint32_t frames = 0;
+	uint32_t bytes = 0;
+
+	// Write a dummy info frame
+	if (m->infoframelen > 0) {
+		for (size_t i = 0; i < m->infoframelen; i++) {
+			fputc(m->infoframe[i], out);
+		}
+		frames = 2; // Dunno why, setting 1 makes the player show 1 second less.
+		bytes = m->infoframelen;
+	}
+
 	while (m->time < pos_us) {
 		mp3.write_frame(m, out);
+		frames++;
+		bytes += m->framelen;
 		if (!mp3.nextframe(m)) {
 			break;
 		}
 	}
+
+	// Get back and patch the info frame
+	if (m->infoframelen > 0) {
+		writer.t *w = writer.file(out);
+		fseek(out, 4 + 32, SEEK_SET);
+		mp3.write_xing(w, frames, bytes);
+		writer.free(w);
+	}
+
+	char buf[20];
+	time.duration_t d = time.newdur(frames * 1152 / 44100, time.SECONDS);
+	time.dur_fmt(&d, buf, 20, "mm:ss.ms");
+
+	printf("%8u frames (%s)\t%u bytes\t%s\n", frames, buf, bytes, fname);
+
 	fclose(out);
 }
 
