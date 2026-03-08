@@ -81,26 +81,20 @@ track_t *loadcue(const char *cuepath, int *ret_n) {
 
 // Loads a tracklist from a text file.
 track_t *loadtxt(const char *path, int *ret_n) {
-	FILE *f = fopen(path, "rb");
-	if (!f) {
-		panic("failed to open %s", path);
-	}
-	track_t *tracks = calloc!(100, sizeof(track_t));
-	char line[4096] = {};
-	int i = 0;
-	int64_t pos_us;
-	while (fgets(line, sizeof(line), f)) {
-		tracklist.entry_t t = {};
-		tracklist.parseline(line, &t);
+	int n;
+	tracklist.entry_t *list = tracklist.readfile(path, &n);
 
-		track_t *tr = &tracks[i++];
-		strcpy(tr->title, t.title);
-		tr->num = t.num;
-		tr->pos_us = pos_us;
-		pos_us += t.duration_us;
+	track_t *tracks = calloc!(n, sizeof(track_t));
+	int64_t pos_us = 0;
+	for (int i = 0; i < n; i++) {
+		strcpy(tracks[i].title, list[i].title);
+		tracks[i].num = list[i].num;
+		tracks[i].pos_us = pos_us;
+		pos_us += list[i].duration_us;
 	}
-	fclose(f);
-	*ret_n = i;
+
+	*ret_n = n;
+	free(list);
 	return tracks;
 }
 

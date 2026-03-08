@@ -16,7 +16,24 @@ pub typedef {
 	int64_t duration_us;
 } entry_t;
 
-pub void parseline(char *line, entry_t *e) {
+pub entry_t *readfile(const char *path, int *ret_n) {
+	FILE *f = fopen(path, "rb");
+	if (!f) {
+		panic("failed to open %s", path);
+	}
+	entry_t *list = calloc!(100, sizeof(entry_t));
+	int i = 0;
+	char line[4096];
+	while (fgets(line, sizeof(line), f)) {
+		entry_t *e = &list[i++];
+		parseline(line, e);
+	}
+	fclose(f);
+	*ret_n = i;
+	return list;
+}
+
+void parseline(char *line, entry_t *e) {
 	strings.trim(line);
 
 	//
