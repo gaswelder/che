@@ -2,6 +2,7 @@
 #import compress/huffman
 #import reader
 #import test
+#import writer
 
 pub int main() {
 	testreadwrite();
@@ -40,9 +41,11 @@ void testcanonical() {
 
 	// Write the encoded message
 	FILE *f = tmpfile();
-	bits.writer_t *w = bits.newwriter(f);
+	writer.t *fw = writer.file(f);
+	bits.writer_t *w = bits.newwriter(fw);
 	bits.write(w, bits, nelem(bits));
 	bits.closewriter(w);
+	writer.free(fw);
 
 	// Recreate the tree from the spec
 	huffman.tree_t *t = huffman.treefrom(lencounts, nelem(lencounts), (uint8_t *) characters);
@@ -57,13 +60,15 @@ void testcanonical() {
 }
 
 void writemsg(FILE *f, huffman.tree_t *t, const char *s) {
-	huffman.writer_t *w = huffman.newwriter(t, f);
+	writer.t *fw = writer.file(f);
+	huffman.writer_t *w = huffman.newwriter(t, fw);
 	const char *p;
 	for (p = s; *p != '\0'; p++) {
 		uint8_t x = *p;
 		huffman.write(w, x);
 	}
 	huffman.closewriter(w);
+	writer.free(fw);
 }
 
 void readmsg(FILE *f, huffman.tree_t *t, char *q, size_t len) {

@@ -1,4 +1,5 @@
 #import reader
+#import writer
 
 int bitvals[] = {
 	1 << 7,
@@ -76,22 +77,25 @@ pub int readn(reader_t *s, int n) {
 }
 
 pub typedef {
-	FILE *f;
 	bool err;
-	uint8_t buf;
-	uint8_t pos;
+	writer.t *out; // writer for completed bytes
+	uint8_t buf; // byte being formed
+	uint8_t pos; // current position inside the byte
 } writer_t;
 
-pub writer_t *newwriter(FILE *f) {
+// Creates a new writer into out.
+pub writer_t *newwriter(writer.t *out) {
 	writer_t *w = calloc!(1, sizeof(writer_t));
-	w->f = f;
+	w->out = out;
 	return w;
 }
 
+// Closes the writer and writes out the unfinished byte.
 pub bool closewriter(writer_t *w) {
 	bool err = w->err;
 	if (w->pos > 0 && !err) {
-		if (fputc(w->buf, w->f) < 0) {
+		int r = writer.write(w->out, &w->buf, 1);
+		if (r != 1) {
 			err = true;
 		}
 	}
@@ -99,14 +103,17 @@ pub bool closewriter(writer_t *w) {
 	return !err;
 }
 
-pub bool writebit(writer_t *w, int bit) {
-	if (w->err) return false;
+pub bool writebit(writer_t *w, uint8_t bit) {
+	if (w->err) {
+		return false;
+	}
 	if (bit) {
 		w->buf |= bitvals[w->pos];
 	}
 	w->pos++;
 	if (w->pos == 8) {
-		if (fputc(w->buf, w->f) < 0) {
+		int r = writer.write(w->out, &w->buf, 1);
+		if (r != 1) {
 			w->err = true;
 			return false;
 		}

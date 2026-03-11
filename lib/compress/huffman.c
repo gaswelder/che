@@ -1,4 +1,5 @@
 #import bits
+#import writer
 
 pub typedef {
 	bool ischar; // true if this node is a value node, false if a tree.
@@ -192,12 +193,12 @@ pub typedef {
 	bits.writer_t *w;
 } writer_t;
 
-// Returns a new writer into file f.
-pub writer_t *newwriter(tree_t *t, FILE *f) {
+// Returns a new writer into out.
+pub writer_t *newwriter(tree_t *t, writer.t *out) {
 	writer_t *w = calloc!(1, sizeof(writer_t));
 	w->tree = t;
 	inittable(w->table, t->root, NULL, 0);
-	w->w = bits.newwriter(f);
+	w->w = bits.newwriter(out);
 	return w;
 }
 
