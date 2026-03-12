@@ -1,6 +1,8 @@
 #import reader
 #import writer
 
+// Masks to get to i-th bit in a byte,
+// assuming 0-th bit is the most significant one.
 int bitvals[] = {
 	1 << 7,
 	1 << 6,
@@ -15,16 +17,14 @@ int bitvals[] = {
 // Unpacks bits from a byte into a given array, least significant bit first.
 pub void getbits_lsfirst(uint8_t byte, uint8_t *bits) {
 	for (int i = 0; i < 8; i++) {
-		bits[i] = byte % 2;
-		byte /= 2;
+		bits[i] = (byte & bitvals[7-i]) != 0;
 	}
 }
 
 // Unpacks bits from a byte into a given array, most significant bit first.
 pub void getbits_msfirst(uint8_t byte, uint8_t *bits) {
 	for (int i = 7; i >= 0; i--) {
-		bits[i] = byte % 2;
-		byte /= 2;
+		bits[i] = (byte & bitvals[i]) != 0;
 	}
 }
 

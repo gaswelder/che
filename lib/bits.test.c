@@ -6,6 +6,7 @@
 int main() {
 	testreader();
 	testwriter();
+	testunpack();
 	return test.fails();
 }
 
@@ -61,4 +62,28 @@ void testwriter() {
 	reader.free(fr);
 
 	fclose(f);
+}
+
+void testunpack() {
+	uint8_t bits[8] = {};
+
+	bits.getbits_msfirst(14, bits);
+	test.truth("001110", bits[0] == 0);
+	test.truth("001110", bits[1] == 0);
+	test.truth("001110", bits[2] == 0);
+	test.truth("001110", bits[3] == 0);
+	test.truth("001110", bits[4] == 1);
+	test.truth("001110", bits[5] == 1);
+	test.truth("001110", bits[6] == 1);
+	test.truth("001110", bits[7] == 0);
+
+	bits.getbits_lsfirst(14, bits);
+	test.truth("001110", bits[0] == 0);
+	test.truth("001110", bits[1] == 1);
+	test.truth("001110", bits[2] == 1);
+	test.truth("001110", bits[3] == 1);
+	test.truth("001110", bits[4] == 0);
+	test.truth("001110", bits[5] == 0);
+	test.truth("001110", bits[6] == 0);
+	test.truth("001110", bits[7] == 0);
 }
