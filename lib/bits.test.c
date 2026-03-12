@@ -1,6 +1,7 @@
 #import bits
 #import reader
 #import test
+#import writer
 
 int main() {
 	testreader();
@@ -29,8 +30,10 @@ void testreader() {
 
 void testwriter() {
 	FILE *f = tmpfile();
-	bits.writer_t *w = bits.newwriter(f);
 
+	// Write a sequence into a file.
+	writer.t *fw = writer.file(f);
+	bits.writer_t *w = bits.newwriter(fw);
 	bits.writebit(w, 0);
 	bits.writebit(w, 0);
 	bits.writebit(w, 1);
@@ -38,10 +41,11 @@ void testwriter() {
 	bits.writebit(w, 1);
 	bits.writebit(w, 0);
 	test.truth("!err", w->err == false);
-
 	test.truth("close", bits.closewriter(w) == true);
-	fseek(f, 0, SEEK_SET);
+	writer.free(fw);
 
+	// Read the sequence back.
+	fseek(f, 0, SEEK_SET);
 	reader.t *fr = reader.file(f);
 	bits.reader_t *b = bits.newreader(fr);
 	test.truth("001110 00", bits.read1(b) == 0);
