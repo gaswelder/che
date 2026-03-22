@@ -28,6 +28,10 @@ pub void getbits_msfirst(uint8_t byte, uint8_t *bits) {
 	}
 }
 
+//
+// reader
+//
+
 pub typedef {
 	reader.t *in;
 	uint8_t byte; // currently loaded byte
@@ -76,11 +80,15 @@ pub int readn(reader_t *s, int n) {
 	return r;
 }
 
+//
+// writer
+//
+
 pub typedef {
 	bool err;
 	writer.t *out; // writer for completed bytes
 	uint8_t buf; // byte being formed
-	uint8_t pos; // current position inside the byte
+	uint8_t pos; // how many bits have been defined in the byte
 } writer_t;
 
 // Creates a new writer into out.
@@ -103,7 +111,9 @@ pub bool closewriter(writer_t *w) {
 	return !err;
 }
 
-pub bool writebit(writer_t *w, uint8_t bit) {
+// Writes a bit into w.
+// Returns true on success and false on error.
+pub bool write1(writer_t *w, uint8_t bit) {
 	if (w->err) {
 		return false;
 	}
@@ -125,7 +135,7 @@ pub bool writebit(writer_t *w, uint8_t bit) {
 
 pub bool write(writer_t *w, uint8_t *bits, size_t nbits) {
 	for (size_t i = 0; i < nbits; i++) {
-		if (!writebit(w, bits[i])) return false;
+		if (!write1(w, bits[i])) return false;
 	}
 	return true;
 }

@@ -35,12 +35,12 @@ void testwriter() {
 	// Write a sequence into a file.
 	writer.t *fw = writer.file(f);
 	bits.writer_t *w = bits.newwriter(fw);
-	bits.writebit(w, 0);
-	bits.writebit(w, 0);
-	bits.writebit(w, 1);
-	bits.writebit(w, 1);
-	bits.writebit(w, 1);
-	bits.writebit(w, 0);
+	bits.write1(w, 0);
+	bits.write1(w, 0);
+	bits.write1(w, 1);
+	bits.write1(w, 1);
+	bits.write1(w, 1);
+	bits.write1(w, 0);
 	test.truth("!err", w->err == false);
 	test.truth("close", bits.closewriter(w) == true);
 	writer.free(fw);

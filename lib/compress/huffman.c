@@ -230,7 +230,7 @@ pub void closewriter(writer_t *w) {
 pub bool write(writer_t *w, uint8_t b) {
 	bitslice_t *bs = &w->table[b];
 	for (uint8_t i = 0; i < bs->len; i++) {
-		if (!bits.writebit(w->w, bs->bits[i])) {
+		if (!bits.write1(w->w, bs->bits[i])) {
 			return false;
 		}
 	}
