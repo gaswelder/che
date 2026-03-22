@@ -98,17 +98,23 @@ pub writer_t *newwriter(writer.t *out) {
 	return w;
 }
 
+void flush(writer_t *w) {
+	if (writer.write(w->out, &w->buf, 1) != 1) {
+		w->err = true;
+		return;
+	}
+	w->pos = 0;
+	w->buf = 0;
+}
+
 // Closes the writer and writes out the unfinished byte.
 pub bool closewriter(writer_t *w) {
-	bool err = w->err;
-	if (w->pos > 0 && !err) {
-		int r = writer.write(w->out, &w->buf, 1);
-		if (r != 1) {
-			err = true;
-		}
+	if (w->pos > 0 && !w->err) {
+		flush(w);
 	}
+	bool ok = !w->err;
 	free(w);
-	return !err;
+	return ok;
 }
 
 // Writes a bit into w.
@@ -122,13 +128,10 @@ pub bool write1(writer_t *w, uint8_t bit) {
 	}
 	w->pos++;
 	if (w->pos == 8) {
-		int r = writer.write(w->out, &w->buf, 1);
-		if (r != 1) {
-			w->err = true;
+		flush(w);
+		if (w->err) {
 			return false;
 		}
-		w->pos = 0;
-		w->buf = 0;
 	}
 	return true;
 }
