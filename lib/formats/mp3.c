@@ -149,7 +149,7 @@ bool readframe(reader_t *f) {
 	}
 	header_t *h = &f->h;
 	reader.t *fr = reader.static_buffer(f->frame, 4);
-	bits.reader_t *s = bits.newreader(fr);
+	bits.reader_t *s = bits.newreader(fr, bits.STRAIGHT);
 	bool r = readheader(s, h);
 	bits.closereader(s);
 	reader.free(fr);

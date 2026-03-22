@@ -345,7 +345,7 @@ void read_scan(jpeg_t *self, reader.t *r) {
 }
 
 void read_scan_data(jpeg_t *self, reader.t *r) {
-	bits.reader_t *br = bits.newreader(r);
+	bits.reader_t *br = bits.newreader(r, bits.STRAIGHT);
 
 	// First values ("DC") are diff-encoded across all blocks.
 	// These will contain the current values.

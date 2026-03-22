@@ -42,7 +42,7 @@ void testcanonical() {
 	// Write the encoded message
 	FILE *f = tmpfile();
 	writer.t *fw = writer.file(f);
-	bits.writer_t *w = bits.newwriter(fw);
+	bits.writer_t *w = bits.newwriter(fw, bits.STRAIGHT);
 	bits.write(w, bits, nelem(bits));
 	bits.closewriter(w);
 	writer.free(fw);
@@ -73,7 +73,7 @@ void writemsg(FILE *f, huffman.tree_t *t, const char *s) {
 
 void readmsg(FILE *f, huffman.tree_t *t, char *q, size_t len) {
 	reader.t *fr = reader.file(f);
-	bits.reader_t *br = bits.newreader(fr);
+	bits.reader_t *br = bits.newreader(fr, bits.STRAIGHT);
 	huffman.reader_t *d = huffman.newreader(t, br);
 	for (size_t i = 0; i < len; i++) {
 		q[i] = huffman.read(d);

@@ -14,6 +14,11 @@ int bitvals[] = {
 	1 << 0,
 };
 
+pub enum {
+	STRAIGHT, // most-significant bit first
+	REVERSED, // least-significant bit first
+}
+
 // Unpacks bits from a byte into a given array, least significant bit first.
 pub void getbits_lsfirst(uint8_t byte, uint8_t *bits) {
 	for (int i = 0; i < 8; i++) {
@@ -36,12 +41,16 @@ pub typedef {
 	reader.t *in;
 	uint8_t byte; // currently loaded byte
 	uint8_t rem; // how many bits remain of the byte
+	bool reverse; // whether bits are reversed in bytes
 } reader_t;
 
 // Returns new bitreader reading from r.
-pub reader_t *newreader(reader.t *r) {
+pub reader_t *newreader(reader.t *r, int bitorder) {
 	reader_t *b = calloc!(1, sizeof(reader_t));
 	b->in = r;
+	if (bitorder == REVERSED) {
+		b->reverse = true;
+	}
 	return b;
 }
 
@@ -60,7 +69,12 @@ pub int read1(reader_t *s) {
 		s->rem = 8;
 	}
 	s->rem--;
-	int b = s->byte & bitvals[7-s->rem];
+	int b = 0;
+	if (s->reverse) {
+		b = s->byte & bitvals[s->rem];
+	} else {
+		b = s->byte & bitvals[7-s->rem];
+	}
 	if (b > 0) b = 1;
 	return b;
 }
@@ -85,21 +99,29 @@ pub int readn(reader_t *s, int n) {
 //
 
 pub typedef {
-	bool err;
+	bool err; // if the writer has encountered an error
 	writer.t *out; // writer for completed bytes
 	uint8_t buf; // byte being formed
 	uint8_t pos; // how many bits have been defined in the byte
+	bool reverse; // whether bits are packed into bytes least-significant first
 } writer_t;
 
 // Creates a new writer into out.
-pub writer_t *newwriter(writer.t *out) {
+pub writer_t *newwriter(writer.t *out, int bitorder) {
 	writer_t *w = calloc!(1, sizeof(writer_t));
 	w->out = out;
+	if (bitorder == REVERSED) {
+		w->reverse = true;
+	}
 	return w;
 }
 
 void flush(writer_t *w) {
-	if (writer.write(w->out, &w->buf, 1) != 1) {
+	uint8_t val = w->buf;
+	if (w->reverse) {
+		val = reversebyte(val);
+	}
+	if (writer.write(w->out, &val, 1) != 1) {
 		w->err = true;
 		return;
 	}
@@ -141,4 +163,18 @@ pub bool write(writer_t *w, uint8_t *bits, size_t nbits) {
 		if (!write1(w, bits[i])) return false;
 	}
 	return true;
+}
+
+// Reverses bits in a byte.
+uint8_t reversebyte(uint8_t val) {
+	// 0xAA = 10101010
+	// 0x55 = 01010101
+	// 0xCC = 11001100
+	// 0x33 = 00110011
+	// 0xF0 = 11110000
+	// 0x0F = 00001111
+	val = ((val & 0xAA) >> 1) | ((val & 0x55) << 1);
+	val = ((val & 0xCC) >> 2) | ((val & 0x33) << 2);
+	val = ((val & 0xF0) >> 4) | ((val & 0x0F) << 4);
+	return val;
 }

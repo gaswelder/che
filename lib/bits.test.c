@@ -4,9 +4,13 @@
 #import writer
 
 int main() {
-	testreader();
-	testwriter();
 	testunpack();
+	testreader();
+
+	uint8_t val[] = {0, 0, 1, 1, 1, 0, 0, 0};
+	testwr(bits.STRAIGHT, val, nelem(val));
+	testwr(bits.REVERSED, val, nelem(val));
+
 	return test.fails();
 }
 
@@ -16,7 +20,7 @@ void testreader() {
 	fseek(f, 0, SEEK_SET);
 
 	reader.t *fr = reader.file(f);
-	bits.reader_t *b = bits.newreader(fr);
+	bits.reader_t *b = bits.newreader(fr, bits.STRAIGHT);
 	int r = 0;
 	for (int i = 0; i < 8; i++) {
 		r = r * 2 + bits.read1(b);
@@ -29,18 +33,15 @@ void testreader() {
 	fclose(f);
 }
 
-void testwriter() {
+void testwr(int order, uint8_t *val, size_t n) {
 	FILE *f = tmpfile();
 
 	// Write a sequence into a file.
 	writer.t *fw = writer.file(f);
-	bits.writer_t *w = bits.newwriter(fw);
-	bits.write1(w, 0);
-	bits.write1(w, 0);
-	bits.write1(w, 1);
-	bits.write1(w, 1);
-	bits.write1(w, 1);
-	bits.write1(w, 0);
+	bits.writer_t *w = bits.newwriter(fw, order);
+	for (size_t i = 0; i < n; i++) {
+		bits.write1(w, val[i]);
+	}
 	test.truth("!err", w->err == false);
 	test.truth("close", bits.closewriter(w) == true);
 	writer.free(fw);
@@ -48,17 +49,14 @@ void testwriter() {
 	// Read the sequence back.
 	fseek(f, 0, SEEK_SET);
 	reader.t *fr = reader.file(f);
-	bits.reader_t *b = bits.newreader(fr);
-	test.truth("001110 00", bits.read1(b) == 0);
-	test.truth("001110 00", bits.read1(b) == 0);
-	test.truth("001110 00", bits.read1(b) == 1);
-	test.truth("001110 00", bits.read1(b) == 1);
-	test.truth("001110 00", bits.read1(b) == 1);
-	test.truth("001110 00", bits.read1(b) == 0);
-	test.truth("001110 00", bits.read1(b) == 0);
-	test.truth("001110 00", bits.read1(b) == 0);
-	test.truth("eof", bits.read1(b) == EOF);
-	bits.closereader(b);
+	bits.reader_t *br = bits.newreader(fr, order);
+	for (size_t i = 0; i < n; i++) {
+		int b = bits.read1(br);
+		if (b < 0) panic("read failed");
+		test.truth("001110 00", (uint8_t) b == val[i]);
+	}
+	test.truth("eof", bits.read1(br) == EOF);
+	bits.closereader(br);
 	reader.free(fr);
 
 	fclose(f);

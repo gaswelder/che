@@ -198,7 +198,7 @@ pub writer_t *newwriter(tree_t *t, writer.t *out) {
 	writer_t *w = calloc!(1, sizeof(writer_t));
 	w->tree = t;
 	inittable(w->table, t->root, NULL, 0);
-	w->w = bits.newwriter(out);
+	w->w = bits.newwriter(out, bits.STRAIGHT);
 	return w;
 }
 

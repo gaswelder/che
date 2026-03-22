@@ -95,7 +95,7 @@ typedef {
 enc_t *init(size_t alphabet_size, writer.t *out) {
 	enc_t *enc = calloc!(1, sizeof(enc_t));
 	enc->dict = newdict(alphabet_size);
-	enc->bw = bits.newwriter(out);
+	enc->bw = bits.newwriter(out, bits.STRAIGHT);
 	return enc;
 }
 
@@ -234,7 +234,7 @@ typedef {
 pub void decompress(reader.t *in, size_t alphabet_size, writer.t *out) {
 	dec_t dec = {};
 	dec.dict = newdict(alphabet_size);
-	dec.br = bits.newreader(in);
+	dec.br = bits.newreader(in, bits.STRAIGHT);
 	
 	uint8_t prev[4096] = {};
 	size_t prevlen = 0;
