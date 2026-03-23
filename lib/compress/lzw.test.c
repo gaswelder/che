@@ -51,7 +51,11 @@ void writemsg(FILE *f, uint8_t *data, size_t datalen, size_t alphabet_size) {
 void readmsg(FILE *f, uint8_t *buf, size_t bufsize, size_t alphabet_size) {
 	reader.t *in = reader.file(f);
 	writer.t *out = writer.static_buffer(buf, bufsize);
-	lzw.decompress(in, alphabet_size, out);
+
+	lzw.dec_t *dec = lzw.newdecoder(in, alphabet_size);
+	lzw.decodeinto(dec, out);
+	lzw.freedecoder(dec);
+
 	reader.free(in);
 	writer.free(out);
 }

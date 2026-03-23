@@ -10,12 +10,12 @@
 
 const size_t MAX_DICT_LENGTH = 4096;
 
-typedef {
+pub typedef {
 	uint8_t len;
 	uint8_t *word;
 } word_t;
 
-typedef {
+pub typedef {
 	size_t init_size;
 	size_t size;
 	word_t *entries;
@@ -226,37 +226,70 @@ void shift(peeker_t *p, size_t n) {
 // Decompressor
 //
 
-typedef {
+pub typedef {
 	dict_t dict; // code dictionary
 	bits.reader_t *br; // input bits reader
+	uint8_t prev[4096];
+	uint8_t curr[4096];
+	size_t prevlen;
+	size_t currlen;
 } dec_t;
 
-pub void decompress(reader.t *in, size_t alphabet_size, writer.t *out) {
-	dec_t dec = {};
-	dec.dict = newdict(alphabet_size);
-	dec.br = bits.newreader(in, bits.STRAIGHT);
-	
-	uint8_t prev[4096] = {};
-	size_t prevlen = 0;
-	uint8_t curr[4096] = {};
-	size_t currlen = 0;
-	
-	while (true) {
-		size_t mi = dec_getcode(&dec);
-		if (mi > dec.dict.size) {
-			panic("got code %zu out of bounds [0, %zu)", mi, dec.dict.size);
-		}
+pub dec_t *newdecoder(reader.t *in, size_t alphabet_size) {
+	dec_t *d = calloc!(1, sizeof(dec_t));
+	d->dict = newdict(alphabet_size);
+	d->br = bits.newreader(in, bits.STRAIGHT);
+	return d;
+}
 
-		if (mi == dec.dict.resetcode) {
-			resetdict(&dec.dict);
-			continue;
-		}
-		if (mi == dec.dict.endcode) {
+pub void freedecoder(dec_t *d) {
+	bits.closereader(d->br);
+	freedict(d->dict);
+	free(d);
+}
+
+// Decodes the entire stream from dec, writing decoded output into out.
+pub void decodeinto(dec_t *dec, writer.t *out) {
+	uint8_t buf[4096] = {};
+	while (true) {
+		int n = decode(dec, buf);
+		if (n == 0) {
 			break;
 		}
+		int r = writer.write(out, buf, (size_t) n);
+		if (r < 0 || r != n) {
+			panic("write failed, r = %d\n", r);
+		}
+	}
+}
 
-		// Emit the word for the code.
-		if (mi == dec.dict.size) {
+// Reads next code from the input stream and puts the decoded
+// string into buf.
+// buf must be of size 4096.
+// Returns the length of the decoded string or zero on end of decoded data.
+pub int decode(dec_t *dec, uint8_t *buf) {
+	uint16_t code = 0;
+	for (int i = 0; i < 2; i++) {
+		// The decompressor lags one step behind the compressor:
+		// compressor writes code n while having updated the dict n-1 times,
+		// decompressor reads code n while having updated the dict n-2 times.
+		uint8_t w = codewidth(dec->dict.size + 1);
+		int bitsval = bits.readn(dec->br, w);
+		printf("read %d at w %u\n", bitsval, w);
+		code = (uint16_t) bitsval;
+		if (code == dec->dict.resetcode) {
+			resetdict(&dec->dict);
+			continue;
+		}
+			break;
+		}
+	if (code > dec->dict.size) {
+		panic("got code %u out of bounds [0, %zu)", code, dec->dict.size);
+	}
+	if (code == dec->dict.endcode) {
+		return 0;
+	}
+	if (code == dec->dict.size) {
 			// Because the decoder is one step behind the encoder,
 			// it's possible that the next code is not in the dictionary yet.
 			// This can happen only if the next code is for the word
@@ -265,43 +298,33 @@ pub void decompress(reader.t *in, size_t alphabet_size, writer.t *out) {
 			// abc | ?xyz
 			// => abc? = ?xyz
 			// => abc | abca
-			if (prevlen == 0) {
+		if (dec->prevlen == 0) {
 				panic("invalid code");
 			}
-			memcpy(curr, prev, prevlen);
-			currlen = prevlen;
-			curr[currlen++] = curr[0];
+		memcpy(dec->curr, dec->prev, dec->prevlen);
+		dec->currlen = dec->prevlen;
+		dec->curr[dec->currlen++] = dec->curr[0];
 		} else {
-			word_t *e = &dec.dict.entries[mi];
-			memcpy(curr, e->word, e->len);
-			currlen = e->len;
+		word_t *e = &dec->dict.entries[code];
+		memcpy(dec->curr, e->word, e->len);
+		dec->currlen = e->len;
 		}
 
-		int r = writer.write(out, curr, currlen);
-		if (r < 0 || (size_t) r != currlen) {
-			panic("write failed, r = %d\n", r);
-		}
+	int ret = (int) dec->currlen;
+	memcpy(buf, dec->curr, dec->currlen);
 
 		// Add prev + curr[0] to the dictionary.
-		if (prevlen > 0) {
-			if (dec.dict.size == MAX_DICT_LENGTH) {
-				resetdict(&dec.dict);
+	if (dec->prevlen > 0) {
+		if (dec->dict.size == MAX_DICT_LENGTH) {
+			resetdict(&dec->dict);
 			}
-			prev[prevlen++] = curr[0];
-			addentry(&dec.dict, prev, prevlen);
+		dec->prev[dec->prevlen++] = dec->curr[0];
+		addentry(&dec->dict, dec->prev, dec->prevlen);
 		}
 
 		// prev = curr
-		memcpy(prev, curr, currlen);
-		prevlen = currlen;
-	}
-}
+	memcpy(dec->prev, dec->curr, dec->currlen);
+	dec->prevlen = dec->currlen;
 
-size_t dec_getcode(dec_t *dec) {
-	// The decompressor lags one step behind the compressor:
-	// compressor writes code n while having updated the dict n-1 times, whereas
-	// decompressor reads code n while having updated the dict n-2 times.
-	uint8_t w = codewidth(dec->dict.size + 1);
-	int code = bits.readn(dec->br, w);
-	return (size_t) code;
+	return ret;
 }
