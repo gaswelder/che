@@ -95,7 +95,7 @@ typedef {
 enc_t *init(size_t alphabet_size, writer.t *out) {
 	enc_t *enc = calloc!(1, sizeof(enc_t));
 	enc->dict = newdict(alphabet_size);
-	enc->bw = bits.newwriter(out, bits.STRAIGHT);
+	enc->bw = bits.newwriter(out, bits.REVERSED);
 	return enc;
 }
 
@@ -166,12 +166,7 @@ size_t match(enc_t *enc, uint8_t *input, size_t inputlen) {
 
 void comp_emit(enc_t *enc, uint16_t code) {
 	uint8_t w = codewidth(enc->dict.size);
-	uint8_t a = code / 256;
-	uint8_t b = code % 256;
-	uint8_t bb[16] = {};
-	bits.getbits_msfirst(a, bb);
-	bits.getbits_msfirst(b, &bb[8]);
-	bits.write(enc->bw, &bb[16-w], w);
+	writebits(enc->bw, code, w);
 }
 
 typedef {
@@ -238,7 +233,7 @@ pub typedef {
 pub dec_t *newdecoder(reader.t *in, size_t alphabet_size) {
 	dec_t *d = calloc!(1, sizeof(dec_t));
 	d->dict = newdict(alphabet_size);
-	d->br = bits.newreader(in, bits.STRAIGHT);
+	d->br = bits.newreader(in, bits.REVERSED);
 	return d;
 }
 
@@ -263,6 +258,46 @@ pub void decodeinto(dec_t *dec, writer.t *out) {
 	}
 }
 
+void writebits(bits.writer_t *w, uint16_t code, uint8_t n) {
+	// for (uint8_t i = 0; i < n; i++) {
+	// 	int s = n - i - 1;
+	// 	int m = 1 << s;
+	// 	uint8_t bit = (code & m) >> s;
+	// 	bits.write1(w, bit);
+	// }
+
+
+	for (uint8_t i = 0; i < n; i++) {
+		uint8_t bit = code % 2;
+		code /= 2;
+		bits.write1(w, bit);
+	}
+}
+
+uint16_t readbits(bits.reader_t *r, uint8_t n) {
+	// uint16_t val = 0;
+	// for (uint8_t i = 0; i < n; i++) {
+	// 	int c = bits.read1(r);
+	// 	if (c < 0) panic("read failed");
+	// 	val *= 2;
+	// 	val += c;
+	// }
+
+
+	uint16_t val = 0;
+	uint16_t amp = 1;
+	for (uint8_t i = 0; i < n; i++) {
+		int c = bits.read1(r);
+		if (c < 0) panic("read failed");
+		val += amp * c;
+		amp *= 2;
+	}
+
+
+	// printf("--- %u bits val: %u\n", n, val);
+	return val;
+}
+
 // Reads next code from the input stream and puts the decoded
 // string into buf.
 // buf must be of size 4096.
@@ -270,13 +305,11 @@ pub void decodeinto(dec_t *dec, writer.t *out) {
 pub int decode(dec_t *dec, uint8_t *buf) {
 	uint16_t code = 0;
 	for (int i = 0; i < 2; i++) {
-		// The decompressor lags one step behind the compressor:
-		// compressor writes code n while having updated the dict n-1 times,
-		// decompressor reads code n while having updated the dict n-2 times.
+		// The decoder lags one step behind the encoder:
+		// encoder writes code n while having updated the dict n-1 times,
+		// decoder reads code n while having updated the dict n-2 times.
 		uint8_t w = codewidth(dec->dict.size + 1);
-		int bitsval = bits.readn(dec->br, w);
-		printf("read %d at w %u\n", bitsval, w);
-		code = (uint16_t) bitsval;
+		code = readbits(dec->br, w);
 		if (code == dec->dict.resetcode) {
 			resetdict(&dec->dict);
 			continue;
