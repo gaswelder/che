@@ -125,7 +125,7 @@ void write_track(mp3.reader_t *m, const char *fname, size_t pos_us) {
 		for (size_t i = 0; i < m->infoframelen; i++) {
 			fputc(m->infoframe[i], out);
 		}
-		frames = 2; // Dunno why, setting 1 makes the player show 1 second less.
+		frames = 1;
 		bytes = m->infoframelen;
 	}
 
