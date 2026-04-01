@@ -1,4 +1,6 @@
 #import os/self
+#import writer
+#import reader
 
 bool env_parsed = false;
 const char *list[10] = {};
@@ -79,4 +81,58 @@ pub void print_bytes(const uint8_t *data, size_t n) {
 		// }
 	}
 	printf("\n--------- end data ----------------------------\n");
+}
+
+
+//
+// echo writer
+//
+
+typedef {
+	writer.t *out;
+} dbgwriter_t;
+
+int dbgwrite(void *ctx, const uint8_t *data, size_t n) {
+	dbgwriter_t *w = ctx;
+	printf("## writing bytes:");
+	for (size_t i = 0; i < n; i++) {
+		printf(" %u", data[i]);
+	}
+	printf("\n");
+	return writer.write(w->out, data, n);
+}
+
+pub writer.t *newwriter(writer.t *out) {
+	dbgwriter_t *w = calloc!(1, sizeof(dbgwriter_t));
+	w->out = out;
+	return writer.new(w, dbgwrite, OS.free);
+}
+
+//
+// echo reader
+//
+
+typedef {
+	reader.t *in;
+} dbgreader_t;
+
+pub reader.t *newdbgreader(reader.t *in) {
+	dbgreader_t *w = calloc!(1, sizeof(dbgreader_t));
+	w->in = in;
+	return reader.new(w, dbgread, OS.free);
+}
+
+int dbgread(void *ctx, uint8_t *data, size_t n) {
+	dbgreader_t *w = ctx;
+	int r = reader.read(w->in, data, n);
+	if (r < 0) {
+		printf("## read failed\n");
+	} else {
+		printf("## read bytes:");
+		for (int i = 0; i < r; i++) {
+			printf(" %u", data[i]);
+		}
+		printf("\n");
+	}
+	return r;
 }
