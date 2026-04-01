@@ -66,7 +66,7 @@ void parse_env() {
 }
 
 // Debug utility to print bytes.
-pub void print_bytes(uint8_t *data, size_t n) {
+pub void print_bytes(const uint8_t *data, size_t n) {
     printf("--------- %zu bytes ---------------------------\n", n);
 	printf("0\t");
 	for (size_t i = 0; i < n; i++) {
