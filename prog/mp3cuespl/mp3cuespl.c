@@ -1,3 +1,4 @@
+#import clip/vec
 #import formats/cue
 #import formats/mp3
 #import os/fs
@@ -129,7 +130,19 @@ void write_track(mp3.reader_t *m, const char *fname, size_t pos_us) {
 		bytes = m->infoframelen;
 	}
 
+	// The TOC field in XING is a list of 100 uint8 numbers,
+	// each between 0 and 255.
+	//
+	// To jump to 50% of the audio length, the player goes to
+	// total_bytes * toc[50] / 255.
+
+	// Since we don't know how many frames the current track is,
+	// we'll have to remember file position for every frame here
+	// in an array.
+	vec.t *frame_offsets = vec.new(sizeof(uint32_t));
+
 	while (m->time < pos_us) {
+		vec.push(frame_offsets, &bytes);
 		mp3.write_frame(m, out);
 		frames++;
 		bytes += m->framelen;
@@ -140,11 +153,20 @@ void write_track(mp3.reader_t *m, const char *fname, size_t pos_us) {
 
 	// Get back and patch the info frame
 	if (m->infoframelen > 0) {
+		size_t n = vec.len(frame_offsets);
+		uint8_t toc[100] = {};
+		for (size_t i = 0; i < 100; i++) {
+			size_t s = n * i / 100;
+			uint32_t *off = vec.index(frame_offsets, s);
+			toc[i] = *off * 255 / bytes;
+		}
 		writer.t *w = writer.file(out);
 		fseek(out, 4 + 32, SEEK_SET);
-		mp3.write_xing(w, frames, bytes);
+		mp3.write_xing(w, frames, bytes, toc);
 		writer.free(w);
 	}
+
+	vec.free(frame_offsets);
 
 	char buf[20];
 	time.duration_t d = time.newdur(frames * 1152 / 44100, time.SECONDS);

@@ -296,9 +296,9 @@ bool read_xing(reader.t *r, xing_header_t *x) {
     return true;
 }
 
-pub void write_xing(writer.t *w, uint32_t frames, bytes) {
+pub void write_xing(writer.t *w, uint32_t frames, bytes, uint8_t *toc) {
 	xing_header_t x = {
-		.flags = 0x1 | 0x2,
+		.flags = 0x1 | 0x2 | 0x4,
 		.frames = frames,
 		.bytes = bytes,
 	};
@@ -306,4 +306,5 @@ pub void write_xing(writer.t *w, uint32_t frames, bytes) {
 	endian.write4be(w, x.flags);
 	endian.write4be(w, x.frames);
 	endian.write4be(w, x.bytes);
+	writer.write(w, toc, 100);
 }
