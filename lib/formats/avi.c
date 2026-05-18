@@ -11,6 +11,7 @@ pub typedef {
     int64_t movi_start;
     int width, height, fps;
     int frame_count;
+	uint8_t *frame;
 } writer_t;
 
 // Starts an AVI stream writing into f.
@@ -94,6 +95,8 @@ pub writer_t *start(FILE *f, int width, height, fps) {
     writer.write(w, (uint8_t *) "movi", 4);
     avi->movi_start = w->nwritten;
 
+	avi->frame = calloc!(1, width * height * 3);
+
     return avi;
 }
 
@@ -104,7 +107,10 @@ pub void addframe(writer_t *avi, image.image_t *img) {
 	int width = avi->width;
 	int height = avi->height;
 
-	uint8_t *frame = calloc!(1, width * height * 3);
+	uint8_t *frame = avi->frame;
+	memset(frame, 0, width * height * 3);
+	
+	// uint8_t *frame = calloc!(1, width * height * 3);
 	for (int y = 0; y < height; y++) {
 		for (int x = 0; x < width; x++) {
 			int pos = y * (width*3) + (x*3);
@@ -124,10 +130,11 @@ pub void addframe(writer_t *avi, image.image_t *img) {
 		writer.writebyte(w, 0);
 	}
     avi->frame_count++;
-	free(frame);
+	// free(frame);
 }
 
 pub void stop(writer_t *avi) {
+	free(avi->frame);
 	writer.t *w = avi->out;
 
     // int64_t movi_end = ftell(f);
