@@ -31,7 +31,7 @@ pub t mul(t a, b) {
 	return r;	
 }
 
-// Multiplies complex x by scalar s.
+// Returns the product of complex x and scalar s.
 pub t scale(t x, double s) {
 	t r = {
 		.re = x.re * s,
@@ -40,6 +40,7 @@ pub t scale(t x, double s) {
 	return r;
 }
 
+// Returns the absolute value of z.
 pub double abs(t z) {
 	return sqrt(z.re * z.re + z.im * z.im);
 }
