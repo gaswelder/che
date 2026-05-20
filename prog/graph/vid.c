@@ -20,13 +20,15 @@ pub int run(int argc, char *argv[]) {
 		return 1;
 	}
 
+	const int FRAMES = 1000;
+
 	image.image_t *img = image.new(width, height);
 
 	switch str (argv[1]) {
 		case "thorn": {
 			double cr = (rnd.intn(10000)) / 500.0 - 10; // -10 -> 10;
 			double ci = (rnd.intn(10000)) / 500.0 - 10;
-			for (int i = 0; i < 100; i++) {
+			for (int i = 0; i < FRAMES; i++) {
 				ci += 0.1;
 				cr += 0.1;
 				thorn.draw(img, cr, ci);
@@ -34,7 +36,6 @@ pub int run(int argc, char *argv[]) {
 			}
 		}
 		case "pickover": {
-			const int FRAMES = 10000;
 			for (int i = 0; i < FRAMES; i++) {
 				image.apply(img, fade);
 				pickover.draw(img, i, FRAMES);
@@ -46,7 +47,7 @@ pub int run(int argc, char *argv[]) {
 			double b = -0.90;
 			double c = -0.86;
 			double d = -2.20;
-			for (int i = 0; i < 100; i++) {
+			for (int i = 0; i < FRAMES; i++) {
 				dejong.draw(img, a, b, c, d);
 				render.push(img);
 				a += rnd.u() / 1000;
@@ -61,7 +62,7 @@ pub int run(int argc, char *argv[]) {
 			double b = 0.9;
 			double k = 0.4;
 			double p = 7.7;
-			for (int i = 0; i < 100; i++) {
+			for (int i = 0; i < FRAMES; i++) {
 				image.clear(img);
 				ikeda.draw(img, a, b, k, p);
 				render.push(img);
