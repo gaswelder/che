@@ -85,7 +85,7 @@ pub int run(int argc, char *argv[]) {
 }
 
 void fade(image.rgba_t *c) {
-	c->red /= 2;
-	c->green /= 2;
-	c->blue /= 2;
+	c->red = (int) ((double)c->red * 0.8);
+	c->green = (int) ((double)c->green * 0.8);
+	c->blue = (int) ((double)c->blue * 0.8);
 }
