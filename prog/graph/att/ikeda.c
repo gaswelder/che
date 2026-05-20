@@ -6,10 +6,16 @@ pub void draw(image.image_t *img, double a, b, k, p) {
 	complex.t z = {0};
 	image.rgba_t color = image.white();
 	int n = 100000;
+	double w = img->width;
+	double h = img->height;
 	for (int i = 0; i < n; i++) {
-		double x = 240 + 180*z.re;
-		double y = 280 + 180*z.im;
-		image.set(img, (int) x, (int) y, color);
+		double x = z.re;
+		double y = z.im;
+		int ix = (int) ((x + 1) / 3.0 * w);
+		int iy = (int) ((y + 2) / 4.0 * h);
+		if (ix >= 0 && ix < img->width && iy >= 0 && iy < img->height) {
+			image.set(img, ix, iy, color);
+		}
 		z = next(z, a, b, k, p);
 	}
 }
