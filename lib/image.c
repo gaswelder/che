@@ -162,29 +162,17 @@ pub rgba_t from_hsl(float h, s, l) {
 	float green;
 	float blue;
 	if (h1 <= 1) {
-		red = c;
-		green = x;
-		blue = 0;
+		red = c; green = x; blue = 0;
 	} else if (h1 <= 2) {
-		red = x;
-		green = c;
-		blue = 0;
+		red = x; green = c; blue = 0;
 	} else if (h1 <= 3) {
-		red = 0;
-		green = c;
-		blue = x;
+		red = 0; green = c; blue = x;
 	} else if (h1 <= 4) {
-		red = 0;
-		green = x;
-		blue = c;
+		red = 0; green = x; blue = c;
 	} else if (h1 <= 5) {
-		red = x;
-		green = 0;
-		blue = c;
+		red = x; green = 0; blue = c;
 	} else if (h1 <= 6) {
-		red = c;
-		green = 0;
-		blue = x;
+		red = c; green = 0; blue = x;
 	}
 	rgba_t color = {
 		.red = (int) (255.0 * red),
@@ -193,6 +181,29 @@ pub rgba_t from_hsl(float h, s, l) {
 		.transparency = 0,
 	};
 	return color;
+}
+
+// assumes s=v=1
+pub rgba_t from_hsv(double h) {
+    h *= 6.0;
+	int inth = (int)h;
+    double hf = h - (double) inth;
+    image.rgba_t r = {};
+    switch (inth % 6) {
+        case 0: {
+			r.red = 255; r.green = 255 * hf; r.blue = 0; }
+        case 1: {
+			r.red = 255 * (1.0 - hf); r.green = 255; r.blue = 0; }
+        case 2: {
+			r.red = 0; r.green = 255; r.blue = 255 * hf; }
+        case 3: {
+			r.red = 0; r.green = 255 * (1.0 - hf); r.blue = 255; }
+        case 4: {
+			r.red = 255 * hf; r.green = 0; r.blue = 255; }
+        case 5: {
+			r.red = 255; r.green = 0; r.blue = 255 * (1.0 - hf); }
+    }
+    return r;
 }
 
 pub typedef {

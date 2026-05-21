@@ -25,7 +25,7 @@ pub void draw(image.image_t *img, int i, FRAMES) {
 	double b = cos( minB + p * (maxB - minB) ) * 2.0;
 	double c = cos( minC + p * (maxC - minC) ) * 2.0;
 	double d = cos( minD + p * (maxD - minD) ) * 2.0;
-	image.rgba_t color = create_hue(p);
+	image.rgba_t color = image.from_hsv(p);
 	double x = 0.0;
 	double y = 0.0;
 	for (int j = 0; j < iters; j++) {
@@ -45,20 +45,4 @@ pub void draw(image.image_t *img, int i, FRAMES) {
 			image.blend(img, xi, yi, color, 0.9);
 		}
 	}
-}
-
-image.rgba_t create_hue(double h) {
-    h *= 6.0;
-	int inth = (int)h;
-    double hf = h - (double) inth;
-    image.rgba_t r = {};
-    switch (inth % 6) {
-        case 0: { r.red = 255; r.green = 255 * hf; r.blue = 0; }
-        case 1: { r.red = 255 * (1.0 - hf); r.green = 255; r.blue = 0; }
-        case 2: { r.red = 0; r.green = 255; r.blue = 255 * hf; }
-        case 3: { r.red = 0; r.green = 255 * (1.0 - hf); r.blue = 255; }
-        case 4: { r.red = 255 * hf; r.green = 0; r.blue = 255; }
-        case 5: { r.red = 255; r.green = 0; r.blue = 255 * (1.0 - hf); }
-    }
-    return r;
 }
