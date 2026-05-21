@@ -36,10 +36,22 @@ pub int run(int argc, char *argv[]) {
 			}
 		}
 		case "pickover": {
+			// a = -1.4, b = 1.6, c = 1.0, d = 0.7
+			double a = rnd.u() * 4 - 2;
+			double b = rnd.u() * 4 - 2;
+			double c = rnd.u() * 4 - 2;
+			double d = rnd.u() * 4 - 2;
+			double step = 4.0 / FRAMES;
+
 			for (int i = 0; i < FRAMES; i++) {
 				image.apply(img, fade);
-				pickover.draw(img, i, FRAMES);
+				pickover.draw(img, a, b, c, d);
 				render.push(img);
+
+				a = circle(a + step, -2, 2);
+				b = circle(b + step, -2, 2);
+				c = circle(c + step, -2, 2);
+				d = circle(d + step, -2, 2);
 			}
 		}
 		case "dejong": {
@@ -78,7 +90,7 @@ pub int run(int argc, char *argv[]) {
 		}
 	}
 
-	
+
 	render.end();
 	image.free(img);
 	return 0;
@@ -88,4 +100,11 @@ void fade(image.rgba_t *c) {
 	c->red = (int) ((double)c->red * 0.8);
 	c->green = (int) ((double)c->green * 0.8);
 	c->blue = (int) ((double)c->blue * 0.8);
+}
+
+double circle(double x, min, max) {
+	if (x > max) {
+		return min + x - max;
+	}
+	return x;
 }

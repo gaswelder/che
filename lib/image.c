@@ -188,7 +188,7 @@ pub rgba_t from_hsv(double h) {
     h *= 6.0;
 	int inth = (int)h;
     double hf = h - (double) inth;
-    image.rgba_t r = {};
+    rgba_t r = {};
     switch (inth % 6) {
         case 0: {
 			r.red = 255; r.green = 255 * hf; r.blue = 0; }
