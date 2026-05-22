@@ -1,18 +1,13 @@
 // The original is at https://github.com/skeeto/mandelbrot
 
-#import complex
 #import formats/bmp
-#import formats/conf
 #import formats/ppm
 #import image
 #import opt
 #import os/threads
+#import frac/mandelbrot.c
 
-// log(2)
-const double logtwo = 0.693147180559945;
-
-typedef { double xmin, xmax, ymin, ymax; } area_t;
-typedef { area_t area; int frame; } job_t;
+typedef { mandelbrot.area_t area; int frame; } job_t;
 
 typedef {
 	int image_width, image_height;
@@ -26,13 +21,20 @@ typedef {
 } config_t;
 
 config_t config = {
-	.image_width = 800,
-	.image_height = 600,
+
+	.image_width = 1000,
+	.image_height = 1000,
+
+	// plot area
 	.xmin = -2.5,
 	.xmax = 1.5,
 	.ymin = -1.5,
 	.ymax = 1.5,
-	.iterations = 256,
+
+	// per pixel
+	.iterations = 512,
+
+	// zoom
 	.zoom_frames = 1,
 	.zoom_rate = 0.1,
 	.zoomx = -1.268794803623,
@@ -44,17 +46,10 @@ image.colormap_t *GLOBAL_CM = NULL;
 pub int run(int argc, char **argv) {
 	bool flag_colormap = false;
 	bool render_out = false;
-	char *confpath = "mandelbrot.conf";
 	opt.nargs(0, "");
-	opt.str("c", "config file", &confpath);
 	opt.flag("m", "create a colormap image", &flag_colormap);
 	opt.flag("o", "render as ppm to stdout", &render_out);
 	opt.parse(argc, argv);
-
-	if (!loadconfig(&config, confpath)) {
-		fprintf(stderr, "failed to load config from %s: %s\n", confpath, strerror(errno));
-		return 1;
-	}
 
 	image.rgba_t colors[] = {
 		{ 0, 0, 0, 0},
@@ -146,9 +141,9 @@ void *workerfunc(void *arg0) {
 	void *buf[1] = {};
 	while (threads.pread(in, buf)) {
 		job_t *job = buf[0];
-		area_t a = job->area;
+		mandelbrot.area_t a = job->area;
 		image.image_t *img = image.new(config.image_width, config.image_height);
-		draw(img, GLOBAL_CM, a, config.iterations);
+		mandelbrot.draw(img, GLOBAL_CM, a, config.iterations);
 		render_val_t *v = calloc!(1, sizeof(render_val_t));
 		v->img = img;
 		v->frame = job->frame;
@@ -191,59 +186,6 @@ void *renderfunc_stdout(void *arg) {
 	return NULL;
 }
 
-void draw(image.image_t *img, image.colormap_t *cm, area_t area, int it) {
-	int width = img->width;
-	int height = img->height;
-	double xres = (area.xmax - area.xmin) / width;
-	double yres = (area.ymax - area.ymin) / height;
-	for (int j = 0; j < height; j++) {
-		for (int i = 0; i < width; i++) {
-			complex.t c = {
-				.re = area.xmin + i * xres,
-				.im = area.ymin + j * yres
-			};
-			double v = get_val(c, it);
-			*image.getpixel(img, i, j) = image.mapcolor(cm, v);
-		}
-	}
-}
-
-// The Mandelbrot set is based on the function
-//
-//      f(z, c) = z^2 + c.
-//
-// The variable c is reinterpreted as a pixel coordinate: x=Re(c), y=Im(c).
-// For each sample point c we're looking how quickly the sequence
-//
-//      |f(0, c)|, |f(0, f(0, c))|, ...
-//
-// goes to infinity. Pixels may be colored then according to how soon the
-// sequence crosses a chosen threshold. The threshold should be higher than 2
-// (which is max(abs(f(any, any)))).
-
-// * If c is held constant and the initial value of z is varied instead,
-// we get a Julia set instead.
-
-double get_val(complex.t c, int it) {
-	complex.t z = { 0, 0 };
-
-	int count = 0;
-	while (complex.abs2(z) < 4 && count < it) {
-		/* Z = Z^2 + C */
-		z = complex.sum( complex.mul(z, z), c );
-		count++;
-	}
-	if (complex.abs2(z) < 4) {
-		return 0;
-	}
-	return smooth(count, complex.abs(z));
-}
-
-double smooth(int count, double amp) {
-	double off = (double) count + 1;
-	return off - log(log(amp)) / logtwo;
-}
-
 void write_colormap(image.colormap_t *cm, const char *filename) {
 	image.image_t *img = image.new(cm->color_width * cm->size * 1.5, 20);
 	for (int x = 0; x < img->width; x++) {
@@ -256,37 +198,4 @@ void write_colormap(image.colormap_t *cm, const char *filename) {
 		panic("failed to write bmp: %s", strerror(errno));
 	}
 	image.free(img);
-}
-
-
-bool loadconfig(config_t *c, const char *path) {
-	FILE *f = fopen(path, "r");
-	if (!f) {
-		return false;
-	}
-	conf.reader_t *p = conf.new(f);
-	while (conf.next(p)) {
-		char *base = p->key;
-		char *val = p->val;
-		switch str (base) {
-			case "xmin": { c->xmin = strtod(val, NULL); }
-			case "xmax": { c->xmax = strtod(val, NULL); }
-			case "ymin": { c->ymin = strtod(val, NULL); }
-			case "ymax": { c->ymax = strtod(val, NULL); }
-			case "zoomx": { c->zoomx = strtod(val, NULL); }
-			case "zoomy": { c->zoomy = strtod(val, NULL); }
-			case "iterations": { c->iterations = atoi(val); }
-			case "image_width": { c->image_width = atoi(val); }
-			case "image_height": { c->image_height = atoi(val); }
-			case "zoom_frames": { c->zoom_frames = atoi(val); }
-			case "zoom_rate": { c->zoom_rate = strtod(val, NULL); }
-			default: {
-				fprintf(stderr, "invalid config value: %s=%s\n", p->key, p->val);
-				exit(1);
-			}
-		}
-	}
-	conf.free(p);
-	fclose(f);
-	return true;
 }
