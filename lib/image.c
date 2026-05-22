@@ -229,6 +229,18 @@ rgba_t mapcolor_(rgba_t *colors, size_t ncolors, int color_width, int val) {
 	return mix(colors[index1], colors[index2], rate);
 }
 
+// Returns an image of the colormap cm.
+pub image_t *colormap_image(colormap_t *cm) {
+	image_t *img = new(cm->color_width * cm->size * 1.5, 20);
+	for (int x = 0; x < img->width; x++) {
+		rgba_t c = mapcolor(cm, x);
+		for (int y = 0; y < img->height; y++) {
+			*getpixel(img, x, y) = c;
+		}
+	}
+	return img;
+}
+
 // Draws a tv-style test pattern into img.
 pub void testimage(image_t *img) {
 	rgba_t seq[] = {

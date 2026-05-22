@@ -2,6 +2,7 @@
 #import att/ikeda.c
 #import att/pickover.c
 #import frac/thorn.c
+#import frac/mandelbrot.c
 #import image
 #import opt
 #import render.c
@@ -9,7 +10,7 @@
 
 pub int run(int argc, char *argv[]) {
 	char *size = "400x400";
-	opt.nargs(1, "<algorithm = thorn / pickover / dejong / ikeda>");
+	opt.nargs(1, "<algorithm = thorn / pickover / dejong / ikeda / mandelbrot>");
 	opt.str("s", "image size", &size);
 	opt.parse(argc, argv);
 
@@ -83,6 +84,56 @@ pub int run(int argc, char *argv[]) {
 				// k += 0.001;
 				p += 0.01;
 			}
+		}
+		case "mandelbrot": {
+			image.rgba_t colors[] = {
+				{ 0, 0, 0, 0},
+				{ 0, 0, 255, 0},
+				{ 0, 128, 255, 0},
+				{ 0, 255, 128, 0},
+				{ 128, 128, 0, 0},
+				{ 255, 128, 0, 0},
+				{ 255, 255, 128, 0},
+				{ 255, 255, 255, 0}
+			};
+			image.colormap_t *cm = calloc!(1, sizeof(image.colormap_t));
+			cm->size = nelem(colors);
+			cm->color_width = 50;
+			for (size_t i = 0; i < nelem(colors); i++) {
+				cm->colors[i] = colors[i];
+			}
+			image.colormap_t *GLOBAL_CM = cm;
+
+			double config_xmin = -2.5;
+			double config_xmax = 1.5;
+			double config_ymin = -1.5;
+			double config_ymax = 1.5;
+			double hw = (config_xmax - config_xmin) / 2;
+			double hh = (config_ymax - config_ymin) / 2;
+			int iterations = 64; // 512
+			double zoom_rate = 0.1;
+			double zoomx = -1.268794803623;
+			double zoomy = 0.353676833206;
+
+			for (int i = 0; i < FRAMES; i++) {
+				fprintf(stderr, "%d / %d\n", i, FRAMES);
+
+				// The first frame spans [center-hwidth, center+hwidth]
+				// The next frame spans [center-hwidth/(1+zoom_rate), center+hwidth/(1+zoom_rate)]
+				mandelbrot.area_t a = {};
+				a.xmin = zoomx - hw;
+				a.xmax = zoomx + hw;
+				a.ymin = zoomy - hh;
+				a.ymax = zoomy + hh;
+				hw /= (1 + zoom_rate);
+				hh /= (1 + zoom_rate);
+
+				mandelbrot.draw(img, GLOBAL_CM, a, iterations);
+				render.push(img);
+				
+			}
+			image.free(img);
+			render.end();
 		}
 		default: {
 			fprintf(stderr, "unknown algorithm\n");
