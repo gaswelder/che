@@ -3,6 +3,7 @@
 #import att/pickover.c
 #import frac/thorn.c
 #import frac/mandelbrot.c
+#import frac/frothy.c
 #import image
 #import opt
 #import render.c
@@ -129,11 +130,17 @@ pub int run(int argc, char *argv[]) {
 				hh /= (1 + zoom_rate);
 
 				mandelbrot.draw(img, GLOBAL_CM, a, iterations);
-				render.push(img);
-				
+				render.push(img);				
 			}
-			image.free(img);
-			render.end();
+		}
+		case "frothy": {
+			double cim = 1;
+			for (int i = 0; i < FRAMES; i++) {
+				cim += 0.001;
+				image.clear(img);
+				frothy.draw(img, i, cim);
+				render.push(img);
+			}
 		}
 		default: {
 			fprintf(stderr, "unknown algorithm\n");
