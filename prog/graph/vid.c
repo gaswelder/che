@@ -1,9 +1,10 @@
 #import att/dejong.c
+#import att/henon.c
 #import att/ikeda.c
 #import att/pickover.c
-#import frac/thorn.c
-#import frac/mandelbrot.c
 #import frac/frothy.c
+#import frac/mandelbrot.c
+#import frac/thorn.c
 #import image
 #import opt
 #import render.c
@@ -142,13 +143,22 @@ pub int run(int argc, char *argv[]) {
 				render.push(img);
 			}
 		}
+		case "henon": {
+			// Normally an integer [2..12], but we're animating.
+			double m = 2;
+			for (int i = 0; i < FRAMES; i++) {
+				image.clear(img);
+				henon.draw(img, m);
+				render.push(img);
+				m += 0.1;
+				if (m > 12) m = 2;
+			}
+		}
 		default: {
 			fprintf(stderr, "unknown algorithm\n");
 			return 1;
 		}
 	}
-
-
 	render.end();
 	image.free(img);
 	return 0;
