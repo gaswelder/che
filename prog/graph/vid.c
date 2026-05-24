@@ -5,6 +5,7 @@
 #import frac/frothy.c
 #import frac/mandelbrot.c
 #import frac/thorn.c
+#import frac/gingerbread.c
 #import image
 #import opt
 #import render.c
@@ -152,6 +153,17 @@ pub int run(int argc, char *argv[]) {
 				render.push(img);
 				m += 0.1;
 				if (m > 12) m = 2;
+			}
+		}
+		case "gingerbread": {
+			int iterations = 1;
+			for (int i = 0; i < FRAMES; i++) {
+				image.clear(img);
+				gingerbread.draw(img, iterations);
+				render.push(img);
+				if (iterations < 10000) {
+					iterations += 100;
+				}
 			}
 		}
 		default: {
