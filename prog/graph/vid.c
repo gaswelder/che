@@ -2,10 +2,11 @@
 #import att/henon.c
 #import att/ikeda.c
 #import att/pickover.c
+#import frac/dendrite.c
 #import frac/frothy.c
+#import frac/gingerbread.c
 #import frac/mandelbrot.c
 #import frac/thorn.c
-#import frac/gingerbread.c
 #import image
 #import opt
 #import render.c
@@ -164,6 +165,21 @@ pub int run(int argc, char *argv[]) {
 				if (iterations < 10000) {
 					iterations += 100;
 				}
+			}
+		}
+		case "dendrite": {
+			double a = 0.00; // slope
+			double b = 0.70; // leaf size coefficient
+			double c = 0.70; // dispersion
+			double d = 0.00; // skew
+			for (int i = 0; i < FRAMES; i++) {
+				image.clear(img);
+				dendrite.draw(img, a, b, c, d);
+				render.push(img);
+				// a += 0.001;
+				// b += 0.001;
+				c += 0.001;
+				d += 0.001;
 			}
 		}
 		default: {
