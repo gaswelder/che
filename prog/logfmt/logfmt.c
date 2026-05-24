@@ -4,20 +4,15 @@
 #import strings
 #import tty
 
-char *reqfields[100] = {};
 char *excludefields[100] = {};
-int nreqfields = 0;
 int nexclude = 0;
 
 int main(int argc, char **argv) {
-    char *fields_string = "msg|message";
     char *exclude_string = "";
 	opt.nargs(0, "");
-    opt.str("f", "comma-separated list of fields to print as columns after the level and timestamp", &fields_string);
     opt.str("x", "comma-separated list of fields to exclude", &exclude_string);
     opt.parse(argc, argv);
 
-    nreqfields = strings.split(",", fields_string, reqfields, sizeof(reqfields));
     nexclude = strings.split(",", exclude_string, excludefields, sizeof(excludefields));
 
     linereader.t *lr = linereader.new(stdin);
@@ -40,19 +35,20 @@ int main(int argc, char **argv) {
 
 void print_entry(json.val_t *entry) {
     printlevel(entry);
-	putchar('\t');
+	putchar(' ');
 
-    if (!printfield(entry, "t")) {
-		printfield(entry, "timestamp");
-	}
-    putchar('\t');
+	printtime(entry);
+    putchar(' ');
 
-	if (!printfield(entry, "msg")) {
-		printfield(entry, "message");
-	}
-	putchar('\t');
+	printmsg(entry);
+	putchar(' ');
 
-    // Print the remaining fields as k=v
+	printfields(entry);
+    puts("");
+}
+
+void printfields(json.val_t *entry) {
+	tty.ttycolor(tty.DIM);
     size_t n = json.len(entry);
     for (size_t i = 0; i < n; i++) {
         const char *key = json.key(entry, i);
@@ -74,7 +70,15 @@ void print_entry(json.val_t *entry) {
         printf(" %s=", key);
         printval(json.val(entry, i));
     }
-    puts("");
+	tty.ttycolor(tty.RESET_ALL);
+}
+
+void printmsg(json.val_t *entry) {
+	tty.ttycolor(tty.BRIGHT);
+	if (!printfield(entry, "msg")) {
+		printfield(entry, "message");
+	}
+	tty.ttycolor(tty.RESET_ALL);
 }
 
 bool printfield(json.val_t *entry, const char *key) {
@@ -107,6 +111,14 @@ void printlevel(json.val_t *entry) {
 		p++;
 	}
     tty.ttycolor(tty.RESET_ALL);
+}
+
+void printtime(json.val_t *entry) {
+	tty.ttycolor(tty.DIM);
+    if (!printfield(entry, "t")) {
+		printfield(entry, "timestamp");
+	}
+	tty.ttycolor(tty.RESET_ALL);
 }
 
 bool isint(double x) {
