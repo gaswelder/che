@@ -7,7 +7,7 @@ int main(int argc, char *argv[]) {
 	bool raw = false;
 	opt.nargs(0, "");
 	opt.summary("Reads numeric values from stdin and prints their histogram.");
-	opt.size("n", "number of bins (excluding two padding bins); if zero, will be set to sqrt(n_values)", &nbins);
+	opt.size("n", "number of bins (excluding two padding bins)", &nbins);
 	opt.size("w", "max line width", &maxline);
 	opt.flag("r", "print raw numbers, no fancy ASCII art", &raw);
 	opt.parse(argc, argv);
@@ -117,13 +117,20 @@ typedef {
 } label_t;
 
 void printbins_ascii(bin_t *bins, size_t nbins, size_t maxline) {
+	size_t last = 0;
+	for (size_t i = 0; i < nbins; i++) {
+		bin_t *b = &bins[i];
+		if (b->count > 0) {
+			last = i + 1;
+		}
+	}
 	//
 	// Print the labels to a buffer in advance so that we know
 	// label sizes.
 	//
-	label_t *labels = calloc!(nbins, sizeof(label_t));
+	label_t *labels = calloc!(last, sizeof(label_t));
 	size_t maxlabel = 0;
-	for (size_t i = 0; i < nbins; i++) {
+	for (size_t i = 0; i < last; i++) {
 		bin_t *b = &bins[i];
 		label_t *l = &labels[i];
 		size_t n = snprintf(l->str, sizeof(l->str), "%g", b->minval);
@@ -134,7 +141,7 @@ void printbins_ascii(bin_t *bins, size_t nbins, size_t maxline) {
 	// Find out the max count across bins.
 	//
 	size_t maxcount = 0;
-	for (size_t i = 0; i < nbins; i++) {
+	for (size_t i = 0; i < last; i++) {
 		bin_t *b = &bins[i];
 		if (b->count > maxcount) {
 			maxcount = b->count;
@@ -156,7 +163,7 @@ void printbins_ascii(bin_t *bins, size_t nbins, size_t maxline) {
 	//
 	// Output the bin lines.
 	//
-	for (size_t i = 0; i < nbins; i++) {
+	for (size_t i = 0; i < last; i++) {
 		bin_t *b = &bins[i];
 		//
 		// label
