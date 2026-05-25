@@ -6,6 +6,7 @@
 #import frac/diamondsquare.c
 #import frac/frothy.c
 #import frac/gingerbread.c
+#import frac/lambda.c
 #import frac/mandelbrot.c
 #import frac/thorn.c
 #import image
@@ -191,6 +192,13 @@ int main(int argc, char *argv[]) {
 			for (int i = 0; i < FRAMES; i++) {
 				image.clear(img);
 				diamondsquare.draw(img, size);
+				render.push(img);
+			}
+		}
+		case "lambda": {
+			for (int i = 0; i < FRAMES; i++) {
+				image.clear(img);
+				lambda.draw(img);
 				render.push(img);
 			}
 		}

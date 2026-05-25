@@ -52,3 +52,8 @@ pub double abs2(t z) {
 pub void print(FILE *f, t x) {
     fprintf(f, "(%f + %fi)", x.re, x.im);
 }
+
+pub t make(double re, double im) {
+	t r = {re, im};
+	return r;
+}
