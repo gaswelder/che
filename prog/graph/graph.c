@@ -8,6 +8,7 @@
 #import frac/gingerbread.c
 #import frac/lambda.c
 #import frac/mandelbrot.c
+#import frac/martin.c
 #import frac/thorn.c
 #import image
 #import opt
@@ -199,6 +200,14 @@ int main(int argc, char *argv[]) {
 			for (int i = 0; i < FRAMES; i++) {
 				image.clear(img);
 				lambda.draw(img);
+				render.push(img);
+			}
+		}
+		case "martin": {
+			
+			for (int i = 0; i < FRAMES; i++) {
+				image.clear(img);
+				martin.draw(img, 1000 + 100 * i);
 				render.push(img);
 			}
 		}
