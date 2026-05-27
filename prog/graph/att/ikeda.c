@@ -1,5 +1,5 @@
-#import complex
 #import image
+#import math/complex
 
 // Draws an ikeda picture.
 pub void draw(image.image_t *img, double a, b, k, p) {

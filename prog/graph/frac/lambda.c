@@ -1,5 +1,5 @@
 #import image
-#import complex
+#import math/complex
 
 double max = 100;
 int it=35;

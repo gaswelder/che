@@ -1,5 +1,5 @@
 #import image
-#import complex
+#import math/complex
 
 // The Mandelbrot set is based on the function
 //

@@ -64,7 +64,7 @@ USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 // know what you find.
 
 
-#import complex
+#import math/complex
 
 /* e.g. an fft of length 128 has 4 factors
  as far as kissfft is concerned
