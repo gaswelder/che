@@ -4,6 +4,7 @@
 #import att/pickover.c
 #import frac/dendrite.c
 #import frac/diamondsquare.c
+#import frac/dynamic.c
 #import frac/frothy.c
 #import frac/gingerbread.c
 #import frac/lambda.c
@@ -204,10 +205,16 @@ int main(int argc, char *argv[]) {
 			}
 		}
 		case "martin": {
-			
 			for (int i = 0; i < FRAMES; i++) {
 				image.clear(img);
 				martin.draw(img, 1000 + 100 * i);
+				render.push(img);
+			}
+		}
+		case "dynamic": {
+			for (int i = 0; i < FRAMES; i++) {
+				image.clear(img);
+				dynamic.draw(img);
 				render.push(img);
 			}
 		}
