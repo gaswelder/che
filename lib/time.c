@@ -1,3 +1,5 @@
+#import error
+
 #include <sys/time.h>
 #include <time.h>
 
@@ -95,26 +97,43 @@ pub bool dur_fmt(duration_t *d, char *buf, size_t bufsize, const char *fmt) {
 	return (size_t) len + 1 <= bufsize;
 }
 
-pub int parse_duration(const char *s, duration_t *d) {
-	int parts[3] = {};
-    int psize = 0;
+// Parses duration from string s.
+// Returns true on success,
+// returns false and sets the error otherwise.
+pub bool parse_duration(const char *s, duration_t *d, error.t *err) {
+	int nums[3] = {};
+    int numslen = 0;
 
     const char *p = s;
-    p = readint(p, &parts[psize++]);
-    while (*p == ':') {
-        p++;
-        p = readint(p, &parts[psize++]);
-    }
+	if (*s == '\0') {
+		error.set(err, "duration string is empty");
+		return false;
+	}
 
-    switch (psize) {
+    p = readint(p, &nums[numslen++]);
+	if (p == s) {
+		error.set(err, "expected a number at %s", s);
+		return false;
+	}
+
+	// up to two more of (":" <int>)
+	if (*p == ':') {
+		p++;
+		p = readint(p, &nums[numslen++]);
+	}
+	if (*p == ':') {
+		p++;
+		p = readint(p, &nums[numslen++]);
+	}
+
+    switch (numslen) {
         case 2: {
-			d->us = (parts[0] * 60 + parts[1]) * SECONDS;
-            return 0;
-        }
-        default: {
-            panic("unimplemented format: %s", s);
+			d->us = (nums[0] * 60 + nums[1]) * SECONDS;
+            return true;
         }
     }
+	error.set(err, "unknown format: %s", s);
+	return false;
 }
 
 const char *readint(const char *p, int *r) {

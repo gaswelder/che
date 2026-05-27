@@ -1,3 +1,4 @@
+#import error
 #import strings
 #import time
 
@@ -44,7 +45,10 @@ void parseline(char *line, entry_t *e) {
 		i--;
 	}
 	time.duration_t d = {};
-	time.parse_duration(&line[i], &d);
+	error.t err = {};
+	if (!time.parse_duration(&line[i], &d, &err)) {
+		panic("failed to parse duration: %s", err.msg);
+	}
 	line[i-1] = '\0';
 	strings.trim(line);
 
