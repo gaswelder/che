@@ -15,7 +15,7 @@
 // (which is max(abs(f(any, any)))).
 
 // * If c is held constant and the initial value of z is varied instead,
-// we get a Julia set instead.
+// we get a Julia set.
 
 // log(2)
 const double logtwo = 0.693147180559945;

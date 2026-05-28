@@ -1,48 +1,32 @@
 #import image
-#import math/complex 
+#import math/complex
 
-// "Frothy"
+const int ITERATIONS = 50;
 
-const int iter = 50;
+// double max = 16;
+// c.im = 1.02871;
 
-pub void draw(image.image_t *img, int max, double cim) {
-	// int max = 16;
-
-	complex.t z = {};
-	complex.t z1 = {};
-	complex.t c = {};
-
-	int x;
-	int y;
-	int n;
-
+pub void draw(image.image_t *img, double max, double cim) {
 	int mx = img->width / 2;
 	int my = img->height / 2;
-
-	for (y=-my; y<mx; y++) {
-		for (x=-mx; x< mx; x++) {
-			
-			z.re = x*0.01;
-			z.im = y*0.01;
-			c.re = 1;
-			// c.im = 1.02871;
-			c.im = cim;
-
-			n=0;
-			while (true) {
-				bool ok =  (((z.re*z.re) + (z.im*z.im)) < max) && (n < iter);
-				if (!ok) {
-					break;
-				}
-				z1 = z;
-				z.re = (z1.re*z1.re) - (z1.im*z1.im) - c.re*(z1.re + z1.im);
-				z.im = 2*z1.re*z1.im - c.im*(z1.re - z1.im);
+	for (int y = -my; y < mx; y++) {
+		for (int x = -mx; x < mx; x++) {
+			complex.t z = {.re = 0.01*x, .im = 0.01*y};
+			complex.t c = {.re = 1, .im = cim};
+			int n = 0;
+			while (complex.abs2(z) < max && n < ITERATIONS) {
+				complex.t z1 = z;
+				z = complex.mul(z1, z1);
+				complex.t mm = {
+					.re = c.re*(z1.re + z1.im),
+					.im = c.im*(z1.re - z1.im)
+				};
+				z = complex.diff(z, mm);
 				n++;
 			}
-	  		if (n=iter) {
-				double val = complex.abs2(z); // 0..472
-				image.set(img, mx + x, my + y, image.gray((int) (val / 472 * 256)));
-			}
+			double val = complex.abs2(z);
+			double norm = val / 472; // Assume it's 0..472.
+			image.set(img, mx + x, my + y, image.gray((int) (norm * 255)));
 		}
 	}
 }

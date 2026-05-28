@@ -145,7 +145,8 @@ int main(int argc, char *argv[]) {
 			for (int i = 0; i < FRAMES; i++) {
 				cim += 0.001;
 				image.clear(img);
-				frothy.draw(img, i, cim);
+				double max = i;
+				frothy.draw(img, max, cim);
 				render.push(img);
 			}
 		}
