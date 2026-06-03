@@ -72,7 +72,7 @@ pub void json_free(val_t *node) {
 }
 
 // Creates a deep copy of the value.
-pub val_t *json_copy(val_t *obj) {
+pub val_t *clone(val_t *obj) {
 	if (!obj) {
 		return NULL;
 	}
@@ -84,7 +84,7 @@ pub val_t *json_copy(val_t *obj) {
 		size_t n = obj->size;
 		for(size_t i = 0; i < n; i++) {
 			char *k = strings.newstr("%s", key(obj, i));
-			val_t *v = json_copy(val(obj, i));
+			val_t *v = clone(val(obj, i));
 			if (!k || !v || !json_put(copy, k, v)) {
 				free(k);
 				json_free(v);
@@ -97,7 +97,7 @@ pub val_t *json_copy(val_t *obj) {
 	{
 		size_t n = obj->size;
 		for (size_t i = 0; i < n; i++) {
-			val_t *v = json_copy(obj->vals[i]);
+			val_t *v = clone(obj->vals[i]);
 			if(!v || !json_push(copy, v)) {
 				json_free(v);
 				json_free(copy);
