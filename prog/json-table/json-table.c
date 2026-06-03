@@ -1,42 +1,127 @@
+#import clip/vec
 #import formats/json
 
+char buf[4096] = {};
+bool haveline = true;
+bool loadline() {
+	haveline = fgets(buf, 4096, stdin) != NULL;
+	return haveline;
+}
+
 int main() {
-	//
-	// Read the whole table.
-	//
-	size_t maxrows = 20000;
-	json.val_t **rows = calloc!(maxrows, sizeof(json.val_t *));
-	size_t nrows = 0;
-	char buf[4096];
-	while (fgets(buf, 4096, stdin)) {
-		if (nrows == maxrows) {
-			fprintf(stderr, "reached max rows limit (%zu)\n", maxrows);
-			return 1;
+	loadline();
+	while (haveline) {
+		if (buf[0] == '{' && maybeTable()) {
+			continue;
 		}
+		if (buf[0] == '[' && maybeInlineTable()) {
+			continue;
+		}
+		printf("%s", buf);
+		loadline();
+	}
+	return 0;
+}
+
+bool maybeTable() {
+	vec.t *rows = vec.new(sizeof(json.val_t *));
+	bool ok = false;
+	while (true) {
 		json.err_t err = {};
-		rows[nrows++] = json.parse(buf, &err);
+		json.val_t *line = json.parse(buf, &err);
 		if (err.set) {
-			panic("failed to parse json: %s", err.msg);
+			break;
+		}
+		vec.push(rows, &line);
+		ok = true;
+		if (!loadline()) {
+			break;
 		}
 	}
+	if (ok) printtable(rows);
+	freetable(rows);
+	return ok;
+}
+
+bool maybeInlineTable() {
+	// Parse the json array.
+	json.err_t err = {};
+	json.val_t *list = json.parse(buf, &err);
+	if (err.set) {
+		return false;
+	}
+
+	// Repack the json array into a list of json objects.
+	bool ok = true;
+	vec.t *rows = vec.new(sizeof(json.val_t *));
+	for (size_t i = 0; i < json.len(list); i++) {
+		json.val_t *item = json.val(list, i);
+		// We assume it's a table if all items inside are objects.
+		if (json.type(item) != json.TOBJ) {
+			ok = false;
+			break;
+		}
+		json.val_t *copy = json.clone(item);
+		vec.push(rows, &copy);
+	}
+	json.json_free(list);
+	if (!ok) {
+		freetable(rows);
+		return false;
+	}
+	printtable(rows);
+	freetable(rows);
+	return loadline();
+}
+
+void freetable(vec.t *rows) {
+	size_t n = vec.len(rows);
+	for (size_t i = 0; i < n; i++) {
+		json.val_t **row = vec.index(rows, i);
+		json.json_free(*row);
+	}
+}
+
+json.val_t *longest(vec.t *rows) {
+	size_t curr = 0;
+	json.val_t *r = NULL;
+
+	size_t n = vec.len(rows);
+	for (size_t i = 0; i < n; i++) {
+		json.val_t **row = vec.index(rows, i);
+		if (r == NULL || json.len(*row) > curr) {
+			curr = json.len(*row);
+			r = *row;
+		}
+	}
+	return r;
+}
+
+void printtable(vec.t *rows) {
+	char buf[4096] = {};
+	size_t nrows = vec.len(rows);
 
 	//
 	// Define the header and calculate the widths.
 	//
 	const char *keys[100];
-	size_t nkeys = json.len(rows[0]);
+
+	// As a quirk, use the row with the most columns
+	// to get the columns.
+	json.val_t *longestrow = longest(rows);
+	size_t nkeys = json.len(longestrow);
 	for (size_t i = 0; i < nkeys; i++) {
-		keys[i] = json.key(rows[0], i);
+		keys[i] = json.key(longestrow, i);
 	}
 	size_t colwidth[100] = {};
 	for (size_t colid = 0; colid < nkeys; colid++) {
 		colwidth[colid] = strlen(keys[colid]);
 	}
 	for (size_t rowid = 0; rowid < nrows; rowid++) {
-		json.val_t *row = rows[rowid];
+		json.val_t **row = vec.index(rows, rowid);
 		for (size_t colid = 0; colid < nkeys; colid++) {
 			const char *key = keys[colid];
-			json.val_t *col = json.get(row, key);
+			json.val_t *col = json.get(*row, key);
 			size_t l = sprintval(col, buf);
 			if (l > colwidth[colid]) {
 				colwidth[colid] = l;
@@ -51,6 +136,7 @@ int main() {
 		}
 	}
 
+	
 	printf("%zu rows\n", nrows);
 
 	// Print the header.
@@ -66,9 +152,10 @@ int main() {
 
 	// Print the rows.
 	for (size_t rowid = 0; rowid < nrows; rowid++) {
+		json.val_t **row = vec.index(rows, rowid);
 		for (size_t colid = 0; colid < nkeys; colid++) {
 			const char *key = keys[colid];
-			sprintval(json.get(rows[rowid], key), buf);
+			sprintval(json.get(*row, key), buf);
 			printw(buf, colwidth[colid]);
 			if (colid < nkeys-1) {
 				printf(" | ");
@@ -77,7 +164,6 @@ int main() {
 		putchar('\n');
 	}
 	line(w);
-	return 0;
 }
 
 void printw(const char *s, size_t w) {

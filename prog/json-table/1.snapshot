@@ -1,0 +1,37 @@
+one
+two
+1 rows
+-
+a
+-
+1
+-
+three
+2 rows
+-
+a
+-
+1
+2
+-
+four
+2 rows
+-------
+a | b  
+-------
+1 |    
+2 | ...
+-------
+five
+2 rows
+-------
+a | b  
+-------
+1 |    
+2 | ...
+-------
+six
+{invalid
+seven
+[1]
+eight
