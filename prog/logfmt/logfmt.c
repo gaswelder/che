@@ -47,18 +47,29 @@ void print_entry(json.val_t *entry) {
     puts("");
 }
 
+const char *special_fields[] = {
+    "level", "t", "timestamp", "msg", "message", "data", NULL
+};
+
+bool contains(const char *strings[], const char *s) {
+    const char **p = strings;
+    while (*p != NULL) {
+        if (strcmp(*p, s) == 0) {
+            return true;
+        }
+        p++;
+    }
+    return false;
+}
+
 void printfields(json.val_t *entry) {
 	tty.ttycolor(tty.DIM);
     size_t n = json.len(entry);
     for (size_t i = 0; i < n; i++) {
         const char *key = json.key(entry, i);
-		if (strcmp(key, "level") == 0
-			|| strcmp(key, "t") == 0
-			|| strcmp(key, "timestamp") == 0
-			|| strcmp(key, "msg") == 0
-			|| strcmp(key, "message") == 0) {
-			continue;
-		}
+        if (contains(special_fields, key)) {
+            continue;
+        }
         bool excluded = false;
         for (int j = 0; j < nexclude; j++) {
             if (strcmp(excludefields[j], key) == 0) {
@@ -70,7 +81,12 @@ void printfields(json.val_t *entry) {
         printf(" %s=", key);
         printval(json.val(entry, i));
     }
-	tty.ttycolor(tty.RESET_ALL);
+    tty.ttycolor(tty.RESET_ALL);
+    json.val_t *data = json.get(entry, "data");
+    if (data) {
+        putchar('\n');
+        printval(data);
+    }
 }
 
 void printmsg(json.val_t *entry) {
