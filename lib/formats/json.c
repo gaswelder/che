@@ -197,7 +197,13 @@ pub const char *key(val_t *v, size_t i) {
 
 // Returns the i-th value in object or array value v.
 pub val_t *val(val_t *v, size_t i) {
-	if (!v || v->type != TOBJ || i >= v->size) {
+	if (!v) {
+		return NULL;
+	}
+	if (v->type != TOBJ && v->type != TARR) {
+		return NULL;
+	}
+	if (i >= v->size) {
 		return NULL;
 	}
 	return v->vals[i];
