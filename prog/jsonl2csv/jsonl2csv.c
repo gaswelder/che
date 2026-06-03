@@ -1,6 +1,7 @@
 #import formats/csv
 #import formats/json
 #import strings
+#import error
 
 char *header[100] = {};
 size_t nheader = 0;
@@ -30,7 +31,7 @@ int main() {
 
 json.val_t *readobj() {
     char line[4096] = {};
-	json.err_t err = {};
+	error.t err = {};
     while (fgets(line, sizeof(line), stdin)) {
         json.val_t *obj = json.parse(line, &err);
 		if (err.set) {

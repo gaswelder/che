@@ -3,6 +3,7 @@
 #import opt
 #import strings
 #import tty
+#import error
 
 char *excludefields[100] = {};
 int nexclude = 0;
@@ -16,7 +17,7 @@ int main(int argc, char **argv) {
     nexclude = strings.split(",", exclude_string, excludefields, sizeof(excludefields));
 
     linereader.t *lr = linereader.new(stdin);
-	json.err_t err = {};
+	error.t err = {};
     while (linereader.read(lr)) {
 		char *line = linereader.line(lr);
         json.val_t *entry = json.parse(line, &err);

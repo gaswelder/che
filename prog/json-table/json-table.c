@@ -1,4 +1,5 @@
 #import clip/vec
+#import error
 #import formats/json
 
 char buf[4096] = {};
@@ -27,7 +28,7 @@ bool maybeTable() {
 	vec.t *rows = vec.new(sizeof(json.val_t *));
 	bool ok = false;
 	while (true) {
-		json.err_t err = {};
+		error.t err = {};
 		json.val_t *line = json.parse(buf, &err);
 		if (err.set) {
 			break;
@@ -45,7 +46,7 @@ bool maybeTable() {
 
 bool maybeInlineTable() {
 	// Parse the json array.
-	json.err_t err = {};
+	error.t err = {};
 	json.val_t *list = json.parse(buf, &err);
 	if (err.set) {
 		return false;

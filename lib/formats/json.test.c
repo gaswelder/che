@@ -2,6 +2,7 @@
 #import mem
 #import test
 #import writer
+#import error
 
 int main() {
 	testfail("q", "unexpected character: q");
@@ -12,7 +13,7 @@ int main() {
 }
 
 void testfail(const char *in, *out) {
-	json.err_t err = {};
+	error.t err = {};
 	json.val_t *v = json.parse(in, &err);
 	test.truth("v == NULL", v == NULL);
 	test.truth("err.set", err.set);
@@ -41,7 +42,7 @@ case_t cases[] = {
 void testok() {
 	mem.mem_t *m = mem.memopen();
 	writer.t *w = mem.newwriter(m);
-	json.err_t err = {};
+	error.t err = {};
 
 	for (size_t i = 0; i < nelem(cases); i++) {
 		case_t c = cases[i];
