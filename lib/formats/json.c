@@ -8,13 +8,12 @@
 // A node can be of one of the following types:
 pub enum {
 	TUND = 0,
-	TERR = 1,
+	TNULL = 1, // null value
 	TARR = 2, // array
 	TOBJ = 3, // object
 	TSTR = 4, // string
 	TNUM = 5, // number
 	TBOOL = 6, // true or false
-	TNULL = 7 // null value
 }
 
 // An opaque object representing any value representable in JSON.
@@ -30,17 +29,6 @@ pub typedef {
 	char **keys; // Entry keys, for objects.
 	val_t **vals; // Values, for objects and arrays.
 } val_t;
-
-pub const char *json_err(val_t *n)
-{
-	if(n == NULL) {
-		return "No memory";
-	}
-	if(n->type == TERR) {
-		return n->val.str;
-	}
-	return NULL;
-}
 
 val_t *newnode(int valtype) {
 	val_t *n = calloc!(1, sizeof(val_t));
@@ -65,7 +53,7 @@ pub void json_free(val_t *node) {
 		}
 		free(node->vals);
 	}
-	else if( node->type == TSTR || node->type == TERR ) {
+	else if(node->type == TSTR) {
 		free(node->val.str);
 	}
 
@@ -239,10 +227,7 @@ pub double numval(val_t *v) {
 
 
 // Parses JSON string s and returns a pointer to the root val_t object.
-//
-// In the case of error, a special error node is returned.
-// The user should check the returned node using the `json_error` function.
-// The returned node has to be freed using the `json_free` in both cases.
+// The root node has to be freed using the `json_free`.
 // The `json_free` function must be called only on root nodes.
 pub val_t *parse(const char *s, error.t *err) {
 	tokenizer.t *p = tokenizer.from_str(s);
