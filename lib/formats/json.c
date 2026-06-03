@@ -77,43 +77,36 @@ pub val_t *clone(val_t *obj) {
 		return NULL;
 	}
 	val_t *copy = calloc!(1, sizeof(val_t));
-	memcpy(copy, obj, sizeof(val_t));
-
-	if( obj->type == TOBJ )
-	{
-		size_t n = obj->size;
-		for(size_t i = 0; i < n; i++) {
-			char *k = strings.newstr("%s", key(obj, i));
-			val_t *v = clone(val(obj, i));
-			if (!k || !v || !json_put(copy, k, v)) {
-				free(k);
-				json_free(v);
-				json_free(copy);
-				return NULL;
+	copy->type = obj->type;
+	switch (obj->type) {
+		case TOBJ: {
+			size_t n = obj->size;
+			for (size_t i = 0; i < n; i++) {
+				char *k = strings.newstr("%s", obj->keys[i]);
+				val_t *v = clone(obj->vals[i]);
+				json_put(copy, k, v);
 			}
 		}
-	}
-	else if( obj->type == TARR )
-	{
-		size_t n = obj->size;
-		for (size_t i = 0; i < n; i++) {
-			val_t *v = clone(obj->vals[i]);
-			if(!v || !json_push(copy, v)) {
-				json_free(v);
-				json_free(copy);
-				return NULL;
+		case TARR: {
+			size_t n = obj->size;
+			for (size_t i = 0; i < n; i++) {
+				val_t *v = clone(obj->vals[i]);
+				json_push(copy, v);
 			}
 		}
-	}
-	else if( obj->type == TSTR )
-	{
-		copy->val.str = strings.newstr("%s", obj->val.str);
-		if(!copy->val.str) {
-			free(copy);
-			return NULL;
+		case TSTR: {
+			copy->val.str = strings.newstr("%s", obj->val.str);
+		}
+		case TNUM: {
+			copy->val.num = obj->val.num;
+		}
+		case TBOOL: {
+			copy->val.boolval = obj->val.boolval;
+		}
+		default: {
+			panic("json.clone: forgot case %d", obj->type);
 		}
 	}
-
 	return copy;
 }
 
