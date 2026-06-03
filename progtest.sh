@@ -3,6 +3,12 @@
 export CHELANG_HOME=`pwd`
 che=$CHELANG_HOME/target/debug/che
 
+if [ "$1" = "" ]
+then
+	echo 'Arguments: <progname>'
+	exit 1
+fi
+
 cd prog/$1
 	name=`basename $1`
 	$che build "$name.c" "$name.out"
