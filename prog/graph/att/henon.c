@@ -7,7 +7,25 @@ const double TWOPI = 2 * PI;
 
 typedef { double x, y; } point_t;
 
-pub void draw(image.image_t *img, double m) {
+typedef {
+	double m;
+} params_t;
+
+pub void *newparams() {
+	params_t *p = calloc!(1, sizeof(params_t));
+	p->m = 2;
+	return p;
+}
+
+pub void mutateparams(void *state) {
+	params_t *p = state;
+	p->m += 0.1;
+	if (p->m > 12) p->m = 2;
+}
+
+pub void draw(image.image_t *img, void *state) {
+	params_t *p = state;
+	double m = p->m;
 	if (m < 2 || m > 12) {
 		panic("m out of range, must be between 2 and 12");
 	}
@@ -18,16 +36,16 @@ pub void draw(image.image_t *img, double m) {
 		b[i] = sin(TWOPI * i / (double)m);
 	}
 
-	point_t p = {1, 1};
+	point_t q = {1, 1};
 	
 	for (int n=0;n<N;n++) {
-		p = next(a, b, m, p);
+		q = next(a, b, (int)m, q);
 		if (n < 100) {
 			continue;
 		}
 		// assume x, y are in [-2, 2]
-		int ix = (int) ((p.x + 2)/4 * img->width);
-		int iy = (int) ((p.y + 2)/4 * img->height);
+		int ix = (int) ((q.x + 2)/4 * img->width);
+		int iy = (int) ((q.y + 2)/4 * img->height);
 		image.set(img, ix, iy, image.white());
 	}
 }

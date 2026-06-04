@@ -5,8 +5,28 @@ const int ITERATIONS = 50;
 
 // double max = 16;
 // c.im = 1.02871;
+typedef {
+	double cim;
+	double max;
+} params_t;
 
-pub void draw(image.image_t *img, double max, double cim) {
+pub void *newparams() {
+	params_t *p = calloc!(1, sizeof(params_t));
+	p->cim = 1;
+	p->max = 0;
+	return p;
+}
+
+pub void mutateparams(void *state) {
+	params_t *p = state;
+	p->cim += 0.001;
+	p->max += 1;
+}
+
+pub void draw(image.image_t *img, void *state) {
+	params_t *p = state;
+	double max = p->max;
+	double cim = p->cim;
 	int mx = img->width / 2;
 	int my = img->height / 2;
 	for (int y = -my; y < mx; y++) {
@@ -25,7 +45,7 @@ pub void draw(image.image_t *img, double max, double cim) {
 				n++;
 			}
 			double val = complex.abs2(z);
-			double norm = val / 472; // Assume it's 0..472.
+			double norm = val / 472;  // Assume it's 0..472.
 			image.set(img, mx + x, my + y, image.gray((int) (norm * 255)));
 		}
 	}

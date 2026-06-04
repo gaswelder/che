@@ -1,12 +1,39 @@
 #import image
+#import rnd
 
-// Sample:
-// double a = -2.70;
-// double b = -0.90;
-// double c = -0.86;
-// double d = -2.20;
+typedef {
+	double a, b, c, d;
+} params_t;
 
-pub void draw(image.image_t *img, double a, b, c, d) {
+pub void *newparams() {
+	params_t *p = calloc!(1, sizeof(params_t));
+	// Sample:
+	// double a = -2.70;
+	// double b = -0.90;
+	// double c = -0.86;
+	// double d = -2.20;
+	p->a = rnd.u() * 4 - 2;
+	p->b = rnd.u() * 4 - 2;
+	p->c = rnd.u() * 4 - 2;
+	p->d = rnd.u() * 4 - 2;
+	return p;
+}
+
+pub void mutateparams(void *state) {
+	params_t *p = state;
+	p->a += rnd.u() / 1000;
+	p->b += rnd.u() / 1000;
+	p->c += rnd.u() / 1000;
+	p->d += rnd.u() / 1000;
+}
+
+pub void draw(image.image_t *img, void *state) {
+	params_t *p = state;
+	double a = p->a;
+	double b = p->b;
+	double c = p->c;
+	double d = p->d;
+
 	image.rgba_t color = image.white();
 	double x = 0;
 	double y = 0;

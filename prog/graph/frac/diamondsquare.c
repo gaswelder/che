@@ -1,8 +1,33 @@
 #import image
 #import rnd
 
-// Draws a diamond-square picture of width and height size into img.
-pub void draw(image.image_t *img, int size) {
+typedef {
+	int size;
+} params_t;
+
+pub void *newparams() {
+	params_t *p = calloc!(1, sizeof(params_t));
+	p->size = 0;
+	return p;
+}
+
+pub void mutateparams(void *state) {
+	(void) state;
+}
+
+pub void draw(image.image_t *img, void *state) {
+	params_t *p = state;
+	// Initialize the size on the first call from image size.
+	// The size must be 2^n+1.
+	if (p->size == 0) {
+		int sz = 2;
+		while (sz*2 + 1 <= img->width) {
+			sz *= 2;
+		}
+		p->size = sz;
+	}
+	int size = p->size;
+
 	// Initialize the corners.
 	image.set(img, 0, 0, image.gray(rnd.intn(100)));
 	image.set(img, 0, size-1, image.gray(rnd.intn(100)));

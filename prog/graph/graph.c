@@ -14,7 +14,31 @@
 #import image
 #import opt
 #import render.c
-#import rnd
+
+typedef void *newparams_func_t();
+typedef void draw_func_t(image.image_t *, void *);
+typedef void mutate_func_t(void *);
+
+typedef {
+	const char *name;
+	newparams_func_t *newparams;
+	draw_func_t *draw;
+	mutate_func_t *mutate;
+} model_t;
+
+model_t mdejong   = {.name = "dejong",       .newparams = dejong.newparams,       .draw = dejong.draw,       .mutate = dejong.mutateparams};
+model_t mhenon    = {.name = "henon",        .newparams = henon.newparams,        .draw = henon.draw,        .mutate = henon.mutateparams};
+model_t mikeda    = {.name = "ikeda",        .newparams = ikeda.newparams,        .draw = ikeda.draw,        .mutate = ikeda.mutateparams};
+model_t mmandelbrot = {.name = "mandelbrot", .newparams = mandelbrot.newparams,   .draw = mandelbrot.draw,   .mutate = mandelbrot.mutateparams};
+model_t mpickover = {.name = "pickover",     .newparams = pickover.newparams,     .draw = pickover.draw,     .mutate = pickover.mutateparams};
+model_t mdendrite = {.name = "dendrite",     .newparams = dendrite.newparams,     .draw = dendrite.draw,     .mutate = dendrite.mutateparams};
+model_t mdiamondsquare = {.name = "diamondsquare", .newparams = diamondsquare.newparams, .draw = diamondsquare.draw, .mutate = diamondsquare.mutateparams};
+model_t mdynamic  = {.name = "dynamic",      .newparams = dynamic.newparams,      .draw = dynamic.draw,      .mutate = dynamic.mutateparams};
+model_t mfrothy   = {.name = "frothy",       .newparams = frothy.newparams,       .draw = frothy.draw,       .mutate = frothy.mutateparams};
+model_t mgingerbread = {.name = "gingerbread", .newparams = gingerbread.newparams, .draw = gingerbread.draw, .mutate = gingerbread.mutateparams};
+model_t mlambda   = {.name = "lambda",       .newparams = lambda.newparams,       .draw = lambda.draw,       .mutate = lambda.mutateparams};
+model_t mmartin   = {.name = "martin",       .newparams = martin.newparams,       .draw = martin.draw,       .mutate = martin.mutateparams};
+model_t mthorn    = {.name = "thorn",        .newparams = thorn.newparams,        .draw = thorn.draw,        .mutate = thorn.mutateparams};
 
 int main(int argc, char *argv[]) {
 	char *size = "400x400";
@@ -35,189 +59,146 @@ int main(int argc, char *argv[]) {
 
 	switch str (argv[1]) {
 		case "thorn": {
-			double cr = (rnd.intn(10000)) / 500.0 - 10; // -10 -> 10;
-			double ci = (rnd.intn(10000)) / 500.0 - 10;
+			model_t m = mthorn;
+			void *p = m.newparams();
 			for (int i = 0; i < FRAMES; i++) {
-				ci += 0.1;
-				cr += 0.1;
-				thorn.draw(img, cr, ci);
+				m.draw(img, p);
 				render.push(img);
+				m.mutate(p);
 			}
+			free(p);
 		}
 		case "pickover": {
-			// a = -1.4, b = 1.6, c = 1.0, d = 0.7
-			double a = rnd.u() * 4 - 2;
-			double b = rnd.u() * 4 - 2;
-			double c = rnd.u() * 4 - 2;
-			double d = rnd.u() * 4 - 2;
-			double step = 4.0 / FRAMES;
-
+			model_t m = mpickover;
+			void *p = m.newparams();
 			for (int i = 0; i < FRAMES; i++) {
 				image.apply(img, fade);
-				pickover.draw(img, a, b, c, d);
+				m.draw(img, p);
 				render.push(img);
-
-				a = circle(a + step, -2, 2);
-				b = circle(b + step, -2, 2);
-				c = circle(c + step, -2, 2);
-				d = circle(d + step, -2, 2);
+				m.mutate(p);
 			}
+			free(p);
 		}
 		case "dejong": {
-			double a = -2.70;
-			double b = -0.90;
-			double c = -0.86;
-			double d = -2.20;
+			model_t m = mdejong;
+			void *p = m.newparams();
 			for (int i = 0; i < FRAMES; i++) {
-				dejong.draw(img, a, b, c, d);
+				m.draw(img, p);
 				render.push(img);
-				a += rnd.u() / 1000;
-				b += rnd.u() / 1000;
-				c += rnd.u() / 1000;
-				d += rnd.u() / 1000;
 				image.apply(img, fade);
+				m.mutate(p);
 			}
+			free(p);
 		}
 		case "ikeda": {
-			double a = 0.85;
-			double b = 0.9;
-			double k = 0.4;
-			double p = 7.7;
+			model_t m = mikeda;
+			void *p = m.newparams();
 			for (int i = 0; i < FRAMES; i++) {
 				image.clear(img);
-				ikeda.draw(img, a, b, k, p);
+				m.draw(img, p);
 				render.push(img);
-				a -= 0.001;
-				// b += 0.0001;
-				// k += 0.001;
-				p += 0.01;
+				m.mutate(p);
 			}
+			free(p);
 		}
 		case "mandelbrot": {
-			image.rgba_t colors[] = {
-				{ 0, 0, 0, 0},
-				{ 0, 0, 255, 0},
-				{ 0, 128, 255, 0},
-				{ 0, 255, 128, 0},
-				{ 128, 128, 0, 0},
-				{ 255, 128, 0, 0},
-				{ 255, 255, 128, 0},
-				{ 255, 255, 255, 0}
-			};
-			image.colormap_t *cm = calloc!(1, sizeof(image.colormap_t));
-			cm->size = nelem(colors);
-			cm->color_width = 50;
-			for (size_t i = 0; i < nelem(colors); i++) {
-				cm->colors[i] = colors[i];
-			}
-			image.colormap_t *GLOBAL_CM = cm;
-
-			double config_xmin = -2.5;
-			double config_xmax = 1.5;
-			double config_ymin = -1.5;
-			double config_ymax = 1.5;
-			double hw = (config_xmax - config_xmin) / 2;
-			double hh = (config_ymax - config_ymin) / 2;
-			int iterations = 64; // 512
-			double zoom_rate = 0.1;
-			double zoomx = -1.268794803623;
-			double zoomy = 0.353676833206;
-
+			model_t m = mmandelbrot;
+			void *p = m.newparams();
 			for (int i = 0; i < FRAMES; i++) {
 				fprintf(stderr, "%d / %d\n", i, FRAMES);
-
-				// The first frame spans [center-hwidth, center+hwidth]
-				// The next frame spans [center-hwidth/(1+zoom_rate), center+hwidth/(1+zoom_rate)]
-				mandelbrot.area_t a = {};
-				a.xmin = zoomx - hw;
-				a.xmax = zoomx + hw;
-				a.ymin = zoomy - hh;
-				a.ymax = zoomy + hh;
-				hw /= (1 + zoom_rate);
-				hh /= (1 + zoom_rate);
-
-				mandelbrot.draw(img, GLOBAL_CM, a, iterations);
-				render.push(img);				
+				m.draw(img, p);
+				render.push(img);
+				m.mutate(p);
 			}
+			free(p);
 		}
 		case "frothy": {
-			double cim = 1;
+			model_t m = mfrothy;
+			void *p = m.newparams();
 			for (int i = 0; i < FRAMES; i++) {
-				cim += 0.001;
 				image.clear(img);
-				double max = i;
-				frothy.draw(img, max, cim);
+				m.draw(img, p);
 				render.push(img);
+				m.mutate(p);
 			}
+			free(p);
 		}
 		case "henon": {
-			// Normally an integer [2..12], but we're animating.
-			double m = 2;
+			model_t m = mhenon;
+			void *p = m.newparams();
 			for (int i = 0; i < FRAMES; i++) {
 				image.clear(img);
-				henon.draw(img, m);
+				m.draw(img, p);
 				render.push(img);
-				m += 0.1;
-				if (m > 12) m = 2;
+				m.mutate(p);
 			}
+			free(p);
 		}
 		case "gingerbread": {
-			int iterations = 1;
+			model_t m = mgingerbread;
+			void *p = m.newparams();
 			for (int i = 0; i < FRAMES; i++) {
 				image.clear(img);
-				gingerbread.draw(img, iterations);
+				m.draw(img, p);
 				render.push(img);
-				if (iterations < 10000) {
-					iterations += 100;
-				}
+				m.mutate(p);
 			}
+			free(p);
 		}
 		case "dendrite": {
-			double a = 0.00; // slope
-			double b = 0.70; // leaf size coefficient
-			double c = 0.70; // dispersion
-			double d = 0.00; // skew
+			model_t m = mdendrite;
+			void *p = m.newparams();
 			for (int i = 0; i < FRAMES; i++) {
 				image.clear(img);
-				dendrite.draw(img, a, b, c, d);
+				m.draw(img, p);
 				render.push(img);
-				// a += 0.001;
-				// b += 0.001;
-				c += 0.001;
-				d += 0.001;
+				m.mutate(p);
 			}
+			free(p);
 		}
 		case "diamondsquare": {
-			int size = 2;
-			while (size*2 + 1 <= img->width) {
-				size *= 2;
-			}
+			model_t m = mdiamondsquare;
+			void *p = m.newparams();
 			for (int i = 0; i < FRAMES; i++) {
 				image.clear(img);
-				diamondsquare.draw(img, size);
+				m.draw(img, p);
 				render.push(img);
+				m.mutate(p);
 			}
+			free(p);
 		}
 		case "lambda": {
+			model_t m = mlambda;
+			void *p = m.newparams();
 			for (int i = 0; i < FRAMES; i++) {
 				image.clear(img);
-				lambda.draw(img);
+				m.draw(img, p);
 				render.push(img);
+				m.mutate(p);
 			}
+			free(p);
 		}
 		case "martin": {
+			model_t m = mmartin;
+			void *p = m.newparams();
 			for (int i = 0; i < FRAMES; i++) {
 				image.clear(img);
-				martin.draw(img, 1000 + 100 * i);
+				m.draw(img, p);
 				render.push(img);
+				m.mutate(p);
 			}
+			free(p);
 		}
 		case "dynamic": {
+			model_t m = mdynamic;
+			void *p = m.newparams();
 			for (int i = 0; i < FRAMES; i++) {
 				image.clear(img);
-				dynamic.draw(img);
+				m.draw(img, p);
 				render.push(img);
+				m.mutate(p);
 			}
+			free(p);
 		}
 		default: {
 			fprintf(stderr, "unknown algorithm\n");
@@ -233,11 +214,4 @@ void fade(image.rgba_t *c) {
 	c->red = (int) ((double)c->red * 0.8);
 	c->green = (int) ((double)c->green * 0.8);
 	c->blue = (int) ((double)c->blue * 0.8);
-}
-
-double circle(double x, min, max) {
-	if (x > max) {
-		return min + x - max;
-	}
-	return x;
 }

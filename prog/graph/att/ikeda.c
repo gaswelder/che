@@ -1,8 +1,34 @@
 #import image
 #import math/complex
 
+typedef {
+	double a, b, k, p;
+} params_t;
+
+pub void *newparams() {
+	params_t *p = calloc!(1, sizeof(params_t));
+	p->a = 0.85;
+	p->b = 0.9;
+	p->k = 0.4;
+	p->p = 7.7;
+	return p;
+}
+
+pub void mutateparams(void *state) {
+	params_t *p = state;
+	p->a -= 0.001;
+	// b += 0.0001;
+	// k += 0.001;
+	p->p += 0.01;
+}
+
 // Draws an ikeda picture.
-pub void draw(image.image_t *img, double a, b, k, p) {
+pub void draw(image.image_t *img, void *state) {
+	params_t *r = state;
+	double a = r->a;
+	double b = r->b;
+	double k = r->k;
+	double p = r->p;
 	complex.t z = {0};
 	image.rgba_t color = image.white();
 	int n = 100000;
