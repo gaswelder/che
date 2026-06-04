@@ -26,25 +26,29 @@ typedef {
 	mutate_func_t *mutate;
 } model_t;
 
-model_t mdejong   = {.name = "dejong",       .newparams = dejong.newparams,       .draw = dejong.draw,       .mutate = dejong.mutateparams};
-model_t mhenon    = {.name = "henon",        .newparams = henon.newparams,        .draw = henon.draw,        .mutate = henon.mutateparams};
-model_t mikeda    = {.name = "ikeda",        .newparams = ikeda.newparams,        .draw = ikeda.draw,        .mutate = ikeda.mutateparams};
-model_t mmandelbrot = {.name = "mandelbrot", .newparams = mandelbrot.newparams,   .draw = mandelbrot.draw,   .mutate = mandelbrot.mutateparams};
-model_t mpickover = {.name = "pickover",     .newparams = pickover.newparams,     .draw = pickover.draw,     .mutate = pickover.mutateparams};
-model_t mdendrite = {.name = "dendrite",     .newparams = dendrite.newparams,     .draw = dendrite.draw,     .mutate = dendrite.mutateparams};
-model_t mdiamondsquare = {.name = "diamondsquare", .newparams = diamondsquare.newparams, .draw = diamondsquare.draw, .mutate = diamondsquare.mutateparams};
-model_t mdynamic  = {.name = "dynamic",      .newparams = dynamic.newparams,      .draw = dynamic.draw,      .mutate = dynamic.mutateparams};
-model_t mfrothy   = {.name = "frothy",       .newparams = frothy.newparams,       .draw = frothy.draw,       .mutate = frothy.mutateparams};
-model_t mgingerbread = {.name = "gingerbread", .newparams = gingerbread.newparams, .draw = gingerbread.draw, .mutate = gingerbread.mutateparams};
-model_t mlambda   = {.name = "lambda",       .newparams = lambda.newparams,       .draw = lambda.draw,       .mutate = lambda.mutateparams};
-model_t mmartin   = {.name = "martin",       .newparams = martin.newparams,       .draw = martin.draw,       .mutate = martin.mutateparams};
-model_t mthorn    = {.name = "thorn",        .newparams = thorn.newparams,        .draw = thorn.draw,        .mutate = thorn.mutateparams};
+model_t models[] = {
+	{.name = "dejong",       .newparams = dejong.newparams,       .draw = dejong.draw,       .mutate = dejong.mutateparams},
+	{.name = "henon",        .newparams = henon.newparams,        .draw = henon.draw,        .mutate = henon.mutateparams},
+	{.name = "ikeda",        .newparams = ikeda.newparams,        .draw = ikeda.draw,        .mutate = ikeda.mutateparams},
+	{.name = "mandelbrot", .newparams = mandelbrot.newparams,   .draw = mandelbrot.draw,   .mutate = mandelbrot.mutateparams},
+	{.name = "pickover",     .newparams = pickover.newparams,     .draw = pickover.draw,     .mutate = pickover.mutateparams},
+	{.name = "dendrite",     .newparams = dendrite.newparams,     .draw = dendrite.draw,     .mutate = dendrite.mutateparams},
+	{.name = "diamondsquare", .newparams = diamondsquare.newparams, .draw = diamondsquare.draw, .mutate = diamondsquare.mutateparams},
+	{.name = "dynamic",      .newparams = dynamic.newparams,      .draw = dynamic.draw,      .mutate = dynamic.mutateparams},
+	{.name = "frothy",       .newparams = frothy.newparams,       .draw = frothy.draw,       .mutate = frothy.mutateparams},
+ 	{.name = "gingerbread", .newparams = gingerbread.newparams, .draw = gingerbread.draw, .mutate = gingerbread.mutateparams},
+	{.name = "lambda",       .newparams = lambda.newparams,       .draw = lambda.draw,       .mutate = lambda.mutateparams},
+	{.name = "martin",       .newparams = martin.newparams,       .draw = martin.draw,       .mutate = martin.mutateparams},
+	{.name = "thorn",        .newparams = thorn.newparams,        .draw = thorn.draw,        .mutate = thorn.mutateparams},
+};
 
 int main(int argc, char *argv[]) {
 	char *size = "400x400";
+	bool ffade = false;
 	opt.nargs(1, "<algorithm = thorn / pickover / dejong / ikeda / mandelbrot / ...>");
 	opt.str("s", "image size", &size);
-	opt.parse(argc, argv);
+	opt.flag("f", "fade effect", &ffade);
+	char **args = opt.parse(argc, argv);
 
 	int width;
 	int height;
@@ -57,154 +61,33 @@ int main(int argc, char *argv[]) {
 
 	image.image_t *img = image.new(width, height);
 
-	switch str (argv[1]) {
-		case "thorn": {
-			model_t m = mthorn;
-			void *p = m.newparams();
-			for (int i = 0; i < FRAMES; i++) {
-				m.draw(img, p);
-				render.push(img);
-				m.mutate(p);
-			}
-			free(p);
-		}
-		case "pickover": {
-			model_t m = mpickover;
-			void *p = m.newparams();
-			for (int i = 0; i < FRAMES; i++) {
-				image.apply(img, fade);
-				m.draw(img, p);
-				render.push(img);
-				m.mutate(p);
-			}
-			free(p);
-		}
-		case "dejong": {
-			model_t m = mdejong;
-			void *p = m.newparams();
-			for (int i = 0; i < FRAMES; i++) {
-				m.draw(img, p);
-				render.push(img);
-				image.apply(img, fade);
-				m.mutate(p);
-			}
-			free(p);
-		}
-		case "ikeda": {
-			model_t m = mikeda;
-			void *p = m.newparams();
-			for (int i = 0; i < FRAMES; i++) {
-				image.clear(img);
-				m.draw(img, p);
-				render.push(img);
-				m.mutate(p);
-			}
-			free(p);
-		}
-		case "mandelbrot": {
-			model_t m = mmandelbrot;
-			void *p = m.newparams();
-			for (int i = 0; i < FRAMES; i++) {
-				fprintf(stderr, "%d / %d\n", i, FRAMES);
-				m.draw(img, p);
-				render.push(img);
-				m.mutate(p);
-			}
-			free(p);
-		}
-		case "frothy": {
-			model_t m = mfrothy;
-			void *p = m.newparams();
-			for (int i = 0; i < FRAMES; i++) {
-				image.clear(img);
-				m.draw(img, p);
-				render.push(img);
-				m.mutate(p);
-			}
-			free(p);
-		}
-		case "henon": {
-			model_t m = mhenon;
-			void *p = m.newparams();
-			for (int i = 0; i < FRAMES; i++) {
-				image.clear(img);
-				m.draw(img, p);
-				render.push(img);
-				m.mutate(p);
-			}
-			free(p);
-		}
-		case "gingerbread": {
-			model_t m = mgingerbread;
-			void *p = m.newparams();
-			for (int i = 0; i < FRAMES; i++) {
-				image.clear(img);
-				m.draw(img, p);
-				render.push(img);
-				m.mutate(p);
-			}
-			free(p);
-		}
-		case "dendrite": {
-			model_t m = mdendrite;
-			void *p = m.newparams();
-			for (int i = 0; i < FRAMES; i++) {
-				image.clear(img);
-				m.draw(img, p);
-				render.push(img);
-				m.mutate(p);
-			}
-			free(p);
-		}
-		case "diamondsquare": {
-			model_t m = mdiamondsquare;
-			void *p = m.newparams();
-			for (int i = 0; i < FRAMES; i++) {
-				image.clear(img);
-				m.draw(img, p);
-				render.push(img);
-				m.mutate(p);
-			}
-			free(p);
-		}
-		case "lambda": {
-			model_t m = mlambda;
-			void *p = m.newparams();
-			for (int i = 0; i < FRAMES; i++) {
-				image.clear(img);
-				m.draw(img, p);
-				render.push(img);
-				m.mutate(p);
-			}
-			free(p);
-		}
-		case "martin": {
-			model_t m = mmartin;
-			void *p = m.newparams();
-			for (int i = 0; i < FRAMES; i++) {
-				image.clear(img);
-				m.draw(img, p);
-				render.push(img);
-				m.mutate(p);
-			}
-			free(p);
-		}
-		case "dynamic": {
-			model_t m = mdynamic;
-			void *p = m.newparams();
-			for (int i = 0; i < FRAMES; i++) {
-				image.clear(img);
-				m.draw(img, p);
-				render.push(img);
-				m.mutate(p);
-			}
-			free(p);
-		}
-		default: {
-			fprintf(stderr, "unknown algorithm\n");
-			return 1;
+	bool found = false;
+	model_t m = {};
+	for (size_t i = 0; i < nelem(models); i++) {
+		if (strcmp(models[i].name, args[0]) == 0) {
+			found = true;
+			m = models[i];
+			break;
 		}
 	}
+	if (!found) {
+		fprintf(stderr, "unknown model: %s\n", args[0]);
+		return 1;
+	}
+
+	void *p = m.newparams();
+	for (int i = 0; i < FRAMES; i++) {
+		// fprintf(stderr, "%d / %d\n", i, FRAMES);
+		if (ffade) {
+			image.apply(img, fade);
+		} else {
+			image.clear(img);
+		}
+		m.draw(img, p);
+		render.push(img);		
+		m.mutate(p);
+	}
+	free(p);
 	render.end();
 	image.free(img);
 	return 0;
