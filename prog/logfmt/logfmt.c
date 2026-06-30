@@ -4,6 +4,7 @@
 #import strings
 #import tty
 #import error
+#import time
 
 char *excludefields[100] = {};
 int nexclude = 0;
@@ -52,7 +53,10 @@ void print_entry(json.val_t *entry) {
 }
 
 const char *special_fields[] = {
-    "level", "t", "timestamp", "msg", "message", "data", NULL
+    "level",
+    "t", "timestamp", "@timestamp",
+    "msg", "message",
+    "data", NULL
 };
 
 bool contains(const char *strings[], const char *s) {
@@ -135,10 +139,23 @@ void printlevel(json.val_t *entry) {
 
 void printtime(json.val_t *entry) {
 	tty.ttycolor(tty.DIM);
-    if (!printfield(entry, "t")) {
-		printfield(entry, "timestamp");
-	}
+    bool ok = printtimestring(entry, "t");
+    if (!ok) ok = printtimestring(entry, "timestamp");
+    if (!ok) ok = printtimestring(entry, "@timestamp");
 	tty.ttycolor(tty.RESET_ALL);
+}
+
+bool printtimestring(json.val_t *entry, const char *key) {
+    const char *s = json.strval(json.get(entry, key));
+    if (s == NULL) {
+        return false;
+    }
+    char tmp[100] = {};
+	time.iso_t iso = time.parse_iso_(s);
+	time.iso_tolocal(&iso);
+	time.fmt_iso_log(iso, tmp, 100);
+	printf("%s", tmp);
+    return true;
 }
 
 bool isint(double x) {

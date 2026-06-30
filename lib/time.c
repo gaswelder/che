@@ -1,7 +1,11 @@
 #import error
-
 #include <sys/time.h>
 #include <time.h>
+
+pub typedef {
+	int Y, M, D, h, m, s, ms;
+	int zh, zm; // zone hours and minutes
+} iso_t;
 
 typedef struct tm tm_t;
 typedef struct timespec timespec_t;
@@ -156,60 +160,68 @@ pub t now() {
     return time;
 }
 
-pub t parse_iso_ts(const char *p) {
+
+
+int tzdiff_() {
+	return 3 * 3600;
+}
+
+pub iso_t parse_iso_(const char *p) {
+	iso_t r = {};
+
 	// 2025-12-08T20:31:06+02:00
 	// 2026-01-16T20:01:17.278Z
 	const char *q = p;
-	int Y = 0;
-	q = readint(q, &Y);
+	q = readint(q, &r.Y);
 	if (*q++ != '-') panic("- expected");
 
-	int M = 0;
-	q = readint(q, &M);
+	q = readint(q, &r.M);
 	if (*q++ != '-') panic("- expected");
 
-	int D = 0;
-	q = readint(q, &D);
+	q = readint(q, &r.D);
 	if (*q++ != 'T') panic("T expected");
 
-	int h = 0;
-	q = readint(q, &h);
+	q = readint(q, &r.h);
 	if (*q++ != ':') panic(": expected");
 
-	int m = 0;
-	q = readint(q, &m);
+	q = readint(q, &r.m);
 	if (*q++ != ':') panic(": expected");
 
-	int s = 0;
-	q = readint(q, &s);
+	q = readint(q, &r.s);
 	if (*q == '.') {
 		q++;
-		int ms = 0;
-		q = readint(q, &ms);
+		q = readint(q, &r.ms);
 	}
-	int zh = 0; // zone hours
-	int zm = 0; // zone minutes
+
+	// "Z" or "+02:00"
 	if (*q == 'Z') {
 		q++;
 	} else if (*q == '+') {
 		q++;
-		q = readint(q, &zh);
+		q = readint(q, &r.zh);
 		if (*q++ != ':') panic(": expected");
-		q = readint(q, &zm);
+		q = readint(q, &r.zm);
 	}
+	return r;
+}
+
+pub t parse_iso_ts(const char *p) {
+	iso_t r = parse_iso_(p);
+
 	tm_t x = {
-		.tm_sec = s, //0-60*
-		.tm_min = m, // 0-59
-		.tm_hour = h, // 0-23
-		.tm_mday = D, // 1-31
-		.tm_mon = M-1, // 0-11
-		.tm_year = Y - 1900, // years since 1900
-		.tm_wday = -1, // 0-6, sunday=0
-		.tm_isdst = -1, // -1 = don't know
+		.tm_sec = r.s, // 0-60 (60 for the leap second)
+		.tm_min = r.m, // 0-59
+		.tm_hour = r.h, // 0-23
+		.tm_mday = r.D, // 1-31
+		.tm_mon = r.M - 1, // 0-11
+		.tm_year = r.Y - 1900, // years since 1900
+		.tm_wday = -1, // 0-6, sunday=0, ignored here
+		.tm_yday = -1, // 0..365, ignored here
+		.tm_isdst = -1, // daylight saving; -1 = don't know
 	};
 	int64_t ts = OS.mktime(&x);
-	ts -= zh * 3600;
-	ts -= zm * 60;
+	ts -= r.zh * 3600;
+	ts -= r.zm * 60;
 	return from_unix(ts);
 }
 
@@ -245,6 +257,30 @@ pub bool format(t val, const char *fmt, char *buf, size_t n) {
     tm_t *ts = localtime(&x);
     strftime(buf, n, fmt, ts);
     return true;
+}
+
+pub bool fmt_iso_log(iso_t val, char *buf, size_t bufsize) {
+	snprintf(buf, bufsize, "%02d:%02d:%02d.%03d", val.h, val.m, val.s, val.ms);
+	return true;
+}
+
+pub void iso_tolocal(iso_t *val) {
+	if (val->zh != 0 || val->zm != 0) {
+		panic("unhandled: non-utc iso");
+	}
+	val->s += tzdiff_();
+	while (val->s > 60) {
+		val->s -= 60;
+		val->m += 1;
+	}
+	while (val->m > 60) {
+		val->m -= 60;
+		val->h += 1;
+	}
+	// while (val->h > 23) {
+	// 	val->D += 1;
+	// 	val->h -= 23;
+	// }
 }
 
 
