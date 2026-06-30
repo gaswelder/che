@@ -101,6 +101,9 @@ json.val_t *longest(vec.t *rows) {
 void printtable(vec.t *rows) {
 	char buf[4096] = {};
 	size_t nrows = vec.len(rows);
+	if (nrows == 0) {
+		return;
+	}
 
 	//
 	// Define the header and calculate the widths.
