@@ -9,6 +9,9 @@ char *excludefields[100] = {};
 int nexclude = 0;
 
 int main(int argc, char **argv) {
+	// Prevent pipe buffering so that "... | logfmt | json-table still works.
+	OS.setvbuf(stdout, NULL, OS._IOLBF, 0);
+
     char *exclude_string = "";
 	opt.nargs(0, "");
     opt.str("x", "comma-separated list of fields to exclude", &exclude_string);
