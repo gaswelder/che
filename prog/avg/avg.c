@@ -40,17 +40,17 @@ void emit(line_t *window, int wsize) {
 		sum += (double) window[i].bps;
 	}
 	char buf[100];
-	time.format(window[wsize/2].ts, time.knownformat(time.FMT_ISO), buf, 100);
+	time.fmt_iso_iso(window[wsize/2].ts, buf, 100);
 	printf("%s\t%.1f\n", buf, sum/wsize);
 }
 
 typedef {
-	time.t ts;
+	time.iso_t ts;
 	int bps;
 } line_t;
 
 line_t parse_line(char *line) {
-	// Split in two columns
+	// Split into two columns.
 	char *ts = line;
 	char *p = line;
 	while (*p != '\0' && *p != '\t') {
@@ -60,9 +60,8 @@ line_t parse_line(char *line) {
 	p++;
 
 	// Parse as (time, int)
-	time.t x = time.parse_iso_ts(ts);
-	int val = 0;
-	sscanf(p, "%d", &val);
-	line_t r = { .ts = x, .bps = val };
+	line_t r = {};
+	r.ts = time.parse_iso_(ts);
+	sscanf(p, "%d", &r.bps);
 	return r;
 }

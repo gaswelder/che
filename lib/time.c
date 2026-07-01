@@ -7,6 +7,19 @@ pub typedef {
 	int zh, zm; // zone hours and minutes
 } iso_t;
 
+/*
+tm_t x = {
+	.tm_sec = r.s, // 0-60 (60 for the leap second)
+	.tm_min = r.m, // 0-59
+	.tm_hour = r.h, // 0-23
+	.tm_mday = r.D, // 1-31
+	.tm_mon = r.M - 1, // 0-11
+	.tm_year = r.Y - 1900, // years since 1900
+	.tm_wday = -1, // 0-6
+	.tm_yday = -1, // 0..365
+	.tm_isdst = -1, // daylight saving; -1 = don't know
+};
+*/
 typedef struct tm tm_t;
 typedef struct timespec timespec_t;
 
@@ -219,26 +232,6 @@ pub iso_t parse_iso_(const char *p) {
 	return r;
 }
 
-pub t parse_iso_ts(const char *p) {
-	iso_t r = parse_iso_(p);
-
-	tm_t x = {
-		.tm_sec = r.s, // 0-60 (60 for the leap second)
-		.tm_min = r.m, // 0-59
-		.tm_hour = r.h, // 0-23
-		.tm_mday = r.D, // 1-31
-		.tm_mon = r.M - 1, // 0-11
-		.tm_year = r.Y - 1900, // years since 1900
-		.tm_wday = -1, // 0-6, sunday=0, ignored here
-		.tm_yday = -1, // 0..365, ignored here
-		.tm_isdst = -1, // daylight saving; -1 = don't know
-	};
-	int64_t ts = OS.mktime(&x);
-	ts -= r.zh * 3600;
-	ts -= r.zm * 60;
-	return from_unix(ts);
-}
-
 /**
  * Returns a time object for the given unix time.
  */
@@ -255,13 +248,11 @@ pub int64_t sub(t a, b) {
 
 pub enum {
     FMT_FOO,
-	FMT_ISO,
 }
 
 pub const char *knownformat(int fmtid) {
     switch (fmtid) {
         case FMT_FOO: { return "%Y-%m-%d-%H-%M-%S"; }
-		case FMT_ISO: { return "%Y-%m-%dT%H:%M:%SZ"; }
         default: { return "(unknown time format)"; }
     }
 }
@@ -275,6 +266,11 @@ pub bool format(t val, const char *fmt, char *buf, size_t n) {
 
 pub bool fmt_iso_log(iso_t val, char *buf, size_t bufsize) {
 	snprintf(buf, bufsize, "%02d:%02d:%02d.%03d", val.h, val.m, val.s, val.ms);
+	return true;
+}
+
+pub bool fmt_iso_iso(iso_t val, char *buf, size_t bufsize) {
+	snprintf(buf, bufsize, "%d-%02d-%02dT%02d:%02d:%02d.%03dZ", val.Y, val.M, val.D, val.h, val.m, val.s, val.ms);
 	return true;
 }
 
