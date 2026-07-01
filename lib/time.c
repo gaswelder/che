@@ -32,6 +32,26 @@ pub duration_t dur_add(duration_t a, b) {
 	return r;
 }
 
+int tzoffset() {
+	tm_t *x = NULL;
+	time_t n = time(NULL);
+
+	x = OS.localtime(&n);
+	int mins = x->tm_hour * 60 + x->tm_min;
+	x = OS.gmtime(&n);
+	mins -= (x->tm_hour * 60 + x->tm_min);
+
+	// Possible diff range is -12:45 .. +14:45.
+	int min = -(12*60 + 45);
+	int max = 14*60+45;
+	if (mins < min) {
+		mins += 24 * 60;
+	} else if (mins > max) {
+		mins -= 24 * 60;
+	}
+	return mins;
+}
+
 pub void dur_set(duration_t *d, int64_t val, int unit) {
 	d->us = val * unit;
 }
@@ -160,12 +180,6 @@ pub t now() {
     return time;
 }
 
-
-
-int tzdiff_() {
-	return 3 * 3600;
-}
-
 pub iso_t parse_iso_(const char *p) {
 	iso_t r = {};
 
@@ -268,11 +282,7 @@ pub void iso_tolocal(iso_t *val) {
 	if (val->zh != 0 || val->zm != 0) {
 		panic("unhandled: non-utc iso");
 	}
-	val->s += tzdiff_();
-	while (val->s > 60) {
-		val->s -= 60;
-		val->m += 1;
-	}
+	val->m += tzoffset();
 	while (val->m > 60) {
 		val->m -= 60;
 		val->h += 1;
