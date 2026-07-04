@@ -61,7 +61,7 @@ line_t parse_line(char *line) {
 
 	// Parse as (time, int)
 	line_t r = {};
-	r.ts = time.parse_iso_(ts);
+	r.ts = time.parse_iso(ts);
 	sscanf(p, "%d", &r.bps);
 	return r;
 }

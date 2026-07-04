@@ -157,17 +157,17 @@ void *worker(void *arg) {
 typedef {
 	size_t worker_id;
 	size_t number;
-	time.t time_started;
-	time.t time_connected;
-	time.t time_finished_writing;
-	time.t time_finished_reading;
+	time.iso_t time_started;
+	time.iso_t time_connected;
+	time.iso_t time_finished_writing;
+	time.iso_t time_finished_reading;
 	int status;
 	size_t total_received;
 	size_t total_sent;
 } result_t;
 
 void print_result_header() {
-	printf("#\tstatus\ttconnecting\ttsending\ttreceiving\ttotaltime\tsent\treceived\n");
+	printf("#\tstatus\tconnecting_ms\tsending_ms\treceiving_ms\ttotaltime_ms\tsent_bytes\treceived_bytes\n");
 }
 
 void print_result(result_t *res) {
@@ -178,10 +178,10 @@ void print_result(result_t *res) {
 	int64_t total = time.sub(res->time_finished_reading, res->time_started);
 	printf("%zu/%zu\t", res->worker_id, res->number);
 	printf("%d\t", res->status);
-	printf("%f\t", (double) conn / time.MS);
-	printf("%f\t", (double) write / time.MS);
-	printf("%f\t", (double) read / time.MS);
-	printf("%f\t", (double) total / time.MS);
+	printf("%ld\t", conn);
+	printf("%ld\t", write);
+	printf("%ld\t", read);
+	printf("%ld\t", total);
 	printf("%zu\t", res->total_sent);
 	printf("%zu\n", res->total_received);
 	threads.unlock(stdout_lock);

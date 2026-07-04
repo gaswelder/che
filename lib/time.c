@@ -2,11 +2,6 @@
 #include <sys/time.h>
 #include <time.h>
 
-pub typedef {
-	int Y, M, D, h, m, s, ms;
-	int zh, zm; // zone hours and minutes
-} iso_t;
-
 /*
 tm_t x = {
 	.tm_sec = r.s, // 0-60 (60 for the leap second)
@@ -22,6 +17,12 @@ tm_t x = {
 */
 typedef struct tm tm_t;
 typedef struct timespec timespec_t;
+typedef struct timeval timeval_t; // {tv_sec, tv_usec}
+
+pub typedef {
+	int Y, M, D, h, m, s, ms;
+	int zh, zm; // zone hours and minutes
+} iso_t;
 
 pub enum {
     US = 1, // base unit
@@ -30,9 +31,10 @@ pub enum {
 	MINUTES = 60000000,
 }
 
-pub typedef struct timeval timeval_t;
+// Represents a global instant of time.
 pub typedef {
-    timeval_t timeval;
+	int64_t seconds;
+	int64_t useconds;
 } t;
 
 pub typedef {
@@ -184,16 +186,32 @@ const char *readint(const char *p, int *r) {
     return p;
 }
 
-
 // Returns current time.
-pub t now() {
-    t time = {};
-    // timeval, timezone. timezone is obsolete, pass NULL.
-    OS.gettimeofday(&time.timeval, NULL);
-    return time;
+pub iso_t now() {
+	timeval_t tv = {};
+	OS.gettimeofday(&tv, NULL);
+	iso_t r = fromunix(tv.tv_sec);
+	r.ms = tv.tv_usec / 1000;
+	return r;
 }
 
-pub iso_t parse_iso_(const char *p) {
+// Returns time corresponding to the given unix time.
+pub iso_t fromunix(int64_t seconds) {
+	time_t s = seconds;
+	tm_t *tm = OS.gmtime(&s);
+	iso_t r = {
+		.Y = tm->tm_year + 1900,
+		.M = tm->tm_mon + 1,
+		.D = tm->tm_mday,
+		.h = tm->tm_hour,
+		.m = tm->tm_min,
+		.s = tm->tm_sec,
+	};
+	return r;
+}
+
+// Returns the time corresponding to the given ISO string.
+pub iso_t parse_iso(const char *p) {
 	iso_t r = {};
 
 	// 2025-12-08T20:31:06+02:00
@@ -228,45 +246,38 @@ pub iso_t parse_iso_(const char *p) {
 		q = readint(q, &r.zh);
 		if (*q++ != ':') panic(": expected");
 		q = readint(q, &r.zm);
+	} else {
+		panic("trailing input");
 	}
 	return r;
 }
 
-/**
- * Returns a time object for the given unix time.
- */
-pub t from_unix(int64_t seconds) {
-	t val = {};
-	val.timeval.tv_sec = seconds;
-	return val;
+tm_t totm(iso_t r) {
+	tm_t tm = {
+		.tm_sec = r.s, // 0-60 (60 for the leap second)
+		.tm_min = r.m, // 0-59
+		.tm_hour = r.h, // 0-23
+		.tm_mday = r.D, // 1-31
+		.tm_mon = r.M - 1, // 0-11
+		.tm_year = r.Y - 1900, // years since 1900
+		.tm_wday = -1, // 0-6
+		.tm_yday = -1, // 0..365
+		.tm_isdst = -1, // daylight saving; -1 = don't know
+	};
+	return tm;
 }
 
-pub int64_t sub(t a, b) {
-    return SECONDS * (a.timeval.tv_sec - b.timeval.tv_sec)
-        + US * (a.timeval.tv_usec - b.timeval.tv_usec);
-}
+// Returns the difference a-b in milliseconds.
+pub int64_t sub(iso_t a, b) {
+	tm_t tm = totm(a);
+	time_t au = OS.mktime(&tm);
+	int64_t ms1 = ((int64_t) au) * 1000 + a.ms;
 
-pub enum {
-    FMT_FOO,
-}
+	tm = totm(b);
+	time_t bu = OS.mktime(&tm);
+	int64_t ms2 = ((int64_t) bu) * 1000 + b.ms;
 
-pub const char *knownformat(int fmtid) {
-    switch (fmtid) {
-        case FMT_FOO: { return "%Y-%m-%d-%H-%M-%S"; }
-        default: { return "(unknown time format)"; }
-    }
-}
-
-pub bool format(t val, const char *fmt, char *buf, size_t n) {
-    time_t x = val.timeval.tv_sec;
-    tm_t *ts = localtime(&x);
-    strftime(buf, n, fmt, ts);
-    return true;
-}
-
-pub bool fmt_iso_log(iso_t val, char *buf, size_t bufsize) {
-	snprintf(buf, bufsize, "%02d:%02d:%02d.%03d", val.h, val.m, val.s, val.ms);
-	return true;
+	return ms1 - ms2;
 }
 
 pub bool fmt_iso_iso(iso_t val, char *buf, size_t bufsize) {
@@ -290,19 +301,9 @@ pub void iso_tolocal(iso_t *val) {
 }
 
 
-/**
- * Puts current local time, formatted according to `fmt`, in the buffer `buf`.
- * Returns false on error.
- */
-pub bool time_format(char *buf, size_t size, const char *fmt)
-{
-	time_t t = time(NULL);
-    if (!t) {
-        return false;
-    }
-	tm_t *ts = localtime(&t);
-	return strftime(buf, size, fmt, ts);
-}
+//
+//
+//
 
 pub bool sleep(int64_t dt) {
 	int64_t s = dt / SECONDS;
@@ -312,24 +313,4 @@ pub bool sleep(int64_t dt) {
         .tv_nsec = us * 1000
     };
     return OS.nanosleep(&t, NULL) == 0;
-}
-
-/*
- * Returns unix timestamp in microseconds for the given time object.
- */
-pub int usec(t *val) {
-    return val->timeval.tv_sec * 1000000L + val->timeval.tv_usec;
-}
-
-pub int ms(t val) {
-    return usec(&val) / 1000;
-}
-
-pub t add(t time, int addition, int unit) {
-    if (unit == SECONDS) {
-        time.timeval.tv_sec += addition;
-    } else {
-        time.timeval.tv_usec += addition * unit;
-    }
-    return time;
 }

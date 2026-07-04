@@ -25,13 +25,12 @@ pub int run(int argc, char **argv) {
 }
 
 void printtorrent(torrent.info_t *tf) {
-    char tmp[100] = {};
+	char tmp[100] = {};
 
-    printf("announce = %s\n", tf->announce);
+	time.iso_t ts = time.fromunix(tf->creation_date);
 
-	time.t t = time.from_unix(tf->creation_date);
-	time.format(t, time.knownformat(time.FMT_FOO), tmp, 100);
-	printf("creation date = %d (%s)\n", tf->creation_date, tmp);
+    printf("announce = %s\n", tf->announce);	
+	printf("creation date = %d-%02d-%02d %02d:%02d:%02d GMT\n", ts.Y, ts.M, ts.D, ts.h, ts.m, ts.s);
 	printf("created by = %s\n", tf->created_by);
 	printf("comment = %s\n", tf->comment);
 	printf("name = %s\n", tf->name);

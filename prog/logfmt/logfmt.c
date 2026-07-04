@@ -52,6 +52,10 @@ void print_entry(json.val_t *entry) {
     puts("");
 }
 
+const char *timestamp_fields[] = {
+	"t", "timestamp", "@timestamp", NULL
+};
+
 const char *special_fields[] = {
     "level",
     "t", "timestamp", "@timestamp",
@@ -137,11 +141,17 @@ void printlevel(json.val_t *entry) {
     tty.ttycolor(tty.RESET_ALL);
 }
 
+
+
 void printtime(json.val_t *entry) {
 	tty.ttycolor(tty.DIM);
-    bool ok = printtimestring(entry, "t");
-    if (!ok) ok = printtimestring(entry, "timestamp");
-    if (!ok) ok = printtimestring(entry, "@timestamp");
+	const char **f = timestamp_fields;
+	while (*f != NULL) {
+		if (printtimestring(entry, *f)) {
+			break;
+		}
+		f++;
+	}
 	tty.ttycolor(tty.RESET_ALL);
 }
 
@@ -150,11 +160,9 @@ bool printtimestring(json.val_t *entry, const char *key) {
     if (s == NULL) {
         return false;
     }
-    char tmp[100] = {};
-	time.iso_t iso = time.parse_iso_(s);
-	time.iso_tolocal(&iso);
-	time.fmt_iso_log(iso, tmp, 100);
-	printf("%s", tmp);
+	time.iso_t t = time.parse_iso(s);
+	time.iso_tolocal(&t);
+	printf("%02d:%02d:%02d.%03d", t.h, t.m, t.s, t.ms);
     return true;
 }
 
