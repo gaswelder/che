@@ -136,9 +136,9 @@ pub bool dur_fmt(duration_t *d, char *buf, size_t bufsize, const char *fmt) {
 	return (size_t) len + 1 <= bufsize;
 }
 
-// Parses duration from string s.
-// Returns true on success,
-// returns false and sets the error otherwise.
+// Parses duration from string s: [hh:]mm:ss[.xxx]
+// Returns true on success.
+// Returns false and sets the error otherwise.
 pub bool parse_duration(const char *s, duration_t *d, error.t *err) {
 	int nums[3] = {};
     int numslen = 0;
@@ -165,14 +165,39 @@ pub bool parse_duration(const char *s, duration_t *d, error.t *err) {
 		p = readint(p, &nums[numslen++]);
 	}
 
-    switch (numslen) {
-        case 2: {
-			d->us = (nums[0] * 60 + nums[1]) * SECONDS;
-            return true;
-        }
-    }
-	error.set(err, "unknown format: %s", s);
-	return false;
+	int64_t us = 0;
+	switch (numslen) {
+		case 2: { us = (nums[0] * 60 + nums[1]) * SECONDS; }
+		default: {
+			error.set(err, "unhandled format: %s", s);
+			return false;
+		}
+	}
+
+	// Maybe sub-second fraction.
+	if (*p == '.') {
+		p++;
+		int32_t digits = 0;
+		int32_t fracsize = 1;
+		int32_t val = 0;
+		while (isdigit(*p)) {
+			// Prevent overflow.
+			if (digits > 6) {
+				p++;
+				continue;
+			}
+			digits++;
+			fracsize *= 10;
+			val *= 10;
+			val += (int) *p - (int) '0';
+			p++;
+		}
+		int64_t diff = (double)SECONDS * ((double)val / (double)fracsize);
+		us += diff;
+	}
+
+    d->us = us;
+	return true;
 }
 
 const char *readint(const char *p, int *r) {
