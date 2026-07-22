@@ -1,32 +1,46 @@
 
-#define MAXCOLS 10
+#define MAXCOLS 100
+#define MAXSEL 10
 
 int main(int argc, char *argv[]) {
+    //
     // Parse the requested column numbers.
-    int sel[10] = {};
+    //
+    int sel[MAXSEL] = {};
     int nsel = 0;
     for (int i = 1; i < argc; i++) {
+        if (nsel == MAXSEL) {
+            fprintf(stderr, "too many requested cols, max is %d\n", MAXSEL);
+            return 1;
+        }
         int x;
         sscanf(argv[i], "%d", &x);
         sel[nsel++] = x-1; // adjust for 1-based counts
     }
 
     char line[4096];
-    char *cols[MAXCOLS] = {};
-    int ncols = 0;
     while (fgets(line, sizeof(line), stdin)) {
-        ncols = 0;
-
-        // Split the line
+        //
+        // Split the line into columns in place.
+        //
+        char *cols[MAXCOLS] = {};
+        int ncols = 0;
         char *p = line;
-        char *q = sep(p);
         cols[ncols++] = p;
-        while (*q != '\0') {
-            p = q;
-            q = sep(q);
+        while (true) {
+            p = sep(p);
+            if (*p == '\0') {
+                break;
+            }
+            if (ncols == MAXCOLS) {
+                fprintf(stderr, "input has too many columns, max supported is %d\n", MAXCOLS);
+                return 1;
+            }
             cols[ncols++] = p;
         }
-
+        //
+        // Print the requested values.
+        //
         for (int i = 0; i < nsel; i++) {
             int index = sel[i];
             if (i > 0) putchar('\t');
