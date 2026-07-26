@@ -1,5 +1,6 @@
 #import formats/wav
 #import sound
+#import opt
 
 typedef {
     bool loud;
@@ -7,14 +8,14 @@ typedef {
 } range_t;
 
 const int RESOLUTION = 10;
-const double SILENCE_LEVEL = -37; // db
+float SILENCE_LEVEL = 37; // db
 
 int main(int argc, char *argv[]) {
-    if (argc != 2) {
-        fprintf(stderr, "arguments: <wav-file>");
-        return 1;
-    }
-    wav.reader_t *r = wav.open_reader(argv[1]);
+	opt.summary("detects track split points by silence");
+	opt.nargs(1, "<wav-file>");
+	opt.opt_float("l", "silence level in dB (positive)", &SILENCE_LEVEL);
+	char **args = opt.parse(argc, argv);
+    wav.reader_t *r = wav.open_reader(args[0]);
     if (r == NULL) {
         panic("failed to open wav");
     }
@@ -58,7 +59,7 @@ bool window(wav.reader_t *r, int size) {
     if (rms < 1e-12) rms = 1e-12;
     double db = 20.0 * log10(rms);
 
-    return db >= SILENCE_LEVEL;
+    return db >= -SILENCE_LEVEL;
 }
 
 void printlist(range_t *ranges, int n) {
