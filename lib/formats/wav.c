@@ -65,6 +65,8 @@ pub reader_t *open_reader(const char *path) {
     if (!read_headers(r, &w, &wr->datalen)) {
 		fclose(f);
 		reader.free(r);
+		OS.free(wr);
+		panic("failed to read headers");
 	}
 	wr->wav = w;
 	wr->file = f;
@@ -111,7 +113,7 @@ bool read_headers(reader.t *r, wav_t *wp, uint32_t *datalen) {
     //
 	char tag[5] = {};
     reader.read(r, (uint8_t*) tag, 4);
-	if (strcmp(tag, "LIST") == 0) {
+	if (memcmp(tag, "LIST", 4) == 0) {
 		if (!readinfo(r)) {
 			return false;
 		}
@@ -280,21 +282,40 @@ pub void close_reader(reader_t *r) {
 
 bool readinfo(reader.t *r) {
 	char tmp[1000];
+
+	// List length in bytes.
     uint32_t listlen = 0;
     endian.read4le(r, &listlen);
-    if (!expect_tag(r, "INFO")) return false;
+
+	// Expect INFO tag (4 bytes).
+    if (!expect_tag(r, "INFO")) {
+		return false;
+	}
     listlen -= 4;
+
     while (listlen > 0) {
+		// Read 4-byte entry name.
         char key[5] = {};
         reader.read(r, (uint8_t*)key, 4);
+		listlen -= 4;
+
+		// Read 4-byte value length.
         uint32_t infolen;
         endian.read4le(r, &infolen);
-        listlen -= 8;
+        listlen -= 4;
+		printf("infolen=%u\n", infolen);
 
         reader.read(r, (uint8_t*)tmp, infolen);
         tmp[infolen] = '\0';
-        // printf("# %s = %s\n", key, tmp);
+        printf("# %s = %s\n", key, tmp);
         listlen -= infolen;
+
+		// Wav postulates 2-byte chunk boundaries, so skip a trailing byte
+		// for odd chunks.
+        if (infolen % 2 != 0) {
+            reader.read(r, (uint8_t*)tmp, 1);
+            listlen -= 1;
+        }
     }
     return true;
 }
