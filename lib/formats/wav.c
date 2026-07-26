@@ -303,11 +303,10 @@ bool readinfo(reader.t *r) {
         uint32_t infolen;
         endian.read4le(r, &infolen);
         listlen -= 4;
-		printf("infolen=%u\n", infolen);
 
         reader.read(r, (uint8_t*)tmp, infolen);
         tmp[infolen] = '\0';
-        printf("# %s = %s\n", key, tmp);
+        // printf("# %s = %s\n", key, tmp);
         listlen -= infolen;
 
 		// Wav postulates 2-byte chunk boundaries, so skip a trailing byte
