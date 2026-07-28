@@ -10,71 +10,84 @@ typedef {
 const int RESOLUTION = 10;
 float SILENCE_LEVEL = 37; // db
 
+wav.reader_t *r = NULL;
+bool loaded = false;
+range_t _val = {};
+
 int main(int argc, char *argv[]) {
 	opt.summary("detects track split points by silence");
 	opt.nargs(1, "<wav-file>");
 	opt.opt_float("l", "silence level in dB (positive)", &SILENCE_LEVEL);
 	char **args = opt.parse(argc, argv);
-    wav.reader_t *r = wav.open_reader(args[0]);
+
+	r = wav.open_reader(args[0]);
     if (r == NULL) {
         panic("failed to open wav");
     }
 
-    range_t ranges[100] = {};
-    int i = 0;
-    while (wav.more(r)) {
-        bool x = window(r, 44100 / RESOLUTION);
-        if (x != ranges[i].loud) {
-            i++;
-            if (i == 100) {
-                panic("> 100");
-            }
-            ranges[i].loud = x;
-        }
-        ranges[i].duration += 1.0 / RESOLUTION;
-    }
+	emit(run(false) + run(true) + run(false));
+	while (wav.more(r)) {
+		emit(run(true) + run(false));
+	}
     wav.close_reader(r);
-
-    printlist(ranges, i+1);
-
     return 0;
 }
 
-bool window(wav.reader_t *r, int size) {
-    if (!wav.more(r)) {
-        return 0;
-    }
-    double sum = 0;
+int count = 0;
+void emit(double dur) {
+	count++;
+	printf("%02d. track %02d\t", count, count);
+	printtime(dur);
+	printf("\n");
+}
+
+double run(bool x) {
+	double dur = 0;
+	while ((loaded || wav.more(r)) && next(x)) {
+		dur += consume();
+	}
+	return dur;
+}
+
+bool next(bool x) {
+	if (!loaded) {
+		loaded = true;
+		_val = readval();
+	}
+	return _val.loud == x;
+}
+
+double consume() {
+	range_t r = _val;
+	loaded = false;
+	return r.duration;
+}
+
+range_t readval() {
+	if (!wav.more(r)) {
+		panic("nomore");
+	}
+	double sum = 0;
     int i = 0;
+	int size = 44100 / RESOLUTION;
     for (; i < size; i++) {
         if (!wav.more(r)) {
             break;
         }
         sound.samplef_t s = wav.read_samplef(r);
-        double x = (s.left * s.left + s.right * s.right) / 2.0;
-        sum += x;
+        sum += (s.left * s.left + s.right * s.right) / 2.0;
     }
-
-    double rms = sqrt(sum / i);
-    if (rms < 1e-12) rms = 1e-12;
+    double rms = max(sqrt(sum / i), 1e-12);
     double db = 20.0 * log10(rms);
-
-    return db >= -SILENCE_LEVEL;
+	range_t res = {};
+	res.loud = db >= -SILENCE_LEVEL;
+	res.duration = 1.0 / RESOLUTION;
+	return res;
 }
 
-void printlist(range_t *ranges, int n) {
-    // We're guaranteed to have 0-th entry as quiet.
-    double tracklen = ranges[0].duration;
-    int num = 1;
-
-    for (int i = 1; i < n; i += 2) {
-        tracklen += ranges[i].duration + ranges[i+1].duration;
-        printf("%02d. track %02d\t", num, num);
-        printtime(tracklen);
-        putchar('\n');
-        tracklen = 0;
-        num++;
-    }
+double max(double x, y) {
+	if (x > y) return x;
+	return y;
 }
 
 void printtime(double sec) {
