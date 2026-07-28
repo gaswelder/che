@@ -4,20 +4,23 @@
 
 typedef {
     bool loud;
-    double duration; // seconds
+	int64_t duration; // ns
 } range_t;
 
-const int RESOLUTION = 10;
 float SILENCE_LEVEL = 37; // db
 
 wav.reader_t *r = NULL;
 bool loaded = false;
 range_t _val = {};
 
+bool cumulative = false;
+
 int main(int argc, char *argv[]) {
+	OS.setvbuf(stdout, NULL, OS._IOLBF, 0);
 	opt.summary("detects track split points by silence");
 	opt.nargs(1, "<wav-file>");
 	opt.opt_float("l", "silence level in dB (positive)", &SILENCE_LEVEL);
+	opt.flag("c", "print cut positions instead of track lengths", &cumulative);
 	char **args = opt.parse(argc, argv);
 
 	r = wav.open_reader(args[0]);
@@ -25,28 +28,58 @@ int main(int argc, char *argv[]) {
         panic("failed to open wav");
     }
 
-	emit(run(false) + run(true) + run(false));
-	while (wav.more(r)) {
-		emit(run(true) + run(false));
+	double dur = 0;
+	while ((loaded || wav.more(r)) && next(false)) {
+		dur += consume();
 	}
+	emit(dur + track());
+	while (wav.more(r)) {
+		emit(track());
+	}
+	// printf("total = ");
+	// printtime(total);
+	// putchar('\n');
     wav.close_reader(r);
     return 0;
 }
 
-int count = 0;
-void emit(double dur) {
-	count++;
-	printf("%02d. track %02d\t", count, count);
-	printtime(dur);
-	printf("\n");
-}
-
-double run(bool x) {
+double track() {
 	double dur = 0;
-	while ((loaded || wav.more(r)) && next(x)) {
-		dur += consume();
+	while (rmore()) {
+		// Non-silence.
+		while (rmore() && next(true)) {
+			dur += consume();
+		}
+
+		// Silence.
+		double sil = 0;
+		while (rmore() && next(false)) {
+			sil += consume();
+		}
+		dur += sil;
+		if (sil > 1) {
+			break;
+		}
 	}
 	return dur;
+}
+
+bool rmore() {
+	return loaded || wav.more(r);
+}
+
+int count = 0;
+double total = 0;
+void emit(double dur) {
+	count++;
+	total += dur;
+	printf("%02d. track %02d\t", count, count);
+	if (cumulative) {
+		printtime(total);
+	} else {
+		printtime(dur);
+	}
+	putchar('\n');
 }
 
 bool next(bool x) {
@@ -60,28 +93,20 @@ bool next(bool x) {
 double consume() {
 	range_t r = _val;
 	loaded = false;
-	return r.duration;
+	return ((double) r.duration) / 1000/1000/1000;
 }
 
 range_t readval() {
 	if (!wav.more(r)) {
 		panic("nomore");
 	}
-	double sum = 0;
-    int i = 0;
-	int size = 44100 / RESOLUTION;
-    for (; i < size; i++) {
-        if (!wav.more(r)) {
-            break;
-        }
-        sound.samplef_t s = wav.read_samplef(r);
-        sum += (s.left * s.left + s.right * s.right) / 2.0;
-    }
-    double rms = max(sqrt(sum / i), 1e-12);
+    sound.samplef_t s = wav.read_samplef(r);
+    double e = (s.left * s.left + s.right * s.right) / 2.0;
+    double rms = max(sqrt(e / 1), 1e-12);
     double db = 20.0 * log10(rms);
 	range_t res = {};
 	res.loud = db >= -SILENCE_LEVEL;
-	res.duration = 1.0 / RESOLUTION;
+	res.duration = 1000 * 1000 * 1000 / 44100;
 	return res;
 }
 
@@ -101,7 +126,17 @@ void printtime(double sec) {
     // s
     int s = x % 60;
     x /= 60;
-    int m = x;
 
-    printf("%d:%02d.%03d", m, s, ms);
+	// m
+    int m = x % 60;
+	x /= 60;
+
+	// h
+	int h = x;
+
+	if (h > 0) {
+		printf("%d:%02d:%02d.%03d", h, m, s, ms);
+	} else {
+		printf("%d:%02d.%03d", m, s, ms);
+	}
 }
