@@ -80,35 +80,33 @@ pub duration_t newdur(int64_t val, int unit) {
 	return d;
 }
 
-// Splits absolute duration in microseconds into components.
-void split(int64_t val, int *parts) {
-	parts[0] = val % 1000; // us
-	val /= 1000; // val is sum_ms now
+typedef { int us, ms, s, m, h; } sdur_t;
 
-	parts[1] = val % 1000; // ms
+sdur_t sdur(int64_t val) {
+	sdur_t r = {};
+	r.us = val % 1000; // us
+	val /= 1000; // val is sum_ms now	
+	r.ms = val % 1000; // ms
 	val /= 1000; // val is sum_s now
-
-	parts[2] = val % 60; // s
+	r.s = val % 60; // s
 	val /= 60; // val is sum_min now
-
-	parts[3] = val % 60; // min
+	r.m = val % 60; // min
 	val /= 60; // val is sum_h now
-
-	parts[4] = val; // sum_h
+	r.h = val; // sum_h
+	return r;
 }
 
 // Formats duration d into the given buffer.
 // Returns false if the buffer is too small.
 pub bool dur_fmt(duration_t *d, char *buf, size_t bufsize, const char *fmt) {
-	int parts[5];
-	split(d->us, parts);
+	sdur_t pp = sdur(d->us);
 	int len;
 
 	switch str (fmt) {
 		case "logfile": {
-			int ms = parts[1] + 1000 * parts[2];
+			int ms = pp.ms + 1000 * pp.s;
 			double fsec = (double) ms / 1000.0;
-			int mm = parts[3] + 60 * parts[4];
+			int mm = pp.m + 60 * pp.h;
 			if (mm > 0) {
 				len = snprintf(buf, bufsize, "%dm %f s", mm, fsec);
 			} else {
@@ -116,24 +114,24 @@ pub bool dur_fmt(duration_t *d, char *buf, size_t bufsize, const char *fmt) {
 			}
 		}
 		case "mm:ss": {
-			int ss = parts[2];
-			int mm = parts[3] + 60 * parts[4];
+			int ss = pp.s;
+			int mm = pp.m + 60 * pp.h;
 			len = snprintf(buf, bufsize, "%02d:%02d", mm, ss);
 		}
 		case "mm:ss.ms": {
-			int ms = parts[1];
-			int ss = parts[2];
-			int mm = parts[3] + 60 * parts[4];
+			int ms = pp.ms;
+			int ss = pp.s;
+			int mm = pp.m + 60 * pp.h;
 			len = snprintf(buf, bufsize, "%02d:%02d.%03d", mm, ss, ms);
 		}
 		case "hh:mm:ss,ms": {
-			len = snprintf(buf, bufsize, "%02d:%02d:%02d,%d", parts[4], parts[3], parts[2], parts[1]);
+			len = snprintf(buf, bufsize, "%02d:%02d:%02d,%d", pp.h, pp.m, pp.s, pp.ms);
 		}
 		case "[h]:mm:ss.mmm": {
-			int ms = parts[1];
-			int s = parts[2];
-			int m = parts[3];
-			int h = parts[4];
+			int ms = pp.ms;
+			int s = pp.s;
+			int m = pp.m;
+			int h = pp.h;
 			if (h > 0) {
 				len = snprintf(buf, bufsize, "%d:%02d:%02d.%03d", h, m, s, ms);
 			} else {
