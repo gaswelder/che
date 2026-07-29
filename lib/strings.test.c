@@ -4,9 +4,16 @@
 int main() {
     char *sample = strings.newstr("%s", "   123 \r\n ");
 
+
     // trim
     strings.trim(sample);
     test.streq(sample, "123");
+
+	sample = strings.newstr("%s", "     1.	The Sun	0:43.520");
+	strings.trim(sample);
+    test.streq(sample, "1.	The Sun	0:43.520");
+
+
 
     // casecmp
     test.truth("GET == get", strings.casecmp("GET", "get"));

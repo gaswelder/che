@@ -30,12 +30,14 @@ pub char *newsubstr(const char *s, int p1, p2) {
 
 // Trims spaces at both sides of s.
 pub void trim(char *s) {
-	char *left = s;
-	while (*left != '\0' && isspace(*left)) {
+	int left = 0;
+	while (s[left] != '\0' && isspace(s[left])) {
 		left++;
 	}
-	if (left > s) {
-		memmove(s, left, strlen(left));
+	if (left > 0) {
+		int n = strlen(&s[left]);
+		memmove(s, &s[left], n);
+		s[n] = '\0';
 	}
 	rtrim(s, " \t\r\n");
 }
