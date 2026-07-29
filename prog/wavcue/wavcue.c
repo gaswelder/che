@@ -1,6 +1,7 @@
 #import formats/wav
 #import sound
 #import opt
+#import time
 
 typedef {
     bool loud;
@@ -116,27 +117,8 @@ double max(double x, y) {
 }
 
 void printtime(double sec) {
-    // printf(" (%fs) ", sec);
-    int x = (int) (sec * 1000);
-
-    // ms
-    int ms = x % 1000;
-    x /= 1000;
-
-    // s
-    int s = x % 60;
-    x /= 60;
-
-	// m
-    int m = x % 60;
-	x /= 60;
-
-	// h
-	int h = x;
-
-	if (h > 0) {
-		printf("%d:%02d:%02d.%03d", h, m, s, ms);
-	} else {
-		printf("%d:%02d.%03d", m, s, ms);
-	}
+	char buf[100];
+	time.duration_t d = time.newdur((int64_t) (sec * 1000), time.MS);
+	time.dur_fmt(&d, buf, 100, "[h]:mm:ss.mmm");
+	printf("%s", buf);
 }

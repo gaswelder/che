@@ -129,6 +129,17 @@ pub bool dur_fmt(duration_t *d, char *buf, size_t bufsize, const char *fmt) {
 		case "hh:mm:ss,ms": {
 			len = snprintf(buf, bufsize, "%02d:%02d:%02d,%d", parts[4], parts[3], parts[2], parts[1]);
 		}
+		case "[h]:mm:ss.mmm": {
+			int ms = parts[1];
+			int s = parts[2];
+			int m = parts[3];
+			int h = parts[4];
+			if (h > 0) {
+				len = snprintf(buf, bufsize, "%d:%02d:%02d.%03d", h, m, s, ms);
+			} else {
+				len = snprintf(buf, bufsize, "%d:%02d.%03d", m, s, ms);
+			}
+		}
 		default: {
 			panic("unknown format: %s", fmt);
 		}
