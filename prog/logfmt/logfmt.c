@@ -90,8 +90,8 @@ void printfields(json.val_t *entry) {
             }
         }
         if (excluded) continue;
-        printf(" %s=", key);
-        printval(json.val(entry, i));
+        printf(" ");
+        printkv(key, json.val(entry, i));
     }
     tty.ttycolor(tty.RESET_ALL);
     json.val_t *data = json.get(entry, "data");
@@ -99,6 +99,24 @@ void printfields(json.val_t *entry) {
         putchar('\n');
         printval(data);
     }
+}
+
+void printkv(const char *key, json.val_t *val) {
+    if (json.type(val) == json.TOBJ) {
+        for (size_t i = 0; i < json.len(val); i++) {
+            if (i > 0) {
+                printf(" ");
+            }
+            char keyi[100] = {};
+            strcat(keyi, key);
+            strcat(keyi, ".");
+            strcat(keyi, json.key(val, i));
+            printkv(keyi, json.val(val, i));
+        }
+        return;
+    }
+    printf("%s=", key);
+    printval(val);
 }
 
 void printmsg(json.val_t *entry) {
@@ -173,7 +191,7 @@ bool isint(double x) {
 void printval(json.val_t *val) {
     switch (val->type) {
         case json.TSTR: { printf("%s", val->val.str); }
-        case json.TOBJ: { printf("(object)"); }
+        case json.TOBJ: { printvalobj(val); }
         case json.TNULL: { printf("null"); }
         case json.TARR: { printf("(array)"); }
         case json.TNUM: {
@@ -192,5 +210,15 @@ void printval(json.val_t *val) {
             }
         }
         default: { printf("(unimplemented type %d)", val->type); }
+    }
+}
+
+void printvalobj(json.val_t *val) {
+    for (size_t i = 0; i < json.len(val); i++) {
+        if (i > 0) {
+            printf(";");
+        }
+        printf("%s:", json.key(val, i));
+        printval(json.val(val, i));
     }
 }
