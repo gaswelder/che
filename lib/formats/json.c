@@ -465,7 +465,7 @@ bool writenode(val_t *n, strbuilder.str *s) {
 	switch(type(n)) {
 		case TOBJ: { return writeobj(n, s); }
 		case TARR: { return writearr(n, s); }
-		case TSTR: { return writestr(n, s); }
+		case TSTR: { writestr(n, s); return true; }
 		case TNUM: { return writenum(n, s); }
 		case TBOOL: { return writebool(n, s); }
 		case TNULL: { return strbuilder.adds(s, "null"); }
@@ -503,22 +503,18 @@ bool writearr(val_t *n, strbuilder.str *s) {
 	return ok;
 }
 
-bool writestr(val_t *n, strbuilder.str *s) {
+void writestr(val_t *n, strbuilder.str *s) {
 	const char *content = n->val.str;
 	size_t len = strlen(content);
 	bool ok = strbuilder.adds(s, "\"");
 	for (size_t i = 0; i < len; i++) {
 		const char c = content[i];
 		if (c == '\n') {
-			ok = ok
-				&& strbuilder.addc(s, '\\')
-				&& strbuilder.addc(s, 'n');
+			ok = ok && strbuilder.adds(s, "\\\\n");
 			continue;
 		}
 		if (c == '\t') {
-			ok = ok
-				&& strbuilder.addc(s, '\\')
-				&& strbuilder.addc(s, 't');
+			ok = ok && strbuilder.adds(s, "\\\\t");
 			continue;
 		}
 		if (c == '\\' || c == '\"' || c == '/') {
@@ -527,7 +523,9 @@ bool writestr(val_t *n, strbuilder.str *s) {
 		ok = ok && strbuilder.addc(s, c);
 	}
 	ok = ok && strbuilder.addc(s, '"');
-	return ok;
+	if (!ok) {
+		panic("writestr failed");
+	}
 }
 
 bool writenum(val_t *n, strbuilder.str *s) {

@@ -1,5 +1,4 @@
 #import json.c
-#import mem
 #import test
 #import writer
 #import error
@@ -8,7 +7,21 @@ int main() {
 	testfail("q", "unexpected character: q");
 	testfail("[", "unexpected end of input");
 	testfail("[1 2", "expected ']', got '2'");
-	testok();
+
+	test_reenc("123", "123");
+	test_reenc("true", "true");
+	test_reenc("null", "null");
+	test_reenc("\"abc\"", "\"abc\"");
+	test_reenc("[]", "[]");
+	test_reenc("{}", "{}");
+	test_reenc("123456789", "123456789");
+	test_reenc("[1,2,3]", "[1,2,3]");
+	test_reenc("[[1,2,3],[4,5,6]]", "[[1,2,3],[4,5,6]]");
+	test_reenc(" 123", "123");
+	test_reenc("[ 1, 2,3 ]", "[1,2,3]");
+	test_reenc("{\"msg\": \"1 2 3\"}", "{\"msg\":\"1 2 3\"}");
+	test_reenc("\"foo\\\\nbar\"", "\"foo\\\\nbar\"");
+
 	return test.fails();
 }
 
@@ -20,51 +33,23 @@ void testfail(const char *in, *out) {
 	test.streq(err.msg, out);
 }
 
-typedef {
-	const char *in, *out;
-} case_t;
-
-case_t cases[] = {
-	{ "123", "123" },
-	{ "true", "true" },
-	{ "null", "null" },
-	{ "\"abc\"", "\"abc\"" },
-	{ "[]", "[]" },
-	{ "{}", "{}" },
-	{ "123456789", "123456789" },
-	{ "[1,2,3]", "[1,2,3]" },
-	{ "[[1,2,3],[4,5,6]]", "[[1,2,3],[4,5,6]]" },
-	{ " 123", "123" },
-	{ "[ 1, 2,3 ]", "[1,2,3]" },
-	{ "{\"msg\": \"1 2 3\"}", "{\"msg\":\"1 2 3\"}"}
-};
-
-void testok() {
-	mem.mem_t *m = mem.memopen();
-	writer.t *w = mem.newwriter(m);
+void test_reenc(const char *encoded, *expected) {
 	error.t err = {};
 
-	for (size_t i = 0; i < nelem(cases); i++) {
-		case_t c = cases[i];
-
-		// Parse the string
-		json.val_t *v = json.parse(c.in, &err);
-		if (err.set) {
-			panic("parse failed: %s", err.msg);
-		}
-
-		// Format again
-		char buf[100] = {};
-		json.formatwr(w, v);
-		mem.rewind(m);
-		mem.memread(m, buf, 100);
-		mem.reset(m);
-
-		// Compare
-		test.streq(buf, c.out);
-		json.json_free(v);
+	// Parse the string.
+	json.val_t *v = json.parse(encoded, &err);
+	if (err.set) {
+		panic("parse failed: %s", err.msg);
 	}
 
+	// Format again.
+	char buf[100] = {};
+	writer.t *w = writer.static_buffer((uint8_t *)buf, 100);
+	json.formatwr(w, v);
+
+	// Compare
+	test.streq(buf, expected);
+
 	writer.free(w);
-	mem.memclose(m);
+	json.json_free(v);
 }
