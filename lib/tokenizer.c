@@ -75,7 +75,7 @@ pub void tail(t *b, char *buf, size_t len) {
 pub void dbg(t *b) {
 	char buf[100] = {};
 	tail(b, buf, sizeof(buf));
-	printf("[%s...\n", buf);
+	printf("content:\n-----------\n%s...\n----------\n", buf);
 }
 
 // Returns next character in the buffer and removes it from the stream.
