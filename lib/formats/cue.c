@@ -4,21 +4,9 @@
  */
 #import tokenizer
 #import time
+#import error
 
 #define MAXTRACKS 100
-
-pub typedef {
-	bool set;
-	char msg[100];
-} err_t;
-
-void seterr(err_t *err, const char *fmt, ...) {
-	va_list args = {};
-	va_start(args, fmt);
-	vsnprintf(err->msg, sizeof(err->msg), fmt, args);
-	va_end(args);
-	err->set = true;
-}
 
 pub typedef {
 	char title[300];
@@ -36,7 +24,7 @@ pub void cue_free(cue_t *c) {
 
 // Parses cue sheet string s.
 // Returns a cue_t instance.
-pub cue_t *parse(const char *s, err_t *err) {
+pub cue_t *parse(const char *s, error.t *err) {
 	cue_t *c = calloc!(1, sizeof(cue_t));
 	tokenizer.t *b = tokenizer.from_str(s);
 	readcue(c, b, err);
@@ -48,10 +36,13 @@ pub cue_t *parse(const char *s, err_t *err) {
 	return c;
 }
 
-void readcue(cue_t *c, tokenizer.t *b, err_t *err) {
+void readcue(cue_t *c, tokenizer.t *b, error.t *err) {
 	track_t *t = NULL;
 	entry_t e = {};
-	while (readentry(b, &e)) {
+	while (readentry(b, &e, err)) {
+		if (err->set) {
+			return;
+		}
 		switch str (e.type) {
 			case "REM": {} // ignore
 			case "PERFORMER": {} // ignore
@@ -65,14 +56,14 @@ void readcue(cue_t *c, tokenizer.t *b, err_t *err) {
 			}
 			case "TRACK": {
 				if (c->ntracks == MAXTRACKS) {
-					seterr(err, "tracks limit reached (%d)", MAXTRACKS);
+					error.set(err, "tracks limit reached (%d)", MAXTRACKS);
 					return;
 				}
 				t = &c->tracks[c->ntracks++];
 			}
 			case "INDEX": {
 				if (!t) {
-					seterr(err, "unexpected index entry");
+					error.set(err, "unexpected index entry");
 					return;
 				}
 				t->pos = index_pos(&e.data.index);
@@ -114,7 +105,7 @@ typedef {
 } entry_t;
 
 
-bool readentry(tokenizer.t *b, entry_t *e) {
+bool readentry(tokenizer.t *b, entry_t *e, error.t *err) {
 	if (!tokenizer.more(b)) {
 		return false;
 	}
@@ -138,7 +129,7 @@ bool readentry(tokenizer.t *b, entry_t *e) {
 			tokenizer.read_until(b, '\n', e->data.track.kind, sizeof(e->data.track.kind));
 		}
 		case "INDEX": {
-			index(b, &e->data.index);
+			index(b, &e->data.index, err);
 		}
 		case "FILE": {
 			title(b, e->data.file.path, sizeof(e->data.file.path));
@@ -186,7 +177,7 @@ void title(tokenizer.t *b, char *buf, size_t n) {
 	}
 }
 
-void index(tokenizer.t *b, index_t *r) {
+void index(tokenizer.t *b, index_t *r, error.t *err) {
 	// 01 01:12:00
 
 	char val[300] = {};
@@ -200,13 +191,14 @@ void index(tokenizer.t *b, index_t *r) {
 
 	int n = sscanf(val, "%d %d:%d:%d", &r->num, &r->min, &r->sec, &r->frames);
 	if (n != 4) {
-		panic("couldn't parse index: %s", val);
+		error.set(err, "couldn't parse index: %s", val);
+		return;
 	}
 	if (r->num == 0) {
 		return;
 	}
 	if (r->num != 1) {
-		panic("unexpected index number: %s", val);
+		error.set(err, "unexpected index number: %s", val);
 	}
 }
 

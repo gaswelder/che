@@ -1,4 +1,5 @@
 #import clip/vec
+#import error
 #import formats/cue
 #import formats/mp3
 #import os/fs
@@ -62,7 +63,7 @@ track_t *loadcue(const char *cuepath, int *ret_n) {
 	if (!s) {
 		panic("Couldn't read %s", cuepath);
 	}
-	cue.err_t err = {};
+	error.t err = {};
 	cue.cue_t *c = cue.parse(s, &err);
 	if (err.set) {
 		panic("Couldn't parse the cue file: %s\n", err.msg);
