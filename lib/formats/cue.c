@@ -14,11 +14,19 @@ pub typedef {
 } track_t;
 
 pub typedef {
-	track_t tracks[100];
+	track_t *tracks;
 	int ntracks;
 } cue_t;
 
+typedef {
+	int num;
+	int min;
+	int sec;
+	int frames;
+} index_t;
+
 pub void cue_free(cue_t *c) {
+	free(c->tracks);
 	free(c);
 }
 
@@ -26,11 +34,14 @@ pub void cue_free(cue_t *c) {
 // Returns a cue_t instance.
 pub cue_t *parse(const char *s, error.t *err) {
 	cue_t *c = calloc!(1, sizeof(cue_t));
+	c->tracks = calloc!(MAXTRACKS, sizeof(track_t));
+
 	tokenizer.t *b = tokenizer.from_str(s);
 	readcue(c, b, err);
 	tokenizer.free(b);
+
 	if (err->set) {
-		OS.free(c);
+		cue_free(c);
 		return NULL;
 	}
 	return c;
@@ -38,23 +49,50 @@ pub cue_t *parse(const char *s, error.t *err) {
 
 void readcue(cue_t *c, tokenizer.t *b, error.t *err) {
 	track_t *t = NULL;
-	entry_t e = {};
-	while (readentry(b, &e, err)) {
-		if (err->set) {
-			return;
+	// entry_t e = {};
+	while (true) {
+		if (!tokenizer.more(b)) {
+			break;
 		}
-		switch str (e.type) {
-			case "REM": {} // ignore
-			case "PERFORMER": {} // ignore
-			case "FILE": {} // ignore
+
+		tokenizer.hspaces(b);
+		if (tokenizer.peek(b) == '\r') {
+			tokenizer.get(b);
+		}
+		if (tokenizer.peek(b) == '\n') {
+			tokenizer.get(b);
+			continue;
+		}
+
+		// Read entry type.
+		char type[20] = {};
+		tokenizer.read_until(b, ' ', type, sizeof(type));
+		tokenizer.hspaces(b);
+
+		char content[1000] = {};
+		switch str (type) {
+			case "REM": {
+				tokenizer.read_until(b, '\n', content, sizeof(content));
+				if (tokenizer.peek(b) == '\n') tokenizer.get(b);
+			}
+			case "PERFORMER": {
+				readtitle(b, content, sizeof(content));
+				if (tokenizer.peek(b) == '\r') tokenizer.get(b);
+				if (tokenizer.peek(b) == '\n') tokenizer.get(b);
+			}
 			case "TITLE": {
+				readtitle(b, content, sizeof(content));
+				if (tokenizer.peek(b) == '\r') tokenizer.get(b);
+				if (tokenizer.peek(b) == '\n') tokenizer.get(b);
 				// if t is null, this is the release title, ignore.
 				// if t is not null, this is the track's title.
 				if (t) {
-					strcpy(t->title, e.data.title);
+					strcpy(t->title, content);
 				}
 			}
 			case "TRACK": {
+				tokenizer.read_until(b, '\n', content, sizeof(content));
+				if (tokenizer.peek(b) == '\n') tokenizer.get(b);
 				if (c->ntracks == MAXTRACKS) {
 					error.set(err, "tracks limit reached (%d)", MAXTRACKS);
 					return;
@@ -66,106 +104,32 @@ void readcue(cue_t *c, tokenizer.t *b, error.t *err) {
 					error.set(err, "unexpected index entry");
 					return;
 				}
-				t->pos = index_pos(&e.data.index);
+				index_t index = {};
+				readindex(b, &index, err);
+
+				// Only index "01" is the actual track position.
+				// "00" is "pregap", "02" and higher are markers within the track.
+				if (index.num == 1) {
+					t->pos = index_pos(&index);
+				}
+				if (tokenizer.peek(b) == '\n') tokenizer.get(b);
+			}
+			case "FILE": {
+				// readtitle(b, content, sizeof(content));
+				// tokenizer.read_until(b, '\n', e.data.file.kind, sizeof(e.data.file.kind));
+				tokenizer.read_until(b, '\n', content, sizeof(content));
+				if (tokenizer.peek(b) == '\r') tokenizer.get(b);
+				if (tokenizer.peek(b) == '\n') tokenizer.get(b);
 			}
 			default: {
-				panic("unknown entry type: %s", e.type);
+				panic("unknown entry type: '%s'", type);
 			}
 		}
 	}
-}
-
-typedef {
-	int n;
-	char kind[20];
-} trackentry_t;
-
-typedef {
-	char path[100];
-	char kind[20];
-} file_t;
-
-typedef {
-	int num;
-	int min;
-	int sec;
-	int frames;
-} index_t;
-
-typedef {
-	char type[100];
-	union {
-		char rem[1000];
-		char title[100];
-		char performer[100];
-		file_t file;
-		trackentry_t track;
-		index_t index;
-	} data;
-} entry_t;
-
-
-bool readentry(tokenizer.t *b, entry_t *e, error.t *err) {
-	if (!tokenizer.more(b)) {
-		return false;
-	}
-	tokenizer.hspaces(b);
-	tokenizer.read_until(b, ' ', e->type, sizeof(e->type));
-	tokenizer.hspaces(b);
-
-	switch str (e->type) {
-		case "REM": {
-			tokenizer.read_until(b, '\n', e->data.rem, sizeof(e->data.rem));
-		}
-		case "PERFORMER": {
-			title(b, e->data.performer, sizeof(e->data.performer));
-		}
-		case "TITLE": {
-			title(b, e->data.title, sizeof(e->data.title));
-		}
-		case "TRACK": {
-			e->data.track.n = num(b);
-			tokenizer.hspaces(b);
-			tokenizer.read_until(b, '\n', e->data.track.kind, sizeof(e->data.track.kind));
-		}
-		case "INDEX": {
-			index(b, &e->data.index, err);
-		}
-		case "FILE": {
-			title(b, e->data.file.path, sizeof(e->data.file.path));
-			tokenizer.hspaces(b);
-			tokenizer.read_until(b, '\n', e->data.file.kind, sizeof(e->data.file.kind));
-		}
-		default: {
-			panic("unknown entry type: %s", e->type);
-		}
-	}
-	if (tokenizer.peek(b) == '\r') {
-		tokenizer.get(b);
-	}
-	if (tokenizer.peek(b) == '\n') {
-		tokenizer.get(b);
-	}
-	return true;
-}
-
-// Reads a number.
-int num(tokenizer.t *b) {
-	int n = 0;
-	bool ok = false;
-	while (tokenizer.more(b) && isdigit(tokenizer.peek(b))) {
-		n *= 10;
-		n += tokenizer.get(b) - (int)'0';
-		ok = true;
-	}
-	if (!ok) {
-		panic("expected a number");
-	}
-	return n;
 }
 
 // Reads a title into buf.
-void title(tokenizer.t *b, char *buf, size_t n) {
+void readtitle(tokenizer.t *b, char *buf, size_t n) {
 	if (tokenizer.get(b) != '"') {
 		panic("double quotes expected");
 	}
@@ -177,9 +141,9 @@ void title(tokenizer.t *b, char *buf, size_t n) {
 	}
 }
 
-void index(tokenizer.t *b, index_t *r, error.t *err) {
-	// 01 01:12:00
-
+// Reads an index string:
+// 01 01:12:00
+void readindex(tokenizer.t *b, index_t *r, error.t *err) {
 	char val[300] = {};
 	int i = 0;
 	while (tokenizer.more(b)) {
@@ -197,9 +161,6 @@ void index(tokenizer.t *b, index_t *r, error.t *err) {
 	if (r->num == 0) {
 		return;
 	}
-	if (r->num != 1) {
-		error.set(err, "unexpected index number: %s", val);
-	}
 }
 
 time.duration_t index_pos(index_t *r) {
@@ -207,19 +168,6 @@ time.duration_t index_pos(index_t *r) {
 	time.duration_t p = {};
 	time.dur_set(&p, sec, time.SECONDS);
 	return p;
-}
-
-pub track_t *cue_track(cue_t *c, int i)
-{
-	if(i < 0 || i >= c->ntracks) {
-		return NULL;
-	}
-	return &c->tracks[i];
-}
-
-pub int cue_ntracks(cue_t *c)
-{
-	return c->ntracks;
 }
 
 // Returns the absolute position of track t as microseconds.

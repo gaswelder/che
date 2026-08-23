@@ -68,10 +68,10 @@ track_t *loadcue(const char *cuepath, int *ret_n) {
 	if (err.set) {
 		panic("Couldn't parse the cue file: %s\n", err.msg);
 	}
-	int n = cue.cue_ntracks(c);
+	int n = c->ntracks;
 	track_t *tracks = calloc!((size_t) n, sizeof(track_t));
 	for (int i = 0; i < n; i++) {
-		cue.track_t *track = cue.cue_track(c, i);
+		cue.track_t *track = &c->tracks[i];
 		tracks[i].num = i;
 		tracks[i].pos_us = cue.pos_us(track);
 		strcpy(tracks[i].title, track->title);
