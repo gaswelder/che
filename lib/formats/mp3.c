@@ -275,8 +275,7 @@ bool read_xing(reader.t *r, xing_header_t *x) {
     uint8_t magic[4];
     reader.read(r, magic, 4);
 
-    if (memcmp(magic, "Xing", 4) != 0) {
-		// Could also be "Info" but haven't encountered it.
+    if (memcmp(magic, "Xing", 4) != 0 && memcmp(magic, "Info", 4) != 0) {
         return false;
     }
 
