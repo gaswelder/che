@@ -8,19 +8,21 @@ typedef {
 	int64_t duration; // ns
 } range_t;
 
-float SILENCE_LEVEL = 37; // db
-
 wav.reader_t *r = NULL;
 bool loaded = false;
 range_t _val = {};
 
+float SILENCE_LEVEL = 37; // db
+float SILENCE_LENGTH = 1; // s
 bool cumulative = false;
+
 
 int main(int argc, char *argv[]) {
 	OS.setvbuf(stdout, NULL, OS._IOLBF, 0);
-	opt.summary("detects track split points by silence");
+	opt.summary("finds track positions using silence");
 	opt.nargs(1, "<wav-file>");
-	opt.opt_float("l", "silence level in dB (positive)", &SILENCE_LEVEL);
+	opt.opt_float("d", "silence level in dB (positive)", &SILENCE_LEVEL);
+	opt.opt_float("s", "silencee length in seconds", &SILENCE_LENGTH);
 	opt.flag("c", "print cut positions instead of track lengths", &cumulative);
 	char **args = opt.parse(argc, argv);
 
@@ -47,18 +49,20 @@ int main(int argc, char *argv[]) {
 double track() {
 	double dur = 0;
 	while (rmore()) {
-		// Non-silence.
+		// Read non-silence.
 		while (rmore() && next(true)) {
 			dur += consume();
 		}
 
-		// Silence.
+		// Read silence.
 		double sil = 0;
 		while (rmore() && next(false)) {
 			sil += consume();
 		}
 		dur += sil;
-		if (sil > 1) {
+
+		// If silence is big enough, assume the track ends here.
+		if (sil > SILENCE_LENGTH) {
 			break;
 		}
 	}
