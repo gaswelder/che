@@ -31,11 +31,16 @@ int main(int argc, char *argv[]) {
         panic("failed to open wav");
     }
 
+	// Consume initial silence.
 	double dur = 0;
-	while ((loaded || wav.more(r)) && next(false)) {
+	while ((loaded || wav.more(r)) && follows(false)) {
 		dur += consume();
 	}
-	emit(dur + track());
+	// Add first track.
+	dur += track();
+	emit(dur);
+
+	// Read other tracks normally.
 	while (wav.more(r)) {
 		emit(track());
 	}
@@ -50,17 +55,15 @@ double track() {
 	double dur = 0;
 	while (rmore()) {
 		// Read non-silence.
-		while (rmore() && next(true)) {
+		while (rmore() && follows(true)) {
 			dur += consume();
 		}
-
 		// Read silence.
 		double sil = 0;
-		while (rmore() && next(false)) {
+		while (rmore() && follows(false)) {
 			sil += consume();
 		}
 		dur += sil;
-
 		// If silence is big enough, assume the track ends here.
 		if (sil > SILENCE_LENGTH) {
 			break;
@@ -75,9 +78,15 @@ bool rmore() {
 
 int count = 0;
 double total = 0;
+
 void emit(double dur) {
-	count++;
 	total += dur;
+
+	// If this is a tiny track, assume it's part of the current track.
+	if (dur < 2) {
+		return;
+	}
+	count++;
 	printf("%02d. track %02d\t", count, count);
 	if (cumulative) {
 		printtime(total);
@@ -87,7 +96,7 @@ void emit(double dur) {
 	putchar('\n');
 }
 
-bool next(bool x) {
+bool follows(bool x) {
 	if (!loaded) {
 		loaded = true;
 		_val = readval();
