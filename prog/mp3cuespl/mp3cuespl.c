@@ -2,6 +2,7 @@
 #import error
 #import formats/cue
 #import formats/mp3
+#import opt
 #import os/fs
 #import strbuilder
 #import strings
@@ -10,12 +11,10 @@
 #import writer
 
 int main(int argc, char *argv[]) {
-	if (argc != 3) {
-		fprintf(stderr, "Arguments: <cue-file or txt-tracklist> <mp3-file>\n");
-		return 1;
-	}
-	const char *cuepath = argv[1];
-	const char *mp3path = argv[2];
+	opt.nargs(2, "<cue-file or txt-tracklist> <mp3-file>");
+	char **args = opt.parse(argc, argv);
+	const char *cuepath = args[0];
+	const char *mp3path = args[1];
 
 	//
 	// Load the tracklist

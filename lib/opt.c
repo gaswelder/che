@@ -126,6 +126,11 @@ pub char **parse(int argc, char **argv) {
 			exit(1);
 		}
 		if (count != expect_nargs) {
+			if (count > expect_nargs) {
+				fprintf(stderr, "too many arguments, expected %zu, got %zu\n", expect_nargs, count);
+			} else {
+				fprintf(stderr, "too few arguments, expected %zu, got %zu\n", expect_nargs, count);
+			}
 			if (args_summary[0] != '\0') {
 				fprintf(stderr, "Arguments: %s\n", args_summary);
 				exit(1);
