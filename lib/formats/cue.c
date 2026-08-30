@@ -164,7 +164,7 @@ void readindex(tokenizer.t *b, index_t *r, error.t *err) {
 }
 
 time.duration_t index_pos(index_t *r) {
-	int sec = (r->frames / 75) + (r->sec ) + (60 * r->min);
+	int sec = (r->frames / 75) + (r->sec) + (60 * r->min);
 	time.duration_t p = {};
 	time.dur_set(&p, sec, time.SECONDS);
 	return p;
