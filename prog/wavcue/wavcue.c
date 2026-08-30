@@ -10,12 +10,12 @@ typedef {
 
 wav.reader_t *r = NULL;
 bool loaded = false;
+double position = 0;
 range_t _val = {};
 
 float SILENCE_LEVEL = 37; // db
 float SILENCE_LENGTH = 1; // s
 bool cumulative = false;
-
 
 int main(int argc, char *argv[]) {
 	OS.setvbuf(stdout, NULL, OS._IOLBF, 0);
@@ -31,83 +31,73 @@ int main(int argc, char *argv[]) {
         panic("failed to open wav");
     }
 
-	// Consume initial silence.
-	double dur = 0;
-	while ((loaded || wav.more(r)) && follows(false)) {
-		dur += consume();
+	int count = 0;
+	double last_position = 0;
+	while (rmore()) {
+		double s = gotosilence();
+		if (s < SILENCE_LENGTH) {
+			continue;
+		}
+		double dur = position - last_position;
+		last_position = position;
+		if (dur < 2) {
+			continue;
+		}
+		count++;
+		printf("%02d. track %02d\t", count, count);
+		if (cumulative) {
+			printtime(position);
+		} else {
+			printtime(dur);
+		}
+		putchar('\n');		
 	}
-	// Add first track.
-	dur += track();
-	emit(dur);
-
-	// Read other tracks normally.
-	while (wav.more(r)) {
-		emit(track());
+	if (wav.more(r)) {
+		panic("more");
 	}
-	// printf("total = ");
-	// printtime(total);
-	// putchar('\n');
     wav.close_reader(r);
     return 0;
 }
 
-double track() {
-	double dur = 0;
+double gotosilence() {
+	double sil = 0;
 	while (rmore()) {
-		// Read non-silence.
-		while (rmore() && follows(true)) {
-			dur += consume();
+		// Skip non-silence.
+		while (rmore() && peekval() == true) {
+			consume();
 		}
-		// Read silence.
-		double sil = 0;
-		while (rmore() && follows(false)) {
+		// Collect silence.
+		sil = 0;
+		while (rmore() && peekval() == false) {
 			sil += consume();
 		}
-		dur += sil;
-		// If silence is big enough, assume the track ends here.
-		if (sil > SILENCE_LENGTH) {
+		// If the silence is too short, it's not silence.
+		if (sil > 0.2) {
 			break;
 		}
 	}
-	return dur;
+	// printf("#\tsilence %.1fs at %6.2f\n", sil, position);
+	return sil;
 }
 
 bool rmore() {
 	return loaded || wav.more(r);
 }
 
-int count = 0;
-double total = 0;
-
-void emit(double dur) {
-	total += dur;
-
-	// If this is a tiny track, assume it's part of the current track.
-	if (dur < 2) {
-		return;
-	}
-	count++;
-	printf("%02d. track %02d\t", count, count);
-	if (cumulative) {
-		printtime(total);
-	} else {
-		printtime(dur);
-	}
-	putchar('\n');
-}
-
-bool follows(bool x) {
+bool peekval() {
 	if (!loaded) {
 		loaded = true;
 		_val = readval();
 	}
-	return _val.loud == x;
+	return _val.loud;
 }
 
 double consume() {
 	range_t r = _val;
 	loaded = false;
-	return ((double) r.duration) / 1000/1000/1000;
+	double x = ((double) r.duration) / 1000/1000/1000;
+	position += x;
+	return x;
 }
 
 range_t readval() {
