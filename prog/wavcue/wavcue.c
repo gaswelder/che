@@ -15,6 +15,9 @@ range_t _val = {};
 float SILENCE_LEVEL = 37; // db
 float SILENCE_LENGTH = 1; // s
 
+double last_position = 0;
+int count = 0;
+
 int main(int argc, char *argv[]) {
 	OS.setvbuf(stdout, NULL, OS._IOLBF, 0);
 	opt.summary("finds track positions using silence");
@@ -29,30 +32,33 @@ int main(int argc, char *argv[]) {
     }
 
 	printf("FILE \"%s\" WAV\n", args[0]);
-	int count = 0;
-	double last_position = 0;
 	while (rmore()) {
 		double s = gotosilence();
 		if (s < SILENCE_LENGTH) {
 			continue;
 		}
 		double dur = position - last_position;
-		if (dur < 2) {
+		if (dur < 10) {
 			continue;
 		}
-		count++;
-		printf("TRACK %02d AUDIO\n", count);
-		printf("  TITLE \"track %02d\"\n", count);
-		printf("  INDEX 01 ");
-		printcuetime(last_position);
-		printf("\n");
-		last_position = position;
+		emit();
 	}
+	emit();
 	if (wav.more(r)) {
 		panic("more");
 	}
     wav.close_reader(r);
     return 0;
+}
+
+void emit() {
+	count++;
+	printf("TRACK %02d AUDIO\n", count);
+	printf("  TITLE \"track %02d\"\n", count);
+	printf("  INDEX 01 ");
+	printcuetime(last_position);
+	printf("\n");
+	last_position = position;
 }
 
 double gotosilence() {
