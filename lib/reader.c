@@ -20,17 +20,26 @@ pub t *new(void *data, readfunc_t *read, freefunc_t *free) {
 
 // Reads up to n bytes from r to buf.
 // Returns the number of bytes read or a negative value for EOF or an error.
-// Zero return means no bytes to read at the moment.
 pub int read(t *reader, uint8_t *buf, size_t n) {
 	int r = reader->read(reader->data, buf, n);
 	if (r > 0) reader->pos += r;
 	return r;
 }
 
+// Skips n bytes.
 pub void skip(t *reader, size_t n) {
-	uint8_t tmp;
-	for (size_t i = 0; i < n; i++) {
-		read(reader, &tmp, 1);
+	uint8_t tmp[4096];
+	size_t total = 0;
+	while (total < n) {
+		size_t readsize = n - total;
+		if (readsize > 4096) {
+			readsize = 4096;
+		}
+		int r = read(reader, tmp, readsize);
+		if (r < 0) {
+			panic("read failed");
+		}
+		total += r;
 	}
 }
 
