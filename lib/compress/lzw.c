@@ -71,12 +71,14 @@ void addentry(dict_t *dict, uint8_t *word, size_t wordlen) {
 
 // Returns the smallest size in bits that fits all codes in the dictionary.
 uint8_t codewidth(size_t dictsize) {
-	size_t largest_code = dictsize - 1;
-	uint8_t width = 1;
 	size_t maxcode = 1;
-	while (maxcode < largest_code) {
+	uint8_t width = 0;
+	while (maxcode < dictsize) {
 		width++;
 		maxcode *= 2;
+		if (width == 12) {
+			break;
+		}
 	}
 	return width;
 }
