@@ -131,13 +131,20 @@ pub bool buf_skip(t *b, char c) {
 	return false;
 }
 
-pub char *buf_read_set(t *b, const char *set) {
-	char *s = calloc!(10000, 1);
-	char *p = s;
+pub size_t readset(t *b, const char *set, char *buf, size_t size) {
+	size_t i = 0;
 	while (more(b) && strchr(set, peek(b)) != NULL) {
-		*p = get(b);
-		p++;
+		if (i == size) {
+			panic("buf too small");
+		}
+		buf[i++] = get(b);
 	}
+	return i;
+}
+
+pub char *buf_read_set(t *b, const char *set) {
+	char *s = calloc!(4096, 1);
+	readset(b, set, s, 4096);
 	return s;
 }
 
