@@ -1,4 +1,4 @@
-#import tokenizer
+#import scanner
 
 pub typedef {
     char schema[10];
@@ -9,43 +9,43 @@ pub typedef {
 
 pub t *parse(const char *s) {
 	t *r = calloc!(1, sizeof(t));
-    tokenizer.t *buf = tokenizer.from_str(s);
+    scanner.t *buf = scanner.from_str(s);
 
     // http
     char *q = r->schema;
-    while (tokenizer.more(buf) && tokenizer.peek(buf) != ':') {
-        *q++ = tokenizer.get(buf);
+    while (scanner.more(buf) && scanner.peek(buf) != ':') {
+        *q++ = scanner.get(buf);
     }
 
     // ://
-    if (tokenizer.get(buf) != ':' || tokenizer.get(buf) != '/' || tokenizer.get(buf) != '/') {
-        tokenizer.free(buf);
+    if (scanner.get(buf) != ':' || scanner.get(buf) != '/' || scanner.get(buf) != '/') {
+        scanner.free(buf);
 		free(r);
         return NULL;
     }
 
     // domain or ip address
     q = r->hostname;
-    while (tokenizer.more(buf) && tokenizer.peek(buf) != ':' && tokenizer.peek(buf) != '/') {
-        *q++ = tokenizer.get(buf);
+    while (scanner.more(buf) && scanner.peek(buf) != ':' && scanner.peek(buf) != '/') {
+        *q++ = scanner.get(buf);
     }
 
     q = r->port;
-    if (tokenizer.peek(buf) == ':') {
-        tokenizer.get(buf);
-        while (tokenizer.more(buf) && tokenizer.peek(buf) != '/') {
-            *q++ = tokenizer.get(buf);
+    if (scanner.peek(buf) == ':') {
+        scanner.get(buf);
+        while (scanner.more(buf) && scanner.peek(buf) != '/') {
+            *q++ = scanner.get(buf);
         }
     }
 
     q = r->path;
 	*q = '/';
-    if (tokenizer.peek(buf) == '/') {
-        while (tokenizer.more(buf)) {
-            *q++ = tokenizer.get(buf);
+    if (scanner.peek(buf) == '/') {
+        while (scanner.more(buf)) {
+            *q++ = scanner.get(buf);
         }
     }
 
-    tokenizer.free(buf);
+    scanner.free(buf);
     return r;
 }

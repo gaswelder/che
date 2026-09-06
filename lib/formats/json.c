@@ -1,7 +1,7 @@
 #import error
 #import strbuilder
 #import strings
-#import tokenizer
+#import scanner
 #import writer
 
 // JSON data is represented as a tree where each node is an object of type `val_t`.
@@ -230,15 +230,15 @@ pub double numval(val_t *v) {
 // The root node has to be freed using the `json_free`.
 // The `json_free` function must be called only on root nodes.
 pub val_t *parse(const char *s, error.t *err) {
-	tokenizer.t *p = tokenizer.from_str(s);
+	scanner.t *p = scanner.from_str(s);
 	val_t *result = read_node(p, err);
-	tokenizer.free(p);
+	scanner.free(p);
 	return result;
 }
 
 // Reads one node and returns it.
 // Returns null in case of error.
-val_t *read_node(tokenizer.t *p, error.t *err) {
+val_t *read_node(scanner.t *p, error.t *err) {
 	if (!tok_more(p)) {
 		error.set(err, "no more input");
 		return NULL;
@@ -258,7 +258,7 @@ val_t *read_node(tokenizer.t *p, error.t *err) {
 	return read_kw(p, err);
 }
 
-val_t *read_array(tokenizer.t *p, error.t *err) {
+val_t *read_array(scanner.t *p, error.t *err) {
 	if (!expect(p, '[', err)) {
 		return NULL;
 	}
@@ -284,7 +284,7 @@ val_t *read_array(tokenizer.t *p, error.t *err) {
 	return a;
 }
 
-val_t *read_dict(tokenizer.t *p, error.t *err) {
+val_t *read_dict(scanner.t *p, error.t *err) {
 	if (!expect(p, '{', err)) {
 		return NULL;
 	}
@@ -319,7 +319,7 @@ val_t *read_dict(tokenizer.t *p, error.t *err) {
 	return o;
 }
 
-val_t *read_str(tokenizer.t *p, error.t *err) {
+val_t *read_str(scanner.t *p, error.t *err) {
 	char *s = readstr(p, err);
 	if (!s) {
 		return NULL;
@@ -329,9 +329,9 @@ val_t *read_str(tokenizer.t *p, error.t *err) {
 	return n;
 }
 
-val_t *read_num(tokenizer.t *p, error.t *err) {
+val_t *read_num(scanner.t *p, error.t *err) {
 	char buf[100] = {};
-	if (!tokenizer.num(p, buf, sizeof(buf))) {
+	if (!scanner.num(p, buf, sizeof(buf))) {
 		error.set(err, "failed to read number");
 		return NULL;
 	}
@@ -345,35 +345,35 @@ val_t *read_num(tokenizer.t *p, error.t *err) {
 	return v;
 }
 
-val_t *read_kw(tokenizer.t *p, error.t *err) {
-	if (tokenizer.skip_literal(p, "true")) {
+val_t *read_kw(scanner.t *p, error.t *err) {
+	if (scanner.skip_literal(p, "true")) {
 		val_t *n = newnode(TBOOL);
 		n->val.boolval = true;
 		return n;
 	}
-	if (tokenizer.skip_literal(p, "false")) {
+	if (scanner.skip_literal(p, "false")) {
 		val_t *n = newnode(TBOOL);
 		n->val.boolval = false;
 		return n;
 	}
-	if (tokenizer.skip_literal(p, "null")) {
+	if (scanner.skip_literal(p, "null")) {
 		return newnode(TNULL);
 	}
 	error.set(err, "unexpected character: %c", tok_peek(p));
 	return NULL;
 }
 
-char *readstr(tokenizer.t *p, error.t *err) {
+char *readstr(scanner.t *p, error.t *err) {
 	if (!expect(p, '"', err)) {
 		return NULL;
 	}
 	size_t cap = 64;
 	size_t len = 0;
 	char *s = calloc!(cap, 1);
-	while (tokenizer.more(p) && tokenizer.peek(p) != '"') {
-		int c = tokenizer.get(p);
+	while (scanner.more(p) && scanner.peek(p) != '"') {
+		int c = scanner.get(p);
 		if (c == '\\') {
-			c = tokenizer.get(p);
+			c = scanner.get(p);
 			if (c == EOF) {
 				error.set(err, "Unexpected end of input");
 				free(s);
@@ -398,29 +398,29 @@ char *readstr(tokenizer.t *p, error.t *err) {
 }
 
 // Returns true if there are more characters to read.
-bool tok_more(tokenizer.t *p) {
-	tokenizer.spaces(p);
-	return tokenizer.more(p);
+bool tok_more(scanner.t *p) {
+	scanner.spaces(p);
+	return scanner.more(p);
 }
 
 // Returns next character without removing it.
-int tok_peek(tokenizer.t *p) {
-	tokenizer.spaces(p);
-	return tokenizer.peek(p);
+int tok_peek(scanner.t *p) {
+	scanner.spaces(p);
+	return scanner.peek(p);
 }
 
 // Reads character c and returns true.
 // Returns false and does nothing if the next character is not c.
-bool eat(tokenizer.t *p, int c) {
+bool eat(scanner.t *p, int c) {
 	if (tok_peek(p) == c) {
-		tokenizer.get(p);
+		scanner.get(p);
 		return true;
 	}
 	return false;
 }
 
-bool expect(tokenizer.t *p, int c, error.t *err) {
-	if (!tokenizer.more(p)) {
+bool expect(scanner.t *p, int c, error.t *err) {
+	if (!scanner.more(p)) {
 		error.set(err, "unexpected end of input");
 		return false;
 	}

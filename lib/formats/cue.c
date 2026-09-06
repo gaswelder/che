@@ -2,7 +2,7 @@
  * CUE format parser
  * http://wiki.hydrogenaud.io/index.php?title=Cue_sheet
  */
-#import tokenizer
+#import scanner
 #import time
 #import error
 
@@ -36,9 +36,9 @@ pub cue_t *parse(const char *s, error.t *err) {
 	cue_t *c = calloc!(1, sizeof(cue_t));
 	c->tracks = calloc!(MAXTRACKS, sizeof(track_t));
 
-	tokenizer.t *b = tokenizer.from_str(s);
+	scanner.t *b = scanner.from_str(s);
 	readcue(c, b, err);
-	tokenizer.free(b);
+	scanner.free(b);
 
 	if (err->set) {
 		cue_free(c);
@@ -47,43 +47,43 @@ pub cue_t *parse(const char *s, error.t *err) {
 	return c;
 }
 
-void readcue(cue_t *c, tokenizer.t *b, error.t *err) {
+void readcue(cue_t *c, scanner.t *b, error.t *err) {
 	track_t *t = NULL;
 	// entry_t e = {};
 	while (true) {
-		if (!tokenizer.more(b)) {
+		if (!scanner.more(b)) {
 			break;
 		}
 
-		tokenizer.hspaces(b);
-		if (tokenizer.peek(b) == '\r') {
-			tokenizer.get(b);
+		scanner.hspaces(b);
+		if (scanner.peek(b) == '\r') {
+			scanner.get(b);
 		}
-		if (tokenizer.peek(b) == '\n') {
-			tokenizer.get(b);
+		if (scanner.peek(b) == '\n') {
+			scanner.get(b);
 			continue;
 		}
 
 		// Read entry type.
 		char type[20] = {};
-		tokenizer.read_until(b, ' ', type, sizeof(type));
-		tokenizer.hspaces(b);
+		scanner.read_until(b, ' ', type, sizeof(type));
+		scanner.hspaces(b);
 
 		char content[1000] = {};
 		switch str (type) {
 			case "REM": {
-				tokenizer.read_until(b, '\n', content, sizeof(content));
-				if (tokenizer.peek(b) == '\n') tokenizer.get(b);
+				scanner.read_until(b, '\n', content, sizeof(content));
+				if (scanner.peek(b) == '\n') scanner.get(b);
 			}
 			case "PERFORMER": {
 				readtitle(b, content, sizeof(content));
-				if (tokenizer.peek(b) == '\r') tokenizer.get(b);
-				if (tokenizer.peek(b) == '\n') tokenizer.get(b);
+				if (scanner.peek(b) == '\r') scanner.get(b);
+				if (scanner.peek(b) == '\n') scanner.get(b);
 			}
 			case "TITLE": {
 				readtitle(b, content, sizeof(content));
-				if (tokenizer.peek(b) == '\r') tokenizer.get(b);
-				if (tokenizer.peek(b) == '\n') tokenizer.get(b);
+				if (scanner.peek(b) == '\r') scanner.get(b);
+				if (scanner.peek(b) == '\n') scanner.get(b);
 				// if t is null, this is the release title, ignore.
 				// if t is not null, this is the track's title.
 				if (t) {
@@ -91,8 +91,8 @@ void readcue(cue_t *c, tokenizer.t *b, error.t *err) {
 				}
 			}
 			case "TRACK": {
-				tokenizer.read_until(b, '\n', content, sizeof(content));
-				if (tokenizer.peek(b) == '\n') tokenizer.get(b);
+				scanner.read_until(b, '\n', content, sizeof(content));
+				if (scanner.peek(b) == '\n') scanner.get(b);
 				if (c->ntracks == MAXTRACKS) {
 					error.set(err, "tracks limit reached (%d)", MAXTRACKS);
 					return;
@@ -112,14 +112,14 @@ void readcue(cue_t *c, tokenizer.t *b, error.t *err) {
 				if (index.num == 1) {
 					t->pos = index_pos(&index);
 				}
-				if (tokenizer.peek(b) == '\n') tokenizer.get(b);
+				if (scanner.peek(b) == '\n') scanner.get(b);
 			}
 			case "FILE": {
 				// readtitle(b, content, sizeof(content));
-				// tokenizer.read_until(b, '\n', e.data.file.kind, sizeof(e.data.file.kind));
-				tokenizer.read_until(b, '\n', content, sizeof(content));
-				if (tokenizer.peek(b) == '\r') tokenizer.get(b);
-				if (tokenizer.peek(b) == '\n') tokenizer.get(b);
+				// scanner.read_until(b, '\n', e.data.file.kind, sizeof(e.data.file.kind));
+				scanner.read_until(b, '\n', content, sizeof(content));
+				if (scanner.peek(b) == '\r') scanner.get(b);
+				if (scanner.peek(b) == '\n') scanner.get(b);
 			}
 			default: {
 				panic("unknown entry type: '%s'", type);
@@ -129,25 +129,25 @@ void readcue(cue_t *c, tokenizer.t *b, error.t *err) {
 }
 
 // Reads a title into buf.
-void readtitle(tokenizer.t *b, char *buf, size_t n) {
-	if (tokenizer.get(b) != '"') {
+void readtitle(scanner.t *b, char *buf, size_t n) {
+	if (scanner.get(b) != '"') {
 		panic("double quotes expected");
 	}
-	if (!tokenizer.read_until(b, '"', buf, n)) {
+	if (!scanner.read_until(b, '"', buf, n)) {
 		panic("failed to read title");
 	}
-	if (tokenizer.get(b) != '"') {
+	if (scanner.get(b) != '"') {
 		panic("double quotes expected");
 	}
 }
 
 // Reads an index string:
 // 01 01:12:00
-void readindex(tokenizer.t *b, index_t *r, error.t *err) {
+void readindex(scanner.t *b, index_t *r, error.t *err) {
 	char val[300] = {};
 	int i = 0;
-	while (tokenizer.more(b)) {
-		int ch = tokenizer.get(b);
+	while (scanner.more(b)) {
+		int ch = scanner.get(b);
 		val[i++] = ch;
 		if(ch == '\n') break;
 	}

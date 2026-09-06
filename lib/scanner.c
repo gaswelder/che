@@ -21,15 +21,15 @@ pub t *file(FILE *f) {
 	return b;
 }
 
-// Returns a new tokenizer reading from string s.
-// The string must not be deallocated while the tokenizer is in use.
+// Returns a new scanner reading from string s.
+// The string must not be deallocated while the scanner is in use.
 pub t *from_str(const char *s) {
 	t *b = new(reader.string(s));
 	b->reader_own = true;
 	return b;
 }
 
-// Returns a tokenizer instance reading from reader r.
+// Returns a scanner instance reading from reader r.
 pub t *new(reader.t *r) {
 	if (!r) panic("got null reader");
 	t *b = calloc!(1, sizeof(t));

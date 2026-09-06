@@ -1,4 +1,4 @@
-#import tokenizer
+#import scanner
 
 // Current styling, indexes are the style name constants.
 enum { ALIGN, FONTSIZE, FONT }
@@ -87,24 +87,24 @@ int main(int argc, char *argv[]) {
 		fprintf(stderr, "failed to open '%s': %s\n", argv[1], strerror(errno));
 		return 1;
 	}
-	tokenizer.t *t = tokenizer.file(f);
+	scanner.t *t = scanner.file(f);
 	body(t);
-	tokenizer.free(t);
+	scanner.free(t);
 	fclose(f);
 	return 0;
 }
 
-void body(tokenizer.t *t) {
+void body(scanner.t *t) {
 	expect(t, '{');
-	while (tokenizer.more(t)) {
-		if (tokenizer.peek(t) == '}') {
+	while (scanner.more(t)) {
+		if (scanner.peek(t) == '}') {
 			break;
 		}
-		if (tokenizer.peek(t) == '\\') {
+		if (scanner.peek(t) == '\\') {
 			control(t);
 			continue;
 		}
-		addchar(tokenizer.get(t));
+		addchar(scanner.get(t));
 	}
 	expect(t, '}');
 	if (doc_started) {
@@ -112,7 +112,7 @@ void body(tokenizer.t *t) {
 	}
 }
 
-void control(tokenizer.t *t) {
+void control(scanner.t *t) {
 	char buf[20] = {};
 	read_control(t, buf);
 	switch str (buf) {
@@ -138,47 +138,47 @@ void control(tokenizer.t *t) {
 	}
 }
 
-void deflang(tokenizer.t *t) {
+void deflang(scanner.t *t) {
 	expect(t, '{');
 	expect_control(t, "fonttbl");
 	fonttbl(t);
 	expect(t, '}');
 }
 
-void fonttbl(tokenizer.t *t) {
+void fonttbl(scanner.t *t) {
 	char font[100] = {};
 	expect(t, '{');
 	expect_control(t, "f0");
 	expect_control(t, "fnil");
 	expect_control(t, "fcharset0");
-	tokenizer.read_until(t, ';', font, sizeof(font));
+	scanner.read_until(t, ';', font, sizeof(font));
 	expect(t, ';');
 	expect(t, '}');
 }
 
 // -------------------
 
-void read_control(tokenizer.t *t, char *buf) {
+void read_control(scanner.t *t, char *buf) {
 	expect(t, '\\');
 	char *p = buf;
-	while (tokenizer.more(t) && OS.isalnum(tokenizer.peek(t))) {
-		*p++ = tokenizer.get(t);
+	while (scanner.more(t) && OS.isalnum(scanner.peek(t))) {
+		*p++ = scanner.get(t);
 	}
-	if (tokenizer.peek(t) == '-') {
-		*p++ = tokenizer.get(t);
-		while (isdigit(tokenizer.peek(t))) *p++ = tokenizer.get(t);
+	if (scanner.peek(t) == '-') {
+		*p++ = scanner.get(t);
+		while (isdigit(scanner.peek(t))) *p++ = scanner.get(t);
 	}
-	while (isspace(tokenizer.peek(t))) tokenizer.get(t);
+	while (isspace(scanner.peek(t))) scanner.get(t);
 }
 
-void expect(tokenizer.t *t, int c) {
-	int r = tokenizer.get(t);
+void expect(scanner.t *t, int c) {
+	int r = scanner.get(t);
 	if (r != c) {
 		panic("expected %c, got %c", c, r);
 	}
 }
 
-void expect_control(tokenizer.t *t, char *control) {
+void expect_control(scanner.t *t, char *control) {
 	char buf[20] = {};
 	read_control(t, buf);
 	if (strcmp(buf, control) != 0) {

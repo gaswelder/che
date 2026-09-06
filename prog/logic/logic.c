@@ -1,5 +1,5 @@
 #import clip/map
-#import tokenizer
+#import scanner
 #import strings
 
 enum { FUNC, VAR, CONST }
@@ -136,12 +136,12 @@ bool eq(term_t *x, *y) {
     return true;
 }
 
-term_t *parse_term1(tokenizer.t *b) {
+term_t *parse_term1(scanner.t *b) {
     term_t *t = calloc!(1, sizeof(term_t));
 
     int n = 0;
-    while (isalpha(tokenizer.peek(b))) {
-        t->name[n++] = tokenizer.get(b);
+    while (isalpha(scanner.peek(b))) {
+        t->name[n++] = scanner.get(b);
     }
 
     if (strings.allupper(t->name)) {
@@ -149,18 +149,18 @@ term_t *parse_term1(tokenizer.t *b) {
         return t;
     }
 
-    if (tokenizer.buf_skip(b, '(')) {
+    if (scanner.buf_skip(b, '(')) {
         t->type = FUNC;
         while (true) {
             t->args[t->args_length++] = parse_term1(b);
-            if (tokenizer.buf_skip(b, ',')) {
-                tokenizer.buf_skip_set(b, " ");
+            if (scanner.buf_skip(b, ',')) {
+                scanner.buf_skip_set(b, " ");
                 continue;
             }
             break;
         }
-        if (!tokenizer.buf_skip(b, ')')) {
-            panic("missing closing brace: '%c'", tokenizer.peek(b));
+        if (!scanner.buf_skip(b, ')')) {
+            panic("missing closing brace: '%c'", scanner.peek(b));
         }
         return t;
     }
@@ -169,7 +169,7 @@ term_t *parse_term1(tokenizer.t *b) {
 }
 
 term_t *parse_term(const char *s) {
-    return parse_term1(tokenizer.from_str(s));
+    return parse_term1(scanner.from_str(s));
 }
 
 void print_map(map.map_t *m) {

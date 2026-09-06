@@ -2,7 +2,7 @@
 #import os/fs
 #import mime
 #import os/net
-#import tokenizer
+#import scanner
 #import reader
 #import strbuilder
 #import strings
@@ -230,32 +230,32 @@ bool parse_query(request_t *r) {
 
 
 pub bool parse_response(reader.t *re, response_t *r) {
-	tokenizer.t *b = tokenizer.new(re);
+	scanner.t *b = scanner.new(re);
 	if (!read_status_line(b, r)) {
-		tokenizer.free(b);
+		scanner.free(b);
 		return false;
 	}
-	while (tokenizer.more(b)) {
-		if (tokenizer.skip_literal(b, "\r\n")) {
+	while (scanner.more(b)) {
+		if (scanner.skip_literal(b, "\r\n")) {
 			break;
 		}
 		header_t *h = &r->headers[r->nheaders++];
 		if (!read_header(b, h)) {
-			tokenizer.free(b);
+			scanner.free(b);
 			return false;
 		}
 	}
 	bool ok = read_body(b, r);
-	tokenizer.free(b);
+	scanner.free(b);
     return ok;
 }
 
-bool read_body(tokenizer.t *b, response_t *r) {
+bool read_body(scanner.t *b, response_t *r) {
 	const char *tmp = get_res_header(r, "Content-Length");
 	if (tmp) {
 		r->content_length = atoi(tmp);
 		for (int i = 0; i < r->content_length; i++) {
-			char c = tokenizer.get(b);
+			char c = scanner.get(b);
 			if (c == EOF) {
 				return false;
 			}
@@ -268,11 +268,11 @@ bool read_body(tokenizer.t *b, response_t *r) {
 	tmp = get_res_header(r, "Connection");
 	if (!strcmp(tmp, "close")) {
 		size_t i = 0;
-		while (tokenizer.more(b)) {
+		while (scanner.more(b)) {
 			if (i + 1 == sizeof(r->body)) {
 				panic("body buffer too small");
 			}
-			r->body[i++] = tokenizer.get(b);
+			r->body[i++] = scanner.get(b);
 		}
 		return true;
 	}
@@ -280,22 +280,22 @@ bool read_body(tokenizer.t *b, response_t *r) {
 	return false;
 }
 
-bool read_status_line(tokenizer.t *b, response_t *r) {
+bool read_status_line(scanner.t *b, response_t *r) {
 	// HTTP/1.1
 	for (int i = 0; i < 8; i++) {
-		r->version[i] = tokenizer.get(b);
+		r->version[i] = scanner.get(b);
 	}
 	if (strcmp(r->version, "HTTP/1.0") && strcmp(r->version, "HTTP/1.1")) {
 		return false;
 	}
 
     // space
-    if (tokenizer.get(b) != ' ') return false;
+    if (scanner.get(b) != ' ') return false;
 
 	// 200
 	r->status = 0;
 	for (int i = 0; i < 3; i++) {
-		char c = tokenizer.get(b);
+		char c = scanner.get(b);
 		int n = strings.num_from_ascii(c);
 		if (n < 0) return false;
 		r->status *= 10;
@@ -303,36 +303,36 @@ bool read_status_line(tokenizer.t *b, response_t *r) {
 	}
 
 	// space
-	if (tokenizer.get(b) != ' ') return false;
+	if (scanner.get(b) != ' ') return false;
 
 	// status text
-	while (tokenizer.more(b) && tokenizer.peek(b) != '\r') {
-		tokenizer.get(b);
+	while (scanner.more(b) && scanner.peek(b) != '\r') {
+		scanner.get(b);
 	}
 
 	// eol
-	if (!tokenizer.skip_literal(b, "\r\n")) {
+	if (!scanner.skip_literal(b, "\r\n")) {
 		return false;
 	}
 	return true;
 }
 
-bool read_header(tokenizer.t *b, header_t *h) {
+bool read_header(scanner.t *b, header_t *h) {
 	char *tmp = h->name;
-	while (tokenizer.more(b) && tokenizer.peek(b) != ':') {
-		*tmp++ = tokenizer.get(b);
+	while (scanner.more(b) && scanner.peek(b) != ':') {
+		*tmp++ = scanner.get(b);
 	}
 	// : space
-	if (!tokenizer.skip_literal(b, ": ")) {
+	if (!scanner.skip_literal(b, ": ")) {
 		return false;
 	}
 	// value
 	tmp = h->value;
-	while (tokenizer.more(b) && tokenizer.peek(b) != '\r') {
-		*tmp++ = tokenizer.get(b);
+	while (scanner.more(b) && scanner.peek(b) != '\r') {
+		*tmp++ = scanner.get(b);
 	}
 	// eol
-	if (!tokenizer.skip_literal(b, "\r\n")) {
+	if (!scanner.skip_literal(b, "\r\n")) {
 		return false;
 	}
 	return true;
@@ -342,32 +342,32 @@ bool read_header(tokenizer.t *b, header_t *h) {
 // Returns true on success.
 pub bool read_request(reader.t *br, request_t *r) {
     memset(r, 0, sizeof(request_t));
-	tokenizer.t *b = tokenizer.new(br);
+	scanner.t *b = scanner.new(br);
 	
 	// GET /path/blog/file1.html?a=1&b=2 HTTP/1.0\r\n
 	bool ok = true
-		&& tokenizer.read_until(b, ' ', r->method, sizeof(r->method))
-		&& tokenizer.buf_skip(b, ' ')
-		&& tokenizer.read_until(b, ' ', r->uri, sizeof(r->uri))
-		&& tokenizer.buf_skip(b, ' ')
-		&& tokenizer.read_until(b, '\r', r->version, sizeof(r->version))
-		&& tokenizer.skip_literal(b, "\r\n");
+		&& scanner.read_until(b, ' ', r->method, sizeof(r->method))
+		&& scanner.buf_skip(b, ' ')
+		&& scanner.read_until(b, ' ', r->uri, sizeof(r->uri))
+		&& scanner.buf_skip(b, ' ')
+		&& scanner.read_until(b, '\r', r->version, sizeof(r->version))
+		&& scanner.skip_literal(b, "\r\n");
 	ok = ok && parse_query(r);
 
 	// Header: Value\r\n ...
 	while (ok) {
 		// Empty line terminates the headers list.
-		if (tokenizer.skip_literal(b, "\r\n")) break;
+		if (scanner.skip_literal(b, "\r\n")) break;
 
 		header_t *h = &r->headers[r->nheaders];
 		ok = true
-			&& tokenizer.read_until(b, ':', h->name, sizeof(h->name))
-			&& tokenizer.skip_literal(b, ": ")
-			&& tokenizer.read_until(b, '\r', h->value, sizeof(h->value))
-			&& tokenizer.skip_literal(b, "\r\n");
+			&& scanner.read_until(b, ':', h->name, sizeof(h->name))
+			&& scanner.skip_literal(b, ": ")
+			&& scanner.read_until(b, '\r', h->value, sizeof(h->value))
+			&& scanner.skip_literal(b, "\r\n");
 		if (ok) r->nheaders++;
 	}
-	tokenizer.free(b);
+	scanner.free(b);
     return ok;
 }
 

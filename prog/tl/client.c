@@ -1,5 +1,5 @@
 #import os/proc
-#import tokenizer
+#import scanner
 #import strings
 #import os/net
 
@@ -138,10 +138,10 @@ torr_t parseline(char *line)
 	// 41	 n/a		None  Unknown	  0.0	 0.0   None  Idle		  Books
 	// 38*	n/a		None  Unknown	  0.0	 0.0   None  Stopped	   name
 
-	tokenizer.t *b = tokenizer.from_str(line);
+	scanner.t *b = scanner.from_str(line);
 
 	torr_t t = {};
-	tokenizer.buf_skip_set(b, " \t");
+	scanner.buf_skip_set(b, " \t");
 	// ID: 1 | 38*
 	word(b, t.id, sizeof(t.id));
 	// "Done": 20% | n/a
@@ -155,7 +155,7 @@ torr_t parseline(char *line)
 	word(b, t.down, sizeof(t.down));
 	word(b, t.ratio, sizeof(t.ratio));
 	// "Status": Idle | Stopped | Up & Down
-	if (tokenizer.skip_literal(b, "Up & Down")) {
+	if (scanner.skip_literal(b, "Up & Down")) {
 		strcpy(t.status, "Up & Down");
 	}
 	else word(b, t.status, sizeof(t.status));
@@ -165,27 +165,27 @@ torr_t parseline(char *line)
 	return t;
 }
 
-void word(tokenizer.t *b, char *p, size_t n) {
-	while (tokenizer.more(b) && tokenizer.peek(b) != ' ') {
+void word(scanner.t *b, char *p, size_t n) {
+	while (scanner.more(b) && scanner.peek(b) != ' ') {
 		if (n == 0) return;
 		n--;
-		*p++ = tokenizer.get(b);
+		*p++ = scanner.get(b);
 	}
 	spaces(b);
 }
 
-void spaces(tokenizer.t *b) {
-	while (tokenizer.more(b) && tokenizer.peek(b) == ' ') {
-		tokenizer.get(b);
+void spaces(scanner.t *b) {
+	while (scanner.more(b) && scanner.peek(b) == ' ') {
+		scanner.get(b);
 	}
 }
 
-void size(tokenizer.t *b, char *p, size_t n) {
-	if (isdigit(tokenizer.peek(b))) {
-		while (tokenizer.more(b) && tokenizer.peek(b) != ' ') {
+void size(scanner.t *b, char *p, size_t n) {
+	if (isdigit(scanner.peek(b))) {
+		while (scanner.more(b) && scanner.peek(b) != ' ') {
 			if (n == 0) return;
 			n--;
-			*p++ = tokenizer.get(b);
+			*p++ = scanner.get(b);
 		}
 		spaces(b);
 		word(b, p, n);
@@ -194,11 +194,11 @@ void size(tokenizer.t *b, char *p, size_t n) {
 	}
 }
 
-void rest(tokenizer.t *b, char *p, size_t n) {
-	while (tokenizer.more(b)) {
+void rest(scanner.t *b, char *p, size_t n) {
+	while (scanner.more(b)) {
 		if (n == 0) return;
 		n--;
-		*p++ = tokenizer.get(b);
+		*p++ = scanner.get(b);
 	}
 }
 

@@ -1,7 +1,7 @@
-#import tokenizer
+#import scanner
 
 pub typedef {
-	tokenizer.t *b;
+	scanner.t *b;
 	int vals;
 	char valbuf[4096];
 	bool firstval;
@@ -11,14 +11,14 @@ pub typedef {
 // Creates a new CSV reader for stdin.
 pub reader_t *newreader() {
 	reader_t *r = calloc!(1, sizeof(reader_t));
-	r->b = tokenizer.file(stdin);
+	r->b = scanner.file(stdin);
 	r->firstval = true;
 	return r;
 }
 
 // Releases the reader.
 pub void freereader(reader_t *r) {
-	if (r->b) tokenizer.free(r->b);
+	if (r->b) scanner.free(r->b);
 	free(r);
 }
 
@@ -27,16 +27,16 @@ pub void freereader(reader_t *r) {
 pub bool readval(reader_t *r) {
 	// If this is not the first column, expect a comma.
 	if (!r->firstval) {
-		if (tokenizer.peek(r->b) != ',') {
+		if (scanner.peek(r->b) != ',') {
 			return false;
 		}
-		tokenizer.get(r->b);
+		scanner.get(r->b);
 	}
 	r->firstval = false;
 
-	int next = tokenizer.peek(r->b);
+	int next = scanner.peek(r->b);
 	if (next == '\n' || next == '\r') return false;
-	if (!tokenizer.more(r->b)) return false;
+	if (!scanner.more(r->b)) return false;
 
 	if (next == '"') {
 		read_quoted_value(r);
@@ -44,17 +44,17 @@ pub bool readval(reader_t *r) {
 	}
 
 	char *p = r->valbuf;
-	while (tokenizer.more(r->b) && !peekany(r->b, ",\r\n")) {
-		*p++ = tokenizer.get(r->b);
+	while (scanner.more(r->b) && !peekany(r->b, ",\r\n")) {
+		*p++ = scanner.get(r->b);
 	}
 	*p = '\0';
 	return true;
 }
 
-bool peekany(tokenizer.t *b, const char *chars) {
+bool peekany(scanner.t *b, const char *chars) {
 	const char *p = chars;
 	while (*p != '\0') {
-		if (tokenizer.peek(b) == *p) {
+		if (scanner.peek(b) == *p) {
 			return true;
 		}
 		p++;
@@ -68,9 +68,9 @@ pub bool nextline(reader_t *r) {
 	while (true) if (!readval(r)) break;
 
 	bool ok = false;
-	while (tokenizer.peek(r->b) == '\r' || tokenizer.peek(r->b) == '\n') {
+	while (scanner.peek(r->b) == '\r' || scanner.peek(r->b) == '\n') {
 		ok = true;
-		tokenizer.get(r->b);
+		scanner.get(r->b);
 	}
 	r->firstval = true;
 	return ok;
@@ -82,25 +82,25 @@ pub const char *val(reader_t *r) {
 }
 
 void read_quoted_value(reader_t *r) {
-	tokenizer.t *b = r->b;
+	scanner.t *b = r->b;
 
 	// Opening quote
-	if (!tokenizer.buf_skip(b, '"')) {
-		panic("expected '\"', got '%c'", tokenizer.peek(b));
+	if (!scanner.buf_skip(b, '"')) {
+		panic("expected '\"', got '%c'", scanner.peek(b));
 	}
 
 	// Content + closing quote
 	char *p = r->valbuf;
 	while (true) {
-		int c = tokenizer.get(b);
+		int c = scanner.get(b);
 		if (c == EOF) {
 			panic("unterminated quoted value");
 		}
 
 		if (c == '\"') {
 			// Two quotes in a row is an escaped quote.
-			if (tokenizer.peek(b) == '\"') {
-				tokenizer.get(b);
+			if (scanner.peek(b) == '\"') {
+				scanner.get(b);
 			} else {
 				*p = '\0';
 				break;
