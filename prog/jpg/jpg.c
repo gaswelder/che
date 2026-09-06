@@ -1,6 +1,7 @@
 #import formats/jpg
 #import formats/png
 #import image
+#import error
 
 int main(int argc, char *argv[]) {
 	if (argc == 1) {
@@ -8,7 +9,7 @@ int main(int argc, char *argv[]) {
 		drawbasis();
 		return 0;
 	}
-	jpg.err_t err = {};
+	error.t err = {};
     jpg.jpeg_t *j = jpg.read(argv[1], &err);
 	if (err.set) {
 		fprintf(stderr, "failed to parse image: %s\n", err.msg);

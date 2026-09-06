@@ -5,23 +5,11 @@
 #import reader
 // #import dbg
 #import formats/tiff
-
-pub typedef {
-	bool set;
-	char msg[100];
-} err_t;
-
-void seterr(err_t *err, const char *fmt, ...) {
-	va_list args = {};
-	va_start(args, fmt);
-	vsnprintf(err->msg, sizeof(err->msg), fmt, args);
-	va_end(args);
-	err->set = true;
-}
+#import error
 
 const double PI = 3.141592653589793238462643383279502884197169399375105820974944;
 
-const char *ids[] = { "invalid (0)", "Y", "Cb", "Cr", "I", "Q" };
+const char *component_ids[] = { "invalid (0)", "Y", "Cb", "Cr", "I", "Q" };
 
 pub typedef {
 	uint8_t id; // 1 = Y, 2 = Cb, 3 = Cr, 4 = I, 5 = Q
@@ -37,9 +25,14 @@ pub typedef {
 	uint16_t restart_interval; // how often to reset the decoder, in MCUs.
 	uint8_t ncomponents;
 	component_t components[3];
+	int mcux; // MCU size in pixels, = 8*max(hsize)
+	int mcuy; // = 8*max(vsize)
+	uint8_t dc_table[3]; // SOS huffman table ids, indexed by component
+	uint8_t ac_table[3];
+	int orientation; // EXIF orientation (1..8), 1 = as stored
 } jpeg_t;
 
-pub jpeg_t *read(const char *path, err_t *err) {
+pub jpeg_t *read(const char *path, error.t *err) {
 	FILE *f = fopen(path, "rb");
 	reader.t *R = reader.file(f);
 	jpeg_t *self = calloc!(1, sizeof(jpeg_t));
@@ -72,7 +65,39 @@ pub jpeg_t *read(const char *path, err_t *err) {
 	}
 	reader.free(R);
 	fclose(f);
+	if (self->img && self->orientation > 1) {
+		self->img = fix_orientation(self->img, self->orientation);
+	}
 	return self;
+}
+
+image.image_t *fix_orientation(image.image_t *img, int orient) {
+	int w = img->width;
+	int h = img->height;
+	int nw = w;
+	int nh = h;
+	switch (orient) {
+		case 5, 6, 7, 8: { nw = h; nh = w; }
+	}
+	image.image_t *r = image.new(nw, nh);
+	for (int x = 0; x < nw; x++) {
+		for (int y = 0; y < nh; y++) {
+			int sx = x;
+			int sy = y;
+			switch (orient) {
+				case 2: { sx = w-1-x; } // flip horizontal
+				case 3: { sx = w-1-x; sy = h-1-y; } // 180
+				case 4: { sy = h-1-y; } // flip vertical
+				case 5: { sx = y; sy = x; } // transpose
+				case 6: { sx = y; sy = h-1-x; } // 90 CW
+				case 7: { sx = w-1-y; sy = h-1-x; } // transverse
+				case 8: { sx = x; sy = w-1-y; } // 90 CCW
+			}
+			image.set(r, x, y, image.get(img, sx, sy));
+		}
+	}
+	image.free(img);
+	return r;
 }
 
 pub void free(jpeg_t *j) {
@@ -80,7 +105,6 @@ pub void free(jpeg_t *j) {
 }
 
 void read_app1(jpeg_t *self, reader.t *r) {
-	(void) self;
 	uint16_t len;
 	endian.read2be(r, &len);
 	printf("App1 (len=%u)\n", len);
@@ -91,6 +115,7 @@ void read_app1(jpeg_t *self, reader.t *r) {
 	if (strcmp((char *) buf, "Exif") == 0 && buf[4] == 0 && buf[5] == 0) {
 		tiff.file_t *tf = tiff.parse(buf + 6, len-2-6);
 		uint32_t gpspos = 0;
+		int orientation = 1;
 		for (size_t i = 0; i < tf->ndirs; i++) {
 			tiff.dir_t *d = tf->dirs[i];
 			for (size_t j = 0; j < d->nentries; j++) {
@@ -98,8 +123,12 @@ void read_app1(jpeg_t *self, reader.t *r) {
 					gpspos = d->entries[j]->value;
 					break;
 				}
+				if (d->entries[j]->tag == 274) {
+					orientation = d->entries[j]->value;
+				}
 			}
 		}
+		self->orientation = orientation;
 		if (gpspos != 0) {
 			tiff.setpos(tf, gpspos);
 			tiff.read_dir(tf);
@@ -109,12 +138,7 @@ void read_app1(jpeg_t *self, reader.t *r) {
 			dumpdir(d);
 		}
 	}
-	// dbg.print_bytes(buf, len-2);
 	OS.free(buf);
-
-	// E  x  i  f \0 \0
-	// ...
-	// reader.skip(r, len-2);
 }
 
 void dumpdir(tiff.dir_t *d) {
@@ -176,18 +200,18 @@ void read_appdef(jpeg_t *self, reader.t *r) {
 	reader.skip(r, len-2);
 }
 
-void read_restart_interval(jpeg_t *self, reader.t *r, err_t *err) {
+void read_restart_interval(jpeg_t *self, reader.t *r, error.t *err) {
 	uint16_t len;
 	if (!endian.read2be(r, &len)) {
-		seterr(err, "failed to read section length");
+		error.set(err, "failed to read section length");
 		return;
 	}
 	if (len != 4) {
-		seterr(err, "restart interval: expected len=4, got %u", len);
+		error.set(err, "restart interval: expected len=4, got %u", len);
 		return;
 	}
 	if (!endian.read2be(r, &self->restart_interval)) {
-		seterr(err, "failed to read restart interval");
+		error.set(err, "failed to read restart interval");
 		return;
 	}
 	printf("restart interval len=%u, val=%u\n", len, self->restart_interval);
@@ -213,9 +237,7 @@ void read_quant_table(jpeg_t *self, reader.t *r) {
 	self->quant[num] = qt;
 }
 
-
-
-void read_baseline_dct(jpeg_t *self, reader.t *r, err_t *err) {
+void read_baseline_dct(jpeg_t *self, reader.t *r, error.t *err) {
 	uint16_t len = 0;
 	endian.read2be(r, &len);
 	printf("dct len = %d\n", len);
@@ -250,12 +272,8 @@ void read_baseline_dct(jpeg_t *self, reader.t *r, err_t *err) {
 	for (uint8_t i = 0; i < self->ncomponents; i++) {
 		component_t *c = &self->components[i];
 		uint8_t id = c->id;
-		printf("\tcomponent %u: id=%u (%s)", i, id, ids[id]);
+		printf("\tcomponent %u: id=%u (%s)", i, id, component_ids[id]);
 		printf(" sampling_factors=%d,%d qtable_num=%u\n", c->hsize, c->vsize, c->qtable_index);
-		if (c->vsize != 1 || c->hsize != 1) {
-			seterr(err, "sampling factors != 1 not implemented");
-			// return;
-		}
 		if (i == 0 && id != 1) {
 			panic("expected component %d, got %u", 1, id);
 		}
@@ -269,6 +287,14 @@ void read_baseline_dct(jpeg_t *self, reader.t *r, err_t *err) {
 	if (err->set) {
 		return;
 	}
+	uint8_t maxh = 0;
+	uint8_t maxv = 0;
+	for (uint8_t i = 0; i < self->ncomponents; i++) {
+		if (self->components[i].hsize > maxh) maxh = self->components[i].hsize;
+		if (self->components[i].vsize > maxv) maxv = self->components[i].vsize;
+	}
+	self->mcux = 8 * maxh;
+	self->mcuy = 8 * maxv;
 	self->img = image.new(w, h);
 }
 
@@ -329,6 +355,14 @@ void read_scan(jpeg_t *self, reader.t *r) {
         int dc_table_id = wtf >> 4;
         int ac_table_id = wtf & 0xf;
 		printf("\tcomponent %u: dctable=%d actable=%d\n", i, dc_table_id, ac_table_id);
+		// Match the scan component id to a frame component index.
+		for (uint8_t ci = 0; ci < self->ncomponents; ci++) {
+			if (self->components[ci].id == id) {
+				self->dc_table[ci] = dc_table_id;
+				self->ac_table[ci] = ac_table_id;
+				break;
+			}
+		}
 	}
 
 	uint8_t ss;
@@ -351,93 +385,91 @@ void read_scan_data(jpeg_t *self, reader.t *r) {
 	// These will contain the current values.
 	int dc[3] = {0,0,0};
 
-	// Read n blocks and tile them into the main image left to right.
 	int w = self->img->width;
 	int h = self->img->height;
+	int mcus_w = (w + self->mcux - 1) / self->mcux;
+	int mcus_h = (h + self->mcuy - 1) / self->mcuy;
 	int ri = self->restart_interval;
-	image.image_t *block = image.new(8, 8);
-	int x = 0;
-	int y = 0;
-	int n = (h/8) * (w/8);
-	for (int i = 0; i < n; i++) {
-		ri--;
-		// printf("ri=%d\n", ri);
-		readunit(self, dc, br, block);
-		image.paste(self->img, block, x, y);
-		x += 8;
-		if (x >= w) {
-			x = 0;
-			y += 8;
+	image.image_t *mcu = image.new(self->mcux, self->mcuy);
+	int i = 0;
+	for (int my = 0; my < mcus_h; my++) {
+		for (int mx = 0; mx < mcus_w; mx++) {
+			// Restart boundary: drop the remaining bits of the partial
+			// byte, consume the restart marker, reset DC predictors.
+			if (ri > 0 && i > 0 && i % ri == 0) {
+				br->rem = 0;
+				uint8_t m = 0;
+				if (reader.read(r, &m, 1) != 1 || m < 0xd0 || m > 0xd7) {
+					panic("restart marker expected, got %x", m);
+				}
+				dc[0] = 0;
+				dc[1] = 0;
+				dc[2] = 0;
+			}
+			read_mcu(self, dc, br, mcu);
+			image.paste(self->img, mcu, mx*self->mcux, my*self->mcuy);
+			i++;
 		}
 	}
-	image.free(block);
+	image.free(mcu);
+	bits.closereader(br);
 }
 
-void readunit(jpeg_t *self, int *dc, bits.reader_t *br, image.image_t *block) {
-	// Read 3 component blocks
-	int vals1[64] = {};
-	int vals2[64] = {};
-	int vals3[64] = {};
+void read_mcu(jpeg_t *self, int *dc, bits.reader_t *br, image.image_t *mcu) {
+	int ncomp = self->ncomponents;
+	double planes[3][32][32] = {};
 
-	// Y
-	huffman.reader_t *hrdc = huffman.newreader(self->htables[0], br);
-	huffman.reader_t *hrac = huffman.newreader(self->htables[16], br);
-	readblock(br, hrdc, hrac, dc[0], vals1);
-	huffman.closereader(hrdc);
-	huffman.closereader(hrac);
-	dc[0] = vals1[0];
+	for (int ci = 0; ci < ncomp; ci++) {
+		component_t *c = &self->components[ci];
+		uint8_t *quant = self->quant[c->qtable_index];
+		int hb = c->hsize;
+		int vb = c->vsize;
 
-	// B
-	hrdc = huffman.newreader(self->htables[1], br);
-	hrac = huffman.newreader(self->htables[17], br);
-	readblock(br, hrdc, hrac, dc[1], vals2);
-	huffman.closereader(hrdc);
-	huffman.closereader(hrac);
-	dc[1] = vals2[0];
+		huffman.reader_t *hrdc = huffman.newreader(self->htables[self->dc_table[ci]], br);
+		huffman.reader_t *hrac = huffman.newreader(self->htables[16 + self->ac_table[ci]], br);
 
-	// R
-	hrdc = huffman.newreader(self->htables[1], br);
-	hrac = huffman.newreader(self->htables[17], br);
-	readblock(br, hrdc, hrac, dc[2], vals3);
-	huffman.closereader(hrdc);
-	huffman.closereader(hrac);
-	dc[2] = vals3[0];
+		for (int by = 0; by < vb; by++) {
+			for (int bx = 0; bx < hb; bx++) {
+				int vals[64] = {};
+				readblock(br, hrdc, hrac, dc[ci], vals);
+				dc[ci] = vals[0];
 
-	// Undo quantization
-	uint8_t *quant1 = self->quant[self->components[0].qtable_index];
-	uint8_t *quant2 = self->quant[self->components[1].qtable_index];
-	uint8_t *quant3 = self->quant[self->components[2].qtable_index];
-	for (int i = 0; i < 64; i++) {
-		vals1[i] *= quant1[i];
-		vals2[i] *= quant2[i];
-		vals3[i] *= quant3[i];
+				// Undo quantization
+				for (int j = 0; j < 64; j++) {
+					vals[j] *= quant[j];
+				}
+
+				// Undo zigzag
+				undozz(vals);
+
+				// Rebuild the component values
+				double block[64] = {};
+				rebuild(vals, block);
+
+				for (int j = 0; j < 64; j++) {
+					int px = j & 0x7;
+					int py = j >> 3;
+					planes[ci][by*8+py][bx*8+px] = block[j];
+				}
+			}
+		}
+		huffman.closereader(hrdc);
+		huffman.closereader(hrac);
 	}
 
-	// Undo zigzag
-	undozz(vals1);
-	undozz(vals2);
-	undozz(vals3);
-
-	// Rebuild the components
-	double Y[64] = {};
-	double Cb[64] = {};
-	double Cr[64] = {};
-	rebuild(vals1, Y);
-	rebuild(vals2, Cb);
-	rebuild(vals3, Cr);
-
-	// Compose RGB
-	image.rgba_t vv[64];
-	for (int i = 0; i < 64; i++) {
-		vv[i] = toRGB(Y[i], Cr[i], Cb[i]);
-	}
-
-	// Draw the block
-	int pos = 0;
-	for (int y = 0; y < 8; y++) {
-		for (int x = 0; x < 8; x++) {
-			image.rgba_t val = vv[pos++];
-			image.set(block, x, y, val);
+	// Component 0 (Y) spans the whole MCU. Chroma components are sampled
+	// down by (mcux/(8*hsize), mcuy/(8*vsize)) and upsampled by replication.
+	int hscale1 = self->mcux / (8*self->components[1].hsize);
+	int vscale1 = self->mcuy / (8*self->components[1].vsize);
+	int hscale2 = self->mcux / (8*self->components[2].hsize);
+	int vscale2 = self->mcuy / (8*self->components[2].vsize);
+	for (int y = 0; y < self->mcuy; y++) {
+		for (int x = 0; x < self->mcux; x++) {
+			double Y = planes[0][y][x];
+			double Cb = planes[1][y/vscale1][x/hscale1];
+			double Cr = planes[2][y/vscale2][x/hscale2];
+			image.rgba_t col = toRGB(Y, Cr, Cb);
+			image.set(mcu, x, y, col);
 		}
 	}
 }
@@ -607,6 +639,10 @@ int escread1(escaper_t *r) {
         if (x == 0xd9) {
             r->ended = true;
             return EOF;
+        }
+        // 0xff 0xd0..0xd7 is a restart marker.
+        if (x >= 0xd0 && x <= 0xd7) {
+            return x;
         }
         panic("unexpected 0xff 0x%x", x);
     }
