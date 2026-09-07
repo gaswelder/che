@@ -1,1 +1,1 @@
-./vttstrip.out < 1.vtt
+./vtt2jsonl.out < 1.vtt
