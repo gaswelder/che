@@ -1,4 +1,3 @@
-#import formats/json
 #import scanner
 #import strbuilder
 #import strings
@@ -36,29 +35,30 @@ typedef {
 	scanner.t *buf;
 } lexer_t;
 
-int main() {
-	lexer_t *lexer = calloc!(1, sizeof(lexer_t));
-	lexer->buf = scanner.file(stdin);
-	if (!lexer->buf) {
-		panic("failed to get scanner");
+int main(int argc, char *argv[]) {
+	if (argc != 2) {
+		fprintf(stderr, "arguments: <file.c>\n");
 		return 1;
 	}
+	FILE *f = fopen(argv[1], "rb");
+	if (!f) {
+		fprintf(stderr, "failed to open %s: %s\n", argv[1], strerror(errno));
+		return 1;
+	}
+	lexer_t *lexer = calloc!(1, sizeof(lexer_t));
+	lexer->buf = scanner.file(f);
 
     while (true) {
         tok_t *tok = lexer_read(lexer);
 		if (!tok) {
 			break;
 		}
-
 		if (strcmp(tok->name, "error") == 0) {
 			fprintf(stderr, "%s at %s\n", tok->content, tok->pos);
 			tok_free(tok);
 			return 1;
 		}
-		char *json = tok_json(tok);
-		fprintf(stdout, "%s\n", json);
-		// free(json);
-
+		printf("{\"pos\":\"%s\",\"type\":\"%s\",\"content\":\"%s\"}\n", tok->pos, tok->name, tok->content);
 		tok_free(tok);
     }
 	lexer_free(lexer);
@@ -93,14 +93,6 @@ void tok_free(tok_t *t) {
 	free(t->content);
 	free(t->pos);
 	free(t);
-}
-
-char *tok_json(tok_t *t) {
-	json.val_t *tok = json.json_newobj();
-	json.json_put(tok, "type", json.json_newstr(t->name));
-	json.json_put(tok, "content", json.json_newstr(t->content));
-	json.json_put(tok, "pos", json.json_newstr(t->pos));
-	return json.format(tok);
 }
 
 tok_t *lexer_read(lexer_t *l) {
