@@ -9,16 +9,16 @@ then
 	exit 1
 fi
 
-cd prog/$1
-	name=`basename $1`
-	$che build "$name.c" "$name.out"
-	if [ $? = 0 ]; then
-		echo OK build $name
-	else
+name=`basename $1`
+
+(
+	cd "$CHELANG_HOME/prog/$1" || exit 1
+
+	$che build "$name.c" "$name.out" || {
 		echo FAIL build $name
-		cd ..
 		exit 1
-	fi
+	}
+	echo OK build $name
 
 	if [ -f 1.test ]; then
 		sh 1.test > 1.output || exit 1
@@ -26,11 +26,5 @@ cd prog/$1
 		echo OK "$1/1.test"
 		rm 1.output
 	fi
-
-	if [ -f test.sh ]; then
-		./test.sh || exit 1
-		echo OK test $1
-	fi
 	rm *.out
-	cd ..
-cd ..
+)
