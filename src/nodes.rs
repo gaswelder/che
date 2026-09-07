@@ -198,6 +198,7 @@ pub struct FieldAccess {
 
 #[derive(Debug, Clone)]
 pub struct Cast {
+    pub pos: Pos,
     pub typeform: BareTypeform,
     pub operand: Box<Expr>,
 }

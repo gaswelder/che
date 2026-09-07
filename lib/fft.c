@@ -664,7 +664,7 @@ pub void kiss_fftndr(kiss_fftndr_state_t * st, complex.t *timedata, *freqdata) {
     int dimOther = st->dimOther;
     int nrbins = dimReal/2+1;
 
-    complex.t *tmp1 = (void *) st->tmpbuf;
+    complex.t *tmp1 = st->tmpbuf;
     complex.t *tmp2 = tmp1 + MAX(nrbins,dimOther);
 
     // timedata is N0 x N1 x ... x Nk real
@@ -687,24 +687,26 @@ pub void kiss_fftndr(kiss_fftndr_state_t * st, complex.t *timedata, *freqdata) {
  input and output dimensions are the exact opposite of kiss_fftndr
 */
 pub void kiss_fftndri(kiss_fftndr_state_t * st, complex.t *freqdata, float *timedata) {
-    int k1;
-    int k2;
     int dimReal = st->dimReal;
     int dimOther = st->dimOther;
-    int nrbins = dimReal/2+1;
-    complex.t * tmp1 = (void *) st->tmpbuf;
+    int nrbins = dimReal/2 + 1;
+    complex.t * tmp1 = st->tmpbuf;
     complex.t * tmp2 = tmp1 + MAX(nrbins,dimOther);
 
+	int k1;
+    int k2;
     for (k2=0;k2<nrbins;++k2) {
-        for (k1=0;k1<dimOther;++k1)
+        for (k1=0;k1<dimOther;++k1) {
             tmp1[k1] = freqdata[ k1*(nrbins) + k2 ];
+		}
         kiss_fftnd(st->cfg_nd, tmp1, tmp2+k2*dimOther);
     }
 
     for (k1=0;k1<dimOther;++k1) {
-        for (k2=0;k2<nrbins;++k2)
+        for (k2=0;k2<nrbins;++k2) {
             tmp1[k2] = tmp2[ k2*dimOther+k1 ];
-        kiss_fftri( st->cfg_r,tmp1,timedata + k1*dimReal);
+		}
+        kiss_fftri(st->cfg_r,tmp1,timedata + k1*dimReal);
     }
 }
 

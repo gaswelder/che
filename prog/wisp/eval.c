@@ -2072,7 +2072,7 @@ val_t *lisp_vsub (val_t * lst) {
 	if (!isint (starto))
 		THROW (err_wrong_type, increfs(starto));
 	int start = into2int (starto);
-	if (start >= (int) vlen(v))
+	if (start >= vlen(v))
 		THROW (symbol("bad-index"), increfs(starto));
 	if (start < 0)
 		THROW (symbol("bad-index"), increfs(starto));
@@ -2084,7 +2084,7 @@ val_t *lisp_vsub (val_t * lst) {
 	if (!isint (endo))
 		THROW (err_wrong_type, increfs(endo));
 	int end = into2int (endo);
-	if (end >= (int) vlen(v))
+	if (end >= vlen(v))
 		THROW (symbol("bad-index"), increfs(endo));
 	if (end < start)
 		THROW (symbol("bad-index"), increfs(endo));

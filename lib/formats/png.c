@@ -300,7 +300,7 @@ void write_byte(writer_t *png, uint8_t val) {
 }
 
 void write_byte_crc(writer_t *png, uint8_t val) {
-	png->crc = png_crc((uint8_t *) &val, 1, png->crc);
+	png->crc = png_crc(&val, 1, png->crc);
 	write_byte(png, val);
 }
 

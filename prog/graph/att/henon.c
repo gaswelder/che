@@ -32,8 +32,8 @@ pub void draw(image.image_t *img, void *state) {
 	double a[25] = {};
 	double b[25] = {};
 	for (int i=0;i<(int)m;i++) {
-		a[i] = cos(TWOPI * i / (double)m);
-		b[i] = sin(TWOPI * i / (double)m);
+		a[i] = cos(TWOPI * i / m);
+		b[i] = sin(TWOPI * i / m);
 	}
 
 	point_t q = {1, 1};

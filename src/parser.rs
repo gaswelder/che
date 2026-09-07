@@ -227,6 +227,7 @@ fn parse_seq_expr(l: &mut Lexer, strength: usize, ctx: &ParseCtx) -> Result<Expr
 
 fn parse_prefix_expr(l: &mut Lexer, ctx: &ParseCtx) -> Result<Expr, Error> {
     let token = l.get().unwrap();
+    let pos = token.pos.clone();
 
     // *{we are here}*foo
     if is_prefix_op(&token.kind) {
@@ -248,6 +249,7 @@ fn parse_prefix_expr(l: &mut Lexer, ctx: &ParseCtx) -> Result<Expr, Error> {
         let typeform = parse_bare_typeform(l, ctx)?;
         expect(l, ")", Some("typecast"))?;
         return Ok(Expr::Cast(nodes::Cast {
+            pos,
             typeform,
             operand: Box::new(parse_prefix_expr(l, ctx)?),
         }));

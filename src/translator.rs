@@ -837,6 +837,13 @@ fn tr_cast(x: &nodes::Cast, ctx: &mut TrCtx) -> Result<Typed<c::Expr>, BuildErro
             typ.fmt()
         );
     }
+    if operand.typ.fmt() == typ.fmt() {
+        return Err(BuildError {
+            path: ctx.this_mod_head.filepath.clone(),
+            pos: x.pos.fmt(),
+            message: String::from("redundant cast"),
+        });
+    }
     Ok(Typed {
         typ,
         val: c::Expr::Cast {
