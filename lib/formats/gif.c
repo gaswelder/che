@@ -34,21 +34,21 @@ pub image.image_t *read(reader.t *r) {
 	if (x != EOF) {
 		panic("unexpected trailing data");
 	}
-	info(&g);
+	// info(&g);
 	return img;
 }
 
-void info(gif_t *g) {
-	printf("width = %u, height = %u\n", g->width, g->height);
-	printf("ggt = %d\n", g->global_color_table);
-	printf("res = %d bits/primary\n", g->color_resolution);
-	printf("table size = %d\n", g->table_size);
-	printf("bgcolor: %d\n", g->bgcolor_index);
-	for (int i = 0; i < g->table_size; i++) {
-		image.rgba_t c = g->color_table[i];
-		printf("color %d: (%d,%d,%d)\n", i, c.red, c.green, c.blue);
-	}
-}
+// void info(gif_t *g) {
+// 	printf("width = %u, height = %u\n", g->width, g->height);
+// 	printf("ggt = %d\n", g->global_color_table);
+// 	printf("res = %d bits/primary\n", g->color_resolution);
+// 	printf("table size = %d\n", g->table_size);
+// 	printf("bgcolor: %d\n", g->bgcolor_index);
+// 	for (int i = 0; i < g->table_size; i++) {
+// 		image.rgba_t c = g->color_table[i];
+// 		printf("color %d: (%d,%d,%d)\n", i, c.red, c.green, c.blue);
+// 	}
+// }
 
 void readblock_header(reader.t *r) {
 	uint8_t header[6] = {};
@@ -189,11 +189,11 @@ void readblock_image_descriptor(gif_t *g) {
 	reader.read(r, &byte, 1);
 	uint8_t colorinfo[8] = {};
 	bits.getbits_msfirst(byte, colorinfo);
-	bool colortable = colorinfo[0] == 1;
-	bool interlace = colorinfo[1] == 1;
-	bool sort = colorinfo[2] == 1;
-	uint8_t colortable_size = 4*colorinfo[5] + 2*colorinfo[6] + colorinfo[7];
-	printf("colortable = %d, interlace = %d, sort = %d, size = %d\n", colortable, interlace, sort, colortable_size);
+	// bool colortable = colorinfo[0] == 1;
+	// bool interlace = colorinfo[1] == 1;
+	// bool sort = colorinfo[2] == 1;
+	// uint8_t colortable_size = 4*colorinfo[5] + 2*colorinfo[6] + colorinfo[7];
+	// printf("colortable = %d, interlace = %d, sort = %d, size = %d\n", colortable, interlace, sort, colortable_size);
 }
 
 image.image_t *readblock_image_data(gif_t *g) {
