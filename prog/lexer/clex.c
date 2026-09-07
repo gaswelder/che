@@ -30,7 +30,22 @@ const char *keywords[] = {
 };
 
 pub typedef {
+	char name[10];
+	char pos[10];
+	char content[1000];
+} tok_t;
+
+tok_t newtok(char *name, char *content, const char *pos) {
+	tok_t t = {};
+	strcpy(t.name, name);
+	strcpy(t.pos, pos);
+	if (content) strcpy(t.content, content);
+	return t;
+}
+
+pub typedef {
 	scanner.t *buf;
+	tok_t tok;
 } lexer_t;
 
 pub lexer_t *newlex(FILE *f) {
@@ -39,90 +54,80 @@ pub lexer_t *newlex(FILE *f) {
 	return lexer;
 }
 
-pub typedef {
-	char *name;
-	char *content;
-	char *pos;
-} tok_t;
-
-// Creates a new token object.
-tok_t *newtok(char *name, char *content, const char *pos) {
-	tok_t *t = calloc!(1, sizeof(tok_t));
-	t->name = name;
-	t->content = content;
-	t->pos = strings.newstr("%s", pos);
-	return t;
+pub void lexer_free(lexer_t *l) {
+	scanner.free(l->buf);
+	free(l);
 }
 
-pub void tok_free(tok_t *t) {
-	free(t->content);
-	free(t->pos);
-	free(t);
+pub tok_t tok(lexer_t *l) {
+	return l->tok;
 }
 
-pub tok_t *lexer_read(lexer_t *l) {
+// Reads the next token in.
+// Returns true on success, false on end of file.
+pub bool read(lexer_t *l) {
 	scanner.t *b = l->buf;
 
 	scanner.spaces(b);
 	if (!scanner.more(b)) {
-		return NULL;
+		return false;
 	}
 
 	int peek = scanner.peek(b);
 	if (peek == '#') {
-		// puts("macro");
-		return read_macro(b);
+		l->tok = read_macro(b);
+		return true;
 	}
 	if (isdigit(peek)) {
-		// puts("number");
-		return read_number(b);
+		l->tok = read_number(b);
+		return true;
 	}
 	if (peek == '\"') {
-		// puts("string");
-		return read_string(b);
+		l->tok = read_string(b);
+		return true;
 	}
 	if (peek == '\'') {
-		// puts("char");
-		return read_char(b);
+		l->tok = read_char(b);
+		return true;
 	}
 	if (scanner.literal_follows(b, "/*")) {
-		// puts("mcomm");
-		return read_multiline_comment(b);
+		l->tok = read_multiline_comment(b);
+		return true;
 	}
 	if (scanner.literal_follows(b, "//")) {
-		// puts("comm");
-		return read_line_comment(b);
+		l->tok = read_line_comment(b);
+		return true;
 	}
 
 	const char *pos = scanner.posstr(b);
 	for (size_t i = 0; i < nelem(keywords); i++) {
 		const char *keyword = keywords[i];
 		if (scanner.skip_literal(b, keyword)) {
-			// puts("keyword");
-			return newtok(strings.newstr("%s", keyword), NULL, pos);
+			l->tok = newtok(strings.newstr("%s", keyword), NULL, pos);
+			return true;
 		}
 	}
 	for (size_t i = 0; i < nelem(symbols); i++) {
 		const char *symbol = symbols[i];
 		if (scanner.skip_literal(b, symbol)) {
-			// puts("symbol");
-			return newtok(strings.newstr("%s", symbol), NULL, pos);
+			l->tok = newtok(strings.newstr("%s", symbol), NULL, pos);
+			return true;
 		}
 	}
-
 	if (isalpha(peek) || peek == '_') {
-		// puts("ident");
-		return read_identifier(b);
+		l->tok = read_identifier(b);
+		return true;
 	}
-	return newtok("error", strings.newstr("unexpected character: '%c'", peek), scanner.posstr(b));
+	l->tok = newtok("error", strings.newstr("unexpected character: '%c'", peek), scanner.posstr(b));
+	return true;
 }
 
-tok_t *read_macro(scanner.t *b) {
+tok_t read_macro(scanner.t *b) {
 	char *s = scanner.buf_skip_until(b, "\n");
 	return newtok("macro", s, scanner.posstr(b));
 }
 
-tok_t *read_number(scanner.t *b) {
+tok_t read_number(scanner.t *b) {
 	// If "0x" follows, read a hexademical constant.
 	if (scanner.skip_literal(b, "0x")) {
 		return read_hex_number(b);
@@ -151,7 +156,7 @@ tok_t *read_number(scanner.t *b) {
 	return newtok("num", result, pos);
 }
 
-tok_t *read_hex_number(scanner.t *b) {
+tok_t read_hex_number(scanner.t *b) {
 	// Skip "0x"
 	scanner.get(b);
 	scanner.get(b);
@@ -165,7 +170,7 @@ tok_t *read_hex_number(scanner.t *b) {
 
 // // TODO: clip/str: new() -> new(template, args...)
 
-tok_t *read_string(scanner.t *b) {
+tok_t read_string(scanner.t *b) {
 	const char *pos = scanner.posstr(b);
 
 	// Skip the opening quote
@@ -208,7 +213,7 @@ tok_t *read_string(scanner.t *b) {
 	// return newtok("error", "double quote expected", scanner.posstr(b));
 }
 
-tok_t *read_char(scanner.t *b) {
+tok_t read_char(scanner.t *b) {
 	char *s = calloc!(3, 1);
 	char *p = s;
 	const char *pos = scanner.posstr(b);
@@ -229,7 +234,7 @@ tok_t *read_char(scanner.t *b) {
 }
 
 
-tok_t *read_multiline_comment(scanner.t *b) {
+tok_t read_multiline_comment(scanner.t *b) {
 	const char *pos = scanner.posstr(b);
 	scanner.skip_literal(b, "/*");
 	char *comment = scanner.buf_skip_until(b, "*/");
@@ -240,13 +245,13 @@ tok_t *read_multiline_comment(scanner.t *b) {
 	return newtok("comment", comment, pos);
 }
 
-tok_t *read_line_comment(scanner.t *b) {
+tok_t read_line_comment(scanner.t *b) {
 	const char *pos = scanner.posstr(b);
 	scanner.skip_literal(b, "//");
 	return newtok("comment", scanner.buf_skip_until(b, "\n"), pos);
 }
 
-tok_t *read_identifier(scanner.t *b) {
+tok_t read_identifier(scanner.t *b) {
 	strbuilder.str *s = strbuilder.new();
 	const char *pos = scanner.posstr(b);
 
@@ -258,9 +263,4 @@ tok_t *read_identifier(scanner.t *b) {
 		strbuilder.addc(s, scanner.get(b));
 	}
 	return newtok("word", strbuilder.str_unpack(s), pos);
-}
-
-pub void lexer_free(lexer_t *l) {
-	scanner.free(l->buf);
-	free(l);
 }
