@@ -853,7 +853,7 @@ fn tr_arr_index(x: &nodes::ArrayIndex, ctx: &mut TrCtx) -> Result<Typed<c::Expr>
     let typ = types::typeof_index(&arr.typ, &ind.typ).map_err(|e| BuildError {
         message: e,
         path: ctx.this_mod_head.filepath.clone(),
-        pos: "?".to_string(),
+        pos: x.pos.fmt(),
     })?;
     Ok(Typed {
         typ,

@@ -274,6 +274,12 @@ pub fn typeof_boolcomp(a: &Type, b: &Type) -> Result<Type, String> {
 }
 
 pub fn typeof_index(arr: &Type, ind: &Type) -> Result<Type, String> {
+    if !is_todo(ind) {
+        match classify(ind) {
+            Class::CONSTNUM | Class::SINT | Class::UINT => {}
+            _ => return Err(format!("using {} as index", ind.fmt())),
+        }
+    }
     if is_todo(arr) {
         return Ok(arr.clone());
     }
@@ -294,7 +300,7 @@ pub fn typeof_index(arr: &Type, ind: &Type) -> Result<Type, String> {
                 ops: arr.ops[1..].to_vec(),
             });
         }
-        _ => return Err(format!("index: ({})[{}]", arr.fmt(), ind.fmt())),
+        _ => return Err(format!("taking index of non-array ({})", arr.fmt())),
     };
 }
 

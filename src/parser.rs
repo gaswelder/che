@@ -267,6 +267,7 @@ fn base(l: &mut Lexer, ctx: &ParseCtx) -> Result<Expr, Error> {
     let mut r = read_expression_atom(l, ctx)?;
     while l.more() {
         let next = l.peek().unwrap();
+        let pos = next.pos.clone();
         // call
         if next.kind == "(" {
             r = parse_call(l, ctx, r)?;
@@ -281,6 +282,7 @@ fn base(l: &mut Lexer, ctx: &ParseCtx) -> Result<Expr, Error> {
             r = Expr::ArrIndex(nodes::ArrayIndex {
                 array: Box::new(r),
                 index: Box::new(index),
+                pos,
             });
             continue;
         }

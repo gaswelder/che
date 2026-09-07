@@ -165,6 +165,7 @@ pub struct CompositeLiteralEntry {
 // ...[...]
 #[derive(Debug, Clone)]
 pub struct ArrayIndex {
+    pub pos: Pos,
     pub array: Box<Expr>,
     pub index: Box<Expr>,
 }

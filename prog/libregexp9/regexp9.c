@@ -984,7 +984,8 @@ regexec1(Reprog *progp,
 		/* switch run lists */
 		tl = j->relist[flag];
 		tle = j->reliste[flag];
-		nl = j->relist[flag^=1];
+		flag ^= 1;
+		nl = j->relist[flag];
 		nle = j->reliste[flag];
 		nl->inst = 0;
 
@@ -1275,7 +1276,8 @@ int rregexec1(Reprog *progp,
 		/* switch run lists */
 		tl = j->relist[flag];
 		tle = j->reliste[flag];
-		nl = j->relist[flag^=1];
+		flag ^= 1;
+		nl = j->relist[flag];
 		nle = j->reliste[flag];
 		nl->inst = 0;
 
