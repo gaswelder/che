@@ -548,7 +548,8 @@ void kiss_fftr(kiss_fftr_state_t *st, complex.t *timedata, *freqdata) {
     tdc.im = st->tmpbuf[0].im;
     freqdata[0].re = tdc.re + tdc.im;
     freqdata[ncfft].re = tdc.re - tdc.im;
-    freqdata[ncfft].im = freqdata[0].im = 0;
+    freqdata[ncfft].im = 0;
+	freqdata[0].im = 0;
 
     for ( k=1;k <= ncfft/2 ; ++k ) {
         fpk    = st->tmpbuf[k];

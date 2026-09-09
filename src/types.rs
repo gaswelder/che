@@ -57,6 +57,8 @@ enum Class {
     NONE,
 }
 
+static SLOPPY: bool = true;
+
 fn classify(x: &Type) -> Class {
     if x.ops.len() > 0 && matches!(x.ops[0], TypeOp::Deref) {
         return Class::PTR;
@@ -98,7 +100,16 @@ fn classify(x: &Type) -> Class {
 }
 
 fn typesize(x: &Type) -> usize {
-    match x.fmt().as_str() {
+    let s = x.fmt();
+    if SLOPPY {
+        if s == "time_t" {
+            return 32;
+        }
+        if s == "ptrdiff_t" {
+            return 64;
+        }
+    }
+    match s.as_str() {
         "size_t" => 64,
         "uint64_t" => 64,
         "int64_t" => 64,
@@ -112,9 +123,6 @@ fn typesize(x: &Type) -> usize {
         "char" => 8,
         "double" => 64,
         "float" => 32,
-        // sloppy
-        "time_t" => 32,
-        "ptrdiff_t" => 64,
         _ => todo!("typesize {}", x.fmt()),
     }
 }
@@ -187,8 +195,8 @@ pub fn typeof_arith(a: &Type, b: &Type) -> Result<Type, String> {
         (Class::UINT, Class::UINT) => Ok(widest_type(a, b)),
 
         // char with const gives int (sloppy)
-        (Class::CHAR, Class::CONSTNUM) => Ok(just("int")),
-        (Class::CONSTNUM, Class::CHAR) => Ok(just("int")),
+        (Class::CHAR, Class::CONSTNUM) if SLOPPY => Ok(just("int")),
+        (Class::CONSTNUM, Class::CHAR) if SLOPPY => Ok(just("int")),
 
         // const with T gives T
         (Class::CONSTNUM, Class::FLT | Class::SINT | Class::UINT) => Ok(b.clone()),
@@ -198,12 +206,40 @@ pub fn typeof_arith(a: &Type, b: &Type) -> Result<Type, String> {
         (_, Class::UNK) => Ok(b.clone()),
         (Class::UNK, _) => Ok(a.clone()),
 
-        // sloppy
-        (Class::UINT, Class::SINT) => Ok(widest_type(a, b)),
-        (Class::SINT, Class::UINT) => Ok(widest_type(a, b)),
-        (Class::SINT | Class::UINT, Class::FLT) => Ok(b.clone()),
-        (Class::FLT, Class::SINT | Class::UINT) => Ok(a.clone()),
+        (Class::UINT, Class::SINT) if SLOPPY => Ok(widest_type(a, b)),
+        (Class::SINT, Class::UINT) if SLOPPY => Ok(widest_type(a, b)),
+        (Class::SINT | Class::UINT, Class::FLT) if SLOPPY => Ok(b.clone()),
+        (Class::FLT, Class::SINT | Class::UINT) if SLOPPY => Ok(a.clone()),
+
         (_, _) => Err(format!("arith on {}, {}", a.fmt(), b.fmt())),
+    }
+}
+
+pub fn typeof_assign(a: &Type, b: &Type) -> Result<Type, String> {
+    if is_todo(b) {
+        return Ok(just("void"));
+    }
+    if a.fmt() == "void" {
+        return Err(format!("assigning to void"));
+    }
+    match (classify(a), classify(b)) {
+        (Class::UINT, Class::UINT) => Ok(just("void")),
+        (Class::SINT, Class::SINT) => Ok(just("void")),
+        (Class::UINT, Class::SINT) => Ok(just("void")),
+        (Class::BOOL, Class::BOOL) => Ok(just("void")),
+        (Class::CHAR, Class::CHAR) => Ok(just("void")),
+        (Class::PTR, Class::PTR) => Ok(just("void")),
+        (Class::UINT, Class::CONSTNUM) => Ok(just("void")),
+        (Class::SINT, Class::CONSTNUM) => Ok(just("void")),
+        (Class::FLT, Class::FLT) => Ok(just("void")),
+        (Class::PTR, Class::UINT) => Ok(just("void")), // Pointer arithmetic
+        (_, _) => {
+            if SLOPPY {
+                Ok(just("void"))
+            } else {
+                Err(format!("assigning {} to {}", b.fmt(), a.fmt()))
+            }
+        }
     }
 }
 

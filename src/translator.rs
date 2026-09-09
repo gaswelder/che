@@ -920,7 +920,9 @@ fn tr_binary_op(x: &nodes::BinaryOp, ctx: &mut TrCtx) -> Result<Typed<c::Expr>, 
         "==" | "<" | ">" | "!=" | ">=" | "<=" => types::typeof_cmp(&at, &bt),
         "-" | "+" => types::typeof_plusminus(x.op.as_str(), &at, &bt),
         "*" | "/" | "%" | "<<" | ">>" | "&" | "|" | "^" => types::typeof_arith(&at, &bt),
-        "=" | "+=" | "-=" | "/=" | "*=" | "|=" | "%=" | "&=" | "^=" => Ok(types::just("void")),
+        "=" | "+=" | "-=" | "/=" | "*=" | "|=" | "%=" | "&=" | "^=" => {
+            types::typeof_assign(&at, &bt)
+        }
         _ => {
             todo!("{} binop", x.op);
         }

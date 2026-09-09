@@ -730,7 +730,8 @@ pub void wisp_init() {
 	/* error symbols */
 	err_symbol = symbol("wisp-error");
 	SET (err_symbol, err_symbol);
-	err_thrown = err_attach = NIL;
+	err_thrown = NIL;
+	err_attach = NIL;
 	err_void_function = symbol("void-function");
 	err_wrong_number_of_arguments = symbol("wrong-number-of-arguments");
 	err_wrong_type = symbol("wrong-type-argument");
@@ -903,7 +904,8 @@ val_t *eval(val_t * o) {
 	}
 	val_t *extrao = NIL;
 	if (isvector (f)) {
-		extrao = o = newcons (increfs(f), increfs(o));
+		o = newcons (increfs(f), increfs(o));
+		extrao = o;
 		f = eval (symbol("vfunc"));
 		if (f == err_symbol) {
 			obj_release(extrao);
@@ -1180,7 +1182,8 @@ void push (reader_t * r) {
 	r->state->quote_mode = 0;
 	r->state->dotpair_mode = 0;
 	r->state->vector_mode = 0;
-	r->state->head = r->state->tail = newcons (NIL, NIL);
+	r->state->tail = newcons (NIL, NIL);
+	r->state->head = r->state->tail;
 }
 
 /* Remove top object from the sexp stack. */
@@ -1680,8 +1683,8 @@ val_t *let (val_t * lst) {
 		vlist = cdr (vlist);
 	}
 
-	val_t *p;
-	p = vlist = car (lst);
+	vlist = car (lst);
+	val_t *p = vlist;
 	int len = 0;
 	while (p != NIL) {
 		val_t *pair = car (p);

@@ -785,23 +785,19 @@ pub Reprog* regcompnl(char *s) {
 
 
 
-/*
- *  save a new match in mp
- */
-void
-_renewmatch(Resub *mp, int ms, Resublist *sp)
-{
+// Save a new match in mp
+void _renewmatch(Resub *mp, int ms, Resublist *sp) {
 	int i = 0;
-
 	if (mp == NULL || ms<=0) {
 		return;
 	}
-	if(mp[0].s.sp==0 || sp->m[0].s.sp<mp[0].s.sp ||
-	   (sp->m[0].s.sp==mp[0].s.sp && sp->m[0].e.ep>mp[0].e.ep)){
-		for(i=0; i<ms && i<NSUBEXP; i++)
+	if (mp[0].s.sp==0 || sp->m[0].s.sp < mp[0].s.sp || (sp->m[0].s.sp == mp[0].s.sp && sp->m[0].e.ep > mp[0].e.ep)) {
+		for (i=0; i<ms && i<NSUBEXP; i++) {
 			mp[i] = sp->m[i];
+		}
 		while (i < ms) {
-			mp[i].s.sp = mp[i].e.ep = 0;
+			mp[i].s.sp = 0;
+			mp[i].e.ep = 0;
 			i++;
 		}
 	}
