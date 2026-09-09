@@ -4,113 +4,24 @@ use crate::cspec;
 use crate::errors::BuildError;
 use crate::format_c;
 use crate::format_che;
+use crate::makers;
 use crate::node_queries::body_returns;
 use crate::node_queries::expression_pos;
 use crate::nodes;
 use crate::preparser::ModuleInfo;
 use crate::types;
+
 use std::collections::HashMap;
 use std::collections::HashSet;
-use std::fmt::Debug;
 
 static DEBUG_TYPES: bool = false;
 static TRACE: bool = false;
 
-struct Typed<T> {
-    typ: types::Type,
-    val: T,
-}
-
-// Module synopsis is what you would extract into a header file:
-// function prototypes, typedefs, struct declarations.
-pub fn get_module_synopsis(module: &c::CModule) -> Vec<c::ModElem> {
-    let mut elements: Vec<c::ModElem> = vec![];
-
-    for element in &module.elements {
-        match element {
-            c::ModElem::Typedef(x) => {
-                if x.ispub {
-                    elements.push(c::ModElem::Typedef(x.clone()))
-                }
-            }
-            c::ModElem::StuctDef(x) => {
-                if x.is_pub {
-                    elements.push(c::ModElem::StuctDef(x.clone()))
-                }
-            }
-            c::ModElem::ForwardFunc(x) => {
-                if !x.is_static {
-                    elements.push(c::ModElem::ForwardFunc(x.clone()))
-                }
-            }
-            c::ModElem::Macro(x) => {
-                // if name == "include" {
-                elements.push(c::ModElem::Macro(c::Macro {
-                    name: x.name.clone(),
-                    value: x.value.clone(),
-                }))
-                // }
-            }
-            c::ModElem::DefEnum(x) => {
-                if !x.is_hidden {
-                    elements.push(c::ModElem::DefEnum(x.clone()))
-                }
-            }
-            _ => {}
-        }
-    }
-    return elements;
-}
-
-#[derive(Debug)]
-pub struct Binding {
-    pos: Pos,
-    name: String,
-    typ: types::Type,
-    used: bool,
-    ispub: bool,
-    constval: Option<nodes::Expr>, // If provided, this binding is a constant.
-}
-
-#[derive(Debug)]
-struct TI {
-    is_pub: bool,
-    t: types::Type,
-}
-
-struct TypeInfo {
-    ispub: bool,
-    // Struct(nodes::StructTypedef),
-}
-
-fn find_type(ctx: &TrCtx, name: &str) -> Result<TypeInfo, String> {
-    if cspec::has_type(name) {
-        return Ok(TypeInfo { ispub: false });
-    }
-    if let Some(t) = ctx.struct_typedefs.get(name) {
-        return Ok(TypeInfo { ispub: t.ispub });
-    }
-    if let Some(t) = ctx.other_typedefs.get(name) {
-        return Ok(TypeInfo { ispub: t.is_pub });
-    }
-    if ctx.this_mod_head.typedefs.contains(&name.to_string()) {
-        return Ok(TypeInfo { ispub: false });
-    }
-    return Err(format!("unknown type: {}", name));
-}
-
-pub struct TrParams {
-    pub this_mod_head: ModuleInfo,
-    pub all_mod_heads: Vec<ModuleInfo>,
-    pub cmods: Vec<c::CModule>,
-    pub mods: Vec<nodes::Module>,
-}
-
 struct TrCtx {
-    this_mod_head: ModuleInfo,
-    all_mod_heads: Vec<ModuleInfo>,
-    cmods: Vec<c::CModule>,
-    mods: Vec<nodes::Module>,
+    source_modules: Vec<nodes::Module>,   // all source modules
+    source_modules_info: Vec<ModuleInfo>, // info for all source_modules
+    this_module_info: ModuleInfo,         // info for the currently translated source module
+    translated_modules: Vec<c::Module>,   // already translated C modules
     scopes: Vec<Vec<Binding>>,
     used_ns: HashSet<String>,
     used_customs: HashSet<String>,
@@ -118,112 +29,108 @@ struct TrCtx {
     other_typedefs: HashMap<String, TI>,
 }
 
-fn getnspos(ctx: &TrCtx, ns: &str) -> usize {
-    let import_pos = ctx
-        .this_mod_head
-        .imports
-        .iter()
-        .position(|x| x.ns == ns)
-        .unwrap();
-    let path = &ctx.this_mod_head.imports[import_pos].path;
-    let module_pos = ctx
-        .all_mod_heads
-        .iter()
-        .position(|x| x.filepath == *path)
-        .unwrap();
-    module_pos
-}
+pub fn translate_mods(
+    mods: Vec<nodes::Module>,
+    modmetas: &Vec<ModuleInfo>,
+) -> Result<Vec<c::Module>, BuildError> {
+    let n = mods.len();
 
-fn begin_scope(ctx: &mut TrCtx) {
-    ctx.scopes.push(Vec::new());
-}
+    let mut cmods = Vec::new();
+    for i in 0..n {
+        let m = &mods[i];
 
-fn end_scope(ctx: &mut TrCtx) -> Result<(), BuildError> {
-    // for s in &ctx.scopes {
-    //     println!("---{} ---", ctx.this_mod_head.filepath);
-    //     for b in s {
-    //         println!("- {} {}", b.name, b.used);
-    //     }
-    // }
-    let s = ctx.scopes.pop().unwrap();
-    for b in s {
-        if !b.ispub && !b.used {
-            return Err(BuildError {
-                path: ctx.this_mod_head.filepath.clone(),
-                pos: b.pos.fmt(),
-                message: format!("{} is unused", b.name),
-            });
-        }
-    }
-    Ok(())
-}
-
-fn find_binding<'a>(ctx: &'a TrCtx, name: &str) -> Option<&'a Binding> {
-    ctx.scopes
-        .iter()
-        .rev()
-        .find_map(|s| s.iter().find(|b| b.name == name))
-}
-
-fn mark_binding_use(ctx: &mut TrCtx, name: &str) -> bool {
-    let mut last_match = None;
-    for (s, scope) in ctx.scopes.iter().enumerate() {
-        for (b, binding) in scope.iter().enumerate() {
-            if binding.name == name {
-                last_match = Some((s, b));
-            }
-        }
-    }
-    match last_match {
-        Some((s, b)) => {
-            ctx.scopes[s][b].used = true;
-            return true;
-        }
-        None => {
-            return cspec::find_sym(name).is_some() || name == "nelem";
-            // || ctx.types.contains_key(name)
-        }
-    };
-}
-
-fn add_binding(ctx: &mut TrCtx, b: Binding) {
-    let n = ctx.scopes.len();
-    if ctx.scopes[n - 1].iter().any(|x| x.name == b.name) {
-        panic!("{} was already declared at ???", b.name);
-    }
-    ctx.scopes[n - 1].push(b);
-}
-
-// Translates a module to c module.
-pub fn translate(m: &nodes::Module, params: &TrParams) -> Result<c::CModule, BuildError> {
-    // Build the list of modules to link.
-    // These are specified using the #link macros.
-    let mut link: Vec<String> = Vec::new();
-    for node in &m.elements {
-        match node {
-            nodes::ModElem::Macro(x) => {
-                if x.name == "link" {
-                    link.push(x.value.clone())
+        // Build the list of modules to link.
+        // These are specified using the #link macros.
+        let mut link: Vec<String> = Vec::new();
+        for node in &m.elements {
+            match node {
+                nodes::ModElem::Macro(x) => {
+                    if x.name == "link" {
+                        link.push(x.value.clone())
+                    }
                 }
+                _ => {}
             }
-            _ => {}
         }
+
+        let mut ctx = TrCtx {
+            source_modules: mods.clone(),
+            source_modules_info: modmetas.clone(),
+            this_module_info: modmetas[i].clone(),
+            translated_modules: cmods.clone(),
+            scopes: Vec::new(),
+            used_ns: HashSet::new(),
+            used_customs: HashSet::new(),
+            struct_typedefs: HashMap::new(),
+            other_typedefs: HashMap::new(),
+        };
+        begin_scope(&mut ctx);
+        init_root_scope(&mut ctx, m);
+        let mut body = Vec::new();
+        for e in &m.elements {
+            body.extend(tr_mod_elem(e, &mut ctx)?);
+        }
+        end_scope(&mut ctx)?;
+
+        // Check for unused imports.
+        for imp in &ctx.this_module_info.imports {
+            if !ctx.used_ns.contains(&imp.ns) {
+                return Err(BuildError {
+                    path: ctx.this_module_info.filepath.clone(),
+                    pos: format!("1:1"),
+                    message: format!("unused import: {}", imp.ns),
+                });
+            }
+        }
+
+        //
+        // Compose the top of the C module.
+        //
+
+        let mut head: Vec<c::ModElem> = Vec::new();
+
+        // Enable POSIX.
+        head.push(c::ModElem::Macro(c::Macro {
+            name: "define".to_string(),
+            value: "_XOPEN_SOURCE 700".to_string(),
+        }));
+
+        // Include all standard C library.
+        let clibs: &[&str] = &[
+            "assert", "ctype", "errno", "limits", "math", "stdarg", "stdbool", "stddef", "stdint",
+            "stdio", "stdlib", "string", "time", "setjmp", "signal",
+        ];
+        for n in clibs {
+            head.push(c::ModElem::Include(format!("<{}.h>", n)));
+        }
+        // Include custom utils.
+        if ctx.used_customs.contains("calloc_or_panic") {
+            head.push(makers::func_calloc())
+        }
+
+        head.push(c::ModElem::Macro(c::Macro {
+            name: "define".to_string(),
+            value: "nelem(x) (sizeof (x)/sizeof (x)[0])".to_string(),
+        }));
+
+        // Inject headers corresponding to the imports.
+        for x in expand_imports(&ctx) {
+            head.push(x);
+        }
+
+        let mut result = Vec::new();
+        result.append(&mut head);
+        result.append(&mut body);
+        let res = Ok(c::Module {
+            elements: reorder_elems(result),
+            link,
+        });
+        cmods.push(res?);
     }
+    Ok(cmods)
+}
 
-    let mut ctx = TrCtx {
-        all_mod_heads: params.all_mod_heads.clone(),
-        cmods: params.cmods.clone(),
-        mods: params.mods.clone(),
-        scopes: Vec::new(),
-        this_mod_head: params.this_mod_head.clone(),
-        used_ns: HashSet::new(),
-        used_customs: HashSet::new(),
-        struct_typedefs: HashMap::new(),
-        other_typedefs: HashMap::new(),
-    };
-
-    // Add module-level identifiers to the top scope: enums, modvars, functions.
-    begin_scope(&mut ctx);
+fn init_root_scope(ctx: &mut TrCtx, m: &nodes::Module) {
     for x in &m.elements {
         match x {
             nodes::ModElem::Macro(x) => {
@@ -240,7 +147,7 @@ pub fn translate(m: &nodes::Module, params: &TrParams) -> Result<c::CModule, Bui
                         types::todo()
                     };
                     add_binding(
-                        &mut ctx,
+                        ctx,
                         Binding {
                             constval: None,
                             ispub: false,
@@ -255,7 +162,7 @@ pub fn translate(m: &nodes::Module, params: &TrParams) -> Result<c::CModule, Bui
             nodes::ModElem::Enum(x) => {
                 for e in &x.entries {
                     add_binding(
-                        &mut ctx,
+                        ctx,
                         Binding {
                             constval: None,
                             ispub: x.is_pub,
@@ -290,7 +197,7 @@ pub fn translate(m: &nodes::Module, params: &TrParams) -> Result<c::CModule, Bui
             }
             nodes::ModElem::ModVar(x) => {
                 add_binding(
-                    &mut ctx,
+                    ctx,
                     Binding {
                         constval: if x.typename.is_const {
                             x.value.clone()
@@ -309,7 +216,7 @@ pub fn translate(m: &nodes::Module, params: &TrParams) -> Result<c::CModule, Bui
                 let ispub = x.ispub || x.form.name == "main";
                 let typ = typefrom_funcdecl(&x);
                 add_binding(
-                    &mut ctx,
+                    ctx,
                     Binding {
                         constval: None,
                         ispub,
@@ -322,69 +229,137 @@ pub fn translate(m: &nodes::Module, params: &TrParams) -> Result<c::CModule, Bui
             }
         }
     }
+}
 
-    // Translate the module elements.
-    let mut body: Vec<c::ModElem> = Vec::new();
-    for e in &m.elements {
-        for node in tr_mod_elem(e, &mut ctx)? {
-            body.push(node)
-        }
-    }
-    end_scope(&mut ctx)?;
+struct Typed<T> {
+    typ: types::Type,
+    val: T,
+}
 
-    // Check for unused imports.
-    for imp in &ctx.this_mod_head.imports {
-        if !ctx.used_ns.contains(&imp.ns) {
+struct TI {
+    is_pub: bool,
+    t: types::Type,
+}
+
+struct TypeInfo {
+    ispub: bool,
+    // Struct(nodes::StructTypedef),
+}
+
+struct Binding {
+    pos: Pos,
+    name: String,
+    typ: types::Type,
+    used: bool,
+    ispub: bool,
+    constval: Option<nodes::Expr>, // If provided, this binding is a constant.
+}
+
+// Returns the index of the source module with the namespace ns.
+fn get_module_index(ctx: &TrCtx, ns: &str) -> usize {
+    let import_pos = ctx
+        .this_module_info
+        .imports
+        .iter()
+        .position(|x| x.ns == ns)
+        .unwrap();
+    let path = &ctx.this_module_info.imports[import_pos].path;
+    let module_pos = ctx
+        .source_modules_info
+        .iter()
+        .position(|x| x.filepath == *path)
+        .unwrap();
+    module_pos
+}
+
+fn begin_scope(ctx: &mut TrCtx) {
+    ctx.scopes.push(Vec::new());
+}
+
+fn end_scope(ctx: &mut TrCtx) -> Result<(), BuildError> {
+    let s = ctx.scopes.pop().unwrap();
+    for b in s {
+        if !b.ispub && !b.used {
             return Err(BuildError {
-                path: ctx.this_mod_head.filepath.clone(),
-                pos: format!("1:1"),
-                message: format!("unused import: {}", imp.ns),
+                path: ctx.this_module_info.filepath.clone(),
+                pos: b.pos.fmt(),
+                message: format!("{} is unused", b.name),
             });
         }
     }
+    Ok(())
+}
 
-    //
-    // Compose the top of the C module.
-    //
-
-    let mut head: Vec<c::ModElem> = Vec::new();
-
-    // Enable POSIX.
-    head.push(c::ModElem::Macro(c::Macro {
-        name: "define".to_string(),
-        value: "_XOPEN_SOURCE 700".to_string(),
-    }));
-
-    // Include all standard C library.
-    let clibs: &[&str] = &[
-        "assert", "ctype", "errno", "limits", "math", "stdarg", "stdbool", "stddef", "stdint",
-        "stdio", "stdlib", "string", "time", "setjmp", "signal",
-    ];
-    for n in clibs {
-        head.push(c::ModElem::Include(format!("<{}.h>", n)));
+fn find_type(ctx: &TrCtx, name: &str) -> Result<TypeInfo, String> {
+    // cspec has absolute precedence, can't redefine int.
+    if cspec::has_type(name) {
+        return Ok(TypeInfo { ispub: false });
     }
-    // Include custom utils.
-    if ctx.used_customs.contains("calloc_or_panic") {
-        head.push(mk_calloc_or_panic())
+    if let Some(t) = ctx.struct_typedefs.get(name) {
+        return Ok(TypeInfo { ispub: t.ispub });
     }
-
-    head.push(c::ModElem::Macro(c::Macro {
-        name: "define".to_string(),
-        value: "nelem(x) (sizeof (x)/sizeof (x)[0])".to_string(),
-    }));
-
-    // Inject headers corresponding to the imports.
-    for x in expand_imports(&ctx) {
-        head.push(x);
+    if let Some(t) = ctx.other_typedefs.get(name) {
+        return Ok(TypeInfo { ispub: t.is_pub });
     }
+    if ctx.this_module_info.typedefs.contains(&name.to_string()) {
+        return Ok(TypeInfo { ispub: false });
+    }
+    return Err(format!("unknown type: {}", name));
+}
 
-    let mut result = Vec::new();
-    result.append(&mut head);
-    result.append(&mut body);
-    Ok(c::CModule {
-        elements: reorder_elems(result),
-        link,
-    })
+fn find_root_type(ctx: &TrCtx, t: &types::Type) -> types::Type {
+    if t.base.ns != "" {
+        return types::todo();
+    }
+    if cspec::has_type(&t.base.name) {
+        return t.clone();
+    }
+    match ctx.other_typedefs.get(t.base.name.as_str()) {
+        Some(b) => {
+            let mut r = b.t.clone();
+            for (i, op) in t.ops.iter().enumerate() {
+                r.ops.insert(i, op.clone());
+            }
+            r
+        }
+        None => t.clone(), // todo
+    }
+}
+
+fn add_binding(ctx: &mut TrCtx, b: Binding) {
+    let n = ctx.scopes.len();
+    if ctx.scopes[n - 1].iter().any(|x| x.name == b.name) {
+        panic!("{} was already declared at ???", b.name);
+    }
+    ctx.scopes[n - 1].push(b);
+}
+
+fn find_binding<'a>(ctx: &'a TrCtx, name: &str) -> Option<&'a Binding> {
+    ctx.scopes
+        .iter()
+        .rev()
+        .find_map(|s| s.iter().find(|b| b.name == name))
+}
+
+fn mark_binding_use(ctx: &mut TrCtx, name: &str) -> bool {
+    let mut last_match = None;
+    for (s, scope) in ctx.scopes.iter().enumerate() {
+        for (b, binding) in scope.iter().enumerate() {
+            if binding.name == name {
+                last_match = Some((s, b));
+            }
+        }
+    }
+    match last_match {
+        Some((s, b)) => {
+            ctx.scopes[s][b].used = true;
+            return true;
+        }
+        None => {
+            return cspec::find_sym(name).is_some() || name == "nelem";
+            // || ctx.types.contains_key(name)
+        }
+    };
 }
 
 fn reorder_elems(elements: Vec<c::ModElem>) -> Vec<c::ModElem> {
@@ -463,16 +438,16 @@ fn expand_imports(ctx: &TrCtx) -> Vec<c::ModElem> {
     // get duplicate definitions. We filter them out here.
     let mut present = HashSet::new();
 
-    for imp in &ctx.this_mod_head.imports {
+    for imp in &ctx.this_module_info.imports {
         // This relies on the modules being parsed in the order where we are
         // guaranteed to have all current module's dependencies already parsed.
         let pos = ctx
-            .all_mod_heads
+            .source_modules_info
             .iter()
             .position(|x| x.filepath == imp.path)
             .unwrap();
-        let cmodule = &ctx.cmods[pos];
-        for obj in get_module_synopsis(cmodule) {
+        let cmodule = &ctx.translated_modules[pos];
+        for obj in c::get_module_synopsis(cmodule) {
             let id = get_obj_key(&obj);
             if present.contains(&id) {
                 continue;
@@ -484,6 +459,187 @@ fn expand_imports(ctx: &TrCtx) -> Vec<c::ModElem> {
 
     elements
 }
+
+fn pos_todo() -> Pos {
+    Pos { col: 0, line: 0 }
+}
+
+fn trace_type(ctx: &TrCtx, expr: &nodes::Expr, typ: &types::Type) {
+    if !DEBUG_TYPES {
+        return;
+    }
+    println!(
+        "{}: {} :: {}",
+        ctx.this_module_info.uniqid,
+        format_che::fmt_expr(expr),
+        typ.fmt()
+    );
+}
+
+fn typefrom_typename(x: &nodes::Typename, y: &nodes::Form) -> types::Type {
+    let mut ops = Vec::new();
+    for _ in &y.indexes {
+        ops.push(types::TypeOp::Index);
+    }
+    for _ in 0..y.hops {
+        ops.push(types::TypeOp::Deref);
+    }
+    types::mk(ops, &x.name.ns, &x.name.name)
+}
+
+fn typefrom_baretypeform(x: &nodes::BareTypeform) -> types::Type {
+    let mut ops = Vec::new();
+    for _ in 0..x.hops {
+        ops.push(types::TypeOp::Deref);
+    }
+    types::mk(ops, &x.typename.name.ns, &x.typename.name.name)
+}
+
+fn typefrom_typedef(x: &nodes::Typedef) -> types::Type {
+    let mut ops = Vec::new();
+    if x.func_params.is_some() {
+        let mut args = Vec::new();
+        if let Some(p) = &x.func_params {
+            for f in &p.forms {
+                args.push(typefrom_baretypeform(&f))
+            }
+            if p.ellipsis {
+                args.push(types::ellipsis());
+            }
+        }
+        ops.push(types::TypeOp::Call(args));
+    }
+    if x.array_size > 0 {
+        ops.push(types::TypeOp::Index);
+    }
+    for _ in 0..x.derefs {
+        ops.push(types::TypeOp::Deref);
+    }
+    types::Type {
+        ops,
+        base: nodes::NsName {
+            ns: String::from(&x.typename.name.ns),
+            name: String::from(&x.typename.name.name),
+            pos: pos_todo(),
+        },
+    }
+}
+
+fn is_numeric(s: &str) -> bool {
+    s.parse::<f64>().is_ok() // Use f64 for floating-point, or i32/u32 for integers
+}
+
+fn typefrom_literal(x: &nodes::Literal) -> types::Type {
+    match x {
+        nodes::Literal::Char(_) => types::just("char"),
+        nodes::Literal::String(_) => types::justp("char"),
+        nodes::Literal::Number(_) => types::number(),
+        nodes::Literal::Null => types::just("null"),
+    }
+}
+
+fn typefrom_struct_field(
+    ctx: &TrCtx,
+    struct_type: &types::Type,
+    field: &str,
+) -> Result<types::Type, String> {
+    if types::is_todo(struct_type) {
+        return Ok(types::todo());
+    }
+    let ns = &struct_type.base.ns;
+    let name = &struct_type.base.name;
+
+    if ns == "" {
+        if let Some(x) = ctx.struct_typedefs.get(name) {
+            for e in &x.entries {
+                match e {
+                    nodes::StructEntry::Plain(type_and_forms) => {
+                        for f in &type_and_forms.forms {
+                            if f.name == field {
+                                return Ok(typefrom_typename(&type_and_forms.typename, f));
+                            }
+                        }
+                    }
+                    nodes::StructEntry::Union(_) => return Ok(types::todo()),
+                }
+            }
+        }
+        if let Some(x) = ctx.other_typedefs.get(name) {
+            if types::is_todo(&x.t) {
+                return Ok(types::todo());
+            }
+            // todo!();
+        }
+        // return Err(format!("not a struct: {}", struct_type.fmt()));
+    }
+    return Ok(types::todo());
+}
+
+// Validates a call of t with args aa and returns the resulting type.
+fn typefrom_call(
+    ctx: &TrCtx,
+    t: &types::Type,
+    aa: Vec<&types::Type>,
+) -> Result<types::Type, String> {
+    if types::is_todo(t) {
+        return Ok(types::todo());
+    }
+
+    if let Some(types::TypeOp::Call(args)) = t.ops.first() {
+        if args.last().map_or(false, |x| types::is_ellipsis(x)) {
+            if aa.len() < args.len() - 1 {
+                return Err(format!(
+                    "expected at least {} arguments, got {}",
+                    args.len() - 1,
+                    aa.len()
+                ));
+            }
+        } else {
+            if aa.len() != args.len() {
+                return Err(format!(
+                    "expected {} arguments, got {}",
+                    args.len(),
+                    aa.len()
+                ));
+            }
+        }
+
+        return Ok(types::Type {
+            ops: t.ops[1..].to_vec(),
+            base: t.base.clone(),
+        });
+    }
+
+    // Custom function typedef?
+    if t.ops.len() == 0 && t.base.ns == "" {
+        let def = ctx.other_typedefs.get(t.base.name.as_str());
+        if def.is_some() {
+            return typefrom_call(ctx, &def.unwrap().t, aa);
+        }
+    }
+
+    if t.ops.len() == 1 && t.base.ns == "" {
+        match t.ops[0] {
+            types::TypeOp::Deref => {
+                let x = ctx.other_typedefs.get(&t.base.name);
+                if x.is_some() {
+                    return typefrom_call(ctx, &x.unwrap().t, aa);
+                }
+            }
+            _ => {}
+        }
+    }
+
+    return Err(format!("call of a non-function ({})", t.fmt()));
+}
+
+fn nsprefix(prefix: &str, id: &str) -> String {
+    format!("{}__{}", prefix, id)
+}
+
+//
+// Node translators
+//
 
 fn tr_mod_elem(element: &nodes::ModElem, ctx: &mut TrCtx) -> Result<Vec<c::ModElem>, BuildError> {
     match element {
@@ -500,7 +656,7 @@ fn tr_mod_elem(element: &nodes::ModElem, ctx: &mut TrCtx) -> Result<Vec<c::ModEl
 fn tr_expr(e: &nodes::Expr, ctx: &mut TrCtx) -> Result<Typed<c::Expr>, BuildError> {
     return match e {
         nodes::Expr::Literal(x) => Ok(Typed {
-            typ: typeof_literal(x),
+            typ: typefrom_literal(x),
             val: c::Expr::Literal(tr_literal(x)),
         }),
         nodes::Expr::NsName(x) => tr_nsid_in_expr(x, ctx).map(|x| Typed {
@@ -533,8 +689,15 @@ fn tr_body(b: &nodes::Body, ctx: &mut TrCtx) -> Result<c::CBody, BuildError> {
                         // call is a stand-alone statement and can't be part
                         // of expression.
                         if nodes::is_ident(&call.func, "panic") {
-                            let pos = expression_pos(x).fmt();
-                            mk_panic(ctx, &pos, &call.args)?
+                            let mut xargs = Vec::new();
+                            for arg in &call.args {
+                                xargs.push(tr_expr(arg, ctx)?.val);
+                            }
+                            makers::st_panic(
+                                &ctx.this_module_info.filepath,
+                                &expression_pos(x).fmt(),
+                                xargs,
+                            )
                         } else {
                             c::Statement::Expression(tr_expr(&x, ctx)?.val)
                         }
@@ -556,7 +719,7 @@ fn tr_body(b: &nodes::Body, ctx: &mut TrCtx) -> Result<c::CBody, BuildError> {
 
 fn tr_struct_alias(x: &nodes::StructAlias, ctx: &TrCtx) -> Vec<c::ModElem> {
     let alias = if x.ispub {
-        nsprefix(&ctx.this_mod_head.uniqid, &x.typename)
+        nsprefix(&ctx.this_module_info.uniqid, &x.typename)
     } else {
         x.typename.clone()
     };
@@ -591,7 +754,7 @@ fn tr_typedef(x: &nodes::Typedef, ctx: &mut TrCtx) -> Result<Vec<c::ModElem>, Bu
     };
 
     let alias = if x.ispub {
-        nsprefix(&ctx.this_mod_head.uniqid, &x.alias)
+        nsprefix(&ctx.this_module_info.uniqid, &x.alias)
     } else {
         x.alias.clone()
     };
@@ -618,7 +781,7 @@ fn tr_struct_typedef(
     // If the typedef is private, keep the name as foo_t.
     // If public, use <ns>__foo_t.
     let name = if x.ispub {
-        nsprefix(&ctx.this_mod_head.uniqid, &x.name)
+        nsprefix(&ctx.this_module_info.uniqid, &x.name)
     } else {
         x.name.clone()
     };
@@ -671,7 +834,7 @@ fn tr_enum(x: &nodes::Enum, ctx: &mut TrCtx) -> Result<Vec<c::ModElem>, BuildErr
     let mut entries = Vec::new();
     for e in &x.entries {
         let id = if x.is_pub {
-            nsprefix(&ctx.this_mod_head.uniqid, &e.name)
+            nsprefix(&ctx.this_module_info.uniqid, &e.name)
         } else {
             e.name.clone()
         };
@@ -725,7 +888,7 @@ fn tr_form(x: &nodes::Form, ctx: &mut TrCtx, publishable: bool) -> Result<c::For
 
     let b = find_binding(ctx, &x.name);
     let name = if publishable && b.is_some() && b.unwrap().ispub && x.name != "main" {
-        nsprefix(&ctx.this_mod_head.uniqid, &x.name)
+        nsprefix(&ctx.this_module_info.uniqid, &x.name)
     } else {
         x.name.clone()
     };
@@ -749,32 +912,12 @@ fn tr_union(x: &nodes::Union, ctx: &mut TrCtx) -> Result<c::CUnion, BuildError> 
     Ok(c::CUnion { form, fields })
 }
 
-fn root_type(t: &types::Type, ctx: &TrCtx) -> types::Type {
-    if t.base.ns != "" {
-        return types::todo();
-    }
-    if cspec::has_type(&t.base.name) {
-        return t.clone();
-    }
-    match ctx.other_typedefs.get(t.base.name.as_str()) {
-        Some(b) => {
-            let mut r = b.t.clone();
-            for (i, op) in t.ops.iter().enumerate() {
-                r.ops.insert(i, op.clone());
-            }
-            r
-        }
-        None => t.clone(), // todo
-    }
-}
-
 // <..> <op> <..>
 fn tr_binary_op(x: &nodes::BinaryOp, ctx: &mut TrCtx) -> Result<Typed<c::Expr>, BuildError> {
     let a = tr_expr(&x.a, ctx)?;
     let b = tr_expr(&x.b, ctx)?;
-
-    let at = root_type(&a.typ, ctx);
-    let bt = root_type(&b.typ, ctx);
+    let at = find_root_type(ctx, &a.typ);
+    let bt = find_root_type(ctx, &b.typ);
 
     let typ = match x.op.as_str() {
         "||" | "&&" => types::typeof_boolcomp(&a.typ, &b.typ),
@@ -788,13 +931,13 @@ fn tr_binary_op(x: &nodes::BinaryOp, ctx: &mut TrCtx) -> Result<Typed<c::Expr>, 
     }
     .map_err(|e| BuildError {
         message: format!("{}: {}", e, format_che::fmt_binop(&x)),
-        path: ctx.this_mod_head.filepath.clone(),
+        path: ctx.this_module_info.filepath.clone(),
         pos: x.pos.fmt(),
     })?;
     if DEBUG_TYPES {
         println!(
             "{}: {} :: {}",
-            ctx.this_mod_head.uniqid,
+            ctx.this_module_info.uniqid,
             format_che::fmt_expr(&nodes::Expr::BinaryOp(x.clone())),
             typ.fmt()
         );
@@ -827,7 +970,7 @@ fn tr_prefop(x: &nodes::PrefixOp, ctx: &mut TrCtx) -> Result<Typed<c::Expr>, Bui
     }
     .map_err(|e| BuildError {
         message: e,
-        path: ctx.this_mod_head.filepath.clone(),
+        path: ctx.this_module_info.filepath.clone(),
         pos: x.pos.fmt(),
     })?;
     Ok(Typed {
@@ -871,7 +1014,7 @@ fn tr_cast(x: &nodes::Cast, ctx: &mut TrCtx) -> Result<Typed<c::Expr>, BuildErro
     }
     if operand.typ.fmt() == typ.fmt() {
         return Err(BuildError {
-            path: ctx.this_mod_head.filepath.clone(),
+            path: ctx.this_module_info.filepath.clone(),
             pos: x.pos.fmt(),
             message: String::from("redundant cast"),
         });
@@ -891,7 +1034,7 @@ fn tr_arr_index(x: &nodes::ArrayIndex, ctx: &mut TrCtx) -> Result<Typed<c::Expr>
     let ind = tr_expr(&x.index, ctx)?;
     let typ = types::typeof_index(&arr.typ, &ind.typ).map_err(|e| BuildError {
         message: e,
-        path: ctx.this_mod_head.filepath.clone(),
+        path: ctx.this_module_info.filepath.clone(),
         pos: x.pos.fmt(),
     })?;
     Ok(Typed {
@@ -903,23 +1046,19 @@ fn tr_arr_index(x: &nodes::ArrayIndex, ctx: &mut TrCtx) -> Result<Typed<c::Expr>
     })
 }
 
-fn pos_todo() -> Pos {
-    Pos { col: 0, line: 0 }
-}
-
 // <..> -> field
 // <..> . field
 fn tr_field_access(x: &nodes::FieldAccess, ctx: &mut TrCtx) -> Result<Typed<c::Expr>, BuildError> {
     let target = tr_expr(&x.target, ctx)?;
-    let typ = typeof_struct_field(ctx, &target.typ, &x.field_name).map_err(|e| BuildError {
+    let typ = typefrom_struct_field(ctx, &target.typ, &x.field_name).map_err(|e| BuildError {
         message: e,
-        path: ctx.this_mod_head.filepath.clone(),
+        path: ctx.this_module_info.filepath.clone(),
         pos: x.pos.fmt(),
     })?;
     if DEBUG_TYPES {
         println!(
             "{}: {} :: {}",
-            ctx.this_mod_head.uniqid,
+            ctx.this_module_info.uniqid,
             format_che::fmt_field_access(x),
             typ.fmt()
         );
@@ -984,18 +1123,6 @@ fn tr_sizeof(x: &nodes::Sizeof, ctx: &mut TrCtx) -> Result<Typed<c::Expr>, Build
     })
 }
 
-fn trace_type(ctx: &TrCtx, expr: &nodes::Expr, typ: &types::Type) {
-    if !DEBUG_TYPES {
-        return;
-    }
-    println!(
-        "{}: {} :: {}",
-        ctx.this_mod_head.uniqid,
-        format_che::fmt_expr(expr),
-        typ.fmt()
-    );
-}
-
 // f(args)
 fn tr_call(x: &nodes::Call, ctx: &mut TrCtx) -> Result<Typed<c::Expr>, BuildError> {
     if nodes::is_ident(&x.func, "calloc!") {
@@ -1024,9 +1151,9 @@ fn tr_call(x: &nodes::Call, ctx: &mut TrCtx) -> Result<Typed<c::Expr>, BuildErro
     }
 
     let aat = typedargs.iter().map(|x| &x.typ).collect();
-    let typ = typeof_call(ctx, &func.typ, aat).map_err(|e| BuildError {
+    let typ = typefrom_call(ctx, &func.typ, aat).map_err(|e| BuildError {
         message: e,
-        path: ctx.this_mod_head.filepath.clone(),
+        path: ctx.this_module_info.filepath.clone(),
         pos: x.pos.fmt(),
     })?;
     trace_type(ctx, &nodes::Expr::Call(x.clone()), &typ);
@@ -1090,7 +1217,9 @@ fn tr_func_decl(x: &nodes::FuncDecl, ctx: &mut TrCtx) -> Result<Vec<c::ModElem>,
 
     let mut rbody = tr_body(&x.body, ctx)?;
     if TRACE {
-        rbody.statements.insert(0, mk_call_trace(ctx, x))
+        rbody
+            .statements
+            .insert(0, makers::st_calltrace(&ctx.this_module_info.filepath, x))
     }
 
     let mut r = vec![c::ModElem::FuncDef(c::FuncDef {
@@ -1114,24 +1243,11 @@ fn tr_func_decl(x: &nodes::FuncDecl, ctx: &mut TrCtx) -> Result<Vec<c::ModElem>,
         return Err(BuildError {
             message: format!("{}: missing return", x.form.name),
             pos: x.pos.fmt(),
-            path: ctx.this_mod_head.filepath.clone(),
+            path: ctx.this_module_info.filepath.clone(),
         });
     }
 
     Ok(r)
-}
-
-fn mk_call_trace(ctx: &TrCtx, x: &nodes::FuncDecl) -> c::Statement {
-    let loc = format!(
-        "{}:{}",
-        ctx.this_mod_head.filepath,
-        format_che::fmt_form(&x.form),
-    );
-    mk_call_st("puts", vec![mk_str(loc)])
-}
-
-fn mk_str(s: String) -> c::Expr {
-    c::Expr::Literal(c::CLiteral::String(s))
 }
 
 // mod.foo_t
@@ -1148,11 +1264,11 @@ fn tr_typename(x: &nodes::Typename, ctx: &mut TrCtx) -> Result<c::Typename, Buil
     if nsid.ns == "" {
         let t = find_type(ctx, &nsid.name).map_err(|s| BuildError {
             message: s,
-            path: ctx.this_mod_head.filepath.clone(),
+            path: ctx.this_module_info.filepath.clone(),
             pos: nsid.pos.fmt(),
         })?;
         let name = if t.ispub {
-            nsprefix(&ctx.this_mod_head.uniqid, &nsid.name)
+            nsprefix(&ctx.this_module_info.uniqid, &nsid.name)
         } else {
             nsid.name.clone()
         };
@@ -1162,15 +1278,15 @@ fn tr_typename(x: &nodes::Typename, ctx: &mut TrCtx) -> Result<c::Typename, Buil
         });
     }
 
-    let pos = getnspos(ctx, &nsid.ns);
-    let id = &ctx.all_mod_heads[pos].uniqid;
-    let exports = &ctx.mods[pos].exports;
+    let pos = get_module_index(ctx, &nsid.ns);
+    let id = &ctx.source_modules_info[pos].uniqid;
+    let exports = &ctx.source_modules[pos].exports;
 
     if !nodes::exports_has(&exports, &nsid.name) {
         return Err(BuildError {
             message: format!("{} doesn't have exported {}", &nsid.ns, &nsid.name),
             pos: nsid.pos.fmt(),
-            path: ctx.this_mod_head.filepath.clone(),
+            path: ctx.this_module_info.filepath.clone(),
         });
     }
 
@@ -1219,8 +1335,8 @@ fn tr_nsid_in_expr(x: &nodes::NsName, ctx: &mut TrCtx) -> Result<Typed<String>, 
     }
 
     let typ: types::Type;
-    let pos = getnspos(ctx, &x.ns);
-    let exports = &ctx.mods[pos].exports;
+    let pos = get_module_index(ctx, &x.ns);
+    let exports = &&ctx.source_modules[pos].exports;
     if exports.consts.iter().any(|c| c.name == x.name) {
         typ = types::number();
     } else {
@@ -1259,22 +1375,22 @@ fn tr_nsid(nsid: &nodes::NsName, ctx: &mut TrCtx) -> Result<String, BuildError> 
     if nsid.ns != "" {
         ctx.used_ns.insert(nsid.ns.clone());
 
-        let pos = getnspos(ctx, &nsid.ns);
-        let id = &ctx.all_mod_heads[pos].uniqid;
-        let exports = &ctx.mods[pos].exports;
+        let pos = get_module_index(ctx, &nsid.ns);
+        let id = &ctx.source_modules_info[pos].uniqid;
+        let exports = &ctx.source_modules[pos].exports;
 
         if !nodes::exports_has(&exports, &nsid.name) {
             return Err(BuildError {
                 message: format!("{} doesn't have exported {}", &nsid.ns, &nsid.name),
                 pos: nsid.pos.fmt(),
-                path: ctx.this_mod_head.filepath.clone(),
+                path: ctx.this_module_info.filepath.clone(),
             });
         }
         return Ok(nsprefix(id, &nsid.name));
     }
     let b = find_binding(ctx, &nsid.name);
     let name = if b.is_some() && b.unwrap().ispub {
-        nsprefix(&ctx.this_mod_head.uniqid, &nsid.name)
+        nsprefix(&ctx.this_module_info.uniqid, &nsid.name)
     } else {
         nsid.name.clone()
     };
@@ -1282,7 +1398,7 @@ fn tr_nsid(nsid: &nodes::NsName, ctx: &mut TrCtx) -> Result<String, BuildError> 
         return Err(BuildError {
             message: format!("nsid: {} is undefined", &nsid.name),
             pos: nsid.pos.fmt(),
-            path: ctx.this_mod_head.filepath.clone(),
+            path: ctx.this_module_info.filepath.clone(),
         });
     }
     return Ok(name);
@@ -1330,7 +1446,7 @@ fn tr_for(x: &nodes::For, ctx: &mut TrCtx) -> Result<c::Statement, BuildError> {
             if !types::is_booly(&c.typ) {
                 return Err(BuildError {
                     message: format!("{} used as condition", &c.typ.fmt()),
-                    path: ctx.this_mod_head.filepath.clone(),
+                    path: ctx.this_module_info.filepath.clone(),
                     pos: expression_pos(x).fmt(),
                 });
             }
@@ -1447,7 +1563,7 @@ fn mk_switchstr_cond(
         nodes::SwitchCaseValue::Literal(literal) => c::Expr::Literal(tr_literal(&literal)),
     });
     args.push(switchval.clone());
-    let mut root = mk_neg(mk_call_expr("strcmp", args));
+    let mut root = makers::expr_neg(makers::expr_call("strcmp", args));
     let n = sw.values.len();
     for i in 1..n {
         let mut args: Vec<c::Expr> = Vec::new();
@@ -1458,7 +1574,7 @@ fn mk_switchstr_cond(
             nodes::SwitchCaseValue::Literal(literal) => c::Expr::Literal(tr_literal(&literal)),
         });
         args.push(switchval.clone());
-        root = mk_or(root, mk_neg(mk_call_expr("strcmp", args)));
+        root = makers::expr_or(root, makers::expr_neg(makers::expr_call("strcmp", args)));
     }
     Ok(root)
 }
@@ -1517,7 +1633,7 @@ fn tr_while(x: &nodes::While, ctx: &mut TrCtx) -> Result<c::Statement, BuildErro
     if !types::is_booly(&cond.typ) {
         return Err(BuildError {
             message: format!("{} used as condition", &cond.typ.fmt()),
-            path: ctx.this_mod_head.filepath.clone(),
+            path: ctx.this_module_info.filepath.clone(),
             pos: expression_pos(&x.cond).fmt(),
         });
     }
@@ -1535,326 +1651,4 @@ fn tr_literal(x: &nodes::Literal) -> c::CLiteral {
         nodes::Literal::Number(val) => c::CLiteral::Number(val.clone()),
         nodes::Literal::Null => c::CLiteral::Null,
     }
-}
-
-fn mk_call_expr(func: &str, args: Vec<c::Expr>) -> c::Expr {
-    c::Expr::Call {
-        func: Box::new(c::Expr::Ident(String::from(func))),
-        args,
-    }
-}
-
-fn mk_call_st(func: &str, args: Vec<c::Expr>) -> c::Statement {
-    c::Statement::Expression(mk_call_expr(func, args))
-}
-
-fn mk_panic(
-    ctx: &mut TrCtx,
-    pos: &String,
-    args: &Vec<nodes::Expr>,
-) -> Result<c::Statement, BuildError> {
-    let stderr = c::Expr::Ident(String::from("stderr"));
-    let mut outargs = vec![stderr.clone()];
-    for arg in args {
-        outargs.push(tr_expr(arg, ctx)?.val);
-    }
-    let panic_pos = format!("{}:{}", &ctx.this_mod_head.filepath, pos.clone());
-    Ok(c::Statement::Block {
-        statements: vec![
-            mk_call_st(
-                "fprintf",
-                vec![
-                    stderr.clone(),
-                    mk_str(String::from("*** panic at %s ***\\n")),
-                    mk_str(panic_pos),
-                ],
-            ),
-            mk_call_st("fprintf", outargs),
-            mk_call_st("fprintf", vec![stderr.clone(), mk_str("\\n".to_string())]),
-            mk_exit1(),
-        ],
-    })
-}
-
-fn mk_calloc_or_panic() -> c::ModElem {
-    let arg1 = c::CTypeForm {
-        type_name: c::Typename {
-            is_const: false,
-            name: "size_t".to_string(),
-        },
-        form: c::Form {
-            indexes: vec![],
-            name: "count".to_string(),
-            stars: "".to_string(),
-        },
-    };
-    let arg2 = c::CTypeForm {
-        type_name: c::Typename {
-            is_const: false,
-            name: "size_t".to_string(),
-        },
-        form: c::Form {
-            indexes: vec![],
-            name: "size".to_string(),
-            stars: "".to_string(),
-        },
-    };
-
-    // void *x = calloc(count, size)
-    let xdecl = c::Statement::VarDecl {
-        type_name: c::Typename {
-            is_const: false,
-            name: "void".to_string(),
-        },
-        forms: vec![c::Form {
-            indexes: vec![],
-            name: "x".to_string(),
-            stars: "*".to_string(),
-        }],
-        values: vec![Some(mk_call_expr(
-            "calloc",
-            vec![mk_id("count"), mk_id("size")],
-        ))],
-    };
-
-    let printerror = c::Statement::Expression(mk_call_expr(
-        "fprintf",
-        vec![
-            mk_id("stderr"),
-            c::Expr::Literal(c::CLiteral::String("calloc failed".to_string())),
-        ],
-    ));
-
-    let check = c::Statement::If {
-        condition: mk_neg(mk_id("x")),
-        body: c::CBody {
-            statements: vec![printerror, mk_exit1()],
-        },
-        else_body: None,
-    };
-
-    c::ModElem::FuncDef(c::FuncDef {
-        is_static: true,
-        type_name: c::Typename {
-            is_const: false,
-            name: "void".to_string(),
-        },
-        form: c::Form {
-            stars: "*".to_string(),
-            name: "calloc_or_panic".to_string(),
-            indexes: Vec::new(),
-        },
-        parameters: c::FuncParams {
-            list: vec![arg1, arg2],
-            variadic: false,
-        },
-        body: c::CBody {
-            statements: vec![
-                xdecl,
-                check,
-                c::Statement::Return {
-                    expression: Some(mk_id("x")),
-                },
-            ],
-        },
-    })
-}
-
-fn mk_id(n: &str) -> c::Expr {
-    c::Expr::Ident(n.to_string())
-}
-
-fn mk_exit1() -> c::Statement {
-    let one = c::Expr::Literal(c::CLiteral::Number("1".to_string()));
-    c::Statement::Expression(mk_call_expr("exit", vec![one]))
-}
-
-// Makes a negation of the given expression.
-fn mk_neg(operand: c::Expr) -> c::Expr {
-    c::Expr::PrefixOp {
-        operator: String::from("!"),
-        operand: Box::new(operand),
-    }
-}
-
-fn mk_or(a: c::Expr, b: c::Expr) -> c::Expr {
-    c::Expr::BinaryOp(c::BinaryOp {
-        op: String::from("||"),
-        a: Box::new(a),
-        b: Box::new(b),
-    })
-}
-
-////////////////////////
-
-fn typefrom_typename(x: &nodes::Typename, y: &nodes::Form) -> types::Type {
-    let mut ops = Vec::new();
-    for _ in &y.indexes {
-        ops.push(types::TypeOp::Index);
-    }
-    for _ in 0..y.hops {
-        ops.push(types::TypeOp::Deref);
-    }
-    types::mk(ops, &x.name.ns, &x.name.name)
-}
-
-fn typefrom_baretypeform(x: &nodes::BareTypeform) -> types::Type {
-    let mut ops = Vec::new();
-    for _ in 0..x.hops {
-        ops.push(types::TypeOp::Deref);
-    }
-    types::mk(ops, &x.typename.name.ns, &x.typename.name.name)
-}
-
-fn typefrom_typedef(x: &nodes::Typedef) -> types::Type {
-    let mut ops = Vec::new();
-    if x.func_params.is_some() {
-        let mut args = Vec::new();
-        if let Some(p) = &x.func_params {
-            for f in &p.forms {
-                args.push(typefrom_baretypeform(&f))
-            }
-            if p.ellipsis {
-                args.push(types::ellipsis());
-            }
-        }
-        ops.push(types::TypeOp::Call(args));
-    }
-    if x.array_size > 0 {
-        ops.push(types::TypeOp::Index);
-    }
-    for _ in 0..x.derefs {
-        ops.push(types::TypeOp::Deref);
-    }
-    types::Type {
-        ops,
-        base: nodes::NsName {
-            ns: String::from(&x.typename.name.ns),
-            name: String::from(&x.typename.name.name),
-            pos: pos_todo(),
-        },
-    }
-}
-
-fn is_numeric(s: &str) -> bool {
-    s.parse::<f64>().is_ok() // Use f64 for floating-point, or i32/u32 for integers
-}
-
-// fn find_struct_def(ctx: &TrCtx, ns: &str, name: &str) -> Option<nodes::StructTypedef> {
-//     println!(
-//         "{} -- find struct def {}.{}",
-//         ctx.this_mod_head.filepath, ns, name
-//     );
-
-//     let pos = getnspos(ctx, ns);
-//     let exports = &ctx.mods[pos].exports;
-//     return exports
-//         .structs
-//         .iter()
-//         .find(|x| x.name == *name)
-//         .map(|x| x.clone());
-// }
-
-fn typeof_literal(x: &nodes::Literal) -> types::Type {
-    match x {
-        nodes::Literal::Char(_) => types::just("char"),
-        nodes::Literal::String(_) => types::justp("char"),
-        nodes::Literal::Number(_) => types::number(),
-        nodes::Literal::Null => types::just("null"),
-    }
-}
-
-fn typeof_struct_field(
-    ctx: &TrCtx,
-    struct_type: &types::Type,
-    field: &str,
-) -> Result<types::Type, String> {
-    if types::is_todo(struct_type) {
-        return Ok(types::todo());
-    }
-    let ns = &struct_type.base.ns;
-    let name = &struct_type.base.name;
-
-    if ns == "" {
-        if let Some(x) = ctx.struct_typedefs.get(name) {
-            for e in &x.entries {
-                match e {
-                    nodes::StructEntry::Plain(type_and_forms) => {
-                        for f in &type_and_forms.forms {
-                            if f.name == field {
-                                return Ok(typefrom_typename(&type_and_forms.typename, f));
-                            }
-                        }
-                    }
-                    nodes::StructEntry::Union(_) => return Ok(types::todo()),
-                }
-            }
-        }
-        if let Some(x) = ctx.other_typedefs.get(name) {
-            if types::is_todo(&x.t) {
-                return Ok(types::todo());
-            }
-            // todo!();
-        }
-        // return Err(format!("not a struct: {}", struct_type.fmt()));
-    }
-    return Ok(types::todo());
-}
-
-// Validates a call of t with args aa and returns the resulting type.
-fn typeof_call(ctx: &TrCtx, t: &types::Type, aa: Vec<&types::Type>) -> Result<types::Type, String> {
-    if types::is_todo(t) {
-        return Ok(types::todo());
-    }
-
-    if let Some(types::TypeOp::Call(args)) = t.ops.first() {
-        if args.last().map_or(false, |x| types::is_ellipsis(x)) {
-            if aa.len() < args.len() - 1 {
-                return Err(format!(
-                    "expected at least {} arguments, got {}",
-                    args.len() - 1,
-                    aa.len()
-                ));
-            }
-        } else {
-            if aa.len() != args.len() {
-                return Err(format!(
-                    "expected {} arguments, got {}",
-                    args.len(),
-                    aa.len()
-                ));
-            }
-        }
-
-        return Ok(types::Type {
-            ops: t.ops[1..].to_vec(),
-            base: t.base.clone(),
-        });
-    }
-
-    // Custom function typedef?
-    if t.ops.len() == 0 && t.base.ns == "" {
-        let def = ctx.other_typedefs.get(t.base.name.as_str());
-        if def.is_some() {
-            return typeof_call(ctx, &def.unwrap().t, aa);
-        }
-    }
-
-    if t.ops.len() == 1 && t.base.ns == "" {
-        match t.ops[0] {
-            types::TypeOp::Deref => {
-                let x = ctx.other_typedefs.get(&t.base.name);
-                if x.is_some() {
-                    return typeof_call(ctx, &x.unwrap().t, aa);
-                }
-            }
-            _ => {}
-        }
-    }
-
-    return Err(format!("call of a non-function ({})", t.fmt()));
-}
-
-fn nsprefix(prefix: &str, id: &str) -> String {
-    format!("{}__{}", prefix, id)
 }

@@ -2,7 +2,7 @@ use crate::c;
 use crate::errors::BuildError;
 use crate::format_c;
 use crate::lexer;
-use crate::nodes::Module;
+use crate::nodes;
 use crate::parser;
 use crate::preparser;
 use crate::preparser::ModuleInfo;
@@ -20,8 +20,8 @@ use std::process::{Command, Stdio};
 #[derive(Debug)]
 pub struct Project {
     pub modheads: Vec<ModuleInfo>,
-    pub modules: Vec<Module>,
-    pub cmodules: Vec<c::CModule>,
+    pub modules: Vec<nodes::Module>,
+    pub cmodules: Vec<c::Module>,
 }
 
 pub struct PathId {
@@ -141,7 +141,7 @@ fn uniq(ss: Vec<String>) -> Vec<String> {
     result
 }
 
-fn parse_mods(modheads: &Vec<ModuleInfo>) -> Result<Vec<Module>, Vec<BuildError>> {
+fn parse_mods(modheads: &Vec<ModuleInfo>) -> Result<Vec<nodes::Module>, Vec<BuildError>> {
     let mut modules = Vec::new();
     for m in modheads {
         let ctx = parser::ParseCtx {
@@ -192,31 +192,12 @@ pub fn parse_project(mainpath: &String) -> Result<Project, Vec<BuildError>> {
     }
 
     let modules = parse_mods(&modheads)?;
-    let cmodules = translate_mods(modules.clone(), &modheads).map_err(|e| vec![e])?;
+    let cmodules = translator::translate_mods(modules.clone(), &modheads).map_err(|e| vec![e])?;
     Ok(Project {
         modheads,
         modules,
         cmodules,
     })
-}
-
-fn translate_mods(
-    mods: Vec<Module>,
-    modmetas: &Vec<ModuleInfo>,
-) -> Result<Vec<c::CModule>, BuildError> {
-    let n = mods.len();
-
-    let mut cmods = Vec::new();
-    for i in 0..n {
-        let ctx = translator::TrParams {
-            cmods: cmods.clone(),
-            all_mod_heads: modmetas.clone(),
-            this_mod_head: modmetas[i].clone(),
-            mods: mods.clone(),
-        };
-        cmods.push(translator::translate(&mods[i], &ctx)?);
-    }
-    Ok(cmods)
 }
 
 pub fn write_c99(work: &Project, dirpath: &String) -> Result<Vec<PathId>, String> {

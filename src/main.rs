@@ -23,6 +23,7 @@ use std::env;
 use std::process::exit;
 use std::string::String;
 mod errors;
+mod makers;
 
 type SubcommandFn = fn(&[String]) -> i32;
 

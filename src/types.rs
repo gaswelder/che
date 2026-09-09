@@ -152,6 +152,10 @@ pub fn is_todo(x: &Type) -> bool {
     x.fmt() == "*** TODO *** "
 }
 
+//
+// type functions
+//
+
 pub fn typeof_addr(t: Type) -> Type {
     let mut ops = t.ops;
     ops.push(TypeOp::Deref);
@@ -235,7 +239,6 @@ pub fn typeof_plusminus(op: &str, a: &Type, b: &Type) -> Result<Type, String> {
     }
 }
 
-// Returns the type of numeric comparison between types a and b.
 pub fn typeof_cmp(a: &Type, b: &Type) -> Result<Type, String> {
     match (classify(a), classify(b)) {
         // T == T

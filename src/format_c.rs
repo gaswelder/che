@@ -2,7 +2,7 @@ use crate::c;
 use crate::c::*;
 use crate::parser;
 
-pub fn format_module(cm: &CModule) -> String {
+pub fn format_module(cm: &Module) -> String {
     let mut s = String::new();
     for e in &cm.elements {
         s += &match e {

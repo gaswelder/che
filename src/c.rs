@@ -1,8 +1,8 @@
+// A single C file/module.
 #[derive(Debug, Clone)]
-pub struct CModule {
-    pub elements: Vec<ModElem>,
-    // Ambient libraries to link with, populated with #link hints.
-    pub link: Vec<String>,
+pub struct Module {
+    pub elements: Vec<ModElem>, // code elements
+    pub link: Vec<String>,      // OS libraries to link with, from #link hints.
 }
 
 // Old-school macro, #<name> <value>.
@@ -277,4 +277,41 @@ pub struct CUnion {
 pub struct CUnionField {
     pub type_name: Typename,
     pub form: Form,
+}
+
+// Module synopsis is what you would extract into a header file:
+// function prototypes, typedefs, struct declarations.
+pub fn get_module_synopsis(module: &Module) -> Vec<ModElem> {
+    let mut elements: Vec<ModElem> = vec![];
+
+    for element in &module.elements {
+        match element {
+            ModElem::Typedef(x) => {
+                if x.ispub {
+                    elements.push(ModElem::Typedef(x.clone()))
+                }
+            }
+            ModElem::StuctDef(x) => {
+                if x.is_pub {
+                    elements.push(ModElem::StuctDef(x.clone()))
+                }
+            }
+            ModElem::ForwardFunc(x) => {
+                if !x.is_static {
+                    elements.push(ModElem::ForwardFunc(x.clone()))
+                }
+            }
+            ModElem::Macro(x) => elements.push(ModElem::Macro(Macro {
+                name: x.name.clone(),
+                value: x.value.clone(),
+            })),
+            ModElem::DefEnum(x) => {
+                if !x.is_hidden {
+                    elements.push(ModElem::DefEnum(x.clone()))
+                }
+            }
+            _ => {}
+        }
+    }
+    return elements;
 }
