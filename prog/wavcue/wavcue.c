@@ -54,10 +54,15 @@ int main(int argc, char *argv[]) {
 void emit() {
 	count++;
 	printf("TRACK %02d AUDIO\n", count);
-	printf("  TITLE \"track %02d\"\n", count);
+	printf("  TITLE \"track\"\n");
 	printf("  INDEX 01 ");
 	printcuetime(last_position);
 	printf("\n");
+
+	int dur = (int)(position - last_position);
+	int sec = dur % 60;
+	int min = dur / 60;
+	printf("  REM duration %d:%02d\n", min, sec);
 	last_position = position;
 }
 
