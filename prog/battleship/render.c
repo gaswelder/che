@@ -4,8 +4,8 @@
 #import game.c
 #import rnd
 
-#define BWIDTH 10
-#define BDEPTH 10
+const int BWIDTH = 10;
+const int BDEPTH = 10;
 enum {
 	PLAYER = 0,
 	COMPUTER = 1,

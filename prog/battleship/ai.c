@@ -1,11 +1,10 @@
 #import game.c
 #import rnd
 
-#define BWIDTH 10
-#define BDEPTH 10
+const int BWIDTH = 10;
+const int BDEPTH = 10;
 
-
-// /* direction constants */
+// Direction constants.
 enum {
 	E = 0,
 	S = 2,

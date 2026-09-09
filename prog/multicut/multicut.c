@@ -1,6 +1,6 @@
 
-#define MAXCOLS 100
-#define MAXSEL 10
+const int MAXCOLS = 100;
+const int MAXSEL = 10;
 
 int main(int argc, char *argv[]) {
     //

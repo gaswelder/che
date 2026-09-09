@@ -11,6 +11,7 @@ use crate::preparser::ModuleInfo;
 use crate::types;
 use std::collections::HashMap;
 use std::collections::HashSet;
+use std::fmt::Debug;
 
 static DEBUG_TYPES: bool = false;
 static TRACE: bool = false;
@@ -68,6 +69,7 @@ pub struct Binding {
     typ: types::Type,
     used: bool,
     ispub: bool,
+    constval: Option<nodes::Expr>, // If provided, this binding is a constant.
 }
 
 #[derive(Debug)]
@@ -184,24 +186,13 @@ fn mark_binding_use(ctx: &mut TrCtx, name: &str) -> bool {
     };
 }
 
-fn add_binding(ctx: &mut TrCtx, name: &str, pos: Pos, ispub: bool, t: types::Type) {
+fn add_binding(ctx: &mut TrCtx, b: Binding) {
     let n = ctx.scopes.len();
-    if ctx.scopes[n - 1].iter().any(|x| x.name == name) {
-        panic!("{} was already defined at ???", name);
+    if ctx.scopes[n - 1].iter().any(|x| x.name == b.name) {
+        panic!("{} was already declared at ???", b.name);
     }
-    ctx.scopes[n - 1].push(Binding {
-        name: String::from(name),
-        pos,
-        used: false,
-        ispub,
-        typ: t,
-    });
+    ctx.scopes[n - 1].push(b);
 }
-
-// fn addtype(ctx: &mut TrCtx, name: &str, ispub: bool, typ: Type) {
-//     ctx.types
-//         .insert(name.to_string(), TypeBinding { ispub, typ });
-// }
 
 // Translates a module to c module.
 pub fn translate(m: &nodes::Module, params: &TrParams) -> Result<c::CModule, BuildError> {
@@ -248,12 +239,32 @@ pub fn translate(m: &nodes::Module, params: &TrParams) -> Result<c::CModule, Bui
                     } else {
                         types::todo()
                     };
-                    add_binding(&mut ctx, &id, x.pos.clone(), false, typ);
+                    add_binding(
+                        &mut ctx,
+                        Binding {
+                            constval: None,
+                            ispub: false,
+                            name: String::from(id),
+                            pos: x.pos.clone(),
+                            typ,
+                            used: false,
+                        },
+                    );
                 }
             }
             nodes::ModElem::Enum(x) => {
                 for e in &x.entries {
-                    add_binding(&mut ctx, &e.name, x.pos.clone(), x.is_pub, types::number());
+                    add_binding(
+                        &mut ctx,
+                        Binding {
+                            constval: None,
+                            ispub: x.is_pub,
+                            name: String::from(&e.name),
+                            pos: x.pos.clone(),
+                            typ: types::number(),
+                            used: false,
+                        },
+                    );
                 }
             }
             nodes::ModElem::StructAlias(x) => {
@@ -280,16 +291,34 @@ pub fn translate(m: &nodes::Module, params: &TrParams) -> Result<c::CModule, Bui
             nodes::ModElem::ModVar(x) => {
                 add_binding(
                     &mut ctx,
-                    &x.form.name,
-                    x.pos.clone(),
-                    false,
-                    typefrom_typename(&x.typename, &x.form),
+                    Binding {
+                        constval: if x.typename.is_const {
+                            x.value.clone()
+                        } else {
+                            None
+                        },
+                        ispub: false,
+                        name: String::from(&x.form.name),
+                        pos: x.pos.clone(),
+                        typ: typefrom_typename(&x.typename, &x.form),
+                        used: false,
+                    },
                 );
             }
             nodes::ModElem::FuncDecl(x) => {
                 let ispub = x.ispub || x.form.name == "main";
                 let typ = typefrom_funcdecl(&x);
-                add_binding(&mut ctx, &x.form.name, x.pos.clone(), ispub, typ);
+                add_binding(
+                    &mut ctx,
+                    Binding {
+                        constval: None,
+                        ispub,
+                        name: String::from(&x.form.name),
+                        pos: x.pos.clone(),
+                        typ,
+                        used: false,
+                    },
+                );
             }
         }
     }
@@ -352,7 +381,6 @@ pub fn translate(m: &nodes::Module, params: &TrParams) -> Result<c::CModule, Bui
     let mut result = Vec::new();
     result.append(&mut head);
     result.append(&mut body);
-
     Ok(c::CModule {
         elements: reorder_elems(result),
         link,
@@ -674,6 +702,10 @@ fn tr_macro(x: &nodes::Macro) -> Vec<c::ModElem> {
 
 // int foo = 12;
 fn tr_modvar(x: &nodes::VarDecl, ctx: &mut TrCtx) -> Result<Vec<c::ModElem>, BuildError> {
+    let b = find_binding(ctx, &x.form.name).unwrap();
+    if inline_binding(&b) {
+        return Ok(vec![]);
+    }
     Ok(vec![c::ModElem::VarDecl(c::VarDecl {
         typename: tr_typename(&x.typename, ctx)?,
         form: tr_form(&x.form, ctx, true)?,
@@ -1044,10 +1076,14 @@ fn tr_func_decl(x: &nodes::FuncDecl, ctx: &mut TrCtx) -> Result<Vec<c::ModElem>,
         for f in &p.forms {
             add_binding(
                 ctx,
-                &f.name,
-                f.pos.clone(),
-                false,
-                typefrom_typename(&p.typename, &f),
+                Binding {
+                    constval: None,
+                    ispub: false,
+                    name: String::from(&f.name),
+                    pos: f.pos.clone(),
+                    typ: typefrom_typename(&p.typename, &f),
+                    used: false,
+                },
             );
         }
     }
@@ -1145,6 +1181,10 @@ fn tr_typename(x: &nodes::Typename, ctx: &mut TrCtx) -> Result<c::Typename, Buil
     })
 }
 
+fn inline_binding(b: &Binding) -> bool {
+    b.constval.is_some() && types::is_indexy(&b.typ)
+}
+
 fn tr_nsid_in_expr(x: &nodes::NsName, ctx: &mut TrCtx) -> Result<Typed<String>, BuildError> {
     let val = tr_nsid(x, ctx)?;
 
@@ -1156,15 +1196,26 @@ fn tr_nsid_in_expr(x: &nodes::NsName, ctx: &mut TrCtx) -> Result<Typed<String>, 
     }
 
     if x.ns == "" {
-        let typ = if let Some(b) = find_binding(ctx, &x.name) {
-            b.typ.clone()
-        } else if let Some(s) = cspec::find_sym(&x.name) {
-            s.t.clone()
-        } else {
-            dbg!(x);
-            todo!()
-        };
-        return Ok(Typed { typ, val });
+        let b = find_binding(ctx, &x.name);
+        if b.is_some() {
+            let b = b.unwrap();
+            let typ = b.typ.clone();
+            // Inline size-like constants.
+            if inline_binding(&b) {
+                return Ok(Typed {
+                    typ,
+                    val: format_che::fmt_expr(b.constval.as_ref().unwrap()),
+                });
+            }
+            return Ok(Typed { typ, val });
+        }
+        let s = cspec::find_sym(&x.name);
+        if s.is_some() {
+            let typ = s.unwrap().t.clone();
+            return Ok(Typed { typ, val });
+        }
+        dbg!(x);
+        todo!();
     }
 
     let typ: types::Type;
@@ -1254,10 +1305,14 @@ fn tr_for(x: &nodes::For, ctx: &mut TrCtx) -> Result<c::Statement, BuildError> {
             } => {
                 add_binding(
                     ctx,
-                    &form.name,
-                    form.pos.clone(),
-                    false,
-                    typefrom_typename(&type_name, &form),
+                    Binding {
+                        constval: None,
+                        ispub: false,
+                        name: String::from(&form.name),
+                        pos: form.pos.clone(),
+                        typ: typefrom_typename(&type_name, &form),
+                        used: false,
+                    },
                 );
                 c::ForInit::DeclLoopCounter(c::VarDecl {
                     typename: tr_typename(type_name, ctx)?,
@@ -1437,10 +1492,14 @@ fn mk_switchstr_else(
 fn tr_vardecl(x: &nodes::VarDecl, ctx: &mut TrCtx) -> Result<c::Statement, BuildError> {
     add_binding(
         ctx,
-        &x.form.name,
-        x.form.pos.clone(),
-        false,
-        typefrom_typename(&x.typename, &x.form),
+        Binding {
+            constval: None,
+            ispub: false,
+            name: String::from(&x.form.name),
+            pos: x.form.pos.clone(),
+            typ: typefrom_typename(&x.typename, &x.form),
+            used: false,
+        },
     );
     Ok(c::Statement::VarDecl {
         type_name: tr_typename(&x.typename, ctx)?,

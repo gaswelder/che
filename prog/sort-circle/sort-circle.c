@@ -40,11 +40,10 @@ const char *sort_names[] = {
     [SORT_RADIX_8_LSD] = "Radix LSD (base 8)"
 };
 
-#define FPS   60            // output framerate
-
-#define HZ    44100         // audio sample rate
-#define MINHZ 20            // lowest tone
-#define MAXHZ 1000          // highest tone
+const int FPS = 60; // output framerate
+const int HZ = 44100; // audio sample rate
+const int MINHZ = 20; // lowest tone
+const int MAXHZ = 1000; // highest tone
 
 const char *global_message = "";
 const int MESSAGE_PADDING = 800 / 128;
@@ -200,8 +199,7 @@ void audio() {
 	/* Generate each voice */
 	for (int i = 0; i < global_N; i++) {
 		if (!swaps[i]) continue;
-
-		float hz = MINHZ + (MAXHZ - MINHZ) * i / (float)global_N;
+		float hz = (float) MINHZ + (float)(MAXHZ - MINHZ) * i / (float)global_N;
 
 		for (int j = 0; j < nsamples; j++) {
 			float u = 1.0f - j / (float)(nsamples - 1);

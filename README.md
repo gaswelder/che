@@ -178,6 +178,15 @@ _The `calloc!` form_.
 Handling out of memory situations is a very special use case not relevant for most programs.
 However, the standard `calloc` is still available if needed.
 
+_Numeric constants can be used instead of `#define`_.
+`#define` is global, so using it in a module can conflict with another module or the OS.
+A numeric constant is private and is inlined similarly:
+
+```c
+const int N = 10;
+typedef { char name[N]; } foo_t;
+```
+
 ## Modules
 
 A single C source file is called a "module". It's compiled independently and

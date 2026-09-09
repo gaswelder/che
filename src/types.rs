@@ -136,6 +136,14 @@ pub fn is_booly(t: &Type) -> bool {
     }
 }
 
+// Returns true if t can be used as array index.
+pub fn is_indexy(t: &Type) -> bool {
+    match classify(t) {
+        Class::CONSTNUM | Class::SINT | Class::UINT => true,
+        _ => false,
+    }
+}
+
 pub fn is_ellipsis(t: &Type) -> bool {
     t.fmt() == "..."
 }
@@ -274,11 +282,8 @@ pub fn typeof_boolcomp(a: &Type, b: &Type) -> Result<Type, String> {
 }
 
 pub fn typeof_index(arr: &Type, ind: &Type) -> Result<Type, String> {
-    if !is_todo(ind) {
-        match classify(ind) {
-            Class::CONSTNUM | Class::SINT | Class::UINT => {}
-            _ => return Err(format!("using {} as index", ind.fmt())),
-        }
+    if !is_todo(ind) && !is_indexy(ind) {
+        return Err(format!("using {} as index", ind.fmt()));
     }
     if is_todo(arr) {
         return Ok(arr.clone());

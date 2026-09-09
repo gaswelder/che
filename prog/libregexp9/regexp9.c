@@ -149,13 +149,10 @@ typedef {
 	Reinst*	last;
 } Node;
 
-/*
- *  substitution list
- */
-#define NSUBEXP 32
-typedef  {
-	Resub	m[NSUBEXP];
-} Resublist;
+// Substitution list
+const int NSUBEXP = 32;
+
+typedef { Resub m[NSUBEXP]; } Resublist;
 
 typedef {
 	Reinst*		inst;		/* Reinstruction of the thread */

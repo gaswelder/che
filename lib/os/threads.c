@@ -107,8 +107,7 @@ pub bool wake_all(cnd_t *cond) {
 	return OS.pthread_cond_broadcast(&cond->c) == 0;
 }
 
-// intentionally weird name to avoid conflicts.
-#define THPIPESIZE 32
+const int THPIPESIZE = 32;
 
 pub typedef {
 	mtx_t *lock;

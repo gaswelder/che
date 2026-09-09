@@ -42,7 +42,7 @@ enum {
 /**
  * Memory is a contiguous block of 65536 16-bit values.
  */
-#define MEMORY_MAX 1 << 16
+const uint32_t MEMORY_MAX = 1 << 16;
 uint16_t memory[MEMORY_MAX] = {0}; /* 65536 locations */
 
 /**

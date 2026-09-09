@@ -20,7 +20,7 @@ bool salvo = false;
 bool blitz = false;
 bool closepack = false;
 
-// /* direction constants */
+// Direction constants.
 enum {
 	E = 0,
 	S = 2,
@@ -28,8 +28,8 @@ enum {
 	N = 6,
 }
 
-#define BWIDTH 10
-#define BDEPTH 10
+const int BWIDTH = 10;
+const int BDEPTH = 10;
 
 game.state_t gamestate = {};
 ai.state_t AI = {};

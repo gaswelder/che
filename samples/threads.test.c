@@ -1,6 +1,6 @@
 #import os/threads
 
-#define N 16
+const int N = 16;
 
 int main() {
 	/*

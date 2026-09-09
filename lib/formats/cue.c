@@ -6,7 +6,7 @@
 #import time
 #import error
 
-#define MAXTRACKS 100
+const int MAXTRACKS = 100;
 
 pub typedef {
 	char title[300];

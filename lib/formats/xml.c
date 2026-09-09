@@ -8,10 +8,10 @@
  * 'next' and 'leave'.
  */
 
-#define MAXNAME 16 // max name length
-#define MAXSTACK 4 // max nesting level
-#define MAXATTRS 64 // max attributes count
-#define MAXVALUE 4096 // max attribute value length
+const int MAXNAME = 16; // max name length
+const int MAXSTACK = 4; // max nesting level
+const int MAXATTRS = 64; // max attributes count
+const int MAXVALUE = 4096; // max attribute value length
 
 // tag types
 enum {
