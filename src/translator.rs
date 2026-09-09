@@ -460,10 +460,6 @@ fn expand_imports(ctx: &TrCtx) -> Vec<c::ModElem> {
     elements
 }
 
-fn pos_todo() -> Pos {
-    Pos { col: 0, line: 0 }
-}
-
 fn trace_type(ctx: &TrCtx, expr: &nodes::Expr, typ: &types::Type) {
     if !DEBUG_TYPES {
         return;
@@ -520,7 +516,7 @@ fn typefrom_typedef(x: &nodes::Typedef) -> types::Type {
         base: nodes::NsName {
             ns: String::from(&x.typename.name.ns),
             name: String::from(&x.typename.name.name),
-            pos: pos_todo(),
+            pos: x.pos.clone(),
         },
     }
 }

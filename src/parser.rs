@@ -1185,7 +1185,7 @@ fn parse_typedef(is_pub: bool, l: &mut Lexer, ctx: &ParseCtx) -> Result<ModElem,
         size = num.content.parse().unwrap();
         expect(l, "]", None)?;
     }
-    expect(l, ";", Some("typedef"))?;
+    let td = expect(l, ";", Some("typedef"))?;
     return Ok(ModElem::Typedef(Typedef {
         ispub: is_pub,
         typename,
@@ -1193,6 +1193,7 @@ fn parse_typedef(is_pub: bool, l: &mut Lexer, ctx: &ParseCtx) -> Result<ModElem,
         func_params: params,
         array_size: size,
         alias: tok.content,
+        pos: td.pos,
     }));
 }
 

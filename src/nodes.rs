@@ -112,6 +112,7 @@ pub struct Typedef {
     pub derefs: usize,
     pub array_size: usize,
     pub func_params: Option<AnonymousParameters>,
+    pub pos: Pos,
 }
 
 // typedef { int x, y; double *f; } foo_t
