@@ -2,23 +2,18 @@
 #define B 20
 #define C 30
 
-// Counts as usage of A.
-int a[A] = {};
+int a[A] = {}; // Counts as usage of A.
 
 typedef {
-    // Counts as usage of C.
-    int c[C];
+	int c[C]; // Counts as usage of C.
 } c_t;
 
 int main() {
-    printf("%zu\n", nelem(a));
+	int b[B] = {}; // Counts as usage of B.
+	c_t c = {};
 
-    // Counts as usage of B.
-    int b[B] = {};    
-    printf("%zu\n", nelem(b));
-
-    c_t c = {};
-    printf("%zu\n", nelem(c.c));
-
-    return 0;
+	if (nelem(a) != 10) panic("!");
+	if (nelem(b) != 20) panic("!");
+	if (nelem(c.c) != 30) panic("!");
+	return 0;
 }
