@@ -1,3 +1,5 @@
+#import error
+
 #link pthread
 #type pthread_t
 #type pthread_mutex_t
@@ -27,12 +29,16 @@ pub thr_t *start(thr_func *f, void *arg) {
 	return t;
 }
 
-// Waits for thread t to finish, puts the exit value into res.
-// Returns an error code, zero meaning no error.
-pub int wait(thr_t *t, void **res) {
-	int err = OS.pthread_join(t->t, res);
+// Waits for thread t to finish.
+// Returns the pointer value returned by the thread.
+pub void *wait(thr_t *t, error.t *err) {
+	void *res = NULL;
+	int errcode = OS.pthread_join(t->t, &res);
+	if (errcode != 0) {
+		error.set(err, "%s", strerror(errcode));
+	}
 	free(t);
-	return err;
+	return res;
 }
 
 /*

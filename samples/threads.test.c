@@ -1,62 +1,62 @@
 #import os/threads
+#import error
 
 const int N = 16;
 
 int main() {
-	/*
-	 * Create N threads, passing them different arguments.
-	 */
+	int expected[N] = {};
+
+	// Start N threads with different arguments.
 	threads.thr_t *t[N] = {0};
 	for (int i = 0; i < N; i++) {
 		int arg = i + 1;
 		t[i] = threads.start(threadmain, box(&arg, sizeof(arg)));
-		assert(t[i]);
+		expected[i] = arg * arg;
 	}
 
-	/*
-	 * Wait for all threads, printing their return values.
-	 * Each thread should return the square of its argument.
-	 */
+	// Wait for threads and get their return values.
+	error.t err = {};
 	for (int i = 0; i < N; i++) {
-		void *r = NULL;
-		int err = threads.wait(t[i], &r);
-		if (err) {
-			panic("thread wait failed: %d (%s)", errno, strerror(errno));
+		box_t *b = threads.wait(t[i], &err);
+		if (err.set) {
+			panic("thread wait failed: %s", err.msg);
 		}
 		int result = 0;
-		unbox(r, &result, sizeof(result));
-		printf("result from %d = %d\n", i, result);
+		unbox(b, &result, sizeof(result));
+		if (result != expected[i]) {
+			panic("result from %d = %d (want %d)", i, result, expected[i]);
+		}
 	}
 	return 0;
 }
 
 void *threadmain(void *arg) {
 	int val = 0;
-	unbox(arg, &val, sizeof(val));
+	unbox((box_t *) arg, &val, sizeof(val));
 	int result = val * val;
 	return box(&result, sizeof(result));
 }
 
-/**
- * Allocates a copy of data on the head and returns the pointer.
- */
-void *box(void *data, size_t datasize) {
-	char *packagebytes = calloc!(datasize, 1);
-	char *databytes = (char *) data;
-	for (size_t i = 0; i < datasize; i++) {
-		packagebytes[i] = databytes[i];
-	}
-	return packagebytes;
+typedef {
+	char *bytes;
+	size_t size;
+} box_t;
+
+// Allocates a copy of data on the head and returns the pointer.
+box_t *box(void *data, size_t datasize) {
+	box_t *b = calloc!(1, sizeof(box_t));
+	b->bytes = calloc!(datasize, 1);
+	b->size = datasize;
+	memcpy(b->bytes, data, datasize);
+	return b;
 }
 
-/**
- * Frees the heap pointer, copying its data to the given place.
- */
-void unbox(void *package, void *place, size_t placesize) {
-	char *packagebytes = (char *) package;
-	char *placebytes = (char *) place;
-	for (size_t i = 0; i < placesize; i++) {
-		placebytes[i] = packagebytes[i];
+// Copies data from b to place, deallocates b.
+void unbox(box_t *b, void *place, size_t placesize) {
+	if (b->size != placesize) {
+		panic("box size %zu != place size %zu", b->size, placesize);
 	}
-	free(package);
+	memcpy(place, b->bytes, placesize);
+	free(b->bytes);
+	free(b);
 }

@@ -1,4 +1,5 @@
 #import dbg
+#import error
 #import opt
 #import os/net
 #import os/threads
@@ -92,7 +93,11 @@ int main(int argc, char *argv[]) {
 	threads.pclose(pipe);
 
 	for (size_t i = 0; i < concurrency; i++) {
-		threads.wait(tt[i], NULL);
+		error.t err = {};
+		threads.wait(tt[i], &err);
+		if (err.set) {
+			panic("thread wait failed: %s", err.msg);
+		}
 	}
 	free(aa);
 	free(tt);

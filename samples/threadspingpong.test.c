@@ -1,4 +1,5 @@
 #import os/threads
+#import error
 
 typedef {
 	threads.mtx_t *lock;
@@ -26,7 +27,12 @@ int main() {
 		}
 		threads.unlock_wait_lock(c.lock, c.cnd);
 	}
-	threads.wait(t, NULL);
+
+	error.t err = {};
+	threads.wait(t, &err);
+	if (err.set) {
+		panic("thread wait failed: %s", err.msg);
+	}
 	threads.cnd_free(c.cnd);
 	threads.mtx_free(c.lock);
 	return 0;
