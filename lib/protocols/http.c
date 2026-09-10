@@ -1,6 +1,6 @@
 #import enc/urlencode
 #import os/fs
-#import mime
+#import lists/mime
 #import os/net
 #import scanner
 #import reader

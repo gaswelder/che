@@ -1,6 +1,6 @@
-#import fft
 #import formats/wav
 #import math/complex
+#import math/fft
 #import sound
 
 pub int run(int argc, char** argv) {

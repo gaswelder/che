@@ -1,4 +1,4 @@
-#import mime
+#import lists/mime
 #import test
 
 int main() {
