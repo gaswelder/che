@@ -38,6 +38,7 @@ pub fn translate_mods(
     let mut cmods = Vec::new();
     for i in 0..n {
         let m = &mods[i];
+        let mi = &modmetas[i];
 
         // Build the list of modules to link.
         // These are specified using the #link macros.
@@ -47,6 +48,22 @@ pub fn translate_mods(
                 nodes::ModElem::Macro(x) => {
                     if x.name == "link" {
                         link.push(x.value.clone())
+                    }
+                }
+                _ => {}
+            }
+        }
+
+        // Restrict #-stuff to OS libraries.
+        for node in &m.elements {
+            match node {
+                nodes::ModElem::Macro(x) => {
+                    if x.name == "define" && mi.loc.suffix != "unix" {
+                        return Err(BuildError {
+                            path: mi.loc.path.clone(),
+                            pos: x.pos.fmt(),
+                            message: format!("{} macro not in a .unix.c module", x.name),
+                        });
                     }
                 }
                 _ => {}

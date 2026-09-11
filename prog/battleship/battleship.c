@@ -13,12 +13,16 @@
 #import rnd
 #import time
 
-#define CTRLC '\003' /* used as terminate command */
-
 // options
 bool salvo = false;
 bool blitz = false;
 bool closepack = false;
+
+char CTRLC = 3; /* used as terminate command */
+const int BWIDTH = 10;
+const int BDEPTH = 10;
+const int SHIPTYPES = 5;
+const char *LETTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 
 // Direction constants.
 enum {
@@ -28,15 +32,8 @@ enum {
 	N = 6,
 }
 
-const int BWIDTH = 10;
-const int BDEPTH = 10;
-
 game.state_t gamestate = {};
 ai.state_t AI = {};
-
-const int SHIPTYPES = 5;
-
-const char *LETTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 
 enum {
 	PLAYER = 0,

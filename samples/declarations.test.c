@@ -1,6 +1,6 @@
-#define A 10
-#define B 20
-#define C 30
+const int A = 10;
+const int B = 20;
+const int C = 30;
 
 int a[A] = {}; // Counts as usage of A.
 

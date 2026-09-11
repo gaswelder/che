@@ -200,7 +200,7 @@ pub typedef {
 /*
  *	Reprogram definition
  */
-#define MAX_CLASSES 16
+const int MAX_CLASSES = 16;
 pub typedef {
 	Reinst	*startinst;	/* start pc */
 	Reclass	class[MAX_CLASSES];	/* .data */

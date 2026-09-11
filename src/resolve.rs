@@ -6,7 +6,7 @@ use substring::Substring;
 pub struct ModuleRef {
     pub path: String, // Path to the module in the file system
     pub ns: String,   // Prefix that the importing module will use
-                      // pub suffix: String,
+    pub suffix: String,
 }
 
 // Returns the directory where all built-in libraries are stored.
@@ -33,15 +33,15 @@ pub fn resolve_import(base_path: &str, name: &str) -> Result<ModuleRef, String> 
         if std::fs::metadata(&path).is_ok() {
             let bn = basename(&path);
             let mut ns = bn.substring(0, bn.len() - 2).to_string();
-            // let mut suffix = String::new();
+            let mut suffix = String::new();
             if ns.ends_with(".unix") {
                 ns = ns.replace(".unix", "");
-                // suffix = String::from("unix");
+                suffix = String::from("unix");
             }
             return Ok(ModuleRef {
                 path: path.clone(),
                 ns,
-                // suffix,
+                suffix,
             });
         }
     }

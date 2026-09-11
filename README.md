@@ -187,6 +187,8 @@ const int N = 10;
 typedef { char name[N]; } foo_t;
 ```
 
+`#define` is allowed only in modules that are marked as OS wrappers (.unix.c).
+
 ## Modules
 
 A single C source file is called a "module". It's compiled independently and
