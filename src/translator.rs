@@ -107,11 +107,12 @@ pub fn translate_mods(
         if ctx.used_customs.contains("calloc_or_panic") {
             head.push(makers::func_calloc())
         }
-
-        head.push(c::ModElem::Macro(c::Macro {
-            name: "define".to_string(),
-            value: "nelem(x) (sizeof (x)/sizeof (x)[0])".to_string(),
-        }));
+        if ctx.used_customs.contains("nelem") {
+            head.push(c::ModElem::Macro(c::Macro {
+                name: "define".to_string(),
+                value: "nelem(x) (sizeof (x)/sizeof (x)[0])".to_string(),
+            }));
+        }
 
         // Inject headers corresponding to the imports.
         for x in expand_imports(&ctx) {
@@ -1123,6 +1124,9 @@ fn tr_sizeof(x: &nodes::Sizeof, ctx: &mut TrCtx) -> Result<Typed<c::Expr>, Build
 
 // f(args)
 fn tr_call(x: &nodes::Call, ctx: &mut TrCtx) -> Result<Typed<c::Expr>, BuildError> {
+    if nodes::is_ident(&x.func, "nelem") {
+        ctx.used_customs.insert("nelem".to_string());
+    }
     if nodes::is_ident(&x.func, "calloc!") {
         ctx.used_customs.insert("calloc_or_panic".to_string());
         let y = nodes::Call {
