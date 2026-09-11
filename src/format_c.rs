@@ -254,22 +254,20 @@ fn is_op(e: &Expr) -> Option<String> {
 
 fn format_binary_op(x: &c::BinaryOp) -> String {
     let op = &x.op;
-    let fmtop = |a: &Expr| {
-        if let Some(k) = is_op(a) {
-            // Wrap weaker operands in braces to keep precedence.
-            if parser::operator_strength(&k) < parser::operator_strength(op)
-				// Wrap these bit ops too even when precedence is ok
-				// because compilers are getting paranoid.
-                || op == "&"
-                || op == ">>"
-                || op == "<<"
-            {
-                return format!("({})", fmt_expr(a));
-            }
-        }
-        fmt_expr(a)
-    };
-    format!("{} {} {}", fmtop(&x.a), op.clone(), fmtop(&x.b))
+    let isop1 = is_op(&x.a);
+    let isop2 = is_op(&x.b);
+    let s1 = fmt_expr(&x.a);
+    let s2 = fmt_expr(&x.b);
+    let no = format!("{} {} {}", &s1, &op, &s2);
+    let left = format!("({}) {} {}", &s1, &op, &s2);
+    let both = format!("({}) {} ({})", &s1, &op, &s2);
+
+    match (isop1.as_deref(), op.as_str(), isop2.as_deref()) {
+        (None, _, None) => no,
+        (None, "=", _) => no,
+        (_, _, None) => left,
+        _ => both,
+    }
 }
 
 fn indent(text: &str) -> String {
