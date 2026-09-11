@@ -2,7 +2,7 @@ int main(int argc, char *argv[]) {
 	(void) argv;
 	if (argc == 1) {
 		int panic = argc;
-		printf("%d\n", panic);
+		if (panic != 1) panic("!");
 	} else {
 		panic("!");
 	}

@@ -8,6 +8,17 @@ typedef {
 	bool stop;
 } control_t;
 
+char *msgs[10] = {};
+int n = 0;
+
+void tput(const char *format, ...) {
+	char *msg = calloc!(20, 1);
+	va_list args = {};
+	va_start(args, format);
+	vsprintf(msg, format, args);
+	msgs[n++] = msg;
+}
+
 int main() {
 	control_t c = {};
 	c.lock = threads.mtx_new();
@@ -17,7 +28,7 @@ int main() {
 	threads.lock(c.lock);
 	while (true) {
 		if (c.value % 2 == 0) {
-			printf("main: %d\n", c.value);
+			tput("main: %d", c.value);
 			c.value++;
 		}
 		if (c.value == 9) {
@@ -35,6 +46,23 @@ int main() {
 	}
 	threads.cnd_free(c.cnd);
 	threads.mtx_free(c.lock);
+
+	const char *expected[] = {
+		"main: 0",
+		"thread: 1",
+		"main: 2",
+		"thread: 3",
+		"main: 4",
+		"thread: 5",
+		"main: 6",
+		"thread: 7",
+		"main: 8",
+		"thread: 9",
+	};
+	for (int i = 0; i < 10; i++) {
+		if (strcmp(expected[i], msgs[i]) != 0) panic("!");
+	}
+
 	return 0;
 }
 
@@ -43,7 +71,7 @@ void *tfunc(void *arg) {
 	while (true) {
 		threads.lock(c->lock);
 		if (c->value % 2 == 1) {
-			printf("thread: %d\n", c->value);
+			tput("thread: %d", c->value);
 			if (c->stop) {
 				threads.unlock(c->lock);
 				break;

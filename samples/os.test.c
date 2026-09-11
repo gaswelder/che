@@ -1,6 +1,6 @@
 #import osmod.c
 
 int main() {
-	printf("%d\n", osmod.foo());
+	if (osmod.foo() != 123) panic("!");
 	return 0;
 }
