@@ -48,10 +48,7 @@ pub fn func_calloc() -> c::ModElem {
 
     let printerror = c::Statement::Expression(expr_call(
         "fprintf",
-        vec![
-            expr_id("stderr"),
-            c::Expr::Literal(c::CLiteral::String("calloc failed".to_string())),
-        ],
+        vec![expr_id("stderr"), expr_str("calloc failed")],
     ));
 
     let check = c::Statement::If {
@@ -95,7 +92,7 @@ pub fn func_calloc() -> c::ModElem {
 
 pub fn st_calltrace(filepath: &str, x: &nodes::FuncDecl) -> c::Statement {
     let loc = format!("{}:{}", filepath, format_che::fmt_form(&x.form));
-    st_call("puts", vec![expr_str(loc)])
+    st_call("puts", vec![expr_str(&loc)])
 }
 
 fn st_call(func: &str, args: Vec<c::Expr>) -> c::Statement {
@@ -120,12 +117,12 @@ pub fn st_panic(filepath: &str, pos: &str, xargs: Vec<c::Expr>) -> c::Statement 
                 "fprintf",
                 vec![
                     stderr.clone(),
-                    expr_str(String::from("*** panic at %s ***\\n")),
-                    expr_str(panic_pos),
+                    expr_str("*** panic at %s ***\\n"),
+                    expr_str(panic_pos.as_str()),
                 ],
             ),
             st_call("fprintf", outargs),
-            st_call("fprintf", vec![stderr.clone(), expr_str("\\n".to_string())]),
+            st_call("fprintf", vec![stderr.clone(), expr_str("\\n")]),
             st_exit1(),
         ],
     }
@@ -134,8 +131,8 @@ pub fn st_panic(filepath: &str, pos: &str, xargs: Vec<c::Expr>) -> c::Statement 
 //
 // expr
 //
-pub fn expr_str(s: String) -> c::Expr {
-    c::Expr::Literal(c::CLiteral::String(s))
+pub fn expr_str(s: &str) -> c::Expr {
+    c::Expr::Literal(c::CLiteral::String(vec![String::from(s)]))
 }
 
 pub fn expr_call(func: &str, args: Vec<c::Expr>) -> c::Expr {

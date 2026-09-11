@@ -311,7 +311,7 @@ pub enum SwitchCaseValue {
 #[derive(Debug, Clone)]
 pub enum Literal {
     Char(String),
-    String(String),
+    String(Vec<String>),
     Number(String),
     Null,
 }

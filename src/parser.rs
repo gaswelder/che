@@ -395,7 +395,7 @@ fn read_ns_id(l: &mut Lexer, ctx: &ParseCtx) -> Result<NsName, Error> {
 fn read_expression_atom(l: &mut Lexer, ctx: &ParseCtx) -> Result<Expr, Error> {
     if !l.more() {
         return Err(Error {
-            message: String::from("id: unexpected end of input"),
+            message: String::from("unexpected end of input"),
             pos: l.pos(),
         });
     }
@@ -410,10 +410,6 @@ fn read_expression_atom(l: &mut Lexer, ctx: &ParseCtx) -> Result<Expr, Error> {
             ns: String::from(""),
             name: next.content,
         })),
-        // "word" => Ok(Expr::Ident(Ident {
-        //     name: next.content,
-        //     pos: next.pos,
-        // })),
         "num" | "string" | "char" => {
             l.unget(next);
             Ok(Expr::Literal(parse_literal(l)?))
@@ -563,8 +559,19 @@ fn parse_anonymous_parameters(l: &mut Lexer, ctx: &ParseCtx) -> Result<Anonymous
 fn parse_literal(l: &mut Lexer) -> Result<Literal, Error> {
     let next = l.peek().unwrap();
     if next.kind == "string".to_string() {
-        let value = l.get().unwrap().content;
-        return Ok(Literal::String(value));
+        let mut ss = Vec::new();
+        while l.more() && l.follows("string") {
+            let lit = l.get().unwrap().content;
+            let lines: Vec<String> = lit.split("\n").map(|x| String::from(x)).collect();
+            let n = lines.len();
+            for (i, x) in lines.iter().enumerate() {
+                ss.push(String::from(x));
+                if i < n - 1 {
+                    ss.push(String::from("\\n"));
+                }
+            }
+        }
+        return Ok(Literal::String(ss));
     }
     if next.kind == "num".to_string() {
         let value = l.get().unwrap().content;

@@ -163,27 +163,24 @@ fn read_hex(buf: &mut Buf) -> Token {
 fn read_string_literal(buf: &mut Buf) -> Token {
     let pos = buf.pos();
     let mut s = String::new();
-    // A string literal may be split into parts.
-    while buf.more() && buf.peek().unwrap() == '"' {
-        buf.get();
-        let mut substr = String::new();
-        while buf.more() && buf.peek().unwrap() != '"' {
-            let ch = buf.get().unwrap();
-            substr += &ch.to_string();
-            if ch == '\\' {
-                substr += &buf.get().unwrap().to_string();
-            }
+    buf.get();
+    let mut substr = String::new();
+    while buf.more() && buf.peek().unwrap() != '"' {
+        let ch = buf.get().unwrap();
+        substr += &ch.to_string();
+        if ch == '\\' {
+            substr += &buf.get().unwrap().to_string();
         }
-        if !buf.more() || buf.get().unwrap() != '"' {
-            return Token {
-                kind: "error".to_string(),
-                content: "Double quote expected".to_string(),
-                pos,
-            };
-        }
-        s += &substr;
-        buf.read_set(SPACES.to_string());
     }
+    if !buf.more() || buf.get().unwrap() != '"' {
+        return Token {
+            kind: "error".to_string(),
+            content: "Double quote expected".to_string(),
+            pos,
+        };
+    }
+    s += &substr;
+    buf.read_set(SPACES.to_string());
     return Token {
         kind: "string".to_string(),
         content: s,
@@ -365,12 +362,6 @@ mod tests {
                 input: "\"ab\\\"c\" 123",
                 kind: "string",
                 content: "ab\\\"c",
-                pos: "1:1",
-            },
-            C {
-                input: "\"abc\" \"def\" 123",
-                kind: "string",
-                content: "abcdef",
                 pos: "1:1",
             },
             C {

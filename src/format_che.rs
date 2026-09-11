@@ -178,7 +178,10 @@ pub fn fmt_binop(x: &nodes::BinaryOp) -> String {
 fn fmt_literal(node: &Literal) -> String {
     match node {
         Literal::Char(val) => format!("\'{}\'", val),
-        Literal::String(val) => format!("\"{}\"", val),
+        Literal::String(val) => {
+            let parts: Vec<String> = val.iter().map(|x| format!("\"{}\"", x)).collect();
+            return parts.join("");
+        }
         Literal::Number(val) => format!("{}", val),
         Literal::Null => String::from("NULL"),
     }

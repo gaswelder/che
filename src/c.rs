@@ -244,7 +244,7 @@ pub enum CSwitchCaseValue {
 #[derive(Debug, Clone)]
 pub enum CLiteral {
     Char(String),
-    String(String),
+    String(Vec<String>),
     Number(String),
     Null,
 }

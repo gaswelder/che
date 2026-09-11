@@ -363,11 +363,8 @@ fn format_literal(node: &CLiteral) -> String {
     match node {
         CLiteral::Char(val) => format!("\'{}\'", val),
         CLiteral::String(val) => {
-            return val
-                .split("\n")
-                .map(|line| format!("\"{}\"", line))
-                .collect::<Vec<String>>()
-                .join("\"\\n\"\n");
+            let parts: Vec<String> = val.iter().map(|x| format!("\"{}\"", x)).collect();
+            return parts.join("");
         }
         CLiteral::Number(val) => format!("{}", val),
         CLiteral::Null => String::from("NULL"),
