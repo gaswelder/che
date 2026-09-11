@@ -188,7 +188,11 @@ pub fn parse_project(mainpath: &String) -> Result<Project, Vec<BuildError>> {
     // Every modhead already has a unique key based on path, but we'll give
     // them nicer ones here to make outputs easier for debugging.
     for (i, m) in modheads.iter_mut().enumerate() {
-        m.uniqid = format!("mod{}_{}", i, basename(&m.filepath).replace(".c", ""));
+        m.uniqid = format!(
+            "mod{}_{}",
+            i,
+            basename(&m.filepath).replace(".c", "").replace(".unix", "")
+        );
     }
 
     let modules = parse_mods(&modheads)?;
