@@ -9,7 +9,7 @@ pub fn run(argv: &[String]) -> i32 {
     let path = &argv[0];
     match build::parse_project(path) {
         Ok(build) => {
-            let pos = build.modheads.len();
+            let pos = build.source_modules_info.len();
             let mut p = Printer {
                 indent: 0,
                 first_line: true,
@@ -53,14 +53,14 @@ impl Printer {
 }
 
 fn render_tree(p: &mut Printer, build: &Project, pos: usize) {
-    let path = &build.modheads[pos].filepath;
+    let path = &build.source_modules_info[pos].loc.path;
     p.writeline(path);
     p.indent();
-    for imp in &build.modheads[pos].imports {
+    for imp in &build.source_modules_info[pos].imports {
         let deppos = build
-            .modheads
+            .source_modules_info
             .iter()
-            .position(|x| x.filepath == imp.path)
+            .position(|x| x.loc.path == imp.path)
             .unwrap();
         render_tree(p, build, deppos);
     }

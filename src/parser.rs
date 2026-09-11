@@ -336,7 +336,7 @@ fn type_follows(l: &mut Lexer, ctx: &ParseCtx) -> bool {
                     .imports
                     .iter()
                     .find(|x| x.ns == *nsname)
-                    .and_then(|imp| ctx.allmods.iter().find(|x| x.filepath == imp.path));
+                    .and_then(|imp| ctx.allmods.iter().find(|x| x.loc.path == imp.path));
                 match import {
                     Some(imp) => {
                         if imp.typedefs.contains(typename) {

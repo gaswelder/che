@@ -6,9 +6,9 @@ pub fn run(argv: &[String]) -> i32 {
     for path in argv {
         match build::parse_project(path) {
             Ok(build) => {
-                let pos = build.modules.len() - 1;
-                let m = &build.modules[pos];
-                let path = &build.modheads[pos].filepath;
+                let pos = build.source_modules.len() - 1;
+                let m = &build.source_modules[pos];
+                let path = &build.source_modules_info[pos].loc.path;
                 println!("mod {}", path);
                 let exports = m.exports.clone();
                 print_exports(exports);

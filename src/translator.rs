@@ -76,7 +76,7 @@ pub fn translate_mods(
         for imp in &ctx.this_module_info.imports {
             if !ctx.used_ns.contains(&imp.ns) {
                 return Err(BuildError {
-                    path: ctx.this_module_info.filepath.clone(),
+                    path: ctx.this_module_info.loc.path.clone(),
                     pos: format!("1:1"),
                     message: format!("unused import: {}", imp.ns),
                 });
@@ -268,7 +268,7 @@ fn get_module_index(ctx: &TrCtx, ns: &str) -> usize {
     let module_pos = ctx
         .source_modules_info
         .iter()
-        .position(|x| x.filepath == *path)
+        .position(|x| x.loc.path == *path)
         .unwrap();
     module_pos
 }
@@ -282,7 +282,7 @@ fn end_scope(ctx: &mut TrCtx) -> Result<(), BuildError> {
     for b in s {
         if !b.ispub && !b.used {
             return Err(BuildError {
-                path: ctx.this_module_info.filepath.clone(),
+                path: ctx.this_module_info.loc.path.clone(),
                 pos: b.pos.fmt(),
                 message: format!("{} is unused", b.name),
             });
@@ -445,7 +445,7 @@ fn expand_imports(ctx: &TrCtx) -> Vec<c::ModElem> {
         let pos = ctx
             .source_modules_info
             .iter()
-            .position(|x| x.filepath == imp.path)
+            .position(|x| x.loc.path == imp.path)
             .unwrap();
         let cmodule = &ctx.translated_modules[pos];
         for obj in c::get_module_synopsis(cmodule) {
@@ -691,7 +691,7 @@ fn tr_body(b: &nodes::Body, ctx: &mut TrCtx) -> Result<c::CBody, BuildError> {
                                 xargs.push(tr_expr(arg, ctx)?.val);
                             }
                             makers::st_panic(
-                                &ctx.this_module_info.filepath,
+                                &ctx.this_module_info.loc.path,
                                 &expression_pos(x).fmt(),
                                 xargs,
                             )
@@ -930,7 +930,7 @@ fn tr_binary_op(x: &nodes::BinaryOp, ctx: &mut TrCtx) -> Result<Typed<c::Expr>, 
     }
     .map_err(|e| BuildError {
         message: format!("{}: {}", e, format_che::fmt_binop(&x)),
-        path: ctx.this_module_info.filepath.clone(),
+        path: ctx.this_module_info.loc.path.clone(),
         pos: x.pos.fmt(),
     })?;
     if DEBUG_TYPES {
@@ -969,7 +969,7 @@ fn tr_prefop(x: &nodes::PrefixOp, ctx: &mut TrCtx) -> Result<Typed<c::Expr>, Bui
     }
     .map_err(|e| BuildError {
         message: e,
-        path: ctx.this_module_info.filepath.clone(),
+        path: ctx.this_module_info.loc.path.clone(),
         pos: x.pos.fmt(),
     })?;
     Ok(Typed {
@@ -1013,7 +1013,7 @@ fn tr_cast(x: &nodes::Cast, ctx: &mut TrCtx) -> Result<Typed<c::Expr>, BuildErro
     }
     if operand.typ.fmt() == typ.fmt() {
         return Err(BuildError {
-            path: ctx.this_module_info.filepath.clone(),
+            path: ctx.this_module_info.loc.path.clone(),
             pos: x.pos.fmt(),
             message: String::from("redundant cast"),
         });
@@ -1033,7 +1033,7 @@ fn tr_arr_index(x: &nodes::ArrayIndex, ctx: &mut TrCtx) -> Result<Typed<c::Expr>
     let ind = tr_expr(&x.index, ctx)?;
     let typ = types::typeof_index(&arr.typ, &ind.typ).map_err(|e| BuildError {
         message: e,
-        path: ctx.this_module_info.filepath.clone(),
+        path: ctx.this_module_info.loc.path.clone(),
         pos: x.pos.fmt(),
     })?;
     Ok(Typed {
@@ -1051,7 +1051,7 @@ fn tr_field_access(x: &nodes::FieldAccess, ctx: &mut TrCtx) -> Result<Typed<c::E
     let target = tr_expr(&x.target, ctx)?;
     let typ = typefrom_struct_field(ctx, &target.typ, &x.field_name).map_err(|e| BuildError {
         message: e,
-        path: ctx.this_module_info.filepath.clone(),
+        path: ctx.this_module_info.loc.path.clone(),
         pos: x.pos.fmt(),
     })?;
     if DEBUG_TYPES {
@@ -1155,7 +1155,7 @@ fn tr_call(x: &nodes::Call, ctx: &mut TrCtx) -> Result<Typed<c::Expr>, BuildErro
     let aat = typedargs.iter().map(|x| &x.typ).collect();
     let typ = typefrom_call(ctx, &func.typ, aat).map_err(|e| BuildError {
         message: e,
-        path: ctx.this_module_info.filepath.clone(),
+        path: ctx.this_module_info.loc.path.clone(),
         pos: x.pos.fmt(),
     })?;
     trace_type(ctx, &nodes::Expr::Call(x.clone()), &typ);
@@ -1221,7 +1221,7 @@ fn tr_func_decl(x: &nodes::FuncDecl, ctx: &mut TrCtx) -> Result<Vec<c::ModElem>,
     if TRACE {
         rbody
             .statements
-            .insert(0, makers::st_calltrace(&ctx.this_module_info.filepath, x))
+            .insert(0, makers::st_calltrace(&ctx.this_module_info.loc.path, x))
     }
 
     let mut r = vec![c::ModElem::FuncDef(c::FuncDef {
@@ -1245,7 +1245,7 @@ fn tr_func_decl(x: &nodes::FuncDecl, ctx: &mut TrCtx) -> Result<Vec<c::ModElem>,
         return Err(BuildError {
             message: format!("{}: missing return", x.form.name),
             pos: x.pos.fmt(),
-            path: ctx.this_module_info.filepath.clone(),
+            path: ctx.this_module_info.loc.path.clone(),
         });
     }
 
@@ -1266,7 +1266,7 @@ fn tr_typename(x: &nodes::Typename, ctx: &mut TrCtx) -> Result<c::Typename, Buil
     if nsid.ns == "" {
         let t = find_type(ctx, &nsid.name).map_err(|s| BuildError {
             message: s,
-            path: ctx.this_module_info.filepath.clone(),
+            path: ctx.this_module_info.loc.path.clone(),
             pos: nsid.pos.fmt(),
         })?;
         let name = if t.ispub {
@@ -1288,7 +1288,7 @@ fn tr_typename(x: &nodes::Typename, ctx: &mut TrCtx) -> Result<c::Typename, Buil
         return Err(BuildError {
             message: format!("{} doesn't have exported {}", &nsid.ns, &nsid.name),
             pos: nsid.pos.fmt(),
-            path: ctx.this_module_info.filepath.clone(),
+            path: ctx.this_module_info.loc.path.clone(),
         });
     }
 
@@ -1385,7 +1385,7 @@ fn tr_nsid(nsid: &nodes::NsName, ctx: &mut TrCtx) -> Result<String, BuildError> 
             return Err(BuildError {
                 message: format!("{} doesn't have exported {}", &nsid.ns, &nsid.name),
                 pos: nsid.pos.fmt(),
-                path: ctx.this_module_info.filepath.clone(),
+                path: ctx.this_module_info.loc.path.clone(),
             });
         }
         return Ok(nsprefix(id, &nsid.name));
@@ -1400,7 +1400,7 @@ fn tr_nsid(nsid: &nodes::NsName, ctx: &mut TrCtx) -> Result<String, BuildError> 
         return Err(BuildError {
             message: format!("nsid: {} is undefined", &nsid.name),
             pos: nsid.pos.fmt(),
-            path: ctx.this_module_info.filepath.clone(),
+            path: ctx.this_module_info.loc.path.clone(),
         });
     }
     return Ok(name);
@@ -1448,7 +1448,7 @@ fn tr_for(x: &nodes::For, ctx: &mut TrCtx) -> Result<c::Statement, BuildError> {
             if !types::is_booly(&c.typ) {
                 return Err(BuildError {
                     message: format!("{} used as condition", &c.typ.fmt()),
-                    path: ctx.this_module_info.filepath.clone(),
+                    path: ctx.this_module_info.loc.path.clone(),
                     pos: expression_pos(x).fmt(),
                 });
             }
@@ -1635,7 +1635,7 @@ fn tr_while(x: &nodes::While, ctx: &mut TrCtx) -> Result<c::Statement, BuildErro
     if !types::is_booly(&cond.typ) {
         return Err(BuildError {
             message: format!("{} used as condition", &cond.typ.fmt()),
-            path: ctx.this_module_info.filepath.clone(),
+            path: ctx.this_module_info.loc.path.clone(),
             pos: expression_pos(&x.cond).fmt(),
         });
     }

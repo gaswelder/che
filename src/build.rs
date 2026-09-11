@@ -7,7 +7,8 @@ use crate::parser;
 use crate::preparser;
 use crate::preparser::ModuleInfo;
 use crate::resolve;
-use crate::resolve::basename;
+use crate::resolve::resolve_import;
+use crate::resolve::ModuleRef;
 use crate::translator;
 use md5;
 use std::collections::HashMap;
@@ -17,11 +18,10 @@ use std::fs;
 use std::io::BufRead;
 use std::process::{Command, Stdio};
 
-#[derive(Debug)]
 pub struct Project {
-    pub modheads: Vec<ModuleInfo>,
-    pub modules: Vec<nodes::Module>,
-    pub cmodules: Vec<c::Module>,
+    pub source_modules: Vec<nodes::Module>,
+    pub source_modules_info: Vec<ModuleInfo>,
+    pub translated_modules: Vec<c::Module>,
 }
 
 pub struct PathId {
@@ -29,7 +29,7 @@ pub struct PathId {
     id: String,
 }
 
-pub fn build_prog(source_path: &String, output_name: &str) -> Result<(), Vec<BuildError>> {
+pub fn build_prog(source_path: &str, output_name: &str) -> Result<(), Vec<BuildError>> {
     // Decide where we'll stash all generated C code.
     let tmp_dir_path = format!("{}/tmp", resolve::homepath());
     if fs::metadata(&tmp_dir_path).is_err() {
@@ -37,16 +37,12 @@ pub fn build_prog(source_path: &String, output_name: &str) -> Result<(), Vec<Bui
     }
 
     let proj = parse_project(source_path)?;
-
-    // translate(&mut proj).map_err(|e| vec![e])?;
     let pathsmap = write_c99(&proj, &tmp_dir_path).unwrap();
 
-    // Determine the list of OS libraries to link. "m" is the library for code
-    // in included <math.h>. For simplicity both the header and the library are
-    // always included.
-    // Other libraries are simply taked from the #link hints in the source code.
-    let mut link: Vec<String> = vec!["m".to_string()];
-    for c in proj.cmodules {
+    let mut link = vec!["m".to_string()]; // always link math.h for simplicity.
+
+    // Add other libraries as the #link hints say.
+    for c in proj.translated_modules {
         for l in &c.link {
             if link.iter().position(|x| x == l).is_none() {
                 link.push(l.clone());
@@ -99,30 +95,28 @@ pub fn build_prog(source_path: &String, output_name: &str) -> Result<(), Vec<Bui
     }]);
 }
 
-fn preparse<'a>(
-    cache: &'a mut HashMap<String, ModuleInfo>,
-    path: &str,
-) -> Result<&'a ModuleInfo, String> {
-    if !cache.contains_key(path) {
-        cache.insert(path.to_string(), preparser::preparse(path)?);
-    }
-    Ok(cache.get(path).unwrap())
-}
-
 fn load_tree(
     mut cache: &mut HashMap<String, ModuleInfo>,
-    path: &str,
+    loc: &ModuleRef,
     mut crumbs: Vec<String>,
 ) -> Result<Vec<String>, String> {
-    if crumbs.contains(&path.to_string()) {
-        return Err(format!("import loop: {} -> {}", crumbs.join(" -> "), path));
+    if crumbs.contains(&loc.path) {
+        return Err(format!(
+            "import loop: {} -> {}",
+            crumbs.join(" -> "),
+            &loc.path
+        ));
     }
-    crumbs.push(path.to_string());
-    let mut result = vec![path.to_string()];
-    let head = preparse(&mut cache, path)?;
+    crumbs.push(loc.path.clone());
+
+    let mut result = vec![loc.path.clone()];
+    if !cache.contains_key(&loc.path) {
+        cache.insert(loc.path.clone(), preparser::preparse(loc)?);
+    }
+    let head = cache.get(&loc.path).unwrap();
     let ii = head.imports.clone();
     for imp in ii {
-        let mut r = load_tree(&mut cache, &imp.path, crumbs.clone())?;
+        let mut r = load_tree(&mut cache, &imp, crumbs.clone())?;
         result.append(&mut r);
     }
     Ok(result)
@@ -148,15 +142,14 @@ fn parse_mods(modheads: &Vec<ModuleInfo>) -> Result<Vec<nodes::Module>, Vec<Buil
             thismod: m.clone(),
             allmods: modheads.clone(),
         };
-        let path = &m.filepath;
-        let mut l = lexer::for_file(&path).unwrap();
+        let mut l = lexer::for_file(&m.loc.path).unwrap();
         modules.push(parser::parse_module(&mut l, &ctx).map_err(|errors| {
             let mut ee = Vec::new();
             for err in errors {
                 ee.push(BuildError {
                     message: err.message,
                     pos: err.pos.fmt(),
-                    path: path.clone(),
+                    path: m.loc.path.clone(),
                 })
             }
             ee
@@ -167,9 +160,11 @@ fn parse_mods(modheads: &Vec<ModuleInfo>) -> Result<Vec<nodes::Module>, Vec<Buil
 
 // Parses the full project starting with the file at mainpath
 // and including and parsing all its dependencies.
-pub fn parse_project(mainpath: &String) -> Result<Project, Vec<BuildError>> {
+pub fn parse_project(mainpath: &str) -> Result<Project, Vec<BuildError>> {
     let mut cache = HashMap::new();
-    let mut paths = load_tree(&mut cache, mainpath, vec![]).map_err(|err| {
+
+    let main_loc = resolve_import(".", mainpath).unwrap();
+    let mut paths = load_tree(&mut cache, &main_loc, vec![]).map_err(|err| {
         vec![BuildError {
             message: err,
             path: String::new(),
@@ -191,37 +186,39 @@ pub fn parse_project(mainpath: &String) -> Result<Project, Vec<BuildError>> {
         m.uniqid = format!(
             "mod{}_{}",
             i,
-            basename(&m.filepath).replace(".c", "").replace(".unix", "")
+            resolve::basename(&m.loc.path)
+                .replace(".c", "")
+                .replace(".unix", "")
         );
     }
 
     let modules = parse_mods(&modheads)?;
     let cmodules = translator::translate_mods(modules.clone(), &modheads).map_err(|e| vec![e])?;
     Ok(Project {
-        modheads,
-        modules,
-        cmodules,
+        source_modules_info: modheads,
+        source_modules: modules,
+        translated_modules: cmodules,
     })
 }
 
-pub fn write_c99(work: &Project, dirpath: &String) -> Result<Vec<PathId>, String> {
-    // Write the generated C source files in the temp directory and build the
-    // mapping of the generated C file path to the original source file path,
-    // that will be used to trace C compiler's errors at least to the original
-    // files.
+// Write the generated C source files in the temp directory and build the
+// mapping of the generated C file path to the original source file path,
+// that will be used to trace C compiler's errors at least to the original
+// files.
+pub fn write_c99(work: &Project, dirpath: &str) -> Result<Vec<PathId>, String> {
     let mut paths: Vec<PathId> = Vec::new();
-    for (i, cm) in work.cmodules.iter().enumerate() {
-        let src = format_c::format_module(&cm);
-        let path = format!(
+    for (i, cm) in work.translated_modules.iter().enumerate() {
+        let source_path = format!(
             "{}/{:x}.c",
             dirpath,
-            md5::compute(&work.modheads[i].filepath)
+            md5::compute(&work.source_modules_info[i].loc.path)
         );
         paths.push(PathId {
-            path: String::from(&path),
-            id: String::from(&work.modheads[i].filepath),
+            path: String::from(&source_path),
+            id: String::from(&work.source_modules_info[i].loc.path),
         });
-        fs::write(&path, &src).unwrap();
+
+        fs::write(&source_path, format_c::format_module(&cm)).unwrap();
     }
     return Ok(paths);
 }

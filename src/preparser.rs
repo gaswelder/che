@@ -3,42 +3,32 @@ use crate::resolve::{self, ModuleRef};
 
 #[derive(Debug, Clone)]
 pub struct ModuleInfo {
-    // References to other modules that this module contains.
-    pub imports: Vec<ModuleRef>,
-
-    // Types that this module declares,
-    // both exported and non-exported.
-    pub typedefs: Vec<String>,
-
-    // Path where this module is located.
-    pub filepath: String,
-
+    pub loc: ModuleRef,          // The module's location
+    pub imports: Vec<ModuleRef>, // References to other modules that this module contains
+    pub typedefs: Vec<String>,   // Types that this module declares
     pub uniqid: String,
 }
 
-pub fn preparse(path: &str) -> Result<ModuleInfo, String> {
+pub fn preparse(path: &ModuleRef) -> Result<ModuleInfo, String> {
     let mut typenames: Vec<String> = vec![];
     let mut imports: Vec<ModuleRef> = Vec::new();
-    let mut l = lexer::for_file(path)?;
+    let mut l = lexer::for_file(&path.path)?;
     loop {
         match l.get() {
             None => break,
             Some(t) => match t.kind.as_str() {
                 "error" => {
-                    return Err(format!("{} at {}:{}", t.content, path, t.pos.fmt()));
+                    return Err(format!("{} at {}:{}", t.content, &path.path, t.pos.fmt()));
                 }
                 "import" => {
-                    let res = resolve::resolve_import(path, &t.content)?;
-                    imports.push(res);
+                    imports.push(resolve::resolve_import(&path.path, &t.content)?);
                 }
                 "typedef" => {
-                    // When a 'typedef' is encountered, look ahead to find the type name.
+                    // Look ahead to find the type name.
                     typenames.push(get_typename(&mut l)?);
                 }
                 _ => {
-                    // The special #type hint declares that a type name exists
-                    // without defining it. These hints are needed in modules
-                    // that interface with the OS headers.
+                    // #type hint declares that a type name exists without defining it.
                     if t.kind == "macro" && t.content.starts_with("#type") {
                         let name = t.content[6..].trim().to_string();
                         typenames.push(name);
@@ -48,12 +38,15 @@ pub fn preparse(path: &str) -> Result<ModuleInfo, String> {
         }
     }
     return Ok(ModuleInfo {
+        loc: path.clone(),
         imports,
         typedefs: typenames,
-        filepath: String::from(path),
         uniqid: format!(
             "ns_{}",
-            path.replace("/", "_").replace(".", "_").replace("-", "_")
+            path.path
+                .replace("/", "_")
+                .replace(".", "_")
+                .replace("-", "_")
         ),
     });
 }
