@@ -81,6 +81,7 @@ fn read_token(buf: &mut Buf) -> Option<Token> {
         return Some(read_multiline_comment(buf));
     }
     if buf.skip_literal("//") {
+        buf.read_set(" \t");
         return Some(newtok(pos, "comment", buf.skip_until('\n')));
     }
 

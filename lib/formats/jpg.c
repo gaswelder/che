@@ -543,9 +543,9 @@ pub void getshape(double *shape, int n, m) {
 	double kb = m * M_PI / 16.0;
 	for (int y = 0; y < 8; y++) {
 		for (int x = 0; x < 8; x++) {
-			double nn = a * cos(ka * (2*x + 1.0));
-			double mm = b * cos(kb * (2*y + 1.0));
-			shape[x + 8*y] = 0.25 * nn*mm;
+			double nn = a * cos(ka * (2 * x + 1.0));
+			double mm = b * cos(kb * (2 * y + 1.0));
+			shape[x + 8 * y] = 0.25 * nn * mm;
 		}
 	}
 }
@@ -553,11 +553,11 @@ pub void getshape(double *shape, int n, m) {
 image.rgba_t toRGB(double Y, Cr, Cb) {
 	image.rgba_t c = {};
 	double R = Cr * (2 - 2 * 0.299) + Y;
-	double B = Cb * (2 -2 * 0.114) + Y;
-	double G = (Y - 0.114 * B - 0.299*R) / 0.587;
-	c.red = clamp(R+128);
-	c.green = clamp(G+128);
-	c.blue = clamp(B+128);
+	double B = Cb * (2 - 2 * 0.114) + Y;
+	double G = (Y - 0.114 * B - 0.299 * R) / 0.587;
+	c.red = clamp(R + 128);
+	c.green = clamp(G + 128);
+	c.blue = clamp(B + 128);
 	return c;
 }
 
@@ -581,7 +581,9 @@ void readblock(bits.reader_t *br, huffman.reader_t *hrdc, *hrac, int prevdc, int
 	while (l<64) {
 		// huff(run,size)
 		code = huffman.read(hrac);
-		if (code == EOF) panic("eof");
+		if (code == EOF) {
+			panic("eof");
+		}
 		int run = code / 16;
 		int size = code & 0xf;
 
@@ -610,7 +612,7 @@ int weirdonum(bits.reader_t *br, int code) {
 	if (bval >= l) {
 		return bval;
 	}
-	int z = 2*l-1;
+	int z = 2 * l - 1;
 	return bval - z;
 }
 

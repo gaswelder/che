@@ -169,31 +169,21 @@ fn fmt_statement(s: &Statement) -> String {
     }
 }
 
-fn fmt_case_body(x: &Body) -> String {
-    let mut s = String::new();
-    match x.statements.len() {
-        0 => s += "{}\n",
-        1 => {
-            let bs = fmt_statement(&x.statements[0]);
-            s += &format!("{{ {} }}\n", bs);
-        }
-        _ => {
-            s += "{\n";
-            for st in &x.statements {
-                s += &fmt_statement(&st);
-                s += "\n";
-            }
-            s += "\t}\n";
-        }
-    }
-    s
-}
-
 fn fmt_switch(x: &Switch) -> String {
     let mut s = String::new();
     s += &format!("switch ({}) {{\n", fmt_expr(&x.value));
-    for c in &x.cases {
-        s += "\tcase ";
+    s += &indent(&fmt_cases(x));
+    s += "\n}";
+    s
+}
+
+fn fmt_cases(x: &Switch) -> String {
+    let mut s = String::new();
+    for (casei, c) in x.cases.iter().enumerate() {
+        if casei > 0 {
+            s += "\n";
+        }
+        s += "case ";
         for (i, v) in c.values.iter().enumerate() {
             if i > 0 {
                 s += ", ";
@@ -203,14 +193,51 @@ fn fmt_switch(x: &Switch) -> String {
                 SwitchCaseValue::Literal(literal) => s += &fmt_literal(&literal),
             }
         }
-        s += ": ";
-        s += &fmt_case_body(&c.body);
+        let n = c.body.statements.len();
+        match n {
+            0 => {
+                s += ": {}";
+            }
+            1 => {
+                s += ": { ";
+                for st in &c.body.statements {
+                    s += &fmt_statement(&st);
+                }
+                s += " }";
+            }
+            _ => {
+                s += ": {\n";
+                for st in &c.body.statements {
+                    s += &format!("\t{}\n", fmt_statement(&st));
+                }
+                s += "}";
+            }
+        }
     }
     if let Some(c) = &x.default_case {
-        s += "\tdefault: ";
-        s += &fmt_case_body(&c);
+        s += "\ndefault";
+        let n = c.statements.len();
+        match n {
+            0 => {
+                s += ": {\n";
+                s += "}";
+            }
+            1 => {
+                s += ": { ";
+                for st in &c.statements {
+                    s += &format!("{}", fmt_statement(&st));
+                }
+                s += " }";
+            }
+            _ => {
+                s += ": {\n";
+                for st in &c.statements {
+                    s += &format!("\t{}\n", fmt_statement(&st));
+                }
+                s += "}";
+            }
+        }
     }
-    s += "}";
     s
 }
 
@@ -264,33 +291,7 @@ pub fn fmt_expr(expr: &Expr) -> String {
             return format!("{}{}", fmt_expr(&function), s1);
         }
         Expr::Literal(x) => fmt_literal(x),
-        Expr::CompositeLiteral(CompLiteral { entries }) => {
-            if entries.len() == 0 {
-                // Print {0} to avoid "ISO C forbids empty initializers".
-                return String::from("{0}");
-            }
-            let mut s = String::from("{\n");
-            for (i, e) in entries.iter().enumerate() {
-                if i > 0 {
-                    s += ",\n";
-                }
-                s += "\t";
-                let v = fmt_expr(&e.value);
-                match &e.key {
-                    Some(expr) => {
-                        let k = fmt_expr(expr);
-                        if e.is_index {
-                            s += &format!("[{}] = {}", k, v)
-                        } else {
-                            s += &format!(".{} = {}", k, v)
-                        }
-                    }
-                    None => s += &v,
-                }
-            }
-            s += "\n}";
-            return s;
-        }
+        Expr::CompositeLiteral(x) => fmt_composite_literal(x),
         Expr::Sizeof(x) => {
             let argument = &x.arg;
             let arg = match &**argument {
@@ -342,6 +343,56 @@ pub fn fmt_expr(expr: &Expr) -> String {
             return format!("{}[{}]", fmt_expr(&x.array), fmt_expr(&x.index));
         }
     }
+}
+
+fn fmt_composite_literal(x: &CompLiteral) -> String {
+    let entries = &x.entries;
+    if entries.len() == 0 {
+        return String::from("{}");
+    }
+
+    let mut totalwidth = 0;
+    let mut items = Vec::new();
+    for e in &x.entries {
+        let v = fmt_expr(&e.value);
+        let item = match &e.key {
+            Some(expr) => {
+                let k = fmt_expr(expr);
+                if e.is_index {
+                    format!("[{}] = {}", k, v)
+                } else {
+                    format!(".{} = {}", k, v)
+                }
+            }
+            None => v,
+        };
+        totalwidth += item.len();
+        items.push(item);
+    }
+
+    let mut s = String::new();
+    if totalwidth < 100 {
+        s += "{ ";
+        for (i, item) in items.iter().enumerate() {
+            if i > 0 {
+                s += ", ";
+            }
+            s += item
+        }
+        s += " }";
+    } else {
+        s += "{\n";
+        for (i, item) in items.iter().enumerate() {
+            if i > 0 {
+                s += ",\n";
+            }
+            s += "\t";
+            s += item
+        }
+        s += "\n}";
+    }
+
+    s
 }
 
 fn fmt_cast(x: &Cast) -> String {
