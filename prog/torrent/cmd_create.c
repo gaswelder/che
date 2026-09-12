@@ -1,7 +1,8 @@
 #import crypt/sha1
 #import formats/torrent
-#import os/fs
 #import opt
+#import os/fs
+#import time
 
 const size_t PIECE_LENGTH = 256 * 1024;
 
@@ -30,7 +31,7 @@ torrent.info_t *newtorrent() {
     strcpy(info->announce, "http://localhost:8000/announce");
     strcpy(info->created_by, "");
     strcpy(info->comment, "");
-    info->creation_date = time(NULL);
+    info->creation_date = time.unix();
     info->piece_length = PIECE_LENGTH;
     return info;
 }

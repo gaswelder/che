@@ -1,6 +1,7 @@
 #import clip/buffer
-#import os/net
 #import dbg
+#import os/net
+#import time
 
 #include <sys/select.h>
 #include <sys/socket.h>
@@ -211,7 +212,7 @@ pub void set_timer(voidfunc_t *f, int seconds) {
 }
 
 int64_t gettime() {
-	return (int64_t) time(NULL);
+	return (int64_t) time.unix();
 }
 
 

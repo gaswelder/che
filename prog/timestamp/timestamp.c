@@ -1,6 +1,6 @@
+#import time
 
 int main() {
-    time_t now = time(NULL);
-    printf("%ld\n", now);
+    printf("%ld\n", time.unix());
     return 0;
 }

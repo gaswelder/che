@@ -264,12 +264,6 @@ void write_response(void *ctx, writer.t *w, peer_t *state, req_t *req) {
     }
 }
 
-// void dumpdata(uint8_t *data, size_t n) {
-//     char path[100];
-//     sprintf(path, "peer-%ld.bin", time(NULL));
-//     fs.writefile(path, (char *)data, n);
-// }
-
 void request_pieces(void *ctx) {
     peer_t *state = ioloop.get_stash(ctx);
     torrent.info_t *tf = _tf;

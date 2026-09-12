@@ -52,7 +52,7 @@ int main(int argc, char *argv[]) {
 
 	signal(SIGINT, closegame);
 	signal(SIGINT, closegame);
-	signal(SIGABRT, closegame); /* for assert(3) */
+	signal(SIGABRT, closegame);
 	if (signal(OS.SIGQUIT, SIG_IGN) != SIG_IGN) {
 		signal(OS.SIGQUIT, closegame);
 	}

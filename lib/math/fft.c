@@ -72,8 +72,6 @@ USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 const int MAXFACTORS = 32;
 
-const double PI = 3.141592653589793238462643383279502884197169399375105820974944;
-
 void kf_cexp(complex.t *x, double phase) {
     (x)->re = cos(phase);
     (x)->im = sin(phase);
@@ -408,7 +406,7 @@ pub kiss_fft_state_t *kiss_fft_alloc(int nfft,int inverse_fft,void * mem,size_t 
         st->inverse = inverse_fft;
 
         for (i=0;i<nfft;++i) {
-            double phase = -2 * PI * i / nfft;
+            double phase = -2 * M_PI * i / nfft;
             if (st->inverse)
                 phase *= -1;
             kf_cexp(st->twiddles+i, phase );
@@ -503,7 +501,7 @@ kiss_fftr_state_t *kiss_fftr_alloc(int nfft,int inverse_fft,void * mem,size_t * 
     kiss_fft_alloc(nfft, inverse_fft, st->substate, &subsize);
 
     for (i = 0; i < nfft/2; ++i) {
-        double phase = -PI * ((double) (i+1) / nfft + 0.5);
+        double phase = -M_PI * ((double) (i+1) / nfft + 0.5);
         if (inverse_fft) phase *= -1;
         kf_cexp (st->super_twiddles+i,phase);
     }

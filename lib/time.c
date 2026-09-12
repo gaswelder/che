@@ -49,7 +49,7 @@ pub duration_t dur_add(duration_t a, b) {
 
 int tzoffset() {
 	tm_t *x = NULL;
-	time_t n = time(NULL);
+	time_t n = OS.time(NULL);
 
 	x = OS.localtime(&n);
 	int mins = x->tm_hour * 60 + x->tm_min;
@@ -227,6 +227,11 @@ pub iso_t now() {
 	iso_t r = fromunix(tv.tv_sec);
 	r.ms = tv.tv_usec / 1000;
 	return r;
+}
+
+// Returns current timestamp as unix seconds.
+pub uint64_t unix() {
+	return OS.time(NULL);
 }
 
 // Returns time corresponding to the given unix time.

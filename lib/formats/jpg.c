@@ -1,13 +1,10 @@
 #import bits
 #import compress/huffman
 #import enc/endian
+#import error
+#import formats/tiff
 #import image
 #import reader
-// #import dbg
-#import formats/tiff
-#import error
-
-const double PI = 3.141592653589793238462643383279502884197169399375105820974944;
 
 const char *component_ids[] = { "invalid (0)", "Y", "Cb", "Cr", "I", "Q" };
 
@@ -527,8 +524,8 @@ pub void getshape(double *shape, int n, m) {
 	double b = 1;
 	if (n == 0) a = sqrt(0.5);
 	if (m == 0) b = sqrt(0.5);
-	double ka = n * PI / 16.0;
-	double kb = m * PI / 16.0;
+	double ka = n * M_PI / 16.0;
+	double kb = m * M_PI / 16.0;
 	for (int y = 0; y < 8; y++) {
 		for (int x = 0; x < 8; x++) {
 			double nn = a * cos(ka * (2*x + 1.0));

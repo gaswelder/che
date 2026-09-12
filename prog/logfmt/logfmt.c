@@ -11,7 +11,7 @@ int nexclude = 0;
 
 int main(int argc, char **argv) {
 	// Prevent pipe buffering so that "... | logfmt | json-table still works.
-	OS.setvbuf(stdout, NULL, OS._IOLBF, 0);
+	setvbuf(stdout, NULL, OS._IOLBF, 0);
 
     char *exclude_string = "";
 	opt.nargs(0, "");

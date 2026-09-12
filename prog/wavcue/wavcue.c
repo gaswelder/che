@@ -19,7 +19,7 @@ double last_position = 0;
 int count = 0;
 
 int main(int argc, char *argv[]) {
-	OS.setvbuf(stdout, NULL, OS._IOLBF, 0);
+	setvbuf(stdout, NULL, OS._IOLBF, 0);
 	opt.summary("finds track positions using silence");
 	opt.nargs(1, "<wav-file>");
 	opt.opt_float("d", "silence level in dB (positive)", &SILENCE_LEVEL);

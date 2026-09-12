@@ -143,13 +143,11 @@ fn buildmap() -> HashMap<&'static str, CSymbol> {
         f("putc", vec![int, filep], int),
         f("putchar", vec![int], int),
         f("puts", vec![charp], int),
-        f("remove", vec![charp], int),        // depr
-        f("rename", vec![charp, charp], int), // depr
         f("rewind", vec![filep], void),
         f("scanf", vec![charp, &ellipsis()], int),
-        f("setvbuf", vec![__todo], __todo),
-        f("snprintf", vec![voidp, size, charp, &ellipsis()], __todo),
-        f("sprintf", vec![charp, charp, &ellipsis()], __todo),
+        f("setvbuf", vec![filep, __todo, int, int], void),
+        f("snprintf", vec![voidp, size, charp, &ellipsis()], int),
+        f("sprintf", vec![charp, charp, &ellipsis()], int),
         f("sscanf", vec![voidp, charp, &ellipsis()], int),
         f("tmpfile", vec![], filep),
         f("ungetc", vec![int, filep], int),
@@ -168,8 +166,7 @@ fn buildmap() -> HashMap<&'static str, CSymbol> {
         f("tolower", vec![int], int),
         f("toupper", vec![int], int),
         // stdlib
-        f("abort", vec![__todo], void), // depr
-        f("atof", vec![__todo], __todo),
+        f("atof", vec![__todo], dbl),
         f("atoi", vec![__todo], __todo),
         f("atol_l", vec![__todo], __todo),
         f("atol", vec![__todo], __todo),
@@ -226,9 +223,6 @@ fn buildmap() -> HashMap<&'static str, CSymbol> {
         f("strstr", vec![charp, charp], charp),
         // time
         t("time_t"),
-        f("strftime", vec![__todo, __todo, __todo, __todo], __todo), // depr
-        f("localtime", vec![__todo], __todo),                        // struct tm, depr
-        f("time", vec![__todo], &just("time_t")),                    // depr
         // setjmp
         t("jmp_buf"),
         f("longjmp", vec![__todo, __todo], __todo),
@@ -247,8 +241,6 @@ fn buildmap() -> HashMap<&'static str, CSymbol> {
         c("SIG_DFL", int),
         c("SIG_IGN", int),
         f("signal", vec![__todo, __todo], int), // depr
-        // assert
-        f("assert", vec![__todo], void), // depr
         // errno
         c("errno", int),
         //

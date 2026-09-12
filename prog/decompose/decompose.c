@@ -3,7 +3,7 @@
 #import linereader
 
 int main() {
-    OS.setvbuf(stdout, NULL, OS._IOLBF, 0);
+    setvbuf(stdout, NULL, OS._IOLBF, 0);
 	linereader.t *lr = linereader.new(stdin);
     while (linereader.read(lr)) {
         char *p = linereader.line(lr);

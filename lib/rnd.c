@@ -7,7 +7,7 @@ uint64_t pcg32_a = 0xd737232eeccdf7ed;
 
 uint32_t pcg32() {
 	if (!_seeded) {
-		uint64_t x = time(NULL);
+		uint64_t x = OS.time(NULL);
 		x += (uint64_t) OS.getpid();
 		seed(x);
 	}

@@ -120,7 +120,9 @@ uint8_t next_byte(src_t *s)
 		return 0;
 	}
 
-	assert(s->lenpos < sizeof(s->lenbuf));
+	if (s->lenpos >= sizeof(s->lenbuf)) {
+		panic("!");
+	}
 	uint8_t b = s->lenbuf[s->lenpos++];
 
 	// Put a flag after the stream is finished.
@@ -190,15 +192,14 @@ pub bool md5_str(const char *s, uint32_t md[4])
 	return md5_buf(s, strlen(s), md);
 }
 
-/*
- * Computes digest for the data in the 'buf' and stores in 'md'.
- */
-pub bool md5_buf(const char *buf, size_t len, uint32_t md[4])
-{
+// Computes digest for the data in the 'buf' and stores in 'md'.
+pub bool md5_buf(const char *buf, size_t len, uint32_t md[4]) {
 	mem.mem_t *z = mem.memopen();
 	int n = mem.memwrite(z, buf, len);
 	mem.rewind(z);
-	assert((size_t) n == len);
+	if (len != (size_t) n) {
+		panic("!");
+	}
 	md5(z, md);
 	mem.memclose(z);
 	return true;

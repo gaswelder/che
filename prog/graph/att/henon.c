@@ -2,8 +2,7 @@
 #import rnd
 
 const int N = 20000;
-const double PI = 3.141592653589793238462643383279502884197169399375105820974944;
-const double TWOPI = 2 * PI;
+const double TWOPI = 2 * M_PI;
 
 typedef { double x, y; } point_t;
 

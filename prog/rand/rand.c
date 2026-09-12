@@ -1,5 +1,6 @@
 #import rnd
 #import opt
+#import time
 
 const char *alpha = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890";
 const char *nums = "0123456789";
@@ -8,7 +9,7 @@ const char *special = "!\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~";
 int main(int argc, char **argv) {
 	size_t n = 1;
 	size_t len = 16;
-	size_t seed = (size_t) time(NULL);
+	size_t seed = time.unix();
 	char *a = "an";
 	opt.nargs(0, "");
 	opt.summary("Generates random strings.");

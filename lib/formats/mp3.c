@@ -257,7 +257,7 @@ pub void write_frame(reader_t *f, FILE *out) {
 int fpeek(FILE *f) {
 	int c = fgetc(f);
 	if(c == EOF) return EOF;
-	assert(ungetc(c, f) == c);
+	ungetc(c, f);
 	return c;
 }
 
