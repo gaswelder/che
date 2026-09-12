@@ -1,7 +1,6 @@
 use crate::c;
 use crate::errors::BuildError;
 use crate::format_c;
-use crate::lexer;
 use crate::nodes;
 use crate::parser;
 use crate::preparser;
@@ -135,29 +134,6 @@ fn uniq(ss: Vec<String>) -> Vec<String> {
     result
 }
 
-fn parse_mods(modheads: &Vec<ModuleInfo>) -> Result<Vec<nodes::Module>, Vec<BuildError>> {
-    let mut modules = Vec::new();
-    for m in modheads {
-        let ctx = parser::ParseCtx {
-            thismod: m.clone(),
-            allmods: modheads.clone(),
-        };
-        let mut l = lexer::for_file(&m.loc.path).unwrap();
-        modules.push(parser::parse_module(&mut l, &ctx).map_err(|errors| {
-            let mut ee = Vec::new();
-            for err in errors {
-                ee.push(BuildError {
-                    message: err.message,
-                    pos: err.pos.fmt(),
-                    path: m.loc.path.clone(),
-                })
-            }
-            ee
-        })?);
-    }
-    Ok(modules)
-}
-
 // Parses the full project starting with the file at mainpath
 // and including and parsing all its dependencies.
 pub fn parse_project(mainpath: &str) -> Result<Project, Vec<BuildError>> {
@@ -192,7 +168,10 @@ pub fn parse_project(mainpath: &str) -> Result<Project, Vec<BuildError>> {
         );
     }
 
-    let modules = parse_mods(&modheads)?;
+    let mut modules = Vec::new();
+    for m in &modheads {
+        modules.push(parser::parse_module(&modheads, &m)?);
+    }
     let cmodules = translator::translate_mods(modules.clone(), &modheads).map_err(|e| vec![e])?;
     Ok(Project {
         source_modules_info: modheads,

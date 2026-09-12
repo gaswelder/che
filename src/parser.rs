@@ -1,17 +1,17 @@
 use crate::buf::Pos;
-use crate::errors::{Error, TWithErrors};
+use crate::errors::{BuildError, Error, TWithErrors};
+use crate::lexer;
 use crate::lexer::{Lexer, Token};
 use crate::nodes;
 use crate::preparser::ModuleInfo;
 use crate::{cspec, nodes::*};
 
-#[derive(Clone, Debug)]
-pub struct ParseCtx {
-    pub thismod: ModuleInfo,
-    pub allmods: Vec<ModuleInfo>,
+struct ParseCtx<'a> {
+    thismod: &'a ModuleInfo,
+    allmods: &'a Vec<ModuleInfo>,
 }
 
-impl ParseCtx {
+impl ParseCtx<'_> {
     pub fn is_imported_ns(&self, ns: &String) -> bool {
         if ns == "OS" {
             return true;
@@ -25,9 +25,30 @@ impl ParseCtx {
     }
 }
 
-pub fn parse_module(l: &mut Lexer, ctx: &ParseCtx) -> Result<Module, Vec<Error>> {
+fn err2berr(thismod: &ModuleInfo, e: &Error) -> BuildError {
+    BuildError {
+        path: thismod.loc.path.clone(),
+        pos: e.pos.fmt(),
+        message: e.message.clone(),
+    }
+}
+
+pub fn parse_module(
+    allmods: &Vec<ModuleInfo>,
+    thismod: &ModuleInfo,
+) -> Result<Module, Vec<BuildError>> {
+    let ctx = &ParseCtx {
+        thismod: thismod,
+        allmods: allmods,
+    };
+    let loc = &thismod.loc;
+    let mut _l = lexer::for_file(&loc.path).unwrap();
+    let l = &mut _l;
+
     let mut module_objects: Vec<ModElem> = vec![];
+
     let mut errors = Vec::new();
+
     while l.more() {
         match l.peek().unwrap().kind.as_str() {
             "import" => {
@@ -35,28 +56,22 @@ pub fn parse_module(l: &mut Lexer, ctx: &ParseCtx) -> Result<Module, Vec<Error>>
                 // here this node is added only for completeness, to allow the
                 // source code checkers look at them.
                 l.get().unwrap();
-                // module_objects.push(ModElem::Import(ImportNode {
-                //     specified_path: t.content.clone(),
-                //     pos: t.pos.clone(),
-                // }))
             }
             "macro" => match parse_compat_macro(l) {
                 Ok(r) => module_objects.push(r),
                 Err(e) => {
-                    errors.push(e);
-                    break;
+                    errors.push(err2berr(thismod, &e));
                 }
             },
             _ => match parse_module_object(l, ctx) {
                 Ok(r) => {
                     for e in r.errors {
-                        errors.push(e);
+                        errors.push(err2berr(thismod, &e));
                     }
                     module_objects.push(r.obj);
                 }
                 Err(e) => {
-                    errors.push(e);
-                    break;
+                    errors.push(err2berr(thismod, &e));
                 }
             },
         }
