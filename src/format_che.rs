@@ -50,7 +50,11 @@ fn fmt_struct_typedef(x: &StructTypedef) -> String {
                     }
                     s += &fmt_form(&n);
                 }
-                s += ";\n";
+                if let Some(c) = &p.trailing_comment {
+                    s += &format!("; // {}\n", c);
+                } else {
+                    s += ";\n";
+                }
             }
             StructEntry::Union(_) => todo!(),
         }

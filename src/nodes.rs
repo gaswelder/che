@@ -333,7 +333,7 @@ pub struct FuncParams {
 pub struct TypeAndForms {
     pub typename: Typename,
     pub forms: Vec<Form>,
-    // pub pos: Pos,
+    pub trailing_comment: Option<String>,
 }
 
 #[derive(Debug, Clone)]

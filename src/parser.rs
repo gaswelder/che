@@ -1084,7 +1084,7 @@ fn parse_function_parameter(l: &mut Lexer, ctx: &ParseCtx) -> Result<TypeAndForm
     return Ok(TypeAndForms {
         typename: type_name,
         forms,
-        // pos,
+        trailing_comment: None,
     });
 }
 
@@ -1228,7 +1228,6 @@ fn parse_type_and_forms(l: &mut Lexer, ctx: &ParseCtx) -> Result<TypeAndForms, E
         });
     }
 
-    // let pos = l.peek().unwrap().pos.clone();
     let type_name = parse_typename(l, ctx)?;
 
     let mut forms: Vec<Form> = vec![];
@@ -1237,12 +1236,11 @@ fn parse_type_and_forms(l: &mut Lexer, ctx: &ParseCtx) -> Result<TypeAndForms, E
         l.get();
         forms.push(parse_form(l, ctx)?);
     }
-
-    expect(l, ";", None)?;
+    let semi = expect(l, ";", None)?;
     return Ok(TypeAndForms {
         typename: type_name,
         forms,
-        // pos,
+        trailing_comment: semi.trailing_comment,
     });
 }
 
