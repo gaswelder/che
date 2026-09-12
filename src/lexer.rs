@@ -275,7 +275,7 @@ mod tests {
             C {
                 input: "// comment\n123",
                 kind: "comment",
-                content: " comment",
+                content: "comment",
                 pos: "1:1",
             },
             C {

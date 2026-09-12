@@ -48,14 +48,13 @@ pub fn parse_module(
     let mut module_objects: Vec<ModElem> = vec![];
 
     let mut errors = Vec::new();
+    let mut imports = Vec::new();
 
     while l.more() {
         match l.peek().unwrap().kind.as_str() {
             "import" => {
-                // The context already contains all parsed and resolved imports,
-                // here this node is added only for completeness, to allow the
-                // source code checkers look at them.
-                l.get().unwrap();
+                let tok = l.get().unwrap();
+                imports.push(tok.content);
             }
             "macro" => match parse_compat_macro(l) {
                 Ok(r) => module_objects.push(r),
@@ -81,6 +80,7 @@ pub fn parse_module(
     }
     let exports = get_exports(&module_objects);
     Ok(Module {
+        imports,
         elements: module_objects,
         exports,
     })

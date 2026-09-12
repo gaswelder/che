@@ -111,8 +111,8 @@ void read_app1(jpeg_t *self, reader.t *r) {
 	endian.read2be(r, &len);
 	printf("App1 (len=%u)\n", len);
 
-	uint8_t *buf = calloc!(len-2, 1);
-	reader.read(r, buf, len-2);
+	uint8_t *buf = calloc!(len - 2, 1);
+	reader.read(r, buf, len - 2);
 
 	if (strcmp((char *) buf, "Exif") == 0 && buf[4] == 0 && buf[5] == 0) {
 		tiff.file_t *tf = tiff.parse(buf + 6, len-2-6);
@@ -254,7 +254,7 @@ void read_baseline_dct(jpeg_t *self, reader.t *r, error.t *err) {
 	reader.read(r, &components, 1);
 
 	printf("\tprecision = %u bits\n", precision);
-	printf("\tsize = %u x %u\n", w,  h);
+	printf("\tsize = %u x %u\n", w, h);
 	if (components != 3) {
 		panic("ncomponents = %u not implemented", components);
 	}
@@ -389,8 +389,7 @@ void read_scan_data(jpeg_t *self, reader.t *r) {
 
 	// First values ("DC") are diff-encoded across all blocks.
 	// These will contain the current values.
-	int dc[3] = {0,0,0};
-
+	int dc[3] = { 0, 0, 0 };
 	int w = self->img->width;
 	int h = self->img->height;
 	int mcus_w = (w + self->mcux - 1) / self->mcux;
@@ -413,7 +412,7 @@ void read_scan_data(jpeg_t *self, reader.t *r) {
 				dc[2] = 0;
 			}
 			read_mcu(self, dc, br, mcu);
-			image.paste(self->img, mcu, mx*self->mcux, my*self->mcuy);
+			image.paste(self->img, mcu, mx * self->mcux, my * self->mcuy);
 			i++;
 		}
 	}
@@ -455,7 +454,7 @@ void read_mcu(jpeg_t *self, int *dc, bits.reader_t *br, image.image_t *mcu) {
 				for (int j = 0; j < 64; j++) {
 					int px = j & 0x7;
 					int py = j >> 3;
-					planes[ci][by*8+py][bx*8+px] = block[j];
+					planes[ci][by * 8 + py][bx * 8 + px] = block[j];
 				}
 			}
 		}

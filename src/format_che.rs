@@ -4,8 +4,15 @@ use crate::parser;
 
 pub fn fmt_mod(m: &nodes::Module) -> String {
     let mut s = String::new();
+
+    let mut ss = m.imports.clone();
+    ss.sort();
+    for i in ss {
+        s += &format!("#import {}\n", i);
+    }
     for e in &m.elements {
-        s += &format!("{}\n", fmt_mod_elem(&e));
+        s += "\n";
+        s += &format!("{}", fmt_mod_elem(&e));
     }
     s
 }
@@ -25,7 +32,7 @@ fn fmt_mod_elem(elem: &ModElem) -> String {
             s += " = ";
             let v = x.value.clone().unwrap();
             s += &fmt_expr(&v);
-            s += ";";
+            s += ";\n";
             s
         }
         ModElem::FuncDecl(x) => fmt_func(&x),
@@ -67,7 +74,6 @@ fn fmt_struct_typedef(x: &StructTypedef) -> String {
 
 fn fmt_func(x: &FuncDecl) -> String {
     let mut s = String::new();
-    s += "\n";
     if x.ispub {
         s += "pub ";
     }
@@ -92,7 +98,7 @@ fn fmt_func(x: &FuncDecl) -> String {
     for st in &x.body.statements {
         s += &format!("{}\n", indent(&fmt_statement(&st)));
     }
-    s.push('}');
+    s += "}\n";
     s
 }
 
@@ -452,7 +458,33 @@ fn fmt_bare_typeform(x: &BareTypeform) -> String {
     format!("{}{}", fmt_typename(&x.typename), "*".repeat(x.hops))
 }
 
-pub fn fmt_binop(x: &nodes::BinaryOp) -> String {
+pub fn fmt_binop(x: &BinaryOp) -> String {
+    let op = &x.op;
+    let isop1 = is_op(&x.a);
+    let isop2 = is_op(&x.b);
+    let s1 = fmt_expr(&x.a);
+    let s2 = fmt_expr(&x.b);
+    let no = format!("{} {} {}", &s1, &op, &s2);
+    let left = format!("({}) {} {}", &s1, &op, &s2);
+    let both = format!("({}) {} ({})", &s1, &op, &s2);
+
+    match (isop1.as_deref(), op.as_str(), isop2.as_deref()) {
+        (None, _, None) => no,
+        (None, "=", _) => no,
+        (None, "==", _) => no,
+        (Some(">"), "&&", Some("<")) => no,
+        (Some(">="), "&&", Some("<=")) => no,
+        (Some(">"), "&&", Some(">")) => no,
+        (Some("=="), "&&", Some("!=")) => no,
+        (Some("+"), "-", None) => no,
+        (Some("*"), "+", None) => no,
+        (Some("*"), "/", None) => no,
+        (_, _, None) => left,
+        _ => both,
+    }
+}
+
+pub fn fmt_binop0(x: &nodes::BinaryOp) -> String {
     let op = &x.op;
     let a = &x.a;
     let b = &x.b;

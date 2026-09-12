@@ -2,6 +2,7 @@ use crate::buf::Pos;
 
 #[derive(Debug, Clone)]
 pub struct Module {
+    pub imports: Vec<String>,
     pub elements: Vec<ModElem>,
     pub exports: Exports,
 }
