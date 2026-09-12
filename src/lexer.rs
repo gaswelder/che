@@ -8,6 +8,7 @@ use substring::Substring;
 #[derive(Debug)]
 pub struct Token {
     pub comment: Option<String>,
+    pub trailing_comment: Option<String>,
     pub kind: String,
     pub content: String,
     pub pos: Pos,
@@ -26,6 +27,13 @@ const DIGITS: &str = "0123456789";
 const KEYWORDS: &[&str] = &[
     "break", "case", "const", "continue", "default", "else", "enum", "for", "if", "pub", "return",
     "sizeof", "struct", "switch", "typedef", "union", "while",
+];
+
+// Sorted by length, longest first.
+const SYMBOLS: &[&str] = &[
+    "<<=", ">>=", "...", "++", "--", "->", "<<", ">>", "<=", ">=", "&&", "||", "+=", "-=", "*=",
+    "/=", "%=", "&=", "^=", "|=", "==", "!=", "!", "~", "&", "^", "*", "/", "%", "=", "|", ":",
+    ",", "<", ">", "+", "-", "{", "}", ";", "[", "]", "(", ")", ".", "?",
 ];
 
 fn read_token_c(buf: &mut Buf) -> Option<Token> {
@@ -59,76 +67,64 @@ fn read_token(buf: &mut Buf) -> Option<Token> {
 
     if buf.skip_literal("#import") {
         buf.read_set(SPACES);
-        return Some(Token {
-            comment: None,
-            kind: "import".to_string(),
-            content: buf.skip_until('\n').trim().to_string(),
+        return Some(newtok(
             pos,
-        });
+            "import",
+            buf.skip_until('\n').trim().to_string(),
+        ));
     }
 
     if buf.peek().unwrap() == '#' {
-        return Some(Token {
-            comment: None,
-            kind: "macro".to_string(),
-            content: buf.skip_until('\n'),
-            pos,
-        });
+        return Some(newtok(pos, "macro", buf.skip_until('\n')));
     }
-
     if buf.literal_follows("/*") {
         return Some(read_multiline_comment(buf));
     }
-
     if buf.skip_literal("//") {
-        return Some(Token {
-            comment: None,
-            kind: "comment".to_string(),
-            content: buf.skip_until('\n'),
-            pos,
-        });
+        return Some(newtok(pos, "comment", buf.skip_until('\n')));
     }
 
     let next = buf.peek().unwrap();
     if next.is_ascii_alphabetic() || next == '_' {
         return Some(read_word(buf));
     }
-
     if next.is_ascii_digit() {
         return Some(read_number(buf));
     }
-
     if next == '"' {
         return Some(read_string_literal(buf));
     }
-
     if next == '\'' {
         return Some(read_char_literal(buf));
     }
 
-    // Sorted by length, longest first.
-    let symbols = [
-        "<<=", ">>=", "...", "++", "--", "->", "<<", ">>", "<=", ">=", "&&", "||", "+=", "-=",
-        "*=", "/=", "%=", "&=", "^=", "|=", "==", "!=", "!", "~", "&", "^", "*", "/", "%", "=",
-        "|", ":", ",", "<", ">", "+", "-", "{", "}", ";", "[", "]", "(", ")", ".", "?",
-    ];
-    for sym in &symbols {
+    for sym in SYMBOLS {
         if buf.skip_literal(sym) {
-            return Some(Token {
-                comment: None,
-                kind: sym.to_string(),
-                content: String::new(),
-                pos,
-            });
+            let mut tok = newtok(pos, sym, String::new());
+            buf.read_set(" \t");
+            if buf.skip_literal("//") {
+                buf.read_set(" \t");
+                tok.trailing_comment = Some(buf.until_literal("\n"));
+            }
+            return Some(tok);
         }
     }
 
-    return Some(Token {
+    return Some(errtok(pos, format!("Unexpected character: '{}'", next)));
+}
+
+fn errtok(pos: Pos, msg: String) -> Token {
+    newtok(pos, "error", msg)
+}
+
+fn newtok(pos: Pos, kind: &str, content: String) -> Token {
+    Token {
         comment: None,
-        kind: "error".to_string(),
-        content: format!("Unexpected character: '{}'", next),
+        trailing_comment: None,
+        kind: kind.to_string(),
+        content,
         pos,
-    });
+    }
 }
 
 fn read_number(buf: &mut Buf) -> Token {
@@ -158,19 +154,9 @@ fn read_number(buf: &mut Buf) -> Token {
 
     if buf.more() && buf.peek().unwrap().is_ascii_alphabetic() {
         let c = buf.peek().unwrap();
-        return Token {
-            comment: None,
-            kind: "error".to_string(),
-            content: format!("Unexpected character: '{}'", c),
-            pos: buf.pos(),
-        };
+        return errtok(buf.pos(), format!("Unexpected character: '{}'", c));
     }
-    return Token {
-        comment: None,
-        kind: "num".to_string(),
-        content: num,
-        pos,
-    };
+    return newtok(pos, "num", num);
 }
 
 fn read_hex(buf: &mut Buf) -> Token {
@@ -182,12 +168,7 @@ fn read_hex(buf: &mut Buf) -> Token {
 
     let num = buf.read_set("0123456789ABCDEFabcdef") + &buf.read_set("UL");
 
-    return Token {
-        comment: None,
-        kind: "num".to_string(),
-        content: format!("0x{}", &num),
-        pos,
-    };
+    return newtok(pos, "num", format!("0x{}", &num));
 }
 
 fn read_string_literal(buf: &mut Buf) -> Token {
@@ -203,21 +184,11 @@ fn read_string_literal(buf: &mut Buf) -> Token {
         }
     }
     if !buf.more() || buf.get().unwrap() != '"' {
-        return Token {
-            comment: None,
-            kind: "error".to_string(),
-            content: "Double quote expected".to_string(),
-            pos,
-        };
+        return errtok(pos, "Double quote expected".to_string());
     }
     s += &substr;
     buf.read_set(SPACES);
-    return Token {
-        comment: None,
-        kind: "string".to_string(),
-        content: s,
-        pos,
-    };
+    return newtok(pos, "string", s);
 }
 
 fn read_word(buf: &mut Buf) -> Token {
@@ -239,19 +210,9 @@ fn read_word(buf: &mut Buf) -> Token {
     }
 
     if KEYWORDS.contains(&word.as_str()) {
-        return Token {
-            comment: None,
-            kind: word,
-            content: String::new(),
-            pos,
-        };
+        return newtok(pos, &word, String::new());
     }
-    return Token {
-        comment: None,
-        kind: "word".to_string(),
-        content: word,
-        pos,
-    };
+    return newtok(pos, "word", word);
 }
 
 fn read_char_literal(buf: &mut Buf) -> Token {
@@ -265,19 +226,9 @@ fn read_char_literal(buf: &mut Buf) -> Token {
 
     s.push(buf.get().unwrap());
     if buf.get().unwrap() != '\'' {
-        return Token {
-            comment: None,
-            kind: "error".to_string(),
-            content: "Single quote expected".to_string(),
-            pos,
-        };
+        return errtok(pos, "Single quote expected".to_string());
     }
-    return Token {
-        comment: None,
-        kind: "char".to_string(),
-        content: s,
-        pos,
-    };
+    return newtok(pos, "char", s);
 }
 
 fn read_multiline_comment(buf: &mut Buf) -> Token {
@@ -285,19 +236,9 @@ fn read_multiline_comment(buf: &mut Buf) -> Token {
     buf.skip_literal("/*");
     let comment = buf.until_literal("*/");
     if !buf.skip_literal("*/") {
-        return Token {
-            comment: None,
-            kind: "error".to_string(),
-            content: "*/ expected".to_string(),
-            pos,
-        };
+        return errtok(pos, "*/ expected".to_string());
     }
-    return Token {
-        comment: None,
-        kind: "comment".to_string(),
-        content: comment,
-        pos,
-    };
+    return newtok(pos, "comment", comment);
 }
 
 #[cfg(test)]
@@ -423,12 +364,7 @@ mod tests {
             assert_eq!(t.pos.fmt(), case.pos);
         }
 
-        let symbols = [
-            "<<=", ">>=", "...", "++", "--", "->", "<<", ">>", "<=", ">=", "&&", "||", "+=", "-=",
-            "*=", "/=", "%=", "&=", "^=", "|=", "==", "!=", "!", "~", "&", "^", "*", "/", "%", "=",
-            "|", ":", ",", "<", ">", "+", "-", "{", "}", ";", "[", "]", "(", ")", ".", "?",
-        ];
-        for sym in &symbols {
+        for sym in SYMBOLS {
             let t = _read_token(format!("{}123", sym).as_str());
             assert_eq!(t.content, "");
             assert_eq!(t.kind, sym.to_string());
