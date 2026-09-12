@@ -88,9 +88,9 @@ impl Buf {
     //     }
     // }
 
-    // Skips any sequence of characters from the given string.
-    // Returns the skipped string.
-    pub fn read_set(&mut self, set: String) -> String {
+    // Skips characters from the given string.
+    // Returns the skipped sequence.
+    pub fn read_set(&mut self, set: &str) -> String {
         let mut s = String::new();
         loop {
             if !self.more() {
@@ -230,8 +230,8 @@ mod tests {
     #[test]
     fn read_set() {
         let mut buf = new(String::from("aba123"));
-        assert_eq!("", buf.read_set(String::from("1234567890")));
-        assert_eq!("aba", buf.read_set(String::from("abcdef")));
+        assert_eq!("", buf.read_set("1234567890"));
+        assert_eq!("aba", buf.read_set("abcdef"));
         assert_eq!('1', buf.get().unwrap());
     }
     #[test]

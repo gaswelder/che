@@ -21,6 +21,7 @@ impl fmt::Display for Token {
 }
 
 const SPACES: &str = "\r\n\t ";
+const DIGITS: &str = "0123456789";
 
 const KEYWORDS: &[&str] = &[
     "break", "case", "const", "continue", "default", "else", "enum", "for", "if", "pub", "return",
@@ -49,7 +50,7 @@ fn read_token_c(buf: &mut Buf) -> Option<Token> {
 }
 
 fn read_token(buf: &mut Buf) -> Option<Token> {
-    buf.read_set(SPACES.to_string());
+    buf.read_set(SPACES);
     if buf.ended() {
         return None;
     }
@@ -57,7 +58,7 @@ fn read_token(buf: &mut Buf) -> Option<Token> {
     let pos = buf.pos();
 
     if buf.skip_literal("#import") {
-        buf.read_set(SPACES.to_string());
+        buf.read_set(SPACES);
         return Some(Token {
             comment: None,
             kind: "import".to_string(),
@@ -136,14 +137,13 @@ fn read_number(buf: &mut Buf) -> Token {
     }
 
     let pos = buf.pos();
-    let digits = "0123456789";
     let mut modifiers = String::from("UL");
-    let mut num = buf.read_set(digits.to_string());
+    let mut num = buf.read_set(DIGITS);
 
     if buf.more() && buf.peek().unwrap() == '.' {
         modifiers += "f";
         num += &buf.get().unwrap().to_string();
-        num += &buf.read_set(digits.to_string());
+        num += &buf.read_set(DIGITS);
     }
 
     if buf.more() && (buf.peek().unwrap() == 'e' || buf.peek().unwrap() == 'E') {
@@ -151,10 +151,10 @@ fn read_number(buf: &mut Buf) -> Token {
         if buf.peek().unwrap() == '-' {
             num += &buf.get().unwrap().to_string();
         }
-        num += &buf.read_set(digits.to_string());
+        num += &buf.read_set(DIGITS);
     }
 
-    num += &buf.read_set(modifiers);
+    num += &buf.read_set(modifiers.as_str());
 
     if buf.more() && buf.peek().unwrap().is_ascii_alphabetic() {
         let c = buf.peek().unwrap();
@@ -180,7 +180,7 @@ fn read_hex(buf: &mut Buf) -> Token {
     buf.get();
     buf.get();
 
-    let num = buf.read_set("0123456789ABCDEFabcdef".to_string()) + &buf.read_set("UL".to_string());
+    let num = buf.read_set("0123456789ABCDEFabcdef") + &buf.read_set("UL");
 
     return Token {
         comment: None,
@@ -211,7 +211,7 @@ fn read_string_literal(buf: &mut Buf) -> Token {
         };
     }
     s += &substr;
-    buf.read_set(SPACES.to_string());
+    buf.read_set(SPACES);
     return Token {
         comment: None,
         kind: "string".to_string(),
