@@ -7,7 +7,7 @@ use substring::Substring;
 
 #[derive(Debug)]
 pub struct Token {
-    pub comment: Option<String>,
+    pub comments: Option<Vec<String>>,
     pub trailing_comment: Option<String>,
     pub kind: String,
     pub content: String,
@@ -46,7 +46,7 @@ fn read_token_c(buf: &mut Buf) -> Option<Token> {
                     continue;
                 }
                 if comments.len() > 0 {
-                    tok.comment = Some(comments.join("; "));
+                    tok.comments = Some(comments);
                 }
                 return Some(tok);
             }
@@ -120,7 +120,7 @@ fn errtok(pos: Pos, msg: String) -> Token {
 
 fn newtok(pos: Pos, kind: &str, content: String) -> Token {
     Token {
-        comment: None,
+        comments: None,
         trailing_comment: None,
         kind: kind.to_string(),
         content,

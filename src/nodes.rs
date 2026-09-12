@@ -145,7 +145,7 @@ pub enum StructEntry {
 
 #[derive(Debug, Clone)]
 pub struct Typename {
-    pub comment: Option<String>,
+    pub comments: Option<Vec<String>>,
     pub is_const: bool,
     pub name: NsName,
 }
@@ -153,7 +153,7 @@ pub struct Typename {
 // strings.casecmp
 #[derive(Debug, Clone)]
 pub struct NsName {
-    pub comment: Option<String>,
+    pub comments: Option<Vec<String>>,
     pub pos: Pos,
     pub ns: String,
     pub name: String,
@@ -246,16 +246,16 @@ pub struct Body {
 #[derive(Debug, Clone)]
 pub struct VarDecl {
     pub pos: Pos,
+    pub comments: Option<Vec<String>>,
+    pub trailing_comment: Option<String>,
     pub typename: Typename,
     pub form: Form,
     pub value: Option<Expr>,
-    pub comment: Option<String>,
-    pub trailing_comment: Option<String>,
 }
 
 #[derive(Debug, Clone)]
 pub struct If {
-    pub comment: Option<String>,
+    pub comments: Option<Vec<String>>,
     pub condition: Expr,
     pub body: Body,
     pub else_body: Option<Body>,

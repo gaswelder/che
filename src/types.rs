@@ -390,7 +390,7 @@ pub fn mk(ops: Vec<TypeOp>, ns: &str, name: &str) -> Type {
 
 fn nsname(ns: &str, name: &str) -> nodes::NsName {
     nodes::NsName {
-        comment: None,
+        comments: None,
         ns: String::from(ns),
         name: String::from(name),
         pos: Pos { col: 0, line: 0 },

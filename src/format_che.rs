@@ -164,11 +164,20 @@ fn fmt_statement(s: &FunctionElement) -> String {
     }
 }
 
+fn fmt_comments(x: &Option<Vec<String>>) -> String {
+    let mut s = String::new();
+    if x.is_none() {
+        return s;
+    }
+    for line in x.as_ref().unwrap() {
+        s += &format!("// {}\n", line);
+    }
+    s
+}
+
 fn fmt_vardecl(x: &VarDecl) -> String {
     let mut s = String::new();
-    if let Some(c) = &x.comment {
-        s += &format!("// {}\n", c);
-    }
+    s += &fmt_comments(&x.comments);
     s += &fmt_typename(&x.typename);
     s += " ";
     s += &fmt_form(&x.form);
@@ -257,9 +266,7 @@ fn fmt_cases(x: &Switch) -> String {
 
 fn fmt_if(x: &If) -> String {
     let mut s = String::new();
-    if let Some(c) = &x.comment {
-        s += &format!("// {}\n", c);
-    }
+    s += &fmt_comments(&x.comments);
     s += &format!("if ({}) {{\n", fmt_expr(&x.condition));
     for st in &x.body.statements {
         s += &format!("{}\n", &indent(&fmt_statement(&st)));
