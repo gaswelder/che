@@ -2,12 +2,14 @@ mod buf;
 mod build;
 mod c;
 mod cspec;
+mod flags;
 mod format_c;
 mod format_che;
 mod lexer;
 mod main_build;
 mod main_deptree;
 mod main_exports;
+mod main_fmt;
 mod main_genc;
 mod main_install;
 mod main_run;
@@ -43,6 +45,7 @@ static SUBCOMMANDS: &[(&str, &str, SubcommandFn)] = &[
         main_install::run,
     ),
     ("test", "Run tests", main_test::run),
+    ("fmt", "Format source code", main_fmt::run),
 ];
 
 fn main() {

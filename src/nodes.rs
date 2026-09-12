@@ -245,6 +245,7 @@ pub struct VarDecl {
 
 #[derive(Debug, Clone)]
 pub struct If {
+    pub comment: Option<String>,
     pub condition: Expr,
     pub body: Body,
     pub else_body: Option<Body>,

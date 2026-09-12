@@ -36,7 +36,9 @@ pub jpeg_t *read(const char *path, error.t *err) {
 	while (true) {
 		uint16_t hdr = 0;
 		endian.read2be(R, &hdr);
-		if (hdr == 0) break;
+		if (hdr == 0) {
+			break;
+		}
 		if (hdr == 0xffd9) {
 			break;
 		}
@@ -74,7 +76,10 @@ image.image_t *fix_orientation(image.image_t *img, int orient) {
 	int nw = w;
 	int nh = h;
 	switch (orient) {
-		case 5, 6, 7, 8: { nw = h; nh = w; }
+		case 5, 6, 7, 8: {
+			nw = h;
+			nh = w;
+		}
 	}
 	image.image_t *r = image.new(nw, nh);
 	for (int x = 0; x < nw; x++) {
@@ -194,7 +199,7 @@ void read_appdef(jpeg_t *self, reader.t *r) {
 	uint16_t len;
 	endian.read2be(r, &len);
 	printf("Application Default Header (len=%u)\n", len);
-	reader.skip(r, len-2);
+	reader.skip(r, len - 2);
 }
 
 void read_restart_interval(jpeg_t *self, reader.t *r, error.t *err) {
@@ -220,15 +225,15 @@ void read_quant_table(jpeg_t *self, reader.t *r) {
 	endian.read2be(r, &len);
 	reader.read(r, &params, 1);
 	int precision = (params >> 4) & 0xf;
-    int num = params & 0xf; // 0 = luma, 1 = chroma
+	int num = params & 0xf; // 0 = luma, 1 = chroma
 
-    printf("Quantization Table (num=%d, prec=%d)\n", num, precision);
+	printf("Quantization Table (num=%d, prec=%d)\n", num, precision);
 
 	// QT values, n = 64*(precision+1)
 	if (precision != 0) {
-        // the precision of QT, 0 = 8 bit, otherwise 16 bit
-        panic("Quantization table presision %d not implemented", precision);
-    }
+		// the precision of QT, 0 = 8 bit, otherwise 16 bit
+		panic("Quantization table presision %d not implemented", precision);
+	}
 	uint8_t *qt = calloc!(64, 1);
 	reader.read(r, qt, 64);
 	self->quant[num] = qt;
@@ -287,8 +292,12 @@ void read_baseline_dct(jpeg_t *self, reader.t *r, error.t *err) {
 	uint8_t maxh = 0;
 	uint8_t maxv = 0;
 	for (uint8_t i = 0; i < self->ncomponents; i++) {
-		if (self->components[i].hsize > maxh) maxh = self->components[i].hsize;
-		if (self->components[i].vsize > maxv) maxv = self->components[i].vsize;
+		if (self->components[i].hsize > maxh) {
+			maxh = self->components[i].hsize;
+		}
+		if (self->components[i].vsize > maxv) {
+			maxv = self->components[i].vsize;
+		}
 	}
 	self->mcux = 8 * maxh;
 	self->mcuy = 8 * maxv;
@@ -322,12 +331,12 @@ void read_huffman_table(jpeg_t *self, reader.t *r) {
 	self->htables[id] = huffman.treefrom(lengths, 16, elements);
 
 	int tid = id & 0xf; // th, id
-    int tclass = id >> 4; // class (0=dc, 1=ac)
-    printf("Huffman Table id=%d class=%d\n", tid, tclass);
+	int tclass = id >> 4; // class (0=dc, 1=ac)
+	printf("Huffman Table id=%d class=%d\n", tid, tclass);
 	// switch (tclass) {
-    //     case 0: { info->dc_huff_trees[tid] = t; }
-    //     case 1: { info->ac_huff_trees[tid] = t; }
-    // }
+	//	 case 0: { info->dc_huff_trees[tid] = t; }
+	//	 case 1: { info->ac_huff_trees[tid] = t; }
+	// }
 	OS.free(elements);
 }
 
@@ -345,12 +354,12 @@ void read_scan(jpeg_t *self, reader.t *r) {
 	uint8_t ncomp;
 	reader.read(r, &ncomp, 1);
 	for (uint8_t i = 0; i < ncomp; i++) {
-        uint8_t id;
+		uint8_t id;
 		uint8_t wtf;
-        reader.read(r, &id, 1);
-        reader.read(r, &wtf, 1);
-        int dc_table_id = wtf >> 4;
-        int ac_table_id = wtf & 0xf;
+		reader.read(r, &id, 1);
+		reader.read(r, &wtf, 1);
+		int dc_table_id = wtf >> 4;
+		int ac_table_id = wtf & 0xf;
 		printf("\tcomponent %u: dctable=%d actable=%d\n", i, dc_table_id, ac_table_id);
 		// Match the scan component id to a frame component index.
 		for (uint8_t ci = 0; ci < self->ncomponents; ci++) {
@@ -365,10 +374,10 @@ void read_scan(jpeg_t *self, reader.t *r) {
 	uint8_t ss;
 	uint8_t se;
 	uint8_t ahal;
-    reader.read(r, &ss, 1);
+	reader.read(r, &ss, 1);
 	reader.read(r, &se, 1);
 	reader.read(r, &ahal, 1);
-    printf("ss=%u se=%u ah/al=%u\n", ss, se, ahal);
+	printf("ss=%u se=%u ah/al=%u\n", ss, se, ahal);
 
 	reader.t *e = escreader(r);
 	read_scan_data(self, e);
@@ -463,8 +472,8 @@ void read_mcu(jpeg_t *self, int *dc, bits.reader_t *br, image.image_t *mcu) {
 	for (int y = 0; y < self->mcuy; y++) {
 		for (int x = 0; x < self->mcux; x++) {
 			double Y = planes[0][y][x];
-			double Cb = planes[1][y/vscale1][x/hscale1];
-			double Cr = planes[2][y/vscale2][x/hscale2];
+			double Cb = planes[1][y / vscale1][x / hscale1];
+			double Cr = planes[2][y / vscale2][x / hscale2];
 			image.rgba_t col = toRGB(Y, Cr, Cb);
 			image.set(mcu, x, y, col);
 		}
@@ -475,7 +484,9 @@ void rebuild(int *weights, double *out) {
 	double shape[64];
 	for (int i = 0; i < 64; i++) {
 		int w = weights[i];
-		if (w == 0) continue;
+		if (w == 0) {
+			continue;
+		}
 		int n = i & 0x7;
 		int m = i >> 3;
 		getshape(shape, n, m);
@@ -522,8 +533,12 @@ void madd(double *s, double *m) {
 pub void getshape(double *shape, int n, m) {
 	double a = 1;
 	double b = 1;
-	if (n == 0) a = sqrt(0.5);
-	if (m == 0) b = sqrt(0.5);
+	if (n == 0) {
+		a = sqrt(0.5);
+	}
+	if (m == 0) {
+		b = sqrt(0.5);
+	}
 	double ka = n * M_PI / 16.0;
 	double kb = m * M_PI / 16.0;
 	for (int y = 0; y < 8; y++) {
@@ -547,8 +562,12 @@ image.rgba_t toRGB(double Y, Cr, Cb) {
 }
 
 uint8_t clamp(double x) {
-	if (x > 255) return 255;
-	if (x < 0) return 0;
+	if (x > 255) {
+		return 255;
+	}
+	if (x < 0) {
+		return 0;
+	}
 	return (uint8_t) x;
 }
 
@@ -564,7 +583,7 @@ void readblock(bits.reader_t *br, huffman.reader_t *hrdc, *hrac, int prevdc, int
 		code = huffman.read(hrac);
 		if (code == EOF) panic("eof");
 		int run = code / 16;
-        int size = code & 0xf;
+		int size = code & 0xf;
 
 		// 0,0 means end of data.
 		if (run == 0 && size == 0) {
@@ -577,10 +596,10 @@ void readblock(bits.reader_t *br, huffman.reader_t *hrdc, *hrac, int prevdc, int
 		}
 		l += run;
 		code = size;
-		if (l<64) {
+		if (l < 64) {
 			int coeff = weirdonum(br, code);
 			vals[l] = coeff;
-			l+=1;
+			l += 1;
 		}
 	}
 }
@@ -596,8 +615,8 @@ int weirdonum(bits.reader_t *br, int code) {
 }
 
 typedef {
-    reader.t *in;
-    bool ended;
+	reader.t *in;
+	bool ended;
 } escaper_t;
 
 reader.t *escreader(reader.t *in) {
@@ -607,41 +626,43 @@ reader.t *escreader(reader.t *in) {
 }
 
 int escreadn(void *ctx, uint8_t *buf, size_t n) {
-    escaper_t *r = ctx;
-    for (size_t i = 0; i < n; i++) {
-        int c = escread1(r);
-        if (c == -1) return -1;
-        buf[i] = (uint8_t) c;
-    }
-    return (int) n;
+	escaper_t *r = ctx;
+	for (size_t i = 0; i < n; i++) {
+		int c = escread1(r);
+		if (c == -1) {
+			return -1;
+		}
+		buf[i] = (uint8_t) c;
+	}
+	return (int) n;
 }
 
 int escread1(escaper_t *r) {
-    if (r->ended) {
+	if (r->ended) {
 		panic("reading from closed escaper");
 	}
-    uint8_t x;
-    if (reader.read(r->in, &x, 1) != 1) {
+	uint8_t x;
+	if (reader.read(r->in, &x, 1) != 1) {
 		panic("read failed");
 	}
-    if (x == 0xff) {
-        if (reader.read(r->in, &x, 1) != 1) {
+	if (x == 0xff) {
+		if (reader.read(r->in, &x, 1) != 1) {
 			panic("read failed");
 		}
-        // 0xff 0x00 means just 0xff as data.
-        if (x == 0) {
-            return 0xff;
-        }
-        // 0xff 0xd9 means end of data.
-        if (x == 0xd9) {
-            r->ended = true;
-            return EOF;
-        }
-        // 0xff 0xd0..0xd7 is a restart marker.
-        if (x >= 0xd0 && x <= 0xd7) {
-            return x;
-        }
-        panic("unexpected 0xff 0x%x", x);
-    }
-    return x;
+		// 0xff 0x00 means just 0xff as data.
+		if (x == 0) {
+			return 0xff;
+		}
+		// 0xff 0xd9 means end of data.
+		if (x == 0xd9) {
+			r->ended = true;
+			return EOF;
+		}
+		// 0xff 0xd0..0xd7 is a restart marker.
+		if (x >= 0xd0 && x <= 0xd7) {
+			return x;
+		}
+		panic("unexpected 0xff 0x%x", x);
+	}
+	return x;
 }

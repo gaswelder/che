@@ -870,7 +870,7 @@ fn parse_if(lexer: &mut Lexer, ctx: &ParseCtx) -> Result<TWithErrors<Statement>,
     let mut else_body = None;
     let mut errors = Vec::new();
 
-    expect(lexer, "if", Some("if statement"))?;
+    let tokif = expect(lexer, "if", Some("if statement"))?;
     expect(lexer, "(", Some("if statement"))?;
     condition = parse_expr(lexer, 0, ctx)?;
     expect(lexer, ")", Some("if statement"))?;
@@ -888,6 +888,7 @@ fn parse_if(lexer: &mut Lexer, ctx: &ParseCtx) -> Result<TWithErrors<Statement>,
     }
     return Ok(TWithErrors {
         obj: Statement::If(nodes::If {
+            comment: tokif.comment,
             condition,
             body: body.obj,
             else_body,

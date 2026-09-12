@@ -2,6 +2,7 @@ use crate::buf::Pos;
 use crate::c;
 use crate::cspec;
 use crate::errors::BuildError;
+use crate::flags;
 use crate::format_c;
 use crate::format_che;
 use crate::makers;
@@ -13,9 +14,6 @@ use crate::types;
 
 use std::collections::HashMap;
 use std::collections::HashSet;
-
-static DEBUG_TYPES: bool = false;
-static TRACE: bool = false;
 
 struct TrCtx {
     source_modules: Vec<Module>,          // all source modules
@@ -490,7 +488,7 @@ fn expand_imports(ctx: &TrCtx) -> Vec<c::ModElem> {
 }
 
 fn trace_type(ctx: &TrCtx, expr: &Expr, typ: &types::Type) {
-    if !DEBUG_TYPES {
+    if !flags::DEBUG_TYPES {
         return;
     }
     println!(
@@ -990,7 +988,7 @@ fn tr_binary_op(x: &BinaryOp, ctx: &mut TrCtx) -> Result<Typed<c::Expr>, BuildEr
         path: ctx.this_module_info.loc.path.clone(),
         pos: x.pos.fmt(),
     })?;
-    if DEBUG_TYPES {
+    if flags::DEBUG_TYPES {
         println!(
             "{}: {} :: {}",
             ctx.this_module_info.uniqid,
@@ -1061,7 +1059,7 @@ fn tr_postop(x: &PostfixOp, ctx: &mut TrCtx) -> Result<Typed<c::Expr>, BuildErro
 fn tr_cast(x: &Cast, ctx: &mut TrCtx) -> Result<Typed<c::Expr>, BuildError> {
     let operand = tr_expr(&x.operand, ctx)?;
     let typ = typefrom_baretypeform(&x.typeform);
-    if DEBUG_TYPES {
+    if flags::DEBUG_TYPES {
         println!(
             "cast {}: {}",
             format_che::fmt_expr(&Expr::Cast(x.clone())),
@@ -1107,7 +1105,7 @@ fn tr_field_access(x: &FieldAccess, ctx: &mut TrCtx) -> Result<Typed<c::Expr>, B
         path: ctx.this_module_info.loc.path.clone(),
         pos: x.pos.fmt(),
     })?;
-    if DEBUG_TYPES {
+    if flags::DEBUG_TYPES {
         println!(
             "{}: {} :: {}",
             ctx.this_module_info.uniqid,
@@ -1268,7 +1266,7 @@ fn tr_func_decl(x: &FuncDecl, ctx: &mut TrCtx) -> Result<Vec<c::ModElem>, BuildE
     }
 
     let mut rbody = tr_body(&x.body, ctx)?;
-    if TRACE {
+    if flags::TRACE {
         rbody
             .statements
             .insert(0, makers::st_calltrace(&ctx.this_module_info.loc.path, x))

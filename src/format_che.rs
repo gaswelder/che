@@ -2,29 +2,250 @@ use crate::nodes;
 use crate::nodes::*;
 use crate::parser;
 
+pub fn fmt_mod(m: &nodes::Module) -> String {
+    let mut s = String::new();
+    for e in &m.elements {
+        s += &format!("{}\n", fmt_mod_elem(&e));
+    }
+    s
+}
+
+fn fmt_mod_elem(elem: &ModElem) -> String {
+    match elem {
+        ModElem::Macro(_) => todo!(),
+        ModElem::Enum(_) => todo!(),
+        ModElem::StructAlias(_) => todo!(),
+        ModElem::Typedef(_) => todo!(),
+        ModElem::StructTypedef(x) => fmt_struct_typedef(&x),
+        ModElem::ModVar(x) => {
+            let mut s = String::new();
+            s += &fmt_typename(&x.typename);
+            s += " ";
+            s += &fmt_form(&x.form);
+            s += " = ";
+            let v = x.value.clone().unwrap();
+            s += &fmt_expr(&v);
+            s += ";";
+            s
+        }
+        ModElem::FuncDecl(x) => fmt_func(&x),
+    }
+}
+
+fn fmt_struct_typedef(x: &StructTypedef) -> String {
+    let mut s = String::new();
+    if x.ispub {
+        s += "pub ";
+    }
+    s += "typedef {\n";
+    for e in &x.entries {
+        match e {
+            StructEntry::Plain(p) => {
+                s += "\t";
+                s += &fmt_typename(&p.typename);
+                s += " ";
+                for (i, n) in p.forms.iter().enumerate() {
+                    if i > 0 {
+                        s += ", ";
+                    }
+                    s += &fmt_form(&n);
+                }
+                s += ";\n";
+            }
+            StructEntry::Union(_) => todo!(),
+        }
+    }
+    s += "} ";
+    s += &x.name;
+    s += ";\n";
+    s
+}
+
+fn fmt_func(x: &FuncDecl) -> String {
+    let mut s = String::new();
+    s += "\n";
+    if x.ispub {
+        s += "pub ";
+    }
+    s += &fmt_typename(&x.typename);
+    s += " ";
+    s += &fmt_form(&x.form);
+    s += "(";
+    for (i, p) in x.params.list.iter().enumerate() {
+        if i > 0 {
+            s += ", ";
+        }
+        s += &fmt_typename(&p.typename);
+        s += " ";
+        for (i, n) in p.forms.iter().enumerate() {
+            if i > 0 {
+                s += ", ";
+            }
+            s += &fmt_form(&n);
+        }
+    }
+    s += ") {\n";
+    for st in &x.body.statements {
+        s += &format!("{}\n", indent(&fmt_statement(&st)));
+    }
+    s.push('}');
+    s
+}
+
+fn fmt_statement(s: &Statement) -> String {
+    match s {
+        Statement::Break => String::from("break;"),
+        Statement::Continue => String::from("continue;"),
+        Statement::VarDecl(x) => {
+            let mut s = String::new();
+            s += &fmt_typename(&x.typename);
+            s += " ";
+            s += &fmt_form(&x.form);
+            if let Some(e) = &x.value {
+                s += " = ";
+                s += &fmt_expr(&e);
+            }
+            s += ";";
+            s
+        }
+        Statement::If(x) => fmt_if(&x),
+        Statement::For(x) => {
+            let mut s = String::new();
+            s += "for (";
+            if let Some(init) = &x.init {
+                match init {
+                    ForInit::Expr(expr) => {
+                        s += &fmt_expr(&expr);
+                    }
+                    ForInit::DeclLoopCounter {
+                        type_name,
+                        form,
+                        value,
+                    } => {
+                        s += &fmt_typename(&type_name);
+                        s += " ";
+                        s += &fmt_form(&form);
+                        s += " = ";
+                        s += &fmt_expr(&value);
+                    }
+                }
+            }
+            s += ";";
+            if let Some(e) = &x.condition {
+                s += " ";
+                s += &fmt_expr(&e);
+            }
+            s += ";";
+            if let Some(e) = &x.action {
+                s += " ";
+                s += &fmt_expr(&e);
+            }
+            s += ") {\n";
+            for st in &x.body.statements {
+                s += &format!("{}\n", indent(&fmt_statement(&st)));
+            }
+            s += "}";
+            s
+        }
+        Statement::While(x) => {
+            let mut s = String::new();
+            s += &format!("while ({}) {{\n", fmt_expr(&x.cond));
+            for st in &x.body.statements {
+                s += &format!("{}\n", indent(&fmt_statement(&st)))
+            }
+            s += "}";
+            s
+        }
+        Statement::Return(x) => match &x.expression {
+            Some(e) => format!("return {};", fmt_expr(&e)),
+            None => format!("return;"),
+        },
+        Statement::Switch(x) => fmt_switch(&x),
+        Statement::Expression(expr) => format!("{};", fmt_expr(expr)),
+    }
+}
+
+fn fmt_case_body(x: &Body) -> String {
+    let mut s = String::new();
+    match x.statements.len() {
+        0 => s += "{}\n",
+        1 => {
+            let bs = fmt_statement(&x.statements[0]);
+            s += &format!("{{ {} }}\n", bs);
+        }
+        _ => {
+            s += "{\n";
+            for st in &x.statements {
+                s += &fmt_statement(&st);
+                s += "\n";
+            }
+            s += "\t}\n";
+        }
+    }
+    s
+}
+
+fn fmt_switch(x: &Switch) -> String {
+    let mut s = String::new();
+    s += &format!("switch ({}) {{\n", fmt_expr(&x.value));
+    for c in &x.cases {
+        s += "\tcase ";
+        for (i, v) in c.values.iter().enumerate() {
+            if i > 0 {
+                s += ", ";
+            }
+            match v {
+                SwitchCaseValue::Ident(x) => s += &fmt_nsname(&x),
+                SwitchCaseValue::Literal(literal) => s += &fmt_literal(&literal),
+            }
+        }
+        s += ": ";
+        s += &fmt_case_body(&c.body);
+    }
+    if let Some(c) = &x.default_case {
+        s += "\tdefault: ";
+        s += &fmt_case_body(&c);
+    }
+    s += "}";
+    s
+}
+
+fn fmt_if(x: &If) -> String {
+    let mut s = String::new();
+    if let Some(c) = &x.comment {
+        s += &format!("// {}\n", c);
+    }
+    s += &format!("if ({}) {{\n", fmt_expr(&x.condition));
+    for st in &x.body.statements {
+        s += &format!("{}\n", &indent(&fmt_statement(&st)));
+    }
+    if let Some(e) = &x.else_body {
+        dbg!(e);
+        s += "} else {\n";
+        s += "\tbleble;\n";
+        todo!();
+    }
+    s += "}";
+    s
+}
+
 pub fn fmt_field_access(x: &FieldAccess) -> String {
     format!("{}{}{}", fmt_expr(&x.target), &x.op, &x.field_name)
+}
+
+fn fmt_nsname(x: &NsName) -> String {
+    if x.ns == "" {
+        format!("{}", &x.name)
+    } else {
+        format!("{}.{}", &x.ns, &x.name)
+    }
 }
 
 pub fn fmt_expr(expr: &Expr) -> String {
     match expr {
         Expr::FieldAccess(x) => fmt_field_access(x),
-        Expr::Cast(x) => {
-            let type_name = &x.typeform;
-            let operand = &x.operand;
-            return format!(
-                "({})({})",
-                fmt_bare_typeform(&type_name),
-                fmt_expr(&operand)
-            );
-        }
-        Expr::NsName(n) => {
-            if n.ns == "" {
-                format!("{}", &n.name)
-            } else {
-                format!("{}.{}", &n.ns, &n.name)
-            }
-        }
+        Expr::Cast(x) => fmt_cast(&x),
+        Expr::NsName(n) => fmt_nsname(&n),
         Expr::Call(x) => {
             let arguments = &x.args;
             let function = &x.func;
@@ -119,6 +340,18 @@ pub fn fmt_expr(expr: &Expr) -> String {
     }
 }
 
+fn fmt_cast(x: &Cast) -> String {
+    let t = fmt_bare_typeform(&x.typeform);
+    let arg = fmt_expr(&x.operand);
+    let nobr = format!("({}) {}", t, arg);
+    let br = format!("({})({})", t, arg);
+    match *x.operand {
+        Expr::Literal(_) => nobr,
+        Expr::NsName(_) => nobr,
+        _ => br,
+    }
+}
+
 pub fn fmt_typename(t: &Typename) -> String {
     let name = if t.name.ns != "" {
         format!("{}.{}", t.name.ns, t.name.name)
@@ -185,4 +418,9 @@ fn fmt_literal(node: &Literal) -> String {
         Literal::Number(val) => format!("{}", val),
         Literal::Null => String::from("NULL"),
     }
+}
+
+fn indent(s: &str) -> String {
+    let lines: Vec<String> = s.split("\n").map(|line| format!("\t{}", line)).collect();
+    lines.join("\n")
 }

@@ -7,6 +7,7 @@ use substring::Substring;
 
 #[derive(Debug)]
 pub struct Token {
+    pub comment: Option<String>,
     pub kind: String,
     pub content: String,
     pub pos: Pos,
@@ -26,6 +27,27 @@ const KEYWORDS: &[&str] = &[
     "sizeof", "struct", "switch", "typedef", "union", "while",
 ];
 
+fn read_token_c(buf: &mut Buf) -> Option<Token> {
+    let mut comments = Vec::new();
+    loop {
+        match read_token(buf) {
+            Some(mut tok) => {
+                if tok.kind == "comment" {
+                    comments.push(tok.content);
+                    continue;
+                }
+                if comments.len() > 0 {
+                    tok.comment = Some(comments.join("; "));
+                }
+                return Some(tok);
+            }
+            None => {
+                return None;
+            }
+        }
+    }
+}
+
 fn read_token(buf: &mut Buf) -> Option<Token> {
     buf.read_set(SPACES.to_string());
     if buf.ended() {
@@ -37,6 +59,7 @@ fn read_token(buf: &mut Buf) -> Option<Token> {
     if buf.skip_literal("#import") {
         buf.read_set(SPACES.to_string());
         return Some(Token {
+            comment: None,
             kind: "import".to_string(),
             content: buf.skip_until('\n').trim().to_string(),
             pos,
@@ -45,6 +68,7 @@ fn read_token(buf: &mut Buf) -> Option<Token> {
 
     if buf.peek().unwrap() == '#' {
         return Some(Token {
+            comment: None,
             kind: "macro".to_string(),
             content: buf.skip_until('\n'),
             pos,
@@ -57,6 +81,7 @@ fn read_token(buf: &mut Buf) -> Option<Token> {
 
     if buf.skip_literal("//") {
         return Some(Token {
+            comment: None,
             kind: "comment".to_string(),
             content: buf.skip_until('\n'),
             pos,
@@ -89,6 +114,7 @@ fn read_token(buf: &mut Buf) -> Option<Token> {
     for sym in &symbols {
         if buf.skip_literal(sym) {
             return Some(Token {
+                comment: None,
                 kind: sym.to_string(),
                 content: String::new(),
                 pos,
@@ -97,6 +123,7 @@ fn read_token(buf: &mut Buf) -> Option<Token> {
     }
 
     return Some(Token {
+        comment: None,
         kind: "error".to_string(),
         content: format!("Unexpected character: '{}'", next),
         pos,
@@ -132,12 +159,14 @@ fn read_number(buf: &mut Buf) -> Token {
     if buf.more() && buf.peek().unwrap().is_ascii_alphabetic() {
         let c = buf.peek().unwrap();
         return Token {
+            comment: None,
             kind: "error".to_string(),
             content: format!("Unexpected character: '{}'", c),
             pos: buf.pos(),
         };
     }
     return Token {
+        comment: None,
         kind: "num".to_string(),
         content: num,
         pos,
@@ -154,6 +183,7 @@ fn read_hex(buf: &mut Buf) -> Token {
     let num = buf.read_set("0123456789ABCDEFabcdef".to_string()) + &buf.read_set("UL".to_string());
 
     return Token {
+        comment: None,
         kind: "num".to_string(),
         content: format!("0x{}", &num),
         pos,
@@ -174,6 +204,7 @@ fn read_string_literal(buf: &mut Buf) -> Token {
     }
     if !buf.more() || buf.get().unwrap() != '"' {
         return Token {
+            comment: None,
             kind: "error".to_string(),
             content: "Double quote expected".to_string(),
             pos,
@@ -182,6 +213,7 @@ fn read_string_literal(buf: &mut Buf) -> Token {
     s += &substr;
     buf.read_set(SPACES.to_string());
     return Token {
+        comment: None,
         kind: "string".to_string(),
         content: s,
         pos,
@@ -208,12 +240,14 @@ fn read_word(buf: &mut Buf) -> Token {
 
     if KEYWORDS.contains(&word.as_str()) {
         return Token {
+            comment: None,
             kind: word,
             content: String::new(),
             pos,
         };
     }
     return Token {
+        comment: None,
         kind: "word".to_string(),
         content: word,
         pos,
@@ -232,12 +266,14 @@ fn read_char_literal(buf: &mut Buf) -> Token {
     s.push(buf.get().unwrap());
     if buf.get().unwrap() != '\'' {
         return Token {
+            comment: None,
             kind: "error".to_string(),
             content: "Single quote expected".to_string(),
             pos,
         };
     }
     return Token {
+        comment: None,
         kind: "char".to_string(),
         content: s,
         pos,
@@ -250,12 +286,14 @@ fn read_multiline_comment(buf: &mut Buf) -> Token {
     let comment = buf.until_literal("*/");
     if !buf.skip_literal("*/") {
         return Token {
+            comment: None,
             kind: "error".to_string(),
             content: "*/ expected".to_string(),
             pos,
         };
     }
     return Token {
+        comment: None,
         kind: "comment".to_string(),
         content: comment,
         pos,
@@ -409,18 +447,16 @@ mod tests {
 pub fn for_file(filename: &str) -> Result<Lexer, String> {
     return match fs::read_to_string(filename) {
         Ok(contents) => Ok(Lexer {
-            buf: crate::buf::new(contents),
-            next_tokens: VecDeque::new(),
+            source: crate::buf::new(contents),
+            lookahead: VecDeque::new(),
         }),
         Err(e) => Err(format!("could not read {}: {}", filename, e)),
     };
 }
 
 pub struct Lexer {
-    // Source code buffer.
-    buf: Buf,
-    // Unget buffer.
-    next_tokens: VecDeque<Token>,
+    source: Buf,                // Source code buffer.
+    lookahead: VecDeque<Token>, // Unget buffer.
 }
 
 impl Lexer {
@@ -434,27 +470,18 @@ impl Lexer {
     }
 
     pub fn pos(&self) -> Pos {
-        self.buf.pos()
+        self.source.pos()
     }
 
     pub fn get(&mut self) -> Option<Token> {
-        if self.next_tokens.len() > 0 {
-            return self.next_tokens.pop_front();
+        if self.lookahead.len() > 0 {
+            return self.lookahead.pop_front();
         }
-        loop {
-            match read_token(&mut self.buf) {
-                Some(tok) => {
-                    if tok.kind != "comment" {
-                        return Some(tok);
-                    }
-                }
-                None => return None,
-            }
-        }
+        read_token_c(&mut self.source)
     }
 
     pub fn unget(&mut self, t: Token) {
-        self.next_tokens.push_front(t);
+        self.lookahead.push_front(t);
     }
 
     // Returns the next token or none.
@@ -466,19 +493,16 @@ impl Lexer {
     // remaining.
     pub fn peekn(&mut self, n: usize) -> Option<Vec<&Token>> {
         // Ensure that the lookahead buffer contains at least n tokens.
-        while self.next_tokens.len() < n {
-            let r = read_token(&mut self.buf);
+        while self.lookahead.len() < n {
+            let r = read_token_c(&mut self.source);
             if r.is_none() {
                 return None;
             }
-            if r.as_ref().unwrap().kind == "comment" {
-                continue;
-            }
-            self.next_tokens.push_back(r.unwrap());
+            self.lookahead.push_back(r.unwrap());
         }
         let mut r = Vec::new();
         for i in 0..n {
-            r.push(&self.next_tokens[i])
+            r.push(&self.lookahead[i])
         }
         return Some(r);
     }

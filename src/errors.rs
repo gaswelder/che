@@ -1,5 +1,6 @@
 use crate::buf::Pos;
 
+#[derive(Debug)]
 pub struct BuildError {
     pub path: String,
     pub pos: String,
