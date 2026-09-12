@@ -41,6 +41,7 @@ fn t(name: &'static str) -> CSymbol {
         name,
         t: Type {
             base: nodes::NsName {
+                comment: None,
                 ns: "".to_string(),
                 name: name.to_string(),
                 pos: Pos { col: 0, line: 0 },

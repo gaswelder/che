@@ -34,16 +34,22 @@ pub enum ModElem {
 
 // Elements than can be a part of a function body.
 #[derive(Debug, Clone)]
-pub enum Statement {
-    Break,
-    Continue,
+pub enum FunctionElement {
     VarDecl(VarDecl),
     If(If),
+    Switch(Switch),
     For(For),
     While(While),
+    Statement(Statement),
     Return(Return),
-    Switch(Switch),
-    Expression(Expr),
+    Break,
+    Continue,
+}
+
+#[derive(Debug, Clone)]
+pub struct Statement {
+    pub expr: Expr,
+    pub trailing_comment: Option<String>,
 }
 
 // Elements that can participate in expressions.
@@ -139,6 +145,7 @@ pub enum StructEntry {
 
 #[derive(Debug, Clone)]
 pub struct Typename {
+    pub comment: Option<String>,
     pub is_const: bool,
     pub name: NsName,
 }
@@ -146,6 +153,7 @@ pub struct Typename {
 // strings.casecmp
 #[derive(Debug, Clone)]
 pub struct NsName {
+    pub comment: Option<String>,
     pub pos: Pos,
     pub ns: String,
     pub name: String,
@@ -230,7 +238,7 @@ pub enum SizeofArg {
 
 #[derive(Debug, Clone)]
 pub struct Body {
-    pub statements: Vec<Statement>,
+    pub statements: Vec<FunctionElement>,
 }
 
 // int foo = 1;
@@ -241,6 +249,8 @@ pub struct VarDecl {
     pub typename: Typename,
     pub form: Form,
     pub value: Option<Expr>,
+    pub comment: Option<String>,
+    pub trailing_comment: Option<String>,
 }
 
 #[derive(Debug, Clone)]

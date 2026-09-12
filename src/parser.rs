@@ -193,13 +193,16 @@ fn parse_module_object(l: &mut Lexer, ctx: &ParseCtx) -> Result<TWithErrors<ModE
         });
     }
     let value = parse_expr(l, 0, ctx)?;
-    expect(l, ";", Some("module variable declaration"))?;
+    let semi = expect(l, ";", Some("module variable declaration"))?;
+    let comment = type_name.comment.clone();
     return Ok(TWithErrors {
         obj: ModElem::ModVar(VarDecl {
             typename: type_name,
             form,
             value: Some(value),
             pos,
+            trailing_comment: semi.trailing_comment,
+            comment,
         }),
         errors: Vec::new(),
     });
@@ -391,6 +394,7 @@ fn read_ns_id(l: &mut Lexer, ctx: &ParseCtx) -> Result<NsName, Error> {
                     l.get();
                     let b = l.get().unwrap();
                     return Ok(NsName {
+                        comment: a.comment,
                         ns: a.content,
                         name: b.content,
                         pos: a.pos,
@@ -401,6 +405,7 @@ fn read_ns_id(l: &mut Lexer, ctx: &ParseCtx) -> Result<NsName, Error> {
         }
     }
     return Ok(NsName {
+        comment: a.comment,
         ns: String::new(),
         name: a.content,
         pos: a.pos,
@@ -421,6 +426,7 @@ fn read_expression_atom(l: &mut Lexer, ctx: &ParseCtx) -> Result<Expr, Error> {
     let next = l.get().unwrap();
     return match next.kind.as_str() {
         "word" => Ok(Expr::NsName(NsName {
+            comment: None,
             pos: next.pos,
             ns: String::from(""),
             name: next.content,
@@ -531,9 +537,22 @@ fn expect(l: &mut Lexer, kind: &str, comment: Option<&str>) -> Result<Token, Err
 }
 
 fn parse_typename(l: &mut Lexer, ctx: &ParseCtx) -> Result<Typename, Error> {
-    let is_const = l.eat("const");
+    let mut comment: Option<String> = None;
+    let mut is_const = false;
+    if l.follows("const") {
+        let t = l.get().unwrap();
+        is_const = true;
+        comment = t.comment;
+    }
     let name = read_ns_id(l, ctx)?;
-    return Ok(Typename { is_const, name });
+    if name.comment.is_some() {
+        comment = name.comment.clone();
+    }
+    return Ok(Typename {
+        comment,
+        is_const,
+        name,
+    });
 }
 
 fn parse_bare_typeform(l: &mut Lexer, ctx: &ParseCtx) -> Result<BareTypeform, Error> {
@@ -670,6 +689,7 @@ fn parse_composite_literal_entry(
         return Ok(CompositeLiteralEntry {
             is_index: false,
             key: Some(Expr::NsName(NsName {
+                comment: None,
                 pos: tok.pos,
                 ns: String::from(""),
                 name: tok.content,
@@ -728,14 +748,14 @@ fn parse_call(l: &mut Lexer, ctx: &ParseCtx, func: Expr) -> Result<Expr, Error> 
     }));
 }
 
-fn parse_while(l: &mut Lexer, ctx: &ParseCtx) -> Result<TWithErrors<Statement>, Error> {
+fn parse_while(l: &mut Lexer, ctx: &ParseCtx) -> Result<TWithErrors<FunctionElement>, Error> {
     expect(l, "while", None)?;
     expect(l, "(", None)?;
     let condition = parse_expr(l, 0, ctx)?;
     expect(l, ")", None)?;
     let body = parse_statements_block(l, ctx)?;
     return Ok(TWithErrors {
-        obj: Statement::While(nodes::While {
+        obj: FunctionElement::While(nodes::While {
             cond: condition,
             body: body.obj,
         }),
@@ -743,7 +763,7 @@ fn parse_while(l: &mut Lexer, ctx: &ParseCtx) -> Result<TWithErrors<Statement>, 
     });
 }
 
-fn parse_statement(l: &mut Lexer, ctx: &ParseCtx) -> Result<TWithErrors<Statement>, Error> {
+fn parse_statement(l: &mut Lexer, ctx: &ParseCtx) -> Result<TWithErrors<FunctionElement>, Error> {
     if !l.more() {
         return Err(Error {
             message: String::from("reached end of file while parsing statement"),
@@ -763,7 +783,7 @@ fn parse_statement(l: &mut Lexer, ctx: &ParseCtx) -> Result<TWithErrors<Statemen
             l.get().unwrap();
             expect(l, ";", Some("break statement"))?;
             Ok(TWithErrors {
-                obj: Statement::Break,
+                obj: FunctionElement::Break,
                 errors: Vec::new(),
             })
         }
@@ -771,7 +791,7 @@ fn parse_statement(l: &mut Lexer, ctx: &ParseCtx) -> Result<TWithErrors<Statemen
             l.get().unwrap();
             expect(l, ";", Some("continue statement"))?;
             Ok(TWithErrors {
-                obj: Statement::Continue,
+                obj: FunctionElement::Continue,
                 errors: Vec::new(),
             })
         }
@@ -785,16 +805,19 @@ fn parse_statement(l: &mut Lexer, ctx: &ParseCtx) -> Result<TWithErrors<Statemen
         "while" => parse_while(l, ctx),
         _ => {
             let expr = parse_expr(l, 0, ctx)?;
-            expect(l, ";", Some("parsing statement"))?;
+            let semi = expect(l, ";", Some("parsing statement"))?;
             return Ok(TWithErrors {
-                obj: Statement::Expression(expr),
+                obj: FunctionElement::Statement(Statement {
+                    expr,
+                    trailing_comment: semi.trailing_comment,
+                }),
                 errors: Vec::new(),
             });
         }
     }
 }
 
-fn parse_variable_declaration(l: &mut Lexer, ctx: &ParseCtx) -> Result<Statement, Error> {
+fn parse_variable_declaration(l: &mut Lexer, ctx: &ParseCtx) -> Result<FunctionElement, Error> {
     let pos = l.peek().unwrap().pos.clone();
     let type_name = parse_typename(l, ctx)?;
     let form = parse_form(l, ctx)?;
@@ -803,24 +826,27 @@ fn parse_variable_declaration(l: &mut Lexer, ctx: &ParseCtx) -> Result<Statement
     } else {
         None
     };
-    expect(l, ";", None)?;
-    return Ok(Statement::VarDecl(VarDecl {
+    let semi = expect(l, ";", None)?;
+    let comment = type_name.comment.clone();
+    return Ok(FunctionElement::VarDecl(VarDecl {
         pos,
         typename: type_name,
         form,
         value,
+        trailing_comment: semi.trailing_comment,
+        comment,
     }));
 }
 
-fn parse_return(l: &mut Lexer, ctx: &ParseCtx) -> Result<Statement, Error> {
+fn parse_return(l: &mut Lexer, ctx: &ParseCtx) -> Result<FunctionElement, Error> {
     expect(l, "return", None)?;
     if l.peek().unwrap().kind == ";" {
         l.get();
-        return Ok(Statement::Return(nodes::Return { expression: None }));
+        return Ok(FunctionElement::Return(nodes::Return { expression: None }));
     }
     let expression = parse_expr(l, 0, ctx)?;
     expect(l, ";", None)?;
-    return Ok(Statement::Return(nodes::Return {
+    return Ok(FunctionElement::Return(nodes::Return {
         expression: Some(expression),
     }));
 }
@@ -864,7 +890,7 @@ fn parse_form(l: &mut Lexer, ctx: &ParseCtx) -> Result<Form, Error> {
     return Ok(node);
 }
 
-fn parse_if(lexer: &mut Lexer, ctx: &ParseCtx) -> Result<TWithErrors<Statement>, Error> {
+fn parse_if(lexer: &mut Lexer, ctx: &ParseCtx) -> Result<TWithErrors<FunctionElement>, Error> {
     let condition;
     let body;
     let mut else_body = None;
@@ -887,7 +913,7 @@ fn parse_if(lexer: &mut Lexer, ctx: &ParseCtx) -> Result<TWithErrors<Statement>,
         else_body = Some(r.obj);
     }
     return Ok(TWithErrors {
-        obj: Statement::If(nodes::If {
+        obj: FunctionElement::If(nodes::If {
             comment: tokif.comment,
             condition,
             body: body.obj,
@@ -897,7 +923,7 @@ fn parse_if(lexer: &mut Lexer, ctx: &ParseCtx) -> Result<TWithErrors<Statement>,
     });
 }
 
-fn parse_for(l: &mut Lexer, ctx: &ParseCtx) -> Result<TWithErrors<Statement>, Error> {
+fn parse_for(l: &mut Lexer, ctx: &ParseCtx) -> Result<TWithErrors<FunctionElement>, Error> {
     expect(l, "for", None)?;
     expect(l, "(", None)?;
 
@@ -938,7 +964,7 @@ fn parse_for(l: &mut Lexer, ctx: &ParseCtx) -> Result<TWithErrors<Statement>, Er
     let body = parse_statements_block(l, ctx)?;
 
     return Ok(TWithErrors {
-        obj: Statement::For(nodes::For {
+        obj: FunctionElement::For(nodes::For {
             init,
             condition,
             action,
@@ -948,7 +974,7 @@ fn parse_for(l: &mut Lexer, ctx: &ParseCtx) -> Result<TWithErrors<Statement>, Er
     });
 }
 
-fn read_switch(l: &mut Lexer, ctx: &ParseCtx) -> Result<TWithErrors<Statement>, Error> {
+fn read_switch(l: &mut Lexer, ctx: &ParseCtx) -> Result<TWithErrors<FunctionElement>, Error> {
     expect(l, "switch", None)?;
     let mut is_str = false;
     match l.peek() {
@@ -985,7 +1011,7 @@ fn read_switch(l: &mut Lexer, ctx: &ParseCtx) -> Result<TWithErrors<Statement>, 
     }
     expect(l, "}", None)?;
     return Ok(TWithErrors {
-        obj: Statement::Switch(nodes::Switch {
+        obj: FunctionElement::Switch(nodes::Switch {
             is_str,
             value,
             cases,
@@ -1102,7 +1128,7 @@ fn parse_statements_block(l: &mut Lexer, ctx: &ParseCtx) -> Result<TWithErrors<B
 }
 
 fn read_body(l: &mut Lexer, ctx: &ParseCtx) -> Result<TWithErrors<Body>, Error> {
-    let mut statements: Vec<Statement> = Vec::new();
+    let mut statements: Vec<FunctionElement> = Vec::new();
     let mut errors = Vec::new();
     expect(l, "{", None)?;
     while !l.follows("}") {

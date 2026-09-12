@@ -96,24 +96,13 @@ fn fmt_func(x: &FuncDecl) -> String {
     s
 }
 
-fn fmt_statement(s: &Statement) -> String {
+fn fmt_statement(s: &FunctionElement) -> String {
     match s {
-        Statement::Break => String::from("break;"),
-        Statement::Continue => String::from("continue;"),
-        Statement::VarDecl(x) => {
-            let mut s = String::new();
-            s += &fmt_typename(&x.typename);
-            s += " ";
-            s += &fmt_form(&x.form);
-            if let Some(e) = &x.value {
-                s += " = ";
-                s += &fmt_expr(&e);
-            }
-            s += ";";
-            s
-        }
-        Statement::If(x) => fmt_if(&x),
-        Statement::For(x) => {
+        FunctionElement::Break => String::from("break;"),
+        FunctionElement::Continue => String::from("continue;"),
+        FunctionElement::VarDecl(x) => fmt_vardecl(x),
+        FunctionElement::If(x) => fmt_if(&x),
+        FunctionElement::For(x) => {
             let mut s = String::new();
             s += "for (";
             if let Some(init) = &x.init {
@@ -151,7 +140,7 @@ fn fmt_statement(s: &Statement) -> String {
             s += "}";
             s
         }
-        Statement::While(x) => {
+        FunctionElement::While(x) => {
             let mut s = String::new();
             s += &format!("while ({}) {{\n", fmt_expr(&x.cond));
             for st in &x.body.statements {
@@ -160,13 +149,38 @@ fn fmt_statement(s: &Statement) -> String {
             s += "}";
             s
         }
-        Statement::Return(x) => match &x.expression {
+        FunctionElement::Return(x) => match &x.expression {
             Some(e) => format!("return {};", fmt_expr(&e)),
             None => format!("return;"),
         },
-        Statement::Switch(x) => fmt_switch(&x),
-        Statement::Expression(expr) => format!("{};", fmt_expr(expr)),
+        FunctionElement::Switch(x) => fmt_switch(&x),
+        FunctionElement::Statement(x) => {
+            if let Some(c) = &x.trailing_comment {
+                format!("{}; // {}", fmt_expr(&x.expr), c)
+            } else {
+                format!("{};", fmt_expr(&x.expr))
+            }
+        }
     }
+}
+
+fn fmt_vardecl(x: &VarDecl) -> String {
+    let mut s = String::new();
+    if let Some(c) = &x.comment {
+        s += &format!("// {}\n", c);
+    }
+    s += &fmt_typename(&x.typename);
+    s += " ";
+    s += &fmt_form(&x.form);
+    if let Some(e) = &x.value {
+        s += " = ";
+        s += &fmt_expr(&e);
+    }
+    s += ";";
+    if let Some(c) = &x.trailing_comment {
+        s += &format!(" // {}", c);
+    }
+    s
 }
 
 fn fmt_switch(x: &Switch) -> String {

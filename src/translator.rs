@@ -541,6 +541,7 @@ fn typefrom_typedef(x: &Typedef) -> types::Type {
     types::Type {
         ops,
         base: NsName {
+            comment: None,
             ns: String::from(&x.typename.name.ns),
             name: String::from(&x.typename.name.name),
             pos: x.pos.clone(),
@@ -735,10 +736,10 @@ fn tr_body(b: &Body, ctx: &mut TrCtx) -> Result<c::Body, BuildError> {
     begin_scope(ctx);
     for s in &b.statements {
         statements.push(match s {
-            Statement::Break => c::Statement::Break,
-            Statement::Continue => c::Statement::Continue,
-            Statement::Expression(x) => {
-                match x {
+            FunctionElement::Break => c::Statement::Break,
+            FunctionElement::Continue => c::Statement::Continue,
+            FunctionElement::Statement(x) => {
+                match &x.expr {
                     Expr::Call(call) => {
                         // panic is unwrapped at this level because a panic
                         // call is a stand-alone statement and can't be part
@@ -750,22 +751,22 @@ fn tr_body(b: &Body, ctx: &mut TrCtx) -> Result<c::Body, BuildError> {
                             }
                             makers::st_panic(
                                 &ctx.this_module_info.loc.path,
-                                &expression_pos(x).fmt(),
+                                &expression_pos(&x.expr).fmt(),
                                 xargs,
                             )
                         } else {
-                            c::Statement::Expression(tr_expr(&x, ctx)?.val)
+                            c::Statement::Expression(tr_expr(&x.expr, ctx)?.val)
                         }
                     }
-                    _ => c::Statement::Expression(tr_expr(&x, ctx)?.val),
+                    _ => c::Statement::Expression(tr_expr(&x.expr, ctx)?.val),
                 }
             }
-            Statement::For(x) => tr_for(x, ctx)?,
-            Statement::If(x) => tr_if(x, ctx)?,
-            Statement::Return(x) => tr_return(x, ctx)?,
-            Statement::Switch(x) => tr_switch(x, ctx)?,
-            Statement::VarDecl(x) => tr_vardecl(x, ctx)?,
-            Statement::While(x) => tr_while(x, ctx)?,
+            FunctionElement::For(x) => tr_for(x, ctx)?,
+            FunctionElement::If(x) => tr_if(x, ctx)?,
+            FunctionElement::Return(x) => tr_return(x, ctx)?,
+            FunctionElement::Switch(x) => tr_switch(x, ctx)?,
+            FunctionElement::VarDecl(x) => tr_vardecl(x, ctx)?,
+            FunctionElement::While(x) => tr_while(x, ctx)?,
         });
     }
     end_scope(ctx)?;
@@ -1182,6 +1183,7 @@ fn tr_call(x: &Call, ctx: &mut TrCtx) -> Result<Typed<c::Expr>, BuildError> {
         ctx.used_customs.insert("calloc_or_panic".to_string());
         let y = Call {
             func: Box::new(Expr::NsName(NsName {
+                comment: None,
                 ns: "".to_string(),
                 name: "calloc_or_panic".to_string(),
                 pos: x.pos.clone(),
