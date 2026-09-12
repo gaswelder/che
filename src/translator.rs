@@ -7,7 +7,7 @@ use crate::format_che;
 use crate::makers;
 use crate::node_queries::body_returns;
 use crate::node_queries::expression_pos;
-use crate::nodes;
+use crate::nodes::*;
 use crate::preparser::ModuleInfo;
 use crate::types;
 
@@ -18,19 +18,19 @@ static DEBUG_TYPES: bool = false;
 static TRACE: bool = false;
 
 struct TrCtx {
-    source_modules: Vec<nodes::Module>,   // all source modules
+    source_modules: Vec<Module>,          // all source modules
     source_modules_info: Vec<ModuleInfo>, // info for all source_modules
     this_module_info: ModuleInfo,         // info for the currently translated source module
     translated_modules: Vec<c::Module>,   // already translated C modules
     scopes: Vec<Vec<Binding>>,
     used_ns: HashSet<String>,
     used_customs: HashSet<String>,
-    struct_typedefs: HashMap<String, nodes::StructTypedef>,
+    struct_typedefs: HashMap<String, StructTypedef>,
     other_typedefs: HashMap<String, TI>,
 }
 
 pub fn translate_mods(
-    mods: Vec<nodes::Module>,
+    mods: Vec<Module>,
     modmetas: &Vec<ModuleInfo>,
 ) -> Result<Vec<c::Module>, BuildError> {
     let n = mods.len();
@@ -45,7 +45,7 @@ pub fn translate_mods(
         let mut link: Vec<String> = Vec::new();
         for node in &m.elements {
             match node {
-                nodes::ModElem::Macro(x) => {
+                ModElem::Macro(x) => {
                     if x.name == "link" {
                         link.push(x.value.clone())
                     }
@@ -57,7 +57,7 @@ pub fn translate_mods(
         // Restrict #-stuff to OS libraries.
         for node in &m.elements {
             match node {
-                nodes::ModElem::Macro(x) => {
+                ModElem::Macro(x) => {
                     if x.name == "define" && mi.loc.suffix != "unix" {
                         return Err(BuildError {
                             path: mi.loc.path.clone(),
@@ -148,10 +148,10 @@ pub fn translate_mods(
     Ok(cmods)
 }
 
-fn init_root_scope(ctx: &mut TrCtx, m: &nodes::Module) {
+fn init_root_scope(ctx: &mut TrCtx, m: &Module) {
     for x in &m.elements {
         match x {
-            nodes::ModElem::Macro(x) => {
+            ModElem::Macro(x) => {
                 if x.name == "type" {
                     // addtype(&mut ctx, &x.value.trim(), false, types::unk());
                 } else if x.name == "define" {
@@ -177,7 +177,7 @@ fn init_root_scope(ctx: &mut TrCtx, m: &nodes::Module) {
                     );
                 }
             }
-            nodes::ModElem::Enum(x) => {
+            ModElem::Enum(x) => {
                 for e in &x.entries {
                     add_binding(
                         ctx,
@@ -192,7 +192,7 @@ fn init_root_scope(ctx: &mut TrCtx, m: &nodes::Module) {
                     );
                 }
             }
-            nodes::ModElem::StructAlias(x) => {
+            ModElem::StructAlias(x) => {
                 ctx.other_typedefs.insert(
                     x.typename.clone(),
                     TI {
@@ -201,7 +201,7 @@ fn init_root_scope(ctx: &mut TrCtx, m: &nodes::Module) {
                     },
                 );
             }
-            nodes::ModElem::Typedef(x) => {
+            ModElem::Typedef(x) => {
                 ctx.other_typedefs.insert(
                     x.alias.clone(),
                     TI {
@@ -210,10 +210,10 @@ fn init_root_scope(ctx: &mut TrCtx, m: &nodes::Module) {
                     },
                 );
             }
-            nodes::ModElem::StructTypedef(x) => {
+            ModElem::StructTypedef(x) => {
                 ctx.struct_typedefs.insert(x.name.clone(), x.clone());
             }
-            nodes::ModElem::ModVar(x) => {
+            ModElem::ModVar(x) => {
                 add_binding(
                     ctx,
                     Binding {
@@ -230,7 +230,7 @@ fn init_root_scope(ctx: &mut TrCtx, m: &nodes::Module) {
                     },
                 );
             }
-            nodes::ModElem::FuncDecl(x) => {
+            ModElem::FuncDecl(x) => {
                 let ispub = x.ispub || x.form.name == "main";
                 let typ = typefrom_funcdecl(&x);
                 add_binding(
@@ -261,7 +261,7 @@ struct TI {
 
 struct TypeInfo {
     ispub: bool,
-    // Struct(nodes::StructTypedef),
+    // Struct(StructTypedef),
 }
 
 struct Binding {
@@ -270,7 +270,7 @@ struct Binding {
     typ: types::Type,
     used: bool,
     ispub: bool,
-    constval: Option<nodes::Expr>, // If provided, this binding is a constant.
+    constval: Option<Expr>, // If provided, this binding is a constant.
 }
 
 // Returns the index of the source module with the namespace ns.
@@ -478,7 +478,7 @@ fn expand_imports(ctx: &TrCtx) -> Vec<c::ModElem> {
     elements
 }
 
-fn trace_type(ctx: &TrCtx, expr: &nodes::Expr, typ: &types::Type) {
+fn trace_type(ctx: &TrCtx, expr: &Expr, typ: &types::Type) {
     if !DEBUG_TYPES {
         return;
     }
@@ -490,7 +490,7 @@ fn trace_type(ctx: &TrCtx, expr: &nodes::Expr, typ: &types::Type) {
     );
 }
 
-fn typefrom_typename(x: &nodes::Typename, y: &nodes::Form) -> types::Type {
+fn typefrom_typename(x: &Typename, y: &Form) -> types::Type {
     let mut ops = Vec::new();
     for _ in &y.indexes {
         ops.push(types::TypeOp::Index);
@@ -501,7 +501,7 @@ fn typefrom_typename(x: &nodes::Typename, y: &nodes::Form) -> types::Type {
     types::mk(ops, &x.name.ns, &x.name.name)
 }
 
-fn typefrom_baretypeform(x: &nodes::BareTypeform) -> types::Type {
+fn typefrom_baretypeform(x: &BareTypeform) -> types::Type {
     let mut ops = Vec::new();
     for _ in 0..x.hops {
         ops.push(types::TypeOp::Deref);
@@ -509,7 +509,7 @@ fn typefrom_baretypeform(x: &nodes::BareTypeform) -> types::Type {
     types::mk(ops, &x.typename.name.ns, &x.typename.name.name)
 }
 
-fn typefrom_typedef(x: &nodes::Typedef) -> types::Type {
+fn typefrom_typedef(x: &Typedef) -> types::Type {
     let mut ops = Vec::new();
     if x.func_params.is_some() {
         let mut args = Vec::new();
@@ -531,7 +531,7 @@ fn typefrom_typedef(x: &nodes::Typedef) -> types::Type {
     }
     types::Type {
         ops,
-        base: nodes::NsName {
+        base: NsName {
             ns: String::from(&x.typename.name.ns),
             name: String::from(&x.typename.name.name),
             pos: x.pos.clone(),
@@ -543,12 +543,12 @@ fn is_numeric(s: &str) -> bool {
     s.parse::<f64>().is_ok() // Use f64 for floating-point, or i32/u32 for integers
 }
 
-fn typefrom_literal(x: &nodes::Literal) -> types::Type {
+fn typefrom_literal(x: &Literal) -> types::Type {
     match x {
-        nodes::Literal::Char(_) => types::just("char"),
-        nodes::Literal::String(_) => types::justp("char"),
-        nodes::Literal::Number(_) => types::number(),
-        nodes::Literal::Null => types::just("null"),
+        Literal::Char(_) => types::just("char"),
+        Literal::String(_) => types::justp("char"),
+        Literal::Number(_) => types::number(),
+        Literal::Null => types::just("null"),
     }
 }
 
@@ -567,14 +567,14 @@ fn typefrom_struct_field(
         if let Some(x) = ctx.struct_typedefs.get(name) {
             for e in &x.entries {
                 match e {
-                    nodes::StructEntry::Plain(type_and_forms) => {
+                    StructEntry::Plain(type_and_forms) => {
                         for f in &type_and_forms.forms {
                             if f.name == field {
                                 return Ok(typefrom_typename(&type_and_forms.typename, f));
                             }
                         }
                     }
-                    nodes::StructEntry::Union(_) => return Ok(types::todo()),
+                    StructEntry::Union(_) => return Ok(types::todo()),
                 }
             }
         }
@@ -655,54 +655,54 @@ fn nsprefix(prefix: &str, id: &str) -> String {
 // Node translators
 //
 
-fn tr_mod_elem(element: &nodes::ModElem, ctx: &mut TrCtx) -> Result<Vec<c::ModElem>, BuildError> {
+fn tr_mod_elem(element: &ModElem, ctx: &mut TrCtx) -> Result<Vec<c::ModElem>, BuildError> {
     match element {
-        nodes::ModElem::Typedef(x) => tr_typedef(&x, ctx),
-        nodes::ModElem::StructAlias(x) => Ok(tr_struct_alias(&x, ctx)),
-        nodes::ModElem::StructTypedef(x) => tr_struct_typedef(&x, ctx),
-        nodes::ModElem::FuncDecl(x) => tr_func_decl(&x, ctx),
-        nodes::ModElem::Enum(x) => tr_enum(&x, ctx),
-        nodes::ModElem::Macro(x) => Ok(tr_macro(&x)),
-        nodes::ModElem::ModVar(x) => tr_modvar(&x, ctx),
+        ModElem::Typedef(x) => tr_typedef(&x, ctx),
+        ModElem::StructAlias(x) => Ok(tr_struct_alias(&x, ctx)),
+        ModElem::StructTypedef(x) => tr_struct_typedef(&x, ctx),
+        ModElem::FuncDecl(x) => tr_func_decl(&x, ctx),
+        ModElem::Enum(x) => tr_enum(&x, ctx),
+        ModElem::Macro(x) => Ok(tr_macro(&x)),
+        ModElem::ModVar(x) => tr_modvar(&x, ctx),
     }
 }
 
-fn tr_expr(e: &nodes::Expr, ctx: &mut TrCtx) -> Result<Typed<c::Expr>, BuildError> {
+fn tr_expr(e: &Expr, ctx: &mut TrCtx) -> Result<Typed<c::Expr>, BuildError> {
     return match e {
-        nodes::Expr::Literal(x) => Ok(Typed {
+        Expr::Literal(x) => Ok(Typed {
             typ: typefrom_literal(x),
             val: c::Expr::Literal(tr_literal(x)),
         }),
-        nodes::Expr::NsName(x) => tr_nsid_in_expr(x, ctx).map(|x| Typed {
+        Expr::NsName(x) => tr_nsid_in_expr(x, ctx).map(|x| Typed {
             typ: x.typ,
             val: c::Expr::Ident(x.val),
         }),
-        nodes::Expr::ArrIndex(x) => tr_arr_index(&x, ctx),
-        nodes::Expr::BinaryOp(x) => tr_binary_op(&x, ctx),
-        nodes::Expr::FieldAccess(x) => tr_field_access(&x, ctx),
-        nodes::Expr::CompositeLiteral(x) => tr_comp_literal(&x, ctx),
-        nodes::Expr::PrefixOperator(x) => tr_prefop(&x, ctx),
-        nodes::Expr::PostfixOperator(x) => tr_postop(&x, ctx),
-        nodes::Expr::Cast(x) => tr_cast(&x, ctx),
-        nodes::Expr::Call(x) => tr_call(&x, ctx),
-        nodes::Expr::Sizeof(x) => tr_sizeof(&x, ctx),
+        Expr::ArrIndex(x) => tr_arr_index(&x, ctx),
+        Expr::BinaryOp(x) => tr_binary_op(&x, ctx),
+        Expr::FieldAccess(x) => tr_field_access(&x, ctx),
+        Expr::CompositeLiteral(x) => tr_comp_literal(&x, ctx),
+        Expr::PrefixOperator(x) => tr_prefop(&x, ctx),
+        Expr::PostfixOperator(x) => tr_postop(&x, ctx),
+        Expr::Cast(x) => tr_cast(&x, ctx),
+        Expr::Call(x) => tr_call(&x, ctx),
+        Expr::Sizeof(x) => tr_sizeof(&x, ctx),
     };
 }
 
-fn tr_body(b: &nodes::Body, ctx: &mut TrCtx) -> Result<c::Body, BuildError> {
+fn tr_body(b: &Body, ctx: &mut TrCtx) -> Result<c::Body, BuildError> {
     let mut statements: Vec<c::Statement> = Vec::new();
     begin_scope(ctx);
     for s in &b.statements {
         statements.push(match s {
-            nodes::Statement::Break => c::Statement::Break,
-            nodes::Statement::Continue => c::Statement::Continue,
-            nodes::Statement::Expression(x) => {
+            Statement::Break => c::Statement::Break,
+            Statement::Continue => c::Statement::Continue,
+            Statement::Expression(x) => {
                 match x {
-                    nodes::Expr::Call(call) => {
+                    Expr::Call(call) => {
                         // panic is unwrapped at this level because a panic
                         // call is a stand-alone statement and can't be part
                         // of expression.
-                        if nodes::is_ident(&call.func, "panic") {
+                        if is_ident(&call.func, "panic") {
                             let mut xargs = Vec::new();
                             for arg in &call.args {
                                 xargs.push(tr_expr(arg, ctx)?.val);
@@ -719,19 +719,19 @@ fn tr_body(b: &nodes::Body, ctx: &mut TrCtx) -> Result<c::Body, BuildError> {
                     _ => c::Statement::Expression(tr_expr(&x, ctx)?.val),
                 }
             }
-            nodes::Statement::For(x) => tr_for(x, ctx)?,
-            nodes::Statement::If(x) => tr_if(x, ctx)?,
-            nodes::Statement::Return(x) => tr_return(x, ctx)?,
-            nodes::Statement::Switch(x) => tr_switch(x, ctx)?,
-            nodes::Statement::VarDecl(x) => tr_vardecl(x, ctx)?,
-            nodes::Statement::While(x) => tr_while(x, ctx)?,
+            Statement::For(x) => tr_for(x, ctx)?,
+            Statement::If(x) => tr_if(x, ctx)?,
+            Statement::Return(x) => tr_return(x, ctx)?,
+            Statement::Switch(x) => tr_switch(x, ctx)?,
+            Statement::VarDecl(x) => tr_vardecl(x, ctx)?,
+            Statement::While(x) => tr_while(x, ctx)?,
         });
     }
     end_scope(ctx)?;
     Ok(c::Body { statements })
 }
 
-fn tr_struct_alias(x: &nodes::StructAlias, ctx: &TrCtx) -> Vec<c::ModElem> {
+fn tr_struct_alias(x: &StructAlias, ctx: &TrCtx) -> Vec<c::ModElem> {
     let alias = if x.ispub {
         nsprefix(&ctx.this_module_info.uniqid, &x.typename)
     } else {
@@ -752,7 +752,7 @@ fn tr_struct_alias(x: &nodes::StructAlias, ctx: &TrCtx) -> Vec<c::ModElem> {
     })]
 }
 
-fn tr_typedef(x: &nodes::Typedef, ctx: &mut TrCtx) -> Result<Vec<c::ModElem>, BuildError> {
+fn tr_typedef(x: &Typedef, ctx: &mut TrCtx) -> Result<Vec<c::ModElem>, BuildError> {
     let params = match &x.func_params {
         Some(x) => {
             let mut forms = Vec::new();
@@ -786,10 +786,7 @@ fn tr_typedef(x: &nodes::Typedef, ctx: &mut TrCtx) -> Result<Vec<c::ModElem>, Bu
 }
 
 // typedef { int a } foo_t;
-fn tr_struct_typedef(
-    x: &nodes::StructTypedef,
-    ctx: &mut TrCtx,
-) -> Result<Vec<c::ModElem>, BuildError> {
+fn tr_struct_typedef(x: &StructTypedef, ctx: &mut TrCtx) -> Result<Vec<c::ModElem>, BuildError> {
     // Translate to struct + typedef struct.
 
     // If the typedef is private, keep the name as foo_t.
@@ -807,7 +804,7 @@ fn tr_struct_typedef(
     for entry in &x.entries {
         match entry {
             // One fieldlist is multiple fields of the same type.
-            nodes::StructEntry::Plain(x) => {
+            StructEntry::Plain(x) => {
                 for f in &x.forms {
                     fields.push(c::CStructItem::Field(c::CTypeForm {
                         type_name: tr_typename(&x.typename, ctx)?,
@@ -815,7 +812,7 @@ fn tr_struct_typedef(
                     }));
                 }
             }
-            nodes::StructEntry::Union(x) => {
+            StructEntry::Union(x) => {
                 fields.push(c::CStructItem::Union(tr_union(x, ctx)?));
             }
         }
@@ -844,7 +841,7 @@ fn tr_struct_typedef(
 }
 
 // enum { A=1, B, C }
-fn tr_enum(x: &nodes::Enum, ctx: &mut TrCtx) -> Result<Vec<c::ModElem>, BuildError> {
+fn tr_enum(x: &Enum, ctx: &mut TrCtx) -> Result<Vec<c::ModElem>, BuildError> {
     let mut entries = Vec::new();
     for e in &x.entries {
         let id = if x.is_pub {
@@ -866,7 +863,7 @@ fn tr_enum(x: &nodes::Enum, ctx: &mut TrCtx) -> Result<Vec<c::ModElem>, BuildErr
     })])
 }
 
-fn tr_macro(x: &nodes::Macro) -> Vec<c::ModElem> {
+fn tr_macro(x: &Macro) -> Vec<c::ModElem> {
     let name = &x.name;
     if name == "type" || name == "link" {
         return vec![];
@@ -878,7 +875,7 @@ fn tr_macro(x: &nodes::Macro) -> Vec<c::ModElem> {
 }
 
 // int foo = 12;
-fn tr_modvar(x: &nodes::VarDecl, ctx: &mut TrCtx) -> Result<Vec<c::ModElem>, BuildError> {
+fn tr_modvar(x: &VarDecl, ctx: &mut TrCtx) -> Result<Vec<c::ModElem>, BuildError> {
     let b = find_binding(ctx, &x.form.name).unwrap();
     if inline_binding(&b) {
         return Ok(vec![]);
@@ -891,7 +888,7 @@ fn tr_modvar(x: &nodes::VarDecl, ctx: &mut TrCtx) -> Result<Vec<c::ModElem>, Bui
 }
 
 // *foo[]
-fn tr_form(x: &nodes::Form, ctx: &mut TrCtx, publishable: bool) -> Result<c::Form, BuildError> {
+fn tr_form(x: &Form, ctx: &mut TrCtx, publishable: bool) -> Result<c::Form, BuildError> {
     let mut indexes = Vec::new();
     for index in &x.indexes {
         indexes.push(match index {
@@ -914,7 +911,7 @@ fn tr_form(x: &nodes::Form, ctx: &mut TrCtx, publishable: bool) -> Result<c::For
     })
 }
 
-fn tr_union(x: &nodes::Union, ctx: &mut TrCtx) -> Result<c::CUnion, BuildError> {
+fn tr_union(x: &Union, ctx: &mut TrCtx) -> Result<c::CUnion, BuildError> {
     let form = tr_form(&x.form, ctx, false)?;
     let mut fields = Vec::new();
     for f in &x.fields {
@@ -927,7 +924,7 @@ fn tr_union(x: &nodes::Union, ctx: &mut TrCtx) -> Result<c::CUnion, BuildError> 
 }
 
 // <..> <op> <..>
-fn tr_binary_op(x: &nodes::BinaryOp, ctx: &mut TrCtx) -> Result<Typed<c::Expr>, BuildError> {
+fn tr_binary_op(x: &BinaryOp, ctx: &mut TrCtx) -> Result<Typed<c::Expr>, BuildError> {
     let a = tr_expr(&x.a, ctx)?;
     let b = tr_expr(&x.b, ctx)?;
     let at = find_root_type(ctx, &a.typ);
@@ -954,7 +951,7 @@ fn tr_binary_op(x: &nodes::BinaryOp, ctx: &mut TrCtx) -> Result<Typed<c::Expr>, 
         println!(
             "{}: {} :: {}",
             ctx.this_module_info.uniqid,
-            format_che::fmt_expr(&nodes::Expr::BinaryOp(x.clone())),
+            format_che::fmt_expr(&Expr::BinaryOp(x.clone())),
             typ.fmt()
         );
     }
@@ -970,7 +967,7 @@ fn tr_binary_op(x: &nodes::BinaryOp, ctx: &mut TrCtx) -> Result<Typed<c::Expr>, 
 }
 
 // <op> <..>
-fn tr_prefop(x: &nodes::PrefixOp, ctx: &mut TrCtx) -> Result<Typed<c::Expr>, BuildError> {
+fn tr_prefop(x: &PrefixOp, ctx: &mut TrCtx) -> Result<Typed<c::Expr>, BuildError> {
     let operand = tr_expr(&x.operand, ctx)?;
     let typ = match x.operator.as_str() {
         "++" | "--" => Ok(operand.typ),
@@ -999,7 +996,7 @@ fn tr_prefop(x: &nodes::PrefixOp, ctx: &mut TrCtx) -> Result<Typed<c::Expr>, Bui
 }
 
 // <..> <op>
-fn tr_postop(x: &nodes::PostfixOp, ctx: &mut TrCtx) -> Result<Typed<c::Expr>, BuildError> {
+fn tr_postop(x: &PostfixOp, ctx: &mut TrCtx) -> Result<Typed<c::Expr>, BuildError> {
     let operand = tr_expr(&x.operand, ctx)?;
     let typ = match x.operator.as_str() {
         "++" | "--" => operand.typ,
@@ -1018,13 +1015,13 @@ fn tr_postop(x: &nodes::PostfixOp, ctx: &mut TrCtx) -> Result<Typed<c::Expr>, Bu
 }
 
 // (typename) <...>
-fn tr_cast(x: &nodes::Cast, ctx: &mut TrCtx) -> Result<Typed<c::Expr>, BuildError> {
+fn tr_cast(x: &Cast, ctx: &mut TrCtx) -> Result<Typed<c::Expr>, BuildError> {
     let operand = tr_expr(&x.operand, ctx)?;
     let typ = typefrom_baretypeform(&x.typeform);
     if DEBUG_TYPES {
         println!(
             "cast {}: {}",
-            format_che::fmt_expr(&nodes::Expr::Cast(x.clone())),
+            format_che::fmt_expr(&Expr::Cast(x.clone())),
             typ.fmt()
         );
     }
@@ -1045,7 +1042,7 @@ fn tr_cast(x: &nodes::Cast, ctx: &mut TrCtx) -> Result<Typed<c::Expr>, BuildErro
 }
 
 // <..> [...]
-fn tr_arr_index(x: &nodes::ArrayIndex, ctx: &mut TrCtx) -> Result<Typed<c::Expr>, BuildError> {
+fn tr_arr_index(x: &ArrayIndex, ctx: &mut TrCtx) -> Result<Typed<c::Expr>, BuildError> {
     let arr = tr_expr(&x.array, ctx)?;
     let ind = tr_expr(&x.index, ctx)?;
     let typ = types::typeof_index(&arr.typ, &ind.typ).map_err(|e| BuildError {
@@ -1064,7 +1061,7 @@ fn tr_arr_index(x: &nodes::ArrayIndex, ctx: &mut TrCtx) -> Result<Typed<c::Expr>
 
 // <..> -> field
 // <..> . field
-fn tr_field_access(x: &nodes::FieldAccess, ctx: &mut TrCtx) -> Result<Typed<c::Expr>, BuildError> {
+fn tr_field_access(x: &FieldAccess, ctx: &mut TrCtx) -> Result<Typed<c::Expr>, BuildError> {
     let target = tr_expr(&x.target, ctx)?;
     let typ = typefrom_struct_field(ctx, &target.typ, &x.field_name).map_err(|e| BuildError {
         message: e,
@@ -1090,12 +1087,12 @@ fn tr_field_access(x: &nodes::FieldAccess, ctx: &mut TrCtx) -> Result<Typed<c::E
 }
 
 // { .field = <...>, .field = <...>, ... }
-fn tr_comp_literal(x: &nodes::CompLiteral, ctx: &mut TrCtx) -> Result<Typed<c::Expr>, BuildError> {
+fn tr_comp_literal(x: &CompLiteral, ctx: &mut TrCtx) -> Result<Typed<c::Expr>, BuildError> {
     let mut entries = Vec::new();
     for e in &x.entries {
         let key = match &e.key {
             Some(x) => match x {
-                nodes::Expr::NsName(ns_name) => {
+                Expr::NsName(ns_name) => {
                     if ns_name.ns != "" {
                         panic!("expected field name")
                     }
@@ -1118,7 +1115,7 @@ fn tr_comp_literal(x: &nodes::CompLiteral, ctx: &mut TrCtx) -> Result<Typed<c::E
 
     // println!(
     //     "complit {}",
-    //     format_che::fmt_expr(&nodes::Expr::CompositeLiteral(x.clone()))
+    //     format_che::fmt_expr(&Expr::CompositeLiteral(x.clone()))
     // );
 
     Ok(Typed {
@@ -1128,10 +1125,10 @@ fn tr_comp_literal(x: &nodes::CompLiteral, ctx: &mut TrCtx) -> Result<Typed<c::E
 }
 
 // sizeof(...)
-fn tr_sizeof(x: &nodes::Sizeof, ctx: &mut TrCtx) -> Result<Typed<c::Expr>, BuildError> {
+fn tr_sizeof(x: &Sizeof, ctx: &mut TrCtx) -> Result<Typed<c::Expr>, BuildError> {
     let arg = match x.arg.as_ref() {
-        nodes::SizeofArg::Expr(x) => c::SizeofArg::Expression(tr_expr(&x, ctx)?.val),
-        nodes::SizeofArg::Typename(x) => c::SizeofArg::Typename(tr_bare_typeform(&x, ctx)?),
+        SizeofArg::Expr(x) => c::SizeofArg::Expression(tr_expr(&x, ctx)?.val),
+        SizeofArg::Typename(x) => c::SizeofArg::Typename(tr_bare_typeform(&x, ctx)?),
     };
     Ok(Typed {
         typ: types::just("size_t"),
@@ -1140,14 +1137,14 @@ fn tr_sizeof(x: &nodes::Sizeof, ctx: &mut TrCtx) -> Result<Typed<c::Expr>, Build
 }
 
 // f(args)
-fn tr_call(x: &nodes::Call, ctx: &mut TrCtx) -> Result<Typed<c::Expr>, BuildError> {
-    if nodes::is_ident(&x.func, "nelem") {
+fn tr_call(x: &Call, ctx: &mut TrCtx) -> Result<Typed<c::Expr>, BuildError> {
+    if is_ident(&x.func, "nelem") {
         ctx.used_customs.insert("nelem".to_string());
     }
-    if nodes::is_ident(&x.func, "calloc!") {
+    if is_ident(&x.func, "calloc!") {
         ctx.used_customs.insert("calloc_or_panic".to_string());
-        let y = nodes::Call {
-            func: Box::new(nodes::Expr::NsName(nodes::NsName {
+        let y = Call {
+            func: Box::new(Expr::NsName(NsName {
                 ns: "".to_string(),
                 name: "calloc_or_panic".to_string(),
                 pos: x.pos.clone(),
@@ -1175,7 +1172,7 @@ fn tr_call(x: &nodes::Call, ctx: &mut TrCtx) -> Result<Typed<c::Expr>, BuildErro
         path: ctx.this_module_info.loc.path.clone(),
         pos: x.pos.fmt(),
     })?;
-    trace_type(ctx, &nodes::Expr::Call(x.clone()), &typ);
+    trace_type(ctx, &Expr::Call(x.clone()), &typ);
     Ok(Typed {
         typ,
         val: c::Expr::Call {
@@ -1186,17 +1183,14 @@ fn tr_call(x: &nodes::Call, ctx: &mut TrCtx) -> Result<Typed<c::Expr>, BuildErro
 }
 
 // void *
-fn tr_bare_typeform(
-    x: &nodes::BareTypeform,
-    ctx: &mut TrCtx,
-) -> Result<c::BareTypeform, BuildError> {
+fn tr_bare_typeform(x: &BareTypeform, ctx: &mut TrCtx) -> Result<c::BareTypeform, BuildError> {
     Ok(c::BareTypeform {
         typename: tr_typename(&x.typename, ctx)?,
         hops: x.hops,
     })
 }
 
-fn tr_func_params(x: &nodes::FuncParams, ctx: &mut TrCtx) -> Result<c::FuncParams, BuildError> {
+fn tr_func_params(x: &FuncParams, ctx: &mut TrCtx) -> Result<c::FuncParams, BuildError> {
     // One parameter, like in structs, is one type and multiple entries,
     // while the C parameters are always one type and one entry.
     let mut parameters: Vec<c::CTypeForm> = Vec::new();
@@ -1215,7 +1209,7 @@ fn tr_func_params(x: &nodes::FuncParams, ctx: &mut TrCtx) -> Result<c::FuncParam
 }
 
 // pub? int f(...) {...}
-fn tr_func_decl(x: &nodes::FuncDecl, ctx: &mut TrCtx) -> Result<Vec<c::ModElem>, BuildError> {
+fn tr_func_decl(x: &FuncDecl, ctx: &mut TrCtx) -> Result<Vec<c::ModElem>, BuildError> {
     begin_scope(ctx);
 
     for p in &x.params.list {
@@ -1258,7 +1252,7 @@ fn tr_func_decl(x: &nodes::FuncDecl, ctx: &mut TrCtx) -> Result<Vec<c::ModElem>,
     }
     end_scope(ctx)?;
 
-    if (!nodes::is_void(&x.typename) || x.form.hops == 1) && !body_returns(&x.body) {
+    if (!is_void(&x.typename) || x.form.hops == 1) && !body_returns(&x.body) {
         return Err(BuildError {
             message: format!("{}: missing return", x.form.name),
             pos: x.pos.fmt(),
@@ -1270,7 +1264,7 @@ fn tr_func_decl(x: &nodes::FuncDecl, ctx: &mut TrCtx) -> Result<Vec<c::ModElem>,
 }
 
 // mod.foo_t
-fn tr_typename(x: &nodes::Typename, ctx: &mut TrCtx) -> Result<c::Typename, BuildError> {
+fn tr_typename(x: &Typename, ctx: &mut TrCtx) -> Result<c::Typename, BuildError> {
     let nsid = &x.name;
 
     if nsid.ns == "OS" {
@@ -1301,7 +1295,7 @@ fn tr_typename(x: &nodes::Typename, ctx: &mut TrCtx) -> Result<c::Typename, Buil
     let id = &ctx.source_modules_info[pos].uniqid;
     let exports = &ctx.source_modules[pos].exports;
 
-    if !nodes::exports_has(&exports, &nsid.name) {
+    if !exports_has(&exports, &nsid.name) {
         return Err(BuildError {
             message: format!("{} doesn't have exported {}", &nsid.ns, &nsid.name),
             pos: nsid.pos.fmt(),
@@ -1320,7 +1314,7 @@ fn inline_binding(b: &Binding) -> bool {
     b.constval.is_some() && types::is_indexy(&b.typ)
 }
 
-fn tr_nsid_in_expr(x: &nodes::NsName, ctx: &mut TrCtx) -> Result<Typed<String>, BuildError> {
+fn tr_nsid_in_expr(x: &NsName, ctx: &mut TrCtx) -> Result<Typed<String>, BuildError> {
     let val = tr_nsid(x, ctx)?;
 
     if x.ns == "OS" {
@@ -1370,7 +1364,7 @@ fn tr_nsid_in_expr(x: &nodes::NsName, ctx: &mut TrCtx) -> Result<Typed<String>, 
     Ok(Typed { typ, val })
 }
 
-fn typefrom_funcdecl(f: &nodes::FuncDecl) -> types::Type {
+fn typefrom_funcdecl(f: &FuncDecl) -> types::Type {
     let mut typ = typefrom_typename(&f.typename, &f.form);
     let mut args = Vec::new();
     for p in &f.params.list {
@@ -1386,7 +1380,7 @@ fn typefrom_funcdecl(f: &nodes::FuncDecl) -> types::Type {
 }
 
 // foo.bar() -> _foo_123__bar()
-fn tr_nsid(nsid: &nodes::NsName, ctx: &mut TrCtx) -> Result<String, BuildError> {
+fn tr_nsid(nsid: &NsName, ctx: &mut TrCtx) -> Result<String, BuildError> {
     // "OS" is a special namespace that is simply omitted.
     if nsid.ns == "OS" {
         return Ok(nsid.name.clone());
@@ -1398,7 +1392,7 @@ fn tr_nsid(nsid: &nodes::NsName, ctx: &mut TrCtx) -> Result<String, BuildError> 
         let id = &ctx.source_modules_info[pos].uniqid;
         let exports = &ctx.source_modules[pos].exports;
 
-        if !nodes::exports_has(&exports, &nsid.name) {
+        if !exports_has(&exports, &nsid.name) {
             return Err(BuildError {
                 message: format!("{} doesn't have exported {}", &nsid.ns, &nsid.name),
                 pos: nsid.pos.fmt(),
@@ -1424,16 +1418,16 @@ fn tr_nsid(nsid: &nodes::NsName, ctx: &mut TrCtx) -> Result<String, BuildError> 
 }
 
 // for (...) { ... }
-fn tr_for(x: &nodes::For, ctx: &mut TrCtx) -> Result<c::Statement, BuildError> {
+fn tr_for(x: &For, ctx: &mut TrCtx) -> Result<c::Statement, BuildError> {
     begin_scope(ctx);
 
     let init = match &x.init {
         Some(init) => Some(match &init {
             // i = 0
-            nodes::ForInit::Expr(x) => c::ForInit::Expr(tr_expr(x, ctx)?.val),
+            ForInit::Expr(x) => c::ForInit::Expr(tr_expr(x, ctx)?.val),
 
             // int i = 0
-            nodes::ForInit::DeclLoopCounter {
+            ForInit::DeclLoopCounter {
                 type_name,
                 form,
                 value,
@@ -1489,7 +1483,7 @@ fn tr_for(x: &nodes::For, ctx: &mut TrCtx) -> Result<c::Statement, BuildError> {
 
 // if (...) { ... }
 // if (...) { ... } else { ... }
-fn tr_if(x: &nodes::If, ctx: &mut TrCtx) -> Result<c::Statement, BuildError> {
+fn tr_if(x: &If, ctx: &mut TrCtx) -> Result<c::Statement, BuildError> {
     let else_body = match &x.else_body {
         Some(body) => Some(tr_body(&body, ctx)?),
         None => None,
@@ -1504,7 +1498,7 @@ fn tr_if(x: &nodes::If, ctx: &mut TrCtx) -> Result<c::Statement, BuildError> {
 
 // return
 // return <...>
-fn tr_return(x: &nodes::Return, ctx: &mut TrCtx) -> Result<c::Statement, BuildError> {
+fn tr_return(x: &Return, ctx: &mut TrCtx) -> Result<c::Statement, BuildError> {
     Ok(c::Statement::Return {
         expression: match &x.expression {
             Some(e) => Some(tr_expr(e, ctx)?.val),
@@ -1515,7 +1509,7 @@ fn tr_return(x: &nodes::Return, ctx: &mut TrCtx) -> Result<c::Statement, BuildEr
 
 // switch (...) { case ... default ... }
 // switch str (...) { case ... default ... }
-fn tr_switch(x: &nodes::Switch, ctx: &mut TrCtx) -> Result<c::Statement, BuildError> {
+fn tr_switch(x: &Switch, ctx: &mut TrCtx) -> Result<c::Statement, BuildError> {
     if x.is_str {
         tr_str_switch(x, ctx)
     } else {
@@ -1523,16 +1517,16 @@ fn tr_switch(x: &nodes::Switch, ctx: &mut TrCtx) -> Result<c::Statement, BuildEr
     }
 }
 
-fn mk_old_switch(x: &nodes::Switch, ctx: &mut TrCtx) -> Result<c::Statement, BuildError> {
+fn mk_old_switch(x: &Switch, ctx: &mut TrCtx) -> Result<c::Statement, BuildError> {
     let mut tcases: Vec<c::CSwitchCase> = Vec::new();
     for c in &x.cases {
         let mut values = Vec::new();
         for v in &c.values {
             let tv = match v {
-                nodes::SwitchCaseValue::Ident(x) => {
+                SwitchCaseValue::Ident(x) => {
                     c::CSwitchCaseValue::Ident(tr_nsid_in_expr(x, ctx)?.val)
                 }
-                nodes::SwitchCaseValue::Literal(x) => c::CSwitchCaseValue::Literal(tr_literal(x)),
+                SwitchCaseValue::Literal(x) => c::CSwitchCaseValue::Literal(tr_literal(x)),
             };
             values.push(tv)
         }
@@ -1552,7 +1546,7 @@ fn mk_old_switch(x: &nodes::Switch, ctx: &mut TrCtx) -> Result<c::Statement, Bui
     ))
 }
 
-fn tr_str_switch(x: &nodes::Switch, ctx: &mut TrCtx) -> Result<c::Statement, BuildError> {
+fn tr_str_switch(x: &Switch, ctx: &mut TrCtx) -> Result<c::Statement, BuildError> {
     //
     // string values to compare with
     // and their case indexes
@@ -1711,18 +1705,16 @@ fn tr_str_switch(x: &nodes::Switch, ctx: &mut TrCtx) -> Result<c::Statement, Bui
     })
 }
 
-fn tr_switchcase_val(ctx: &mut TrCtx, x: &nodes::SwitchCaseValue) -> Result<c::Expr, BuildError> {
+fn tr_switchcase_val(ctx: &mut TrCtx, x: &SwitchCaseValue) -> Result<c::Expr, BuildError> {
     Ok(match x {
-        nodes::SwitchCaseValue::Ident(ns_name) => {
-            c::Expr::Ident(tr_nsid_in_expr(&ns_name, ctx)?.val)
-        }
-        nodes::SwitchCaseValue::Literal(literal) => c::Expr::Literal(tr_literal(&literal)),
+        SwitchCaseValue::Ident(ns_name) => c::Expr::Ident(tr_nsid_in_expr(&ns_name, ctx)?.val),
+        SwitchCaseValue::Literal(literal) => c::Expr::Literal(tr_literal(&literal)),
     })
 }
 
 // int foo;
 // int foo = 1;
-fn tr_vardecl(x: &nodes::VarDecl, ctx: &mut TrCtx) -> Result<c::Statement, BuildError> {
+fn tr_vardecl(x: &VarDecl, ctx: &mut TrCtx) -> Result<c::Statement, BuildError> {
     add_binding(
         ctx,
         Binding {
@@ -1745,7 +1737,7 @@ fn tr_vardecl(x: &nodes::VarDecl, ctx: &mut TrCtx) -> Result<c::Statement, Build
 }
 
 // while (...) { ... }
-fn tr_while(x: &nodes::While, ctx: &mut TrCtx) -> Result<c::Statement, BuildError> {
+fn tr_while(x: &While, ctx: &mut TrCtx) -> Result<c::Statement, BuildError> {
     let cond = tr_expr(&x.cond, ctx)?;
     if !types::is_booly(&cond.typ) {
         return Err(BuildError {
@@ -1761,11 +1753,11 @@ fn tr_while(x: &nodes::While, ctx: &mut TrCtx) -> Result<c::Statement, BuildErro
 }
 
 // "foo", 12, 'a'
-fn tr_literal(x: &nodes::Literal) -> c::CLiteral {
+fn tr_literal(x: &Literal) -> c::CLiteral {
     match x {
-        nodes::Literal::Char(val) => c::CLiteral::Char(val.clone()),
-        nodes::Literal::String(val) => c::CLiteral::String(val.clone()),
-        nodes::Literal::Number(val) => c::CLiteral::Number(val.clone()),
-        nodes::Literal::Null => c::CLiteral::Null,
+        Literal::Char(val) => c::CLiteral::Char(val.clone()),
+        Literal::String(val) => c::CLiteral::String(val.clone()),
+        Literal::Number(val) => c::CLiteral::Number(val.clone()),
+        Literal::Null => c::CLiteral::Null,
     }
 }
