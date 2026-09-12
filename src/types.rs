@@ -44,7 +44,7 @@ impl Type {
     }
 }
 
-enum Class {
+pub enum Class {
     CONSTNUM,
     PTR,
     SINT,
@@ -59,7 +59,7 @@ enum Class {
 
 static SLOPPY: bool = true;
 
-fn classify(x: &Type) -> Class {
+pub fn classify(x: &Type) -> Class {
     if x.ops.len() > 0 && matches!(x.ops[0], TypeOp::Deref) {
         return Class::PTR;
     }

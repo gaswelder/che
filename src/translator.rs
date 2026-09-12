@@ -130,15 +130,20 @@ pub fn translate_mods(
         for n in clibs {
             head.push(c::ModElem::Include(format!("<{}.h>", n)));
         }
+
         // Include custom utils.
-        if ctx.used_customs.contains("calloc_or_panic") {
-            head.push(makers::func_calloc())
-        }
-        if ctx.used_customs.contains("nelem") {
-            head.push(c::ModElem::Macro(c::Macro {
-                name: "define".to_string(),
-                value: "nelem(x) (sizeof (x)/sizeof (x)[0])".to_string(),
-            }));
+        for c in &ctx.used_customs {
+            let x = match c.as_str() {
+                "calloc_or_panic" => makers::func_calloc(),
+                "__min_ii" => makers::func_minmax_ii("min"),
+                "__max_ii" => makers::func_minmax_ii("max"),
+                "nelem" => c::ModElem::Macro(c::Macro {
+                    name: "define".to_string(),
+                    value: "nelem(x) (sizeof (x)/sizeof (x)[0])".to_string(),
+                }),
+                _ => panic!("{}?", c),
+            };
+            head.push(x);
         }
 
         // Inject headers corresponding to the imports.
@@ -690,9 +695,41 @@ fn tr_expr(e: &Expr, ctx: &mut TrCtx) -> Result<Typed<c::Expr>, BuildError> {
         Expr::PrefixOperator(x) => tr_prefop(&x, ctx),
         Expr::PostfixOperator(x) => tr_postop(&x, ctx),
         Expr::Cast(x) => tr_cast(&x, ctx),
-        Expr::Call(x) => tr_call(&x, ctx),
+        Expr::Call(x) => {
+            if is_ident(&x.func, "min") && find_binding(ctx, "min").is_none() {
+                return tr_minmax(ctx, x, "min");
+            }
+            if is_ident(&x.func, "max") && find_binding(ctx, "max").is_none() {
+                return tr_minmax(ctx, x, "max");
+            }
+            tr_call(&x, ctx)
+        }
         Expr::Sizeof(x) => tr_sizeof(&x, ctx),
     };
+}
+
+fn tr_minmax(ctx: &mut TrCtx, x: &Call, f: &str) -> Result<Typed<c::Expr>, BuildError> {
+    if x.args.len() != 2 {
+        return ctx.err(&x.pos, format!("{} accepts 2 arguments", f));
+    }
+    let a = tr_expr(&x.args[0], ctx)?;
+    let b = tr_expr(&x.args[1], ctx)?;
+    match (types::classify(&a.typ), types::classify(&b.typ)) {
+        (types::Class::CONSTNUM, types::Class::CONSTNUM) => {
+            let fname = format!("__{}_ii", f);
+            ctx.used_customs.insert(fname.clone());
+            return Ok(Typed {
+                typ: types::just("int"),
+                val: makers::expr_call(&fname, vec![a.val, b.val]),
+            });
+        }
+        _ => {
+            return ctx.err(
+                &x.pos,
+                format!("{}({}, {}) not implemented", f, a.typ.fmt(), b.typ.fmt()),
+            );
+        }
+    }
 }
 
 fn tr_body(b: &Body, ctx: &mut TrCtx) -> Result<c::Body, BuildError> {

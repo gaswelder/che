@@ -86,6 +86,68 @@ pub fn func_calloc() -> c::ModElem {
     })
 }
 
+pub fn func_minmax_ii(f: &str) -> c::ModElem {
+    let arg1 = c::CTypeForm {
+        type_name: c::Typename {
+            is_const: false,
+            name: "int".to_string(),
+        },
+        form: c::Form {
+            indexes: vec![],
+            name: "a".to_string(),
+            stars: "".to_string(),
+        },
+    };
+    let arg2 = c::CTypeForm {
+        type_name: c::Typename {
+            is_const: false,
+            name: "int".to_string(),
+        },
+        form: c::Form {
+            indexes: vec![],
+            name: "b".to_string(),
+            stars: "".to_string(),
+        },
+    };
+
+    //
+    // if (a < b) return a;
+    //
+    let op = if f == "min" { "<" } else { ">" };
+    c::ModElem::FuncDef(c::FuncDef {
+        is_static: true,
+        type_name: c::Typename {
+            is_const: false,
+            name: "int".to_string(),
+        },
+        form: c::Form {
+            stars: "".to_string(),
+            name: format!("__{}_ii", f),
+            indexes: Vec::new(),
+        },
+        parameters: c::FuncParams {
+            list: vec![arg1, arg2],
+            variadic: false,
+        },
+        body: c::Body {
+            statements: vec![
+                c::Statement::If {
+                    condition: expr_binop(expr_id("a"), op, expr_id("b")),
+                    body: c::Body {
+                        statements: vec![c::Statement::Return {
+                            expression: Some(expr_id("a")),
+                        }],
+                    },
+                    else_body: None,
+                },
+                c::Statement::Return {
+                    expression: Some(expr_id("b")),
+                },
+            ],
+        },
+    })
+}
+
 //
 // statement
 //
