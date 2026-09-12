@@ -29,6 +29,16 @@ struct TrCtx {
     other_typedefs: HashMap<String, TI>,
 }
 
+impl TrCtx {
+    pub fn err<T>(&self, pos: &Pos, msg: String) -> Result<T, BuildError> {
+        Err::<T, BuildError>(BuildError {
+            message: msg,
+            pos: pos.fmt(),
+            path: self.this_module_info.loc.path.clone(),
+        })
+    }
+}
+
 pub fn translate_mods(
     mods: Vec<Module>,
     modmetas: &Vec<ModuleInfo>,
@@ -298,11 +308,7 @@ fn end_scope(ctx: &mut TrCtx) -> Result<(), BuildError> {
     let s = ctx.scopes.pop().unwrap();
     for b in s {
         if !b.ispub && !b.used {
-            return Err(BuildError {
-                path: ctx.this_module_info.loc.path.clone(),
-                pos: b.pos.fmt(),
-                message: format!("{} is unused", b.name),
-            });
+            return ctx.err(&b.pos, format!("{} is unused", b.name));
         }
     }
     Ok(())
@@ -1026,11 +1032,7 @@ fn tr_cast(x: &Cast, ctx: &mut TrCtx) -> Result<Typed<c::Expr>, BuildError> {
         );
     }
     if operand.typ.fmt() == typ.fmt() {
-        return Err(BuildError {
-            path: ctx.this_module_info.loc.path.clone(),
-            pos: x.pos.fmt(),
-            message: String::from("redundant cast"),
-        });
+        return ctx.err(&x.pos, "redundant cast".to_string());
     }
     Ok(Typed {
         typ,
@@ -1253,13 +1255,8 @@ fn tr_func_decl(x: &FuncDecl, ctx: &mut TrCtx) -> Result<Vec<c::ModElem>, BuildE
     end_scope(ctx)?;
 
     if (!is_void(&x.typename) || x.form.hops == 1) && !body_returns(&x.body) {
-        return Err(BuildError {
-            message: format!("{}: missing return", x.form.name),
-            pos: x.pos.fmt(),
-            path: ctx.this_module_info.loc.path.clone(),
-        });
+        return ctx.err(&x.pos, format!("{}: missing return", x.form.name));
     }
-
     Ok(r)
 }
 
@@ -1296,11 +1293,10 @@ fn tr_typename(x: &Typename, ctx: &mut TrCtx) -> Result<c::Typename, BuildError>
     let exports = &ctx.source_modules[pos].exports;
 
     if !exports_has(&exports, &nsid.name) {
-        return Err(BuildError {
-            message: format!("{} doesn't have exported {}", &nsid.ns, &nsid.name),
-            pos: nsid.pos.fmt(),
-            path: ctx.this_module_info.loc.path.clone(),
-        });
+        return ctx.err(
+            &nsid.pos,
+            format!("{} doesn't have exported {}", &nsid.ns, &nsid.name),
+        );
     }
 
     ctx.used_ns.insert(nsid.ns.clone());
@@ -1393,11 +1389,10 @@ fn tr_nsid(nsid: &NsName, ctx: &mut TrCtx) -> Result<String, BuildError> {
         let exports = &ctx.source_modules[pos].exports;
 
         if !exports_has(&exports, &nsid.name) {
-            return Err(BuildError {
-                message: format!("{} doesn't have exported {}", &nsid.ns, &nsid.name),
-                pos: nsid.pos.fmt(),
-                path: ctx.this_module_info.loc.path.clone(),
-            });
+            return ctx.err(
+                &nsid.pos,
+                format!("{} doesn't have exported {}", &nsid.ns, &nsid.name),
+            );
         }
         return Ok(nsprefix(id, &nsid.name));
     }
@@ -1408,11 +1403,7 @@ fn tr_nsid(nsid: &NsName, ctx: &mut TrCtx) -> Result<String, BuildError> {
         nsid.name.clone()
     };
     if !mark_binding_use(ctx, &nsid.name) {
-        return Err(BuildError {
-            message: format!("nsid: {} is undefined", &nsid.name),
-            pos: nsid.pos.fmt(),
-            path: ctx.this_module_info.loc.path.clone(),
-        });
+        return ctx.err(&nsid.pos, format!("nsid: {} is undefined", &nsid.name));
     }
     return Ok(name);
 }
@@ -1457,11 +1448,10 @@ fn tr_for(x: &For, ctx: &mut TrCtx) -> Result<c::Statement, BuildError> {
         Some(x) => {
             let c = tr_expr(&x, ctx)?;
             if !types::is_booly(&c.typ) {
-                return Err(BuildError {
-                    message: format!("{} used as condition", &c.typ.fmt()),
-                    path: ctx.this_module_info.loc.path.clone(),
-                    pos: expression_pos(x).fmt(),
-                });
+                return ctx.err(
+                    &expression_pos(x),
+                    format!("{} used as condition", &c.typ.fmt()),
+                );
             }
             Some(c.val)
         }
@@ -1740,11 +1730,10 @@ fn tr_vardecl(x: &VarDecl, ctx: &mut TrCtx) -> Result<c::Statement, BuildError> 
 fn tr_while(x: &While, ctx: &mut TrCtx) -> Result<c::Statement, BuildError> {
     let cond = tr_expr(&x.cond, ctx)?;
     if !types::is_booly(&cond.typ) {
-        return Err(BuildError {
-            message: format!("{} used as condition", &cond.typ.fmt()),
-            path: ctx.this_module_info.loc.path.clone(),
-            pos: expression_pos(&x.cond).fmt(),
-        });
+        return ctx.err(
+            &expression_pos(&x.cond),
+            format!("{} used as condition", &cond.typ.fmt()),
+        );
     }
     Ok(c::Statement::While {
         cond: cond.val,
