@@ -53,7 +53,7 @@ pub fn func_calloc() -> c::ModElem {
 
     let check = c::Statement::If {
         condition: expr_neg(expr_id("x")),
-        body: c::CBody {
+        body: c::Body {
             statements: vec![printerror, st_exit1()],
         },
         else_body: None,
@@ -74,7 +74,7 @@ pub fn func_calloc() -> c::ModElem {
             list: vec![arg1, arg2],
             variadic: false,
         },
-        body: c::CBody {
+        body: c::Body {
             statements: vec![
                 xdecl,
                 check,
@@ -93,6 +93,14 @@ pub fn func_calloc() -> c::ModElem {
 pub fn st_calltrace(filepath: &str, x: &nodes::FuncDecl) -> c::Statement {
     let loc = format!("{}:{}", filepath, format_che::fmt_form(&x.form));
     st_call("puts", vec![expr_str(&loc)])
+}
+
+pub fn st_switch(val: c::Expr, cases: Vec<c::CSwitchCase>, def: Option<c::Body>) -> c::Statement {
+    c::Statement::Switch(c::Switch {
+        value: val,
+        cases,
+        default: def,
+    })
 }
 
 fn st_call(func: &str, args: Vec<c::Expr>) -> c::Statement {
@@ -131,8 +139,26 @@ pub fn st_panic(filepath: &str, pos: &str, xargs: Vec<c::Expr>) -> c::Statement 
 //
 // expr
 //
+pub fn expr_array(items: Vec<c::Expr>) -> c::Expr {
+    let mut strentries = Vec::new();
+    for val in items {
+        strentries.push(c::CCompositeLiteralEntry {
+            is_index: false,
+            key: None,
+            val,
+        })
+    }
+    c::Expr::CompositeLiteral(c::CCompositeLiteral {
+        entries: strentries,
+    })
+}
+
 pub fn expr_str(s: &str) -> c::Expr {
     c::Expr::Literal(c::CLiteral::String(vec![String::from(s)]))
+}
+
+pub fn expr_num(val: &str) -> c::Expr {
+    c::Expr::Literal(c::CLiteral::Number(val.to_string()))
 }
 
 pub fn expr_call(func: &str, args: Vec<c::Expr>) -> c::Expr {
@@ -140,6 +166,14 @@ pub fn expr_call(func: &str, args: Vec<c::Expr>) -> c::Expr {
         func: Box::new(c::Expr::Ident(String::from(func))),
         args,
     }
+}
+
+pub fn expr_binop(a: c::Expr, op: &str, b: c::Expr) -> c::Expr {
+    c::Expr::BinaryOp(c::BinaryOp {
+        op: op.to_string(),
+        a: Box::new(a),
+        b: Box::new(b),
+    })
 }
 
 pub fn expr_id(n: &str) -> c::Expr {
@@ -151,12 +185,4 @@ pub fn expr_neg(operand: c::Expr) -> c::Expr {
         operator: String::from("!"),
         operand: Box::new(operand),
     }
-}
-
-pub fn expr_or(a: c::Expr, b: c::Expr) -> c::Expr {
-    c::Expr::BinaryOp(c::BinaryOp {
-        op: String::from("||"),
-        a: Box::new(a),
-        b: Box::new(b),
-    })
 }

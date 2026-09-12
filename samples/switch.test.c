@@ -1,14 +1,15 @@
-int main(int argc, char *argv[]) {
-	for (int i = 1; i < argc; i++) {
-		print(argv[i]);
-	}
+int main() {
+	if (classify("foo") != 123) panic("!");
+	if (classify("kek") != 123) panic("!");
+	if (classify("bar") != 456) panic("!");
+	if (classify("none") != 2) panic("!");
 	return 0;
 }
 
-void print(char *s) {
+int classify(char *s) {
 	switch str (s) {
-		case "foo": { puts("ok, foo"); }
-		case "bar": { puts("ok, bar"); }
-		default: { puts("neither"); }
+		case "foo", "kek": { return 123; }
+		case "bar": { return 456; }
+		default: { return 2; }
 	}
 }

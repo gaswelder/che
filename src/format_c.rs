@@ -277,7 +277,7 @@ fn indent(text: &str) -> String {
     return String::from("\t") + &text.replace("\n", "\n\t");
 }
 
-fn format_body(node: &CBody) -> String {
+fn format_body(node: &Body) -> String {
     let mut s = String::new();
     for statement in &node.statements {
         s += &format_statement(&statement);
@@ -324,7 +324,7 @@ fn format_for(
     init: &Option<ForInit>,
     condition: &Option<Expr>,
     action: &Option<Expr>,
-    body: &CBody,
+    body: &Body,
 ) -> String {
     let init = match init {
         Some(init) => match init {
@@ -373,7 +373,7 @@ fn format_literal(node: &CLiteral) -> String {
 
 fn format_statement(node: &Statement) -> String {
     match node {
-        Statement::Block { statements } => format_body(&CBody {
+        Statement::Block { statements } => format_body(&Body {
             statements: statements.clone(),
         }),
         Statement::Break => format!("break;"),

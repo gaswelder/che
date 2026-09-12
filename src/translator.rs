@@ -689,7 +689,7 @@ fn tr_expr(e: &nodes::Expr, ctx: &mut TrCtx) -> Result<Typed<c::Expr>, BuildErro
     };
 }
 
-fn tr_body(b: &nodes::Body, ctx: &mut TrCtx) -> Result<c::CBody, BuildError> {
+fn tr_body(b: &nodes::Body, ctx: &mut TrCtx) -> Result<c::Body, BuildError> {
     let mut statements: Vec<c::Statement> = Vec::new();
     begin_scope(ctx);
     for s in &b.statements {
@@ -728,7 +728,7 @@ fn tr_body(b: &nodes::Body, ctx: &mut TrCtx) -> Result<c::CBody, BuildError> {
         });
     }
     end_scope(ctx)?;
-    Ok(c::CBody { statements })
+    Ok(c::Body { statements })
 }
 
 fn tr_struct_alias(x: &nodes::StructAlias, ctx: &TrCtx) -> Vec<c::ModElem> {
@@ -1517,19 +1517,15 @@ fn tr_return(x: &nodes::Return, ctx: &mut TrCtx) -> Result<c::Statement, BuildEr
 // switch str (...) { case ... default ... }
 fn tr_switch(x: &nodes::Switch, ctx: &mut TrCtx) -> Result<c::Statement, BuildError> {
     if x.is_str {
-        mk_str_switch(x, ctx)
+        tr_str_switch(x, ctx)
     } else {
         mk_old_switch(x, ctx)
     }
 }
 
 fn mk_old_switch(x: &nodes::Switch, ctx: &mut TrCtx) -> Result<c::Statement, BuildError> {
-    let value = &x.value;
-    let cases = &x.cases;
-    let default = &x.default_case;
-
     let mut tcases: Vec<c::CSwitchCase> = Vec::new();
-    for c in cases {
+    for c in &x.cases {
         let mut values = Vec::new();
         for v in &c.values {
             let tv = match v {
@@ -1545,81 +1541,183 @@ fn mk_old_switch(x: &nodes::Switch, ctx: &mut TrCtx) -> Result<c::Statement, Bui
             body: tr_body(&c.body, ctx)?,
         })
     }
-    Ok(c::Statement::Switch(c::Switch {
-        value: tr_expr(value, ctx)?.val,
-        cases: tcases,
-        default: match default {
+
+    Ok(makers::st_switch(
+        tr_expr(&x.value, ctx)?.val,
+        tcases,
+        match &x.default_case {
             Some(x) => Some(tr_body(&x, ctx)?),
             None => None,
         },
-    }))
+    ))
 }
 
-fn mk_str_switch(x: &nodes::Switch, ctx: &mut TrCtx) -> Result<c::Statement, BuildError> {
-    let value = &x.value;
-    let cases = &x.cases;
-    let default = &x.default_case;
-    let switchval = tr_expr(value, ctx)?.val;
+fn tr_str_switch(x: &nodes::Switch, ctx: &mut TrCtx) -> Result<c::Statement, BuildError> {
+    //
+    // string values to compare with
+    // and their case indexes
+    // (a single case can list multiple values)
+    //
+    let mut casevals = Vec::new();
+    let mut caseindexes = Vec::new();
+    for (i, c) in x.cases.iter().enumerate() {
+        for v in &c.values {
+            casevals.push(tr_switchcase_val(ctx, v)?);
+            caseindexes.push(makers::expr_num(&i.to_string()))
+        }
+    }
 
-    let c0 = &cases[0];
-    Ok(c::Statement::If {
-        condition: mk_switchstr_cond(ctx, c0, &switchval)?,
-        body: tr_body(&c0.body, ctx)?,
-        else_body: mk_switchstr_else(cases, 1, default, ctx, &switchval)?,
+    let nvals = casevals.len();
+
+    //
+    // const char *casevals[] = { "a", "b", ... }
+    //
+    let casevals_array = c::Statement::VarDecl {
+        type_name: c::Typename {
+            is_const: true,
+            name: "char".to_string(),
+        },
+        forms: vec![c::Form {
+            stars: "*".to_string(),
+            name: "casevals".to_string(),
+            indexes: vec![None],
+        }],
+        values: vec![Some(makers::expr_array(casevals))],
+    };
+
+    //
+    // int caseindexes[] = {0, 0, 1, 2, ...}
+    //
+    let caseindexes_array = c::Statement::VarDecl {
+        type_name: c::Typename {
+            is_const: true,
+            name: "int".to_string(),
+        },
+        forms: vec![c::Form {
+            stars: "".to_string(),
+            name: "caseindexes".to_string(),
+            indexes: vec![None],
+        }],
+        values: vec![Some(makers::expr_array(caseindexes))],
+    };
+
+    //
+    // int caseindex = -1;
+    //
+    let caseindex = c::Statement::VarDecl {
+        type_name: c::Typename {
+            is_const: false,
+            name: "int".to_string(),
+        },
+        forms: vec![c::Form {
+            indexes: vec![],
+            name: "caseindex".to_string(),
+            stars: "".to_string(),
+        }],
+        values: vec![Some(makers::expr_num("-1"))],
+    };
+
+    //
+    // for (int i = 0; i < ...; i++) { ... }
+    //
+    let caseloop = c::Statement::For {
+        init: Some(c::ForInit::DeclLoopCounter(c::VarDecl {
+            typename: c::Typename {
+                is_const: false,
+                name: "int".to_string(),
+            },
+            form: c::Form {
+                indexes: vec![],
+                name: "i".to_string(),
+                stars: "".to_string(),
+            },
+            value: makers::expr_num("0"),
+        })),
+        condition: Some(makers::expr_binop(
+            makers::expr_id("i"),
+            "<",
+            makers::expr_num(&nvals.to_string()),
+        )),
+        action: Some(c::Expr::PostfixOp {
+            operator: "++".to_string(),
+            operand: Box::new(makers::expr_id("i")),
+        }),
+        body: c::Body {
+            statements: vec![
+                //
+                // if (!strcmp(casevals[i], ...))
+                //
+                c::Statement::If {
+                    condition: c::Expr::PrefixOp {
+                        operator: "!".to_string(),
+                        operand: Box::new(makers::expr_call(
+                            "strcmp",
+                            vec![
+                                c::Expr::ArrayIndex {
+                                    array: Box::new(makers::expr_id("casevals")),
+                                    index: Box::new(makers::expr_id("i")),
+                                },
+                                tr_expr(&x.value, ctx)?.val,
+                            ],
+                        )),
+                    },
+                    //
+                    // caseindex = caseindexes[i];
+                    //
+                    body: c::Body {
+                        statements: vec![
+                            c::Statement::Expression(makers::expr_binop(
+                                makers::expr_id("caseindex"),
+                                "=",
+                                c::Expr::ArrayIndex {
+                                    array: Box::new(makers::expr_id("caseindexes")),
+                                    index: Box::new(makers::expr_id("i")),
+                                },
+                            )),
+                            c::Statement::Break,
+                        ],
+                    },
+                    else_body: None,
+                },
+            ],
+        },
+    };
+
+    let mut maincases = Vec::new();
+    for (i, c) in x.cases.iter().enumerate() {
+        maincases.push(c::CSwitchCase {
+            values: vec![c::CSwitchCaseValue::Literal(c::CLiteral::Number(
+                i.to_string(),
+            ))],
+            body: tr_body(&c.body, ctx)?,
+        });
+    }
+    let mainswitch = makers::st_switch(
+        makers::expr_id("caseindex"),
+        maincases,
+        match &x.default_case {
+            Some(x) => Some(tr_body(x, ctx)?),
+            None => None,
+        },
+    );
+    Ok(c::Statement::Block {
+        statements: vec![
+            casevals_array,
+            caseindexes_array,
+            caseindex,
+            caseloop,
+            mainswitch,
+        ],
     })
 }
 
-fn mk_switchstr_cond(
-    ctx: &mut TrCtx,
-    sw: &nodes::SwitchCase,
-    switchval: &c::Expr,
-) -> Result<c::Expr, BuildError> {
-    let mut args: Vec<c::Expr> = Vec::new();
-    args.push(match &sw.values[0] {
+fn tr_switchcase_val(ctx: &mut TrCtx, x: &nodes::SwitchCaseValue) -> Result<c::Expr, BuildError> {
+    Ok(match x {
         nodes::SwitchCaseValue::Ident(ns_name) => {
             c::Expr::Ident(tr_nsid_in_expr(&ns_name, ctx)?.val)
         }
         nodes::SwitchCaseValue::Literal(literal) => c::Expr::Literal(tr_literal(&literal)),
-    });
-    args.push(switchval.clone());
-    let mut root = makers::expr_neg(makers::expr_call("strcmp", args));
-    let n = sw.values.len();
-    for i in 1..n {
-        let mut args: Vec<c::Expr> = Vec::new();
-        args.push(match &sw.values[i] {
-            nodes::SwitchCaseValue::Ident(ns_name) => {
-                c::Expr::Ident(tr_nsid_in_expr(&ns_name, ctx)?.val)
-            }
-            nodes::SwitchCaseValue::Literal(literal) => c::Expr::Literal(tr_literal(&literal)),
-        });
-        args.push(switchval.clone());
-        root = makers::expr_or(root, makers::expr_neg(makers::expr_call("strcmp", args)));
-    }
-    Ok(root)
-}
-
-fn mk_switchstr_else(
-    cases: &Vec<nodes::SwitchCase>,
-    i: usize,
-    default: &Option<nodes::Body>,
-    ctx: &mut TrCtx,
-    switchval: &c::Expr,
-) -> Result<Option<c::CBody>, BuildError> {
-    if i == cases.len() {
-        return Ok(match default {
-            Some(x) => Some(tr_body(x, ctx)?),
-            None => None,
-        });
-    }
-    let c = &cases[i];
-    let e = c::Statement::If {
-        condition: mk_switchstr_cond(ctx, c, &switchval)?,
-        body: tr_body(&c.body, ctx)?,
-        else_body: mk_switchstr_else(cases, i + 1, default, ctx, switchval)?,
-    };
-    Ok(Some(c::CBody {
-        statements: vec![e],
-    }))
+    })
 }
 
 // int foo;

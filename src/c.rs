@@ -65,7 +65,7 @@ pub struct FuncDef {
     pub type_name: Typename,
     pub form: Form,
     pub parameters: FuncParams,
-    pub body: CBody,
+    pub body: Body,
 }
 
 #[derive(Debug, Clone)]
@@ -88,7 +88,7 @@ pub struct FuncParams {
 }
 
 #[derive(Debug, Clone)]
-pub struct CBody {
+pub struct Body {
     pub statements: Vec<Statement>,
 }
 
@@ -181,18 +181,18 @@ pub enum Statement {
     },
     If {
         condition: Expr,
-        body: CBody,
-        else_body: Option<CBody>,
+        body: Body,
+        else_body: Option<Body>,
     },
     For {
         init: Option<ForInit>,
         condition: Option<Expr>,
         action: Option<Expr>,
-        body: CBody,
+        body: Body,
     },
     While {
         cond: Expr,
-        body: CBody,
+        body: Body,
     },
     Return {
         expression: Option<Expr>,
@@ -206,13 +206,13 @@ pub enum Statement {
 pub struct Switch {
     pub value: Expr,
     pub cases: Vec<CSwitchCase>,
-    pub default: Option<CBody>,
+    pub default: Option<Body>,
 }
 
 #[derive(Debug, Clone)]
 pub struct CSwitchCase {
     pub values: Vec<CSwitchCaseValue>,
-    pub body: CBody,
+    pub body: Body,
 }
 
 #[derive(Debug, Clone)]
