@@ -6,7 +6,7 @@ pub int read1(reader.t *r, uint8_t *v) {
 }
 
 pub int read2le(reader.t *r, uint16_t *v) {
-	uint8_t buf[2];
+	uint8_t buf[2] = {};
 	if (reader.read(r, buf, 2) != 2) {
 		return -1;
 	}
@@ -17,7 +17,7 @@ pub int read2le(reader.t *r, uint16_t *v) {
 // Reads a 2-byte unsigned from r into v, most significant byte first.
 // Returns false on error.
 pub bool read2be(reader.t *r, uint16_t *v) {
-	uint8_t buf[2];
+	uint8_t buf[2] = {};
 	if (reader.read(r, buf, 2) != 2) {
 		return false;
 	}
@@ -28,7 +28,7 @@ pub bool read2be(reader.t *r, uint16_t *v) {
 // Reads a little-endian 24-bit value from the reader r.
 // Returns the number of bytes read (3) or one of the error values.
 pub int read3le(reader.t *r, uint32_t *v) {
-	uint8_t buf[3];
+	uint8_t buf[3] = {};
 	int n = reader.read(r, buf, 3);
 	uint32_t x = 0;
 	x = x * 256 + buf[2];
@@ -41,7 +41,7 @@ pub int read3le(reader.t *r, uint32_t *v) {
 // Reads a big-endian uint32 from the reader r.
 // Returns the number of bytes read (4) or one of the error values.
 pub int read4be(reader.t *r, uint32_t *v) {
-	uint8_t buf[4];
+	uint8_t buf[4] = {};
 	int n = reader.read(r, buf, 4);
 	uint32_t x = 0;
 	x = x * 256 + buf[0];
@@ -55,7 +55,7 @@ pub int read4be(reader.t *r, uint32_t *v) {
 // Reads a little-endian uint32 from the reader r.
 // Returns the number of bytes read or one of the error values.
 pub int read4le(reader.t *r, uint32_t *v) {
-	uint8_t buf[4];
+	uint8_t buf[4] = {};
 	int n = reader.read(r, buf, 4);
 	uint32_t x = 0;
 	x = x * 256 + buf[3];
@@ -75,7 +75,7 @@ pub int write1(writer.t *w, char b) {
 
 // Writes v into w as 2 little-endian bytes (16 bits).
 pub int write2le(writer.t *w, uint32_t v) {
-	uint8_t buf[2];
+	uint8_t buf[2] = {};
 	int pos = 0;
 	buf[pos++] = v % 256; v /= 256;
 	buf[pos++] = v % 256; v /= 256;
@@ -84,7 +84,7 @@ pub int write2le(writer.t *w, uint32_t v) {
 
 // Writes 4 bytes in big-endian order to the writer w.
 pub int write4be(writer.t *w, uint32_t v) {
-	uint8_t buf[4];
+	uint8_t buf[4] = {};
 	int pos = 3;
 	buf[pos--] = v % 256; v /= 256;
 	buf[pos--] = v % 256; v /= 256;
@@ -95,7 +95,7 @@ pub int write4be(writer.t *w, uint32_t v) {
 
 // Writes v into w as 4 little-endian bytes (32 bits).
 pub int write4le(writer.t *w, uint32_t v) {
-	uint8_t buf[4];
+	uint8_t buf[4] = {};
 	int pos = 0;
 	buf[pos++] = v % 256; v /= 256;
 	buf[pos++] = v % 256; v /= 256;

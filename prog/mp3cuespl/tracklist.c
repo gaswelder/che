@@ -24,7 +24,7 @@ pub entry_t *readfile(const char *path, int *ret_n) {
 	}
 	entry_t *list = calloc!(100, sizeof(entry_t));
 	int i = 0;
-	char line[4096];
+	char line[4096] = {};
 	while (fgets(line, sizeof(line), f)) {
 		strings.trim(line);
 		if (line[0] == '\0') {

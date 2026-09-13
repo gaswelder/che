@@ -2,7 +2,7 @@
 #import bencode_writer.c
 
 int main() {
-    uint8_t buf[100];
+    uint8_t buf[100] = {};
 
     bencode_writer.t *bw = bencode_writer.tobuf(buf, sizeof(buf));
     if (!bw) panic("!bw");

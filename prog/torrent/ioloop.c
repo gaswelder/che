@@ -278,7 +278,7 @@ int create_selection(fd_set *rset, *wset) {
 }
 
 void dispatch_updates(fd_set *rset, *wset) {
-    char buf[4096];
+    char buf[4096] = {};
     for (int i = 0; i < 100; i++) {
         client_t *c = clients[i];
         if (!c) continue;

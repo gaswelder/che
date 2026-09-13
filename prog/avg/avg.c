@@ -9,7 +9,7 @@ int main(int argc, char *argv[]) {
 	opt.parse(argc, argv);
 
 	line_t *window = calloc!(wsize, sizeof(line_t));
-	char line[4096];
+	char line[4096] = {};
 
 	FILE *f = stdin;
 
@@ -39,7 +39,7 @@ void emit(line_t *window, int wsize) {
 	for (int i = 0; i < wsize; i++) {
 		sum += (double) window[i].bps;
 	}
-	char buf[100];
+	char buf[100] = {};
 	time.fmt_iso_iso(window[wsize/2].ts, buf, 100);
 	printf("%s\t%.1f\n", buf, sum/wsize);
 }

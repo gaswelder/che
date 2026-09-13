@@ -31,7 +31,7 @@ pub void reset(digest_t *hash) {
 pub bool format(digest_t *hash, char *buf, size_t bufsize) {
 	if (bufsize < 40) return false;
 
-	uint8_t bytes[20];
+	uint8_t bytes[20] = {};
 	as_bytes(hash, bytes);
 
 	char *p = buf;
@@ -136,10 +136,8 @@ void push_byte(digest_t *hash, uint8_t b) {
  * Feeds the next data block into the current sum.
  */
 void sha1_feed(uint32_t block[16], uint32_t sum[5]) {
-	/*
-	 * Prepare message schedule W[t]
-	 */
-	uint32_t W[80];
+	// Prepare message schedule W[t].
+	uint32_t W[80] = {};
 	for (int t = 0; t < 16; t++) W[t] = block[t];
 	for (int t = 16; t < 80; t++) W[t] = ROTL(1, W[t-3] ^ W[t-8] ^ W[t-14] ^ W[t-16]);
 	/*

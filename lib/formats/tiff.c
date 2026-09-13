@@ -92,7 +92,7 @@ pub file_t *parse(uint8_t *data, size_t n) {
 
 // Reads a TIFF file at the given path.
 pub file_t *readfile(const char *filepath) {
-	size_t flen;
+	size_t flen = 0;
 	char *data = fs.readfile(filepath, &flen);
 	if (!data) {
 		return NULL;

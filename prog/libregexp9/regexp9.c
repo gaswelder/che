@@ -1156,8 +1156,8 @@ int get_ascii_num(int c) {
 /* mp is subexpression elements */
 /* ms is number of elements pointed to by mp */
 pub void regsub(char *sp, *dp, int dlen, Resub *mp, int ms) {
-	char *ssp;
-	int i;
+	char *ssp = NULL;
+	int i = 0;
 	char *ep = dp+dlen-1;
 
 	while(*sp != '\0'){
@@ -1389,9 +1389,9 @@ rregexec2(Reprog *progp,
 /* number of elements at mp */
 pub int rregexec(Reprog *progp, utf.Rune *bol, Resub *mp, int ms) {
 	Reljunk j;
-	Relist relist0[LISTSIZE];
-	Relist relist1[LISTSIZE];
-	int rv;
+	Relist relist0[LISTSIZE] = {};
+	Relist relist1[LISTSIZE] = {};
+	int rv = 0;
 
 	/*
  	 *  use user-specified starting/ending location if specified

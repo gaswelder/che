@@ -13,12 +13,12 @@ int main(int argc, char *argv[]) {
             fprintf(stderr, "too many requested cols, max is %d\n", MAXSEL);
             return 1;
         }
-        int x;
+        int x = 0;
         sscanf(argv[i], "%d", &x);
         sel[nsel++] = x-1; // adjust for 1-based counts
     }
 
-    char line[4096];
+    char line[4096] = {};
     while (fgets(line, sizeof(line), stdin)) {
         //
         // Split the line into columns in place.

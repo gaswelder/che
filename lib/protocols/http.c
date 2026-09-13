@@ -476,7 +476,7 @@ pub void servefile(request_t *req, net.net_t *conn, const char *filepath) {
 	}
 
 	while (true) {
-		char tmp[4096];
+		char tmp[4096] = {};
 		size_t n = fread(tmp, 1, 4096, f);
 		if (n == 0) break;
 		int r = net.write(conn, tmp, n);

@@ -91,7 +91,7 @@ pub int get(t *b) {
 		return c;
 	}
 
-	uint8_t c;
+	uint8_t c = 0;
 	int r = reader.read(b->reader, &c, 1);
 	if (r != 1) return EOF;
 	_track_pos(b, c);

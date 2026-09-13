@@ -122,7 +122,7 @@ pub void free(jpeg_t *j) {
 }
 
 void read_app1(jpeg_t *self, reader.t *r) {
-	uint16_t len;
+	uint16_t len = 0;
 	endian.read2be(r, &len);
 	printf("App1 (len=%u)\n", len);
 
@@ -189,7 +189,7 @@ void dumpdir(tiff.dir_t *d) {
 
 void read_app2(jpeg_t *self, reader.t *r) {
 	(void) self;
-	uint16_t len;
+	uint16_t len = 0;
 	endian.read2be(r, &len);
 	printf("App2 (len=%u)\n", len);
 
@@ -200,7 +200,7 @@ void read_app2(jpeg_t *self, reader.t *r) {
 
 void read_app4(jpeg_t *self, reader.t *r) {
 	(void) self;
-	uint16_t len;
+	uint16_t len = 0;
 	endian.read2be(r, &len);
 	printf("App4 (len=%u)\n", len);
 	// ?
@@ -209,14 +209,14 @@ void read_app4(jpeg_t *self, reader.t *r) {
 
 void read_appdef(jpeg_t *self, reader.t *r) {
 	(void) self;
-	uint16_t len;
+	uint16_t len = 0;
 	endian.read2be(r, &len);
 	printf("Application Default Header (len=%u)\n", len);
 	reader.skip(r, len - 2);
 }
 
 void read_restart_interval(jpeg_t *self, reader.t *r, error.t *err) {
-	uint16_t len;
+	uint16_t len = 0;
 	if (!endian.read2be(r, &len)) {
 		error.set(err, "failed to read section length");
 		return;
@@ -233,8 +233,8 @@ void read_restart_interval(jpeg_t *self, reader.t *r, error.t *err) {
 }
 
 void read_quant_table(jpeg_t *self, reader.t *r) {
-	uint16_t len;
-	uint8_t params;
+	uint16_t len = 0;
+	uint8_t params = 0;
 	endian.read2be(r, &len);
 	reader.read(r, &params, 1);
 	int precision = (params >> 4) & 0xf;
@@ -257,10 +257,10 @@ void read_baseline_dct(jpeg_t *self, reader.t *r, error.t *err) {
 	endian.read2be(r, &len);
 	printf("dct len = %d\n", len);
 
-	uint8_t precision;
-	uint16_t h;
-	uint16_t w;
-	uint8_t components;
+	uint8_t precision = 0;
+	uint16_t h = 0;
+	uint16_t w = 0;
+	uint8_t components = 0;
 	reader.read(r, &precision, 1);
 	endian.read2be(r, &h);
 	endian.read2be(r, &w);
@@ -276,7 +276,7 @@ void read_baseline_dct(jpeg_t *self, reader.t *r, error.t *err) {
 		component_t *c = &self->components[i];
 		reader.read(r, &c->id, 1);
 
-		uint8_t sampling_factors; // horizontal | vertical: (h << 4) | v
+		uint8_t sampling_factors = 0; // horizontal | vertical: (h << 4) | v
 		reader.read(r, &sampling_factors, 1);
 		c->hsize = sampling_factors >> 4;
 		c->vsize = sampling_factors & 0xf;
@@ -319,7 +319,7 @@ void read_baseline_dct(jpeg_t *self, reader.t *r, error.t *err) {
 
 void read_huffman_table(jpeg_t *self, reader.t *r) {
 	uint16_t len = 0;
-	uint8_t id;
+	uint8_t id = 0;
 	uint8_t lengths[16] = {};
 
 	endian.read2be(r, &len);
@@ -336,7 +336,7 @@ void read_huffman_table(jpeg_t *self, reader.t *r) {
 	for (int a = 0; a < 16; a++) {
 		uint8_t len = lengths[a];
 		for (uint8_t i = 0; i < len; i++) {
-			uint8_t x;
+			uint8_t x = 0;
 			reader.read(r, &x, 1);
 			elements[epos++] = x;
 		}
@@ -364,11 +364,11 @@ void read_scan(jpeg_t *self, reader.t *r) {
 	// read scan header
 	//
 	printf("scan header\n");
-	uint8_t ncomp;
+	uint8_t ncomp = 0;
 	reader.read(r, &ncomp, 1);
 	for (uint8_t i = 0; i < ncomp; i++) {
-		uint8_t id;
-		uint8_t wtf;
+		uint8_t id = 0;
+		uint8_t wtf = 0;
 		reader.read(r, &id, 1);
 		reader.read(r, &wtf, 1);
 		int dc_table_id = wtf >> 4;
@@ -384,9 +384,9 @@ void read_scan(jpeg_t *self, reader.t *r) {
 		}
 	}
 
-	uint8_t ss;
-	uint8_t se;
-	uint8_t ahal;
+	uint8_t ss = 0;
+	uint8_t se = 0;
+	uint8_t ahal = 0;
 	reader.read(r, &ss, 1);
 	reader.read(r, &se, 1);
 	reader.read(r, &ahal, 1);
@@ -493,7 +493,7 @@ void read_mcu(jpeg_t *self, int *dc, bits.reader_t *br, image.image_t *mcu) {
 }
 
 void rebuild(int *weights, double *out) {
-	double shape[64];
+	double shape[64] = {};
 	for (int i = 0; i < 64; i++) {
 		int w = weights[i];
 		if (w == 0) {
@@ -656,7 +656,7 @@ int escread1(escaper_t *r) {
 	if (r->ended) {
 		panic("reading from closed escaper");
 	}
-	uint8_t x;
+	uint8_t x = 0;
 	if (reader.read(r->in, &x, 1) != 1) {
 		panic("read failed");
 	}

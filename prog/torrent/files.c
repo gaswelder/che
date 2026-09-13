@@ -109,7 +109,7 @@ int sliceop(int op, const char *prefix, torrent.info_t *tf, range_t bs, char *bu
     for (size_t i = 0; i < n; i++) {
         file_slice_t *s = vec.index(locs, i);
         char *path = strings.newstr("%s/%s", prefix, s->path);
-        int r;
+        int r = 0;
         if (op == 1) {
             r = _read(path, s, buf);
         } else {
@@ -151,7 +151,7 @@ int _read(const char *path, file_slice_t *s, char *buf) {
 }
 
 pub bool check_piece(const char *prefix, torrent.info_t *tf, size_t piece_index) {
-    uint8_t hash1[20];
+    uint8_t hash1[20] = {};
     torrent.piecehash(tf, piece_index, hash1);
 
     //
@@ -170,7 +170,7 @@ pub bool check_piece(const char *prefix, torrent.info_t *tf, size_t piece_index)
     //
     // hash the piece
     //
-    uint8_t hash2[20];
+    uint8_t hash2[20] = {};
     sha1.digest_t digest = {};
 	for (size_t i = 0; i < piecelen; i++) {
 		sha1.add(&digest, piece[i]);

@@ -174,7 +174,7 @@ term_t *parse_term(const char *s) {
 
 void print_map(map.map_t *m) {
     bool first = true;
-	uint8_t key[100];
+	uint8_t key[100] = {};
 
 	map.iter_t *it = map.iter(m);
     while (map.next(it)) {

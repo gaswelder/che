@@ -168,7 +168,7 @@ pub bool coords_valid(int x, y) {
 }
 
 pub int winner(state_t *g) {
-	int j;
+	int j = 0;
 	for (int i = 0; i < 2; ++i) {
 		ship_t *ss = g->players[i].ships;
 		for (j = 0; j < 5; ) {
@@ -283,7 +283,7 @@ pub ship_t *getshipat(state_t *g, int player, int x, y) {
 		return NULL;
 	}
 	ship_t *sb = g->players[player].ships;
-	ship_t *ss;
+	ship_t *ss = NULL;
 	for (ss = sb; ss < sb + SHIPTYPES; ++ss) {
 		if (ss->symbol == symbol) {
 			return ss;

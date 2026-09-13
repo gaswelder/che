@@ -13,7 +13,7 @@ typedef {
 int main() {
 	model_t *m = new();
 
-    char word[100];
+    char word[100] = {};
     while (fgets(word, sizeof(word), stdin)) {
         strings.rtrim(word, "\n");
         learnword(m, word);

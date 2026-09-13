@@ -414,7 +414,7 @@ void step(chip8_t *c8, chip8instr.instr_t instr) {
 }
 
 bool xor_sprite(chip8_t *c8, int x, y, uint8_t sprite) {
-	uint8_t bits[8];
+	uint8_t bits[8] = {};
 	bits.getbits_msfirst(sprite, bits);
 
 	bool collision = false;

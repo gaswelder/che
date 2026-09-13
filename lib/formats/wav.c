@@ -79,7 +79,7 @@ bool read_headers(reader.t *r, wav_t *wp, uint32_t *datalen) {
     // Begin RIFF
     //
     if (!expect_tag(r, "RIFF")) return false;
-	uint32_t tmp4u;
+	uint32_t tmp4u = 0;
     endian.read4le(r, &tmp4u); // riff chunk length
 
     //
@@ -180,8 +180,8 @@ void write_headers(writer_t *w) {
 }
 
 wav_t read_fmt(uint8_t *buf) {
-	uint32_t tmp4u;
-    uint16_t tmp2u;
+	uint32_t tmp4u = 0;
+    uint16_t tmp2u = 0;
 	reader.t *r = reader.static_buffer(buf, 16);
 	wav_t w = {};
     endian.read2le(r, &w.format);
@@ -281,7 +281,7 @@ pub void close_reader(reader_t *r) {
 }
 
 bool readinfo(reader.t *r) {
-	char tmp[1000];
+	char tmp[1000] = {};
 
 	// List length in bytes.
     uint32_t listlen = 0;
@@ -300,7 +300,7 @@ bool readinfo(reader.t *r) {
 		listlen -= 4;
 
 		// Read 4-byte value length.
-        uint32_t infolen;
+        uint32_t infolen = 0;
         endian.read4le(r, &infolen);
         listlen -= 4;
 

@@ -1,10 +1,10 @@
 use crate::buf::Pos;
 use crate::errors::{BuildError, Error, TWithErrors};
-use crate::lexer;
 use crate::lexer::{Lexer, Token};
 use crate::nodes;
 use crate::preparser::ModuleInfo;
 use crate::{cspec, nodes::*};
+use crate::{flags, lexer};
 
 struct ParseCtx<'a> {
     thismod: &'a ModuleInfo,
@@ -840,6 +840,12 @@ fn parse_variable_declaration(l: &mut Lexer, ctx: &ParseCtx) -> Result<FunctionE
     } else {
         None
     };
+    if !flags::SLOPPY_CODE && value.is_none() {
+        return Err(Error {
+            message: format!("uninitialized variable"),
+            pos,
+        });
+    }
     let semi = expect(l, ";", None)?;
     let comments = type_name.comments.clone();
     return Ok(FunctionElement::VarDecl(VarDecl {

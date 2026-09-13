@@ -50,8 +50,8 @@ int main(int argc, char *argv[]) {
 	opt.flag("f", "fade effect", &ffade);
 	char **args = opt.parse(argc, argv);
 
-	int width;
-	int height;
+	int width = 400;
+	int height = 400;
 	if (sscanf(size, "%dx%d", &width, &height) != 2) {
 		fprintf(stderr, "failed to parse the size\n");
 		return 1;

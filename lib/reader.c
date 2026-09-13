@@ -28,7 +28,7 @@ pub int read(t *reader, uint8_t *buf, size_t n) {
 
 // Skips n bytes.
 pub void skip(t *reader, size_t n) {
-	uint8_t tmp[4096];
+	uint8_t tmp[4096] = {};
 	size_t total = 0;
 	while (total < n) {
 		size_t readsize = n - total;

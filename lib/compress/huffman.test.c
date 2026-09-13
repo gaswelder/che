@@ -62,7 +62,7 @@ void testcanonical() {
 void writemsg(FILE *f, huffman.tree_t *t, const char *s) {
 	writer.t *fw = writer.file(f);
 	huffman.writer_t *w = huffman.newwriter(t, fw);
-	const char *p;
+	const char *p = NULL;
 	for (p = s; *p != '\0'; p++) {
 		uint8_t x = *p;
 		huffman.write(w, x);

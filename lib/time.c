@@ -100,7 +100,7 @@ sdur_t sdur(int64_t val) {
 // Returns false if the buffer is too small.
 pub bool dur_fmt(duration_t *d, char *buf, size_t bufsize, const char *fmt) {
 	sdur_t pp = sdur(d->us);
-	int len;
+	int len = 0;
 
 	switch str (fmt) {
 		case "logfile": {

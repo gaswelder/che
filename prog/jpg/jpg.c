@@ -47,7 +47,7 @@ void square(image.image_t *img, int u, v) {
         y0 += 1;
         y0 += 8;
     }
-    double shape[64];
+    double shape[64] = {};
     jpg.getshape(shape, u, v);
     for (int x = 0; x < 8; x++) {
         for (int y = 0; y < 8; y++) {

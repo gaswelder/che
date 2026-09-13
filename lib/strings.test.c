@@ -30,7 +30,7 @@ int main() {
     test.truth("abc doesn't end with ab", !strings.ends_with("abc", "ab"));
 
     // split
-    char *split_output[10];
+    char *split_output[10] = {};
     test.truth("n(split) == 2", strings.split("bb", "aabbcc", split_output, sizeof(split_output)) == 2);
     test.streq(split_output[0], "aa");
     test.streq(split_output[1], "cc");

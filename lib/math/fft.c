@@ -582,9 +582,9 @@ void kiss_fftri(kiss_fftr_state_t *st, complex.t *freqdata, float *timedata) {
     st->tmpbuf[0].im = freqdata[0].re - freqdata[ncfft].re;
 
     for (int k = 1; k <= ncfft / 2; ++k) {
-        complex.t fok;
+        complex.t fok = {};
         complex.t fk = freqdata[k];
-		complex.t fnkc;
+		complex.t fnkc = {};
         fnkc.re = freqdata[ncfft - k].re;
         fnkc.im = -freqdata[ncfft - k].im;
 
@@ -751,7 +751,7 @@ kiss_fftnd_state_t *kiss_fftnd_alloc(int *dims, int ndims, int inverse_fft, void
     ptr += sizeof(complex.t) * dimprod;
 
     for (i=0;i<ndims;++i) {
-        size_t len;
+        size_t len = 0;
         st->dims[i] = dims[i];
         kiss_fft_alloc (st->dims[i], inverse_fft, NULL, &len);
         st->states[i] = kiss_fft_alloc (st->dims[i], inverse_fft, ptr,&len);
@@ -842,8 +842,8 @@ Stage 2 ( D=4) treats this buffer as a 4*6 matrix,
    , i.e. the summation of all 24 input elements.
 */
 void kiss_fftnd(kiss_fftnd_state_t *st, complex.t *fin, *fout) {
-    int i;
-    int k;
+    int i = 0;
+    int k = 0;
     complex.t *bufin = fin;
     complex.t *bufout;
 

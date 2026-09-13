@@ -108,7 +108,7 @@ void printtable(vec.t *rows) {
 	//
 	// Define the header and calculate the widths.
 	//
-	const char *keys[100];
+	const char *keys[100] = {};
 
 	// As a quirk, use the row with the most columns
 	// to get the columns.
@@ -217,7 +217,7 @@ int sprintval(json.val_t *val, char *str) {
 }
 
 int thousands(int x, char *out, size_t n) {
-	char tmp[20];
+	char tmp[20] = {};
 	int l = sprintf(tmp, "%d", x);
 
 	int extra = l % 3;

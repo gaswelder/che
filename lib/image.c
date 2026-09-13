@@ -158,9 +158,9 @@ pub rgba_t from_hsl(float h, s, l) {
 	float c = (1 - fabs(2*l-1)) * s;
 	float h1 = h / 60;
 	float x = c * (1 - fabs(fmod(h1, 2)-1));
-	float red;
-	float green;
-	float blue;
+	float red = 0;
+	float green = 0;
+	float blue = 0;
 	if (h1 <= 1) {
 		red = c; green = x; blue = 0;
 	} else if (h1 <= 2) {

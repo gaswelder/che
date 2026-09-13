@@ -56,10 +56,10 @@ pub bool readblock(reader_t *r, block_t *b) {
 
 // Parses a timestamp in srt format: 00:01:33,160.
 pub time.duration_t parsepos(const char *buf) {
-	int h;
-	int m;
-	int s;
-	int ms;
+	int h = 0;
+	int m = 0;
+	int s = 0;
+	int ms = 0;
 	if (sscanf(buf, "%d:%d:%d,%d", &h, &m, &s, &ms) != 4) {
 		panic("failed to parse timestamp");
 	}

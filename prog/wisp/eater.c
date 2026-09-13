@@ -33,7 +33,7 @@ pub void init(t *r, FILE *f, char *str) {
 
 /* Read next character in the stream. */
 pub int getc(t *r) {
-	int c;
+	int c = 0;
 	if (r->readbufp > r->readbuf) {
 		c = *(r->readbufp);
 		r->readbufp--;

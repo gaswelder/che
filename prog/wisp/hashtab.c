@@ -99,8 +99,8 @@ pub void *ht_insert (hashtab_t * hashtable, void *key, size_t keylen, void *valu
 	}
   int index = ht_hash (key, keylen, hashtable->size);
 
-  hashtab_node_t *next_node;
-  hashtab_node_t *last_node;
+  hashtab_node_t *next_node = NULL;
+  hashtab_node_t *last_node = NULL;
   next_node = hashtable->arr[index];
   last_node = NULL;
 
