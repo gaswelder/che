@@ -74,6 +74,7 @@ fn fmt_struct_typedef(x: &StructTypedef) -> String {
 
 fn fmt_func(x: &FuncDecl) -> String {
     let mut s = String::new();
+    s += &fmt_comments(&x.comments);
     if x.ispub {
         s += "pub ";
     }
@@ -237,10 +238,14 @@ fn fmt_cases(x: &Switch) -> String {
             _ => {
                 s += ": {\n";
                 for st in &c.body.statements {
-                    s += &format!("\t{}\n", fmt_statement(&st));
+                    s += &indent(&fmt_statement(&st));
+                    s += "\n";
                 }
                 s += "}";
             }
+        }
+        if let Some(c) = &c.body.trailing_comment {
+            s += &format!(" // {}", c);
         }
     }
     if let Some(c) = &x.default_case {
@@ -303,20 +308,8 @@ pub fn fmt_expr(expr: &Expr) -> String {
     match expr {
         Expr::FieldAccess(x) => fmt_field_access(x),
         Expr::Cast(x) => fmt_cast(&x),
-        Expr::NsName(n) => fmt_nsname(&n),
-        Expr::Call(x) => {
-            let arguments = &x.args;
-            let function = &x.func;
-            let mut s1 = String::from("(");
-            for (i, argument) in arguments.iter().enumerate() {
-                if i > 0 {
-                    s1 += ", ";
-                }
-                s1 += &fmt_expr(&argument);
-            }
-            s1 += ")";
-            return format!("{}{}", fmt_expr(&function), s1);
-        }
+        Expr::NsName(x) => fmt_nsname(&x),
+        Expr::Call(x) => fmt_call(&x),
         Expr::Literal(x) => fmt_literal(x),
         Expr::CompositeLiteral(x) => fmt_composite_literal(x),
         Expr::Sizeof(x) => {
@@ -372,6 +365,25 @@ pub fn fmt_expr(expr: &Expr) -> String {
     }
 }
 
+fn fmt_call(x: &Call) -> String {
+    let mut s = String::new();
+    if let Some(c) = &x.comments {
+        for line in c {
+            s += &format!("// {}\n", line);
+        }
+    }
+    s += &fmt_expr(&x.func);
+    s += "(";
+    for (i, arg) in x.args.iter().enumerate() {
+        if i > 0 {
+            s += ", ";
+        }
+        s += &fmt_expr(&arg);
+    }
+    s += ")";
+    s
+}
+
 fn fmt_composite_literal(x: &CompLiteral) -> String {
     let entries = &x.entries;
     if entries.len() == 0 {
@@ -379,6 +391,7 @@ fn fmt_composite_literal(x: &CompLiteral) -> String {
     }
 
     let mut totalwidth = 0;
+    let mut maxwidth = 0;
     let mut items = Vec::new();
     for e in &x.entries {
         let v = fmt_expr(&e.value);
@@ -393,7 +406,11 @@ fn fmt_composite_literal(x: &CompLiteral) -> String {
             }
             None => v,
         };
-        totalwidth += item.len();
+        let n = item.len();
+        totalwidth += n;
+        if n > maxwidth {
+            maxwidth = n;
+        }
         items.push(item);
     }
 
@@ -407,6 +424,23 @@ fn fmt_composite_literal(x: &CompLiteral) -> String {
             s += item
         }
         s += " }";
+    } else if maxwidth < 5 {
+        s += "{\n";
+        for (i, item) in items.iter().enumerate() {
+            let padded = format!("{:>maxwidth$}", item);
+            if i == 0 {
+                s += "\t";
+                s += &padded;
+                continue;
+            }
+            if i % 8 == 0 {
+                s += ",\n\t";
+            } else {
+                s += ", ";
+            }
+            s += &padded
+        }
+        s += "\n}";
     } else {
         s += "{\n";
         for (i, item) in items.iter().enumerate() {
@@ -464,24 +498,41 @@ pub fn fmt_binop(x: &BinaryOp) -> String {
     let isop2 = is_op(&x.b);
     let s1 = fmt_expr(&x.a);
     let s2 = fmt_expr(&x.b);
-    let no = format!("{} {} {}", &s1, &op, &s2);
-    let left = format!("({}) {} {}", &s1, &op, &s2);
-    let both = format!("({}) {} ({})", &s1, &op, &s2);
 
-    match (isop1.as_deref(), op.as_str(), isop2.as_deref()) {
-        (None, _, None) => no,
-        (None, "=", _) => no,
-        (None, "==", _) => no,
-        (Some(">"), "&&", Some("<")) => no,
-        (Some(">="), "&&", Some("<=")) => no,
-        (Some(">"), "&&", Some(">")) => no,
-        (Some("=="), "&&", Some("!=")) => no,
-        (Some("+"), "-", None) => no,
-        (Some("*"), "+", None) => no,
-        (Some("*"), "/", None) => no,
-        (_, _, None) => left,
-        _ => both,
-    }
+    // let no = format!("{} {} {}", &s1, &op, &s2);
+
+    let wrap1 = format!("({})", &s1);
+    let wrap2 = format!("({})", &s2);
+
+    let left = match (isop1.as_deref(), op.as_str()) {
+        (None, _) => &s1,
+        (Some("-"), "-") => &s1,
+        (Some("+"), "-") => &s1,
+
+        (Some("*"), "+") => &s1,
+        (Some("*"), "-") => &s1,
+        (Some("*"), "*") => &s1,
+        (Some("*"), "/") => &s1,
+
+        (_, "&&") => &s1,
+        (_, "||") => &s1,
+
+        _ => &wrap1,
+    };
+    let right = match (op.as_str(), isop2.as_deref()) {
+        (_, None) => &s2,
+        ("&&", _) => &s2,
+        ("||", _) => &s2,
+
+        ("-", Some("*")) => &s2,
+        ("+", Some("*")) => &s2,
+
+        ("=", _) => &s2,
+        (_, Some("prefix")) => &s2,
+
+        _ => &wrap2,
+    };
+    return format!("{} {} {}", &left, &op, &right);
 }
 
 pub fn fmt_binop0(x: &nodes::BinaryOp) -> String {

@@ -157,11 +157,14 @@ fn parse_compat_macro(l: &mut Lexer) -> Result<ModElem, Error> {
 }
 
 fn parse_module_object(l: &mut Lexer, ctx: &ParseCtx) -> Result<TWithErrors<ModElem>, Error> {
-    let mut is_pub = false;
     let pos = l.peek().unwrap().pos.clone();
+    let mut is_pub = false;
+    let mut comments = None;
+
     if l.follows("pub") {
-        l.get();
+        let tok = l.get().unwrap();
         is_pub = true;
+        comments = tok.comments;
     }
     if l.follows("enum") {
         return Ok(TWithErrors {
@@ -178,7 +181,7 @@ fn parse_module_object(l: &mut Lexer, ctx: &ParseCtx) -> Result<TWithErrors<ModE
     let type_name = parse_typename(l, ctx)?;
     let form = parse_form(l, ctx)?;
     if l.peek().unwrap().kind == "(" {
-        let r = parse_function_declaration(l, is_pub, type_name, form, ctx, pos)?;
+        let r = parse_function_declaration(l, is_pub, type_name, form, ctx, pos, comments)?;
         return Ok(TWithErrors {
             obj: r.obj,
             errors: r.errors,
@@ -290,7 +293,12 @@ fn base(l: &mut Lexer, ctx: &ParseCtx) -> Result<Expr, Error> {
         let pos = next.pos.clone();
         // call
         if next.kind == "(" {
-            r = parse_call(l, ctx, r)?;
+            let mut comments = None;
+            match &r {
+                Expr::NsName(ns_name) => comments = ns_name.comments.clone(),
+                _ => {}
+            }
+            r = parse_call(l, ctx, r, comments)?;
             continue;
         }
 
@@ -730,7 +738,12 @@ fn parse_sizeof(l: &mut Lexer, ctx: &ParseCtx) -> Result<Expr, Error> {
     }));
 }
 
-fn parse_call(l: &mut Lexer, ctx: &ParseCtx, func: Expr) -> Result<Expr, Error> {
+fn parse_call(
+    l: &mut Lexer,
+    ctx: &ParseCtx,
+    func: Expr,
+    comments: Option<Vec<String>>,
+) -> Result<Expr, Error> {
     let mut args = Vec::new();
     let tok = expect(l, "(", None)?;
     if l.more() && l.peek().unwrap().kind != ")" {
@@ -742,6 +755,7 @@ fn parse_call(l: &mut Lexer, ctx: &ParseCtx, func: Expr) -> Result<Expr, Error> 
     }
     expect(l, ")", None)?;
     return Ok(Expr::Call(nodes::Call {
+        comments,
         pos: tok.pos,
         func: Box::new(func),
         args,
@@ -1055,6 +1069,7 @@ fn parse_function_declaration(
     form: Form,
     ctx: &ParseCtx,
     pos: Pos,
+    comments: Option<Vec<String>>,
 ) -> Result<TWithErrors<ModElem>, Error> {
     // void cuespl {WE ARE HERE} (cue_t *c, mp3file *m) {...}
 
@@ -1078,6 +1093,7 @@ fn parse_function_declaration(
     let body = parse_statements_block(l, ctx)?;
     return Ok(TWithErrors {
         obj: ModElem::FuncDecl(FuncDecl {
+            comments,
             ispub: is_pub,
             typename: type_name,
             form,
@@ -1121,6 +1137,7 @@ fn parse_statements_block(l: &mut Lexer, ctx: &ParseCtx) -> Result<TWithErrors<B
     let s = parse_statement(l, ctx)?;
     return Ok(TWithErrors {
         obj: Body {
+            trailing_comment: None,
             statements: vec![s.obj],
         },
         errors: s.errors,
@@ -1150,9 +1167,12 @@ fn read_body(l: &mut Lexer, ctx: &ParseCtx) -> Result<TWithErrors<Body>, Error> 
             }
         }
     }
-    expect(l, "}", None)?;
+    let t = expect(l, "}", None)?;
     return Ok(TWithErrors {
-        obj: Body { statements },
+        obj: Body {
+            statements,
+            trailing_comment: t.trailing_comment,
+        },
         errors,
     });
 }

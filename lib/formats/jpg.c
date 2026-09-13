@@ -87,13 +87,28 @@ image.image_t *fix_orientation(image.image_t *img, int orient) {
 			int sx = x;
 			int sy = y;
 			switch (orient) {
-				case 2: { sx = w-1-x; } // flip horizontal
-				case 3: { sx = w-1-x; sy = h-1-y; } // 180
-				case 4: { sy = h-1-y; } // flip vertical
-				case 5: { sx = y; sy = x; } // transpose
-				case 6: { sx = y; sy = h-1-x; } // 90 CW
-				case 7: { sx = w-1-y; sy = h-1-x; } // transverse
-				case 8: { sx = x; sy = w-1-y; } // 90 CCW
+				case 2: { sx = w - 1 - x; } // flip horizontal
+				case 3: {
+					sx = w - 1 - x;
+					sy = h - 1 - y;
+				} // 180
+				case 4: { sy = h - 1 - y; } // flip vertical
+				case 5: {
+					sx = y;
+					sy = x;
+				} // transpose
+				case 6: {
+					sx = y;
+					sy = h - 1 - x;
+				} // 90 CW
+				case 7: {
+					sx = w - 1 - y;
+					sy = h - 1 - x;
+				} // transverse
+				case 8: {
+					sx = x;
+					sy = w - 1 - y;
+				} // 90 CCW
 			}
 			image.set(r, x, y, image.get(img, sx, sy));
 		}
@@ -166,9 +181,7 @@ void dumpdir(tiff.dir_t *d) {
 					printf("%g ", r);
 				}
 			}
-			default: {
-				printf("%u (%zu)", e->value, e->count);
-			}
+			default: { printf("%u (%zu)", e->value, e->count); }
 		}
 		printf("\n");
 	}
@@ -182,7 +195,7 @@ void read_app2(jpeg_t *self, reader.t *r) {
 
 	// ICC profiles
 	// ...
-	reader.skip(r, len-2);
+	reader.skip(r, len - 2);
 }
 
 void read_app4(jpeg_t *self, reader.t *r) {
@@ -191,7 +204,7 @@ void read_app4(jpeg_t *self, reader.t *r) {
 	endian.read2be(r, &len);
 	printf("App4 (len=%u)\n", len);
 	// ?
-	reader.skip(r, len-2);
+	reader.skip(r, len - 2);
 }
 
 void read_appdef(jpeg_t *self, reader.t *r) {
@@ -464,10 +477,10 @@ void read_mcu(jpeg_t *self, int *dc, bits.reader_t *br, image.image_t *mcu) {
 
 	// Component 0 (Y) spans the whole MCU. Chroma components are sampled
 	// down by (mcux/(8*hsize), mcuy/(8*vsize)) and upsampled by replication.
-	int hscale1 = self->mcux / (8*self->components[1].hsize);
-	int vscale1 = self->mcuy / (8*self->components[1].vsize);
-	int hscale2 = self->mcux / (8*self->components[2].hsize);
-	int vscale2 = self->mcuy / (8*self->components[2].vsize);
+	int hscale1 = self->mcux / (8 * self->components[1].hsize);
+	int vscale1 = self->mcuy / (8 * self->components[1].vsize);
+	int hscale2 = self->mcux / (8 * self->components[2].hsize);
+	int vscale2 = self->mcuy / (8 * self->components[2].vsize);
 	for (int y = 0; y < self->mcuy; y++) {
 		for (int x = 0; x < self->mcux; x++) {
 			double Y = planes[0][y][x];
@@ -495,14 +508,15 @@ void rebuild(int *weights, double *out) {
 }
 
 const uint8_t zigzag[] = {
-	0,   1,  8, 16,  9,  2,  3, 10,
+	 0,  1,  8, 16,  9,  2,  3, 10,
 	17, 24, 32, 25, 18, 11,  4,  5,
-	12, 19,	26, 33, 40, 48, 41, 34,
+	12, 19, 26, 33, 40, 48, 41, 34,
 	27, 20, 13,  6,  7, 14, 21, 28,
 	35, 42, 49, 56, 57, 50, 43, 36,
 	29, 22, 15, 23, 30, 37, 44, 51,
 	58, 59, 52, 45, 38, 31, 39, 46,
-	53, 60, 61, 54, 47, 55, 62, 63};
+	53, 60, 61, 54, 47, 55, 62, 63
+};
 
 void undozz(int *vals) {
 	int tmp[64] = {};
@@ -607,7 +621,7 @@ void readblock(bits.reader_t *br, huffman.reader_t *hrdc, *hrac, int prevdc, int
 
 int weirdonum(bits.reader_t *br, int code) {
 	int bval = bits.readn(br, code);
-	int l = 1 << (code-1);
+	int l = 1 << (code - 1);
 	if (bval >= l) {
 		return bval;
 	}

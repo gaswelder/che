@@ -103,6 +103,7 @@ pub struct EnumEntry {
 // pub? int *f(int a, b; double *foo) { ... }
 #[derive(Debug, Clone)]
 pub struct FuncDecl {
+    pub comments: Option<Vec<String>>,
     pub pos: Pos,
     pub ispub: bool,
     pub typename: Typename,
@@ -183,6 +184,7 @@ pub struct ArrayIndex {
 // ...(...)
 #[derive(Debug, Clone)]
 pub struct Call {
+    pub comments: Option<Vec<String>>,
     pub pos: Pos,
     pub func: Box<Expr>,
     pub args: Vec<Expr>,
@@ -239,6 +241,7 @@ pub enum SizeofArg {
 
 #[derive(Debug, Clone)]
 pub struct Body {
+    pub trailing_comment: Option<String>,
     pub statements: Vec<FunctionElement>,
 }
 

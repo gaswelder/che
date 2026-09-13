@@ -1182,6 +1182,7 @@ fn tr_call(x: &Call, ctx: &mut TrCtx) -> Result<Typed<c::Expr>, BuildError> {
     if is_ident(&x.func, "calloc!") {
         ctx.used_customs.insert("calloc_or_panic".to_string());
         let y = Call {
+            comments: None,
             func: Box::new(Expr::NsName(NsName {
                 comments: None,
                 ns: "".to_string(),
