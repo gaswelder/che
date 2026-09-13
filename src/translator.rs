@@ -239,7 +239,7 @@ fn init_root_scope(ctx: &mut TrCtx, m: &Module) {
                         },
                         ispub: false,
                         name: String::from(&x.form.name),
-                        pos: x.pos.clone(),
+                        pos: x.source_info.pos.clone(),
                         typ: typefrom_typename(&x.typename, &x.form),
                         used: false,
                     },
@@ -1192,7 +1192,6 @@ fn tr_call(x: &Call, ctx: &mut TrCtx) -> Result<Typed<c::Expr>, BuildError> {
     if is_ident(&x.func, "calloc!") {
         ctx.used_customs.insert("calloc_or_panic".to_string());
         let y = Call {
-            comments: None,
             func: Box::new(Expr::NsName(NsName {
                 comments: None,
                 ns: "".to_string(),

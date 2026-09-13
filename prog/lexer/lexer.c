@@ -11,15 +11,15 @@ int main(int argc, char *argv[]) {
 		return 1;
 	}
 	clex.lexer_t *lexer = clex.newlex(f);
-    while (clex.read(lexer)) {
-        clex.tok_t tok = clex.tok(lexer);
+	while (clex.read(lexer)) {
+		clex.tok_t tok = clex.tok(lexer);
 		if (strcmp(tok.name, "error") == 0) {
 			fprintf(stderr, "%s at %s\n", tok.content, tok.pos);
 			return 1;
 		}
 		printf("{\"pos\":\"%s\",\"type\":\"%s\",\"content\":\"%s\"}\n", tok.pos, tok.name, tok.content);
-    }
+	}
 	clex.lexer_free(lexer);
 	fclose(f);
-    return 0;
+	return 0;
 }

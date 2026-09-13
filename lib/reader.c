@@ -1,6 +1,7 @@
 #include <unistd.h>
 
 pub typedef void freefunc_t(void *);
+
 pub typedef int readfunc_t(void *, uint8_t *, size_t);
 
 pub typedef {
@@ -22,7 +23,9 @@ pub t *new(void *data, readfunc_t *read, freefunc_t *free) {
 // Returns the number of bytes read or a negative value for EOF or an error.
 pub int read(t *reader, uint8_t *buf, size_t n) {
 	int r = reader->read(reader->data, buf, n);
-	if (r > 0) reader->pos += r;
+	if (r > 0) {
+		reader->pos += r;
+	}
 	return r;
 }
 
@@ -45,7 +48,9 @@ pub void skip(t *reader, size_t n) {
 
 // Frees the reader.
 pub void free(t *reader) {
-	if (reader->free) reader->free(reader->data);
+	if (reader->free) {
+		reader->free(reader->data);
+	}
 	OS.free(reader);
 }
 
@@ -57,7 +62,9 @@ int file_read(void *ctx, uint8_t *buf, size_t n) {
 	FILE *f = ctx;
 	size_t r = fread(buf, 1, n, f);
 	if (r == 0) {
-		if (feof(f) || ferror(f)) return EOF;
+		if (feof(f) || ferror(f)) {
+			return EOF;
+		}
 	}
 	return (int) r;
 }
@@ -88,8 +95,12 @@ int mem_read(void *ctx, uint8_t *buf, size_t n) {
 	}
 	int r = 0;
 	for (size_t i = 0; i < n; i++) {
-		if (s->pos == s->len) break;
-		if (buf) buf[i] = s->s[s->pos];
+		if (s->pos == s->len) {
+			break;
+		}
+		if (buf) {
+			buf[i] = s->s[s->pos];
+		}
 		s->pos++;
 		r++;
 	}
@@ -106,7 +117,7 @@ pub t *static_buffer(const uint8_t *buf, size_t n) {
 
 // Return a reader for string s.
 pub t *string(const char *s) {
-	return static_buffer((uint8_t *)s, strlen(s));
+	return static_buffer((uint8_t *) s, strlen(s));
 }
 
 //

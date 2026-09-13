@@ -39,7 +39,9 @@ tok_t newtok(char *name, char *content, const char *pos) {
 	tok_t t = {};
 	strcpy(t.name, name);
 	strcpy(t.pos, pos);
-	if (content) strcpy(t.content, content);
+	if (content) {
+		strcpy(t.content, content);
+	}
 	return t;
 }
 
@@ -217,7 +219,7 @@ tok_t read_char(scanner.t *b) {
 	char *s = calloc!(3, 1);
 	char *p = s;
 	const char *pos = scanner.posstr(b);
-	
+
 	scanner.get(b);
 
 	if (scanner.peek(b) == '\\') {
@@ -232,7 +234,6 @@ tok_t read_char(scanner.t *b) {
 	scanner.get(b);
 	return newtok("char", s, pos);
 }
-
 
 tok_t read_multiline_comment(scanner.t *b) {
 	const char *pos = scanner.posstr(b);

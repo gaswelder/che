@@ -49,8 +49,10 @@ pub enum FunctionElement {
 
 #[derive(Debug, Clone)]
 pub struct Statement {
-    pub expr: Expr,
+    pub spaces_top: String,
+    pub comments: Option<Vec<String>>,
     pub trailing_comment: Option<String>,
+    pub expr: Expr,
 }
 
 // Elements that can participate in expressions.
@@ -184,7 +186,6 @@ pub struct ArrayIndex {
 // ...(...)
 #[derive(Debug, Clone)]
 pub struct Call {
-    pub comments: Option<Vec<String>>,
     pub pos: Pos,
     pub func: Box<Expr>,
     pub args: Vec<Expr>,
@@ -245,13 +246,19 @@ pub struct Body {
     pub statements: Vec<FunctionElement>,
 }
 
+#[derive(Debug, Clone)]
+pub struct SourceInfo {
+    pub pos: Pos,
+    pub spaces_top: String,
+    pub comments: Option<Vec<String>>,
+    pub trailing_comment: Option<String>,
+}
+
 // int foo = 1;
 // int foo;
 #[derive(Debug, Clone)]
 pub struct VarDecl {
-    pub pos: Pos,
-    pub comments: Option<Vec<String>>,
-    pub trailing_comment: Option<String>,
+    pub source_info: SourceInfo,
     pub typename: Typename,
     pub form: Form,
     pub value: Option<Expr>,
@@ -259,7 +266,7 @@ pub struct VarDecl {
 
 #[derive(Debug, Clone)]
 pub struct If {
-    pub comments: Option<Vec<String>>,
+    pub source_info: SourceInfo,
     pub condition: Expr,
     pub body: Body,
     pub else_body: Option<Body>,
@@ -267,6 +274,7 @@ pub struct If {
 
 #[derive(Debug, Clone)]
 pub struct For {
+    pub source_info: SourceInfo,
     pub init: Option<ForInit>,
     pub condition: Option<Expr>,
     pub action: Option<Expr>,
@@ -281,6 +289,7 @@ pub struct While {
 
 #[derive(Debug, Clone)]
 pub struct Return {
+    pub source_info: SourceInfo,
     pub expression: Option<Expr>,
 }
 

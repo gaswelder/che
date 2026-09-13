@@ -7,6 +7,7 @@ use substring::Substring;
 
 #[derive(Debug)]
 pub struct Token {
+    pub spaces_before: String,
     pub comments: Option<Vec<String>>,
     pub trailing_comment: Option<String>,
     pub kind: String,
@@ -40,25 +41,33 @@ fn read_token_c(buf: &mut Buf) -> Option<Token> {
     let mut comments = Vec::new();
     loop {
         match read_token(buf) {
+            None => {
+                return None;
+            }
             Some(mut tok) => {
                 if tok.kind == "comment" {
-                    comments.push(tok.content);
+                    comments.push(tok);
                     continue;
                 }
                 if comments.len() > 0 {
-                    tok.comments = Some(comments);
+                    let mut cc = Vec::new();
+                    for tok in &comments {
+                        cc.push(tok.content.clone());
+                    }
+                    tok.comments = Some(cc);
+
+                    if comments[0].spaces_before.matches("\n").count() > 1 {
+                        tok.spaces_before = comments[0].spaces_before.clone();
+                    }
                 }
                 return Some(tok);
-            }
-            None => {
-                return None;
             }
         }
     }
 }
 
 fn read_token(buf: &mut Buf) -> Option<Token> {
-    buf.read_set(SPACES);
+    let spaces_before = buf.read_set(SPACES);
     if buf.ended() {
         return None;
     }
@@ -66,28 +75,31 @@ fn read_token(buf: &mut Buf) -> Option<Token> {
     let pos = buf.pos();
 
     if buf.skip_literal("#import") {
-        buf.read_set(SPACES);
+        buf.read_set(" \t");
         return Some(newtok(
             pos,
             "import",
             buf.skip_until('\n').trim().to_string(),
+            spaces_before,
         ));
     }
-
     if buf.peek().unwrap() == '#' {
-        return Some(newtok(pos, "macro", buf.skip_until('\n')));
+        return Some(newtok(pos, "macro", buf.skip_until('\n'), spaces_before));
     }
     if buf.literal_follows("/*") {
         return Some(read_multiline_comment(buf));
     }
     if buf.skip_literal("//") {
-        buf.read_set(" \t");
-        return Some(newtok(pos, "comment", buf.skip_until('\n')));
+        let line = buf.skip_until('\n');
+        return Some(newtok(pos, "comment", line, spaces_before));
     }
 
     let next = buf.peek().unwrap();
     if next.is_ascii_alphabetic() || next == '_' {
-        return Some(read_word(buf));
+        return Some(read_word(buf)).map(|mut t| {
+            t.spaces_before = spaces_before;
+            t
+        });
     }
     if next.is_ascii_digit() {
         return Some(read_number(buf));
@@ -98,10 +110,9 @@ fn read_token(buf: &mut Buf) -> Option<Token> {
     if next == '\'' {
         return Some(read_char_literal(buf));
     }
-
     for sym in SYMBOLS {
         if buf.skip_literal(sym) {
-            let mut tok = newtok(pos, sym, String::new());
+            let mut tok = newtok(pos, sym, String::new(), spaces_before);
             buf.read_set(" \t");
             if buf.skip_literal("//") {
                 buf.read_set(" \t");
@@ -115,11 +126,12 @@ fn read_token(buf: &mut Buf) -> Option<Token> {
 }
 
 fn errtok(pos: Pos, msg: String) -> Token {
-    newtok(pos, "error", msg)
+    newtok(pos, "error", msg, String::new())
 }
 
-fn newtok(pos: Pos, kind: &str, content: String) -> Token {
+fn newtok(pos: Pos, kind: &str, content: String, spaces_before: String) -> Token {
     Token {
+        spaces_before,
         comments: None,
         trailing_comment: None,
         kind: kind.to_string(),
@@ -157,7 +169,7 @@ fn read_number(buf: &mut Buf) -> Token {
         let c = buf.peek().unwrap();
         return errtok(buf.pos(), format!("Unexpected character: '{}'", c));
     }
-    return newtok(pos, "num", num);
+    return newtok(pos, "num", num, String::new());
 }
 
 fn read_hex(buf: &mut Buf) -> Token {
@@ -169,7 +181,7 @@ fn read_hex(buf: &mut Buf) -> Token {
 
     let num = buf.read_set("0123456789ABCDEFabcdef") + &buf.read_set("UL");
 
-    return newtok(pos, "num", format!("0x{}", &num));
+    return newtok(pos, "num", format!("0x{}", &num), String::new());
 }
 
 fn read_string_literal(buf: &mut Buf) -> Token {
@@ -189,7 +201,7 @@ fn read_string_literal(buf: &mut Buf) -> Token {
     }
     s += &substr;
     buf.read_set(SPACES);
-    return newtok(pos, "string", s);
+    return newtok(pos, "string", s, String::new());
 }
 
 fn read_word(buf: &mut Buf) -> Token {
@@ -211,9 +223,9 @@ fn read_word(buf: &mut Buf) -> Token {
     }
 
     if KEYWORDS.contains(&word.as_str()) {
-        return newtok(pos, &word, String::new());
+        return newtok(pos, &word, String::new(), String::new());
     }
-    return newtok(pos, "word", word);
+    return newtok(pos, "word", word, String::new());
 }
 
 fn read_char_literal(buf: &mut Buf) -> Token {
@@ -229,7 +241,7 @@ fn read_char_literal(buf: &mut Buf) -> Token {
     if buf.get().unwrap() != '\'' {
         return errtok(pos, "Single quote expected".to_string());
     }
-    return newtok(pos, "char", s);
+    return newtok(pos, "char", s, String::new());
 }
 
 fn read_multiline_comment(buf: &mut Buf) -> Token {
@@ -239,7 +251,7 @@ fn read_multiline_comment(buf: &mut Buf) -> Token {
     if !buf.skip_literal("*/") {
         return errtok(pos, "*/ expected".to_string());
     }
-    return newtok(pos, "comment", comment);
+    return newtok(pos, "comment", comment, String::new());
 }
 
 #[cfg(test)]
@@ -275,7 +287,7 @@ mod tests {
             C {
                 input: "// comment\n123",
                 kind: "comment",
-                content: "comment",
+                content: " comment",
                 pos: "1:1",
             },
             C {

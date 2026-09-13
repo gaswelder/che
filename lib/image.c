@@ -1,6 +1,10 @@
-pub typedef { int w, h; } dim_t;
+pub typedef {
+	int w, h;
+} dim_t;
 
-pub typedef { int red, green, blue, transparency; } rgba_t;
+pub typedef {
+	int red, green, blue, transparency;
+} rgba_t;
 
 pub typedef {
 	int width;
@@ -46,7 +50,7 @@ void checkcoords(image_t *img, int x, y) {
 		panic("invalid pixel coordinates: %d, %d", x, y);
 	}
 	if (x >= img->width || y >= img->height) {
-		panic("invalid pixel coordinates: (%d, %d) (should be within [0..%d], [0..%d])", x, y, img->width-1, img->height-1);
+		panic("invalid pixel coordinates: (%d, %d) (should be within [0..%d], [0..%d])", x, y, img->width - 1, img->height - 1);
 	}
 }
 
@@ -66,15 +70,15 @@ pub void fill(image_t *img, rgba_t color) {
 
 // Blends color with the current color at pixel (x, y).
 pub void blend(image_t *img, int x, y, rgba_t color, float opacity) {
-    rgba_t newcol = get(img, x, y);
-    newcol.red = blendcolor(newcol.red, color.red, opacity);
+	rgba_t newcol = get(img, x, y);
+	newcol.red = blendcolor(newcol.red, color.red, opacity);
 	newcol.green = blendcolor(newcol.green, color.green, opacity);
 	newcol.blue = blendcolor(newcol.blue, color.blue, opacity);
-    set(img, x, y, newcol);
+	set(img, x, y, newcol);
 }
 
 int blendcolor(int old, new, float opacity) {
-	float oldpart = (opacity-1) * (float) old;
+	float oldpart = (opacity - 1) * (float) old;
 	float newpart = opacity * (float) new;
 	return oldpart + newpart;
 }
@@ -133,12 +137,12 @@ pub void paste(image_t *img, *p, int x, y) {
 }
 
 pub rgba_t white() {
-	rgba_t c = {255, 255, 255, 0};
+	rgba_t c = { 255, 255, 255, 0 };
 	return c;
 }
 
 pub rgba_t gray(int val) {
-	rgba_t c = {val, val, val, 0};
+	rgba_t c = { val, val, val, 0 };
 	return c;
 }
 
@@ -147,17 +151,17 @@ pub rgba_t gray(int val) {
 pub rgba_t mix(rgba_t a, b, double proportion_b) {
 	double proportion_a = 1 - proportion_b;
 	rgba_t c = {
-		.red = (int) ( (double) a.red * proportion_a + (double) b.red * proportion_b ),
-		.green = (int) ( (double) a.green * proportion_a + (double) b.green * proportion_b ),
-		.blue = (int) ( (double) a.blue * proportion_a + (double) b.blue * proportion_b ),
+		.red = (int)((double)(a.red) * proportion_a + (double)(b.red) * proportion_b),
+		.green = (int)((double)(a.green) * proportion_a + (double)(b.green) * proportion_b),
+		.blue = (int)((double)(a.blue) * proportion_a + (double)(b.blue) * proportion_b)
 	};
 	return c;
 }
 
 pub rgba_t from_hsl(float h, s, l) {
-	float c = (1 - fabs(2*l-1)) * s;
+	float c = (1 - fabs(2 * l - 1)) * s;
 	float h1 = h / 60;
-	float x = c * (1 - fabs(fmod(h1, 2)-1));
+	float x = c * (1 - fabs(fmod(h1, 2) - 1));
 	float red = 0;
 	float green = 0;
 	float blue = 0;
@@ -185,25 +189,43 @@ pub rgba_t from_hsl(float h, s, l) {
 
 // assumes s=v=1
 pub rgba_t from_hsv(double h) {
-    h *= 6.0;
-	int inth = (int)h;
-    double hf = h - (double) inth;
-    rgba_t r = {};
-    switch (inth % 6) {
-        case 0: {
-			r.red = 255; r.green = 255 * hf; r.blue = 0; }
-        case 1: {
-			r.red = 255 * (1.0 - hf); r.green = 255; r.blue = 0; }
-        case 2: {
-			r.red = 0; r.green = 255; r.blue = 255 * hf; }
-        case 3: {
-			r.red = 0; r.green = 255 * (1.0 - hf); r.blue = 255; }
-        case 4: {
-			r.red = 255 * hf; r.green = 0; r.blue = 255; }
-        case 5: {
-			r.red = 255; r.green = 0; r.blue = 255 * (1.0 - hf); }
-    }
-    return r;
+	h *= 6.0;
+	int inth = (int) h;
+	double hf = h - (double) inth;
+	rgba_t r = {};
+	switch (inth % 6) {
+		case 0: {
+			r.red = 255;
+			r.green = 255 * hf;
+			r.blue = 0;
+		}
+		case 1: {
+			r.red = 255 * (1.0 - hf);
+			r.green = 255;
+			r.blue = 0;
+		}
+		case 2: {
+			r.red = 0;
+			r.green = 255;
+			r.blue = 255 * hf;
+		}
+		case 3: {
+			r.red = 0;
+			r.green = 255 * (1.0 - hf);
+			r.blue = 255;
+		}
+		case 4: {
+			r.red = 255 * hf;
+			r.green = 0;
+			r.blue = 255;
+		}
+		case 5: {
+			r.red = 255;
+			r.green = 0;
+			r.blue = 255 * (1.0 - hf);
+		}
+	}
+	return r;
 }
 
 pub typedef {
@@ -216,16 +238,16 @@ pub rgba_t mapcolor(colormap_t *c, int val) {
 	int w = c->color_width;
 	// The first color is special, reserved for low values (think background).
 	if (val <= w) {
-		return mix(c->colors[0], c->colors[1], (double)val/(double)w);
+		return mix(c->colors[0], c->colors[1], (double) val / (double) w);
 	}
 	// For larger values we exlude the first color and map to the rest.
-	return mapcolor_(c->colors+1, c->size-1, w, val-w);
+	return mapcolor_(c->colors + 1, c->size - 1, w, val - w);
 }
 
 rgba_t mapcolor_(rgba_t *colors, size_t ncolors, int color_width, int val) {
 	int index1 = (val / color_width) % ncolors;
 	int index2 = (index1 + 1) % ncolors;
-	double rate = (double) (val % color_width) / (double) color_width;
+	double rate = (double)(val % color_width) / (double) color_width;
 	return mix(colors[index1], colors[index2], rate);
 }
 

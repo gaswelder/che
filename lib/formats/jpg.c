@@ -129,8 +129,8 @@ void read_app1(jpeg_t *self, reader.t *r) {
 	uint8_t *buf = calloc!(len - 2, 1);
 	reader.read(r, buf, len - 2);
 
-	if (strcmp((char *) buf, "Exif") == 0 && buf[4] == 0 && buf[5] == 0) {
-		tiff.file_t *tf = tiff.parse(buf + 6, len-2-6);
+	if (strcmp((char*) buf, "Exif") == 0 && buf[4] == 0 && buf[5] == 0) {
+		tiff.file_t *tf = tiff.parse(buf + 6, len - 2 - 6);
 		uint32_t gpspos = 0;
 		int orientation = 1;
 		for (size_t i = 0; i < tf->ndirs; i++) {
@@ -414,7 +414,7 @@ void read_scan_data(jpeg_t *self, reader.t *r) {
 		for (int mx = 0; mx < mcus_w; mx++) {
 			// Restart boundary: drop the remaining bits of the partial
 			// byte, consume the restart marker, reset DC predictors.
-			if (ri > 0 && i > 0 && i % ri == 0) {
+			if (ri > 0 && i > 0 && (i % ri) == 0) {
 				br->rem = 0;
 				uint8_t m = 0;
 				if (reader.read(r, &m, 1) != 1 || m < 0xd0 || m > 0xd7) {
@@ -591,7 +591,7 @@ void readblock(bits.reader_t *br, huffman.reader_t *hrdc, *hrac, int prevdc, int
 
 	// 63 ACs: val from rle+huff+bits spaghetti
 	int l = 1;
-	while (l<64) {
+	while (l < 64) {
 		// huff(run,size)
 		code = huffman.read(hrac);
 		if (code == EOF) {

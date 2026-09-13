@@ -158,6 +158,7 @@ fn parse_compat_macro(l: &mut Lexer) -> Result<ModElem, Error> {
 
 fn parse_module_object(l: &mut Lexer, ctx: &ParseCtx) -> Result<TWithErrors<ModElem>, Error> {
     let pos = l.peek().unwrap().pos.clone();
+    let mut spaces_top = String::new();
     let mut is_pub = false;
     let mut comments = None;
 
@@ -165,6 +166,7 @@ fn parse_module_object(l: &mut Lexer, ctx: &ParseCtx) -> Result<TWithErrors<ModE
         let tok = l.get().unwrap();
         is_pub = true;
         comments = tok.comments;
+        spaces_top += &tok.spaces_before;
     }
     if l.follows("enum") {
         return Ok(TWithErrors {
@@ -200,12 +202,15 @@ fn parse_module_object(l: &mut Lexer, ctx: &ParseCtx) -> Result<TWithErrors<ModE
     let comments = type_name.comments.clone();
     return Ok(TWithErrors {
         obj: ModElem::ModVar(VarDecl {
+            source_info: SourceInfo {
+                pos,
+                spaces_top,
+                comments,
+                trailing_comment: semi.trailing_comment,
+            },
             typename: type_name,
             form,
             value: Some(value),
-            pos,
-            trailing_comment: semi.trailing_comment,
-            comments,
         }),
         errors: Vec::new(),
     });
@@ -293,12 +298,7 @@ fn base(l: &mut Lexer, ctx: &ParseCtx) -> Result<Expr, Error> {
         let pos = next.pos.clone();
         // call
         if next.kind == "(" {
-            let mut comments = None;
-            match &r {
-                Expr::NsName(ns_name) => comments = ns_name.comments.clone(),
-                _ => {}
-            }
-            r = parse_call(l, ctx, r, comments)?;
+            r = parse_call(l, ctx, r)?;
             continue;
         }
 
@@ -738,12 +738,7 @@ fn parse_sizeof(l: &mut Lexer, ctx: &ParseCtx) -> Result<Expr, Error> {
     }));
 }
 
-fn parse_call(
-    l: &mut Lexer,
-    ctx: &ParseCtx,
-    func: Expr,
-    comments: Option<Vec<String>>,
-) -> Result<Expr, Error> {
+fn parse_call(l: &mut Lexer, ctx: &ParseCtx, func: Expr) -> Result<Expr, Error> {
     let mut args = Vec::new();
     let tok = expect(l, "(", None)?;
     if l.more() && l.peek().unwrap().kind != ")" {
@@ -755,7 +750,6 @@ fn parse_call(
     }
     expect(l, ")", None)?;
     return Ok(Expr::Call(nodes::Call {
-        comments,
         pos: tok.pos,
         func: Box::new(func),
         args,
@@ -777,7 +771,10 @@ fn parse_while(l: &mut Lexer, ctx: &ParseCtx) -> Result<TWithErrors<FunctionElem
     });
 }
 
-fn parse_statement(l: &mut Lexer, ctx: &ParseCtx) -> Result<TWithErrors<FunctionElement>, Error> {
+fn parse_function_element(
+    l: &mut Lexer,
+    ctx: &ParseCtx,
+) -> Result<TWithErrors<FunctionElement>, Error> {
     if !l.more() {
         return Err(Error {
             message: String::from("reached end of file while parsing statement"),
@@ -786,7 +783,7 @@ fn parse_statement(l: &mut Lexer, ctx: &ParseCtx) -> Result<TWithErrors<Function
     }
     if type_follows(l, ctx) {
         return Ok(TWithErrors {
-            obj: parse_variable_declaration(l, ctx)?,
+            obj: parse_vardecl(l, ctx)?,
             errors: Vec::new(),
         });
     }
@@ -818,10 +815,14 @@ fn parse_statement(l: &mut Lexer, ctx: &ParseCtx) -> Result<TWithErrors<Function
         "switch" => read_switch(l, ctx),
         "while" => parse_while(l, ctx),
         _ => {
+            let comments = next.comments.clone();
+            let sb = next.spaces_before.clone();
             let expr = parse_expr(l, 0, ctx)?;
             let semi = expect(l, ";", Some("parsing statement"))?;
             return Ok(TWithErrors {
                 obj: FunctionElement::Statement(Statement {
+                    spaces_top: sb,
+                    comments,
                     expr,
                     trailing_comment: semi.trailing_comment,
                 }),
@@ -831,8 +832,18 @@ fn parse_statement(l: &mut Lexer, ctx: &ParseCtx) -> Result<TWithErrors<Function
     }
 }
 
-fn parse_variable_declaration(l: &mut Lexer, ctx: &ParseCtx) -> Result<FunctionElement, Error> {
-    let pos = l.peek().unwrap().pos.clone();
+fn parse_vardecl(l: &mut Lexer, ctx: &ParseCtx) -> Result<FunctionElement, Error> {
+    let next = l.peek().unwrap();
+    let mut source_info = SourceInfo {
+        comments: next.comments.clone(),
+        pos: next.pos.clone(),
+        spaces_top: next.spaces_before.clone(),
+        trailing_comment: None,
+    };
+    // let pos = next.pos.clone();
+    // let spaces_top = next.spaces_before.clone();
+    // let comments = type_name.comments.clone();
+
     let type_name = parse_typename(l, ctx)?;
     let form = parse_form(l, ctx)?;
     let value = if l.eat("=") {
@@ -843,30 +854,41 @@ fn parse_variable_declaration(l: &mut Lexer, ctx: &ParseCtx) -> Result<FunctionE
     if !flags::SLOPPY_CODE && value.is_none() {
         return Err(Error {
             message: format!("uninitialized variable"),
-            pos,
+            pos: form.pos,
         });
     }
     let semi = expect(l, ";", None)?;
-    let comments = type_name.comments.clone();
+    source_info.trailing_comment = semi.trailing_comment;
+
     return Ok(FunctionElement::VarDecl(VarDecl {
-        pos,
+        source_info,
         typename: type_name,
         form,
         value,
-        trailing_comment: semi.trailing_comment,
-        comments,
     }));
 }
 
 fn parse_return(l: &mut Lexer, ctx: &ParseCtx) -> Result<FunctionElement, Error> {
-    expect(l, "return", None)?;
+    let t1 = expect(l, "return", None)?;
+    let mut source_info = SourceInfo {
+        comments: t1.comments.clone(),
+        pos: t1.pos.clone(),
+        spaces_top: t1.spaces_before.clone(),
+        trailing_comment: None,
+    };
     if l.peek().unwrap().kind == ";" {
-        l.get();
-        return Ok(FunctionElement::Return(nodes::Return { expression: None }));
+        let t2 = l.get().unwrap();
+        source_info.trailing_comment = t2.trailing_comment;
+        return Ok(FunctionElement::Return(nodes::Return {
+            source_info,
+            expression: None,
+        }));
     }
     let expression = parse_expr(l, 0, ctx)?;
-    expect(l, ";", None)?;
+    let t2 = expect(l, ";", None)?;
+    source_info.trailing_comment = t2.trailing_comment;
     return Ok(FunctionElement::Return(nodes::Return {
+        source_info,
         expression: Some(expression),
     }));
 }
@@ -934,7 +956,12 @@ fn parse_if(lexer: &mut Lexer, ctx: &ParseCtx) -> Result<TWithErrors<FunctionEle
     }
     return Ok(TWithErrors {
         obj: FunctionElement::If(nodes::If {
-            comments: tokif.comments,
+            source_info: SourceInfo {
+                pos: tokif.pos.clone(),
+                spaces_top: tokif.spaces_before.clone(),
+                comments: tokif.comments.clone(),
+                trailing_comment: None,
+            },
             condition,
             body: body.obj,
             else_body,
@@ -944,7 +971,7 @@ fn parse_if(lexer: &mut Lexer, ctx: &ParseCtx) -> Result<TWithErrors<FunctionEle
 }
 
 fn parse_for(l: &mut Lexer, ctx: &ParseCtx) -> Result<TWithErrors<FunctionElement>, Error> {
-    expect(l, "for", None)?;
+    let t1 = expect(l, "for", None)?;
     expect(l, "(", None)?;
 
     let init: Option<ForInit>;
@@ -985,6 +1012,12 @@ fn parse_for(l: &mut Lexer, ctx: &ParseCtx) -> Result<TWithErrors<FunctionElemen
 
     return Ok(TWithErrors {
         obj: FunctionElement::For(nodes::For {
+            source_info: SourceInfo {
+                pos: t1.pos.clone(),
+                spaces_top: t1.spaces_before.clone(),
+                comments: t1.comments.clone(),
+                trailing_comment: None,
+            },
             init,
             condition,
             action,
@@ -1140,7 +1173,7 @@ fn parse_statements_block(l: &mut Lexer, ctx: &ParseCtx) -> Result<TWithErrors<B
     if l.follows("{") {
         return read_body(l, ctx);
     }
-    let s = parse_statement(l, ctx)?;
+    let s = parse_function_element(l, ctx)?;
     return Ok(TWithErrors {
         obj: Body {
             trailing_comment: None,
@@ -1155,7 +1188,7 @@ fn read_body(l: &mut Lexer, ctx: &ParseCtx) -> Result<TWithErrors<Body>, Error> 
     let mut errors = Vec::new();
     expect(l, "{", None)?;
     while !l.follows("}") {
-        match parse_statement(l, ctx) {
+        match parse_function_element(l, ctx) {
             Ok(s) => {
                 statements.push(s.obj);
                 for e in s.errors {
