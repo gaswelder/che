@@ -69,11 +69,8 @@ pub bool write(image.image_t *img, const char *path, int mode) {
 	// Write out the palette, if in palette mode.
 	//
 	if (mode == PNG_PALETTE) {
-		char entry[3];
-		size_t s = psize;
-		if (s < 16) {
-			s = 16; /* minimum palette length */
-		}
+		char entry[3] = {};
+		size_t s = max(16, psize); // 16 is the minimum palette length.
 		png_new_chunk(tmp, "PLTE", 3 * s);
 		for (size_t index = 0; index < s; index++) {
 			uint32_t color = palette[index];

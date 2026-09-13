@@ -86,11 +86,11 @@ pub fn func_calloc() -> c::ModElem {
     })
 }
 
-pub fn func_minmax_ii(f: &str) -> c::ModElem {
+pub fn func_minmax(f: &str, argtype: &str, suffix: &str) -> c::ModElem {
     let arg1 = c::CTypeForm {
         type_name: c::Typename {
             is_const: false,
-            name: "int".to_string(),
+            name: argtype.to_string(),
         },
         form: c::Form {
             indexes: vec![],
@@ -101,7 +101,7 @@ pub fn func_minmax_ii(f: &str) -> c::ModElem {
     let arg2 = c::CTypeForm {
         type_name: c::Typename {
             is_const: false,
-            name: "int".to_string(),
+            name: argtype.to_string(),
         },
         form: c::Form {
             indexes: vec![],
@@ -118,11 +118,11 @@ pub fn func_minmax_ii(f: &str) -> c::ModElem {
         is_static: true,
         type_name: c::Typename {
             is_const: false,
-            name: "int".to_string(),
+            name: argtype.to_string(),
         },
         form: c::Form {
             stars: "".to_string(),
-            name: format!("__{}_ii", f),
+            name: format!("__{}_{}", f, suffix),
             indexes: Vec::new(),
         },
         parameters: c::FuncParams {

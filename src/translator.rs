@@ -133,8 +133,10 @@ pub fn translate_mods(
         for c in &ctx.used_customs {
             let x = match c.as_str() {
                 "calloc_or_panic" => makers::func_calloc(),
-                "__min_ii" => makers::func_minmax_ii("min"),
-                "__max_ii" => makers::func_minmax_ii("max"),
+                "__min_ii" => makers::func_minmax("min", "int", "ii"),
+                "__max_ii" => makers::func_minmax("max", "int", "ii"),
+                "__max_zz" => makers::func_minmax("max", "size_t", "zz"),
+                "__min_zz" => makers::func_minmax("min", "size_t", "zz"),
                 "nelem" => c::ModElem::Macro(c::Macro {
                     name: "define".to_string(),
                     value: "nelem(x) (sizeof (x)/sizeof (x)[0])".to_string(),
@@ -713,12 +715,20 @@ fn tr_minmax(ctx: &mut TrCtx, x: &Call, f: &str) -> Result<Typed<c::Expr>, Build
     }
     let a = tr_expr(&x.args[0], ctx)?;
     let b = tr_expr(&x.args[1], ctx)?;
-    match (types::classify(&a.typ), types::classify(&b.typ)) {
-        (types::Class::CONSTNUM, types::Class::CONSTNUM) => {
+    match (a.typ.fmt().as_str(), b.typ.fmt().as_str()) {
+        ("number", "number") => {
             let fname = format!("__{}_ii", f);
             ctx.used_customs.insert(fname.clone());
             return Ok(Typed {
                 typ: types::just("int"),
+                val: makers::expr_call(&fname, vec![a.val, b.val]),
+            });
+        }
+        ("number", "size_t") => {
+            let fname = format!("__{}_zz", f);
+            ctx.used_customs.insert(fname.clone());
+            return Ok(Typed {
+                typ: types::just("size_t"),
                 val: makers::expr_call(&fname, vec![a.val, b.val]),
             });
         }
