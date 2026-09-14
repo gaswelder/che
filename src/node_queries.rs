@@ -1,11 +1,11 @@
 use crate::{buf::Pos, nodes::*};
 
 pub fn body_returns(b: &Body) -> bool {
-    let n = b.statements.len();
+    let n = b.items.len();
     if n == 0 {
         return false;
     }
-    let last = &b.statements[n - 1];
+    let last = &b.items[n - 1];
     return match last {
         FunctionElement::Return { .. } => true,
         FunctionElement::If(x) => body_returns(&x.body),

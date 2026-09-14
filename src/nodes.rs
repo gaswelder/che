@@ -56,7 +56,6 @@ pub enum FunctionElement {
 #[derive(Debug, Clone)]
 pub struct Statement {
     pub source_info: SourceInfo,
-    pub trailing_comment: Option<String>,
     pub expr: Expr,
 }
 
@@ -248,7 +247,7 @@ pub enum SizeofArg {
 #[derive(Debug, Clone)]
 pub struct Body {
     pub trailing_comment: Option<String>,
-    pub statements: Vec<FunctionElement>,
+    pub items: Vec<FunctionElement>,
 }
 
 #[derive(Debug, Clone)]
@@ -288,6 +287,7 @@ pub struct For {
 
 #[derive(Debug, Clone)]
 pub struct While {
+    pub source_info: SourceInfo,
     pub cond: Expr,
     pub body: Body,
 }

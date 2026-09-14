@@ -746,7 +746,7 @@ fn tr_minmax(ctx: &mut TrCtx, x: &Call, f: &str) -> Result<Typed<c::Expr>, Build
 fn tr_body(b: &Body, ctx: &mut TrCtx) -> Result<c::Body, BuildError> {
     let mut statements: Vec<c::Statement> = Vec::new();
     begin_scope(ctx);
-    for s in &b.statements {
+    for s in &b.items {
         statements.push(match s {
             FunctionElement::Break => c::Statement::Break,
             FunctionElement::Continue => c::Statement::Continue,

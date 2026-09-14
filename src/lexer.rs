@@ -76,7 +76,9 @@ fn read_token(buf: &mut Buf) -> Option<Token> {
     buf.read_set(HSPACES);
     if buf.skip_literal("//") {
         buf.read_set(HSPACES);
-        tok.trailing_comment = Some(buf.until_literal("\n"));
+        let mut c = String::from("// ");
+        c += &buf.until_literal("\n");
+        tok.trailing_comment = Some(c);
     }
     if buf.literal_follows("/*") {
         tok.trailing_comment = Some(read_multiline_comment(buf).content);

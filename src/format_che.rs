@@ -1,3 +1,5 @@
+use substring::Substring;
+
 use crate::nodes::*;
 use crate::parser;
 
@@ -154,7 +156,7 @@ fn fmt_func(x: &FuncDecl) -> String {
         }
     }
     s += ") {\n";
-    for st in &x.body.statements {
+    for st in &x.body.items {
         s += &format!("{}\n", indent(&fmt_func_element(&st)));
     }
     s += "}\n";
@@ -168,19 +170,21 @@ fn fmt_func_element(s: &FunctionElement) -> String {
         FunctionElement::VarDecl(x) => fmt_var(x),
         FunctionElement::If(x) => fmt_if(&x),
         FunctionElement::For(x) => fmt_for(&x),
-        FunctionElement::While(x) => {
-            let mut s = String::new();
-            s += &format!("while ({}) {{\n", fmt_expr(&x.cond));
-            for st in &x.body.statements {
-                s += &format!("{}\n", indent(&fmt_func_element(&st)))
-            }
-            s += "}";
-            s
-        }
+        FunctionElement::While(x) => fmt_while(&x),
         FunctionElement::Return(x) => fmt_return(&x),
         FunctionElement::Switch(x) => fmt_switch(&x),
         FunctionElement::Statement(x) => fmt_statement(&x),
     }
+}
+
+fn fmt_while(x: &While) -> String {
+    let mut s = fmt_begin(&x.source_info);
+    s += &format!("while ({}) {{\n", fmt_expr(&x.cond));
+    for st in &x.body.items {
+        s += &format!("{}\n", indent(&fmt_func_element(&st)))
+    }
+    s += "}";
+    s
 }
 
 fn fmt_return(x: &Return) -> String {
@@ -226,7 +230,7 @@ fn fmt_for(x: &For) -> String {
         s += &fmt_expr(&e);
     }
     s += ") {\n";
-    for st in &x.body.statements {
+    for st in &x.body.items {
         s += &format!("{}\n", indent(&fmt_func_element(&st)));
     }
     s += "}";
@@ -237,9 +241,7 @@ fn fmt_statement(x: &Statement) -> String {
     let mut s = fmt_begin(&x.source_info);
     s += &fmt_expr(&x.expr);
     s += ";";
-    if let Some(c) = &x.trailing_comment {
-        s += &format!(" // {}", c);
-    }
+    s += &fmt_end(&x.source_info);
     s
 }
 
@@ -281,21 +283,21 @@ fn fmt_cases(x: &Switch) -> String {
                 SwitchCaseValue::Literal(literal) => s += &fmt_literal(&literal),
             }
         }
-        let n = c.body.statements.len();
+        let n = c.body.items.len();
         match n {
             0 => {
                 s += ": {}";
             }
             1 => {
                 s += ": { ";
-                for st in &c.body.statements {
+                for st in &c.body.items {
                     s += &fmt_func_element(&st);
                 }
                 s += " }";
             }
             _ => {
                 s += ": {\n";
-                for st in &c.body.statements {
+                for st in &c.body.items {
                     s += &indent(&fmt_func_element(&st));
                     s += "\n";
                 }
@@ -308,7 +310,7 @@ fn fmt_cases(x: &Switch) -> String {
     }
     if let Some(c) = &x.default_case {
         s += "\ndefault";
-        let n = c.statements.len();
+        let n = c.items.len();
         match n {
             0 => {
                 s += ": {\n";
@@ -316,14 +318,14 @@ fn fmt_cases(x: &Switch) -> String {
             }
             1 => {
                 s += ": { ";
-                for st in &c.statements {
+                for st in &c.items {
                     s += &format!("{}", fmt_func_element(&st));
                 }
                 s += " }";
             }
             _ => {
                 s += ": {\n";
-                for st in &c.statements {
+                for st in &c.items {
                     s += &format!("\t{}\n", fmt_func_element(&st));
                 }
                 s += "}";
@@ -336,7 +338,7 @@ fn fmt_cases(x: &Switch) -> String {
 fn fmt_if(x: &If) -> String {
     let mut s = fmt_begin(&x.source_info);
     s += &format!("if ({}) {{\n", fmt_expr(&x.condition));
-    for st in &x.body.statements {
+    for st in &x.body.items {
         s += &format!("{}\n", &indent(&fmt_func_element(&st)));
     }
     s += "}";
@@ -348,8 +350,8 @@ fn fmt_if(x: &If) -> String {
     s += " else ";
 
     let mut single_nested_if = None;
-    if e.statements.len() == 1 {
-        if let FunctionElement::If(x) = &e.statements[0] {
+    if e.items.len() == 1 {
+        if let FunctionElement::If(x) = &e.items[0] {
             single_nested_if = Some(x);
         }
     }
@@ -359,7 +361,7 @@ fn fmt_if(x: &If) -> String {
     }
 
     s += "{\n";
-    for st in &e.statements {
+    for st in &e.items {
         s += &format!("{}\n", &indent(&fmt_func_element(&st)));
     }
     s += "}";
@@ -653,7 +655,12 @@ fn fmt_begin(x: &SourceInfo) -> String {
 fn fmt_end(x: &SourceInfo) -> String {
     let mut s = String::new();
     if let Some(c) = &x.trailing_comment {
-        s += &format!(" {}", c);
+        if c.starts_with("/*") && c.find('\n').is_none() {
+            let cleaned = c.substring(2, c.len() - 2).trim();
+            s += &format!(" // {}", cleaned);
+        } else {
+            s += &format!(" {}", c);
+        }
     }
     s
 }

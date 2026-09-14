@@ -614,13 +614,14 @@ fn parse_enum(l: &mut Lexer, is_pub: bool, ctx: &ParseCtx) -> Result<ModElem, Er
     let mut entries = Vec::new();
     while l.more() && !l.follows("}") {
         let mut item = parse_enum_entry(l, ctx)?;
-        if !l.follows(",") {
+        if l.follows(",") {
+            let t = l.get().unwrap();
+            item.source_info.trailing_comment = t.trailing_comment;
+            entries.push(item);
+        } else {
             entries.push(item);
             break;
         }
-        let t = l.get().unwrap();
-        item.source_info.trailing_comment = t.trailing_comment;
-        entries.push(item);
     }
     expect(l, "}")?;
     if l.follows(";") {
@@ -741,13 +742,15 @@ fn parse_call(l: &mut Lexer, ctx: &ParseCtx, func: Expr) -> Result<Expr, Error> 
 }
 
 fn parse_while(l: &mut Lexer, ctx: &ParseCtx) -> Result<TWithErrors<FunctionElement>, Error> {
-    expect(l, "while")?;
+    let t1 = expect(l, "while")?;
+    let source_info = si(&t1);
     expect(l, "(")?;
     let condition = parse_expr(l, 0, ctx)?;
     expect(l, ")")?;
     let body = parse_statements_block(l, ctx)?;
     return Ok(TWithErrors {
         obj: FunctionElement::While(nodes::While {
+            source_info,
             cond: condition,
             body: body.obj,
         }),
@@ -773,7 +776,7 @@ fn parse_function_element(
     }
 
     let next = l.peek().unwrap();
-    let source_info = si(&next);
+    let mut source_info = si(&next);
     match next.kind.as_str() {
         "break" => {
             l.get().unwrap();
@@ -802,12 +805,9 @@ fn parse_function_element(
         _ => {
             let expr = parse_expr(l, 0, ctx)?;
             let semi = expect(l, ";")?;
+            source_info.trailing_comment = semi.trailing_comment;
             return Ok(TWithErrors {
-                obj: FunctionElement::Statement(Statement {
-                    source_info,
-                    expr,
-                    trailing_comment: semi.trailing_comment,
-                }),
+                obj: FunctionElement::Statement(Statement { source_info, expr }),
                 errors: Vec::new(),
             });
         }
@@ -1136,7 +1136,7 @@ fn parse_statements_block(l: &mut Lexer, ctx: &ParseCtx) -> Result<TWithErrors<B
     return Ok(TWithErrors {
         obj: Body {
             trailing_comment: None,
-            statements: vec![s.obj],
+            items: vec![s.obj],
         },
         errors: s.errors,
     });
@@ -1168,7 +1168,7 @@ fn read_body(l: &mut Lexer, ctx: &ParseCtx) -> Result<TWithErrors<Body>, Error> 
     let t = expect(l, "}")?;
     return Ok(TWithErrors {
         obj: Body {
-            statements,
+            items: statements,
             trailing_comment: t.trailing_comment,
         },
         errors,
@@ -1311,6 +1311,6 @@ fn si(tok: &Token) -> SourceInfo {
         pos: tok.pos.clone(),
         spaces_top: tok.spaces_before.clone(),
         comments: tok.comments.clone(),
-        trailing_comment: None,
+        trailing_comment: tok.trailing_comment.clone(),
     }
 }
