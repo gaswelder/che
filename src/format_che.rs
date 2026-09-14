@@ -1,8 +1,7 @@
-use crate::nodes;
 use crate::nodes::*;
 use crate::parser;
 
-pub fn fmt_mod(m: &nodes::Module) -> String {
+pub fn fmt_mod(m: &Module) -> String {
     let mut imports = Vec::new();
     let mut rest = Vec::new();
     for e in &m.elements {
@@ -13,7 +12,7 @@ pub fn fmt_mod(m: &nodes::Module) -> String {
     }
 
     let mut top_comment = None;
-    if imports.len() > 0 {
+    if !imports.is_empty() {
         top_comment = imports[0].source_info.comments.clone();
     }
 
@@ -196,8 +195,7 @@ fn fmt_return(x: &Return) -> String {
 }
 
 fn fmt_for(x: &For) -> String {
-    let mut s = String::new();
-    s += &fmt_begin(&x.source_info);
+    let mut s = fmt_begin(&x.source_info);
     s += "for (";
     if let Some(init) = &x.init {
         match init {
@@ -236,8 +234,7 @@ fn fmt_for(x: &For) -> String {
 }
 
 fn fmt_statement(x: &Statement) -> String {
-    let mut s = String::new();
-    s += &fmt_begin(&x.source_info);
+    let mut s = fmt_begin(&x.source_info);
     s += &fmt_expr(&x.expr);
     s += ";";
     if let Some(c) = &x.trailing_comment {
@@ -247,8 +244,7 @@ fn fmt_statement(x: &Statement) -> String {
 }
 
 fn fmt_var(x: &VarDecl) -> String {
-    let mut s = String::new();
-    s += &fmt_begin(&x.source_info);
+    let mut s = fmt_begin(&x.source_info);
     s += &fmt_typename(&x.typename);
     s += " ";
     s += &fmt_form(&x.form);
@@ -338,8 +334,7 @@ fn fmt_cases(x: &Switch) -> String {
 }
 
 fn fmt_if(x: &If) -> String {
-    let mut s = String::new();
-    s += &fmt_begin(&x.source_info);
+    let mut s = fmt_begin(&x.source_info);
     s += &format!("if ({}) {{\n", fmt_expr(&x.condition));
     for st in &x.body.statements {
         s += &format!("{}\n", &indent(&fmt_func_element(&st)));
@@ -376,10 +371,10 @@ pub fn fmt_field_access(x: &FieldAccess) -> String {
 }
 
 fn fmt_nsname(x: &NsName) -> String {
-    if x.ns == "" {
-        format!("{}", &x.name)
+    if x.ns.is_empty() {
+        x.name.clone()
     } else {
-        format!("{}.{}", &x.ns, &x.name)
+        format!("{}.{}", x.ns, x.name)
     }
 }
 
@@ -397,7 +392,7 @@ pub fn fmt_expr(expr: &Expr) -> String {
                 SizeofArg::Typename(x) => fmt_bare_typeform(&x),
                 SizeofArg::Expr(x) => fmt_expr(&x),
             };
-            return format!("sizeof({})", arg);
+            format!("sizeof({})", arg)
         }
         Expr::BinaryOp(x) => fmt_binop(&x),
         Expr::PrefixOperator(x) => {
@@ -413,7 +408,7 @@ pub fn fmt_expr(expr: &Expr) -> String {
                 }
                 None => {}
             }
-            return match expr {
+            match expr {
                 Expr::BinaryOp(x) => {
                     format!("{}({})", operator, fmt_binop(&x))
                 }
@@ -421,25 +416,22 @@ pub fn fmt_expr(expr: &Expr) -> String {
                     let type_name = &x.typeform;
                     let operand = &x.operand;
                     format!(
-                        "{}{}",
+                        "{}({})({})",
                         operator,
-                        format!(
-                            "({})({})",
-                            fmt_bare_typeform(&type_name),
-                            fmt_expr(&operand)
-                        )
+                        fmt_bare_typeform(&type_name),
+                        fmt_expr(&operand)
                     )
                 }
                 _ => format!("{}{}", operator, fmt_expr(&operand)),
-            };
+            }
         }
         Expr::PostfixOperator(x) => {
             let operand = &x.operand;
             let operator = &x.operator;
-            return fmt_expr(&operand) + &operator;
+            fmt_expr(&operand) + &operator
         }
         Expr::ArrIndex(x) => {
-            return format!("{}[{}]", fmt_expr(&x.array), fmt_expr(&x.index));
+            format!("{}[{}]", fmt_expr(&x.array), fmt_expr(&x.index))
         }
     }
 }
@@ -544,7 +536,7 @@ fn fmt_cast(x: &Cast) -> String {
 }
 
 pub fn fmt_typename(t: &Typename) -> String {
-    let name = if t.name.ns != "" {
+    let name = if !t.name.ns.is_empty() {
         format!("{}.{}", t.name.ns, t.name.name)
     } else {
         t.name.name.clone()
@@ -650,7 +642,7 @@ fn indent(s: &str) -> String {
 
 fn fmt_begin(x: &SourceInfo) -> String {
     let mut s = String::new();
-    let n = x.spaces_top.matches("\n").count();
+    let n = x.spaces_top.matches('\n').count();
     if n > 1 {
         s += "\n";
     }

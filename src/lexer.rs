@@ -285,13 +285,13 @@ mod tests {
             C {
                 input: "/* \ncomment /* comment \n*/ 123",
                 kind: "comment",
-                content: " \ncomment /* comment \n",
+                content: "/* \ncomment /* comment \n*/",
                 pos: "1:1",
             },
             C {
                 input: "// comment\n123",
                 kind: "comment",
-                content: " comment",
+                content: "// comment",
                 pos: "1:1",
             },
             C {
