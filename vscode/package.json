@@ -1,0 +1,49 @@
+{
+  "name": "che-lsp",
+  "displayName": "Che LSP",
+  "description": "",
+  "version": "0.0.1",
+  "publisher": "che-dev",
+  "engines": {
+    "vscode": "^1.75.0"
+  },
+  "activationEvents": [
+    "onLanguage:c"
+  ],
+  "main": "./extension.js",
+  "contributes": {
+    "languages": [
+      {
+        "id": "che",
+        "aliases": [
+          "Che",
+          "che"
+        ],
+        "extensions": [
+          ".che"
+        ],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "commands": [
+      {
+        "command": "che-lsp.logs",
+        "title": "Che: Show language server logs"
+      },
+      {
+        "command": "che-lsp.restart",
+        "title": "Che: Restart language server"
+      }
+    ],
+    "configuration": {
+      "title": "Che",
+      "properties": {
+        "che.lsp.path": {
+          "type": "string",
+          "default": "che",
+          "description": "che executable path"
+        }
+      }
+    }
+  }
+}

@@ -12,6 +12,7 @@ mod main_exports;
 mod main_fmt;
 mod main_genc;
 mod main_install;
+mod main_lsp;
 mod main_run;
 mod main_test;
 mod node_queries;
@@ -46,6 +47,7 @@ static SUBCOMMANDS: &[(&str, &str, SubcommandFn)] = &[
     ),
     ("test", "Run tests", main_test::run),
     ("fmt", "Format source code", main_fmt::run),
+    ("lsp", "Run language server", main_lsp::run),
 ];
 
 fn main() {
