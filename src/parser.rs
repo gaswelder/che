@@ -607,37 +607,20 @@ fn parse_literal(l: &mut Lexer) -> Result<Literal, Error> {
 }
 
 fn parse_enum(l: &mut Lexer, is_pub: bool, ctx: &ParseCtx) -> Result<ModElem, Error> {
-    let next = l.peek().unwrap();
-    let mut source_info = si(&next);
+    let t1 = expect(l, "enum")?;
+    let mut source_info = si(&t1);
+    expect(l, "{")?;
 
     let mut entries = Vec::new();
-    expect(l, "enum")?;
-    expect(l, "{")?;
-    loop {
-        let name = expect(l, "word")?;
-        let val = if l.eat("=") {
-            Some(parse_expr(l, 0, ctx)?)
-        } else {
-            None
-        };
-        let mut source_info = si(&name);
-        let mut more = false;
-        if l.follows(",") {
-            let t = l.get().unwrap();
-            more = true;
-            source_info.trailing_comment = t.trailing_comment;
-        }
-        entries.push(EnumEntry {
-            source_info,
-            name: name.content,
-            val,
-        });
-        if !more {
+    while l.more() && !l.follows("}") {
+        let mut item = parse_enum_entry(l, ctx)?;
+        if !l.follows(",") {
+            entries.push(item);
             break;
         }
-        if l.follows("}") {
-            break;
-        }
+        let t = l.get().unwrap();
+        item.source_info.trailing_comment = t.trailing_comment;
+        entries.push(item);
     }
     expect(l, "}")?;
     if l.follows(";") {
@@ -649,6 +632,21 @@ fn parse_enum(l: &mut Lexer, is_pub: bool, ctx: &ParseCtx) -> Result<ModElem, Er
         is_pub,
         entries,
     }));
+}
+
+fn parse_enum_entry(l: &mut Lexer, ctx: &ParseCtx) -> Result<EnumEntry, Error> {
+    let name = expect(l, "word")?;
+    let source_info = si(&name);
+    let val = if l.eat("=") {
+        Some(parse_expr(l, 0, ctx)?)
+    } else {
+        None
+    };
+    Ok(EnumEntry {
+        source_info,
+        name: name.content,
+        val,
+    })
 }
 
 fn parse_composite_literal(l: &mut Lexer, ctx: &ParseCtx) -> Result<CompLiteral, Error> {

@@ -653,7 +653,7 @@ fn fmt_begin(x: &SourceInfo) -> String {
 fn fmt_end(x: &SourceInfo) -> String {
     let mut s = String::new();
     if let Some(c) = &x.trailing_comment {
-        s += &format!(" // {}", c);
+        s += &format!(" {}", c);
     }
     s
 }
