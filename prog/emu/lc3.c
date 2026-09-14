@@ -9,25 +9,12 @@
  */
 uint16_t reg[10] = {};
 enum {
-	/*
-	 * General purpose registers
-	 */
+	// General purpose registers
 	R_R0 = 0,
-	// R_R1,
-	// R_R2,
-	// R_R3,
-	// R_R4,
-	// R_R5,
-	// R_R6,
+	// R_R1, ... R_R6
 	R_R7 = 7,
-	/*
-	 * Program counter
-	 */
-	R_PC = 8,
-	/*
-	 * Condition flags
-	 */
-	R_COND = 9
+	R_PC = 8, // Program counter
+	R_COND = 9, // Condition flags
 }
 
 /**
@@ -51,12 +38,12 @@ const size_t PC_START = 0x3000;
 
 
 enum {
-	TRAP_GETC = 0x20, /* get character from keyboard, not echoed onto the terminal */
-	TRAP_OUT = 0x21, /* output a character */
-	TRAP_PUTS = 0x22, /* output a word string */
-	TRAP_IN = 0x23, /* get character from keyboard, echoed onto the terminal */
-	TRAP_PUTSP = 0x24, /* output a byte string */
-	TRAP_HALT = 0x25   /* halt the program */
+	TRAP_GETC = 0x20, // get character from keyboard, not echoed onto the terminal
+	TRAP_OUT = 0x21, // output a character
+	TRAP_PUTS = 0x22, // output a word string
+	TRAP_IN = 0x23, // get character from keyboard, echoed onto the terminal
+	TRAP_PUTSP = 0x24, // output a byte string
+	TRAP_HALT = 0x25, // halt the program
 }
 
 enum {
@@ -140,8 +127,8 @@ pub int run(char *rompath) {
 }
 
 enum {
-	MR_KBSR = 0xFE00, /* keyboard status */
-	MR_KBDR = 0xFE02  /* keyboard data */
+	MR_KBSR = 0xFE00, // keyboard status
+	MR_KBDR = 0xFE02, // keyboard data
 }
 void mem_write(uint16_t address, uint16_t val) {
 	memory[address] = val;
@@ -283,18 +270,18 @@ void op_trap(uint16_t instr) {
 	switch (instr & 0xFF) {
 		case TRAP_GETC: {
 			/* read a single ASCII char */
-			reg[R_R0] = (uint16_t)getchar();
+			reg[R_R0] = (uint16_t) getchar();
 			update_flags(R_R0);
 		}
 		case TRAP_OUT: {
-			putc((char)reg[R_R0], stdout);
+			putc((char) reg[R_R0], stdout);
 			fflush(stdout);
 		}
 		case TRAP_PUTS: {
 			/* one char per word */
 			uint16_t *c = memory + reg[R_R0];
 			while (*c) {
-				putc((char)*c, stdout);
+				putc((char) *c, stdout);
 				++c;
 			}
 			fflush(stdout);
@@ -304,20 +291,21 @@ void op_trap(uint16_t instr) {
 			char c = getchar();
 			putc(c, stdout);
 			fflush(stdout);
-			reg[R_R0] = (uint16_t)c;
+			reg[R_R0] = (uint16_t) c;
 			update_flags(R_R0);
 		}
 		case TRAP_PUTSP: {
 			/* one char per byte (two bytes per word)
 			here we need to swap back to
 			big endian format */
-			uint16_t* c = memory + reg[R_R0];
-			while (*c)
-			{
+			uint16_t *c = memory + reg[R_R0];
+			while (*c) {
 				char char1 = (*c) & 0xFF;
 				putc(char1, stdout);
 				char char2 = (*c) >> 8;
-				if (char2) putc(char2, stdout);
+				if (char2) {
+					putc(char2, stdout);
+				}
 				++c;
 			}
 			fflush(stdout);

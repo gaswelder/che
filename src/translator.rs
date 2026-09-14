@@ -1795,7 +1795,7 @@ fn tr_literal(x: &Literal) -> c::CLiteral {
     match x {
         Literal::Char(val) => c::CLiteral::Char(val.clone()),
         Literal::String(val) => c::CLiteral::String(val.clone()),
-        Literal::Number(val) => c::CLiteral::Number(val.clone()),
+        Literal::Number(x) => c::CLiteral::Number(x.val.clone()),
         Literal::Null => c::CLiteral::Null,
     }
 }

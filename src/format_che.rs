@@ -260,7 +260,7 @@ fn fmt_var(x: &VarDecl) -> String {
 }
 
 fn fmt_switch(x: &Switch) -> String {
-    let mut s = String::new();
+    let mut s = fmt_begin(&x.source_info);
     s += &format!("switch ({}) {{\n", fmt_expr(&x.value));
     s += &indent(&fmt_cases(x));
     s += "\n}";
@@ -533,6 +533,7 @@ fn fmt_cast(x: &Cast) -> String {
     match *x.operand {
         Expr::Literal(_) => nobr,
         Expr::NsName(_) => nobr,
+        Expr::Call(_) => nobr,
         _ => br,
     }
 }
@@ -624,7 +625,12 @@ fn fmt_literal(node: &Literal) -> String {
             let parts: Vec<String> = val.iter().map(|x| format!("\"{}\"", x)).collect();
             return parts.join("");
         }
-        Literal::Number(val) => format!("{}", val),
+        Literal::Number(x) => {
+            let mut s = String::new();
+            s += &x.val;
+            s += &fmt_end(&x.source_info);
+            s
+        }
         Literal::Null => String::from("NULL"),
     }
 }

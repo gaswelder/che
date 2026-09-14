@@ -300,10 +300,17 @@ pub struct Return {
 
 #[derive(Debug, Clone)]
 pub struct Switch {
+    pub source_info: SourceInfo,
     pub is_str: bool,
     pub value: Expr,
     pub cases: Vec<SwitchCase>,
     pub default_case: Option<Body>,
+}
+
+#[derive(Debug, Clone)]
+pub struct SwitchCase {
+    pub values: Vec<SwitchCaseValue>,
+    pub body: Body,
 }
 
 // *foo[]
@@ -341,14 +348,14 @@ pub enum SwitchCaseValue {
 pub enum Literal {
     Char(String),
     String(Vec<String>),
-    Number(String),
+    Number(LiteralS),
     Null,
 }
 
 #[derive(Debug, Clone)]
-pub struct SwitchCase {
-    pub values: Vec<SwitchCaseValue>,
-    pub body: Body,
+pub struct LiteralS {
+    pub source_info: SourceInfo,
+    pub val: String,
 }
 
 #[derive(Debug, Clone)]

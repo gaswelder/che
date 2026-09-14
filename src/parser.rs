@@ -573,6 +573,8 @@ fn parse_anonymous_parameters(l: &mut Lexer, ctx: &ParseCtx) -> Result<Anonymous
 
 fn parse_literal(l: &mut Lexer) -> Result<Literal, Error> {
     let next = l.peek().unwrap();
+    let source_info = si(&next);
+
     if next.kind == "string".to_string() {
         let mut ss = Vec::new();
         while l.more() && l.follows("string") {
@@ -590,7 +592,10 @@ fn parse_literal(l: &mut Lexer) -> Result<Literal, Error> {
     }
     if next.kind == "num".to_string() {
         let value = l.get().unwrap().content;
-        return Ok(Literal::Number(value));
+        return Ok(Literal::Number(LiteralS {
+            source_info,
+            val: value,
+        }));
     }
     if next.kind == "char".to_string() {
         let value = l.get().unwrap().content;
@@ -991,7 +996,8 @@ fn parse_for(l: &mut Lexer, ctx: &ParseCtx) -> Result<TWithErrors<FunctionElemen
 }
 
 fn read_switch(l: &mut Lexer, ctx: &ParseCtx) -> Result<TWithErrors<FunctionElement>, Error> {
-    expect(l, "switch")?;
+    let t1 = expect(l, "switch")?;
+    let source_info = si(&t1);
     let mut is_str = false;
     match l.peek() {
         Some(t) => {
@@ -1028,6 +1034,7 @@ fn read_switch(l: &mut Lexer, ctx: &ParseCtx) -> Result<TWithErrors<FunctionElem
     expect(l, "}")?;
     return Ok(TWithErrors {
         obj: FunctionElement::Switch(nodes::Switch {
+            source_info,
             is_str,
             value,
             cases,
