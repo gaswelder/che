@@ -87,10 +87,12 @@ fn read_token(buf: &mut Buf) -> Option<Token> {
         return Some(newtok(pos, "macro", buf.skip_until('\n'), spaces_before));
     }
     if buf.literal_follows("/*") {
-        return Some(read_multiline_comment(buf));
+        let mut tok = read_multiline_comment(buf);
+        tok.spaces_before = spaces_before;
+        return Some(tok);
     }
     if buf.skip_literal("//") {
-        let line = buf.skip_until('\n');
+        let line = String::from("//") + &buf.skip_until('\n');
         return Some(newtok(pos, "comment", line, spaces_before));
     }
 
@@ -246,11 +248,13 @@ fn read_char_literal(buf: &mut Buf) -> Token {
 
 fn read_multiline_comment(buf: &mut Buf) -> Token {
     let pos = buf.pos();
+    let mut comment = String::from("/*");
     buf.skip_literal("/*");
-    let comment = buf.until_literal("*/");
+    comment += &buf.until_literal("*/");
     if !buf.skip_literal("*/") {
         return errtok(pos, "*/ expected".to_string());
     }
+    comment += "*/";
     return newtok(pos, "comment", comment, String::new());
 }
 

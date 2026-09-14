@@ -2,7 +2,6 @@ use crate::buf::Pos;
 
 #[derive(Debug, Clone)]
 pub struct Module {
-    pub imports: Vec<String>,
     pub elements: Vec<ModElem>,
     pub exports: Exports,
 }
@@ -24,13 +23,20 @@ pub fn exports_has(e: &Exports, name: &str) -> bool {
 // Elements than can be at module level.
 #[derive(Debug, Clone)]
 pub enum ModElem {
+    Import(Import),
     Macro(Macro),
-    Enum(Enum),
+    Enum(EnumDecl),
     StructAlias(StructAlias),
     Typedef(Typedef),
     StructTypedef(StructTypedef),
     ModVar(VarDecl),
     FuncDecl(FuncDecl),
+}
+
+#[derive(Debug, Clone)]
+pub struct Import {
+    pub source_info: SourceInfo,
+    pub path: String,
 }
 
 // Elements than can be a part of a function body.
@@ -49,8 +55,7 @@ pub enum FunctionElement {
 
 #[derive(Debug, Clone)]
 pub struct Statement {
-    pub spaces_top: String,
-    pub comments: Option<Vec<String>>,
+    pub source_info: SourceInfo,
     pub trailing_comment: Option<String>,
     pub expr: Expr,
 }
@@ -89,17 +94,17 @@ pub struct Macro {
 
 // enum { A = 1, B, ... }
 #[derive(Debug, Clone)]
-pub struct Enum {
+pub struct EnumDecl {
+    pub source_info: SourceInfo,
     pub is_pub: bool,
     pub entries: Vec<EnumEntry>,
-    pub pos: Pos,
 }
 
 #[derive(Debug, Clone)]
 pub struct EnumEntry {
+    pub source_info: SourceInfo,
     pub name: String,
     pub val: Option<Expr>,
-    // pub pos: Pos,
 }
 
 // pub? int *f(int a, b; double *foo) { ... }

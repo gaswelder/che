@@ -166,6 +166,7 @@ pub fn translate_mods(
 fn init_root_scope(ctx: &mut TrCtx, m: &Module) {
     for x in &m.elements {
         match x {
+            ModElem::Import(_) => {}
             ModElem::Macro(x) => {
                 if x.name == "type" {
                     // addtype(&mut ctx, &x.value.trim(), false, types::unk());
@@ -200,7 +201,7 @@ fn init_root_scope(ctx: &mut TrCtx, m: &Module) {
                             constval: None,
                             ispub: x.is_pub,
                             name: String::from(&e.name),
-                            pos: x.pos.clone(),
+                            pos: x.source_info.pos.clone(),
                             typ: types::number(),
                             used: false,
                         },
@@ -669,6 +670,7 @@ fn nsprefix(prefix: &str, id: &str) -> String {
 
 fn tr_mod_elem(element: &ModElem, ctx: &mut TrCtx) -> Result<Vec<c::ModElem>, BuildError> {
     match element {
+        ModElem::Import(_) => Ok(Vec::new()),
         ModElem::Typedef(x) => tr_typedef(&x, ctx),
         ModElem::StructAlias(x) => Ok(tr_struct_alias(&x, ctx)),
         ModElem::StructTypedef(x) => tr_struct_typedef(&x, ctx),
@@ -893,7 +895,7 @@ fn tr_struct_typedef(x: &StructTypedef, ctx: &mut TrCtx) -> Result<Vec<c::ModEle
 }
 
 // enum { A=1, B, C }
-fn tr_enum(x: &Enum, ctx: &mut TrCtx) -> Result<Vec<c::ModElem>, BuildError> {
+fn tr_enum(x: &EnumDecl, ctx: &mut TrCtx) -> Result<Vec<c::ModElem>, BuildError> {
     let mut entries = Vec::new();
     for e in &x.entries {
         let id = if x.is_pub {

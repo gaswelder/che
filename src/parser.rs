@@ -37,27 +37,27 @@ pub fn parse_module(
     allmods: &Vec<ModuleInfo>,
     thismod: &ModuleInfo,
 ) -> Result<Module, Vec<BuildError>> {
+    let mut _l = lexer::for_file(&thismod.loc.path).unwrap();
+    let l = &mut _l;
+
     let ctx = &ParseCtx {
         thismod: thismod,
         allmods: allmods,
     };
-    let loc = &thismod.loc;
-    let mut _l = lexer::for_file(&loc.path).unwrap();
-    let l = &mut _l;
-
-    let mut module_objects: Vec<ModElem> = vec![];
-
+    let mut elements = Vec::new();
     let mut errors = Vec::new();
-    let mut imports = Vec::new();
 
     while l.more() {
         match l.peek().unwrap().kind.as_str() {
             "import" => {
                 let tok = l.get().unwrap();
-                imports.push(tok.content);
+                elements.push(ModElem::Import(Import {
+                    path: tok.content.clone(),
+                    source_info: si(&tok),
+                }));
             }
             "macro" => match parse_compat_macro(l) {
-                Ok(r) => module_objects.push(r),
+                Ok(r) => elements.push(r),
                 Err(e) => {
                     errors.push(err2berr(thismod, &e));
                 }
@@ -67,7 +67,7 @@ pub fn parse_module(
                     for e in r.errors {
                         errors.push(err2berr(thismod, &e));
                     }
-                    module_objects.push(r.obj);
+                    elements.push(r.obj);
                 }
                 Err(e) => {
                     errors.push(err2berr(thismod, &e));
@@ -78,12 +78,8 @@ pub fn parse_module(
     if errors.len() > 0 {
         return Err(errors);
     }
-    let exports = get_exports(&module_objects);
-    Ok(Module {
-        imports,
-        elements: module_objects,
-        exports,
-    })
+    let exports = get_exports(&elements);
+    Ok(Module { elements, exports })
 }
 
 fn get_exports(elems: &Vec<ModElem>) -> Exports {
@@ -113,19 +109,6 @@ fn get_exports(elems: &Vec<ModElem>) -> Exports {
                     exports.structs.push(x.clone());
                 }
             }
-            // ModuleObject::StructAliasTypedef {
-            //     is_pub,
-            //     struct_name: _,
-            //     type_alias,
-            // } => {
-            //     if *is_pub {
-            //         exports.structs.push(StructTypedef {
-            //             fields: Vec::new(),
-            //             is_pub: *is_pub,
-            //             name: type_alias.clone(),
-            //         })
-            //     }
-            // }
             ModElem::FuncDecl(f) => {
                 if f.ispub {
                     exports.fns.push(f.clone())
@@ -634,22 +617,32 @@ fn parse_literal(l: &mut Lexer) -> Result<Literal, Error> {
 }
 
 fn parse_enum(l: &mut Lexer, is_pub: bool, ctx: &ParseCtx) -> Result<ModElem, Error> {
-    let pos = l.peek().unwrap().pos.clone();
-    let mut entries: Vec<EnumEntry> = Vec::new();
-    expect(l, "enum", Some("enum definition"))?;
-    expect(l, "{", Some("enum definition"))?;
+    let next = l.peek().unwrap();
+    let mut source_info = si(&next);
+
+    let mut entries = Vec::new();
+    expect(l, "enum", None)?;
+    expect(l, "{", None)?;
     loop {
-        let name = expect(l, "word", Some("enum entry - identifier"))?;
+        let name = expect(l, "word", None)?;
         let val = if l.eat("=") {
             Some(parse_expr(l, 0, ctx)?)
         } else {
             None
         };
+        let mut source_info = si(&name);
+        let mut more = false;
+        if l.follows(",") {
+            let t = l.get().unwrap();
+            more = true;
+            source_info.trailing_comment = t.trailing_comment;
+        }
         entries.push(EnumEntry {
+            source_info,
             name: name.content,
             val,
         });
-        if !l.eat(",") {
+        if !more {
             break;
         }
         if l.follows("}") {
@@ -657,11 +650,14 @@ fn parse_enum(l: &mut Lexer, is_pub: bool, ctx: &ParseCtx) -> Result<ModElem, Er
         }
     }
     expect(l, "}", Some("enum definition"))?;
-    l.eat(";");
-    return Ok(ModElem::Enum(nodes::Enum {
+    if l.follows(";") {
+        let semi = l.get().unwrap();
+        source_info.trailing_comment = semi.trailing_comment;
+    }
+    return Ok(ModElem::Enum(nodes::EnumDecl {
+        source_info,
         is_pub,
         entries,
-        pos,
     }));
 }
 
@@ -789,6 +785,7 @@ fn parse_function_element(
     }
 
     let next = l.peek().unwrap();
+    let source_info = si(&next);
     match next.kind.as_str() {
         "break" => {
             l.get().unwrap();
@@ -815,14 +812,11 @@ fn parse_function_element(
         "switch" => read_switch(l, ctx),
         "while" => parse_while(l, ctx),
         _ => {
-            let comments = next.comments.clone();
-            let sb = next.spaces_before.clone();
             let expr = parse_expr(l, 0, ctx)?;
             let semi = expect(l, ";", Some("parsing statement"))?;
             return Ok(TWithErrors {
                 obj: FunctionElement::Statement(Statement {
-                    spaces_top: sb,
-                    comments,
+                    source_info,
                     expr,
                     trailing_comment: semi.trailing_comment,
                 }),
@@ -834,15 +828,7 @@ fn parse_function_element(
 
 fn parse_vardecl(l: &mut Lexer, ctx: &ParseCtx) -> Result<FunctionElement, Error> {
     let next = l.peek().unwrap();
-    let mut source_info = SourceInfo {
-        comments: next.comments.clone(),
-        pos: next.pos.clone(),
-        spaces_top: next.spaces_before.clone(),
-        trailing_comment: None,
-    };
-    // let pos = next.pos.clone();
-    // let spaces_top = next.spaces_before.clone();
-    // let comments = type_name.comments.clone();
+    let mut source_info = si(&next);
 
     let type_name = parse_typename(l, ctx)?;
     let form = parse_form(l, ctx)?;
@@ -870,12 +856,7 @@ fn parse_vardecl(l: &mut Lexer, ctx: &ParseCtx) -> Result<FunctionElement, Error
 
 fn parse_return(l: &mut Lexer, ctx: &ParseCtx) -> Result<FunctionElement, Error> {
     let t1 = expect(l, "return", None)?;
-    let mut source_info = SourceInfo {
-        comments: t1.comments.clone(),
-        pos: t1.pos.clone(),
-        spaces_top: t1.spaces_before.clone(),
-        trailing_comment: None,
-    };
+    let mut source_info = si(&t1);
     if l.peek().unwrap().kind == ";" {
         let t2 = l.get().unwrap();
         source_info.trailing_comment = t2.trailing_comment;
@@ -939,9 +920,12 @@ fn parse_if(lexer: &mut Lexer, ctx: &ParseCtx) -> Result<TWithErrors<FunctionEle
     let mut errors = Vec::new();
 
     let tokif = expect(lexer, "if", Some("if statement"))?;
-    expect(lexer, "(", Some("if statement"))?;
+
+    let source_info = si(&tokif);
+
+    expect(lexer, "(", None)?;
     condition = parse_expr(lexer, 0, ctx)?;
-    expect(lexer, ")", Some("if statement"))?;
+    expect(lexer, ")", None)?;
     body = parse_statements_block(lexer, ctx)?;
     for e in body.errors {
         errors.push(e)
@@ -956,12 +940,7 @@ fn parse_if(lexer: &mut Lexer, ctx: &ParseCtx) -> Result<TWithErrors<FunctionEle
     }
     return Ok(TWithErrors {
         obj: FunctionElement::If(nodes::If {
-            source_info: SourceInfo {
-                pos: tokif.pos.clone(),
-                spaces_top: tokif.spaces_before.clone(),
-                comments: tokif.comments.clone(),
-                trailing_comment: None,
-            },
+            source_info,
             condition,
             body: body.obj,
             else_body,
@@ -1345,4 +1324,13 @@ fn token_to_string(token: &Token) -> String {
     c = c.replace("\n", "\\n");
     c = c.replace("\t", "\\t");
     return format!("[{}, {}]", token.kind, c);
+}
+
+fn si(tok: &Token) -> SourceInfo {
+    SourceInfo {
+        pos: tok.pos.clone(),
+        spaces_top: tok.spaces_before.clone(),
+        comments: tok.comments.clone(),
+        trailing_comment: None,
+    }
 }
