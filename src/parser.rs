@@ -1,4 +1,3 @@
-use crate::buf::Pos;
 use crate::errors::{BuildError, Error, TWithErrors};
 use crate::lexer::{Lexer, Token};
 use crate::nodes;
@@ -140,17 +139,10 @@ fn parse_compat_macro(l: &mut Lexer) -> Result<ModElem, Error> {
 }
 
 fn parse_module_object(l: &mut Lexer, ctx: &ParseCtx) -> Result<TWithErrors<ModElem>, Error> {
-    let pos = l.peek().unwrap().pos.clone();
-    let mut spaces_top = String::new();
-    let mut is_pub = false;
-    let mut comments = None;
+    let pos = l.pos();
+    let source_info = si(l.peek().unwrap());
+    let is_pub = l.eat("pub");
 
-    if l.follows("pub") {
-        let tok = l.get().unwrap();
-        is_pub = true;
-        comments = tok.comments;
-        spaces_top += &tok.spaces_before;
-    }
     if l.follows("enum") {
         return Ok(TWithErrors {
             obj: parse_enum(l, is_pub, ctx)?,
@@ -163,10 +155,11 @@ fn parse_module_object(l: &mut Lexer, ctx: &ParseCtx) -> Result<TWithErrors<ModE
             errors: Vec::new(),
         });
     }
-    let type_name = parse_typename(l, ctx)?;
+    let mut typename = parse_typename(l, ctx)?;
     let form = parse_form(l, ctx)?;
     if l.peek().unwrap().kind == "(" {
-        let r = parse_function_declaration(l, is_pub, type_name, form, ctx, pos, comments)?;
+        typename.source_info.spaces_top = String::new();
+        let r = parse_func(l, ctx, is_pub, typename, form, source_info)?;
         return Ok(TWithErrors {
             obj: r.obj,
             errors: r.errors,
@@ -187,11 +180,11 @@ fn parse_module_object(l: &mut Lexer, ctx: &ParseCtx) -> Result<TWithErrors<ModE
         obj: ModElem::ModVar(VarDecl {
             source_info: SourceInfo {
                 pos,
-                spaces_top,
+                spaces_top: source_info.spaces_top,
                 comments,
                 trailing_comment: semi.trailing_comment,
             },
-            typename: type_name,
+            typename,
             form,
             value: Some(value),
         }),
@@ -741,15 +734,15 @@ fn parse_call(l: &mut Lexer, ctx: &ParseCtx, func: Expr) -> Result<Expr, Error> 
     }));
 }
 
-fn parse_while(l: &mut Lexer, ctx: &ParseCtx) -> Result<TWithErrors<FunctionElement>, Error> {
+fn parse_while(l: &mut Lexer, ctx: &ParseCtx) -> Result<TWithErrors<BlockItem>, Error> {
     let t1 = expect(l, "while")?;
     let source_info = si(&t1);
     expect(l, "(")?;
     let condition = parse_expr(l, 0, ctx)?;
     expect(l, ")")?;
-    let body = parse_statements_block(l, ctx)?;
+    let body = parse_block(l, ctx)?;
     return Ok(TWithErrors {
-        obj: FunctionElement::While(nodes::While {
+        obj: BlockItem::While(nodes::While {
             source_info,
             cond: condition,
             body: body.obj,
@@ -758,10 +751,7 @@ fn parse_while(l: &mut Lexer, ctx: &ParseCtx) -> Result<TWithErrors<FunctionElem
     });
 }
 
-fn parse_function_element(
-    l: &mut Lexer,
-    ctx: &ParseCtx,
-) -> Result<TWithErrors<FunctionElement>, Error> {
+fn parse_block_item(l: &mut Lexer, ctx: &ParseCtx) -> Result<TWithErrors<BlockItem>, Error> {
     if !l.more() {
         return Err(Error {
             message: String::from("reached end of file while parsing statement"),
@@ -776,13 +766,12 @@ fn parse_function_element(
     }
 
     let next = l.peek().unwrap();
-    let mut source_info = si(&next);
     match next.kind.as_str() {
         "break" => {
             l.get().unwrap();
             expect(l, ";")?;
             Ok(TWithErrors {
-                obj: FunctionElement::Break,
+                obj: BlockItem::Break,
                 errors: Vec::new(),
             })
         }
@@ -790,7 +779,7 @@ fn parse_function_element(
             l.get().unwrap();
             expect(l, ";")?;
             Ok(TWithErrors {
-                obj: FunctionElement::Continue,
+                obj: BlockItem::Continue,
                 errors: Vec::new(),
             })
         }
@@ -802,19 +791,22 @@ fn parse_function_element(
         }),
         "switch" => read_switch(l, ctx),
         "while" => parse_while(l, ctx),
-        _ => {
-            let expr = parse_expr(l, 0, ctx)?;
-            let semi = expect(l, ";")?;
-            source_info.trailing_comment = semi.trailing_comment;
-            return Ok(TWithErrors {
-                obj: FunctionElement::Statement(Statement { expr }),
-                errors: Vec::new(),
-            });
-        }
+        _ => parse_statement(l, ctx),
     }
 }
 
-fn parse_vardecl(l: &mut Lexer, ctx: &ParseCtx) -> Result<FunctionElement, Error> {
+fn parse_statement(l: &mut Lexer, ctx: &ParseCtx) -> Result<TWithErrors<BlockItem>, Error> {
+    let mut source_info = si(l.peek().unwrap());
+    let expr = parse_expr(l, 0, ctx)?;
+    let semi = expect(l, ";")?;
+    source_info.trailing_comment = semi.trailing_comment;
+    Ok(TWithErrors {
+        obj: BlockItem::Statement(Statement { source_info, expr }),
+        errors: Vec::new(),
+    })
+}
+
+fn parse_vardecl(l: &mut Lexer, ctx: &ParseCtx) -> Result<BlockItem, Error> {
     let next = l.peek().unwrap();
     let mut source_info = si(&next);
 
@@ -834,7 +826,7 @@ fn parse_vardecl(l: &mut Lexer, ctx: &ParseCtx) -> Result<FunctionElement, Error
     let semi = expect(l, ";")?;
     source_info.trailing_comment = semi.trailing_comment;
 
-    return Ok(FunctionElement::VarDecl(VarDecl {
+    return Ok(BlockItem::VarDecl(VarDecl {
         source_info,
         typename: type_name,
         form,
@@ -842,13 +834,13 @@ fn parse_vardecl(l: &mut Lexer, ctx: &ParseCtx) -> Result<FunctionElement, Error
     }));
 }
 
-fn parse_return(l: &mut Lexer, ctx: &ParseCtx) -> Result<FunctionElement, Error> {
+fn parse_return(l: &mut Lexer, ctx: &ParseCtx) -> Result<BlockItem, Error> {
     let t1 = expect(l, "return")?;
     let mut source_info = si(&t1);
     if l.peek().unwrap().kind == ";" {
         let t2 = l.get().unwrap();
         source_info.trailing_comment = t2.trailing_comment;
-        return Ok(FunctionElement::Return(nodes::Return {
+        return Ok(BlockItem::Return(nodes::Return {
             source_info,
             expression: None,
         }));
@@ -856,7 +848,7 @@ fn parse_return(l: &mut Lexer, ctx: &ParseCtx) -> Result<FunctionElement, Error>
     let expression = parse_expr(l, 0, ctx)?;
     let t2 = expect(l, ";")?;
     source_info.trailing_comment = t2.trailing_comment;
-    return Ok(FunctionElement::Return(nodes::Return {
+    return Ok(BlockItem::Return(nodes::Return {
         source_info,
         expression: Some(expression),
     }));
@@ -901,7 +893,7 @@ fn parse_form(l: &mut Lexer, ctx: &ParseCtx) -> Result<Form, Error> {
     return Ok(node);
 }
 
-fn parse_if(lexer: &mut Lexer, ctx: &ParseCtx) -> Result<TWithErrors<FunctionElement>, Error> {
+fn parse_if(lexer: &mut Lexer, ctx: &ParseCtx) -> Result<TWithErrors<BlockItem>, Error> {
     let mut errors = Vec::new();
     let t1 = expect(lexer, "if")?;
     let source_info = si(&t1);
@@ -909,21 +901,21 @@ fn parse_if(lexer: &mut Lexer, ctx: &ParseCtx) -> Result<TWithErrors<FunctionEle
     expect(lexer, "(")?;
     let condition = parse_expr(lexer, 0, ctx)?;
     expect(lexer, ")")?;
-    let body = parse_statements_block(lexer, ctx)?;
+    let body = parse_block(lexer, ctx)?;
     for e in body.errors {
         errors.push(e)
     }
     let mut else_body = None;
     if lexer.follows("else") {
         lexer.get();
-        let r = parse_statements_block(lexer, ctx)?;
+        let r = parse_block(lexer, ctx)?;
         for e in r.errors {
             errors.push(e)
         }
         else_body = Some(r.obj);
     }
     return Ok(TWithErrors {
-        obj: FunctionElement::If(nodes::If {
+        obj: BlockItem::If(nodes::If {
             source_info,
             condition,
             body: body.obj,
@@ -933,7 +925,7 @@ fn parse_if(lexer: &mut Lexer, ctx: &ParseCtx) -> Result<TWithErrors<FunctionEle
     });
 }
 
-fn parse_for(l: &mut Lexer, ctx: &ParseCtx) -> Result<TWithErrors<FunctionElement>, Error> {
+fn parse_for(l: &mut Lexer, ctx: &ParseCtx) -> Result<TWithErrors<BlockItem>, Error> {
     let t1 = expect(l, "for")?;
     expect(l, "(")?;
 
@@ -971,10 +963,10 @@ fn parse_for(l: &mut Lexer, ctx: &ParseCtx) -> Result<TWithErrors<FunctionElemen
     };
     expect(l, ")")?;
 
-    let body = parse_statements_block(l, ctx)?;
+    let body = parse_block(l, ctx)?;
 
     return Ok(TWithErrors {
-        obj: FunctionElement::For(nodes::For {
+        obj: BlockItem::For(nodes::For {
             source_info: SourceInfo {
                 pos: t1.pos.clone(),
                 spaces_top: t1.spaces_before.clone(),
@@ -990,7 +982,7 @@ fn parse_for(l: &mut Lexer, ctx: &ParseCtx) -> Result<TWithErrors<FunctionElemen
     });
 }
 
-fn read_switch(l: &mut Lexer, ctx: &ParseCtx) -> Result<TWithErrors<FunctionElement>, Error> {
+fn read_switch(l: &mut Lexer, ctx: &ParseCtx) -> Result<TWithErrors<BlockItem>, Error> {
     let t1 = expect(l, "switch")?;
     let source_info = si(&t1);
     let mut is_str = false;
@@ -1028,7 +1020,7 @@ fn read_switch(l: &mut Lexer, ctx: &ParseCtx) -> Result<TWithErrors<FunctionElem
     }
     expect(l, "}")?;
     return Ok(TWithErrors {
-        obj: FunctionElement::Switch(nodes::Switch {
+        obj: BlockItem::Switch(nodes::Switch {
             source_info,
             is_str,
             value,
@@ -1066,20 +1058,15 @@ fn read_switch_case(l: &mut Lexer, ctx: &ParseCtx) -> Result<TWithErrors<SwitchC
     });
 }
 
-fn parse_function_declaration(
+fn parse_func(
     l: &mut Lexer,
-    is_pub: bool,
-    type_name: Typename,
-    form: Form,
     ctx: &ParseCtx,
-    pos: Pos,
-    comments: Option<Vec<String>>,
+    is_pub: bool,
+    typename: Typename,
+    form: Form,
+    source_info: SourceInfo,
 ) -> Result<TWithErrors<ModElem>, Error> {
-    // void cuespl {WE ARE HERE} (cue_t *c, mp3file *m) {...}
-
     let mut parameters: Vec<TypeAndForms> = vec![];
-
-    // (const int a,b, float c, ...)
     expect(l, "(")?;
     while type_follows(l, ctx) {
         parameters.push(parse_function_parameter(l, ctx)?);
@@ -1089,20 +1076,18 @@ fn parse_function_declaration(
     }
     let variadic = l.eat("...");
     expect(l, ")")?;
-
-    let body = parse_statements_block(l, ctx)?;
+    let body = parse_block(l, ctx)?;
     return Ok(TWithErrors {
         obj: ModElem::FuncDecl(FuncDecl {
-            comments,
+            source_info,
             ispub: is_pub,
-            typename: type_name,
+            typename,
             form,
             params: FuncParams {
                 list: parameters,
                 ellipsis: variadic,
             },
             body: body.obj,
-            pos,
         }),
         errors: body.errors,
     });
@@ -1130,11 +1115,11 @@ fn parse_function_parameter(l: &mut Lexer, ctx: &ParseCtx) -> Result<TypeAndForm
     });
 }
 
-fn parse_statements_block(l: &mut Lexer, ctx: &ParseCtx) -> Result<TWithErrors<Body>, Error> {
+fn parse_block(l: &mut Lexer, ctx: &ParseCtx) -> Result<TWithErrors<Body>, Error> {
     if l.follows("{") {
         return read_body(l, ctx);
     }
-    let s = parse_function_element(l, ctx)?;
+    let s = parse_block_item(l, ctx)?;
     return Ok(TWithErrors {
         obj: Body {
             trailing_comment: None,
@@ -1145,11 +1130,11 @@ fn parse_statements_block(l: &mut Lexer, ctx: &ParseCtx) -> Result<TWithErrors<B
 }
 
 fn read_body(l: &mut Lexer, ctx: &ParseCtx) -> Result<TWithErrors<Body>, Error> {
-    let mut statements: Vec<FunctionElement> = Vec::new();
+    let mut statements: Vec<BlockItem> = Vec::new();
     let mut errors = Vec::new();
     expect(l, "{")?;
     while !l.follows("}") {
-        match parse_function_element(l, ctx) {
+        match parse_block_item(l, ctx) {
             Ok(s) => {
                 statements.push(s.obj);
                 for e in s.errors {

@@ -41,7 +41,7 @@ pub struct Import {
 
 // Elements than can be a part of a function body.
 #[derive(Debug, Clone)]
-pub enum FunctionElement {
+pub enum BlockItem {
     VarDecl(VarDecl),
     If(If),
     Switch(Switch),
@@ -55,7 +55,7 @@ pub enum FunctionElement {
 
 #[derive(Debug, Clone)]
 pub struct Statement {
-    // pub source_info: SourceInfo,
+    pub source_info: SourceInfo,
     pub expr: Expr,
 }
 
@@ -109,8 +109,7 @@ pub struct EnumEntry {
 // pub? int *f(int a, b; double *foo) { ... }
 #[derive(Debug, Clone)]
 pub struct FuncDecl {
-    pub comments: Option<Vec<String>>,
-    pub pos: Pos,
+    pub source_info: SourceInfo,
     pub ispub: bool,
     pub typename: Typename,
     pub form: Form,
@@ -247,7 +246,7 @@ pub enum SizeofArg {
 #[derive(Debug, Clone)]
 pub struct Body {
     pub trailing_comment: Option<String>,
-    pub items: Vec<FunctionElement>,
+    pub items: Vec<BlockItem>,
 }
 
 #[derive(Debug, Clone)]

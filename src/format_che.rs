@@ -47,7 +47,7 @@ fn fmt_mod_elem(elem: &ModElem) -> String {
         ModElem::StructAlias(_) => todo!(),
         ModElem::Typedef(x) => fmt_typedef(&x),
         ModElem::StructTypedef(x) => fmt_struct_typedef(&x),
-        ModElem::ModVar(x) => fmt_var(&x),
+        ModElem::ModVar(x) => format!("{}\n", &fmt_var(&x)),
         ModElem::FuncDecl(x) => fmt_func(&x),
     }
 }
@@ -55,23 +55,44 @@ fn fmt_mod_elem(elem: &ModElem) -> String {
 fn fmt_enum(x: &EnumDecl) -> String {
     let mut s = fmt_begin(&x.source_info);
     s += "enum {\n";
+
+    let mut table = Vec::new();
+
     for e in &x.entries {
-        s += &indent(&fmt_enum_item(&e));
+        let mut line = String::new();
+        line += &e.name;
+        if let Some(v) = &e.val {
+            line += " = ";
+            line += &fmt_expr(&v);
+        }
+        line += &fmt_end(&e.source_info);
+
+        let cols: Vec<String> = line
+            .splitn(2, "//")
+            .map(|x| String::from(x.trim()))
+            .collect();
+        if cols.len() == 1 {
+            table.push((cols[0].clone(), String::new()));
+        } else {
+            table.push((cols[0].clone(), cols[1].clone()));
+        }
+    }
+
+    let width = table.iter().map(|x| x.0.len()).max().unwrap();
+
+    for i in 0..x.entries.len() {
+        let (a, b) = &table[i];
+        s += &indent(&fmt_begin(&x.entries[i].source_info));
+        s += &format!("\t{},", a);
+        if b != "" {
+            s += &" ".repeat(width - a.len());
+            s += " // ";
+            s += b;
+        }
         s += "\n";
     }
-    s += "}\n";
-    s += &fmt_end(&x.source_info);
-    s
-}
 
-fn fmt_enum_item(x: &EnumEntry) -> String {
-    let mut s = fmt_begin(&x.source_info);
-    s += &x.name;
-    if let Some(v) = &x.val {
-        s += " = ";
-        s += &fmt_expr(&v);
-    }
-    s += ",";
+    s += "}\n";
     s += &fmt_end(&x.source_info);
     s
 }
@@ -133,8 +154,7 @@ fn fmt_struct_typedef(x: &StructTypedef) -> String {
 }
 
 fn fmt_func(x: &FuncDecl) -> String {
-    let mut s = String::new();
-    s += &fmt_comments(&x.comments);
+    let mut s = fmt_begin(&x.source_info);
     if x.ispub {
         s += "pub ";
     }
@@ -157,44 +177,47 @@ fn fmt_func(x: &FuncDecl) -> String {
     }
     s += ") {\n";
     for st in &x.body.items {
-        s += &format!("{}\n", indent(&fmt_func_element(&st)));
+        s += &indent(&fmt_block_item(&st));
+        s += "\n";
     }
     s += "}\n";
     s
 }
 
-fn fmt_func_element(s: &FunctionElement) -> String {
+fn fmt_block_item(s: &BlockItem) -> String {
     match s {
-        FunctionElement::Break => String::from("break;"),
-        FunctionElement::Continue => String::from("continue;"),
-        FunctionElement::VarDecl(x) => fmt_var(x),
-        FunctionElement::If(x) => fmt_if(&x),
-        FunctionElement::For(x) => fmt_for(&x),
-        FunctionElement::While(x) => fmt_while(&x),
-        FunctionElement::Return(x) => fmt_return(&x),
-        FunctionElement::Switch(x) => fmt_switch(&x),
-        FunctionElement::Statement(x) => fmt_statement(&x),
+        BlockItem::Break => String::from("break;"),
+        BlockItem::Continue => String::from("continue;"),
+        BlockItem::For(x) => fmt_for(&x),
+        BlockItem::If(x) => fmt_if(&x),
+        BlockItem::Return(x) => fmt_return(&x),
+        BlockItem::Statement(x) => fmt_statement(&x),
+        BlockItem::Switch(x) => fmt_switch(&x),
+        BlockItem::VarDecl(x) => fmt_var(x),
+        BlockItem::While(x) => fmt_while(&x),
     }
+}
+
+fn fmt_var(x: &VarDecl) -> String {
+    let mut s = String::new(); // fmt_begin(&x.source_info);
+    s += &fmt_typename(&x.typename);
+    s += " ";
+    s += &fmt_form(&x.form);
+    if let Some(e) = &x.value {
+        s += " = ";
+        s += &fmt_expr(&e);
+    }
+    s += ";";
+    s += &fmt_end(&x.source_info);
+    s
 }
 
 fn fmt_while(x: &While) -> String {
     let mut s = fmt_begin(&x.source_info);
-    s += &format!("while ({}) {{\n", fmt_expr(&x.cond));
-    for st in &x.body.items {
-        s += &format!("{}\n", indent(&fmt_func_element(&st)))
-    }
-    s += "}";
-    s
-}
-
-fn fmt_return(x: &Return) -> String {
-    let mut s = fmt_begin(&x.source_info);
-    s += "return";
-    if let Some(e) = &x.expression {
-        s += " ";
-        s += &fmt_expr(&e);
-    }
-    s += ";";
+    s += "while (";
+    s += &fmt_expr(&x.cond);
+    s += ") ";
+    s += &fmt_block(&x.body);
     s
 }
 
@@ -229,11 +252,8 @@ fn fmt_for(x: &For) -> String {
         s += " ";
         s += &fmt_expr(&e);
     }
-    s += ") {\n";
-    for st in &x.body.items {
-        s += &format!("{}\n", indent(&fmt_func_element(&st)));
-    }
-    s += "}";
+    s += ") ";
+    s += &fmt_block(&x.body);
     s
 }
 
@@ -242,22 +262,18 @@ fn fmt_statement(x: &Statement) -> String {
     //fmt_begin(&x.source_info);
     s += &fmt_expr(&x.expr);
     s += ";";
-    // s += &fmt_end(&x.source_info);
+    s += &fmt_end(&x.source_info);
     s
 }
 
-fn fmt_var(x: &VarDecl) -> String {
-    let mut s = String::new(); // fmt_begin(&x.source_info);
-    s += &fmt_typename(&x.typename);
-    s += " ";
-    s += &fmt_form(&x.form);
-    if let Some(e) = &x.value {
-        s += " = ";
+fn fmt_return(x: &Return) -> String {
+    let mut s = fmt_begin(&x.source_info);
+    s += "return";
+    if let Some(e) = &x.expression {
+        s += " ";
         s += &fmt_expr(&e);
     }
     s += ";";
-    s += &fmt_end(&x.source_info);
-    s += "\n";
     s
 }
 
@@ -285,25 +301,19 @@ fn fmt_cases(x: &Switch) -> String {
                 SwitchCaseValue::Literal(literal) => s += &fmt_literal(&literal),
             }
         }
+        s += ": ";
         let n = c.body.items.len();
         match n {
             0 => {
-                s += ": {}";
+                s += "{}";
             }
             1 => {
-                s += ": { ";
-                for st in &c.body.items {
-                    s += &fmt_func_element(&st);
-                }
+                s += "{ ";
+                s += &fmt_block_item(&c.body.items[0]);
                 s += " }";
             }
             _ => {
-                s += ": {\n";
-                for st in &c.body.items {
-                    s += &indent(&fmt_func_element(&st));
-                    s += "\n";
-                }
-                s += "}";
+                s += &fmt_block(&c.body);
             }
         }
         if let Some(c) = &c.body.trailing_comment {
@@ -311,26 +321,19 @@ fn fmt_cases(x: &Switch) -> String {
         }
     }
     if let Some(c) = &x.default_case {
-        s += "\ndefault";
+        s += "\ndefault: ";
         let n = c.items.len();
         match n {
             0 => {
-                s += ": {\n";
-                s += "}";
+                s += "{}\n";
             }
             1 => {
-                s += ": { ";
-                for st in &c.items {
-                    s += &format!("{}", fmt_func_element(&st));
-                }
+                s += "{ ";
+                s += &fmt_block_item(&c.items[0]);
                 s += " }";
             }
             _ => {
-                s += ": {\n";
-                for st in &c.items {
-                    s += &format!("\t{}\n", fmt_func_element(&st));
-                }
-                s += "}";
+                s += &fmt_block(&c);
             }
         }
     }
@@ -339,11 +342,8 @@ fn fmt_cases(x: &Switch) -> String {
 
 fn fmt_if(x: &If) -> String {
     let mut s = fmt_begin(&x.source_info);
-    s += &format!("if ({}) {{\n", fmt_expr(&x.condition));
-    for st in &x.body.items {
-        s += &format!("{}\n", &indent(&fmt_func_element(&st)));
-    }
-    s += "}";
+    s += &format!("if ({}) ", fmt_expr(&x.condition));
+    s += &fmt_block(&x.body);
     if x.else_body.is_none() {
         return s;
     }
@@ -353,7 +353,7 @@ fn fmt_if(x: &If) -> String {
 
     let mut single_nested_if = None;
     if e.items.len() == 1 {
-        if let FunctionElement::If(x) = &e.items[0] {
+        if let BlockItem::If(x) = &e.items[0] {
             single_nested_if = Some(x);
         }
     }
@@ -362,9 +362,16 @@ fn fmt_if(x: &If) -> String {
         return s;
     }
 
+    s += &fmt_block(&e);
+    s
+}
+
+fn fmt_block(x: &Body) -> String {
+    let mut s = String::new();
     s += "{\n";
-    for st in &e.items {
-        s += &format!("{}\n", &indent(&fmt_func_element(&st)));
+    for st in &x.items {
+        s += &indent(&fmt_block_item(&st));
+        s += "\n";
     }
     s += "}";
     s
@@ -543,6 +550,8 @@ fn fmt_cast(x: &Cast) -> String {
         Expr::Literal(_) => nobr,
         Expr::NsName(_) => nobr,
         Expr::Call(_) => nobr,
+        Expr::ArrIndex(_) => nobr,
+        Expr::PrefixOperator(_) => nobr,
         _ => br,
     }
 }
@@ -662,6 +671,13 @@ fn indent(s: &str) -> String {
 
 fn fmt_begin(x: &SourceInfo) -> String {
     let mut s = String::new();
+    // s += "spaces=[";
+    // s += &x
+    //     .spaces_top
+    //     .replace("\n", "\\n")
+    //     .replace(" ", "\\s")
+    //     .replace("\t", "\\t");
+    // s += "]";
     let n = x.spaces_top.matches('\n').count();
     if n > 1 {
         s += "\n";
@@ -689,7 +705,8 @@ fn fmt_comments(x: &Option<Vec<String>>) -> String {
         return s;
     }
     for comment in x.as_ref().unwrap() {
-        s += &format!("{}\n", comment);
+        s += comment;
+        s += "\n";
     }
     s
 }

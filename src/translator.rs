@@ -255,7 +255,7 @@ fn init_root_scope(ctx: &mut TrCtx, m: &Module) {
                         constval: None,
                         ispub,
                         name: String::from(&x.form.name),
-                        pos: x.pos.clone(),
+                        pos: x.source_info.pos.clone(),
                         typ,
                         used: false,
                     },
@@ -748,9 +748,9 @@ fn tr_body(b: &Body, ctx: &mut TrCtx) -> Result<c::Body, BuildError> {
     begin_scope(ctx);
     for s in &b.items {
         statements.push(match s {
-            FunctionElement::Break => c::Statement::Break,
-            FunctionElement::Continue => c::Statement::Continue,
-            FunctionElement::Statement(x) => {
+            BlockItem::Break => c::Statement::Break,
+            BlockItem::Continue => c::Statement::Continue,
+            BlockItem::Statement(x) => {
                 match &x.expr {
                     Expr::Call(call) => {
                         // panic is unwrapped at this level because a panic
@@ -773,12 +773,12 @@ fn tr_body(b: &Body, ctx: &mut TrCtx) -> Result<c::Body, BuildError> {
                     _ => c::Statement::Expression(tr_expr(&x.expr, ctx)?.val),
                 }
             }
-            FunctionElement::For(x) => tr_for(x, ctx)?,
-            FunctionElement::If(x) => tr_if(x, ctx)?,
-            FunctionElement::Return(x) => tr_return(x, ctx)?,
-            FunctionElement::Switch(x) => tr_switch(x, ctx)?,
-            FunctionElement::VarDecl(x) => tr_vardecl(x, ctx)?,
-            FunctionElement::While(x) => tr_while(x, ctx)?,
+            BlockItem::For(x) => tr_for(x, ctx)?,
+            BlockItem::If(x) => tr_if(x, ctx)?,
+            BlockItem::Return(x) => tr_return(x, ctx)?,
+            BlockItem::Switch(x) => tr_switch(x, ctx)?,
+            BlockItem::VarDecl(x) => tr_vardecl(x, ctx)?,
+            BlockItem::While(x) => tr_while(x, ctx)?,
         });
     }
     end_scope(ctx)?;
@@ -1304,7 +1304,10 @@ fn tr_func_decl(x: &FuncDecl, ctx: &mut TrCtx) -> Result<Vec<c::ModElem>, BuildE
     end_scope(ctx)?;
 
     if (!is_void(&x.typename) || x.form.hops == 1) && !body_returns(&x.body) {
-        return ctx.err(&x.pos, format!("{}: missing return", x.form.name));
+        return ctx.err(
+            &x.source_info.pos,
+            format!("{}: missing return", x.form.name),
+        );
     }
     Ok(r)
 }
