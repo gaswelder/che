@@ -75,7 +75,7 @@ pub int run(char *rompath) {
 		return 1;
 	}
 
-	/* the origin tells us where in memory to place the image */
+	// the origin tells us where in memory to place the image
 	uint16_t origin = bytereader.read16(r);
 
 	// Read full memory.
@@ -195,7 +195,7 @@ void op_br(uint16_t instr) {
 }
 
 void op_jmp(uint16_t instr) {
-	/* Also handles RET */
+	// Also handles RET
 	uint16_t r1 = (instr >> 6) & 0x7;
 	reg[R_PC] = reg[r1];
 }
@@ -220,11 +220,11 @@ void op_ld(uint16_t instr) {
 }
 
 void op_ldi(uint16_t instr) {
-	/* destination register (DR) */
+	// destination register (DR)
 	uint16_t r0 = (instr >> 9) & 0x7;
-	/* PCoffset 9*/
+	// PCoffset 9
 	uint16_t pc_offset = sign_extend(instr & 0x1FF, 9);
-	/* add pc_offset to the current PC, look at that memory location to get the final address */
+	// add pc_offset to the current PC, look at that memory location to get the final address
 	reg[r0] = mem_read(mem_read(reg[R_PC] + pc_offset));
 	update_flags(r0);
 }
@@ -268,7 +268,7 @@ void op_trap(uint16_t instr) {
 
 	switch (instr & 0xFF) {
 		case TRAP_GETC: {
-			/* read a single ASCII char */
+			// read a single ASCII char
 			reg[R_R0] = (uint16_t) getchar();
 			update_flags(R_R0);
 		}
@@ -277,7 +277,7 @@ void op_trap(uint16_t instr) {
 			fflush(stdout);
 		}
 		case TRAP_PUTS: {
-			/* one char per word */
+			// one char per word
 			uint16_t *c = memory + reg[R_R0];
 			while (*c) {
 				putc((char) *c, stdout);

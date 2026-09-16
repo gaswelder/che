@@ -704,9 +704,59 @@ fn fmt_comments(x: &Option<Vec<String>>) -> String {
     if x.is_none() {
         return s;
     }
-    for comment in x.as_ref().unwrap() {
-        s += comment;
+    for c in x.as_ref().unwrap() {
+        if c.starts_with("/*") {
+            s += &fmt_multiline_comment(&c);
+            s += "\n";
+            continue;
+        }
+        s += c;
         s += "\n";
+    }
+    s
+}
+
+fn fmt_multiline_comment(c: &str) -> String {
+    let mut s = String::new();
+
+    let lines: Vec<String> = c.split("\n").map(|x| String::from(x)).collect();
+    if lines.len() == 1 {
+        s += "// ";
+        s += &lines[0].substring(2, lines[0].len() - 2).trim();
+        return s;
+    }
+
+    let mut prefs: Vec<usize> = lines
+        .iter()
+        .map(|line| {
+            let mut pref = 0;
+            for c in line.chars() {
+                match c {
+                    ' ' => pref += 1,
+                    '\t' => pref += 4,
+                    _ => break,
+                }
+            }
+            pref
+        })
+        .collect();
+
+    let mut trim = prefs[1];
+    for i in 2..prefs.len() {
+        let pref = prefs[i];
+        if pref < trim {
+            trim = pref;
+        }
+    }
+    for i in 1..prefs.len() {
+        prefs[i] -= trim;
+    }
+    for i in 0..lines.len() {
+        if i > 0 {
+            s += "\n";
+        }
+        s += &" ".repeat(prefs[i]);
+        s += lines[i].trim();
     }
     s
 }
