@@ -544,7 +544,7 @@ fn typefrom_typedef(x: &Typedef) -> types::Type {
     types::Type {
         ops,
         base: NsName {
-            comments: None,
+            source_info: None,
             ns: String::from(&x.typename.name.ns),
             name: String::from(&x.typename.name.name),
             pos: x.pos.clone(),
@@ -1195,7 +1195,7 @@ fn tr_call(x: &Call, ctx: &mut TrCtx) -> Result<Typed<c::Expr>, BuildError> {
         ctx.used_customs.insert("calloc_or_panic".to_string());
         let y = Call {
             func: Box::new(Expr::NsName(NsName {
-                comments: None,
+                source_info: None,
                 ns: "".to_string(),
                 name: "calloc_or_panic".to_string(),
                 pos: x.pos.clone(),

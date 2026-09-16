@@ -36,7 +36,6 @@ uint16_t memory[MEMORY_MAX] = {}; // 65536 locations
  */
 const size_t PC_START = 0x3000;
 
-
 enum {
 	TRAP_GETC = 0x20, // get character from keyboard, not echoed onto the terminal
 	TRAP_OUT = 0x21, // output a character

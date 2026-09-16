@@ -55,7 +55,7 @@ pub enum FunctionElement {
 
 #[derive(Debug, Clone)]
 pub struct Statement {
-    pub source_info: SourceInfo,
+    // pub source_info: SourceInfo,
     pub expr: Expr,
 }
 
@@ -153,7 +153,7 @@ pub enum StructEntry {
 
 #[derive(Debug, Clone)]
 pub struct Typename {
-    pub comments: Option<Vec<String>>,
+    pub source_info: SourceInfo,
     pub is_const: bool,
     pub name: NsName,
 }
@@ -161,7 +161,7 @@ pub struct Typename {
 // strings.casecmp
 #[derive(Debug, Clone)]
 pub struct NsName {
-    pub comments: Option<Vec<String>>,
+    pub source_info: Option<SourceInfo>,
     pub pos: Pos,
     pub ns: String,
     pub name: String,

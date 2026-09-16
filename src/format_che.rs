@@ -4,6 +4,7 @@ use crate::nodes::*;
 use crate::parser;
 
 pub fn fmt_mod(m: &Module) -> String {
+    // Separate imports from other elements.
     let mut imports = Vec::new();
     let mut rest = Vec::new();
     for e in &m.elements {
@@ -13,14 +14,15 @@ pub fn fmt_mod(m: &Module) -> String {
         }
     }
 
-    let mut top_comment = None;
+    // Treat the current first import's comment as the module comment.
+    let mut module_comment = None;
     if !imports.is_empty() {
-        top_comment = imports[0].source_info.comments.clone();
+        module_comment = imports[0].source_info.comments.clone();
     }
 
-    let mut s = String::new();
-    s += &fmt_comments(&top_comment);
+    let mut s = fmt_comments(&module_comment);
 
+    // Reorder the imports.
     imports.sort_by_key(|m| &m.path);
     for e in &imports {
         s += "#import ";
@@ -28,10 +30,8 @@ pub fn fmt_mod(m: &Module) -> String {
         s += "\n";
     }
 
-    for (i, e) in rest.iter().enumerate() {
-        if !(i == 0 && s.is_empty()) {
-            s += "\n";
-        }
+    // Format the rest.
+    for e in &rest {
         s += &format!("{}", fmt_mod_elem(&e));
     }
     s
@@ -59,7 +59,7 @@ fn fmt_enum(x: &EnumDecl) -> String {
         s += &indent(&fmt_enum_item(&e));
         s += "\n";
     }
-    s += "}";
+    s += "}\n";
     s += &fmt_end(&x.source_info);
     s
 }
@@ -238,15 +238,16 @@ fn fmt_for(x: &For) -> String {
 }
 
 fn fmt_statement(x: &Statement) -> String {
-    let mut s = fmt_begin(&x.source_info);
+    let mut s = String::new();
+    //fmt_begin(&x.source_info);
     s += &fmt_expr(&x.expr);
     s += ";";
-    s += &fmt_end(&x.source_info);
+    // s += &fmt_end(&x.source_info);
     s
 }
 
 fn fmt_var(x: &VarDecl) -> String {
-    let mut s = fmt_begin(&x.source_info);
+    let mut s = String::new(); // fmt_begin(&x.source_info);
     s += &fmt_typename(&x.typename);
     s += " ";
     s += &fmt_form(&x.form);
@@ -256,6 +257,7 @@ fn fmt_var(x: &VarDecl) -> String {
     }
     s += ";";
     s += &fmt_end(&x.source_info);
+    s += "\n";
     s
 }
 
@@ -373,11 +375,18 @@ pub fn fmt_field_access(x: &FieldAccess) -> String {
 }
 
 fn fmt_nsname(x: &NsName) -> String {
-    if x.ns.is_empty() {
-        x.name.clone()
-    } else {
-        format!("{}.{}", x.ns, x.name)
+    let mut s = String::new();
+    if x.source_info.is_some() {
+        s += &fmt_begin(x.source_info.as_ref().unwrap());
     }
+    if !x.ns.is_empty() {
+        s += &format!("{}.", &x.ns);
+    }
+    s += &x.name;
+    if x.source_info.is_some() {
+        s += &fmt_end(x.source_info.as_ref().unwrap());
+    }
+    s
 }
 
 pub fn fmt_expr(expr: &Expr) -> String {
@@ -538,13 +547,16 @@ fn fmt_cast(x: &Cast) -> String {
     }
 }
 
-pub fn fmt_typename(t: &Typename) -> String {
-    let name = if !t.name.ns.is_empty() {
-        format!("{}.{}", t.name.ns, t.name.name)
-    } else {
-        t.name.name.clone()
+pub fn fmt_typename(x: &Typename) -> String {
+    let mut s = fmt_begin(&x.source_info);
+    if x.is_const {
+        s += "const ";
+    }
+    if !x.name.ns.is_empty() {
+        s += &format!("{}.", x.name.ns);
     };
-    return format!("{}{}", if t.is_const { "const " } else { "" }, name);
+    s += &x.name.name;
+    s
 }
 
 pub fn fmt_form(x: &Form) -> String {

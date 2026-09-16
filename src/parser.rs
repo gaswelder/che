@@ -182,7 +182,7 @@ fn parse_module_object(l: &mut Lexer, ctx: &ParseCtx) -> Result<TWithErrors<ModE
     }
     let value = parse_expr(l, 0, ctx)?;
     let semi = expect(l, ";")?;
-    let comments = type_name.comments.clone();
+    let comments = None;
     return Ok(TWithErrors {
         obj: ModElem::ModVar(VarDecl {
             source_info: SourceInfo {
@@ -376,6 +376,7 @@ fn ns_follows(l: &mut Lexer, ctx: &ParseCtx) -> bool {
 // foo.bar where foo is a module
 // or just bar
 fn read_ns_id(l: &mut Lexer, ctx: &ParseCtx) -> Result<NsName, Error> {
+    let source_info = si(l.peek().unwrap());
     let a = expect(l, "word")?;
     let name = &a.content;
     if ctx.is_imported_ns(name) {
@@ -385,7 +386,7 @@ fn read_ns_id(l: &mut Lexer, ctx: &ParseCtx) -> Result<NsName, Error> {
                     l.get();
                     let b = l.get().unwrap();
                     return Ok(NsName {
-                        comments: a.comments,
+                        source_info: Some(source_info),
                         ns: a.content,
                         name: b.content,
                         pos: a.pos,
@@ -396,7 +397,7 @@ fn read_ns_id(l: &mut Lexer, ctx: &ParseCtx) -> Result<NsName, Error> {
         }
     }
     return Ok(NsName {
-        comments: a.comments,
+        source_info: Some(source_info),
         ns: String::new(),
         name: a.content,
         pos: a.pos,
@@ -414,10 +415,11 @@ fn read_expression_atom(l: &mut Lexer, ctx: &ParseCtx) -> Result<Expr, Error> {
         return Ok(Expr::NsName(read_ns_id(l, ctx)?));
     }
 
+    let source_info = si(l.peek().unwrap());
     let next = l.get().unwrap();
     return match next.kind.as_str() {
         "word" => Ok(Expr::NsName(NsName {
-            comments: None,
+            source_info: Some(source_info),
             pos: next.pos,
             ns: String::from(""),
             name: next.content,
@@ -518,19 +520,11 @@ fn expect(l: &mut Lexer, kind: &str) -> Result<Token, Error> {
 }
 
 fn parse_typename(l: &mut Lexer, ctx: &ParseCtx) -> Result<Typename, Error> {
-    let mut comments: Option<Vec<String>> = None;
-    let mut is_const = false;
-    if l.follows("const") {
-        let t = l.get().unwrap();
-        is_const = true;
-        comments = t.comments;
-    }
+    let source_info = si(l.peek().unwrap());
+    let is_const = l.eat("const");
     let name = read_ns_id(l, ctx)?;
-    if name.comments.is_some() {
-        comments = name.comments.clone();
-    }
     return Ok(Typename {
-        comments,
+        source_info,
         is_const,
         name,
     });
@@ -679,6 +673,7 @@ fn parse_composite_literal_entry(
     l: &mut Lexer,
     ctx: &ParseCtx,
 ) -> Result<CompositeLiteralEntry, Error> {
+    let source_info = si(l.peek().unwrap());
     if l.peek().unwrap().kind == "." {
         expect(l, ".")?;
         let tok = expect(l, "word")?;
@@ -687,7 +682,7 @@ fn parse_composite_literal_entry(
         return Ok(CompositeLiteralEntry {
             is_index: false,
             key: Some(Expr::NsName(NsName {
-                comments: None,
+                source_info: Some(source_info),
                 pos: tok.pos,
                 ns: String::from(""),
                 name: tok.content,
@@ -812,7 +807,7 @@ fn parse_function_element(
             let semi = expect(l, ";")?;
             source_info.trailing_comment = semi.trailing_comment;
             return Ok(TWithErrors {
-                obj: FunctionElement::Statement(Statement { source_info, expr }),
+                obj: FunctionElement::Statement(Statement { expr }),
                 errors: Vec::new(),
             });
         }
