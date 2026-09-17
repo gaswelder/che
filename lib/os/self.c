@@ -4,13 +4,13 @@
 #include <stdlib.h> // getenv
 
 pub bool gethostname(char *buf, size_t bufsize) {
-    return OS.gethostname(buf, bufsize) == 0;
+	return OS.gethostname(buf, bufsize) == 0;
 }
 
 // Puts the current working directory's path into the buffer.
 // Returns false if the buffer is too small.
 pub bool getcwd(char *buf, size_t n) {
-    return OS.getcwd(buf, n) != NULL;
+	return OS.getcwd(buf, n) != NULL;
 }
 
 // Returns the pointer to env variable with the specified name

@@ -8,7 +8,6 @@ int main() {
 
 	test.truth("writefile", fs.writefile(PATH, str, n));
 
-
 	char *data = fs.readfile_str(PATH);
 	test.truth("readfile_str", data != NULL);
 

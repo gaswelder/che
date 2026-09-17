@@ -4,7 +4,9 @@
 int main() {
 	sha1.digest_t hash = {};
 
-	for (int i = 0; i < 1000000; i++) sha1.add(&hash, 'a');
+	for (int i = 0; i < 1000000; i++) {
+		sha1.add(&hash, 'a');
+	}
 	sha1.end(&hash);
 
 	char hex[41] = {};

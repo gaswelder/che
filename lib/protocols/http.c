@@ -1,9 +1,9 @@
 #import enc/urlencode
-#import os/fs
 #import lists/mime
+#import os/fs
 #import os/net
-#import scanner
 #import reader
+#import scanner
 #import strbuilder
 #import strings
 #import writer
@@ -12,7 +12,7 @@ pub enum {
 	UNKNOWN_METHOD = 0,
 	GET = 1,
 	POST = 2,
-	HEAD
+	HEAD,
 }
 
 /*
@@ -20,20 +20,26 @@ pub enum {
  * Returns UNKNOWN_METHOD (=0) if the string doesn't match any method.
  */
 pub int method_from_string(const char *s) {
-	if (strings.casecmp(s, "GET")) return GET;
-    if (strings.casecmp(s, "POST")) return POST;
-    if (strings.casecmp(s, "HEAD")) return HEAD;
+	if (strings.casecmp(s, "GET")) {
+		return GET;
+	}
+	if (strings.casecmp(s, "POST")) {
+		return POST;
+	}
+	if (strings.casecmp(s, "HEAD")) {
+		return HEAD;
+	}
 	return UNKNOWN_METHOD;
 }
 
 pub typedef {
-    char name[1024];
-    char value[1024];
+	char name[1024];
+	char value[1024];
 } header_t;
 
 pub typedef {
 	char name[1024];
-    char value[1024];
+	char value[1024];
 	size_t valuelen;
 } kv_t;
 
@@ -64,10 +70,7 @@ pub typedef {
     int content_length;
 } response_t;
 
-const char *errors[] = {
-	"no error",
-	"unknown method"
-};
+const char *errors[] = { "no error", "unknown method" };
 
 pub const char *errstr(int err) {
 	if (err >= 0 && (size_t) err < nelem(errors)) {
@@ -103,31 +106,31 @@ pub bool init_request(request_t *r, int method, const char *path) {
 	memset(r, 0, sizeof(request_t));
 	const char *methodstring = NULL;
 	switch (method) {
-        case GET: { methodstring = "GET"; }
-        case POST: { methodstring = "POST"; }
-        case HEAD: { methodstring = "HEAD"; }
+		case GET: { methodstring = "GET"; }
+		case POST: { methodstring = "POST"; }
+		case HEAD: { methodstring = "HEAD"; }
 		default: {
 			r->err = 1; // unknown method
 			return false;
 		}
-    }
-    strcpy(r->method, methodstring);
-    strcpy(r->uri, path);
-    strcpy(r->version, "HTTP/1.0");
-    return true;
+	}
+	strcpy(r->method, methodstring);
+	strcpy(r->uri, path);
+	strcpy(r->version, "HTTP/1.0");
+	return true;
 }
 
 pub bool set_header(request_t *r, const char *name, *value) {
-    header_t *h = &r->headers[r->nheaders++];
-    strcpy(h->name, name);
-    strcpy(h->value, value);
-    return true;
+	header_t *h = &r->headers[r->nheaders++];
+	strcpy(h->name, name);
+	strcpy(h->value, value);
+	return true;
 }
 
 // Writes request r to writer w.
 // Returns the number of bytes written or -1 on error.
 pub int write_request(writer.t *w, request_t *r) {
-    strbuilder.str *sb = strbuilder.new();
+	strbuilder.str *sb = strbuilder.new();
 
 	// GET /foo
 	strbuilder.addf(sb, "%s %s", r->method, r->uri);
@@ -148,7 +151,7 @@ pub int write_request(writer.t *w, request_t *r) {
 		urlencode.write(w2, param->value, param->valuelen);
 		writer.free(w2);
 
-		strbuilder.adds(sb, (char *)tmp);
+		strbuilder.adds(sb, (char *) tmp);
 	}
 
 	strbuilder.adds(sb, " ");
@@ -174,30 +177,27 @@ pub int write_request(writer.t *w, request_t *r) {
 	return len;
 }
 
-
 pub header_t *get_header(request_t *r, const char *name) {
-    header_t *h = NULL;
-    for (size_t i = 0; i < r->nheaders; i++) {
-        h = &r->headers[i];
-        if (!strcmp(name, h->name)) {
-            return h;
-        }
-    }
-    return NULL;
+	header_t *h = NULL;
+	for (size_t i = 0; i < r->nheaders; i++) {
+		h = &r->headers[i];
+		if (!strcmp(name, h->name)) {
+			return h;
+		}
+	}
+	return NULL;
 }
 
 pub const char *get_res_header(response_t *r, const char *name) {
 	header_t *h = NULL;
-    for (size_t i = 0; i < r->nheaders; i++) {
-        h = &r->headers[i];
-        if (!strcmp(name, h->name)) {
-            return h->value;
-        }
-    }
-    return NULL;
+	for (size_t i = 0; i < r->nheaders; i++) {
+		h = &r->headers[i];
+		if (!strcmp(name, h->name)) {
+			return h->value;
+		}
+	}
+	return NULL;
 }
-
-
 
 bool parse_query(request_t *r) {
     // Read full path
@@ -224,10 +224,8 @@ bool parse_query(request_t *r) {
 		}
 		strcpy(r->filename, filename);
 	}
-    return true;
+	return true;
 }
-
-
 
 pub bool parse_response(reader.t *re, response_t *r) {
 	scanner.t *b = scanner.new(re);
@@ -247,7 +245,7 @@ pub bool parse_response(reader.t *re, response_t *r) {
 	}
 	bool ok = read_body(b, r);
 	scanner.free(b);
-    return ok;
+	return ok;
 }
 
 bool read_body(scanner.t *b, response_t *r) {
@@ -289,21 +287,27 @@ bool read_status_line(scanner.t *b, response_t *r) {
 		return false;
 	}
 
-    // space
-    if (scanner.get(b) != ' ') return false;
+	// space
+	if (scanner.get(b) != ' ') {
+		return false;
+	}
 
 	// 200
 	r->status = 0;
 	for (int i = 0; i < 3; i++) {
 		char c = scanner.get(b);
 		int n = strings.num_from_ascii(c);
-		if (n < 0) return false;
+		if (n < 0) {
+			return false;
+		}
 		r->status *= 10;
 		r->status += n;
 	}
 
 	// space
-	if (scanner.get(b) != ' ') return false;
+	if (scanner.get(b) != ' ') {
+		return false;
+	}
 
 	// status text
 	while (scanner.more(b) && scanner.peek(b) != '\r') {
@@ -392,7 +396,7 @@ pub void write_404(request_t *req, net.net_t *conn) {
 }
 
 pub void write_405(request_t *req, net.net_t *conn) {
-    const char *msg = "This method is not allowed for this path.";
+	const char *msg = "This method is not allowed for this path.";
 	char buf[1000] = {};
     sprintf(buf,
         "%s 405 Method Not Allowed\n"
@@ -412,7 +416,7 @@ pub void write_405(request_t *req, net.net_t *conn) {
 }
 
 pub void write_501(request_t *req, net.net_t *conn) {
-    const char *msg = "method not implemented\n";
+	const char *msg = "method not implemented\n";
 	char buf[1000] = {};
     sprintf(buf,
         "%s 501 Not Implemented\n"
@@ -478,9 +482,13 @@ pub void servefile(request_t *req, net.net_t *conn, const char *filepath) {
 	while (true) {
 		char tmp[4096] = {};
 		size_t n = fread(tmp, 1, 4096, f);
-		if (n == 0) break;
+		if (n == 0) {
+			break;
+		}
 		int r = net.write(conn, tmp, n);
-		if (r < 0) panic("net write failed");
+		if (r < 0) {
+			panic("net write failed");
+		}
 	}
 	fclose(f);
 }

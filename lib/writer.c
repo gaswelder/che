@@ -14,7 +14,9 @@ pub typedef {
 // Returns the number of bytes written or -1 on error.
 pub int write(t *w, const uint8_t *data, size_t n) {
 	int r = w->write(w->data, data, n);
-	if (r > 0) w->nwritten += r;
+	if (r > 0) {
+		w->nwritten += r;
+	}
 	return r;
 }
 
@@ -64,12 +66,13 @@ pub t *stdout() {
 	return _stdout;
 }
 
-
 //
 // memory writer
 //
-
-typedef { uint8_t *data; size_t pos, size; } membuf_t;
+typedef {
+	uint8_t *data;
+	size_t pos, size;
+} membuf_t;
 
 // Returns a writer to a static buffer.
 // When the buffer's space runs out, write will return EOF.
@@ -96,12 +99,12 @@ int mem_write(void *ctx, const uint8_t *data, size_t n) {
 	return r;
 }
 
-
 //
 // fd writer
 //
-
-typedef { int fd; } fd_t;
+typedef {
+	int fd;
+} fd_t;
 
 // Returns a writer writing to the file descriptor f.
 pub t *fd(int f) {

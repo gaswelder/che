@@ -29,7 +29,9 @@ pub void reset(digest_t *hash) {
  * Returns false on failure.
  */
 pub bool format(digest_t *hash, char *buf, size_t bufsize) {
-	if (bufsize < 40) return false;
+	if (bufsize < 40) {
+		return false;
+	}
 
 	uint8_t bytes[20] = {};
 	as_bytes(hash, bytes);
@@ -58,7 +60,9 @@ pub void as_bytes(digest_t *hash, uint8_t *buf) {
 
 pub bool add(digest_t *hash, char byte) {
 	// Make sure add is not called after the end.
-	if (hash->finished) return false;
+	if (hash->finished) {
+		return false;
+	}
 
 	// On the first add set the initial sum.
 	if (!hash->init) {
@@ -77,7 +81,9 @@ pub bool add(digest_t *hash, char byte) {
 }
 
 pub bool end(digest_t *hash) {
-	if (hash->finished) return false;
+	if (hash->finished) {
+		return false;
+	}
 	hash->finished = true;
 
 	// The internal "machinery" processes a stream of 64-byte blocks.
@@ -181,9 +187,15 @@ uint32_t f(int t, uint32_t x, y, z) {
  * Constants K[i]: K0, K1, ..., K79
  */
 uint32_t K(int t) {
-	if (t < 20) return 0x5a827999;
-	if (t < 40) return 0x6ed9eba1;
-	if (t < 60) return 0x8f1bbcdc;
+	if (t < 20) {
+		return 0x5a827999;
+	}
+	if (t < 40) {
+		return 0x6ed9eba1;
+	}
+	if (t < 60) {
+		return 0x8f1bbcdc;
+	}
 	return 0xca62c1d6;
 }
 

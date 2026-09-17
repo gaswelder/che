@@ -19,10 +19,10 @@ pub mem_t *memopen() {
  * Closes the buffer.
  */
 pub void memclose(mem_t *mem) {
-	if(mem->data) {
+	if (mem->data) {
 		free(mem->data);
 	}
-	free( mem );
+	free(mem);
 }
 
 // Resets the read position to zero.
@@ -45,8 +45,7 @@ pub size_t memtell(mem_t *m) {
  * Puts a character in the memory at current position.
  * Returns -1 in case of error (check errno).
  */
-pub int memputc(int ch, mem_t *m)
-{
+pub int memputc(int ch, mem_t *m) {
 	if (ch == EOF) {
 		return EOF;
 	}
@@ -68,9 +67,8 @@ pub int memputc(int ch, mem_t *m)
 /*
  * Returns next character of EOF.
  */
-pub int memgetc(mem_t *m)
-{
-	if(m->pos >= m->datalen) {
+pub int memgetc(mem_t *m) {
+	if (m->pos >= m->datalen) {
 		return EOF;
 	}
 	int c = m->data[m->pos];
@@ -82,13 +80,12 @@ pub int memgetc(mem_t *m)
  * Write 'size' bytes from buffer 'buf'
  * Returns number of bytes written.
  */
-pub size_t memwrite(mem_t *m, const char *buf, size_t size)
-{
-	if( !makespace(m, size) ) {
+pub size_t memwrite(mem_t *m, const char *buf, size_t size) {
+	if (!makespace(m, size)) {
 		return 0;
 	}
 
-	for(size_t i = 0; i < size; i++) {
+	for (size_t i = 0; i < size; i++) {
 		m->data[m->pos] = buf[i];
 		m->pos++;
 	}
@@ -96,16 +93,16 @@ pub size_t memwrite(mem_t *m, const char *buf, size_t size)
 	/*
 	 * Advance datalen if we have written past it.
 	 */
-	if(m->pos > m->datalen) {
+	if (m->pos > m->datalen) {
 		m->datalen = m->pos;
 	}
 	return size;
 }
 
 pub int memprintf(mem_t *m, const char *format, ...) {
-	int available = (int) (m->size - m->datalen);
+	int available = (int)(m->size - m->datalen);
 
-	va_list l = {0};
+	va_list l = {};
 	va_start(l, format);
 	int total = vsnprintf(m->data + m->pos, available, format, l);
 	va_end(l);
@@ -149,18 +146,20 @@ bool makespace(mem_t *mem, size_t size)
 {
 	size_t need = mem->pos + size;
 
-	if( need <= mem->size ) {
+	if (need <= mem->size) {
 		return true;
 	}
 
 	size_t next = mem->size;
-	if( !next ) next = 32;
-	while( next < need ) {
+	if (!next) {
+		next = 32;
+	}
+	while (next < need) {
 		next *= 2;
 	}
 
 	char *tmp = realloc(mem->data, next);
-	if( !tmp ) {
+	if (!tmp) {
 		return false;
 	}
 

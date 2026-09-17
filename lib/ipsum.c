@@ -11,19 +11,19 @@ dict_t dicts[100] = {};
 size_t ndicts = 0;
 
 dict_t *find_dict(const char *name) {
-    for (size_t i = 0; i < ndicts; i++) {
-        if (!strcmp(name, dicts[i].name)) {
-            return &dicts[i];
-        }
-    }
-    return NULL;
+	for (size_t i = 0; i < ndicts; i++) {
+		if (!strcmp(name, dicts[i].name)) {
+			return &dicts[i];
+		}
+	}
+	return NULL;
 }
 
 pub void add_dict(char *name, size_t length, char **entries) {
-    dict_t *d = &dicts[ndicts++];
-    d->name = name;
-    d->entries = entries;
-    d->length = length;
+	dict_t *d = &dicts[ndicts++];
+	d->name = name;
+	d->entries = entries;
+	d->length = length;
 }
 
 pub void emit(const char *s) {
@@ -54,7 +54,7 @@ bool parse(scanner.t *b) {
 		if (!d) {
 			panic("unknown dict: %s", name);
 		}
-    	printf("%s", d->entries[rnd.intn(d->length)]);
+		printf("%s", d->entries[rnd.intn(d->length)]);
 		return true;
 	}
 
@@ -62,11 +62,19 @@ bool parse(scanner.t *b) {
 	if (scanner.skip_literal(b, "irand[")) {
 		int n1 = 0;
 		int n2 = 0;
-		if (!readnum(b, &n1)) return false;
-		if (!scanner.skip_literal(b, "..")) return false;
-		if (!readnum(b, &n2)) return false;
-		if (!scanner.skip_literal(b, "]")) return false;
-		printf("%d", n1 + (int) rnd.intn(n2-n1 + 1));
+		if (!readnum(b, &n1)) {
+			return false;
+		}
+		if (!scanner.skip_literal(b, "..")) {
+			return false;
+		}
+		if (!readnum(b, &n2)) {
+			return false;
+		}
+		if (!scanner.skip_literal(b, "]")) {
+			return false;
+		}
+		printf("%d", n1 + (int) rnd.intn((n2 - n1) + 1));
 		return true;
 	}
 
@@ -80,15 +88,25 @@ bool parse(scanner.t *b) {
 	if (scanner.skip_literal(b, "text[")) {
 		int n1 = 0;
 		int n2 = 0;
-		if (!readnum(b, &n1)) return false;
-		if (!scanner.skip_literal(b, "..")) return false;
-		if (!readnum(b, &n2)) return false;
-		if (!scanner.skip_literal(b, "]")) return false;
+		if (!readnum(b, &n1)) {
+			return false;
+		}
+		if (!scanner.skip_literal(b, "..")) {
+			return false;
+		}
+		if (!readnum(b, &n2)) {
+			return false;
+		}
+		if (!scanner.skip_literal(b, "]")) {
+			return false;
+		}
 		int n = n1 + (int) rnd.intn(n2);
 		for (int i = 0; i < n; i++) {
 			int wc = 1 + rnd.intn(4);
 			for (int w = 0; w < wc; w++) {
-				if (w > 0) putchar(' ');
+				if (w > 0) {
+					putchar(' ');
+				}
 				genword();
 			}
 		}
@@ -99,12 +117,20 @@ bool parse(scanner.t *b) {
 	if (scanner.skip_literal(b, "f2[")) {
 		double n1 = 0;
 		double n2 = 0;
-		if (!readfloat(b, &n1)) return false;
-		if (!scanner.skip_literal(b, ",")) return false;
-		if (!readfloat(b, &n2)) return false;
-		if (!scanner.skip_literal(b, "]")) return false;
+		if (!readfloat(b, &n1)) {
+			return false;
+		}
+		if (!scanner.skip_literal(b, ",")) {
+			return false;
+		}
+		if (!readfloat(b, &n2)) {
+			return false;
+		}
+		if (!scanner.skip_literal(b, "]")) {
+			return false;
+		}
 		double d = n1 + rnd.u() * n2;
-        printf("%.2f", d);
+		printf("%.2f", d);
 		return true;
 	}
 
@@ -118,7 +144,9 @@ bool parse(scanner.t *b) {
 			}
 			buf[len++] = scanner.get(b);
 		}
-		if (!scanner.skip_literal(b, "'")) return false;
+		if (!scanner.skip_literal(b, "'")) {
+			return false;
+		}
 		printf("%s", buf);
 		return true;
 	}
@@ -142,51 +170,61 @@ bool readnum(scanner.t *b, int *r) {
 
 bool readfloat(scanner.t *b, double *r) {
 	char buf[10] = {};
-	if (!scanner.num(b, buf, sizeof(buf))) return false;
+	if (!scanner.num(b, buf, sizeof(buf))) {
+		return false;
+	}
 	return sscanf(buf, "%lf", r) == 1;
 }
 
-char *prefixes[] = { "a", "en", "de", "un", "pro", "pre",  };
-char *suffixes[] = { "ing", "able", "ed", "ity", "ian", "ty", "gst", };
+char *prefixes[] = { "a", "en", "de", "un", "pro", "pre" };
+char *suffixes[] = { "ing", "able", "ed", "ity", "ian", "ty", "gst" };
 char *syllables[] = {
-    "foo",
-    "so", "li", "di", "nor", "we", "gi", "ha", "ve",
-    "hun", "gar", "sar", "din", "ho", "nor",
-    "in", "er", "ti", "on", "at", "es", "en", "re", "st", "ar",
-    "al", "te", "ed", "nd", "to", "nt", "is", "or", "it", "as",
-    "le", "an", "ma", "se", "ne", "us", "de", "co", "me", "ra",
-    "si", "ve", "di", "ri", "ro", "ng", "li", "la", "so", "ta",
-    "ec", "hi", "ni", "ca", "ad", "tr", "ac", "om", "et", "no",
-    "ha", "el", "pe", "id", "ur", "pr", "ce", "il", "be", "fo",
-    "su", "pa", "un", "lo", "po", "em", "wi", "th", "ll", "ch",
-    "ea", "ns", "rt", "sa", "mi", "na", "ic", "he", "ge", "rd",
-    "ai", "nc", "ul", "mp", "ci", "ou", "io", "am", "sp", "fi",
-    "sh", "ld", "ct", "bl", "ck", "gr", "cr", "br", "fr", "sm",
-    "ing", "ion", "ent", "ers", "est", "ati", "ter", "con", "res", "and",
-    "for", "ted", "nce", "tio", "per", "ant", "all", "ess", "ver", "pro",
-    "rea", "son", "sta", "men", "der", "her", "com", "int", "und", "not",
-    "end", "cal", "ble", "ard", "are", "ect", "ive", "can", "str", "out",
-    "age", "pre", "dis", "but", "ran", "rat", "use", "led", "sis", "tic",
-    "ous", "ide", "tor", "rec", "orm", "act", "ist", "one", "ine", "nte",
-    "min", "tra", "ght", "lan", "sed", "sic", "art", "par", "tin", "nat",
-    "ber", "red", "por", "den", "man", "ial", "ces", "mer", "ons", "nts",
-    "ten", "ies", "ven", "lin", "get", "new", "fin", "ord", "sur", "eve",
-    "let", "ain", "ind", "sup", "las", "ron", "ite", "sen", "fer", "set",
-    "day", "ove", "ime", "way",
+	"foo",  "so",  "li",  "di", "nor",  "we",  "gi",  "ha",
+	 "ve", "hun", "gar", "sar", "din",  "ho", "nor",  "in",
+	 "er",  "ti",  "on",  "at",  "es",  "en",  "re",  "st",
+	 "ar",  "al",  "te",  "ed",  "nd",  "to",  "nt",  "is",
+	 "or",  "it",  "as",  "le",  "an",  "ma",  "se",  "ne",
+	 "us",  "de",  "co",  "me",  "ra",  "si",  "ve",  "di",
+	 "ri",  "ro",  "ng",  "li",  "la",  "so",  "ta",  "ec",
+	 "hi",  "ni",  "ca",  "ad",  "tr",  "ac",  "om",  "et",
+	 "no",  "ha",  "el",  "pe",  "id",  "ur",  "pr",  "ce",
+	 "il",  "be",  "fo",  "su",  "pa",  "un",  "lo",  "po",
+	 "em",  "wi",  "th",  "ll",  "ch",  "ea",  "ns",  "rt",
+	 "sa",  "mi",  "na",  "ic",  "he",  "ge",  "rd",  "ai",
+	 "nc",  "ul",  "mp",  "ci",  "ou",  "io",  "am",  "sp",
+	 "fi",  "sh",  "ld",  "ct",  "bl",  "ck",  "gr",  "cr",
+	 "br",  "fr",  "sm", "ing", "ion", "ent", "ers", "est",
+	"ati", "ter", "con", "res", "and", "for", "ted", "nce",
+	"tio", "per", "ant", "all", "ess", "ver", "pro", "rea",
+	"son", "sta", "men", "der", "her", "com", "int", "und",
+	"not", "end", "cal", "ble", "ard", "are", "ect", "ive",
+	"can", "str", "out", "age", "pre", "dis", "but", "ran",
+	"rat", "use", "led", "sis", "tic", "ous", "ide", "tor",
+	"rec", "orm", "act", "ist", "one", "ine", "nte", "min",
+	"tra", "ght", "lan", "sed", "sic", "art", "par", "tin",
+	"nat", "ber", "red", "por", "den", "man", "ial", "ces",
+	"mer", "ons", "nts", "ten", "ies", "ven", "lin", "get",
+	"new", "fin", "ord", "sur", "eve", "let", "ain", "ind",
+	"sup", "las", "ron", "ite", "sen", "fer", "set", "day",
+	"ove", "ime", "way"
 };
 
 void genword() {
-    if (rnd.u() < 0.5) {
-        printf("%s", prefixes[rnd.intn(nelem(prefixes))]);
-    }
-    syllable();
-    if (rnd.u() < 0.5) syllable();
-    if (rnd.u() < 0.3) syllable();
-    if (rnd.u() < 0.5) {
-        printf("%s", suffixes[rnd.intn(nelem(suffixes))]);
-    }
+	if (rnd.u() < 0.5) {
+		printf("%s", prefixes[rnd.intn(nelem(prefixes))]);
+	}
+	syllable();
+	if (rnd.u() < 0.5) {
+		syllable();
+	}
+	if (rnd.u() < 0.3) {
+		syllable();
+	}
+	if (rnd.u() < 0.5) {
+		printf("%s", suffixes[rnd.intn(nelem(suffixes))]);
+	}
 }
 
 void syllable() {
-    printf("%s", syllables[rnd.intn(nelem(syllables))]);
+	printf("%s", syllables[rnd.intn(nelem(syllables))]);
 }

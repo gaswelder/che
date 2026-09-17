@@ -1,5 +1,6 @@
-
-pub typedef { double left, right; } samplef_t;
+pub typedef {
+	double left, right;
+} samplef_t;
 
 pub typedef {
 	uint32_t freq; // 44100
@@ -39,8 +40,12 @@ pub void normalize(clip_t *c, double level) {
 	double max = 0;
 	for (size_t i = 0; i < c->nsamples; i++) {
 		samplef_t *s = &c->samples[i];
-		if (fabs(s->left) > max) max = fabs(s->left);
-		if (fabs(s->right) > max) max = fabs(s->right);
+		if (fabs(s->left) > max) {
+			max = fabs(s->left);
+		}
+		if (fabs(s->right) > max) {
+			max = fabs(s->right);
+		}
 	}
 	double k = level / max;
 	for (size_t i = 0; i < c->nsamples; i++) {
@@ -78,11 +83,11 @@ pub clip_t *transpose(clip_t *c, float r) {
 		double left = s->left * a;
 		double right = s->right * a;
 		if (b > 0) {
-			s = &c->samples[t0_int+1];
+			s = &c->samples[t0_int + 1];
 			left += s->left * b;
 			right += s->right * b;
 		}
-		samplef_t t = {left, right};
+		samplef_t t = { left, right };
 		push_sample(c2, t);
 	}
 	return c2;

@@ -3,13 +3,13 @@
 #import test
 
 int main() {
-    request();
+	request();
 	response();
-    return test.fails();
+	return test.fails();
 }
 
 void request() {
-    http.request_t r = {};
+	http.request_t r = {};
 
 	reader.t *re = reader.string("GET /path/blog/file1.html?a=1&b=2 HTTP/1.0\r\n"
         "Host: example.net\r\n"
@@ -17,17 +17,17 @@ void request() {
     test.truth("parsing", http.read_request(re, &r));
 	reader.free(re);
 
-    test.streq(r.method, "GET");
-    test.streq(r.uri, "/path/blog/file1.html?a=1&b=2");
-    test.streq(r.version, "HTTP/1.0");
+	test.streq(r.method, "GET");
+	test.streq(r.uri, "/path/blog/file1.html?a=1&b=2");
+	test.streq(r.version, "HTTP/1.0");
 
-    test.streq(r.path, "/path/blog/file1.html");
-    test.streq(r.query, "a=1&b=2");
-    test.streq(r.filename, "file1.html");
+	test.streq(r.path, "/path/blog/file1.html");
+	test.streq(r.query, "a=1&b=2");
+	test.streq(r.filename, "file1.html");
 
-    http.header_t *h = http.get_header(&r, "Accept");
-    test.streq(h->name, "Accept");
-    test.streq(h->value, "application/json; charset=utf-8");
+	http.header_t *h = http.get_header(&r, "Accept");
+	test.streq(h->name, "Accept");
+	test.streq(h->value, "application/json; charset=utf-8");
 }
 
 void response() {

@@ -1,5 +1,6 @@
-
-typedef { char *k, *v; } kv_t;
+typedef {
+	char *k, *v;
+} kv_t;
 
 kv_t table[] = {
     { "aac",  "audio/aac" },
@@ -83,12 +84,12 @@ kv_t table[] = {
  * ext is a lowercase extension without the dot.
  */
 pub const char *lookup(const char *ext) {
-    kv_t *entry = table;
-    while (entry->k) {
-        if (!strcmp(entry->k, ext)) {
-            return entry->v;
-        }
-        entry++;
-    }
-    return NULL;
+	kv_t *entry = table;
+	while (entry->k) {
+		if (!strcmp(entry->k, ext)) {
+			return entry->v;
+		}
+		entry++;
+	}
+	return NULL;
 }

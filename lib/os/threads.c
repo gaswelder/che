@@ -50,8 +50,6 @@ pub bool thr_detach(thr_t *t) {
 	return r == 0;
 }
 
-
-
 /*
  * Creates and returns a new mutex
  */
@@ -99,7 +97,7 @@ pub void cnd_free(cnd_t *c) {
  * Unlocks the mutex, waits for the condition, locks the mutex again.
  */
 pub bool unlock_wait_lock(mtx_t *mtx, cnd_t *cond) {
-	return OS.pthread_cond_wait( &cond->c, &mtx->m ) == 0;
+	return OS.pthread_cond_wait(&cond->c, &mtx->m) == 0;
 }
 
 // Wakes one of the threads waiting for cond.

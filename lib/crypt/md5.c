@@ -115,7 +115,7 @@ uint8_t next_byte(src_t *s)
 		return 128;
 	}
 
-	if(s->zeros > 0) {
+	if (s->zeros > 0) {
 		s->zeros--;
 		return 0;
 	}
@@ -132,8 +132,7 @@ uint8_t next_byte(src_t *s)
 	return b;
 }
 
-void init_padding(src_t *s)
-{
+void init_padding(src_t *s) {
 	/*
 	 * Now we know 'b' (data length in bits), so we can create the
 	 * length mark and calculate how many zero bytes need to be added.
@@ -149,15 +148,15 @@ void init_padding(src_t *s)
 
 	// low word
 	w = s->length & 0xFFFFFFFF;
-	for(i = 0; i < 4; i++) {
-		b = (w >> i*8) & 0xFF;
+	for (i = 0; i < 4; i++) {
+		b = (w >> (i * 8)) & 0xFF;
 		*pos = b;
 		pos++;
 	}
 	// high word
 	w = (s->length >> 32) & 0xFFFFFFFF;
-	for(int i = 0; i < 4; i++) {
-		b = (w >> i*8) & 0xFF;
+	for (int i = 0; i < 4; i++) {
+		b = (w >> (i * 8)) & 0xFF;
 		*pos = b;
 		pos++;
 	}
@@ -169,9 +168,9 @@ void init_padding(src_t *s)
 	 * (length + 1 + zeros + 8) % 64 == 0
 	 * where '1' is for the 'eof' byte and '8' is for the length marker.
 	 */
-	int l = s->length/8;
+	int l = s->length / 8;
 	int n = (9 + l) / 64;
-	if((9 + l) % 64 != 0) {
+	if (((9 + l) % 64) != 0) {
 		n++;
 	}
 	s->zeros = 64 * n - 9 - l;
@@ -389,5 +388,5 @@ uint32_t I(uint32_t x, uint32_t y, uint32_t z) {
 }
 
 uint32_t rotate(uint32_t value, int bits) {
-	return (value << bits) | (value >> (32-bits));
+	return (value << bits) | (value >> (32 - bits));
 }
