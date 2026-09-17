@@ -748,7 +748,7 @@ fn tr_body(b: &Body, ctx: &mut TrCtx) -> Result<c::Body, BuildError> {
     begin_scope(ctx);
     for s in &b.items {
         statements.push(match s {
-            BlockItem::Break => c::Statement::Break,
+            BlockItem::Break(_) => c::Statement::Break,
             BlockItem::Continue => c::Statement::Continue,
             BlockItem::Statement(x) => {
                 match &x.expr {

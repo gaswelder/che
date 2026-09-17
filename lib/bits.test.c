@@ -7,7 +7,7 @@ int main() {
 	testunpack();
 	testreader();
 
-	uint8_t val[] = {0, 0, 1, 1, 1, 0, 0, 0};
+	uint8_t val[] = { 0, 0, 1, 1, 1, 0, 0, 0 };
 	testwr(bits.STRAIGHT, val, nelem(val));
 	testwr(bits.REVERSED, val, nelem(val));
 
@@ -52,7 +52,9 @@ void testwr(int order, uint8_t *val, size_t n) {
 	bits.reader_t *br = bits.newreader(fr, order);
 	for (size_t i = 0; i < n; i++) {
 		int b = bits.read1(br);
-		if (b < 0) panic("read failed");
+		if (b < 0) {
+			panic("read failed");
+		}
 		test.truth("001110 00", (uint8_t) b == val[i]);
 	}
 	test.truth("eof", bits.read1(br) == EOF);

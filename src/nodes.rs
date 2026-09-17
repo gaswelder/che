@@ -49,7 +49,7 @@ pub enum BlockItem {
     While(While),
     Statement(Statement),
     Return(Return),
-    Break,
+    Break(SourceInfo),
     Continue,
 }
 

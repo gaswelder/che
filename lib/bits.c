@@ -3,16 +3,7 @@
 
 // Masks to get to i-th bit in a byte,
 // assuming 0-th bit is the most significant one.
-int bitvals[] = {
-	1 << 7,
-	1 << 6,
-	1 << 5,
-	1 << 4,
-	1 << 3,
-	1 << 2,
-	1 << 1,
-	1 << 0,
-};
+int bitvals[] = { 1 << 7, 1 << 6, 1 << 5, 1 << 4, 1 << 3, 1 << 2, 1 << 1, 1 << 0 };
 
 pub enum {
 	STRAIGHT, // most-significant bit first
@@ -22,7 +13,7 @@ pub enum {
 // Unpacks bits from a byte into a given array, least significant bit first.
 pub void getbits_lsfirst(uint8_t byte, uint8_t *bits) {
 	for (int i = 0; i < 8; i++) {
-		bits[i] = (byte & bitvals[7-i]) != 0;
+		bits[i] = (byte & bitvals[7 - i]) != 0;
 	}
 }
 
@@ -73,9 +64,11 @@ pub int read1(reader_t *s) {
 	if (s->reverse) {
 		b = s->byte & bitvals[s->rem];
 	} else {
-		b = s->byte & bitvals[7-s->rem];
+		b = s->byte & bitvals[7 - s->rem];
 	}
-	if (b > 0) b = 1;
+	if (b > 0) {
+		b = 1;
+	}
 	return b;
 }
 
@@ -160,7 +153,9 @@ pub bool write1(writer_t *w, uint8_t bit) {
 
 pub bool write(writer_t *w, uint8_t *bits, size_t nbits) {
 	for (size_t i = 0; i < nbits; i++) {
-		if (!write1(w, bits[i])) return false;
+		if (!write1(w, bits[i])) {
+			return false;
+		}
 	}
 	return true;
 }

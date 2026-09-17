@@ -17,7 +17,9 @@ pub void pushval(table_t *t, char *format, ...) {
 	if (t->pos == t->cap) {
 		t->cap += 100;
 		char **n = realloc(t->values, t->cap * sizeof(table_t));
-		if (!n) panic("realloc failed");
+		if (!n) {
+			panic("realloc failed");
+		}
 		t->values = n;
 	}
 	va_list args = {};
@@ -71,7 +73,9 @@ void printwidth(char *s, size_t w) {
 		putchar(*s);
 		s++;
 		n++;
-		if (n == w) break;
+		if (n == w) {
+			break;
+		}
 	}
 	while (n < w) {
 		putchar(' ');

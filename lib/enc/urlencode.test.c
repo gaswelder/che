@@ -1,5 +1,5 @@
-#import test
 #import enc/urlencode
+#import test
 #import writer
 
 int main() {
@@ -10,6 +10,6 @@ int main() {
 	const char *out = "msg%2Fhello%20world%21";
 	int len = urlencode.write(w, msg, strlen(msg));
 	test.truth("len check", (size_t) len == strlen(out));
-	test.streq((char *)buf, out);
+	test.streq((char *) buf, out);
 	return test.fails();
 }

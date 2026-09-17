@@ -151,7 +151,7 @@ fn parse_module_object(l: &mut Lexer, ctx: &ParseCtx) -> Result<TWithErrors<ModE
     }
     if l.follows("typedef") {
         return Ok(TWithErrors {
-            obj: parse_typedef(is_pub, l, ctx)?,
+            obj: parse_typedef(l, ctx, is_pub, source_info)?,
             errors: Vec::new(),
         });
     }
@@ -770,12 +770,14 @@ fn parse_block_item(l: &mut Lexer, ctx: &ParseCtx) -> Result<TWithErrors<BlockIt
     }
 
     let next = l.peek().unwrap();
+    let mut source_info = si(&next);
     match next.kind.as_str() {
         "break" => {
             l.get().unwrap();
-            expect(l, ";")?;
+            let semi = expect(l, ";")?;
+            source_info.trailing_comment = semi.trailing_comment;
             Ok(TWithErrors {
-                obj: BlockItem::Break,
+                obj: BlockItem::Break(source_info),
                 errors: Vec::new(),
             })
         }
@@ -793,7 +795,7 @@ fn parse_block_item(l: &mut Lexer, ctx: &ParseCtx) -> Result<TWithErrors<BlockIt
             obj: parse_return(l, ctx)?,
             errors: Vec::new(),
         }),
-        "switch" => read_switch(l, ctx),
+        "switch" => parse_switch(l, ctx),
         "while" => parse_while(l, ctx),
         _ => parse_statement(l, ctx),
     }
@@ -998,7 +1000,7 @@ fn parse_for(l: &mut Lexer, ctx: &ParseCtx) -> Result<TWithErrors<BlockItem>, Er
     });
 }
 
-fn read_switch(l: &mut Lexer, ctx: &ParseCtx) -> Result<TWithErrors<BlockItem>, Error> {
+fn parse_switch(l: &mut Lexer, ctx: &ParseCtx) -> Result<TWithErrors<BlockItem>, Error> {
     let t1 = expect(l, "switch")?;
     let source_info = si(&t1);
     let mut is_str = false;
@@ -1194,8 +1196,12 @@ fn parse_union(l: &mut Lexer, ctx: &ParseCtx) -> Result<Union, Error> {
     return Ok(Union { form, fields });
 }
 
-fn parse_typedef(is_pub: bool, l: &mut Lexer, ctx: &ParseCtx) -> Result<ModElem, Error> {
-    let source_info = si(l.peek().unwrap());
+fn parse_typedef(
+    l: &mut Lexer,
+    ctx: &ParseCtx,
+    is_pub: bool,
+    source_info: SourceInfo,
+) -> Result<ModElem, Error> {
     expect(l, "typedef")?;
 
     // typedef {int hour, minute, second} time_t;

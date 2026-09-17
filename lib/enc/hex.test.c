@@ -9,6 +9,6 @@ int main() {
 	writer.t *w = writer.static_buffer(out, 100);
 	int r = hex.write(w, in, sizeof(in));
 	test.truth("r==4", r == 4);
-	test.streq((char *)out, "00010203");
+	test.streq((char *) out, "00010203");
 	return test.fails();
 }

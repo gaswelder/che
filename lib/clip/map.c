@@ -46,12 +46,16 @@ pub void free(map_t *m) {
 pub void set(map_t *m, uint8_t *key, size_t keysize, void *val) {
 	// Find or create the entry.
 	entry_t *e = find(m, key, keysize);
-	if (!e) e = create(m);
+	if (!e) {
+		e = create(m);
+	}
 
 	// Set the key.
 	e->keysize = keysize;
 	e->key = realloc(e->key, e->keysize);
-	if (!e->key) panic("key realloc failed");
+	if (!e->key) {
+		panic("key realloc failed");
+	}
 	memcpy(e->key, key, e->keysize);
 
 	// Set the value.
@@ -62,7 +66,9 @@ pub void set(map_t *m, uint8_t *key, size_t keysize, void *val) {
 // If the value doesn't exist, doesn't modify val and returns false.
 pub bool get(map_t *m, uint8_t *key, size_t keysize, void *val) {
 	entry_t *e = find(m, key, keysize);
-	if (!e) return false;
+	if (!e) {
+		return false;
+	}
 	memcpy(val, e->value, m->valsize);
 	return true;
 }
@@ -90,7 +96,9 @@ entry_t *find(map_t *m, uint8_t *key, size_t keysize) {
 	entry_t *ee = m->entries;
 	for (size_t i = 0; i < m->size; i++) {
 		entry_t *e = &ee[i];
-		if (e->keysize != keysize) continue;
+		if (e->keysize != keysize) {
+			continue;
+		}
 		if (!memcmp(key, e->key, keysize)) {
 			return e;
 		}
@@ -102,7 +110,9 @@ entry_t *create(map_t *m) {
 	if (m->size == m->cap) {
 		m->cap *= 2;
 		m->entries = realloc(m->entries, m->cap * sizeof(entry_t));
-		if (!m->entries) panic("realloc failed");
+		if (!m->entries) {
+			panic("realloc failed");
+		}
 	}
 	entry_t *ee = m->entries;
 	entry_t *e = &ee[m->size++];
@@ -110,7 +120,10 @@ entry_t *create(map_t *m) {
 	return e;
 }
 
-pub typedef { map_t *map; size_t pos; } iter_t;
+pub typedef {
+	map_t *map;
+	size_t pos;
+} iter_t;
 
 pub iter_t *iter(map_t *m) {
 	iter_t *it = calloc!(1, sizeof(iter_t));

@@ -140,11 +140,11 @@ fn fmt_struct_typedef(x: &StructTypedef) -> String {
                     }
                     s += &fmt_form(&n);
                 }
+                s += ";";
                 if let Some(c) = &p.trailing_comment {
-                    s += &format!("; // {}\n", c);
-                } else {
-                    s += ";\n";
+                    s += &format!(" {}", c);
                 }
+                s += "\n";
             }
             StructEntry::Union(_) => todo!(),
         }
@@ -191,7 +191,12 @@ fn fmt_func(x: &FuncDecl) -> String {
 
 fn fmt_block_item(s: &BlockItem) -> String {
     match s {
-        BlockItem::Break => String::from("break;"),
+        BlockItem::Break(si) => {
+            let mut s = fmt_begin(&si);
+            s += "break;";
+            s += &fmt_end(&si);
+            s
+        }
         BlockItem::Continue => String::from("continue;"),
         BlockItem::For(x) => fmt_for(&x),
         BlockItem::If(x) => fmt_if(&x),
@@ -279,6 +284,7 @@ fn fmt_return(x: &Return) -> String {
         s += &fmt_expr(&e);
     }
     s += ";";
+    s += &fmt_end(&x.source_info);
     s
 }
 
@@ -317,16 +323,22 @@ fn fmt_cases(x: &Switch) -> String {
                 s += "{}";
             }
             1 => {
-                s += "{ ";
-                s += &fmt_block_item(&c.body.items[0]);
-                s += " }";
+                let item = fmt_block_item(&c.body.items[0]);
+                if !item.contains("\n") {
+                    s += &format!("{{ {} }}", item);
+                } else {
+                    s += "{\n";
+                    s += &indent(&fmt_block_item(&c.body.items[0]));
+                    s += "\n}";
+                }
             }
             _ => {
                 s += &fmt_block(&c.body);
             }
         }
         if let Some(c) = &c.body.trailing_comment {
-            s += &format!(" // {}", c);
+            s += " ";
+            s += &c;
         }
     }
     if let Some(c) = &x.default_case {
@@ -621,6 +633,8 @@ pub fn fmt_binop(x: &BinaryOp) -> String {
         (Some("*"), "/") => &s1,
 
         (Some("prefix"), "=") => &s1,
+        (Some("prefix"), "<") => &s1,
+        (Some("prefix"), ">") => &s1,
 
         (Some("+"), ">") => &s1,
         (Some("-"), ">") => &s1,

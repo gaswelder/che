@@ -11,16 +11,16 @@ uint32_t pcg32() {
 		x += (uint64_t) OS.getpid();
 		seed(x);
 	}
-    pcg32_value = pcg32_value * pcg32_m + pcg32_a;
-    int shift = 29 - (pcg32_value >> 61);
-    return pcg32_value >> shift;
+	pcg32_value = pcg32_value * pcg32_m + pcg32_a;
+	int shift = 29 - (pcg32_value >> 61);
+	return pcg32_value >> shift;
 }
 
 // Seeds the generator's state.
 // Use this for reproducible runs.
 // If not called, a seed will be chosen automatically.
 pub void seed(uint64_t s) {
-    pcg32_value = s;
+	pcg32_value = s;
 	_seeded = true;
 }
 
@@ -36,5 +36,5 @@ pub uint32_t intn(uint32_t n) {
 
 // Returns a random number uniformly distributed in [0, 1).
 pub double u() {
-    return (double) pcg32() / 0xffffffff;
+	return (double) pcg32() / 0xffffffff;
 }

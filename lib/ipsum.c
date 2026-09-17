@@ -2,9 +2,9 @@
 #import scanner
 
 typedef {
-    char *name;
-    size_t length;
-    char **entries;
+	char *name;
+	size_t length;
+	char **entries;
 } dict_t;
 
 dict_t dicts[100] = {};

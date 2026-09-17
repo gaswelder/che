@@ -166,23 +166,35 @@ pub rgba_t from_hsl(float h, s, l) {
 	float green = 0;
 	float blue = 0;
 	if (h1 <= 1) {
-		red = c; green = x; blue = 0;
+		red = c;
+		green = x;
+		blue = 0;
 	} else if (h1 <= 2) {
-		red = x; green = c; blue = 0;
+		red = x;
+		green = c;
+		blue = 0;
 	} else if (h1 <= 3) {
-		red = 0; green = c; blue = x;
+		red = 0;
+		green = c;
+		blue = x;
 	} else if (h1 <= 4) {
-		red = 0; green = x; blue = c;
+		red = 0;
+		green = x;
+		blue = c;
 	} else if (h1 <= 5) {
-		red = x; green = 0; blue = c;
+		red = x;
+		green = 0;
+		blue = c;
 	} else if (h1 <= 6) {
-		red = c; green = 0; blue = x;
+		red = c;
+		green = 0;
+		blue = x;
 	}
 	rgba_t color = {
-		.red = (int) (255.0 * red),
-		.green = (int) (255.0 * green),
-		.blue = (int) (255.0 * blue),
-		.transparency = 0,
+		.red = (int)(255.0 * red),
+		.green = (int)(255.0 * green),
+		.blue = (int)(255.0 * blue),
+		.transparency = 0
 	};
 	return color;
 }
