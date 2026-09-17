@@ -896,11 +896,12 @@ fn parse_form(l: &mut Lexer, ctx: &ParseCtx) -> Result<Form, Error> {
 fn parse_if(lexer: &mut Lexer, ctx: &ParseCtx) -> Result<TWithErrors<BlockItem>, Error> {
     let mut errors = Vec::new();
     let t1 = expect(lexer, "if")?;
-    let source_info = si(&t1);
+    let mut source_info = si(&t1);
 
     expect(lexer, "(")?;
+
     let condition = parse_expr(lexer, 0, ctx)?;
-    expect(lexer, ")")?;
+    let br2 = expect(lexer, ")")?;
     let body = parse_block(lexer, ctx)?;
     for e in body.errors {
         errors.push(e)
@@ -913,6 +914,17 @@ fn parse_if(lexer: &mut Lexer, ctx: &ParseCtx) -> Result<TWithErrors<BlockItem>,
             errors.push(e)
         }
         else_body = Some(r.obj);
+    }
+
+    if br2.trailing_comment.is_some() {
+        let c = br2.trailing_comment.unwrap().clone();
+        if source_info.comments.is_some() {
+            let mut c2 = source_info.comments.unwrap().clone();
+            c2.push(c);
+            source_info.comments = Some(c2);
+        } else {
+            source_info.comments = Some(vec![c]);
+        }
     }
     return Ok(TWithErrors {
         obj: BlockItem::If(nodes::If {

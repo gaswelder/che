@@ -1,7 +1,6 @@
-use substring::Substring;
-
 use crate::nodes::*;
 use crate::parser;
+use substring::Substring;
 
 pub fn fmt_mod(m: &Module) -> String {
     // Separate imports from other elements.
@@ -717,13 +716,9 @@ fn fmt_comments(x: &Option<Vec<String>>) -> String {
 }
 
 fn fmt_multiline_comment(c: &str) -> String {
-    let mut s = String::new();
-
     let lines: Vec<String> = c.split("\n").map(|x| String::from(x)).collect();
     if lines.len() == 1 {
-        s += "// ";
-        s += &lines[0].substring(2, lines[0].len() - 2).trim();
-        return s;
+        return format!("// {}", &lines[0].substring(2, lines[0].len() - 2).trim());
     }
 
     let mut prefs: Vec<usize> = lines
@@ -751,12 +746,35 @@ fn fmt_multiline_comment(c: &str) -> String {
     for i in 1..prefs.len() {
         prefs[i] -= trim;
     }
+
+    let mut outlines = Vec::new();
     for i in 0..lines.len() {
-        if i > 0 {
+        outlines.push(lines[i].trim());
+    }
+
+    let n = outlines.len();
+    let mut multiline = outlines[0].starts_with("/*") && outlines[n - 1] == "*/";
+    if multiline {
+        for i in 1..n - 1 {
+            if !outlines[i].starts_with("* ") {
+                multiline = false;
+                break;
+            }
+        }
+    }
+
+    let mut s = String::new();
+    if multiline {
+        s += outlines[0];
+        s += "\n";
+        for i in 1..n - 1 {
+            s += " ";
+            s += outlines[i];
             s += "\n";
         }
-        s += &" ".repeat(prefs[i]);
-        s += lines[i].trim();
+        s += " */";
+        return s;
     }
-    s
+
+    outlines.join("\n")
 }
