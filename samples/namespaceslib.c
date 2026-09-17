@@ -11,5 +11,5 @@ pub typedef {
 } foo_t;
 
 pub void f() {
-    puts("OK");
+	puts("OK");
 }

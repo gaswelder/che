@@ -7,7 +7,7 @@ int main() {
 	int expected[N] = {};
 
 	// Start N threads with different arguments.
-	threads.thr_t *t[N] = {0};
+	threads.thr_t *t[N] = {};
 	for (int i = 0; i < N; i++) {
 		int arg = i + 1;
 		t[i] = threads.start(threadmain, box(&arg, sizeof(arg)));

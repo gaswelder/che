@@ -53,6 +53,9 @@ fn fmt_mod_elem(elem: &ModElem) -> String {
 
 fn fmt_enum(x: &EnumDecl) -> String {
     let mut s = fmt_begin(&x.source_info);
+    if x.is_pub {
+        s += "pub ";
+    }
     s += "enum {\n";
 
     let mut table = Vec::new();
@@ -120,7 +123,7 @@ fn fmt_typedef(x: &Typedef) -> String {
 }
 
 fn fmt_struct_typedef(x: &StructTypedef) -> String {
-    let mut s = String::new();
+    let mut s = fmt_begin(&x.source_info);
     if x.ispub {
         s += "pub ";
     }
@@ -173,6 +176,9 @@ fn fmt_func(x: &FuncDecl) -> String {
             }
             s += &fmt_form(&n);
         }
+    }
+    if x.params.ellipsis {
+        s += ", ...";
     }
     s += ") {\n";
     for st in &x.body.items {
@@ -278,7 +284,11 @@ fn fmt_return(x: &Return) -> String {
 
 fn fmt_switch(x: &Switch) -> String {
     let mut s = fmt_begin(&x.source_info);
-    s += &format!("switch ({}) {{\n", fmt_expr(&x.value));
+    s += "switch";
+    if x.is_str {
+        s += " str";
+    }
+    s += &format!(" ({}) {{\n", fmt_expr(&x.value));
     s += &indent(&fmt_cases(x));
     s += "\n}";
     s
@@ -611,6 +621,9 @@ pub fn fmt_binop(x: &BinaryOp) -> String {
         (Some("*"), "/") => &s1,
 
         (Some("prefix"), "=") => &s1,
+
+        (Some("+"), ">") => &s1,
+        (Some("-"), ">") => &s1,
 
         (_, "&&") => &s1,
         (_, "||") => &s1,

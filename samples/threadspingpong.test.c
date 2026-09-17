@@ -24,7 +24,7 @@ int main() {
 	c.lock = threads.mtx_new();
 	c.cnd = threads.cnd_new();
 	threads.thr_t *t = threads.start(tfunc, &c);
-	
+
 	threads.lock(c.lock);
 	while (true) {
 		if (c.value % 2 == 0) {
@@ -60,7 +60,9 @@ int main() {
 		"thread: 9",
 	};
 	for (int i = 0; i < 10; i++) {
-		if (strcmp(expected[i], msgs[i]) != 0) panic("!");
+		if (strcmp(expected[i], msgs[i]) != 0) {
+			panic("!");
+		}
 	}
 
 	return 0;

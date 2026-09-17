@@ -145,7 +145,7 @@ fn parse_module_object(l: &mut Lexer, ctx: &ParseCtx) -> Result<TWithErrors<ModE
 
     if l.follows("enum") {
         return Ok(TWithErrors {
-            obj: parse_enum(l, is_pub, ctx)?,
+            obj: parse_enum(l, ctx, is_pub, source_info)?,
             errors: Vec::new(),
         });
     }
@@ -598,9 +598,13 @@ fn parse_literal(l: &mut Lexer) -> Result<Literal, Error> {
     });
 }
 
-fn parse_enum(l: &mut Lexer, is_pub: bool, ctx: &ParseCtx) -> Result<ModElem, Error> {
-    let t1 = expect(l, "enum")?;
-    let mut source_info = si(&t1);
+fn parse_enum(
+    l: &mut Lexer,
+    ctx: &ParseCtx,
+    is_pub: bool,
+    mut source_info: SourceInfo,
+) -> Result<ModElem, Error> {
+    expect(l, "enum")?;
     expect(l, "{")?;
 
     let mut entries = Vec::new();
@@ -1191,13 +1195,12 @@ fn parse_union(l: &mut Lexer, ctx: &ParseCtx) -> Result<Union, Error> {
 }
 
 fn parse_typedef(is_pub: bool, l: &mut Lexer, ctx: &ParseCtx) -> Result<ModElem, Error> {
+    let source_info = si(l.peek().unwrap());
     expect(l, "typedef")?;
 
     // typedef {int hour, minute, second} time_t;
-    if l.follows("{") {
-        // struct body
+    if l.eat("{") {
         let mut fields: Vec<StructEntry> = Vec::new();
-        expect(l, "{")?;
         while l.more() {
             match l.peek().unwrap().kind.as_str() {
                 "}" => break,
@@ -1211,6 +1214,7 @@ fn parse_typedef(is_pub: bool, l: &mut Lexer, ctx: &ParseCtx) -> Result<ModElem,
         let tok = expect(l, "word")?;
         expect(l, ";")?;
         return Ok(ModElem::StructTypedef(StructTypedef {
+            source_info,
             ispub: is_pub,
             entries: fields,
             name: tok.content,

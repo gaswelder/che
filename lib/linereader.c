@@ -35,7 +35,9 @@ pub bool read(t *b) {
 			}
 		}
 		b->buf[len++] = c;
-		if (c == '\n') break;
+		if (c == '\n') {
+			break;
+		}
 	}
 	b->buf[len] = '\0';
 	return len > 0;

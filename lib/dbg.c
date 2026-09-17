@@ -1,11 +1,10 @@
 #import os/self
-#import writer
 #import reader
+#import writer
 
 bool env_parsed = false;
 const char *list[10] = {};
 size_t n = 0;
-
 
 const char *default_filter = NULL;
 
@@ -21,18 +20,22 @@ pub void set(const char *s) {
  * If the tag is not given in the DEBUG env var list, ignores the message.
  */
 pub void m(const char *tag, *format, ...) {
-	if (!dbg_enabled(tag)) return;
+	if (!dbg_enabled(tag)) {
+		return;
+	}
 	size_t n = strlen(tag) + 3;
 	printf("[%s] ", tag);
 	if (n < 15) {
 		size_t r = 15 - n;
-		for (size_t i = 0; i < r; i++) putchar(' ');
+		for (size_t i = 0; i < r; i++) {
+			putchar(' ');
+		}
 	}
-    va_list l = {0};
+	va_list l = {};
 	va_start(l, format);
 	vprintf(format, l);
 	va_end(l);
-    printf("\n");
+	printf("\n");
 }
 
 bool dbg_enabled(const char *tag) {
@@ -41,27 +44,39 @@ bool dbg_enabled(const char *tag) {
 		env_parsed = true;
 	}
 	for (size_t i = 0; i < n; i++) {
-		if (strcmp(list[i], tag) == 0) return true;
-		if (strcmp(list[i], "_") == 0) return true;
+		if (strcmp(list[i], tag) == 0) {
+			return true;
+		}
+		if (strcmp(list[i], "_") == 0) {
+			return true;
+		}
 	}
 	return false;
 }
 
 void parse_env() {
 	const char *val = self.getenv("CHE_DEBUG");
-	if (!val) val = self.getenv("DEBUG");
-	if (!val) val = default_filter;
-	if (!val) return;
+	if (!val) {
+		val = self.getenv("DEBUG");
+	}
+	if (!val) {
+		val = default_filter;
+	}
+	if (!val) {
+		return;
+	}
 
-	char *copy = calloc!(strlen(val)+1, 1);
+	char *copy = calloc!(strlen(val) + 1, 1);
 	strcpy(copy, val);
 	char *p = copy;
 	list[n++] = p;
 	while (*p != '\0') {
 		if (*p == ',') {
 			*p = '\0';
-			if (n == 9) break;
-			list[n++] = p+1;
+			if (n == 9) {
+				break;
+			}
+			list[n++] = p + 1;
 		}
 		p++;
 	}
@@ -69,10 +84,10 @@ void parse_env() {
 
 // Debug utility to print bytes.
 pub void print_bytes(const uint8_t *data, size_t n) {
-    printf("--------- %zu bytes ---------------------------\n", n);
+	printf("--------- %zu bytes ---------------------------\n", n);
 	printf("0\t");
 	for (size_t i = 0; i < n; i++) {
-		if (i > 0 && i % 20 == 0) {
+		if (i > 0 && (i % 20) == 0) {
 			printf("\n%zu\t", i);
 		}
 		printf(" %02x", data[i]);
@@ -83,11 +98,9 @@ pub void print_bytes(const uint8_t *data, size_t n) {
 	printf("\n--------- end data ----------------------------\n");
 }
 
-
 //
 // echo writer
 //
-
 typedef {
 	writer.t *out;
 } dbgwriter_t;
@@ -111,7 +124,6 @@ pub writer.t *newwriter(writer.t *out) {
 //
 // echo reader
 //
-
 typedef {
 	reader.t *in;
 } dbgreader_t;

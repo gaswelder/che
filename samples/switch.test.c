@@ -1,8 +1,16 @@
 int main() {
-	if (classify("foo") != 123) panic("!");
-	if (classify("kek") != 123) panic("!");
-	if (classify("bar") != 456) panic("!");
-	if (classify("none") != 2) panic("!");
+	if (classify("foo") != 123) {
+		panic("!");
+	}
+	if (classify("kek") != 123) {
+		panic("!");
+	}
+	if (classify("bar") != 456) {
+		panic("!");
+	}
+	if (classify("none") != 2) {
+		panic("!");
+	}
 	return 0;
 }
 

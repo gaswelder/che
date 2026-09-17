@@ -131,6 +131,7 @@ pub struct Typedef {
 // typedef { int x, y; double *f; } foo_t
 #[derive(Debug, Clone)]
 pub struct StructTypedef {
+    pub source_info: SourceInfo,
     pub ispub: bool,
     pub entries: Vec<StructEntry>,
     pub name: String,
