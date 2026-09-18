@@ -79,6 +79,7 @@ pub enum Expr {
 // Compatibility hatch to expose an existing struct as a type.
 #[derive(Debug, Clone)]
 pub struct StructAlias {
+    pub source_info: SourceInfo,
     pub ispub: bool,
     pub structname: String,
     pub typename: String,
@@ -114,18 +115,18 @@ pub struct FuncDecl {
     pub typename: Typename,
     pub form: Form,
     pub params: FuncParams,
-    pub body: Body,
+    pub body: Block,
 }
 
 #[derive(Debug, Clone)]
 pub struct Typedef {
+    pub source_info: SourceInfo,
     pub ispub: bool,
     pub alias: String,
     pub typename: Typename,
     pub derefs: usize,
     pub array_size: usize,
     pub func_params: Option<AnonymousParameters>,
-    pub pos: Pos,
 }
 
 // typedef { int x, y; double *f; } foo_t
@@ -169,11 +170,13 @@ pub struct NsName {
 
 #[derive(Debug, Clone)]
 pub struct CompLiteral {
+    pub source_info: SourceInfo,
     pub entries: Vec<CompositeLiteralEntry>,
 }
 
 #[derive(Debug, Clone)]
 pub struct CompositeLiteralEntry {
+    pub source_info: SourceInfo,
     pub is_index: bool,
     pub key: Option<Expr>,
     pub value: Expr,
@@ -245,8 +248,9 @@ pub enum SizeofArg {
 }
 
 #[derive(Debug, Clone)]
-pub struct Body {
+pub struct Block {
     pub trailing_comment: Option<String>,
+    pub final_comments: Option<Vec<String>>,
     pub items: Vec<BlockItem>,
 }
 
@@ -272,8 +276,8 @@ pub struct VarDecl {
 pub struct If {
     pub source_info: SourceInfo,
     pub condition: Expr,
-    pub body: Body,
-    pub else_body: Option<Body>,
+    pub body: Block,
+    pub else_body: Option<Block>,
 }
 
 #[derive(Debug, Clone)]
@@ -282,14 +286,14 @@ pub struct For {
     pub init: Option<ForInit>,
     pub condition: Option<Expr>,
     pub action: Option<Expr>,
-    pub body: Body,
+    pub body: Block,
 }
 
 #[derive(Debug, Clone)]
 pub struct While {
     pub source_info: SourceInfo,
     pub cond: Expr,
-    pub body: Body,
+    pub body: Block,
 }
 
 #[derive(Debug, Clone)]
@@ -304,13 +308,13 @@ pub struct Switch {
     pub is_str: bool,
     pub value: Expr,
     pub cases: Vec<SwitchCase>,
-    pub default_case: Option<Body>,
+    pub default_case: Option<Block>,
 }
 
 #[derive(Debug, Clone)]
 pub struct SwitchCase {
     pub values: Vec<SwitchCaseValue>,
-    pub body: Body,
+    pub body: Block,
 }
 
 // *foo[]

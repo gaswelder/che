@@ -10,13 +10,10 @@
  */
 
 // Bitrates table for MP3, kbps.
-int bitrates[] = {
-	0, 32, 40, 48, 56, 64, 80, 96, 112,
-	128, 160, 192, 224, 256, 320
-};
+int bitrates[] = { 0, 32, 40, 48, 56, 64, 80, 96, 112, 128, 160, 192, 224, 256, 320 };
 
 // Sampling frequencies table for MP3, Hz.
-int frequencies[] = {44100, 48000, 32000};
+int frequencies[] = { 44100, 48000, 32000 };
 
 // Number of samples in a frame.
 // For mp3 it's always 1152.
@@ -163,7 +160,7 @@ bool readframe(reader_t *f) {
 	// The encoder inserts padding bits from time to time to compensate for
 	// the truncation from integer division, somewhat similar to leap year
 	// seconds.
-	size_t len = 144 * (h->bitrate*1000) / 44100;
+	size_t len = 144 * (h->bitrate * 1000) / 44100;
 	if (h->padded) {
 		len++;
 	}
@@ -225,7 +222,7 @@ bool readheader(bits.reader_t *s, header_t *h) {
 
 	// 2: freq
 	index = bits.readn(s, 2);
-	if (index < 0 || (size_t)index >= nelem(frequencies)) {
+	if (index < 0 || (size_t) index >= nelem(frequencies)) {
 		return false;
 	}
 	h->freq = frequencies[index];
@@ -234,7 +231,7 @@ bool readheader(bits.reader_t *s, header_t *h) {
 	}
 
 	int tmp = bits.readn(s, 1); // 1 if padding present
-	h->padded = tmp == 1;
+	h->padded = (tmp == 1);
 
 	bits.readn(s, 1); // 1: private
 	h->mode = bits.readn(s, 2); // 2: mode
@@ -256,7 +253,9 @@ pub void write_frame(reader_t *f, FILE *out) {
 
 int fpeek(FILE *f) {
 	int c = fgetc(f);
-	if(c == EOF) return EOF;
+	if (c == EOF) {
+		return EOF;
+	}
 	ungetc(c, f);
 	return c;
 }
@@ -272,27 +271,27 @@ typedef {
 } xing_header_t;
 
 bool read_xing(reader.t *r, xing_header_t *x) {
-    uint8_t magic[4] = {};
-    reader.read(r, magic, 4);
+	uint8_t magic[4] = {};
+	reader.read(r, magic, 4);
 
-    if (memcmp(magic, "Xing", 4) != 0 && memcmp(magic, "Info", 4) != 0) {
-        return false;
-    }
+	if (memcmp(magic, "Xing", 4) != 0 && memcmp(magic, "Info", 4) != 0) {
+		return false;
+	}
 
-    endian.read4be(r, &x->flags);
-    if (x->flags & 0x1) {
-        endian.read4be(r, &x->frames);
-    }
-    if (x->flags & 0x2) {
-        endian.read4be(r, &x->bytes);
-    }
-    if (x->flags & 0x4) {
-        reader.read(r, x->toc, 100);
-    }
-    if (x->flags & 0x8) {
-        endian.read4be(r, &x->quality);
-    }
-    return true;
+	endian.read4be(r, &x->flags);
+	if (x->flags & 0x1) {
+		endian.read4be(r, &x->frames);
+	}
+	if (x->flags & 0x2) {
+		endian.read4be(r, &x->bytes);
+	}
+	if (x->flags & 0x4) {
+		reader.read(r, x->toc, 100);
+	}
+	if (x->flags & 0x8) {
+		endian.read4be(r, &x->quality);
+	}
+	return true;
 }
 
 pub void write_xing(writer.t *w, uint32_t frames, bytes, uint8_t *toc) {
@@ -301,7 +300,7 @@ pub void write_xing(writer.t *w, uint32_t frames, bytes, uint8_t *toc) {
 		.frames = frames,
 		.bytes = bytes,
 	};
-	writer.write(w, (uint8_t *)"Xing", 4);
+	writer.write(w, (uint8_t *) "Xing", 4);
 	endian.write4be(w, x.flags);
 	endian.write4be(w, x.frames);
 	endian.write4be(w, x.bytes);

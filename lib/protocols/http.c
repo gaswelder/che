@@ -50,24 +50,24 @@ pub typedef {
 	kv_t params[100]; // ?a=123&b=foo
 	size_t nparams;
 	header_t headers[100]; // Accept: */*
-    size_t nheaders;
+	size_t nheaders;
 
 	// ...
 	int err;
-    char uri[1024];
-    char filename[1024];
-    char query[1024];
+	char uri[1024];
+	char filename[1024];
+	char query[1024];
 } request_t;
 
 pub typedef {
 	char version[10]; // "HTTP/1.0"
 	int status; // 200
 	header_t headers[100]; // Content-Type: text/html
-    size_t nheaders;
+	size_t nheaders;
 
 	// ...
 	char body[1000];
-    int content_length;
+	int content_length;
 } response_t;
 
 const char *errors[] = { "no error", "unknown method" };
@@ -155,19 +155,19 @@ pub int write_request(writer.t *w, request_t *r) {
 	}
 
 	strbuilder.adds(sb, " ");
-    strbuilder.adds(sb, r->version);
-    strbuilder.adds(sb, "\r\n");
+	strbuilder.adds(sb, r->version);
+	strbuilder.adds(sb, "\r\n");
 
 	// Headers.
-    for (size_t i = 0; i < r->nheaders; i++) {
-        header_t *h = &r->headers[i];
-        strbuilder.adds(sb, h->name);
-        strbuilder.adds(sb, ": ");
-        strbuilder.adds(sb, h->value);
-        strbuilder.adds(sb, "\r\n");
-    }
+	for (size_t i = 0; i < r->nheaders; i++) {
+		header_t *h = &r->headers[i];
+		strbuilder.adds(sb, h->name);
+		strbuilder.adds(sb, ": ");
+		strbuilder.adds(sb, h->value);
+		strbuilder.adds(sb, "\r\n");
+	}
 
-    strbuilder.adds(sb, "\r\n");
+	strbuilder.adds(sb, "\r\n");
 
 	const char *s = strbuilder.str_raw(sb);
 	int len = writer.write(w, (uint8_t *)s, strlen(s));
@@ -200,24 +200,24 @@ pub const char *get_res_header(response_t *r, const char *name) {
 }
 
 bool parse_query(request_t *r) {
-    // Read full path
-    char *pathp = r->path;
-    const char *p = r->uri;
-    while (*p != '\0' && *p != '?') {
-        *pathp++ = *p++;
-    }
+	// Read full path
+	char *pathp = r->path;
+	const char *p = r->uri;
+	while (*p != '\0' && *p != '?') {
+		*pathp++ = *p++;
+	}
 
-    // Read query string
-    if (*p == '?') {
-        p++;
-        char *qsp = r->query;
-        while (*p != '\0') {
-            *qsp++ = *p++;
-        }
-    }
+	// Read query string
+	if (*p == '?') {
+		p++;
+		char *qsp = r->query;
+		while (*p != '\0') {
+			*qsp++ = *p++;
+		}
+	}
 
-    // Extract filename from path. "/path/blog/file1.html" ==> "file1.html"
-    const char *filename = strrchr(r->path, '/');
+	// Extract filename from path. "/path/blog/file1.html" ==> "file1.html"
+	const char *filename = strrchr(r->path, '/');
 	if (filename) {
 		if (*filename == '/') {
 			filename++;
@@ -345,9 +345,9 @@ bool read_header(scanner.t *b, header_t *h) {
 // Reads a request, without the body, from a reader into the request r.
 // Returns true on success.
 pub bool read_request(reader.t *br, request_t *r) {
-    memset(r, 0, sizeof(request_t));
+	memset(r, 0, sizeof(request_t));
 	scanner.t *b = scanner.new(br);
-	
+
 	// GET /path/blog/file1.html?a=1&b=2 HTTP/1.0\r\n
 	bool ok = true
 		&& scanner.read_until(b, ' ', r->method, sizeof(r->method))
@@ -361,7 +361,9 @@ pub bool read_request(reader.t *br, request_t *r) {
 	// Header: Value\r\n ...
 	while (ok) {
 		// Empty line terminates the headers list.
-		if (scanner.skip_literal(b, "\r\n")) break;
+		if (scanner.skip_literal(b, "\r\n")) {
+			break;
+		}
 
 		header_t *h = &r->headers[r->nheaders];
 		ok = true

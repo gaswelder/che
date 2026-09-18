@@ -1,6 +1,6 @@
 use crate::{buf::Pos, nodes::*};
 
-pub fn body_returns(b: &Body) -> bool {
+pub fn body_returns(b: &Block) -> bool {
     let n = b.items.len();
     if n == 0 {
         return false;

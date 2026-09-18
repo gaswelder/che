@@ -55,13 +55,13 @@ pub void normalize(clip_t *c, double level) {
 	}
 }
 
-// Returns a copy of clip c stretched by factor of r.
+// Returns a copy of clip c stretched by the factor of r.
 // r > 1 results in lower sound, r < 1 in higher.
 pub clip_t *transpose(clip_t *c, float r) {
 	clip_t *c2 = newclip(c->freq);
 
 	// How many samples the new clip will have.
-	size_t n2 = (size_t) ((float) c->nsamples * r);
+	size_t n2 = (size_t)((float) c->nsamples * r);
 
 	for (size_t t = 0; t < n2; t++) {
 		// The "time" in the original sample flows r times slower.

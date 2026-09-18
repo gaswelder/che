@@ -27,7 +27,6 @@ pub void getbits_msfirst(uint8_t byte, uint8_t *bits) {
 //
 // reader
 //
-
 pub typedef {
 	reader.t *in;
 	uint8_t byte; // currently loaded byte
@@ -90,7 +89,6 @@ pub int readn(reader_t *s, int n) {
 //
 // writer
 //
-
 pub typedef {
 	bool err; // if the writer has encountered an error
 	writer.t *out; // writer for completed bytes

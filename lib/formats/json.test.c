@@ -1,7 +1,7 @@
+#import error
 #import json.c
 #import test
 #import writer
-#import error
 
 int main() {
 	testfail("q", "unexpected character: q");
@@ -44,7 +44,7 @@ void test_reenc(const char *encoded, *expected) {
 
 	// Format again.
 	char buf[100] = {};
-	writer.t *w = writer.static_buffer((uint8_t *)buf, 100);
+	writer.t *w = writer.static_buffer((uint8_t *) buf, 100);
 	json.formatwr(w, v);
 
 	// Compare

@@ -1,5 +1,4 @@
 // Complex numbers.
-
 pub typedef {
 	double re, im;
 } t;
@@ -8,7 +7,7 @@ pub typedef {
 pub t sum(t a, b) {
 	t r = {
 		.re = a.re + b.re,
-		.im = a.im + b.im
+		.im = a.im + b.im,
 	};
 	return r;
 }
@@ -17,7 +16,7 @@ pub t sum(t a, b) {
 pub t diff(t a, b) {
 	t r = {
 		.re = a.re - b.re,
-		.im = a.im - b.im
+		.im = a.im - b.im,
 	};
 	return r;
 }
@@ -26,16 +25,16 @@ pub t diff(t a, b) {
 pub t mul(t a, b) {
 	t r = {
 		.re = a.re * b.re - a.im * b.im,
-		.im = a.re * b.im + b.re * a.im
+		.im = a.re * b.im + b.re * a.im,
 	};
-	return r;	
+	return r;
 }
 
 // Returns the product of complex x and scalar s.
 pub t scale(t x, double s) {
 	t r = {
 		.re = x.re * s,
-		.im = x.im * s
+		.im = x.im * s,
 	};
 	return r;
 }
@@ -50,10 +49,10 @@ pub double abs2(t z) {
 }
 
 pub void print(FILE *f, t x) {
-    fprintf(f, "(%f + %fi)", x.re, x.im);
+	fprintf(f, "(%f + %fi)", x.re, x.im);
 }
 
 pub t make(double re, double im) {
-	t r = {re, im};
+	t r = { re, im };
 	return r;
 }

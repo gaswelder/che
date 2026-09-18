@@ -43,12 +43,22 @@ fn fmt_mod_elem(elem: &ModElem) -> String {
         }
         ModElem::Macro(x) => format!("#{}{}\n", x.name, x.value),
         ModElem::Enum(x) => fmt_enum(&x),
-        ModElem::StructAlias(_) => todo!(),
+        ModElem::StructAlias(x) => fmt_struct_alias(x),
         ModElem::Typedef(x) => fmt_typedef(&x),
         ModElem::StructTypedef(x) => fmt_struct_typedef(&x),
         ModElem::ModVar(x) => format!("{}\n", &fmt_var(&x)),
         ModElem::FuncDecl(x) => fmt_func(&x),
     }
+}
+
+fn fmt_struct_alias(x: &StructAlias) -> String {
+    let mut s = fmt_begin(&x.source_info);
+    s += "typedef struct ";
+    s += &x.structname;
+    s += " ";
+    s += &x.typename;
+    s += ";\n";
+    s
 }
 
 fn fmt_enum(x: &EnumDecl) -> String {
@@ -100,7 +110,7 @@ fn fmt_enum(x: &EnumDecl) -> String {
 }
 
 fn fmt_typedef(x: &Typedef) -> String {
-    let mut s = String::new();
+    let mut s = fmt_begin(&x.source_info);
     if x.ispub {
         s += "pub ";
     }
@@ -129,29 +139,34 @@ fn fmt_struct_typedef(x: &StructTypedef) -> String {
     }
     s += "typedef {\n";
     for e in &x.entries {
-        match e {
-            StructEntry::Plain(p) => {
-                s += "\t";
-                s += &fmt_typename(&p.typename);
-                s += " ";
-                for (i, n) in p.forms.iter().enumerate() {
-                    if i > 0 {
-                        s += ", ";
-                    }
-                    s += &fmt_form(&n);
-                }
-                s += ";";
-                if let Some(c) = &p.trailing_comment {
-                    s += &format!(" {}", c);
-                }
-                s += "\n";
-            }
-            StructEntry::Union(_) => todo!(),
-        }
+        s += &indent(&fmt_struct_entry(&e));
     }
     s += "} ";
     s += &x.name;
     s += ";\n";
+    s
+}
+
+fn fmt_struct_entry(e: &StructEntry) -> String {
+    let mut s = String::new();
+    match e {
+        StructEntry::Plain(p) => {
+            s += &fmt_typename(&p.typename);
+            s += " ";
+            for (i, n) in p.forms.iter().enumerate() {
+                if i > 0 {
+                    s += ", ";
+                }
+                s += &fmt_form(&n);
+            }
+            s += ";";
+            if let Some(c) = &p.trailing_comment {
+                s += &format!(" {}", c);
+            }
+            s += "\n";
+        }
+        StructEntry::Union(_) => todo!(),
+    }
     s
 }
 
@@ -180,32 +195,10 @@ fn fmt_func(x: &FuncDecl) -> String {
     if x.params.ellipsis {
         s += ", ...";
     }
-    s += ") {\n";
-    for st in &x.body.items {
-        s += &indent(&fmt_block_item(&st));
-        s += "\n";
-    }
-    s += "}\n";
+    s += ") ";
+    s += &fmt_block(&x.body);
+    s += "\n";
     s
-}
-
-fn fmt_block_item(s: &BlockItem) -> String {
-    match s {
-        BlockItem::Break(si) => {
-            let mut s = fmt_begin(&si);
-            s += "break;";
-            s += &fmt_end(&si);
-            s
-        }
-        BlockItem::Continue => String::from("continue;"),
-        BlockItem::For(x) => fmt_for(&x),
-        BlockItem::If(x) => fmt_if(&x),
-        BlockItem::Return(x) => fmt_return(&x),
-        BlockItem::Statement(x) => fmt_statement(&x),
-        BlockItem::Switch(x) => fmt_switch(&x),
-        BlockItem::VarDecl(x) => fmt_var(x),
-        BlockItem::While(x) => fmt_while(&x),
-    }
 }
 
 fn fmt_var(x: &VarDecl) -> String {
@@ -387,15 +380,40 @@ fn fmt_if(x: &If) -> String {
     s
 }
 
-fn fmt_block(x: &Body) -> String {
+fn fmt_block(x: &Block) -> String {
     let mut s = String::new();
     s += "{\n";
     for st in &x.items {
         s += &indent(&fmt_block_item(&st));
         s += "\n";
     }
+    if let Some(cc) = &x.final_comments {
+        for c in cc {
+            s += &indent(c);
+            s += "\n";
+        }
+    }
     s += "}";
     s
+}
+
+fn fmt_block_item(s: &BlockItem) -> String {
+    match s {
+        BlockItem::Break(si) => {
+            let mut s = fmt_begin(&si);
+            s += "break;";
+            s += &fmt_end(&si);
+            s
+        }
+        BlockItem::Continue => String::from("continue;"),
+        BlockItem::For(x) => fmt_for(&x),
+        BlockItem::If(x) => fmt_if(&x),
+        BlockItem::Return(x) => fmt_return(&x),
+        BlockItem::Statement(x) => fmt_statement(&x),
+        BlockItem::Switch(x) => fmt_switch(&x),
+        BlockItem::VarDecl(x) => fmt_var(x),
+        BlockItem::While(x) => fmt_while(&x),
+    }
 }
 
 pub fn fmt_field_access(x: &FieldAccess) -> String {
@@ -420,7 +438,7 @@ fn fmt_nsname(x: &NsName) -> String {
 pub fn fmt_expr(expr: &Expr) -> String {
     match expr {
         Expr::FieldAccess(x) => fmt_field_access(x),
-        Expr::Cast(x) => fmt_cast(&x),
+        Expr::Cast(x) => fmt_cast(x),
         Expr::NsName(x) => fmt_nsname(&x),
         Expr::Call(x) => fmt_call(&x),
         Expr::Literal(x) => fmt_literal(x),
@@ -433,7 +451,7 @@ pub fn fmt_expr(expr: &Expr) -> String {
             };
             format!("sizeof({})", arg)
         }
-        Expr::BinaryOp(x) => fmt_binop(&x),
+        Expr::BinaryOp(x) => fmt_binop(x),
         Expr::PrefixOperator(x) => {
             let operand = &x.operand;
             let operator = &x.operator;
@@ -494,71 +512,135 @@ fn fmt_composite_literal(x: &CompLiteral) -> String {
     if entries.len() == 0 {
         return String::from("{}");
     }
+    let items = x
+        .entries
+        .iter()
+        .map(|e| fmt_composite_literal_entry(e))
+        .collect();
 
+    let mut s = fmt_list(&items);
+    s += &fmt_end(&x.source_info);
+    s
+}
+
+fn fmt_composite_literal_entry(e: &CompositeLiteralEntry) -> Row {
+    let mut r = Row {
+        source_info: e.source_info.clone(),
+        key: None,
+        val: String::new(),
+    };
+    // let mut s = fmt_begin(&e.source_info);
+    if let Some(expr) = &e.key {
+        let k = fmt_expr(expr);
+        if e.is_index {
+            r.key = Some(format!("[{}]", k));
+        } else {
+            r.key = Some(format!(".{}", k));
+        }
+    }
+    r.val = fmt_expr(&e.value);
+    // s += &fmt_end(&e.source_info);
+    r
+}
+
+struct Row {
+    source_info: SourceInfo,
+    key: Option<String>,
+    val: String,
+}
+
+fn fmt_list(rows: &Vec<Row>) -> String {
     let mut totalwidth = 0;
     let mut maxwidth = 0;
-    let mut items = Vec::new();
-    for e in &x.entries {
-        let v = fmt_expr(&e.value);
-        let item = match &e.key {
-            Some(expr) => {
-                let k = fmt_expr(expr);
-                if e.is_index {
-                    format!("[{}] = {}", k, v)
-                } else {
-                    format!(".{} = {}", k, v)
-                }
-            }
-            None => v,
-        };
-        let n = item.len();
+    let mut have_comments = false;
+    let mut have_keys = false;
+    for row in rows {
+        let mut n = row.val.len();
+        if let Some(k) = &row.key {
+            n += k.len() + 3;
+            have_keys = true;
+        }
+        if row.source_info.trailing_comment.is_some() {
+            have_comments = true;
+        }
         totalwidth += n;
         if n > maxwidth {
             maxwidth = n;
         }
-        items.push(item);
+    }
+
+    let mut mode = "default";
+    if totalwidth < 60 && !have_comments && !have_keys {
+        mode = "oneline";
+    } else if maxwidth < 6 && !have_comments && !have_keys {
+        mode = "grid";
     }
 
     let mut s = String::new();
-    // s += &format!("// tw=${totalwidth}, mw=${maxwidth}\n");
-    if totalwidth < 60 {
-        s += "{ ";
-        for (i, item) in items.iter().enumerate() {
-            if i > 0 {
-                s += ", ";
-            }
-            s += item
+    match mode {
+        "oneline" => {
+            let items: Vec<String> = rows.iter().map(|x| x.val.clone()).collect();
+            s += &fmt_list_oneline(&items);
         }
-        s += " }";
-    } else if maxwidth < 6 {
-        s += "{\n";
-        for (i, item) in items.iter().enumerate() {
-            let padded = format!("{:>maxwidth$}", item);
-            if i == 0 {
+        "grid" => {
+            let items: Vec<String> = rows.iter().map(|x| x.val.clone()).collect();
+            s += &fmt_list_grid(&items, maxwidth);
+        }
+        "default" => {
+            s += "{\n";
+            for row in rows {
                 s += "\t";
-                s += &padded;
-                continue;
+                if let Some(k) = &row.key {
+                    s += k;
+                    s += " = ";
+                }
+                s += &row.val;
+                s += ",";
+                if let Some(c) = &row.source_info.trailing_comment {
+                    s += " ";
+                    s += c;
+                }
+                s += "\n";
             }
-            if i % 8 == 0 {
-                s += ",\n\t";
-            } else {
-                s += ", ";
-            }
-            s += &padded
+            s += "}";
         }
-        s += "\n}";
-    } else {
-        s += "{\n";
-        for (i, item) in items.iter().enumerate() {
-            if i > 0 {
-                s += ",\n";
-            }
-            s += "\t";
-            s += item
-        }
-        s += "\n}";
+        _ => todo!(),
     }
 
+    s
+}
+
+fn fmt_list_oneline(items: &Vec<String>) -> String {
+    let mut s = String::new();
+    s += "{ ";
+    for (i, item) in items.iter().enumerate() {
+        if i > 0 {
+            s += ", ";
+        }
+        s += &item;
+    }
+    s += " }";
+    s
+}
+
+fn fmt_list_grid(items: &Vec<String>, maxwidth: usize) -> String {
+    let mut s = String::new();
+    s += "{\n";
+    for (i, item) in items.iter().enumerate() {
+        let padded = format!("{:>maxwidth$}", item);
+        if i == 0 {
+            s += "\t";
+            s += &padded;
+            continue;
+        }
+        if i % 8 == 0 {
+            s += ",\n\t";
+        } else {
+            s += ", ";
+        }
+        s += &padded
+    }
+    s += "\n}";
     s
 }
 
@@ -573,6 +655,7 @@ fn fmt_cast(x: &Cast) -> String {
         Expr::Call(_) => nobr,
         Expr::ArrIndex(_) => nobr,
         Expr::PrefixOperator(_) => nobr,
+        Expr::FieldAccess(_) => nobr,
         _ => br,
     }
 }
@@ -626,19 +709,23 @@ pub fn fmt_binop(x: &BinaryOp) -> String {
         (None, _) => &s1,
         (Some("-"), "-") => &s1,
         (Some("+"), "-") => &s1,
+        (Some("+"), ">=") => &s1,
 
         (Some("*"), "+") => &s1,
         (Some("*"), "-") => &s1,
         (Some("*"), "*") => &s1,
         (Some("*"), "/") => &s1,
 
+        (Some("&"), "!=") => &wrap1,
+
         (Some("prefix"), "=") => &s1,
-        (Some("prefix"), "<") => &s1,
         (Some("prefix"), ">") => &s1,
+        (Some("prefix"), "<") => &s1,
+        (Some("prefix"), ">=") => &s1,
+        (Some("prefix"), "<=") => &s1,
 
-        (Some("+"), ">") => &s1,
-        (Some("-"), ">") => &s1,
-
+        (_, "!=") => &s1,
+        (_, "==") => &s1,
         (_, "&&") => &s1,
         (_, "||") => &s1,
 
@@ -652,7 +739,14 @@ pub fn fmt_binop(x: &BinaryOp) -> String {
         ("-", Some("*")) => &s2,
         ("+", Some("*")) => &s2,
 
+        ("=", Some("==")) => &wrap2,
+
         ("=", _) => &s2,
+        ("==", _) => &s2,
+        (">=", _) => &s2,
+        (">", _) => &s2,
+        ("<=", _) => &s2,
+        ("<", _) => &s2,
         ("+=", _) => &s2,
         ("-=", _) => &s2,
         ("*=", _) => &s2,

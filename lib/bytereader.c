@@ -55,10 +55,9 @@ pub uint32_t read32(reader_t *r) {
 	// int b = readc(r);
 	// int c = readc(r);
 	// int d = readc(r);
-
-    // uint32_t val = 0;
-    // for (int i = 0; i < 4; i++) {
-    //     val = val * 256 + fgetc(r->f);
-    // }
-    // return val;
+	// uint32_t val = 0;
+	// for (int i = 0; i < 4; i++) {
+	//     val = val * 256 + fgetc(r->f);
+	// }
+	// return val;
 }

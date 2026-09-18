@@ -37,7 +37,9 @@ pub char *err(reader_t *r) {
 
 bool init(reader_t *r) {
 	// WEBVTT
-	if (!loadline(r)) return false;
+	if (!loadline(r)) {
+		return false;
+	}
 	if (strcmp(r->line, "WEBVTT") != 0) {
 		seterror(r, "expected WEBVTT at line 1");
 		return false;
@@ -45,10 +47,14 @@ bool init(reader_t *r) {
 
 	// A sequence of "k: v" headers.
 	while (true) {
-		if (!loadline(r)) return false;
+		if (!loadline(r)) {
+			return false;
+		}
 
 		// Stop at an empty line.
-		if (r->line[0] == '\0') break;
+		if (r->line[0] == '\0') {
+			break;
+		}
 
 		char *delim = strstr(r->line, ": ");
 		if (!delim) {
@@ -64,8 +70,12 @@ bool init(reader_t *r) {
 pub bool read(reader_t *r) {
 	// Skip empty lines
 	while (true) {
-		if (!loadline(r)) return false;
-		if (r->line[0] != '\0') break;
+		if (!loadline(r)) {
+			return false;
+		}
+		if (r->line[0] != '\0') {
+			break;
+		}
 	}
 
 	// 00:09:53.000 --> 00:09:55.910 align:start position:0%
@@ -75,19 +85,29 @@ pub bool read(reader_t *r) {
 	}
 
 	// Text lines
-	if (r->text) r->text[0] = '\0';
+	if (r->text) {
+		r->text[0] = '\0';
+	}
 	while (true) {
-		if (!loadline(r)) return false;
+		if (!loadline(r)) {
+			return false;
+		}
 
 		// Stop at an empty line.
-		if (r->line[0] == '\0') break;
+		if (r->line[0] == '\0') {
+			break;
+		}
 
 		if (strlen(r->text) + strlen(r->line) + 2 > r->textcap) {
 			r->textcap *= 2;
 			r->text = realloc(r->text, r->textcap);
-			if (!r->text) panic("realloc failed");
+			if (!r->text) {
+				panic("realloc failed");
+			}
 		}
-		if (r->text[0]) strcat(r->text, "\n");
+		if (r->text[0]) {
+			strcat(r->text, "\n");
+		}
 		printnotags(r->text + strlen(r->text), r->line);
 	}
 	strings.trim(r->text);
@@ -111,12 +131,10 @@ void printnotags(char *dest, const char *s) {
 			if (*p == '>') {
 				tag = false;
 			}
+		} else if (*p == '<') {
+			tag = true;
 		} else {
-			if (*p == '<') {
-				tag = true;
-			} else {
-				*dest++ = *p;
-			}
+			*dest++ = *p;
 		}
 		p++;
 	}
@@ -130,7 +148,7 @@ void seterror(reader_t *r, char *msg, ...) {
 	char buf[1000] = {};
 	va_list args = {};
 	va_start(args, msg);
-	vsnprintf(buf, sizeof(buf)-1, msg, args);
+	vsnprintf(buf, sizeof(buf) - 1, msg, args);
 	va_end(args);
 	r->error = strings.newstr("%s", buf);
 }
@@ -139,12 +157,20 @@ void seterror(reader_t *r, char *msg, ...) {
 bool cue(char *line, char *out) {
 	char *p = line;
 	p = timestamp(p);
-	if (!p) return false;
-	if (*p++ != ' ') return false;
-	if (strstr(p, "--> ") != p) return false;
+	if (!p) {
+		return false;
+	}
+	if (*p++ != ' ') {
+		return false;
+	}
+	if (strstr(p, "--> ") != p) {
+		return false;
+	}
 	p += 4;
 	p = timestamp(p);
-	if (!p) return false;
+	if (!p) {
+		return false;
+	}
 	if (*p == ' ') {
 		p++;
 		// printf("style: %s\n", p);
@@ -157,23 +183,58 @@ bool cue(char *line, char *out) {
 	return true;
 }
 
-
 // 00:00:00.120
 char *timestamp(char *s) {
 	char *p = s;
 	char ts[20] = {};
 	char *r = ts;
-	if (!isdigit(*p)) return NULL; *r++ = *p++;
-	if (!isdigit(*p)) return NULL; *r++ = *p++;
-	if (*p != ':') return NULL; *r++ = *p++;
-	if (!isdigit(*p)) return NULL; *r++ = *p++;
-	if (!isdigit(*p)) return NULL; *r++ = *p++;
-	if (*p != ':') return NULL; *r++ = *p++;
-	if (!isdigit(*p)) return NULL; *r++ = *p++;
-	if (!isdigit(*p)) return NULL; *r++ = *p++;
-	if (*p != '.') return NULL; *r++ = *p++;
-	if (!isdigit(*p)) return NULL; *r++ = *p++;
-	if (!isdigit(*p)) return NULL; *r++ = *p++;
-	if (!isdigit(*p)) return NULL; *r++ = *p++;
+	if (!isdigit(*p)) {
+		return NULL;
+	}
+	*r++ = *p++;
+	if (!isdigit(*p)) {
+		return NULL;
+	}
+	*r++ = *p++;
+	if (*p != ':') {
+		return NULL;
+	}
+	*r++ = *p++;
+	if (!isdigit(*p)) {
+		return NULL;
+	}
+	*r++ = *p++;
+	if (!isdigit(*p)) {
+		return NULL;
+	}
+	*r++ = *p++;
+	if (*p != ':') {
+		return NULL;
+	}
+	*r++ = *p++;
+	if (!isdigit(*p)) {
+		return NULL;
+	}
+	*r++ = *p++;
+	if (!isdigit(*p)) {
+		return NULL;
+	}
+	*r++ = *p++;
+	if (*p != '.') {
+		return NULL;
+	}
+	*r++ = *p++;
+	if (!isdigit(*p)) {
+		return NULL;
+	}
+	*r++ = *p++;
+	if (!isdigit(*p)) {
+		return NULL;
+	}
+	*r++ = *p++;
+	if (!isdigit(*p)) {
+		return NULL;
+	}
+	*r++ = *p++;
 	return p;
 }

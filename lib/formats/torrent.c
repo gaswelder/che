@@ -1,8 +1,7 @@
 // *.torrent format
-
+#import crypt/sha1
 #import formats/bencode
 #import formats/bencode_writer
-#import crypt/sha1
 #import os/fs
 
 pub typedef {
@@ -29,7 +28,6 @@ pub typedef {
 	// in the listing order.
 	uint8_t *pieces;
 
-	
 	size_t length; // Size of the file in bytes in single-file variant, 0 in multi-file variant.
 
 	// A list of {length, path} items, each corresponding to a file in the multi-file variant.
@@ -45,7 +43,9 @@ pub typedef {
 pub info_t *from_file(const char *path) {
 	size_t size = 0;
 	char *data = fs.readfile(path, &size);
-	if (!data) return NULL;
+	if (!data) {
+		return NULL;
+	}
 	info_t *tf = parse(data, size);
 	OS.free(data);
 	return tf;
@@ -87,13 +87,17 @@ pub size_t npieces(info_t *tf) {
 pub size_t lastlen(info_t *tf) {
 	size_t total = totalsize(tf);
 	size_t rem = total % tf->piece_length;
-	if (rem) return rem;
+	if (rem) {
+		return rem;
+	}
 	return tf->piece_length;
 }
 
 pub void free(info_t *tf) {
 	OS.free(tf->pieces);
-	if (tf->files) OS.free(tf->files);
+	if (tf->files) {
+		OS.free(tf->files);
+	}
 	OS.free(tf);
 }
 
@@ -108,7 +112,7 @@ pub info_t *parse(const char *data, size_t size) {
 	bencode.enter(r);
 	while (bencode.more(r)) {
 		bencode.key(r, buf, sizeof(buf));
-		char *k = (char *)buf;
+		char *k = (char *) buf;
 		switch str (k) {
 			case "announce": { bencode.readbuf(r, (uint8_t *) tf->announce, sizeof(tf->announce)); }
 			case "creation date": { tf->creation_date = bencode.readnum(r); }
@@ -136,7 +140,7 @@ pub info_t *parse(const char *data, size_t size) {
 	}
 	sha1.end(&hash);
 	sha1.format(&hash, tf->infohash, sizeof(tf->infohash));
-	sha1.as_bytes(&hash, (uint8_t*) tf->infohash_bytes);
+	sha1.as_bytes(&hash, (uint8_t *) tf->infohash_bytes);
 	return tf;
 }
 
@@ -200,7 +204,7 @@ void readpath(bencode.reader_t *r, char *buf, size_t bufsize) {
 	bencode.enter(r);
 	bool first = true;
 	while (bencode.more(r)) {
-		bencode.readbuf(r, (uint8_t *)tmp, sizeof(tmp));
+		bencode.readbuf(r, (uint8_t *) tmp, sizeof(tmp));
 		if (first) {
 			if (strlen(buf) + strlen(tmp) > bufsize) {
 				panic("buffer too small for the path");
@@ -223,11 +227,15 @@ void allocfiles(info_t *tf) {
 		case 10000: { panic("too many files"); }
 		case 1000, 100, 10: {
 			tf->files = realloc(tf->files, tf->nfiles * 10 * sizeof(file_t));
-			if (!tf->files) panic("realloc failed");
+			if (!tf->files) {
+				panic("realloc failed");
+			}
 		}
 		case 0: {
 			tf->files = realloc(tf->files, 10 * sizeof(file_t));
-			if (!tf->files) panic("realloc failed");
+			if (!tf->files) {
+				panic("realloc failed");
+			}
 		}
 	}
 }
@@ -235,22 +243,34 @@ void allocfiles(info_t *tf) {
 pub bool writefile(FILE *f, info_t *info) {
 	size_t npieces = info->length / info->piece_length;
 	size_t lastlen = info->length % info->piece_length;
-	if (lastlen) npieces++;
+	if (lastlen) {
+		npieces++;
+	}
 
 	bencode_writer.t *w = bencode_writer.tofile(f);
-	if (!w) return false;
+	if (!w) {
+		return false;
+	}
 
 	bencode_writer.begin(w, 'd');
-	writestr(w, "announce"); writestr(w, info->announce);
-	writestr(w, "comment"); writestr(w, info->comment);
-	writestr(w, "created by"); writestr(w, info->created_by);
-	writestr(w, "creation date"); bencode_writer.num(w, info->creation_date);
+	writestr(w, "announce");
+	writestr(w, info->announce);
+	writestr(w, "comment");
+	writestr(w, info->comment);
+	writestr(w, "created by");
+	writestr(w, info->created_by);
+	writestr(w, "creation date");
+	bencode_writer.num(w, info->creation_date);
 	writestr(w, "info");
 	bencode_writer.begin(w, 'd');
-	writestr(w, "length"); bencode_writer.num(w, info->length);
-	writestr(w, "name"); writestr(w, info->name);
-	writestr(w, "piece length"); bencode_writer.num(w, info->piece_length);
-	writestr(w, "pieces"); bencode_writer.buf(w, info->pieces, npieces * 20);
+	writestr(w, "length");
+	bencode_writer.num(w, info->length);
+	writestr(w, "name");
+	writestr(w, info->name);
+	writestr(w, "piece length");
+	bencode_writer.num(w, info->piece_length);
+	writestr(w, "pieces");
+	bencode_writer.buf(w, info->pieces, npieces * 20);
 	bencode_writer.end(w);
 	bencode_writer.end(w);
 	return true;

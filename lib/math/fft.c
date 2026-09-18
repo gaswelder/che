@@ -599,11 +599,11 @@ void kiss_fftri(kiss_fftr_state_t *st, complex.t *freqdata, float *timedata) {
 }
 
 int prod(int *dims, int n) {
-    int x = 1;
-    while (n--) {
-        x *= *dims++;
-    }
-    return x;
+	int x = 1;
+	while (n--) {
+		x *= *dims++;
+	}
+	return x;
 }
 
 size_t MAX(size_t a, b) {
@@ -842,10 +842,10 @@ Stage 2 ( D=4) treats this buffer as a 4*6 matrix,
    , i.e. the summation of all 24 input elements.
 */
 void kiss_fftnd(kiss_fftnd_state_t *st, complex.t *fin, *fout) {
-    int i = 0;
-    int k = 0;
-    complex.t *bufin = fin;
-    complex.t *bufout;
+	int i = 0;
+	int k = 0;
+	complex.t *bufin = fin;
+	complex.t *bufout;
 
     /*arrange it so the last bufout == fout*/
     if ( st->ndims & 1 ) {

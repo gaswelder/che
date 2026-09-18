@@ -151,9 +151,9 @@ pub rgba_t gray(int val) {
 pub rgba_t mix(rgba_t a, b, double proportion_b) {
 	double proportion_a = 1 - proportion_b;
 	rgba_t c = {
-		.red = (int)((double)(a.red) * proportion_a + (double)(b.red) * proportion_b),
-		.green = (int)((double)(a.green) * proportion_a + (double)(b.green) * proportion_b),
-		.blue = (int)((double)(a.blue) * proportion_a + (double)(b.blue) * proportion_b)
+		.red = (int)((double) a.red * proportion_a + (double) b.red * proportion_b),
+		.green = (int)((double) a.green * proportion_a + (double) b.green * proportion_b),
+		.blue = (int)((double) a.blue * proportion_a + (double) b.blue * proportion_b),
 	};
 	return c;
 }
@@ -194,7 +194,7 @@ pub rgba_t from_hsl(float h, s, l) {
 		.red = (int)(255.0 * red),
 		.green = (int)(255.0 * green),
 		.blue = (int)(255.0 * blue),
-		.transparency = 0
+		.transparency = 0,
 	};
 	return color;
 }
@@ -278,14 +278,14 @@ pub image_t *colormap_image(colormap_t *cm) {
 // Draws a tv-style test pattern into img.
 pub void testimage(image_t *img) {
 	rgba_t seq[] = {
-		{128, 128, 128, 0}, // Gray
-		{192, 192, 192, 0}, // Lightgray
-		{255, 255, 0, 0}, // Yellow
-		{0, 255, 255, 0}, // Cyan
-		{0, 255, 0, 0}, // Green
-		{255, 0, 255, 0}, // Magenta
-		{255, 0, 0, 0}, // Red
-		{0, 0, 255, 0}, // Blue
+		{ 128, 128, 128, 0 }, // Gray
+		{ 192, 192, 192, 0 }, // Lightgray
+		{ 255, 255, 0, 0 }, // Yellow
+		{ 0, 255, 255, 0 }, // Cyan
+		{ 0, 255, 0, 0 }, // Green
+		{ 255, 0, 255, 0 }, // Magenta
+		{ 255, 0, 0, 0 }, // Red
+		{ 0, 0, 255, 0 }, // Blue
 	};
 	int w = img->width / nelem(seq);
 	for (int y = 0; y < img->height; y++) {

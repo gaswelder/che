@@ -31,16 +31,19 @@ pub bool readblock(reader_t *r, block_t *b) {
 
 	b->text[0] = '\0';
 	while (true) {
-		if (parse_num(r->linebuf)) break;
+		if (parse_num(r->linebuf)) {
+			break;
+		}
 		if (strlen(b->text) + strlen(r->linebuf) >= sizeof(b->text)) {
 			panic("text buffer is too small");
 		}
 		strcat(b->text, r->linebuf);
-		if (!loadline(r)) break;
+		if (!loadline(r)) {
+			break;
+		}
 	}
 	strings.trim(b->range);
 	strings.trim(b->text);
-
 
 	//
 	// Parse the range into two time positions
@@ -48,7 +51,7 @@ pub bool readblock(reader_t *r, block_t *b) {
 	// 00:01:32,320 --> 00:01:33,160
 	char sbegin[20] = {};
 	char send[20] = {};
-	sscanf(b->range, "%s --> %s", sbegin, send);	
+	sscanf(b->range, "%s --> %s", sbegin, send);
 	b->begin = parsepos(sbegin);
 	b->end = parsepos(send);
 	return true;
@@ -89,10 +92,16 @@ bool loadline(reader_t *r) {
 	char *p = r->linebuf;
 	while (true) {
 		int c = fgetc(stdin);
-		if (c == EOF) break;
-		if (c == '\r') continue;
+		if (c == EOF) {
+			break;
+		}
+		if (c == '\r') {
+			continue;
+		}
 		*p++ = c;
-		if (c == '\n') break;
+		if (c == '\n') {
+			break;
+		}
 	}
 	if (p == (char *) r->linebuf) {
 		return false;
@@ -109,7 +118,9 @@ int parse_num(char *s) {
 		n += strings.num_from_ascii(*p);
 		p++;
 	}
-	while (isspace(*p)) p++;
+	while (isspace(*p)) {
+		p++;
+	}
 	if (*p != '\0') {
 		return 0;
 	}

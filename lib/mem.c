@@ -125,12 +125,13 @@ pub int memprintf(mem_t *m, const char *format, ...) {
  * Read up to 'size' bytes to the buffer 'buf'.
  * Returns the number of bytes read.
  */
-pub size_t memread(mem_t *m, char *buf, size_t size)
-{
+pub size_t memread(mem_t *m, char *buf, size_t size) {
 	size_t len = m->datalen - m->pos;
-	if(len > size) len = size;
+	if (len > size) {
+		len = size;
+	}
 
-	for(size_t i = 0; i < len; i++) {
+	for (size_t i = 0; i < len; i++) {
 		buf[i] = m->data[m->pos];
 		m->pos++;
 	}
@@ -142,8 +143,7 @@ pub size_t memread(mem_t *m, char *buf, size_t size)
  * Returns 0 if there is no space and additional memory couldn't be
  * allocated.
  */
-bool makespace(mem_t *mem, size_t size)
-{
+bool makespace(mem_t *mem, size_t size) {
 	size_t need = mem->pos + size;
 
 	if (need <= mem->size) {

@@ -2,11 +2,11 @@
 
 // Determines how the pixels are stored.
 pub enum {
-	PNG_GRAYSCALE = 0, // 256 shades of gray, 8 bits per pixel
-	PNG_RGB = 2, // 24-bit RGB values
-	PNG_PALETTE = 3, // Up to 256 RGBA colors, 8 bits per pixel
+	PNG_GRAYSCALE = 0,       // 256 shades of gray, 8 bits per pixel
+	PNG_RGB = 2,             // 24-bit RGB values
+	PNG_PALETTE = 3,         // Up to 256 RGBA colors, 8 bits per pixel
 	PNG_GRAYSCALE_ALPHA = 4, // 256 shades of gray plus alpha channel, 16 bits per pixel
-	PNG_RGBA = 6 // 24-bit RGB values plus 8-bit alpha channel
+	PNG_RGBA = 6,            // 24-bit RGB values plus 8-bit alpha channel
 }
 
 typedef {
@@ -25,15 +25,14 @@ pub bool write(image.image_t *img, const char *path, int mode) {
 	size_t width = img->width;
 	size_t height = img->height;
 
-
 	//
 	// Initialize the palette.
 	//
 	uint32_t palette[256] = {};
 	size_t psize = 0;
 	if (mode == PNG_PALETTE) {
-		for (size_t j=0; j < height; j++) {
-			for (size_t i=0; i < width; i++) {
+		for (size_t j = 0; j < height; j++) {
+			for (size_t i = 0; i < width; i++) {
 				image.rgba_t c = image.get(img, i, j);
 				uint32_t encoded = pack32(c);
 
@@ -50,19 +49,17 @@ pub bool write(image.image_t *img, const char *path, int mode) {
 		}
 	}
 
-
-
 	png_out_raw_write(tmp, "\211PNG\r\n\032\n", 8);
 
-	/* IHDR */
+	// IHDR
 	png_new_chunk(tmp, "IHDR", 13);
-	png_out_uint32(tmp, png_swap32((uint32_t) (width)));
-	png_out_uint32(tmp, png_swap32((uint32_t) (height)));
-	write_byte_crc(tmp, 8); /* bit depth */
+	png_out_uint32(tmp, png_swap32((uint32_t) width));
+	png_out_uint32(tmp, png_swap32((uint32_t) height));
+	write_byte_crc(tmp, 8); // bit depth
 	write_byte_crc(tmp, (uint8_t) mode);
-	write_byte_crc(tmp, 0); /* compression */
-	write_byte_crc(tmp, 0); /* filter */
-	write_byte_crc(tmp, 0); /* interlace method */
+	write_byte_crc(tmp, 0); // compression
+	write_byte_crc(tmp, 0); // filter
+	write_byte_crc(tmp, 0); // interlace method
 	png_end_chunk(tmp);
 
 	//
@@ -75,14 +72,14 @@ pub bool write(image.image_t *img, const char *path, int mode) {
 		for (size_t index = 0; index < s; index++) {
 			uint32_t color = palette[index];
 			// ? | ? | ?
-			entry[0] = (char) (color & 255);
-			entry[1] = (char) ((color >> 8) & 255);
-			entry[2] = (char) ((color >> 16) & 255);
+			entry[0] = (char)(color & 255);
+			entry[1] = (char)((color >> 8) & 255);
+			entry[2] = (char)((color >> 16) & 255);
 			png_out_write(tmp, entry, 3);
 		}
 		png_end_chunk(tmp);
 
-		/* transparency */
+		// transparency
 		png_new_chunk(tmp, "tRNS", s);
 		for (size_t index = 0; index < s; index++) {
 			entry[0] = (char) ((palette[index] >> 24) & 255);
@@ -126,12 +123,12 @@ pub bool write(image.image_t *img, const char *path, int mode) {
 			png_out_uint16(tmp, (uint16_t) bpl);
 			png_out_uint16(tmp, (uint16_t) ~bpl);
 		} else {
-			/* last line */
+			// last line
 			png_out_write(tmp, "\1", 1);
 			png_out_uint16(tmp, (uint16_t) bpl);
 			png_out_uint16(tmp, (uint16_t) ~bpl);
 		}
-		png_out_write_adler(tmp, 0); /* no filter */
+		png_out_write_adler(tmp, 0); // no filter
 
 		for (size_t x = 0; x < width; x++) {
 			image.rgba_t c = image.get(img, x, y);
@@ -159,9 +156,7 @@ pub bool write(image.image_t *img, const char *path, int mode) {
 					png_out_write_adler(tmp, c.blue);
 					png_out_write_adler(tmp, c.transparency);
 				}
-				default: {
-					panic("unknown mode");
-				}
+				default: { panic("unknown mode"); }
 			}
 		}
 	}
@@ -171,7 +166,7 @@ pub bool write(image.image_t *img, const char *path, int mode) {
 	//
 	tmp->s1 %= ADLER_BASE;
 	tmp->s2 %= ADLER_BASE;
-	png_out_uint32(tmp, png_swap32((uint32_t) ((tmp->s2 << 16) | tmp->s1)));
+	png_out_uint32(tmp, png_swap32((uint32_t)((tmp->s2 << 16) | tmp->s1)));
 	png_end_chunk(tmp);
 
 	//
@@ -250,7 +245,6 @@ uint32_t png_crc(uint8_t *data, size_t len, uint32_t crc) {
 	return crc;
 }
 
-
 void png_new_chunk(writer_t *png, const char *name, size_t len) {
 	png->crc = 0xffffffff;
 	png_out_raw_uint(png, png_swap32((uint32_t) len));
@@ -258,17 +252,14 @@ void png_new_chunk(writer_t *png, const char *name, size_t len) {
 	png_out_raw_write(png, name, 4);
 }
 
-
 void png_end_chunk(writer_t *png) {
 	png_out_raw_uint(png, png_swap32(~png->crc));
 }
-
 
 void png_out_uint32(writer_t *png, uint32_t val) {
 	png->crc = png_crc((uint8_t *) &val, 4, png->crc);
 	png_out_raw_uint(png, val);
 }
-
 
 void png_out_uint16(writer_t *png, uint16_t val) {
 	write_byte_crc(png, val % 256);
@@ -277,19 +268,15 @@ void png_out_uint16(writer_t *png, uint16_t val) {
 	val /= 256;
 }
 
-
-
-
 void png_out_write(writer_t *png, const char *data, size_t len) {
 	png->crc = png_crc((uint8_t *) data, len, png->crc);
 	png_out_raw_write(png, data, len);
 }
 
-
 void png_out_write_adler(writer_t *png, uint8_t data) {
 	png_out_write(png, (char *) &data, 1);
-	png->s1 = (uint16_t) ((png->s1 + data) % ADLER_BASE);
-	png->s2 = (uint16_t) ((png->s2 + png->s1) % ADLER_BASE);
+	png->s1 = (uint16_t)((png->s1 + data) % ADLER_BASE);
+	png->s2 = (uint16_t)((png->s2 + png->s1) % ADLER_BASE);
 }
 
 void write_byte(writer_t *png, uint8_t val) {

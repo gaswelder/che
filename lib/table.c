@@ -51,7 +51,7 @@ pub void print(table_t *t) {
 	for (size_t i = 0; i < t->pos; i++) {
 		size_t col = i % t->ncols;
 		printwidth(t->values[i], widths[col]);
-		if (col == t->ncols-1) {
+		if (col == t->ncols - 1) {
 			putchar('\n');
 		}
 	}

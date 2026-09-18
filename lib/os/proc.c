@@ -21,24 +21,27 @@ pub typedef {
 pub proc_t *spawn(char *argv[], *env[]) {
 	// Make three pipes.
 	// Remember they are {read, write}.
-    int in[2] = {0};
-    int out[2] = {0};
-    int err[2] = {0};
-    bool ok1 = OS.pipe(in) == 0;
-    bool ok2 = OS.pipe(out) == 0;
-    bool ok3 = OS.pipe(err) == 0;
-    if (!ok1 || !ok2 || !ok3) {
-        if (ok1) {
-            OS.close(in[0]); OS.close(in[1]);
-        }
-        if (ok2) {
-            OS.close(out[0]); OS.close(out[1]);
-        }
-        if (ok3) {
-            OS.close(err[0]); OS.close(err[1]);
-        }
-        return NULL;
-    }
+	int in[2] = {};
+	int out[2] = {};
+	int err[2] = {};
+	bool ok1 = OS.pipe(in) == 0;
+	bool ok2 = OS.pipe(out) == 0;
+	bool ok3 = OS.pipe(err) == 0;
+	if (!ok1 || !ok2 || !ok3) {
+		if (ok1) {
+			OS.close(in[0]);
+			OS.close(in[1]);
+		}
+		if (ok2) {
+			OS.close(out[0]);
+			OS.close(out[1]);
+		}
+		if (ok3) {
+			OS.close(err[0]);
+			OS.close(err[1]);
+		}
+		return NULL;
+	}
 
 	int pid = OS.fork();
 	if (pid < 0) {

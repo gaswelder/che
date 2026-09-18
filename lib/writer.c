@@ -43,7 +43,6 @@ pub t *new(void *data, writefunc_t *write, freefunc_t *free) {
 //
 // file writer
 //
-
 // Allocates and returns a writer to file f.
 pub t *file(FILE *f) {
 	return new(f, file_write, NULL);

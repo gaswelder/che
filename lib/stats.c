@@ -1,14 +1,14 @@
 #import rnd
 
 pub typedef {
-    double *values;
-    size_t len;
-    size_t cap;
+	double *values;
+	size_t len;
+	size_t cap;
 
-    // Cache
-    double *sorted_values;
-    double min;
-    double max;
+	// Cache
+	double *sorted_values;
+	double min;
+	double max;
 } series_t;
 
 pub series_t *newseries() {

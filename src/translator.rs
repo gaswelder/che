@@ -547,7 +547,7 @@ fn typefrom_typedef(x: &Typedef) -> types::Type {
             source_info: None,
             ns: String::from(&x.typename.name.ns),
             name: String::from(&x.typename.name.name),
-            pos: x.pos.clone(),
+            pos: Pos { line: 0, col: 0 },
         },
     }
 }
@@ -743,7 +743,7 @@ fn tr_minmax(ctx: &mut TrCtx, x: &Call, f: &str) -> Result<Typed<c::Expr>, Build
     }
 }
 
-fn tr_body(b: &Body, ctx: &mut TrCtx) -> Result<c::Body, BuildError> {
+fn tr_body(b: &Block, ctx: &mut TrCtx) -> Result<c::Body, BuildError> {
     let mut statements: Vec<c::Statement> = Vec::new();
     begin_scope(ctx);
     for s in &b.items {

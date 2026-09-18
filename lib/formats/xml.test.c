@@ -1,6 +1,6 @@
-#import xml.c
-#import test
 #import os/fs
+#import test
+#import xml.c
 
 const char *data = "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n"
 "<root>\n"
@@ -31,15 +31,15 @@ int main() {
 	test.streq(xml.xml_attr(x, "name"), "dir1");
 	xml.xml_enter(x);
 
-		test.streq(xml.xml_nodename(x), "file");
-		test.streq(xml.xml_attr(x, "name"), "file1");
-		xml.xml_next(x);
+	test.streq(xml.xml_nodename(x), "file");
+	test.streq(xml.xml_attr(x, "name"), "file1");
+	xml.xml_next(x);
 
-		test.streq(xml.xml_nodename(x), "file");
-		test.streq(xml.xml_attr(x, "name"), "file2");
-		xml.xml_next(x);
+	test.streq(xml.xml_nodename(x), "file");
+	test.streq(xml.xml_attr(x, "name"), "file2");
+	xml.xml_next(x);
 
-		test.truth("!nodename", !xml.xml_nodename(x));
+	test.truth("!nodename", !xml.xml_nodename(x));
 	xml.xml_leave(x);
 
 	// second dir

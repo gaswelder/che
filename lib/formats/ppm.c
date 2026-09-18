@@ -1,5 +1,4 @@
 // https://en.wikipedia.org/wiki/Netpbm_format
-
 #import image
 
 pub void writeimg(image.image_t *img, FILE *f) {

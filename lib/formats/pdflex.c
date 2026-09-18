@@ -1,6 +1,8 @@
 #import scanner
 
-pub typedef { char name[10], content[200]; } tok_t;
+pub typedef {
+	char name[10], content[200];
+} tok_t;
 
 pub typedef {
 	scanner.t *tok;
@@ -21,16 +23,22 @@ pub void free(lexer_t *t) {
 
 pub void init(lexer_t *t) {
 	scanner.t *tok = t->tok;
-	
+
 	// %PDF-1.2
-	if (!scanner.skip_literal(tok, "%PDF-1.2\n")) panic("pdf-1.2");
+	if (!scanner.skip_literal(tok, "%PDF-1.2\n")) {
+		panic("pdf-1.2");
+	}
 
 	// %âãÏÓ
-	if (!scanner.skip_literal(tok, "%")) panic("%%");
+	if (!scanner.skip_literal(tok, "%")) {
+		panic("%%");
+	}
 	for (int i = 0; i < 4; i++) {
 		scanner.get(tok);
 	}
-	if (!scanner.skip_literal(tok, "\r\n")) panic("\n");
+	if (!scanner.skip_literal(tok, "\r\n")) {
+		panic("\n");
+	}
 }
 
 tok_t newtok(const char *name, *content) {
@@ -56,7 +64,7 @@ pub tok_t peek(lexer_t *t, int n) {
 	if (n > 2) {
 		panic("peek buffer has only 3");
 	}
-	while (t->peeksize < n+1) {
+	while (t->peeksize < n + 1) {
 		if (!_read(t, &t->peekbuf[t->peeksize++])) {
 			panic("no more");
 		}
@@ -79,7 +87,7 @@ pub tok_t get(lexer_t *t) {
 	if (t->peeksize > 0) {
 		tok_t r = t->peekbuf[0];
 		for (int i = 1; i < t->peeksize; i++) {
-			t->peekbuf[i-1] = t->peekbuf[i];
+			t->peekbuf[i - 1] = t->peekbuf[i];
 		}
 		t->peeksize--;
 		return r;
@@ -92,12 +100,22 @@ pub tok_t get(lexer_t *t) {
 }
 
 const char *delims[] = {
-	"<<", ">>", "[", "]",
-	"R", "obj", "endobj",
-	"xref", "trailer", "startxref",
-	"%%EOF", "stream", "endstream",
+	"<<",
+	">>",
+	"[",
+	"]",
+	"R",
+	"obj",
+	"endobj",
+	"xref",
+	"trailer",
+	"startxref",
+	"%%EOF",
+	"stream",
+	"endstream",
 	"false",
-	"n", "f",
+	"n",
+	"f",
 };
 
 bool _read(lexer_t *t, tok_t *r) {
@@ -125,7 +143,7 @@ bool _read(lexer_t *t, tok_t *r) {
 				c = scanner.get(tok);
 			}
 			buf[i++] = c;
-			if (i+1 == sizeof(buf)) {
+			if (i + 1 == sizeof(buf)) {
 				panic("buf too small for a string");
 			}
 		}

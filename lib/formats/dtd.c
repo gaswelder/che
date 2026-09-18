@@ -1,5 +1,4 @@
 // Sloppy XML DTD parser.
-
 #import strings
 
 pub enum {
@@ -9,7 +8,7 @@ pub enum {
 
 // Attribute types
 pub enum {
-	ID = 1, // ID attribute (such as <order id="order123">)
+	ID = 1,    // ID attribute (such as <order id="order123">)
 	IDREF = 2, // Same as ID, but refers to another element's ID
 	CDATA = 3, // Character data ("foo bar")
 }
@@ -103,17 +102,23 @@ pub schema_t parse(const char *real_dtd) {
 // "<!ATTLIST edge from IDREF #REQUIRED to IDREF #REQUIRED>"
 void read_attlist(char *p, attlist_t *attlist) {
 	p = skiplit(p, "<!ATTLIST ");
-	while (isspace(*p)) p++;
+	while (isspace(*p)) {
+		p++;
+	}
 
 	strcpy(attlist->host, readname(&p));
-	while (isspace(*p)) p++;
+	while (isspace(*p)) {
+		p++;
+	}
 
 	while (*p != '\0' && *p != '>') {
 		att_t *att = &attlist->items[attlist->size++];
 
 		// name
 		strcpy(att->name, readname(&p));
-		while (isspace(*p)) p++;
+		while (isspace(*p)) {
+			p++;
+		}
 
 		// type
 		if (strings.starts_with(p, "IDREF")) {
@@ -128,7 +133,9 @@ void read_attlist(char *p, attlist_t *attlist) {
 		} else {
 			panic("unknown attribute type: %s", p);
 		}
-		while (isspace(*p)) p++;
+		while (isspace(*p)) {
+			p++;
+		}
 
 		// value
 		if (strings.starts_with(p, "#REQUIRED")) {
@@ -140,7 +147,9 @@ void read_attlist(char *p, attlist_t *attlist) {
 		} else {
 			panic("unknown attribute value: %s", p);
 		}
-		while (isspace(*p)) p++;
+		while (isspace(*p)) {
+			p++;
+		}
 	}
 
 	p = skiplit(p, ">");
@@ -154,11 +163,15 @@ void read_element(char **s, element_t *element) {
 
 	// <!ELEMENT + spaces
 	p = skiplit(p, "<!ELEMENT ");
-	while (isspace(*p)) p++;
+	while (isspace(*p)) {
+		p++;
+	}
 
 	// name + spaces
 	strcpy(element->name, readname(&p));
-	while (isspace(*p)) p++;
+	while (isspace(*p)) {
+		p++;
+	}
 
 	// child list
 	element->children = read_child_list(&p);
@@ -192,7 +205,9 @@ child_list_t *read_child_list(char **s) {
 
 	if (strings.starts_with(p, "EMPTY")) {
 		p = skiplit(p, "EMPTY");
-		while (isspace(*p)) p++;
+		while (isspace(*p)) {
+			p++;
+		}
 		*s = p;
 		return list;
 	}
@@ -201,14 +216,18 @@ child_list_t *read_child_list(char **s) {
 	while (*p != '\0') {
 		child_entry_t *it = &list->items[list->size++];
 		item(&p, it);
-		while (isspace(*p)) p++;
+		while (isspace(*p)) {
+			p++;
+		}
 
 		// If the list kind is not known yet, see if a join symbol follows.
 		char peek = *p;
 		if (list->jointype == '\0') {
 			if (peek == ',' || peek == '|') {
 				list->jointype = *p++;
-				while (isspace(*p)) p++;
+				while (isspace(*p)) {
+					p++;
+				}
 				continue;
 			}
 			break;
@@ -217,7 +236,9 @@ child_list_t *read_child_list(char **s) {
 		// If we already know the join symbol, accept only it.
 		if (peek == list->jointype) {
 			p++;
-			while (isspace(*p)) p++;
+			while (isspace(*p)) {
+				p++;
+			}
 			continue;
 		}
 		break;
@@ -270,13 +291,17 @@ char *readname(char **s) {
 	char *name = calloc!(100, 1);
 	char *p = *s;
 	char *n = name;
-	while (isalpha(*p) || *p == '_') *n++ = *p++;
+	while (isalpha(*p) || *p == '_') {
+		*n++ = *p++;
+	}
 	*s = p;
 	return name;
 }
 
 const char *loadline(const char *p, char *buf) {
-	while (isspace(*p)) p++;
+	while (isspace(*p)) {
+		p++;
+	}
 	char *b = buf;
 	while (*p != '\0' && *p != '\n') {
 		*b++ = *p++;

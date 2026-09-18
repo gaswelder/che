@@ -139,7 +139,7 @@ bool parse(scanner.t *b) {
 		char buf[100] = {};
 		size_t len = 0;
 		while (scanner.more(b) && scanner.peek(b) != '\'') {
-			if (len == sizeof(buf)-1) {
+			if (len == sizeof(buf) - 1) {
 				panic("buf too small");
 			}
 			buf[len++] = scanner.get(b);

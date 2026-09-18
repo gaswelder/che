@@ -31,8 +31,12 @@ int main() {
 
     // Can use ns as a variable name
     namespaceslib.foo_t x = {};
+
+	f(10, x);
+
     (&x)->a++;
 	if (sizeof(x) != 8) panic("!");
+
     return 0;
 }
 

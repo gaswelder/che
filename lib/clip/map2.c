@@ -46,15 +46,24 @@ pub void set(map_t *m, uint8_t *key, size_t keysize, void *val, size_t valsize) 
 		inner_free(cur);
 		m->m = n;
 	}
-	slice_t k = { .bytes = key, .size = keysize };
-	slice_t v = { .bytes = val, .size = valsize };
+	slice_t k = {
+		.bytes = key,
+		.size = keysize,
+	};
+	slice_t v = {
+		.bytes = val,
+		.size = valsize,
+	};
 	inner_set(m->m, k, v);
 }
 
 // Returns a pointer to the value stored at key or null.
 // The caller must not keep the pointer because it will be invalidated on map resize.
 pub void *get(map_t *m, uint8_t *key, size_t keysize) {
-	slice_t k = { .bytes = key, .size = keysize };
+	slice_t k = {
+		.bytes = key,
+		.size = keysize,
+	};
 	return inner_get(m->m, k);
 }
 
@@ -143,7 +152,7 @@ void inner_inspect(innermap_t *m) {
 			if (s->key.bytes == NULL) {
 				printf("\t. . .");
 			} else {
-				printf("\t%s (%zu)", (char *)(s->key.bytes), s->bucket_index);
+				printf("\t%s (%zu)", (char *) s->key.bytes, s->bucket_index);
 			}
 		}
 		printf("\n");

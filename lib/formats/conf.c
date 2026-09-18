@@ -5,28 +5,30 @@
 pub typedef {
 	int line;
 	FILE *f;
-    char key[100];
-    char val[200];
+	char key[100];
+	char val[200];
 } reader_t;
 
 int peek(FILE *f) {
-    char c = getc(f);
-    if (c != EOF) ungetc(c, f);
-    return c;
+	char c = getc(f);
+	if (c != EOF) {
+		ungetc(c, f);
+	}
+	return c;
 }
 
 /*
  * Allocates a new conf reader for the given file stream.
  */
 pub reader_t *new(FILE *f) {
-    reader_t *p = calloc!(1, sizeof(reader_t));
-    p->f = f;
-    p->line = 1;
-    return p;
+	reader_t *p = calloc!(1, sizeof(reader_t));
+	p->f = f;
+	p->line = 1;
+	return p;
 }
 
 pub void free(reader_t *p) {
-    OS.free(p);
+	OS.free(p);
 }
 
 /*
@@ -34,7 +36,7 @@ pub void free(reader_t *p) {
  */
 pub bool next(reader_t *p) {
 	char line[256] = {};
-	while (!feof (p->f)) {
+	while (!feof(p->f)) {
 		next_line(p, line, sizeof(line));
 		if (line[0] == '\0') {
 			continue;
@@ -42,19 +44,23 @@ pub bool next(reader_t *p) {
 		// process line
 		char *base = line;
 		char *ptr = base;
-		while (*ptr != '=' && *ptr != ' ' && *ptr != 0) ptr++;
+		while (*ptr != '=' && *ptr != ' ' && *ptr != 0) {
+			ptr++;
+		}
 		if (*ptr == 0) {
-			fprintf (stderr, "config parse error at line %d\n", p->line);
-			exit (1);
+			fprintf(stderr, "config parse error at line %d\n", p->line);
+			exit(1);
 		}
 		*ptr = 0;
 
-		/* Now find value */
+		// Now find value
 		ptr++;
-		while (*ptr == '=' || *ptr == ' ') ptr++;
+		while (*ptr == '=' || *ptr == ' ') {
+			ptr++;
+		}
 		if (*ptr == 0) {
-			fprintf (stderr, "config parse error at line %d\n", p->line);
-			exit (1);
+			fprintf(stderr, "config parse error at line %d\n", p->line);
+			exit(1);
 		}
 
 		strcpy(p->key, base);
@@ -69,11 +75,13 @@ void next_line(reader_t *p, char *buf, size_t bufsize) {
 	bool comment = false;
 	size_t pos = 0;
 
-    // Skip spaces.
-    while (isspace(peek(p->f))) getc(p->f);
+	// Skip spaces.
+	while (isspace(peek(p->f))) {
+		getc(p->f);
+	}
 
-	while (!feof (p->f)) {
-		char c = getc (p->f);
+	while (!feof(p->f)) {
+		char c = getc(p->f);
 		if (c == EOF) {
 			*ptr = 0;
 			return;

@@ -159,6 +159,7 @@ fn parse_module_object(l: &mut Lexer, ctx: &ParseCtx) -> Result<TWithErrors<ModE
     let form = parse_form(l, ctx)?;
     if l.peek().unwrap().kind == "(" {
         typename.source_info.spaces_top = String::new();
+        typename.source_info.comments = None;
         let r = parse_func(l, ctx, is_pub, typename, form, source_info)?;
         return Ok(TWithErrors {
             obj: r.obj,
@@ -647,23 +648,26 @@ fn parse_enum_entry(l: &mut Lexer, ctx: &ParseCtx) -> Result<EnumEntry, Error> {
 }
 
 fn parse_composite_literal(l: &mut Lexer, ctx: &ParseCtx) -> Result<CompLiteral, Error> {
-    let mut result = CompLiteral {
-        entries: Vec::new(),
-    };
+    let mut source_info = si(&l.peek().unwrap());
+    let mut entries = Vec::new();
     expect(l, "{")?;
-    loop {
-        if l.peek().unwrap().kind == "}" {
-            break;
-        }
-        result.entries.push(parse_composite_literal_entry(l, ctx)?);
+    while l.more() && !l.follows("}") {
+        let mut e = parse_composite_literal_entry(l, ctx)?;
         if l.peek().unwrap().kind == "," {
-            l.get();
+            let comma = l.get().unwrap();
+            e.source_info.trailing_comment = comma.trailing_comment;
+            entries.push(e);
         } else {
+            entries.push(e);
             break;
         }
     }
-    expect(l, "}")?;
-    return Ok(result);
+    let t = expect(l, "}")?;
+    source_info.trailing_comment = t.trailing_comment;
+    return Ok(CompLiteral {
+        source_info,
+        entries,
+    });
 }
 
 fn parse_composite_literal_entry(
@@ -671,15 +675,15 @@ fn parse_composite_literal_entry(
     ctx: &ParseCtx,
 ) -> Result<CompositeLiteralEntry, Error> {
     let source_info = si(l.peek().unwrap());
-    if l.peek().unwrap().kind == "." {
-        expect(l, ".")?;
+    if l.eat(".") {
         let tok = expect(l, "word")?;
         expect(l, "=")?;
         let value = parse_expr(l, 0, ctx)?;
         return Ok(CompositeLiteralEntry {
+            source_info,
             is_index: false,
             key: Some(Expr::NsName(NsName {
-                source_info: Some(source_info),
+                source_info: None,
                 pos: tok.pos,
                 ns: String::from(""),
                 name: tok.content,
@@ -687,19 +691,20 @@ fn parse_composite_literal_entry(
             value,
         });
     }
-    if l.follows("[") {
-        l.get();
+    if l.eat("[") {
         let key = parse_expr(l, 0, ctx)?;
         expect(l, "]")?;
         expect(l, "=")?;
         let value = parse_expr(l, 0, ctx)?;
         return Ok(CompositeLiteralEntry {
+            source_info,
             is_index: true,
             key: Some(key),
             value,
         });
     }
     return Ok(CompositeLiteralEntry {
+        source_info,
         is_index: false,
         key: None,
         value: parse_expr(l, 0, ctx)?,
@@ -1026,7 +1031,7 @@ fn parse_switch(l: &mut Lexer, ctx: &ParseCtx) -> Result<TWithErrors<BlockItem>,
         }
         cases.push(r.obj);
     }
-    let mut default: Option<Body> = None;
+    let mut default: Option<Block> = None;
     if l.follows("default") {
         expect(l, "default")?;
         expect(l, ":")?;
@@ -1133,13 +1138,14 @@ fn parse_function_parameter(l: &mut Lexer, ctx: &ParseCtx) -> Result<TypeAndForm
     });
 }
 
-fn parse_block(l: &mut Lexer, ctx: &ParseCtx) -> Result<TWithErrors<Body>, Error> {
+fn parse_block(l: &mut Lexer, ctx: &ParseCtx) -> Result<TWithErrors<Block>, Error> {
     if l.follows("{") {
         return read_body(l, ctx);
     }
     let s = parse_block_item(l, ctx)?;
     return Ok(TWithErrors {
-        obj: Body {
+        obj: Block {
+            final_comments: None,
             trailing_comment: None,
             items: vec![s.obj],
         },
@@ -1147,7 +1153,7 @@ fn parse_block(l: &mut Lexer, ctx: &ParseCtx) -> Result<TWithErrors<Body>, Error
     });
 }
 
-fn read_body(l: &mut Lexer, ctx: &ParseCtx) -> Result<TWithErrors<Body>, Error> {
+fn read_body(l: &mut Lexer, ctx: &ParseCtx) -> Result<TWithErrors<Block>, Error> {
     let mut statements: Vec<BlockItem> = Vec::new();
     let mut errors = Vec::new();
     expect(l, "{")?;
@@ -1172,7 +1178,8 @@ fn read_body(l: &mut Lexer, ctx: &ParseCtx) -> Result<TWithErrors<Body>, Error> 
     }
     let t = expect(l, "}")?;
     return Ok(TWithErrors {
-        obj: Body {
+        obj: Block {
+            final_comments: t.comments,
             items: statements,
             trailing_comment: t.trailing_comment,
         },
@@ -1200,7 +1207,7 @@ fn parse_typedef(
     l: &mut Lexer,
     ctx: &ParseCtx,
     is_pub: bool,
-    source_info: SourceInfo,
+    mut source_info: SourceInfo,
 ) -> Result<ModElem, Error> {
     expect(l, "typedef")?;
 
@@ -1233,6 +1240,7 @@ fn parse_typedef(
         let type_alias = expect(l, "word")?.content;
         expect(l, ";")?;
         return Ok(ModElem::StructAlias(nodes::StructAlias {
+            source_info,
             ispub: is_pub,
             structname: struct_name,
             typename: type_alias,
@@ -1262,14 +1270,15 @@ fn parse_typedef(
         expect(l, "]")?;
     }
     let td = expect(l, ";")?;
+    source_info.trailing_comment = td.trailing_comment;
     return Ok(ModElem::Typedef(Typedef {
+        source_info,
         ispub: is_pub,
         typename,
         derefs: stars,
         func_params: params,
         array_size: size,
         alias: tok.content,
-        pos: td.pos,
     }));
 }
 

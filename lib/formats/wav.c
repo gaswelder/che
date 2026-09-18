@@ -52,17 +52,17 @@ pub void close_writer(writer_t *w) {
 }
 
 pub reader_t *open_reader(const char *path) {
-    FILE *f = fopen(path, "rb");
+	FILE *f = fopen(path, "rb");
 	if (!f) {
 		return NULL;
 	}
-    reader.t *r = reader.file(f);
+	reader.t *r = reader.file(f);
 
 	reader_t *wr = calloc!(1, sizeof(reader_t));
 	wr->reader = r;
 
 	wav_t w = {};
-    if (!read_headers(r, &w, &wr->datalen)) {
+	if (!read_headers(r, &w, &wr->datalen)) {
 		fclose(f);
 		reader.free(r);
 		OS.free(wr);
@@ -80,7 +80,7 @@ bool read_headers(reader.t *r, wav_t *wp, uint32_t *datalen) {
     //
     if (!expect_tag(r, "RIFF")) return false;
 	uint32_t tmp4u = 0;
-    endian.read4le(r, &tmp4u); // riff chunk length
+	endian.read4le(r, &tmp4u); // riff chunk length
 
     //
     // Begin WAVE
@@ -109,15 +109,15 @@ bool read_headers(reader.t *r, wav_t *wp, uint32_t *datalen) {
 	*wp = w;
 
 	//
-    // Optional INFO block
-    //
+	// Optional INFO block
+	//
 	char tag[5] = {};
-    reader.read(r, (uint8_t*) tag, 4);
+	reader.read(r, (uint8_t *) tag, 4);
 	if (memcmp(tag, "LIST", 4) == 0) {
 		if (!readinfo(r)) {
 			return false;
 		}
-		reader.read(r, (uint8_t*) tag, 4);
+		reader.read(r, (uint8_t *) tag, 4);
 	}
 
 	//
@@ -132,16 +132,16 @@ bool read_headers(reader.t *r, wav_t *wp, uint32_t *datalen) {
 			reader.read(r, buf, n);
 			tmp4u -= n;
 		}
-		reader.read(r, (uint8_t*) tag, 4);
+		reader.read(r, (uint8_t *) tag, 4);
 	}
 
 	//
-    // PCM data
-    //
+	// PCM data
+	//
 	if (strcmp(tag, "data") != 0) {
 		panic("expected \"data\" chunk, got \"%s\"", tag);
 	}
-    endian.read4le(r, datalen);
+	endian.read4le(r, datalen);
 	return true;
 }
 
@@ -156,7 +156,7 @@ void write_headers(writer_t *w) {
 	//
 	// Start WAVE
 	//
-    writetag(w->writer, "WAVE");
+	writetag(w->writer, "WAVE");
 
 	//
 	// Wave fmt struct

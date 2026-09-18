@@ -43,7 +43,9 @@ pub typedef {
 
 // Returns the sum of durations a and b.
 pub duration_t dur_add(duration_t a, b) {
-	duration_t r = { .us = a.us + b.us };
+	duration_t r = {
+		.us = a.us + b.us,
+	};
 	return r;
 }
 
@@ -54,11 +56,11 @@ int tzoffset() {
 	x = OS.localtime(&n);
 	int mins = x->tm_hour * 60 + x->tm_min;
 	x = OS.gmtime(&n);
-	mins -= (x->tm_hour * 60 + x->tm_min);
+	mins -= x->tm_hour * 60 + x->tm_min;
 
 	// Possible diff range is -12:45 .. +14:45.
-	int min = -(12*60 + 45);
-	int max = 14*60+45;
+	int min = -(12 * 60 + 45);
+	int max = 14 * 60 + 45;
 	if (mins < min) {
 		mins += 24 * 60;
 	} else if (mins > max) {
@@ -76,11 +78,15 @@ pub int64_t dur_us(duration_t *d) {
 }
 
 pub duration_t newdur(int64_t val, int unit) {
-	duration_t d = { .us = unit * val };
+	duration_t d = {
+		.us = unit * val,
+	};
 	return d;
 }
 
-typedef { int us, ms, s, m, h; } sdur_t;
+typedef {
+	int us, ms, s, m, h;
+} sdur_t;
 
 sdur_t sdur(int64_t val) {
 	sdur_t r = {};
@@ -138,9 +144,7 @@ pub bool dur_fmt(duration_t *d, char *buf, size_t bufsize, const char *fmt) {
 				len = snprintf(buf, bufsize, "%d:%02d.%03d", m, s, ms);
 			}
 		}
-		default: {
-			panic("unknown format: %s", fmt);
-		}
+		default: { panic("unknown format: %s", fmt); }
 	}
 	return (size_t) len + 1 <= bufsize;
 }
@@ -150,15 +154,15 @@ pub bool dur_fmt(duration_t *d, char *buf, size_t bufsize, const char *fmt) {
 // Returns false and sets the error otherwise.
 pub bool parse_duration(const char *s, duration_t *d, error.t *err) {
 	int nums[3] = {};
-    int numslen = 0;
+	int numslen = 0;
 
-    const char *p = s;
+	const char *p = s;
 	if (*s == '\0') {
 		error.set(err, "duration string is empty");
 		return false;
 	}
 
-    p = readint(p, &nums[numslen++]);
+	p = readint(p, &nums[numslen++]);
 	if (p == s) {
 		error.set(err, "expected a number at %s", s);
 		return false;
@@ -201,23 +205,23 @@ pub bool parse_duration(const char *s, duration_t *d, error.t *err) {
 			val += (int) *p - (int) '0';
 			p++;
 		}
-		int64_t diff = (double)SECONDS * ((double)val / (double)fracsize);
+		int64_t diff = (double) SECONDS * ((double) val / (double) fracsize);
 		us += diff;
 	}
 
-    d->us = us;
+	d->us = us;
 	return true;
 }
 
 const char *readint(const char *p, int *r) {
-    int n = 0;
-    while (isdigit(*p)) {
-        n *= 10;
-        n += (int) *p - (int) '0';
-        p++;
-    }
-    *r = n;
-    return p;
+	int n = 0;
+	while (isdigit(*p)) {
+		n *= 10;
+		n += (int) *p - (int) '0';
+		p++;
+	}
+	*r = n;
+	return p;
 }
 
 // Returns current time.
@@ -257,19 +261,29 @@ pub iso_t parse_iso(const char *p) {
 	// 2026-01-16T20:01:17.278Z
 	const char *q = p;
 	q = readint(q, &r.Y);
-	if (*q++ != '-') panic("- expected");
+	if (*q++ != '-') {
+		panic("- expected");
+	}
 
 	q = readint(q, &r.M);
-	if (*q++ != '-') panic("- expected");
+	if (*q++ != '-') {
+		panic("- expected");
+	}
 
 	q = readint(q, &r.D);
-	if (*q++ != 'T') panic("T expected");
+	if (*q++ != 'T') {
+		panic("T expected");
+	}
 
 	q = readint(q, &r.h);
-	if (*q++ != ':') panic(": expected");
+	if (*q++ != ':') {
+		panic(": expected");
+	}
 
 	q = readint(q, &r.m);
-	if (*q++ != ':') panic(": expected");
+	if (*q++ != ':') {
+		panic(": expected");
+	}
 
 	q = readint(q, &r.s);
 	if (*q == '.') {
@@ -283,7 +297,9 @@ pub iso_t parse_iso(const char *p) {
 	} else if (*q == '+') {
 		q++;
 		q = readint(q, &r.zh);
-		if (*q++ != ':') panic(": expected");
+		if (*q++ != ':') {
+			panic(": expected");
+		}
 		q = readint(q, &r.zm);
 	} else {
 		panic("trailing input");
@@ -310,11 +326,11 @@ tm_t totm(iso_t r) {
 pub int64_t sub(iso_t a, b) {
 	tm_t tm = totm(a);
 	time_t au = OS.mktime(&tm);
-	int64_t ms1 = ((int64_t) au) * 1000 + a.ms;
+	int64_t ms1 = (int64_t) au * 1000 + a.ms;
 
 	tm = totm(b);
 	time_t bu = OS.mktime(&tm);
-	int64_t ms2 = ((int64_t) bu) * 1000 + b.ms;
+	int64_t ms2 = (int64_t) bu * 1000 + b.ms;
 
 	return ms1 - ms2;
 }
@@ -339,17 +355,15 @@ pub void iso_tolocal(iso_t *val) {
 	// }
 }
 
-
 //
 //
 //
-
 pub bool sleep(int64_t dt) {
 	int64_t s = dt / SECONDS;
 	int64_t us = dt % SECONDS;
-    timespec_t t = {
-        .tv_sec = s,
-        .tv_nsec = us * 1000
-    };
-    return OS.nanosleep(&t, NULL) == 0;
+	timespec_t t = {
+		.tv_sec = s,
+		.tv_nsec = us * 1000,
+	};
+	return OS.nanosleep(&t, NULL) == 0;
 }

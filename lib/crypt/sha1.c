@@ -3,7 +3,6 @@
 /*
  * http://csrc.nist.gov/publications/fips/fips180-4/fips-180-4.pdf
  */
-
 pub typedef {
 	bool init;
 	size_t pos;
@@ -16,7 +15,6 @@ pub typedef {
 	uint32_t _word;
 
 	uint64_t length; // current message length in bits.
-
 } digest_t;
 
 pub void reset(digest_t *hash) {
@@ -111,7 +109,7 @@ pub bool end(digest_t *hash) {
 
 	// Append the message length.
 	for (int i = 0; i < 8; i++) {
-		uint8_t b = (hash->length >> (64-8 - 8*i)) & 0xFF;
+		uint8_t b = (hash->length >> (64 - 8 - 8 * i)) & 0xFF;
 		push_byte(hash, b);
 	}
 	return true;

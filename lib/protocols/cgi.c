@@ -9,17 +9,19 @@ pub typedef {
 } head_t;
 
 pub size_t parse_head(head_t *r, char *data, size_t n) {
-    size_t pos = 0;
-    while (true) {
-        char name[1000] = {};
-        char *d = name;
+	size_t pos = 0;
+	while (true) {
+		char name[1000] = {};
+		char *d = name;
 
-        // name
-        while (pos < n && data[pos] != ':') {
-            *d++ = data[pos];
-            pos++;
-        }
-        if (pos >= n) return false;
+		// name
+		while (pos < n && data[pos] != ':') {
+			*d++ = data[pos];
+			pos++;
+		}
+		if (pos >= n) {
+			return false;
+		}
 
 		// skip ':'
 		pos++;
@@ -32,8 +34,8 @@ pub size_t parse_head(head_t *r, char *data, size_t n) {
 			return false;
 		}
 
-        char value[1000] = {};
-        d = value;
+		char value[1000] = {};
+		d = value;
 
         // everything until a newline
         while (pos < n && data[pos] != '\n' && data[pos] != '\r') {

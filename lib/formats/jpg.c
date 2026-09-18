@@ -129,7 +129,7 @@ void read_app1(jpeg_t *self, reader.t *r) {
 	uint8_t *buf = calloc!(len - 2, 1);
 	reader.read(r, buf, len - 2);
 
-	if (strcmp((char*) buf, "Exif") == 0 && buf[4] == 0 && buf[5] == 0) {
+	if (strcmp((char *) buf, "Exif") == 0 && buf[4] == 0 && buf[5] == 0) {
 		tiff.file_t *tf = tiff.parse(buf + 6, len - 2 - 6);
 		uint32_t gpspos = 0;
 		int orientation = 1;

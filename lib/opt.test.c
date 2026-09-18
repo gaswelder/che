@@ -12,7 +12,7 @@ int main() {
 	bool q = false;
 	opt.flag("q", "some bool2", &q);
 
-	char *argv[] = {"progname", "-s", "foo", "-i", "10", "-pq", "-f", "3.14", "one", "two", NULL};
+	char *argv[] = { "progname", "-s", "foo", "-i", "10", "-pq", "-f", "3.14", "one", "two", NULL };
 	int argc = 0;
 	while (argv[argc]) {
 		argc++;

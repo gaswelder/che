@@ -31,13 +31,12 @@ typedef {
 /*
  * Process the stream and put the digest in 'digest'.
  */
-void md5(mem.mem_t *stream, uint32_t digest[4])
-{
+void md5(mem.mem_t *stream, uint32_t digest[4]) {
 	src_t s = {
 		.stream = stream,
 		.length = 0,
 		.more_data = true,
-		.more = true
+		.more = true,
 	};
 
 	md5_init(digest);
@@ -45,9 +44,8 @@ void md5(mem.mem_t *stream, uint32_t digest[4])
 	/*
 	 * Process the stream in 16-word blocks.
 	 */
-	uint32_t block[16] = {0};
-	while (s.more)
-	{
+	uint32_t block[16] = {};
+	while (s.more) {
 		for (int i = 0; i < 16; i++) {
 			block[i] = next_word(&s);
 		}
@@ -73,26 +71,24 @@ void print_block(uint32_t b[16])
  *   |->|->|->|->|->|->|->|->|
  *   |<----------|<----------|
  */
-uint32_t next_word(src_t *s)
-{
+uint32_t next_word(src_t *s) {
 	uint32_t word = 0;
 	int pos = 0;
 	/*
 	 * Compose a word from bytes, least-significant byte first.
 	 */
-	for(int i = 0; i < 4; i++) {
+	for (int i = 0; i < 4; i++) {
 		uint8_t b = next_byte(s);
-		word += (b << pos);
+		word += b << pos;
 		pos += 8;
 	}
 	return word;
 }
 
-uint8_t next_byte(src_t *s)
-{
-	if(s->more_data) {
+uint8_t next_byte(src_t *s) {
+	if (s->more_data) {
 		int c = mem.memgetc(s->stream);
-		if(c != EOF) {
+		if (c != EOF) {
 			s->length += 8;
 			return (uint8_t) c;
 		}
@@ -144,7 +140,7 @@ void init_padding(src_t *s) {
 	int i = 0;
 	uint8_t b = 0;
 	uint32_t w = 0;
-	uint8_t *pos = (uint8_t *) &(s->lenbuf);
+	uint8_t *pos = (uint8_t *) &s->lenbuf;
 
 	// low word
 	w = s->length & 0xFFFFFFFF;
@@ -170,7 +166,7 @@ void init_padding(src_t *s) {
 	 */
 	int l = s->length / 8;
 	int n = (9 + l) / 64;
-	if (((9 + l) % 64) != 0) {
+	if ((9 + l) % 64 != 0) {
 		n++;
 	}
 	s->zeros = 64 * n - 9 - l;
@@ -186,8 +182,7 @@ pub typedef char md5str_t[33];
 /*
  * Computes digest for the string 's' and stores it in 'md'.
  */
-pub bool md5_str(const char *s, uint32_t md[4])
-{
+pub bool md5_str(const char *s, uint32_t md[4]) {
 	return md5_buf(s, strlen(s), md);
 }
 
@@ -207,33 +202,30 @@ pub bool md5_buf(const char *buf, size_t len, uint32_t md[4]) {
 /*
  * Returns true if message digests 'a' and 'b' are equal.
  */
-pub bool md5_eq(md5sum_t a, b)
-{
-	for(int i = 0; i < 4; i++) {
-		if(a[i] != b[i]) {
+pub bool md5_eq(md5sum_t a, b) {
+	for (int i = 0; i < 4; i++) {
+		if (a[i] != b[i]) {
 			return false;
 		}
 	}
 	return true;
 }
 
-pub void md5_print(uint32_t buf[4])
-{
-	for(int i = 0; i < 4; i++) {
+pub void md5_print(uint32_t buf[4]) {
+	for (int i = 0; i < 4; i++) {
 		uint32_t w = buf[i];
-		for(int j = 0; j < 4; j++) {
+		for (int j = 0; j < 4; j++) {
 			uint8_t b = (w >> (j * 8)) & 0xFF;
 			printf("%02x", b);
 		}
 	}
 }
 
-pub void md5_sprint(md5sum_t s, md5str_t buf)
-{
+pub void md5_sprint(md5sum_t s, md5str_t buf) {
 	char *p = buf;
-	for(int i = 0; i < 4; i++) {
+	for (int i = 0; i < 4; i++) {
 		uint32_t w = s[i];
-		for(int j = 0; j < 4; j++) {
+		for (int j = 0; j < 4; j++) {
 			uint8_t b = (w >> (j * 8)) & 0xFF;
 			sprintf(p, "%02x", b);
 			p += 2;
@@ -245,13 +237,11 @@ pub void md5_sprint(md5sum_t s, md5str_t buf)
  * The core routine of the MD5.
  * Defines two main operations: init and feed.
  */
-
 /*
  * https://www.ietf.org/rfc/rfc1321.txt
  * http://stackoverflow.com/a/4124950
  * https://rosettacode.org/wiki/MD5/Implementation
  */
-
 /*
  * 4294967296 * fabs(sin(i)) for i=1..64
  */
@@ -277,8 +267,7 @@ uint32_t T[64] = {
 /*
  * Initializes the digest
  */
-void md5_init(uint32_t md[4])
-{
+void md5_init(uint32_t md[4]) {
 	md[0] = 0x67452301;
 	md[1] = 0xEFCDAB89;
 	md[2] = 0x98BADCFE;
@@ -290,7 +279,7 @@ void md5_init(uint32_t md[4])
  */
 void md5_feed(uint32_t buf[4], uint32_t block[16]) {
 	// tmp = buf
-	uint32_t tmp[4] = {0};
+	uint32_t tmp[4] = {};
 	tmp[0] = buf[0];
 	tmp[1] = buf[1];
 	tmp[2] = buf[2];
@@ -378,13 +367,13 @@ uint32_t F(uint32_t x, uint32_t y, uint32_t z) {
 	return (x & y) | ((~x) & z);
 }
 uint32_t G(uint32_t x, uint32_t y, uint32_t z) {
-	return (x & z) | (y & (~z));
+	return (x & z) | (y & ~z);
 }
 uint32_t H(uint32_t x, uint32_t y, uint32_t z) {
 	return x ^ y ^ z;
 }
 uint32_t I(uint32_t x, uint32_t y, uint32_t z) {
-	return y ^ (x | (~z));
+	return y ^ (x | ~z);
 }
 
 uint32_t rotate(uint32_t value, int bits) {

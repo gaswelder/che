@@ -90,8 +90,10 @@ pub int write(net_t *c, const char *buf, size_t n) {
 // On failure returns NULL, sets errno.
 pub net_t *connect(const char *proto, const char *addr) {
 	net_t *c = newconn(proto, addr);
-	if (!c) return NULL;
-	if (OS.connect(c->fd, &(c->ai_addr), c->addrlen) < 0) {
+	if (!c) {
+		return NULL;
+	}
+	if (OS.connect(c->fd, &c->ai_addr, c->addrlen) < 0) {
 		free(c);
 		return NULL;
 	}
@@ -102,7 +104,9 @@ pub net_t *connect(const char *proto, const char *addr) {
 // waiting for the actual connection to happen.
 pub net_t *connect_nonblock(const char *proto, *addr) {
 	net_t *c = newconn(proto, addr);
-	if (!c) return NULL;
+	if (!c) {
+		return NULL;
+	}
 	int flags = OS.fcntl(c->fd, OS.F_GETFL, 0);
 	if (flags < 0) panic("fcntl failed");
 	if (OS.fcntl(c->fd, OS.F_SETFL, flags | OS.O_NONBLOCK) < 0) panic("fcntl failed");
@@ -124,11 +128,11 @@ pub net_t *connect_nonblock(const char *proto, *addr) {
 // 	}
 // 	return error;
 // }
-
-
 pub net_t *net_listen(const char *proto, const char *addr) {
 	net_t *c = newconn(proto, addr);
-	if (!c) return NULL;
+	if (!c) {
+		return NULL;
+	}
 	c->is_listener = true;
 
 	int yes = 1;
@@ -137,7 +141,7 @@ pub net_t *net_listen(const char *proto, const char *addr) {
 		free(c);
 		return NULL;
 	}
-	if (OS.bind(c->fd, &(c->ai_addr), c->addrlen) != 0) {
+	if (OS.bind(c->fd, &c->ai_addr, c->addrlen) != 0) {
 		error = "bind failed";
 		free(c);
 		return NULL;
@@ -154,13 +158,13 @@ pub net_t *net_listen(const char *proto, const char *addr) {
 pub net_t *net_accept(net_t *l) {
 	net_t *newconn = calloc!(1, sizeof(net_t));
 	socklen_t size = sizeof(sockaddr_t);
-	int s = OS.accept(l->fd, &(newconn->ai_addr), &size);
+	int s = OS.accept(l->fd, &newconn->ai_addr, &size);
 	if (s == -1) {
 		error = "accept failed";
 		free(newconn);
 		return NULL;
 	}
-	if (!format_address(&(newconn->ai_addr), newconn->addrstr, sizeof(newconn->addrstr))) {
+	if (!format_address(&newconn->ai_addr, newconn->addrstr, sizeof(newconn->addrstr))) {
 		error = "couldn't format address";
 		free(newconn);
 		OS.close(s);
@@ -215,15 +219,15 @@ net_t *newconn(const char *proto, const char *addr) {
 	}
 	addrinfo_t *i = NULL;
 	for (i = result; i != NULL; i = i->ai_next) {
-		c->fd = OS.socket( i->ai_family, i->ai_socktype, i->ai_protocol );
+		c->fd = OS.socket(i->ai_family, i->ai_socktype, i->ai_protocol);
 		if (c->fd > 0) {
-			memcpy(&(c->ai_addr), i->ai_addr, sizeof(sockaddr_t));
+			memcpy(&c->ai_addr, i->ai_addr, sizeof(sockaddr_t));
 			c->addrlen = i->ai_addrlen;
 			c->ai_family = i->ai_family;
 			break;
 		}
 	}
-	OS.freeaddrinfo( result );
+	OS.freeaddrinfo(result);
 	if (c->fd <= 0) {
 		error = "no suitable addrinfo";
 		free(c);
@@ -299,14 +303,14 @@ int net_puts(const char *s, net_t *c) {
  * Behaves like fprintf.
  */
 pub void net_printf(net_t *c, const char *fmt, ...) {
-	va_list args = {0};
+	va_list args = {};
 	va_start(args, fmt);
 	int len = vsnprintf(NULL, 0, fmt, args);
 	va_end(args);
 
 	char *buf = calloc!(len + 1, sizeof(char));
 	va_start(args, fmt);
-	len = vsnprintf(buf, len+1, fmt, args);
+	len = vsnprintf(buf, len + 1, fmt, args);
 	va_end(args);
 
 	net_puts(buf, c);

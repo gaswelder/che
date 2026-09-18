@@ -48,18 +48,17 @@ pub void dir_close(dir_t *d) {
 	free(d);
 }
 
-
 pub bool realpath(const char *path, char *buf, size_t n) {
-    char tmp[OS.PATH_MAX] = {};
-    if (!OS.realpath(path, tmp)) {
-        return false;
-    }
-    if (strlen(tmp) > n-1) {
-        // buf is too small.
-        return false;
-    }
-    strcpy(buf, tmp);
-    return true;
+	char tmp[OS.PATH_MAX] = {};
+	if (!OS.realpath(path, tmp)) {
+		return false;
+	}
+	if (strlen(tmp) > n - 1) {
+		// buf is too small.
+		return false;
+	}
+	strcpy(buf, tmp);
+	return true;
 }
 
 /**
@@ -67,7 +66,7 @@ pub bool realpath(const char *path, char *buf, size_t n) {
  * Returns false on error.
  */
 pub bool unlink(const char *path) {
-    return OS.unlink(path) == 0;
+	return OS.unlink(path) == 0;
 }
 
 /*
@@ -125,7 +124,9 @@ pub char *readfile(const char *path, size_t *size) {
 	fclose(f);
 
 	// Put the size if requested.
-	if (size) *size = len;
+	if (size) {
+		*size = len;
+	}
 
 	return data;
 }
@@ -195,20 +196,20 @@ pub bool file_exists(const char *path) {
 // Returns ptr to the start of file extension within filepath.
 // Ex. "path/to/index.html" returns "html"
 pub const char *fileext(const char *filepath) {
-    int filepath_len = strlen(filepath);
-    // filepath of "" returns ext of "".
-    if (filepath_len == 0) {
-        return filepath;
-    }
+	int filepath_len = strlen(filepath);
+	// filepath of "" returns ext of "".
+	if (filepath_len == 0) {
+		return filepath;
+	}
 
-    const char *p = filepath + strlen(filepath) - 1;
-    while (p >= filepath) {
-        if (*p == '.') {
-            return p+1;
-        }
-        p--;
-    }
-    return filepath;
+	const char *p = filepath + strlen(filepath) - 1;
+	while (p >= filepath) {
+		if (*p == '.') {
+			return p + 1;
+		}
+		p--;
+	}
+	return filepath;
 }
 
 // Returns "base name" of a file path.
@@ -216,7 +217,9 @@ pub const char *basename(const char *path) {
 	const char *last = path;
 	const char *p = path;
 	while (*p != '\0') {
-		if (*p == '/') last = p+1;
+		if (*p == '/') {
+			last = p + 1;
+		}
 		p++;
 	}
 	return last;
@@ -225,20 +228,22 @@ pub const char *basename(const char *path) {
 // Puts the directory part the path into buf and returns true.
 // Returns false if buf is too small.
 pub bool dirname(const char *path, char *buf, size_t bufsize) {
-    if (strlen(path) >= bufsize) {
-        return false;
-    }
-    strcpy(buf, path);
-    char *p = buf;
-    char *last_slash = NULL;
-    while (*p != '\0') {
-        if (*p == '/') last_slash = p;
-        p++;
-    }
-    if (last_slash) {
-        *last_slash = '\0';
-    } else {
-        buf[0] = '\0';
-    }
-    return true;
+	if (strlen(path) >= bufsize) {
+		return false;
+	}
+	strcpy(buf, path);
+	char *p = buf;
+	char *last_slash = NULL;
+	while (*p != '\0') {
+		if (*p == '/') {
+			last_slash = p;
+		}
+		p++;
+	}
+	if (last_slash) {
+		*last_slash = '\0';
+	} else {
+		buf[0] = '\0';
+	}
+	return true;
 }

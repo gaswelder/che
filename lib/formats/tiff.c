@@ -29,13 +29,13 @@ pub enum {
 	ASCII = 2,
 	SHORT = 3,
 	LONG = 4,
-	RATIONAL = 5
+	RATIONAL = 5,
 }
 
 // endiannes
 enum {
 	LITTLE = 0,
-	BIG = 1
+	BIG = 1,
 }
 
 pub enum {
@@ -48,7 +48,7 @@ pub enum {
 	ImageDescription = 270,
 	StripOffsets = 273,
 	RowsPerStrip = 278,
-	StripByteCounts = 279
+	StripByteCounts = 279,
 }
 
 // Returns a display name for the given type.
@@ -110,7 +110,7 @@ pub void read_dir(file_t *tiff) {
 	int n = readbytes(tiff, 2);
 
 	dir_t *dir = calloc!(1, sizeof(dir_t));
-	dir->entries = calloc!(n, sizeof( dir->entries[0] ));
+	dir->entries = calloc!(n, sizeof(dir->entries[0]));
 	dir->nentries = n;
 
 	for (int i = 0; i < n; i++) {
@@ -118,8 +118,8 @@ pub void read_dir(file_t *tiff) {
 		int type = readbytes(tiff, 2); // 2-3: value type
 		uint32_t count = readbytes(tiff, 4); // 4-7: number of values
 		uint32_t value = readbytes(tiff, 4); // 8-11: value or value address
-		
-		entry_t *entry = calloc!(1, sizeof( entry_t ));
+
+		entry_t *entry = calloc!(1, sizeof(entry_t));
 		entry->tag = tag;
 		entry->type = type;
 		entry->count = count;
@@ -131,7 +131,7 @@ pub void read_dir(file_t *tiff) {
 	// Add the directory to the TIFF object.
 	tiff->ndirs++;
 	tiff->dirs = realloc(tiff->dirs, tiff->ndirs * sizeof(tiff->dirs[0]));
-	tiff->dirs[tiff->ndirs-1] = dir;
+	tiff->dirs[tiff->ndirs - 1] = dir;
 }
 
 // Frees all memory taken by the file and closes all handles.
@@ -180,14 +180,12 @@ pub uint32_t readbytes(file_t *tf, size_t n) {
 		}
 		case LITTLE: {
 			uint32_t scale = 1;
-			for (size_t i = 0; i < n; i++){
+			for (size_t i = 0; i < n; i++) {
 				val += tf->data[tf->pos++] * scale;
 				scale *= 256;
 			}
 		}
-		default: {
-			panic("invalid endiannes");
-		}
+		default: { panic("invalid endiannes"); }
 	}
 	return val;
 }
@@ -206,33 +204,23 @@ pub const char *tagname(int tag) {
 		case 257: { return "ImageLength"; }
 		case 258: { return "BitsPerSample"; }
 		case 259: { return "Compression"; }
-
 		case 262: { return "PhotometricInterpretation"; }
-
 		case 266: { return "FillOrder"; }
-
 		case 270: { return "ImageDescription"; }
-
 		case 273: { return "StripOffsets"; }
 		case 274: { return "Orientation"; }
-
 		case 271: { return "Make"; } // camera maker
 		case 272: { return "Model"; } // camera model
 		case 277: { return "SamplesPerPixel"; }
 		case 278: { return "RowsPerStrip"; }
 		case 279: { return "StripByteCounts"; }
-
 		case 282: { return "XResolution"; }
 		case 283: { return "YResolution"; }
 		case 284: { return "PlanarConfiguration"; }
-
 		case 296: { return "ResolutionUnit"; }
-
 		case 305: { return "Software"; }
 		case 306: { return "DateTime"; }
-
 		case 315: { return "Artist"; }
-
 		case 320: { return "ColorMap"; }
 		case 513: { return "JPEGInterchangeFormat"; } // JPEG thumbnail address
 		case 514: { return "JPEGInterchangeFormatLength"; } // JPEG thumbnail size
