@@ -5,6 +5,7 @@ mod cspec;
 mod flags;
 mod format_c;
 mod format_che;
+mod format_layout;
 mod lexer;
 mod main_build;
 mod main_deptree;

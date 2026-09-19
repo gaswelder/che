@@ -11,7 +11,9 @@
 bool SHOW_TODO = false;
 
 void todo(char *format, ...) {
-	if (!SHOW_TODO) return;
+	if (!SHOW_TODO) {
+		return;
+	}
 	fprintf(stderr, "# ");
 	va_list args = {};
 	va_start(args, format);
@@ -26,7 +28,7 @@ void todo(char *format, ...) {
 // }
 
 typedef {
-    bytereader.reader_t *r;
+	bytereader.reader_t *r;
 	uint16_t format; // one of the format constants.
 	uint16_t ntracks;
 	uint16_t start_beat_size; // How many ticks in a quarter note.
@@ -75,7 +77,7 @@ pub void read_file(const char *path, event_t **ree, size_t *rn) {
 	uint8_t track = 0;
 	for (uint8_t i = 0; i < m->ntracks; i++) {
 		read_track(m, track++, events);
-    }
+	}
 
 	// Unload the events into a local array.
 	size_t n = vec.len(events);
@@ -115,12 +117,12 @@ pub void read_file(const char *path, event_t **ree, size_t *rn) {
 }
 
 midi_t *openfile(const char *path) {
-    bytereader.reader_t *r = bytereader.newreader(path);
-    if (!r) {
-        return NULL;
-    }
-    midi_t *m = calloc!(1, sizeof(midi_t));
-    m->r = r;
+	bytereader.reader_t *r = bytereader.newreader(path);
+	if (!r) {
+		return NULL;
+	}
+	midi_t *m = calloc!(1, sizeof(midi_t));
+	m->r = r;
 	m->start_beat_duration = 500000; // us
 
     chunk_head_t h = {};
@@ -195,9 +197,7 @@ void read_track(midi_t *m, uint8_t track, vec.t *events) {
 					vec.push(events, &e);
 				}
 			}
-			default: {
-				panic("(?) message 0x%X\n", event_type);
-			}
+			default: { panic("(?) message 0x%X\n", event_type); }
 		}
 		if (!more) {
 			break;
@@ -208,8 +208,12 @@ void read_track(midi_t *m, uint8_t track, vec.t *events) {
 int bytime(const void *a, *b) {
 	const event_t *e1 = a;
 	const event_t *e2 = b;
-	if (e1->t < e2->t) return -1;
-	if (e2->t < e1->t) return 1;
+	if (e1->t < e2->t) {
+		return -1;
+	}
+	if (e2->t < e1->t) {
+		return 1;
+	}
 	return 0;
 }
 
@@ -220,7 +224,9 @@ event_t read_meta_message(midi_t *m) {
 	uint8_t data[1000] = {};
 	for (uint32_t i = 0; i < len; i++) {
 		int ch = bytereader.readc(m->r);
-		if (ch < 0) panic("!");
+		if (ch < 0) {
+			panic("!");
+		}
 		data[i] = ch;
 		if (i >= 999) {
 			panic("data too big");
@@ -231,7 +237,9 @@ event_t read_meta_message(midi_t *m) {
 
 	switch (type) {
 		case META_TEMPO: {
-			if (len != 3) panic("expected tempo len of 3, got %d", len);
+			if (len != 3) {
+				panic("expected tempo len of 3, got %d", len);
+			}
 			e.val = (data[0] << 16) + (data[1] << 8) + data[2];
 			e.type = TEMPO;
 		}
@@ -326,9 +334,7 @@ event_t read_channel_message(midi_t *m) {
 			// 16383 = 2 semitones up
 			todo("pitch bend\tchannel=%d bend=%d\n", e.channel, bend);
 		}
-		default: {
-			panic("unhandled type %X", type);
-		}
+		default: { panic("unhandled type %X", type); }
 	}
 	return e;
 }
@@ -336,20 +342,20 @@ event_t read_channel_message(midi_t *m) {
 // -------------- midi binary packaging ------------
 
 typedef {
-    char name[5]; // chunk's type
-    uint32_t length; // chunk's length in bytes
+	char name[5]; // chunk's type
+	uint32_t length; // chunk's length in bytes
 } chunk_head_t;
 
 bool midibin_read_chunk_head(midi_t *m, chunk_head_t *h) {
-    for (int i = 0; i < 4; i++) {
-        int c = bytereader.readc(m->r);
-        if (c == EOF) {
-            return false;
-        }
-        h->name[i] = c;
-    }
-    h->length = bytereader.read32(m->r);
-    return h;
+	for (int i = 0; i < 4; i++) {
+		int c = bytereader.readc(m->r);
+		if (c == EOF) {
+			return false;
+		}
+		h->name[i] = c;
+	}
+	h->length = bytereader.read32(m->r);
+	return h;
 }
 
 uint32_t midibin_variable_length_value(bytereader.reader_t *r) {
@@ -386,54 +392,60 @@ enum {
 	STATUS_UNKNOWN = 0,
 	STATUS_META,
 	STATUS_CHANNEL,
-	STATUS_SYSTEM
-};
+	STATUS_SYSTEM,
+}
 
 int get_status_type(int c) {
-	if (c == 0xFF) return STATUS_META;
-	if (c >= 0x80 && c <= 0xEF) return STATUS_CHANNEL;
-	if (c >= 0xF0 && c <= 0xFF) return STATUS_SYSTEM;
+	if (c == 0xFF) {
+		return STATUS_META;
+	}
+	if (c >= 0x80 && c <= 0xEF) {
+		return STATUS_CHANNEL;
+	}
+	if (c >= 0xF0 && c <= 0xFF) {
+		return STATUS_SYSTEM;
+	}
 	return STATUS_UNKNOWN;
 }
 
 enum {
-    META_SEQ_NUM = 0, // number of a sequence
-    META_TEXT = 1, // some text
-    META_COPYRIGHT = 2, // copyright notice
-    META_SEQ_NAME = 3, // sequence or track name
-    META_INSTRUMENT_NAME = 4, // current track's instrument name
-    META_LYRIC_TEXT = 5, // Lyrics, usually a syllable per quarter note
-    META_MARKER_TEXT = 6, // The text of a marker
-    META_CUE_POINT = 7, // The text of a cue, usually to prompt for some action from the user
+	META_SEQ_NUM = 0,                           // number of a sequence
+	META_TEXT = 1,                              // some text
+	META_COPYRIGHT = 2,                         // copyright notice
+	META_SEQ_NAME = 3,                          // sequence or track name
+	META_INSTRUMENT_NAME = 4,                   // current track's instrument name
+	META_LYRIC_TEXT = 5,                        // Lyrics, usually a syllable per quarter note
+	META_MARKER_TEXT = 6,                       // The text of a marker
+	META_CUE_POINT = 7,                         // The text of a cue, usually to prompt for some action from the user
 
-    META_MIDI_CHANNEL_PREFIX_ASSIGNMENT = 0x20, // A channel number (following meta events will apply to this channel)
-    META_END_OF_TRACK = 0x2F,
-    META_TEMPO = 0x51, // Number of microseconds per beat
-    META_SMPTE_OFFSET = 0x54, // SMPTE time to denote playback offset from the beginning
-    META_TIME_SIGNATURE = 0x58, // Time signature, metronome clicks, and size of a beat in 32nd notes
-    META_KEY_SIGNATURE = 0x59, // A key signature
-    META_OTHER = 0x7F // Something specific to the MIDI device manufacturer
-};
+	META_MIDI_CHANNEL_PREFIX_ASSIGNMENT = 0x20, // A channel number (following meta events will apply to this channel)
+	META_END_OF_TRACK = 0x2F,
+	META_TEMPO = 0x51,                          // Number of microseconds per beat
+	META_SMPTE_OFFSET = 0x54,                   // SMPTE time to denote playback offset from the beginning
+	META_TIME_SIGNATURE = 0x58,                 // Time signature, metronome clicks, and size of a beat in 32nd notes
+	META_KEY_SIGNATURE = 0x59,                  // A key signature
+	META_OTHER = 0x7F,                          // Something specific to the MIDI device manufacturer
+}
 
 char *meta_name(int meta) {
-    switch (meta) {
-        case META_SEQ_NUM: { return "META_SEQ_NUM"; }
-        case META_TEXT: { return "META_TEXT"; }
-        case META_COPYRIGHT: { return "META_COPYRIGHT"; }
-        case META_SEQ_NAME: { return "Track name"; }
-        case META_INSTRUMENT_NAME: { return "META_INSTRUMENT_NAME"; }
-        case META_LYRIC_TEXT: { return "META_LYRIC_TEXT"; }
-        case META_MARKER_TEXT: { return "META_MARKER_TEXT"; }
-        case META_CUE_POINT: { return "META_CUE_POINT"; }
-        case META_MIDI_CHANNEL_PREFIX_ASSIGNMENT: { return "META_MIDI_CHANNEL_PREFIX_ASSIGNMENT"; }
-        case META_END_OF_TRACK: { return "META_END_OF_TRACK"; }
-        case META_TEMPO: { return "Tempo (microseconds per beat)"; }
-        case META_SMPTE_OFFSET: { return "META_SMPTE_OFFSET"; }
-        case META_TIME_SIGNATURE: { return "META_TIME_SIGNATURE"; }
-        case META_KEY_SIGNATURE: { return "META_KEY_SIGNATURE"; }
-        case META_OTHER: { return "META_OTHER"; }
-        default: { panic("unknown meta event %d", meta); }
-    }
+	switch (meta) {
+		case META_SEQ_NUM: { return "META_SEQ_NUM"; }
+		case META_TEXT: { return "META_TEXT"; }
+		case META_COPYRIGHT: { return "META_COPYRIGHT"; }
+		case META_SEQ_NAME: { return "Track name"; }
+		case META_INSTRUMENT_NAME: { return "META_INSTRUMENT_NAME"; }
+		case META_LYRIC_TEXT: { return "META_LYRIC_TEXT"; }
+		case META_MARKER_TEXT: { return "META_MARKER_TEXT"; }
+		case META_CUE_POINT: { return "META_CUE_POINT"; }
+		case META_MIDI_CHANNEL_PREFIX_ASSIGNMENT: { return "META_MIDI_CHANNEL_PREFIX_ASSIGNMENT"; }
+		case META_END_OF_TRACK: { return "META_END_OF_TRACK"; }
+		case META_TEMPO: { return "Tempo (microseconds per beat)"; }
+		case META_SMPTE_OFFSET: { return "META_SMPTE_OFFSET"; }
+		case META_TIME_SIGNATURE: { return "META_TIME_SIGNATURE"; }
+		case META_KEY_SIGNATURE: { return "META_KEY_SIGNATURE"; }
+		case META_OTHER: { return "META_OTHER"; }
+		default: { panic("unknown meta event %d", meta); }
+	}
 }
 
 // const char *formatname(int format) {

@@ -31,7 +31,9 @@ pub t *from_str(const char *s) {
 
 // Returns a scanner instance reading from reader r.
 pub t *new(reader.t *r) {
-	if (!r) panic("got null reader");
+	if (!r) {
+		panic("got null reader");
+	}
 	t *b = calloc!(1, sizeof(t));
 	b->reader = r;
 	return b;
@@ -49,7 +51,9 @@ pub void free(t *b) {
 // Returns EOF if there is no next character.
 pub int peek(t *b) {
 	_prefetch(b, 1);
-	if (b->cachesize == 0) return EOF;
+	if (b->cachesize == 0) {
+		return EOF;
+	}
 	return b->cache[0];
 }
 
@@ -62,14 +66,14 @@ pub bool more(t *b) {
 pub void tail(t *b, char *buf, size_t len) {
 	_prefetch(b, len);
 
-	size_t n = len-1;
+	size_t n = len - 1;
 	if (n > b->cachesize) {
 		n = b->cachesize;
 	}
 	for (size_t i = 0; i < n; i++) {
 		buf[i] = b->cache[i];
 	}
-	buf[len-1] = '\0';
+	buf[len - 1] = '\0';
 }
 
 pub void dbg(t *b) {
@@ -83,8 +87,8 @@ pub void dbg(t *b) {
 pub int get(t *b) {
 	if (b->cachesize > 0) {
 		int c = b->cache[0];
-		for (size_t i = 0; i < b->cachesize-1; i++) {
-			b->cache[i] = b->cache[i+1];
+		for (size_t i = 0; i < b->cachesize - 1; i++) {
+			b->cache[i] = b->cache[i + 1];
 		}
 		b->cachesize--;
 		_track_pos(b, c);
@@ -93,7 +97,9 @@ pub int get(t *b) {
 
 	uint8_t c = 0;
 	int r = reader.read(b->reader, &c, 1);
-	if (r != 1) return EOF;
+	if (r != 1) {
+		return EOF;
+	}
 	_track_pos(b, c);
 	return c;
 }
@@ -108,10 +114,14 @@ void _track_pos(t *b, int c) {
 }
 
 void _prefetch(t *b, size_t n) {
-	if (b->cachesize >= n) return;
+	if (b->cachesize >= n) {
+		return;
+	}
 	size_t len = n - b->cachesize;
 	int r = reader.read(b->reader, b->cache + b->cachesize, len);
-	if (r > 0) b->cachesize += r;
+	if (r > 0) {
+		b->cachesize += r;
+	}
 }
 
 pub void buf_skip_set(t *b, const char *set) {
@@ -182,7 +192,7 @@ pub bool id(t *b, char *buf, size_t n) {
 			break;
 		}
 		get(b);
-		if (pos < n-1) {
+		if (pos < n - 1) {
 			buf[pos++] = c;
 		}
 	}
@@ -223,7 +233,7 @@ pub bool num(t *b, char *buf, size_t n) {
 	int c = peek(b);
 	if (c == 'e' || c == 'E') {
 		*p++ = get(b);
-		
+
 		// Optional - or +
 		c = peek(b);
 		if (c == '-' || c == '+') {
@@ -301,7 +311,7 @@ pub char *buf_skip_until(t *b, const char *literal) {
 pub bool read_until(t *b, char until, char *buf, size_t len) {
 	size_t pos = 0;
 	while (more(b) && peek(b) != until) {
-		if (pos == len-1) {
+		if (pos == len - 1) {
 			return false;
 		}
 		buf[pos++] = get(b);

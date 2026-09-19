@@ -1,11 +1,17 @@
 #import scanner
 
 // Current styling, indexes are the style name constants.
-enum { ALIGN, FONTSIZE, FONT }
+enum {
+	ALIGN,
+	FONTSIZE,
+	FONT,
+}
 int style[3] = {};
 
 // Align values
-enum { CENTER = 1 }
+enum {
+	CENTER = 1,
+}
 char *aligns[] = { "left", "center" };
 
 bool doc_started = false;
@@ -34,7 +40,7 @@ void addchar(int c) {
 			printf("display:block;text-align:%s;", aligns[style[ALIGN]]);
 		}
 		if (style[FONTSIZE] != 0) {
-			printf("font-size:%gpt;", (float)style[FONTSIZE]/2);
+			printf("font-size:%gpt;", (float) style[FONTSIZE] / 2);
 		}
 		if (style[FONT] != 0) {
 			printf("font-family:%d;", style[FONT]);
@@ -46,7 +52,9 @@ void addchar(int c) {
 }
 
 void lwrite(const char *s) {
-	while (*s != '\0') { addchar(*s++); }
+	while (*s != '\0') {
+		addchar(*s++);
+	}
 }
 
 void setstyle(int key, val) {
@@ -63,7 +71,6 @@ void resetstyles() {
 	setstyle(FONT, 0);
 }
 
-
 // Ends current paragraph.
 void par() {
 	if (style_started) {
@@ -75,7 +82,6 @@ void par() {
 		par_started = false;
 	}
 }
-
 
 int main(int argc, char *argv[]) {
 	if (argc != 2) {
@@ -116,7 +122,7 @@ void control(scanner.t *t) {
 	char buf[20] = {};
 	read_control(t, buf);
 	switch str (buf) {
-		case "par": { par(); } 
+		case "par": { par(); }
 		case "pard": { resetstyles(); }
 		case "qc": { setstyle(ALIGN, CENTER); }
 		case "ldblquote": { lwrite("&ldquo;"); }
@@ -157,7 +163,6 @@ void fonttbl(scanner.t *t) {
 }
 
 // -------------------
-
 void read_control(scanner.t *t, char *buf) {
 	expect(t, '\\');
 	char *p = buf;
@@ -166,9 +171,13 @@ void read_control(scanner.t *t, char *buf) {
 	}
 	if (scanner.peek(t) == '-') {
 		*p++ = scanner.get(t);
-		while (isdigit(scanner.peek(t))) *p++ = scanner.get(t);
+		while (isdigit(scanner.peek(t))) {
+			*p++ = scanner.get(t);
+		}
 	}
-	while (isspace(scanner.peek(t))) scanner.get(t);
+	while (isspace(scanner.peek(t))) {
+		scanner.get(t);
+	}
 }
 
 void expect(scanner.t *t, int c) {

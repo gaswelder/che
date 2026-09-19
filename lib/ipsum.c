@@ -74,7 +74,7 @@ bool parse(scanner.t *b) {
 		if (!scanner.skip_literal(b, "]")) {
 			return false;
 		}
-		printf("%d", n1 + (int) rnd.intn((n2 - n1) + 1));
+		printf("%d", n1 + (int) rnd.intn(n2 - n1 + 1));
 		return true;
 	}
 

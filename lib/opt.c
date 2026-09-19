@@ -6,7 +6,7 @@ enum {
 	OPT_INT = 'i',
 	OPT_BOOL = 'b',
 	OPT_SIZE = 'z',
-	OPT_FLOAT = 'f'
+	OPT_FLOAT = 'f',
 }
 
 /*
@@ -249,8 +249,6 @@ optspec_t *find(char c) {
 	return NULL;
 }
 
-
-
 /*
  * Prints a usage string generated from the flags to stderr.
  * Returns 1 so it can be used as a return status for main.
@@ -283,11 +281,9 @@ pub int usage() {
 			}
 			case OPT_FLOAT: {
 				float *def = s->value_pointer;
-				fprintf( stderr, "\t%s (=%f)\n", s->desc, *def);
+				fprintf(stderr, "\t%s (=%f)\n", s->desc, *def);
 			}
-			default: {
-				fprintf( stderr, "\t%s\n", s->desc );
-			}
+			default: { fprintf(stderr, "\t%s\n", s->desc); }
 		}
 	}
 	return 1;
@@ -295,9 +291,13 @@ pub int usage() {
 
 bool is_numeric(const char *s) {
 	const char *p = s;
-	if (*p == '-') p++;
+	if (*p == '-') {
+		p++;
+	}
 	while (*p != '\0') {
-		if (!isdigit(*p)) return false;
+		if (!isdigit(*p)) {
+			return false;
+		}
 		p++;
 	}
 	return true;

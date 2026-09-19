@@ -1,4 +1,3 @@
-
 pub typedef {
 	char *data;
 	size_t len;
@@ -31,7 +30,9 @@ pub void clear(str *s) {
 
 // Appends a single character to the buider's buffer.
 pub bool addc(str *s, int ch) {
-	if (s->err) return false;
+	if (s->err) {
+		return false;
+	}
 	if (s->len + 1 >= s->max) {
 		if (!grow(s)) {
 			s->err = true;
@@ -44,7 +45,9 @@ pub bool addc(str *s, int ch) {
 
 // Appends string s to the builder's buffer.
 pub bool adds(str *b, const char *s) {
-	if (b->err) return false;
+	if (b->err) {
+		return false;
+	}
 	const char *p = s;
 	while (*p != '\0') {
 		if (!addc(b, *p)) {
@@ -56,22 +59,22 @@ pub bool adds(str *b, const char *s) {
 }
 
 pub bool addf(str *b, const char *format, ...) {
-	if (b->err) return false;
+	if (b->err) {
+		return false;
+	}
 	char buf[1000] = {};
-	va_list l = {0};
+	va_list l = {};
 	va_start(l, format);
 	vsnprintf(buf, sizeof(buf), format, l);
 	va_end(l);
 	return adds(b, buf);
 }
 
-pub char *str_raw(str *s)
-{
+pub char *str_raw(str *s) {
 	return s->data;
 }
 
-pub size_t str_len(str *s)
-{
+pub size_t str_len(str *s) {
 	return s->len;
 }
 
@@ -85,26 +88,24 @@ pub char *str_unpack(str *s) {
 	return c;
 }
 
-bool grow(str *s)
-{
-	if(s->max > SIZE_MAX/2) {
+bool grow(str *s) {
+	if (s->max > SIZE_MAX / 2) {
 		return false;
 	}
 
 	size_t new = 0;
-	if(s->max == 0) {
+	if (s->max == 0) {
 		new = 16;
-	}
-	else {
+	} else {
 		new = s->max * 2;
 	}
 	char *tmp = realloc(s->data, new);
-	if(!tmp) {
+	if (!tmp) {
 		return false;
 	}
 	s->data = tmp;
 	s->max = new;
-	for(size_t i = s->len; i < s->max; i++) {
+	for (size_t i = s->len; i < s->max; i++) {
 		s->data[i] = '\0';
 	}
 	return true;

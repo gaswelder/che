@@ -1,5 +1,10 @@
+use crate::format_layout::fmt_comments;
+use crate::format_layout::fmt_list;
+use crate::format_layout::indent;
+use crate::format_layout::Row;
 use crate::nodes::*;
 use crate::parser;
+use crate::parser::operator_strength;
 use substring::Substring;
 
 pub fn fmt_mod(m: &Module) -> String {
@@ -127,6 +132,9 @@ fn fmt_typedef(x: &Typedef) -> String {
             s += &fmt_bare_typeform(&a);
         }
         s += ")";
+    }
+    if x.array_size > 0 {
+        s += &format!("[{}]", x.array_size);
     }
     s += ";\n";
     s
@@ -508,8 +516,7 @@ fn fmt_call(x: &Call) -> String {
 }
 
 fn fmt_composite_literal(x: &CompLiteral) -> String {
-    let entries = &x.entries;
-    if entries.len() == 0 {
+    if x.entries.is_empty() {
         return String::from("{}");
     }
     let items = x
@@ -541,107 +548,6 @@ fn fmt_composite_literal_entry(e: &CompositeLiteralEntry) -> Row {
     r.val = fmt_expr(&e.value);
     // s += &fmt_end(&e.source_info);
     r
-}
-
-struct Row {
-    source_info: SourceInfo,
-    key: Option<String>,
-    val: String,
-}
-
-fn fmt_list(rows: &Vec<Row>) -> String {
-    let mut totalwidth = 0;
-    let mut maxwidth = 0;
-    let mut have_comments = false;
-    let mut have_keys = false;
-    for row in rows {
-        let mut n = row.val.len();
-        if let Some(k) = &row.key {
-            n += k.len() + 3;
-            have_keys = true;
-        }
-        if row.source_info.trailing_comment.is_some() {
-            have_comments = true;
-        }
-        totalwidth += n;
-        if n > maxwidth {
-            maxwidth = n;
-        }
-    }
-
-    let mut mode = "default";
-    if totalwidth < 60 && !have_comments && !have_keys {
-        mode = "oneline";
-    } else if maxwidth < 6 && !have_comments && !have_keys {
-        mode = "grid";
-    }
-
-    let mut s = String::new();
-    match mode {
-        "oneline" => {
-            let items: Vec<String> = rows.iter().map(|x| x.val.clone()).collect();
-            s += &fmt_list_oneline(&items);
-        }
-        "grid" => {
-            let items: Vec<String> = rows.iter().map(|x| x.val.clone()).collect();
-            s += &fmt_list_grid(&items, maxwidth);
-        }
-        "default" => {
-            s += "{\n";
-            for row in rows {
-                s += "\t";
-                if let Some(k) = &row.key {
-                    s += k;
-                    s += " = ";
-                }
-                s += &row.val;
-                s += ",";
-                if let Some(c) = &row.source_info.trailing_comment {
-                    s += " ";
-                    s += c;
-                }
-                s += "\n";
-            }
-            s += "}";
-        }
-        _ => todo!(),
-    }
-
-    s
-}
-
-fn fmt_list_oneline(items: &Vec<String>) -> String {
-    let mut s = String::new();
-    s += "{ ";
-    for (i, item) in items.iter().enumerate() {
-        if i > 0 {
-            s += ", ";
-        }
-        s += &item;
-    }
-    s += " }";
-    s
-}
-
-fn fmt_list_grid(items: &Vec<String>, maxwidth: usize) -> String {
-    let mut s = String::new();
-    s += "{\n";
-    for (i, item) in items.iter().enumerate() {
-        let padded = format!("{:>maxwidth$}", item);
-        if i == 0 {
-            s += "\t";
-            s += &padded;
-            continue;
-        }
-        if i % 8 == 0 {
-            s += ",\n\t";
-        } else {
-            s += ", ";
-        }
-        s += &padded
-    }
-    s += "\n}";
-    s
 }
 
 fn fmt_cast(x: &Cast) -> String {
@@ -707,54 +613,73 @@ pub fn fmt_binop(x: &BinaryOp) -> String {
 
     let left = match (isop1.as_deref(), op.as_str()) {
         (None, _) => &s1,
-        (Some("-"), "-") => &s1,
-        (Some("+"), "-") => &s1,
-        (Some("+"), ">=") => &s1,
+        // (Some("-"), "-") => &s1,
+        // (Some("+"), "-") => &s1,
+        // (Some("+"), ">=") => &s1,
 
-        (Some("*"), "+") => &s1,
-        (Some("*"), "-") => &s1,
-        (Some("*"), "*") => &s1,
-        (Some("*"), "/") => &s1,
+        // (Some("*"), "+") => &s1,
+        // (Some("*"), "-") => &s1,
+        // (Some("*"), "*") => &s1,
+        // (Some("*"), "/") => &s1,
 
-        (Some("&"), "!=") => &wrap1,
+        // (Some("&"), "!=") => &wrap1,
 
-        (Some("prefix"), "=") => &s1,
-        (Some("prefix"), ">") => &s1,
-        (Some("prefix"), "<") => &s1,
-        (Some("prefix"), ">=") => &s1,
-        (Some("prefix"), "<=") => &s1,
+        // (Some("prefix"), "=") => &s1,
+        // (Some("prefix"), ">") => &s1,
+        // (Some("prefix"), "<") => &s1,
+        // (Some("prefix"), ">=") => &s1,
+        // (Some("prefix"), "<=") => &s1,
 
-        (_, "!=") => &s1,
-        (_, "==") => &s1,
-        (_, "&&") => &s1,
-        (_, "||") => &s1,
-
-        _ => &wrap1,
+        // (_, "!=") => &s1,
+        // (_, "==") => &s1,
+        // (_, "&&") => &s1,
+        // (_, "||") => &s1,
+        (Some(_), "&") => &wrap1,
+        (Some(_), "|") => &wrap1,
+        (Some(_), "%") => &wrap1,
+        (Some("%"), "*") => &wrap1,
+        // (Some("*"), "*") => &s1,
+        // (Some("||"), "||") => &s1,
+        // (Some("&&"), "&&") => &s1,
+        (Some(op1), op2) => {
+            if operator_strength(op1) < operator_strength(op2) {
+                &wrap1
+            } else {
+                &s1
+            }
+        }
     };
     let right = match (op.as_str(), isop2.as_deref()) {
         (_, None) => &s2,
-        ("&&", _) => &s2,
-        ("||", _) => &s2,
+        // ("&&", _) => &s2,
+        // ("||", _) => &s2,
 
-        ("-", Some("*")) => &s2,
-        ("+", Some("*")) => &s2,
+        // ("-", Some("*")) => &s2,
+        // ("+", Some("*")) => &s2,
 
-        ("=", Some("==")) => &wrap2,
+        // ("=", Some("==")) => &wrap2,
 
-        ("=", _) => &s2,
-        ("==", _) => &s2,
-        (">=", _) => &s2,
-        (">", _) => &s2,
-        ("<=", _) => &s2,
-        ("<", _) => &s2,
-        ("+=", _) => &s2,
-        ("-=", _) => &s2,
-        ("*=", _) => &s2,
-        ("/=", _) => &s2,
+        // ("=", _) => &s2,
+        // ("==", _) => &s2,
+        // (">=", _) => &s2,
+        // (">", _) => &s2,
+        // ("<=", _) => &s2,
+        // ("<", _) => &s2,
+        // ("+=", _) => &s2,
+        // ("-=", _) => &s2,
+        // ("*=", _) => &s2,
+        // ("/=", _) => &s2,
+        (">>", Some(_)) => &wrap2,
+        ("|", Some(_)) => &wrap2,
 
-        (_, Some("prefix")) => &s2,
-
-        _ => &wrap2,
+        // (_, Some("prefix")) => &s2,
+        (op1, Some(op2)) => {
+            if operator_strength(op1) > operator_strength(op2) {
+                &wrap2
+            } else {
+                &s2
+            }
+        }
     };
     return format!("{} {} {}", &left, &op, &right);
 }
@@ -774,19 +699,6 @@ fn fmt_literal(node: &Literal) -> String {
         }
         Literal::Null => String::from("NULL"),
     }
-}
-
-fn indent(s: &str) -> String {
-    let lines: Vec<String> = s
-        .split("\n")
-        .map(|line| {
-            if line.trim().len() == 0 {
-                return String::new();
-            }
-            return format!("\t{}", line);
-        })
-        .collect();
-    lines.join("\n")
 }
 
 fn fmt_begin(x: &SourceInfo) -> String {
@@ -817,85 +729,4 @@ fn fmt_end(x: &SourceInfo) -> String {
         }
     }
     s
-}
-
-fn fmt_comments(x: &Option<Vec<String>>) -> String {
-    let mut s = String::new();
-    if x.is_none() {
-        return s;
-    }
-    for c in x.as_ref().unwrap() {
-        if c.starts_with("/*") {
-            s += &fmt_multiline_comment(&c);
-            s += "\n";
-            continue;
-        }
-        s += c;
-        s += "\n";
-    }
-    s
-}
-
-fn fmt_multiline_comment(c: &str) -> String {
-    let lines: Vec<String> = c.split("\n").map(|x| String::from(x)).collect();
-    if lines.len() == 1 {
-        return format!("// {}", &lines[0].substring(2, lines[0].len() - 2).trim());
-    }
-
-    let mut prefs: Vec<usize> = lines
-        .iter()
-        .map(|line| {
-            let mut pref = 0;
-            for c in line.chars() {
-                match c {
-                    ' ' => pref += 1,
-                    '\t' => pref += 4,
-                    _ => break,
-                }
-            }
-            pref
-        })
-        .collect();
-
-    let mut trim = prefs[1];
-    for i in 2..prefs.len() {
-        let pref = prefs[i];
-        if pref < trim {
-            trim = pref;
-        }
-    }
-    for i in 1..prefs.len() {
-        prefs[i] -= trim;
-    }
-
-    let mut outlines = Vec::new();
-    for i in 0..lines.len() {
-        outlines.push(lines[i].trim());
-    }
-
-    let n = outlines.len();
-    let mut multiline = outlines[0].starts_with("/*") && outlines[n - 1] == "*/";
-    if multiline {
-        for i in 1..n - 1 {
-            if !outlines[i].starts_with("* ") {
-                multiline = false;
-                break;
-            }
-        }
-    }
-
-    let mut s = String::new();
-    if multiline {
-        s += outlines[0];
-        s += "\n";
-        for i in 1..n - 1 {
-            s += " ";
-            s += outlines[i];
-            s += "\n";
-        }
-        s += " */";
-        return s;
-    }
-
-    outlines.join("\n")
 }

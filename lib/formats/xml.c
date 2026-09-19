@@ -16,9 +16,9 @@ const int MAXVALUE = 4096; // max attribute value length
 // tag types
 enum {
 	T_NULL,
-	T_OPEN, // opening tag
+	T_OPEN,  // opening tag
 	T_CLOSE, // closing tag
-	T_MONO // self-closing tag
+	T_MONO,  // self-closing tag
 }
 
 pub typedef {
@@ -56,10 +56,9 @@ pub typedef {
 /*
  * Creates a parser that reads from the given file
  */
-pub xml *xml_open(const char *path)
-{
+pub xml *xml_open(const char *path) {
 	FILE *f = fopen(path, "rb");
-	if(!f) {
+	if (!f) {
 		panic("fopen(%s) failed", path);
 	}
 
@@ -85,7 +84,7 @@ pub xml *xml_open(const char *path)
 		return x;
 	}
 
-	if(n->type != T_OPEN && n->type != T_MONO) {
+	if (n->type != T_OPEN && n->type != T_MONO) {
 		error(x, "Element expected");
 		return x;
 	}
@@ -97,8 +96,7 @@ pub xml *xml_open(const char *path)
 /*
  * Closes a parser
  */
-pub void xml_close(xml *x)
-{
+pub void xml_close(xml *x) {
 	fclose(x->f);
 	free(x);
 }
@@ -106,12 +104,11 @@ pub void xml_close(xml *x)
 /*
  * Returns name of the current node
  */
-pub const char *xml_nodename(xml *x)
-{
-	if(x->error[0]) {
+pub const char *xml_nodename(xml *x) {
+	if (x->error[0]) {
 		return NULL;
 	}
-	if(x->node.type == T_NULL) {
+	if (x->node.type == T_NULL) {
 		return NULL;
 	}
 	return x->node.name;
@@ -143,22 +140,20 @@ pub const char *xml_attr(xml *x, const char *name)
 /*
  * Enter the current node tree
  */
-pub bool xml_enter(xml *x)
-{
-	if(x->error[0]) {
+pub bool xml_enter(xml *x) {
+	if (x->error[0]) {
 		return false;
 	}
 
 	/*
 	 * The current node must be of T_OPEN kind.
 	 */
-	if(x->node.type == T_NULL ||
-		x->node.type == T_MONO) {
+	if (x->node.type == T_NULL || x->node.type == T_MONO) {
 		return false;
 	}
 
 	__tag *next = next_tag(x);
-	if(!next) {
+	if (!next) {
 		error(x, "Unexpected end of file");
 		return false;
 	}
@@ -171,7 +166,7 @@ pub bool xml_enter(xml *x)
 			return true;
 		}
 		case T_CLOSE: {
-			if(strcmp(next->name, x->node.name) != 0) {
+			if (strcmp(next->name, x->node.name) != 0) {
 				error(x, "Unexpected closing tag: %s", x->next_tag.name);
 				return false;
 			}
@@ -220,26 +215,22 @@ pub void xml_next(xml *x) {
 			}
 			return;
 		}
-
-		default: {
-			panic("xml: error 0209");
-		}
+		default: { panic("xml: error 0209"); }
 	}
 }
 
 /*
  * Leave current node tree and get to the next sibling
  */
-pub void xml_leave(xml *x)
-{
-	if(x->error[0]) {
+pub void xml_leave(xml *x) {
+	if (x->error[0]) {
 		return;
 	}
 
 	/*
 	 * Skip remaining siblings
 	 */
-	while(x->node.type != T_NULL) {
+	while (x->node.type != T_NULL) {
 		xml_next(x);
 	}
 
@@ -247,7 +238,7 @@ pub void xml_leave(xml *x)
 	 * Expect closing tag for current parent
 	 */
 	__tag *t = next_tag(x);
-	const char *pname = x->path[x->pathlen-1];
+	const char *pname = x->path[x->pathlen - 1];
 	if (!t || t->type != T_CLOSE || strcmp(t->name, pname) != 0) {
 		error(x, "Missing closing tag for %s", pname);
 		return;
@@ -351,21 +342,21 @@ void read_tag(xml *x)
 	}
 
 	t->nattrs = 0;
-	while(true) {
+	while (true) {
 		discard_spaces(x);
-		if(!isalpha(peek(x))) {
+		if (!isalpha(peek(x))) {
 			break;
 		}
 
-		if(t->nattrs >= MAXATTRS) {
+		if (t->nattrs >= MAXATTRS) {
 			panic("too many attributes");
 		}
-		__attr *a = &(t->attrs[t->nattrs++]);
+		__attr *a = &t->attrs[t->nattrs++];
 
 		// name
 		int len = 0;
-		while(isalpha(peek(x))) {
-			if(len >= MAXNAME-1) {
+		while (isalpha(peek(x))) {
+			if (len >= MAXNAME - 1) {
 				panic("attrname too long: %s", a->name);
 			}
 			a->name[len] = get(x);
@@ -378,8 +369,8 @@ void read_tag(xml *x)
 		// val
 		expect(x, '"');
 		len = 0;
-		while(peek(x) != EOF && peek(x) != '"') {
-			if(len >= MAXVALUE-1) {
+		while (peek(x) != EOF && peek(x) != '"') {
+			if (len >= MAXVALUE - 1) {
 				panic("attrvalue too long: %s", a->value);
 			}
 			a->value[len] = get(x);
@@ -389,41 +380,36 @@ void read_tag(xml *x)
 		expect(x, '"');
 	}
 
-	if(peek(x) == '/') {
+	if (peek(x) == '/') {
 		t->type = T_MONO;
 		get(x);
-	}
-	else {
+	} else {
 		t->type = T_OPEN;
 	}
 
 	expect(x, '>');
 }
 
-int peek(xml *x)
-{
-	if(x->nextchar == EOF) {
+int peek(xml *x) {
+	if (x->nextchar == EOF) {
 		x->nextchar = fgetc(x->f);
 	}
 	return x->nextchar;
 }
 
-int get(xml *x)
-{
+int get(xml *x) {
 	int c = 0;
-	if(x->nextchar != EOF) {
+	if (x->nextchar != EOF) {
 		c = x->nextchar;
 		x->nextchar = EOF;
-	}
-	else {
+	} else {
 		c = fgetc(x->f);
 	}
 
-	if(c == '\n') {
+	if (c == '\n') {
 		x->line++;
 		x->col = 1;
-	}
-	else {
+	} else {
 		x->col++;
 	}
 	return c;
@@ -435,16 +421,14 @@ void discard_spaces(xml *x) {
 	}
 }
 
-void expect(xml *x, int ch)
-{
+void expect(xml *x, int ch) {
 	int next = get(x);
-	if(next != ch) {
+	if (next != ch) {
 		error(x, "'%c' expected, got '%c'", ch, next);
 	}
 }
 
-void error(xml *x, const char *fmt, ...)
-{
+void error(xml *x, const char *fmt, ...) {
 	va_list l = {};
 	va_start(l, fmt);
 	vsnprintf(x->error, sizeof(x->error), fmt, l);

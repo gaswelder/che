@@ -20,12 +20,12 @@ pub char *newstr(const char *format, ...) {
 }
 
 pub char *newsubstr(const char *s, int p1, p2) {
-	char *buf = calloc!(p2-p1 + 1, 1);
-    int p = 0;
-    for (int i = p1; i < p2; i++) {
-        buf[p++] = s[i];
-    }
-    return buf;
+	char *buf = calloc!(p2 - p1 + 1, 1);
+	int p = 0;
+	for (int i = p1; i < p2; i++) {
+		buf[p++] = s[i];
+	}
+	return buf;
 }
 
 // Trims spaces at both sides of s.
@@ -45,8 +45,8 @@ pub void trim(char *s) {
 // Trims all characters from the set at the end of string s by inserting zeros.
 pub void rtrim(char *s, *set) {
 	size_t n = strlen(s);
-	while (n > 0 && strchr(set, s[n-1])) {
-		s[n-1] = '\0';
+	while (n > 0 && strchr(set, s[n - 1])) {
+		s[n - 1] = '\0';
 		n--;
 	}
 }
@@ -121,22 +121,26 @@ pub bool starts_with(const char *string, *prefix) {
 
 pub bool starts_with_i(const char *string, *prefix) {
 	const char *x = string;
-    const char *y = prefix;
-    while (*x != '\0' && *y != '\0') {
-        if (tolower(*x) != tolower(*y)) {
-            return false;
-        }
+	const char *y = prefix;
+	while (*x != '\0' && *y != '\0') {
+		if (tolower(*x) != tolower(*y)) {
+			return false;
+		}
 		x++;
 		y++;
-    }
-    return *y == '\0';
+	}
+	return *y == '\0';
 }
 
 pub bool ends_with(const char *string, *suffix) {
 	const char *x = string;
 	const char *y = suffix;
-	while (*x != '\0') x++;
-	while (*y != '\0') y++;
+	while (*x != '\0') {
+		x++;
+	}
+	while (*y != '\0') {
+		y++;
+	}
 	while (x > string && y > suffix) {
 		if (*x != *y) {
 			return false;
@@ -153,12 +157,12 @@ pub bool eq(char *a, char *b) {
 
 // Returns true if ASCII string s is all uppercase.
 pub bool allupper(char *s) {
-    for (char *c = s; *c != '\0'; c++) {
-        if (islower(*c)) {
-            return false;
-        }
-    }
-    return true;
+	for (char *c = s; *c != '\0'; c++) {
+		if (islower(*c)) {
+			return false;
+		}
+	}
+	return true;
 }
 
 pub void fmt_bytes(size_t bytes, char *buf, size_t bufsize) {
@@ -166,15 +170,15 @@ pub void fmt_bytes(size_t bytes, char *buf, size_t bufsize) {
 	double m = 1024 * k;
 	double g = 1024 * m;
 	double b = (double) bytes;
-    if (b > g) {
-        snprintf(buf, bufsize, "%.2f GB", b / g);
-    } else if (b > 1024 * 1024) {
-        snprintf(buf, bufsize, "%.2f MB", b / m);
-    } else if (b > 1024) {
-        snprintf(buf, bufsize, "%.2f KB", b / k);
-    } else {
-        snprintf(buf, bufsize, "%zu B", bytes);
-    }
+	if (b > g) {
+		snprintf(buf, bufsize, "%.2f GB", b / g);
+	} else if (b > 1024 * 1024) {
+		snprintf(buf, bufsize, "%.2f MB", b / m);
+	} else if (b > 1024) {
+		snprintf(buf, bufsize, "%.2f KB", b / k);
+	} else {
+		snprintf(buf, bufsize, "%zu B", bytes);
+	}
 }
 
 // Returns the character that corresponds to the ASCII
@@ -184,7 +188,7 @@ pub char ascii_digit(int n) {
 	if (n < 0 || n > 9) {
 		panic("invalid argument: %d", n);
 	}
-	return (int)'0' + n;
+	return (int) '0' + n;
 }
 
 // Returns the number that corresponds to the ASCII
@@ -194,5 +198,5 @@ pub int num_from_ascii(int c) {
 	if (!isdigit(c)) {
 		return -1;
 	}
-	return c - (int)'0';
+	return c - (int) '0';
 }

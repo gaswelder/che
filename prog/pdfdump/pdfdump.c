@@ -6,7 +6,7 @@ int main(int argc, char *argv[]) {
 		return 1;
 	}
 	pdf.reader_t *p = pdf.open(argv[1]);
-	
+
 	while (pdf.more(p)) {
 		pdf.any_t val = pdf.next(p);
 		printany(val);
@@ -26,7 +26,9 @@ void printany(pdf.any_t val) {
 			for (int i = 0; i < list.n; i++) {
 				int id = list.items[i].id;
 				int pos = list.items[i].pos;
-				if (i > 0) putchar(',');
+				if (i > 0) {
+					putchar(',');
+				}
 				printf("{\"id\":%d,\"pos\":%d}", id, pos);
 			}
 			printf("]}");
@@ -36,7 +38,9 @@ void printany(pdf.any_t val) {
 			pdf.obj_t o = val.content.obj;
 			printf("{\"id\":%d,\"data\":[", o.id);
 			for (int i = 0; i < o.size; i++) {
-				if (i > 0) printf(",");
+				if (i > 0) {
+					printf(",");
+				}
 				printval(o.items[i]);
 			}
 			printf("]}");
@@ -55,9 +59,7 @@ void printany(pdf.any_t val) {
 			printval(t.val);
 			printf("}\n");
 		}
-		default: {
-			printf("************** val %d\n", val.type);
-		}
+		default: { printf("************** val %d\n", val.type); }
 	}
 }
 
@@ -69,15 +71,15 @@ void printval(pdf.val_t v) {
 		case pdf.ARR: {
 			printf("[");
 			for (int i = 0; i < v.size; i++) {
-				if (i > 0) printf(",");
+				if (i > 0) {
+					printf(",");
+				}
 				printval(v.vals[i]);
 			}
 			printf("]");
 		}
 		case pdf.REF: { printf("{\"refto\":%d}", v.num); }
-		case pdf.HEX, pdf.STR: {
-			printf("\"0x%s\"", v.chars);
-		}
+		case pdf.HEX, pdf.STR: { printf("\"0x%s\"", v.chars); }
 		case pdf.TFALSE: { printf("false"); }
 		default: { panic("{val type %d}", v.type); }
 	}
@@ -86,7 +88,9 @@ void printval(pdf.val_t v) {
 void printmap(pdf.val_t v) {
 	printf("{");
 	for (int i = 0; i < v.size; i++) {
-		if (i > 0) printf(",");
+		if (i > 0) {
+			printf(",");
+		}
 		printval(v.keys[i]);
 		printf(":");
 		printval(v.vals[i]);

@@ -19,7 +19,7 @@ int main_mix(int argc, char *argv[]) {
 
 	wav.reader_t **readers = calloc!(argc, sizeof(wav.reader_t *));
 	for (int i = 0; i < nfiles; i++) {
-		const char *path = argv[i+1];
+		const char *path = argv[i + 1];
 		wav.reader_t *wr = wav.open_reader(path);
 		if (!wr) {
 			fprintf(stderr, "failed to open '%s': %s\n", path, strerror(errno));
@@ -49,7 +49,9 @@ int main_mix(int argc, char *argv[]) {
 		}
 		left /= nfiles;
 		right /= nfiles;
-		if (!ok) break;
+		if (!ok) {
+			break;
+		}
 		wav.write_sample(ww, left, right);
 	}
 

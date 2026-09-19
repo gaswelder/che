@@ -23,30 +23,17 @@ int main_ls(int argc, char *argv[]) {
 	for (size_t i = 0; i < n; i++) {
 		midilib.event_t *e = &ee[i];
 
-		printf("%f s\ttrack=%d\t", (double)e->t_us/1e6, e->track);
+		printf("%f s\ttrack=%d\t", (double) e->t_us / 1e6, e->track);
 		switch (e->type) {
-			case midilib.END: {
-				printf("end of track\n");
-			}
-			case midilib.NOTE_OFF: {
-				printf("note off\tchannel=%d\tnote=%d\tvelocity=%d\n", e->channel, e->key, e->velocity);
-			}
-			case midilib.NOTE_ON: {
-				printf("note on \tchannel=%d\tnote=%d\tvelocity=%d\n", e->channel, e->key, e->velocity);
-			}
-			case midilib.TEMPO: {
-				printf("set tempo\t%u us per quarter note\n", e->val);
-			}
-			case midilib.TRACK_NAME: {
-				printf("track name: \"%s\"\n", e->str);
-			}
-			default: {
-				panic("?");
-			}
+			case midilib.END: { printf("end of track\n"); }
+			case midilib.NOTE_OFF: { printf("note off\tchannel=%d\tnote=%d\tvelocity=%d\n", e->channel, e->key, e->velocity); }
+			case midilib.NOTE_ON: { printf("note on \tchannel=%d\tnote=%d\tvelocity=%d\n", e->channel, e->key, e->velocity); }
+			case midilib.TEMPO: { printf("set tempo\t%u us per quarter note\n", e->val); }
+			case midilib.TRACK_NAME: { printf("track name: \"%s\"\n", e->str); }
+			default: { panic("?"); }
 		}
 	}
 
 	free(ee);
 	return 0;
 }
-

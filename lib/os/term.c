@@ -27,16 +27,16 @@ pub term_t *term_get_stdin() {
 }
 
 pub bool stdin_has_input() {
-    fd_set readfds = {};
-    OS.FD_ZERO(&readfds);
-    OS.FD_SET(OS.STDIN_FILENO, &readfds);
-    timeval_t timeout = {};
-    return OS.select(1, &readfds, NULL, NULL, &timeout) != 0;
+	fd_set readfds = {};
+	OS.FD_ZERO(&readfds);
+	OS.FD_SET(OS.STDIN_FILENO, &readfds);
+	timeval_t timeout = {};
+	return OS.select(1, &readfds, NULL, NULL, &timeout) != 0;
 }
 
 pub void term_disable_input_buffering(term_t *t) {
-    t->current_state.c_lflag &= ~OS.ICANON & ~OS.ECHO;
-    OS.tcsetattr(t->fileno, OS.TCSANOW, &t->current_state);
+	t->current_state.c_lflag &= ~OS.ICANON & ~OS.ECHO;
+	OS.tcsetattr(t->fileno, OS.TCSANOW, &t->current_state);
 }
 
 pub void term_restore(term_t *t) {

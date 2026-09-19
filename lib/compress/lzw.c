@@ -1,5 +1,4 @@
 // LZW with GIF flavor.
-
 #import bits
 #import reader
 #import writer
@@ -7,7 +6,6 @@
 //
 // Dict
 //
-
 const size_t MAX_DICT_LENGTH = 4096;
 
 pub typedef {
@@ -83,11 +81,9 @@ uint8_t codewidth(size_t dictsize) {
 	return width;
 }
 
-
 //
 // Compressor
 //
-
 typedef {
 	dict_t dict; // the code dictionary
 	bits.writer_t *bw; // bits output writer
@@ -218,11 +214,9 @@ void shift(peeker_t *p, size_t n) {
 	p->datalen -= n;
 }
 
-
 //
 // Decompressor
 //
-
 pub typedef {
 	dict_t dict; // code dictionary
 	bits.reader_t *br; // input bits reader
@@ -267,8 +261,6 @@ void writebits(bits.writer_t *w, uint16_t code, uint8_t n) {
 	// 	uint8_t bit = (code & m) >> s;
 	// 	bits.write1(w, bit);
 	// }
-
-
 	for (uint8_t i = 0; i < n; i++) {
 		uint8_t bit = code % 2;
 		code /= 2;
@@ -290,11 +282,12 @@ uint16_t readbits(bits.reader_t *r, uint8_t n) {
 	uint16_t amp = 1;
 	for (uint8_t i = 0; i < n; i++) {
 		int c = bits.read1(r);
-		if (c < 0) panic("read failed");
+		if (c < 0) {
+			panic("read failed");
+		}
 		val += amp * c;
 		amp *= 2;
 	}
-
 
 	// printf("--- %u bits val: %u\n", n, val);
 	return val;
@@ -316,8 +309,8 @@ pub int decode(dec_t *dec, uint8_t *buf) {
 			resetdict(&dec->dict);
 			continue;
 		}
-			break;
-		}
+		break;
+	}
 	if (code > dec->dict.size) {
 		panic("got code %u out of bounds [0, %zu)", code, dec->dict.size);
 	}
@@ -325,39 +318,39 @@ pub int decode(dec_t *dec, uint8_t *buf) {
 		return 0;
 	}
 	if (code == dec->dict.size) {
-			// Because the decoder is one step behind the encoder,
-			// it's possible that the next code is not in the dictionary yet.
-			// This can happen only if the next code is for the word
-			// prev + prev[0]:
-			// 
-			// abc | ?xyz
-			// => abc? = ?xyz
-			// => abc | abca
+		// Because the decoder is one step behind the encoder,
+		// it's possible that the next code is not in the dictionary yet.
+		// This can happen only if the next code is for the word
+		// prev + prev[0]:
+		// 
+		// abc | ?xyz
+		// => abc? = ?xyz
+		// => abc | abca
 		if (dec->prevlen == 0) {
-				panic("invalid code");
-			}
+			panic("invalid code");
+		}
 		memcpy(dec->curr, dec->prev, dec->prevlen);
 		dec->currlen = dec->prevlen;
 		dec->curr[dec->currlen++] = dec->curr[0];
-		} else {
+	} else {
 		word_t *e = &dec->dict.entries[code];
 		memcpy(dec->curr, e->word, e->len);
 		dec->currlen = e->len;
-		}
+	}
 
 	int ret = (int) dec->currlen;
 	memcpy(buf, dec->curr, dec->currlen);
 
-		// Add prev + curr[0] to the dictionary.
+	// Add prev + curr[0] to the dictionary.
 	if (dec->prevlen > 0) {
 		if (dec->dict.size == MAX_DICT_LENGTH) {
 			resetdict(&dec->dict);
-			}
+		}
 		dec->prev[dec->prevlen++] = dec->curr[0];
 		addentry(&dec->dict, dec->prev, dec->prevlen);
-		}
+	}
 
-		// prev = curr
+	// prev = curr
 	memcpy(dec->prev, dec->curr, dec->currlen);
 	dec->prevlen = dec->currlen;
 

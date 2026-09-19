@@ -1,9 +1,9 @@
 #import clip/vec
 #import formats/wav
 #import midilib.c
+#import rnd
 #import sound
 #import strings
-#import rnd
 
 typedef {
 	size_t i, n;
@@ -11,7 +11,9 @@ typedef {
 } midireader_t;
 
 midilib.event_t *next(midireader_t *r) {
-	if (r->i >= r->n) return NULL;
+	if (r->i >= r->n) {
+		return NULL;
+	}
 	return &r->ee[r->i++];
 }
 
@@ -72,7 +74,7 @@ sound.clip_t *loadclip(char *path) {
 	if (c->freq != 44100) {
 		panic("%s: expected frequency %u, got %u", path, 44100, c->freq);
 	}
-	sound.normalize(c, 1.0/10);
+	sound.normalize(c, 1.0 / 10);
 	return c;
 }
 
@@ -89,7 +91,7 @@ clip_t *get_clip(uint8_t key) {
 
 	// Physical frequency of a midi note is k * 2^(note/12).
 	// The ratio between the two is then:
-	float r = pow(2, 1.0/12 * (c->key - key));
+	float r = pow(2, 1.0 / 12 * (c->key - key));
 	return addclip(sound.transpose(c->clip, r), key);
 }
 
@@ -106,7 +108,9 @@ void load_clips(char *path) {
 			key *= 10;
 			key += strings.num_from_ascii(*p++);
 		}
-		while (isspace(*p)) p++;
+		while (isspace(*p)) {
+			p++;
+		}
 		strings.trim(p);
 
 		// Load the clip
@@ -158,8 +162,12 @@ void cmpinit(composer_t *c, const char *path, *trackname) {
 
 	while (true) {
 		midilib.event_t *e = next(&r);
-		if (!e) break;
-		if (e->track != track) continue;
+		if (!e) {
+			break;
+		}
+		if (e->track != track) {
+			continue;
+		}
 
 		switch (e->type) {
 			case midilib.NOTE_ON: {
@@ -212,16 +220,22 @@ void cmpinit(composer_t *c, const char *path, *trackname) {
 }
 
 bool cmpnext(composer_t *c, sound.samplef_t *s) {
-	if (c->i == c->tmax) return false;
+	if (c->i == c->tmax) {
+		return false;
+	}
 	// This is a brute-force scan from 0 to the max time,
 	// where for each time instant we query all ranges.
 	double left = 0;
 	double right = 0;
 	for (size_t j = 0; j < c->nranges; j++) {
 		range_t *r = vec.index(c->ranges, j);
-		if (c->i < r->t1 || c->i >= r->t2) continue;
+		if (c->i < r->t1 || c->i >= r->t2) {
+			continue;
+		}
 		size_t pos = c->i - r->t1;
-		if (pos >= r->nsamples) continue;
+		if (pos >= r->nsamples) {
+			continue;
+		}
 		left += r->samples[pos].left;
 		right += r->samples[pos].right;
 	}
@@ -230,7 +244,6 @@ bool cmpnext(composer_t *c, sound.samplef_t *s) {
 	c->i++;
 	return true;
 }
-
 
 void cmpdone(composer_t *c) {
 	free(c->ranges);
