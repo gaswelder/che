@@ -142,7 +142,6 @@ void printtable(vec.t *rows) {
 		}
 	}
 
-	
 	printf("%zu rows\n", nrows);
 
 	// Print the header.
@@ -225,14 +224,20 @@ int thousands(int x, char *out, size_t n) {
 	int extra = l % 3;
 	size_t z = 0;
 	for (int i = 0; i < l; i++) {
-		if (i > 0 && (i-extra) % 3 == 0) {
-			if (z == n) return -1;
+		if (i > 0 && (i - extra) % 3 == 0) {
+			if (z == n) {
+				return -1;
+			}
 			out[z++] = '`';
 		}
-		if (z == n) return -1;
+		if (z == n) {
+			return -1;
+		}
 		out[z++] = tmp[i];
 	}
-	if (z == n) return -1;
+	if (z == n) {
+		return -1;
+	}
 	out[z] = '\0';
 	return (int) z;
 }

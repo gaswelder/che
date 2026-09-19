@@ -1,4 +1,4 @@
-use crate::buf::Pos;
+use crate::{buf::Pos, lexer::Comment};
 
 #[derive(Debug, Clone)]
 pub struct Module {
@@ -87,9 +87,9 @@ pub struct StructAlias {
 
 #[derive(Debug, Clone)]
 pub struct Macro {
+    pub source_info: SourceInfo,
     pub name: String,
     pub value: String,
-    pub pos: Pos,
 }
 
 // enum { A = 1, B, ... }
@@ -249,8 +249,8 @@ pub enum SizeofArg {
 
 #[derive(Debug, Clone)]
 pub struct Block {
-    pub trailing_comment: Option<String>,
-    pub final_comments: Option<Vec<String>>,
+    pub trailing_comment: Option<Comment>,
+    pub final_comments: Option<Vec<Comment>>,
     pub items: Vec<BlockItem>,
 }
 
@@ -258,8 +258,8 @@ pub struct Block {
 pub struct SourceInfo {
     pub pos: Pos,
     pub spaces_top: String,
-    pub comments: Option<Vec<String>>,
-    pub trailing_comment: Option<String>,
+    pub comments: Option<Vec<Comment>>,
+    pub trailing_comment: Option<Comment>,
 }
 
 // int foo = 1;
@@ -313,6 +313,7 @@ pub struct Switch {
 
 #[derive(Debug, Clone)]
 pub struct SwitchCase {
+    pub source_info: SourceInfo,
     pub values: Vec<SwitchCaseValue>,
     pub body: Block,
 }
@@ -372,7 +373,7 @@ pub struct FuncParams {
 pub struct TypeAndForms {
     pub typename: Typename,
     pub forms: Vec<Form>,
-    pub trailing_comment: Option<String>,
+    pub trailing_comment: Option<Comment>,
 }
 
 #[derive(Debug, Clone)]

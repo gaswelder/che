@@ -85,8 +85,8 @@ pub typedef {
 
 /*
 * For platforms where ROM/code space is more plentiful than RAM,
-	 consider creating a hardcoded kiss_fft_state. In other words, decide which
-	 FFT size(s) you want and make a structure with the correct factors and twiddles.
+     consider creating a hardcoded kiss_fft_state. In other words, decide which
+     FFT size(s) you want and make a structure with the correct factors and twiddles.
 */
 pub typedef {
 	int nfft;
@@ -228,10 +228,10 @@ void kf_bfly5(complex.t *Fout, size_t fstride, kiss_fft_state_t *st, int m) {
 	for (int u = 0; u < m; ++u) {
 		scratch[0] = *Fout0;
 
-		scratch[1] = complex.mul(*Fout1, tw[u*fstride]);
-		scratch[2] = complex.mul(*Fout2, tw[2*u*fstride]);
-		scratch[3] = complex.mul(*Fout3, tw[3*u*fstride]);
-		scratch[4] = complex.mul(*Fout4, tw[4*u*fstride]);
+		scratch[1] = complex.mul(*Fout1, tw[u * fstride]);
+		scratch[2] = complex.mul(*Fout2, tw[2 * u * fstride]);
+		scratch[3] = complex.mul(*Fout3, tw[3 * u * fstride]);
+		scratch[4] = complex.mul(*Fout4, tw[4 * u * fstride]);
 
 		scratch[7] = complex.sum(scratch[1], scratch[4]);
 		scratch[10] = complex.diff(scratch[1], scratch[4]);
@@ -278,20 +278,22 @@ void kf_bfly_generic(complex.t *Fout, size_t fstride, kiss_fft_state_t *st, int 
 
 	complex.t *scratch = calloc!(p, sizeof(complex.t));
 
-	for ( u=0; u<m; ++u ) {
-		k=u;
-		for ( q1=0 ; q1<p ; ++q1 ) {
-			scratch[q1] = Fout[ k  ];
+	for (u = 0; u < m; ++u) {
+		k = u;
+		for (q1 = 0; q1 < p; ++q1) {
+			scratch[q1] = Fout[k];
 			k += m;
 		}
 
 		k = u;
-		for (q1 = 0 ; q1<p ; ++q1 ) {
-			int twidx=0;
+		for (q1 = 0; q1 < p; ++q1) {
+			int twidx = 0;
 			Fout[k] = scratch[0];
-			for (q=1;q<p;++q ) {
+			for (q = 1; q < p; ++q) {
 				twidx += fstride * k;
-				if (twidx>=Norig) twidx -= Norig;
+				if (twidx >= Norig) {
+					twidx -= Norig;
+				}
 				t = complex.mul(scratch[q], twiddles[twidx]);
 				Fout[k] = complex.sum(Fout[k], t);
 			}
@@ -303,18 +305,20 @@ void kf_bfly_generic(complex.t *Fout, size_t fstride, kiss_fft_state_t *st, int 
 
 void kf_work(complex.t *Fout, *f, size_t fstride, int in_stride, int *factors, kiss_fft_state_t *st) {
 	complex.t *Fout_beg = Fout;
-	int p = *factors++; /* the radix  */
-	int m = *factors++; /* stage's fft length/p */
-	complex.t *Fout_end = Fout + p*m;
+	int p = *factors++; // the radix
+	int m = *factors++; // stage's fft length/p
+	complex.t *Fout_end = Fout + p * m;
 
-	if (m==1) {
+	if (m == 1) {
 		while (true) {
 			*Fout = *f;
 			f += fstride * in_stride;
 			Fout++;
-			if (Fout == Fout_end) break;
+			if (Fout == Fout_end) {
+				break;
+			}
 		}
-	}else{
+	} else {
 		while (true) {
 			// recursive call:
 			// DFT of size m*p performed by doing
@@ -327,7 +331,7 @@ void kf_work(complex.t *Fout, *f, size_t fstride, int in_stride, int *factors, k
 		}
 	}
 
-	Fout=Fout_beg;
+	Fout = Fout_beg;
 
 	// recombine the p smaller DFTs
 	switch (p) {
@@ -432,9 +436,9 @@ void kiss_fft_stride(kiss_fft_state_t *st, complex.t *fin, *fout, int in_stride)
 			panic("fout buffer NULL.");
 		}
 
-		complex.t *tmpbuf = calloc!(1, sizeof(complex.t)*st->nfft);
-		kf_work(tmpbuf,fin,1,in_stride, st->factors,st);
-		memcpy(fout,tmpbuf,sizeof(complex.t)*st->nfft);
+		complex.t *tmpbuf = calloc!(1, sizeof(complex.t) * st->nfft);
+		kf_work(tmpbuf, fin, 1, in_stride, st->factors, st);
+		memcpy(fout, tmpbuf, sizeof(complex.t) * st->nfft);
 		free(tmpbuf);
 	} else {
 		kf_work(fout, fin, 1, in_stride, st->factors, st);
@@ -451,7 +455,7 @@ void kiss_fft_stride(kiss_fft_state_t *st, complex.t *fin, *fout, int in_stride)
 //	 and fout[nfft/2] is the Nyquist bin (if exists)
 //
 pub void kiss_fft(kiss_fft_state_t *cfg, complex.t *fin, *fout) {
-	kiss_fft_stride(cfg, fin, fout,1);
+	kiss_fft_stride(cfg, fin, fout, 1);
 }
 
 // /*
@@ -529,9 +533,9 @@ void kiss_fftr(kiss_fftr_state_t *st, complex.t *timedata, *freqdata) {
 	complex.t tw;
 	complex.t tdc;
 
-	if ( st->substate->inverse) {
+	if (st->substate->inverse) {
 		panic("kiss fft usage error: improper alloc");
-		return;/* The caller did not call the correct function */
+		return; // The caller did not call the correct function
 	}
 
 	ncfft = st->substate->nfft;
@@ -555,19 +559,19 @@ void kiss_fftr(kiss_fftr_state_t *st, complex.t *timedata, *freqdata) {
 	freqdata[ncfft].im = 0;
 	freqdata[0].im = 0;
 
-	for ( k=1;k <= ncfft/2 ; ++k ) {
-		fpk	= st->tmpbuf[k];
-		fpnk.re =   st->tmpbuf[ncfft-k].re;
-		fpnk.im = - st->tmpbuf[ncfft-k].im;
+	for (k = 1; k <= ncfft / 2; ++k) {
+		fpk = st->tmpbuf[k];
+		fpnk.re = st->tmpbuf[ncfft - k].re;
+		fpnk.im = -st->tmpbuf[ncfft - k].im;
 
 		f1k = complex.sum(fpk, fpnk);
 		f2k = complex.diff(fpk, fpnk);
-		tw = complex.mul(f2k, st->super_twiddles[k-1]);
+		tw = complex.mul(f2k, st->super_twiddles[k - 1]);
 
 		freqdata[k].re = 0.5 * (f1k.re + tw.re);
 		freqdata[k].im = 0.5 * (f1k.im + tw.im);
-		freqdata[ncfft-k].re = 0.5 * (f1k.re - tw.re);
-		freqdata[ncfft-k].im = 0.5 * (tw.im - f1k.im);
+		freqdata[ncfft - k].re = 0.5 * (f1k.re - tw.re);
+		freqdata[ncfft - k].im = 0.5 * (tw.im - f1k.im);
 	}
 }
 
@@ -669,7 +673,7 @@ pub void kiss_fftndr(kiss_fftndr_state_t * st, complex.t *timedata, *freqdata) {
 	int k2;
 	int dimReal = st->dimReal;
 	int dimOther = st->dimOther;
-	int nrbins = dimReal/2+1;
+	int nrbins = dimReal / 2 + 1;
 
 	complex.t *tmp1 = st->tmpbuf;
 	complex.t *tmp2 = tmp1 + MAX(nrbins,dimOther);
@@ -717,12 +721,12 @@ pub void kiss_fftndri(kiss_fftndr_state_t * st, complex.t *freqdata, float *time
 	}
 }
 
-kiss_fftnd_state_t *kiss_fftnd_alloc(int *dims, int ndims, int inverse_fft, void *mem, size_t*lenmem) {
+kiss_fftnd_state_t *kiss_fftnd_alloc(int *dims, int ndims, int inverse_fft, void *mem, size_t *lenmem) {
 	kiss_fftnd_state_t *st = NULL;
 	int i;
-	int dimprod=1;
+	int dimprod = 1;
 	size_t memneeded = sizeof(kiss_fftnd_state_t);
-	char * ptr = NULL;
+	char *ptr = NULL;
 
 	for (i=0;i<ndims;++i) {
 		size_t sublen=0;
@@ -855,8 +859,8 @@ void kiss_fftnd(kiss_fftnd_state_t *st, complex.t *fin, *fout) {
 	/*arrange it so the last bufout == fout*/
 	if ( st->ndims & 1 ) {
 		bufout = fout;
-		if (fin==fout) {
-			memcpy( st->tmpbuf, fin, sizeof(complex.t) * st->dimprod );
+		if (fin == fout) {
+			memcpy(st->tmpbuf, fin, sizeof(complex.t) * st->dimprod);
 			bufin = st->tmpbuf;
 		}
 	} else {

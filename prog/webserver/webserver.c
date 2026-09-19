@@ -109,21 +109,21 @@ void handle_sigint(int sig) {
 }
 
 char *resolve_path(const char *homedir, *reqpath) {
-    char naive_path[4096] = {};
-    if (strlen(homedir) + strlen(reqpath) + 1 >= sizeof(naive_path)) {
+	char naive_path[4096] = {};
+	if (strlen(homedir) + strlen(reqpath) + 1 >= sizeof(naive_path)) {
 		log_error("path is too long: %s", reqpath);
-        return NULL;
-    }
-    sprintf(naive_path, "%s/%s", homedir, reqpath);
-    char realpath[4096] = {};
-    if (!fs.realpath(naive_path, realpath, sizeof(realpath))) {
-        return NULL;
-    }
-    if (!strings.starts_with(realpath, homedir)) {
-        printf("resolved path \"%s\" doesn't start with homedir=\"%s\"\n", realpath, homedir);
-        return NULL;
-    }
-    return strings.newstr("%s", realpath);
+		return NULL;
+	}
+	sprintf(naive_path, "%s/%s", homedir, reqpath);
+	char realpath[4096] = {};
+	if (!fs.realpath(naive_path, realpath, sizeof(realpath))) {
+		return NULL;
+	}
+	if (!strings.starts_with(realpath, homedir)) {
+		printf("resolved path \"%s\" doesn't start with homedir=\"%s\"\n", realpath, homedir);
+		return NULL;
+	}
+	return strings.newstr("%s", realpath);
 }
 
 void log_info(const char *f, ...) {

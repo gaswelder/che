@@ -1,6 +1,6 @@
-#import os/fs
 #import mem
 #import opt
+#import os/fs
 
 enum {
 	L_SAME,
@@ -183,14 +183,18 @@ bool read_line(FILE *in, linebuf_t *buf, const char *fpath)
 	return true;
 }
 
-bool growbuf(linebuf_t *buf)
-{
+bool growbuf(linebuf_t *buf) {
 	size_t newsize = buf->maxsize;
-	if(!newsize) newsize = 4096;
-	else newsize *= 2;
+	if (!newsize) {
+		newsize = 4096;
+	} else {
+		newsize *= 2;
+	}
 
 	void *r = realloc(buf->line, newsize);
-	if(!r) return false;
+	if (!r) {
+		return false;
+	}
 	buf->maxsize = newsize;
 	buf->line = r;
 	return true;
@@ -201,32 +205,27 @@ void write_line(linebuf_t *buf, mem.mem_t *out) {
 		mem.memputc(buf->line[i], out);
 	}
 	switch (buf->lf) {
-		case L_UNIX: {
-			mem.memputc('\n', out);
-		}
+		case L_UNIX: { mem.memputc('\n', out); }
 		case L_WIN: {
 			mem.memputc('\r', out);
 			mem.memputc('\n', out);
 		}
-		default: {
-			panic("write_line: unhandled eol type: %d", buf->lf);
-		}
+		default: { panic("write_line: unhandled eol type: %d", buf->lf); }
 	}
 }
 
-int save(mem.mem_t *mem, const char *path )
-{
-	FILE *fp = fopen( path, "wb" );
-	if( !fp ) {
-		fprintf( stderr, "Couldn't open '%s' for writing\n", path );
+int save(mem.mem_t *mem, const char *path) {
+	FILE *fp = fopen(path, "wb");
+	if (!fp) {
+		fprintf(stderr, "Couldn't open '%s' for writing\n", path);
 		return 0;
 	}
 
 	mem.rewind(mem);
 	int ok = 1;
 	while (true) {
-		int ch = mem.memgetc( mem );
-		if(ch == EOF) {
+		int ch = mem.memgetc(mem);
+		if (ch == EOF) {
 			break;
 		}
 		int r = fputc(ch, fp);
@@ -236,14 +235,14 @@ int save(mem.mem_t *mem, const char *path )
 			break;
 		}
 	}
-	fclose( fp );
+	fclose(fp);
 	return ok;
 }
 
-int fpeek( FILE *fp ) {
-	int c = fgetc( fp );
-	if( c != EOF ) {
-		ungetc( c, fp );
+int fpeek(FILE *fp) {
+	int c = fgetc(fp);
+	if (c != EOF) {
+		ungetc(c, fp);
 	}
 	return c;
 }

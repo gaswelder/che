@@ -254,7 +254,7 @@ int read_sample0(reader_t *r) {
 // Reads the next sample frame.
 pub sound.samplef_t read_samplef(reader_t *r) {
 	sound.samplef_t s = {};
-	double scale = (1 << (r->wav.bits_per_sample-1)) - 1;
+	double scale = (1 << (r->wav.bits_per_sample - 1)) - 1;
 
 	switch (r->wav.channels) {
 		case 1: {
@@ -314,29 +314,31 @@ bool readinfo(reader.t *r) {
 		listlen -= 4;
 
 		// Read 4-byte value length.
-        uint32_t infolen = 0;
-        endian.read4le(r, &infolen);
-        listlen -= 4;
+		uint32_t infolen = 0;
+		endian.read4le(r, &infolen);
+		listlen -= 4;
 
-        reader.read(r, (uint8_t*)tmp, infolen);
-        tmp[infolen] = '\0';
-        // printf("# %s = %s\n", key, tmp);
-        listlen -= infolen;
+		reader.read(r, (uint8_t *) tmp, infolen);
+		tmp[infolen] = '\0';
+		// printf("# %s = %s\n", key, tmp);
+		listlen -= infolen;
 
 		// Wav postulates 2-byte chunk boundaries, so skip a trailing byte
 		// for odd chunks.
-        if (infolen % 2 != 0) {
-            reader.read(r, (uint8_t*)tmp, 1);
-            listlen -= 1;
-        }
-    }
-    return true;
+		if (infolen % 2 != 0) {
+			reader.read(r, (uint8_t *) tmp, 1);
+			listlen -= 1;
+		}
+	}
+	return true;
 }
 
 bool expect_tag(reader.t *r, const char *tag) {
 	char tmp[5] = {};
-	reader.read(r, (uint8_t*) tmp, 4);
-	if (strcmp(tmp, tag)) panic("wanted %s, got %s", tag, tmp);
+	reader.read(r, (uint8_t *) tmp, 4);
+	if (strcmp(tmp, tag)) {
+		panic("wanted %s, got %s", tag, tmp);
+	}
 	return true;
 }
 

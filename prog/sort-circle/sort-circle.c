@@ -135,48 +135,50 @@ int main(int argc, char **argv) {
 }
 
 void shuffle(image.image_t *img, int *array, bool hide, slow) {
-    global_message = "Fisher-Yates";
-    for (int i = global_N - 1; i > 0; i--) {
-        uint32_t r = rnd.intn(i+1);
-        swap(array, i, r);
-        if (hide) {
-            continue;
-        }
-        if (slow || i % 2) {
-            frame(img);
-        }
-    }
+	global_message = "Fisher-Yates";
+	for (int i = global_N - 1; i > 0; i--) {
+		uint32_t r = rnd.intn(i + 1);
+		swap(array, i, r);
+		if (hide) {
+			continue;
+		}
+		if (slow || i % 2) {
+			frame(img);
+		}
+	}
 }
 
 void run_sort(image.image_t *img, int type) {
-    if (type > 0 && type < SORTS_TOTAL) {
-        global_message = sort_names[type];
-    } else {
-        global_message = 0;
-    }
-    switch (type) {
-        case SORT_NULL: {}
-        case SORT_ODD_EVEN: { sort_odd_even(img, array); }
-        case SORT_BUBBLE: { sort_bubble(img, array); }
-        case SORT_INSERTION: { sort_insertion(img, array); }
-        case SORT_STOOGESORT: { sort_stoogesort(img, array, 0, global_N - 1); }
-        case SORT_QUICKSORT: { sort_quicksort(img, array, global_N); }
-        case SORT_RADIX_8_LSD: { sort_radix_lsd(img, array, 8); }
-        case SORTS_TOTAL: {}
-    }
-    frame(img);
+	if (type > 0 && type < SORTS_TOTAL) {
+		global_message = sort_names[type];
+	} else {
+		global_message = 0;
+	}
+	switch (type) {
+		case SORT_NULL: {}
+		case SORT_ODD_EVEN: { sort_odd_even(img, array); }
+		case SORT_BUBBLE: { sort_bubble(img, array); }
+		case SORT_INSERTION: { sort_insertion(img, array); }
+		case SORT_STOOGESORT: { sort_stoogesort(img, array, 0, global_N - 1); }
+		case SORT_QUICKSORT: { sort_quicksort(img, array, global_N); }
+		case SORT_RADIX_8_LSD: { sort_radix_lsd(img, array, 8); }
+		case SORTS_TOTAL: {}
+	}
+	frame(img);
 }
 
 void pause_1s(image.image_t *img) {
-	for (int i = 0; i < FPS; i++) frame(img);
+	for (int i = 0; i < FPS; i++) {
+		frame(img);
+	}
 }
 
 void frame(image.image_t *img) {
-    draw_array(img, array, global_N, global_flag_circle);
-    if (global_message) {
-        draw_string(img, f, global_message);
-    }
-    ppm.writeimg(img, stdout);
+	draw_array(img, array, global_N, global_flag_circle);
+	if (global_message) {
+		draw_string(img, f, global_message);
+	}
+	ppm.writeimg(img, stdout);
 	fflush(stdout);
 	image.clear(img);
 
@@ -308,18 +310,18 @@ void sort_insertion(image.image_t *img, int *array) {
 }
 
 void sort_stoogesort(image.image_t *img, int *array, int i, int j) {
-    int c = 0;
-    if (array[i] > array[j]) {
-        swap(array, i, j);
-        if (c++ % 32 == 0)
-            frame(img);
-    }
-    if (j - i + 1 > 2) {
-        int t = (j - i + 1) / 3;
-        sort_stoogesort(img, array, i, j - t);
-        sort_stoogesort(img, array, i + t, j);
-        sort_stoogesort(img, array, i, j - t);
-    }
+	int c = 0;
+	if (array[i] > array[j]) {
+		swap(array, i, j);
+		if (c++ % 32 == 0)
+			frame(img);
+	}
+	if (j - i + 1 > 2) {
+		int t = (j - i + 1) / 3;
+		sort_stoogesort(img, array, i, j - t);
+		sort_stoogesort(img, array, i + t, j);
+		sort_stoogesort(img, array, i, j - t);
+	}
 }
 
 void sort_quicksort(image.image_t *img, int *array, int n) {
@@ -351,30 +353,32 @@ int digit(int v, int b, int d) {
 }
 
 void sort_radix_lsd(image.image_t *img, int *array, int b) {
-    int c = 0;
-    int total = 1;
-    for (int d = 0; total; d++) {
-        total = -1;
-        /* Odd-even sort on the current digit */
-        while (true) {
-            total++;
-            c = 0;
-            for(int i = 1; i < global_N - 1; i += 2) {
-                if (digit(array[i], b, d) > digit(array[i + 1], b, d)) {
-                    swap(array, i, i + 1);
-                    c = 1;
-                }
-            }
-            for (int i = 0; i < global_N - 1; i += 2) {
-                if (digit(array[i], b, d) > digit(array[i + 1], b, d)) {
-                    swap(array, i, i + 1);
-                    c = 1;
-                }
-            }
-            frame(img);
-            if (!c) break;
-        }
-    }
+	int c = 0;
+	int total = 1;
+	for (int d = 0; total; d++) {
+		total = -1;
+		/* Odd-even sort on the current digit */
+		while (true) {
+			total++;
+			c = 0;
+			for(int i = 1; i < global_N - 1; i += 2) {
+				if (digit(array[i], b, d) > digit(array[i + 1], b, d)) {
+					swap(array, i, i + 1);
+					c = 1;
+				}
+			}
+			for (int i = 0; i < global_N - 1; i += 2) {
+				if (digit(array[i], b, d) > digit(array[i + 1], b, d)) {
+					swap(array, i, i + 1);
+					c = 1;
+				}
+			}
+			frame(img);
+			if (!c) {
+				break;
+			}
+		}
+	}
 }
 
 void draw_dot(image.image_t *img, float x, y, image.rgba_t color) {

@@ -170,7 +170,7 @@ void write_track(mp3.reader_t *m, const char *fname, size_t pos_us) {
 
 	char buf[20];
 	double seconds = (double)(1152 * frames) / 44100;
-	time.duration_t d = time.newdur((int64_t) (seconds * 1000), time.MS);
+	time.duration_t d = time.newdur((int64_t)(seconds * 1000), time.MS);
 	time.dur_fmt(&d, buf, 20, "mm:ss.ms");
 
 	printf("%8u frames (%s)\t%u bytes\t%s\n", frames, buf, bytes, fname);

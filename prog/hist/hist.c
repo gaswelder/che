@@ -1,5 +1,5 @@
-#import stats
 #import opt
+#import stats
 
 int main(int argc, char *argv[]) {
 	size_t nbins = 10;
@@ -68,10 +68,13 @@ range_t find_range(double _min, _max, size_t nbins) {
 		}
 		scale *= 10;
 	}
-	while (amin + nbins * (scale/2) >= _max) {
+	while (amin + nbins * scale / 2 >= _max) {
 		scale /= 2;
 	}
-	range_t r = { .min = amin, .step = scale };
+	range_t r = {
+		.min = amin,
+		.step = scale,
+	};
 	return r;
 }
 
@@ -178,16 +181,15 @@ void printbins_ascii(bin_t *bins, size_t nbins, size_t maxline) {
 		// bar
 		//
 		size_t len = 0;
-		len = (size_t) ((double)b->count * scale);
+		len = (size_t)((double) b->count * scale);
 		repeat("█", len);
-		repeat(" ", maxline-len);
+		repeat(" ", maxline - len);
 
 		//
 		// value
 		//
 		printf(" %zu\n", b->count);
 	}
-
 
 	free(labels);
 }

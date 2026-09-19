@@ -1,5 +1,4 @@
 // Echo server, rfc862.
-
 #import log
 #import os/net
 #import os/threads
@@ -31,7 +30,7 @@ int main() {
 void *process_client(void *arg) {
 	net.net_t *c = arg;
 	log.logmsg("%s connected", net.net_addr(c));
-	uint8_t buf[256] = {0};
+	uint8_t buf[256] = {};
 	reader.t *r = net.getreader(c);
 
 	while (true) {
@@ -44,7 +43,7 @@ void *process_client(void *arg) {
 			break;
 		}
 
-		if (net.write(c, (char *)buf, len) < len) {
+		if (net.write(c, (char *) buf, len) < len) {
 			fprintf(stderr, "write error: %s\n", strerror(errno));
 			break;
 		}

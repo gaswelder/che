@@ -40,16 +40,34 @@ val_t *increfs(val_t *o) {
 	return o;
 }
 
-pub val_t *nil() { return NIL; }
+pub val_t *nil() {
+	return NIL;
+}
 
-bool iscons(val_t *o) { return o->type == CONS; }
-bool isdetach(val_t *o) { return (o->type == DETACH); }
-bool isfloat(val_t *o) { return (o->type == FLOAT); }
-bool isint(val_t *o) { return o->type == INT; }
-bool islist(val_t *o) { return (o->type == CONS || o == NIL); }
-bool isnumber(val_t *o) { return (isint (o) || isfloat (o)); }
-bool issymbol(val_t *o) { return o->type == SYMBOL; }
-bool isvector(val_t *o) { return o->type == VECTOR; }
+bool iscons(val_t *o) {
+	return o->type == CONS;
+}
+bool isdetach(val_t *o) {
+	return o->type == DETACH;
+}
+bool isfloat(val_t *o) {
+	return o->type == FLOAT;
+}
+bool isint(val_t *o) {
+	return o->type == INT;
+}
+bool islist(val_t *o) {
+	return o->type == CONS || o == NIL;
+}
+bool isnumber(val_t *o) {
+	return isint(o) || isfloat(o);
+}
+bool issymbol(val_t *o) {
+	return o->type == SYMBOL;
+}
+bool isvector(val_t *o) {
+	return o->type == VECTOR;
+}
 
 bool isfunc(val_t *o) {
 	return (o->type == CONS && car(o)->type == SYMBOL && ((car(o) == lambda) || (car(o) == macro)))
@@ -95,9 +113,15 @@ void setcdr(val_t *o, *cdr) { cons_t *x = o->val; x->cdr = cdr; }
 // Vec
 //
 
-typedef { val_t **v; size_t len; } vector_t;
+typedef {
+	val_t **v;
+	size_t len;
+} vector_t;
 
-int vlen(val_t *o) { vector_t *x = o->val; return x->len; }
+int vlen(val_t *o) {
+	vector_t *x = o->val;
+	return x->len;
+}
 
 val_t *newvec(size_t len, val_t *init) {
 	vector_t *v = mem.mm_alloc(mm_vec);
@@ -167,8 +191,6 @@ char *getstr(val_t *o) {
 //
 //
 
-
-
 ////////
 
 pub typedef {
@@ -237,7 +259,7 @@ val_t *list2vector(val_t *lst) {
 	p = lst;
 	size_t i = 0;
 	while (p != NIL) {
-		vec_set(v, i, increfs(car (p)));
+		vec_set(v, i, increfs(car(p)));
 		i++;
 		p = cdr(p);
 	}
@@ -248,7 +270,7 @@ val_t *vset_check(val_t *vo, *io, *val) {
 	int i = into2int (io);
 	vector_t *v = vo->val;
 	if (i < 0 || i >= (int) v->len) {
-		return THROW (err_out_of_bounds, increfs(io));
+		return THROW(err_out_of_bounds, increfs(io));
 	}
 	vec_set(vo, i, increfs(val));
 	return increfs(val);
@@ -264,7 +286,7 @@ val_t *vget_check (val_t * vo, val_t * io) {
 	int i = into2int (io);
 	vector_t *v = vo->val;
 	if (i < 0 || i >= (int) v->len) {
-		return THROW (err_out_of_bounds, increfs(io));
+		return THROW(err_out_of_bounds, increfs(io));
 	}
 	return increfs(vget (vo, i));
 }
@@ -292,17 +314,17 @@ val_t *req_length(val_t * lst, val_t * thr, int n) {
 	val_t *p = lst;
 	while (p != NIL) {
 		len++;
-		p = cdr (p);
+		p = cdr(p);
 		if (!islist (p)) {
 			obj_release(thr);
-			return THROW (getsym_improper_list(), lst);
+			return THROW(getsym_improper_list(), lst);
 		}
 		if (len > n) {
-			return THROW (err_wrong_number_of_arguments, thr);
+			return THROW(err_wrong_number_of_arguments, thr);
 		}
 	}
 	if (len != n) {
-		return THROW (err_wrong_number_of_arguments, thr);
+		return THROW(err_wrong_number_of_arguments, thr);
 	}
 	return T;
 }
@@ -314,15 +336,15 @@ val_t *reqm_length (val_t * lst, val_t * thr, int n) {
 	val_t *p = lst;
 	while (p != NIL) {
 		len++;
-		p = cdr (p);
+		p = cdr(p);
 		if (!islist (p)) {
 			obj_release(thr);
-			return THROW (getsym_improper_list(), lst);
+			return THROW(getsym_improper_list(), lst);
 		}
 		if (len >= n) return T;
 	}
 	if (len < n) {
-		return THROW (err_wrong_number_of_arguments, thr);
+		return THROW(err_wrong_number_of_arguments, thr);
 	}
 	return T;
 }
@@ -335,12 +357,12 @@ val_t *reqx_length (val_t * lst, val_t * thr, int n) {
 	while (p != NIL)
 	{
 		len++;
-		p = cdr (p);
+		p = cdr(p);
 		if (!islist (p)) {
 			obj_release(thr);
-			return THROW (getsym_improper_list(), lst);
+			return THROW(getsym_improper_list(), lst);
 		}
-		if (len > n) return THROW (err_wrong_number_of_arguments, thr);
+		if (len > n) return THROW(err_wrong_number_of_arguments, thr);
 	}
 	return T;
 }
@@ -377,10 +399,8 @@ int is_var_list (val_t * lst) {
 // 		return T;
 // 	if (!iscons (lst))
 // 		return NIL;
-// 	return properlistp (cdr (lst));
+// 	return properlistp (cdr(lst));
 // }
-
-
 
 pub val_t *GET(val_t *so) {
 	symbol_t *x = so->val;
@@ -405,7 +425,7 @@ void bind(char *name, val_t *val) {
 symbol_t *symbol_create() {
 	size_t cnt = 8;
 	void *x = calloc!(cnt, sizeof(val_t *));
-	symbol_t *s = calloc!(1, sizeof (symbol_t));
+	symbol_t *s = calloc!(1, sizeof(symbol_t));
 	s->cnt = cnt;
 	s->vals = x;
 	s->stack = x;
@@ -419,7 +439,7 @@ pub void sympush(val_t *so, val_t *o) {
 	// if (s->vals == s->cnt + s->stack) {
 	//		 size_t n = s->vals - s->stack;
 	//		 s->cnt *= 2;
-	//		 s->stack = xrealloc (s->stack, s->cnt * sizeof (val_t *));
+	//		 s->stack = xrealloc (s->stack, s->cnt * sizeof(val_t *));
 	//		 s->vals = s->stack + n;
 	//	 }
 	*s->vals = o;
@@ -432,8 +452,6 @@ pub void sympop (val_t * so) {
 	symbol_t *s = so->val;
 	s->vals--;
 }
-
-
 
 // Returns the symbol with the given name, creating it if needed.
 pub val_t *symbol(char *name) {
@@ -477,9 +495,7 @@ void obj_release(val_t *o) {
 		return;
 	}
 	switch (o->type) {
-		case FLOAT, INT: {
-			free(o->val);
-		}
+		case FLOAT, INT: { free(o->val); }
 		case STRING: {
 			str_t *str = o->val;
 			free(str->raw);
@@ -489,10 +505,10 @@ void obj_release(val_t *o) {
 			mem.mm_free(mm_str, str);
 		}
 		case CONS: {
-			obj_release(car (o));
-			obj_release(cdr (o));
+			obj_release(car(o));
+			obj_release(cdr(o));
 			cons_t *c = o->val;
-			mem.mm_free (mm_cons, c);
+			mem.mm_free(mm_cons, c);
 		}
 		case VECTOR: {
 			vector_t *v = o->val;
@@ -504,10 +520,10 @@ void obj_release(val_t *o) {
 		}
 		case DETACH: {
 			detach_t *d = o->val;
-			reader_destroy (d->read);
-			OS.close (d->in);
-			OS.close (d->out);
-			free (o->val);
+			reader_destroy(d->read);
+			OS.close(d->in);
+			OS.close(d->out);
+			free(o->val);
 		}
 		case CFUNC, SPECIAL: {}
 	}
@@ -521,8 +537,8 @@ void obj_print(val_t *o, bool newline) {
 			printf("(");
 			val_t *p = o;
 			while (p->type == CONS) {
-				obj_print (car (p), 0);
-				p = cdr (p);
+				obj_print (car(p), 0);
+				p = cdr(p);
 				if (p->type == CONS) printf (" ");
 			}
 			if (p != NIL) {
@@ -572,7 +588,7 @@ void obj_print(val_t *o, bool newline) {
 uint32_t obj_hash (val_t * o) {
 	switch (o->type) {
 		case CONS: {
-			return obj_hash (car (o)) ^ obj_hash (cdr (o));
+			return obj_hash (car(o)) ^ obj_hash (cdr(o));
 		}
 		case INT: {
 			char str[100] = {};
@@ -602,11 +618,11 @@ uint32_t obj_hash (val_t * o) {
 		case DETACH: {
 			detach_t *x = o->val;
 			int proc = x->proc;
-			return util.hash(&proc, sizeof (int));
+			return util.hash(&proc, sizeof(int));
 		}
 		case CFUNC, SPECIAL: {
 			/* Imprecise, but close enough */
-			return util.hash(o->val, sizeof (void *));
+			return util.hash(o->val, sizeof(void *));
 		}
 	}
 	return 0;
@@ -648,10 +664,10 @@ void object_clear(void *o) {
 
 
 pub void wisp_init() {
-	mm_obj = mem.mm_create (sizeof (val_t), &object_clear);
-	mm_cons = mem.mm_create (sizeof (cons_t), &cons_clear);
-	mm_str = mem.mm_create (sizeof (str_t), &str_clear);
-	mm_vec = mem.mm_create (sizeof (vector_t), &vector_clear);
+	mm_obj = mem.mm_create (sizeof(val_t), &object_clear);
+	mm_cons = mem.mm_create (sizeof(cons_t), &cons_clear);
+	mm_str = mem.mm_create (sizeof(str_t), &str_clear);
+	mm_vec = mem.mm_create (sizeof(vector_t), &vector_clear);
 
 	symbol_table = hashtab.new();
 	/* Set up t and nil constants. The SET macro won't work until NIL is set. */
@@ -860,40 +876,40 @@ val_t *assign_args (val_t * vars, val_t * vals)
 	int len = 0;
 	val_t *orig_vars = vars;
 	while (vars != NIL) {
-		val_t *var = car (vars);
+		val_t *var = car(vars);
 		if (var == optional) {
 			/* Turn on optional mode and continue. */
 			optional_mode = 1;
-			vars = cdr (vars);
+			vars = cdr(vars);
 			continue;
 		}
 			if (var == rest) {
 			/* Assign the rest of the list and finish. */
-			vars = cdr (vars);
-			sympush (car (vars), vals);
+			vars = cdr(vars);
+			sympush (car(vars), vals);
 			vals = NIL;
 			break;
 		}
 			else if (!optional_mode && vals == NIL)
 	{
 		while (len > 0) {
-			sympop (car (orig_vars));
-			orig_vars = cdr (orig_vars);
+			sympop (car(orig_vars));
+			orig_vars = cdr(orig_vars);
 			len--;
 		}
-		return THROW (err_wrong_number_of_arguments, NIL);
+		return THROW(err_wrong_number_of_arguments, NIL);
 	}
 			else if (optional_mode && vals == NIL)
 	{
 		sympush (var, NIL);
 	}
 			else {
-				val_t *val = car (vals);
+				val_t *val = car(vals);
 				sympush (var, val);
 				len++;
 			}
-			vars = cdr (vars);
-			if (vals != NIL) vals = cdr (vals);
+			vars = cdr(vars);
+			if (vals != NIL) vals = cdr(vals);
 		}
 
 	/* vals should be consumed by now */
@@ -906,18 +922,18 @@ val_t *assign_args (val_t * vars, val_t * vals)
 
 void unassign_args(val_t *vars) {
 	if (vars == NIL) return;
-	val_t *var = car (vars);
+	val_t *var = car(vars);
 	if (var != rest && var != optional) {
 		sympop (var);
 	}
-	unassign_args (cdr (vars));
+	unassign_args (cdr(vars));
 }
 
 val_t *eval(val_t * o) {
 	/* Check for interrupts. */
 	if (interrupt) {
 		interrupt = 0;
-		return THROW (err_interrupt, newstring("interrupted"));
+		return THROW(err_interrupt, newstring("interrupted"));
 	}
 	if (o->type != CONS && o->type != SYMBOL) {
 		return increfs(o);
@@ -927,7 +943,7 @@ val_t *eval(val_t * o) {
 	}
 
 	/* Find the function. */
-	val_t *f = eval (car (o));
+	val_t *f = eval (car(o));
 	if (f == err_symbol) {
 		return f;
 	}
@@ -943,16 +959,16 @@ val_t *eval(val_t * o) {
 	}
 	if (!isfunc (f)) {
 		obj_release(f);
-		return THROW (err_void_function, increfs(car (o)));
+		return THROW(err_void_function, increfs(car(o)));
 	}
 
 	/* Check the stack */
 	if (++stack_depth >= max_stack_depth)
-		return THROW (symbol("max-eval-depth"), c_int (stack_depth--));
+		return THROW(symbol("max-eval-depth"), c_int (stack_depth--));
 
 	/* Handle argument list */
-	val_t *args = cdr (o);
-	if (f->type == CFUNC || (f->type == CONS && (car (f) == lambda))) {
+	val_t *args = cdr(o);
+	if (f->type == CFUNC || (f->type == CONS && (car(f) == lambda))) {
 		/* c function or list function (eval args) */
 		args = eval_list (args);
 		if (args == err_symbol) {
@@ -979,17 +995,17 @@ val_t *apply(val_t *f, *args) {
 		return cf(args);
 	}
 	/* list form */
-	val_t *vars = car (cdr (f));
+	val_t *vars = car(cdr(f));
 	val_t *assr = assign_args (vars, args);
 	if (assr == err_symbol) {
 		err_attach = increfs(args);
 		return err_symbol;
 	}
 	val_t *r;
-	if (car (f) == lambda) {
-		r = eval_body (cdr (cdr (f)));
+	if (car(f) == lambda) {
+		r = eval_body (cdr(cdr(f)));
 	} else {
-		val_t *body = eval_body (cdr (cdr (f)));
+		val_t *body = eval_body (cdr(cdr(f)));
 		r = eval (body);
 		obj_release(body);
 	}
@@ -1059,14 +1075,14 @@ val_t *c_detach (val_t * o) {
 	if (o->type == SYMBOL) {
 		o = GET (o);
 	}
-	detach_t *d = calloc!(1, sizeof (detach_t));
+	detach_t *d = calloc!(1, sizeof(detach_t));
 	val_t *dob = obj_createx(DETACH, d);
 	int pipea[2];
 	int pipeb[2];
 	if (OS.pipe (pipea) != 0)
-		return THROW (symbol("detach-pipe-error"), newstring(strerror(errno)));
+		return THROW(symbol("detach-pipe-error"), newstring(strerror(errno)));
 	if (OS.pipe (pipeb) != 0)
-		return THROW (symbol("detach-pipe-error"), newstring(strerror(errno)));
+		return THROW(symbol("detach-pipe-error"), newstring(strerror(errno)));
 	d->proc = OS.fork ();
 	if (d->proc == 0) {
 		/* Child process */
@@ -1089,7 +1105,7 @@ val_t *c_detach (val_t * o) {
 		val_t *f = newcons (o, NIL);
 		eval (f);
 		exit (0);
-		return THROW (symbol("exit-failed"), dob);
+		return THROW(symbol("exit-failed"), dob);
 	}
 	/* Parent process */
 	d->in = pipea[0];
@@ -1107,7 +1123,7 @@ val_t *lisp_detach(val_t * lst) {
 	if (req_length(lst, symbol("detach"), 1) == err_symbol) {
 		return err_symbol;
 	}
-	return c_detach (car (lst));
+	return c_detach (car(lst));
 }
 
 val_t *lisp_receive (val_t * lst) {
@@ -1115,8 +1131,8 @@ val_t *lisp_receive (val_t * lst) {
 		return newstring("Get an object from the detached process.");
 	}
 	if (req_length (lst,symbol("receive"),1) == err_symbol)	return err_symbol;
-	val_t *d = car (lst);
-	if (!isdetach (d)) return THROW (err_wrong_type, increfs(d));
+	val_t *d = car(lst);
+	if (!isdetach (d)) return THROW(err_wrong_type, increfs(d));
 	reader_t *r = OREAD (d);
 	return read_sexp (r);
 }
@@ -1126,9 +1142,9 @@ val_t *lisp_send (val_t * lst) {
 		return newstring("Send an object to the parent process.");
 	}
 	if (req_length (lst,symbol("send"),1) == err_symbol)	return err_symbol;
-	val_t *o = car (lst);
+	val_t *o = car(lst);
 	if (parent_detach == NULL || parent_detach == NIL) {
-		return THROW (symbol("send-from-non-detachment"), increfs(o));
+		return THROW(symbol("send-from-non-detachment"), increfs(o));
 	}
 	obj_print(o, 1);
 	return T;
@@ -1166,7 +1182,7 @@ char *prompt = "wisp> ";
 /* Create a new reader object, passing either a string or file handle
  * for parsing. */
 reader_t *reader_create (FILE *f, char *str, char *name, int interactive) {
-	reader_t *r = calloc!(1, sizeof (reader_t));
+	reader_t *r = calloc!(1, sizeof(reader_t));
 	
 	r->name = name;
 	if (!r->name) name = "<unknown>";
@@ -1178,15 +1194,15 @@ reader_t *reader_create (FILE *f, char *str, char *name, int interactive) {
 	r->done = 0;
 	/* state stack */
 	r->ssize = 32;
-	r->state = calloc!(r->ssize, sizeof (rstate_t));
+	r->state = calloc!(r->ssize, sizeof(rstate_t));
 	r->base = r->state;
 
 	eater.init(&r->eater, f, str);
 	return r;
 }
 
-void reader_destroy (reader_t * r) {
-	reset (r);
+void reader_destroy(reader_t *r) {
+	reset(r);
 	free(r->eater.buf);
 	free(r->eater.readbuf);
 	free(r->base);
@@ -1204,7 +1220,7 @@ void push (reader_t * r) {
 	if (r->state == r->base + r->ssize)
 		{
 			r->ssize *= 2;
-			r->base = xrealloc (r->base, sizeof (rstate_t *) * r->ssize);
+			r->base = xrealloc (r->base, sizeof(rstate_t *) * r->ssize);
 			r->state = r->base + r->ssize / 2;
 		}
 	/* clear the state */
@@ -1267,7 +1283,7 @@ void read_error (reader_t * r, char *str)
 /* Determine if top list is empty. */
 int list_empty (reader_t * r)
 {
-	return cdr (r->state->head) == NIL;
+	return cdr(r->state->head) == NIL;
 }
 
 void print_prompt (reader_t * r)
@@ -1490,7 +1506,7 @@ val_t *read_sexp (reader_t * r)
 	}
 
 	val_t *wrap = pop (r);
-	val_t *sexp = increfs(car (wrap));
+	val_t *sexp = increfs(car(wrap));
 	obj_release(wrap);
 	return sexp;
 }
@@ -1502,7 +1518,7 @@ val_t *cdoc_string(val_t *lst) {
 	if (req_length (lst,symbol("cdoc-string"),1) == err_symbol)	{
 		return err_symbol;
 	}
-	val_t *fo = car (lst);
+	val_t *fo = car(lst);
 	int evaled = 0;
 	if (fo->type == SYMBOL) {
 		evaled = 1;
@@ -1523,10 +1539,10 @@ val_t *lisp_apply (val_t * lst) {
 		return newstring("Apply function to a list.");
 	}
 	if (req_length (lst,symbol("apply"),2) == err_symbol)	return err_symbol;
-	val_t *f = car (lst);
-	val_t *args = car (cdr (lst));
+	val_t *f = car(lst);
+	val_t *args = car(cdr(lst));
 	if (!islist (args))
-		THROW (err_wrong_type, increfs(args));
+		THROW(err_wrong_type, increfs(args));
 	return apply (f, args);
 }
 
@@ -1538,14 +1554,14 @@ val_t *lisp_and(val_t *lst) {
 	val_t *p = lst;
 	while (iscons (p)) {
 		obj_release(r);
-		r = eval (car (p));
+		r = eval (car(p));
 		if (r == err_symbol || r == NIL) {
 			return r;
 		}
-		p = cdr (p);
+		p = cdr(p);
 	}
 	if (p != NIL) {
-		THROW (getsym_improper_list(), increfs(lst));
+		THROW(getsym_improper_list(), increfs(lst));
 	}
 	return increfs(r);
 }
@@ -1557,17 +1573,17 @@ val_t *lisp_or (val_t * lst) {
 	val_t *r = NIL;
 	val_t *p = lst;
 	while (iscons (p)) {
-		r = eval (car (p));
+		r = eval (car(p));
 		if (r == err_symbol) {
 			return r;
 		}
 		if (r != NIL) {
 			return increfs(r);
 		}
-		p = cdr (p);
+		p = cdr(p);
 	}
 	if (p != NIL) {
-		return THROW (getsym_improper_list(), increfs(lst));
+		return THROW(getsym_improper_list(), increfs(lst));
 	}
 	return NIL;
 }
@@ -1577,7 +1593,7 @@ val_t *lisp_cons (val_t * lst) {
 		return newstring("Construct a new cons cell, given car and cdr.");
 	}
 	if (req_length (lst,symbol("cons"),2) == err_symbol)	return err_symbol;
-	return newcons (increfs(car (lst)), increfs(car (cdr (lst))));
+	return newcons (increfs(car(lst)), increfs(car(cdr(lst))));
 }
 
 val_t *lisp_quote (val_t * lst) {
@@ -1585,7 +1601,7 @@ val_t *lisp_quote (val_t * lst) {
 		return newstring("Return argument unevaluated.");
 	}
 	if (req_length (lst,symbol("quote"),1) == err_symbol)	return err_symbol;
-	return increfs(car (lst));
+	return increfs(car(lst));
 }
 
 val_t *lambda_f (val_t * lst) {
@@ -1593,7 +1609,7 @@ val_t *lambda_f (val_t * lst) {
 		return newstring("Create an anonymous function.");
 	}
 	if (!is_func_form (lst))
-		return THROW (symbol("bad-function-form"), increfs(lst));
+		return THROW(symbol("bad-function-form"), increfs(lst));
 	return newcons (lambda, increfs(lst));
 }
 
@@ -1601,12 +1617,12 @@ val_t *defun (val_t * lst) {
 	if (lst == doc_string) {
 		return newstring("Define a new function.");
 	}
-	if (car(lst)->type != SYMBOL || !is_func_form (cdr (lst))) {
-		return THROW (symbol("bad-function-form"), increfs(lst));
+	if (car(lst)->type != SYMBOL || !is_func_form (cdr(lst))) {
+		return THROW(symbol("bad-function-form"), increfs(lst));
 	}
-	val_t *f = newcons (lambda, increfs(cdr (lst)));
-	SET (car (lst), f);
-	return increfs(car (lst));
+	val_t *f = newcons (lambda, increfs(cdr(lst)));
+	SET (car(lst), f);
+	return increfs(car(lst));
 }
 
 val_t *defmacro (val_t * lst) {
@@ -1616,32 +1632,32 @@ val_t *defmacro (val_t * lst) {
 	if (lst == doc_string) {
 		return newstring("Define a new macro.");
 	}
-	if (car (lst)->type != SYMBOL || !is_func_form (cdr (lst))) {
-		return THROW (symbol("bad-function-form"), increfs(lst));
+	if (car(lst)->type != SYMBOL || !is_func_form (cdr(lst))) {
+		return THROW(symbol("bad-function-form"), increfs(lst));
 	}
-	val_t *f = newcons (macro, increfs(cdr (lst)));
-	SET (car (lst), f);
-	return increfs(car (lst));
+	val_t *f = newcons (macro, increfs(cdr(lst)));
+	SET (car(lst), f);
+	return increfs(car(lst));
 }
 
-val_t *lisp_cdr (val_t * lst) {
+val_t *lisp_cdr(val_t * lst) {
 	if (lst == doc_string) {
 		return newstring("Return cdr element of cons cell.");
 	}
 	if (req_length (lst,symbol("cdr"),1) == err_symbol)	return err_symbol;
-	if (car (lst) == NIL) return NIL;
-	if (!islist (car (lst))) return THROW (err_wrong_type, car (lst));
-	return increfs(cdr (car (lst)));
+	if (car(lst) == NIL) return NIL;
+	if (!islist (car(lst))) return THROW(err_wrong_type, car(lst));
+	return increfs(cdr(car(lst)));
 }
 
-val_t *lisp_car (val_t * lst) {
+val_t *lisp_car(val_t * lst) {
 	if (lst == doc_string) {
 		return newstring("Return car element of cons cell.");
 	}
 	if (req_length (lst,symbol("car"),1) == err_symbol)	return err_symbol;
-	if (car (lst) == NIL) return NIL;
-	if (!islist (car (lst))) return THROW (err_wrong_type, car (lst));
-	return increfs(car (car (lst)));
+	if (car(lst) == NIL) return NIL;
+	if (!islist (car(lst))) return THROW(err_wrong_type, car(lst));
+	return increfs(car(car(lst)));
 }
 
 val_t *lisp_list (val_t * lst) {
@@ -1656,15 +1672,15 @@ val_t *lisp_if (val_t * lst) {
 		return newstring("If conditional special form.");
 	}
 	if (reqm_length (lst,err_wrong_number_of_arguments,2) == err_symbol)	return err_symbol;
-	val_t *r = eval (car (lst));
+	val_t *r = eval (car(lst));
 	if (r == err_symbol) {
 		return r;
 	}
 	if (r != NIL) {
 		obj_release(r);
-		return eval (car (cdr (lst)));
+		return eval (car(cdr(lst)));
 	}
-	return eval_body (cdr (cdr (lst)));
+	return eval_body (cdr(cdr(lst)));
 }
 
 val_t *lisp_cond (val_t * lst) {
@@ -1673,18 +1689,18 @@ val_t *lisp_cond (val_t * lst) {
 	}
 	val_t *p = lst;
 	while (p != NIL) {
-		if (!iscons (p)) return THROW (getsym_improper_list(), increfs(lst));
-		val_t *pair = car (p);
-		if (!iscons (pair)) return THROW (err_wrong_type, increfs(pair));
-		if (!islist (cdr (pair))) return THROW (getsym_improper_list(), increfs(pair));
-		if (cdr (pair) == NIL) return increfs(car (pair));
-		if (cdr (cdr (pair)) != NIL) return THROW (symbol("bad-form"), increfs(pair));
-		val_t *r = eval (car (pair));
+		if (!iscons (p)) return THROW(getsym_improper_list(), increfs(lst));
+		val_t *pair = car(p);
+		if (!iscons (pair)) return THROW(err_wrong_type, increfs(pair));
+		if (!islist (cdr(pair))) return THROW(getsym_improper_list(), increfs(pair));
+		if (cdr(pair) == NIL) return increfs(car(pair));
+		if (cdr(cdr(pair)) != NIL) return THROW(symbol("bad-form"), increfs(pair));
+		val_t *r = eval (car(pair));
 		if (r != NIL) {
 			obj_release(r);
-			return eval (car (cdr (pair)));
+			return eval (car(cdr(pair)));
 		}
-		p = cdr (p);
+		p = cdr(p);
 	}
 	return NIL;
 }
@@ -1701,45 +1717,45 @@ val_t *let (val_t * lst) {
 		return newstring("Create variable bindings in a new scope, and eval body in that scope.");
 	}
 	/* verify structure */
-	if (!islist (car (lst))) return THROW (symbol("bad-let-form"), increfs(lst));
-	val_t *vlist = car (lst);
+	if (!islist (car(lst))) return THROW(symbol("bad-let-form"), increfs(lst));
+	val_t *vlist = car(lst);
 	while (vlist != NIL) {
-		val_t *p = car (vlist);
-		if (!islist (p)) return THROW (symbol("bad-let-form"), increfs(lst));
+		val_t *p = car(vlist);
+		if (!islist (p)) return THROW(symbol("bad-let-form"), increfs(lst));
 		if (car(p)->type != SYMBOL) {
-			return THROW (symbol("bad-let-form"), increfs(lst));
+			return THROW(symbol("bad-let-form"), increfs(lst));
 		}
-		vlist = cdr (vlist);
+		vlist = cdr(vlist);
 	}
 
-	vlist = car (lst);
+	vlist = car(lst);
 	val_t *p = vlist;
 	int len = 0;
 	while (p != NIL) {
-		val_t *pair = car (p);
-		val_t *e = eval (car (cdr (pair)));
+		val_t *pair = car(p);
+		val_t *e = eval (car(cdr(pair)));
 		if (e == err_symbol) {
 			/* Undo scoping */
 			p = vlist;
 			while (len) {
-				sympop (car (car (p)));
-				p = cdr (p);
+				sympop (car(car(p)));
+				p = cdr(p);
 				len--;
 			}
 			return err_symbol;
 		}
-		sympush (car (pair), e);
+		sympush (car(pair), e);
 		obj_release(e);
-		p = cdr (p);
+		p = cdr(p);
 		len++;
 	}
-	val_t *r = eval_body (cdr (lst));
+	val_t *r = eval_body (cdr(lst));
 	p = vlist;
 	while (p != NIL)
 		{
-			val_t *pair = car (p);
-			sympop (car (pair));
-			p = cdr (p);
+			val_t *pair = car(p);
+			sympop (car(pair));
+			p = cdr(p);
 		}
 	return r;
 }
@@ -1750,8 +1766,8 @@ val_t *lisp_while(val_t * lst) {
 	}
 	if (reqm_length (lst,symbol("while"),1) == err_symbol)	return err_symbol;
 	val_t *r = NIL;
-	val_t *cond = car (lst);
-	val_t *body = cdr (lst);
+	val_t *cond = car(lst);
+	val_t *body = cdr(lst);
 	val_t *condr;
 	while (true) {
 		condr = eval(cond);
@@ -1771,8 +1787,8 @@ val_t *eq (val_t * lst) {
 		return newstring("Return t if both arguments are the same lisp ");
 	}
 	if (req_length (lst,symbol("eq"),2) == err_symbol)	return err_symbol;
-	val_t *a = car (lst);
-	val_t *b = car (cdr (lst));
+	val_t *a = car(lst);
+	val_t *b = car(cdr(lst));
 	if (a == b)
 		return T;
 	return NIL;
@@ -1783,8 +1799,8 @@ val_t *eql (val_t * lst) {
 		return newstring("Return t if both arguments are similar.");
 	}
 	if (req_length (lst,symbol("eql"),2) == err_symbol)	return err_symbol;
-	val_t *a = car (lst);
-	val_t *b = car (cdr (lst));
+	val_t *a = car(lst);
+	val_t *b = car(cdr(lst));
 	if (a->type != b->type)
 		return NIL;
 	switch (a->type)
@@ -1810,7 +1826,7 @@ val_t *lisp_hash (val_t * lst) {
 		return newstring("Return integer hash of ");
 	}
 	if (req_length (lst,symbol("hash"),1) == err_symbol)	return err_symbol;
-	return c_int (obj_hash (car (lst)));
+	return c_int (obj_hash (car(lst)));
 }
 
 val_t *lisp_print (val_t * lst) {
@@ -1818,7 +1834,7 @@ val_t *lisp_print (val_t * lst) {
 		return newstring("Print object or sexp in parse-able form.");
 	}
 	if (req_length (lst,symbol("print"),1) == err_symbol)	return err_symbol;
-	obj_print(car (lst), 1);
+	obj_print(car(lst), 1);
 	return NIL;
 }
 
@@ -1827,11 +1843,11 @@ val_t *lisp_set (val_t * lst) {
 		return newstring("Store object in symbol.");
 	}
 	if (req_length (lst,symbol("set"),2) == err_symbol)	return err_symbol;
-	if ((car (lst))->type != SYMBOL) {
-		return THROW (err_wrong_type, newcons (symbol("set"), car (lst)));
+	if ((car(lst))->type != SYMBOL) {
+		return THROW(err_wrong_type, newcons (symbol("set"), car(lst)));
 	}
-	SET (car (lst), car (cdr (lst)));
-	return increfs(car (cdr (lst)));
+	SET (car(lst), car(cdr(lst)));
+	return increfs(car(cdr(lst)));
 }
 
 val_t *lisp_value (val_t * lst) {
@@ -1839,10 +1855,10 @@ val_t *lisp_value (val_t * lst) {
 		return newstring("Get value stored in symbol.");
 	}
 	if (req_length (lst,symbol("value"),1) == err_symbol)	return err_symbol;
-	if (!issymbol(car (lst)))
-		THROW (err_wrong_type, newcons (symbol("value"), car (lst)));
+	if (!issymbol(car(lst)))
+		THROW(err_wrong_type, newcons (symbol("value"), car(lst)));
 
-	return increfs(GET (car (lst)));
+	return increfs(GET (car(lst)));
 }
 
 val_t *symbol_name(val_t * lst) {
@@ -1850,8 +1866,8 @@ val_t *symbol_name(val_t * lst) {
 		return newstring("Return symbol name as string.");
 	}
 	if (req_length (lst,symbol("symbol-name"),1) == err_symbol)	return err_symbol;
-	if (!issymbol(car (lst))) return THROW (err_wrong_type, increfs(car (lst)));
-	return newstring(*SYMNAME(car (lst)));
+	if (!issymbol(car(lst))) return THROW(err_wrong_type, increfs(car(lst)));
+	return newstring(*SYMNAME(car(lst)));
 }
 
 val_t *lisp_concat(val_t *lst) {
@@ -1859,10 +1875,10 @@ val_t *lisp_concat(val_t *lst) {
 		return newstring("Concatenate two strings.");
 	}
 	if (req_length (lst,symbol("concat"),2) == err_symbol)	return err_symbol;
-	val_t *a = car (lst);
-	val_t *b = car (cdr (lst));
-	if (a->type != STRING) return THROW (err_wrong_type, increfs(a));
-	if (b->type != STRING) return THROW (err_wrong_type, increfs(b));
+	val_t *a = car(lst);
+	val_t *b = car(cdr(lst));
+	if (a->type != STRING) return THROW(err_wrong_type, increfs(a));
+	if (b->type != STRING) return THROW(err_wrong_type, increfs(b));
 
 	str_t *str1 = a->val;
 	str_t *str2 = b->val;
@@ -1879,7 +1895,7 @@ val_t *nullp (val_t * lst) {
 		return newstring("Return t if object is nil.");
 	}
 	if (req_length (lst,symbol("nullp"),1) == err_symbol)	return err_symbol;
-	if (car (lst) == NIL)
+	if (car(lst) == NIL)
 		return T;
 	return NIL;
 }
@@ -1889,7 +1905,7 @@ val_t *funcp (val_t * lst) {
 		return newstring("Return t if object is a function.");
 	}
 	if (req_length (lst,symbol("funcp"),1) == err_symbol)	return err_symbol;
-	if (isfunc (car (lst)))
+	if (isfunc (car(lst)))
 		return T;
 	return NIL;
 }
@@ -1899,7 +1915,7 @@ val_t *listp (val_t * lst) {
 		return newstring("Return t if object is a list.");
 	}
 	if (req_length (lst,symbol("listp"),1) == err_symbol)	return err_symbol;
-	if (islist (car (lst)))
+	if (islist (car(lst)))
 		return T;
 	return NIL;
 }
@@ -1909,7 +1925,7 @@ val_t *symbolp (val_t * lst) {
 		return newstring("Return t if object is a symbol.");
 	}
 	if (req_length (lst,symbol("symbolp"),1) == err_symbol)	return err_symbol;
-	if (issymbol(car (lst))) {
+	if (issymbol(car(lst))) {
 		return T;
 	}
 	return NIL;
@@ -1920,7 +1936,7 @@ val_t *numberp (val_t * lst) {
 		return newstring("Return t if object is a number.");
 	}
 	if (req_length (lst,symbol("numberp"),1) == err_symbol)	return err_symbol;
-	if (isnumber (car (lst)))
+	if (isnumber (car(lst)))
 		return T;
 	return NIL;
 }
@@ -1939,7 +1955,7 @@ val_t *integerp (val_t * lst) {
 		return newstring("Return t if object is an integer.");
 	}
 	if (req_length (lst,symbol("integerp"),1) == err_symbol)	return err_symbol;
-	if (isint (car (lst)))
+	if (isint (car(lst)))
 		return T;
 	return NIL;
 }
@@ -1949,7 +1965,7 @@ val_t *floatp (val_t * lst) {
 		return newstring("Return t if object is a floating-point number.");
 	}
 	if (req_length (lst,symbol("floatp"),1) == err_symbol)	return err_symbol;
-	if (isfloat (car (lst)))
+	if (isfloat (car(lst)))
 		return T;
 	return NIL;
 }
@@ -1959,7 +1975,7 @@ val_t *vectorp (val_t * lst) {
 		return newstring("Return t if object is a vector.");
 	}
 	if (req_length (lst,symbol("vectorp"),1) == err_symbol)	return err_symbol;
-	if (isvector (car (lst)))
+	if (isvector (car(lst)))
 		return T;
 	return NIL;
 }
@@ -1969,13 +1985,13 @@ val_t *lisp_load (val_t * lst) {
 		return newstring("Evaluate contents of a file.");
 	}
 	if (req_length (lst,symbol("load"),1) == err_symbol)	return err_symbol;
-	val_t *str = car (lst);
+	val_t *str = car(lst);
 	if (str->type != STRING) {
-		return THROW (err_wrong_type, increfs(str));
+		return THROW(err_wrong_type, increfs(str));
 	}
 	char *filename = getstr (str);
 	if (!load_file (NULL, filename, 0)) {
-		return THROW (symbol("load-file-error"), increfs(str));
+		return THROW(symbol("load-file-error"), increfs(str));
 	}
 	return T;
 }
@@ -1985,35 +2001,35 @@ val_t *lisp_read_string (val_t * lst) {
 		return newstring("Parse a string into a sexp or list ");
 	}
 	if (req_length (lst,symbol("eval-string"),1) == err_symbol)	return err_symbol;
-	val_t *stro = car (lst);
+	val_t *stro = car(lst);
 	if (stro->type != STRING) {
-		return THROW (err_wrong_type, increfs(stro));
+		return THROW(err_wrong_type, increfs(stro));
 	}
 	char *str = getstr (stro);
 	reader_t *r = reader_create (NULL, str, "eval-string", 0);
 	val_t *sexp = read_sexp (r);
 	reader_destroy (r);
 	if (sexp == err_symbol)
-		THROW (symbol("parse-error"), increfs(stro));
+		THROW(symbol("parse-error"), increfs(stro));
 	return sexp;
 }
 
-val_t *throw (val_t * lst) {
+val_t *throw(val_t * lst) {
 	if (lst == doc_string) {
 		return newstring("Throw an object, and attachment, as an exception.");
 	}
-	return THROW (increfs(car (lst)), increfs(car (cdr (lst))));
+	return THROW(increfs(car(lst)), increfs(car(cdr(lst))));
 }
 
 val_t *catch (val_t * lst) {
 	if (lst == doc_string) {
 		return newstring("Catch an exception and return attachment.");
 	}
-	val_t *csym = eval (car (lst));
+	val_t *csym = eval (car(lst));
 	if (csym == err_symbol) {
 		return csym;
 	}
-	val_t *body = cdr (lst);
+	val_t *body = cdr(lst);
 	val_t *r = eval_body (body);
 	if (r == err_symbol) {
 		if (csym == err_thrown) {
@@ -2031,13 +2047,13 @@ val_t *lisp_vset (val_t * lst) {
 		return newstring("Set slot in a vector to ");
 	}
 	if (req_length (lst,symbol("vset"),3) == err_symbol)	return err_symbol;
-	val_t *vec = car (lst);
-	val_t *ind = car (cdr (lst));
-	val_t *val = car (cdr (cdr (lst)));
+	val_t *vec = car(lst);
+	val_t *ind = car(cdr(lst));
+	val_t *val = car(cdr(cdr(lst)));
 	if (!isvector (vec))
-		THROW (err_wrong_type, increfs(vec));
+		THROW(err_wrong_type, increfs(vec));
 	if (!isint (ind))
-		THROW (err_wrong_type, increfs(ind));
+		THROW(err_wrong_type, increfs(ind));
 	return vset_check (vec, ind, val);
 }
 
@@ -2046,12 +2062,12 @@ val_t *lisp_vget (val_t * lst) {
 		return newstring("Get object stored in vector slot.");
 	}
 	if (req_length (lst,symbol("vget"),2) == err_symbol)	return err_symbol;
-	val_t *vec = car (lst);
-	val_t *ind = car (cdr (lst));
+	val_t *vec = car(lst);
+	val_t *ind = car(cdr(lst));
 	if (!isvector (vec))
-		THROW (err_wrong_type, increfs(vec));
+		THROW(err_wrong_type, increfs(vec));
 	if (!isint (ind))
-		THROW (err_wrong_type, increfs(ind));
+		THROW(err_wrong_type, increfs(ind));
 	return vget_check (vec, ind);
 }
 
@@ -2060,9 +2076,9 @@ val_t *lisp_vlength (val_t * lst) {
 		return newstring("Return length of the vector.");
 	}
 	if (req_length (lst,symbol("vlength"),1) == err_symbol)	return err_symbol;
-	val_t *vec = car (lst);
+	val_t *vec = car(lst);
 	if (!isvector (vec))
-		THROW (err_wrong_type, increfs(vec));
+		THROW(err_wrong_type, increfs(vec));
 	return c_int (vlen(vec));
 }
 
@@ -2071,10 +2087,10 @@ val_t *make_vector (val_t * lst) {
 		return newstring("Make a new vector of given length, initialized to given ");
 	}
 	if (req_length (lst,symbol("make-vector"),2) == err_symbol)	return err_symbol;
-	val_t *len = car (lst);
-	val_t *o = car (cdr (lst));
+	val_t *len = car(lst);
+	val_t *o = car(cdr(lst));
 	if (!isint (len))
-		THROW (err_wrong_type, increfs(len));
+		THROW(err_wrong_type, increfs(len));
 	return newvec (into2int (len), o);
 }
 
@@ -2083,12 +2099,12 @@ val_t *lisp_vconcat (val_t * lst) {
 		return newstring("Concatenate two vectors.");
 	}
 	if (req_length (lst,symbol("vconcat2"),2) == err_symbol)	return err_symbol;
-	val_t *a = car (lst);
-	val_t *b = car (cdr (lst));
+	val_t *a = car(lst);
+	val_t *b = car(cdr(lst));
 	if (!isvector (a))
-		return THROW (err_wrong_type, increfs(a));
+		return THROW(err_wrong_type, increfs(a));
 	if (!isvector (b))
-		return THROW (err_wrong_type, increfs(b));
+		return THROW(err_wrong_type, increfs(b));
 	return vec_concat (a, b);
 }
 
@@ -2097,29 +2113,29 @@ val_t *lisp_vsub (val_t * lst) {
 		return newstring("Return subsection of vector.");
 	}
 	if (reqm_length (lst,symbol("subv"),2) == err_symbol)	return err_symbol;
-	val_t *v = car (lst);
-	val_t *starto = car (cdr (lst));
+	val_t *v = car(lst);
+	val_t *starto = car(cdr(lst));
 	if (!isvector (v))
-		THROW (err_wrong_type, increfs(v));
+		THROW(err_wrong_type, increfs(v));
 	if (!isint (starto))
-		THROW (err_wrong_type, increfs(starto));
+		THROW(err_wrong_type, increfs(starto));
 	int start = into2int (starto);
 	if (start >= vlen(v))
-		THROW (symbol("bad-index"), increfs(starto));
+		THROW(symbol("bad-index"), increfs(starto));
 	if (start < 0)
-		THROW (symbol("bad-index"), increfs(starto));
-	if (cdr (cdr (lst)) == NIL) {
+		THROW(symbol("bad-index"), increfs(starto));
+	if (cdr(cdr(lst)) == NIL) {
 		/* to the end */
 		return vector_sub (v, start, -1);
 	}
-	val_t *endo = car (cdr (cdr (lst)));
+	val_t *endo = car(cdr(cdr(lst)));
 	if (!isint (endo))
-		THROW (err_wrong_type, increfs(endo));
+		THROW(err_wrong_type, increfs(endo));
 	int end = into2int (endo);
 	if (end >= vlen(v))
-		THROW (symbol("bad-index"), increfs(endo));
+		THROW(symbol("bad-index"), increfs(endo));
 	if (end < start)
-		THROW (symbol("bad-index"), increfs(endo));
+		THROW(symbol("bad-index"), increfs(endo));
 	return vector_sub (v, start, end);
 }
 
@@ -2128,7 +2144,7 @@ val_t *lisp_refcount (val_t * lst) {
 		return newstring("Return number of reference counts to ");
 	}
 	if (req_length (lst,symbol("refcount"),1) == err_symbol)	return err_symbol;
-	return c_int (car (lst)->refs);
+	return c_int (car(lst)->refs);
 }
 
 val_t *lisp_eval_depth (val_t * lst) {
@@ -2146,9 +2162,9 @@ val_t *lisp_max_eval_depth (val_t * lst) {
 	if (reqx_length (lst,symbol("max-eval-depth"),1) == err_symbol)	return err_symbol;
 	if (lst == NIL)
 		return c_int (max_stack_depth);
-	val_t *arg = car (lst);
+	val_t *arg = car(lst);
 	if (!isint (arg))
-		THROW (err_wrong_type, increfs(arg));
+		THROW(err_wrong_type, increfs(arg));
 	int new_depth = into2int (arg);
 	if (new_depth < 10)
 		return NIL;
@@ -2163,9 +2179,9 @@ val_t *lisp_exit (val_t * lst) {
 	if (reqx_length (lst,symbol("exit"),1) == err_symbol)	return err_symbol;
 	if (lst == NIL)
 		exit(0);
-	if (!isint (car (lst)))
-		return THROW (err_wrong_type, increfs(car (lst)));
-	exit (into2int (car (lst)));
+	if (!isint (car(lst)))
+		return THROW(err_wrong_type, increfs(car(lst)));
+	exit (into2int (car(lst)));
 	return NULL;
 }
 
@@ -2237,10 +2253,10 @@ val_t *modulus (val_t * lst) {
 		return newstring("Return modulo of arguments.");
 	}
 	// REQ (lst, 2, symbol("%"));
-	val_t *a = car (lst);
-	val_t *b = car (cdr (lst));
-	if (!isint (a)) return THROW (err_wrong_type, increfs(a));
-	if (!isint (b)) return THROW (err_wrong_type, increfs(b));
+	val_t *a = car(lst);
+	val_t *b = car(cdr(lst));
+	if (!isint (a)) return THROW(err_wrong_type, increfs(a));
+	if (!isint (b)) return THROW(err_wrong_type, increfs(b));
 	val_t *m = c_int (0);
 	mp.mpz_mod(DINT (m), DINT (a), DINT (b));
 	return m;
@@ -2268,7 +2284,7 @@ val_t *arith(int op, val_t * lst) {
 		}
 		}
 	if (op == SUB || op == DIV) {
-		val_t *num = car (lst);
+		val_t *num = car(lst);
 		if (isfloat (num)) {
 			intmode = 0;
 			mp.mpf_set(DFLOAT (accumf), DFLOAT (num));
@@ -2279,9 +2295,9 @@ val_t *arith(int op, val_t * lst) {
 			obj_release(accumz);
 			obj_release(accumf);
 			obj_release(convf);
-			return THROW (err_wrong_type, increfs(num));
+			return THROW(err_wrong_type, increfs(num));
 		}
-		if (op == SUB && cdr (lst) == NIL) {
+		if (op == SUB && cdr(lst) == NIL) {
 			if (intmode) {
 				obj_release(accumf);
 				obj_release(convf);
@@ -2296,16 +2312,16 @@ val_t *arith(int op, val_t * lst) {
 				return accumf;
 			}
 	}
-			lst = cdr (lst);
+			lst = cdr(lst);
 		}
 
 	while (lst != NIL) {
-		val_t *num = car (lst);
+		val_t *num = car(lst);
 		if (!isnumber (num)) {
 			obj_release(accumz);
 			obj_release(accumf);
 			obj_release(convf);
-			THROW (err_wrong_type, increfs(num));
+			THROW(err_wrong_type, increfs(num));
 		}
 		/* Check divide by zero */
 		if (op == DIV) {
@@ -2319,7 +2335,7 @@ val_t *arith(int op, val_t * lst) {
 				obj_release(accumz);
 				obj_release(accumf);
 				obj_release(convf);
-				THROW (symbol("divide-by-zero"), increfs(num));
+				THROW(symbol("divide-by-zero"), increfs(num));
 			}
 		}
 
@@ -2334,10 +2350,10 @@ val_t *arith(int op, val_t * lst) {
 		else if (isint (num))
 		{
 			switch (op) {
-				case ADD: { mp.mpz_add(DINT (accumz), DINT (accumz), DINT (car (lst))); }
-				case MUL: { mp.mpz_mul(DINT (accumz), DINT (accumz), DINT (car (lst))); }
-				case SUB: { mp.mpz_sub(DINT (accumz), DINT (accumz), DINT (car (lst))); }
-				case DIV: { mp.mpz_div(DINT (accumz), DINT (accumz), DINT (car (lst))); }
+				case ADD: { mp.mpz_add(DINT (accumz), DINT (accumz), DINT (car(lst))); }
+				case MUL: { mp.mpz_mul(DINT (accumz), DINT (accumz), DINT (car(lst))); }
+				case SUB: { mp.mpz_sub(DINT (accumz), DINT (accumz), DINT (car(lst))); }
+				case DIV: { mp.mpz_div(DINT (accumz), DINT (accumz), DINT (car(lst))); }
 			}
 		}
 	}
@@ -2362,7 +2378,7 @@ val_t *arith(int op, val_t * lst) {
 			}
 		}
 }
-			lst = cdr (lst);
+			lst = cdr(lst);
 		}
 	obj_release(convf);
 
@@ -2379,10 +2395,10 @@ val_t *arith(int op, val_t * lst) {
 
 val_t *num_cmp(int cmp, val_t * lst) {
 	if (reqm_length (lst,symbol("compare-func"),2) == err_symbol)	return err_symbol;
-	val_t *a = car (lst);
-	val_t *b = car (cdr (lst));
-	if (!isnumber (a)) return THROW (err_wrong_type, increfs(a));
-	if (!isnumber (b)) return THROW (err_wrong_type, increfs(b));
+	val_t *a = car(lst);
+	val_t *b = car(cdr(lst));
+	if (!isnumber (a)) return THROW(err_wrong_type, increfs(a));
+	if (!isnumber (b)) return THROW(err_wrong_type, increfs(b));
 	int r = 0;
 	int invr = 1;
 	if (isint(a) && isint(b)) {

@@ -1,4 +1,3 @@
-
 int main(int argc, char **argv) {
 	for (int i = 1; i < argc; i++) {
 		char *s = argv[i];
@@ -19,7 +18,11 @@ int main(int argc, char **argv) {
 
 char *dot(char *s) {
 	char *c = s;
-	while (*c != '\0') c++;
-	while (c != s && *c != '.') c--;
+	while (*c != '\0') {
+		c++;
+	}
+	while (c != s && *c != '.') {
+		c--;
+	}
 	return c;
 }

@@ -249,9 +249,7 @@ event_t read_meta_message(midi_t *m) {
 		case META_END_OF_TRACK: { e.type = END; }
 		case META_TIME_SIGNATURE: { cmd_meta_time_signature(data); }
 		case META_MARKER_TEXT: { todo("label: %s\n", (char *) data); }
-		default: {
-			panic("META\t%s \t(%d bytes)\t\"%s\"\n", meta_name(type), len, (char*)data);
-		}
+		default: { panic("META\t%s \t(%d bytes)\t\"%s\"\n", meta_name(type), len, (char *) data); }
 	}
 	return e;
 }
@@ -359,28 +357,29 @@ bool midibin_read_chunk_head(midi_t *m, chunk_head_t *h) {
 
 uint32_t midibin_variable_length_value(bytereader.reader_t *r) {
 	// Variable-length encoding. 1 bit is the continuation bit, 7 bits are data.
-    // 0x7F           = 127 (0x7F)
-    // 0x81 0x7F      = 255 (0xFF)
-    // 0x82 0x80 0x00 = 32768 (0x8000)
+	// 0x7F           = 127 (0x7F)
+	// 0x81 0x7F      = 255 (0xFF)
+	// 0x82 0x80 0x00 = 32768 (0x8000)
 
-    uint32_t result = 0;
-    while (true) {
-        int c = bytereader.readc(r);
-        if (c == EOF) {
-            break;
-        }
-		if (c < 0) panic("!");
-        // 7 bits of every byte are the value.
-        result *= 128;
-        result += c & 127;
-        // The 8th bit is a continuation bit.
-        if (c <= 127) {
-            break;
-        }
-    }
-    return result;
+	uint32_t result = 0;
+	while (true) {
+		int c = bytereader.readc(r);
+		if (c == EOF) {
+			break;
+		}
+		if (c < 0) {
+			panic("!");
+		}
+		// 7 bits of every byte are the value.
+		result *= 128;
+		result += c & 127;
+		// The 8th bit is a continuation bit.
+		if (c <= 127) {
+			break;
+		}
+	}
+	return result;
 }
-
 
 // --------------- tables -------------------
 

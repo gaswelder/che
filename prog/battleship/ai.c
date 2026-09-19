@@ -116,7 +116,6 @@ int ai_find_orientation(game.state_t *g, state_t *s) {
 	s->x = xy.x;
 	s->y = xy.y;
 
-
 	int result = ai_cpufire(g, s, s->x, s->y);
 	s->hit = result;
 	switch (result) {
@@ -133,9 +132,7 @@ int ai_find_orientation(game.state_t *g, state_t *s) {
 			s->ts.hits++;
 			s->ai_next = FIRST_PASS;
 		}
-		default: {
-			panic("!");
-		}
+		default: { panic("!"); }
 	}
 	return result;
 }

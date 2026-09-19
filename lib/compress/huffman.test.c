@@ -36,7 +36,20 @@ void testcanonical() {
 	uint8_t lencounts[] = { 0, 3, 1, 2 };
 
 	// Encoded and plaintext message
-	uint8_t bits[] = {0,1, 1,1,1,0, 1,1,1,1, 0,0, 1,0, 0,1, 0,0, 1,1,0, 0,0, 1,0, 0,1, 0,0};
+	uint8_t bits[] = {
+		0,1, // A
+		1,1,1,0, // N
+		1,1,1,1, // D
+		0,0, // T
+		1,0, // H
+		0,1, // A
+		0,0, // T
+		1,1,0, // S
+		0,0, // T
+		1,0, // H
+		0,1, // A
+		0,0 // T
+	};
 	const char *msg = "ANDTHATSTHAT";
 
 	// Write the encoded message

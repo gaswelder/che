@@ -261,17 +261,17 @@ int main(int argc, char **argv) {
 	dtd.schema_t schema = dtd.parse(real_dtd);
 
 	ipsum.add_dict("shipping", nelem(SHIPPING), SHIPPING);
-    ipsum.add_dict("auction_types", nelem(auction_types), auction_types);
-    ipsum.add_dict("cities", nelem(cities), cities);
-    ipsum.add_dict("countries", nelem(countries), countries);
-    ipsum.add_dict("domains", nelem(domains), domains);
-    ipsum.add_dict("educations", nelem(educations), educations);
-    ipsum.add_dict("firstnames", nelem(firstnames), firstnames);
-    ipsum.add_dict("genders", nelem(genders), genders);
-    ipsum.add_dict("lastnames", nelem(lastnames), lastnames);
-    ipsum.add_dict("payment_types", nelem(payment_types), payment_types);
-    ipsum.add_dict("provinces", nelem(provinces), provinces);
-    ipsum.add_dict("yesno", nelem(yesno), yesno);
+	ipsum.add_dict("auction_types", nelem(auction_types), auction_types);
+	ipsum.add_dict("cities", nelem(cities), cities);
+	ipsum.add_dict("countries", nelem(countries), countries);
+	ipsum.add_dict("domains", nelem(domains), domains);
+	ipsum.add_dict("educations", nelem(educations), educations);
+	ipsum.add_dict("firstnames", nelem(firstnames), firstnames);
+	ipsum.add_dict("genders", nelem(genders), genders);
+	ipsum.add_dict("lastnames", nelem(lastnames), lastnames);
+	ipsum.add_dict("payment_types", nelem(payment_types), payment_types);
+	ipsum.add_dict("provinces", nelem(provinces), provinces);
+	ipsum.add_dict("yesno", nelem(yesno), yesno);
 
 	fprintf(stdout, "<?xml version=\"1.0\" standalone=\"yes\"?>\n");
 	emit_element(&schema, "site", 0);
@@ -301,7 +301,7 @@ void emit_element(dtd.schema_t *s, const char *name, int level) {
 	// If this element contains only text, format it in one line.
 	if (children_only_cdata(e)) {
 		printf(">");
-		emit_child_list(s, e, level+1);
+		emit_child_list(s, e, level + 1);
 		printf("</%s>\n", name);
 		return;
 	}
@@ -325,9 +325,13 @@ void emit_attr(dtd.att_t *a) {
 // Returns true if element e's children are just pcdata.
 bool children_only_cdata(dtd.element_t *e) {
 	dtd.child_list_t *cl = e->children;
-	if (cl->size != 1) return false;
+	if (cl->size != 1) {
+		return false;
+	}
 	dtd.child_entry_t *ce = &e->children->items[0];
-	if (ce->islist) return false;
+	if (ce->islist) {
+		return false;
+	}
 	dtd.child_t *c = ce->data;
 	return strcmp(c->name, "#PCDATA") == 0;
 }
@@ -349,9 +353,7 @@ void emit_child_list(dtd.schema_t *s, dtd.element_t *e, int level) {
 				int i = rnd.intn(l->size);
 				emit_child_entry(s, e->name, &l->items[i], level);
 			}
-			default: {
-				panic("unimplemented jointype: %c", l->jointype);
-			}
+			default: { panic("unimplemented jointype: %c", l->jointype); }
 		}
 	}
 }
@@ -374,18 +376,16 @@ void emit_child_entry(dtd.schema_t *s, const char *parent_name, dtd.child_entry_
 int quant(char q) {
 	switch (q) {
 		case '\0': { return 1; }
-		case '*': { return rnd.intn(MAX_CHILDREN+1); }
+		case '*': { return rnd.intn(MAX_CHILDREN + 1); }
 		case '+': { return 1 + rnd.intn(MAX_CHILDREN); }
 		case '?': { return rnd.intn(2); }
-		default: {
-			panic("unknown quantifier: %c", q);
-		}
+		default: { panic("unknown quantifier: %c", q); }
 	}
 }
 
 void indent(int level) {
-    for (int i = 0; i < level; i++) {
-        putchar(' ');
+	for (int i = 0; i < level; i++) {
 		putchar(' ');
-    }
+		putchar(' ');
+	}
 }

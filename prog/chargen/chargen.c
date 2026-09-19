@@ -7,8 +7,8 @@
 
 // chargen -l <listen addr>
 
-#import os/net
 #import log
+#import os/net
 
 typedef {
 	net.net_t *conn;
@@ -24,7 +24,7 @@ typedef {
 int main() {
 	char address[] = "0.0.0.0:1900";
 	net.net_t *l = net.net_listen("tcp", address);
-	if(!l) {
+	if (!l) {
 		panic("listen failed: %s", net.net_error());
 	}
 	log.logmsg("listening at %s", address);

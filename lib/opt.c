@@ -159,7 +159,8 @@ char **readarg(char **arg) {
 		exit(1);
 	}
 	if (flag->type == OPT_BOOL) {
-		*((bool*) flag->value_pointer) = true;
+		bool *p = flag->value_pointer;
+		*(p) = true;
 		return arg + 1;
 	}
 
@@ -195,7 +196,8 @@ void boolrun(char *arg) {
 void set_flag(optspec_t *spec, char **arg) {
 	switch (spec->type) {
 		case OPT_STR: {
-			*( (char **) spec->value_pointer ) = *arg;
+			char ** p = spec->value_pointer;
+			*( p ) = *arg;
 		}
 		case OPT_INT, OPT_SIZE: {
 			if (!is_numeric(*arg)) {
@@ -212,7 +214,8 @@ void set_flag(optspec_t *spec, char **arg) {
 					fprintf(stderr, "Option %s: couldn't parse size value: %s\n", spec->name, *arg);
 					exit(1);
 				}
-				*( (size_t *) spec->value_pointer ) = val;
+				size_t *p = spec->value_pointer;
+				*( p ) = val;
 			} else {
 				int val = 0;
 				if (sscanf(*arg, "%d", &val) < 1) {
@@ -229,7 +232,8 @@ void set_flag(optspec_t *spec, char **arg) {
 				fprintf(stderr, "Option %s: couldn't parse value: %s", spec->name, *arg);
 				exit(1);
 			}
-			*( (float *) spec->value_pointer ) = val;
+			float *p = spec->value_pointer;
+			*( p ) = val;
 		}
 		default: {
 			fprintf(stderr, "Unhandled spec type: %c\n", spec->type);

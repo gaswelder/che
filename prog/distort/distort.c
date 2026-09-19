@@ -25,8 +25,10 @@ int main(int argc, char **argv) {
 	else if (strcmp(typestr, "soft") == 0) type = SOFT;
 	else if (strcmp(typestr, "asymmetric") == 0) type = ASYMMETRIC;
 
-    wav.reader_t *in = wav.open_reader(in_path);
-	if (!in) panic("!");
+	wav.reader_t *in = wav.open_reader(in_path);
+	if (!in) {
+		panic("!");
+	}
 	wav.writer_t *out = wav.open_writer(stdout);
 
 	double dgain = gain;

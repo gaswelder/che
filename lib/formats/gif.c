@@ -101,7 +101,7 @@ void parse_color_table_params(gif_t *g, uint8_t desc) {
 	}
 
 	// Global color table size.
-	g->table_size = 1 << (1 + 4*descbits[5] + 2*descbits[6] + descbits[7]);
+	g->table_size = 1 << (1 + 4 * descbits[5] + 2 * descbits[6] + descbits[7]);
 }
 
 void read_colortable(gif_t *g) {

@@ -1,5 +1,5 @@
-#import formats/tiff
 #import formats/json
+#import formats/tiff
 
 pub int run(int argc, char *argv[]) {
 	if (argc != 2) {
@@ -29,7 +29,9 @@ void printdir(tiff.dir_t *dir) {
 	json.write_string(stdout, "entries");
 	printf(":[");
 	for (size_t i = 0; i < dir->nentries; i++) {
-		if (i > 0) printf(",");
+		if (i > 0) {
+			printf(",");
+		}
 		printentry(dir->entries[i]);
 	}
 	printf("]}");
@@ -46,16 +48,12 @@ void printentry(tiff.entry_t *entry) {
 	printf(":");
 	json.write_string(stdout, tiff.tagname(entry->tag));
 	printf(",");
-	
+
 	json.write_string(stdout, "value");
 	printf(":");
 	switch (entry->type) {
-		case tiff.BYTE, tiff.SHORT, tiff.LONG: {
-			printf("%u", entry->value);
-		}
-		case tiff.RATIONAL: {
-			printf("%u", entry->value);
-		}
+		case tiff.BYTE, tiff.SHORT, tiff.LONG: { printf("%u", entry->value); }
+		case tiff.RATIONAL: { printf("%u", entry->value); }
 		case tiff.ASCII: {
 			char *str = tiff.getstring(entry);
 			if (!str) {

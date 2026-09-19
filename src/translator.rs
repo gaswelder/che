@@ -69,7 +69,7 @@ pub fn translate_mods(
                     if x.name == "define" && mi.loc.suffix != "unix" {
                         return Err(BuildError {
                             path: mi.loc.path.clone(),
-                            pos: x.pos.fmt(),
+                            pos: x.source_info.pos.fmt(),
                             message: format!("{} macro not in a .unix.c module", x.name),
                         });
                     }
@@ -186,7 +186,7 @@ fn init_root_scope(ctx: &mut TrCtx, m: &Module) {
                             constval: None,
                             ispub: false,
                             name: String::from(id),
-                            pos: x.pos.clone(),
+                            pos: x.source_info.pos.clone(),
                             typ,
                             used: false,
                         },

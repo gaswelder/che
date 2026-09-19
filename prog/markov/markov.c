@@ -74,13 +74,15 @@ void add_pair(model_t *m, utf.Rune a, b) {
 }
 
 void genword(model_t *m) {
-    utf.Rune c = 0;
-    while (true) {
-        c = nextchar(m, c);
-        if (!c) break;
+	utf.Rune c = 0;
+	while (true) {
+		c = nextchar(m, c);
+		if (!c) {
+			break;
+		}
 		putrune(c);
-    }
-    putchar('\n');
+	}
+	putchar('\n');
 }
 
 utf.Rune nextchar(model_t *m, utf.Rune c) {

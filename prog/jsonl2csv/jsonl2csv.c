@@ -1,55 +1,55 @@
+#import error
 #import formats/csv
 #import formats/json
 #import strings
-#import error
 
 char *header[100] = {};
 size_t nheader = 0;
 
 int main() {
-    json.val_t *obj = readobj();
-    if (!obj) {
-        fprintf(stderr, "no objects read\n");
-        return 1;
-    }
+	json.val_t *obj = readobj();
+	if (!obj) {
+		fprintf(stderr, "no objects read\n");
+		return 1;
+	}
 
 	size_t n = json.len(obj);
 	for (size_t i = 0; i < n; i++) {
-        if (nheader == 100) {
-            fprintf(stderr, "reached max header size (100)\n");
-            return 1;
-        }
-        header[nheader++] = strings.newstr("%s", json.key(obj, i));
-    }
+		if (nheader == 100) {
+			fprintf(stderr, "reached max header size (100)\n");
+			return 1;
+		}
+		header[nheader++] = strings.newstr("%s", json.key(obj, i));
+	}
 
-    while (obj) {
-        printobj(obj);
-        obj = readobj();
-    }
-    return 0;
+	while (obj) {
+		printobj(obj);
+		obj = readobj();
+	}
+	return 0;
 }
 
 json.val_t *readobj() {
-    char line[4096] = {};
+	char line[4096] = {};
 	error.t err = {};
-    while (fgets(line, sizeof(line), stdin)) {
-        json.val_t *obj = json.parse(line, &err);
+	while (fgets(line, sizeof(line), stdin)) {
+		json.val_t *obj = json.parse(line, &err);
 		if (err.set) {
 			fprintf(stderr, "failed to parse line as json: \"%s\"\n", line);
 			err.set = false;
 			continue;
 		}
-        return obj;
-    }
-    return NULL;
+		return obj;
+	}
+	return NULL;
 }
 
 void printobj(json.val_t *obj) {
 	csv.writer_t w = {
-		.f = stdout
+		.f = stdout,
 	};
-    for (size_t i = 0; i < nheader; i++) {
-        json.val_t *v = json.get(obj, header[i]);
+	for (size_t i = 0; i < nheader; i++) {
+		json.val_t *v = json.get(obj, header[i]);
 		switch (json.type(v)) {
 			case json.TNULL: { csv.writeval(&w, ""); }
 			case json.TSTR: { csv.writeval(&w, json.strval(v)); }
@@ -59,7 +59,7 @@ void printobj(json.val_t *obj) {
 				free(s);
 			}
 		}
-    }
+	}
 	csv.writeval(&w, NULL);
-    json.json_free(obj);
+	json.json_free(obj);
 }

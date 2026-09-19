@@ -28,6 +28,7 @@ pub fn fmt_mod(m: &Module) -> String {
     let mut s = fmt_comments(&module_comment);
 
     for x in &macros {
+        s += &fmt_begin(&x.source_info);
         s += &format!("#{}{}\n", x.name, x.value);
     }
 
@@ -183,7 +184,7 @@ fn fmt_struct_entry(e: &StructEntry) -> String {
             }
             s += ";";
             if let Some(c) = &p.trailing_comment {
-                s += &format!(" {}", c);
+                s += &format!(" {}", c.content);
             }
             s += "\n";
         }
@@ -321,6 +322,7 @@ fn fmt_cases(x: &Switch) -> String {
         if casei > 0 {
             s += "\n";
         }
+        s += &fmt_begin(&c.source_info);
         s += "case ";
         for (i, v) in c.values.iter().enumerate() {
             if i > 0 {
@@ -353,7 +355,7 @@ fn fmt_cases(x: &Switch) -> String {
         }
         if let Some(c) = &c.body.trailing_comment {
             s += " ";
-            s += &c;
+            s += &c.content;
         }
     }
     if let Some(c) = &x.default_case {
@@ -411,7 +413,7 @@ fn fmt_block(x: &Block) -> String {
     }
     if let Some(cc) = &x.final_comments {
         for c in cc {
-            s += &indent(c);
+            s += &indent(&c.content);
             s += "\n";
         }
     }
@@ -649,6 +651,7 @@ pub fn fmt_binop(x: &BinaryOp) -> String {
         // (_, "&&") => &s1,
         // (_, "||") => &s1,
         (Some("prefix"), "&") => &s1,
+        (Some("|"), "|") => &s1,
         (Some(_), "&") => &wrap1,
         (Some("&"), "^") => &wrap1,
         (Some(_), "|") => &wrap1,
@@ -684,6 +687,7 @@ pub fn fmt_binop(x: &BinaryOp) -> String {
         // ("-=", _) => &s2,
         // ("*=", _) => &s2,
         ("^", Some("&")) => &wrap2,
+        ("<<", Some(_)) => &wrap2,
         (">>", Some(_)) => &wrap2,
         ("|", Some(_)) => &wrap2,
 
@@ -718,24 +722,20 @@ fn fmt_literal(node: &Literal) -> String {
 
 fn fmt_begin(x: &SourceInfo) -> String {
     let mut s = String::new();
-    // s += "spaces=[";
-    // s += &x
-    //     .spaces_top
-    //     .replace("\n", "\\n")
-    //     .replace(" ", "\\s")
-    //     .replace("\t", "\\t");
-    // s += "]";
+    s += &fmt_comments(&x.comments);
     let n = x.spaces_top.matches('\n').count();
+    // s += &format!("[begin n={}]\n", n);
     if n > 1 {
         s += "\n";
     }
-    s += &fmt_comments(&x.comments);
+    // s += "[/begin]\n";
     s
 }
 
 fn fmt_end(x: &SourceInfo) -> String {
     let mut s = String::new();
-    if let Some(c) = &x.trailing_comment {
+    if let Some(comm) = &x.trailing_comment {
+        let c = &comm.content;
         if c.starts_with("/*") && c.find('\n').is_none() {
             let cleaned = c.substring(2, c.len() - 2).trim();
             s += &format!(" // {}", cleaned);

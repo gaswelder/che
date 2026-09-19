@@ -24,8 +24,8 @@ int main(int argc, char *argv[]) {
 
 	while (fgets(line, 4096, f)) {
 		// Shift the window.
-		for (size_t i = 0; i < wsize-1; i++) {
-			window[i] = window[i+1];
+		for (size_t i = 0; i < wsize - 1; i++) {
+			window[i] = window[i + 1];
 		}
 		window[wsize - 1] = parse_line(line);
 		emit(window, wsize);
@@ -39,8 +39,8 @@ void emit(line_t *window, int wsize) {
 		sum += (double) window[i].bps;
 	}
 	char buf[100] = {};
-	time.fmt_iso_iso(window[wsize/2].ts, buf, 100);
-	printf("%s\t%.1f\n", buf, sum/wsize);
+	time.fmt_iso_iso(window[wsize / 2].ts, buf, 100);
+	printf("%s\t%.1f\n", buf, sum / wsize);
 }
 
 typedef {

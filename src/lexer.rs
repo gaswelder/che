@@ -5,14 +5,33 @@ use std::fmt;
 use std::fs;
 use substring::Substring;
 
-#[derive(Debug)]
 pub struct Token {
     pub spaces_before: String,
-    pub comments: Option<Vec<String>>,
-    pub trailing_comment: Option<String>,
+    pub comments: Option<Vec<Comment>>,
+    pub trailing_comment: Option<Comment>,
     pub kind: String,
     pub content: String,
     pub pos: Pos,
+}
+
+struct Token0 {
+    kind: String,
+    content: String,
+}
+
+struct Token1 {
+    spaces_before: String,
+    pos: Pos,
+    kind: String,
+    content: String,
+    trailing_comment: Option<Comment>,
+}
+
+#[derive(Debug, Clone)]
+pub struct Comment {
+    pub _pos: Pos,
+    pub spaces_before: String,
+    pub content: String,
 }
 
 impl fmt::Display for Token {
@@ -41,53 +60,72 @@ const SYMBOLS: &[&str] = &[
 fn read_token_c(buf: &mut Buf) -> Option<Token> {
     let mut comments = Vec::new();
     loop {
-        match read_token(buf) {
-            None => {
-                return None;
-            }
-            Some(mut tok) => {
-                if tok.kind == "comment" {
-                    comments.push(tok);
-                    continue;
-                }
-                if comments.len() > 0 {
-                    let mut cc = Vec::new();
-                    for tok in &comments {
-                        cc.push(tok.content.clone());
-                    }
-                    tok.comments = Some(cc);
-
-                    if comments[0].spaces_before.matches("\n").count() > 1 {
-                        tok.spaces_before = comments[0].spaces_before.clone();
-                    }
-                }
-                return Some(tok);
-            }
+        let tok = read_token1(buf);
+        if tok.is_none() {
+            return None;
         }
+        let tok = tok.unwrap();
+        if tok.kind == "comment" {
+            comments.push(Comment {
+                content: tok.content,
+                _pos: tok.pos,
+                spaces_before: tok.spaces_before,
+            });
+            continue;
+        }
+        return Some(Token {
+            spaces_before: tok.spaces_before,
+            comments: if !comments.is_empty() {
+                Some(comments)
+            } else {
+                None
+            },
+            trailing_comment: tok.trailing_comment,
+            kind: tok.kind,
+            content: tok.content,
+            pos: tok.pos,
+        });
     }
 }
 
-fn read_token(buf: &mut Buf) -> Option<Token> {
+fn read_token1(buf: &mut Buf) -> Option<Token1> {
     let spaces_before = buf.read_set(SPACES);
     let pos = buf.pos();
-    let mut tok = read_token_primed(buf)?;
-    tok.spaces_before = spaces_before;
-    tok.pos = pos;
+    let tok = read_token0(buf)?;
+
     buf.read_set(HSPACES);
-    if buf.skip_literal("//") {
-        buf.read_set(HSPACES);
-        let mut c = String::from("// ");
+    let trailing_comment = if buf.literal_follows("//") {
+        let pos = buf.pos();
+        buf.skip_literal("//");
+        let mut c = String::from("//");
         c += &buf.until_literal("\n");
-        tok.trailing_comment = Some(c);
-    }
-    if buf.literal_follows("/*") {
-        tok.trailing_comment = Some(read_multiline_comment(buf).content);
-    }
-    Some(tok)
+        Some(Comment {
+            _pos: pos,
+            content: c,
+            spaces_before: String::new(),
+        })
+    } else if buf.literal_follows("/*") {
+        let pos = buf.pos();
+        let c = read_multiline_comment(buf).content;
+        Some(Comment {
+            _pos: pos,
+            content: c,
+            spaces_before: String::new(),
+        })
+    } else {
+        None
+    };
+    Some(Token1 {
+        content: tok.content,
+        kind: tok.kind,
+        pos,
+        spaces_before,
+        trailing_comment,
+    })
 }
 
 // Reads a token after the space has been read.
-fn read_token_primed(buf: &mut Buf) -> Option<Token> {
+fn read_token0(buf: &mut Buf) -> Option<Token0> {
     if buf.ended() {
         return None;
     }
@@ -126,22 +164,18 @@ fn read_token_primed(buf: &mut Buf) -> Option<Token> {
     return Some(errtok(format!("Unexpected character: '{}'", next)));
 }
 
-fn errtok(msg: String) -> Token {
+fn errtok(msg: String) -> Token0 {
     newtok("error", msg)
 }
 
-fn newtok(kind: &str, content: String) -> Token {
-    Token {
-        spaces_before: String::new(),
-        comments: None,
-        trailing_comment: None,
+fn newtok(kind: &str, content: String) -> Token0 {
+    Token0 {
         kind: kind.to_string(),
         content,
-        pos: Pos { line: 0, col: 0 },
     }
 }
 
-fn read_number(buf: &mut Buf) -> Token {
+fn read_number(buf: &mut Buf) -> Token0 {
     if buf.literal_follows("0x") {
         return read_hex(buf);
     }
@@ -172,17 +206,15 @@ fn read_number(buf: &mut Buf) -> Token {
     return newtok("num", num);
 }
 
-fn read_hex(buf: &mut Buf) -> Token {
-    // Skip "0x"
-    buf.get();
-    buf.get();
-
+fn read_hex(buf: &mut Buf) -> Token0 {
+    if !buf.skip_literal("0x") {
+        panic!("0x expected");
+    }
     let num = buf.read_set("0123456789ABCDEFabcdef") + &buf.read_set("UL");
-
     return newtok("num", format!("0x{}", &num));
 }
 
-fn read_string_literal(buf: &mut Buf) -> Token {
+fn read_string_literal(buf: &mut Buf) -> Token0 {
     let mut s = String::new();
     buf.get();
     let mut substr = String::new();
@@ -201,7 +233,7 @@ fn read_string_literal(buf: &mut Buf) -> Token {
     return newtok("string", s);
 }
 
-fn read_word(buf: &mut Buf) -> Token {
+fn read_word(buf: &mut Buf) -> Token0 {
     let mut word = String::new();
     while buf.more() {
         let ch = buf.peek().unwrap();
@@ -224,7 +256,7 @@ fn read_word(buf: &mut Buf) -> Token {
     return newtok("word", word);
 }
 
-fn read_char_literal(buf: &mut Buf) -> Token {
+fn read_char_literal(buf: &mut Buf) -> Token0 {
     buf.get();
 
     let mut s = String::new();
@@ -239,7 +271,7 @@ fn read_char_literal(buf: &mut Buf) -> Token {
     return newtok("char", s);
 }
 
-fn read_multiline_comment(buf: &mut Buf) -> Token {
+fn read_multiline_comment(buf: &mut Buf) -> Token0 {
     let mut comment = String::from("/*");
     buf.skip_literal("/*");
     comment += &buf.until_literal("*/");
@@ -254,9 +286,9 @@ fn read_multiline_comment(buf: &mut Buf) -> Token {
 mod tests {
     use super::*;
 
-    fn _read_token(s: &str) -> Token {
+    fn _read_token(s: &str) -> Token1 {
         let mut b = crate::buf::new(s.to_string());
-        return read_token(&mut b).unwrap();
+        return read_token1(&mut b).unwrap();
     }
 
     #[test]

@@ -1,4 +1,4 @@
-use crate::nodes::SourceInfo;
+use crate::{lexer::Comment, nodes::SourceInfo};
 
 const GRID_WIDTH: usize = 60;
 
@@ -80,7 +80,7 @@ fn fmt_vertical(rows: &Vec<Row>) -> String {
         item += ",";
         if let Some(c) = &row.source_info.trailing_comment {
             item += " ";
-            item += c;
+            item += &c.content;
         }
 
         s += &indent(&item);
@@ -125,18 +125,25 @@ fn fmt_list_grid(items: &Vec<String>, maxwidth: usize) -> String {
     s
 }
 
-pub fn fmt_comments(x: &Option<Vec<String>>) -> String {
+pub fn fmt_comments(x: &Option<Vec<Comment>>) -> String {
     let mut s = String::new();
     if x.is_none() {
         return s;
     }
     for c in x.as_ref().unwrap() {
-        if c.starts_with("/*") {
-            s += &fmt_multiline_comment(&c);
+        let n = c.spaces_before.matches('\n').count();
+        // s += &format!("[comment n={}]\n", n);
+        if n > 1 {
+            s += "\n";
+        }
+        if c.content.starts_with("/*") {
+            s += &fmt_multiline_comment(&c.content);
             s += "\n";
             continue;
         }
-        s += c;
+        // s += "!";
+        s += &c.content;
+        // s += "![/comment]";
         s += "\n";
     }
     s

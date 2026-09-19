@@ -147,7 +147,7 @@ pub bool xml_enter(xml *x) {
 		return false;
 	}
 
-	switch(next->type) {
+	switch (next->type) {
 		// If open or self-closing tag follows, that is the first child.
 		case T_OPEN, T_MONO: {
 			pushparent(x);

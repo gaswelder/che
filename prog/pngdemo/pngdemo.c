@@ -53,14 +53,14 @@ void rgb() {
 	image.image_t *img = image.new(W, H);
 	image.rgba_t c = {};
 
-    for (int y = 0; y < H; y++) {
-        for (int x = 0; x < W; x++) {
+	for (int y = 0; y < H; y++) {
+		for (int x = 0; x < W; x++) {
 			c.red = x;
 			c.green = y;
 			c.blue = 128;
 			image.set(img, x, y, c);
-        }
-    }
+		}
+	}
 
 	png.write(img, "test_rgb.png", png.PNG_RGB);
 	image.free(img);
@@ -76,8 +76,8 @@ void gray() {
 			c.green = gray;
 			c.blue = gray;
 			image.set(img, x, y, c);
-        }
-    }
+		}
+	}
 	png.write(img, "test_gray.png", png.PNG_GRAYSCALE);
 	image.free(img);
 }
@@ -85,8 +85,8 @@ void gray() {
 void grayalpha() {
 	image.image_t *img = image.new(W, H);
 	image.rgba_t c = {};
-    for (int y = 0; y < H; y++) {
-        for (int x = 0; x < W; x++) {
+	for (int y = 0; y < H; y++) {
+		for (int x = 0; x < W; x++) {
 			int gray = ((x + y) / 2) & 255;
 			int alpha = 255 - ((y / 2) & 255);
 
@@ -96,8 +96,8 @@ void grayalpha() {
 			c.transparency = alpha;
 
 			image.set(img, x, y, c);
-        }
-    }
+		}
+	}
 	png.write(img, "test_gray_alpha.png", png.PNG_GRAYSCALE_ALPHA);
 	image.free(img);
 }
@@ -109,7 +109,7 @@ void graystream() {
 	int n = 0;
 	for (int y = 0; y < H; y++) {
 		for (int x = 0; x < W; x++) {
-			int gray = 255 * (double) n / (double) (W * H);
+			int gray = 255 * (double) n / (double)(W * H);
 			c.red = gray;
 			c.green = gray;
 			c.blue = gray;

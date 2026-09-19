@@ -51,12 +51,10 @@ pub int run(int argc, char *argv[]) {
 				}
 			}
 			case tiff.StripByteCounts: {
-				if( strips_per_image == 0 ){
+				if (strips_per_image == 0) {
 					strips_per_image = entry->count;
-				} else {
-					if (entry->count != (size_t) strips_per_image) {
-						panic("Inconsistent StripsPerImage value");
-					}
+				} else if (entry->count != (size_t) strips_per_image) {
+					panic("Inconsistent StripsPerImage value");
 				}
 				strip_byte_counts = calloc!(entry->count, sizeof(size_t));
 				tiff.setpos(tf, entry->value);

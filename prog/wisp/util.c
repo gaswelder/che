@@ -29,8 +29,8 @@ pub char *addslashes(char *cleanstr) {
 
 	/* Surrounding quotes. */
 	str[0] = '"';
-	str[strlen (str) + 1] = '\0';
-	str[strlen (str)] = '"';
+	str[strlen(str) + 1] = '\0';
+	str[strlen(str)] = '"';
 
 	return str;
 }

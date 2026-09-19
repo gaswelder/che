@@ -111,8 +111,8 @@ pub typedef {
 
 pub void log(state_t *g, const char *fmt, ...) {
 	if (g->logsize == 10) {
-		for (int i = 0; i < 10-1; i++) {
-			strcpy(g->log[i], g->log[i+1]);
+		for (int i = 0; i < 10 - 1; i++) {
+			strcpy(g->log[i], g->log[i + 1]);
 		}
 		g->logsize--;
 	}
@@ -124,13 +124,12 @@ pub void log(state_t *g, const char *fmt, ...) {
 	g->logsize++;
 }
 
-
 pub xy_t shipxy(int x, y, dir, dist) {
-	const int xincr[8] = {1, 1, 0, -1, -1, -1, 0, 1};
-	const int yincr[8] = {0, 1, 1, 1, 0, -1, -1, -1};
+	const int xincr[8] = { 1, 1, 0, -1, -1, -1, 0, 1 };
+	const int yincr[8] = { 0, 1, 1, 1, 0, -1, -1, -1 };
 	xy_t r = {
 		.x = x + dist * xincr[dir],
-		.y = y + dist * yincr[dir]
+		.y = y + dist * yincr[dir],
 	};
 	return r;
 }
@@ -266,7 +265,7 @@ pub bool is_ship(int c) {
 }
 
 pub int shoot(state_t *g, int player, int x, y) {
-	bool hit = g->players[1-player].board[x][y];
+	bool hit = g->players[1 - player].board[x][y];
 	if (!hit) {
 		g->players[player].shots[x][y] = MARK_MISS;
 		return S_MISS;
@@ -300,10 +299,10 @@ pub bool ship_afloat(ship_t *ss) {
 	return ss->hits < ss->length;
 }
 
-
-
 pub void mark_empty_water(state_t *g, ship_t *ss) {
-	if (g->closepack) return;
+	if (g->closepack) {
+		return;
+	}
 	for (int j = -1; j <= 1; j++) {
 		int bx = ss->x + j * xincr[(ss->dir + 2) % 8];
 		int by = ss->y + j * yincr[(ss->dir + 2) % 8];

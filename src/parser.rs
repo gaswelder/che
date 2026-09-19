@@ -120,6 +120,7 @@ fn get_exports(elems: &Vec<ModElem>) -> Exports {
 }
 
 fn parse_compat_macro(l: &mut Lexer) -> Result<ModElem, Error> {
+    let source_info = si(&l.peek().unwrap());
     let tok = expect(l, "macro")?;
     let content = tok.content.clone();
     let pos = content.find(" ");
@@ -132,9 +133,9 @@ fn parse_compat_macro(l: &mut Lexer) -> Result<ModElem, Error> {
     let (name, value) = content.split_at(pos.unwrap());
 
     return Ok(ModElem::Macro(nodes::Macro {
+        source_info,
         name: name[1..].to_string(),
         value: value.to_string(),
-        pos: tok.pos.clone(),
     }));
 }
 
@@ -1055,6 +1056,7 @@ fn parse_switch(l: &mut Lexer, ctx: &ParseCtx) -> Result<TWithErrors<BlockItem>,
 }
 
 fn read_switch_case(l: &mut Lexer, ctx: &ParseCtx) -> Result<TWithErrors<SwitchCase>, Error> {
+    let source_info = si(&l.peek().unwrap());
     expect(l, "case")?;
     let mut values = Vec::new();
     loop {
@@ -1074,6 +1076,7 @@ fn read_switch_case(l: &mut Lexer, ctx: &ParseCtx) -> Result<TWithErrors<SwitchC
     let body = read_body(l, ctx)?;
     return Ok(TWithErrors {
         obj: SwitchCase {
+            source_info,
             values,
             body: body.obj,
         },

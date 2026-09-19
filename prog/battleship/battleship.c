@@ -78,7 +78,6 @@ int main(int argc, char *argv[]) {
 			gamestate.turn = PLAYER;
 		}
 
-		
 		strcpy(gamestate.status, "Arrows: move the cursor; any key: shoot");
 		render.refresh(&gamestate);
 
@@ -305,7 +304,7 @@ int input_coords_and_command(int atcpu, game.xy_t *xy) {
 		c = OS.getch();
 		if (update_coords(xy, c)) {
 			xy->x = xy->x % BWIDTH;
-			xy->y = xy->y % BDEPTH;	
+			xy->y = xy->y % BDEPTH;
 			gamestate.render_cursor = *xy;
 			gamestate.render_cursor_at = atcpu;
 			render.render_cursor(&gamestate);
@@ -318,9 +317,9 @@ int input_coords_and_command(int atcpu, game.xy_t *xy) {
 
 bool update_coords(game.xy_t *xy, int c) {
 	switch (c) {
-		case OS.KEY_UP: { xy->y += (BDEPTH - 1); }
+		case OS.KEY_UP: { xy->y += BDEPTH - 1; }
 		case OS.KEY_DOWN: { xy->y += 1; }
-		case OS.KEY_LEFT: { xy->x += (BWIDTH - 1); }
+		case OS.KEY_LEFT: { xy->x += BWIDTH - 1; }
 		case OS.KEY_RIGHT: { xy->x += 1; }
 		default: { return false; }
 	}

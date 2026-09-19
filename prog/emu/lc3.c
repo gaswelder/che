@@ -299,9 +299,9 @@ void op_trap(uint16_t instr) {
 			big endian format */
 			uint16_t *c = memory + reg[R_R0];
 			while (*c) {
-				char char1 = (*c) & 0xFF;
+				char char1 = *c & 0xFF;
 				putc(char1, stdout);
-				char char2 = (*c) >> 8;
+				char char2 = *c >> 8;
 				if (char2) {
 					putc(char2, stdout);
 				}
@@ -320,7 +320,7 @@ void op_trap(uint16_t instr) {
 uint16_t sign_extend(uint16_t x, int bit_count) {
 	int n = bit_count - 1;
 	if ((x >> n) & 1) {
-		x |= (0xFFFF << bit_count);
+		x |= 0xFFFF << bit_count;
 	}
 	return x;
 }

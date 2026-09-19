@@ -110,7 +110,9 @@ void loadrom(chip8_t *c8, const char *rompath) {
 	int pos = MEM_BEGIN;
 	while (true) {
 		int c = fgetc(f);
-		if (c == EOF) break;
+		if (c == EOF) {
+			break;
+		}
 		c8->memory[pos++] = (uint8_t) c;
 	}
 	fclose(f);
@@ -125,7 +127,6 @@ pub int run(char *rompath) {
 	memcpy(c8.memory, DIGITS, sizeof(DIGITS));
 	loadrom(&c8, rompath);
 	c8.PC = MEM_BEGIN;
-
 
 	signal(SIGINT, handle_interrupt);
 	term = term.term_get_stdin();
@@ -338,17 +339,11 @@ void step(chip8_t *c8, chip8instr.instr_t instr) {
 			}
 		}
 		// ST = Vx.
-		case chip8instr.LDSTVx: {
-			c8->ST = c8->registers[instr.x];
-		}
+		case chip8instr.LDSTVx: { c8->ST = c8->registers[instr.x]; }
 		// Vx = DT.
-		case chip8instr.LDVxDT: {
-			c8->registers[instr.x] = c8->DT;
-		}
+		case chip8instr.LDVxDT: { c8->registers[instr.x] = c8->DT; }
 		// DT = Vx.
-		case chip8instr.LDDTVx: {
-			c8->DT = c8->registers[instr.x];
-		}
+		case chip8instr.LDDTVx: { c8->DT = c8->registers[instr.x]; }
 
 		//
 		// Arithmetic
@@ -407,11 +402,9 @@ void step(chip8_t *c8, chip8instr.instr_t instr) {
 				c8->registers[VF] = 1;
 			}
 		}
-		
+
 		// Vx = random & kk.
-		case chip8instr.RNDVxkk: {
-			c8->registers[instr.x] = rnd.intn(256) & instr.kk;
-		}
+		case chip8instr.RNDVxkk: { c8->registers[instr.x] = rnd.intn(256) & instr.kk; }
 	}
 }
 
