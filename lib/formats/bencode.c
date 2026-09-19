@@ -31,10 +31,10 @@ pub void freereader(reader_t *r) {
  * Returns true if the current node has more entries.
  */
 pub bool more(reader_t *r) {
-    if (r->stacksize > 0) {
-        return peek(r) != 'e';
-    }
-    return peek(r) != EOF;
+	if (r->stacksize > 0) {
+		return peek(r) != 'e';
+	}
+	return peek(r) != EOF;
 }
 
 /**
@@ -69,7 +69,7 @@ pub void enter(reader_t *r) {
 	if (r->stacksize == sizeof(r->stack)) {
 		panic("stack too small");
 	}
-    r->stack[r->stacksize++] = pop(r);
+	r->stack[r->stacksize++] = pop(r);
 }
 
 /**
@@ -78,9 +78,8 @@ pub void enter(reader_t *r) {
 pub void leave(reader_t *r) {
 	// Skip unread contents
 	// while (more(r)) skip(r);
-
-    consume(r, 'e');
-    r->stacksize--;
+	consume(r, 'e');
+	r->stacksize--;
 }
 
 /**
@@ -111,9 +110,13 @@ pub size_t readbuf(reader_t *r, uint8_t *buf, size_t bufsize) {
 
 size_t _readbuf(reader_t *r, uint8_t *buf, size_t len) {
 	int n = num(r);
-	if (n < 0) panic("got negative data length");
+	if (n < 0) {
+		panic("got negative data length");
+	}
 	size_t nz = (size_t) n;
-	if (buf != NULL && nz > len) panic("buffer too small (need %d)", n);
+	if (buf != NULL && nz > len) {
+		panic("buffer too small (need %d)", n);
+	}
 
 	consume(r, ':');
 
@@ -146,29 +149,29 @@ pub int readnum(reader_t *r) {
  * Returns false if there is no next entry.
  */
 pub bool skip(reader_t *r) {
-    switch (peek(r)) {
-		case EOF: {
-			return false;
-		}
-        case 'i': {
+	switch (peek(r)) {
+		case EOF: { return false; }
+		case 'i': {
 			consume(r, 'i');
 			num(r);
 			consume(r, 'e');
 		}
-        case 'l', 'd': {
-            enter(r);
-            while (more(r)) skip(r);
-            leave(r);
-        }
-        default: {
+		case 'l', 'd': {
+			enter(r);
+			while (more(r)) {
+				skip(r);
+			}
+			leave(r);
+		}
+		default: {
 			// string
 			int n = num(r);
 			consume(r, ':');
 			for (int i = 0; i < n; i++) {
 				pop(r);
 			}
-        }
-    }
+		}
+	}
 	return true;
 }
 
@@ -177,40 +180,39 @@ pub bool skip(reader_t *r) {
 // }
 
 void consume(reader_t *r, char c) {
-    if (r->data[r->pos] != c) {
-        panic("wanted %c, got %c", c, r->data[r->pos]);
-    }
-    r->pos++;
+	if (r->data[r->pos] != c) {
+		panic("wanted %c, got %c", c, r->data[r->pos]);
+	}
+	r->pos++;
 }
 
-
 char peek(reader_t *r) {
-    if (r->pos >= r->size) {
-        return EOF;
-    }
-    return r->data[r->pos];
+	if (r->pos >= r->size) {
+		return EOF;
+	}
+	return r->data[r->pos];
 }
 
 int num(reader_t *r) {
-    int n = 0;
-    bool neg = false;
-    if (peek(r) == '-') {
-        neg = true;
-        pop(r);
-    }
-    if (!isdigit(peek(r))) {
-        panic("expected a digit, got %c (%x)", peek(r), peek(r));
-    }
-    while (isdigit(peek(r))) {
-        n *= 10;
+	int n = 0;
+	bool neg = false;
+	if (peek(r) == '-') {
+		neg = true;
+		pop(r);
+	}
+	if (!isdigit(peek(r))) {
+		panic("expected a digit, got %c (%x)", peek(r), peek(r));
+	}
+	while (isdigit(peek(r))) {
+		n *= 10;
 		n += strings.num_from_ascii(pop(r));
-    }
-    if (neg) {
+	}
+	if (neg) {
 		n *= -1;
 	}
-    return n;
+	return n;
 }
 
 char pop(reader_t *r) {
-    return r->data[r->pos++];
+	return r->data[r->pos++];
 }

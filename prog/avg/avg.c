@@ -22,13 +22,12 @@ int main(int argc, char *argv[]) {
 	}
 	emit(window, wsize);
 
-
 	while (fgets(line, 4096, f)) {
 		// Shift the window.
 		for (size_t i = 0; i < wsize-1; i++) {
 			window[i] = window[i+1];
 		}
-		window[wsize-1] = parse_line(line);
+		window[wsize - 1] = parse_line(line);
 		emit(window, wsize);
 	}
 	return 0;

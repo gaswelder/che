@@ -1,8 +1,12 @@
-#import scanner
 #import nodes.c
+#import scanner
 
-nodes.node_t True = {.kind = nodes.T};
-nodes.node_t False = {.kind = nodes.F};
+nodes.node_t True = {
+	.kind = nodes.T,
+};
+nodes.node_t False = {
+	.kind = nodes.F,
+};
 
 pub nodes.node_t *read_statement(lexer_t *l) {
 	tok_t *t = lex_peektok(l);
@@ -78,8 +82,12 @@ nodes.node_t *read_atom(lexer_t *l) {
 	if (lex_peek(l) == TOK_ID) {
 		tok_t *t = lex_get(l, TOK_ID);
 		char *name = t->payload;
-		if (!strcmp(name, "true")) return &True;
-		if (!strcmp(name, "false")) return &False;
+		if (!strcmp(name, "true")) {
+			return &True;
+		}
+		if (!strcmp(name, "false")) {
+			return &False;
+		}
 		return read_typecall(l, name);
 	}
 
@@ -113,7 +121,7 @@ tok_t *expect(lexer_t *l, int kind) {
 enum {
 	TOK_NUMBER,
 	TOK_STRING,
-	TOK_ID
+	TOK_ID,
 }
 
 pub typedef {

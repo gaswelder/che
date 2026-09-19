@@ -34,13 +34,11 @@ pub tracker_response_t *getstate() {
 
 pub void process(void *ctx, int event, void *edata) {
 	switch (event) {
-		case ioloop.CONNECTED: {
-			send_announce(ctx, NULL);
-		}
+		case ioloop.CONNECTED: { send_announce(ctx, NULL); }
 		case ioloop.EXIT: {}
 		case ioloop.DATA_IN: {
 			ioloop.buff_t *b = edata;
-			reader.t *re = reader.static_buffer((uint8_t *)b->data, b->len);
+			reader.t *re = reader.static_buffer((uint8_t *) b->data, b->len);
 			http.response_t res = {};
 			if (!http.parse_response(re, &res)) {
 				panic("failed to parse tracker's HTTP response");
@@ -50,16 +48,14 @@ pub void process(void *ctx, int event, void *edata) {
 			print();
 		}
 		case ioloop.WRITE_FINISHED: {}
-		default: {
-			panic("unknown event: %d", event);
-		}
+		default: { panic("unknown event: %d", event); }
 	}
 }
 
 void send_announce(void *ctx, const char *event) {
 	http.request_t *req = http.newreq(http.GET, "/announce");
 	http.reqparam(req, "info_hash", _tf->infohash_bytes, 20);
-	http.reqparam(req, "peer_id", (char *)_peer_id, 20);
+	http.reqparam(req, "peer_id", (char *) _peer_id, 20);
 	http.reqparams(req, "port", "6881");
 
 	// bytes uploaded and downloaded since the client
@@ -86,7 +82,7 @@ void send_announce(void *ctx, const char *event) {
 	}
 	http.freereq(req);
 	writer.free(w);
-	ioloop.write(ctx, (char *)buf, strlen((char *)buf));
+	ioloop.write(ctx, (char *) buf, strlen((char *) buf));
 }
 
 pub void print() {
@@ -96,7 +92,7 @@ pub void print() {
 		peer_entry_t *peer = &resp->peers[i];
 		if (!memcmp(peer->id, _peer_id, 20)) {
 			printf("- us %zu: %s at %s:%d\n", i, peer->id, peer->ip, peer->port);
-        } else {
+		} else {
 			printf("- peer %zu: %s at %s:%d\n", i, peer->id, peer->ip, peer->port);
 		}
 	}
@@ -107,7 +103,7 @@ void read_tracker_response(char *body, tracker_response_t *resp) {
 	char key[1000] = {};
 	bencode.enter(ber);
 	while (bencode.more(ber)) {
-		bencode.key(ber, (uint8_t *)key, 1000);
+		bencode.key(ber, (uint8_t *) key, 1000);
 		switch str (key) {
 			case "complete": { resp->complete = bencode.readnum(ber); }
 			case "incomplete": { resp->incomplete = bencode.readnum(ber); }
@@ -120,9 +116,7 @@ void read_tracker_response(char *body, tracker_response_t *resp) {
 				}
 				bencode.leave(ber);
 			}
-			default: {
-				panic("unknown key: %s", key);
-			}
+			default: { panic("unknown key: %s", key); }
 		}
 	}
 	bencode.leave(ber);
@@ -134,10 +128,10 @@ void read_peer(bencode.reader_t *ber, peer_entry_t *p) {
 	char key[1000] = {};
 	bencode.enter(ber);
 	while (bencode.more(ber)) {
-		bencode.key(ber, (uint8_t *)key, 1000);
+		bencode.key(ber, (uint8_t *) key, 1000);
 		switch str (key) {
-			case "ip": { bencode.readbuf(ber, (uint8_t*)&p->ip, sizeof(p->ip)); }
-			case "peer id": { bencode.readbuf(ber, (uint8_t*)&p->id, sizeof(p->id)); }
+			case "ip": { bencode.readbuf(ber, (uint8_t *) &p->ip, sizeof(p->ip)); }
+			case "peer id": { bencode.readbuf(ber, (uint8_t *) &p->id, sizeof(p->id)); }
 			case "port": { p->port = bencode.readnum(ber); }
 			default: { panic("unknown peer dict key: %s", key); }
 		}

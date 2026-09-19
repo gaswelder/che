@@ -5,21 +5,21 @@ const int W = 250;
 const int H = 200;
 
 int main() {
-    palette();
-    rgba();
+	palette();
+	rgba();
 	rgb();
-    gray();
-    grayalpha();
-    graystream();
-    return 0;
+	gray();
+	grayalpha();
+	graystream();
+	return 0;
 }
 
 void palette() {
 	image.rgba_t colors[] = {
-		{0, 0, 0xff, 0xff},
-		{0, 0xff, 0, 0x80},
-		{0xff, 0, 0, 0xff},
-		{0xff, 0, 0xff, 0x80}
+		{ 0, 0, 0xff, 0xff },
+		{ 0, 0xff, 0, 0x80 },
+		{ 0xff, 0, 0, 0xff },
+		{ 0xff, 0, 0xff, 0x80 },
 	};
 
 	image.image_t *img = image.new(W, H);

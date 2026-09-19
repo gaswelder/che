@@ -12,15 +12,15 @@ int main() {
 	eval.val_t *a = eval.symbol("a");
 	eval.val_t *b = eval.symbol("b");
 	eval.val_t *c = eval.symbol("c");
-	eval.SET (so, a);
-	eval.sympush (so, b);
-	eval.sympush (so, c);
+	eval.SET(so, a);
+	eval.sympush(so, b);
+	eval.sympush(so, c);
 
-	test.truth("symbol push/pop 1", eval.GET (so) == c);
-	eval.sympop (so);
-	test.truth("symbol push/pop 2", eval.GET (so) == b);
-	eval.sympop (so);
-	test.truth("symbol push/pop 3", eval.GET (so) == a);
+	test.truth("symbol push/pop 1", eval.GET(so) == c);
+	eval.sympop(so);
+	test.truth("symbol push/pop 2", eval.GET(so) == b);
+	eval.sympop(so);
+	test.truth("symbol push/pop 3", eval.GET(so) == a);
 
 	return test.fails();
 }

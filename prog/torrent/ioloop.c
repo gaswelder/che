@@ -10,17 +10,17 @@
 typedef struct timeval timeval_t;
 
 pub typedef {
-    char *data;
-    size_t len;
+	char *data;
+	size_t len;
 } buff_t;
 
 pub typedef void handler_t(void *, int, void *); // ctx, event, eventdata
 pub typedef void voidfunc_t();
 
 typedef {
-    bool on;
-    int64_t t;
-    voidfunc_t *f;
+	bool on;
+	int64_t t;
+	voidfunc_t *f;
 } ioloop_timer_t;
 
 ioloop_timer_t timeouts[100] = {};
@@ -28,38 +28,38 @@ ioloop_timer_t timeouts[100] = {};
 const char *DBG_TAG = "ioloop";
 
 pub enum {
-    // The stream has been created and can now be written to and read from.
-    // This event can be used as an init signal to set up local state.
-    CONNECTED = -4,
+	// The stream has been created and can now be written to and read from.
+	// This event can be used as an init signal to set up local state.
+	CONNECTED = -4,
 
-    // The stream has been removed from the loop and its memory is about to be
-    // freed. This can be seen as the finalizer event corresponding to the init
-    // event.
-    EXIT = -100,
+	// The stream has been removed from the loop and its memory is about to be
+	// freed. This can be seen as the finalizer event corresponding to the init
+	// event.
+	EXIT = -100,
 
-    // The handler is called with this event to notify that a scheduled stream
-    // creation has failed. This is the event where a program would log an
-    // error like "failed to connect: ...".
-    CONNECT_FAILED = -10,
+	// The handler is called with this event to notify that a scheduled stream
+	// creation has failed. This is the event where a program would log an
+	// error like "failed to connect: ...".
+	CONNECT_FAILED = -10,
 
-    // The handler will be called with this event when new data has been read
-    // from the stream. The event data will point to a buffer with the data.    
-    DATA_IN = -207,
+	// The handler will be called with this event when new data has been read
+	// from the stream. The event data will point to a buffer with the data.    
+	DATA_IN = -207,
 
-    // The handler will receive this event whenever the outgoing buffer becomes
-    // empty. This event can be used to know when the handler can send more data.
-    WRITE_FINISHED = -231,
+	// The handler will receive this event whenever the outgoing buffer becomes
+	// empty. This event can be used to know when the handler can send more data.
+	WRITE_FINISHED = -231,
 }
 
 const char *eventname(int event) {
-    switch (event) {
-        case CONNECTED: { return "CONNECTED"; }
-        case EXIT: { return "EXIT"; }
-        case CONNECT_FAILED: { return "CONNECT_FAILED"; }
-        case DATA_IN: { return "DATA_IN"; }
-        case WRITE_FINISHED: { return "WRITE_FINISHED"; }
-    }
-    return "(unknown event)";
+	switch (event) {
+		case CONNECTED: { return "CONNECTED"; }
+		case EXIT: { return "EXIT"; }
+		case CONNECT_FAILED: { return "CONNECT_FAILED"; }
+		case DATA_IN: { return "DATA_IN"; }
+		case WRITE_FINISHED: { return "WRITE_FINISHED"; }
+	}
+	return "(unknown event)";
 }
 
 // Since write doesn't actually write but only stashes data for later sending,
@@ -131,11 +131,11 @@ client_t *addclient(net.net_t *conn, handler_t *h) {
 }
 
 void removeclient(client_t *c) {
-    callhandler(c, EXIT, NULL);
-    buffer.free(c->outgoing);
-    int slot = c->slot;
-    free(c);
-    clients[slot] = NULL;
+	callhandler(c, EXIT, NULL);
+	buffer.free(c->outgoing);
+	int slot = c->slot;
+	free(c);
+	clients[slot] = NULL;
 }
 
 // Adds a listener socket with the given handler to process new connections.

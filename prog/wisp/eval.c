@@ -6,7 +6,17 @@
 #import strings
 #import util.c
 
-enum { INT, FLOAT, STRING, SYMBOL, CONS, VECTOR, CFUNC, SPECIAL, DETACH }
+enum {
+	INT,
+	FLOAT,
+	STRING,
+	SYMBOL,
+	CONS,
+	VECTOR,
+	CFUNC,
+	SPECIAL,
+	DETACH,
+}
 
 pub typedef {
 	int type;
@@ -47,14 +57,26 @@ bool isfunc(val_t *o) {
 		|| (o->type == SPECIAL);
 }
 
-enum { ADD, SUB, MUL, DIV }
-enum { EQ, LT, LTE, GT, GTE }
+enum {
+	ADD,
+	SUB,
+	MUL,
+	DIV,
+}
+enum {
+	EQ,
+	LT,
+	LTE,
+	GT,
+	GTE,
+}
 
 //
 // Cons
 //
-
-typedef { val_t *car, *cdr; } cons_t;
+typedef {
+	val_t *car, *cdr;
+} cons_t;
 
 pub val_t *newcons(val_t *x, *rest) {
 	val_t *o = obj_createx(CONS, mem.mm_alloc(mm_cons));
@@ -80,15 +102,17 @@ int vlen(val_t *o) { vector_t *x = o->val; return x->len; }
 val_t *newvec(size_t len, val_t *init) {
 	vector_t *v = mem.mm_alloc(mm_vec);
 	v->len = len;
-	if (len == 0) len = 1;
-	v->v = calloc!(len, sizeof (val_t **));
+	if (len == 0) {
+		len = 1;
+	}
+	v->v = calloc!(len, sizeof(val_t **));
 	for (size_t i = 0; i < v->len; i++) {
 		v->v[i] = increfs(init);
 	}
 	return obj_createx(VECTOR, v);
 }
 
-void vec_set(val_t * vo, size_t i, val_t *val) {
+void vec_set(val_t *vo, size_t i, val_t *val) {
 	vector_t *v = vo->val;
 	val_t *o = v->v[i];
 	v->v[i] = val;
@@ -110,10 +134,12 @@ val_t *vec_concat(val_t *a, *b) {
 
 val_t *vector_sub(val_t *vo, int start, int end) {
 	vector_t *v = vo->val;
-	if (end == -1) end = v->len - 1;
+	if (end == -1) {
+		end = v->len - 1;
+	}
 	val_t *newv = newvec(1 + end - start, NIL);
 	for (int i = start; i <= end; i++) {
-		vec_set(newv, i - start, increfs(vget (vo, i)));
+		vec_set(newv, i - start, increfs(vget(vo, i)));
 	}
 	return newv;
 }
@@ -128,9 +154,14 @@ pub typedef {
 	size_t len; // cached strlen of raw
 } str_t;
 
-int str_len(val_t *o) { str_t *x = o->val; return x->len; }
-char *getstr(val_t *o) { str_t *x = o->val; return x->raw; }
-
+int str_len(val_t *o) {
+	str_t *x = o->val;
+	return x->len;
+}
+char *getstr(val_t *o) {
+	str_t *x = o->val;
+	return x->raw;
+}
 
 //
 //
@@ -147,7 +178,10 @@ pub typedef {
 	uint32_t cnt;
 } symbol_t;
 
-pub char **SYMNAME(val_t *so) { symbol_t *x = so->val; return &x->name; }
+pub char **SYMNAME(val_t *so) {
+	symbol_t *x = so->val;
+	return &x->name;
+}
 
 val_t *doc_string = NULL;
 val_t *err_attach = NULL;
@@ -192,12 +226,12 @@ val_t *THROW(val_t *to, *ao) {
 	return err_symbol;
 }
 
-val_t *list2vector (val_t *lst) {
+val_t *list2vector(val_t *lst) {
 	int len = 0;
 	val_t *p = lst;
 	while (p != NIL) {
 		len++;
-		p = cdr (p);
+		p = cdr(p);
 	}
 	val_t *v = newvec(len, NIL);
 	p = lst;
@@ -403,7 +437,7 @@ pub void sympop (val_t * so) {
 
 // Returns the symbol with the given name, creating it if needed.
 pub val_t *symbol(char *name) {
-	val_t *o = hashtab.ht_search(symbol_table, name, strlen (name));
+	val_t *o = hashtab.ht_search(symbol_table, name, strlen(name));
 	if (o) {
 		return o;
 	}
@@ -412,7 +446,7 @@ pub val_t *symbol(char *name) {
 	symbol_t *x = o->val;
 	*x->vals = NIL;
 	if (name[0] == ':') {
-		SET (o, o);
+		SET(o, o);
 	}
 	hashtab.ht_insert(symbol_table, *SYMNAME(o), strlen(*SYMNAME(o)), o, sizeof(val_t *));
 	return o;
@@ -422,11 +456,6 @@ pub val_t *symbol(char *name) {
 // void DB_OP(int str, o) {
 //	 printf(str); obj_print(o,1);
 // }
-
-
-
-
-
 val_t *newfunc(cfunc_t f) {
 	val_t *o = obj_createx(CFUNC, NULL);
 	o->fval = f;
@@ -630,7 +659,7 @@ pub void wisp_init() {
 	symbol_t *x = NIL->val;
 	*x->vals = NIL;
 	T = symbol("t");
-	SET (T, T);
+	SET(T, T);
 
 	bind("+", newfunc(&addition));
 	bind("*", newfunc(&multiplication));
@@ -645,12 +674,12 @@ pub void wisp_init() {
 
 	bind("cdoc-string", newfunc(&cdoc_string));
 	bind("apply", newfunc(&lisp_apply));
-	bind("and", c_special (&lisp_and));
-	bind("or", c_special (&lisp_or));
-	bind("quote", c_special (&lisp_quote));
-	bind("lambda", c_special (&lambda_f));
-	bind("defun", c_special (&defun));
-	bind("defmacro", c_special (&defmacro));
+	bind("and", c_special(&lisp_and));
+	bind("or", c_special(&lisp_or));
+	bind("quote", c_special(&lisp_quote));
+	bind("lambda", c_special(&lambda_f));
+	bind("defun", c_special(&defun));
+	bind("defmacro", c_special(&defmacro));
 	bind("car", newfunc(&lisp_car));
 	bind("cdr", newfunc(&lisp_cdr));
 	bind("list", newfunc(&lisp_list));
@@ -797,7 +826,7 @@ val_t *eval_list (val_t * lst) {
 	if (lst == NIL) {
 		return NIL;
 	}
-	if (!iscons (lst)) {
+	if (!iscons(lst)) {
 		return THROW(err_improper_list_ending, increfs(lst));
 	}
 	val_t *x = eval(car(lst));
@@ -812,15 +841,15 @@ val_t *eval_list (val_t * lst) {
 	return newcons(x, rest);
 }
 
-val_t *eval_body (val_t * body) {
+val_t *eval_body(val_t *body) {
 	val_t *r = NIL;
 	while (body != NIL) {
 		obj_release(r);
-		r = eval (car (body));
+		r = eval(car(body));
 		if (r == err_symbol) {
 			return r;
 		}
-		body = cdr (body);
+		body = cdr(body);
 	}
 	return r;
 }

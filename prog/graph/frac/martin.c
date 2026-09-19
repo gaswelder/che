@@ -1,5 +1,5 @@
 #import image
- 
+
 typedef {
 	int it;
 } params_t;
@@ -28,6 +28,6 @@ pub void draw(image.image_t *img, void *state) {
 		x = y - sin(x);
 		y = 3.14 - t;
 		n++;
-		image.set(img, hw + (int)(x*2), hh + (int)(y*2), image.white());
+		image.set(img, hw + (int)(x * 2), hh + (int)(y * 2), image.white());
 	}
 }

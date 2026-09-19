@@ -1,7 +1,7 @@
 #import cue.c
-#import time
-#import test
 #import error
+#import test
+#import time
 
 const char *s = "REM GENRE \"Avant-garde Metal\"
 REM DATE 2006
@@ -31,34 +31,36 @@ TRACK 03 AUDIO
 
 int main() {
 	error.t err = {};
-    cue.cue_t *c = cue.parse(s, &err);
+	cue.cue_t *c = cue.parse(s, &err);
 	if (err.set) {
 		panic("failed to parse: %s", err.msg);
 	}
-	if (!c) panic("null return");
+	if (!c) {
+		panic("null return");
+	}
 
-    test.truth("ntracks", c->ntracks == 3);
+	test.truth("ntracks", c->ntracks == 3);
 
-    char buf[10] = {};
-    char line[400] = {};
-    
-    int i = 0;
-    cue.track_t *t = NULL;
+	char buf[10] = {};
+	char line[400] = {};
 
-    t = &c->tracks[i++];
-    time.dur_fmt(&t->pos, buf, 10, "mm:ss");
-    sprintf(line, "%s. %s", buf, t->title);
-    test.streq(line, "00:00. Eternal Sleep");
+	int i = 0;
+	cue.track_t *t = NULL;
 
-    t = &c->tracks[i++];
-    time.dur_fmt(&t->pos, buf, 10, "mm:ss");
-    sprintf(line, "%s. %s", buf, t->title);
-    test.streq(line, "04:27. Dreams of an Erotic Salvation");
+	t = &c->tracks[i++];
+	time.dur_fmt(&t->pos, buf, 10, "mm:ss");
+	sprintf(line, "%s. %s", buf, t->title);
+	test.streq(line, "00:00. Eternal Sleep");
 
-    t = &c->tracks[i++];
-    time.dur_fmt(&t->pos, buf, 10, "mm:ss");
-    sprintf(line, "%s. %s", buf, t->title);
-    test.streq(line, "08:57. A Mind Confused");
-    
-    return test.fails();
+	t = &c->tracks[i++];
+	time.dur_fmt(&t->pos, buf, 10, "mm:ss");
+	sprintf(line, "%s. %s", buf, t->title);
+	test.streq(line, "04:27. Dreams of an Erotic Salvation");
+
+	t = &c->tracks[i++];
+	time.dur_fmt(&t->pos, buf, 10, "mm:ss");
+	sprintf(line, "%s. %s", buf, t->title);
+	test.streq(line, "08:57. A Mind Confused");
+
+	return test.fails();
 }

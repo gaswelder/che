@@ -45,17 +45,17 @@ pub enum {
 }
 
 const int SHIPTYPES = 5;
-const int xincr[8] = {1, 1, 0, -1, -1, -1, 0, 1};
-const int yincr[8] = {0, 1, 1, 1, 0, -1, -1, -1};
+const int xincr[8] = { 1, 1, 0, -1, -1, -1, 0, 1 };
+const int yincr[8] = { 0, 1, 1, 1, 0, -1, -1, -1 };
 const int BWIDTH = 10;
 const int BDEPTH = 10;
 
 pub typedef {
 	int kind;
-	int hits;          /* how many times has this ship been hit? */
-	char symbol;       /* symbol for game purposes */
-	int length;        /* length of ship */
-	int x, y;         /* coordinates of ship start point */
+	int hits; /* how many times has this ship been hit? */
+	char symbol; /* symbol for game purposes */
+	int length; /* length of ship */
+	int x, y; /* coordinates of ship start point */
 	uint8_t dir; /* direction of `bow' */
 	bool placed;       /* has it been placed on the board? */
 } ship_t;
@@ -71,12 +71,14 @@ pub typedef {
 	ship_t ships[5];
 } player_t;
 
-pub typedef { int x, y; } xy_t;
+pub typedef {
+	int x, y;
+} xy_t;
 
 pub enum {
 	ST_PLACING,
 	ST_PLAYING,
-	ST_FINISHED
+	ST_FINISHED,
 }
 
 pub typedef {
@@ -171,7 +173,7 @@ pub int winner(state_t *g) {
 	int j = 0;
 	for (int i = 0; i < 2; ++i) {
 		ship_t *ss = g->players[i].ships;
-		for (j = 0; j < 5; ) {
+		for (j = 0; j < 5;) {
 			if (ss->length > ss->hits) {
 				break;
 			}
@@ -240,7 +242,9 @@ pub void randomplace(state_t *g, int player, ship_t *ss) {
 			ss->y = (int) rnd.intn(BDEPTH - ss->length);
 		}
 		int err = checkplacement(g, player, ss);
-		if (!err) break;
+		if (!err) {
+			break;
+		}
 	}
 }
 

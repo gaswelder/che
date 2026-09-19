@@ -72,7 +72,7 @@ bool send_line(client_t *c) {
 }
 
 bool writech(client_t *c, char ch) {
-	nbuf_t *b = &(c->out);
+	nbuf_t *b = &c->out;
 	b->data[b->len++] = ch;
 	if (b->len == sizeof(b->data)) {
 		int r = net.write(b->conn, b->data, b->len);

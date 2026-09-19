@@ -21,7 +21,7 @@ pub bool write(image.image_t *img, const char *filename) {
 	// The file is header (14 bytes) + bitmapinfo (40 bytes) + data.
 	// The data is rows (height) * row size (pixel size * width + pad).
 	size_t headers_size = 14 + 40;
-	size_t image_data_size = (height * (width * 3 + pad));
+	size_t image_data_size = height * (width * 3 + pad);
 	size_t file_size = headers_size + image_data_size;
 
 	// -- header --

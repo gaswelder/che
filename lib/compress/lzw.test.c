@@ -6,7 +6,7 @@
 
 int main() {
 	// seq 9
-	uint8_t seq[] = {1, 2, 3, 4, 5, 6, 7, 8, 9};
+	uint8_t seq[] = { 1, 2, 3, 4, 5, 6, 7, 8, 9 };
 	testrw(seq, sizeof(seq), 10);
 
 	// random

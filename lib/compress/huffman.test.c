@@ -21,7 +21,7 @@ void testreadwrite() {
 	// Read the message back
 	rewind(f);
 	size_t len = strlen(s);
-	char *q = calloc!(len+1, 1);
+	char *q = calloc!(len + 1, 1);
 	readmsg(f, t, q, len);
 	test.streq(s, q);
 	free(q);
@@ -33,7 +33,7 @@ void testreadwrite() {
 void testcanonical() {
 	// Canonical tree spec
 	const char *characters = "TAHSND";
-	uint8_t lencounts[] = {0, 3, 1, 2};
+	uint8_t lencounts[] = { 0, 3, 1, 2 };
 
 	// Encoded and plaintext message
 	uint8_t bits[] = {0,1, 1,1,1,0, 1,1,1,1, 0,0, 1,0, 0,1, 0,0, 1,1,0, 0,0, 1,0, 0,1, 0,0};

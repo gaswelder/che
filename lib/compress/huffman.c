@@ -37,10 +37,12 @@ pub void freetree(tree_t *t) {
 pub tree_t *treefrom(uint8_t *lencounts, size_t lencountslen, uint8_t *vals) {
 	tree_t *t = newtree();
 	t->root = newnode(t);
-	if (!t->root) panic("wtf");
+	if (!t->root) {
+		panic("wtf");
+	}
 	int c = 0;
 	for (uint8_t i = 0; i < lencountslen; i++) {
-		uint8_t len = i+1;
+		uint8_t len = i + 1;
 		uint8_t count = lencounts[i];
 		for (uint8_t j = 0; j < count; j++) {
 			uint8_t ch = vals[c++];
@@ -56,7 +58,9 @@ pub tree_t *treefrom(uint8_t *lencounts, size_t lencountslen, uint8_t *vals) {
 
 // Creates a value node at the given depth from the node n.
 node_t *createnode(tree_t *t, node_t *n, int depth) {
-	if (!n) panic("n is null");
+	if (!n) {
+		panic("n is null");
+	}
 	if (depth == 1) {
 		if (!n->left) {
 			n->left = newnode(t);
@@ -74,20 +78,22 @@ node_t *createnode(tree_t *t, node_t *n, int depth) {
 		n->left = newnode(t);
 	}
 	if (!n->left->ischar) {
-		node_t *x = createnode(t, n->left, depth-1);
-		if (x) return x;
+		node_t *x = createnode(t, n->left, depth - 1);
+		if (x) {
+			return x;
+		}
 	}
 	if (!n->right) {
 		n->right = newnode(t);
 	}
 	if (!n->right->ischar) {
-		node_t *x = createnode(t, n->right, depth-1);
-		if (x) return x;
+		node_t *x = createnode(t, n->right, depth - 1);
+		if (x) {
+			return x;
+		}
 	}
 	return NULL;
 }
-
-
 
 // Builds a tree from input text s.
 pub tree_t *buildtree(const char *s) {
@@ -103,7 +109,9 @@ pub tree_t *buildtree(const char *s) {
 	node_t *list[256] = {};
 	size_t listlen = 0;
 	for (int i = 0; i < 256; i++) {
-		if (counts[i] == 0) continue;
+		if (counts[i] == 0) {
+			continue;
+		}
 		node_t *n = newnode(t);
 		n->val = i;
 		n->count = counts[i];
@@ -114,15 +122,15 @@ pub tree_t *buildtree(const char *s) {
 	while (listlen > 1) {
 		// Take two rarest a, b
 		qsort(list, listlen, sizeof(node_t *), cmp);
-		node_t *a = list[listlen-1];
-		node_t *b = list[listlen-2];
+		node_t *a = list[listlen - 1];
+		node_t *b = list[listlen - 2];
 
 		// Merge them into a new node
 		node_t *sum = newnode(t);
 		sum->left = a;
 		sum->right = b;
 		sum->count = a->count + b->count;
-		list[listlen-2] = sum;
+		list[listlen - 2] = sum;
 		listlen--;
 	}
 	t->root = list[0];
@@ -134,8 +142,12 @@ int cmp(const void *a, *b) {
 	node_t **cb = (node_t **) b;
 	node_t *x = *ca;
 	node_t *y = *cb;
-	if (y->count > x->count) return 1;
-	if (y->count < x->count) return -1;
+	if (y->count > x->count) {
+		return 1;
+	}
+	if (y->count < x->count) {
+		return -1;
+	}
 	return 0;
 }
 
@@ -209,9 +221,9 @@ void inittable(bitslice_t *table, node_t *n, uint8_t *pref, uint8_t len) {
 			code[i] = pref[i];
 		}
 		code[len] = 0;
-		inittable(table, n->left, code, len+1);
+		inittable(table, n->left, code, len + 1);
 		code[len] = 1;
-		inittable(table, n->right, code, len+1);
+		inittable(table, n->right, code, len + 1);
 	} else {
 		table[n->val].len = len;
 		for (uint8_t i = 0; i < len; i++) {
@@ -237,19 +249,22 @@ pub bool write(writer_t *w, uint8_t b) {
 	return true;
 }
 
-
 typedef {
 	char code[20];
 	int val;
 } print_t;
 
 pub void printtree(tree_t *t) {
-	if (!t) panic("t is null");
+	if (!t) {
+		panic("t is null");
+	}
 	printnode(t->root, 0);
 }
 
 void printnode(node_t *n, int indent) {
-	if (!n) panic("n is null");
+	if (!n) {
+		panic("n is null");
+	}
 	for (int i = 0; i < indent; i++) {
 		printf(" . ");
 	}
@@ -261,8 +276,12 @@ void printnode(node_t *n, int indent) {
 		}
 	} else {
 		printf("tree:\n");
-		if (n->left) printnode(n->left, indent+1);
-		if (n->right) printnode(n->right, indent+1);
+		if (n->left) {
+			printnode(n->left, indent + 1);
+		}
+		if (n->right) {
+			printnode(n->right, indent + 1);
+		}
 	}
 }
 
@@ -275,7 +294,7 @@ int cmp218(const void *a, *b) {
 pub void printcodes(tree_t *t) {
 	print_t out[100] = {};
 	print_t *x = outputnode(t->root, "", out);
-	size_t n = x - (print_t *)out;
+	size_t n = x - (print_t *) out;
 	if (n > 100) {
 		panic("too many print nodes");
 	}
@@ -289,7 +308,6 @@ pub void printcodes(tree_t *t) {
 			printf("0x%x", val);
 		}
 		printf("\t%s\n", a->code);
-
 	}
 }
 

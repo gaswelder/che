@@ -8,12 +8,13 @@ use crate::parser::operator_strength;
 use substring::Substring;
 
 pub fn fmt_mod(m: &Module) -> String {
-    // Separate imports from other elements.
     let mut imports = Vec::new();
+    let mut macros = Vec::new();
     let mut rest = Vec::new();
     for e in &m.elements {
         match e {
             ModElem::Import(import) => imports.push(import),
+            ModElem::Macro(x) => macros.push(x),
             _ => rest.push(e),
         }
     }
@@ -26,9 +27,16 @@ pub fn fmt_mod(m: &Module) -> String {
 
     let mut s = fmt_comments(&module_comment);
 
+    for x in &macros {
+        s += &format!("#{}{}\n", x.name, x.value);
+    }
+
     // Reorder the imports.
     imports.sort_by_key(|m| &m.path);
-    for e in &imports {
+    for (i, e) in imports.iter().enumerate() {
+        if i == 0 && !macros.is_empty() {
+            s += "\n";
+        }
         s += "#import ";
         s += &e.path;
         s += "\n";
@@ -43,10 +51,8 @@ pub fn fmt_mod(m: &Module) -> String {
 
 fn fmt_mod_elem(elem: &ModElem) -> String {
     match elem {
-        ModElem::Import(_) => {
-            panic!("shouldn't happen")
-        }
-        ModElem::Macro(x) => format!("#{}{}\n", x.name, x.value),
+        ModElem::Import(_) => todo!(),
+        ModElem::Macro(_) => todo!(),
         ModElem::Enum(x) => fmt_enum(&x),
         ModElem::StructAlias(x) => fmt_struct_alias(x),
         ModElem::Typedef(x) => fmt_typedef(&x),
@@ -58,11 +64,16 @@ fn fmt_mod_elem(elem: &ModElem) -> String {
 
 fn fmt_struct_alias(x: &StructAlias) -> String {
     let mut s = fmt_begin(&x.source_info);
+    if x.ispub {
+        s += "pub ";
+    }
     s += "typedef struct ";
     s += &x.structname;
     s += " ";
     s += &x.typename;
-    s += ";\n";
+    s += ";";
+    s += &fmt_end(&x.source_info);
+    s += "\n";
     s
 }
 
@@ -122,6 +133,7 @@ fn fmt_typedef(x: &Typedef) -> String {
     s += "typedef ";
     s += &fmt_typename(&x.typename);
     s += " ";
+    s += &"*".repeat(x.derefs);
     s += &x.alias;
     if let Some(p) = &x.func_params {
         s += "(";
@@ -136,7 +148,9 @@ fn fmt_typedef(x: &Typedef) -> String {
     if x.array_size > 0 {
         s += &format!("[{}]", x.array_size);
     }
-    s += ";\n";
+    s += ";";
+    s += &fmt_end(&x.source_info);
+    s += "\n";
     s
 }
 
@@ -325,7 +339,7 @@ fn fmt_cases(x: &Switch) -> String {
             }
             1 => {
                 let item = fmt_block_item(&c.body.items[0]);
-                if !item.contains("\n") {
+                if !item.contains("\n") && item.len() < 60 {
                     s += &format!("{{ {} }}", item);
                 } else {
                     s += "{\n";
@@ -634,7 +648,9 @@ pub fn fmt_binop(x: &BinaryOp) -> String {
         // (_, "==") => &s1,
         // (_, "&&") => &s1,
         // (_, "||") => &s1,
+        (Some("prefix"), "&") => &s1,
         (Some(_), "&") => &wrap1,
+        (Some("&"), "^") => &wrap1,
         (Some(_), "|") => &wrap1,
         (Some(_), "%") => &wrap1,
         (Some("%"), "*") => &wrap1,
@@ -656,8 +672,7 @@ pub fn fmt_binop(x: &BinaryOp) -> String {
 
         // ("-", Some("*")) => &s2,
         // ("+", Some("*")) => &s2,
-
-        // ("=", Some("==")) => &wrap2,
+        ("=", Some("==")) => &wrap2,
 
         // ("=", _) => &s2,
         // ("==", _) => &s2,
@@ -668,7 +683,7 @@ pub fn fmt_binop(x: &BinaryOp) -> String {
         // ("+=", _) => &s2,
         // ("-=", _) => &s2,
         // ("*=", _) => &s2,
-        // ("/=", _) => &s2,
+        ("^", Some("&")) => &wrap2,
         (">>", Some(_)) => &wrap2,
         ("|", Some(_)) => &wrap2,
 

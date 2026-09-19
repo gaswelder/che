@@ -68,7 +68,7 @@ parsed_double_t parse_double(double x) {
 	for (int i = 0; i < 8; i++) {
 		bits.getbits_lsfirst(bytes[i], bits8);
 		for (int j = 0; j < 8; j++) {
-			parsed.bits[8*i + j] = bits8[j];
+			parsed.bits[8 * i + j] = bits8[j];
 		}
 	}
 
@@ -79,7 +79,7 @@ parsed_double_t parse_double(double x) {
 	for (int i = 62; i >= 52; i--) {
 		parsed.exp *= 2;
 		parsed.exp += parsed.bits[i];
-		parsed.exp_bits[(i-52)] = parsed.bits[i];
+		parsed.exp_bits[i - 52] = parsed.bits[i];
 	}
 	parsed.exp -= 1023;
 

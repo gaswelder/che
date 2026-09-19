@@ -23,8 +23,12 @@ const int COMPUTER_FIELD_X = 48;
 
 // pgoto (player) moves the cursor to the (x, y) of the left field.
 // cgoto (computer) moves the cursor to the (x,y) of the right field.
-void pgoto(int y, x) { OS.move(BOARD_Y + y, PLAYER_FIELD_X + x*3); }
-void cgoto(int y, x) { OS.move(BOARD_Y + y, COMPUTER_FIELD_X + x*3); }
+void pgoto(int y, x) {
+	OS.move(BOARD_Y + y, PLAYER_FIELD_X + x * 3);
+}
+void cgoto(int y, x) {
+	OS.move(BOARD_Y + y, COMPUTER_FIELD_X + x * 3);
+}
 
 int COLWIDTH = 80;
 
@@ -49,7 +53,9 @@ const char *msg_you_sunk[] = {
 
 pub void init() {
 	OS.initscr();
-	if (OS.KEY_MIN) OS.keypad(OS.stdscr, true);
+	if (OS.KEY_MIN) {
+		OS.keypad(OS.stdscr, true);
+	}
 	OS.saveterm();
 	OS.nonl();
 	OS.cbreak();
@@ -134,8 +140,12 @@ void draw_score(game.state_t *g) {
 	int j = 18 + strlen(name);
 	int pwins = g->players[PLAYER].wins;
 	int cwins = g->players[COMPUTER].wins;
-	if (pwins >= 10) ++j;
-	if (cwins >= 10) ++j;
+	if (pwins >= 10) {
+		++j;
+	}
+	if (cwins >= 10) {
+		++j;
+	}
 	OS.mvprintw(1, (COLWIDTH - j) / 2, "%s: %d     Computer: %d", name, pwins, cwins);
 }
 
@@ -169,7 +179,7 @@ void draw_field_contents(game.state_t *g, int player) {
 			} else {
 				pgoto(y, x);
 			}
-			int shot = g->players[1-player].shots[x][y];
+			int shot = g->players[1 - player].shots[x][y];
 			// Haven't shot here -> show nothing.
 			if (!shot) {
 				continue;
@@ -185,7 +195,9 @@ void draw_field_contents(game.state_t *g, int player) {
 			}
 			// Shot and sunk -> show the ship.
 			game.ship_t *ss = game.getshipat(g, player, x, y);
-			if (!ss) panic("where's the ship?");
+			if (!ss) {
+				panic("where's the ship?");
+			}
 			if (!game.ship_afloat(ss)) {
 				if (OS.has_colors()) {
 					OS.attron(OS.COLOR_PAIR(OS.COLOR_RED));
@@ -208,7 +220,9 @@ void draw_ships(game.state_t *g, int player) {
 	game.ship_t *ships = g->players[player].ships;
 	for (int i = 0; i < SHIPTYPES; i++) {
 		game.ship_t *ss = &ships[i];
-		if (!ss->placed) continue;
+		if (!ss->placed) {
+			continue;
+		}
 		for (int j = 0; j < ss->length; j++) {
 			game.xy_t xy = game.shipxy(ss->x, ss->y, ss->dir, j);
 			if (player == COMPUTER) {

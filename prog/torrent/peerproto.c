@@ -15,9 +15,9 @@
 const char *TAG = "msg";
 
 pub typedef {
-    uint8_t proto[20];
-    uint8_t infohash[20];
-    uint8_t peer_id[20];
+	uint8_t proto[20];
+	uint8_t infohash[20];
+	uint8_t peer_id[20];
 } handshake_t;
 
 pub int read_handshake(reader.t *r, handshake_t *hs) {
@@ -51,23 +51,23 @@ pub int write_handshake(writer.t *w, uint8_t *infohash, *peer_id) {
 }
 
 pub enum {
-    MSG_BITFIELD = 5,
-    MSG_REQUEST = 6,
-    MSG_PIECE = 7
+	MSG_BITFIELD = 5,
+	MSG_REQUEST = 6,
+	MSG_PIECE = 7,
 }
 
 pub typedef {
-    uint8_t id;
-    uint8_t data[1000]; // untyped
+	uint8_t id;
+	uint8_t data[1000]; // untyped
 } msg_t;
 
 pub typedef {
-    uint32_t index, begin, length;
+	uint32_t index, begin, length;
 } msg_request_t;
 
 pub typedef {
-    uint32_t index, begin, length;
-    uint8_t *data; // the consumer frees it.
+	uint32_t index, begin, length;
+	uint8_t *data; // the consumer frees it.
 } msg_piece_t;
 
 // Reads a message length, which is a uint32.
@@ -75,9 +75,9 @@ pub typedef {
 // itself. So the parsing is: 1. read length. 2. msg = read <length> bytes.
 // 3. parse msg.
 pub uint32_t read_length(reader.t *r) {
-    uint32_t len;
-    endian.read4be(r, &len);
-    return len;
+	uint32_t len;
+	endian.read4be(r, &len);
+	return len;
 }
 
 // Reads a message after the length has been read.
@@ -154,13 +154,15 @@ pub int write_piece(writer.t *w, files.range_t req, uint8_t *data) {
 }
 
 pub int write_bitfield(writer.t *w, torrent.info_t *tf) {
-    dbg.m(TAG, "write_bitfield");
-    size_t npieces = torrent.npieces(tf);
-    size_t nbytes = npieces / 8;
-    if (nbytes * 8 < npieces) nbytes++;
-    int c = 0;
-    size_t chunksize = 8;
-    c += endian.write4be(w, 1 + nbytes);
+	dbg.m(TAG, "write_bitfield");
+	size_t npieces = torrent.npieces(tf);
+	size_t nbytes = npieces / 8;
+	if (nbytes * 8 < npieces) {
+		nbytes++;
+	}
+	int c = 0;
+	size_t chunksize = 8;
+	c += endian.write4be(w, 1 + nbytes);
 	c += endian.write1(w, MSG_BITFIELD);
     for (size_t piece = 0; piece < npieces; piece += 8) {
         if (piece + 8 > npieces) chunksize = npieces - piece;

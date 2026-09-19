@@ -16,7 +16,7 @@ int main() {
 
 	while (true) {
 		net.net_t *s = net.net_accept(l);
-		if(!s) {
+		if (!s) {
 			fprintf(stderr, "accept error: %s\n", net.net_error());
 			continue;
 		}
@@ -40,7 +40,7 @@ void *process_client(void *arg) {
 			fprintf(stderr, "read error: %s\n", strerror(errno));
 			break;
 		}
-		if(len == 0) {
+		if (len == 0) {
 			break;
 		}
 

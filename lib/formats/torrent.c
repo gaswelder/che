@@ -16,7 +16,6 @@ pub typedef {
 	char comment[200]; // Free text.
 
 	// ------------ info section -------------
-
 	size_t piece_length; // Number of bytes per piece, typically 256 KB.
 
 	// Filename in single-file variant, or directory name in multi-file variant.
@@ -114,10 +113,16 @@ pub info_t *parse(const char *data, size_t size) {
 		bencode.key(r, buf, sizeof(buf));
 		char *k = (char *) buf;
 		switch str (k) {
-			case "announce": { bencode.readbuf(r, (uint8_t *) tf->announce, sizeof(tf->announce)); }
+			case "announce": {
+				bencode.readbuf(r, (uint8_t *) tf->announce, sizeof(tf->announce));
+			}
 			case "creation date": { tf->creation_date = bencode.readnum(r); }
-			case "created by": { bencode.readbuf(r, (uint8_t *) tf->created_by, sizeof(tf->created_by)); }
-			case "comment": { bencode.readbuf(r, (uint8_t *) tf->comment, sizeof(tf->comment)); }
+			case "created by": {
+				bencode.readbuf(r, (uint8_t *) tf->created_by, sizeof(tf->created_by));
+			}
+			case "comment": {
+				bencode.readbuf(r, (uint8_t *) tf->comment, sizeof(tf->comment));
+			}
 			case "announce-list": { bencode.skip(r); }
 			case "info": {
 				info_begin = bencode.pos(r);

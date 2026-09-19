@@ -13,7 +13,7 @@
 // goes to infinity. Pixels may be colored then according to how soon the
 // sequence crosses a chosen threshold. The threshold should be higher than 2
 // (which is max(abs(f(any, any)))).
-
+//
 // * If c is held constant and the initial value of z is varied instead,
 // we get a Julia set.
 
@@ -32,14 +32,14 @@ pub void *newparams() {
 	params_t *p = calloc!(1, sizeof(params_t));
 
 	image.rgba_t colors[] = {
-		{ 0, 0, 0, 0},
-		{ 0, 0, 255, 0},
-		{ 0, 128, 255, 0},
-		{ 0, 255, 128, 0},
-		{ 128, 128, 0, 0},
-		{ 255, 128, 0, 0},
-		{ 255, 255, 128, 0},
-		{ 255, 255, 255, 0}
+		{ 0, 0, 0, 0 },
+		{ 0, 0, 255, 0 },
+		{ 0, 128, 255, 0 },
+		{ 0, 255, 128, 0 },
+		{ 128, 128, 0, 0 },
+		{ 255, 128, 0, 0 },
+		{ 255, 255, 128, 0 },
+		{ 255, 255, 255, 0 },
 	};
 	image.colormap_t *cm = calloc!(1, sizeof(image.colormap_t));
 	cm->size = nelem(colors);
@@ -59,11 +59,13 @@ pub void *newparams() {
 
 pub void mutateparams(void *state) {
 	params_t *p = state;
-	p->hw /= (1 + p->zoom_rate);
-	p->hh /= (1 + p->zoom_rate);
+	p->hw /= 1 + p->zoom_rate;
+	p->hh /= 1 + p->zoom_rate;
 }
 
-pub typedef { double xmin, xmax, ymin, ymax; } area_t;
+pub typedef {
+	double xmin, xmax, ymin, ymax;
+} area_t;
 
 pub void draw(image.image_t *img, void *state) {
 	params_t *p = state;
@@ -82,7 +84,7 @@ pub void draw(image.image_t *img, void *state) {
 		for (int i = 0; i < width; i++) {
 			complex.t c = {
 				.re = a.xmin + i * xres,
-				.im = a.ymin + j * yres
+				.im = a.ymin + j * yres,
 			};
 			double v = get_val(c, p->iterations);
 			*image.getpixel(img, i, j) = image.mapcolor(p->cm, v);

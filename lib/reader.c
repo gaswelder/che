@@ -57,7 +57,6 @@ pub void free(t *reader) {
 //
 // File
 //
-
 int file_read(void *ctx, uint8_t *buf, size_t n) {
 	FILE *f = ctx;
 	size_t r = fread(buf, 1, n, f);
@@ -81,7 +80,6 @@ pub t *stdin() {
 //
 // Memory
 //
-
 typedef {
 	const uint8_t *s;
 	size_t pos;
@@ -123,7 +121,6 @@ pub t *string(const char *s) {
 //
 // File descriptor
 //
-
 typedef {
 	int fd;
 } fd_t;

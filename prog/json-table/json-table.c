@@ -39,7 +39,9 @@ bool maybeTable() {
 			break;
 		}
 	}
-	if (ok) printtable(rows);
+	if (ok) {
+		printtable(rows);
+	}
 	freetable(rows);
 	return ok;
 }
@@ -147,7 +149,7 @@ void printtable(vec.t *rows) {
 	line(w);
 	for (size_t i = 0; i < nkeys; i++) {
 		printw(keys[i], colwidth[i]);
-		if (i < nkeys-1) {
+		if (i < nkeys - 1) {
 			printf(" | ");
 		}
 	}
@@ -161,7 +163,7 @@ void printtable(vec.t *rows) {
 			const char *key = keys[colid];
 			sprintval(json.get(*row, key), buf);
 			printw(buf, colwidth[colid]);
-			if (colid < nkeys-1) {
+			if (colid < nkeys - 1) {
 				printf(" | ");
 			}
 		}

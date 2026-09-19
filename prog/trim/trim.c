@@ -9,7 +9,7 @@ enum {
 	/*
 	 * L_NONE may occur at the end of file
 	 */
-	L_NONE
+	L_NONE,
 }
 
 /*
@@ -17,14 +17,16 @@ enum {
  */
 int lf = L_SAME;
 
-int main( int argc, char *argv[]) {
+int main(int argc, char *argv[]) {
 	char *line_format = "unix";
 
 	opt.summary("Converts end-of-line sequences.");
 	opt.str("l", "line format ('unix', 'win' or 'same')", &line_format);
 
-	char **path = opt.parse( argc, argv );
-	if (!path) return opt.usage();
+	char **path = opt.parse(argc, argv);
+	if (!path) {
+		return opt.usage();
+	}
 
 	switch str (line_format) {
 		case "same": { lf = L_SAME; }
@@ -41,7 +43,7 @@ int main( int argc, char *argv[]) {
 			path++;
 			continue;
 		}
-		if( !trim_file( *path ) ) {
+		if (!trim_file(*path)) {
 			return 1;
 		}
 		path++;
@@ -103,7 +105,7 @@ bool ftrim(FILE *in, mem.mem_t *out, const char *fpath)
 		 * If the line needs trimming, we just move eol_pos to
 		 * the "correct" position.
 		 */
-		if(buf.last_pos + 1 < buf.eol_pos) {
+		if (buf.last_pos + 1 < buf.eol_pos) {
 			buf.eol_pos = buf.last_pos + 1;
 			changed = true;
 		}

@@ -36,7 +36,7 @@ pub void free(map_t *m) {
 pub void set(map_t *m, uint8_t *key, size_t keysize, void *val, size_t valsize) {
 	// Enlarge the map if needed.
 	innermap_t *cur = m->m;
-	if ((cur->size * 100 / cap(cur)) > 75) {
+	if (cur->size * 100 / cap(cur) > 75) {
 		innermap_t *n = innermap(cur->nbuckets * 2, cur->bucketsize);
 		inner_copy(n, cur); // m to n
 		if (DEBUG) {

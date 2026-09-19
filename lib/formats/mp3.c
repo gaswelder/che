@@ -1,13 +1,14 @@
-#import bits
-#import enc/endian
-#import reader
-#import writer
-
 /*
  * This recognizes only MPEG 1 Layer III.
  * http://mpgedit.org/mpgedit/mpeg_format/MP3Format.html
  * http://mpgedit.org/mpgedit/mpeg_format/mpeghdr.htm
  */
+#import bits
+#import enc/endian
+#import reader
+#import writer
+
+
 
 // Bitrates table for MP3, kbps.
 int bitrates[] = { 0, 32, 40, 48, 56, 64, 80, 96, 112, 128, 160, 192, 224, 256, 320 };
@@ -160,7 +161,7 @@ bool readframe(reader_t *f) {
 	// The encoder inserts padding bits from time to time to compensate for
 	// the truncation from integer division, somewhat similar to leap year
 	// seconds.
-	size_t len = 144 * (h->bitrate * 1000) / 44100;
+	size_t len = 144 * h->bitrate * 1000 / 44100;
 	if (h->padded) {
 		len++;
 	}
@@ -263,11 +264,11 @@ int fpeek(FILE *f) {
 // The first of a VBR file may contain info instead of audio data.
 // Among that info could be this xing header.
 typedef {
-    uint32_t flags; // which of the fields below are set.
-    uint32_t frames; // audio length in frames.
-    uint32_t bytes; // audio length in bytes.
-    uint8_t toc[100]; // toc[i] is approximate file position for i% audio position.
-    uint32_t quality; // LAME metadata.
+	uint32_t flags; // which of the fields below are set.
+	uint32_t frames; // audio length in frames.
+	uint32_t bytes; // audio length in bytes.
+	uint8_t toc[100]; // toc[i] is approximate file position for i% audio position.
+	uint32_t quality; // LAME metadata.
 } xing_header_t;
 
 bool read_xing(reader.t *r, xing_header_t *x) {

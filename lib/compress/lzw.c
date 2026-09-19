@@ -269,15 +269,6 @@ void writebits(bits.writer_t *w, uint16_t code, uint8_t n) {
 }
 
 uint16_t readbits(bits.reader_t *r, uint8_t n) {
-	// uint16_t val = 0;
-	// for (uint8_t i = 0; i < n; i++) {
-	// 	int c = bits.read1(r);
-	// 	if (c < 0) panic("read failed");
-	// 	val *= 2;
-	// 	val += c;
-	// }
-
-
 	uint16_t val = 0;
 	uint16_t amp = 1;
 	for (uint8_t i = 0; i < n; i++) {

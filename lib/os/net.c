@@ -1,5 +1,3 @@
-#import reader
-
 #include <arpa/inet.h>
 #include <netdb.h>
 #include <sys/select.h>
@@ -7,13 +5,14 @@
 #include <sys/types.h>
 #include <unistd.h>
 #include <fcntl.h>
+#type socklen_t
+
+#import reader
 
 const char *error = "no error";
 pub typedef struct sockaddr sockaddr_t;
 typedef struct sockaddr_in sockaddr_in_t;
 typedef struct addrinfo addrinfo_t;
-
-#type socklen_t
 
 pub typedef {
 	int fd; // OS's socket (file) descriptor.
@@ -108,10 +107,16 @@ pub net_t *connect_nonblock(const char *proto, *addr) {
 		return NULL;
 	}
 	int flags = OS.fcntl(c->fd, OS.F_GETFL, 0);
-	if (flags < 0) panic("fcntl failed");
-	if (OS.fcntl(c->fd, OS.F_SETFL, flags | OS.O_NONBLOCK) < 0) panic("fcntl failed");
-	if (OS.connect(c->fd, &(c->ai_addr), c->addrlen) < 0) {
-		if (errno == OS.EINPROGRESS) return c;
+	if (flags < 0) {
+		panic("fcntl failed");
+	}
+	if (OS.fcntl(c->fd, OS.F_SETFL, flags | OS.O_NONBLOCK) < 0) {
+		panic("fcntl failed");
+	}
+	if (OS.connect(c->fd, &c->ai_addr, c->addrlen) < 0) {
+		if (errno == OS.EINPROGRESS) {
+			return c;
+		}
 		free(c);
 		return NULL;
 	}

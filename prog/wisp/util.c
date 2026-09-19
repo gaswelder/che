@@ -3,7 +3,9 @@ pub char *addslashes(char *cleanstr) {
 	char *p = cleanstr;
 	int n = 0;
 	while (*p != '\0') {
-		if (*p == '\\' || *p == '"') n++;
+		if (*p == '\\' || *p == '"') {
+			n++;
+		}
 		p++;
 	}
 
@@ -38,11 +40,11 @@ pub uint32_t hash(void *key, size_t keylen) {
 	char *skey = key;
 	for (uint32_t i = 0; i < keylen; ++i) {
 		hash += skey[i];
-		hash += (hash << 10);
-		hash ^= (hash >> 6);
+		hash += hash << 10;
+		hash ^= hash >> 6;
 	}
-	hash += (hash << 3);
-	hash ^= (hash >> 11);
-	hash += (hash << 15);
+	hash += hash << 3;
+	hash ^= hash >> 11;
+	hash += hash << 15;
 	return hash;
 }

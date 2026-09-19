@@ -3,12 +3,12 @@
 #import sound
 
 enum {
-    HARD,
-    SOFT,
-    ASYMMETRIC
+	HARD,
+	SOFT,
+	ASYMMETRIC,
 }
 
-int main(int argc, char** argv) {
+int main(int argc, char **argv) {
 	float gain = 20;
 	char *typestr = "soft";
 
@@ -19,7 +19,7 @@ int main(int argc, char** argv) {
 	char **args = opt.parse(argc, argv);
 
 	int type = ASYMMETRIC;
-    const char *in_path = args[0];
+	const char *in_path = args[0];
 
 	if (strcmp(typestr, "hard") == 0) type = HARD;
 	else if (strcmp(typestr, "soft") == 0) type = SOFT;
@@ -39,7 +39,7 @@ int main(int argc, char** argv) {
 
 	wav.close_reader(in);
 	wav.close_writer(out);
-    return 0;
+	return 0;
 }
 
 double dist(int type, double x) {

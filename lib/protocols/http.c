@@ -170,10 +170,12 @@ pub int write_request(writer.t *w, request_t *r) {
 	strbuilder.adds(sb, "\r\n");
 
 	const char *s = strbuilder.str_raw(sb);
-	int len = writer.write(w, (uint8_t *)s, strlen(s));
+	int len = writer.write(w, (uint8_t *) s, strlen(s));
 	bool ok = (len == (int)strlen(s));
-    strbuilder.free(sb);
-    if (!ok) return -1;
+	strbuilder.free(sb);
+	if (!ok) {
+		return -1;
+	}
 	return len;
 }
 
@@ -378,7 +380,7 @@ pub bool read_request(reader.t *br, request_t *r) {
 }
 
 pub void write_404(request_t *req, net.net_t *conn) {
-    const char *msg = "The file was not found on the server.";
+	const char *msg = "The file was not found on the server.";
 	char buf[1000] = {};
 	sprintf(buf,
         "%s 404 Not Found\n"

@@ -113,7 +113,7 @@ pub void addframe(writer_t *avi, image.image_t *img) {
 	// uint8_t *frame = calloc!(1, width * height * 3);
 	for (int y = 0; y < height; y++) {
 		for (int x = 0; x < width; x++) {
-			int pos = y * (width*3) + (x*3);
+			int pos = y * width * 3 + x * 3;
 			image.rgba_t c = image.get(img, x, y);
 			frame[pos++] = c.red;
 			frame[pos++] = c.green;
@@ -156,18 +156,15 @@ pub void stop(writer_t *avi) {
 		}
 	}
 
-    // // Patch RIFF size
-    // int64_t file_end = ftell(f);
-    // fseek(f, 4, SEEK_SET);
-    // endian.write4le(w, file_end - 8);
-
-    // // Patch frame count in headers
-    // fseek(f, 32, SEEK_SET); // dwTotalFrames in avih
-    // endian.write4le(w, avi->frame_count);
-
-    // fseek(f, 140, SEEK_SET); // dwLength in strh
-    // endian.write4le(w, avi->frame_count);
-
+	// // Patch RIFF size
+	// int64_t file_end = ftell(f);
+	// fseek(f, 4, SEEK_SET);
+	// endian.write4le(w, file_end - 8);
+	// // Patch frame count in headers
+	// fseek(f, 32, SEEK_SET); // dwTotalFrames in avih
+	// endian.write4le(w, avi->frame_count);
+	// fseek(f, 140, SEEK_SET); // dwLength in strh
+	// endian.write4le(w, avi->frame_count);
 	writer.free(w);
 	free(avi);
 }

@@ -1,10 +1,10 @@
-#import error
-
 #link pthread
 #type pthread_t
 #type pthread_mutex_t
 #type pthread_cond_t
 #include <pthread.h>
+
+#import error
 
 pub typedef void *thr_func(void *);
 

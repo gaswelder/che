@@ -104,8 +104,8 @@ char fname[1000] = {};
 void cuespl(track_t *tracks, int n, mp3.reader_t *m) {
 	for (int i = 0; i < n; i++) {
 		size_t pos_us = SIZE_MAX;
-		if (i+1 < n) {
-			pos_us = tracks[i+1].pos_us;
+		if (i + 1 < n) {
+			pos_us = tracks[i + 1].pos_us;
 		}
 		fmtname(fname, sizeof(fname), i, tracks[i].title);
 		write_track(m, fname, pos_us);
@@ -180,7 +180,7 @@ void write_track(mp3.reader_t *m, const char *fname, size_t pos_us) {
 
 void fmtname(char *buf, size_t bufsize, int i, const char *title) {
 	strbuilder.str *b = strbuilder.new();
-	strbuilder.addf(b, "%02d. ", i+1);
+	strbuilder.addf(b, "%02d. ", i + 1);
 	const char *c = title;
 	while (*c != '\0') {
 		if (*c == ':') {

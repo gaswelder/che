@@ -1,7 +1,6 @@
 // Reads key-value config files.
 // A line may contain up to one pair in form "key = value".
 // Everything after # is a comment.
-
 pub typedef {
 	int line;
 	FILE *f;

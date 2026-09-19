@@ -178,9 +178,7 @@ int ai_reverse_jump(game.state_t *g, state_t *s) {
 	int result = ai_cpufire(g, s, s->x, s->y);
 	s->hit = result;
 	switch (result) {
-		case game.S_MISS, game.S_SUNK: {
-			s->ai_next = RANDOM_FIRE;
-		}
+		case game.S_MISS, game.S_SUNK: { s->ai_next = RANDOM_FIRE; }
 		case game.S_HIT: {
 			s->ts.x = s->x;
 			s->ts.y = s->y;
@@ -205,17 +203,13 @@ int ai_second_pass(game.state_t *g, state_t *s) {
 	int result = ai_cpufire(g, s, s->x, s->y);
 	s->hit = result;
 	switch (result) {
-		case game.S_MISS, game.S_SUNK: {
-			s->ai_next = RANDOM_FIRE;
-		}
+		case game.S_MISS, game.S_SUNK: { s->ai_next = RANDOM_FIRE; }
 		case game.S_HIT: {
 			s->ts.x = s->x;
 			s->ts.y = s->y;
 			s->ts.hits++;
 		}
-		default: {
-			panic("!");
-		}
+		default: { panic("!"); }
 	}
 	return result;
 }
@@ -227,7 +221,9 @@ void ai_choose_move(game.state_t *g, state_t *s, int *px, int *py) {
 	int xpossible[BWIDTH * BDEPTH];
 	for (int x = 0; x < BWIDTH; x++) {
 		for (int y = 0; y < BDEPTH; y++) {
-			if (g->players[COMPUTER].shots[x][y]) continue;
+			if (g->players[COMPUTER].shots[x][y]) {
+				continue;
+			}
 			xpossible[nposs] = x;
 			ypossible[nposs] = y;
 			nposs++;

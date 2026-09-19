@@ -32,7 +32,9 @@ stats.series_t *collect() {
 	double val = 0;
 	while (true) {
 		int r = scanf("%lf\n", &val);
-		if (r == EOF) break;
+		if (r == EOF) {
+			break;
+		}
 		if (r != 1) {
 			fprintf(stderr, "failed to parse a number\n");
 			exit(1);

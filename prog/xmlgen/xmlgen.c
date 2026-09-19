@@ -1,5 +1,4 @@
 // This used to be xmlgen by Florian Waas (flw@mx4.org).
-
 #import formats/dtd
 #import ipsum
 #import opt
@@ -257,9 +256,8 @@ char *lastnames[] = {
     "Zucchini",
 };
 
-
 int main(int argc, char **argv) {
-    opt.parse(argc, argv);
+	opt.parse(argc, argv);
 	dtd.schema_t schema = dtd.parse(real_dtd);
 
 	ipsum.add_dict("shipping", nelem(SHIPPING), SHIPPING);
@@ -275,18 +273,22 @@ int main(int argc, char **argv) {
     ipsum.add_dict("provinces", nelem(provinces), provinces);
     ipsum.add_dict("yesno", nelem(yesno), yesno);
 
-    fprintf(stdout, "<?xml version=\"1.0\" standalone=\"yes\"?>\n");
+	fprintf(stdout, "<?xml version=\"1.0\" standalone=\"yes\"?>\n");
 	emit_element(&schema, "site", 0);
-    return 0;
+	return 0;
 }
 
 // Emits a tree for element with the specified name.
 void emit_element(dtd.schema_t *s, const char *name, int level) {
-	if (level > 20) return;
+	if (level > 20) {
+		return;
+	}
 	indent(level);
 
 	dtd.element_t *e = dtd.get_element(s, name);
-	if (!e) panic("element not found: %s", name);
+	if (!e) {
+		panic("element not found: %s", name);
+	}
 
 	printf("<%s", name);
 	dtd.attlist_t *a = dtd.get_attributes(s, name);

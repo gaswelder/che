@@ -5,7 +5,6 @@ pub typedef {
 	int vals;
 	char valbuf[4096];
 	bool firstval;
-
 } reader_t;
 
 // Creates a new CSV reader for stdin.
@@ -18,7 +17,9 @@ pub reader_t *newreader() {
 
 // Releases the reader.
 pub void freereader(reader_t *r) {
-	if (r->b) scanner.free(r->b);
+	if (r->b) {
+		scanner.free(r->b);
+	}
 	free(r);
 }
 
@@ -35,8 +36,12 @@ pub bool readval(reader_t *r) {
 	r->firstval = false;
 
 	int next = scanner.peek(r->b);
-	if (next == '\n' || next == '\r') return false;
-	if (!scanner.more(r->b)) return false;
+	if (next == '\n' || next == '\r') {
+		return false;
+	}
+	if (!scanner.more(r->b)) {
+		return false;
+	}
 
 	if (next == '"') {
 		read_quoted_value(r);
@@ -65,7 +70,11 @@ bool peekany(scanner.t *b, const char *chars) {
 // Moves the reader to the next line.
 pub bool nextline(reader_t *r) {
 	// Discard the remaining columns if the caller hasn't consumed them.
-	while (true) if (!readval(r)) break;
+	while (true) {
+		if (!readval(r)) {
+			break;
+		}
+	}
 
 	bool ok = false;
 	while (scanner.peek(r->b) == '\r' || scanner.peek(r->b) == '\n') {
@@ -129,7 +138,9 @@ pub void writeval(writer_t *w, const char *x) {
 	w->col++;
 	fputc('"', w->f);
 	while (*x != '\0') {
-		if (*x == '"') fputc('\\', w->f);
+		if (*x == '"') {
+			fputc('\\', w->f);
+		}
 		fputc(*x, w->f);
 		x++;
 	}

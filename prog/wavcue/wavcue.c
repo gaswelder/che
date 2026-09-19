@@ -1,9 +1,9 @@
 #import formats/wav
-#import sound
 #import opt
+#import sound
 
 typedef {
-    bool loud;
+	bool loud;
 	int64_t duration; // ns
 } range_t;
 
@@ -27,9 +27,9 @@ int main(int argc, char *argv[]) {
 	char **args = opt.parse(argc, argv);
 
 	r = wav.open_reader(args[0]);
-    if (r == NULL) {
-        panic("failed to open wav");
-    }
+	if (r == NULL) {
+		panic("failed to open wav");
+	}
 
 	printf("FILE \"%s\" WAV\n", args[0]);
 	while (rmore()) {
@@ -47,8 +47,8 @@ int main(int argc, char *argv[]) {
 	if (wav.more(r)) {
 		panic("more");
 	}
-    wav.close_reader(r);
-    return 0;
+	wav.close_reader(r);
+	return 0;
 }
 
 void emit() {
@@ -98,7 +98,7 @@ bool peekval() {
 double consume() {
 	range_t r = _val;
 	loaded = false;
-	double x = ((double) r.duration) / 1000/1000/1000;
+	double x = (double) r.duration / 1000 / 1000 / 1000;
 	position += x;
 	return x;
 }
@@ -107,10 +107,10 @@ range_t readval() {
 	if (!wav.more(r)) {
 		panic("nomore");
 	}
-    sound.samplef_t s = wav.read_samplef(r);
-    double e = (s.left * s.left + s.right * s.right) / 2.0;
-    double rms = max(sqrt(e / 1), 1e-12);
-    double db = 20.0 * log10(rms);
+	sound.samplef_t s = wav.read_samplef(r);
+	double e = (s.left * s.left + s.right * s.right) / 2.0;
+	double rms = max(sqrt(e / 1), 1e-12);
+	double db = 20.0 * log10(rms);
 	range_t res = {};
 	res.loud = db >= -SILENCE_LEVEL;
 	res.duration = 1000 * 1000 * 1000 / 44100;
@@ -118,7 +118,9 @@ range_t readval() {
 }
 
 double max(double x, y) {
-	if (x > y) return x;
+	if (x > y) {
+		return x;
+	}
 	return y;
 }
 
@@ -129,5 +131,5 @@ void printcuetime(double sec) {
 	int s = v % 60;
 	v /= 60;
 	int m = v;
-	printf("%02d:%02d:%02d", m, s, (ms * 75)/1000);
+	printf("%02d:%02d:%02d", m, s, ms * 75 / 1000);
 }

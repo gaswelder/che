@@ -1,7 +1,7 @@
 #import cmd_create.c
-#import cmd_seed.c
-#import cmd_info.c
 #import cmd_download.c
+#import cmd_info.c
+#import cmd_seed.c
 #import opt
 
 int main(int argc, char *argv[]) {

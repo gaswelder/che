@@ -100,22 +100,10 @@ pub tok_t get(lexer_t *t) {
 }
 
 const char *delims[] = {
-	"<<",
-	">>",
-	"[",
-	"]",
-	"R",
-	"obj",
-	"endobj",
-	"xref",
-	"trailer",
-	"startxref",
-	"%%EOF",
-	"stream",
-	"endstream",
-	"false",
-	"n",
-	"f",
+	       "<<",        ">>",         "[",         "]",
+	        "R",       "obj",    "endobj",      "xref",
+	  "trailer", "startxref",     "%%EOF",    "stream",
+	"endstream",     "false",         "n",         "f"
 };
 
 bool _read(lexer_t *t, tok_t *r) {

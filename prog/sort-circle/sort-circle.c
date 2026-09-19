@@ -21,23 +21,23 @@ int *swaps = NULL;
  * The sorting algorithms.
  */
 enum {
-    SORT_NULL,
-    SORT_BUBBLE,
-    SORT_ODD_EVEN,
-    SORT_INSERTION,
-    SORT_STOOGESORT,
-    SORT_QUICKSORT,
-    SORT_RADIX_8_LSD,
-    SORTS_TOTAL
+	SORT_NULL,
+	SORT_BUBBLE,
+	SORT_ODD_EVEN,
+	SORT_INSERTION,
+	SORT_STOOGESORT,
+	SORT_QUICKSORT,
+	SORT_RADIX_8_LSD,
+	SORTS_TOTAL,
 }
 
 const char *sort_names[] = {
-    [SORT_ODD_EVEN] = "Odd-even",
-    [SORT_BUBBLE] = "Bubble",
-    [SORT_INSERTION] = "Insertion",
-    [SORT_STOOGESORT] = "Stoogesort",
-    [SORT_QUICKSORT] = "Quicksort",
-    [SORT_RADIX_8_LSD] = "Radix LSD (base 8)"
+	[SORT_ODD_EVEN] = "Odd-even",
+	[SORT_BUBBLE] = "Bubble",
+	[SORT_INSERTION] = "Insertion",
+	[SORT_STOOGESORT] = "Stoogesort",
+	[SORT_QUICKSORT] = "Quicksort",
+	[SORT_RADIX_8_LSD] = "Radix LSD (base 8)",
 };
 
 const int FPS = 60; // output framerate
@@ -56,13 +56,15 @@ font.t f = {};
 
 int main(int argc, char **argv) {
 	f = font.load("prog/sort-circle/sort-circle-font.bin");
-	if (!f.data) f = font.load("sort-circle-font.bin");
+	if (!f.data) {
+		f = font.load("sort-circle-font.bin");
+	}
 	if (!f.data) {
 		fprintf(stderr, "couldn't load font at '%s'\n", "sort-circle-font.bin");
-        return 1;
+		return 1;
 	}
 
-    bool help = false;
+	bool help = false;
 	bool hide_shuffle = false;
 	bool slow_shuffle = false;
 	char *audio_output = NULL;
@@ -73,63 +75,63 @@ int main(int argc, char **argv) {
 
 	opt.nargs(0, "");
 	opt.summary("Animated sorting demo - pipe the output to mpv.");
-    opt.flag("h", "print the help message", &help);
+	opt.flag("h", "print the help message", &help);
 	opt.str("a", "audio output file path (wav)", &audio_output);
 	opt.flag("c", "use the original circle rendering", &global_flag_circle);
-    opt.flag("q", "don't draw the shuffle", &hide_shuffle);
-    opt.flag("y", "slow down shuffle animation", &slow_shuffle);
-    opt.opt_int("s", "animate sort number N", &sort_number);
-    opt.opt_int("w", "insert a delay of N frames", &delay);
+	opt.flag("q", "don't draw the shuffle", &hide_shuffle);
+	opt.flag("y", "slow down shuffle animation", &slow_shuffle);
+	opt.opt_int("s", "animate sort number N", &sort_number);
+	opt.opt_int("w", "insert a delay of N frames", &delay);
 	opt.opt_int("n", "size of the array", &global_N);
-    opt.str("x", "seed for shuffling (64-bit HEX string)", &seed_str);
-    opt.parse(argc, argv);
+	opt.str("x", "seed for shuffling (64-bit HEX string)", &seed_str);
+	opt.parse(argc, argv);
 
-    if (help) {
-        opt.usage();
-        for (int i = 1; i < SORTS_TOTAL; i++) {
-            fprintf(stderr, "  %d: %s\n", i, sort_names[i]);
-        }
-        exit(0);
-    }
+	if (help) {
+		opt.usage();
+		for (int i = 1; i < SORTS_TOTAL; i++) {
+			fprintf(stderr, "  %d: %s\n", i, sort_names[i]);
+		}
+		exit(0);
+	}
 
 	array = calloc!(global_N, sizeof(int));
 	swaps = calloc!(global_N, sizeof(int));
 
-    if (seed_str) {
-        rnd.seed(strtoull(seed_str, NULL, 16));
-    }
+	if (seed_str) {
+		rnd.seed(strtoull(seed_str, NULL, 16));
+	}
 
-    if (audio_output) {
+	if (audio_output) {
 		audio_output_file = fopen(audio_output, "wb");
 		if (!audio_output_file) {
 			fprintf(stderr, "failed to open '%s': %s\n", audio_output, strerror(errno));
 			return 1;
 		}
 		wavout = wav.open_writer(audio_output_file);
-    }
+	}
 
 	image.image_t *img = image.new(800, 800);
 
-    if (delay) {
-        for (int i = 0; i < delay; i++) {
-            frame(img);
-        }
-    }
+	if (delay) {
+		for (int i = 0; i < delay; i++) {
+			frame(img);
+		}
+	}
 
-    for (int i = 0; i < global_N; i++) {
-        array[i] = i;
-    }
+	for (int i = 0; i < global_N; i++) {
+		array[i] = i;
+	}
 
-    for (int i = 1; i < SORTS_TOTAL; i++) {
-        shuffle(img, array, hide_shuffle, slow_shuffle);
-        run_sort(img, i);
-        pause_1s(img);
-    }
+	for (int i = 1; i < SORTS_TOTAL; i++) {
+		shuffle(img, array, hide_shuffle, slow_shuffle);
+		run_sort(img, i);
+		pause_1s(img);
+	}
 	if (audio_output_file) {
 		wav.close_writer(wavout);
 		fclose(audio_output_file);
 	}
-    return 0;
+	return 0;
 }
 
 void shuffle(image.image_t *img, int *array, bool hide, slow) {
@@ -179,11 +181,13 @@ void frame(image.image_t *img) {
 	image.clear(img);
 
 	audio();
-    memset(swaps, 0, global_N * sizeof(swaps[0]));
+	memset(swaps, 0, global_N * sizeof(swaps[0]));
 }
 
 void audio() {
-	if (!wavout) return;
+	if (!wavout) {
+		return;
+	}
 
 	// 44100 samples per second, 60 frames per second
 	// means one frame has 44100/60 samples.
@@ -198,8 +202,10 @@ void audio() {
 
 	/* Generate each voice */
 	for (int i = 0; i < global_N; i++) {
-		if (!swaps[i]) continue;
-		float hz = (float) MINHZ + (float)(MAXHZ - MINHZ) * i / (float)global_N;
+		if (!swaps[i]) {
+			continue;
+		}
+		float hz = (float) MINHZ + (float)(MAXHZ - MINHZ) * i / (float) global_N;
 
 		for (int j = 0; j < nsamples; j++) {
 			float u = 1.0f - j / (float)(nsamples - 1);
@@ -245,56 +251,60 @@ void draw_array(image.image_t *img, int *array, int N, bool circle) {
 }
 
 void swap(int *a, int i, j) {
-    int tmp = a[i];
-    a[i] = a[j];
-    a[j] = tmp;
-    swaps[(a - array) + i]++;
-    swaps[(a - array) + j]++;
+	int tmp = a[i];
+	a[i] = a[j];
+	a[j] = tmp;
+	swaps[a - array + i]++;
+	swaps[a - array + j]++;
 }
 
 void sort_bubble(image.image_t *img, int *array) {
-    int c = 0;
-    while (true) {
-        c = 0;
-        for (int i = 1; i < global_N; i++) {
-            if (array[i - 1] > array[i]) {
-                swap(array, i - 1, i);
-                c = 1;
-            }
-        }
-        frame(img);
-        if (!c) break;
-    }
+	int c = 0;
+	while (true) {
+		c = 0;
+		for (int i = 1; i < global_N; i++) {
+			if (array[i - 1] > array[i]) {
+				swap(array, i - 1, i);
+				c = 1;
+			}
+		}
+		frame(img);
+		if (!c) {
+			break;
+		}
+	}
 }
 
 void sort_odd_even(image.image_t *img, int *array) {
-    int c = 0;
-    while (true) {
-        c = 0;
-        for(int i = 1; i < global_N - 1; i += 2) {
-            if (array[i] > array[i + 1]) {
-                swap(array, i, i + 1);
-                c = 1;
-            }
-        }
-        for (int i = 0; i < global_N - 1; i += 2) {
-            if (array[i] > array[i + 1]) {
-                swap(array, i, i + 1);
-                c = 1;
-            }
-        }
-        frame(img);
-        if (!c) break;
-    }
+	int c = 0;
+	while (true) {
+		c = 0;
+		for (int i = 1; i < global_N - 1; i += 2) {
+			if (array[i] > array[i + 1]) {
+				swap(array, i, i + 1);
+				c = 1;
+			}
+		}
+		for (int i = 0; i < global_N - 1; i += 2) {
+			if (array[i] > array[i + 1]) {
+				swap(array, i, i + 1);
+				c = 1;
+			}
+		}
+		frame(img);
+		if (!c) {
+			break;
+		}
+	}
 }
 
 void sort_insertion(image.image_t *img, int *array) {
-    for (int i = 1; i < global_N; i++) {
-        for (int j = i; j > 0 && array[j - 1] > array[j]; j--) {
-            swap(array, j, j - 1);
-        }
-        frame(img);
-    }
+	for (int i = 1; i < global_N; i++) {
+		for (int j = i; j > 0 && array[j - 1] > array[j]; j--) {
+			swap(array, j, j - 1);
+		}
+		frame(img);
+	}
 }
 
 void sort_stoogesort(image.image_t *img, int *array, int i, int j) {
@@ -313,32 +323,31 @@ void sort_stoogesort(image.image_t *img, int *array, int i, int j) {
 }
 
 void sort_quicksort(image.image_t *img, int *array, int n) {
-    if (n > 1) {
-        int high = n;
-        int i = 1;
-        while (i < high) {
-            if (array[0] < array[i]) {
-                swap(array, i, --high);
-                if (n > 12)
-                    frame(img);
-            } else {
-                i++;
-            }
-        }
-        swap(array, 0, --high);
-        frame(img);
-        sort_quicksort(img, array, high + 1);
-        sort_quicksort(img, array + high + 1, n - high - 1);
-    }
+	if (n > 1) {
+		int high = n;
+		int i = 1;
+		while (i < high) {
+			if (array[0] < array[i]) {
+				swap(array, i, --high);
+				if (n > 12) {
+					frame(img);
+				}
+			} else {
+				i++;
+			}
+		}
+		swap(array, 0, --high);
+		frame(img);
+		sort_quicksort(img, array, high + 1);
+		sort_quicksort(img, array + high + 1, n - high - 1);
+	}
 }
 
-int
-digit(int v, int b, int d)
-{
-    for (int i = 0; i < d; i++) {
-        v /= b;
-    }
-    return v % b;
+int digit(int v, int b, int d) {
+	for (int i = 0; i < d; i++) {
+		v /= b;
+	}
+	return v % b;
 }
 
 void sort_radix_lsd(image.image_t *img, int *array, int b) {
@@ -370,42 +379,42 @@ void sort_radix_lsd(image.image_t *img, int *array, int b) {
 
 void draw_dot(image.image_t *img, float x, y, image.rgba_t color) {
 	float S = 800; // image size
-	float R0 = S  / 400.0f;  // dot inner radius
-	float R1 = S / 200.0f;  // dot outer radius
+	float R0 = S / 400.0f; // dot inner radius
+	float R1 = S / 200.0f; // dot outer radius
 
-    int miny = floorf(y - R1 - 1);
-    int maxy = ceilf(y + R1 + 1);
-    int minx = floorf(x - R1 - 1);
-    int maxx = ceilf(x + R1 + 1);
+	int miny = floorf(y - R1 - 1);
+	int maxy = ceilf(y + R1 + 1);
+	int minx = floorf(x - R1 - 1);
+	int maxx = ceilf(x + R1 + 1);
 
-    for (int py = miny; py <= maxy; py++) {
-        float dy = (float) py - y;
-        for (int px = minx; px <= maxx; px++) {
-            float dx = (float) px - x;
-            float d = sqrtf(dy * dy + dx * dx);
-            float alpha = smoothstep(R1, R0, d);
+	for (int py = miny; py <= maxy; py++) {
+		float dy = (float) py - y;
+		for (int px = minx; px <= maxx; px++) {
+			float dx = (float) px - x;
+			float d = sqrtf(dy * dy + dx * dx);
+			float alpha = smoothstep(R1, R0, d);
 			image.blend(img, px, py, color, alpha);
-        }
-    }
+		}
+	}
 }
 
 float smoothstep(float lower, float upper, float x) {
-    x = lib.clampf((x - lower) / (upper - lower), 0.0f, 1.0f);
-    return x * x * (3.0f - 2.0f * x);
+	x = lib.clampf((x - lower) / (upper - lower), 0.0f, 1.0f);
+	return x * x * (3.0f - 2.0f * x);
 }
 
 void draw_string(image.image_t *img, font.t f, const char *message) {
-    image.rgba_t fontcolor = {255, 255, 255, 0};
-    for (int c = 0; message[c] != '\0'; c++) {
-        int x = c * f.w + MESSAGE_PADDING;
-        int y = MESSAGE_PADDING;
-        for (int dy = 0; dy < f.h; dy++) {
-            for (int dx = 0; dx < f.w; dx++) {
-                float alpha = font.value(f, message[c], dx, dy);
-                if (alpha > 0.0f) {
-                	image.blend(img, x + dx, y + dy, fontcolor, alpha);
-                }
-            }
-        }
-    }
+	image.rgba_t fontcolor = { 255, 255, 255, 0 };
+	for (int c = 0; message[c] != '\0'; c++) {
+		int x = c * f.w + MESSAGE_PADDING;
+		int y = MESSAGE_PADDING;
+		for (int dy = 0; dy < f.h; dy++) {
+			for (int dx = 0; dx < f.w; dx++) {
+				float alpha = font.value(f, message[c], dx, dy);
+				if (alpha > 0.0f) {
+					image.blend(img, x + dx, y + dy, fontcolor, alpha);
+				}
+			}
+		}
+	}
 }

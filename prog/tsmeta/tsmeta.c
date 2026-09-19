@@ -1,8 +1,8 @@
+#import format.c
+#import nodes.c
+#import read.c
 #import scanner
 #import strbuilder
-#import nodes.c
-#import format.c
-#import read.c
 
 nodes.node_t *global_types[100] = {};
 size_t global_typeslen = 0;
@@ -45,9 +45,7 @@ void test(const char *in) {
 nodes.node_t *eval(nodes.node_t *e) {
 	// printf("eval %s\n", nodes.kindstr(e->kind));
 	switch (e->kind) {
-		case nodes.T, nodes.F, nodes.NUM, nodes.STR: {
-			return e;
-		}
+		case nodes.T, nodes.F, nodes.NUM, nodes.STR: { return e; }
 		case nodes.LIST: {
 			nodes.node_t *r = nodes.new(nodes.LIST);
 			for (size_t i = 0; i < e->itemslen; i++) {
@@ -95,16 +93,14 @@ nodes.node_t *eval(nodes.node_t *e) {
 			}
 			return t->expr;
 		}
-		default: {
-			panic("don't know how to eval kind %d", e->kind);
-		}
+		default: { panic("don't know how to eval kind %d", e->kind); }
 	}
 	return e;
 }
 
 nodes.tdef_t *get_tdef(const char *name) {
 	for (size_t i = 0; i < global_typeslen; i++) {
-		nodes.tdef_t *t = global_types[global_typeslen-1-i]->payload;
+		nodes.tdef_t *t = global_types[global_typeslen - 1 - i]->payload;
 		// printf("?%s -- %zu: %s\n", name, global_typeslen-1-i, t->name);
 		if (!strcmp(t->name, name)) {
 			return t;

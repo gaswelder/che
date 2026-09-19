@@ -3,7 +3,7 @@
 
 bool force_interaction = false;
 
-int main (int argc, char **argv) {
+int main(int argc, char **argv) {
 	opt.flag("i", "force interaction mode", &force_interaction);
 	char **paths = opt.parse(argc, argv);
 	eval.wisp_init();
@@ -12,12 +12,12 @@ int main (int argc, char **argv) {
 		eval.repl();
 		return 0;
 	}
-	
+
 	// open script file
 	char *file = paths[0];
-	FILE *fid = fopen (file, "r");
+	FILE *fid = fopen(file, "r");
 	if (fid == NULL) {
-		fprintf (stderr, "error: could not load %s: %s\n", file, strerror (errno));
+		fprintf(stderr, "error: could not load %s: %s\n", file, strerror(errno));
 		return 1;
 	}
 
@@ -29,7 +29,7 @@ int main (int argc, char **argv) {
 		paths++;
 	}
 	eval.SET(eval.symbol("ARGS"), args);
-	eval.load_file (fid, file, 0);
+	eval.load_file(fid, file, 0);
 	fclose(fid);
 	return 0;
 }

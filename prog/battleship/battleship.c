@@ -18,7 +18,7 @@ bool salvo = false;
 bool blitz = false;
 bool closepack = false;
 
-char CTRLC = 3; /* used as terminate command */
+char CTRLC = 3; // used as terminate command
 const int BWIDTH = 10;
 const int BDEPTH = 10;
 const int SHIPTYPES = 5;
@@ -269,7 +269,9 @@ int unplaced() {
 void placeall_random(int player) {
 	game.ship_t *ss;
 	for (ss = gamestate.players[player].ships; ss < gamestate.players[player].ships + SHIPTYPES; ss++) {
-		if (ss->placed) continue;
+		if (ss->placed) {
+			continue;
+		}
 		placeship_random(player, ss);
 	}
 }
@@ -352,7 +354,7 @@ game.xy_t playerturn_getcoords() {
 	while (true) {
 		game.xy_t xy = {
 			.x = gamestate.curx,
-			.y = gamestate.cury
+			.y = gamestate.cury,
 		};
 		input_coords_and_command(COMPUTER, &xy);
 		gamestate.curx = xy.x;
@@ -367,7 +369,7 @@ game.xy_t playerturn_getcoords() {
 	}
 	game.xy_t xy = {
 		.x = gamestate.curx,
-		.y = gamestate.cury
+		.y = gamestate.cury,
 	};
 	return xy;
 }

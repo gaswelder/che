@@ -92,7 +92,6 @@ pub bool end(digest_t *hash) {
 	// 'length' is a 64-bit encoding of the message length.
 	// The padding is so many zero bytes that the end of stream happens is at
 	// a multiple of 64 bytes.
-
 	// Bits "10000000" from the spec are simply number 128.
 	push_byte(hash, 128);
 
@@ -100,7 +99,9 @@ pub bool end(digest_t *hash) {
 	// where '1' is for the 'eof' byte and '8' is for the length marker.
 	int l = hash->length / 8;
 	int n = (9 + l) / 64;
-	if ((9 + l) % 64 != 0) n++;
+	if ((9 + l) % 64 != 0) {
+		n++;
+	}
 	size_t zeros = 64 * n - 9 - l;
 	while (zeros > 0) {
 		zeros--;
@@ -142,8 +143,12 @@ void push_byte(digest_t *hash, uint8_t b) {
 void sha1_feed(uint32_t block[16], uint32_t sum[5]) {
 	// Prepare message schedule W[t].
 	uint32_t W[80] = {};
-	for (int t = 0; t < 16; t++) W[t] = block[t];
-	for (int t = 16; t < 80; t++) W[t] = ROTL(1, W[t-3] ^ W[t-8] ^ W[t-14] ^ W[t-16]);
+	for (int t = 0; t < 16; t++) {
+		W[t] = block[t];
+	}
+	for (int t = 16; t < 80; t++) {
+		W[t] = ROTL(1, W[t - 3] ^ W[t - 8] ^ W[t - 14] ^ W[t - 16]);
+	}
 	/*
 	 * Run the mixer.
 	 */
@@ -175,9 +180,15 @@ void sha1_feed(uint32_t block[16], uint32_t sum[5]) {
  * Logical functions f[t]: f0, f1, ..., f79
  */
 uint32_t f(int t, uint32_t x, y, z) {
-	if (t < 20) return (x & y) | ((~x) & z);
-	if (t < 40) return x ^ y ^ z;
-	if (t < 60) return (x & y) ^ (x & z) ^ (y & z);
+	if (t < 20) {
+		return (x & y) | (~x & z);
+	}
+	if (t < 40) {
+		return x ^ y ^ z;
+	}
+	if (t < 60) {
+		return (x & y) ^ (x & z) ^ (y & z);
+	}
 	return x ^ y ^ z;
 }
 

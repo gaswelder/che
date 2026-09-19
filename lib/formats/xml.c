@@ -1,13 +1,3 @@
-/*
- * A stream-oriented parser that reads files of arbitrary length and
- * defines three operations a program can use: 'enter', 'next', and
- * 'leave'.
- *
- * At any moment there is a "cursor" pointing to some node in the file,
- * and there are three operations that modify that cursor: 'enter',
- * 'next' and 'leave'.
- */
-
 const int MAXNAME = 16; // max name length
 const int MAXSTACK = 4; // max nesting level
 const int MAXATTRS = 64; // max attributes count
@@ -118,19 +108,18 @@ pub const char *xml_nodename(xml *x) {
  * Returns value of given attribute of the current node.
  * Returns NULL if there is no such attribute or current node.
  */
-pub const char *xml_attr(xml *x, const char *name)
-{
-	if(x->error[0]) {
+pub const char *xml_attr(xml *x, const char *name) {
+	if (x->error[0]) {
 		return NULL;
 	}
 
-	__tag *n = &(x->node);
-	if(n->type == T_NULL) {
+	__tag *n = &x->node;
+	if (n->type == T_NULL) {
 		return NULL;
 	}
 	int i = 0;
-	for(i = 0; i < n->nattrs; i++) {
-		if(strcmp(n->attrs[i].name, name) == 0) {
+	for (i = 0; i < n->nattrs; i++) {
+		if (strcmp(n->attrs[i].name, name) == 0) {
 			return n->attrs[i].value;
 		}
 	}
@@ -207,10 +196,9 @@ pub void xml_next(xml *x) {
 			 * If a non-closing tag follows, shift to it.
 			 * Otherwise shift to "null".
 			 */
-			if(next->type == T_OPEN || next->type == T_MONO) {
+			if (next->type == T_OPEN || next->type == T_MONO) {
 				shift(x);
-			}
-			else {
+			} else {
 				x->node.type = T_NULL;
 			}
 			return;
@@ -256,8 +244,7 @@ pub void xml_leave(xml *x) {
 	t = next_tag(x);
 	if (t != NULL && (t->type == T_OPEN || t->type == T_MONO)) {
 		shift(x);
-	}
-	else {
+	} else {
 		x->node.type = T_NULL;
 	}
 }
@@ -270,9 +257,8 @@ pub int32_t xml_filepos(xml *x) {
 /*
  * Push current tag name on the stack.
  */
-void pushparent(xml *x)
-{
-	if(x->pathlen >= MAXSTACK) {
+void pushparent(xml *x) {
+	if (x->pathlen >= MAXSTACK) {
 		panic("Reached max stack depth: %d", MAXSTACK);
 	}
 	strcpy(x->path[x->pathlen], x->node.name);
@@ -282,10 +268,9 @@ void pushparent(xml *x)
 /*
  * Consume the following tag and set it as current node
  */
-void shift(xml *x)
-{
+void shift(xml *x) {
 	// cur = next
-	memcpy(&(x->node), next_tag(x), sizeof(__tag));
+	memcpy(&x->node, next_tag(x), sizeof(__tag));
 
 	// Consume the tag
 	x->next_tag.type = T_NULL;
@@ -294,49 +279,47 @@ void shift(xml *x)
 /*
  * Returns a pointer to the next tag from the file.
  */
-__tag *next_tag(xml *x)
-{
+__tag *next_tag(xml *x) {
 	read_tag(x);
-	return &(x->next_tag);
+	return &x->next_tag;
 }
 
 /*
  * Reads next tag from the file, if necessary
  */
-void read_tag(xml *x)
-{
-	__tag *t = &(x->next_tag);
-	if(t->type != T_NULL) {
+void read_tag(xml *x) {
+	__tag *t = &x->next_tag;
+	if (t->type != T_NULL) {
 		return;
 	}
 
 	discard_spaces(x);
 
-	if(feof(x->f)) {
+	if (feof(x->f)) {
 		return;
 	}
 
 	expect(x, '<');
-	if(peek(x) == '/') {
+	if (peek(x) == '/') {
 		t->type = T_CLOSE;
 		get(x);
 	}
 
 	int len = 0;
-	while(isalpha(peek(x))) {
-		if(len >= MAXNAME-1) {
+	while (isalpha(peek(x))) {
+		if (len >= MAXNAME - 1) {
 			error(x, "name too long");
 			return;
 		}
 		t->name[len++] = get(x);
 	}
 	t->name[len] = '\0';
-	if(!len) {
+	if (!len) {
 		error(x, "name expected");
 		return;
 	}
 
-	if(t->type == T_CLOSE) {
+	if (t->type == T_CLOSE) {
 		expect(x, '>');
 		return;
 	}

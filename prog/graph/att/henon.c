@@ -4,7 +4,9 @@
 const int N = 20000;
 const double TWOPI = 2 * M_PI;
 
-typedef { double x, y; } point_t;
+typedef {
+	double x, y;
+} point_t;
 
 typedef {
 	double m;
@@ -19,7 +21,9 @@ pub void *newparams() {
 pub void mutateparams(void *state) {
 	params_t *p = state;
 	p->m += 0.1;
-	if (p->m > 12) p->m = 2;
+	if (p->m > 12) {
+		p->m = 2;
+	}
 }
 
 pub void draw(image.image_t *img, void *state) {
@@ -30,21 +34,21 @@ pub void draw(image.image_t *img, void *state) {
 	}
 	double a[25] = {};
 	double b[25] = {};
-	for (int i=0;i<(int)m;i++) {
+	for (int i = 0; i < (int) m; i++) {
 		a[i] = cos(TWOPI * i / m);
 		b[i] = sin(TWOPI * i / m);
 	}
 
-	point_t q = {1, 1};
-	
-	for (int n=0;n<N;n++) {
-		q = next(a, b, (int)m, q);
+	point_t q = { 1, 1 };
+
+	for (int n = 0; n < N; n++) {
+		q = next(a, b, (int) m, q);
 		if (n < 100) {
 			continue;
 		}
 		// assume x, y are in [-2, 2]
-		int ix = (int) ((q.x + 2)/4 * img->width);
-		int iy = (int) ((q.y + 2)/4 * img->height);
+		int ix = (int)((q.x + 2) / 4 * img->width);
+		int iy = (int)((q.y + 2) / 4 * img->height);
 		image.set(img, ix, iy, image.white());
 	}
 }

@@ -16,7 +16,9 @@ int main(int argc, char *argv[]) {
 
 	char buf[BUFSIZ] = {};
 	while (fgets(buf, sizeof(buf), stdin)) {
-		if (output) fprintf(stdout, "%s", buf);
+		if (output) {
+			fprintf(stdout, "%s", buf);
+		}
 		int err = dlog_put(log, buf);
 		if (err) {
 			fprintf(stderr, "Failed to write the log. err=%d, os error=%s.\n", err, strerror(errno));
@@ -36,18 +38,20 @@ typedef {
 
 enum {
 	E_FOPEN = 1, // "Could not open file '%s' for writing\n"
-	E_FPUTS = 2, //
+	E_FPUTS = 2,
 }
 
 dlog_t *dlog_init() {
 	dlog_t *log = calloc!(1, sizeof(dlog_t));
-	log->current_path = calloc!(1, MAXPATH+1);
-	log->new_path = calloc!(1, MAXPATH+1);
+	log->current_path = calloc!(1, MAXPATH + 1);
+	log->new_path = calloc!(1, MAXPATH + 1);
 	return log;
 }
 
 void dlog_free(dlog_t *log) {
-	if (log->fp) fclose(log->fp);
+	if (log->fp) {
+		fclose(log->fp);
+	}
 	free(log->current_path);
 	free(log->new_path);
 	free(log);

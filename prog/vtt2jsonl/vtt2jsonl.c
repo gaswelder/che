@@ -1,5 +1,5 @@
-#import formats/vtt
 #import formats/json
+#import formats/vtt
 
 int main() {
 	vtt.reader_t *r = vtt.reader(stdin);

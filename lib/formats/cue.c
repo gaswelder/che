@@ -2,9 +2,9 @@
  * CUE format parser
  * http://wiki.hydrogenaud.io/index.php?title=Cue_sheet
  */
+#import error
 #import scanner
 #import time
-#import error
 
 const int MAXTRACKS = 100;
 
@@ -73,17 +73,27 @@ void readcue(cue_t *c, scanner.t *b, error.t *err) {
 		switch str (type) {
 			case "REM": {
 				scanner.read_until(b, '\n', content, sizeof(content));
-				if (scanner.peek(b) == '\n') scanner.get(b);
+				if (scanner.peek(b) == '\n') {
+					scanner.get(b);
+				}
 			}
 			case "PERFORMER": {
 				readtitle(b, content, sizeof(content));
-				if (scanner.peek(b) == '\r') scanner.get(b);
-				if (scanner.peek(b) == '\n') scanner.get(b);
+				if (scanner.peek(b) == '\r') {
+					scanner.get(b);
+				}
+				if (scanner.peek(b) == '\n') {
+					scanner.get(b);
+				}
 			}
 			case "TITLE": {
 				readtitle(b, content, sizeof(content));
-				if (scanner.peek(b) == '\r') scanner.get(b);
-				if (scanner.peek(b) == '\n') scanner.get(b);
+				if (scanner.peek(b) == '\r') {
+					scanner.get(b);
+				}
+				if (scanner.peek(b) == '\n') {
+					scanner.get(b);
+				}
 				// if t is null, this is the release title, ignore.
 				// if t is not null, this is the track's title.
 				if (t) {
@@ -92,7 +102,9 @@ void readcue(cue_t *c, scanner.t *b, error.t *err) {
 			}
 			case "TRACK": {
 				scanner.read_until(b, '\n', content, sizeof(content));
-				if (scanner.peek(b) == '\n') scanner.get(b);
+				if (scanner.peek(b) == '\n') {
+					scanner.get(b);
+				}
 				if (c->ntracks == MAXTRACKS) {
 					error.set(err, "tracks limit reached (%d)", MAXTRACKS);
 					return;
@@ -112,18 +124,22 @@ void readcue(cue_t *c, scanner.t *b, error.t *err) {
 				if (index.num == 1) {
 					t->pos = index_pos(&index);
 				}
-				if (scanner.peek(b) == '\n') scanner.get(b);
+				if (scanner.peek(b) == '\n') {
+					scanner.get(b);
+				}
 			}
 			case "FILE": {
 				// readtitle(b, content, sizeof(content));
 				// scanner.read_until(b, '\n', e.data.file.kind, sizeof(e.data.file.kind));
 				scanner.read_until(b, '\n', content, sizeof(content));
-				if (scanner.peek(b) == '\r') scanner.get(b);
-				if (scanner.peek(b) == '\n') scanner.get(b);
+				if (scanner.peek(b) == '\r') {
+					scanner.get(b);
+				}
+				if (scanner.peek(b) == '\n') {
+					scanner.get(b);
+				}
 			}
-			default: {
-				panic("unknown entry type: '%s'", type);
-			}
+			default: { panic("unknown entry type: '%s'", type); }
 		}
 	}
 }
@@ -149,7 +165,9 @@ void readindex(scanner.t *b, index_t *r, error.t *err) {
 	while (scanner.more(b)) {
 		int ch = scanner.get(b);
 		val[i++] = ch;
-		if(ch == '\n') break;
+		if (ch == '\n') {
+			break;
+		}
 	}
 	val[i] = '\0';
 
@@ -164,7 +182,7 @@ void readindex(scanner.t *b, index_t *r, error.t *err) {
 }
 
 time.duration_t index_pos(index_t *r) {
-	int sec = (r->frames / 75) + (r->sec) + (60 * r->min);
+	int sec = r->frames / 75 + r->sec + 60 * r->min;
 	time.duration_t p = {};
 	time.dur_set(&p, sec, time.SECONDS);
 	return p;

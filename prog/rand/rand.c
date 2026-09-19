@@ -35,9 +35,15 @@ int main(int argc, char **argv) {
 	}
 
 	char set[200] = {};
-	if (_a) strcat(set, alpha);
-	if (_n) strcat(set, nums);
-	if (_s) strcat(set, special);
+	if (_a) {
+		strcat(set, alpha);
+	}
+	if (_n) {
+		strcat(set, nums);
+	}
+	if (_s) {
+		strcat(set, special);
+	}
 
 	size_t alphasize = strlen(set);
 	rnd.seed((uint64_t) seed);

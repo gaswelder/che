@@ -1,5 +1,5 @@
-#import os/net
 #import opt
+#import os/net
 
 int main(int argc, char **argv) {
 	char *addr = "127.0.0.1:25";
@@ -23,25 +23,32 @@ int main(int argc, char **argv) {
 	return 0;
 }
 
-int sendm(net.net_t *n, const char *from, const char *to, const char *subj)
-{
+int sendm(net.net_t *n, const char *from, const char *to, const char *subj) {
 	expect(n, 220);
 
 	net.net_printf(n, "HELO %s\r\n", "sofa");
 	expect(n, 250);
-	if(senderror()) return 0;
+	if (senderror()) {
+		return 0;
+	}
 
 	net.net_printf(n, "MAIL FROM:<%s>\r\n", from);
 	expect(n, 250);
-	if(senderror()) return 0;
+	if (senderror()) {
+		return 0;
+	}
 
 	net.net_printf(n, "RCPT TO:<%s>\r\n", to);
 	expect(n, 250);
-	if(senderror()) return 0;
+	if (senderror()) {
+		return 0;
+	}
 
 	net.net_printf(n, "DATA\r\n");
 	expect(n, 354);
-	if(senderror()) return 0;
+	if (senderror()) {
+		return 0;
+	}
 
 	net.net_printf(n, "Subject: %s\r\n", subj);
 	net.net_printf(n, "From: <%s>\r\n", from);
@@ -69,7 +76,9 @@ int senderror() {
 
 void expect(net.net_t *n, int code) {
 	(void) code;
-	if (_error) return;
+	if (_error) {
+		return;
+	}
 
 	char buf[256] = {};
 	int len = net.read(n, buf, 255);

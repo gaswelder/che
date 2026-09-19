@@ -2,7 +2,7 @@
 
 enum {
 	FSTREAM = 'f',
-	BUF = 'b'
+	BUF = 'b',
 }
 
 pub typedef {
@@ -76,16 +76,20 @@ pub size_t pos(t *w) {
 }
 
 pub bool num(t *w, int n) {
-	return byte(w, 'i')
-		&& _writenum(w, n)
-		&& byte(w, 'e');
+	return byte(w, 'i') && _writenum(w, n) && byte(w, 'e');
 }
 
 pub bool buf(t *w, const uint8_t *buff, size_t len) {
-	if (!_writenum(w, len)) return false;
-	if (!byte(w, ':')) return false;
-    for (size_t i = 0; i < len; i++) {
-		if (!byte(w, buff[i])) return false;
+	if (!_writenum(w, len)) {
+		return false;
+	}
+	if (!byte(w, ':')) {
+		return false;
+	}
+	for (size_t i = 0; i < len; i++) {
+		if (!byte(w, buff[i])) {
+			return false;
+		}
 	}
 	return true;
 }
@@ -93,14 +97,16 @@ pub bool buf(t *w, const uint8_t *buff, size_t len) {
 bool _writenum(t *w, int n) {
 	// Write "-" if the number is negative.
 	if (n < 0) {
-		if (!byte(w, '-')) return false;
+		if (!byte(w, '-')) {
+			return false;
+		}
 		n *= -1;
 	}
 	size_t N = (size_t) n;
 
 	// Get the number's magnitude.
 	size_t m = 1;
-	while (m*10 <= N) {
+	while (m * 10 <= N) {
 		m *= 10;
 	}
 
@@ -109,7 +115,9 @@ bool _writenum(t *w, int n) {
 		int digit = N / m;
 		N = n % m;
 		m /= 10;
-		if (!byte(w, strings.ascii_digit(digit))) return false;
+		if (!byte(w, strings.ascii_digit(digit))) {
+			return false;
+		}
 	}
 	return true;
 }

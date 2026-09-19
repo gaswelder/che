@@ -81,7 +81,7 @@ void print_results(stats.series_t *series[], size_t nseries) {
 	}
 	putchar('\n');
 
-	int percentiles[] = {5, 25, 33, 50, 66, 75, 95, 99};
+	int percentiles[] = { 5, 25, 33, 50, 66, 75, 95, 99 };
 	for (size_t i = 0; i < nelem(percentiles); i++) {
 		int p = percentiles[i];
 		printf("0.%02d", p);

@@ -87,7 +87,7 @@ pub void print_bytes(const uint8_t *data, size_t n) {
 	printf("--------- %zu bytes ---------------------------\n", n);
 	printf("0\t");
 	for (size_t i = 0; i < n; i++) {
-		if (i > 0 && (i % 20) == 0) {
+		if (i > 0 && i % 20 == 0) {
 			printf("\n%zu\t", i);
 		}
 		printf(" %02x", data[i]);

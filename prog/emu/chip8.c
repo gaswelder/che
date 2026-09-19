@@ -142,7 +142,9 @@ pub int run(char *rompath) {
 			skip = true;
 			buzz();
 		}
-		if (skip) continue;
+		if (skip) {
+			continue;
+		}
 
 		int code = pollkeyboard();
 		if (code >= 0) {
@@ -419,7 +421,7 @@ bool xor_sprite(chip8_t *c8, int x, y, uint8_t sprite) {
 
 	bool collision = false;
 	for (int i = 0; i < 8; i++) {
-		collision = xor_pixel(c8, x+i, y, bits[i]) || collision;
+		collision = xor_pixel(c8, x + i, y, bits[i]) || collision;
 	}
 	return collision;
 }
@@ -454,7 +456,9 @@ pub int disas(char *rompath) {
 	while (!feof(in)) {
 		int a = fgetc(in);
 		int b = fgetc(in);
-		if (a == EOF && b == EOF) break;
+		if (a == EOF && b == EOF) {
+			break;
+		}
 		if (b == EOF) {
 			fprintf(stderr, "unexpected end of file\n");
 			return 1;
@@ -514,9 +518,12 @@ void draw(uint8_t *buf, int width, height) {
 	}
 	_prevsum = sum;
 	for (int i = 0; i < n; i++) {
-		if (buf[i]) printf("█");
-		else printf(" ");
-		if ((i+1) % width == 0) {
+		if (buf[i]) {
+			printf("█");
+		} else {
+			printf(" ");
+		}
+		if ((i + 1) % width == 0) {
 			putchar('\n');
 		}
 	}

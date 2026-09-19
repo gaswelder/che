@@ -53,7 +53,9 @@ void val(const char *field, *val) {
 	}
 }
 void end() {
-	if (!line_started) return;
+	if (!line_started) {
+		return;
+	}
 	printf("}\n");
 	line_started = false;
 }

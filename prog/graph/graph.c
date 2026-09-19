@@ -27,19 +27,84 @@ typedef {
 } model_t;
 
 model_t models[] = {
-	{.name = "dejong",       .newparams = dejong.newparams,       .draw = dejong.draw,       .mutate = dejong.mutateparams},
-	{.name = "henon",        .newparams = henon.newparams,        .draw = henon.draw,        .mutate = henon.mutateparams},
-	{.name = "ikeda",        .newparams = ikeda.newparams,        .draw = ikeda.draw,        .mutate = ikeda.mutateparams},
-	{.name = "mandelbrot", .newparams = mandelbrot.newparams,   .draw = mandelbrot.draw,   .mutate = mandelbrot.mutateparams},
-	{.name = "pickover",     .newparams = pickover.newparams,     .draw = pickover.draw,     .mutate = pickover.mutateparams},
-	{.name = "dendrite",     .newparams = dendrite.newparams,     .draw = dendrite.draw,     .mutate = dendrite.mutateparams},
-	{.name = "diamondsquare", .newparams = diamondsquare.newparams, .draw = diamondsquare.draw, .mutate = diamondsquare.mutateparams},
-	{.name = "dynamic",      .newparams = dynamic.newparams,      .draw = dynamic.draw,      .mutate = dynamic.mutateparams},
-	{.name = "frothy",       .newparams = frothy.newparams,       .draw = frothy.draw,       .mutate = frothy.mutateparams},
- 	{.name = "gingerbread", .newparams = gingerbread.newparams, .draw = gingerbread.draw, .mutate = gingerbread.mutateparams},
-	{.name = "lambda",       .newparams = lambda.newparams,       .draw = lambda.draw,       .mutate = lambda.mutateparams},
-	{.name = "martin",       .newparams = martin.newparams,       .draw = martin.draw,       .mutate = martin.mutateparams},
-	{.name = "thorn",        .newparams = thorn.newparams,        .draw = thorn.draw,        .mutate = thorn.mutateparams},
+	{
+		.name = "dejong",
+		.newparams = dejong.newparams,
+		.draw = dejong.draw,
+		.mutate = dejong.mutateparams,
+	},
+	{
+		.name = "henon",
+		.newparams = henon.newparams,
+		.draw = henon.draw,
+		.mutate = henon.mutateparams,
+	},
+	{
+		.name = "ikeda",
+		.newparams = ikeda.newparams,
+		.draw = ikeda.draw,
+		.mutate = ikeda.mutateparams,
+	},
+	{
+		.name = "mandelbrot",
+		.newparams = mandelbrot.newparams,
+		.draw = mandelbrot.draw,
+		.mutate = mandelbrot.mutateparams,
+	},
+	{
+		.name = "pickover",
+		.newparams = pickover.newparams,
+		.draw = pickover.draw,
+		.mutate = pickover.mutateparams,
+	},
+	{
+		.name = "dendrite",
+		.newparams = dendrite.newparams,
+		.draw = dendrite.draw,
+		.mutate = dendrite.mutateparams,
+	},
+	{
+		.name = "diamondsquare",
+		.newparams = diamondsquare.newparams,
+		.draw = diamondsquare.draw,
+		.mutate = diamondsquare.mutateparams,
+	},
+	{
+		.name = "dynamic",
+		.newparams = dynamic.newparams,
+		.draw = dynamic.draw,
+		.mutate = dynamic.mutateparams,
+	},
+	{
+		.name = "frothy",
+		.newparams = frothy.newparams,
+		.draw = frothy.draw,
+		.mutate = frothy.mutateparams,
+	},
+	{
+		.name = "gingerbread",
+		.newparams = gingerbread.newparams,
+		.draw = gingerbread.draw,
+		.mutate = gingerbread.mutateparams,
+	},
+	{
+		.name = "lambda",
+		.newparams = lambda.newparams,
+		.draw = lambda.draw,
+		.mutate = lambda.mutateparams,
+	},
+	{
+		.name = "martin",
+		.newparams = martin.newparams,
+		.draw = martin.draw,
+		.mutate = martin.mutateparams,
+	},
+	{
+		.name = "thorn",
+		.newparams = thorn.newparams,
+		.draw = thorn.draw,
+		.mutate = thorn.mutateparams,
+	},
 };
 
 int main(int argc, char *argv[]) {
@@ -84,7 +149,7 @@ int main(int argc, char *argv[]) {
 			image.clear(img);
 		}
 		m.draw(img, p);
-		render.push(img);		
+		render.push(img);
 		m.mutate(p);
 	}
 	free(p);

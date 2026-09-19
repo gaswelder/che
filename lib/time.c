@@ -1,18 +1,19 @@
-#import error
 #include <sys/time.h>
 #include <time.h>
 
+#import error
+
 /*
 tm_t x = {
-	.tm_sec = r.s, // 0-60 (60 for the leap second)
-	.tm_min = r.m, // 0-59
-	.tm_hour = r.h, // 0-23
-	.tm_mday = r.D, // 1-31
-	.tm_mon = r.M - 1, // 0-11
-	.tm_year = r.Y - 1900, // years since 1900
-	.tm_wday = -1, // 0-6
-	.tm_yday = -1, // 0..365
-	.tm_isdst = -1, // daylight saving; -1 = don't know
+    .tm_sec = r.s, // 0-60 (60 for the leap second)
+    .tm_min = r.m, // 0-59
+    .tm_hour = r.h, // 0-23
+    .tm_mday = r.D, // 1-31
+    .tm_mon = r.M - 1, // 0-11
+    .tm_year = r.Y - 1900, // years since 1900
+    .tm_wday = -1, // 0-6
+    .tm_yday = -1, // 0..365
+    .tm_isdst = -1, // daylight saving; -1 = don't know
 };
 */
 typedef struct tm tm_t;
@@ -25,9 +26,9 @@ pub typedef {
 } iso_t;
 
 pub enum {
-    US = 1, // base unit
-    MS = 1000,
-    SECONDS = 1000000,
+	US = 1,             // base unit
+	MS = 1000,
+	SECONDS = 1000000,
 	MINUTES = 60000000,
 }
 
@@ -205,7 +206,7 @@ pub bool parse_duration(const char *s, duration_t *d, error.t *err) {
 			val += (int) *p - (int) '0';
 			p++;
 		}
-		int64_t diff = (double) SECONDS * ((double) val / (double) fracsize);
+		int64_t diff = (double) SECONDS * (double) val / (double) fracsize;
 		us += diff;
 	}
 

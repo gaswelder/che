@@ -1238,7 +1238,8 @@ fn parse_typedef(
     if l.eat("struct") {
         let struct_name = expect(l, "word")?.content;
         let type_alias = expect(l, "word")?.content;
-        expect(l, ";")?;
+        let t = expect(l, ";")?;
+        source_info.trailing_comment = t.trailing_comment;
         return Ok(ModElem::StructAlias(nodes::StructAlias {
             source_info,
             ispub: is_pub,

@@ -4,29 +4,18 @@
 
 // Sorted by length, longest first.
 const char *symbols[] = {
-	"<<=", ">>=", "...",
-	"++", "--", "->", "<<", ">>", "<=", ">=", "&&", "||", "+=", "-=", "*=",
-	"/=", "%=", "&=", "^=", "|=", "==", "!=", "!", "~", "&", "^", "*", "/",
-	"%", "=", "|", ":", ",", "<", ">", "+", "-", "{", "}", ";", "[", "]",
-	"(", ")", ".", "?"
+	"<<=", ">>=", "...",  "++",  "--",  "->",  "<<",  ">>",
+	 "<=",  ">=",  "&&",  "||",  "+=",  "-=",  "*=",  "/=",
+	 "%=",  "&=",  "^=",  "|=",  "==",  "!=",   "!",   "~",
+	  "&",   "^",   "*",   "/",   "%",   "=",   "|",   ":",
+	  ",",   "<",   ">",   "+",   "-",   "{",   "}",   ";",
+	  "[",   "]",   "(",   ")",   ".",   "?"
 };
 
 const char *keywords[] = {
-	"typedef",
-	"struct",
-	"import",
-	"return",
-	"switch",
-	"sizeof",
-	"union",
-	"const",
-	"while",
-	"case",
-	"enum",
-	"else",
-	"pub",
-	"for",
-	"if"
+	"typedef",  "struct",  "import",  "return",  "switch",
+	 "sizeof",   "union",   "const",   "while",    "case",
+	   "enum",    "else",     "pub",     "for",      "if"
 };
 
 pub typedef {
@@ -190,29 +179,6 @@ tok_t read_string(scanner.t *b) {
 		}
 	}
 	return newtok("error", strings.newstr("double quote expected"), pos);
-
-	// // Expect the closing quote
-	// if (scanner.get(b) != '"') {
-		
-	// }
-
-	// return newtok("string", )
-
-
-		 //String
-		// if ($s->peek() == """) {
-		// 	$str = "";
-		// 	// A string literal may be split into parts,
-		// 	// so concatenate it.
-		// 	while ($s->peek() == """) {
-		// 		$str .= $this->read_string();
-		// 		$s->read_set(self::spaces);
-		// 	}
-		// 	return make_token("string", $str, $pos);
-		// }
-
-
-	// return newtok("error", "double quote expected", scanner.posstr(b));
 }
 
 tok_t read_char(scanner.t *b) {

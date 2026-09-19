@@ -1,10 +1,9 @@
 // https://giflib.sourceforge.net/gif89.txt
-
-#import reader
-#import enc/endian
 #import bits
 #import compress/lzw
+#import enc/endian
 #import image
+#import reader
 
 typedef {
 	reader.t *r;
@@ -18,7 +17,9 @@ typedef {
 } gif_t;
 
 pub image.image_t *read(reader.t *r) {
-	gif_t g = { .r = r };
+	gif_t g = {
+		.r = r,
+	};
 	readblock_header(r);
 	readblock_logical_screen_descriptor(&g);
 	if (g.global_color_table) {
@@ -49,7 +50,6 @@ pub image.image_t *read(reader.t *r) {
 // 		printf("color %d: (%d,%d,%d)\n", i, c.red, c.green, c.blue);
 // 	}
 // }
-
 void readblock_header(reader.t *r) {
 	uint8_t header[6] = {};
 	reader.read(r, header, 6);
@@ -87,11 +87,11 @@ void parse_color_table_params(gif_t *g, uint8_t desc) {
 	uint8_t descbits[8] = {};
 	bits.getbits_msfirst(desc, descbits);
 
-	g->global_color_table = descbits[0] == 1;
+	g->global_color_table = (descbits[0] == 1);
 
 	// Color resolution for the global color table.
 	// (bits per primary color) - 1.
-	g->color_resolution = 4*descbits[1] + 2*descbits[2] + descbits[3] + 1;
+	g->color_resolution = 4 * descbits[1] + 2 * descbits[2] + descbits[3] + 1;
 
 	// Sort flag. If true, then colors are sorted in decreasing frequency use.
 	// Not used anymore.

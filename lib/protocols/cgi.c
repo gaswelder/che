@@ -37,21 +37,31 @@ pub size_t parse_head(head_t *r, char *data, size_t n) {
 		char value[1000] = {};
 		d = value;
 
-        // everything until a newline
-        while (pos < n && data[pos] != '\n' && data[pos] != '\r') {
-            *d++ = data[pos];
-            pos++;
-        }
-        if (pos >= n) return false;
-        if (pos < n && data[pos] == '\r') pos++;
-        if (pos < n && data[pos] == '\n') pos++;
-        strcpy(r->headers[r->nheaders].name, name);
-        strcpy(r->headers[r->nheaders].value, value);
-        r->nheaders++;
-        if (pos < n && (data[pos] == '\r' || data[pos] == '\n')) {
-            if (pos < n && data[pos] == '\r') pos++;
-            if (pos < n && data[pos] == '\n') pos++;
-            return pos;
-        }
-    }
+		// everything until a newline
+		while (pos < n && data[pos] != '\n' && data[pos] != '\r') {
+			*d++ = data[pos];
+			pos++;
+		}
+		if (pos >= n) {
+			return false;
+		}
+		if (pos < n && data[pos] == '\r') {
+			pos++;
+		}
+		if (pos < n && data[pos] == '\n') {
+			pos++;
+		}
+		strcpy(r->headers[r->nheaders].name, name);
+		strcpy(r->headers[r->nheaders].value, value);
+		r->nheaders++;
+		if (pos < n && (data[pos] == '\r' || data[pos] == '\n')) {
+			if (pos < n && data[pos] == '\r') {
+				pos++;
+			}
+			if (pos < n && data[pos] == '\n') {
+				pos++;
+			}
+			return pos;
+		}
+	}
 }

@@ -46,8 +46,8 @@ pub void draw(image.image_t *img, void *state) {
 		y1 = sin(c * x) - cos(d * y);
 		x = x1;
 		y = y1;
-		int ix = (int)( (x + 2.0) / 4.0 * w );
-		int iy = (int)( (y + 2.0) / 4.0 * h );
+		int ix = (int)((x + 2.0) / 4.0 * w);
+		int iy = (int)((y + 2.0) / 4.0 * h);
 		image.set(img, ix, iy, color);
 	}
 }

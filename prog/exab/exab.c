@@ -129,7 +129,7 @@ void *worker(void *arg) {
 			break;
 		}
 		res->time_connected = time.now();
-		if ((size_t) net.write(conn, (char *)REQUEST, REQUESTLEN) != REQUESTLEN) {
+		if ((size_t) net.write(conn, (char *) REQUEST, REQUESTLEN) != REQUESTLEN) {
 			panic("failed to write request: %s", strerror(errno));
 		}
 		res->total_sent = REQUESTLEN;

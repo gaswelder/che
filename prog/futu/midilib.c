@@ -7,7 +7,7 @@
 // https://www.recordingblogs.com/wiki/time-division-of-a-midi-file
 // https://ibex.tech/resources/geek-area/communications/midi/midi-comms
 // http://www.music.mcgill.ca/~ich/classes/mumt306/StandardMIDIfileformat.html
-
+//
 bool SHOW_TODO = false;
 
 void todo(char *format, ...) {
@@ -26,7 +26,6 @@ void todo(char *format, ...) {
 //     FORMAT_MANY_SIMULTANEOUS_TRACKS = 1,
 //     FORMAT_MANY_INDEPENDENT_TRACKS = 2
 // }
-
 typedef {
 	bytereader.reader_t *r;
 	uint16_t format; // one of the format constants.
@@ -104,7 +103,7 @@ pub void read_file(const char *path, event_t **ree, size_t *rn) {
 		last_tick = e->t;
 
 		// Absolute time in microseconds.
-		t_us += (dticks * beat_duration) / beat_size;
+		t_us += dticks * beat_duration / beat_size;
 		e->t_us = t_us;
 
 		switch (e->type) {
@@ -125,25 +124,25 @@ midi_t *openfile(const char *path) {
 	m->r = r;
 	m->start_beat_duration = 500000; // us
 
-    chunk_head_t h = {};
+	chunk_head_t h = {};
 
 	//
 	// MThd
 	//
-    if (!midibin_read_chunk_head(m, &h)) {
-        panic("failed to read head: %s\n", strerror(errno));
-    }
-    if (strcmp("MThd", h.name)) {
+	if (!midibin_read_chunk_head(m, &h)) {
+		panic("failed to read head: %s\n", strerror(errno));
+	}
+	if (strcmp("MThd", h.name)) {
 		panic("expected MThd, got %s\n", h.name);
-    }
-    if (h.length != 6) {
-        panic("expected length 6, got %u\n", h.length);
-    }
-    m->format = bytereader.read16(m->r);
-    m->ntracks = bytereader.read16(m->r);
+	}
+	if (h.length != 6) {
+		panic("expected length 6, got %u\n", h.length);
+	}
+	m->format = bytereader.read16(m->r);
+	m->ntracks = bytereader.read16(m->r);
 	m->start_beat_size = bytereader.read16(m->r);
-    // printf("format: %s, tracks: %u, ticks per beat: %d\n", formatname(m->format), m->ntracks, m->start_beat_size );
-    return m;
+	// printf("format: %s, tracks: %u, ticks per beat: %d\n", formatname(m->format), m->ntracks, m->start_beat_size );
+	return m;
 }
 
 void read_track(midi_t *m, uint8_t track, vec.t *events) {
@@ -456,8 +455,6 @@ char *meta_name(int meta) {
 //         default: { return "unknown format"; }
 //     }
 // }
-
-
 const char *CONTROLLER_NAMES[] = {
 	"Bank Select", // 0 (0x00)
 	"Modulation", // 1 (0x01)

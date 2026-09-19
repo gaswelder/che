@@ -5,7 +5,6 @@
 #include <sys/types.h>
 #include <sys/termios.h>
 #include <sys/mman.h>
-
 #type fd_set
 
 typedef struct timeval timeval_t;

@@ -11,7 +11,7 @@
 #import strings
 
 typedef {
-    char homedir[1000];
+	char homedir[1000];
 } server_t;
 
 typedef {
@@ -19,10 +19,9 @@ typedef {
 	net.net_t *conn;
 } ctx_t;
 
-
 int main(int argc, char *argv[]) {
 	char *addr = "localhost:8000";
-    opt.str("a", "listen address", &addr);
+	opt.str("a", "listen address", &addr);
 	opt.nargs(0, "");
 	opt.parse(argc, argv);
 
@@ -32,15 +31,17 @@ int main(int argc, char *argv[]) {
 		panic("failed to get current working directory: %s", strerror(errno));
 	}
 	net.net_t *ln = net.net_listen("tcp", addr);
-    if (!ln) {
+	if (!ln) {
 		log_error("Failed to listen at %s: %s", addr, strerror(errno));
-        return 1;
-    }
-    log_info("Serving %s at http://%s", SERVER.homedir, addr);
+		return 1;
+	}
+	log_info("Serving %s at http://%s", SERVER.homedir, addr);
 
 	while (true) {
 		net.net_t *conn = net.net_accept(ln);
-		if (!conn) panic("accept failed");
+		if (!conn) {
+			panic("accept failed");
+		}
 
 		log_info("%s connected", net.net_addr(conn));
 
@@ -49,7 +50,7 @@ int main(int argc, char *argv[]) {
 		ctx->conn = conn;
 		threads.start(client_routine, ctx);
 	}
-    panic("unreachable");
+	panic("unreachable");
 }
 
 void *client_routine(void *arg) {
@@ -71,7 +72,9 @@ void *client_routine(void *arg) {
 			fs.dir_t *d = fs.dir_open(".");
 			while (true) {
 				const char *name = fs.dir_next(d);
-				if (!name) break;
+				if (!name) {
+					break;
+				}
 				strbuilder.addf(b, "<a href=\"%s\">%s</a><br>", name, name);
 			}
 			fs.dir_close(d);
@@ -100,9 +103,9 @@ void *client_routine(void *arg) {
 }
 
 void handle_sigint(int sig) {
-    printf("SIGINT received: %d\n", sig);
+	printf("SIGINT received: %d\n", sig);
 	fflush(stdout);
-    exit(0);
+	exit(0);
 }
 
 char *resolve_path(const char *homedir, *reqpath) {
@@ -112,7 +115,7 @@ char *resolve_path(const char *homedir, *reqpath) {
         return NULL;
     }
     sprintf(naive_path, "%s/%s", homedir, reqpath);
-    char realpath[4096] = {0};
+    char realpath[4096] = {};
     if (!fs.realpath(naive_path, realpath, sizeof(realpath))) {
         return NULL;
     }
@@ -128,7 +131,7 @@ void log_info(const char *f, ...) {
 
 	va_list args = {};
 	va_start(args, f);
-	vsnprintf(buf, sizeof(buf)-1, f, args);
+	vsnprintf(buf, sizeof(buf) - 1, f, args);
 	va_end(args);
 
 	printf("{\"level\":\"info\",\"msg\":");
@@ -142,7 +145,7 @@ void log_error(const char *f, ...) {
 
 	va_list args = {};
 	va_start(args, f);
-	vsnprintf(buf, sizeof(buf)-1, f, args);
+	vsnprintf(buf, sizeof(buf) - 1, f, args);
 	va_end(args);
 
 	printf("{\"level\":\"error\",\"msg\":");

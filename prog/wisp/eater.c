@@ -1,7 +1,9 @@
-void *xrealloc (void *p, size_t size) {
-  void *np = realloc (p, size);
-  if (np == NULL) panic("realloc failed");
-  return np;
+void *xrealloc(void *p, size_t size) {
+	void *np = realloc(p, size);
+	if (np == NULL) {
+		panic("realloc failed");
+	}
+	return np;
 }
 
 pub typedef {
@@ -27,7 +29,7 @@ pub void init(t *r, FILE *f, char *str) {
 	r->buf = calloc!(r->buflen + 1, 1);
 	r->bufp = r->buf;
 	r->readbuflen = 8;
-	r->readbuf = calloc!(r->readbuflen, sizeof (int));
+	r->readbuf = calloc!(r->readbuflen, sizeof(int));
 	r->readbufp = r->readbuf;
 }
 
@@ -35,17 +37,19 @@ pub void init(t *r, FILE *f, char *str) {
 pub int getc(t *r) {
 	int c = 0;
 	if (r->readbufp > r->readbuf) {
-		c = *(r->readbufp);
+		c = *r->readbufp;
 		r->readbufp--;
 		return c;
 	}
 	if (r->str != NULL) {
-		c = *(r->strp);
-		if (c != '\0') r->strp++;
-		else return EOF;
-	}
-	else {
-		c = fgetc (r->fid);
+		c = *r->strp;
+		if (c != '\0') {
+			r->strp++;
+		} else {
+			return EOF;
+		}
+	} else {
+		c = fgetc(r->fid);
 		if (c == '\n') {
 			r->linenum++;
 		}
@@ -100,18 +104,18 @@ pub int buf_read(t *r, char *halt) {
 	int c = getc(r);
 	int esc = 0;
 	if (c == '\\') {
-		c = getc (r);
+		c = getc(r);
 		esc = 1;
 	}
 	while ((esc || strchr (halt, c) == NULL) && (c != EOF)) {
 		buf_append(r, c);
-		c = getc (r);
+		c = getc(r);
 		esc = 0;
 		if (c == '\\') {
-			c = getc (r);
+			c = getc(r);
 			esc = 1;
 		}
 	}
-	putc (r, c);
+	putc(r, c);
 	return !esc;
 }

@@ -10,7 +10,6 @@ Parses tracklist lines like these:
 03. Kusiciel				4:25
 
 */
-
 pub typedef {
 	int num;
 	char title[1000];
@@ -45,7 +44,7 @@ void parseline(char *line, entry_t *e) {
 	// Get the duration
 	//
 	size_t i = strlen(line);
-	while (i > 0 && !isspace(line[i-1])) {
+	while (i > 0 && !isspace(line[i - 1])) {
 		i--;
 	}
 	time.duration_t d = {};
@@ -53,7 +52,7 @@ void parseline(char *line, entry_t *e) {
 	if (!time.parse_duration(&line[i], &d, &err)) {
 		panic("failed to parse duration: %s", err.msg);
 	}
-	line[i-1] = '\0';
+	line[i - 1] = '\0';
 	strings.trim(line);
 
 	//

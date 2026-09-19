@@ -60,15 +60,15 @@ pub int run(int argc, char *argv[]) {
 				}
 				strip_byte_counts = calloc!(entry->count, sizeof(size_t));
 				tiff.setpos(tf, entry->value);
-				for( size_t j = 0; j < entry->count; j++ ){
+				for (size_t j = 0; j < entry->count; j++) {
 					strip_byte_counts[j] = tiff.readbytes(tf, 4);
 				}
 			}
 		}
 	}
 
-	if( !strip_offsets || !strip_byte_counts ){
-		fputs( "Missing StripOffsets or StripByteCounts", stderr );
+	if (!strip_offsets || !strip_byte_counts) {
+		fputs("Missing StripOffsets or StripByteCounts", stderr);
 		return 2;
 	}
 
@@ -82,8 +82,8 @@ pub int run(int argc, char *argv[]) {
 		}
 	}
 
-	free( strip_offsets );
-	free( strip_byte_counts );
+	free(strip_offsets);
+	free(strip_byte_counts);
 	tiff.freefile(tf);
 	return 0;
 }

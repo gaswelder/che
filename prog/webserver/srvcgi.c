@@ -11,11 +11,11 @@ pub void cgi(char *path, http.request_t *req, net.net_t *conn) {
 
 	// Read the script's output.
 	char output[4096] = {};
-	int r = reader.read(proc->stdout, (uint8_t*)output, 4096);
+	int r = reader.read(proc->stdout, (uint8_t *) output, 4096);
 	if (r < 0) {
 		panic("read failed");
 	}
-	size_t output_size = (size_t)r;
+	size_t output_size = (size_t) r;
 
 	int status = 0;
 	proc.wait(proc, &status);
@@ -51,7 +51,7 @@ pub void cgi(char *path, http.request_t *req, net.net_t *conn) {
 }
 
 proc.proc_t *start(char *path, http.request_t *req) {
-	char hostname[1024] = {0};
+	char hostname[1024] = {};
 	if (!self.gethostname(hostname, sizeof(hostname))) {
 		panic("failed to get hostname: %s", strerror(errno));
 	}
@@ -75,7 +75,7 @@ proc.proc_t *start(char *path, http.request_t *req) {
 	*p++ = strings.newstr("REMOTE_ADDR=%s", "todo");
 	*p++ = strings.newstr("REMOTE_PORT=%s", "todo");
 
-	char *args[] = {path, NULL};
+	char *args[] = { path, NULL };
 	proc.proc_t *proc = proc.spawn(args, env);
 	if (!proc) {
 		panic("spawn failed");
@@ -90,9 +90,9 @@ proc.proc_t *start(char *path, http.request_t *req) {
 }
 
 const char *header(http.request_t *req, const char *name, *def) {
-    http.header_t *h = http.get_header(req, name);
-    if (h) {
-        return h->value;
-    }
-    return def;
+	http.header_t *h = http.get_header(req, name);
+	if (h) {
+		return h->value;
+	}
+	return def;
 }
