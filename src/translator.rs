@@ -135,6 +135,8 @@ pub fn translate_mods(
                 "calloc_or_panic" => makers::func_calloc(),
                 "__min_ii" => makers::func_minmax("min", "int", "ii"),
                 "__max_ii" => makers::func_minmax("max", "int", "ii"),
+                "__max_cz" => makers::func_minmax("max", "size_t", "cz"),
+                "__min_cz" => makers::func_minmax("min", "size_t", "cz"),
                 "__max_zz" => makers::func_minmax("max", "size_t", "zz"),
                 "__min_zz" => makers::func_minmax("min", "size_t", "zz"),
                 "nelem" => c::ModElem::Macro(c::Macro {
@@ -727,6 +729,14 @@ fn tr_minmax(ctx: &mut TrCtx, x: &Call, f: &str) -> Result<Typed<c::Expr>, Build
             });
         }
         ("number", "size_t") => {
+            let fname = format!("__{}_cz", f);
+            ctx.used_customs.insert(fname.clone());
+            return Ok(Typed {
+                typ: types::just("size_t"),
+                val: makers::expr_call(&fname, vec![a.val, b.val]),
+            });
+        }
+        ("size_t", "size_t") => {
             let fname = format!("__{}_zz", f);
             ctx.used_customs.insert(fname.clone());
             return Ok(Typed {

@@ -19,5 +19,9 @@ int main() {
 	if (min(1, x) != 1) {
 		panic("!");
 	}
+
+	size_t y = 20;
+	if (min(x, y) != 10) panic("!");
+	if (max(x, y) != 20) panic("!");
 	return 0;
 }
