@@ -133,12 +133,16 @@ pub fn translate_mods(
         for c in &ctx.used_customs {
             let x = match c.as_str() {
                 "calloc_or_panic" => makers::func_calloc(),
-                "__min_ii" => makers::func_minmax("min", "int", "ii"),
-                "__max_ii" => makers::func_minmax("max", "int", "ii"),
-                "__max_cz" => makers::func_minmax("max", "size_t", "cz"),
-                "__min_cz" => makers::func_minmax("min", "size_t", "cz"),
-                "__max_zz" => makers::func_minmax("max", "size_t", "zz"),
-                "__min_zz" => makers::func_minmax("min", "size_t", "zz"),
+                "__min_size_t" | "__max_size_t" => makers::func_minmax("size_t", c.as_str()),
+
+                "__min_int8_t" | "__max_int8_t" => makers::func_minmax("int8_t", c.as_str()),
+                "__min_uint8_t" | "__max_uint8_t" => makers::func_minmax("uint8_t", c.as_str()),
+
+                "__min_int16_t" | "__max_int16_t" => makers::func_minmax("int16_t", c.as_str()),
+                "__min_uint16_t" | "__max_uint16_t" => makers::func_minmax("uint16_t", c.as_str()),
+
+                "__min_int32_t" | "__max_int32_t" => makers::func_minmax("int32_t", c.as_str()),
+                "__min_uint32_t" | "__max_uint32_t" => makers::func_minmax("uint32_t", c.as_str()),
                 "nelem" => c::ModElem::Macro(c::Macro {
                     name: "define".to_string(),
                     value: "nelem(x) (sizeof (x)/sizeof (x)[0])".to_string(),
@@ -719,31 +723,35 @@ fn tr_minmax(ctx: &mut TrCtx, x: &Call, f: &str) -> Result<Typed<c::Expr>, Build
     }
     let a = tr_expr(&x.args[0], ctx)?;
     let b = tr_expr(&x.args[1], ctx)?;
-    match (a.typ.fmt().as_str(), b.typ.fmt().as_str()) {
-        ("number", "number") => {
-            let fname = format!("__{}_ii", f);
-            ctx.used_customs.insert(fname.clone());
-            return Ok(Typed {
-                typ: types::just("int"),
-                val: makers::expr_call(&fname, vec![a.val, b.val]),
-            });
-        }
-        ("number", "size_t") => {
-            let fname = format!("__{}_cz", f);
-            ctx.used_customs.insert(fname.clone());
-            return Ok(Typed {
-                typ: types::just("size_t"),
-                val: makers::expr_call(&fname, vec![a.val, b.val]),
-            });
-        }
-        ("size_t", "size_t") => {
-            let fname = format!("__{}_zz", f);
-            ctx.used_customs.insert(fname.clone());
-            return Ok(Typed {
-                typ: types::just("size_t"),
-                val: makers::expr_call(&fname, vec![a.val, b.val]),
-            });
-        }
+    let mut signature = [a.typ.fmt(), b.typ.fmt()];
+    signature.sort();
+
+    fn g(
+        ctx: &mut TrCtx,
+        f: &str,
+        rettype: &str,
+        a: Typed<c::Expr>,
+        b: Typed<c::Expr>,
+    ) -> Typed<c::Expr> {
+        let fname = format!("__{}_{}", f, rettype);
+        ctx.used_customs.insert(fname.clone());
+        return Typed {
+            typ: types::just(rettype),
+            val: makers::expr_call(&fname, vec![a.val, b.val]),
+        };
+    }
+
+    match signature.join(",").as_str() {
+        "int8_t,int8_t" | "int8_t,number" => Ok(g(ctx, f, "int8_t", a, b)),
+        "uint8_t,uint8_t" | "uint8_t,number" => Ok(g(ctx, f, "uint8_t", a, b)),
+
+        "int16_t,int16_t" | "int16_t,number" => Ok(g(ctx, f, "int16_t", a, b)),
+        "uint16_t,uint16_t" | "uint16_t,number" => Ok(g(ctx, f, "uint16_t", a, b)),
+
+        "int32_t,int32_t" | "int32_t,number" => Ok(g(ctx, f, "int32_t", a, b)),
+        "uint32_t,uint32_t" | "uint32_t,number" => Ok(g(ctx, f, "uint32_t", a, b)),
+
+        "size_t,size_t" | "number,size_t" => Ok(g(ctx, f, "size_t", a, b)),
         _ => {
             return ctx.err(
                 &x.pos,

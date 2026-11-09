@@ -86,7 +86,7 @@ pub fn func_calloc() -> c::ModElem {
     })
 }
 
-pub fn func_minmax(f: &str, argtype: &str, suffix: &str) -> c::ModElem {
+pub fn func_minmax(argtype: &str, fname: &str) -> c::ModElem {
     let arg1 = c::CTypeForm {
         type_name: c::Typename {
             is_const: false,
@@ -113,7 +113,7 @@ pub fn func_minmax(f: &str, argtype: &str, suffix: &str) -> c::ModElem {
     //
     // if (a < b) return a;
     //
-    let op = if f == "min" { "<" } else { ">" };
+    let op = if fname.contains("min") { "<" } else { "> " };
     c::ModElem::FuncDef(c::FuncDef {
         is_static: true,
         type_name: c::Typename {
@@ -122,7 +122,7 @@ pub fn func_minmax(f: &str, argtype: &str, suffix: &str) -> c::ModElem {
         },
         form: c::Form {
             stars: "".to_string(),
-            name: format!("__{}_{}", f, suffix),
+            name: String::from(fname),
             indexes: Vec::new(),
         },
         parameters: c::FuncParams {
