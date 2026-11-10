@@ -161,7 +161,9 @@ fn read_token0(buf: &mut Buf) -> Option<Token0> {
             return Some(newtok(sym, String::new()));
         }
     }
-    return Some(errtok(format!("Unexpected character: '{}'", next)));
+    // Consume the offending character so that the lexer always advances.
+    let bad = buf.get().unwrap();
+    return Some(errtok(format!("Unexpected character: '{}'", bad)));
 }
 
 fn errtok(msg: String) -> Token0 {

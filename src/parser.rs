@@ -61,17 +61,28 @@ pub fn parse_module(
                     errors.push(err2berr(thismod, &e));
                 }
             },
-            _ => match parse_module_object(l, ctx) {
-                Ok(r) => {
-                    for e in r.errors {
-                        errors.push(err2berr(thismod, &e));
+            _ => {
+                let before = l.peek().unwrap().pos.clone();
+                match parse_module_object(l, ctx) {
+                    Ok(r) => {
+                        for e in r.errors {
+                            errors.push(err2berr(thismod, &e));
+                        }
+                        elements.push(r.obj);
                     }
-                    elements.push(r.obj);
+                    Err(e) => {
+                        errors.push(err2berr(thismod, &e));
+                        // Make sure the parser has advanced,
+                        // or else it would spin forever.
+                        if l.more() {
+                            let after = l.peek().unwrap().pos.clone();
+                            if before.line == after.line && before.col == after.col {
+                                l.get();
+                            }
+                        }
+                    }
                 }
-                Err(e) => {
-                    errors.push(err2berr(thismod, &e));
-                }
-            },
+            }
         }
     }
     if errors.len() > 0 {
@@ -1160,7 +1171,7 @@ fn read_body(l: &mut Lexer, ctx: &ParseCtx) -> Result<TWithErrors<Block>, Error>
     let mut statements: Vec<BlockItem> = Vec::new();
     let mut errors = Vec::new();
     expect(l, "{")?;
-    while !l.follows("}") {
+    while l.more() && !l.follows("}") {
         match parse_block_item(l, ctx) {
             Ok(s) => {
                 statements.push(s.obj);
