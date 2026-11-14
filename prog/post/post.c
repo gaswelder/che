@@ -1,5 +1,7 @@
+#import fmt
 #import opt
 #import os/net
+#import writer
 
 int main(int argc, char **argv) {
 	char *addr = "127.0.0.1:25";
@@ -18,53 +20,47 @@ int main(int argc, char **argv) {
 		fprintf(stderr, "connect to '%s' failed: %s\n", addr, strerror(errno));
 		exit(1);
 	}
-	sendm(n, from, to, subj);
+	writer.t *w = net.getwriter(n);
+	sendm(n, w, from, to, subj);
+	writer.free(w);
 	net.close(n);
 	return 0;
 }
 
-int sendm(net.net_t *n, const char *from, const char *to, const char *subj) {
+int sendm(net.net_t *n, writer.t *w, const char *from, const char *to, const char *subj) {
 	expect(n, 220);
-
-	net.net_printf(n, "HELO %s\r\n", "sofa");
-	expect(n, 250);
-	if (senderror()) {
-		return 0;
+	if (!senderror()) {
+		fmt.wprintf(w, "HELO %s\r\n", "sofa");
+		expect(n, 250);
 	}
-
-	net.net_printf(n, "MAIL FROM:<%s>\r\n", from);
-	expect(n, 250);
-	if (senderror()) {
-		return 0;
+	if (!senderror()) {
+		fmt.wprintf(w, "MAIL FROM:<%s>\r\n", from);
+		expect(n, 250);
 	}
-
-	net.net_printf(n, "RCPT TO:<%s>\r\n", to);
-	expect(n, 250);
-	if (senderror()) {
-		return 0;
+	if (!senderror()) {
+		fmt.wprintf(w, "RCPT TO:<%s>\r\n", to);
+		expect(n, 250);
 	}
-
-	net.net_printf(n, "DATA\r\n");
-	expect(n, 354);
-	if (senderror()) {
-		return 0;
+	if (!senderror()) {
+		fmt.wprintf(w, "DATA\r\n");
+		expect(n, 354);
 	}
+	if (!senderror()) {
+		fmt.wprintf(w, "Subject: %s\r\n", subj);
+		fmt.wprintf(w, "From: <%s>\r\n", from);
+		fmt.wprintf(w, "To: <%s>\r\n", to);
+		fmt.wprintf(w, "\r\n");
 
-	net.net_printf(n, "Subject: %s\r\n", subj);
-	net.net_printf(n, "From: <%s>\r\n", from);
-	net.net_printf(n, "To: <%s>\r\n", to);
-	net.net_printf(n, "\r\n");
+		char buf[4096] = {};
+		while (fgets(buf, 4096, stdin)) {
+			fmt.wprintf(w, "%s", buf);
+		}
+		fmt.wprintf(w, ".\r\n");
+		expect(n, 250);
 
-	char buf[4096] = {};
-	while (fgets(buf, 4096, stdin)) {
-		net.net_printf(n, "%s", buf);
+		fmt.wprintf(w, "QUIT\r\n");
+		expect(n, 221);
 	}
-	net.net_printf(n, ".\r\n");
-	expect(n, 250);
-
-	net.net_printf(n, "QUIT\r\n");
-	expect(n, 221);
-
 	return !senderror();
 }
 

@@ -5,6 +5,8 @@
 #import protocols/http
 #import reader
 #import ascii
+#import fmt
+#import writer
 
 pub void cgi(char *path, http.request_t *req, net.net_t *conn) {
 	proc.proc_t *proc = start(path, req);
@@ -30,7 +32,9 @@ pub void cgi(char *path, http.request_t *req, net.net_t *conn) {
 		panic("failed to parse cgi head");
 	}
 
-	net.net_printf(conn, "%s 200 OK\n", req->version);
+	writer.t *w = net.getwriter(conn);
+
+	fmt.wprintf(w, "%s 200 OK\n", req->version);
 	for (size_t i = 0; i < head.nheaders; i++) {
 		char *name = head.headers[i].name;
 		char *value = head.headers[i].value;
@@ -43,11 +47,12 @@ pub void cgi(char *path, http.request_t *req, net.net_t *conn) {
 		if (!strcmp(name, "Content-Length")) {
 			panic("omitting content length");
 		}
-		net.net_printf(conn, "%s: %s\n", name, value);
+		fmt.wprintf(w, "%s: %s\n", name, value);
 	}
-	net.net_printf(conn, "Content-Length: %zu\r\n", output_size - headsize);
-	net.net_printf(conn, "\r\n", 1);
+	fmt.wprintf(w, "Content-Length: %zu\r\n", output_size - headsize);
+	fmt.wprintf(w, "\r\n", 1);
 	net.write(conn, output + headsize, output_size - headsize);
+	writer.free(w);
 }
 
 proc.proc_t *start(char *path, http.request_t *req) {

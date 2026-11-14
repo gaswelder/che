@@ -8,6 +8,7 @@
 #type socklen_t
 
 #import reader
+#import writer
 
 const char *error = "no error";
 pub typedef struct sockaddr sockaddr_t;
@@ -286,42 +287,6 @@ bool format_address(sockaddr_t *a, char *buf, size_t n) {
 	return r > 0 && (size_t) r < n;
 }
 
-/*
- * Writes a string to a net connection.
- * Behaves like fputs.
- */
-int net_puts(const char *s, net_t *c) {
-	size_t len = strlen(s);
-	int r = write(c, s, len);
-
-	// return EOF if a write error occurs
-	if (r < 0 || (size_t) r < len) {
-		return EOF;
-	}
-
-	// return a non-negative value on success
-	return r;
-}
-
-/*
- * Writes a formatted string to the connection.
- * Behaves like fprintf.
- */
-pub void net_printf(net_t *c, const char *fmt, ...) {
-	va_list args = {};
-	va_start(args, fmt);
-	int len = vsnprintf(NULL, 0, fmt, args);
-	va_end(args);
-
-	char *buf = calloc!(len + 1, sizeof(char));
-	va_start(args, fmt);
-	len = vsnprintf(buf, len + 1, fmt, args);
-	va_end(args);
-
-	net_puts(buf, c);
-	free(buf);
-}
-
 // Returns a reader interface for the given connection.
 // Freeing the reader will not close the connection, the caller will still own it.
 pub reader.t *getreader(net_t *conn) {
@@ -334,4 +299,13 @@ pub reader.t *getreader(net_t *conn) {
 int reader_read(void *ctx, uint8_t *buf, size_t n) {
 	net_t *conn = ctx;
 	return OS.read(conn->fd, buf, n);
+}
+
+pub writer.t *getwriter(net_t *conn) {
+	return writer.new(conn, writer_write, NULL);
+}
+
+int writer_write(void *ctx, const uint8_t *buf, size_t n) {
+	net_t *conn = ctx;
+	return OS.write(conn->fd, buf, n);
 }
