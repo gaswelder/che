@@ -1,6 +1,6 @@
 #import clip/map
 #import scanner
-#import strings
+#import ascii
 
 enum {
 	FUNC,
@@ -50,7 +50,7 @@ map.map_t *unify(term_t *x, *y, map.map_t *subst) {
 		return unify_variable(y, x, subst);
 	}
 	if (x->type == FUNC && y->type == FUNC) {
-		if (!strings.eq(x->name, y->name) || x->args_length != y->args_length) {
+		if (!ascii.eq(x->name, y->name) || x->args_length != y->args_length) {
 			return NULL;
 		}
 		map.map_t *r = subst;
@@ -123,7 +123,7 @@ bool eq(term_t *x, *y) {
 	if (x->type != y->type) {
 		return false;
 	}
-	if (!strings.eq(x->name, y->name)) {
+	if (!ascii.eq(x->name, y->name)) {
 		return false;
 	}
 	if (x->type == FUNC) {
@@ -144,7 +144,7 @@ term_t *parse_term1(scanner.t *b) {
 		t->name[n++] = scanner.get(b);
 	}
 
-	if (strings.allupper(t->name)) {
+	if (ascii.allupper(t->name)) {
 		t->type = VAR;
 		return t;
 	}

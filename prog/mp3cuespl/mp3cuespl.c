@@ -5,7 +5,7 @@
 #import opt
 #import os/fs
 #import strbuilder
-#import strings
+#import ascii
 #import time
 #import tracklist.c
 #import writer
@@ -21,9 +21,9 @@ int main(int argc, char *argv[]) {
 	//
 	track_t *tracks = NULL;
 	int n = 0;
-	if (strings.ends_with(cuepath, ".cue")) {
+	if (ascii.ends_with(cuepath, ".cue")) {
 		tracks = loadcue(cuepath, &n);
-	} else if (strings.ends_with(cuepath, ".txt")) {
+	} else if (ascii.ends_with(cuepath, ".txt")) {
 		tracks = loadtxt(cuepath, &n);
 	} else {
 		fprintf(stderr, "expected a .cue or .txt file path as first argument\n");

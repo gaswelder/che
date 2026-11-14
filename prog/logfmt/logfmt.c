@@ -2,7 +2,7 @@
 #import formats/json
 #import linereader
 #import opt
-#import strings
+#import ascii
 #import time
 #import tty
 
@@ -18,7 +18,7 @@ int main(int argc, char **argv) {
 	opt.str("x", "comma-separated list of fields to exclude", &exclude_string);
 	opt.parse(argc, argv);
 
-	nexclude = strings.split(",", exclude_string, excludefields, sizeof(excludefields));
+	nexclude = ascii.split(",", exclude_string, excludefields, sizeof(excludefields));
 
 	linereader.t *lr = linereader.new(stdin);
 	error.t err = {};

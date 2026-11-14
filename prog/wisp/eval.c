@@ -3,7 +3,7 @@
 #import mem.c
 #import mp.c
 #import os/self
-#import strings
+#import ascii
 #import util.c
 
 enum {
@@ -460,7 +460,7 @@ pub val_t *symbol(char *name) {
 		return o;
 	}
 	o = obj_createx(SYMBOL, symbol_create());
-	*SYMNAME(o) = strings.newstr("%s", name);
+	*SYMNAME(o) = ascii.newstr("%s", name);
 	symbol_t *x = o->val;
 	*x->vals = NIL;
 	if (name[0] == ':') {
@@ -792,7 +792,7 @@ pub void wisp_init() {
 	SET (symbol("wisproot"), newstring(wisproot));
 
 	/* Load core lisp code. */
-	char *corepath = strings.newstr("%s/core.wisp", wisproot);
+	char *corepath = ascii.newstr("%s/core.wisp", wisproot);
 	if (!load_file(NULL, corepath, 0)) {
 		fprintf(stderr, "could not load core lisp at \"%s\": %s\n", corepath, strerror(errno));
 		fprintf(stderr, "(WISPROOT=%s)\n", wisproot);
@@ -1032,7 +1032,7 @@ val_t *c_str (char *str, size_t len) {
 }
 
 pub val_t *newstring(const char *str) {
-	return c_str(strings.newstr("%s", str), strlen(str));
+	return c_str(ascii.newstr("%s", str), strlen(str));
 }
 
 val_t *c_ints(char *nstr) {
@@ -1321,7 +1321,7 @@ void addpop (reader_t * r) {
 val_t *parse_str (reader_t * r)
 {
 	size_t size = r->eater.bufp - r->eater.buf;
-	char *str = strings.newstr("%s", r->eater.buf);
+	char *str = ascii.newstr("%s", r->eater.buf);
 	reset_buf (r);
 	return c_str (str, size);
 }
@@ -1356,7 +1356,7 @@ val_t *parse_atom (reader_t * r)
 	char *p = r->eater.buf;
 	while (p <= r->eater.bufp) {
 		if (strchr (atom_chars, *p) == NULL) {
-			char *errstr = strings.newstr("%s", "invalid symbol character: X");
+			char *errstr = ascii.newstr("%s", "invalid symbol character: X");
 			errstr[strlen (errstr) - 1] = *p;
 			read_error (r, errstr);
 			free (errstr);
@@ -1872,7 +1872,7 @@ val_t *symbol_name(val_t * lst) {
 
 val_t *lisp_concat(val_t *lst) {
 	if (lst == doc_string) {
-		return newstring("Concatenate two strings.");
+		return newstring("Concatenate two ascii.");
 	}
 	if (req_length (lst,symbol("concat"),2) == err_symbol)	return err_symbol;
 	val_t *a = car(lst);

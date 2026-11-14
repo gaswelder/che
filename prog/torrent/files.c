@@ -3,7 +3,7 @@
 #import dbg
 #import formats/torrent
 #import lib.c
-#import strings
+#import ascii
 
 const char *DBG_TAG = "files";
 
@@ -110,7 +110,7 @@ int sliceop(int op, const char *prefix, torrent.info_t *tf, range_t bs, char *bu
 	int c = 0;
 	for (size_t i = 0; i < n; i++) {
 		file_slice_t *s = vec.index(locs, i);
-		char *path = strings.newstr("%s/%s", prefix, s->path);
+		char *path = ascii.newstr("%s/%s", prefix, s->path);
 		int r = 0;
 		if (op == 1) {
 			r = _read(path, s, buf);

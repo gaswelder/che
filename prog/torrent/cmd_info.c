@@ -2,7 +2,7 @@
 #import files.c
 #import formats/torrent
 #import opt
-#import strings
+#import ascii
 #import time
 
 pub int run(int argc, char **argv) {
@@ -35,12 +35,12 @@ void printtorrent(torrent.info_t *tf) {
 	printf("comment = %s\n", tf->comment);
 	printf("name = %s\n", tf->name);
 
-	strings.fmt_bytes(tf->piece_length, tmp, 100);
+	ascii.fmt_bytes(tf->piece_length, tmp, 100);
 	printf("piece length = %zu (%s)\n", tf->piece_length, tmp);
 
 	size_t total = torrent.totalsize(tf);
 	size_t npieces = torrent.npieces(tf);
-	strings.fmt_bytes(total, tmp, 100);
+	ascii.fmt_bytes(total, tmp, 100);
 
 	if (tf->nfiles == 0) {
 		printf("length = %zu (%s), %zu pieces\n", tf->length, tmp, npieces);

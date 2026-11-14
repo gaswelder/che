@@ -1,5 +1,5 @@
 #import error
-#import strings
+#import ascii
 #import time
 
 /*
@@ -25,7 +25,7 @@ pub entry_t *readfile(const char *path, int *ret_n) {
 	int i = 0;
 	char line[4096] = {};
 	while (fgets(line, sizeof(line), f)) {
-		strings.trim(line);
+		ascii.trim(line);
 		if (line[0] == '\0') {
 			continue;
 		}
@@ -38,7 +38,7 @@ pub entry_t *readfile(const char *path, int *ret_n) {
 }
 
 void parseline(char *line, entry_t *e) {
-	strings.trim(line);
+	ascii.trim(line);
 
 	//
 	// Get the duration
@@ -53,7 +53,7 @@ void parseline(char *line, entry_t *e) {
 		panic("failed to parse duration: %s", err.msg);
 	}
 	line[i - 1] = '\0';
-	strings.trim(line);
+	ascii.trim(line);
 
 	//
 	// Get the number
@@ -62,7 +62,7 @@ void parseline(char *line, entry_t *e) {
 	int num = 0;
 	while (isdigit(line[i])) {
 		num *= 10;
-		num += strings.num_from_ascii(line[i]);
+		num += ascii.num_from_ascii(line[i]);
 		i++;
 	}
 	if (line[i] != '.') {

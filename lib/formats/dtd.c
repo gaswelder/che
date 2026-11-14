@@ -1,5 +1,5 @@
 // Sloppy XML DTD parser.
-#import strings
+#import ascii
 
 pub enum {
 	REQUIRED = 1,
@@ -84,7 +84,7 @@ pub schema_t parse(const char *real_dtd) {
 		if (buf[0] == '\0') {
 			break;
 		}
-		if (strings.starts_with(buf, "<!ATTLIST ")) {
+		if (ascii.starts_with(buf, "<!ATTLIST ")) {
 			attlist_t *attlist = &schema.attlists[schema.attrnum++];
 			read_attlist(buf, attlist);
 		} else {
@@ -121,13 +121,13 @@ void read_attlist(char *p, attlist_t *attlist) {
 		}
 
 		// type
-		if (strings.starts_with(p, "IDREF")) {
+		if (ascii.starts_with(p, "IDREF")) {
 			p = skiplit(p, "IDREF");
 			att->type = IDREF;
-		} else if (strings.starts_with(p, "ID")) {
+		} else if (ascii.starts_with(p, "ID")) {
 			p = skiplit(p, "ID");
 			att->type = ID;
-		} else if (strings.starts_with(p, "CDATA")) {
+		} else if (ascii.starts_with(p, "CDATA")) {
 			p = skiplit(p, "CDATA");
 			att->type = CDATA;
 		} else {
@@ -138,10 +138,10 @@ void read_attlist(char *p, attlist_t *attlist) {
 		}
 
 		// value
-		if (strings.starts_with(p, "#REQUIRED")) {
+		if (ascii.starts_with(p, "#REQUIRED")) {
 			p = skiplit(p, "#REQUIRED");
 			att->flag = REQUIRED;
-		} else if (strings.starts_with(p, "#IMPLIED")) {
+		} else if (ascii.starts_with(p, "#IMPLIED")) {
 			p = skiplit(p, "#IMPLIED");
 			att->flag = IMPLIED;
 		} else {
@@ -203,7 +203,7 @@ child_list_t *read_child_list(char **s) {
 
 	char *p = *s;
 
-	if (strings.starts_with(p, "EMPTY")) {
+	if (ascii.starts_with(p, "EMPTY")) {
 		p = skiplit(p, "EMPTY");
 		while (isspace(*p)) {
 			p++;
@@ -259,7 +259,7 @@ void item(char **s, child_entry_t *item) {
 	}
 
 	child_t *elem = calloc!(1, sizeof(child_t));
-	if (strings.starts_with(p, "#PCDATA")) {
+	if (ascii.starts_with(p, "#PCDATA")) {
 		p = skiplit(p, "#PCDATA");
 		strcpy(elem->name, "#PCDATA");
 	} else {
@@ -281,7 +281,7 @@ char mb_quant(char **s) {
 }
 
 char *skiplit(char *line, *lit) {
-	if (!strings.starts_with(line, lit)) {
+	if (!ascii.starts_with(line, lit)) {
 		panic("expected %s, got %s", lit, line);
 	}
 	return line + strlen(lit);

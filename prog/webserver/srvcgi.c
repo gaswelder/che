@@ -4,7 +4,7 @@
 #import protocols/cgi
 #import protocols/http
 #import reader
-#import strings
+#import ascii
 
 pub void cgi(char *path, http.request_t *req, net.net_t *conn) {
 	proc.proc_t *proc = start(path, req);
@@ -58,22 +58,22 @@ proc.proc_t *start(char *path, http.request_t *req) {
 
 	char *env[100] = {};
 	char **p = env;
-	*p++ = strings.newstr("SERVER_NAME=%s", hostname);
-	*p++ = strings.newstr("SERVER_PORT", "todo", 1);
-	*p++ = strings.newstr("SERVER_SOFTWARE=webserver");
-	*p++ = strings.newstr("SERVER_PROTOCOL=HTTP/1.0");
-	*p++ = strings.newstr("DOCUMENT_ROOT=%s", "todo");
-	*p++ = strings.newstr("HTTP_USER_AGENT=%s", header(req, "User-Agent", ""));
-	*p++ = strings.newstr("HTTP_HOST=%s", header(req, "Host", ""));
-	*p++ = strings.newstr("CONTENT_TYPE=%s", header(req, "Content-Type", ""));
-	*p++ = strings.newstr("SCRIPT_FILENAME=%s", path);
-	*p++ = strings.newstr("REQUEST_METHOD=%s", req->method);
-	*p++ = strings.newstr("SCRIPT_NAME=%s", req->path);
-	*p++ = strings.newstr("REQUEST_URI=%s", req->uri);
-	*p++ = strings.newstr("QUERY_STRING=%s", req->query);
-	*p++ = strings.newstr("CONTENT_LENGTH=%s", "todo");
-	*p++ = strings.newstr("REMOTE_ADDR=%s", "todo");
-	*p++ = strings.newstr("REMOTE_PORT=%s", "todo");
+	*p++ = ascii.newstr("SERVER_NAME=%s", hostname);
+	*p++ = ascii.newstr("SERVER_PORT", "todo", 1);
+	*p++ = ascii.newstr("SERVER_SOFTWARE=webserver");
+	*p++ = ascii.newstr("SERVER_PROTOCOL=HTTP/1.0");
+	*p++ = ascii.newstr("DOCUMENT_ROOT=%s", "todo");
+	*p++ = ascii.newstr("HTTP_USER_AGENT=%s", header(req, "User-Agent", ""));
+	*p++ = ascii.newstr("HTTP_HOST=%s", header(req, "Host", ""));
+	*p++ = ascii.newstr("CONTENT_TYPE=%s", header(req, "Content-Type", ""));
+	*p++ = ascii.newstr("SCRIPT_FILENAME=%s", path);
+	*p++ = ascii.newstr("REQUEST_METHOD=%s", req->method);
+	*p++ = ascii.newstr("SCRIPT_NAME=%s", req->path);
+	*p++ = ascii.newstr("REQUEST_URI=%s", req->uri);
+	*p++ = ascii.newstr("QUERY_STRING=%s", req->query);
+	*p++ = ascii.newstr("CONTENT_LENGTH=%s", "todo");
+	*p++ = ascii.newstr("REMOTE_ADDR=%s", "todo");
+	*p++ = ascii.newstr("REMOTE_PORT=%s", "todo");
 
 	char *args[] = { path, NULL };
 	proc.proc_t *proc = proc.spawn(args, env);

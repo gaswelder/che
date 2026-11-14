@@ -1,6 +1,6 @@
 #import chip8.c
 #import lc3.c
-#import strings
+#import ascii
 
 int main(int argc, char *argv[]) {
 	if (argc != 3) {
@@ -22,10 +22,10 @@ void usage() {
 }
 
 int run(char *rompath) {
-	if (strings.ends_with(rompath, ".lc3")) {
+	if (ascii.ends_with(rompath, ".lc3")) {
 		return lc3.run(rompath);
 	}
-	if (strings.ends_with(rompath, ".chip8")) {
+	if (ascii.ends_with(rompath, ".chip8")) {
 		return chip8.run(rompath);
 	}
 	fprintf(stderr, "unrecognized ROM for run\n");
@@ -33,7 +33,7 @@ int run(char *rompath) {
 }
 
 int disas(char *rompath) {
-	if (strings.ends_with(rompath, ".chip8")) {
+	if (ascii.ends_with(rompath, ".chip8")) {
 		return chip8.disas(rompath);
 	}
 	fprintf(stderr, "unrecognized ROM for disassembly\n");

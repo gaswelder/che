@@ -1,4 +1,4 @@
-#import strings
+#import ascii
 
 pub typedef {
 	char line[4096];
@@ -110,7 +110,7 @@ pub bool read(reader_t *r) {
 		}
 		printnotags(r->text + strlen(r->text), r->line);
 	}
-	strings.trim(r->text);
+	ascii.trim(r->text);
 	return true;
 }
 
@@ -118,7 +118,7 @@ bool loadline(reader_t *r) {
 	if (!fgets(r->line, sizeof(r->line), r->f)) {
 		return false;
 	}
-	strings.rtrim(r->line, "\r\n");
+	ascii.rtrim(r->line, "\r\n");
 	// printf("line: [%s]\n", r->line);
 	return true;
 }
@@ -150,7 +150,7 @@ void seterror(reader_t *r, char *msg, ...) {
 	va_start(args, msg);
 	vsnprintf(buf, sizeof(buf) - 1, msg, args);
 	va_end(args);
-	r->error = strings.newstr("%s", buf);
+	r->error = ascii.newstr("%s", buf);
 }
 
 // 00:00:00.120 --> 00:00:02.270 align:start position:0%

@@ -1,4 +1,4 @@
-#import strings
+#import ascii
 
 pub typedef {
 	char *k;
@@ -33,7 +33,7 @@ pub void set(t *st, const char *ks, const char *v) {
 	for (size_t i = 0; i < st->len; i++) {
 		if (!strcmp(st->items[i].k, ks)) {
 			OS.free(st->items[i].v);
-			st->items[i].v = strings.newstr("%s", v);
+			st->items[i].v = ascii.newstr("%s", v);
 			return;
 		}
 	}
@@ -45,8 +45,8 @@ pub void set(t *st, const char *ks, const char *v) {
 		memset(st->items + st->len, 0, (st->cap - st->len) * sizeof(entry_t));
 	}
 
-	st->items[st->len].k = strings.newstr("%s", ks);
-	st->items[st->len].v = strings.newstr("%s", v);
+	st->items[st->len].k = ascii.newstr("%s", ks);
+	st->items[st->len].v = ascii.newstr("%s", v);
 	st->len++;
 }
 

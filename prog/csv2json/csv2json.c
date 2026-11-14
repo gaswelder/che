@@ -1,7 +1,7 @@
 #import formats/csv
 #import formats/json
 #import opt
-#import strings
+#import ascii
 
 int main(int argc, char *argv[]) {
 	bool noheader = false;
@@ -10,7 +10,7 @@ int main(int argc, char *argv[]) {
 
 	char *colnames[100] = {};
 	for (size_t i = 0; i < 100; i++) {
-		colnames[i] = strings.newstr("col%d", i);
+		colnames[i] = ascii.newstr("col%d", i);
 	}
 
 	csv.reader_t *r = csv.newreader();

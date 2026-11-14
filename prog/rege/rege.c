@@ -1,5 +1,5 @@
 #import lib.c
-#import strings
+#import ascii
 
 int main() {
 	lib.regex_t *re = lib.init("\\s hehehe, how is it going?");
@@ -8,7 +8,7 @@ int main() {
 	char *p = text;
 	p += lib.consume(re, p);
 	printf("trailing: %s\n", p);
-	char *m = strings.newsubstr(text, 0, p - text);
+	char *m = ascii.newsubstr(text, 0, p - text);
 	printf("matched: %s\n", m);
 	free(m);
 

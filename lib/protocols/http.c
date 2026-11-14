@@ -5,7 +5,7 @@
 #import reader
 #import scanner
 #import strbuilder
-#import strings
+#import ascii
 #import writer
 
 pub enum {
@@ -20,13 +20,13 @@ pub enum {
  * Returns UNKNOWN_METHOD (=0) if the string doesn't match any method.
  */
 pub int method_from_string(const char *s) {
-	if (strings.casecmp(s, "GET")) {
+	if (ascii.casecmp(s, "GET")) {
 		return GET;
 	}
-	if (strings.casecmp(s, "POST")) {
+	if (ascii.casecmp(s, "POST")) {
 		return POST;
 	}
-	if (strings.casecmp(s, "HEAD")) {
+	if (ascii.casecmp(s, "HEAD")) {
 		return HEAD;
 	}
 	return UNKNOWN_METHOD;
@@ -298,7 +298,7 @@ bool read_status_line(scanner.t *b, response_t *r) {
 	r->status = 0;
 	for (int i = 0; i < 3; i++) {
 		char c = scanner.get(b);
-		int n = strings.num_from_ascii(c);
+		int n = ascii.num_from_ascii(c);
 		if (n < 0) {
 			return false;
 		}

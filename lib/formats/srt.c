@@ -1,4 +1,4 @@
-#import strings
+#import ascii
 #import time
 
 pub typedef {
@@ -42,8 +42,8 @@ pub bool readblock(reader_t *r, block_t *b) {
 			break;
 		}
 	}
-	strings.trim(b->range);
-	strings.trim(b->text);
+	ascii.trim(b->range);
+	ascii.trim(b->text);
 
 	//
 	// Parse the range into two time positions
@@ -115,7 +115,7 @@ int parse_num(char *s) {
 	char *p = s;
 	while (isdigit(*p)) {
 		n *= 10;
-		n += strings.num_from_ascii(*p);
+		n += ascii.num_from_ascii(*p);
 		p++;
 	}
 	while (isspace(*p)) {

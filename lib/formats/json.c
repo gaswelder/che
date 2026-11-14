@@ -1,6 +1,6 @@
 #import error
 #import strbuilder
-#import strings
+#import ascii
 #import scanner
 #import writer
 
@@ -71,7 +71,7 @@ pub val_t *clone(val_t *obj) {
 		case TOBJ: {
 			size_t n = obj->size;
 			for (size_t i = 0; i < n; i++) {
-				char *k = strings.newstr("%s", obj->keys[i]);
+				char *k = ascii.newstr("%s", obj->keys[i]);
 				val_t *v = clone(obj->vals[i]);
 				json_put(copy, k, v);
 			}
@@ -84,7 +84,7 @@ pub val_t *clone(val_t *obj) {
 			}
 		}
 		case TSTR: {
-			copy->val.str = strings.newstr("%s", obj->val.str);
+			copy->val.str = ascii.newstr("%s", obj->val.str);
 		}
 		case TNUM: {
 			copy->val.num = obj->val.num;
@@ -119,7 +119,7 @@ pub bool json_put( val_t *n, const char *k, val_t *val ) {
 	} else {
 		grow_if_needed(n);
 		n->vals[n->size] = val;
-		n->keys[n->size] = strings.newstr("%s", k);
+		n->keys[n->size] = ascii.newstr("%s", k);
 		n->size++;
 	}
 	return true;

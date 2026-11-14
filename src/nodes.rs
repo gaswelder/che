@@ -159,7 +159,6 @@ pub struct Typename {
     pub name: NsName,
 }
 
-// strings.casecmp
 #[derive(Debug, Clone)]
 pub struct NsName {
     pub source_info: Option<SourceInfo>,

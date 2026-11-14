@@ -8,7 +8,7 @@
 #import reader
 #import srvcgi.c
 #import strbuilder
-#import strings
+#import ascii
 
 typedef {
 	char homedir[1000];
@@ -91,7 +91,7 @@ void *client_routine(void *arg) {
 		}
 		log_info("%s is %s", req.path, filepath);
 
-		if (strings.starts_with(req.path, "/cgi-bin/")) {
+		if (ascii.starts_with(req.path, "/cgi-bin/")) {
 			srvcgi.cgi(filepath, &req, conn);
 		} else {
 			http.servefile(&req, conn, filepath);
@@ -119,11 +119,11 @@ char *resolve_path(const char *homedir, *reqpath) {
 	if (!fs.realpath(naive_path, realpath, sizeof(realpath))) {
 		return NULL;
 	}
-	if (!strings.starts_with(realpath, homedir)) {
+	if (!ascii.starts_with(realpath, homedir)) {
 		printf("resolved path \"%s\" doesn't start with homedir=\"%s\"\n", realpath, homedir);
 		return NULL;
 	}
-	return strings.newstr("%s", realpath);
+	return ascii.newstr("%s", realpath);
 }
 
 void log_info(const char *f, ...) {

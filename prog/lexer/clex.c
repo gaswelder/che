@@ -1,6 +1,6 @@
 #import scanner
 #import strbuilder
-#import strings
+#import ascii
 
 // Sorted by length, longest first.
 const char *symbols[] = {
@@ -94,14 +94,14 @@ pub bool read(lexer_t *l) {
 	for (size_t i = 0; i < nelem(keywords); i++) {
 		const char *keyword = keywords[i];
 		if (scanner.skip_literal(b, keyword)) {
-			l->tok = newtok(strings.newstr("%s", keyword), NULL, pos);
+			l->tok = newtok(ascii.newstr("%s", keyword), NULL, pos);
 			return true;
 		}
 	}
 	for (size_t i = 0; i < nelem(symbols); i++) {
 		const char *symbol = symbols[i];
 		if (scanner.skip_literal(b, symbol)) {
-			l->tok = newtok(strings.newstr("%s", symbol), NULL, pos);
+			l->tok = newtok(ascii.newstr("%s", symbol), NULL, pos);
 			return true;
 		}
 	}
@@ -109,7 +109,7 @@ pub bool read(lexer_t *l) {
 		l->tok = read_identifier(b);
 		return true;
 	}
-	l->tok = newtok("error", strings.newstr("unexpected character: '%c'", peek), scanner.posstr(b));
+	l->tok = newtok("error", ascii.newstr("unexpected character: '%c'", peek), scanner.posstr(b));
 	return true;
 }
 
@@ -132,16 +132,16 @@ tok_t read_number(scanner.t *b) {
 		char *modifiers = scanner.buf_read_set(b, "ULf");
 		// defer free(modifiers);
 		// defer free(frac);
-		return newtok("num", strings.newstr("%s.%s%s", num, frac, modifiers), pos);
+		return newtok("num", ascii.newstr("%s.%s%s", num, frac, modifiers), pos);
 	}
 
 	char *modifiers = scanner.buf_read_set(b, "UL");
 
 	if (scanner.more(b) && isalpha(scanner.peek(b))) {
-		return newtok("error", strings.newstr("unknown modifier: %c", scanner.peek(b)), pos);
+		return newtok("error", ascii.newstr("unknown modifier: %c", scanner.peek(b)), pos);
 	}
 
-	char *result = strings.newstr("%s%s", num, modifiers);
+	char *result = ascii.newstr("%s%s", num, modifiers);
 	free(num);
 	free(modifiers);
 	return newtok("num", result, pos);
@@ -156,7 +156,7 @@ tok_t read_hex_number(scanner.t *b) {
 	char *modifiers = scanner.buf_read_set(b, "UL");
 	// defer free(num);
 	// defer free(modifiers);
-	return newtok("num", strings.newstr("0x%s%s", num, modifiers), scanner.posstr(b));
+	return newtok("num", ascii.newstr("0x%s%s", num, modifiers), scanner.posstr(b));
 }
 
 // // TODO: clip/str: new() -> new(template, args...)
@@ -178,7 +178,7 @@ tok_t read_string(scanner.t *b) {
 			strbuilder.addc(s, scanner.get(b));
 		}
 	}
-	return newtok("error", strings.newstr("double quote expected"), pos);
+	return newtok("error", ascii.newstr("double quote expected"), pos);
 }
 
 tok_t read_char(scanner.t *b) {
@@ -195,7 +195,7 @@ tok_t read_char(scanner.t *b) {
 
 	if (scanner.peek(b) != '\'') {
 		free(s);
-		return newtok("error", strings.newstr("single quote expected"), pos);
+		return newtok("error", ascii.newstr("single quote expected"), pos);
 	}
 	scanner.get(b);
 	return newtok("char", s, pos);
@@ -207,7 +207,7 @@ tok_t read_multiline_comment(scanner.t *b) {
 	char *comment = scanner.buf_skip_until(b, "*/");
 	if (!scanner.skip_literal(b, "*/")) {
 		free(comment);
-		return newtok("error", strings.newstr("'*/' expected"), pos);
+		return newtok("error", ascii.newstr("'*/' expected"), pos);
 	}
 	return newtok("comment", comment, pos);
 }

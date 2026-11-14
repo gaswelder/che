@@ -3,7 +3,7 @@
 #import midilib.c
 #import rnd
 #import sound
-#import strings
+#import ascii
 
 typedef {
 	size_t i, n;
@@ -106,12 +106,12 @@ void load_clips(char *path) {
 		int key = 0;
 		while (isdigit(*p)) {
 			key *= 10;
-			key += strings.num_from_ascii(*p++);
+			key += ascii.num_from_ascii(*p++);
 		}
 		while (isspace(*p)) {
 			p++;
 		}
-		strings.trim(p);
+		ascii.trim(p);
 
 		// Load the clip
 		addclip(loadclip(p), key);

@@ -1,4 +1,4 @@
-#import strings
+#import ascii
 #import stats
 #import clip/map
 #import utf
@@ -15,7 +15,7 @@ int main() {
 
     char word[100] = {};
     while (fgets(word, sizeof(word), stdin)) {
-        strings.rtrim(word, "\n");
+        ascii.rtrim(word, "\n");
         learnword(m, word);
     }
 

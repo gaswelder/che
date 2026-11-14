@@ -1,7 +1,7 @@
 #import error
 #import formats/csv
 #import formats/json
-#import strings
+#import ascii
 
 char *header[100] = {};
 size_t nheader = 0;
@@ -19,7 +19,7 @@ int main() {
 			fprintf(stderr, "reached max header size (100)\n");
 			return 1;
 		}
-		header[nheader++] = strings.newstr("%s", json.key(obj, i));
+		header[nheader++] = ascii.newstr("%s", json.key(obj, i));
 	}
 
 	while (obj) {

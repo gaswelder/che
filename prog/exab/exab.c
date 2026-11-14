@@ -5,7 +5,7 @@
 #import os/threads
 #import protocols/http
 #import reader
-#import strings
+#import ascii
 #import time
 #import url
 #import writer
@@ -49,7 +49,7 @@ int main(int argc, char *argv[]) {
 	if (u->port[0] == '\0') {
 		strcpy(u->port, "80");
 	}
-	addr = strings.newstr("%s:%s", u->hostname, u->port);
+	addr = ascii.newstr("%s:%s", u->hostname, u->port);
 
 	//
 	// Create and format the HTTP request as a bytes buffer.

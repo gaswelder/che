@@ -28,29 +28,6 @@ pub char *newsubstr(const char *s, int p1, p2) {
 	return buf;
 }
 
-// Trims spaces at both sides of s.
-pub void trim(char *s) {
-	int left = 0;
-	while (s[left] != '\0' && isspace(s[left])) {
-		left++;
-	}
-	if (left > 0) {
-		int n = strlen(&s[left]);
-		memmove(s, &s[left], n);
-		s[n] = '\0';
-	}
-	rtrim(s, " \t\r\n");
-}
-
-// Trims all characters from the set at the end of string s by inserting zeros.
-pub void rtrim(char *s, *set) {
-	size_t n = strlen(s);
-	while (n > 0 && strchr(set, s[n - 1])) {
-		s[n - 1] = '\0';
-		n--;
-	}
-}
-
 /*
  * Splits string `str` using `separator` and puts allocated substrings into
  * `result`. Stops when the whole string is processed or when the number of
@@ -88,6 +65,50 @@ pub size_t split(const char *separator, const char *str, char **result, size_t r
 		}
 	}
 	return count;
+}
+
+pub bool eq(char *a, char *b) {
+	return strcmp(a, b) == 0;
+}
+
+pub void fmt_bytes(size_t bytes, char *buf, size_t bufsize) {
+	double k = 1024;
+	double m = 1024 * k;
+	double g = 1024 * m;
+	double b = (double) bytes;
+	if (b > g) {
+		snprintf(buf, bufsize, "%.2f GB", b / g);
+	} else if (b > 1024 * 1024) {
+		snprintf(buf, bufsize, "%.2f MB", b / m);
+	} else if (b > 1024) {
+		snprintf(buf, bufsize, "%.2f KB", b / k);
+	} else {
+		snprintf(buf, bufsize, "%zu B", bytes);
+	}
+}
+
+
+// Trims spaces on both sides of s.
+pub void trim(char *s) {
+	int left = 0;
+	while (s[left] != '\0' && isspace(s[left])) {
+		left++;
+	}
+	if (left > 0) {
+		int n = strlen(&s[left]);
+		memmove(s, &s[left], n);
+		s[n] = '\0';
+	}
+	rtrim(s, " \t\r\n");
+}
+
+// Trims all characters from the set at the end of string s by inserting zeros.
+pub void rtrim(char *s, *set) {
+	size_t n = strlen(s);
+	while (n > 0 && strchr(set, s[n - 1])) {
+		s[n - 1] = '\0';
+		n--;
+	}
 }
 
 // Compares ASCII strings a and b ignoring case.
@@ -151,10 +172,6 @@ pub bool ends_with(const char *string, *suffix) {
 	return y == suffix;
 }
 
-pub bool eq(char *a, char *b) {
-	return strcmp(a, b) == 0;
-}
-
 // Returns true if ASCII string s is all uppercase.
 pub bool allupper(char *s) {
 	for (char *c = s; *c != '\0'; c++) {
@@ -163,22 +180,6 @@ pub bool allupper(char *s) {
 		}
 	}
 	return true;
-}
-
-pub void fmt_bytes(size_t bytes, char *buf, size_t bufsize) {
-	double k = 1024;
-	double m = 1024 * k;
-	double g = 1024 * m;
-	double b = (double) bytes;
-	if (b > g) {
-		snprintf(buf, bufsize, "%.2f GB", b / g);
-	} else if (b > 1024 * 1024) {
-		snprintf(buf, bufsize, "%.2f MB", b / m);
-	} else if (b > 1024) {
-		snprintf(buf, bufsize, "%.2f KB", b / k);
-	} else {
-		snprintf(buf, bufsize, "%zu B", bytes);
-	}
 }
 
 // Returns the character that corresponds to the ASCII
