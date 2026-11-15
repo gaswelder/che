@@ -7,6 +7,15 @@ pub typedef {
 	size_t size; // allocated buffer size
 } mem_t;
 
+pub writer.t *newwriter(mem_t *m) {
+	return writer.new(m, wr_write, NULL);
+}
+
+int wr_write(void *this, const uint8_t *data, size_t n) {
+	return (int) memwrite(this, (char *) data, n);
+}
+
+
 /*
  * Creates a memory buffer.
  */
@@ -28,17 +37,6 @@ pub void memclose(mem_t *mem) {
 // Resets the read position to zero.
 pub void rewind(mem_t *m) {
 	m->pos = 0;
-}
-
-// Resets the data and the read position.
-pub void reset(mem_t *m) {
-	m->pos = 0;
-	m->datalen = 0;
-}
-
-// Returns current position in the stream
-pub size_t memtell(mem_t *m) {
-	return m->pos;
 }
 
 /*
@@ -99,28 +97,6 @@ pub size_t memwrite(mem_t *m, const char *buf, size_t size) {
 	return size;
 }
 
-pub int memprintf(mem_t *m, const char *format, ...) {
-	int available = (int)(m->size - m->datalen);
-
-	va_list l = {};
-	va_start(l, format);
-	int total = vsnprintf(m->data + m->pos, available, format, l);
-	va_end(l);
-
-	/*
-	 * If there was not enough buffer, allocate more and try again.
-	 */
-	if (total >= available) {
-		if (!makespace(m, total + 1)) {
-			return total;
-		}
-		va_start(l, format);
-		total = vsnprintf(m->data + m->pos, available, format, l);
-		va_end(l);
-	}
-	return total;
-}
-
 /*
  * Read up to 'size' bytes to the buffer 'buf'.
  * Returns the number of bytes read.
@@ -166,12 +142,4 @@ bool makespace(mem_t *mem, size_t size) {
 	mem->data = tmp;
 	mem->size = next;
 	return true;
-}
-
-pub writer.t *newwriter(mem_t *m) {
-	return writer.new(m, wr_write, NULL);
-}
-
-int wr_write(void *this, const uint8_t *data, size_t n) {
-	return (int) memwrite(this, (char *) data, n);
 }
