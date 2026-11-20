@@ -1,6 +1,6 @@
 // RFC 8439. IETF ChaCha20 (96-bit nonce) and Poly1305 AEAD.
 
-#import crypt/poly1305
+#import crypt/mac/poly1305
 
 pub void seal(const uint8_t key[32], const uint8_t nonce[12], const uint8_t *aad, size_t naad, uint8_t *p, size_t n, uint8_t tag[16]) {
 	crypt(key, nonce, p, n);

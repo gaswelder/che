@@ -1,5 +1,5 @@
 #import clip/vec
-#import crypt/sha1
+#import crypt/hash/sha1
 #import dbg
 #import formats/torrent
 #import lib.c

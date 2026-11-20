@@ -1,4 +1,4 @@
-#import crypt/sha256
+#import crypt/hash/sha256
 #import test
 
 int main() {

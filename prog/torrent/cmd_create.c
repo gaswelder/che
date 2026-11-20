@@ -1,4 +1,4 @@
-#import crypt/sha1
+#import crypt/hash/sha1
 #import formats/torrent
 #import opt
 #import os/fs

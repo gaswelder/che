@@ -1,4 +1,4 @@
-#import crypt/md5
+#import crypt/hash/md5
 #import test
 
 md5.md5str_t buf = "";

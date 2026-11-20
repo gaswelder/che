@@ -1,5 +1,5 @@
 // *.torrent format
-#import crypt/sha1
+#import crypt/hash/sha1
 #import formats/bencode
 #import formats/bencode_writer
 #import os/fs

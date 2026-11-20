@@ -290,7 +290,7 @@ A `*.test.c` file is a regular program with `main`:
 
 ```c
 // md5.test.c
-#import crypt/md5
+#import crypt/hash/md5
 
 int main() {
 	md5.md5sum_t s = {0};

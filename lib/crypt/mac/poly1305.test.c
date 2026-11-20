@@ -1,4 +1,4 @@
-#import crypt/poly1305
+#import crypt/mac/poly1305
 #import test
 
 int main() {
