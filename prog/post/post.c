@@ -1,3 +1,4 @@
+#import error
 #import fmt
 #import opt
 #import os/net
@@ -15,9 +16,10 @@ int main(int argc, char **argv) {
 	const char *from = *argv++;
 	const char *to = *argv++;
 
-	net.net_t *n = net.connect("tcp", addr);
+	error.t err = {};
+	net.net_t *n = net.connect("tcp", addr, &err);
 	if (!n) {
-		fprintf(stderr, "connect to '%s' failed: %s\n", addr, strerror(errno));
+		fprintf(stderr, "connect to '%s' failed: %s\n", addr, err.msg);
 		exit(1);
 	}
 	writer.t *w = net.getwriter(n);

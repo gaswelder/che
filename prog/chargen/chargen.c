@@ -7,6 +7,7 @@
 
 // chargen -l <listen addr>
 
+#import error
 #import log
 #import os/net
 
@@ -23,16 +24,17 @@ typedef {
 
 int main() {
 	char address[] = "0.0.0.0:1900";
-	net.net_t *l = net.net_listen("tcp", address);
+	error.t err = {};
+	net.net_t *l = net.net_listen("tcp", address, &err);
 	if (!l) {
-		panic("listen failed: %s", net.net_error());
+		panic("listen failed: %s", err.msg);
 	}
 	log.logmsg("listening at %s", address);
 
 	while (true) {
-		net.net_t *s = net.net_accept(l);
+		net.net_t *s = net.net_accept(l, &err);
 		if (!s) {
-			fprintf(stderr, "accept failed: %s\n", strerror(errno));
+			fprintf(stderr, "accept failed: %s\n", err.msg);
 			continue;
 		}
 		log.logmsg("%s connected", net.net_addr(s));

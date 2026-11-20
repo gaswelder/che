@@ -1,3 +1,4 @@
+#import error
 #import formats/json
 #import opt
 #import os/fs
@@ -30,17 +31,18 @@ int main(int argc, char *argv[]) {
 	if (!self.getcwd(SERVER.homedir, sizeof(SERVER.homedir))) {
 		panic("failed to get current working directory: %s", strerror(errno));
 	}
-	net.net_t *ln = net.net_listen("tcp", addr);
+	error.t err = {};
+	net.net_t *ln = net.net_listen("tcp", addr, &err);
 	if (!ln) {
-		log_error("Failed to listen at %s: %s", addr, strerror(errno));
+		log_error("Failed to listen at %s: %s", addr, err.msg);
 		return 1;
 	}
 	log_info("Serving %s at http://%s", SERVER.homedir, addr);
 
 	while (true) {
-		net.net_t *conn = net.net_accept(ln);
+		net.net_t *conn = net.net_accept(ln, &err);
 		if (!conn) {
-			panic("accept failed");
+			panic("accept failed: %s", err.msg);
 		}
 
 		log_info("%s connected", net.net_addr(conn));

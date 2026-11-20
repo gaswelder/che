@@ -1,3 +1,4 @@
+#import error
 #include <sys/select.h>
 #include <sys/socket.h>
 #include <unistd.h>
@@ -140,10 +141,11 @@ void removeclient(client_t *c) {
 
 // Adds a listener socket with the given handler to process new connections.
 pub void listen(const char *addr, handler_t *handler) {
-	net.net_t *conn = net.net_listen("tcp", addr);
+	error.t err = {};
+	net.net_t *conn = net.net_listen("tcp", addr, &err);
 	client_t *c = addclient(conn, handler);
 	if (!conn || !c) {
-		panic("listen failed");
+		panic("listen failed: %s", err.msg);
 	}
 	c->is_listener = true;
 }
@@ -152,10 +154,11 @@ pub void listen(const char *addr, handler_t *handler) {
 // events. If the connection attempt fails, the handler will be called with
 // a corresponding event.
 pub void connect(const char *addr, handler_t *handler, void *initdata) {
-	net.net_t *conn = net.connect_nonblock("tcp", addr);
+	error.t err = {};
+	net.net_t *conn = net.connect_nonblock("tcp", addr, &err);
 	client_t *c = addclient(conn, handler);
 	if (!conn) {
-		dbg.m(DBG_TAG, "connection failed: %s\n", strerror(errno));
+		dbg.m(DBG_TAG, "connection failed: %s\n", err.msg);
 		handler(c, CONNECT_FAILED, NULL);
 		removeclient(c);
 		return;
@@ -299,7 +302,12 @@ void dispatch_updates(fd_set *rset, *wset) {
 			if (c->is_listener) {
 				// We'll accept the connection and store it as a new client.
 				// The next loop run will start processing the new client.
-				net.net_t *conn2 = net.net_accept(c->conn);
+				error.t err = {};
+				net.net_t *conn2 = net.net_accept(c->conn, &err);
+				if (!conn2) {
+					dbg.m(DBG_TAG, "%s", err.msg);
+					continue;
+				}
 				client_t *c2 = addclient(conn2, c->handler);
 				callhandler(c2, CONNECTED, NULL);
 			} else {

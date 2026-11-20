@@ -1,4 +1,5 @@
 // Echo server, rfc862.
+#import error
 #import log
 #import os/net
 #import os/threads
@@ -6,17 +7,18 @@
 
 int main() {
 	const char *addr = "0.0.0.0:7000";
-	net.net_t *l = net.net_listen("tcp", addr);
+	error.t err = {};
+	net.net_t *l = net.net_listen("tcp", addr, &err);
 	if (!l) {
-		fprintf(stderr, "listen failed: %s\n", net.net_error());
+		fprintf(stderr, "listen failed: %s\n", err.msg);
 		return 1;
 	}
 	log.logmsg("listening at %s", addr);
 
 	while (true) {
-		net.net_t *s = net.net_accept(l);
+		net.net_t *s = net.net_accept(l, &err);
 		if (!s) {
-			fprintf(stderr, "accept error: %s\n", net.net_error());
+			fprintf(stderr, "accept error: %s\n", err.msg);
 			continue;
 		}
 		threads.thr_t *t = threads.start(process_client, s);
