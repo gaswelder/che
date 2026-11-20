@@ -1,6 +1,6 @@
 #import lzw.c
 #import reader
-#import rnd
+#import math/rnd
 #import test
 #import writer
 

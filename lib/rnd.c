@@ -1,40 +1,43 @@
-#include <unistd.h>
-
-bool _seeded = false;
-uint64_t pcg32_value = 0;
-uint64_t pcg32_m = 0x9b60933458e17d7d;
-uint64_t pcg32_a = 0xd737232eeccdf7ed;
-
-uint32_t pcg32() {
-	if (!_seeded) {
-		uint64_t x = OS.time(NULL);
-		x += (uint64_t) OS.getpid();
-		seed(x);
+// Fills the buffer with random bytes from the OS source.
+// Returns false on failure.
+pub bool bytes(uint8_t *p, size_t n) {
+	FILE *f = fopen("/dev/urandom", "rb");
+	if (!f) {
+		return false;
 	}
-	pcg32_value = pcg32_value * pcg32_m + pcg32_a;
-	int shift = 29 - (pcg32_value >> 61);
-	return pcg32_value >> shift;
-}
-
-// Seeds the generator's state.
-// Use this for reproducible runs.
-// If not called, a seed will be chosen automatically.
-pub void seed(uint64_t s) {
-	pcg32_value = s;
-	_seeded = true;
+	size_t got = fread(p, 1, n, f);
+	bool ok = got == n && !ferror(f);
+	fclose(f);
+	return ok;
 }
 
 // Returns a random integer in the range [0, n).
-// Panics if n = 0.
+// Panics if n = 0 or the random source fails.
 pub uint32_t intn(uint32_t n) {
 	if (n == 0) {
-		panic("got n = 0 in rand.intn");
+		panic("got n = 0");
 	}
-	// There's a bias here, but it'll do for now.
-	return pcg32() % n;
+	// Discard the incomplete group so every remainder is equally likely.
+	uint32_t threshold = 0 - n;
+	threshold %= n;
+	while (true) {
+		uint32_t value = 0;
+		if (!bytes((uint8_t *)&value, sizeof(value))) {
+			panic("OS random source failed");
+		}
+		if (value >= threshold) {
+			return value % n;
+		}
+	}
 }
 
 // Returns a random number uniformly distributed in [0, 1).
+// Panics if the OS random source fails.
 pub double u() {
-	return (double) pcg32() / 0xffffffff;
+	uint64_t value = 0;
+	if (!bytes((uint8_t *)&value, sizeof(value))) {
+		panic("OS random source failed");
+	}
+	// Binary64 can represent every 53-bit integer exactly.
+	return (double)(value >> 11) / 9007199254740992.0;
 }

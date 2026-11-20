@@ -8,7 +8,7 @@
 #import image
 #import lib.c
 #import opt
-#import rnd
+#import math/rnd
 
 /*
  * The array that's being shuffled and sorted.

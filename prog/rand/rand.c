@@ -1,5 +1,5 @@
 #import opt
-#import rnd
+#import math/rnd
 #import time
 
 const char *alpha = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890";
