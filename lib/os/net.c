@@ -11,23 +11,25 @@
 #import reader
 #import writer
 
-pub typedef struct sockaddr sockaddr_t;
+typedef struct sockaddr sockaddr_t;
+typedef struct sockaddr_storage sockaddr_storage_t; // IPv6
 typedef struct sockaddr_in sockaddr_in_t;
 typedef struct addrinfo addrinfo_t;
 
 const size_t MAX_ADDR = 300;
 
-pub typedef {
-	int fd; // OS's socket (file) descriptor.
-
+typedef {
 	char host[256];
 	char port[16];
-
-	int ai_family;
-	sockaddr_t ai_addr;
+	sockaddr_storage_t ai_addr;
 	socklen_t addrlen;
+} internal_t;
+
+pub typedef {
+	int fd; // OS's socket (file) descriptor.
 	char addrstr[MAX_ADDR];
 	bool is_listener;
+	void *internal; // Private internal_t owned by this connection.
 } net_t;
 
 pub typedef {
@@ -91,10 +93,10 @@ pub net_t *connect(const char *proto, const char *addr, error.t *err) {
 	if (!c) {
 		return NULL;
 	}
-	if (OS.connect(c->fd, &c->ai_addr, c->addrlen) < 0) {
+	internal_t *state = c->internal;
+	if (OS.connect(c->fd, (sockaddr_t *)&state->ai_addr, state->addrlen) < 0) {
 		error.set(err, "%s", strerror(errno));
-		OS.close(c->fd);
-		free(c);
+		close(c);
 		return NULL;
 	}
 	return c;
@@ -107,26 +109,24 @@ pub net_t *connect_nonblock(const char *proto, *addr, error.t *err) {
 	if (!c) {
 		return NULL;
 	}
+	internal_t *state = c->internal;
 	int flags = OS.fcntl(c->fd, OS.F_GETFL, 0);
 	if (flags < 0) {
 		error.set(err, "fcntl failed: %s", strerror(errno));
-		OS.close(c->fd);
-		free(c);
+		close(c);
 		return NULL;
 	}
 	if (OS.fcntl(c->fd, OS.F_SETFL, flags | OS.O_NONBLOCK) < 0) {
 		error.set(err, "fcntl failed: %s", strerror(errno));
-		OS.close(c->fd);
-		free(c);
+		close(c);
 		return NULL;
 	}
-	if (OS.connect(c->fd, (sockaddr_t *)&c->ai_addr, c->addrlen) < 0) {
+	if (OS.connect(c->fd, (sockaddr_t *)&state->ai_addr, state->addrlen) < 0) {
 		if (errno == OS.EINPROGRESS) {
 			return c;
 		}
 		error.set(err, "%s", strerror(errno));
-		OS.close(c->fd);
-		free(c);
+		close(c);
 		return NULL;
 	}
 	return c;
@@ -147,53 +147,60 @@ pub net_t *net_listen(const char *proto, const char *addr, error.t *err) {
 	if (!c) {
 		return NULL;
 	}
+	internal_t *state = c->internal;
 	c->is_listener = true;
 
 	int yes = 1;
 	if (OS.setsockopt(c->fd, OS.SOL_SOCKET, OS.SO_REUSEADDR, &yes, sizeof(int)) != 0) {
 		error.set(err, "setsockopt failed: %s", strerror(errno));
-		OS.close(c->fd);
-		free(c);
+		close(c);
 		return NULL;
 	}
-	if (OS.bind(c->fd, (sockaddr_t *)&c->ai_addr, c->addrlen) != 0) {
+	if (OS.bind(c->fd, (sockaddr_t *)&state->ai_addr, state->addrlen) != 0) {
 		error.set(err, "bind failed: %s", strerror(errno));
-		OS.close(c->fd);
-		free(c);
+		close(c);
 		return NULL;
 	}
 	int backlog = 16;
 	if (OS.listen(c->fd, backlog) != 0) {
 		error.set(err, "listen failed: %s", strerror(errno));
-		OS.close(c->fd);
-		free(c);
+		close(c);
 		return NULL;
 	}
 	return c;
 }
 
 pub net_t *net_accept(net_t *l, error.t *err) {
-	net_t *newconn = calloc!(1, sizeof(net_t));
-	socklen_t size = sizeof(sockaddr_t);
-	int s = OS.accept(l->fd, &newconn->ai_addr, &size);
-	if (s == -1) {
+	net_t *conn = allocconn();
+	internal_t *state = conn->internal;
+	socklen_t size = sizeof(sockaddr_storage_t);
+	int fd = OS.accept(l->fd, (sockaddr_t *)&state->ai_addr, &size);
+	if (fd == -1) {
 		error.set(err, "accept failed: %s", strerror(errno));
-		free(newconn);
+		close(conn);
 		return NULL;
 	}
-	if (!format_address((sockaddr_t *)&newconn->ai_addr, newconn->addrstr, sizeof(newconn->addrstr), err)) {
-		free(newconn);
-		OS.close(s);
+	conn->fd = fd;
+	state->addrlen = size;
+	if (!format_address((sockaddr_t *)&state->ai_addr, conn->addrstr, sizeof(conn->addrstr), err)) {
+		close(conn);
 		return NULL;
 	}
-	newconn->fd = s;
-	return newconn;
+	return conn;
 }
 
-// Closes connection c.
+// Closes connection c and frees its private state.
 pub void close(net_t *c) {
-	OS.close(c->fd);
+	if (c->fd >= 0) OS.close(c->fd);
+	free(c->internal);
 	free(c);
+}
+
+net_t *allocconn() {
+	net_t *c = calloc!(1, sizeof(net_t));
+	c->fd = -1;
+	c->internal = calloc!(1, sizeof(internal_t));
+	return c;
 }
 
 // Creates a connection wrapper for the given protocol and address.
@@ -206,13 +213,13 @@ net_t *newconn(const char *proto, const char *addr, error.t *err) {
 		error.set(err, "address string too long");
 		return NULL;
 	}
-	net_t *c = calloc!(1, sizeof(net_t));
-	c->fd = -1;
+	net_t *c = allocconn();
+	internal_t *state = c->internal;
 
 	strcpy(c->addrstr, addr);
 	// Split the address into a hostname and a portname.
-	if (!parseaddr(c, addr, err)) {
-		free(c);
+	if (!parseaddr(state, addr, err)) {
+		close(c);
 		return 0;
 	}
 
@@ -228,31 +235,30 @@ net_t *newconn(const char *proto, const char *addr, error.t *err) {
 		.ai_protocol = OS.IPPROTO_TCP,
 	};
 	addrinfo_t *result = NULL;
-	if (OS.getaddrinfo(c->host, c->port, &hints, &result) != 0) {
+	if (OS.getaddrinfo(state->host, state->port, &hints, &result) != 0) {
 		error.set(err, "getaddrinfo error");
-		free(c);
+		close(c);
 		return NULL;
 	}
 	for (addrinfo_t *i = result; i != NULL; i = i->ai_next) {
-		if (i->ai_addrlen > sizeof(c->ai_addr)) continue;
+		if (i->ai_addrlen > sizeof(state->ai_addr)) continue;
 		c->fd = OS.socket(i->ai_family, i->ai_socktype, i->ai_protocol);
 		if (c->fd > 0) {
-			memcpy(&c->ai_addr, i->ai_addr, sizeof(sockaddr_t));
-			c->addrlen = i->ai_addrlen;
-			c->ai_family = i->ai_family;
+			memcpy(&state->ai_addr, i->ai_addr, i->ai_addrlen);
+			state->addrlen = i->ai_addrlen;
 			break;
 		}
 	}
 	OS.freeaddrinfo(result);
 	if (c->fd < 0) {
 		error.set(err, "no suitable addrinfo");
-		free(c);
+		close(c);
 		return NULL;
 	}
 	return c;
 }
 
-int parseaddr(net_t *c, const char *addr, error.t *err) {
+int parseaddr(internal_t *state, const char *addr, error.t *err) {
 	int i = 0;
 	const char *p = addr;
 	while (*p != '\0' && *p != ':') {
@@ -260,9 +266,9 @@ int parseaddr(net_t *c, const char *addr, error.t *err) {
 			error.set(err, "hostname too long");
 			return 0;
 		}
-		c->host[i++] = *p++;
+		state->host[i++] = *p++;
 	}
-	c->host[i] = '\0';
+	state->host[i] = '\0';
 
 	if (*p != ':') {
 		error.set(err, "missing ':' in the address");
@@ -276,9 +282,9 @@ int parseaddr(net_t *c, const char *addr, error.t *err) {
 			error.set(err, "portname too long");
 			return 0;
 		}
-		c->port[i++] = *p++;
+		state->port[i++] = *p++;
 	}
-	c->port[i] = '\0';
+	state->port[i] = '\0';
 	return 1;
 }
 
