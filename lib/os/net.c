@@ -15,6 +15,8 @@ pub typedef struct sockaddr sockaddr_t;
 typedef struct sockaddr_in sockaddr_in_t;
 typedef struct addrinfo addrinfo_t;
 
+const size_t MAX_ADDR = 300;
+
 pub typedef {
 	int fd; // OS's socket (file) descriptor.
 
@@ -24,7 +26,7 @@ pub typedef {
 	int ai_family;
 	sockaddr_t ai_addr;
 	socklen_t addrlen;
-	char addrstr[300];
+	char addrstr[MAX_ADDR];
 	bool is_listener;
 } net_t;
 
@@ -194,7 +196,7 @@ net_t *newconn(const char *proto, const char *addr) {
 		error = "Unknown protocol";
 		return NULL;
 	}
-	if (strlen(addr) > 200) {
+	if (strlen(addr) >= MAX_ADDR) {
 		error = "address string too long";
 		return NULL;
 	}
