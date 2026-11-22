@@ -1,100 +1,90 @@
 #import formats/bencode
 #import formats/torrent
-#import ioloop.c
 #import protocols/http
 #import reader
 #import writer
+#import os/net
+#import error
 
 pub typedef {
-	char id[20];
+	char id[100];
 	char ip[100];
 	int port;
 } peer_entry_t;
 
 pub typedef {
-	int complete, incomplete;
+	int complete;
+	int incomplete;
 	int interval;
 	peer_entry_t peers[100];
 	size_t peers_number;
 } tracker_response_t;
 
-torrent.info_t *_tf = NULL;
-uint8_t *_peer_id = NULL;
-tracker_response_t last_response = {};
-
-pub bool init(torrent.info_t *tf, uint8_t *peer_id) {
-	_tf = tf;
-	_peer_id = peer_id;
-	return true;
-}
-
-pub tracker_response_t *getstate() {
-	return &last_response;
-}
-
-pub void process(void *ctx, int event, void *edata) {
-	switch (event) {
-		case ioloop.CONNECTED: { send_announce(ctx, NULL); }
-		case ioloop.EXIT: {}
-		case ioloop.DATA_IN: {
-			ioloop.buff_t *b = edata;
-			reader.t *re = reader.static_buffer((uint8_t *) b->data, b->len);
-			http.response_t res = {};
-			if (!http.parse_response(re, &res)) {
-				panic("failed to parse tracker's HTTP response");
-			}
-			read_tracker_response(res.body, &last_response);
-			reader.free(re);
-			print();
-		}
-		case ioloop.WRITE_FINISHED: {}
-		default: { panic("unknown event: %d", event); }
+// Writes an announce to the given tracker.
+// Returns allocated tracker's response.
+// The caller must free the response.
+pub tracker_response_t *announce(const char *addr, torrent.info_t *_tf, uint8_t *_peer_id, const char *port, error.t *err) {
+	// Connect to the tracker.
+	net.conn_t *conn = net.connect("tcp", addr, err);
+	if (err->set) {
+		return NULL;
 	}
+
+	// Write the announce.
+	writer.t *w = net.getwriter(conn);
+	reader.t *re = net.getreader(conn);
+	tracker_response_t *res = write_announce(w, re, _tf, _peer_id, port);
+	reader.free(re);
+	writer.free(w);
+
+	// Disconnect and return the response.
+	net.close(conn);
+	return res;
 }
 
-void send_announce(void *ctx, const char *event) {
+tracker_response_t *write_announce(writer.t *w, reader.t *re, torrent.info_t *_tf, uint8_t *_peer_id, const char *port) {
 	http.request_t *req = http.newreq(http.GET, "/announce");
-	http.reqparam(req, "info_hash", _tf->infohash_bytes, 20);
-	http.reqparam(req, "peer_id", (char *) _peer_id, 20);
-	http.reqparams(req, "port", "6881");
-
-	// bytes uploaded and downloaded since the client
-	// sent the 'started' event.
-	http.reqparams(req, "uploaded", "1234");
-	http.reqparams(req, "downloaded", "0");
-
-	// number of bytes still to download to get full set.
-	http.reqparams(req, "left", "0");
-
 	// event
 	// empty or not present: regular interval announcement
-	// started: download begins
-	// completed: the download is complete. don't send if it was already downloaded
-	// stopped: ceased downloading
+	// "started": download begins
+	// "completed": the download is complete. don't send if it was already downloaded
+	// "stopped": ceased downloading
+	const char *event = NULL;
 	if (event) {
 		http.reqparams(req, "event", event);
 	}
+	http.reqparam(req, "info_hash", _tf->infohash_bytes, 20);
+	http.reqparam(req, "peer_id", (char *) _peer_id, 20);
+	http.reqparams(req, "port", port);
+	http.reqparams(req, "uploaded", "1234"); // bytes uploaded since "started"
+	http.reqparams(req, "downloaded", "0"); // bytes downloaded since "started"
+	http.reqparams(req, "left", "0"); // bytes yet to download
 
-	uint8_t buf[1000] = {};
-	writer.t *w = writer.static_buffer(buf, sizeof(buf));
 	if (http.write_request(w, req) < 0) {
 		panic("write_request failed");
 	}
-	http.freereq(req);
-	writer.free(w);
-	ioloop.write(ctx, (char *) buf, strlen((char *) buf));
+	http.freereq(req);	
+
+	//
+	// read and process data
+	//
+	http.response_t res = {};
+	if (!http.parse_response(re, &res)) {
+		panic("failed to parse tracker's HTTP response");
+	}
+
+	// Parse and return the response.
+	tracker_response_t *last_response = calloc!(1, sizeof(tracker_response_t));
+	read_tracker_response(res.body, last_response);
+	return last_response;
 }
 
-pub void print() {
-	tracker_response_t *resp = &last_response;
+
+pub void print(tracker_response_t *resp) {
 	printf("tracker state: complete=%d, incomplete=%d, interval=%d\n", resp->complete, resp->incomplete, resp->interval);
 	for (size_t i = 0; i < resp->peers_number; i++) {
 		peer_entry_t *peer = &resp->peers[i];
-		if (!memcmp(peer->id, _peer_id, 20)) {
-			printf("- us %zu: %s at %s:%d\n", i, peer->id, peer->ip, peer->port);
-		} else {
-			printf("- peer %zu: %s at %s:%d\n", i, peer->id, peer->ip, peer->port);
-		}
+		printf("- peer %zu: %s at %s:%d\n", i, peer->id, peer->ip, peer->port);
 	}
 }
 

@@ -4,6 +4,7 @@
 #import formats/torrent
 #import reader
 #import writer
+#import enc/hex
 
 // choke <len=0001><id=0>
 // unchoke <len=0001><id=1>
@@ -19,36 +20,6 @@ pub typedef {
 	uint8_t infohash[20];
 	uint8_t peer_id[20];
 } handshake_t;
-
-pub int read_handshake(reader.t *r, handshake_t *hs) {
-	size_t c = 0;
-	uint8_t len = 0;
-	c += reader.read(r, &len, 1);
-	if (len != 19) {
-		panic("expected protocol string length 19, got %u", len);
-	}
-	c += reader.read(r, hs->proto, len);
-	c += reader.read(r, NULL, 8);
-	c += reader.read(r, hs->infohash, 20);
-	c += reader.read(r, hs->peer_id, 20);
-	if (c < (uint32_t) len + 49) {
-		return EOF;
-	}
-	return (int) c;
-}
-
-pub int write_handshake(writer.t *w, uint8_t *infohash, *peer_id) {
-	dbg.m(TAG, "write_handshake");
-	int r = 0;
-	r += writer.writebyte(w, 19);
-	r += writer.write(w, (uint8_t *) "BitTorrent protocol\0\0\0\0\0\0\0\0", 19 + 8);
-	r += writer.write(w, infohash, 20);
-	r += writer.write(w, peer_id, 20);
-	if (r != 68) {
-		return -1;
-	}
-	return r;
-}
 
 pub enum {
 	MSG_BITFIELD = 5,
@@ -70,19 +41,90 @@ pub typedef {
 	uint8_t *data; // the consumer frees it.
 } msg_piece_t;
 
-// Reads a message length, which is a uint32.
-// Messages are preceded with their lengths in bytes, not counting the length
-// itself. So the parsing is: 1. read length. 2. msg = read <length> bytes.
-// 3. parse msg.
-pub uint32_t read_length(reader.t *r) {
-	uint32_t len;
-	endian.read4be(r, &len);
-	return len;
+pub void read_handshake1(reader.t *r) {
+	//
+	// read handshake
+	//
+	puts("waiting for handshake");
+	handshake_t hs = {};
+	int c = read_handshake(r, &hs);
+	printf("c = %d\n", c);
+
+	//
+	// report
+	//
+	printf("Got a handshake, proto = %s\n", (char *) hs.proto);
+	printf("infohash: ");
+	hex.write(writer.stdout(), (char *) hs.infohash, 20);
+	printf("\npeer id: ");
+	hex.write(writer.stdout(), (char *) hs.peer_id, 20);
+	printf("\n");
+}
+
+pub int read_handshake(reader.t *r, handshake_t *hs) {
+	size_t c = 0;
+	uint8_t len = 0;
+	c += reader.read(r, &len, 1);
+	if (len != 19) {
+		panic("expected protocol string length 19, got %u", len);
+	}
+	c += reader.read(r, hs->proto, len);
+	c += reader.skip(r, 8); // 8 reserved bytes.
+	c += reader.read(r, hs->infohash, 20);
+	c += reader.read(r, hs->peer_id, 20);
+	printf("read handshake: c = %zu\n", c);
+	if (c < (uint32_t) len + 49) {
+		return EOF;
+	}
+	return (int) c;
+}
+
+pub int write_handshake(writer.t *w, uint8_t *infohash, *peer_id) {
+	puts("writing handshake");
+	dbg.m(TAG, "write_handshake");
+	int r = 0;
+	r += writer.writebyte(w, 19);
+	r += writer.write(w, (uint8_t *) "BitTorrent protocol\0\0\0\0\0\0\0\0", 19 + 8);
+	r += writer.write(w, infohash, 20);
+	r += writer.write(w, peer_id, 20);
+	if (r != 68) {
+		panic("handshake write failed");
+	}
+	return r;
+}
+
+
+
+pub void readmsg(reader.t *r, writer.t *w, msg_t *m) {
+	int len = read_length(r, w);
+	read_message(r, len, m);
+}
+
+// Reads message payload length (not counting the length itself).
+// Automatically responds to keep-alive messages (zero length),
+// so never returns a zero length.
+pub int read_length(reader.t *r, writer.t *w) {
+	while (true) {
+		dbg.m(TAG, "reading payload length");
+		uint32_t len = 0;
+		if (endian.read4be(r, &len) != 4) {
+			panic("read_length failed");
+		}
+		dbg.m(TAG, "payload length = %d", len);
+		if (len == 0) {
+			dbg.m(TAG, "got heartbeat, responding");
+			write_keepalive(w);
+			continue;
+		}
+		return (int) len;
+	}
 }
 
 // Reads a message after the length has been read.
 pub void read_message(reader.t *r, uint32_t msglen, msg_t *m) {
+	dbg.m(TAG, "reading payload");
 	endian.read1(r, &m->id);
+	dbg.m(TAG, "got msg id = %d", m->id);
 	switch (m->id) {
 		// index: uint32be, piece index
 		// begin: uint32be, byte offset within the piece
@@ -128,7 +170,7 @@ pub int write_keepalive(writer.t *w) {
 }
 
 pub int write_request(writer.t *w, files.range_t req) {
-	dbg.m(TAG, "write_request");
+	dbg.m(TAG, "sending write_request #%u pos=%u len=%u", req.index, req.begin, req.length);
 	int c = 0;
 	c += endian.write4be(w, 13); // length
 	c += endian.write1(w, MSG_REQUEST);
@@ -136,13 +178,14 @@ pub int write_request(writer.t *w, files.range_t req) {
 	c += endian.write4be(w, req.begin);
 	c += endian.write4be(w, req.length);
 	if (c != 4 + 13) {
-		return -1;
+		panic("write_request failed");
+		// return -1;
 	}
 	return c;
 }
 
 pub int write_piece(writer.t *w, files.range_t req, uint8_t *data) {
-	dbg.m(TAG, "write_piece");
+	dbg.m(TAG, "sending piece #%u pos=%u len=%u", req.index, req.begin, req.length);
 	int c = 0;
 	c += endian.write4be(w, 9 + req.length);
 	c += endian.write1(w, MSG_PIECE);

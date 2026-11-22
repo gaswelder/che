@@ -2,7 +2,6 @@
 #import crypt/hash/sha1
 #import dbg
 #import formats/torrent
-#import lib.c
 #import ascii
 
 const char *DBG_TAG = "files";
@@ -49,8 +48,8 @@ vec.t *map(torrent.info_t *tf, range_t s) {
 			continue;
 		}
 
-		size_t af = lib.maxsz(f1, a);
-		size_t bf = lib.minsz(f2, b);
+		size_t af = max(f1, a);
+		size_t bf = min(f2, b);
 
 		file_slice_t *x = vec.alloc(l);
 		strcpy(x->path, f->path);
@@ -98,7 +97,7 @@ pub void writeslice(const char *dirpath, torrent.info_t *tf, range_t bs, uint8_t
 
 // Reads a piece slice from disk in directory dirpath.
 pub void readslice(const char *dirpath, torrent.info_t *tf, range_t bs, uint8_t *buf) {
-	dbg.m(DBG_TAG, "reading at %s: piece #%zu, range %zu + %zu", dirpath, bs.index, bs.begin, bs.length);
+	dbg.m(DBG_TAG, "reading at dir=%s: piece #%zu, from=%zu len=%zu", dirpath, bs.index, bs.begin, bs.length);
 	if (sliceop(1, dirpath, tf, bs, (char *) buf) < 0) {
 		panic("sliceop failed");
 	}
@@ -158,6 +157,9 @@ int _read(const char *path, file_slice_t *s, char *buf) {
 	}
 	size_t r = fread(buf, 1, s->length, f);
 	dbg.m(DBG_TAG, "fread: expected %lu, got %zu\n", s->length, r);
+	if (r != s->length) {
+		panic("fread: expected %lu, got %zu\n", s->length, r);
+	}
 	fclose(f);
 	return (int) r;
 }

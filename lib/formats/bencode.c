@@ -115,7 +115,7 @@ size_t _readbuf(reader_t *r, uint8_t *buf, size_t len) {
 	}
 	size_t nz = (size_t) n;
 	if (buf != NULL && nz > len) {
-		panic("buffer too small (need %d)", n);
+		panic("buffer too small (need %d, have %zu)", n, len);
 	}
 
 	consume(r, ':');

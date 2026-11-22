@@ -28,7 +28,6 @@ typedef {
 pub typedef {
 	int fd; // OS's socket (file) descriptor.
 	char addrstr[MAX_ADDR];
-	bool is_listener;
 	void *internal; // Private internal_t owned by this connection.
 } conn_t;
 
@@ -102,36 +101,6 @@ pub conn_t *connect(const char *proto, const char *addr, error.t *err) {
 	return c;
 }
 
-// Same as connect, but doesn't block and returns immediately without
-// waiting for the actual connection to happen.
-pub conn_t *connect_nonblock(const char *proto, *addr, error.t *err) {
-	conn_t *c = newconn(proto, addr, err);
-	if (!c) {
-		return NULL;
-	}
-	internal_t *state = c->internal;
-	int flags = OS.fcntl(c->fd, OS.F_GETFL, 0);
-	if (flags < 0) {
-		error.set(err, "fcntl failed: %s", strerror(errno));
-		close(c);
-		return NULL;
-	}
-	if (OS.fcntl(c->fd, OS.F_SETFL, flags | OS.O_NONBLOCK) < 0) {
-		error.set(err, "fcntl failed: %s", strerror(errno));
-		close(c);
-		return NULL;
-	}
-	if (OS.connect(c->fd, (sockaddr_t *)&state->ai_addr, state->addrlen) < 0) {
-		if (errno == OS.EINPROGRESS) {
-			return c;
-		}
-		error.set(err, "%s", strerror(errno));
-		close(c);
-		return NULL;
-	}
-	return c;
-}
-
 // Creates a listener connection at the given local address.
 pub conn_t *listen(const char *proto, const char *addr, error.t *err) {
 	conn_t *c = newconn(proto, addr, err);
@@ -139,7 +108,6 @@ pub conn_t *listen(const char *proto, const char *addr, error.t *err) {
 		return NULL;
 	}
 	internal_t *state = c->internal;
-	c->is_listener = true;
 
 	int yes = 1;
 	if (OS.setsockopt(c->fd, OS.SOL_SOCKET, OS.SO_REUSEADDR, &yes, sizeof(int)) != 0) {
