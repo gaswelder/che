@@ -75,7 +75,7 @@ typedef {
 	// This client's slot number, to avoid linear searches.
 	int slot;
 
-	net.net_t *conn;
+	net.conn_t *conn;
 
 	// True if this client is a wrapper for a listening socket.
 	bool is_listener;
@@ -95,7 +95,7 @@ typedef {
 
 client_t *clients[100] = {};
 
-client_t *addclient(net.net_t *conn, handler_t *h) {
+client_t *addclient(net.conn_t *conn, handler_t *h) {
 	//
 	// Find a free slot.
 	//
@@ -142,7 +142,7 @@ void removeclient(client_t *c) {
 // Adds a listener socket with the given handler to process new connections.
 pub void listen(const char *addr, handler_t *handler) {
 	error.t err = {};
-	net.net_t *conn = net.net_listen("tcp", addr, &err);
+	net.conn_t *conn = net.listen("tcp", addr, &err);
 	client_t *c = addclient(conn, handler);
 	if (!conn || !c) {
 		panic("listen failed: %s", err.msg);
@@ -155,7 +155,7 @@ pub void listen(const char *addr, handler_t *handler) {
 // a corresponding event.
 pub void connect(const char *addr, handler_t *handler, void *initdata) {
 	error.t err = {};
-	net.net_t *conn = net.connect_nonblock("tcp", addr, &err);
+	net.conn_t *conn = net.connect_nonblock("tcp", addr, &err);
 	client_t *c = addclient(conn, handler);
 	if (!conn) {
 		dbg.m(DBG_TAG, "connection failed: %s\n", err.msg);
@@ -303,7 +303,7 @@ void dispatch_updates(fd_set *rset, *wset) {
 				// We'll accept the connection and store it as a new client.
 				// The next loop run will start processing the new client.
 				error.t err = {};
-				net.net_t *conn2 = net.net_accept(c->conn, &err);
+				net.conn_t *conn2 = net.accept(c->conn, &err);
 				if (!conn2) {
 					dbg.m(DBG_TAG, "%s", err.msg);
 					continue;

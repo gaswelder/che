@@ -124,7 +124,7 @@ void *worker(void *arg) {
 		res->number = i;
 		res->time_started = time.now();
 		error.t err = {};
-		net.net_t *conn = net.connect("tcp", addr, &err);
+		net.conn_t *conn = net.connect("tcp", addr, &err);
 		if (!conn) {
 			fprintf(stderr, "failed to connect to %s: %s\n", addr, err.msg);
 			break;

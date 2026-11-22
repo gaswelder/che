@@ -17,7 +17,7 @@ int main(int argc, char **argv) {
 	const char *to = *argv++;
 
 	error.t err = {};
-	net.net_t *n = net.connect("tcp", addr, &err);
+	net.conn_t *n = net.connect("tcp", addr, &err);
 	if (!n) {
 		fprintf(stderr, "connect to '%s' failed: %s\n", addr, err.msg);
 		exit(1);
@@ -29,7 +29,7 @@ int main(int argc, char **argv) {
 	return 0;
 }
 
-int sendm(net.net_t *n, writer.t *w, const char *from, const char *to, const char *subj) {
+int sendm(net.conn_t *n, writer.t *w, const char *from, const char *to, const char *subj) {
 	expect(n, 220);
 	if (!senderror()) {
 		fmt.wprintf(w, "HELO %s\r\n", "sofa");
@@ -72,7 +72,7 @@ int senderror() {
 	return _error;
 }
 
-void expect(net.net_t *n, int code) {
+void expect(net.conn_t *n, int code) {
 	(void) code;
 	if (_error) {
 		return;

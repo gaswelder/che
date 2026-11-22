@@ -30,7 +30,7 @@ pub typedef {
 	char addrstr[MAX_ADDR];
 	bool is_listener;
 	void *internal; // Private internal_t owned by this connection.
-} net_t;
+} conn_t;
 
 pub typedef {
 	char v; // 4 or 6
@@ -68,28 +68,28 @@ pub bool format_addr(ip_addr_t *a, char *buf, size_t bufsize) {
 	return OS.inet_ntop(af, a->data, buf, bufsize) != NULL;
 }
 
-pub const char *net_addr(net_t *c) {
+pub const char *net_addr(conn_t *c) {
 	return c->addrstr;
 }
 
 // Reads at most size bytes into the buffer buf.
 // Blocks if there is no data ready for reading.
 // Returns the number of bytes read or -1 on error.
-pub int read(net_t *c, char *buf, size_t size) {
+pub int read(conn_t *c, char *buf, size_t size) {
 	return OS.recv(c->fd, buf, size, 0);
 }
 
 // Writes n bytes from buf to connection c.
 // Returns the number of bytes sent, or -1 on failure.
-pub int write(net_t *c, const char *buf, size_t n) {
+pub int write(conn_t *c, const char *buf, size_t n) {
 	// MSG_NOSIGNAL prevents SIGPIPE signals
 	return OS.send(c->fd, buf, n, OS.MSG_NOSIGNAL);
 }
 
 // Connects to addr over protocol proto and returns the connection.
 // On failure returns NULL and sets err.
-pub net_t *connect(const char *proto, const char *addr, error.t *err) {
-	net_t *c = newconn(proto, addr, err);
+pub conn_t *connect(const char *proto, const char *addr, error.t *err) {
+	conn_t *c = newconn(proto, addr, err);
 	if (!c) {
 		return NULL;
 	}
@@ -104,8 +104,8 @@ pub net_t *connect(const char *proto, const char *addr, error.t *err) {
 
 // Same as connect, but doesn't block and returns immediately without
 // waiting for the actual connection to happen.
-pub net_t *connect_nonblock(const char *proto, *addr, error.t *err) {
-	net_t *c = newconn(proto, addr, err);
+pub conn_t *connect_nonblock(const char *proto, *addr, error.t *err) {
+	conn_t *c = newconn(proto, addr, err);
 	if (!c) {
 		return NULL;
 	}
@@ -132,18 +132,9 @@ pub net_t *connect_nonblock(const char *proto, *addr, error.t *err) {
 	return c;
 }
 
-// getsockopt(...SO_ERROR...)
-// int get_socket_error(int fd) {
-// 	int error = 0;
-// 	size_t n = sizeof(error);
-// // so_error may contain connection error on a non-blocking socket.
-// 	if (getsockopt(fd, SOL_SOCKET,SO_ERROR, &error, &n) < 0) {
-// 		return -1;
-// 	}
-// 	return error;
-// }
-pub net_t *net_listen(const char *proto, const char *addr, error.t *err) {
-	net_t *c = newconn(proto, addr, err);
+// Creates a listener connection at the given local address.
+pub conn_t *listen(const char *proto, const char *addr, error.t *err) {
+	conn_t *c = newconn(proto, addr, err);
 	if (!c) {
 		return NULL;
 	}
@@ -170,8 +161,10 @@ pub net_t *net_listen(const char *proto, const char *addr, error.t *err) {
 	return c;
 }
 
-pub net_t *net_accept(net_t *l, error.t *err) {
-	net_t *conn = allocconn();
+// Waits for a new connection on the listener l.
+// Returns the connection or an error.
+pub conn_t *accept(conn_t *l, error.t *err) {
+	conn_t *conn = allocconn();
 	internal_t *state = conn->internal;
 	socklen_t size = sizeof(sockaddr_storage_t);
 	int fd = OS.accept(l->fd, (sockaddr_t *)&state->ai_addr, &size);
@@ -190,21 +183,21 @@ pub net_t *net_accept(net_t *l, error.t *err) {
 }
 
 // Closes connection c and frees its private state.
-pub void close(net_t *c) {
+pub void close(conn_t *c) {
 	if (c->fd >= 0) OS.close(c->fd);
 	free(c->internal);
 	free(c);
 }
 
-net_t *allocconn() {
-	net_t *c = calloc!(1, sizeof(net_t));
+conn_t *allocconn() {
+	conn_t *c = calloc!(1, sizeof(conn_t));
 	c->fd = -1;
 	c->internal = calloc!(1, sizeof(internal_t));
 	return c;
 }
 
 // Creates a connection wrapper for the given protocol and address.
-net_t *newconn(const char *proto, const char *addr, error.t *err) {
+conn_t *newconn(const char *proto, const char *addr, error.t *err) {
 	if (strcmp(proto, "tcp") != 0) {
 		error.set(err, "Unknown protocol");
 		return NULL;
@@ -213,7 +206,7 @@ net_t *newconn(const char *proto, const char *addr, error.t *err) {
 		error.set(err, "address string too long");
 		return NULL;
 	}
-	net_t *c = allocconn();
+	conn_t *c = allocconn();
 	internal_t *state = c->internal;
 
 	strcpy(c->addrstr, addr);
@@ -308,7 +301,7 @@ bool format_address(sockaddr_t *a, char *buf, size_t n, error.t *err) {
 
 // Returns a reader interface for the given connection.
 // Freeing the reader will not close the connection, the caller will still own it.
-pub reader.t *getreader(net_t *conn) {
+pub reader.t *getreader(conn_t *conn) {
 	reader.t *r = calloc!(1, sizeof(reader.t));
 	r->data = conn;
 	r->read = reader_read;
@@ -316,15 +309,15 @@ pub reader.t *getreader(net_t *conn) {
 }
 
 int reader_read(void *ctx, uint8_t *buf, size_t n) {
-	net_t *conn = ctx;
+	conn_t *conn = ctx;
 	return OS.read(conn->fd, buf, n);
 }
 
-pub writer.t *getwriter(net_t *conn) {
+pub writer.t *getwriter(conn_t *conn) {
 	return writer.new(conn, writer_write, NULL);
 }
 
 int writer_write(void *ctx, const uint8_t *buf, size_t n) {
-	net_t *conn = ctx;
+	conn_t *conn = ctx;
 	return OS.write(conn->fd, buf, n);
 }

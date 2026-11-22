@@ -1,18 +1,9 @@
-/*
- * Character generator server, RFC 864.
- *
- * All this does is continuously printing character data to any
- * connected client.
- */
-
-// chargen -l <listen addr>
-
 #import error
 #import log
 #import os/net
 
 typedef {
-	net.net_t *conn;
+	net.conn_t *conn;
 	char data[2048];
 	size_t len;
 } nbuf_t;
@@ -22,17 +13,19 @@ typedef {
 	nbuf_t out;
 } client_t;
 
+// Character generator server, RFC 864.
+// Continuously prints characters to the connected client.
 int main() {
-	char address[] = "0.0.0.0:1900";
+	char *address = "0.0.0.0:1900";
 	error.t err = {};
-	net.net_t *l = net.net_listen("tcp", address, &err);
+	net.conn_t *l = net.listen("tcp", address, &err);
 	if (!l) {
 		panic("listen failed: %s", err.msg);
 	}
 	log.logmsg("listening at %s", address);
 
 	while (true) {
-		net.net_t *s = net.net_accept(l, &err);
+		net.conn_t *s = net.accept(l, &err);
 		if (!s) {
 			fprintf(stderr, "accept failed: %s\n", err.msg);
 			continue;
@@ -47,7 +40,7 @@ int main() {
 }
 
 void *process_client(client_t *c) {
-	net.net_t *conn = c->out.conn;
+	net.conn_t *conn = c->out.conn;
 	char buf[256] = {};
 	while (true) {
 		if (net.read(conn, buf, sizeof(buf)) == 0) {

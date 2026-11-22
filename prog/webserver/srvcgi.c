@@ -8,7 +8,7 @@
 #import fmt
 #import writer
 
-pub void cgi(char *path, http.request_t *req, net.net_t *conn) {
+pub void cgi(char *path, http.request_t *req, net.conn_t *conn) {
 	proc.proc_t *proc = start(path, req);
 
 	// Read the script's output.

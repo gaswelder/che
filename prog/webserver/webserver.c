@@ -17,7 +17,7 @@ typedef {
 
 typedef {
 	server_t *s;
-	net.net_t *conn;
+	net.conn_t *conn;
 } ctx_t;
 
 int main(int argc, char *argv[]) {
@@ -32,7 +32,7 @@ int main(int argc, char *argv[]) {
 		panic("failed to get current working directory: %s", strerror(errno));
 	}
 	error.t err = {};
-	net.net_t *ln = net.net_listen("tcp", addr, &err);
+	net.conn_t *ln = net.listen("tcp", addr, &err);
 	if (!ln) {
 		log_error("Failed to listen at %s: %s", addr, err.msg);
 		return 1;
@@ -40,7 +40,7 @@ int main(int argc, char *argv[]) {
 	log_info("Serving %s at http://%s", SERVER.homedir, addr);
 
 	while (true) {
-		net.net_t *conn = net.net_accept(ln, &err);
+		net.conn_t *conn = net.accept(ln, &err);
 		if (!conn) {
 			panic("accept failed: %s", err.msg);
 		}
@@ -57,7 +57,7 @@ int main(int argc, char *argv[]) {
 
 void *client_routine(void *arg) {
 	ctx_t *ctx = arg;
-	net.net_t *conn = ctx->conn;
+	net.conn_t *conn = ctx->conn;
 	reader.t *re = net.getreader(conn);
 	server_t *s = ctx->s;
 

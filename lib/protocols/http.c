@@ -379,7 +379,7 @@ pub bool read_request(reader.t *br, request_t *r) {
     return ok;
 }
 
-pub void write_404(request_t *req, net.net_t *conn) {
+pub void write_404(request_t *req, net.conn_t *conn) {
 	const char *msg = "The file was not found on the server.";
 	char buf[1000] = {};
 	sprintf(buf,
@@ -399,7 +399,7 @@ pub void write_404(request_t *req, net.net_t *conn) {
 	}
 }
 
-pub void write_405(request_t *req, net.net_t *conn) {
+pub void write_405(request_t *req, net.conn_t *conn) {
 	const char *msg = "This method is not allowed for this path.";
 	char buf[1000] = {};
     sprintf(buf,
@@ -419,7 +419,7 @@ pub void write_405(request_t *req, net.net_t *conn) {
 	}
 }
 
-pub void write_501(request_t *req, net.net_t *conn) {
+pub void write_501(request_t *req, net.conn_t *conn) {
 	const char *msg = "method not implemented\n";
 	char buf[1000] = {};
     sprintf(buf,
@@ -439,7 +439,7 @@ pub void write_501(request_t *req, net.net_t *conn) {
 	}
 }
 
-pub void serve_text(request_t *req, net.net_t *conn, const char *s, *content_type) {
+pub void serve_text(request_t *req, net.conn_t *conn, const char *s, *content_type) {
 	char buf[1000] = {};
 	sprintf(buf, "%s 200 OK\n"
 		"Content-Length: %ld\n"
@@ -456,7 +456,7 @@ pub void serve_text(request_t *req, net.net_t *conn, const char *s, *content_typ
 	}
 }
 
-pub void servefile(request_t *req, net.net_t *conn, const char *filepath) {
+pub void servefile(request_t *req, net.conn_t *conn, const char *filepath) {
 	const char *ext = fs.fileext(filepath);
 	const char *content_type = mime.lookup(ext);
 	if (content_type == NULL) {
