@@ -82,7 +82,7 @@ pub int read(conn_t *c, char *buf, size_t size) {
 // Writes n bytes from buf to connection c.
 // Returns the number of bytes sent, or -1 on failure.
 pub int write(conn_t *c, const char *buf, size_t n) {
-	// MSG_NOSIGNAL prevents SIGPIPE signals
+	// MSG_NOSIGNAL prevents SIGPIPE signals.
 	return OS.send(c->fd, buf, n, OS.MSG_NOSIGNAL);
 }
 
@@ -319,5 +319,5 @@ pub writer.t *getwriter(conn_t *conn) {
 
 int writer_write(void *ctx, const uint8_t *buf, size_t n) {
 	conn_t *conn = ctx;
-	return OS.write(conn->fd, buf, n);
+	return write(conn, (char *) buf, n);
 }
