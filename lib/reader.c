@@ -22,6 +22,9 @@ pub t *new(void *data, readfunc_t *read, freefunc_t *free) {
 // Reads up to n bytes from r to buf.
 // Returns the number of bytes read or a negative value for EOF or an error.
 pub int read(t *reader, uint8_t *buf, size_t n) {
+	if (!buf) {
+		panic("got a null buf");
+	}
 	int r = reader->read(reader->data, buf, n);
 	if (r > 0) {
 		reader->pos += r;
