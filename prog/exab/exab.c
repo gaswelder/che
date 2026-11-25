@@ -63,8 +63,10 @@ int main(int argc, char *argv[]) {
 	http.set_header(&req, "User-Agent", "exab");
 
 	writer.t *w = writer.static_buffer(REQUEST, sizeof(REQUEST));
-	if (!http.write_request(w, &req)) {
-		panic("failed to write the request");
+	error.t err = {};
+	http.write_request(w, &req, &err);
+	if (err.set) {
+		panic("failed to write the request: %s", err.msg);
 	}
 	REQUESTLEN = w->nwritten;
 	writer.free(w);

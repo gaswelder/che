@@ -33,7 +33,7 @@ pub tracker_response_t *announce(const char *addr, torrent.info_t *_tf, uint8_t 
 	// Write the announce.
 	writer.t *w = net.getwriter(conn);
 	reader.t *re = net.getreader(conn);
-	tracker_response_t *res = write_announce(w, re, _tf, _peer_id, port);
+	tracker_response_t *res = write_announce(w, re, _tf, _peer_id, port, err);
 	reader.free(re);
 	writer.free(w);
 
@@ -42,7 +42,7 @@ pub tracker_response_t *announce(const char *addr, torrent.info_t *_tf, uint8_t 
 	return res;
 }
 
-tracker_response_t *write_announce(writer.t *w, reader.t *re, torrent.info_t *_tf, uint8_t *_peer_id, const char *port) {
+tracker_response_t *write_announce(writer.t *w, reader.t *re, torrent.info_t *_tf, uint8_t *_peer_id, const char *port, error.t *err) {
 	http.request_t *req = http.newreq(http.GET, "/announce");
 	// event
 	// empty or not present: regular interval announcement
@@ -59,11 +59,11 @@ tracker_response_t *write_announce(writer.t *w, reader.t *re, torrent.info_t *_t
 	http.reqparams(req, "uploaded", "1234"); // bytes uploaded since "started"
 	http.reqparams(req, "downloaded", "0"); // bytes downloaded since "started"
 	http.reqparams(req, "left", "0"); // bytes yet to download
-
-	if (http.write_request(w, req) < 0) {
-		panic("write_request failed");
+	http.write_request(w, req, err);
+	http.freereq(req);
+	if (err->set) {
+		return NULL;
 	}
-	http.freereq(req);	
 
 	//
 	// read and process data

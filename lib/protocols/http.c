@@ -1,4 +1,5 @@
 #import enc/urlencode
+#import error
 #import lists/mime
 #import os/fs
 #import os/net
@@ -129,7 +130,10 @@ pub bool set_header(request_t *r, const char *name, *value) {
 
 // Writes request r to writer w.
 // Returns the number of bytes written or -1 on error.
-pub int write_request(writer.t *w, request_t *r) {
+pub int write_request(writer.t *w, request_t *r, error.t *err) {
+	if (err->set) {
+		return -1;
+	}
 	strbuilder.str *sb = strbuilder.new();
 
 	// GET /foo
@@ -174,6 +178,7 @@ pub int write_request(writer.t *w, request_t *r) {
 	bool ok = (len == (int)strlen(s));
 	strbuilder.free(sb);
 	if (!ok) {
+		error.set(err, "failed to write HTTP request");
 		return -1;
 	}
 	return len;
