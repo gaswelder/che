@@ -82,8 +82,10 @@ pub const char *errstr(int err) {
 
 pub request_t *newreq(int method, const char *path) {
 	request_t *r = calloc!(1, sizeof(request_t));
-	if (!init_request(r, method, path)) {
-		panic("init_request failed");
+	error.t err = {};
+	init_request(r, method, path, &err);
+	if (err.set) {
+		panic("init_request failed: %s", err.msg);
 	}
 	return r;
 }
@@ -103,7 +105,8 @@ pub void reqparam(request_t *r, const char *name, const char *data, size_t datal
 	h->valuelen = datalen;
 }
 
-pub bool init_request(request_t *r, int method, const char *path) {
+pub void init_request(request_t *r, int method, const char *path, error.t *err) {
+	if (err->set) return;
 	memset(r, 0, sizeof(request_t));
 	const char *methodstring = NULL;
 	switch (method) {
@@ -111,14 +114,13 @@ pub bool init_request(request_t *r, int method, const char *path) {
 		case POST: { methodstring = "POST"; }
 		case HEAD: { methodstring = "HEAD"; }
 		default: {
-			r->err = 1; // unknown method
-			return false;
+			error.set(err, "unknown HTTP method: %d", method);
+			return;
 		}
 	}
 	strcpy(r->method, methodstring);
 	strcpy(r->uri, path);
 	strcpy(r->version, "HTTP/1.0");
-	return true;
 }
 
 pub bool set_header(request_t *r, const char *name, *value) {

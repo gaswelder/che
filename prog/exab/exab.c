@@ -55,15 +55,16 @@ int main(int argc, char *argv[]) {
 	// Create and format the HTTP request as a bytes buffer.
 	//
 	http.request_t req = {};
-	if (!http.init_request(&req, http.GET, u->path)) {
-		fprintf(stderr, "failed to init request: %s\n", http.errstr(req.err));
+	error.t err = {};
+	http.init_request(&req, http.GET, u->path, &err);
+	if (err.set) {
+		fprintf(stderr, "failed to init request: %s\n", err.msg);
 		return 1;
 	}
 	http.set_header(&req, "Host", u->hostname);
 	http.set_header(&req, "User-Agent", "exab");
 
 	writer.t *w = writer.static_buffer(REQUEST, sizeof(REQUEST));
-	error.t err = {};
 	http.write_request(w, &req, &err);
 	if (err.set) {
 		panic("failed to write the request: %s", err.msg);
