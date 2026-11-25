@@ -1,18 +1,24 @@
+#import error
 #import scanner
 
 pub typedef {
 	char schema[10];
-	char hostname[100];
+	char hostname[254];
 	char port[10];
-	char path[100];
+	char path[1024];
 } t;
 
-pub t *parse(const char *s) {
-	t *r = calloc!(1, sizeof(t));
+// Parses URL string s and returns the parsed struct.
+// Sets err for invalid input.
+pub t parse(const char *s, error.t *err) {
+	t r = {};
+	if (err->set) {
+		return r;
+	}
 	scanner.t *buf = scanner.from_str(s);
 
 	// http
-	char *q = r->schema;
+	char *q = r.schema;
 	while (scanner.more(buf) && scanner.peek(buf) != ':') {
 		*q++ = scanner.get(buf);
 	}
@@ -20,17 +26,17 @@ pub t *parse(const char *s) {
 	// ://
 	if (scanner.get(buf) != ':' || scanner.get(buf) != '/' || scanner.get(buf) != '/') {
 		scanner.free(buf);
-		free(r);
-		return NULL;
+		error.set(err, "invalid URL: expected scheme://");
+		return r;
 	}
 
 	// domain or ip address
-	q = r->hostname;
+	q = r.hostname;
 	while (scanner.more(buf) && scanner.peek(buf) != ':' && scanner.peek(buf) != '/') {
 		*q++ = scanner.get(buf);
 	}
 
-	q = r->port;
+	q = r.port;
 	if (scanner.peek(buf) == ':') {
 		scanner.get(buf);
 		while (scanner.more(buf) && scanner.peek(buf) != '/') {
@@ -38,7 +44,7 @@ pub t *parse(const char *s) {
 		}
 	}
 
-	q = r->path;
+	q = r.path;
 	*q = '/';
 	if (scanner.peek(buf) == '/') {
 		while (scanner.more(buf)) {

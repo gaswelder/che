@@ -37,31 +37,31 @@ int main(int argc, char *argv[]) {
 	//
 	// Parse and check the URL.
 	//
-	url.t *u = url.parse(urlstr);
-	if (!u) {
-		fprintf(stderr, "failed to parse URL: %s\n", urlstr);
+	error.t err = {};
+	url.t u = url.parse(urlstr, &err);
+	if (err.set) {
+		fprintf(stderr, "failed to parse URL: %s\n", err.msg);
 		return 1;
 	}
-	if (!strcmp(u->schema, "https")) {
+	if (!strcmp(u.schema, "https")) {
 		fprintf(stderr, "no https support\n");
 		return 1;
 	}
-	if (u->port[0] == '\0') {
-		strcpy(u->port, "80");
+	if (u.port[0] == '\0') {
+		strcpy(u.port, "80");
 	}
-	addr = ascii.newstr("%s:%s", u->hostname, u->port);
+	addr = ascii.newstr("%s:%s", u.hostname, u.port);
 
 	//
 	// Create and format the HTTP request as a bytes buffer.
 	//
 	http.request_t req = {};
-	error.t err = {};
-	http.init_request(&req, http.GET, u->path, &err);
+	http.init_request(&req, http.GET, u.path, &err);
 	if (err.set) {
 		fprintf(stderr, "failed to init request: %s\n", err.msg);
 		return 1;
 	}
-	http.set_header(&req, "Host", u->hostname);
+	http.set_header(&req, "Host", u.hostname);
 	http.set_header(&req, "User-Agent", "exab");
 
 	writer.t *w = writer.static_buffer(REQUEST, sizeof(REQUEST));
