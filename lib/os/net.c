@@ -77,15 +77,26 @@ pub const char *net_addr(conn_t *c) {
 // Returns the number of bytes read or -1 on error.
 pub int read(conn_t *c, char *buf, size_t size) {
 	internal_t *state = c->internal;
-	return OS.recv(state->fd, buf, size, 0);
+	while (true) {
+		int k = OS.recv(state->fd, buf, size, 0);
+		if (k < 0 && errno == OS.EINTR) {
+			// Wanna see when it happens.
+			panic("interrupted");
+			continue;
+		}
+		return k;
+	}
 }
 
-// Writes n bytes from buf to connection c.
-// Returns the number of bytes sent, or -1 on failure.
+// Writes n bytes from buf to c.
 pub int write(conn_t *c, const char *buf, size_t n) {
-	internal_t *state = c->internal;
-	// MSG_NOSIGNAL prevents SIGPIPE signals.
-	return OS.send(state->fd, buf, n, OS.MSG_NOSIGNAL);
+	internal_t *state = c->internal;	
+	// MSG_NOSIGNAL to prevent murder by SIGPIPE.
+	int k = OS.send(state->fd, buf, n, OS.MSG_NOSIGNAL);
+	if (k < 0) {
+		panic("net write failed: %s", strerror(errno));
+	}
+	return k;
 }
 
 // Connects to addr over protocol proto and returns the connection.
