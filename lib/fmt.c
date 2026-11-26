@@ -16,5 +16,7 @@ pub int wprintf(writer.t *w, const char *fmt, ...) {
 	vsnprintf((char *)buf, len + 1, fmt, args);
 	va_end(args);
 
-	return writer.write(w, buf, len);
+	int written = writer.write(w, buf, len);
+	free(buf);
+	return written;
 }
