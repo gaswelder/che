@@ -1,7 +1,7 @@
 #import writer
 
 // Writes a printf-style string into w.
-pub int wprintf(writer.t *w, const char *fmt, ...) {
+pub int write(writer.t *w, const char *fmt, ...) {
 	// Get the required size.
 	va_list args = {};
 	va_start(args, fmt);

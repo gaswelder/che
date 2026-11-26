@@ -34,7 +34,7 @@ pub void cgi(char *path, http.request_t *req, net.conn_t *conn) {
 
 	writer.t *w = net.getwriter(conn);
 
-	fmt.wprintf(w, "%s 200 OK\n", req->version);
+	fmt.write(w, "%s 200 OK\n", req->version);
 	for (size_t i = 0; i < head.nheaders; i++) {
 		char *name = head.headers[i].name;
 		char *value = head.headers[i].value;
@@ -47,10 +47,10 @@ pub void cgi(char *path, http.request_t *req, net.conn_t *conn) {
 		if (!strcmp(name, "Content-Length")) {
 			panic("omitting content length");
 		}
-		fmt.wprintf(w, "%s: %s\n", name, value);
+		fmt.write(w, "%s: %s\n", name, value);
 	}
-	fmt.wprintf(w, "Content-Length: %zu\r\n", output_size - headsize);
-	fmt.wprintf(w, "\r\n", 1);
+	fmt.write(w, "Content-Length: %zu\r\n", output_size - headsize);
+	fmt.write(w, "\r\n", 1);
 	net.write(conn, output + headsize, output_size - headsize);
 	writer.free(w);
 }

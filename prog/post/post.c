@@ -32,35 +32,35 @@ int main(int argc, char **argv) {
 int sendm(net.conn_t *n, writer.t *w, const char *from, const char *to, const char *subj) {
 	expect(n, 220);
 	if (!senderror()) {
-		fmt.wprintf(w, "HELO %s\r\n", "sofa");
+		fmt.write(w, "HELO %s\r\n", "sofa");
 		expect(n, 250);
 	}
 	if (!senderror()) {
-		fmt.wprintf(w, "MAIL FROM:<%s>\r\n", from);
+		fmt.write(w, "MAIL FROM:<%s>\r\n", from);
 		expect(n, 250);
 	}
 	if (!senderror()) {
-		fmt.wprintf(w, "RCPT TO:<%s>\r\n", to);
+		fmt.write(w, "RCPT TO:<%s>\r\n", to);
 		expect(n, 250);
 	}
 	if (!senderror()) {
-		fmt.wprintf(w, "DATA\r\n");
+		fmt.write(w, "DATA\r\n");
 		expect(n, 354);
 	}
 	if (!senderror()) {
-		fmt.wprintf(w, "Subject: %s\r\n", subj);
-		fmt.wprintf(w, "From: <%s>\r\n", from);
-		fmt.wprintf(w, "To: <%s>\r\n", to);
-		fmt.wprintf(w, "\r\n");
+		fmt.write(w, "Subject: %s\r\n", subj);
+		fmt.write(w, "From: <%s>\r\n", from);
+		fmt.write(w, "To: <%s>\r\n", to);
+		fmt.write(w, "\r\n");
 
 		char buf[4096] = {};
 		while (fgets(buf, 4096, stdin)) {
-			fmt.wprintf(w, "%s", buf);
+			fmt.write(w, "%s", buf);
 		}
-		fmt.wprintf(w, ".\r\n");
+		fmt.write(w, ".\r\n");
 		expect(n, 250);
 
-		fmt.wprintf(w, "QUIT\r\n");
+		fmt.write(w, "QUIT\r\n");
 		expect(n, 221);
 	}
 	return !senderror();
