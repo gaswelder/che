@@ -84,6 +84,18 @@ pub int write2le(writer.t *w, uint32_t v) {
 	return writer.write(w, buf, 2);
 }
 
+// Writes v into w as 2 big-endian bytes (16 bits).
+pub int write2be(writer.t *w, uint32_t v) {
+	uint8_t buf[2] = { v >> 8, v };
+	return writer.write(w, buf, sizeof(buf));
+}
+
+// Writes v into w as 3 big-endian bytes (24 bits).
+pub int write3be(writer.t *w, uint32_t v) {
+	uint8_t buf[3] = { v >> 16, v >> 8, v };
+	return writer.write(w, buf, sizeof(buf));
+}
+
 // Writes 4 bytes in big-endian order to the writer w.
 pub int write4be(writer.t *w, uint32_t v) {
 	uint8_t buf[4] = {};
