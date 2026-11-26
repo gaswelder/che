@@ -3,10 +3,13 @@
 pub bool bytes(uint8_t *p, size_t n) {
 	FILE *f = fopen("/dev/urandom", "rb");
 	if (!f) {
-		return false;
+		panic("failed to open /dev/urandom");
 	}
 	size_t got = fread(p, 1, n, f);
 	bool ok = got == n && !ferror(f);
+	if (!ok) {
+		panic("failed to read /dev/urandom");
+	}
 	fclose(f);
 	return ok;
 }
