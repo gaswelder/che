@@ -1,3 +1,4 @@
+#import reader
 #import writer
 
 const char HEX[] = "0123456789abcdef";
@@ -32,4 +33,25 @@ pub int write(writer.t *w, const char *data, size_t n) {
 		}
 	}
 	return len;
+}
+
+// Decodes next byte from reader r, consuming two digit bytes.
+pub uint8_t read(reader.t *r) {
+	uint8_t ab[2] = {};
+	if (reader.read(r, ab, 2) != 2) {
+		panic("read failed");
+	}
+	int hi = value((char) ab[0]);
+	int lo = value((char) ab[1]);
+	if (hi < 0 || lo < 0) {
+		panic("invalid hex digit");
+	}
+	return (uint8_t) (hi * 16 + lo);
+}
+
+int value(char c) {
+	if (c >= '0' && c <= '9') { return (int) c - 48; }
+	if (c >= 'a' && c <= 'f') { return (int) c - 97 + 10; }
+	if (c >= 'A' && c <= 'F') { return (int) c - 65 + 10; }
+	return -1;
 }
